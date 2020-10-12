@@ -156,7 +156,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	// In case of procedure call which modifies the graph/indices.
 	if(type == CYPHER_AST_CALL) {
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(root));
-		return Proc_ReadOnly(proc_name);
+		return Procedure_ReadOnly(proc_name);
 	}
 	uint num_children = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < num_children; i ++) {

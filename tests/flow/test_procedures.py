@@ -324,7 +324,6 @@ class testProcedures(FlowTestsBase):
         actual_resultset = redis_graph.call_procedure("dbms.procedures").result_set
 
         # The following two procedure are a part of the expected results
-        expected_result = ["db.labels", "READ"]
-        self.env.assertContains(expected_result, actual_resultset)
-        expected_result = ["db.idx.fulltext.createNodeIndex", "WRITE"]
-        self.env.assertContains(expected_result, actual_resultset)
+        expected_result = [["db.labels", "READ"], ["db.idx.fulltext.createNodeIndex", "WRITE"]]
+        for res in expected_result:
+            self.env.assertContains(res, actual_resultset)

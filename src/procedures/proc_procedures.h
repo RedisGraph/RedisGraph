@@ -8,4 +8,5 @@
 
 #include "proc_ctx.h"
 
+// Returns all the procedures in the systems.
 ProcedureCtx *Proc_ProceduresCtx();

@@ -4,30 +4,31 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "proc_procedures.h"
 #include "../util/arr.h"
 #include "rax.h"
+#include "../RG.h"
 #include "procedure.h"
+#include "proc_procedures.h"
 
 // CALL dbms.procedures()
 
 typedef struct {
-	raxIterator *current_proc; // Current proc
-	SIValue *output; // Array with a maximum of 4 entries: ["name", name, "mode", mode].
-} ProceduresContext;
+	SIValue *output;                  // Array with a maximum of 4 entries: ["name", name, "mode", mode].
+	raxIterator *procedure_rax_it;    // Holding to the current step's procedure.
+} ProcProceduresPrivateData;
 
 ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
-  const SIValue *args, const char **yield) {
+  		const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
-	ProceduresContext *pdata = rm_malloc(sizeof(ProceduresContext));
+	ProcProceduresPrivateData *pdata = rm_malloc(sizeof(ProcProceduresPrivateData));
 
 	// Initialize an iterator to the rax that contains all procedures
-	rax* rax = Proc_Get_All();
+	rax *rax = Procedure_GetProceduresRax();
 	raxIterator *it = rm_malloc(sizeof(raxIterator));
 	raxStart(it, rax);
 	raxSeek(it, "^", NULL, 0);
-	pdata->current_proc = it;
+	pdata->procedure_rax_it = it;
 	pdata->output = array_new(SIValue, 4);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("name"));
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
@@ -38,11 +39,12 @@ ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
 	return PROCEDURE_OK;
 }
 
+// Promote the rax iterator to the next procedure and return its name and mode.
 SIValue *Proc_ProceduresStep(ProcedureCtx *ctx) {
-	assert(ctx->privateData);
+	ASSERT(ctx->privateData);
 
-	ProceduresContext *pdata = (ProceduresContext *)ctx->privateData;
-	raxIterator *it = pdata->current_proc;
+	ProcProceduresPrivateData *pdata = (ProcProceduresPrivateData *)ctx->privateData;
+	raxIterator *it = pdata->procedure_rax_it;
 	// Depleted?
 	if(!raxNext(it)) return NULL;
 
@@ -59,9 +61,9 @@ SIValue *Proc_ProceduresStep(ProcedureCtx *ctx) {
 ProcedureResult Proc_ProceduresFree(ProcedureCtx *ctx) {
 	// Clean up.
 	if(ctx->privateData) {
-		ProceduresContext *pdata = ctx->privateData;
+		ProcProceduresPrivateData *pdata = ctx->privateData;
 		array_free(pdata->output);
-		rm_free(pdata->current_proc);
+		rm_free(pdata->procedure_rax_it);
 		rm_free(ctx->privateData);
 	}
 

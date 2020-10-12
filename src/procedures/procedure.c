@@ -77,13 +77,12 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	return ctx;
 }
 
-rax *Proc_Get_All() {
+rax *Procedure_GetProceduresRax() {
 	return __procedures;
 }
 
 ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield) {
 	ASSERT(proc != NULL);
-
 	// Procedure is expected to be in the `PROCEDURE_NOT_INIT` state.
 	if(proc->state != PROCEDURE_NOT_INIT) {
 		proc->state = PROCEDURE_ERROR;
@@ -98,7 +97,7 @@ ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char 
 }
 
 SIValue *Proc_Step(ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	// Validate procedure state, can only consumed if state is initialized.
 	if(proc->state != PROCEDURE_INIT) return NULL;
 
@@ -110,12 +109,12 @@ SIValue *Proc_Step(ProcedureCtx *proc) {
 }
 
 uint Procedure_Argc(const ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	return proc->argc;
 }
 
 uint Procedure_OutputCount(const ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	return array_len(proc->output);
 }
 
@@ -135,7 +134,7 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 	return false;
 }
 
-bool Proc_ReadOnly(const char *proc_name) {
+bool Procedure_ReadOnly(const char *proc_name) {
 	assert(__procedures);
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name,
 	  			strlen(proc_name));
@@ -149,12 +148,12 @@ bool Proc_ReadOnly(const char *proc_name) {
 }
 
 const char *Procedure_GetName(const ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	return proc->name;
 }
 
 bool Procedure_IsReadOnly(const ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	return proc->readOnly;
 }
 
