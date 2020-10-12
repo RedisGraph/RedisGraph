@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "rax.h"
+#include "../../deps/rax/rax.h"
 #include "../redismodule.h"
 #include "../ast/ast_shared.h"
 #include "../execution_plan/record.h"

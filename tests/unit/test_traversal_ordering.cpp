@@ -17,8 +17,8 @@ extern "C" {
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
 #include "../../src/arithmetic/algebraic_expression.h"
-#include "../../src/execution_plan/optimizations/optimizations.h"
-
+#include "../../src/execution_plan/optimizations/traverse_order.h"
+#include "../../src/execution_plan/optimizations/traverse_order_utils.h"
 #ifdef __cplusplus
 }
 #endif
@@ -66,7 +66,7 @@ class TraversalOrderingTest: public ::testing::Test {
 	static void _populate_combination_table(bool *table, int n) {
 		int idx = 0; // Index into the overall table
 		for(int i = 0; i < 1 << n; i ++) {          // For every value in 2^n
-			for(int j = 0; j < sizeof(int); j ++) { // For each of the 4 bits in the value.
+			for(int j = 0; j < n; j ++) {           // For each of the n bits in the value.
 				bool x = (i & (1 << j));            // See if the bit at position i is set.
 				table[idx++] = x;                   // If it is, this input will be true in this row.
 			}
@@ -100,7 +100,7 @@ class TraversalOrderingTest: public ::testing::Test {
 		 * [...]
 		 * 1111 */
 		int combination_count = 1 << node_count; // Calculate 2^n (16 for 4)
-		int array_size = combination_count * 4; // 16 (rows) * 4 (cols)
+		int array_size = combination_count * node_count; // 16 (rows) * 4 (cols)
 		bool *combination_table = (bool *)malloc(array_size);
 		_populate_combination_table(combination_table, node_count);
 		return combination_table;
@@ -268,11 +268,12 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	uint exp_count = array_len(orig_set);
 
 	int combination_count = 1 << node_count; // Calculate 2^4 (16)
-	bool *combination_table = build_combination_table(combination_count);
+	bool *combination_table = build_combination_table(node_count);
 
 	OrderScoreCtx score_ctx = {.qg = qg,
-							   .filtered_entities = NULL,
 							   .bound_vars = NULL,
+							   .filtered_entities = NULL,
+							   .independent_entities = NULL,
 							   .best_arrangement = (AlgebraicExpression **)rm_malloc(exp_count * sizeof(AlgebraicExpression *)),
 							   .max_score = INT_MIN
 							  };
@@ -280,7 +281,7 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	for(int to_label = 0; to_label < combination_count; to_label ++) {
 		// Label the appropriate nodes in the sequence.
 		for(int i = 0; i < node_count; i ++) {
-			if(combination_table[to_label * 4 + i]) nodes[i]->label = "L";
+			if(combination_table[to_label * node_count + i]) nodes[i]->label = "L";
 			else nodes[i]->label = NULL;
 		}
 		// Copy the initial set.
@@ -299,12 +300,7 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 			memcpy(tmp, set, exp_count * sizeof(AlgebraicExpression *));
 			ctr ++;
 			orderExpressions(qg, tmp, exp_count, NULL, NULL);
-			// _sort_exps_by_score(tmp, exp_count, qg, NULL, NULL);
-			// _order_expressions(tmp, exp_count, qg);
 			int score = score_arrangement(&score_ctx, tmp, exp_count);
-			if(score != first_score) {
-				printf("Scored %d, first score was %d\n", score, first_score);
-			}
 			// Every sequence of expressions should achieve the same score.
 			ASSERT_EQ(score, first_score);
 		} while(std::next_permutation(set, set + exp_count));
@@ -348,8 +344,9 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 		memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 		AlgebraicExpression *tmp[exp_count];
 		OrderScoreCtx score_ctx = {.qg = qg,
-								   .filtered_entities = NULL,
 								   .bound_vars = NULL,
+								   .filtered_entities = NULL,
+								   .independent_entities = NULL,
 								   .best_arrangement = (AlgebraicExpression **)rm_malloc(exp_count * sizeof(AlgebraicExpression *)),
 								   .max_score = INT_MIN
 								  };
@@ -457,6 +454,8 @@ TEST_F(TraversalOrderingTest, SuboptimalOrder) {
 	// Build the filter tree to represent the query.
 	FT_FilterNode *filters = build_filter_tree_from_query(query);
 	rax *filters_rax = FilterTree_CollectModified(filters);
+	rax *indpendent_filters = raxNew();
+	FilterTree_CollectIndependentEntities(filters, indpendent_filters);
 
 	// Populate the initial set.
 	AlgebraicExpression *set[exp_count];
@@ -467,8 +466,9 @@ TEST_F(TraversalOrderingTest, SuboptimalOrder) {
 	raxInsert(bound_vars, (unsigned char *)"A", strlen("A"), NULL, NULL);
 
 	OrderScoreCtx score_ctx = {.qg = qg,
-							   .filtered_entities = filters_rax,
 							   .bound_vars = bound_vars,
+							   .filtered_entities = filters_rax,
+							   .independent_entities = indpendent_filters,
 							   .best_arrangement = (AlgebraicExpression **)rm_malloc(exp_count * sizeof(AlgebraicExpression *)),
 							   .max_score = INT_MIN
 							  };
