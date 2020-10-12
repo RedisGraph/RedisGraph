@@ -19,8 +19,7 @@ static void _procRegister(const char *procedure, ProcGenerator gen) {
 	char lowercase_proc_name[128];
 	size_t lowercase_proc_name_len = 128;
 	str_tolower(procedure, lowercase_proc_name, &lowercase_proc_name_len);
-	raxInsert(__procedures, (unsigned char *)lowercase_proc_name,
-		   lowercase_proc_name_len, gen, NULL);
+	raxInsert(__procedures, (unsigned char *)lowercase_proc_name, lowercase_proc_name_len, gen, NULL);
 }
 
 // Register procedures.
@@ -66,8 +65,7 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	size_t proc_name_len = strlen(proc_name) + 1;
 	char proc_name_lowercase [proc_name_len];
 	str_tolower(proc_name, proc_name_lowercase, &proc_name_len);
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
-	  			proc_name_len);
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase, proc_name_len);
 	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen(NULL, NULL);
 
@@ -132,12 +130,8 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 
 bool Proc_ReadOnly(const char *proc_name) {
 	assert(__procedures);
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name,
-	  			strlen(proc_name));
-	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
-	/* TODO It would be preferable to be able to determine whether a procedure is read-only
-	 * without creating its entire context; this is wasteful. */
-	ProcedureCtx *ctx = gen(NULL, NULL);
+	ProcedureCtx *ctx = Proc_Get(proc_name);
+	if(!ctx) return false;
 	bool read_only = ctx->readOnly;
 	Proc_Free(ctx);
 	return read_only;
