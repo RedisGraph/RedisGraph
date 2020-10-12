@@ -40,7 +40,7 @@ unsigned short Schema_IndexCount(const Schema *s) {
 	return n;
 }
 
-Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
+Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType type) {
 	Index *idx = NULL;
 
 	if(type == IDX_EXACT_MATCH) {
@@ -55,8 +55,8 @@ Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
 	if(!idx) return NULL;
 
 	// Make sure field is indexed.
-	if(field) {
-		if(!Index_ContainsField(idx, field)) return NULL;
+	if(attribute_id) {
+		if(!Index_ContainsAttribute(idx, *attribute_id)) return NULL;
 	}
 
 	return idx;
@@ -70,7 +70,9 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 
 	// Index exists, make sure attribute isn't already indexed.
 	if(_idx != NULL) {
-		if(Index_ContainsField(_idx, field)) return INDEX_FAIL;
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
+		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
 	}
 
 	// Index doesn't exists, create it.
@@ -87,7 +89,9 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 }
 
 int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
-	Index *idx = Schema_GetIndex(s, field, type);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
+	Index *idx = Schema_GetIndex(s, &attribute_id, type);
 	if(idx == NULL) return INDEX_FAIL;
 
 	type = idx->type;

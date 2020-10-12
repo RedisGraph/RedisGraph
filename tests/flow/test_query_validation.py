@@ -269,3 +269,47 @@ class testQueryValidationFlow(FlowTestsBase):
             # Expecting an error.
             assert("Only directed relationships" in e.message)
             pass
+
+    # Applying a filter for non existing entity.
+    def test20_non_existing_graph_entity(self):
+        try:
+            query = """match p=(n:Type) where p.name='value' return p"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Unable to place filter op for entities" in e.message)
+            pass
+
+    # Comments should not affect query functionality.
+    def test21_ignore_query_comments(self):
+        query = """MATCH (n)  // This is a comment
+                   /* This is a block comment */
+                   WHERE EXISTS(n.age)
+                   RETURN n.age /* Also a block comment*/"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """/* A block comment*/ MATCH (n)  // This is a comment
+                /* This is a block comment */
+                WHERE EXISTS(n.age)
+                RETURN n.age /* Also a block comment*/"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """// This is a comment
+                MATCH (n)  // This is a comment
+                /* This is a block comment */
+                WHERE EXISTS(n.age)
+                RETURN n.age /* Also a block comment*/"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (n)  /* This is a block comment */ WHERE EXISTS(n.age)
+                RETURN n.age /* Also a block comment*/"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

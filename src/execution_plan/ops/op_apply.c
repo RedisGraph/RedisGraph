@@ -5,6 +5,7 @@
  */
 
 #include "op_apply.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 /* Forward declarations. */
 static OpResult ApplyInit(OpBase *opBase);
@@ -71,7 +72,7 @@ static Record ApplyConsume(OpBase *opBase) {
 
 		// Clone the bound Record and merge the RHS Record into it.
 		Record r = OpBase_CloneRecord(op->r);
-		Record_Merge(&r, rhs_record);
+		Record_Merge(r, rhs_record);
 
 		return r;
 	}

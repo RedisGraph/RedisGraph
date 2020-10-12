@@ -37,7 +37,7 @@ void _AlgebraicExpression_InplaceRepurpose
 }
 
 // Removes the rightmost direct child node of root.
-AlgebraicExpression *_AlgebraicExpression_OperationRemoveRightmostChild
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveDest
 (
 	AlgebraicExpression *root  // Root from which to remove a child.
 ) {
@@ -53,7 +53,7 @@ AlgebraicExpression *_AlgebraicExpression_OperationRemoveRightmostChild
 }
 
 // Removes the leftmost direct child node of root.
-AlgebraicExpression *_AlgebraicExpression_OperationRemoveLeftmostChild
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveSource
 (
 	AlgebraicExpression *root   // Root from which to remove a child.
 ) {
@@ -267,7 +267,7 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 		// If we are maintaining transposed matrices, it can be retrieved now.
 		if(root->operation.op == AL_EXP_TRANSPOSE && Config_MaintainTranspose()) {
 			assert(child_count == 1 && "Transpose operation had invalid number of children");
-			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
 			// Fetch the transposed matrix and update the operand.
 			_AlgebraicExpression_PopulateTransposedOperand(child, gc);
 			// Replace this operation with the transposed operand.

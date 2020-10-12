@@ -5,9 +5,11 @@
 */
 
 #include "cmd_query.h"
+#include "../RG.h"
+#include "cmd_context.h"
 #include "../ast/ast.h"
 #include "../util/arr.h"
-#include "cmd_context.h"
+#include "../util/cron.h"
 #include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
@@ -45,11 +47,71 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	}
 }
 
-static inline bool _check_compact_flag(CommandCtx *command_ctx) {
-	// The only additional argument to check currently is whether the query results
-	// should be returned in compact form
-	return (command_ctx->argc > 3 &&
-			!strcasecmp(RedisModule_StringPtrLen(command_ctx->argv[3], NULL), "--compact"));
+// Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
+static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeout) {
+	ASSERT(command_ctx);
+	ASSERT(compact);
+	ASSERT(timeout);
+
+	// set defaults
+	*timeout = 0;      // no timeout
+	*compact = false;  // verbose
+
+	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
+	// make sure we've got more than 3 arguments
+	if(command_ctx->argc <= 3) return REDISMODULE_OK;
+
+	// scan arguments
+	for(int i = 3; i < command_ctx->argc; i++) {
+		const char *arg = RedisModule_StringPtrLen(command_ctx->argv[i], NULL);
+
+		// compact result-set
+		if(!strcasecmp(arg, "--compact")) {
+			*compact = true;
+			continue;
+		}
+
+		// query timeout
+		if(!strcasecmp(arg, "timeout")) {
+			int err = REDISMODULE_ERR;
+			if(i < command_ctx->argc - 1) {
+				i++; // Set the current argument to the timeout value.
+				err = RedisModule_StringToLongLong(command_ctx->argv[i], timeout);
+			}
+
+			// Emit error on missing, negative, or non-numeric timeout values.
+			if(err != REDISMODULE_OK || *timeout < 0) {
+				QueryCtx_SetError("Failed to parse query timeout value");
+				return REDISMODULE_ERR;
+			}
+		}
+	}
+	return REDISMODULE_OK;
+}
+
+inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
+	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
+}
+
+void QueryTimedOut(void *pdata) {
+	ASSERT(pdata);
+	ExecutionPlan *plan = (ExecutionPlan *)pdata;
+	ExecutionPlan_Drain(plan);
+
+	/* Timer may have triggered after execution-plan ran to completion
+	 * in which case the original query thread had called ExecutionPlan_Free
+	 * decreasing the plan's ref count, but did not free the execution-plan
+	 * it is our responsibility to call ExecutionPlan_Free
+	 *
+	 * Incase execution-plan timedout we'll call ExecutionPlan_Free
+	 * to drop plan's ref count. */
+	ExecutionPlan_Free(plan);
+}
+
+void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
+	// Increase execution plan ref count.
+	ExecutionPlan_IncreaseRefCount(plan);
+	Cron_AddTask(timeout, QueryTimedOut, plan);
 }
 
 void Graph_Query(void *args) {
@@ -58,6 +120,8 @@ void Graph_Query(void *args) {
 	CommandCtx *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
+
+	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
@@ -82,7 +146,33 @@ void Graph_Query(void *args) {
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
 	bool readonly = AST_ReadOnly(ast->root);
-	bool compact = _check_compact_flag(command_ctx);
+	if(!readonly && _readonly_cmd_mode(command_ctx)) {
+		QueryCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+
+	bool compact;
+	long long timeout;
+	int res = _read_flags(command_ctx, &compact, &timeout);
+	if(res == REDISMODULE_ERR) {
+		// Emit error and exit if argument parsing failed.
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+
+	// Set the query timeout if one was specified.
+	if(timeout != 0) {
+		if(!readonly) {
+			// Disallow timeouts on write operations to avoid leaving the graph in an inconsistent state.
+			QueryCtx_SetError("Query timeouts may only be specified on read-only queries");
+			QueryCtx_EmitException();
+			goto cleanup;
+		}
+
+		Query_SetTimeOut(timeout, plan);
+	}
+
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
 
 	// Acquire the appropriate lock.
@@ -111,6 +201,10 @@ void Graph_Query(void *args) {
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
+
+		// Emit error if query timed out.
+		if(ExecutionPlan_Drained(plan)) QueryCtx_SetError("Query timed out");
+
 		ExecutionPlan_Free(plan);
 		plan = NULL;
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
@@ -135,8 +229,8 @@ cleanup:
 	// Log query to slowlog.
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
-			QueryCtx_GetExecutionTime(), NULL);
-	ExecutionPlan_Free(plan);
+				QueryCtx_GetExecutionTime(), NULL);
+	if(plan) ExecutionPlan_Free(plan);
 	ResultSet_Free(result_set);
 	AST_Free(ast);
 	GraphContext_Release(gc);

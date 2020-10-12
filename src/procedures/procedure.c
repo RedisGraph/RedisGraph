@@ -6,15 +6,21 @@
 
 #include "./procedure.h"
 #include "procedures.h"
+#include "rax.h"
+#include "../RG.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../util/strutil.h"
 #include "../graph/graphcontext.h"
-#include "rax.h"
 
 static rax *__procedures = NULL;
 
 static void _procRegister(const char *procedure, ProcGenerator gen) {
-	raxInsert(__procedures, (unsigned char *)procedure, strlen(procedure), gen, NULL);
+	char lowercase_proc_name[128];
+	size_t lowercase_proc_name_len = 128;
+	str_tolower(procedure, lowercase_proc_name, &lowercase_proc_name_len);
+	raxInsert(__procedures, (unsigned char *)lowercase_proc_name,
+		   lowercase_proc_name_len, gen, NULL);
 }
 
 // Register procedures.
@@ -26,6 +32,7 @@ void Proc_Register() {
 
 	// Register graph algorithms.
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
+	_procRegister("algo.BFS", Proc_BFS_Ctx);
 
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
@@ -35,7 +42,7 @@ void Proc_Register() {
 
 ProcedureCtx *ProcCtxNew(const char *name,
 						 unsigned int argc,
-						 ProcedureOutput **output,
+						 ProcedureOutput *output,
 						 ProcStep fStep,
 						 ProcInvoke fInvoke,
 						 ProcFree fFree,
@@ -46,9 +53,9 @@ ProcedureCtx *ProcCtxNew(const char *name,
 	ctx->argc = argc;
 	ctx->name = name;
 	ctx->Step = fStep;
+	ctx->Free = fFree;
 	ctx->output = output;
 	ctx->Invoke = fInvoke;
-	ctx->Free = fFree;
 	ctx->privateData = privateData;
 	ctx->readOnly = readOnly;
 	return ctx;
@@ -56,27 +63,30 @@ ProcedureCtx *ProcCtxNew(const char *name,
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	size_t proc_name_len = strlen(proc_name) + 1;
+	char proc_name_lowercase [proc_name_len];
+	str_tolower(proc_name, proc_name_lowercase, &proc_name_len);
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
+	  			proc_name_len);
 	if(gen == raxNotFound) return NULL;
-	ProcedureCtx *ctx = gen();
+	ProcedureCtx *ctx = gen(NULL, NULL);
 
 	// Set procedure state to not initialized.
 	ctx->state = PROCEDURE_NOT_INIT;
 	return ctx;
 }
 
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args) {
-	assert(proc);
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield) {
+	ASSERT(proc != NULL);
 
 	// Procedure is expected to be in the `PROCEDURE_NOT_INIT` state.
 	if(proc->state != PROCEDURE_NOT_INIT) {
 		proc->state = PROCEDURE_ERROR;
 		return PROCEDURE_ERR;
 	}
-
 	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *)args));
 
-	ProcedureResult res = proc->Invoke(proc, args);
+	ProcedureResult res = proc->Invoke(proc, args, yield);
 	// Set state to initialized.
 	if(res == PROCEDURE_OK) proc->state = PROCEDURE_INIT;
 	return res;
@@ -105,26 +115,29 @@ uint Procedure_OutputCount(const ProcedureCtx *proc) {
 }
 
 const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx) {
-	assert(proc && output_idx < Procedure_OutputCount(proc));
-	return proc->output[output_idx]->name;
+	ASSERT(proc != NULL);
+	ASSERT(output_idx < Procedure_OutputCount(proc));
+	return proc->output[output_idx].name;
 }
 
 bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
-	assert(proc && output);
+	ASSERT(proc != NULL);
+	ASSERT(output != NULL);
 	uint output_count = array_len(proc->output);
 	for(uint i = 0; i < output_count; i++) {
-		if(strcmp(proc->output[i]->name, output) == 0) return true;
+		if(strcmp(proc->output[i].name, output) == 0) return true;
 	}
 	return false;
 }
 
 bool Proc_ReadOnly(const char *proc_name) {
 	assert(__procedures);
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name,
+	  			strlen(proc_name));
 	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
 	/* TODO It would be preferable to be able to determine whether a procedure is read-only
 	 * without creating its entire context; this is wasteful. */
-	ProcedureCtx *ctx = gen();
+	ProcedureCtx *ctx = gen(NULL, NULL);
 	bool read_only = ctx->readOnly;
 	Proc_Free(ctx);
 	return read_only;
@@ -134,10 +147,7 @@ void Proc_Free(ProcedureCtx *proc) {
 	if(!proc) return;
 	proc->Free(proc);
 
-	if(proc->output) {
-		for(uint i = 0; i < array_len(proc->output); i++) rm_free(proc->output[i]);
-		array_free(proc->output);
-	}
+	if(proc->output) array_free(proc->output);
 
 	rm_free(proc);
 }

@@ -173,7 +173,7 @@ static Record _handoff(OpAggregate *op) {
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 		AR_EXP_Reduce(exp);
-		SIValue res = AR_EXP_Evaluate(exp, NULL);
+		SIValue res = AR_EXP_Evaluate(exp, r);
 		Record_AddScalar(r, rec_idx, res);
 	}
 
@@ -256,9 +256,10 @@ static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	uint key_count = op->key_count;
 	uint aggregate_count = op->aggregate_count;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, aggregate_count + key_count);
-	
+
 	for(uint i = 0; i < key_count; i++) exps = array_append(exps, AR_EXP_Clone(op->key_exps[i]));
-	for(uint i = 0; i < aggregate_count; i++) exps = array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
+	for(uint i = 0; i < aggregate_count; i++)
+		exps = array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
 	return NewAggregateOp(plan, exps, op->should_cache_records);
 }
 

@@ -83,12 +83,14 @@ We do not support any of these properties at the type level, meaning nodes and r
 + timestamp
 + type
 + coalesce
++ [list comprehensions](commands.md#list-comprehensions)
 
   **Unsupported:**
 
 - Some casting functions (toBoolean, toFloat)
 - Relationship functions (startNode, endNode)
 - Temporal arithmetic functions
+- Functions returning maps (properties)
 
 ### Aggregating functions
 + avg
@@ -137,6 +139,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 
 ### Predicate functions
 + exists
++ any
++ all
 
 ### Expression functions
 + case...when

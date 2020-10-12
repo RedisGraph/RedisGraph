@@ -26,7 +26,8 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 		SIValue v = argv[0];
 		for(int i = 1; i < alternatives; i += 2) {
 			SIValue a = argv[i];
-			if(SIValue_Compare(v, a, NULL) == 0) {
+			int disjointOrNull;
+			if((SIValue_Compare(v, a, &disjointOrNull) == 0) && (disjointOrNull != COMPARED_NULL)) {
 				// Return Result i.
 				return argv[i + 1];
 			}
@@ -38,13 +39,13 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 		 * arg[argc-1] - Default
 		 *
 		 * Evaluate alternatives in order, return first alternatives which
-		 * is not NULL. */
+		 * is not NULL or false. */
 		for(int i = 0; i < alternatives; i += 2) {
 			SIValue a = argv[i];
-			if(!SIValue_IsNull(a)) {
-				// Return Result i.
-				return argv[i + 1];
-			}
+			// Skip NULL and false options.
+			if(SIValue_IsNull(a) || ((SI_TYPE(a) & T_BOOL) && SIValue_IsFalse(a))) continue;
+			// The option was truthy, return the associated value.
+			return argv[i + 1];
 		}
 	}
 
@@ -80,3 +81,4 @@ void Register_ConditionalFuncs() {
 	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 }
+

@@ -29,13 +29,13 @@ void _AlgebraicExpression_InplaceRepurpose
 );
 
 // Removes the rightmost direct child node of root.
-AlgebraicExpression *_AlgebraicExpression_OperationRemoveRightmostChild
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveDest
 (
 	AlgebraicExpression *root  // Root from which to remove a child.
 );
 
 // Removes the leftmost direct child node of root.
-AlgebraicExpression *_AlgebraicExpression_OperationRemoveLeftmostChild
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveSource
 (
 	AlgebraicExpression *root   // Root from which to remove a child.
 );

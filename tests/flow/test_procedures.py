@@ -90,7 +90,7 @@ class testProcedures(FlowTestsBase):
         # Expect an error when trying to use an unknown procedure output.
         try:
             redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1", y=["unknown"])
-            assert(False)
+            self.env.assertFalse(1)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
@@ -99,7 +99,7 @@ class testProcedures(FlowTestsBase):
         # Expect an error when trying to use the same output multiple times.
         try:
             redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1", y=["node", "node"])
-            assert(False)
+            self.env.assertFalse(1)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
@@ -109,7 +109,7 @@ class testProcedures(FlowTestsBase):
         # Expect an error when trying to omit arguments.
         try:
             redis_graph.call_procedure("db.idx.fulltext.queryNodes")
-            assert(False)
+            self.env.assertFalse(1)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
@@ -118,7 +118,7 @@ class testProcedures(FlowTestsBase):
         # Expect an error when trying to omit arguments.
         try:
             redis_graph.call_procedure("db.idx.fulltext.queryNodes", "arg1")
-            assert(False)
+            self.env.assertFalse(1)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
@@ -127,7 +127,7 @@ class testProcedures(FlowTestsBase):
         # Expect an error when trying to send too many arguments.
         try:
             redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "query", "fruit", "query", y=["node"])
-            assert(False)
+            self.env.assertFalse(1)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
@@ -292,7 +292,30 @@ class testProcedures(FlowTestsBase):
         try:
             query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange || Apple') YIELD node RETURN node"""
             redis_graph.query(query)
-            assert(False)
+            self.env.assertFalse(1)
         except redis.exceptions.ResponseError:
             # Expecting an error.
+            pass
+
+    def test_procedure_lookup(self):
+        try:
+            redis_graph.call_procedure("dB.LaBeLS")
+        except redis.exceptions.ResponseError:
+            # This should not cause an error
+            self.env.assertFalse(1)
+            pass
+
+        try:
+            # looking for a non existing procedure
+            redis_graph.call_procedure("db.nonExistingProc")
+            self.env.assertFalse(1)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+        try:
+            redis_graph.call_procedure("db.IDX.FulLText.QueRyNoDes", "fruit", "or")
+        except redis.exceptions.ResponseError:
+            # This should not cause an error
+            self.env.assertFalse(1)
             pass

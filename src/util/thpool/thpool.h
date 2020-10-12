@@ -193,7 +193,7 @@ int thpool_num_threads(threadpool);
 
 /**
  * @brief Returns friendly id associated with thread.
- * 
+ *
  * @param threadpool    the threadpool of interest
  * @param pthread_t     the thread of interest
  * @return integer      friendly thread id

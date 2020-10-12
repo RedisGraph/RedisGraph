@@ -12,6 +12,7 @@
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 static inline bool _isInSubExecutionPlan(OpBase *op) {
 	return ExecutionPlan_LocateOp(op, OPType_ARGUMENT) != NULL;
@@ -78,7 +79,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		}
 
 		/* Both src and dest are already known
-		 * perform expand into instaed of traverse. */
+		 * perform expand into instead of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;

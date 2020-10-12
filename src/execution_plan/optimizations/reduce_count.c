@@ -8,6 +8,7 @@
 #include "../ops/ops.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 static GrB_UnaryOp countMultipleEdges = NULL;
 
@@ -67,8 +68,7 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	*opScan = op;
 	if(op->type == OPType_NODE_BY_LABEL_SCAN) {
 		NodeByLabelScan *labelScan = (NodeByLabelScan *)op;
-		assert(labelScan->n->label);
-		*label = labelScan->n->label;
+		*label = labelScan->n.label;
 	}
 
 	return 1;
@@ -112,10 +112,13 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
+	ExecutionPlan *disconnected_plan = (ExecutionPlan *)opScan->plan;
+	ExecutionPlan_RemoveOp(disconnected_plan, opScan);
 	OpBase_Free(opScan);
+	// The plan segment that the scan and traverse op had been built with is now disconnected and should be freed.
+	ExecutionPlan_Free(disconnected_plan);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
@@ -246,13 +249,17 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
+	ExecutionPlan *disconnected_plan = (ExecutionPlan *)opScan->plan;
+	ExecutionPlan_RemoveOp(disconnected_plan, opScan);
 	OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
+	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opTraverse);
 	OpBase_Free(opTraverse);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
+	// The plan segment that the scan and traverse op had been built with is now disconnected and should be freed.
+	ExecutionPlan_Free(disconnected_plan);
+
+	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);

@@ -5,6 +5,7 @@
 */
 
 #include "reduce_distinct.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 void reduceDistinct(ExecutionPlan *plan) {
 	// Look for Distinct operations.

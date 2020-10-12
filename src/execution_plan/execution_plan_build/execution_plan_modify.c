@@ -1,7 +1,9 @@
-#include "execution_plan.h"
-#include "ops/ops.h"
-#include "../query_ctx.h"
-#include "../ast/ast_mock.h"
+#include "execution_plan_modify.h"
+#include "../execution_plan.h"
+#include "../../RG.h"
+#include "../ops/ops.h"
+#include "../../query_ctx.h"
+#include "../../ast/ast_mock.h"
 
 static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
@@ -98,6 +100,11 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	_OpBase_AddChild(tail, old_root);
 }
 
+inline void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
+	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
+	plan->root = new_root;
+}
+
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 	// Insert the new operation between the original and its parent.
 	ExecutionPlan_PushBelow(a, b);
@@ -107,6 +114,7 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	if(op->parent == NULL) {
+		ExecutionPlan *plan = (ExecutionPlan *)op->plan;
 		// Removing execution plan root.
 		assert(op->childCount == 1);
 		// Assign child as new root.
@@ -275,37 +283,13 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	}
 }
 
-// For all ops that refer to QG entities, rebind them with the matching entity
-// in the provided QueryGraph.
-// (This logic is ugly, but currently necessary.)
-static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
-	switch(op->type) {
-	case OPType_INDEX_SCAN:
-		((IndexScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((IndexScan *)op)->n->alias);
-		return;
-	case OPType_ALL_NODE_SCAN:
-		((AllNodeScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((AllNodeScan *)op)->n->alias);
-		return;
-	case OPType_NODE_BY_LABEL_SCAN:
-		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
-		return;
-	case OPType_NODE_BY_ID_SEEK:
-		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
-		return;
-	default:
-		return;
-	}
-}
-
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	if(!root) return;
 	// If the temporary execution plan has added new QueryGraph entities,
 	// migrate them to the master plan's QueryGraph.
-	// (This is only necessary for producing EXPLAIN outputs.)
 	QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
 
 	root->plan = plan;
-	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
 		ExecutionPlan_BindPlanToOps(plan, root->children[i]);
 	}
@@ -331,6 +315,18 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
 	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
 	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
+
+	//--------------------------------------------------------------------------
+	// Build plan's query graph
+	//--------------------------------------------------------------------------
+
+	// Extract pattern from holistic query graph.
+	const cypher_astnode_t **match_clauses = AST_GetClauses(match_stream_ast, CYPHER_AST_MATCH);
+	ASSERT(array_len(match_clauses) == 1);
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[0]);
+	array_free(match_clauses);
+	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(plan->query_graph, &pattern, 1);
+	match_stream_plan->query_graph = sub_qg;
 
 	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
 

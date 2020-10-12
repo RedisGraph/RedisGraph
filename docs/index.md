@@ -28,7 +28,7 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 ## Redis Cloud
 
-RedisGraph is available on all Redis Cloud managed services.  Redis Cloud Essentials offers a completely free managed databbases up to 30MB.
+RedisGraph is available on all Redis Cloud managed services.  Redis Cloud Essentials offers a completely free managed databases up to 30MB.
 
 [Get started here](https://redislabs.com/try-free/)
 
@@ -172,6 +172,12 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 Language-specific clients have been written by the community and the RedisGraph team for 6 languages.
 
 The full list and links can be found on [the Clients page](clients.md).
+
+## Data import
+
+The RedisGraph team maintains the [redisgraph-bulk-loader](https://github.com/redisgraph/redisgraph-bulk-loader) for importing new graphs from CSV files.
+
+The data format used by this tool is described in the [GRAPH.BULK implementation details](bulk_spec.md).
 
 ## Mailing List / Forum
 

@@ -91,7 +91,7 @@ static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e, int 
 	_RdbSaveEntity(rdb, e->entity);
 }
 
-static void _RdbSaveNode_v7(RedisModuleIO *rdb, GraphContext *gc, Entity *e) {
+static void _RdbSaveNode_v7(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *n) {
 	/* Format:
 	*      ID
 	*      #labels M
@@ -100,8 +100,9 @@ static void _RdbSaveNode_v7(RedisModuleIO *rdb, GraphContext *gc, Entity *e) {
 	*      (name, value type, value) X N */
 
 	// Save ID
-	RedisModule_SaveUnsigned(rdb, e->id);
-	int l = Graph_GetNodeLabel(gc->g, e->id);
+	EntityID id = ENTITY_GET_ID(n);
+	RedisModule_SaveUnsigned(rdb, id);
+	int l = Graph_GetNodeLabel(gc->g, id);
 
 	// #labels, currently only one label per node.
 	int label_count = (l == GRAPH_NO_LABEL) ? 0 : 1;
@@ -112,7 +113,7 @@ static void _RdbSaveNode_v7(RedisModuleIO *rdb, GraphContext *gc, Entity *e) {
 
 	// properties N
 	// (name, value type, value) X N
-	_RdbSaveEntity(rdb, e);
+	_RdbSaveEntity(rdb, n->entity);
 }
 
 static void _RdbSaveDeletedEntities_v7(RedisModuleIO *rdb, GraphContext *gc,
@@ -174,8 +175,9 @@ void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc, uint64_t nodes_to_enc
 	}
 
 	for(uint64_t i = 0; i < nodes_to_encode; i++) {
-		Entity *e = (Entity *)DataBlockIterator_Next(iter);
-		_RdbSaveNode_v7(rdb, gc, e);
+		GraphEntity e;
+		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);
+		_RdbSaveNode_v7(rdb, gc, &e);
 	}
 
 	// Check if done encodeing nodes.

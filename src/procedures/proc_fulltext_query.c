@@ -26,7 +26,7 @@ typedef struct {
 	RSResultsIterator *iter;
 } QueryNodeContext;
 
-ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *args) {
+ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
 	if(!(SI_TYPE(args[0]) & SI_TYPE(args[1]) & T_STRING)) return PROCEDURE_ERR;
 
@@ -48,6 +48,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	QueryNodeContext *pdata = ctx->privateData;
 	pdata->idx = idx;
 	pdata->g = gc->g;
+	pdata->n = GE_NEW_NODE();
 	pdata->output = array_new(SIValue, 2);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
 	pdata->output = array_append(pdata->output, SI_Node(&pdata->n));
@@ -108,12 +109,10 @@ ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_FulltextQueryNodeGen() {
 	void *privateData = NULL;
-	ProcedureOutput **output = array_new(ProcedureOutput *, 1);
-	ProcedureOutput *out_node = rm_malloc(sizeof(ProcedureOutput));
-	out_node->name = "node";
-	out_node->type = T_NODE;
-
+	ProcedureOutput *output = array_new(ProcedureOutput, 1);
+	ProcedureOutput out_node = {name: "node", type: T_NODE};
 	output = array_append(output, out_node);
+
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",
 								   2,
 								   output,

@@ -58,10 +58,10 @@ CacheListNode *CacheList_RemoveTail(CacheList *list) {
 	return tail;
 }
 
-CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, uint64_t hashval,
+CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, char *key,
 									  void *value) {
 	// Assign data members to the new node.
-	node->hashval = hashval;
+	node->key = key;
 	node->value = value;
 
 	if(list->head == NULL) {
@@ -86,7 +86,10 @@ CacheListNode *CacheList_GetUnused(CacheList *list) {
 
 void CacheList_Free(CacheList *list) {
 	// Call the free routine for every cache member.
-	for(uint i = 0; i < list->buffer_len; i ++) list->ValueFree(list->buffer[i].value);
+	for(uint i = 0; i < list->buffer_len; i ++) {
+		rm_free(list->buffer[i].key);
+		list->ValueFree(list->buffer[i].value);
+	}
 	rm_free(list->buffer);
 	rm_free(list);
 }

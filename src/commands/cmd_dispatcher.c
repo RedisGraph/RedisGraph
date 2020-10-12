@@ -16,10 +16,11 @@ typedef void(*Command_Handler)(void *args);
 static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 	switch(cmd) {
 	case CMD_QUERY:
+	case CMD_RO_QUERY:
 	case CMD_EXPLAIN:
 	case CMD_PROFILE:
 		// Expect a command, graph name, a query, and optionally a "--compact" flag.
-		return arity >= 3 && arity <= 4;
+		return arity >= 3 && arity <= 6;
 	case CMD_SLOWLOG:
 		// Expect just a command and graph name.
 		return arity == 2;
@@ -32,6 +33,7 @@ static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 	switch(cmd) {
 	case CMD_QUERY:
+	case CMD_RO_QUERY:
 		return Graph_Query;
 	case CMD_EXPLAIN:
 		return Graph_Explain;
@@ -48,6 +50,7 @@ static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 // Convert from string representation to an enum.
 static GRAPH_Commands determine_command(const char *cmd_name) {
 	if(strcasecmp(cmd_name, "graph.QUERY") == 0) return CMD_QUERY;
+	if(strcasecmp(cmd_name, "graph.RO_QUERY") == 0) return CMD_RO_QUERY;
 	if(strcasecmp(cmd_name, "graph.EXPLAIN") == 0) return CMD_EXPLAIN;
 	if(strcasecmp(cmd_name, "graph.PROFILE") == 0) return CMD_PROFILE;
 	if(strcasecmp(cmd_name, "graph.SLOWLOG") == 0) return CMD_SLOWLOG;

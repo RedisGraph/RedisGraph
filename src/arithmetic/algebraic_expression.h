@@ -31,6 +31,7 @@ typedef enum {
 typedef struct AlgebraicExpression AlgebraicExpression;
 
 struct AlgebraicExpression {
+	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 	union {
 		struct {
 			bool diagonal;          // Diagonal matrix.
@@ -46,7 +47,6 @@ struct AlgebraicExpression {
 			AlgebraicExpression **children; // Child nodes.
 		} operation;
 	};
-	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 };
 
 //------------------------------------------------------------------------------
@@ -159,14 +159,14 @@ void AlgebraicExpression_AddChild
 	AlgebraicExpression *child  // Child node to attach.
 );
 
-// Remove leftmost child node from root.
-AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
+// Remove source of algebraic expression from root.
+AlgebraicExpression *AlgebraicExpression_RemoveSource
 (
 	AlgebraicExpression **root   // Root from which to remove a child.
 );
 
-// Remove rightmost child node from root.
-AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
+// Remove destination of algebraic expression from root.
+AlgebraicExpression *AlgebraicExpression_RemoveDest
 (
 	AlgebraicExpression **root   // Root from which to remove a child.
 );

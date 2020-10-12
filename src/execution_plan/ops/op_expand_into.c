@@ -144,7 +144,6 @@ static Record _handoff(OpExpandInto *op) {
 /* ExpandIntoConsume next operation
  * returns OP_DEPLETED when no additional updates are available */
 static Record ExpandIntoConsume(OpBase *opBase) {
-	Node *n;
 	Record r;
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	OpBase *child = op->op.children[0];
@@ -187,7 +186,10 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	op->r = NULL;
 	for(uint i = 0; i < op->recordCount; i++) {
-		if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
+		if(op->records[i]) {
+			OpBase_DeleteRecord(op->records[i]);
+			op->records[i] = NULL;
+		}
 	}
 	op->recordCount = 0;
 
@@ -226,7 +228,7 @@ static void ExpandIntoFree(OpBase *ctx) {
 	}
 
 	if(op->records) {
-		for(uint i = 0; i < op->recordsCap; i++) {
+		for(uint i = 0; i < op->recordCount; i++) {
 			if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 		}
 		rm_free(op->records);

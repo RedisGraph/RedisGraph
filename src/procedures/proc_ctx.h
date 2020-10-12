@@ -38,7 +38,7 @@ typedef struct ProcedureCtx *(*ProcGenerator)();
 // Procedure step function.
 typedef SIValue *(*ProcStep)(struct ProcedureCtx *ctx);
 // Procedure function pointer.
-typedef ProcedureResult(*ProcInvoke)(struct ProcedureCtx *ctx, const SIValue *args);
+typedef ProcedureResult(*ProcInvoke)(struct ProcedureCtx *ctx, const SIValue *args, const char **yield);
 // Procedure free resources.
 typedef ProcedureResult(*ProcFree)(struct ProcedureCtx *ctx);
 
@@ -47,7 +47,7 @@ struct ProcedureCtx {
 	const char *name;           // Procedure name.
 	ProcedureState state;       // State in which the procedure is in.
 	unsigned int argc;          // Number of arguments procedure accepts.
-	ProcedureOutput **output;   // Procedure possible output(s).
+	ProcedureOutput *output;    // Procedure possible output(s).
 	void *privateData;          //
 	ProcStep Step;              //
 	ProcInvoke Invoke;          //
@@ -59,7 +59,7 @@ typedef struct ProcedureCtx ProcedureCtx;
 ProcedureCtx *ProcCtxNew(
 	const char *name,           // Procedure name.
 	unsigned int argc,          // Procedure arguments.
-	ProcedureOutput **output,   // Procedure output.
+	ProcedureOutput *output,    // Procedure output.
 	ProcStep fStep,             // Procedure Step function.
 	ProcInvoke fInvoke,         // Procedure Invoke function.
 	ProcFree fFree,             // Procedure Free function.

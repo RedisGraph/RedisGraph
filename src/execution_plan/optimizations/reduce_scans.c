@@ -5,20 +5,20 @@
  */
 
 #include "./reduce_scans.h"
-#include "../../util/arr.h"
-#include "../ops/op_conditional_traverse.h"
-#include "../ops/op_node_by_label_scan.h"
 #include "../ops/op_filter.h"
-#include <assert.h>
+#include "../ops/op_node_by_label_scan.h"
+#include "../ops/op_conditional_traverse.h"
+#include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../execution_plan_build/execution_plan_modify.h"
+#include <assert.h>
 
-static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *label_scan) {
-	AST *ast = QueryCtx_GetAST();
+static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 	Graph *g = QueryCtx_GetGraph();
-	const QGNode *n = label_scan->n;
-	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, n->alias, n->alias, NULL,
-															 n->label);
-	return NewCondTraverseOp(label_scan->op.plan, g, ae);
+	const char *alias = op->n.alias;
+	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, alias, alias, NULL,
+															 op->n.label);
+	return NewCondTraverseOp(op->op.plan, g, ae);
 }
 
 static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {

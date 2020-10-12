@@ -79,25 +79,6 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		}
 	}
 
-	/* Execution plan cloning clones the following:
-	 * 1. Plan segments
-	 * 2. Plan operations
-	 * 3. Plan record mapping
-	 * 4. Query graph and connected components.
-	 * As query graph cloning and rax cloning are tested and proven, this function
-	 * tests only the segments and operations cloning. */
-	static void ExecutionPlan_Equal(const ExecutionPlan *plan_a, const ExecutionPlan *plan_b) {
-
-		ASSERT_TRUE(plan_a->is_union == plan_b->is_union);
-		uint plan_a_segment_count = array_len(plan_a->segments);
-		uint plan_b_segment_count = array_len(plan_b->segments);
-		ASSERT_EQ(plan_a_segment_count, plan_b_segment_count);
-		for(uint i = 0; i < plan_a_segment_count; i++) {
-			ExecutionPlan_Equal(plan_a->segments[i], plan_b->segments[i]);
-		}
-		ExecutionPlan_OpsEqual(plan_a, plan_b, plan_a->root, plan_b->root);
-	}
-
 	static void validate_query_plans_clone(const char **queries) {
 		uint query_count = array_len(queries);
 		for(uint i = 0; i < query_count; i++) {
@@ -108,7 +89,7 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 			ASSERT_TRUE(ast);
 			ASSERT_TRUE(plan);
 			ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-			ExecutionPlan_Equal(plan, clone);
+			ExecutionPlan_OpsEqual(plan, clone, plan->root, clone->root);
 			AST_Free(ast);
 			ExecutionPlan_Free(clone);
 			ExecutionPlan_Free(plan);

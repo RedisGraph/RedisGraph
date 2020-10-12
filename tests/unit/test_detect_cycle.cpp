@@ -23,8 +23,8 @@ class DetectCycleTest: public ::testing::Test {
 
   protected:
 	static void SetUpTestCase() {
-        // Initialize GraphBLAS
-        GrB_init(GrB_NONBLOCKING);
+		// Initialize GraphBLAS
+		GrB_init(GrB_NONBLOCKING);
 
 		// Use the malloc family for allocations
 		Alloc_Reset();
@@ -36,12 +36,11 @@ class DetectCycleTest: public ::testing::Test {
 		size_t edge_cap = 2;
 
 		// Create nodes.
-		const char *label = "L";
 		const char *relation = "R";
 
-		QGNode *A = QGNode_New(label, "A");
-		QGNode *B = QGNode_New(label, "B");
-		QGNode *C = QGNode_New(label, "C");
+		QGNode *A = QGNode_New("A");
+		QGNode *B = QGNode_New("B");
+		QGNode *C = QGNode_New("C");
 
 		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
 		QGEdge *BC = QGEdge_New(B, C, relation, "BC");
@@ -57,38 +56,37 @@ class DetectCycleTest: public ::testing::Test {
 		return g;
 	}
 
-    static QueryGraph *CyclicBuildGraph() {
+	static QueryGraph *CyclicBuildGraph() {
 		// (A)->(B)->(C)->(D)->(E)->(B)->(F)->(G)->(C)
 		size_t node_cap = 7;
 		size_t edge_cap = 8;
 
 		// Create nodes.
-		const char *label = "L";
 		const char *relation = "R";
 
-		QGNode *A = QGNode_New(label, "A");
-		QGNode *B = QGNode_New(label, "B");
-		QGNode *C = QGNode_New(label, "C");
-		QGNode *D = QGNode_New(label, "D");
-		QGNode *E = QGNode_New(label, "E");
-		QGNode *F = QGNode_New(label, "F");
-		QGNode *G = QGNode_New(label, "G");
+		QGNode *A = QGNode_New("A");
+		QGNode *B = QGNode_New("B");
+		QGNode *C = QGNode_New("C");
+		QGNode *D = QGNode_New("D");
+		QGNode *E = QGNode_New("E");
+		QGNode *F = QGNode_New("F");
+		QGNode *G = QGNode_New("G");
 
-        // (A)->(B)
+		// (A)->(B)
 		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-        // (B)->(C)
+		// (B)->(C)
 		QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-        // (C)->(D)
+		// (C)->(D)
 		QGEdge *CD = QGEdge_New(C, D, relation, "CD");
-        // (D)->(E)
+		// (D)->(E)
 		QGEdge *DE = QGEdge_New(D, E, relation, "DE");
-        // (E)->(B)
+		// (E)->(B)
 		QGEdge *EB = QGEdge_New(E, B, relation, "EB");
-        // (B)->(F)
+		// (B)->(F)
 		QGEdge *BF = QGEdge_New(B, F, relation, "BF");
-        // (F)->(G)
+		// (F)->(G)
 		QGEdge *FG = QGEdge_New(F, G, relation, "FG");
-        // (G)->(C)
+		// (G)->(C)
 		QGEdge *GC = QGEdge_New(G, C, relation, "GC");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
@@ -101,28 +99,29 @@ class DetectCycleTest: public ::testing::Test {
 		QueryGraph_AddNode(g, G);
 
 		QueryGraph_ConnectNodes(g, A, B, AB);
-        QueryGraph_ConnectNodes(g, B, C, BC);
-        QueryGraph_ConnectNodes(g, C, D, CD);
-        QueryGraph_ConnectNodes(g, D, E, DE);
-        QueryGraph_ConnectNodes(g, E, B, EB);
-        QueryGraph_ConnectNodes(g, B, F, BF);
-        QueryGraph_ConnectNodes(g, F, G, FG);
-        QueryGraph_ConnectNodes(g, G, C, GC);
+		QueryGraph_ConnectNodes(g, B, C, BC);
+		QueryGraph_ConnectNodes(g, C, D, CD);
+		QueryGraph_ConnectNodes(g, D, E, DE);
+		QueryGraph_ConnectNodes(g, E, B, EB);
+		QueryGraph_ConnectNodes(g, B, F, BF);
+		QueryGraph_ConnectNodes(g, F, G, FG);
+		QueryGraph_ConnectNodes(g, G, C, GC);
 
 		return g;
 	}
 };
 
 TEST_F(DetectCycleTest, AcyclicGraph) {
-    QueryGraph *g = AcyclicBuildGraph();  // Graph traversed.
-    ASSERT_TRUE(IsAcyclicGraph(g));
+	QueryGraph *g = AcyclicBuildGraph();  // Graph traversed.
+	ASSERT_TRUE(IsAcyclicGraph(g));
 	// Clean up.
 	QueryGraph_Free(g);
 }
 
 TEST_F(DetectCycleTest, CyclicGraph) {
-    QueryGraph *g = CyclicBuildGraph();  // Graph traversed.
-    ASSERT_FALSE(IsAcyclicGraph(g));
+	QueryGraph *g = CyclicBuildGraph();  // Graph traversed.
+	ASSERT_FALSE(IsAcyclicGraph(g));
 	// Clean up.
 	QueryGraph_Free(g);
 }
+
