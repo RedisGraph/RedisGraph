@@ -29,7 +29,7 @@ typedef struct {
 	uint recordsCap;            // Max number of records to process.
 	Record *records;            // Array of records.
 	Record r;                   // Currently selected record.
-} CondTraverse;
+} OpCondTraverse;
 
 /* Creates a new Traverse operation */
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);

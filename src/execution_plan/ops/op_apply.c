@@ -14,7 +14,7 @@ static OpResult ApplyReset(OpBase *opBase);
 static OpBase *ApplyClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ApplyFree(OpBase *opBase);
 
-OpBase *NewApplyOp(const ExecutionPlan *plan, const char **modifies) {
+OpBase *NewApplyOp(const ExecutionPlan *plan) {
 	Apply *op = rm_malloc(sizeof(Apply));
 	op->r = NULL;
 	op->op_arg = NULL;
@@ -25,10 +25,6 @@ OpBase *NewApplyOp(const ExecutionPlan *plan, const char **modifies) {
 	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", ApplyInit, ApplyConsume, ApplyReset, NULL,
 				ApplyClone, ApplyFree, false, plan);
 
-	uint modifies_count = array_len(modifies);
-	for(uint i = 0; i < modifies_count; i ++) {
-		OpBase_Modifies((OpBase *)op, modifies[i]);
-	}
 	return (OpBase *)op;
 }
 
@@ -94,7 +90,7 @@ static OpResult ApplyReset(OpBase *opBase) {
 }
 
 static OpBase *ApplyClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	return NewApplyOp(plan, opBase->modifies);
+	return NewApplyOp(plan);
 }
 
 static void ApplyFree(OpBase *opBase) {

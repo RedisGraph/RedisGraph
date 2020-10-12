@@ -4,6 +4,7 @@
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../ast/ast_mock.h"
+#include "../../util/rax_extensions.h"
 
 static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
@@ -232,13 +233,28 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 	// If we've resolved all references, our work is done.
 	if(all_refs_resolved) return resolving_op;
 
+	char **modifies = NULL;
+	if(blacklisted) {
+		rax *bound_vars = raxNew();
+		ExecutionPlan_BoundVariables(root, bound_vars);
+		modifies = (char**)raxKeys(bound_vars);
+		raxFree(bound_vars);
+	} else {
+		modifies = (char**)root->modifies;
+	}
+
 	// Try to resolve references in the current operation.
 	bool refs_resolved = false;
-	uint modifies_count = array_len(root->modifies);
+	uint modifies_count = array_len(modifies);
 	for(uint i = 0; i < modifies_count; i++) {
-		const char *ref = root->modifies[i];
+		const char *ref = modifies[i];
 		// Attempt to remove the current op's references, marking whether any removal was succesful.
 		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
+	}
+
+	if(blacklisted) {
+		for(uint i = 0; i < modifies_count; i++) rm_free(modifies[i]);
+		array_free(modifies);
 	}
 
 	if(refs_resolved) resolving_op = root;

@@ -235,6 +235,10 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 // though a different set of API endpoints must be used for each.
 void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	_buildProjectionOps(plan, clause);
+
+	// follow up with a Result operation
+	OpBase *op = NewResultsOp(plan);
+	ExecutionPlan_UpdateRoot(plan, op);
 }
 
 void buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {

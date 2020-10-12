@@ -211,7 +211,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	Graph *g = QueryCtx_GetGraph();
 
 	// If type is specified, count only labeled entities.
-	CondTraverse *condTraverse = (CondTraverse *)opTraverse;
+	OpCondTraverse *condTraverse = (OpCondTraverse *)opTraverse;
 	// The traversal op doesn't contain information about the traversed edge, cannot apply optimization.
 	if(!condTraverse->edge_ctx) return;
 

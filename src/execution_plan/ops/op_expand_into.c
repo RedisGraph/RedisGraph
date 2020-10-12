@@ -95,8 +95,8 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
-	AST *ast = ExecutionPlan_GetAST(opBase->plan);
-	op->recordsCap = TraverseRecordCap(ast);
+	// create 'records' with this Init function as 'recordsCap'
+	// might be set during optimization time
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 	return OP_OK;
 }

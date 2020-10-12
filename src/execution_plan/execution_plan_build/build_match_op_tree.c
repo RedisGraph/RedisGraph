@@ -129,17 +129,8 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 
 	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
 	if(plan->root) {
-		/* Collect all variable names in the Apply sub-tree.
-		 * Since the Argument op holds the variables from the left-hand stream,
-		 * these can all be found in the match stream. */
-		bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(match_stream, bound_vars);
-		arguments = (const char **)raxValues(bound_vars);
-		raxFree(bound_vars);
-
 		// Create an Apply operator and make it the new root.
-		OpBase *apply_op = NewApplyOp(plan, arguments);
-		array_free(arguments);
+		OpBase *apply_op = NewApplyOp(plan);
 		ExecutionPlan_UpdateRoot(plan, apply_op);
 
 		// Create an Optional op and add it as an Apply child as a right-hand stream.

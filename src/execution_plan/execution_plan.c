@@ -305,6 +305,14 @@ ExecutionPlan *_tie_segments(ExecutionPlan **segments, uint segment_count) {
 	return plan;
 }
 
+// Add an implicit "Result" operation to execution-plan
+void _implicit_result(ExecutionPlan *plan) {
+	if(plan->root->type == OPType_PROC_CALL) {
+		OpBase *results_op = NewResultsOp(plan);
+		ExecutionPlan_UpdateRoot(plan, results_op);
+	}
+}
+
 ExecutionPlan *NewExecutionPlan(void) {
 	AST *ast = QueryCtx_GetAST();
 
@@ -321,24 +329,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 	ExecutionPlan *plan = _tie_segments(segments, segment_count);
 
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
-	if(last_clause_type == CYPHER_AST_RETURN || last_clause_type == CYPHER_AST_CALL) {
-		OpBase *results_op = NewResultsOp(plan);
-		ExecutionPlan_UpdateRoot(plan, results_op);
-	}
-
-	//// root op is OpResults if query culminates in a RETURN or CALL clause.
-	//OPType t = plan->root->type;
-	//if(t == OPType_PROJECT ||
-	//   t == OPType_AGGREGATE ||
-	//   t == OPType_PROC_CALL ||
-	//   t == OPType_SORT ||
-	//   t == OPType_LIMIT) {
-	//	OpBase *results_op = NewResultsOp(plan);
-	//	ExecutionPlan_UpdateRoot(plan, results_op);
-	//}
+	_implicit_result(plan);
 
 	// clean up
 	array_free(segments);
