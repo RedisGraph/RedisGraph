@@ -20,7 +20,7 @@ static int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
 }
 
 static void _populate_filter_matrix(OpCondTraverse *op) {
-	for(uint i = 0; i < op->recordCount; i++) {
+	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
@@ -41,8 +41,8 @@ void _traverse(OpCondTraverse *op) {
 	if(op->F == GrB_NULL) {
 		// Create both filter and result matrices.
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+		GrB_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
+		GrB_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
@@ -73,8 +73,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
 	op->records = NULL;
-	op->recordsCap = 0;
-	op->recordCount = 0;
+	op->record_cap = 0;
+	op->record_count = 0;
 	op->edge_ctx = NULL;
 	op->dest_label = NULL;
 	op->dest_label_id = GRAPH_NO_LABEL;
@@ -106,9 +106,11 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 static OpResult CondTraverseInit(OpBase *opBase) {
 	OpCondTraverse *op = (OpCondTraverse *)opBase;
-	// create 'records' with this Init function as 'recordsCap'
-	// might be set during optimization time
-	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	// Create 'records' with this Init function as 'record_cap'
+	// might be set during optimization time.
+	// If no cap is specified, use 16 as the default value.
+	if(op->record_cap == UNLIMITED) op->record_cap = 16;
+	op->records = rm_calloc(op->record_cap, sizeof(Record));
 	return OP_OK;
 }
 
@@ -136,10 +138,10 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
 		op->r = NULL;
-		for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
 
 		// Ask child operations for data.
-		for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
+		for(op->record_count = 0; op->record_count < op->record_cap; op->record_count++) {
 			Record childRecord = OpBase_Consume(child);
 			// If the Record is NULL, the child has been depleted.
 			if(!childRecord) break;
@@ -147,17 +149,17 @@ static Record CondTraverseConsume(OpBase *opBase) {
 				/* The child Record may not contain the source node in scenarios like
 				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
 				OpBase_DeleteRecord(childRecord);
-				op->recordCount--;
+				op->record_count--;
 				continue;
 			}
 
 			// Store received record.
 			Record_PersistScalars(childRecord);
-			op->records[op->recordCount] = childRecord;
+			op->records[op->record_count] = childRecord;
 		}
 
 		// No data.
-		if(op->recordCount == 0) return NULL;
+		if(op->record_count == 0) return NULL;
 
 		_traverse(op);
 	}
@@ -188,8 +190,8 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	// Do not explicitly free op->r, as the same pointer is also held
 	// in the op->records array and as such will be freed there.
 	op->r = NULL;
-	for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
-	op->recordCount = 0;
+	for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
+	op->record_count = 0;
 
 	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
 
@@ -236,7 +238,7 @@ static void CondTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->records) {
-		for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
 	}

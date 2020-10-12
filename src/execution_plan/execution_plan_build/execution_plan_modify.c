@@ -71,8 +71,8 @@ inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
-	// B belongs to A's plan. 
-	ExecutionPlan *plan = (ExecutionPlan*)a->plan;
+	// B belongs to A's plan.
+	ExecutionPlan *plan = (ExecutionPlan *)a->plan;
 	b->plan = plan;
 
 	if(a->parent == NULL) {
@@ -200,8 +200,8 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 }
 
 OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
-		const OpBase *recurse_limit, const OPType *blacklisted_ops,
-		int nblacklisted_ops, rax *refs_to_resolve) {
+												   const OpBase *recurse_limit, const OPType *blacklisted_ops,
+												   int nblacklisted_ops, rax *refs_to_resolve) {
 
 	// Don't traverse into earlier ExecutionPlan scopes.
 	if(root == recurse_limit) return NULL;
@@ -221,7 +221,7 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 		for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
 			// Visit each child and try to resolve references, storing a pointer to the child if successful.
 			OpBase *tmp_op = ExecutionPlan_LocateReferencesExcludingOps(root->children[i],
-					recurse_limit, blacklisted_ops, nblacklisted_ops, refs_to_resolve);
+																		recurse_limit, blacklisted_ops, nblacklisted_ops, refs_to_resolve);
 
 			if(tmp_op) dependency_count ++; // Count how many children resolved references.
 			// If there is more than one child resolving an op, set the root as the resolver.
@@ -237,10 +237,10 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 	if(blacklisted) {
 		rax *bound_vars = raxNew();
 		ExecutionPlan_BoundVariables(root, bound_vars);
-		modifies = (char**)raxKeys(bound_vars);
+		modifies = (char **)raxKeys(bound_vars);
 		raxFree(bound_vars);
 	} else {
-		modifies = (char**)root->modifies;
+		modifies = (char **)root->modifies;
 	}
 
 	// Try to resolve references in the current operation.
@@ -264,7 +264,7 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *refs_to_resolve) {
 	return ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit,
-			NULL, 0, refs_to_resolve);
+													  NULL, 0, refs_to_resolve);
 }
 
 void _ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
@@ -285,7 +285,7 @@ void _ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
 
 OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan) {
 	ASSERT(plan != NULL);
-	OpBase **taps = array_new(OpBase*, 1);
+	OpBase **taps = array_new(OpBase *, 1);
 	_ExecutionPlan_LocateTaps(plan->root, &taps);
 	return taps;
 }

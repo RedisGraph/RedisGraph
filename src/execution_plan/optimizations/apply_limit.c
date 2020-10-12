@@ -14,21 +14,21 @@ static void notify_limit(OpBase *op, uint limit) {
 	OPType t = op->type;
 
 	switch(t) {
-		case OPType_LIMIT:
-			// update limit
-			limit = ((OpLimit *)op)->limit;
-			break;
-		case OPType_SORT:
-			((OpSort *)op)->limit = limit;
-			break;
-		case OPType_EXPAND_INTO:
-			((OpExpandInto *)op)->recordsCap = limit;
-			break;
-		case OPType_CONDITIONAL_TRAVERSE:
-			((OpCondTraverse*)op)->recordsCap = limit;
-			break;
-		default:
-			break;
+	case OPType_LIMIT:
+		// update limit
+		limit = ((OpLimit *)op)->limit;
+		break;
+	case OPType_SORT:
+		((OpSort *)op)->limit = limit;
+		break;
+	case OPType_EXPAND_INTO:
+		((OpExpandInto *)op)->record_cap = limit;
+		break;
+	case OPType_CONDITIONAL_TRAVERSE:
+		((OpCondTraverse *)op)->record_cap = limit;
+		break;
+	default:
+		break;
 	}
 
 	for(uint i = 0; i < op->childCount; i++) {

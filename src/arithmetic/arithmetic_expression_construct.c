@@ -39,13 +39,14 @@ static bool _AR_EXP_ContainsNestedAgg(const AR_ExpNode *exp) {
 	return __AR_EXP_ContainsNestedAgg(exp, in_agg);
 }
 
-static const char* OpName[22] = {
-"ADD", "SUB", "MUL", "DIV", "CONTAINS", "STARTS WITH", "ENDS WITH", "AND",
-"OR", "XOR", "NOT", "GT", "GE", "LT", "LE", "EQ", "NEQ", "MOD", "POW", "IN",
-"IS NULL", "IS NOT NULL" };
+// The OpName array is strictly parallel with the AST_Operator enum.
+static const char *OpName[23] = {
+	"NULL", "OR", "XOR", "AND", "NOT", "EQ", "NEQ", "LT", "GT", "LE",  "GE", "ADD", "SUB", "MUL",
+	"DIV", "MOD", "POW", "CONTAINS", "STARTS WITH", "ENDS WITH", "IN", "IS NULL", "IS NOT NULL"
+};
 
 static const char *_ASTOpToString(AST_Operator op) {
-	ASSERT(op < 22);
+	ASSERT(op < 23);
 	return OpName[op];
 }
 
@@ -95,7 +96,7 @@ static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
 	// check if the identifier is a named path identifier
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *named_paths_ctx =
-		AST_AnnotationCtxCollection_GetNamedPathsCtx( ast->anot_ctx_collection);
+		AST_AnnotationCtxCollection_GetNamedPathsCtx(ast->anot_ctx_collection);
 
 	const cypher_astnode_t *named_path_annotation =
 		cypher_astnode_get_annotation(named_paths_ctx, expr);
