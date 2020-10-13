@@ -235,6 +235,8 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 
 	char **modifies = NULL;
 	if(blacklisted) {
+		// If we've reached a blacklisted op, all variables in its subtree are
+		// considered to be modified by it, as we can't recurse farther.
 		rax *bound_vars = raxNew();
 		ExecutionPlan_BoundVariables(root, bound_vars);
 		modifies = (char **)raxKeys(bound_vars);
@@ -252,6 +254,7 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
 	}
 
+	// Free the modified array and its contents if it was generated to represent a blacklisted op.
 	if(blacklisted) {
 		for(uint i = 0; i < modifies_count; i++) rm_free(modifies[i]);
 		array_free(modifies);

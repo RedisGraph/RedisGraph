@@ -16,8 +16,8 @@ static void LimitFree(OpBase *opBase);
 static OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 static void _eval_limit(OpLimit *op, AR_ExpNode *limit_exp) {
-	// make a copy of the original expression, this is required as in the case
-	// of parametrised limit: "LIMIT $L" evaluating the expression will
+	// Make a copy of the original expression. This is required as in the case
+	// of parameterized limit: "LIMIT $L" evaluating the expression will
 	// modify it: replacing the parameter with a constant, as a result clones
 	// of this operation will contain a constant instead of a parameter.
 	op->limit_exp = AR_EXP_Clone(limit_exp);
@@ -25,8 +25,8 @@ static void _eval_limit(OpLimit *op, AR_ExpNode *limit_exp) {
 	// evaluate using the original expression
 	SIValue l = AR_EXP_Evaluate(limit_exp, NULL);
 
-	// validate limit is numeric
-	if(SI_TYPE(l) != T_INT64) {
+	// Validate that the limit value is numeric and non-negative.
+	if(SI_TYPE(l) != T_INT64 || SI_GET_NUMERIC(l) < 0) {
 		QueryCtx_SetError("Limit operates only on non-negative integers");
 	}
 

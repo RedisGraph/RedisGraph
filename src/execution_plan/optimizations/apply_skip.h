@@ -8,10 +8,10 @@
 
 #include "../execution_plan.h"
 
-/* applySkip will traverse given execution plan looking for skip operations
- * once one is found, all relevant child operations (e.g. sort) will be
- * notify about the current skip
- * this is benifical as a number of different optimizations can be applied 
+/* applySkip will traverse the given execution plan looking for Skip operations.
+ * Once one is found, all relevant child operations (e.g. Sort) will be
+ * notified about the current skip value.
+ * This is beneficial as a number of different optimizations can be applied
  * once a skip is known */
 void applySkip(ExecutionPlan *plan);
 

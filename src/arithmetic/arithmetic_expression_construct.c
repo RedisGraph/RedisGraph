@@ -45,7 +45,7 @@ static const char *OpName[23] = {
 	"DIV", "MOD", "POW", "CONTAINS", "STARTS WITH", "ENDS WITH", "IN", "IS NULL", "IS NOT NULL"
 };
 
-static const char *_ASTOpToString(AST_Operator op) {
+static inline const char *_ASTOpToString(AST_Operator op) {
 	ASSERT(op < 23);
 	return OpName[op];
 }

@@ -25,8 +25,8 @@ static void _eval_skip(OpSkip *op, AR_ExpNode *skip_exp) {
 	// evaluate using the original expression.
 	SIValue s = AR_EXP_Evaluate(skip_exp, NULL);
 
-	// validate skip is numeric and non-negative.
-	if(SI_TYPE(s) != T_INT64 || s.longval < 0) {
+	// Validate that the skip value is numeric and non-negative.
+	if(SI_TYPE(s) != T_INT64 || SI_GET_NUMERIC(s) < 0) {
 		QueryCtx_SetError("Skip operates only on non-negative integers");
 	}
 

@@ -53,7 +53,7 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
 		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound,
-				upper_bound, filter_recurse_blacklist, 2, references);
+														upper_bound, filter_recurse_blacklist, 2, references);
 		if(!op) {
 			// Something is wrong - could not find a matching op where all references are solved.
 			unsigned char **entities = raxKeys(references);
@@ -111,11 +111,11 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
 								  FT_FilterNode *ft) {
-	/* Break filter tree into the smallest possible subtrees, following
-	 * the AND,OR logic. */
+	/* Decompose the filter tree into an array of the smallest possible subtrees
+	 * that do not violate the rules of AND/OR combinations. */
 	FT_FilterNode **sub_trees = FilterTree_SubTrees(ft);
 
-	/* For each filter tree find the earliest position along the execution
+	/* For each filter tree, find the earliest position in the op tree
 	 * after which the filter tree can be applied. */
 	uint nfilters = array_len(sub_trees);
 	for(uint i = 0; i < nfilters; i++) {
@@ -124,6 +124,7 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBas
 		ExecutionPlan_RePositionFilterOp(plan, root, recurse_limit, filter_op);
 	}
 	array_free(sub_trees);
+	// Build ops in the Apply family to appropriately process path filters.
 	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
