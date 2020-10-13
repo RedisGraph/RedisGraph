@@ -70,16 +70,9 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	// Initialize the read-write lock to protect access to the attributes rax.
 	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
 
-	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
-	 * Each thread is getting its cache by its thread id. */
-	uint64_t thread_count = Config_GetThreadCount() + 1; // Add 1 for redis main thread.
+	// Build the execution plans cache.
 	uint64_t cache_size = Config_GetCacheSize();
-	gc->cache_pool = array_new(Cache *, thread_count);
-
-	for(uint i = 0; i < thread_count; i++) {
-		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size,
-																(CacheItemFreeFunc)ExecutionCtx_Free));
-	}
+	gc->cache = Cache_New(cache_size, (CacheItemFreeFunc)ExecutionCtx_Free);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -429,11 +422,8 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 // Return cache associated with graph context and current thread id.
 Cache *GraphContext_GetCache(const GraphContext *gc) {
 	assert(gc);
-	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
-	* most likely Redis main thread */
-	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
-	thread_id += 1; // +1 to compensate for Redis main thread.
-	return gc->cache_pool[thread_id];
+
+	return gc->cache;
 }
 
 //------------------------------------------------------------------------------
@@ -481,11 +471,7 @@ static void _GraphContext_Free(void *arg) {
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
 	// Clear cache
-	if(gc->cache_pool) {
-		len = array_len(gc->cache_pool);
-		for(uint i = 0; i < len; i++) Cache_Free(gc->cache_pool[i]);
-		array_free(gc->cache_pool);
-	}
+	if(gc->cache) Cache_Free(gc->cache);
 
 	GraphEncodeContext_Free(gc->encoding_context);
 	GraphDecodeContext_Free(gc->decoding_context);

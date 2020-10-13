@@ -5,6 +5,8 @@
  */
 
 #include "cache.h"
+#include <assert.h>
+#include <pthread.h>
 #include "../rmalloc.h"
 
 //------------------------------------------------------------------------------
@@ -37,10 +39,13 @@ Cache *Cache_New(uint size, CacheItemFreeFunc freeCB) {
 	cache->list = CacheList_New(size, freeCB);
 	// Instantiate the lookup map for fast cache retrievals.
 	cache->lookup = HT_dictCreate(&HT_dictTypeHeapStrings, NULL);
+	// Initialize the read-write lock to protect access to the cache.
+	assert(pthread_rwlock_init(&cache->_cache_rwlock, NULL) == 0);
 	return cache;
 }
 
 inline void *Cache_GetValue(const Cache *cache, const char *key) {
+	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	CacheListNode *elem = HT_dictFetchValue(cache->lookup, key);
 	if(elem == NULL) return NULL;
 
@@ -74,6 +79,7 @@ void Cache_SetValue(Cache *cache, const char *orig_key, void *value) {
 void Cache_Free(Cache *cache) {
 	CacheList_Free(cache->list);
 	HT_dictRelease(cache->lookup);
+	assert(pthread_rwlock_destroy(&cache->_cache_rwlock) == 0);
 	rm_free(cache);
 }
 

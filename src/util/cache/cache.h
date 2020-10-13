@@ -14,8 +14,9 @@
  * Stores actual copy (memcpy) of the object itself.
  */
 typedef struct Cache {
-	dict *lookup;           // Map of hash keys to cache values for fast lookups.
-	CacheList *list;        // Doubly-linked list container for cache elements.
+	dict *lookup;                          // Map of hash keys to cache values for fast lookups.
+	CacheList *list;                       // Doubly-linked list container for cache elements.
+	pthread_rwlock_t _cache_rwlock;    // Read-write lock to protect access to the cache.
 } Cache;
 
 /**

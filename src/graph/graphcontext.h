@@ -30,7 +30,7 @@ typedef struct {
 	SlowLog *slowlog;                       // Slowlog associated with graph.
 	GraphEncodeContext *encoding_context;   // Encode context of the graph.
 	GraphDecodeContext *decoding_context;   // Decode context of the graph.
-	Cache **cache_pool;                     // Pool of execution plan caches, one per thread.
+	Cache *cache;                      // Global cache of execution plans.
 } GraphContext;
 
 /* GraphContext API */
