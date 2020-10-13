@@ -158,7 +158,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan,
-		const cypher_astnode_t *clause) {
+									   const cypher_astnode_t *clause) {
 
 	OpBase *op;
 	bool distinct = false;
@@ -208,7 +208,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 
 	/* Add modifier operations in order such that the final execution plan will follow the sequence:
 	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
-	
+
 	if(distinct) {
 		op = NewDistinctOp(plan);
 		ExecutionPlan_UpdateRoot(plan, op);
@@ -219,20 +219,19 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		op = NewSortOp(plan, order_exps, sort_directions);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
-	
+
 	if(skip_clause) {
 		op = buildSkipOp(plan, skip_clause);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
 
 	if(limit_clause) {
-		op = buildSkipOp(plan, limit_clause);
+		op = buildLimitOp(plan, limit_clause);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
 }
 
-// The RETURN logic is identical to WITH-culminating segments,
-// though a different set of API endpoints must be used for each.
+// RETURN builds a subtree of projection ops with Results as the root.
 void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	_buildProjectionOps(plan, clause);
 
@@ -241,6 +240,7 @@ void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+// RETURN builds a subtree of projection ops.
 void buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	_buildProjectionOps(plan, clause);
 }

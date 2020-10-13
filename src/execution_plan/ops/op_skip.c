@@ -16,8 +16,8 @@ static void SkipFree(OpBase *opBase);
 static OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 static void _eval_skip(OpSkip *op, AR_ExpNode *skip_exp) {
-	// make a copy of the original expression, this is required as in the case 
-	// of parametrised skip: "SKIP $S" evaluating the expression will 
+	// make a copy of the original expression, this is required as in the case
+	// of parametrised skip: "SKIP $S" evaluating the expression will
 	// modify it: replacing the parameter with a constant, as a result clones
 	// of this operation will contain a constant instead of a parameter.
 	op->skip_exp = AR_EXP_Clone(skip_exp);
@@ -25,15 +25,16 @@ static void _eval_skip(OpSkip *op, AR_ExpNode *skip_exp) {
 	// evaluate using the original expression.
 	SIValue s = AR_EXP_Evaluate(skip_exp, NULL);
 
-	// validate skip is numeric
-	if(SI_TYPE(s) != T_INT64) {
+	// validate skip is numeric and non-negative.
+	if(SI_TYPE(s) != T_INT64 || s.longval < 0) {
 		QueryCtx_SetError("Skip operates only on non-negative integers");
 	}
 
 	op->skip = SI_GET_NUMERIC(s);
 
+	// TODO leak?
 	// free original expression
-	AR_EXP_Free(skip_exp);
+	// AR_EXP_Free(skip_exp);
 }
 
 OpBase *NewSkipOp(const ExecutionPlan *plan, AR_ExpNode *skip_exp) {

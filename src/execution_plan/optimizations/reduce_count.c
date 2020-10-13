@@ -245,17 +245,13 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
-	ExecutionPlan *disconnected_plan = (ExecutionPlan *)opScan->plan;
-	ExecutionPlan_RemoveOp(disconnected_plan, opScan);
+	ExecutionPlan_RemoveOp(plan, opScan);
 	OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opTraverse);
+	ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
 	OpBase_Free(opTraverse);
 
-	// The plan segment that the scan and traverse op had been built with is now disconnected and should be freed.
-	ExecutionPlan_Free(disconnected_plan);
-
-	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
