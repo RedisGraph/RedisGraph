@@ -16,13 +16,13 @@ static void LimitFree(OpBase *opBase);
 static OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 static void _eval_limit(OpLimit *op, AR_ExpNode *limit_exp) {
-	// Make a copy of the original expression. This is required as in the case
-	// of parameterized limit: "LIMIT $L" evaluating the expression will
-	// modify it: replacing the parameter with a constant, as a result clones
-	// of this operation will contain a constant instead of a parameter.
+	/* Store a copy of the original expression.
+	 * This is required in the case of a parameterized limit: "LIMIT $L"
+	 * Evaluating the expression will modify it, replacing the parameter with a constant.
+	 * As a result, clones of this operation would invalidly resolve to an outdated constant. */
 	op->limit_exp = AR_EXP_Clone(limit_exp);
 
-	// evaluate using the original expression
+	// Evaluate using the input expression, leaving the stored expression untouched.
 	SIValue l = AR_EXP_Evaluate(limit_exp, NULL);
 
 	// Validate that the limit value is numeric and non-negative.
@@ -32,8 +32,8 @@ static void _eval_limit(OpLimit *op, AR_ExpNode *limit_exp) {
 
 	op->limit = SI_GET_NUMERIC(l);
 
-	// free original expression
-	// AR_EXP_Free(limit_exp);
+	// Free the expression we've evaluated.
+	AR_EXP_Free(limit_exp);
 }
 
 OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_exp) {
@@ -77,7 +77,11 @@ static inline OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase
 	ASSERT(opBase->type == OPType_LIMIT);
 
 	OpLimit *op = (OpLimit *)opBase;
-	return NewLimitOp(plan, op->limit_exp);
+	/* Clone the limit expression stored on the ExecutionPlan,
+	 * as we don't want to modify the templated ExecutionPlan
+	 * (which may occur if this expression is a parameter). */
+	AR_ExpNode *limit_exp = AR_EXP_Clone(op->limit_exp);
+	return NewLimitOp(plan, limit_exp);
 }
 
 static void LimitFree(OpBase *opBase) {
