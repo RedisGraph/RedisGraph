@@ -10,11 +10,13 @@
 #include "procedure.h"
 #include "proc_procedures.h"
 
+extern rax *__procedures;
+
 // CALL dbms.procedures()
 
 typedef struct {
-	SIValue *output;                  // Array with a maximum of 4 entries: ["name", name, "mode", mode].
-	raxIterator *procedure_rax_it;    // Holding to the current step's procedure.
+	SIValue *output;      // Array with a maximum of 4 entries: ["name", name, "mode", mode].
+	raxIterator iter;     // Procedures iterator.
 } ProcProceduresPrivateData;
 
 ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
@@ -24,11 +26,9 @@ ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
 	ProcProceduresPrivateData *pdata = rm_malloc(sizeof(ProcProceduresPrivateData));
 
 	// Initialize an iterator to the rax that contains all procedures
-	rax *rax = Procedure_GetProceduresRax();
-	raxIterator *it = rm_malloc(sizeof(raxIterator));
-	raxStart(it, rax);
-	raxSeek(it, "^", NULL, 0);
-	pdata->procedure_rax_it = it;
+	rax *procedures = __procedures;
+	raxStart(&pdata->iter, procedures);
+	raxSeek(&pdata->iter, "^", NULL, 0);
 	pdata->output = array_new(SIValue, 4);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("name"));
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
@@ -44,14 +44,13 @@ SIValue *Proc_ProceduresStep(ProcedureCtx *ctx) {
 	ASSERT(ctx->privateData);
 
 	ProcProceduresPrivateData *pdata = (ProcProceduresPrivateData *)ctx->privateData;
-	raxIterator *it = pdata->procedure_rax_it;
 	// Depleted?
-	if(!raxNext(it)) return NULL;
+	if(!raxNext(&pdata->iter)) return NULL;
 
 	// Returns the current procedure's name and mode.
-	ProcGenerator gen = it->data;
+	ProcGenerator gen = pdata->iter.data;
 	ProcedureCtx *curr_proc_ctx = gen();
-	pdata->output[1] = SI_DuplicateStringVal(Procedure_GetName(curr_proc_ctx));
+	pdata->output[1] = SI_ConstStringVal((char *)Procedure_GetName(curr_proc_ctx));
 	pdata->output[3] = Procedure_IsReadOnly(curr_proc_ctx) ?
 	  SI_ConstStringVal("READ") : SI_ConstStringVal("WRITE");
 	Proc_Free(curr_proc_ctx);
@@ -63,7 +62,6 @@ ProcedureResult Proc_ProceduresFree(ProcedureCtx *ctx) {
 	if(ctx->privateData) {
 		ProcProceduresPrivateData *pdata = ctx->privateData;
 		array_free(pdata->output);
-		rm_free(pdata->procedure_rax_it);
 		rm_free(ctx->privateData);
 	}
 

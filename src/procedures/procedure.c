@@ -13,7 +13,7 @@
 #include "../util/strutil.h"
 #include "../graph/graphcontext.h"
 
-static rax *__procedures = NULL;
+rax *__procedures = NULL;
 
 static void _procRegister(const char *procedure, ProcGenerator gen) {
 	char lowercase_proc_name[128];
@@ -28,12 +28,12 @@ void Proc_Register() {
 	__procedures = raxNew();
 	_procRegister("db.labels", Proc_LabelsCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
-	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
 	_procRegister("dbms.procedures", Proc_ProceduresCtx);
+	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
 
 	// Register graph algorithms.
-	_procRegister("algo.pageRank", Proc_PagerankCtx);
 	_procRegister("algo.BFS", Proc_BFS_Ctx);
+	_procRegister("algo.pageRank", Proc_PagerankCtx);
 
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
@@ -75,10 +75,6 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	// Set procedure state to not initialized.
 	ctx->state = PROCEDURE_NOT_INIT;
 	return ctx;
-}
-
-rax *Procedure_GetProceduresRax() {
-	return __procedures;
 }
 
 ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield) {
@@ -135,7 +131,7 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 }
 
 bool Procedure_ReadOnly(const char *proc_name) {
-	assert(__procedures);
+	ASSERT(__procedures);
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name,
 	  			strlen(proc_name));
 	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.

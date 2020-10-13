@@ -11,7 +11,6 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-
 // Registers procedures.
 void Proc_Register();
 
@@ -48,11 +47,8 @@ bool Procedure_ReadOnly(const char *proc_name);
 // Free procedure context.
 void Proc_Free(ProcedureCtx *proc);
 
-// Returns the rax that contains all the procedures.
-rax *Procedure_GetProceduresRax();
-
 // Returns true if the procedure is read-only.
 bool Procedure_IsReadOnly(const ProcedureCtx *proc);
 
-//Returns the procedure's name.
+// Returns the procedure's name.
 const char *Procedure_GetName(const ProcedureCtx *proc);
