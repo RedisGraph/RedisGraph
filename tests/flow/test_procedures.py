@@ -319,3 +319,11 @@ class testProcedures(FlowTestsBase):
             # This should not cause an error
             self.env.assertFalse(1)
             pass
+
+    def test_non_existing_procedure(self):
+        try:
+            redis_graph.call_procedure("dB.non_existing_procedure")
+            self.env.assertFalse(1)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a runtime error.
+            self.env.assertIn("is not registered", e.message)

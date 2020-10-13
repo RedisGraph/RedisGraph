@@ -12,6 +12,7 @@
 #include "../util/rmalloc.h"
 #include "../util/strutil.h"
 #include "../graph/graphcontext.h"
+#include "../query_ctx.h"
 
 static rax *__procedures = NULL;
 
@@ -131,7 +132,10 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 bool Proc_ReadOnly(const char *proc_name) {
 	assert(__procedures);
 	ProcedureCtx *ctx = Proc_Get(proc_name);
-	if(!ctx) return false;
+	if(!ctx) {
+		QueryCtx_SetError("Unable to find a procedure with name %s", proc_name);
+		return true;
+	}
 	bool read_only = ctx->readOnly;
 	Proc_Free(ctx);
 	return read_only;
