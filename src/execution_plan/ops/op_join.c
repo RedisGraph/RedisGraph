@@ -5,6 +5,7 @@
  */
 
 #include "op_join.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record JoinConsume(OpBase *opBase);
@@ -35,12 +36,19 @@ static Record JoinConsume(OpBase *opBase) {
 	OpJoin *op = (OpJoin *)opBase;
 	Record r = NULL;
 
+	bool update_column_map = false;
 	while(!r) {
 		// Try pulling from current stream.
 		r = OpBase_Consume(op->stream);
+		if(update_column_map && r) {
+			// We have a new record mapping, update the ResultSet column map to match it.
+			ResultSet_SetColToRecMap(QueryCtx_GetResultSet(), r);
+			update_column_map = false;
+		}
 		if(!r) {
 			// Stream depleted, see if there's a new stream to pull from.
 			op->streamIdx++;
+			update_column_map = true; // Switched streams, need to update the ResultSet column mapping
 			if(op->streamIdx < op->op.childCount) op->stream = op->op.children[op->streamIdx];
 			else break;
 		}
@@ -60,3 +68,4 @@ static inline OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase)
 	assert(opBase->type == OPType_JOIN);
 	return NewJoinOp(plan);
 }
+

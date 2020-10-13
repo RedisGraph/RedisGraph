@@ -66,7 +66,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 
 // Handle projected entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **BuildProjectionExpressions(const cypher_astnode_t *clause) {
+AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 	uint count = 0;
 	bool project_all = false;
 	AR_ExpNode **expressions = NULL;
@@ -175,7 +175,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	ASSERT(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN);
 
 	aggregate = AST_ClauseContainsAggregation(clause);
-	projections = BuildProjectionExpressions(clause);
+	projections = _BuildProjectionExpressions(clause);
 
 	if(t == CYPHER_AST_WITH) {
 		distinct = cypher_ast_with_is_distinct(clause);

@@ -30,6 +30,8 @@ typedef struct {
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
+void ResultSet_SetColToRecMap(ResultSet *set, const Record r);
+
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
@@ -45,3 +47,4 @@ void ResultSet_Reply(ResultSet *set);
 void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
 
 void ResultSet_Free(ResultSet *set);
+
