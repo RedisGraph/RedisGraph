@@ -83,7 +83,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 																(CacheItemFreeFunc)ExecutionCtx_Free));
 	}
 
-	GraphContext_UpdateVersion(gc);
+	GraphContext_UpdateVersion(gc); // set graph context version
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
 

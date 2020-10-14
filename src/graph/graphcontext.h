@@ -17,6 +17,16 @@
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
 
+/* GraphContext holds refrences to various elements of a graph object
+ * It is the value sitting behind a Redis graph key
+ *
+ * the graph context is versioned, the version value itself is meaningless
+ * it is used as a "signature" for the graph schema: (labels, relationship-types
+ * and attribute set) client libraries which cache the mapping between graph
+ * schema elements and their internal IDs (see COMPACT reply formatter)
+ * can use the graph version to understand if the schema was modified
+ * and take action accordingly */
+
 typedef struct {
 	Graph *g;                               // Container for all matrices and entity properties
 	int ref_count;                          // Number of active references.
