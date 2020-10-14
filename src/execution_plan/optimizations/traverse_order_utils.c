@@ -157,6 +157,52 @@ static void _FilterTreePredicate_CollectIndependentEntity(const FT_FilterNode *p
 	raxFree(entities);
 }
 
+static void _FilterTree_OrOpCollectIndependentEntities(const FT_FilterNode *root,
+													   rax *independent_entities) {
+	ASSERT(root->cond.op == OP_OR);
+	rax *lhs_independent_entities = raxNew();
+	rax *rhs_independent_entities = raxNew();
+	FilterTree_CollectIndependentEntities(root->cond.left, lhs_independent_entities);
+	FilterTree_CollectIndependentEntities(root->cond.right, rhs_independent_entities);
+	raxIterator it;
+	raxStart(&it, lhs_independent_entities);
+	// Iterate over all keys in the lhs_rax.
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		// Add the entity to the independent_entities rax if is not on rhs_rax.
+		void *res = raxFind(rhs_independent_entities, it.key, it.key_len);
+		if(res == raxNotFound) {
+			res = raxFind(independent_entities, it.key, it.key_len);
+			if(res == raxNotFound) {
+				raxInsert(independent_entities, it.key, it.key_len, it.data, NULL);
+			} else {
+				raxInsert(independent_entities, it.key, it.key_len, (void *)(res + (int64_t)it.data), NULL);
+			}
+		}
+	}
+	raxStop(&it);
+
+	raxStart(&it, lhs_independent_entities);
+	// Iterate over all keys in the rhs_rax.
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		// Add the entity to the independent_entities rax if is not on lhs_rax.
+		void *res = raxFind(rhs_independent_entities, it.key, it.key_len);
+		if(res == raxNotFound) {
+			res = raxFind(independent_entities, it.key, it.key_len);
+			if(res == raxNotFound) {
+				raxInsert(independent_entities, it.key, it.key_len, it.data, NULL);
+			} else {
+				raxInsert(independent_entities, it.key, it.key_len, (void *)(res + (int64_t)it.data), NULL);
+			}
+		}
+	}
+	raxStop(&it);
+
+	raxFree(lhs_independent_entities);
+	raxFree(rhs_independent_entities);
+}
+
 /**
  * @brief  This method collect independent entities, and the number of their independent occurrences from a filter tree.
  * @note   Indpendent entity - an entity that is the single entity in a predicate filter.
@@ -169,9 +215,15 @@ void FilterTree_CollectIndependentEntities(const FT_FilterNode *root,
 
 	switch(root->t) {
 	case FT_N_COND: {
-		FilterTree_CollectIndependentEntities(root->cond.left, independent_entities);
-		FilterTree_CollectIndependentEntities(root->cond.right, independent_entities);
+		if(root->cond.op == OP_AND) {
+			FilterTree_CollectIndependentEntities(root->cond.left, independent_entities);
+			FilterTree_CollectIndependentEntities(root->cond.right, independent_entities);
+
+		} else {
+			_FilterTree_OrOpCollectIndependentEntities(root, independent_entities);
+		}
 		break;
+
 	}
 	case FT_N_PRED: {
 		_FilterTreePredicate_CollectIndependentEntity(root, independent_entities);

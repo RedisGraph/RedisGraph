@@ -105,6 +105,51 @@ class TraversalOrderingTest: public ::testing::Test {
 		_populate_combination_table(combination_table, node_count);
 		return combination_table;
 	}
+
+	bool _compare_algebraic_operand(AlgebraicExpression *a, AlgebraicExpression *b) {
+		if(a->type != AL_OPERAND) return false;;
+		if(b->type != AL_OPERAND) return false;
+		return a->operand.matrix == b->operand.matrix;
+	}
+
+	bool compare_algebraic_expression(AlgebraicExpression *a, AlgebraicExpression *b) {
+		if(a->type != b->type) return false;;
+		if(AlgebraicExpression_ChildCount(a) !=  AlgebraicExpression_ChildCount(b));
+		if(AlgebraicExpression_OperandCount(a) != AlgebraicExpression_OperandCount(b));
+		// ASSERT_EQ(AlgebraicExpression_OperationCount(a, AL_EXP_ALL), AlgebraicExpression_OperationCount(b, AL_EXP_ALL));
+		if(a->type == AL_OPERAND) _compare_algebraic_operand(a, b);
+
+		uint child_count = AlgebraicExpression_ChildCount(a);
+		for(uint i = 0; i < child_count; i++) {
+			if(!compare_algebraic_expression(a->operation.children[i], b->operation.children[i])) return false;
+		}
+		return true;
+	}
+
+	bool compare_algebraic_expressions(AlgebraicExpression **actual, AlgebraicExpression **expected,
+									   uint count) {
+		for(uint i = 0; i < count; i++) {
+			if(!compare_algebraic_expression(actual[i], expected[i])) return false;
+		}
+		return true;
+	}
+
+	void assert_valid_permutation(AlgebraicExpression **actual_permutation,
+								  AlgebraicExpression **expected_permutations[], uint permutation_length, uint permutations_count) {
+		bool res = false;
+		for(uint i = 0; i < permutations_count; i++) {
+			res |= compare_algebraic_expressions(actual_permutation, expected_permutations[i],
+												 permutation_length);
+		}
+		ASSERT_TRUE(res);
+	}
+
+	void free_algebraic_expressions(AlgebraicExpression **exps, uint count) {
+		for(uint i = 0; i < count; i++) {
+			AlgebraicExpression *exp = exps[i];
+			AlgebraicExpression_Free(exp);
+		}
+	}
 };
 
 TEST_F(TraversalOrderingTest, FilterFirst) {
@@ -225,21 +270,30 @@ TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
 	QueryGraph *qg = BuildQueryGraph(gc, ast);
 
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
+
+	AlgebraicExpression *TAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
+	AlgebraicExpression_Transpose(&TAB);
 	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
+	AlgebraicExpression *TBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
+	AlgebraicExpression_Transpose(&TBC);
 	AlgebraicExpression *ExpBD = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL, "L");
 
 	filters = build_filter_tree_from_query(
 				  "MATCH (A:L {v: 1})-[]->(B)-[]->(C), (B)-[]->(D:L {v: 1})) RETURN *");
 
+	AlgebraicExpression *expected[2][3] = {
+		{ExpAB, ExpBC, ExpBD},
+		{TBC, TAB, ExpBD}
+	};
+
 	AlgebraicExpression *set[3] = {ExpAB, ExpBC, ExpBD};
 	std::sort(set, set + 3);
 	// Test every permutation of the set.
 	do {
-		AlgebraicExpression *tmp[3] = {set[0], set[1], set[2]};
+		AlgebraicExpression *tmp[3] = {AlgebraicExpression_Clone(set[0]), AlgebraicExpression_Clone(set[1]), AlgebraicExpression_Clone(set[2])};
 		orderExpressions(qg, tmp, 3, filters, NULL);
-		ASSERT_EQ(tmp[0], ExpAB);
-		ASSERT_EQ(tmp[1], ExpBD);
-		ASSERT_EQ(tmp[2], ExpBC);
+		assert_valid_permutation(tmp, &expected, 3, 2);
+		free_algebraic_expressions(tmp, 3);
 	} while(std::next_permutation(set, set + 3));
 
 	// Clean up.
