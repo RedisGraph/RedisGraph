@@ -7,7 +7,9 @@
 #include <sys/param.h>
 #include <pthread.h>
 #include "graphcontext.h"
+#include "../RG.h"
 #include "../util/arr.h"
+#include "../util/uuid.h"
 #include "../query_ctx.h"
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
@@ -61,6 +63,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
+	gc->version = UUID_New();
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
 	gc->slowlog = SlowLog_New();
@@ -186,6 +189,24 @@ void GraphContext_Rename(GraphContext *gc, const char *name) {
 	gc->graph_name = rm_strdup(name);
 }
 
+const char *GraphContext_GetVersion(const GraphContext *gc) {
+	ASSERT(gc != NULL);
+	ASSERT(gc->version != NULL);
+
+	return gc->version;
+}
+
+// Update graph context version
+void GraphContext_UpdateVersion(GraphContext *gc) {
+	ASSERT(gc != NULL);
+
+	// free previous version
+	if(gc->version != NULL) rm_free(gc->version);
+
+	// create a new graph version
+	gc->version = UUID_New();
+}
+
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------
@@ -231,6 +252,9 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 		schema = Schema_New(label, label_id);
 		gc->relation_schemas = array_append(gc->relation_schemas, schema);
 	}
+
+	// new schema added, update graph version
+	GraphContext_UpdateVersion(gc);
 
 	return schema;
 }
@@ -279,6 +303,9 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 					  attribute_id,
 					  NULL);
 			gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
+
+			// new attribute been added, update graph version
+			GraphContext_UpdateVersion(gc);
 		}
 	}
 
