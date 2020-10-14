@@ -71,7 +71,7 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	buflen = sprintf(buff, "Cached execution: %d", set->stats.cached ? 1 : 0);
 	RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 
-	buflen = sprintf(buff, "Graph version: %s", GraphContext_GetVersion(set->gc));
+	buflen = sprintf(buff, "Graph version: %u", GraphContext_GetVersion(set->gc));
 	RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 
 	// Emit query execution time.

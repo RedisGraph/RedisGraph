@@ -31,7 +31,7 @@ typedef struct {
 	GraphEncodeContext *encoding_context;   // Encode context of the graph.
 	GraphDecodeContext *decoding_context;   // Decode context of the graph.
 	Cache **cache_pool;                     // Pool of execution plan caches, one per thread.
-	char *version;                          // Graph version.
+	XXH32_hash_t version;                   // Graph version.
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ void GraphContext_Delete(GraphContext *gc);
 void GraphContext_Rename(GraphContext *gc, const char *name);
 
 // Get graph context version
-const char *GraphContext_GetVersion(const GraphContext *gc);
+XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc);
 
 // Update graph context version
 void GraphContext_UpdateVersion(GraphContext *gc);

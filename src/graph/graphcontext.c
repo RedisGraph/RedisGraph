@@ -63,7 +63,6 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
-	gc->version = UUID_New();
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
 	gc->slowlog = SlowLog_New();
@@ -84,6 +83,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 																(CacheItemFreeFunc)ExecutionCtx_Free));
 	}
 
+	GraphContext_UpdateVersion(gc);
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
 
@@ -189,7 +189,7 @@ void GraphContext_Rename(GraphContext *gc, const char *name) {
 	gc->graph_name = rm_strdup(name);
 }
 
-const char *GraphContext_GetVersion(const GraphContext *gc) {
+XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 	ASSERT(gc != NULL);
 	ASSERT(gc->version != NULL);
 
@@ -200,11 +200,13 @@ const char *GraphContext_GetVersion(const GraphContext *gc) {
 void GraphContext_UpdateVersion(GraphContext *gc) {
 	ASSERT(gc != NULL);
 
-	// free previous version
-	if(gc->version != NULL) rm_free(gc->version);
-
 	// create a new graph version
-	gc->version = UUID_New();
+	size_t uuid_len = 37;                    // UUID string length
+	char *uuid = UUID_New();                 // version UUID
+	gc->version = XXH32(uuid, uuid_len, 0);  // store hash(UUID)
+
+	// TODO: have UUID_New accept a buffer
+	rm_free(uuid);
 }
 
 //------------------------------------------------------------------------------
