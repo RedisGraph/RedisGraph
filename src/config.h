@@ -10,6 +10,16 @@
 #include "redismodule.h"
 #define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
+// TODO tmp
+typedef enum {
+	LARGE_DEFAULT_NO_THRESHOLD = 0,
+	SMALL_DEFAULT_NO_THRESHOLD = 1,
+	LARGE_DEFAULT_SMALL_THRESHOLD = 2,
+	SMALL_DEFAULT_LARGE_THRESHOLD = 3,
+	LARGE_DEFAULT_PCT_THRESHOLD = 4,
+	SMALL_DEFAULT_PCT_THRESHOLD = 5,
+} ThresholdPolicy;
+
 typedef struct {
 	int thread_count;                  // Thread count for thread pool.
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
@@ -18,6 +28,8 @@ typedef struct {
 	bool node_creation_buffer;         // If true, size matrices to accommodate future node creations.
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
+	ThresholdPolicy threshold_policy; // TODO tmp
+	uint64_t graph_size_default;
 } RG_Config;
 
 // Set module-level configurations to defaults or to user arguments where provided.
