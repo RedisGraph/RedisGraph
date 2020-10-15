@@ -518,7 +518,7 @@ int __agg_StdevReduceNext(AggCtx *ctx) {
 	double mean = ac->total / ac->count;
 	long double sum = 0;
 	for(int i = 0; i < ac->count; i ++) {
-		sum += (ac->values[i] - mean) * (ac->values[i] + mean);
+		sum += (long double)(ac->values[i] - mean) * (ac->values[i] + mean);
 	}
 	// is_sampled will be equal to 1 in the Stdev case and 0 in the StdevP case
 	double variance = sum / (ac->count - ac->is_sampled);
