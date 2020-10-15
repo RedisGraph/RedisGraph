@@ -97,8 +97,8 @@ static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	// Create 'records' with this Init function as 'record_cap'
 	// might be set during optimization time.
-	// If no cap is specified, use 16 as the default value.
-	if(op->record_cap == UNLIMITED) op->record_cap = 16;
+	// If no cap or a cap greater than 16 is specified, use 16 as the value.
+	if(op->record_cap > 16) op->record_cap = 16;
 	op->records = rm_calloc(op->record_cap, sizeof(Record));
 	return OP_OK;
 }

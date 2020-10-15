@@ -72,6 +72,9 @@ static const OPType TRAVERSE_OPS[] = {OPType_CONDITIONAL_TRAVERSE, OPType_CONDIT
 #define SCAN_OP_COUNT 5
 static const OPType SCAN_OPS[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN, OPType_INDEX_SCAN, OPType_NODE_BY_ID_SEEK, OPType_NODE_BY_LABEL_AND_ID_SCAN};
 
+#define BLACKLIST_OP_COUNT 2
+static const OPType FILTER_RECURSE_BLACKLIST[] = {OPType_APPLY, OPType_MERGE};
+
 struct OpBase;
 struct ExecutionPlan;
 

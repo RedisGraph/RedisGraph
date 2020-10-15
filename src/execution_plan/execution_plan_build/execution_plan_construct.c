@@ -40,7 +40,6 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	 * The family of SemiApply ops (including the Apply Multiplexers)
 	 * does not require this restriction since they are always exclusively
 	 * performing filtering. */
-	OPType filter_recurse_blacklist[2] = {OPType_APPLY, OPType_MERGE};
 
 	OpBase *op = NULL; // Operation after which filter will be located.
 	FT_FilterNode *filter_tree = ((OpFilter *)filter)->filterTree;
@@ -52,8 +51,8 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
-		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound,
-														upper_bound, filter_recurse_blacklist, 2, references);
+		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound, upper_bound, FILTER_RECURSE_BLACKLIST,
+														BLACKLIST_OP_COUNT, references);
 		if(!op) {
 			// Something is wrong - could not find a matching op where all references are solved.
 			unsigned char **entities = raxKeys(references);

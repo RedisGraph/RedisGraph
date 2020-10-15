@@ -124,7 +124,7 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 	ExecutionPlan_AddOp(optional, match_stream);
 
 	// Build the FilterTree to model any WHERE predicates on this clause and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, 1);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, CYPHER_AST_MATCH, 1);
 	if(sub_ft) ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
 
 	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
@@ -157,7 +157,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	// Extract mandatory patterns
 	//--------------------------------------------------------------------------
 
-	uint n = 0; // Number of mandatory patterns
+	uint mandatory_match_count = 0; // Number of mandatory patterns
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	uint match_clause_count = array_len(match_clauses);
 	const cypher_astnode_t *patterns[match_clause_count];
@@ -166,19 +166,20 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	for(uint i = 0; i < match_clause_count; i++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
 		if(cypher_ast_match_is_optional(match_clause)) continue;
-		mandatory_matches[n] = match_clauses[i];
-		patterns[n] = cypher_ast_match_get_pattern(match_clause);
-		n++;
+		mandatory_matches[mandatory_match_count] = match_clauses[i];
+		patterns[mandatory_match_count] = cypher_ast_match_get_pattern(match_clause);
+		mandatory_match_count++;
 	}
 
 	// Collect the QueryGraph entities referenced in the clauses being converted.
 	QueryGraph *qg = plan->query_graph;
-	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns, n);
+	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns, mandatory_match_count);
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches, n);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches, CYPHER_AST_MATCH,
+														   mandatory_match_count);
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 
 	// Clean up

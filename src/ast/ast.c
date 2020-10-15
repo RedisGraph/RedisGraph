@@ -295,7 +295,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	 * [MATCH (a) RETURN a UNION] MATCH (a) RETURN a
 	 * In this case project_clause = UNION, which is not a projection clause. */
 	cypher_astnode_type_t project_type = cypher_astnode_type(project_clause);
-	if(project_type == CYPHER_AST_UNION) project_clause = NULL;
+	if(project_type != CYPHER_AST_WITH && project_type != CYPHER_AST_RETURN) project_clause = NULL;
 
 	// Build the map of referenced entities in this AST segment.
 	AST_BuildReferenceMap(ast, project_clause);

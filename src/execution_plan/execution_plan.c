@@ -140,9 +140,9 @@ static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx, uint se
 
 static ExecutionPlan **_process_segments(AST *ast) {
 	uint nsegments = 0;               // number of segments
-	uint seg_end_idx = 0;             // segment clause start index
+	uint seg_end_idx = 0;             // segment clause end index
 	uint clause_count = 0;            // number of clauses
-	uint seg_start_idx = 0;           // segment clause end index
+	uint seg_start_idx = 0;           // segment clause start index
 	AST *ast_segment = NULL;          // segment AST
 	uint *segment_indices = NULL;     // array segment bounds
 	ExecutionPlan *segment = NULL;    // portion of the entire execution plan
@@ -239,7 +239,7 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments, uint segment_count
 
 		// Build filters required by current segment.
 		QueryCtx_SetAST(ast);
-		ft = AST_BuildFilterTreeFromClauses(ast, &opening_clause, 1);
+		ft = AST_BuildFilterTreeFromClauses(ast, &opening_clause, type, 1);
 		if(ft == NULL) continue;
 
 		// If any of the filtered variables operate on a WITH alias,
