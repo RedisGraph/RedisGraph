@@ -292,7 +292,7 @@ TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
 	do {
 		AlgebraicExpression *tmp[3] = {AlgebraicExpression_Clone(set[0]), AlgebraicExpression_Clone(set[1]), AlgebraicExpression_Clone(set[2])};
 		orderExpressions(qg, tmp, 3, filters, NULL);
-		assert_valid_permutation(tmp, &expected, 3, 2);
+		assert_valid_permutation(tmp, expected, 3, 2);
 		free_algebraic_expressions(tmp, 3);
 	} while(std::next_permutation(set, set + 3));
 
