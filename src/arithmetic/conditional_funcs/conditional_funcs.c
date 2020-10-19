@@ -29,7 +29,10 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 			int disjointOrNull;
 			if((SIValue_Compare(v, a, &disjointOrNull) == 0) && (disjointOrNull != COMPARED_NULL)) {
 				// Return Result i.
-				return argv[i + 1];
+				// The value's ownership must be transferred to avoid a double free if it is an allocated value.
+				SIValue retval = argv[i + 1];
+				SIValue_MakeVolatile(&argv[i + 1]);
+				return retval;
 			}
 		}
 	} else {
@@ -45,11 +48,15 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 			// Skip NULL and false options.
 			if(SIValue_IsNull(a) || ((SI_TYPE(a) & T_BOOL) && SIValue_IsFalse(a))) continue;
 			// The option was truthy, return the associated value.
-			return argv[i + 1];
+			// The value's ownership must be transferred to avoid a double free if it is an allocated value.
+			SIValue retval = argv[i + 1];
+			SIValue_MakeVolatile(&argv[i + 1]);
+			return retval;
 		}
 	}
 
 	//Did not match against any Option return default.
+	SIValue_MakeVolatile(&argv[argc - 1]);
 	return d;
 }
 
