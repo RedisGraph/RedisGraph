@@ -124,7 +124,8 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 	return NULL;
 }
 
-static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx, uint segment_end_idx) {
+static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx,
+		uint segment_end_idx) {
 	ASSERT(ast != NULL);
 	ASSERT(segment_start_idx <= segment_end_idx);
 
@@ -154,7 +155,8 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	// bound segments
 	//--------------------------------------------------------------------------
 
-	/* Retrieve the indices of each WITH clause to properly set the segment's bounds.
+	/* retrieve the indices of each WITH clause to properly set
+	 * the segment's bounds.
 	 * Every WITH clause demarcates the beginning of a new segment. */
 	segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
@@ -171,12 +173,12 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	for(uint i = 0; i < nsegments; i++) {
 		seg_end_idx = segment_indices[i];
 
-		if((seg_end_idx - seg_start_idx) == 0) continue; // Skip empty segments.
+		if((seg_end_idx - seg_start_idx) == 0) continue; // skip empty segment
 
-		// Slice the AST to only include the clauses in the current segment.
+		// slice the AST to only include the clauses in the current segment
 		AST *ast_segment = AST_NewSegment(ast, seg_start_idx, seg_end_idx);
 
-		// Create the ExecutionPlan segment that represents this slice of the AST.
+		// create ExecutionPlan segment that represents this slice of the AST
 		segment = _process_segment(ast_segment, seg_start_idx, seg_end_idx);
 		segments = array_append(segments, segment);
 
@@ -191,45 +193,47 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
-static ExecutionPlan *_tie_segments(ExecutionPlan **segments, uint segment_count) {
+static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
+		uint segment_count) {
 	FT_FilterNode *ft = NULL;            // filters following WITH
 	OpBase *connecting_op = NULL;        // op connecting one segment to another
 	OpBase *prev_connecting_op = NULL;   // root of previous segment
+	ExecutionPlan *prev_segment = NULL;
+	ExecutionPlan *current_segment = NULL;
 	AST *master_ast = QueryCtx_GetAST(); // top-level AST of plan
 
 	//--------------------------------------------------------------------------
 	// merge segments
 	//--------------------------------------------------------------------------
 
-	ExecutionPlan *prev_segment = NULL;
-	ExecutionPlan *current_segment = NULL;
 	for(int i = 0; i < segment_count; i++) {
 		ExecutionPlan *segment = segments[i];
 		AST *ast = segment->ast_segment;
 
-		// Find the firstmost non-argument operation in this segment.
+		// find the firstmost non-argument operation in this segment
+		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
 		ASSERT(array_len(taps) > 0);
 		connecting_op = taps[0];
 		array_free(taps);
-		// Tie the current segment's tap to the previous segment's root op.
-		if(prev_segment) ExecutionPlan_AddOp(connecting_op, prev_segment->root);
 
-		if(i > 1) {
+		// tie the current segment's tap to the previous segment's root op
+		if(prev_segment != NULL) {
 			// Validate the connecting operation.
 			// The connecting operation may already have children
 			// if it's been attached to a previous scope.
 			ASSERT(connecting_op->type == OPType_PROJECT ||
 				   connecting_op->type == OPType_AGGREGATE);
-			// The operation connecting the previous segment to its child
-			// will be used as the recursion limit for this scope.
-			prev_connecting_op = segments[i - 2]->root;
+
+			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
 		}
+
 		prev_segment = segment;
 
 		//----------------------------------------------------------------------
 		// introduce projection filters
 		//----------------------------------------------------------------------
+
 		// Retrieve the current projection clause to build any necessary filters
 		const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
 		cypher_astnode_type_t type = cypher_astnode_type(opening_clause);
@@ -239,7 +243,7 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments, uint segment_count
 
 		// Build filters required by current segment.
 		QueryCtx_SetAST(ast);
-		ft = AST_BuildFilterTreeFromClauses(ast, &opening_clause, type, 1);
+		ft = AST_BuildFilterTreeFromClauses(ast, &opening_clause, 1);
 		if(ft == NULL) continue;
 
 		// If any of the filtered variables operate on a WITH alias,
@@ -256,6 +260,7 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments, uint segment_count
 
 	// Restore the master AST.
 	QueryCtx_SetAST(master_ast);
+
 	// The last ExecutionPlan segment is the master ExecutionPlan.
 	ExecutionPlan *plan = segments[segment_count - 1];
 
@@ -274,20 +279,21 @@ static inline void _implicit_result(ExecutionPlan *plan) {
 ExecutionPlan *NewExecutionPlan(void) {
 	AST *ast = QueryCtx_GetAST();
 
-	// Handle UNION if there are any.
+	// handle UNION if there are any
 	bool union_query = AST_ContainsClause(ast, CYPHER_AST_UNION);
 	if(union_query) return _ExecutionPlan_UnionPlans(ast);
 
-	// Execution plans are created in 1 or more segments.
+	// execution plans are created in 1 or more segments
 	ExecutionPlan **segments = _process_segments(ast);
 	ASSERT(segments != NULL);
 	uint segment_count = array_len(segments);
 	ASSERT(segment_count > 0);
 
-	// Connect all segments into a single ExecutionPlan.
+	// connect all segments into a single ExecutionPlan
 	ExecutionPlan *plan = _tie_segments(segments, segment_count);
 
-	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
+	// the root operation is OpResults only if the query culminates in a RETURN
+	// or CALL clause
 	_implicit_result(plan);
 
 	// clean up

@@ -78,7 +78,7 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 /* Map each column to a record index
  * such that when resolving resultset row i column j we'll extract
  * data from record at position columns_record_map[j]. */
-void ResultSet_SetColToRecMap(ResultSet *set, const Record r) {
+void ResultSet_MapProjection(ResultSet *set, const Record r) {
 	if(!set->columns_record_map) set->columns_record_map = rm_malloc(sizeof(uint) * set->column_count);
 
 	for(uint i = 0; i < set->column_count; i++) {
@@ -158,7 +158,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// If this is the first Record encountered
 	if(set->header_emitted == false) {
 		// Map columns to record indices.
-		ResultSet_SetColToRecMap(set, r);
+		ResultSet_MapProjection(set, r);
 		// Prepare response arrays and emit the header.
 		_ResultSet_ReplyWithPreamble(set, r);
 	}

@@ -368,9 +368,11 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 	return filter_tree;
 }
 
-FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast, const cypher_astnode_t **clauses,
-											  const cypher_astnode_type_t type, uint count) {
+FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast,
+		const cypher_astnode_t **clauses, uint count) {
 	FT_FilterNode *filter_tree = NULL;
+	cypher_astnode_type_t type = cypher_astnode_type(clauses[0]);
+
 	for(uint i = 0; i < count; i ++) {
 		if(type == CYPHER_AST_MATCH) {
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);

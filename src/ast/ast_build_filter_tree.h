@@ -19,6 +19,6 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast);
 
 /* Collect all appropriate predicate nodes from the set of clauses
  * (all of the given type) and convert them into a filter tree. */
-FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast, const cypher_astnode_t **clauses,
-											  const cypher_astnode_type_t type, uint count);
+FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast,
+		const cypher_astnode_t **clauses, uint count);
 

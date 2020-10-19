@@ -40,17 +40,22 @@ static Record JoinConsume(OpBase *opBase) {
 	while(!r) {
 		// Try pulling from current stream.
 		r = OpBase_Consume(op->stream);
-		if(update_column_map && r) {
-			// We have a new record mapping, update the ResultSet column map to match it.
-			ResultSet_SetColToRecMap(QueryCtx_GetResultSet(), r);
-			update_column_map = false;
-		}
+
 		if(!r) {
 			// Stream depleted, see if there's a new stream to pull from.
 			op->streamIdx++;
-			update_column_map = true; // Switched streams, need to update the ResultSet column mapping
-			if(op->streamIdx < op->op.childCount) op->stream = op->op.children[op->streamIdx];
-			else break;
+			if(op->streamIdx >= op->op.childCount) break;
+
+			op->stream = op->op.children[op->streamIdx];
+			// Switched streams, need to update the ResultSet column mapping
+			update_column_map = true;
+			continue;
+		}
+
+		if(update_column_map) {
+			// We have a new record mapping, update the ResultSet column map to match it.
+			ResultSet_MapProjection(QueryCtx_GetResultSet(), r);
+			update_column_map = false;
 		}
 	}
 

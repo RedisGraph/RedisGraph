@@ -124,7 +124,7 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 	ExecutionPlan_AddOp(optional, match_stream);
 
 	// Build the FilterTree to model any WHERE predicates on this clause and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, CYPHER_AST_MATCH, 1);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, 1);
 	if(sub_ft) ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
 
 	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
@@ -178,8 +178,8 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches, CYPHER_AST_MATCH,
-														   mandatory_match_count);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast,
+			mandatory_matches, mandatory_match_count);
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 
 	// Clean up

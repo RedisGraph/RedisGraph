@@ -94,7 +94,7 @@ void buildCallOp(AST *ast, ExecutionPlan *plan, const cypher_astnode_t *call_cla
 
 	// Build the FilterTree to model any WHERE predicates on this clause
 	// and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &call_clause, CYPHER_AST_CALL, 1);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &call_clause, 1);
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 }
 

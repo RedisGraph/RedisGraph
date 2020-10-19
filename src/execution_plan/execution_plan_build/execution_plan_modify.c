@@ -203,21 +203,19 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 												   const OpBase *recurse_limit, const OPType *blacklisted_ops,
 												   int nblacklisted_ops, rax *refs_to_resolve) {
 
-	// Don't traverse into earlier ExecutionPlan scopes.
-	if(root == recurse_limit) return NULL;
-
 	int dependency_count = 0;
 	bool blacklisted = false;
 	OpBase *resolving_op = NULL;
 	bool all_refs_resolved = false;
 
-	// Check if this op is blacklisted.
+	// check if this op is blacklisted
 	for(int i = 0; i < nblacklisted_ops && !blacklisted; i++) {
 		blacklisted = (root->type == blacklisted_ops[i]);
 	}
 
-	// If an operation is blacklisted, we shouldn't recurse into its children.
-	if(blacklisted == false) {
+	// we're not allowed to inspect child operations of blacklisted ops
+	// also we're not allowed to venture further than 'recurse_limit'
+	if(blacklisted == false && root != recurse_limit) {
 		for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
 			// Visit each child and try to resolve references, storing a pointer to the child if successful.
 			OpBase *tmp_op = ExecutionPlan_LocateReferencesExcludingOps(root->children[i],
