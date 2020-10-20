@@ -176,7 +176,7 @@ size_t _Graph_EdgeCap(const Graph *g) {
 
 static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
 	bool build_with_overhead = Config_GetNodeCreationBuffer();
-	if(build_with_overhead) node_count += node_count * 0.001;
+	if(build_with_overhead) node_count += MAX(node_count * 0.001, 100);
 	if(node_count > g->matrix_dims) g->matrix_dims = node_count;
 }
 
@@ -435,7 +435,7 @@ void Graph_AllocateNodes(Graph *g, size_t n) {
 	assert(g);
 	DataBlock_Accommodate(g->nodes, n);
 	// Updated the required matrix size if this creation will trigger a resize.
-	size_t new_count = Graph_RequiredMatrixDim(g) + n;
+	size_t new_count = Graph_UncompactedNodeCount(g) + n;
 	if(new_count > Graph_RequiredMatrixDim(g)) _Graph_UpdateMatrixDimensions(g, new_count);
 }
 
