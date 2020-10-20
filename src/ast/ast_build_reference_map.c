@@ -18,12 +18,6 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 	if(type == CYPHER_AST_IDENTIFIER) {
 		const char *identifier_name = cypher_ast_identifier_get_name(exp);
 		_AST_UpdateRefMap(ast, identifier_name);
-	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-		// In case of property.
-		exp = cypher_ast_property_operator_get_expression(exp);
-		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
-		const char *identifier_name = cypher_ast_identifier_get_name(exp);
-		_AST_UpdateRefMap(ast, identifier_name);
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// In case of pattern filter.
 		_AST_MapReferencedEntitiesInPath(ast, exp);

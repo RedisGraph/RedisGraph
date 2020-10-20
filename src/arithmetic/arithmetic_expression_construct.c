@@ -110,17 +110,40 @@ static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
 	return _AR_EXP_FromIdentifierExpression(expr);
 }
 
-static AR_ExpNode *_AR_EXP_FromPropertyExpression(const cypher_astnode_t *expr) {
-	// Identifier and property pair
-	// Extract the entity alias from the property. Currently, the embedded
-	// expression should only refer to the IDENTIFIER type.
-	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
-	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
-	const char *alias = cypher_ast_identifier_get_name(prop_expr);
+static AR_ExpNode *_AR_EXP_FromComplexPropertyAccess(const cypher_astnode_t *expr,
+													 const char *prop_name) {
+	// Create property lookup op node.
+	AR_ExpNode *op = AR_EXP_NewOpNode("property", 2);
+	// The first child is the expression node that resolves to a GraphEntity.
+	op->op.children[0] = _AR_EXP_FromASTNode(expr);
+	// The second child is the property index.
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID prop_idx = GraphContext_GetAttributeID(gc, prop_name);
+	if(prop_idx != ATTRIBUTE_NOTFOUND) {
+		// The property string lookup was successful, store the property index as a child.
+		op->op.children[1] = AR_EXP_NewConstOperandNode(SI_LongVal(prop_idx));
+	} else {
+		// The property was not found, but might be created during this query.
+		// Store the string value and try to resolve the property later.
+		op->op.children[1] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
+	}
 
+	return op;
+}
+
+static AR_ExpNode *_AR_EXP_FromPropertyExpression(const cypher_astnode_t *expr) {
+	// Expression and property pair
 	// Extract the property name
 	const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
 	const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
+
+	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
+	// If the left-hand side is not an alias, build a function node to model this lookup.
+	if(cypher_astnode_type(prop_expr) != CYPHER_AST_IDENTIFIER)
+		return _AR_EXP_FromComplexPropertyAccess(prop_expr, prop_name);
+
+	// Left-hand side is an entity alias, extract it from the expression.
+	const char *alias = cypher_ast_identifier_get_name(prop_expr);
 
 	return AR_EXP_NewVariableOperandNode(alias, prop_name);
 }
