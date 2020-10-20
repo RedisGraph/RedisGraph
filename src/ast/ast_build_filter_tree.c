@@ -370,24 +370,25 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 
 FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast,
 		const cypher_astnode_t **clauses, uint count) {
+	cypher_astnode_type_t type;
 	FT_FilterNode *filter_tree = NULL;
-	cypher_astnode_type_t type = cypher_astnode_type(clauses[0]);
+	const cypher_astnode_t *predicate = NULL;
 
 	for(uint i = 0; i < count; i ++) {
+		type = cypher_astnode_type(clauses[i]);
 		if(type == CYPHER_AST_MATCH) {
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
 			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
-			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clauses[i]);
-			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
+			predicate = cypher_ast_match_get_predicate(clauses[i]);
 		} else if(type == CYPHER_AST_WITH) {
-			const cypher_astnode_t *predicate = cypher_ast_with_get_predicate(clauses[i]);
-			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
+			predicate = cypher_ast_with_get_predicate(clauses[i]);
 		} else if(type == CYPHER_AST_CALL) {
-			const cypher_astnode_t *where_predicate = cypher_ast_call_get_predicate(clauses[i]);
-			if(where_predicate) AST_ConvertFilters(&filter_tree, where_predicate);
+			predicate = cypher_ast_call_get_predicate(clauses[i]);
 		} else {
 			ASSERT(false);
 		}
+
+		if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 	}
 
 	// Apply De Morgan's laws

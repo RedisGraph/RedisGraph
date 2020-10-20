@@ -8,6 +8,9 @@
 #include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
+// default number of records to accumulate before traversing
+#define BATCH_SIZE 16
+
 /* Forward declarations. */
 static OpResult CondTraverseInit(OpBase *opBase);
 static Record CondTraverseConsume(OpBase *opBase);
@@ -73,10 +76,10 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
 	op->records = NULL;
-	op->record_cap = 16;
 	op->record_count = 0;
 	op->edge_ctx = NULL;
 	op->dest_label = NULL;
+	op->record_cap = BATCH_SIZE;
 	op->dest_label_id = GRAPH_NO_LABEL;
 
 	// Set our Op operations
@@ -108,8 +111,9 @@ static OpResult CondTraverseInit(OpBase *opBase) {
 	OpCondTraverse *op = (OpCondTraverse *)opBase;
 	// Create 'records' with this Init function as 'record_cap'
 	// might be set during optimization time (applyLimit)
-	// If cap greater than 16 is specified, use 16 as the value.
-	if(op->record_cap > 16) op->record_cap = 16;
+	// If cap greater than BATCH_SIZE is specified,
+	// use BATCH_SIZE as the value.
+	if(op->record_cap > BATCH_SIZE) op->record_cap = BATCH_SIZE;
 	op->records = rm_calloc(op->record_cap, sizeof(Record));
 	return OP_OK;
 }
