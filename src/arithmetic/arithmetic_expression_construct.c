@@ -4,16 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "ast_build_ar_exp.h"
-#include "ast_build_filter_tree.h"
+#include "arithmetic_expression_construct.h"
 #include "../RG.h"
+#include "funcs.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
-#include "../arithmetic/funcs.h"
-#include <assert.h>
+#include "../ast/ast_build_filter_tree.h"
 
 // Forward declaration
-static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr);
+static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr);
 
 static bool __AR_EXP_ContainsNestedAgg(const AR_ExpNode *root, bool in_agg) {
 	// Is this an aggregation node?
@@ -40,57 +39,17 @@ static bool _AR_EXP_ContainsNestedAgg(const AR_ExpNode *exp) {
 	return __AR_EXP_ContainsNestedAgg(exp, in_agg);
 }
 
-static const char *_ASTOpToString(AST_Operator op) {
-	// TODO: switch to a table, tbl[op] = string.
-	switch(op) {
-	case OP_PLUS:
-		return "ADD";
-	case OP_MINUS:
-		return "SUB";
-	case OP_MULT:
-		return "MUL";
-	case OP_DIV:
-		return "DIV";
-	case OP_CONTAINS:
-		return "CONTAINS";
-	case OP_STARTSWITH:
-		return "STARTS WITH";
-	case OP_ENDSWITH:
-		return "ENDS WITH";
-	case OP_AND:
-		return "AND";
-	case OP_OR:
-		return "OR";
-	case OP_XOR:
-		return "XOR";
-	case OP_NOT:
-		return "NOT";
-	case OP_GT:
-		return "GT";
-	case OP_GE:
-		return "GE";
-	case OP_LT:
-		return "LT";
-	case OP_LE:
-		return "LE";
-	case OP_EQUAL:
-		return "EQ";
-	case OP_NEQUAL:
-		return "NEQ";
-	case OP_MOD:
-		return "MOD";
-	case OP_POW:
-		return "POW";
-	case OP_IN:
-		return "IN";
-	case OP_IS_NULL:
-		return "IS NULL";
-	case OP_IS_NOT_NULL:
-		return "IS NOT NULL";
-	default:
-		assert(false && "Unhandled operator was specified in query");
-		return NULL;
-	}
+#define OP_COUNT 23
+// The OpName array is strictly parallel with the AST_Operator enum.
+static const char *OpName[OP_COUNT] = {
+	"NULL", "OR", "XOR", "AND", "NOT", "EQ", "NEQ", "LT", "GT", "LE",  "GE",
+	"ADD", "SUB", "MUL", "DIV", "MOD", "POW", "CONTAINS", "STARTS WITH",
+	"ENDS WITH", "IN", "IS NULL", "IS NOT NULL"
+};
+
+static inline const char *_ASTOpToString(AST_Operator op) {
+	ASSERT(op < OP_COUNT);
+	return OpName[op];
 }
 
 static AR_ExpNode *AR_EXP_NewOpNodeFromAST(AST_Operator op, uint child_count) {
@@ -100,17 +59,17 @@ static AR_ExpNode *AR_EXP_NewOpNodeFromAST(AST_Operator op, uint child_count) {
 
 static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op;
+	bool distinct = cypher_ast_apply_operator_get_distinct(expr);
+	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
 	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
-	bool distinct = cypher_ast_apply_operator_get_distinct(expr);
 	if(distinct) op = AR_EXP_NewDistinctOpNode(func_name, arg_count);
 	else op = AR_EXP_NewOpNode(func_name, arg_count);
 
 	for(unsigned int i = 0; i < arg_count; i ++) {
 		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
 		// Recursively convert arguments
-		op->op.children[i] = _AR_EXP_FromExpression(arg);
+		op->op.children[i] = _AR_EXP_FromASTNode(arg);
 	}
 	return op;
 }
@@ -135,12 +94,28 @@ static AR_ExpNode *_AR_EXP_FromIdentifierExpression(const cypher_astnode_t *expr
 	return AR_EXP_NewVariableOperandNode(alias, NULL);
 }
 
+static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
+	// check if the identifier is a named path identifier
+	AST *ast = QueryCtx_GetAST();
+	AnnotationCtx *named_paths_ctx =
+		AST_AnnotationCtxCollection_GetNamedPathsCtx(ast->anot_ctx_collection);
+
+	const cypher_astnode_t *named_path_annotation =
+		cypher_astnode_get_annotation(named_paths_ctx, expr);
+
+	// if the identifier is a named path identifier,
+	// evaluate the path expression accordingly
+	if(named_path_annotation) return _AR_EXP_FromASTNode(named_path_annotation);
+	// else, evalute the identifier
+	return _AR_EXP_FromIdentifierExpression(expr);
+}
+
 static AR_ExpNode *_AR_EXP_FromPropertyExpression(const cypher_astnode_t *expr) {
 	// Identifier and property pair
 	// Extract the entity alias from the property. Currently, the embedded
 	// expression should only refer to the IDENTIFIER type.
 	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
-	assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
 	const char *alias = cypher_ast_identifier_get_name(prop_expr);
 
 	// Extract the property name
@@ -207,23 +182,23 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 		// In the former case, we'll reduce the tree to a constant after building it fully.
 		op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
 		op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
-		op->op.children[1] = _AR_EXP_FromExpression(arg);
+		op->op.children[1] = _AR_EXP_FromASTNode(arg);
 	} else if(operator == CYPHER_OP_UNARY_PLUS) {
 		/* This expression is something like +3 or +a.val.
 		 * I think the + can always be safely ignored. */
-		op = _AR_EXP_FromExpression(arg);
+		op = _AR_EXP_FromASTNode(arg);
 	} else if(operator == CYPHER_OP_NOT) {
 		op = AR_EXP_NewOpNodeFromAST(OP_NOT, 1);
-		op->op.children[0] = _AR_EXP_FromExpression(arg);
+		op->op.children[0] = _AR_EXP_FromASTNode(arg);
 	} else if(operator == CYPHER_OP_IS_NULL) {
 		op = AR_EXP_NewOpNodeFromAST(OP_IS_NULL, 1);
-		op->op.children[0] = _AR_EXP_FromExpression(arg);
+		op->op.children[0] = _AR_EXP_FromASTNode(arg);
 	} else if(operator == CYPHER_OP_IS_NOT_NULL) {
 		op = AR_EXP_NewOpNodeFromAST(OP_IS_NOT_NULL, 1);
-		op->op.children[0] = _AR_EXP_FromExpression(arg);
+		op->op.children[0] = _AR_EXP_FromASTNode(arg);
 	} else {
 		// No supported operator found.
-		assert(false);
+		ASSERT(false);
 	}
 	return op;
 }
@@ -234,9 +209,9 @@ static AR_ExpNode *_AR_EXP_FromBinaryOpExpression(const cypher_astnode_t *expr) 
 	// Arguments are of type CYPHER_AST_EXPRESSION
 	AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(operator_enum, 2);
 	const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
-	op->op.children[0] = _AR_EXP_FromExpression(lhs_node);
+	op->op.children[0] = _AR_EXP_FromASTNode(lhs_node);
 	const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
-	op->op.children[1] = _AR_EXP_FromExpression(rhs_node);
+	op->op.children[1] = _AR_EXP_FromASTNode(rhs_node);
 	return op;
 }
 
@@ -253,8 +228,8 @@ static AR_ExpNode *_AR_EXP_FromComparisonExpression(const cypher_astnode_t *expr
 			const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, i + 1);
 
 			AR_ExpNode *inner_op = AR_EXP_NewOpNodeFromAST(operator_enum, 2);
-			inner_op->op.children[0] = _AR_EXP_FromExpression(lhs_node);
-			inner_op->op.children[1] = _AR_EXP_FromExpression(rhs_node);
+			inner_op->op.children[0] = _AR_EXP_FromASTNode(lhs_node);
+			inner_op->op.children[1] = _AR_EXP_FromASTNode(rhs_node);
 			op->op.children[i] = inner_op;
 		}
 	} else {
@@ -263,8 +238,8 @@ static AR_ExpNode *_AR_EXP_FromComparisonExpression(const cypher_astnode_t *expr
 		op = AR_EXP_NewOpNodeFromAST(operator_enum, 2);
 		const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(expr, 0);
 		const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, 1);
-		op->op.children[0] = _AR_EXP_FromExpression(lhs_node);
-		op->op.children[1] = _AR_EXP_FromExpression(rhs_node);
+		op->op.children[0] = _AR_EXP_FromASTNode(lhs_node);
+		op->op.children[1] = _AR_EXP_FromASTNode(rhs_node);
 	}
 	return op;
 }
@@ -286,15 +261,15 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(const cypher_astnode_t *expr) {
 	// Value to compare against
 	int offset = 0;
 	if(expression != NULL) {
-		op->op.children[offset++] = _AR_EXP_FromExpression(expression);
+		op->op.children[offset++] = _AR_EXP_FromASTNode(expression);
 	}
 
 	// Alternatives
 	for(uint i = 0; i < alternatives; i++) {
 		const cypher_astnode_t *predicate = cypher_ast_case_get_predicate(expr, i);
-		op->op.children[offset++] = _AR_EXP_FromExpression(predicate);
+		op->op.children[offset++] = _AR_EXP_FromASTNode(predicate);
 		const cypher_astnode_t *value = cypher_ast_case_get_value(expr, i);
-		op->op.children[offset++] = _AR_EXP_FromExpression(value);
+		op->op.children[offset++] = _AR_EXP_FromASTNode(value);
 	}
 
 	// Default value.
@@ -303,7 +278,7 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(const cypher_astnode_t *expr) {
 		// Default not specified, use NULL.
 		op->op.children[offset] = AR_EXP_NewConstOperandNode(SI_NullVal());
 	} else {
-		op->op.children[offset] = _AR_EXP_FromExpression(deflt);
+		op->op.children[offset] = _AR_EXP_FromASTNode(deflt);
 	}
 
 	return op;
@@ -314,7 +289,7 @@ static AR_ExpNode *_AR_ExpFromCollectionExpression(const cypher_astnode_t *expr)
 	AR_ExpNode *op = AR_EXP_NewOpNode("tolist", expCount);
 	for(uint i = 0; i < expCount; i ++) {
 		const cypher_astnode_t *exp_node = cypher_ast_collection_get(expr, i);
-		op->op.children[i] = AR_EXP_FromExpression(exp_node);
+		op->op.children[i] = AR_EXP_FromASTNode(exp_node);
 	}
 	return op;
 }
@@ -322,9 +297,9 @@ static AR_ExpNode *_AR_ExpFromCollectionExpression(const cypher_astnode_t *expr)
 static AR_ExpNode *_AR_ExpFromSubscriptExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op = AR_EXP_NewOpNode("subscript", 2);
 	const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(expr);
-	op->op.children[0] = AR_EXP_FromExpression(exp_node);
+	op->op.children[0] = AR_EXP_FromASTNode(exp_node);
 	const cypher_astnode_t *subscript_node = cypher_ast_subscript_operator_get_subscript(expr);
-	op->op.children[1] = AR_EXP_FromExpression(subscript_node);
+	op->op.children[1] = AR_EXP_FromASTNode(subscript_node);
 	return op;
 }
 
@@ -334,12 +309,12 @@ static AR_ExpNode *_AR_ExpFromSliceExpression(const cypher_astnode_t *expr) {
 	const cypher_astnode_t *start_node = cypher_ast_slice_operator_get_start(expr);
 	const cypher_astnode_t *end_node = cypher_ast_slice_operator_get_end(expr);
 
-	op->op.children[0] = AR_EXP_FromExpression(exp_node);
+	op->op.children[0] = AR_EXP_FromASTNode(exp_node);
 
-	if(start_node) op->op.children[1] = AR_EXP_FromExpression(start_node);
+	if(start_node) op->op.children[1] = AR_EXP_FromASTNode(start_node);
 	else op->op.children[1] = AR_EXP_NewConstOperandNode(SI_LongVal(0));
 
-	if(end_node) op->op.children[2] = AR_EXP_FromExpression(end_node);
+	if(end_node) op->op.children[2] = AR_EXP_FromASTNode(end_node);
 	else op->op.children[2] = AR_EXP_NewConstOperandNode(SI_LongVal(INT32_MAX));
 
 	return op;
@@ -356,7 +331,7 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
 	for(uint i = 0; i < path_len; i ++)
 		// Set graph entities as parameters, ordered according to the path AST.
-		op->op.children[i + 1] = _AR_EXP_FromExpression(cypher_ast_pattern_path_get_element(path, i));
+		op->op.children[i + 1] = _AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, i));
 	return op;
 }
 
@@ -413,7 +388,7 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	 * In the above query, this will be an operation node representing "val * 2".
 	 * This will always be NULL for comprehensions like any() and all(). */
 	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
-	if(eval_node) ctx->eval_exp = _AR_EXP_FromExpression(eval_node);
+	if(eval_node) ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
 
 	// Build an operation node to represent the list comprehension.
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
@@ -424,7 +399,7 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	/* 'arr' is the list expression.
 	 * Note that this value could resolve to an alias, a literal array, a function call, and so on. */
 	const cypher_astnode_t *list_node = cypher_ast_list_comprehension_get_expression(comp_exp);
-	AR_ExpNode *list = _AR_EXP_FromExpression(list_node);
+	AR_ExpNode *list = _AR_EXP_FromASTNode(list_node);
 
 	// The list expression is the function's first child.
 	op->op.children[0] = list;
@@ -435,68 +410,59 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	return op;
 }
 
-static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
-	const cypher_astnode_type_t type = cypher_astnode_type(expr);
+	const cypher_astnode_type_t t = cypher_astnode_type(expr);
 
-	/* Function invocations */
-	if(type == CYPHER_AST_APPLY_OPERATOR) {
+	// function invocations
+	if(t == CYPHER_AST_APPLY_OPERATOR) {
 		return _AR_EXP_FromApplyExpression(expr);
-		/* Function invocations with STAR projections */
-	} else if(type == CYPHER_AST_APPLY_ALL_OPERATOR) {
+		// function invocations with STAR projections
+	} else if(t == CYPHER_AST_APPLY_ALL_OPERATOR) {
 		return _AR_EXP_FromApplyAllExpression(expr);
-		/* Variables (full nodes and edges, UNWIND artifacts */
-	} else if(type == CYPHER_AST_IDENTIFIER) {
-		// Check if the identifier is a named path identifier.
-		AST *ast = QueryCtx_GetAST();
-		AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
-											 ast->anot_ctx_collection);
-		const cypher_astnode_t *named_path_annotation = cypher_astnode_get_annotation(named_paths_ctx,
-																					  expr);
-		// If the identifier is a named path identifier, evaluate the path expression accordingly.
-		if(named_path_annotation) return _AR_EXP_FromExpression(named_path_annotation);
-		// Else, evalute the identifier.
-		return _AR_EXP_FromIdentifierExpression(expr);
-		/* Entity-property pair */
-	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
+		// variables (full nodes and edges, UNWIND artifacts
+	} else if(t == CYPHER_AST_IDENTIFIER) {
+		return _AR_EXP_FromIdentifier(expr);
+		// entity-property pair
+	} else if(t == CYPHER_AST_PROPERTY_OPERATOR) {
 		return _AR_EXP_FromPropertyExpression(expr);
-		/* SIValue constant types */
-	} else if(type == CYPHER_AST_INTEGER) {
+		// sIValue constant types
+	} else if(t == CYPHER_AST_INTEGER) {
 		return _AR_EXP_FromIntegerExpression(expr);
-	} else if(type == CYPHER_AST_FLOAT) {
+	} else if(t == CYPHER_AST_FLOAT) {
 		return _AR_EXP_FromFloatExpression(expr);
-	} else if(type == CYPHER_AST_STRING) {
+	} else if(t == CYPHER_AST_STRING) {
 		return _AR_EXP_FromStringExpression(expr);
-	} else if(type == CYPHER_AST_TRUE) {
+	} else if(t == CYPHER_AST_TRUE) {
 		return _AR_EXP_FromTrueExpression();
-	} else if(type == CYPHER_AST_FALSE) {
+	} else if(t == CYPHER_AST_FALSE) {
 		return _AR_EXP_FromFalseExpression();
-	} else if(type == CYPHER_AST_NULL) {
+	} else if(t == CYPHER_AST_NULL) {
 		return _AR_EXP_FromNullExpression();
-		/* Handling for unary operators (-5, +a.val) */
-	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		// handling for unary operators (-5, +a.val)
+	} else if(t == CYPHER_AST_UNARY_OPERATOR) {
 		return _AR_EXP_FromUnaryOpExpression(expr);
-	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
+	} else if(t == CYPHER_AST_BINARY_OPERATOR) {
 		return _AR_EXP_FromBinaryOpExpression(expr);
-	} else if(type == CYPHER_AST_COMPARISON) {
+	} else if(t == CYPHER_AST_COMPARISON) {
 		return _AR_EXP_FromComparisonExpression(expr);
-	} else if(type == CYPHER_AST_CASE) {
+	} else if(t == CYPHER_AST_CASE) {
 		return _AR_EXP_FromCaseExpression(expr);
-	} else if(type == CYPHER_AST_COLLECTION) {
+	} else if(t == CYPHER_AST_COLLECTION) {
 		return _AR_ExpFromCollectionExpression(expr);
-	} else if(type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
+	} else if(t == CYPHER_AST_SUBSCRIPT_OPERATOR) {
 		return _AR_ExpFromSubscriptExpression(expr);
-	} else if(type == CYPHER_AST_SLICE_OPERATOR) {
+	} else if(t == CYPHER_AST_SLICE_OPERATOR) {
 		return _AR_ExpFromSliceExpression(expr);
-	} else if(type == CYPHER_AST_NAMED_PATH) {
+	} else if(t == CYPHER_AST_NAMED_PATH) {
 		return _AR_ExpFromNamedPath(expr);
-	} else if(type == CYPHER_AST_NODE_PATTERN || type == CYPHER_AST_REL_PATTERN) {
+	} else if(t == CYPHER_AST_NODE_PATTERN || t == CYPHER_AST_REL_PATTERN) {
 		return _AR_ExpNodeFromGraphEntity(expr);
-	} else if(type == CYPHER_AST_PARAMETER) {
+	} else if(t == CYPHER_AST_PARAMETER) {
 		return _AR_ExpNodeFromParameter(expr);
-	} else if(type == CYPHER_AST_LIST_COMPREHENSION || type == CYPHER_AST_ANY ||
-			  type == CYPHER_AST_ALL) {
-		return _AR_ExpNodeFromComprehensionFunction(expr, type);
+	} else if(t == CYPHER_AST_LIST_COMPREHENSION || t == CYPHER_AST_ANY ||
+			  t == CYPHER_AST_ALL) {
+		return _AR_ExpNodeFromComprehensionFunction(expr, t);
 	} else {
 		/*
 		   Unhandled types:
@@ -506,17 +472,17 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
 		*/
-		const char *type_str = cypher_astnode_typestr(type);
+		const char *type_str = cypher_astnode_typestr(t);
 		QueryCtx_SetError("RedisGraph does not currently support the type '%s'", type_str);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
-	assert(false);
+	ASSERT(false);
 	return NULL;
 }
 
-AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr) {
-	AR_ExpNode *root = _AR_EXP_FromExpression(expr);
+AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
+	AR_ExpNode *root = _AR_EXP_FromASTNode(expr);
 	AR_EXP_ReduceToScalar(root, false, NULL);
 
 	/* Make sure expression doesn't contains nested aggregation functions

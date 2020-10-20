@@ -61,6 +61,15 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *references_to_resolve);
 
+// Returns all tap operations for given execution plan.
+OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan);
+
+/* Find the earliest operation at which all references are resolved, if any,
+ * both above the provided recurse_limit and without recursing past a blacklisted op. */
+OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
+		const OpBase *recurse_limit, const OPType *blacklisted_ops,
+		int nblacklisted_ops, rax *refs_to_resolve);
+
 //------------------------------------------------------------------------------
 // ExecutionPlan_Collect API:
 // For collecting all matching operations in tree.

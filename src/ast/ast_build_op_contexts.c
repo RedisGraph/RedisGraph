@@ -5,11 +5,10 @@
  */
 
 #include "ast_build_op_contexts.h"
-#include "ast_build_ar_exp.h"
 #include "../util/arr.h"
 #include "../util/rax_extensions.h"
 #include "../arithmetic/repository.h"
-#include "../arithmetic/arithmetic_expression.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 #include "../query_ctx.h"
 #include <assert.h>
 
@@ -52,7 +51,7 @@ static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_
 	const cypher_astnode_t *prop = cypher_ast_property_operator_get_prop_name(key_to_set);
 	// Entity alias
 	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
-	AR_ExpNode *entity = AR_EXP_FromExpression(prop_expr);
+	AR_ExpNode *entity = AR_EXP_FromASTNode(prop_expr);
 	// Can this ever be anything strange? Assuming it's always just an alias wrapper right now.
 	assert(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC &&
 		   entity->operand.variadic.entity_alias);
@@ -64,7 +63,7 @@ static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_
 	const char *alias = entity->operand.variadic.entity_alias;
 	const char *attribute = cypher_ast_prop_name_get_value(prop);
 	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
-	AR_ExpNode *exp = AR_EXP_FromExpression(val_to_set);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(val_to_set);
 
 	AR_EXP_Free(entity);
 
@@ -94,7 +93,7 @@ AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
 
 	for(uint i = 0; i < delete_count; i ++) {
 		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
-		AR_ExpNode *exp = AR_EXP_FromExpression(ast_expr);
+		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_expr);
 		exps = array_append(exps, exp);
 	}
 	return exps;
@@ -118,7 +117,7 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
-	AR_ExpNode *exp = AR_EXP_FromExpression(collection);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(collection);
 	exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 
 	AST_UnwindContext ctx = { .exp = exp };
