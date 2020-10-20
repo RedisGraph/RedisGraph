@@ -28,6 +28,16 @@
 }
 
 {
+   <False positive on CircleCI>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:GB_new
+   fun:GrB_Matrix_new
+   fun:Proc_PagerankInvoke
+}
+
+{
    <RLTest race: freed in _GraphContext_Free on worker thread>
    Memcheck:Leak
    match-leak-kinds: definite
