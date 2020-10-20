@@ -4,6 +4,7 @@
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../ast/ast_mock.h"
+#include "../../util/rax_extensions.h"
 
 static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
@@ -70,9 +71,14 @@ inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
+	// B belongs to A's plan.
+	ExecutionPlan *plan = (ExecutionPlan *)a->plan;
+	b->plan = plan;
+
 	if(a->parent == NULL) {
-		/* A is the root operation. */
+		// A is the root operation.
 		_OpBase_AddChild(b, a);
+		plan->root = b;
 		return;
 	}
 
@@ -86,14 +92,14 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	/* The new root should have no parent, but may have children if we've constructed
 	 * a chain of traversals/scans. */
-	assert(!old_root->parent && !new_root->parent);
+	ASSERT(!old_root->parent && !new_root->parent);
 
 	/* Find the deepest child of the new root operation.
 	 * Currently, we can only follow the first child, since we don't call this function when
 	 * introducing Cartesian Products (the only multiple-stream operation at this stage.)
 	 * This may be inadequate later. */
 	OpBase *tail = new_root;
-	assert(tail->childCount <= 1);
+	ASSERT(tail->childCount <= 1);
 	while(tail->childCount > 0) tail = tail->children[0];
 
 	// Append the old root to the tail of the new root's chain.
@@ -193,32 +199,63 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
-static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
-											   rax *refs_to_resolve) {
-	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
+OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
+												   const OpBase *recurse_limit, const OPType *blacklisted_ops,
+												   int nblacklisted_ops, rax *refs_to_resolve) {
 
 	int dependency_count = 0;
+	bool blacklisted = false;
 	OpBase *resolving_op = NULL;
 	bool all_refs_resolved = false;
-	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
-		// Visit each child and try to resolve references, storing a pointer to the child if successful.
-		OpBase *tmp_op = _ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
-		if(tmp_op) dependency_count ++; // Count how many children resolved references.
-		// If there is more than one child resolving an op, set the root as the resolver.
-		resolving_op = resolving_op ? root : tmp_op;
-		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+
+	// check if this op is blacklisted
+	for(int i = 0; i < nblacklisted_ops && !blacklisted; i++) {
+		blacklisted = (root->type == blacklisted_ops[i]);
+	}
+
+	// we're not allowed to inspect child operations of blacklisted ops
+	// also we're not allowed to venture further than 'recurse_limit'
+	if(blacklisted == false && root != recurse_limit) {
+		for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
+			// Visit each child and try to resolve references, storing a pointer to the child if successful.
+			OpBase *tmp_op = ExecutionPlan_LocateReferencesExcludingOps(root->children[i],
+																		recurse_limit, blacklisted_ops, nblacklisted_ops, refs_to_resolve);
+
+			if(tmp_op) dependency_count ++; // Count how many children resolved references.
+			// If there is more than one child resolving an op, set the root as the resolver.
+			resolving_op = resolving_op ? root : tmp_op;
+			all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+		}
 	}
 
 	// If we've resolved all references, our work is done.
 	if(all_refs_resolved) return resolving_op;
 
+	char **modifies = NULL;
+	if(blacklisted) {
+		// If we've reached a blacklisted op, all variables in its subtree are
+		// considered to be modified by it, as we can't recurse farther.
+		rax *bound_vars = raxNew();
+		ExecutionPlan_BoundVariables(root, bound_vars);
+		modifies = (char **)raxKeys(bound_vars);
+		raxFree(bound_vars);
+	} else {
+		modifies = (char **)root->modifies;
+	}
+
 	// Try to resolve references in the current operation.
 	bool refs_resolved = false;
-	uint modifies_count = array_len(root->modifies);
+	uint modifies_count = array_len(modifies);
 	for(uint i = 0; i < modifies_count; i++) {
-		const char *ref = root->modifies[i];
+		const char *ref = modifies[i];
 		// Attempt to remove the current op's references, marking whether any removal was succesful.
 		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
+	}
+
+	// Free the modified array and its contents if it was generated to represent a blacklisted op.
+	if(blacklisted) {
+		for(uint i = 0; i < modifies_count; i++) rm_free(modifies[i]);
+		array_free(modifies);
 	}
 
 	if(refs_resolved) resolving_op = root;
@@ -227,10 +264,32 @@ static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recur
 
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *refs_to_resolve) {
-	OpBase *op = _ExecutionPlan_LocateReferences(root, recurse_limit, refs_to_resolve);
-	return op;
+	return ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit,
+													  NULL, 0, refs_to_resolve);
 }
 
+void _ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
+	if(root == NULL) return;
+
+	if(root->childCount == 0) {
+		// Op Argument isn't considered a tap.
+		if(root->type != OPType_ARGUMENT) {
+			*taps = array_append(*taps, root);
+		}
+	}
+
+	// Recursively visit children.
+	for(int i = 0; i < root->childCount; i++) {
+		_ExecutionPlan_LocateTaps(root->children[i], taps);
+	}
+}
+
+OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan) {
+	ASSERT(plan != NULL);
+	OpBase **taps = array_new(OpBase *, 1);
+	_ExecutionPlan_LocateTaps(plan->root, &taps);
+	return taps;
+}
 
 static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
 												  OpBase ***ops) {
@@ -332,12 +391,9 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 
 	AST_MockFree(match_stream_ast, node_is_path);
 	QueryCtx_SetAST(ast); // Reset the AST.
-	// Add filter ops to sub-ExecutionPlan.
-	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);
-
-	OpBase *match_stream_root = match_stream_plan->root;
 
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	OpBase *match_stream_root = match_stream_plan->root;
 	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
 
 	// NULL-set variables shared between the match_stream_plan and the overall plan.

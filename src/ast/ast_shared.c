@@ -1,7 +1,7 @@
 #include "ast_shared.h"
+#include "../RG.h"
 #include "../util/rmalloc.h"
-#include "ast_build_ar_exp.h"
-#include <assert.h>
+#include "../arithmetic/arithmetic_expression_construct.h"
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 	// TODO ordered by precedence, which I don't know if we're managing properly right now
@@ -57,7 +57,7 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 
 PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 	if(props == NULL) return NULL;
-	assert(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
+	ASSERT(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
 
 	uint prop_count = cypher_ast_map_nentries(props);
 
@@ -74,7 +74,7 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
 		// Convert the AST entity representing the value into an expression to be resolved later.
-		AR_ExpNode *value = AR_EXP_FromExpression(ast_value);
+		AR_ExpNode *value = AR_EXP_FromASTNode(ast_value);
 		map->values[prop_idx] = value;
 	}
 	return map;

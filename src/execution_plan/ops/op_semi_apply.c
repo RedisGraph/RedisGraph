@@ -28,7 +28,7 @@ OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti) {
 	op->match_branch = NULL;
 	// Set our Op operations
 	if(anti) {
-		OpBase_Init((OpBase *)op, OpType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
+		OpBase_Init((OpBase *)op, OPType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
 					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
 	} else {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
@@ -123,9 +123,9 @@ static OpResult SemiApplyReset(OpBase *opBase) {
 }
 
 static inline OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_SEMI_APPLY || opBase->type == OpType_ANTI_SEMI_APPLY);
+	assert(opBase->type == OPType_SEMI_APPLY || opBase->type == OPType_ANTI_SEMI_APPLY);
 	OpSemiApply *op = (OpSemiApply *)opBase;
-	bool anti = opBase->type == OpType_ANTI_SEMI_APPLY;
+	bool anti = opBase->type == OPType_ANTI_SEMI_APPLY;
 	return NewSemiApplyOp(plan, anti);
 }
 
