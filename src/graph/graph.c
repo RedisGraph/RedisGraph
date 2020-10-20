@@ -174,28 +174,9 @@ size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
 }
 
-extern RG_Config config; // Global module configuration.
 static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
-	// bool build_with_overhead = Config_GetNodeCreationBuffer();
-	// if(build_with_overhead) node_count += node_count * 0.001;
-	switch(config.threshold_policy) {
-	case LARGE_DEFAULT_NO_THRESHOLD:
-		g->matrix_dims = node_count;
-		return;
-	case SMALL_DEFAULT_NO_THRESHOLD:
-		g->matrix_dims = node_count;
-		return;
-	case LARGE_DEFAULT_SMALL_THRESHOLD:
-		node_count += node_count * 0.001;
-		break;
-	case SMALL_DEFAULT_LARGE_THRESHOLD:
-		node_count += node_count * 0.01;
-		break;
-	case LARGE_DEFAULT_PCT_THRESHOLD:
-	case SMALL_DEFAULT_PCT_THRESHOLD:
-		node_count += MAX(node_count * 0.01, 100);
-		break;
-	}
+	bool build_with_overhead = Config_GetNodeCreationBuffer();
+	if(build_with_overhead) node_count += node_count * 0.001;
 	if(node_count > g->matrix_dims) g->matrix_dims = node_count;
 }
 

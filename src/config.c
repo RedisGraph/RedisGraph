@@ -162,29 +162,6 @@ static int _Config_SetPrioritizeMemory(RedisModuleCtx *ctx, RedisModuleString *b
 	return REDISMODULE_OK;
 }
 
-static int _TMP_Config_SetThresholdPolicy(RedisModuleCtx *ctx, RedisModuleString *policy_str) {
-	long long policy;
-
-	int res = RedisModule_StringToLongLong(policy_str, &policy);
-	if(res != REDISMODULE_OK || policy < 0 || policy > 6) {
-		RedisModule_Log(ctx, "warning", "Received invalid value as threshold policy");
-		return REDISMODULE_ERR;
-
-	}
-	config.threshold_policy = policy;
-	switch(policy) {
-	case LARGE_DEFAULT_NO_THRESHOLD:
-		config.node_creation_buffer = false;
-		break;
-	case SMALL_DEFAULT_NO_THRESHOLD:
-		config.node_creation_buffer = false;
-	case SMALL_DEFAULT_LARGE_THRESHOLD:
-	case SMALL_DEFAULT_PCT_THRESHOLD:
-		config.graph_size_default = 128;
-	}
-	return REDISMODULE_OK;
-}
-
 // Initialize every module-level configuration to its default value.
 static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	// The thread pool's default size is equal to the system's number of cores.
@@ -213,10 +190,8 @@ static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
 	#endif
 	config.node_creation_buffer = true;
-	config.threshold_policy = LARGE_DEFAULT_PCT_THRESHOLD;
 	config.cache_size = CACHE_SIZE_DEFAULT;
 	config.maintain_transposed_matrices = true;
-	config.graph_size_default = 16384;
 }
 
 static void _Config_LogSettings(RedisModuleCtx *ctx) {
@@ -275,8 +250,6 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			res = _Config_MaintainNodeCreationBuffer(ctx, val);
 		} else if(!(strcasecmp(param, PRIORITIZE_MEMORY))) {
 			res = _Config_SetPrioritizeMemory(ctx, val);
-		} else if(!strcasecmp(param, "THRESHOLD_POLICY")) {
-			res = _TMP_Config_SetThresholdPolicy(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 			return REDISMODULE_ERR;
