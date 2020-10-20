@@ -14,6 +14,14 @@ static void notify_limit(OpBase *op, uint limit) {
 	OPType t = op->type;
 
 	switch(t) {
+		// reset limit on eager operation
+		case OPType_MERGE:
+		case OPType_CREATE:
+		case OPType_UPDATE:
+		case OPType_DELETE:
+		case OPType_AGGREGATE:
+			limit = UNLIMITED;
+			break;
 	case OPType_LIMIT:
 		// update limit
 		limit = ((OpLimit *)op)->limit;

@@ -75,6 +75,9 @@ static const OPType SCAN_OPS[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCA
 #define BLACKLIST_OP_COUNT 2
 static const OPType FILTER_RECURSE_BLACKLIST[] = {OPType_APPLY, OPType_MERGE};
 
+#define EAGER_OP_COUNT 5
+static const OPType EAGER_OPERATIONS[] = {OPType_AGGREGATE, OPType_CREATE, OPType_UPDATE, OPType_DELETE, OPType_MERGE};
+
 struct OpBase;
 struct ExecutionPlan;
 
