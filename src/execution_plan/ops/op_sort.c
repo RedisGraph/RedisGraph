@@ -50,7 +50,7 @@ static int _heap_elem_compare(const void *A, const void *B, const void *udata) {
 }
 
 static void _accumulate(OpSort *op, Record r) {
-	if(!op->limit) {
+	if(op->limit == UNLIMITED) {
 		/* Not using a heap and there's room for record. */
 		op->buffer = array_append(op->buffer, r);
 		return;
@@ -79,6 +79,8 @@ static inline Record _handoff(OpSort *op) {
 OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions) {
 	OpSort *op = rm_malloc(sizeof(OpSort));
 	op->heap = NULL;
+	op->skip = 0;
+	op->limit = UNLIMITED;
 	op->buffer = NULL;
 	op->directions = directions;
 	op->exps = exps;
@@ -100,16 +102,20 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 
 static OpResult SortInit(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
-	// Initialize op without limit on the return records/
-	op->limit = 0;
-	AST *ast = ExecutionPlan_GetAST(opBase->plan);
-	// Get the limit value for the current AST segment.
-	uint64_t limit = AST_GetLimit(ast);
-	// If there is LIMIT value, l,  set in the current clause, the operation must return the top l records with respect to the sorting criteria.
-	// In order to do so, it must collect the l records, but if there is a SKIP value, s, set, it must collect l+s records, sort them and return the top l.
-	if(limit != UNLIMITED) op->limit = limit + AST_GetSkip(ast);
-	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
-	else op->buffer = array_new(Record, 32);
+	// If there is LIMIT value, l, set in the current clause,
+	// the operation must return the top l records with respect to
+	// the sorting criteria. In order to do so, it must collect the l records,
+	// but if there is a SKIP value, s, set, it must collect l+s records,
+	// sort them and return the top l.
+	if(op->limit != UNLIMITED) {
+		op->limit += op->skip;
+		// If a limit is specified, use heapsort to poll the top N.
+		op->heap = heap_new(_heap_elem_compare, op);
+	} else {
+		// If all records are being sorted, use quicksort.
+		op->buffer = array_new(Record, 32);
+	}
+
 	return OP_OK;
 }
 

@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
@@ -366,7 +367,7 @@ class testGraphMergeFlow(FlowTestsBase):
     def test19_merge_dependency(self):
         redis_con = self.env.getConnection()
         graph = Graph("M", redis_con)
-        
+
         # Starting with an empty graph.
         # Create 2 nodes and connect them to one another.
         self.env.flush()
@@ -423,7 +424,7 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.relationships_created, 1)
         self.env.assertEquals(result.properties_set, 1)
-        
+
         # Starting with an empty graph.
         # Label scan should see created nodes.
         self.env.flush()
@@ -484,14 +485,14 @@ class testGraphMergeFlow(FlowTestsBase):
     def test24_merge_merge_delete(self):
         redis_con = self.env.getConnection()
         graph = Graph("M", redis_con)
-        
+
         # Merge followed by an additional merge and ending with a deletion
         # which doesn't have any data to operate on,
         # this used to trigger force lock release, as the delete didn't tried to acquire/release the lock
         self.env.flush()
         query = """MERGE (user:User {name:'Sceat'}) WITH user UNWIND [1,2,3] AS sessionHash MERGE (user)-[:HAS_SESSION]->(newSession:Session {hash:sessionHash}) WITH DISTINCT user, collect(newSession.hash) as newSessionHash MATCH (user)-->(s:Session) WHERE NOT s.hash IN newSessionHash DELETE s"""
         result = graph.query(query)
-        
+
         # Verify that every entity was created.
         self.env.assertEquals(result.nodes_created, 4)
         self.env.assertEquals(result.properties_set, 4)
@@ -504,3 +505,32 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
         self.env.assertEquals(result.relationships_created, 0)
+
+    def test25_merge_with_where(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("M", redis_con)
+
+        # Index the "L:prop) combination so that the MERGE tree will not have a filter op.
+        query = """CREATE INDEX ON :L(prop)"""
+        graph.query(query)
+
+        query = """MERGE (n:L {prop:1}) WITH n WHERE n.prop < 1 RETURN n.prop"""
+        result = graph.query(query)
+        plan = graph.execution_plan(query)
+
+        # Verify that the Filter op follows a Project op.
+        self.env.assertTrue(re.search('Project\s+Filter', plan))
+
+        # Verify that there is no Filter op after the Merge op.
+        self.env.assertFalse(re.search('Merge\s+Filter', plan))
+
+        # Verify that the entity was created and no results were returned.
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 1)
+
+        # Repeat the query.
+        result = graph.query(query)
+
+        # Verify that no data was modified and no results were returned.
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.properties_set, 0)

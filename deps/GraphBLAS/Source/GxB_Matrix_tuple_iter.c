@@ -69,7 +69,7 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 	// Deplete iterator, should caller ignore returned error.
 	_EmptyIterator(iter) ;
 
-	if(rowIdx < 0 || rowIdx >= iter->nrows) {
+	if(rowIdx >= iter->nrows) {
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range"))) ;
 	}
 
@@ -92,7 +92,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 	// Deplete iterator, should caller ignore returned error.
 	_EmptyIterator(iter) ;
 
-	if(startRowIdx < 0 || startRowIdx >= iter->nrows) {
+	if(startRowIdx >= iter->nrows) {
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index out of range"))) ;
 	}
 

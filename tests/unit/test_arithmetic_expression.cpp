@@ -25,7 +25,7 @@ extern "C"
 #include <time.h>
 
 // Declaration of function in execution_plan.h
-AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
+AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 
 #ifdef __cplusplus
 }
@@ -75,7 +75,7 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	ast->referenced_entities = raxNew();
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	return _BuildReturnExpressions(ret_clause, ast)[0];
+	return _BuildProjectionExpressions(ret_clause, ast)[0];
 }
 
 TEST_F(ArithmeticTest, ExpressionTest) {
@@ -1476,3 +1476,4 @@ TEST_F(ArithmeticTest, CoalesceTest) {
 	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
 	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
 }
+

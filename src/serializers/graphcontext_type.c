@@ -35,7 +35,7 @@ static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 			   REDISGRAPH_MODULE_VERSION, encver);
 		return NULL;
 		// Previous version.
-	} else if(encver >= GRAPHCONTEXT_TYPE_DECODE_MIN_V && encver < GRAPH_ENCODING_VERSION_LATEST) {
+	} else if(encver < GRAPH_ENCODING_VERSION_LATEST) {
 		gc = Decode_Previous(rdb, encver);
 	} else {
 		// Current version.
