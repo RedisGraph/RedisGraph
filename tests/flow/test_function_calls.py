@@ -290,12 +290,12 @@ class testFunctionCallsFlow(FlowTestsBase):
     # CASE...WHEN statements should manage allocated values properly.
     def test14_case_when_memory_management(self):
         # Simple case form: single value evaluation.
-        query = """WITH 'A' AS a with case a WHEN 'A' then toString(a) end AS key RETURN toLower(key)"""
+        query = """WITH 'A' AS a WITH CASE a WHEN 'A' THEN toString(a) END AS key RETURN toLower(key)"""
         actual_result = graph.query(query)
         expected_result = [['a']]
         self.env.assertEquals(actual_result.result_set, expected_result)
         # Generic case form: evaluation for each case.
-        query = """WITH 'A' AS a with case when true then toString(a) end AS key RETURN toLower(key)"""
+        query = """WITH 'A' AS a WITH CASE WHEN true THEN toString(a) END AS key RETURN toLower(key)"""
         actual_result = graph.query(query)
         expected_result = [['a']]
         self.env.assertEquals(actual_result.result_set, expected_result)
