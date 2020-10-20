@@ -120,7 +120,6 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	if(op->parent == NULL) {
-		ExecutionPlan *plan = (ExecutionPlan *)op->plan;
 		// Removing execution plan root.
 		assert(op->childCount == 1);
 		// Assign child as new root.
