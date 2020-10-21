@@ -195,7 +195,7 @@ static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 }
 
 static void _Config_LogSettings(RedisModuleCtx *ctx) {
-	// Log the new entity threshold.
+	// Log the virtual key entity threshold.
 	RedisModule_Log(ctx, "notice", "Max number of entities per graph meta key set to %lld.",
 					config.vkey_entity_count);
 

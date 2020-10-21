@@ -14,6 +14,9 @@
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"
 
+// Minimimum buffer size for matrices if enabled.
+#define MIN_MATRIX_BUFFER 100
+
 static GrB_BinaryOp _graph_edge_accum = NULL;
 // GraphBLAS Select operator to free edge arrays and delete edges.
 static GxB_SelectOp _select_delete_edges = NULL;
@@ -176,8 +179,8 @@ size_t _Graph_EdgeCap(const Graph *g) {
 
 static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
 	bool build_with_overhead = Config_GetNodeCreationBuffer();
-	if(build_with_overhead) node_count += MAX(node_count * 0.001, 100);
-	if(node_count > g->matrix_dims) g->matrix_dims = node_count;
+	if(build_with_overhead) node_count += MAX(node_count * 0.001, MIN_MATRIX_BUFFER);
+	g->matrix_dims = node_count;
 }
 
 // Locates edges connecting src to destination.
