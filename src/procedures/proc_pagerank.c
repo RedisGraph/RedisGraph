@@ -129,11 +129,9 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 		info = GrB_Matrix_nrows(&nrows, r);
 		ASSERT(info == GrB_SUCCESS);
 
-		// Build a new boolean matrix of the full dimensions.
+		// Build a new boolean matrix with the same dimensions of the original
+		// with all values casted to boolean.
 		GrB_Matrix r_trimmed;
-		info = GrB_Matrix_new(&r_trimmed, GrB_BOOL, nrows, nrows);
-		ASSERT(info == GrB_SUCCESS);
-		// Copy the relationship matrix, casting contents to boolean.
 		info = GrB_Matrix_dup(&r_trimmed, r);
 		ASSERT(info == GrB_SUCCESS);
 
