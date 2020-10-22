@@ -29,7 +29,7 @@ typedef struct {
 	AR_ExpNode *limit;                                  // The number of results in this segment.
 	AR_ExpNode *skip;                                   // The number of skips in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
-	uint ref_count;                                     // Reference counter for deletion.
+	uint *ref_count;                                    // A pointer to reference counter (for deletion).
 	cypher_parse_result_t *parse_result;                // Query parsing output.
 	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
 } AST;

@@ -72,7 +72,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 
 	// Build the execution plans cache.
 	uint64_t cache_size = Config_GetCacheSize();
-	gc->cache = Cache_New(cache_size, (CacheItemFreeFunc)ExecutionCtx_Free);
+	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
