@@ -1316,7 +1316,7 @@ Feature: MatchAcceptance2
       WITH n.num AS n2
       RETURN n2.num
       """
-    Then a TypeError should be raised at runtime: PropertyAccessOnNonMap
+    Then a TypeError should be raised at runtime: InvalidArgumentValue
 
   Scenario: Matching and returning ordered results, with LIMIT
     Given an empty graph

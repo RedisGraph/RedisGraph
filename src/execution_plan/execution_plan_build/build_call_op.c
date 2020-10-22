@@ -69,7 +69,7 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 		unsigned int output_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < output_count; i++) {
 			const char *name = Procedure_GetOutput(proc, i);
-			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(name, NULL);
+			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(name);
 			exp->resolved_name = name;
 			expressions = array_append(expressions, exp);
 		}

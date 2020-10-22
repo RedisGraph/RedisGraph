@@ -94,22 +94,31 @@ SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc) {
 }
 
 SIValue AR_PROPERTY(SIValue *argv, int argc) {
+	// return NULL for missing graph entity
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
 
-	Attribute_ID prop_idx;
-	if(SI_TYPE(argv[1]) == T_INT64) {
-		// Standard case, we have the correct property index.
-		prop_idx = argv[1].longval;
-	} else {
-		// We have the property string, attempt to look up the index now.
+	// inputs:
+	// argv[0] - node/edge
+	// argv[1] - property string
+	// argv[2] - property index
+
+	//--------------------------------------------------------------------------
+	// Process inputs
+	//--------------------------------------------------------------------------
+
+	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
+	const char *prop_name = argv[1].stringval;
+	Attribute_ID prop_idx = argv[2].longval;
+
+	// We have the property string, attempt to look up the index now.
+	if(prop_idx == ATTRIBUTE_NOTFOUND) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		prop_idx = GraphContext_GetAttributeID(gc, argv[1].stringval);
 	}
 
 	// Retrieve the property.
 	SIValue *property = GraphEntity_GetProperty(graph_entity, prop_idx);
-	return *property;
+	return SI_ConstValue(*property);
 }
 
 void Register_EntityFuncs() {
@@ -148,10 +157,11 @@ void Register_EntityFuncs() {
 	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, false);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 2);
+	types = array_new(SIType, 3);
 	types = array_append(types, T_NULL | T_NODE | T_EDGE);
-	types = array_append(types, T_INT64 | T_STRING);
-	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 2, 2, types, false);
+	types = array_append(types, T_STRING);
+	types = array_append(types, T_INT64);
+	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, false);
 	AR_RegFunc(func_desc);
 }
 

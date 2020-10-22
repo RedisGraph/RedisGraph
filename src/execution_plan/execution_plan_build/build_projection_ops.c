@@ -21,7 +21,7 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 	AR_ExpNode **project_exps = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
 		// Build an expression for each alias.
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
+		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i]);
 		exp->resolved_name = aliases[i];
 		project_exps = array_append(project_exps, exp);
 	}

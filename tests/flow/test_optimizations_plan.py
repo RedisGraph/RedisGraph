@@ -187,12 +187,10 @@ class testOptimizationsPlan(FlowTestsBase):
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected
 
-        # Validate identical results in a query that doesn't leverage this optimization.
-        # TODO this query could in the future be optimized with a "Node Hash Join"
         query = """MATCH (p1:person)-[:know]->({name: 'Roi'}) MATCH (p2)-[]->(:person {name: 'Alon'}) WHERE p1 = p2 RETURN p2.name ORDER BY p2.name"""
         executionPlan = graph.execution_plan(query)
-        self.env.assertNotIn("Value Hash Join", executionPlan)
-        self.env.assertIn("Cartesian Product", executionPlan)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
 
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected

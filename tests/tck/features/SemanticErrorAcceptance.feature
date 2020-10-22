@@ -305,7 +305,7 @@ Feature: SemanticErrorAcceptance
       WITH n.name AS n2
       RETURN n2.name
       """
-    Then a TypeError should be raised at runtime: PropertyAccessOnNonMap
+    Then a TypeError should be raised at runtime: InvalidArgumentValue
 
 @skip
   Scenario: Failing when checking existence of a non-property and non-pattern
