@@ -47,8 +47,9 @@ void *Cache_GetValue(Cache *cache, const char *key);
  * @param  *cache: cache pointer.
  * @param  *key: Key for associating with value (bytes array).
  * @param  *value: pointer with the relevant value.
+ * @retval true if a new item was added th to cache, false if it was already exist.
  */
-void Cache_SetValue(Cache *cache, const char *key, void *value);
+bool Cache_SetValue(Cache *cache, const char *key, void *value);
 
 /**
  * @brief  Destroy a cache and free all of the stored items.

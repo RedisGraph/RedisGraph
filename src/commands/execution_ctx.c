@@ -27,21 +27,11 @@ static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan, ExecutionT
 static ExecutionCtx _ExecutionCtx_Clone(const ExecutionCtx orig) {
 	ExecutionCtx ctx = {0};
 	ctx.ast = AST_ShallowCopy(orig.ast);
+	// Set the AST copy in thread local storage.
+	QueryCtx_SetAST(ctx.ast);
 	ctx.plan = ExecutionPlan_Clone(orig.plan);
 	ctx.exec_type = orig.exec_type;
 	return ctx;
-}
-
-static ExecutionCtx *_ExecutionCtx_FromCache(Cache *cache, const char *query_string,
-											 cypher_parse_result_t *params_parse_result) {
-	// Check the cache to see if we already have a cached context for this query.
-	ExecutionCtx *cached_exec_ctx = Cache_GetValue(cache, query_string);
-	if(cached_exec_ctx) {
-		// Cache hit - Clone the execution context. Set the execution type for query execution and indicate a cache hit.
-		// Set AST as it is retrived from cache and it is required for execution plan clone.
-		QueryCtx_SetAST(cached_exec_ctx->ast);
-	}
-	return cached_exec_ctx;
 }
 
 static AST *_ExecutionCtx_ParseAST(const char *query_string,
@@ -55,6 +45,7 @@ static AST *_ExecutionCtx_ParseAST(const char *query_string,
 
 	// Prepare the constructed AST.
 	AST *ast = AST_Build(query_parse_result);
+
 	// Set parameters parse result in the execution ast.
 	AST_SetParamsParseResult(ast, params_parse_result);
 	return ast;
@@ -72,7 +63,7 @@ ExecutionCtx ExecutionCtx_FromQuery(const char *query) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);
 	// Check the cache to see if we already have a cached context for this query.
-	ExecutionCtx *cached_exec_ctx = _ExecutionCtx_FromCache(cache, query_string, params_parse_result);
+	ExecutionCtx *cached_exec_ctx = Cache_GetValue(cache, query_string);
 	if(cached_exec_ctx) {
 		ExecutionCtx ctx = _ExecutionCtx_Clone(*cached_exec_ctx);
 		// Set parameters parse result in the execution ast.
@@ -94,10 +85,14 @@ ExecutionCtx ExecutionCtx_FromQuery(const char *query) {
 		// Created new valid execution context.
 		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan, exec_type);
 		// Cache execution context.
-		Cache_SetValue(cache, query_string, exec_ctx_to_cache);
-		// Clone execution plan and ast that will be used in the current execution.
-		plan = ExecutionPlan_Clone(plan);
-		ast = AST_ShallowCopy(ast);
+		if (Cache_SetValue(cache, query_string, exec_ctx_to_cache)) {
+			// If caching succeeded, clone execution plan and ast that will be used in the current execution.
+			ast = AST_ShallowCopy(ast);
+			QueryCtx_SetAST(ast);
+			plan = ExecutionPlan_Clone(plan);
+		} else {
+			rm_free(exec_ctx_to_cache);
+		}
 	}
 	ExecutionCtx ctx = {.ast = ast, .plan = plan, .exec_type = exec_type, .cached = false};
 	return ctx;
