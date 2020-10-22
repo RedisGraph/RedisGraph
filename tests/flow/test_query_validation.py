@@ -350,3 +350,14 @@ class testQueryValidationFlow(FlowTestsBase):
             query = """MATCH (a) WHERE 1 RETURN a"""
             assert("Expected boolean predicate" in e.message)
             pass
+
+    # Referencing a variable before defining it should raise a compile-time error.
+    def test23_reference_before_definition(self):
+        try:
+            query = """MATCH ({prop: reference}) MATCH (reference) RETURN *"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
