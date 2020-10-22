@@ -344,3 +344,9 @@ class testQueryValidationFlow(FlowTestsBase):
         query = """CALL db.idx.fulltext.queryNodes('A', 'B') YIELD node AS n RETURN n"""
         redis_graph.query(query)
 
+    # Applying a filter for a non-boolean constant should raise a compile-time error.
+    def test23_invalid_constant_filter(self):
+        try:
+            query = """MATCH (a) WHERE 1 RETURN a"""
+            assert("Expected boolean predicate" in e.message)
+            pass

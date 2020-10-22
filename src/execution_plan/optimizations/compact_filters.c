@@ -5,6 +5,7 @@
 */
 
 #include "compact_filters.h"
+#include "../../query_ctx.h"
 #include "../ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
 #include "../execution_plan_build/execution_plan_modify.h"
@@ -25,7 +26,11 @@ static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
 	assert(root->t == FT_N_EXP);
 	// Evaluate the expression, and check if it is a 'true' value.
 	SIValue bool_val = AR_EXP_Evaluate(root->exp.exp, NULL);
-	assert(SI_TYPE(bool_val) == T_BOOL);
+	SIType type = SI_TYPE(bool_val);
+	if(type != T_BOOL) {
+		QueryCtx_SetError("Expected boolean predicate but received %s", SIType_ToString(type));
+		return;
+	}
 	if(SIValue_IsTrue(bool_val)) {
 		ExecutionPlan_RemoveOp(plan, op);
 		OpBase_Free(op);
