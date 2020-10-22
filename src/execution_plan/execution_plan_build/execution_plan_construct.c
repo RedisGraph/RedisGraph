@@ -51,9 +51,8 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
-		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound,
-				upper_bound, FILTER_RECURSE_BLACKLIST, BLACKLIST_OP_COUNT,
-				references);
+		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound, upper_bound, FILTER_RECURSE_BLACKLIST,
+														BLACKLIST_OP_COUNT, references);
 		if(!op) {
 			// Something is wrong - could not find a matching op where all references are solved.
 			unsigned char **entities = raxKeys(references);
@@ -75,14 +74,14 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	} else {
 		/* The filter tree does not contain references, like:
 		 * WHERE 1=1
-		 * TODO This logic is inadequate. For now, we'll place the op
-		 * directly below the first projection (hopefully there is one!). */
+		 * Place the op directly below the first projection if there is one,
+		 * otherwise update the ExecutionPlan root. */
 		op = plan->root;
-		while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
+		while(op && op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
 			op = op->children[0];
 		}
+		if(op == NULL || (op->type != OPType_PROJECT && op->type != OPType_AGGREGATE)) op = plan->root;
 	}
-	ASSERT(op != NULL);
 
 	// In case this is a pre-existing filter (this function is not called out from ExecutionPlan_PlaceFilterOps)
 	if(filter->childCount > 0) {
@@ -91,6 +90,10 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
 			ExecutionPlan_PushBelow(op, (OpBase *)filter);
 		}
+	} else if(op == NULL) {
+		// No root was found, place filter at the root.
+		ExecutionPlan_UpdateRoot(plan, (OpBase *)filter);
+		op = filter;
 	} else {
 		// This is a new filter.
 		ExecutionPlan_PushBelow(op, (OpBase *)filter);
