@@ -19,7 +19,8 @@ class CacheTest:
 };
 
 TEST_F(CacheTest, ExecutionPlanCache) {
-	Cache *cache = Cache_New(3, (CacheItemFreeFunc)ExecutionPlan_Free);
+	// Use rm_free since we do not insert actual EP to the cache.
+	Cache *cache = Cache_New(3, (CacheEntryFreeFunc)rm_free);
 
 	ExecutionPlan *ep1 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
 	ExecutionPlan *ep2 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));

@@ -60,7 +60,7 @@ TEST_F(CacheConcurrentTest, CacheConcurrency) {
 
 # pragma omp parallel
 {
-	// Query 3 is replacing query 1 at the first position of the cache array
+	// Query 3 is replacing query 1 at the first position of the cache array.
 	Cache_SetValue(cache, query3, ep3);
 	nthreads = omp_get_num_threads();
 }
@@ -70,7 +70,7 @@ TEST_F(CacheConcurrentTest, CacheConcurrency) {
 	ASSERT_EQ(expected_counter, cache->counter);
 	ASSERT_EQ(expected_counter-1, cache->arr[0].LRU);
 
-	// Test parallel reading and writing to the cache with evictions
+	// Test parallel reading and writing to the cache with evictions.
 # pragma omp parallel
 {
 	int id = omp_get_thread_num();

@@ -20,8 +20,7 @@
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
-	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
-	return plan;
+	return rm_calloc(1, sizeof(ExecutionPlan));
 }
 
 void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
@@ -35,9 +34,6 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	// Build query graph
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->query_graph == NULL) plan->query_graph = BuildQueryGraph(ast);
-
-	// Build filter tree
-	plan->filter_tree = AST_BuildFilterTree(ast);
 
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
@@ -128,95 +124,180 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 	return NULL;
 }
 
-ExecutionPlan *NewExecutionPlan(void) {
-	AST *ast = QueryCtx_GetAST();
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
+static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx,
+		uint segment_end_idx) {
+	ASSERT(ast != NULL);
+	ASSERT(segment_start_idx <= segment_end_idx);
 
-	/* Handle UNION if there are any. */
-	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) return _ExecutionPlan_UnionPlans(ast);
+	ExecutionPlan *segment = NULL;
 
-	uint start_offset = 0;
-	uint end_offset = 0;
+	// Construct a new ExecutionPlanSegment.
+	segment = ExecutionPlan_NewEmptyExecutionPlan();
+	segment->ast_segment = ast;
+	ExecutionPlan_PopulateExecutionPlan(segment);
 
-	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates
-	 * the beginning of a new segment, and a RETURN clause (if present) forms its own segment. */
-	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
-	bool query_has_return = (last_clause_type == CYPHER_AST_RETURN);
+	return segment;
+}
 
-	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
-	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+static ExecutionPlan **_process_segments(AST *ast) {
+	uint nsegments = 0;               // number of segments
+	uint seg_end_idx = 0;             // segment clause end index
+	uint clause_count = 0;            // number of clauses
+	uint seg_start_idx = 0;           // segment clause start index
+	AST *ast_segment = NULL;          // segment AST
+	uint *segment_indices = NULL;     // array segment bounds
+	ExecutionPlan *segment = NULL;    // portion of the entire execution plan
+	ExecutionPlan **segments = NULL;  // constructed segments
 
-	// If the first clause of the query is WITH, remove its index from the segment list.
-	if(array_len(segment_indices) > 0 && segment_indices[0] == 0) {
-		segment_indices = array_del(segment_indices, 0);
-	}
+	clause_count = cypher_ast_query_nclauses(ast->root);
 
-	/* The RETURN clause is converted into an independent final segment.
-	 * If the query is exclusively composed of a RETURN clause, only one segment is constructed
-	 * so this step is skipped. */
-	if(query_has_return && clause_count > 1) {
-		segment_indices = array_append(segment_indices, clause_count - 1);
-	}
+	//--------------------------------------------------------------------------
+	// bound segments
+	//--------------------------------------------------------------------------
 
-	// Add the clause count as a final value so that the last segment will read to the end of the query.
+	/* retrieve the indices of each WITH clause to properly set
+	 * the segment's bounds.
+	 * Every WITH clause demarcates the beginning of a new segment. */
+	segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+
+	// last segment
 	segment_indices = array_append(segment_indices, clause_count);
+	nsegments = array_len(segment_indices);
+	segments = array_new(ExecutionPlan *, nsegments);
 
-	uint segment_count = array_len(segment_indices);
-	ExecutionPlan *segments[segment_count];
-	AST *ast_segments[segment_count];
-	start_offset = 0;
-	for(int i = 0; i < segment_count; i++) {
-		uint end_offset = segment_indices[i];
-		// Slice the AST to only include the clauses in the current segment.
-		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		ast_segments[i] = ast_segment;
-		// Construct a new ExecutionPlanSegment.
-		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
-		ExecutionPlan_PopulateExecutionPlan(segment);
-		segment->ast_segment = ast_segment;
-		segments[i] = segment;
-		start_offset = end_offset;
+	//--------------------------------------------------------------------------
+	// process segments
+	//--------------------------------------------------------------------------
+
+	seg_start_idx = 0;
+	for(uint i = 0; i < nsegments; i++) {
+		seg_end_idx = segment_indices[i];
+
+		if((seg_end_idx - seg_start_idx) == 0) continue; // skip empty segment
+
+		// slice the AST to only include the clauses in the current segment
+		AST *ast_segment = AST_NewSegment(ast, seg_start_idx, seg_end_idx);
+
+		// create ExecutionPlan segment that represents this slice of the AST
+		segment = _process_segment(ast_segment, seg_start_idx, seg_end_idx);
+		segments = array_append(segments, segment);
+
+		// The next segment will start where the current one ended.
+		seg_start_idx = seg_end_idx;
 	}
 
-	// Place filter ops required by first ExecutionPlan segment.
-	QueryCtx_SetAST(ast_segments[0]);
-	if(segments[0]->filter_tree) ExecutionPlan_PlaceFilterOps(segments[0], NULL);
-
-	OpBase *connecting_op = NULL;
-	OpBase *prev_scope_end = NULL;
-	// Merge segments.
-	for(int i = 1; i < segment_count; i++) {
-		ExecutionPlan *prev_segment = segments[i - 1];
-		ExecutionPlan *current_segment = segments[i];
-
-		OpBase *prev_root = prev_segment->root;
-		connecting_op = ExecutionPlan_LocateOpMatchingType(current_segment->root, PROJECT_OPS,
-														   PROJECT_OP_COUNT);
-		assert(connecting_op->childCount == 0);
-
-		ExecutionPlan_AddOp(connecting_op, prev_root);
-
-		// Place filter ops required by current segment.
-		QueryCtx_SetAST(ast_segments[i]);
-		if(current_segment->filter_tree) {
-			ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
-			current_segment->filter_tree = NULL;
-		}
-
-		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
-	}
-
-	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
-
+	// Restore the overall AST.
+	QueryCtx_SetAST(ast);
 	array_free(segment_indices);
 
+	return segments;
+}
+
+static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
+		uint segment_count) {
+	FT_FilterNode *ft = NULL;            // filters following WITH
+	OpBase *connecting_op = NULL;        // op connecting one segment to another
+	OpBase *prev_connecting_op = NULL;   // root of previous segment
+	ExecutionPlan *prev_segment = NULL;
+	ExecutionPlan *current_segment = NULL;
+	AST *master_ast = QueryCtx_GetAST(); // top-level AST of plan
+
+	//--------------------------------------------------------------------------
+	// merge segments
+	//--------------------------------------------------------------------------
+
+	for(int i = 0; i < segment_count; i++) {
+		ExecutionPlan *segment = segments[i];
+		AST *ast = segment->ast_segment;
+
+		// find the firstmost non-argument operation in this segment
+		prev_connecting_op = connecting_op;
+		OpBase **taps = ExecutionPlan_LocateTaps(segment);
+		ASSERT(array_len(taps) > 0);
+		connecting_op = taps[0];
+		array_free(taps);
+
+		// tie the current segment's tap to the previous segment's root op
+		if(prev_segment != NULL) {
+			// Validate the connecting operation.
+			// The connecting operation may already have children
+			// if it's been attached to a previous scope.
+			ASSERT(connecting_op->type == OPType_PROJECT ||
+				   connecting_op->type == OPType_AGGREGATE);
+
+			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
+		}
+
+		prev_segment = segment;
+
+		//----------------------------------------------------------------------
+		// introduce projection filters
+		//----------------------------------------------------------------------
+
+		// Retrieve the current projection clause to build any necessary filters
+		const cypher_astnode_t *opening_clause = cypher_ast_query_get_clause(ast->root, 0);
+		cypher_astnode_type_t type = cypher_astnode_type(opening_clause);
+		// Only WITH clauses introduce filters at this level;
+		// all other scopes will be fully built at this point.
+		if(type != CYPHER_AST_WITH) continue;
+
+		// Build filters required by current segment.
+		QueryCtx_SetAST(ast);
+		ft = AST_BuildFilterTreeFromClauses(ast, &opening_clause, 1);
+		if(ft == NULL) continue;
+
+		// If any of the filtered variables operate on a WITH alias,
+		// place the filter op above the projection.
+		if(FilterTree_FiltersAlias(ft, opening_clause)) {
+			OpBase *filter_op = NewFilterOp(current_segment, ft);
+			ExecutionPlan_PushBelow(connecting_op, filter_op);
+		} else {
+			// None of the filtered variables are aliases;
+			// filter ops may be placed anywhere in the scope.
+			ExecutionPlan_PlaceFilterOps(segment, connecting_op, prev_connecting_op, ft);
+		}
+	}
+
+	// Restore the master AST.
+	QueryCtx_SetAST(master_ast);
+
+	// The last ExecutionPlan segment is the master ExecutionPlan.
 	ExecutionPlan *plan = segments[segment_count - 1];
-	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
-	if(query_has_return || last_clause_type == CYPHER_AST_CALL) {
+
+	return plan;
+}
+
+// Add an implicit "Result" operation to ExecutionPlan if necessary.
+static inline void _implicit_result(ExecutionPlan *plan) {
+	// If the query culminates in a procedure call, it implicitly returns results.
+	if(plan->root->type == OPType_PROC_CALL) {
 		OpBase *results_op = NewResultsOp(plan);
 		ExecutionPlan_UpdateRoot(plan, results_op);
 	}
+}
+
+ExecutionPlan *NewExecutionPlan(void) {
+	AST *ast = QueryCtx_GetAST();
+
+	// handle UNION if there are any
+	bool union_query = AST_ContainsClause(ast, CYPHER_AST_UNION);
+	if(union_query) return _ExecutionPlan_UnionPlans(ast);
+
+	// execution plans are created in 1 or more segments
+	ExecutionPlan **segments = _process_segments(ast);
+	ASSERT(segments != NULL);
+	uint segment_count = array_len(segments);
+	ASSERT(segment_count > 0);
+
+	// connect all segments into a single ExecutionPlan
+	ExecutionPlan *plan = _tie_segments(segments, segment_count);
+
+	// the root operation is OpResults only if the query culminates in a RETURN
+	// or CALL clause
+	_implicit_result(plan);
+
+	// clean up
+	array_free(segments);
 
 	return plan;
 }
@@ -240,13 +321,13 @@ void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
 }
 
 inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
-	assert(plan && plan->record_map);
+	ASSERT(plan && plan->record_map);
 	return plan->record_map;
 }
 
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	rax *mapping = ExecutionPlan_GetMappings(plan);
-	assert(plan->record_pool);
+	ASSERT(plan->record_pool);
 
 	// Get a Record from the pool and set its owner and mapping.
 	Record r = ObjectPool_NewItem(plan->record_pool);
@@ -256,41 +337,13 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 }
 
 void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r) {
-	assert(plan && r);
+	ASSERT(plan && r);
 	ObjectPool_DeleteItem(plan->record_pool, r);
 }
 
-void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
-						  int ident, int *op_count) {
-	if(!op) return;
-
-	*op_count += 1; // account for current operation.
-
-	// Construct operation string representation.
-	int bytes_written = snprintf(buffer, buffer_len, "%*s", ident, "");
-	bytes_written += OpBase_ToString(op, buffer + bytes_written, buffer_len - bytes_written);
-
-	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
-
-	// Recurse over child operations.
-	for(int i = 0; i < op->childCount; i++) {
-		_ExecutionPlan_Print(op->children[i], ctx, buffer, buffer_len, ident + 4, op_count);
-	}
-}
-
-// Reply with a string representation of given execution plan.
-void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
-	assert(plan && ctx);
-
-	int op_count = 0;   // Number of operations printed.
-	char buffer[1024];
-
-	// No idea how many operation are in execution plan.
-	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-	_ExecutionPlan_Print(plan->root, ctx, buffer, 1024, 0, &op_count);
-
-	RedisModule_ReplySetArrayLength(ctx, op_count);
-}
+//------------------------------------------------------------------------------
+// Execution plan initialization
+//------------------------------------------------------------------------------
 
 static inline void _ExecutionPlan_InitRecordPool(ExecutionPlan *plan) {
 	if(plan->record_pool) return;
@@ -339,6 +392,10 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	return QueryCtx_GetResultSet();
 }
 
+//------------------------------------------------------------------------------
+// Execution plan draining
+//------------------------------------------------------------------------------
+
 // NOP operation consume routine for immediately terminating execution.
 static Record deplete_consume(struct OpBase *op) {
 	return NULL;
@@ -365,6 +422,24 @@ void ExecutionPlan_Drain(ExecutionPlan *plan) {
 	ASSERT(plan && plan->root);
 	_ExecutionPlan_Drain(plan->root);
 }
+
+//------------------------------------------------------------------------------
+// Execution plan ref count
+//------------------------------------------------------------------------------
+
+void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
+	ASSERT(plan);
+	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
+	ASSERT(plan);
+	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+//------------------------------------------------------------------------------
+// Execution plan profiling
+//------------------------------------------------------------------------------
 
 static void _ExecutionPlan_InitProfiling(OpBase *root) {
 	root->profile = root->consume;
@@ -399,15 +474,9 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	return rs;
 }
 
-void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
+//------------------------------------------------------------------------------
+// Execution plan free functions
+//------------------------------------------------------------------------------
 
 static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	if(plan == NULL) return;
@@ -450,6 +519,7 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 
 	return current_plan;
 }
+
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
