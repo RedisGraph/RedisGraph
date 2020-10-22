@@ -22,6 +22,23 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	array_free(filter_ops);
 }
 
+void ExecutionPlan_FilterPlacementError(rax *entitiesRax) {
+	// Something is wrong - could not find a matching op where all references are solved.
+	unsigned char **entities = raxKeys(entitiesRax);
+	uint entitiesRax_count = array_len(entities);
+	char *entities_str;
+	asprintf(&entities_str, "%s", entities[0]);
+	for(uint64_t i = 1; i < entitiesRax_count; i++) {
+		asprintf(&entities_str, "%s, %s", entities_str, entities[i]);
+	}
+	// Build-time error - execution plan will not run.
+	QueryCtx_SetError("Unable to place filter op for entities: %s", entities_str);
+	free(entities_str);
+	for(uint64_t i = 0; i < entitiesRax_count; i++) rm_free(entities[i]);
+	array_free(entities);
+	raxFree(entitiesRax);
+}
+
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter) {
 	// validate inputs
@@ -54,21 +71,9 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound, upper_bound, FILTER_RECURSE_BLACKLIST,
 														BLACKLIST_OP_COUNT, references);
 		if(!op) {
-			// Something is wrong - could not find a matching op where all references are solved.
-			unsigned char **entities = raxKeys(references);
-			char *entities_str;
-			asprintf(&entities_str, "%s", entities[0]);
-			for(uint64_t i = 1; i < references_count; i++) {
-				asprintf(&entities_str, "%s, %s", entities_str, entities[i]);
-			}
-			// Build-time error - execution plan will not run.
-			QueryCtx_SetError("Unable to place filter op for entities: %s", entities_str);
-			// Cleanup.
+			// Failed to resolve all filter references.
+			ExecutionPlan_FilterPlacementError(references);
 			OpBase_Free(filter);
-			free(entities_str);
-			for(uint64_t i = 0; i < references_count; i++) rm_free(entities[i]);
-			array_free(entities);
-			raxFree(references);
 			return;
 		}
 	} else {

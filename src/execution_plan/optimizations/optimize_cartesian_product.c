@@ -10,6 +10,7 @@
 #include "../../util/rax_extensions.h"
 #include "../../util/qsort.h"
 #include "../execution_plan_build/execution_plan_modify.h"
+#include "../execution_plan_build/execution_plan_construct.h"
 
 #define FilterCtx_LT(a ,b) ((raxSize((a)->entities)) < (raxSize((b)->entities)))
 
@@ -62,8 +63,11 @@ static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 			solving_branches = array_append(solving_branches, branch);
 		}
 	}
-	assert(entities_count == 0);
-	assert(array_len(solving_branches) > 0);
+	if(entities_count != 0) {
+		ExecutionPlan_FilterPlacementError(entities);
+		array_free(solving_branches);
+		return NULL;
+	}
 	return solving_branches;
 }
 
@@ -76,6 +80,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		// Try to create a cartesian product, followed by the current filter.
 		OpFilter *filter_op = filter_ctx_arr[i].filter;
 		OpBase **solving_branches = _find_entities_solving_branches(filter_ctx_arr[i].entities, cp);
+		if(solving_branches == NULL) return;
 		uint solving_branch_count = array_len(solving_branches);
 		// In case this filter is solved by the entire cartesian product, it does not need to be repositioned.
 		if(solving_branch_count == cp->childCount) {

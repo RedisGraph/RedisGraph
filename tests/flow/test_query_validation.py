@@ -361,3 +361,14 @@ class testQueryValidationFlow(FlowTestsBase):
             # Expecting an error.
             assert("not defined" in e.message)
             pass
+
+    # Invalid filters in cartesian products should raise errors.
+    def test24_cartesian_product_invalid_filter(self):
+        try:
+            query = """MATCH p1=(), (n), ({prop: p1.path_val}) WHERE null RETURN *"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Type mismatch: expected Node but was Path" in e.message)
+            pass

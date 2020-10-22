@@ -34,6 +34,9 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 // Reduce a filter operation into an apply operation
 void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter);
 
+// Report an error in filter placement with a list of unmatched entities.
+void ExecutionPlan_FilterPlacementError(rax *entitiesRax);
+
 // Place filter ops at the appropriate positions within the op tree
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
 								  FT_FilterNode *ft);
