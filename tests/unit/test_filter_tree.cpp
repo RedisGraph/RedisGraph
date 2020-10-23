@@ -43,7 +43,8 @@ class FilterTreeTest: public ::testing::Test {
 		 * those inturn resides within graph context
 		 * accessible via thread local storage, as such we're creating a
 		 * fake graph context and placing it within thread local storage. */
-		GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
+		GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
+		gc->attributes = raxNew();
 		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
 
 		// No indicies.
@@ -52,7 +53,6 @@ class FilterTreeTest: public ::testing::Test {
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
 		AR_RegisterFuncs();
-
 	}
 
 	AST *_build_ast(const char *query) {
@@ -73,7 +73,7 @@ class FilterTreeTest: public ::testing::Test {
 	}
 
 	FT_FilterNode *_build_simple_varying_tree() {
-		const char *q = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
+		const char *q = "MATCH (me), (him) WHERE me.age > him.age RETURN me, him";
 		return build_tree_from_query(q);
 	}
 
