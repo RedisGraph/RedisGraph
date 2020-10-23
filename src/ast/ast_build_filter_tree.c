@@ -193,8 +193,8 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 		// key is of type CYPHER_AST_PROP_NAME
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_map_get_key(props, i));
 
-		AR_ExpNode *entity = AR_EXP_NewVariableOperandNode(alias);
-		AR_ExpNode *lhs = AR_EXP_NewAttributeAccessNode(entity, prop);
+		AR_ExpNode *graph_entity = AR_EXP_NewVariableOperandNode(alias);
+		AR_ExpNode *lhs = AR_EXP_NewAttributeAccessNode(graph_entity, prop);
 		// val is of type CYPHER_AST_EXPRESSION
 		const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
 		AR_ExpNode *rhs = AR_EXP_FromASTNode(val);
