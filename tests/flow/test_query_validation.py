@@ -273,12 +273,12 @@ class testQueryValidationFlow(FlowTestsBase):
     # Applying a filter for non existing entity.
     def test20_non_existing_graph_entity(self):
         try:
-            query = """match p=(n:Type) where p.name='value' return p"""
+            query = """MATCH p=() WHERE p.name='value' RETURN p"""
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Unable to place filter op for entities" in e.message)
+            assert("Type mismatch: expected Node but was Path" in e.message)
             pass
 
     # Comments should not affect query functionality.

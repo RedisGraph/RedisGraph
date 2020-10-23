@@ -38,14 +38,12 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 
 	// Make sure Count acts on an alias.
 	if(exp->op.child_count != 1) return 0;
+
 	AR_ExpNode *arg = exp->op.children[0];
-	if(arg->type != AR_EXP_OPERAND ||
-	   arg->operand.type != AR_EXP_VARIADIC ||
-	   arg->operand.variadic.entity_prop != NULL) return 0;
-
-	return 1;
-
+	return (arg->type == AR_EXP_OPERAND &&
+			arg->operand.type == AR_EXP_VARIADIC);
 }
+
 /* Checks if execution plan solely performs node count */
 static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
 									 OpBase **opScan, const char **label) {
@@ -122,7 +120,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 }
 
 /* Checks if execution plan solely performs edge count */
-static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
+static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
 									 OpBase **opTraverse, OpBase **opScan) {
 	// Reset.
 	*opScan = NULL;
@@ -130,19 +128,19 @@ static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	*opResult = NULL;
 	*opAggregate = NULL;
 
-	if(!_identifyResultAndAggregateOps(root, opResult, opAggregate)) return 0;
+	if(!_identifyResultAndAggregateOps(root, opResult, opAggregate)) return false;
 	OpBase *op = ((OpBase *)*opAggregate)->children[0];
 
-	if(op->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) return 0;
+	if(op->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) return false;
 	*opTraverse = op;
 	op = op->children[0];
 
 	// Only a full node scan can be converted, as a labeled source acts as a filter
 	// that may invalidate some of the edges.
-	if(op->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return 0;
+	if(op->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return false;
 	*opScan = op;
 
-	return 1;
+	return true;
 }
 
 void _countEdges(void *z, const void *x) {

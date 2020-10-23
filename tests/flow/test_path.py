@@ -194,3 +194,27 @@ class testPath(FlowTestsBase):
 
         query_info = QueryInfo(query=query, description="Test path inequality", expected_result=expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
+
+    # Test property accesses against non-identifier entities.
+    def test_path_property_access(self):
+        node0 = Node(node_id=0, label="L1", properties={'value': 1})
+        node1 = Node(node_id=1, label="L1", properties={'value': 2})
+        edge01 = Edge(node0, "R1", node1, edge_id=0)
+
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_edge(edge01)
+
+        redis_graph.flush()
+
+        # Test access of pre-existing properties along a path.
+        query = """MATCH p=()-[]->() RETURN nodes(p)[0].value, nodes(p)[1].value"""
+        result = redis_graph.query(query)
+        expected_result = [[1, 2]]
+        self.env.assertEqual(result.result_set, expected_result)
+
+        # Test access of properties introduced by the query.
+        query = """MATCH p=(a)-[]->() SET a.newval = 'new' RETURN nodes(p)[0].value, nodes(p)[0].newval"""
+        result = redis_graph.query(query)
+        expected_result = [[1, 'new']]
+        self.env.assertEqual(result.result_set, expected_result)

@@ -91,7 +91,7 @@ static AR_ExpNode *_AR_EXP_FromApplyAllExpression(const cypher_astnode_t *expr) 
 static AR_ExpNode *_AR_EXP_FromIdentifierExpression(const cypher_astnode_t *expr) {
 	// Identifier referencing another entity
 	const char *alias = cypher_ast_identifier_get_name(expr);
-	return AR_EXP_NewVariableOperandNode(alias, NULL);
+	return AR_EXP_NewVariableOperandNode(alias);
 }
 
 static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
@@ -111,18 +111,23 @@ static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
 }
 
 static AR_ExpNode *_AR_EXP_FromPropertyExpression(const cypher_astnode_t *expr) {
-	// Identifier and property pair
-	// Extract the entity alias from the property. Currently, the embedded
-	// expression should only refer to the IDENTIFIER type.
-	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
-	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
-	const char *alias = cypher_ast_identifier_get_name(prop_expr);
+	// the property expression is constructed of two parts:
+	// 1. an expression evaluating to a graph entity, in the future a map type
+	// 2. a property name string.
+	// examples: a.v, arr[0].v
 
-	// Extract the property name
+	//--------------------------------------------------------------------------
+	// Extract entity and property name expressions.
+	//--------------------------------------------------------------------------
+
+	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
 	const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
 	const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
 
-	return AR_EXP_NewVariableOperandNode(alias, prop_name);
+	AR_ExpNode *entity = _AR_EXP_FromASTNode(prop_expr);
+	AR_ExpNode *root = AR_EXP_NewAttributeAccessNode(entity, prop_name);
+
+	return root;
 }
 
 static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
@@ -338,7 +343,7 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
 	AST *ast = QueryCtx_GetAST();
 	const char *alias = AST_GetEntityName(ast, entity);
-	return AR_EXP_NewVariableOperandNode(alias, NULL);
+	return AR_EXP_NewVariableOperandNode(alias);
 }
 
 static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {

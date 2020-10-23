@@ -13,6 +13,7 @@
 #include "../util/arr.h"
 #include "./repository.h"
 #include "../query_ctx.h"
+#include "../util/strcmp.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
@@ -23,26 +24,10 @@
 #include <ctype.h>
 #include <assert.h>
 
-// Property keys in variadic expressions will be ATTRIBUTE_UNSET until the first lookup.
-#define ATTRIBUTE_UNSET (ATTRIBUTE_NOTFOUND - 1)
-
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
 // Clear an op node internals, without free the node allocation itself.
 static void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node);
-
-/* Update arithmetic expression variable node by setting node's property index.
- * when constructing an arithmetic expression we'll delay setting graph entity
- * attribute index to the first execution of the expression, this is due to
- * entity aliasing where we lose track over which entity is aliased, consider
- * MATCH (n:User) WITH n AS x RETURN x.name
- * When constructing the arithmetic expression x.name, we don't know
- * who X is referring to. */
-static void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	root->operand.variadic.entity_prop_idx = GraphContext_GetAttributeID(gc,
-																		 root->operand.variadic.entity_prop);
-}
 
 static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	AR_ExpNode *clone = rm_calloc(1, sizeof(AR_ExpNode));
@@ -56,10 +41,6 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		clone->operand.type = exp->operand.type;
 		clone->operand.variadic.entity_alias = exp->operand.variadic.entity_alias;
 		clone->operand.variadic.entity_alias_idx = exp->operand.variadic.entity_alias_idx;
-		if(exp->operand.variadic.entity_prop) {
-			clone->operand.variadic.entity_prop = exp->operand.variadic.entity_prop;
-		}
-		clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
 		break;
 	case AR_EXP_PARAM:
 		clone->operand.type = AR_EXP_PARAM;
@@ -76,7 +57,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 }
 
 static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
-	assert(func_name);
+	ASSERT(func_name != NULL);
 
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OP;
@@ -121,7 +102,7 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 		Agg_GetFunc(func_name, false, &agg_func);
 
 		/* TODO: handle Unknown function. */
-		assert(agg_func != NULL);
+		ASSERT(agg_func != NULL);
 		node->op.agg_func = agg_func;
 		node->op.type = AR_OP_AGGREGATE;
 	}
@@ -136,7 +117,7 @@ AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
 	Agg_GetFunc(func_name, true, &agg_func);
 
 	/* TODO: handle Unknown function. */
-	assert(agg_func != NULL);
+	ASSERT(agg_func != NULL);
 	node->op.agg_func = agg_func;
 	node->op.type = AR_OP_AGGREGATE;
 
@@ -154,14 +135,39 @@ static inline AR_ExpNode *_AR_EXP_InitializeOperand(AR_OperandNodeType type) {
 	return node;
 }
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias) {
 	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_VARIADIC);
 	node->operand.variadic.entity_alias = alias;
 	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
-	node->operand.variadic.entity_prop = prop;
-	node->operand.variadic.entity_prop_idx = ATTRIBUTE_UNSET;
 
 	return node;
+}
+
+AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
+		const char *attr) {
+
+	ASSERT(attr != NULL);
+	ASSERT(entity != NULL);
+
+	// use property index when possible, prop_idx is set to ATTRIBUTE_NOTFOUND
+	// if the graph is not aware of it in which case we'll try to resolve
+	// the property using its string representation
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	SIValue prop_idx = SI_LongVal(ATTRIBUTE_NOTFOUND);
+	SIValue prop_name = SI_ConstStringVal((char*)attr);
+	Attribute_ID idx = GraphContext_GetAttributeID(gc, attr);
+
+	if(idx != ATTRIBUTE_NOTFOUND) prop_idx = SI_LongVal(idx);
+
+	// entity is an expression which should be evaluated to a graph entity
+	// attr is the name of the attribute we want to extract from entity
+	AR_ExpNode *root = AR_EXP_NewOpNode("property", 3);
+	root->op.children[0] = entity;
+	root->op.children[1] = AR_EXP_NewConstOperandNode(prop_name);
+	root->op.children[2] = AR_EXP_NewConstOperandNode(prop_idx);
+
+	return root;
 }
 
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
@@ -202,7 +208,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		return false;
 	} else {
 		// root represents an operation.
-		assert(root->type == AR_EXP_OP);
+		ASSERT(root->type == AR_EXP_OP);
 
 		if(root->op.type == AR_OP_FUNC) {
 			/* See if we're able to reduce each child of root
@@ -219,7 +225,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 
 			// All child nodes are constants, make sure function is marked as reducible.
 			AR_FuncDesc *func_desc = AR_GetFunc(root->op.func_name);
-			assert(func_desc);
+			ASSERT(func_desc != NULL);
 			if(!func_desc->reducible) return false;
 
 			// Evaluate function.
@@ -369,62 +375,17 @@ static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 	}
 }
 
-static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
-	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
-	GraphEntity *ge = NULL;
-	if(t == REC_TYPE_NODE || t == REC_TYPE_EDGE) {
-		ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
-	} else {
-		if(t == REC_TYPE_UNKNOWN) {
-			/* If we attempt to access an unset Record entry as a graph entity
-			 * (due to a scenario like a failed OPTIONAL MATCH), return a null value. */
-			*result = SI_NullVal();
-			return EVAL_OK;
-		}
-
-		SIValue v = Record_Get(r, node->operand.variadic.entity_alias_idx);
-		if(!(SI_TYPE(v) & (T_NODE | T_EDGE))) {
-			/* Attempted to access a scalar value as a map.
-			 * Set an error and invoke the exception handler. */
-			QueryCtx_SetError("Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-			return EVAL_ERR;
-		}
-
-		// Node or Edge SIValue; the pointer can be accessed as a graph entity.
-		ge = (GraphEntity *)v.ptrval;
-	}
-
-	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_UNSET) {
-		_AR_EXP_UpdatePropIdx(node, NULL);
-	}
-
-	SIValue *property = GraphEntity_GetProperty(ge, node->operand.variadic.entity_prop_idx);
-	if(property == PROPERTY_NOTFOUND) {
-		*result = SI_NullVal();
-	} else {
-		// The value belongs to a graph property, and can be accessed safely during the query lifetime.
-		*result = SI_ConstValue(*property);
-	}
-
-	return EVAL_OK;
-}
-
 static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, SIValue *result) {
 	// Make sure entity record index is known.
 	if(node->operand.variadic.entity_alias_idx == IDENTIFIER_NOT_FOUND) {
 		if(!_AR_EXP_UpdateEntityIdx(&node->operand, r)) return EVAL_ERR;
 	}
 
-// Fetch entity property value.
-	if(node->operand.variadic.entity_prop != NULL) {
-		return _AR_EXP_EvaluateProperty(node, r, result);
-	} else {
-		/* Alias doesn't necessarily refers to a graph entity,
-		 * it could also be a constant. */
-		int aliasIdx = node->operand.variadic.entity_alias_idx;
-		// The value was not created here; share with the caller.
-		*result = SI_ShareValue(Record_Get(r, aliasIdx));
-	}
+	int aliasIdx = node->operand.variadic.entity_alias_idx;
+
+	// the value was not created here; share with the caller
+	*result = SI_ShareValue(Record_Get(r, aliasIdx));
+
 	return EVAL_OK;
 }
 
@@ -549,13 +510,18 @@ void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases) {
 
 void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
 	if(root->type == AR_EXP_OP) {
+		if(RG_STRCMP(root->op.func_name, "property") == 0) {
+			AR_ExpNode *arg = root->op.children[1];
+			ASSERT(AR_EXP_IsConstant(arg));
+			ASSERT(SI_TYPE(arg->operand.constant) == T_STRING);
+
+			const char *attr = arg->operand.constant.stringval;
+			raxInsert(attributes, (unsigned char *)attr, strlen(attr), NULL, NULL);
+		}
+
+		// continue scanning expression
 		for(int i = 0; i < root->op.child_count; i ++) {
 			AR_EXP_CollectAttributes(root->op.children[i], attributes);
-		}
-	} else { // type == AR_EXP_OPERAND
-		if(root->operand.type == AR_EXP_VARIADIC) {
-			const char *attr = root->operand.variadic.entity_prop;
-			if(attr) raxInsert(attributes, (unsigned char *)attr, strlen(attr), NULL, NULL);
 		}
 	}
 }
@@ -590,6 +556,28 @@ bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {
 
 bool inline AR_EXP_IsParameter(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
+}
+
+bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
+	ASSERT(exp != NULL);
+
+	// an arithmetic expression performs attribute extraction
+	// if it applys the "property" function, in which case the left-handside
+	// child represents the graph entity from which we access the attribute
+	// while the right-handside represents the attribute name
+
+	if(exp->type != AR_EXP_OP) return false;
+	if(RG_STRCMP(exp->op.func_name, "property") != 0) return false;
+
+	if(attr != NULL) {
+		AR_ExpNode *r = exp->op.children[1];
+		ASSERT(AR_EXP_IsConstant(r));
+		SIValue v = r->operand.constant;
+		ASSERT(SI_TYPE(v) == T_STRING);
+		*attr = v.stringval;
+	}
+
+	return true;
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
@@ -650,13 +638,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		if(root->operand.type == AR_EXP_CONSTANT) {
 			SIValue_ToString(root->operand.constant, str, str_size, bytes_written);
 		} else {
-			if(root->operand.variadic.entity_prop != NULL) {
-				*bytes_written += sprintf(
-									  (*str + *bytes_written), "%s.%s",
-									  root->operand.variadic.entity_alias, root->operand.variadic.entity_prop);
-			} else {
-				*bytes_written += sprintf((*str + *bytes_written), "%s", root->operand.variadic.entity_alias);
-			}
+			*bytes_written += sprintf((*str + *bytes_written), "%s", root->operand.variadic.entity_alias);
 		}
 	}
 }
