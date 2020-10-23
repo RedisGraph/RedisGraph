@@ -124,8 +124,8 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 	ExecutionPlan_AddOp(optional, match_stream);
 
 	// Build the FilterTree to model any WHERE predicates on this clause and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, 1);
-	if(sub_ft) ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
+	//FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &clause, 1);
+	//if(sub_ft) ExecutionPlan_PlaceFilterOps(plan, match_stream, NULL, sub_ft);
 
 	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
 	if(plan->root) {
