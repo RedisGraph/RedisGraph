@@ -44,9 +44,11 @@ static OpBase *_ApplyOpFromPathExpression(ExecutionPlan *plan, const char **vars
 	return op_semi_apply;
 }
 
-/* This method reduces a filter tree into an OpBase. The method perfrom post-order traversal over the
- * filter tree, and checks if the current subtree rooted at the visited node contains path filter or not,
- * and either reduces the root or continue traversal and reduction.
+/* This method reduces a filter tree into an OpBase.
+ * The method perfrom post-order traversal over the filter tree,
+ * and checks if the current subtree rooted at the visited node
+ * contains path filter or not, and either reduces the root 
+ * or continue traversal and reduction.
  * The three possible operations could be:
  * 1. OpFilter - In the case the subtree originated from the root does not contains any path filters.
  * 2. OpSemiApply - In case of the current root is an expression which contains a path filter.
