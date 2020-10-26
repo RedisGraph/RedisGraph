@@ -438,7 +438,9 @@ void Graph_AllocateNodes(Graph *g, size_t n) {
 	assert(g);
 	DataBlock_Accommodate(g->nodes, n);
 	// Updated the required matrix size if this creation will trigger a resize.
-	size_t new_count = Graph_UncompactedNodeCount(g) + n;
+	uint deleted_node_count = Graph_DeletedNodeCount(g);
+	size_t new_count = Graph_NodeCount(g) + deleted_node_count;
+	if((int64_t)(n - deleted_node_count) > 0)  new_count += n - deleted_node_count;
 	if(new_count > Graph_RequiredMatrixDim(g)) _Graph_UpdateMatrixDimensions(g, new_count);
 }
 

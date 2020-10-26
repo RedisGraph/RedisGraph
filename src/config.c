@@ -24,146 +24,50 @@
 
 extern RG_Config config; // Global module configuration.
 
-static inline int _Config_ParsePositiveInteger(RedisModuleString *integer_str, long long *value) {
-	int res = RedisModule_StringToLongLong(integer_str, value);
+// Parse a setting that should be "yes" or "no".
+static inline int _Config_ParseYesNoChoice(RedisModuleString *arg_str, bool *choice) {
+	const char *arg = RedisModule_StringPtrLen(arg_str, NULL);
+	if(!strcasecmp(arg, "yes")) {
+		*choice = true;
+	} else if(!strcasecmp(arg, "no")) {
+		*choice = false;
+	} else {
+		// Exit with error if argument was not "yes" or "no".
+		RedisModule_Log(NULL, "warning", "Received invalid argument '%s', expected 'yes' or 'no'", arg);
+		return REDISMODULE_ERR;
+	}
+	return REDISMODULE_OK;
+}
+
+// Parse a setting that should be a positive 32-bit integer.
+static inline int _Config_ParsePositiveInteger(RedisModuleString *integer_str, uint *value) {
+	long long longval;
+	int res = RedisModule_StringToLongLong(integer_str, &longval);
 	// Return an error code if integer parsing fails or value is not positive.
-	if(res != REDISMODULE_OK || *value <= 0) return REDISMODULE_ERR;
-	return REDISMODULE_OK;
-}
-
-// If the user has specified a thread pool size, update the configuration.
-// Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
-static int _Config_SetThreadCount(RedisModuleCtx *ctx, RedisModuleString *count_str) {
-	long long thread_count;
-	int res = _Config_ParsePositiveInteger(count_str, &thread_count);
-	// Exit with error if integer parsing fails or thread count is outside of the valid range 1-INT_MAX.
-	if(res != REDISMODULE_OK || thread_count > INT_MAX) {
-		const char *invalid_arg = RedisModule_StringPtrLen(count_str, NULL);
-		RedisModule_Log(ctx, "warning", "Received invalid value '%s' as thread count argument",
-						invalid_arg);
+	if(res != REDISMODULE_OK || longval <= 0 || longval > UINT_MAX) {
+		RedisModule_Log(NULL, "warning", "Could not parse argument '%s' as non-negative integer",
+						integer_str);
 		return REDISMODULE_ERR;
 	}
-
-	// Emit notice but do not fail if the specified thread count is greater than the system's
-	// number of cores (which is already set as the default value).
-	if(thread_count > config.thread_count) {
-		RedisModule_Log(ctx, "notice", "Number of threads: %d greater then number of cores: %d.",
-						thread_count, config.thread_count);
-	}
-
-	// Set the thread count in the configuration.
-	config.thread_count = thread_count;
-
+	*value = (uint)longval;
 	return REDISMODULE_OK;
 }
 
-// If the user has specified a maximum number of OpenMP threads, update the configuration.
-// Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
-static int _Config_SetOMPThreadCount(RedisModuleCtx *ctx, RedisModuleString *count_str) {
-	long long omp_thread_count;
-	int res = _Config_ParsePositiveInteger(count_str, &omp_thread_count);
-	// Exit with error if integer parsing fails or OpenMP thread count is outside of the valid range 1-INT_MAX.
-	if(res != REDISMODULE_OK || omp_thread_count > INT_MAX) {
-		const char *invalid_arg = RedisModule_StringPtrLen(count_str, NULL);
-		RedisModule_Log(ctx, "warning", "Specified invalid maximum '%s' for OpenMP thread count",
-						invalid_arg);
-		return REDISMODULE_ERR;
-	}
-
-	// Set the OpenMP thread count in the configuration.
-	config.omp_thread_count = omp_thread_count;
-
-	return REDISMODULE_OK;
-}
-
-// If the user has specified a maximum number of entities per virtual key, update the configuration.
-// Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
-static int _Config_SetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
-												  RedisModuleString *entity_count_str) {
-	long long entity_count;
-	int res = _Config_ParsePositiveInteger(entity_count_str, &entity_count);
-	// Exit with error if integer parsing fails.
-	if(res != REDISMODULE_OK) {
-		const char *invalid_arg = RedisModule_StringPtrLen(entity_count_str, NULL);
-		RedisModule_Log(ctx, "warning", "Could not parse virtual key size argument '%s' as an integer",
-						invalid_arg);
-		return REDISMODULE_ERR;
-	}
-
-	// Update the entity count in the configuration.
-	config.vkey_entity_count = entity_count;
-
-	return REDISMODULE_OK;
-}
-
-static int _Config_BuildTransposedMatrices(RedisModuleCtx *ctx, RedisModuleString *build_str) {
-	const char *should_build = RedisModule_StringPtrLen(build_str, NULL);
-	if(!strcasecmp(should_build, "yes")) {
-		config.maintain_transposed_matrices = true;
-	} else if(!strcasecmp(should_build, "no")) {
-		config.maintain_transposed_matrices = false;
-	} else {
-		// Exit with error if argument was not "yes" or "no".
-		RedisModule_Log(ctx, "warning",
-						"Invalid argument '%s' for maintain_transposed_matrices, expected 'yes' or 'no'", should_build);
-		return REDISMODULE_ERR;
-	}
-	return REDISMODULE_OK;
-}
-
-// If the user has specified the cache size, update the configuration.
-// Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
-static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_size_str) {
-	long long cache_size;
-	int res = _Config_ParsePositiveInteger(cache_size_str, &cache_size);
-	// Exit with error if integer parsing fails.
-	if(res != REDISMODULE_OK) {
-		const char *invalid_arg = RedisModule_StringPtrLen(cache_size_str, NULL);
-		RedisModule_Log(ctx, "warning", "Could not parse cache size argument '%s' as an integer",
-						invalid_arg);
-		return REDISMODULE_ERR;
-	}
-
-	// Update the cache size in the configuration.
-	config.cache_size = cache_size;
-
-	return REDISMODULE_OK;
-}
-
-static int _Config_MaintainNodeCreationBuffer(RedisModuleCtx *ctx, RedisModuleString *buffer_str) {
-	const char *maintain_node_buffer = RedisModule_StringPtrLen(buffer_str, NULL);
-	if(!strcasecmp(maintain_node_buffer, "yes")) {
-		config.maintain_transposed_matrices = true;
-	} else if(!strcasecmp(maintain_node_buffer, "no")) {
-		config.maintain_transposed_matrices = false;
-	} else {
-		// Exit with error if argument was not "yes" or "no".
-		RedisModule_Log(ctx, "warning",
-						"Invalid argument '%s' for node_creation_buffer, expected 'yes' or 'no'", maintain_node_buffer);
-		return REDISMODULE_ERR;
-	}
-	return REDISMODULE_OK;
-}
-
-static int _Config_SetPrioritizeMemory(RedisModuleCtx *ctx, RedisModuleString *buffer_str) {
-	const char *prioritize_memory = RedisModule_StringPtrLen(buffer_str, NULL);
-	if(!strcasecmp(prioritize_memory, "yes")) {
+static int _Config_SetPrioritizeMemory(RedisModuleString *arg) {
+	bool prioritize_memory;
+	if(_Config_ParseYesNoChoice(arg, &prioritize_memory) != REDISMODULE_OK) return REDISMODULE_ERR;
+	if(prioritize_memory) {
 		config.maintain_transposed_matrices = false;
 		config.node_creation_buffer = false;
-	} else if(!strcasecmp(prioritize_memory, "no")) {
+	} else {
 		config.maintain_transposed_matrices = true;
 		config.node_creation_buffer = true;
-	} else {
-		// Exit with error if argument was not "yes" or "no".
-		RedisModule_Log(ctx, "warning",
-						"Invalid argument '%s' for prioritize_memory, expected 'yes' or 'no'", prioritize_memory);
-		return REDISMODULE_ERR;
 	}
 	return REDISMODULE_OK;
 }
 
 // Initialize every module-level configuration to its default value.
-static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
+static void _Config_SetToDefaults(void) {
 	// The thread pool's default size is equal to the system's number of cores.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_count = (CPUCount != -1) ? CPUCount : 1;
@@ -183,49 +87,34 @@ static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	#ifdef MEMCHECK
 		// Disable async delete during memcheck.
 		config.async_delete = false;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
+		RedisModule_Log(NULL, "notice", "Graph deletion will be done synchronously.");
 	#else
 		// Always perform async delete when no checking for memory issues.
 		config.async_delete = true;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
+		RedisModule_Log(NULL, "notice", "Graph deletion will be done asynchronously.");
 	#endif
 	config.node_creation_buffer = true;
 	config.cache_size = CACHE_SIZE_DEFAULT;
 	config.maintain_transposed_matrices = true;
 }
 
-static void _Config_LogSettings(RedisModuleCtx *ctx) {
-	// Log the virtual key entity threshold.
-	RedisModule_Log(ctx, "notice", "Max number of entities per graph meta key set to %lld.",
-					config.vkey_entity_count);
+// Parse configurations that modify multiple settings.
+static int _Config_ParseUmbrellaConfigs(RedisModuleString **argv, int argc) {
+	for(int cur = 0; cur < argc; cur += 2) {
+		// Each configuration is a key-value pair.
+		const char *param = RedisModule_StringPtrLen(argv[cur], NULL);
+		RedisModuleString *val = argv[cur + 1];
 
-	if(config.maintain_transposed_matrices) {
-		RedisModule_Log(ctx, "notice", "Maintaining transposed copies of relationship matrices.");
-	} else {
-		RedisModule_Log(ctx, "notice", "Not maintaining transposed copies of relationship matrices.");
+		if(!(strcasecmp(param, PRIORITIZE_MEMORY))) {
+			if(_Config_SetPrioritizeMemory(val) != REDISMODULE_OK) return REDISMODULE_ERR;
+		}
 	}
 
-	if(config.node_creation_buffer) {
-		RedisModule_Log(ctx, "notice", "Maintaining node creation buffer");
-	} else {
-		RedisModule_Log(ctx, "notice", "Not maintaining node creation buffer");
-	}
-
-	// Log the cache size.
-	RedisModule_Log(ctx, "notice", "Cache size is set to %lld.", config.cache_size);
+	return REDISMODULE_OK;
 }
 
-int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	// Initialize the configuration to its default values.
-	_Config_SetToDefaults(ctx);
-
-	if(argc % 2) {
-		// Emit an error if we received an odd number of arguments, as this indicates an invalid configuration.
-		RedisModule_Log(ctx, "warning",
-						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
-		return REDISMODULE_ERR;
-	}
-
+// Parse all single configurations.
+static int _Config_ParseConfigs(RedisModuleString **argv, int argc) {
 	int res = REDISMODULE_OK;
 	for(int cur = 0; cur < argc; cur += 2) {
 		// Each configuration is a key-value pair.
@@ -234,24 +123,33 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 		if(!strcasecmp(param, THREAD_COUNT)) {
 			// User defined size of thread pool.
-			res = _Config_SetThreadCount(ctx, val);
+			int cpu_count = config.thread_count;
+			res = _Config_ParsePositiveInteger(val, &config.thread_count);
+			if(config.thread_count > cpu_count) {
+				// Emit notice but do not fail if the specified thread count is greater than the system's
+				// number of cores (which is already set as the default value).
+				RedisModule_Log(NULL, "notice", "Number of threads: %d greater then number of cores: %d.",
+								config.thread_count, cpu_count);
+			}
 		} else if(!strcasecmp(param, OMP_THREAD_COUNT)) {
 			// User defined maximum number of OpenMP threads.
-			res = _Config_SetOMPThreadCount(ctx, val);
+			res = _Config_ParsePositiveInteger(val, &config.omp_thread_count);
 		} else if(!strcasecmp(param, VKEY_MAX_ENTITY_COUNT)) {
 			// User defined maximum number of entities per virtual key.
-			res = _Config_SetVirtualKeyEntitiesThreshold(ctx, val);
+			res = _Config_ParsePositiveInteger(val, &config.vkey_entity_count);
 		} else if(!strcasecmp(param, MAINTAIN_TRANSPOSED_MATRICES)) {
 			// User specified whether or not to maintain transposed matrices.
-			res = _Config_BuildTransposedMatrices(ctx, val);
+			res = _Config_ParseYesNoChoice(val, &config.maintain_transposed_matrices);
 		} else if(!(strcasecmp(param, CACHE_SIZE))) {
-			res = _Config_SetCacheSize(ctx, val);
+			// User defined query cache size.
+			res = _Config_ParsePositiveInteger(val, &config.cache_size);
 		} else if(!(strcasecmp(param, NODE_CREATION_BUFFER))) {
-			res = _Config_MaintainNodeCreationBuffer(ctx, val);
+			// User-defined toggle to maintain node creation buffer.
+			res = _Config_ParseYesNoChoice(val, &config.node_creation_buffer);
 		} else if(!(strcasecmp(param, PRIORITIZE_MEMORY))) {
-			res = _Config_SetPrioritizeMemory(ctx, val);
+			continue; // Already processed umbrella parameters.
 		} else {
-			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
+			RedisModule_Log(NULL, "warning", "Encountered unknown module argument '%s'", param);
 			return REDISMODULE_ERR;
 		}
 
@@ -259,8 +157,48 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		if(res != REDISMODULE_OK) return res;
 	}
 
-	_Config_LogSettings(ctx);
-	return res;
+	return REDISMODULE_OK;
+}
+
+static void _Config_LogSettings(void) {
+	// Log the virtual key entity threshold.
+	RedisModule_Log(NULL, "notice", "Max number of entities per graph meta key set to %lld.",
+					config.vkey_entity_count);
+
+	if(config.maintain_transposed_matrices) {
+		RedisModule_Log(NULL, "notice", "Maintaining transposed copies of relationship matrices.");
+	} else {
+		RedisModule_Log(NULL, "notice", "Not maintaining transposed copies of relationship matrices.");
+	}
+
+	if(config.node_creation_buffer) {
+		RedisModule_Log(NULL, "notice", "Maintaining node creation buffer");
+	} else {
+		RedisModule_Log(NULL, "notice", "Not maintaining node creation buffer");
+	}
+
+	// Log the cache size.
+	RedisModule_Log(NULL, "notice", "Cache size is set to %lld.", config.cache_size);
+}
+
+int Config_Init(RedisModuleString **argv, int argc) {
+	// Initialize the configuration to its default values.
+	_Config_SetToDefaults();
+
+	if(argc % 2) {
+		// Emit an error if we received an odd number of arguments, as this indicates an invalid configuration.
+		RedisModule_Log(NULL, "warning",
+						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
+		return REDISMODULE_ERR;
+	}
+
+
+	if(_Config_ParseUmbrellaConfigs(argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+	if(_Config_ParseConfigs(argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+
+	_Config_LogSettings();
+
+	return REDISMODULE_OK;
 }
 
 inline int Config_GetThreadCount() {

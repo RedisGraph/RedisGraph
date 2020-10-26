@@ -75,7 +75,7 @@ struct Graph {
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
-	size_t matrix_dims;                 // The dimensions all matrices should be sized to.
+	size_t matrix_dims;                 // The dimensions all matrices should be sized to NxN.
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
 };
 

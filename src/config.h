@@ -8,21 +8,21 @@
 
 #include <stdbool.h>
 #include "redismodule.h"
-#define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
+#define VKEY_ENTITY_COUNT_UNLIMITED UINT_MAX
 
 typedef struct {
-	int thread_count;                  // Thread count for thread pool.
+	uint cache_size;                   // The cache size for each thread, per graph.
+	uint thread_count;                  // Thread count for thread pool.
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
-	uint64_t cache_size;               // The cache size for each thread, per graph.
-	int omp_thread_count;              // Maximum number of OpenMP threads.
+	uint omp_thread_count;             // Maximum number of OpenMP threads.
+	uint vkey_entity_count;            // The limit of number of entities encoded at once for each RDB key.
 	bool node_creation_buffer;         // If true, size matrices to accommodate future node creations.
-	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 } RG_Config;
 
 // Set module-level configurations to defaults or to user arguments where provided.
 // Returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
-int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Config_Init(RedisModuleString **argv, int argc);
 
 // Return the module thread pool size.
 int Config_GetThreadCount(void);

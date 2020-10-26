@@ -113,7 +113,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	_PrepareModuleGlobals(ctx, argv, argc);
 
 	// Set up the module's configurable variables, using user-defined values where provided.
-	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+	if(Config_Init(argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
@@ -126,7 +126,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
 	// Initialize array of command contexts
-	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
+	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx *));
 
 	int ompThreadCount = Config_GetOMPThreadCount();
 	if(GxB_set(GxB_NTHREADS, ompThreadCount) != GrB_SUCCESS) {
