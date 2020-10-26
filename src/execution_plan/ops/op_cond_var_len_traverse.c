@@ -117,6 +117,14 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		if(op->r) OpBase_DeleteRecord(op->r);
 		op->r = childRecord;
 
+		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
+		if(srcNode == NULL) {
+			/* The child Record may not contain the source node in scenarios like
+			 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+			OpBase_DeleteRecord(childRecord);
+			continue;
+		}
+
 		// Create edge relation type array on first call to consume.
 		if(!op->edgeRelationTypes) {
 			_setupTraversedRelations(op);
@@ -128,7 +136,6 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		}
 
 		Node *destNode = NULL;
-		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		// The destination node is known in advance if we're performing an ExpandInto.
 		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
