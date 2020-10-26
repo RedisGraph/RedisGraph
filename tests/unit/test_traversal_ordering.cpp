@@ -57,6 +57,7 @@ class TraversalOrderingTest: public ::testing::Test {
 
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
+        AR_RegisterFuncs();
 	}
 
 	/* Build a truth table as a 1-dimensional boolean array.
@@ -87,8 +88,7 @@ class TraversalOrderingTest: public ::testing::Test {
 
 	QueryGraph *build_query_graph_from_query(const char *query) {
 		AST *ast = _build_ast(query);
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		return BuildQueryGraph(gc, ast);
+		return BuildQueryGraph(ast);
 	}
 
 	bool *build_combination_table(int node_count) {
@@ -114,10 +114,10 @@ class TraversalOrderingTest: public ::testing::Test {
 
 	bool compare_algebraic_expression(AlgebraicExpression *a, AlgebraicExpression *b) {
 		if(a->type != b->type) return false;;
-		if(AlgebraicExpression_ChildCount(a) !=  AlgebraicExpression_ChildCount(b));
-		if(AlgebraicExpression_OperandCount(a) != AlgebraicExpression_OperandCount(b));
+		if(AlgebraicExpression_ChildCount(a) !=  AlgebraicExpression_ChildCount(b)) return false;
+		if(AlgebraicExpression_OperandCount(a) != AlgebraicExpression_OperandCount(b)) return false;
 		// ASSERT_EQ(AlgebraicExpression_OperationCount(a, AL_EXP_ALL), AlgebraicExpression_OperationCount(b, AL_EXP_ALL));
-		if(a->type == AL_OPERAND) _compare_algebraic_operand(a, b);
+		if(a->type == AL_OPERAND) return _compare_algebraic_operand(a, b);
 
 		uint child_count = AlgebraicExpression_ChildCount(a);
 		for(uint i = 0; i < child_count; i++) {
@@ -135,10 +135,10 @@ class TraversalOrderingTest: public ::testing::Test {
 	}
 
 	void assert_valid_permutation(AlgebraicExpression **actual_permutation,
-								  AlgebraicExpression **expected_permutations[], uint permutation_length, uint permutations_count) {
+								  AlgebraicExpression **expected_permutations, uint permutation_length, uint permutations_count) {
 		bool res = false;
 		for(uint i = 0; i < permutations_count; i++) {
-			res |= compare_algebraic_expressions(actual_permutation, expected_permutations[i],
+			res |= compare_algebraic_expressions(actual_permutation, expected_permutations +i*permutation_length,
 												 permutation_length);
 		}
 		ASSERT_TRUE(res);
@@ -253,21 +253,23 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QueryGraph_Free(qg);
 }
 
-TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
+TEST_F(TraversalOrderingTest, TwoOptimalArrangements) {
 	/* Given the set of algebraic expressions:
 	 * { [AB], [BC], [BD] }
 	 * We represent the traversal:
 	 * (A:L {v: 1})->(B)->(C), (B)->(D:L {v: 1})
 	 * The optimal order of traversals should always be:
-	 * { [AB], [BD], [BC] }
+	 * { 
+     *      {[AB], [BC], [BD]}
+     *      {[BC]', [AB]', [BD]}
+     *  }
 	 * Validate this for all input permutations.
 	 */
 
 	FT_FilterNode *filters;
 	char *query = "MATCH (A:L {v: 1})-->(B)-->(C), (B)-->(D:L {v: 1}) RETURN 1";
 	AST *ast = _build_ast(query);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	QueryGraph *qg = BuildQueryGraph(gc, ast);
+	QueryGraph *qg = BuildQueryGraph(ast);
 
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
 
@@ -281,9 +283,9 @@ TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
 	filters = build_filter_tree_from_query(
 				  "MATCH (A:L {v: 1})-[]->(B)-[]->(C), (B)-[]->(D:L {v: 1})) RETURN *");
 
-	AlgebraicExpression *expected[2][3] = {
-		{ExpAB, ExpBC, ExpBD},
-		{TBC, TAB, ExpBD}
+	AlgebraicExpression *expected[] = {
+		ExpAB, ExpBC, ExpBD,
+		TBC, TAB, ExpBD
 	};
 
 	AlgebraicExpression *set[3] = {ExpAB, ExpBC, ExpBD};
@@ -298,8 +300,8 @@ TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
 
 	// Clean up.
 	FilterTree_Free(filters);
-	AlgebraicExpression_Free(ExpAB);
-	AlgebraicExpression_Free(ExpBC);
+	AlgebraicExpression_Free(TAB);
+	AlgebraicExpression_Free(TBC);
 	AlgebraicExpression_Free(ExpBD);
 	QueryGraph_Free(qg);
 }
@@ -313,8 +315,7 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 
 	char *query = "MATCH (A)-->(B)-->(C)-->(D), (D)-->(A), (B)-->(D) RETURN 1";
 	AST *ast = _build_ast(query);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	QueryGraph *qg = BuildQueryGraph(gc, ast);
+	QueryGraph *qg = BuildQueryGraph(ast);
 	QGNode **nodes = qg->nodes;
 
 	// Generate the set of AlgebraicExpressions.
