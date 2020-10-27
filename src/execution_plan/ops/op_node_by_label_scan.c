@@ -47,7 +47,7 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 	UnsignedRange_Free(op->id_range);
 	op->id_range = UnsignedRange_Clone(id_range);
 
-	op->op.type = OpType_NODE_BY_LABEL_AND_ID_SCAN;
+	op->op.type = OPType_NODE_BY_LABEL_AND_ID_SCAN;
 	op->op.name = "Node By Label and ID Scan";
 }
 

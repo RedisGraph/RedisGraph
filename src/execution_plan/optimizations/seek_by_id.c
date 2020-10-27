@@ -13,6 +13,7 @@
 #include "../ops/op_node_by_label_scan.h"
 #include "../../util/range/numeric_range.h"
 #include "../../arithmetic/arithmetic_op.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *reverse) {
 	if(f->t != FT_N_PRED) return false;

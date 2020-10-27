@@ -187,12 +187,10 @@ class testOptimizationsPlan(FlowTestsBase):
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected
 
-        # Validate identical results in a query that doesn't leverage this optimization.
-        # TODO this query could in the future be optimized with a "Node Hash Join"
         query = """MATCH (p1:person)-[:know]->({name: 'Roi'}) MATCH (p2)-[]->(:person {name: 'Alon'}) WHERE p1 = p2 RETURN p2.name ORDER BY p2.name"""
         executionPlan = graph.execution_plan(query)
-        self.env.assertNotIn("Value Hash Join", executionPlan)
-        self.env.assertIn("Cartesian Product", executionPlan)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
 
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected
@@ -354,3 +352,50 @@ class testOptimizationsPlan(FlowTestsBase):
                     [14, 0, 2],
                     [14, 0, 3]]
         self.env.assertEqual(resultset, expected)
+
+    # Test limit propagation, execution-plan operations such as
+    # conditional traverse accumulate a batch of records before processing
+    # knowladge about limit can benifit such operation as they can reduce
+    # their batch size to match the current limit.
+    def test23_limit_propagation(self):
+        graph_id = "limit-propagation"
+        graph = Graph(graph_id, redis_con)
+
+        # create graph
+        query = """UNWIND range(0, 64) AS x CREATE ()-[:R]->()-[:R]->()"""
+        graph.query(query)
+
+        # query with LIMIT 1
+        query = """CYPHER l=1 MATCH (a)-[]->(b) WITH b AS b
+        MATCH (b)-[]->(c) RETURN c LIMIT $l"""
+
+        # profile query
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = [x[0:x.index(',')].strip() for x in profile]
+
+        # make sure 'a' to 'b' traversal operation is aware of limit
+        self.env.assertIn("Conditional Traverse | (a)->(b) | Records produced: 1", profile)
+
+        # query with LIMIT 1
+        query = """CYPHER l=1 MATCH (a), (b) WITH a AS a, b AS b
+        MATCH (a)-[]->(b) WITH b AS b MATCH (b)-[]->(c) RETURN c LIMIT $l"""
+
+        # profile query
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = [x[0:x.index(',')].strip() for x in profile]
+
+        # make sure 'a' to 'b' expand into traversal operation is aware of limit
+        self.env.assertIn("Expand Into | (a)->(b) | Records produced: 1", profile)
+
+        # aggregation should reset limit, otherwise we'll take a performance hit
+        # recall aggregation operations are eager
+        query = """CYPHER l=1 MATCH (a)-[]->(b) WITH count(a) AS src, b AS b
+        MATCH (b)-[]->(c) RETURN c LIMIT $l"""
+
+        # profile query
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = [x[0:x.index(',')].strip() for x in profile]
+
+        # traversal from a to b shouldn't be effected by the limit.
+        self.env.assertNotIn("Conditional Traverse | (a)->(b) | Records produced: 64", profile)
+

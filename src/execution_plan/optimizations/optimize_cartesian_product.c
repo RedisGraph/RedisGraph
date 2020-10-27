@@ -9,6 +9,7 @@
 #include "../ops/op_cartesian_product.h"
 #include "../../util/rax_extensions.h"
 #include "../../util/qsort.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 #define FilterCtx_LT(a ,b) ((raxSize((a)->entities)) < (raxSize((b)->entities)))
 
@@ -140,3 +141,4 @@ void reduceCartesianProductStreamCount(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
+

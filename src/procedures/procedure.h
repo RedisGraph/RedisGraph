@@ -47,4 +47,3 @@ bool Proc_ReadOnly(const char *proc_name);
 
 // Free procedure context.
 void Proc_Free(ProcedureCtx *proc);
-
