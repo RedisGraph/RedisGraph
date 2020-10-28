@@ -7,17 +7,17 @@
 #include "reduce_traversal.h"
 
 #include "../../util/arr.h"
-#include "../../util/vector.h"
 #include "../../util/strcmp.h"
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 static inline bool _isInSubExecutionPlan(OpBase *op) {
 	return ExecutionPlan_LocateOp(op, OPType_ARGUMENT) != NULL;
 }
 
-static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
+static void _removeRedundantTraversal(ExecutionPlan *plan, OpCondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
 	if(AlgebraicExpression_OperandCount(ae) == 1 &&
 	   !RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae))) {
@@ -38,13 +38,13 @@ void reduceTraversal(ExecutionPlan *plan) {
 	/* Keep track of redundant traversals which will be removed
 	 * once we'll inspect every traversal operation. */
 	uint redundantTraversalsCount = 0;
-	CondTraverse *redundantTraversals[traversals_count];
+	OpCondTraverse *redundantTraversals[traversals_count];
 
 	for(uint i = 0; i < traversals_count; i++) {
 		OpBase *op = traversals[i];
 		AlgebraicExpression *ae;
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
-			CondTraverse *traverse = (CondTraverse *)op;
+			OpCondTraverse *traverse = (OpCondTraverse *)op;
 			ae = traverse->ae;
 		} else if(op->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE) {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
@@ -80,7 +80,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		/* Both src and dest are already known
 		 * perform expand into instead of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
-			CondTraverse *traverse = (CondTraverse *)op;
+			OpCondTraverse *traverse = (OpCondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;
 			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae);
 
@@ -103,7 +103,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 				t = op->children[0];
 				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.
-					redundantTraversals[redundantTraversalsCount++] = (CondTraverse *)t;
+					redundantTraversals[redundantTraversalsCount++] = (OpCondTraverse *)t;
 				}
 			}
 			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph,
@@ -112,7 +112,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 				t = op->parent;
 				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.
-					redundantTraversals[redundantTraversalsCount++] = (CondTraverse *)t;
+					redundantTraversals[redundantTraversalsCount++] = (OpCondTraverse *)t;
 				}
 			}
 		}

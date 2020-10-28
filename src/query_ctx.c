@@ -5,10 +5,10 @@
 */
 
 #include "query_ctx.h"
+#include "RG.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
-#include <assert.h>
 
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -47,7 +47,8 @@ bool QueryCtx_Init(void) {
 }
 
 void QueryCtx_Finalize(void) {
-	assert(pthread_key_delete(_tlsQueryCtxKey));
+	int res = pthread_key_delete(_tlsQueryCtxKey);
+	ASSERT(res == 0);
 }
 
 void QueryCtx_BeginTimer(void) {
@@ -115,7 +116,7 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->query_data.ast);
+	ASSERT(ctx->query_data.ast);
 	return ctx->query_data.ast;
 }
 
@@ -127,7 +128,7 @@ rax *QueryCtx_GetParams(void) {
 
 GraphContext *QueryCtx_GetGraphCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->gc);
+	ASSERT(ctx->gc);
 	return ctx->gc;
 }
 

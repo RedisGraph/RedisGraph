@@ -47,7 +47,7 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 	UnsignedRange_Free(op->id_range);
 	op->id_range = UnsignedRange_Clone(id_range);
 
-	op->op.type = OpType_NODE_BY_LABEL_AND_ID_SCAN;
+	op->op.type = OPType_NODE_BY_LABEL_AND_ID_SCAN;
 	op->op.name = "Node By Label and ID Scan";
 }
 
@@ -77,6 +77,8 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
 	}
+	// Resolve label ID at runtime.
+	op->n.label_id = schema->id;
 
 	// The iterator build may fail if the ID range does not match the matrix dimensions.
 	GrB_Info iterator_built = _ConstructIterator(op, schema);
@@ -93,7 +95,6 @@ static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_i
 	// Populate the Record with the graph entity data.
 	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
 	Graph_GetNode(op->g, node_id, &n);
-	// Get a pointer to the node's allocated space within the Record.
 	Record_AddNode(r, op->nodeRecIdx, n);
 }
 

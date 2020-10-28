@@ -5,12 +5,13 @@
  */
 
 #include "./reduce_scans.h"
-#include "../../util/arr.h"
-#include "../ops/op_conditional_traverse.h"
-#include "../ops/op_node_by_label_scan.h"
 #include "../ops/op_filter.h"
-#include <assert.h>
+#include "../ops/op_node_by_label_scan.h"
+#include "../ops/op_conditional_traverse.h"
+#include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../execution_plan_build/execution_plan_modify.h"
+#include <assert.h>
 
 static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 	Graph *g = QueryCtx_GetGraph();

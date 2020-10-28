@@ -36,6 +36,22 @@ $ redis-server --loadmodule ./redisgraph.so THREAD_COUNT 4
 
 ---
 
+## CACHE_SIZE
+
+The max number of queries for RedisGraph to cache. When a new query is encountered and the cache is full, meaning the cache has reached the size of `CACHE_SIZE`, it will evict the least recently used (LRU) entry.
+
+### Default
+
+`CACHE_SIZE` default value is 25.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so CACHE_SIZE 10
+```
+
+---
+
 ## OMP_THREAD_COUNT
 
 The maximum number of threads that OpenMP may use for computation. These threads are used for parallelizing GraphBLAS computations, so may be considered to control concurrency within the execution of individual queries.

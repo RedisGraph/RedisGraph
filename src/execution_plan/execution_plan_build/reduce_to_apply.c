@@ -1,9 +1,11 @@
-#include "execution_plan.h"
-#include "ops/ops.h"
-#include "../query_ctx.h"
-#include "../ast/ast_mock.h"
-#include "../util/rax_extensions.h"
-#include "./optimizations/optimizer.h"
+#include "execution_plan_construct.h"
+#include "execution_plan_modify.h"
+#include "../execution_plan.h"
+#include "../ops/ops.h"
+#include "../../query_ctx.h"
+#include "../../ast/ast_mock.h"
+#include "../../util/rax_extensions.h"
+#include "../optimizations/optimizer.h"
 
 /* Swap operation on operation children. If two valid indices, a and b, are given, this operation
  * swap the child in index a with the child in index b. */
@@ -42,9 +44,11 @@ static OpBase *_ApplyOpFromPathExpression(ExecutionPlan *plan, const char **vars
 	return op_semi_apply;
 }
 
-/* This method reduces a filter tree into an OpBase. The method perfrom post-order traversal over the
- * filter tree, and checks if the current subtree rooted at the visited node contains path filter or not,
- * and either reduces the root or continue traversal and reduction.
+/* This method reduces a filter tree into an OpBase.
+ * The method perfrom post-order traversal over the filter tree,
+ * and checks if the current subtree rooted at the visited node
+ * contains path filter or not, and either reduces the root 
+ * or continue traversal and reduction.
  * The three possible operations could be:
  * 1. OpFilter - In the case the subtree originated from the root does not contains any path filters.
  * 2. OpSemiApply - In case of the current root is an expression which contains a path filter.
@@ -90,8 +94,9 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
 	// Collect the variable names from bound_vars to populate the Argument ops we will build.
 	const char **vars = (const char **)raxValues(bound_vars);
 
+	ExecutionPlan *filter_plan = (ExecutionPlan *)filter->op.plan;
 	// Reduce.
-	OpBase *apply_op = _ReduceFilterToOp(plan, vars, filter->filterTree);
+	OpBase *apply_op = _ReduceFilterToOp(filter_plan, vars, filter->filterTree);
 	// Replace operations.
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)filter, apply_op);
 	// Bounded branch is now the last child (after ops replacement). Make it the first.

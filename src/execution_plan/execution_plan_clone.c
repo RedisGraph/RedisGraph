@@ -8,6 +8,7 @@
 #include "../RG.h"
 #include "../query_ctx.h"
 #include "../util/rax_extensions.h"
+#include "execution_plan_build/execution_plan_modify.h"
 
 static ExecutionPlan *_ClonePlanInternals(const ExecutionPlan *template) {
 	ExecutionPlan *clone = ExecutionPlan_NewEmptyExecutionPlan();

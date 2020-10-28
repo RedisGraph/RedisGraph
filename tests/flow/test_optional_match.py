@@ -225,3 +225,43 @@ class testOptionalFlow(FlowTestsBase):
                            ['v3', None],
                            ['v4', None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Make sure highly connected nodes aren't lost
+    def test18_optional_over_intermidate(self):
+        global redis_graph
+        query = """MATCH (a)-[]->(b)-[]->(c) OPTIONAL MATCH (b)-[]->(c) RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        # Expecting to find "Expand Into" operation as both 'b' and 'c'
+        # are bounded, which means 'b' is treated as an intermidate node
+        # that needs to be tracked.
+        self.env.assertIn("Expand Into", plan)
+
+    # Validate that filters are created properly when OPTIONAL MATCH is the first clause.
+    def test19_leading_optional_match(self):
+        global redis_graph
+        query = """MATCH (n) WHERE n.v = 'v1' RETURN n.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Validate that path filters on OPTIONAL MATCH clauses are constructed properly.
+    def test20_optional_path_filter(self):
+        global redis_graph
+        query = """MATCH (n {v: 'v1'}) OPTIONAL MATCH (m:L)-[]->() WHERE (n)--() RETURN n.v, m.v ORDER BY n.v, m.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (n) OPTIONAL MATCH (m {v:'v1'})--() WHERE (n)--() RETURN n.v, m.v ORDER BY n.v, m.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v2', 'v1'],
+                           ['v3', 'v1'],
+                           ['v4', None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """OPTIONAL MATCH (n {v: 'v1'}) OPTIONAL MATCH (m {v: 'v2'}) WHERE (n)--(m) RETURN n.v, m.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

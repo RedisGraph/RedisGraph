@@ -24,11 +24,20 @@ static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 QGNode *QGNode_New(const char *alias) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
 	n->label = NULL;
-	n->labelID = GRAPH_NO_LABEL;
 	n->alias = alias;
+	n->highly_connected = false;
+	n->labelID = GRAPH_NO_LABEL;
 	n->incoming_edges = array_new(QGEdge *, 0);
 	n->outgoing_edges = array_new(QGEdge *, 0);
 	return n;
+}
+
+bool QGNode_HighlyConnected(const QGNode *n) {
+	return n->highly_connected;
+}
+
+int QGNode_Degree(const QGNode *n) {
+	return QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n);
 }
 
 int QGNode_IncomeDegree(const QGNode *n) {
@@ -46,6 +55,16 @@ int QGNode_EdgeCount(const QGNode *n) {
 void QGNode_ConnectNode(QGNode *src, QGNode *dest, QGEdge *e) {
 	src->outgoing_edges = array_append(src->outgoing_edges, e);
 	dest->incoming_edges = array_append(dest->incoming_edges, e);
+
+	// Set src node as highly connected if in-degree + out-degree > 2
+	if(src->highly_connected == false && QGNode_Degree(src) > 2) {
+		src->highly_connected = true;
+	}
+
+	// Set dest node as highly connected if in-degree + out-degree > 2
+	if(dest->highly_connected == false && QGNode_Degree(dest) > 2) {
+		dest->highly_connected = true;
+	}
 }
 
 void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e) {
@@ -58,9 +77,7 @@ void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e) {
 
 QGNode *QGNode_Clone(const QGNode *orig) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
-	n->label = orig->label;
-	n->labelID = orig->labelID;
-	n->alias = orig->alias;
+	memcpy(n, orig, sizeof(QGNode));
 	// Don't save edges when duplicating a node
 	n->incoming_edges = array_new(QGEdge *, 0);
 	n->outgoing_edges = array_new(QGEdge *, 0);
@@ -87,3 +104,4 @@ void QGNode_Free(QGNode *node) {
 
 	rm_free(node);
 }
+

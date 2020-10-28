@@ -7,17 +7,19 @@
 #include "bulk_insert.h"
 #include "../schema/schema.h"
 #include "../util/rmalloc.h"
+#include "../datatypes/array.h"
 #include <errno.h>
 #include <assert.h>
 
 // The first byte of each property in the binary stream
 // is used to indicate the type of the subsequent SIValue
 typedef enum {
-	BI_NULL,
-	BI_BOOL,
-	BI_DOUBLE,
-	BI_STRING,
-	BI_LONG
+	BI_NULL = 0,
+	BI_BOOL = 1,
+	BI_DOUBLE = 2,
+	BI_STRING = 3,
+	BI_LONG = 4,
+	BI_ARRAY = 5,
 } TYPE;
 
 // Read the header of a data stream to parse its property keys and update schemas.
@@ -61,8 +63,10 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 	 * - property type : 1-byte integer corresponding to TYPE enum
 	 * - Nothing if type is NULL
 	 * - 1-byte true/false if type is boolean
-	 * - 8-byte double if type is numeric
+	 * - 8-byte double if type is double
+	 * - 8-byte integer if type is integer
 	 * - Null-terminated C string if type is string
+	 * - 8-byte array length followed by N values if type is array
 	 */
 	SIValue v;
 	TYPE t = data[*data_idx];
@@ -86,6 +90,15 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 		*data_idx += strlen(s) + 1;
 		// The string itself will be cloned when added to the GraphEntity properties.
 		v = SI_ConstStringVal((char *)s);
+	} else if(t == BI_ARRAY) {
+		// The first 8 bytes of a received array will be the array length.
+		int64_t len = *(int64_t *)&data[*data_idx];
+		*data_idx += sizeof(int64_t);
+		v = SIArray_New(len);
+		for(uint i = 0; i < len; i ++) {
+			// Convert every element and add to array.
+			SIArray_Append(&v, _BulkInsert_ReadProperty(data, data_idx));
+		}
 	} else {
 		assert(0);
 	}
