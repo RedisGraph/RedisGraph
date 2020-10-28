@@ -47,48 +47,6 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	}
 }
 
-// Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
-static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeout) {
-	ASSERT(command_ctx);
-	ASSERT(compact);
-	ASSERT(timeout);
-
-	// set defaults
-	*timeout = 0;      // no timeout
-	*compact = false;  // verbose
-
-	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
-	// make sure we've got more than 3 arguments
-	if(command_ctx->argc <= 3) return REDISMODULE_OK;
-
-	// scan arguments
-	for(int i = 3; i < command_ctx->argc; i++) {
-		const char *arg = RedisModule_StringPtrLen(command_ctx->argv[i], NULL);
-
-		// compact result-set
-		if(!strcasecmp(arg, "--compact")) {
-			*compact = true;
-			continue;
-		}
-
-		// query timeout
-		if(!strcasecmp(arg, "timeout")) {
-			int err = REDISMODULE_ERR;
-			if(i < command_ctx->argc - 1) {
-				i++; // Set the current argument to the timeout value.
-				err = RedisModule_StringToLongLong(command_ctx->argv[i], timeout);
-			}
-
-			// Emit error on missing, negative, or non-numeric timeout values.
-			if(err != REDISMODULE_OK || *timeout < 0) {
-				QueryCtx_SetError("Failed to parse query timeout value");
-				return REDISMODULE_ERR;
-			}
-		}
-	}
-	return REDISMODULE_OK;
-}
-
 inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
