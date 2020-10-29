@@ -47,16 +47,7 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	}
 
 	uint child_count = cypher_astnode_nchildren(node);
-
-	/* In case current node is of type projection
-	 * inspect first child only,
-	 * @10  20..26  > > > projection           expression=@11, alias=@14
-	 * @11  20..26  > > > > apply              @12(@13)
-	 * @12  20..23  > > > > > function name    `max`
-	 * @13  24..25  > > > > > identifier       `z`
-	 * @14  20..26  > > > > identifier         `max(z)` */
 	cypher_astnode_type_t type = cypher_astnode_type(node);
-	if(type == CYPHER_AST_PROJECTION) child_count = 1;
 
 	/* In case current node is of type CALL
 	 * Process procedure call arguments, those should be defined prior
@@ -70,6 +61,15 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		}
 		return;
 	}
+
+	/* In case current node is of type projection
+	 * inspect first child only,
+	 * @10  20..26  > > > projection           expression=@11, alias=@14
+	 * @11  20..26  > > > > apply              @12(@13)
+	 * @12  20..23  > > > > > function name    `max`
+	 * @13  24..25  > > > > > identifier       `z`
+	 * @14  20..26  > > > > identifier         `max(z)` */
+	if(type == CYPHER_AST_PROJECTION) child_count = 1;
 
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
