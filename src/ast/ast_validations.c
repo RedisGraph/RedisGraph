@@ -5,15 +5,15 @@
  */
 
 #include "ast.h"
+#include "../RG.h"
 #include "ast_shared.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "cypher_whitelist.h"
+#include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
-#include <assert.h>
-#include "../util/rax_extensions.h"
-#include "../query_ctx.h"
 
 // Forward declaration
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
@@ -25,7 +25,7 @@ inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 
 // Validate that an input string can be completely converted to a positive integer in range.
 static inline AST_Validation _ValidatePositiveInteger(const char *input) {
-	assert(input);
+	ASSERT(input);
 	char *endptr; // If the entire string is converted, endptr will point to a null byte
 	errno = 0; // If underflow or overflow occurs, errno will be set
 
@@ -38,11 +38,12 @@ static inline AST_Validation _ValidatePositiveInteger(const char *input) {
 
 static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
-	assert(identifiers);
+	ASSERT(identifiers != NULL);
 
 	if(cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(node);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+		return;
 	}
 
 	uint child_count = cypher_astnode_nchildren(node);
@@ -57,6 +58,19 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 	if(type == CYPHER_AST_PROJECTION) child_count = 1;
 
+	/* In case current node is of type CALL
+	 * Process procedure call arguments, those should be defined prior
+	 * to the procedure call.
+	 * Outputs are not refering to previous identifiers */
+	if(type == CYPHER_AST_CALL) {
+		uint arg_count = cypher_ast_call_narguments(node);
+		for(uint i = 0; i < arg_count; i++) {
+			const cypher_astnode_t *arg = cypher_ast_call_get_argument(node, i);
+			_AST_GetIdentifiers(arg, identifiers);
+		}
+		return;
+	}
+
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		_AST_GetIdentifiers(child, identifiers);
@@ -69,13 +83,12 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		const char *variable = cypher_ast_identifier_get_name(variable_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable), NULL);
 	}
-
 }
 
 static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 	if(!node) return;
 	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
-	assert(aliases);
+	ASSERT(aliases != NULL);
 
 	uint num_with_projections = cypher_ast_with_nprojections(node);
 	for(uint i = 0; i < num_with_projections; i ++) {
@@ -98,7 +111,7 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
-	assert(identifiers);
+	ASSERT(identifiers != NULL);
 
 	uint num_with_projections = cypher_ast_with_nprojections(node);
 	for(uint i = 0; i < num_with_projections; i ++) {
@@ -111,8 +124,8 @@ static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifier
 static void _AST_GetProcCallAliases(const cypher_astnode_t *node, rax *identifiers) {
 	// CALL db.labels() yield label
 	// CALL db.labels() yield label as l
-	assert(node && identifiers);
-	assert(cypher_astnode_type(node) == CYPHER_AST_CALL);
+	ASSERT(node && identifiers);
+	ASSERT(cypher_astnode_type(node) == CYPHER_AST_CALL);
 
 	uint projection_count = cypher_ast_call_nprojections(node);
 	for(uint i = 0; i < projection_count; i++) {
@@ -127,14 +140,14 @@ static void _AST_GetProcCallAliases(const cypher_astnode_t *node, rax *identifie
 			const cypher_astnode_t *exp_node = cypher_ast_projection_get_expression(proj_node);
 			identifier = cypher_ast_identifier_get_name(exp_node);
 		}
-		assert(identifiers);
+		ASSERT(identifiers != NULL);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	}
 }
 
 // UNWIND and WITH also form aliases, but don't need special handling for us yet.
 static void _AST_GetReturnAliases(const cypher_astnode_t *node, rax *aliases) {
-	assert(node && aliases && cypher_astnode_type(node) == CYPHER_AST_RETURN);
+	ASSERT(node && aliases && cypher_astnode_type(node) == CYPHER_AST_RETURN);
 
 	uint num_return_projections = cypher_ast_return_nprojections(node);
 	if(num_return_projections == 0) return;
@@ -489,7 +502,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			for(uint j = 0; j < proj_count; j++) {
 				const cypher_astnode_t *proj = cypher_ast_call_get_projection(call_clause, j);
 				const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(proj);
-				assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				const char *identifier = cypher_ast_identifier_get_name(ast_exp);
 				// Make sure each yield output is mentioned only once.
 				if(!raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL,
@@ -956,7 +969,7 @@ static AST_Validation _ValidateQueryTermination(const AST *ast) {
 static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, rax *identifiers) {
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 	ProcedureCtx *proc = Proc_Get(proc_name);
-	assert(proc);
+	ASSERT(proc != NULL);
 
 	unsigned int output_count = array_len(proc->output);
 	for(uint i = 0; i < output_count; i++) {
@@ -1426,7 +1439,7 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 		if(alias_node == NULL)  {
 			// The projection was not aliased, so the projection itself must be an identifier.
 			alias_node = cypher_ast_projection_get_expression(proj);
-			assert(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
+			ASSERT(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
 		}
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		projections[j] = alias;
@@ -1446,7 +1459,7 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 			if(alias_node == NULL)  {
 				// The projection was not aliased, so the projection itself must be an identifier.
 				alias_node = cypher_ast_projection_get_expression(proj);
-				assert(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
+				ASSERT(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
 			}
 			const char *alias = cypher_ast_identifier_get_name(alias_node);
 			if(strcmp(projections[j], alias) != 0) {
