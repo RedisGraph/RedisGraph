@@ -13,7 +13,7 @@
 typedef struct {
 	int thread_count;                  // Thread count for thread pool.
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
-	uint64_t cache_size;               // The cache size for each thread, per graph.
+	uint64_t cache_size;               // The cache size per graph.
 	int omp_thread_count;              // Maximum number of OpenMP threads.
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.

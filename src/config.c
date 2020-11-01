@@ -11,7 +11,7 @@
 #include "util/redis_version.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
+#define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of cache size per graph.
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
