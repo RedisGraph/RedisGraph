@@ -77,6 +77,9 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 /* Increase execution plan reference count */
 void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan);
 
+/* Decrease execution plan reference count */
+int ExecutionPlan_DecRefCount(ExecutionPlan *plan);
+
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);
 

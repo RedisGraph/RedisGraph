@@ -295,7 +295,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 	// the root operation is OpResults only if the query culminates in a RETURN
 	// or CALL clause
 	_implicit_result(plan);
-
 	// clean up
 	array_free(segments);
 

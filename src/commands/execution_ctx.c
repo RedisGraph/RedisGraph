@@ -81,18 +81,24 @@ ExecutionCtx ExecutionCtx_FromQuery(const char *query) {
 	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
 	// In case of valid query, create execution plan, and cache it and the AST.
 	if(exec_type == EXECUTION_TYPE_QUERY) {
-		plan = NewExecutionPlan();
+		ExecutionPlan *plan_to_cache = NewExecutionPlan();
+		ExecutionPlan_IncreaseRefCount(plan_to_cache);
 		// Created new valid execution context.
-		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan, exec_type);
+		AST *ast_to_cache = AST_ShallowCopy(ast);
+		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast_to_cache, plan_to_cache, exec_type);
+		QueryCtx_SetAST(ast);
 		// Cache execution context.
 		if (Cache_SetValue(cache, query_string, exec_ctx_to_cache)) {
 			// If caching succeeded, clone execution plan and ast that will be used in the current execution.
-			ast = AST_ShallowCopy(ast);
-			QueryCtx_SetAST(ast);
-			plan = ExecutionPlan_Clone(plan);
+			plan = ExecutionPlan_Clone(plan_to_cache);
 		} else {
+			// Execution ctx was already added to cache. Use the execution plan created instead of cloning it, and free the the ast copy.
+			plan = plan_to_cache;
+			AST_Free(ast_to_cache);
 			rm_free(exec_ctx_to_cache);
 		}
+		// If plan_to_cache was evicted
+		ExecutionPlan_Free(plan_to_cache);
 	}
 	ExecutionCtx ctx = {.ast = ast, .plan = plan, .exec_type = exec_type, .cached = false};
 	return ctx;
