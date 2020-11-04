@@ -348,11 +348,14 @@ class testQueryValidationFlow(FlowTestsBase):
     def test23_invalid_constant_filter(self):
         try:
             query = """MATCH (a) WHERE 1 RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
             assert("Expected boolean predicate" in e.message)
             pass
 
     # Referencing a variable before defining it should raise a compile-time error.
-    def test23_reference_before_definition(self):
+    def test24_reference_before_definition(self):
         try:
             query = """MATCH ({prop: reference}) MATCH (reference) RETURN *"""
             redis_graph.query(query)
@@ -363,7 +366,7 @@ class testQueryValidationFlow(FlowTestsBase):
             pass
 
     # Invalid filters in cartesian products should raise errors.
-    def test24_cartesian_product_invalid_filter(self):
+    def test25_cartesian_product_invalid_filter(self):
         try:
             query = """MATCH p1=(), (n), ({prop: p1.path_val}) WHERE null RETURN *"""
             redis_graph.query(query)

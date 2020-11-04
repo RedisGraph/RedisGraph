@@ -11,7 +11,7 @@ void Error_InvalidFilterPlacement(rax *entitiesRax) {
 	raxSeek(&it, "^", NULL, 0);
 	raxNext(&it);
 	// Build invalid entity string on the stack to add null terminator.
-	char *invalid_entity[it.key_len + 1];
+	char invalid_entity[it.key_len + 1];
 	memcpy(invalid_entity, it.key, it.key_len);
 	invalid_entity[it.key_len] = 0;
 	// Emit compile-time error.
