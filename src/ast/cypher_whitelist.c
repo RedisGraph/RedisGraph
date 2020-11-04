@@ -8,6 +8,7 @@
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "rax.h"
 #include <assert.h>
+#include "../errors.h"
 #include "../query_ctx.h"
 
 /* Whitelist of all accepted cypher_astnode types:
@@ -205,7 +206,7 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	cypher_astnode_type_t type = cypher_astnode_type(elem);
 	// Validate the type of the AST node
 	if(raxFind(_astnode_type_whitelist, (unsigned char *)&type, sizeof(type)) == raxNotFound) {
-		QueryCtx_SetError("RedisGraph does not currently support %s", cypher_astnode_typestr(type));
+		Error_UnsupportedType(cypher_astnode_typestr(type));
 		return AST_INVALID;
 	}
 
@@ -221,7 +222,7 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	}
 	if(operator) {
 		if(raxFind(_operator_whitelist, (unsigned char *)operator, sizeof(*operator)) == raxNotFound) {
-			QueryCtx_SetError("RedisGraph does not currently support %s", operator->str);
+			Error_UnsupportedType(operator->str);
 			return AST_INVALID;
 		}
 	}

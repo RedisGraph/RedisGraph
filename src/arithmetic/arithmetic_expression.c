@@ -9,6 +9,7 @@
 #include "../RG.h"
 #include "funcs.h"
 #include "rax.h"
+#include "../errors.h"
 #include "./aggregate.h"
 #include "../util/arr.h"
 #include "./repository.h"
@@ -275,13 +276,10 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 			expected_type = fdesc->types[i];
 		}
 		if(!(actual_type & expected_type)) {
-			const char *actual_type_str = SIType_ToString(actual_type);
-			const char *expected_type_str = SIType_ToString(expected_type);
 			/* TODO extend string-building logic to better express multiple acceptable types, like:
 			 * RETURN 'a' * 2
 			 * "Type mismatch: expected Float, Integer or Duration but was String" */
-			// Set the query-level error.
-			QueryCtx_SetError("Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
+			Error_SITypeMismatch(SIType_ToString(actual_type), SIType_ToString(expected_type));
 			return false;
 		}
 	}

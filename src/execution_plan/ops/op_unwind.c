@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include "op_unwind.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/array.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -42,7 +43,8 @@ static void _initList(OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
 	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 	if(SI_TYPE(new_list) != T_ARRAY) {
-		QueryCtx_SetError("Type mismatch: expected List but was %s", SIType_ToString(op->list.type));
+		Error_SITypeMismatch("List", SIType_ToString(SI_TYPE(new_list)));
+		SIValue_Free(new_list);
 		QueryCtx_RaiseRuntimeException();
 	}
 	// Update the list value.

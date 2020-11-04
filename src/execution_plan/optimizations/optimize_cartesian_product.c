@@ -5,6 +5,7 @@
 */
 
 #include "optimize_cartesian_product.h"
+#include "../../errors.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_cartesian_product.h"
 #include "../../util/rax_extensions.h"
@@ -64,7 +65,7 @@ static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 		}
 	}
 	if(entities_count != 0) {
-		ExecutionPlan_FilterPlacementError(entities);
+		Error_InvalidFilterPlacement(entities);
 		array_free(solving_branches);
 		return NULL;
 	}
@@ -80,7 +81,12 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		// Try to create a cartesian product, followed by the current filter.
 		OpFilter *filter_op = filter_ctx_arr[i].filter;
 		OpBase **solving_branches = _find_entities_solving_branches(filter_ctx_arr[i].entities, cp);
-		if(solving_branches == NULL) return;
+		if(solving_branches == NULL) {
+			// Filter placement failed, return early.
+			array_free(filter_ctx_arr);
+			return;
+		}
+
 		uint solving_branch_count = array_len(solving_branches);
 		// In case this filter is solved by the entire cartesian product, it does not need to be repositioned.
 		if(solving_branch_count == cp->childCount) {

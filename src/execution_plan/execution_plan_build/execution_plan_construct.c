@@ -3,6 +3,7 @@
 #include "../execution_plan.h"
 #include "../../RG.h"
 #include "../ops/ops.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_filter_tree.h"
@@ -20,23 +21,6 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 		}
 	}
 	array_free(filter_ops);
-}
-
-void ExecutionPlan_FilterPlacementError(rax *entitiesRax) {
-	// Something is wrong - could not find a matching op where all references are solved.
-	unsigned char **entities = raxKeys(entitiesRax);
-	uint entitiesRax_count = array_len(entities);
-	char *entities_str;
-	asprintf(&entities_str, "%s", entities[0]);
-	for(uint64_t i = 1; i < entitiesRax_count; i++) {
-		asprintf(&entities_str, "%s, %s", entities_str, entities[i]);
-	}
-	// Build-time error - execution plan will not run.
-	QueryCtx_SetError("Unable to place filter op for entities: %s", entities_str);
-	free(entities_str);
-	for(uint64_t i = 0; i < entitiesRax_count; i++) rm_free(entities[i]);
-	array_free(entities);
-	raxFree(entitiesRax);
 }
 
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
@@ -72,7 +56,7 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 														BLACKLIST_OP_COUNT, references);
 		if(!op) {
 			// Failed to resolve all filter references.
-			ExecutionPlan_FilterPlacementError(references);
+			Error_InvalidFilterPlacement(references);
 			OpBase_Free(filter);
 			return;
 		}
