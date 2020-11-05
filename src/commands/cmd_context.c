@@ -142,3 +142,4 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 	rm_free(command_ctx->command_name);
 	rm_free(command_ctx);
 }
+

@@ -22,8 +22,8 @@ typedef struct {
 	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
 	int srcNodeIdx;             // Source node index into record.
 	int destNodeIdx;            // Destination node index into record.
-	uint recordCount;           // Number of held records.
-	uint recordsCap;            // Max number of records to process.
+	uint record_count;          // Number of held records.
+	uint record_cap;            // Max number of records to process.
 	Record *records;            // Array of records.
 	Record r;                   // Currently selected record.
 } OpExpandInto;

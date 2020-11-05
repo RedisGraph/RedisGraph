@@ -65,7 +65,8 @@ static inline uint32_t array_len(array_t arr);
 /* Initialize a new array with a given element size and capacity. Should not be used directly - use
  * array_new instead */
 static array_t array_new_sz(uint32_t elem_sz, uint32_t cap, uint32_t len) {
-	array_hdr_t *hdr = (array_hdr_t *)array_alloc_fn(sizeof(array_hdr_t) + cap * elem_sz);
+	unsigned long array_size = cap * elem_sz;
+	array_hdr_t *hdr = (array_hdr_t *)array_alloc_fn(sizeof(array_hdr_t) + array_size);
 	hdr->cap = cap;
 	hdr->elem_sz = elem_sz;
 	hdr->len = len;

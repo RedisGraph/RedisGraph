@@ -7,6 +7,7 @@
 #include "../RG.h"
 #include "commands.h"
 #include "cmd_context.h"
+#include "../RG.h"
 #include <assert.h>
 #include <strings.h>
 
@@ -18,6 +19,7 @@ typedef void(*Command_Handler)(void *args);
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 		long long *timeout, uint *graph_version, char **errmsg) {
+
 	ASSERT(compact);
 	ASSERT(timeout);
 
@@ -96,7 +98,7 @@ static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 	case CMD_RO_QUERY:
 	case CMD_EXPLAIN:
 	case CMD_PROFILE:
-		// Expect a command, graph name, a query, and optionally a "--compact" flag.
+		// Expect a command, graph name, a query, and optional config flags.
 		return arity >= 3 && arity <= 6;
 	case CMD_SLOWLOG:
 		// Expect just a command and graph name.
@@ -150,6 +152,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	// Parse additional query arguments.
 	int res = _read_flags(argv, argc, &compact, &timeout, &version, &errmsg);
+
 	if(res == REDISMODULE_ERR) {
 		// Emit error and exit if argument parsing failed.
 		RedisModule_ReplyWithError(ctx, errmsg);

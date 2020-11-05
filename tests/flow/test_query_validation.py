@@ -273,12 +273,12 @@ class testQueryValidationFlow(FlowTestsBase):
     # Applying a filter for non existing entity.
     def test20_non_existing_graph_entity(self):
         try:
-            query = """match p=(n:Type) where p.name='value' return p"""
+            query = """MATCH p=() WHERE p.name='value' RETURN p"""
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Unable to place filter op for entities" in e.message)
+            assert("Type mismatch: expected Node but was Path" in e.message)
             pass
 
     # Comments should not affect query functionality.
@@ -313,3 +313,34 @@ class testQueryValidationFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[34]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Validate procedure call refrences and definitions
+    def test22_procedure_validations(self):
+        try:
+            # procedure call refering to a none existing alias 'n'
+            query = """CALL db.idx.fulltext.queryNodes(n, 'B') YIELD node RETURN node"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
+
+        # refer to procedure call original output when output is aliased.
+        try:
+            query = """CALL db.idx.fulltext.queryNodes('A', 'B') YIELD node AS n RETURN node"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
+
+        # valid procedure call, no output aliasing
+        query = """CALL db.idx.fulltext.queryNodes('A', 'B') YIELD node RETURN node"""
+        redis_graph.query(query)
+
+        # valid procedure call, output aliasing
+        query = """CALL db.idx.fulltext.queryNodes('A', 'B') YIELD node AS n RETURN n"""
+        redis_graph.query(query)
+

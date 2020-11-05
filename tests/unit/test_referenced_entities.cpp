@@ -35,10 +35,6 @@ AST *buildAST(const char *query) {
 uint *getASTSegmentIndices(AST *ast) {
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
 	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-	bool query_has_return = AST_ContainsClause(ast, CYPHER_AST_RETURN);
-	if(query_has_return) {
-		segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root) - 1);
-	}
 	segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root));
 	return segment_indices;
 }
@@ -334,7 +330,7 @@ TEST_F(TestReferencedEntities, TestUnwind) {
 }
 
 TEST_F(TestReferencedEntities, TestWith) {
-	char *q = "MATCH (n),(m) with n as x";
+	char *q = "MATCH (n),(m) WITH n as x RETURN x";
 	AST *ast = buildAST(q);
 	uint *segmentIndices = getASTSegmentIndices(ast);
 	// Two segments: first is the MATCH clause, the second is the WITH clause.
@@ -354,7 +350,7 @@ TEST_F(TestReferencedEntities, TestWith) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
 
-	q = "MATCH (n),(m) with n as x ORDER BY m.value";
+	q = "MATCH (n),(m) WITH n as x ORDER BY m.value RETURN x";
 	ast = buildAST(q);
 	segmentIndices = getASTSegmentIndices(ast);
 	// Two segments: first is the MATCH clause, the second is the WITH clause.
@@ -381,41 +377,26 @@ TEST_F(TestReferencedEntities, TestReturn) {
 	char *q = "MATCH (n),(m) RETURN n as x";
 	AST *ast = buildAST(q);
 	uint *segmentIndices = getASTSegmentIndices(ast);
-	// Two segments: first is the MATCH clause, the second is the RETURN clause.
-	ASSERT_EQ(2, array_len(segmentIndices));
+	// One segment containing MATCH and RETURN clause.
+	ASSERT_EQ(1, array_len(segmentIndices));
 
-	// Only n is projected from the first segment.
+	// n and x are both accessible in the only segment.
 	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
-	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
-	AST_Free(astSegment);
-
-	// Only x is projected from the second segment.
-	astSegment = AST_NewSegment(ast, segmentIndices[0], segmentIndices[1]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
-	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
 
 	q = "MATCH (n),(m) RETURN n as x ORDER BY m.value";
 	ast = buildAST(q);
 	segmentIndices = getASTSegmentIndices(ast);
-	// Two segments: first is the MATCH clause, the second is the RETURN clause.
-	ASSERT_EQ(2, array_len(segmentIndices));
+	// One segment containing MATCH and RETURN clause.
+	ASSERT_EQ(1, array_len(segmentIndices));
 
-	// Only n and m projected from the first segment.
+	// All variables are accessible in the only segment.
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
-	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
-	AST_Free(astSegment);
-
-	// Only m and x projected from the second segment.
-	astSegment = AST_NewSegment(ast, segmentIndices[0], segmentIndices[1]);
-	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
-	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
@@ -469,3 +450,4 @@ TEST_F(TestReferencedEntities, TestNamedPath) {
 	AST_Free(astSegment);
 
 }
+

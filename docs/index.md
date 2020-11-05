@@ -2,7 +2,7 @@
 
 # RedisGraph
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
-[![Gitter](https://badges.gitter.im/RedisLabs/RedisGraph.svg)](https://gitter.im/RedisLabs/RedisGraph?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
@@ -18,6 +18,15 @@ Primary features:
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
 
+## Trusted By
+
+<a href="https://www.ibm.com"><img src="images/IBM.png" alt="IBM" width="100"/></a>
+<a href="https://redislabs.com/case-studies/thinkdata-works/"><img src="images/thinkdata.png" alt="thinkdata" width="100"/></a> 
+<a href="https://sidy.fr/"><img src="images/sidy.png" alt="sidy" width="100"/></a>
+<a href="https://www.youtube.com/watch?v=6FYYn-9fPXE"><img src="images/mdmetrix.png" alt="mdmetrix" width="100"/></a> 
+<a href="https://linkirous.us/"><img src="images/linkirous.png" alt="linkirous" width="100"/></a>
+<a href="https://medium.com/@tomzeppenfeldt/graphileon-and-redis-labs-become-partners-35bafe6790fa"><img src="images/graphileon.png" alt="graphileon" width="100"/></a>
+
 ## Quickstart
 
 1. [Redis Cloud](#redis-cloud)
@@ -28,7 +37,7 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 ## Redis Cloud
 
-RedisGraph is available on all Redis Cloud managed services.  Redis Cloud Essentials offers a completely free managed databases up to 30MB.
+RedisGraph is available on all Redis Cloud managed services.  Redis Cloud Essentials offers a completely free managed database up to 30MB.
 
 [Get started here](https://redislabs.com/try-free/)
 
@@ -45,7 +54,7 @@ docker run -p 6379:6379 -it --rm redislabs/redisgraph
 After you load RedisGraph, you can interact with it using redis-cli.
 
 Here we'll quickly create a small graph representing a subset of motorcycle riders and teams 
-taking part in the MotoGP league. Once created, we'll start querying our data.
+taking part in the MotoGP championship. Once created, we'll start querying our data.
 
 ### With `redis-cli`
 
@@ -119,7 +128,7 @@ $ redis-server --loadmodule /path/to/module/src/redisgraph.so
 
 You can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
 
-After you've successfully loaded RedisGraph, your Redis log should have lines similar to:
+After you've successfully loaded RedisGraph, your Redis log should contain entries similar to:
 
 ```
 ...
