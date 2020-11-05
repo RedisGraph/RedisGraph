@@ -80,7 +80,7 @@ SIValue AR_GT(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		Error_SITypeMismatch(SIType_ToString(SI_TYPE(a)), SIType_ToString(SI_TYPE(b)));
+		Error_SITypeMismatch(b, SI_TYPE(a));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -93,7 +93,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 
 	// Emit error when attempting to compare invalid types
 	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
-		Error_SITypeMismatch(SIType_ToString(SI_TYPE(a)), SIType_ToString(SI_TYPE(b)));
+		Error_SITypeMismatch(b, SI_TYPE(a));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -116,7 +116,7 @@ SIValue AR_LT(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		Error_SITypeMismatch(SIType_ToString(SI_TYPE(a)), SIType_ToString(SI_TYPE(b)));
+		Error_SITypeMismatch(b, SI_TYPE(a));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -134,7 +134,7 @@ SIValue AR_LE(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		Error_SITypeMismatch(SIType_ToString(SI_TYPE(a)), SIType_ToString(SI_TYPE(b)));
+		Error_SITypeMismatch(b, SI_TYPE(a));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 

@@ -19,11 +19,12 @@ void Error_InvalidFilterPlacement(rax *entitiesRax) {
 	raxFree(entitiesRax);
 }
 
-inline void Error_SITypeMismatch(const char *received, const char *expected) {
-	QueryCtx_SetError("Type mismatch: expected %s but was %s", expected, received);
+inline void Error_SITypeMismatch(SIValue received, SIType expected) {
+	QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(expected),
+					  SIType_ToString(SI_TYPE(received)));
 }
 
-inline void Error_UnsupportedType(const char *type) {
+inline void Error_UnsupportedASTNodeType(const char *type) {
 	QueryCtx_SetError("RedisGraph does not currently support %s", type);
 }
 

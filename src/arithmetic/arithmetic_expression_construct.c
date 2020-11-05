@@ -478,7 +478,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
 		*/
-		Error_UnsupportedType(cypher_astnode_typestr(t));
+		Error_UnsupportedASTNodeType(cypher_astnode_typestr(t));
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 

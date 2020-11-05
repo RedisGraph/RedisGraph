@@ -43,7 +43,7 @@ static void _initList(OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
 	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 	if(SI_TYPE(new_list) != T_ARRAY) {
-		Error_SITypeMismatch("List", SIType_ToString(SI_TYPE(new_list)));
+		Error_SITypeMismatch(new_list, T_ARRAY);
 		SIValue_Free(new_list);
 		QueryCtx_RaiseRuntimeException();
 	}
