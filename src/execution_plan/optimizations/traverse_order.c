@@ -7,7 +7,6 @@
 #include "./traverse_order.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
-#include "../../util/vector.h"
 #include "../../util/rmalloc.h"
 #include <assert.h>
 

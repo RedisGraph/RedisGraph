@@ -58,7 +58,8 @@ static void _PopulateComprehensionCtx(ListComprehensionCtx *ctx, Record outer_re
 						  strlen(ctx->variable_str), (void *)id, NULL);
 	if(rc == 0) {
 		// The local variable's name shadows an outer variable, emit an error.
-		QueryCtx_SetError("Variable '%s' redefined inside of list comprehension");
+		QueryCtx_SetError("Variable '%s' redefined inside of list comprehension",
+		  	(unsigned char *)ctx->variable_str);
 		QueryCtx_RaiseRuntimeException();
 	}
 

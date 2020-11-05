@@ -1,15 +1,16 @@
 #include "ast_build_filter_tree.h"
 #include "ast_shared.h"
+#include "../RG.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
-#include "ast_build_ar_exp.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 
 // Forward declaration
 FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr);
 
 FT_FilterNode *_CreatePredicateFilterNode(AST_Operator op, const cypher_astnode_t *lhs,
 										  const cypher_astnode_t *rhs) {
-	return FilterTree_CreatePredicateFilter(op, AR_EXP_FromExpression(lhs), AR_EXP_FromExpression(rhs));
+	return FilterTree_CreatePredicateFilter(op, AR_EXP_FromASTNode(lhs), AR_EXP_FromASTNode(rhs));
 }
 
 void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
@@ -97,7 +98,7 @@ static FT_FilterNode *_convertBinaryOperator(const cypher_astnode_t *op_node) {
 		rhs = cypher_ast_binary_operator_get_argument2(op_node);
 		return _CreateFilterSubtree(op, lhs, rhs);
 	default:
-		return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(op_node));
+		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 	}
 }
 
@@ -109,14 +110,14 @@ static FT_FilterNode *_convertUnaryOperator(const cypher_astnode_t *op_node) {
 	switch(op) {
 	case OP_IS_NULL:
 	case OP_IS_NOT_NULL:
-		return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(op_node));
+		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 	default:
 		return _CreateFilterSubtree(op, arg, NULL);
 	}
 }
 
 static FT_FilterNode *_convertApplyOperator(const cypher_astnode_t *op_node) {
-	return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(op_node));
+	return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 }
 
 static FT_FilterNode *_convertTrueOperator() {
@@ -130,7 +131,7 @@ static FT_FilterNode *_convertFalseOperator() {
 }
 
 static FT_FilterNode *_convertIntegerOperator(const cypher_astnode_t *expr) {
-	AR_ExpNode *exp = AR_EXP_FromExpression(expr);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(expr);
 	return FilterTree_CreateExpressionFilter(exp);
 }
 
@@ -191,11 +192,12 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	for(uint i = 0; i < nelems; i ++) {
 		// key is of type CYPHER_AST_PROP_NAME
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_map_get_key(props, i));
-		AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(alias, prop);
-		lhs->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
+
+		AR_ExpNode *graph_entity = AR_EXP_NewVariableOperandNode(alias);
+		AR_ExpNode *lhs = AR_EXP_NewAttributeAccessNode(graph_entity, prop);
 		// val is of type CYPHER_AST_EXPRESSION
 		const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
-		AR_ExpNode *rhs = AR_EXP_FromExpression(val);
+		AR_ExpNode *rhs = AR_EXP_FromASTNode(val);
 		/* TODO In a query like:
 		 * "MATCH (r:person {name:"Roi"}) RETURN r"
 		 * (note the repeated double quotes) - this creates a variable rather than a scalar.
@@ -219,7 +221,7 @@ static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
 	AR_ExpNode *exp = AR_EXP_NewOpNode("path_filter", 1 + alias_count);
 	exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity));
 	for(uint i = 0; i < alias_count; i++) {
-		AR_ExpNode *child = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
+		AR_ExpNode *child = AR_EXP_NewVariableOperandNode(aliases[i]);
 		exp->op.children[1 + i] = child;
 	}
 	array_free(aliases);
@@ -359,6 +361,35 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		QueryCtx_SetError("Invalid filter statement.");
 		FilterTree_Free(filter_tree);
 		return NULL;
+	}
+
+	// Apply De Morgan's laws
+	FilterTree_DeMorgan(&filter_tree);
+
+	return filter_tree;
+}
+
+FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast,
+		const cypher_astnode_t **clauses, uint count) {
+	cypher_astnode_type_t type;
+	FT_FilterNode *filter_tree = NULL;
+	const cypher_astnode_t *predicate = NULL;
+
+	for(uint i = 0; i < count; i ++) {
+		type = cypher_astnode_type(clauses[i]);
+		if(type == CYPHER_AST_MATCH) {
+			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
+			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
+			predicate = cypher_ast_match_get_predicate(clauses[i]);
+		} else if(type == CYPHER_AST_WITH) {
+			predicate = cypher_ast_with_get_predicate(clauses[i]);
+		} else if(type == CYPHER_AST_CALL) {
+			predicate = cypher_ast_call_get_predicate(clauses[i]);
+		} else {
+			ASSERT(false);
+		}
+
+		if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 	}
 
 	// Apply De Morgan's laws

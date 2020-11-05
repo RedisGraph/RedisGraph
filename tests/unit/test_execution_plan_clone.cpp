@@ -136,7 +136,7 @@ TEST_F(ExecutionPlanCloneTest, TestMatchClause) {
 	queries = array_append(queries,
 						   "MATCH p = ()-[*]->() return p");    // Named path, variable length traverse.
 	queries = array_append(queries,
-						   "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2)->() RETURN n");   // Apply ops.
+						   "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2]->() RETURN n");   // Apply ops.
 
 	validate_query_plans_clone(queries);
 	array_free(queries);

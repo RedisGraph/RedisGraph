@@ -7,10 +7,10 @@
 #include "apply_join.h"
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
-#include "rax.h"
+#include "../../util/strcmp.h"
 #include "../ops/op_value_hash_join.h"
-#include "../ops/op_cartesian_product.h"
 #include "../../util/rax_extensions.h"
+#include "../ops/op_cartesian_product.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 
@@ -43,17 +43,7 @@ static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int str
 
 // Tests to see if given filter can act as a join condition.
 static inline bool _applicableFilter(const FT_FilterNode *f) {
-	// Can only convert filters that test equality
-	if(f->t != FT_N_PRED || f->pred.op != OP_EQUAL) return false;
-	// TODO allowing AR_ExpNodes that refer directly to graph entities currently causes memory errors.
-	// This restriction should be lifted later.
-	if((f->pred.lhs->type == AR_EXP_OPERAND &&
-		f->pred.lhs->operand.type == AR_EXP_VARIADIC &&
-		f->pred.lhs->operand.variadic.entity_prop == NULL) ||
-	   (f->pred.rhs->type == AR_EXP_OPERAND &&
-		f->pred.rhs->operand.type == AR_EXP_VARIADIC &&
-		f->pred.rhs->operand.variadic.entity_prop == NULL)) return false;
-	return true;
+	return (f->t == FT_N_PRED && f->pred.op == OP_EQUAL);
 }
 
 // Collects all consecutive filters beneath given op.
@@ -110,6 +100,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		stream_entities[j] = raxNew();
 		ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
 	}
+
 	for(uint i = 0; i < filter_count; i ++) {
 		// Try reduce the cartesian product to value hash join with the current filter.
 		OpFilter *filter_op = filter_ops[i];

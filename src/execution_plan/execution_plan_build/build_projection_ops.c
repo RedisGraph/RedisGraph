@@ -1,9 +1,16 @@
+/*
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
+
 #include "execution_plan_construct.h"
 #include "execution_plan_modify.h"
-#include "../execution_plan.h"
+#include "../../RG.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
-#include "../../ast/ast_build_ar_exp.h"
+#include "../execution_plan.h"
+#include "../../arithmetic/arithmetic_expression_construct.h"
 
 // Given a WITH/RETURN * clause, generate the array of expressions to populate.
 static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
@@ -14,7 +21,7 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 	AR_ExpNode **project_exps = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
 		// Build an expression for each alias.
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
+		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i]);
 		exp->resolved_name = aliases[i];
 		project_exps = array_append(project_exps, exp);
 	}
@@ -33,7 +40,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
-		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
+		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
 		// Build a string representation of the ORDER identity.
 		char *constructed_name = AR_EXP_BuildResolvedName(exp);
 		// If the constructed name refers to a QueryGraph entity, use its canonical name.
@@ -57,82 +64,71 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 	return order_exps;
 }
 
-// Handle RETURN entities
+// Handle projected entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
-	// Query is of type "RETURN *"
-	if(cypher_ast_return_has_include_existing(ret_clause)) return _PopulateProjectAll(ret_clause);
+AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
+	uint count = 0;
+	bool project_all = false;
+	AR_ExpNode **expressions = NULL;
+	cypher_astnode_type_t t = cypher_astnode_type(clause);
 
-	uint count = cypher_ast_return_nprojections(ret_clause);
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
+	ASSERT(t == CYPHER_AST_RETURN || t == CYPHER_AST_WITH);
+
+	if(t == CYPHER_AST_RETURN) {
+		project_all = cypher_ast_return_has_include_existing(clause);
+		count = cypher_ast_return_nprojections(clause);
+	} else {
+		project_all = cypher_ast_with_has_include_existing(clause);
+		count = cypher_ast_with_nprojections(clause);
+	}
+
+	// Project all '*'
+	if(project_all) return _PopulateProjectAll(clause);
+
+	expressions = array_new(AR_ExpNode *, count);
+
 	for(uint i = 0; i < count; i++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
+		const cypher_astnode_t *projection = NULL;
+		if(t == CYPHER_AST_RETURN) {
+			projection = cypher_ast_return_get_projection(clause, i);
+		} else {
+			projection = cypher_ast_with_get_projection(clause, i);
+		}
+
 		// The AST expression can be an identifier, function call, or constant
-		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
+		const cypher_astnode_t *ast_exp =
+			cypher_ast_projection_get_expression(projection);
 
-		// Construction an AR_ExpNode to represent this return entity.
-		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
+		// Construction an AR_ExpNode to represent this projected entity.
+		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
 
-		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
-		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)")
+		// Find the resolved name of the entity - its alias,
+		// its identifier if referring to a full entity,
+		// the entity.prop combination ("a.val"),
+		// or the function call ("MAX(a.val)")
 		const char *identifier = NULL;
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+		const cypher_astnode_t *alias_node =
+			cypher_ast_projection_get_alias(projection);
+
 		if(alias_node) {
-			// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
+			// The projection either has an alias (AS), is a function call,
+			// or is a property specification (e.name).
 			identifier = cypher_ast_identifier_get_name(alias_node);
 		} else {
-			// This expression did not have an alias, so it must be an identifier
-			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
-			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
+			// This expression did not have an alias,
+			// so it must be an identifier
+			ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+			// Retrieve "a" from "RETURN a" or "RETURN a AS e"
+			// (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
 
 		exp->resolved_name = identifier;
-		return_expressions = array_append(return_expressions, exp);
+		expressions = array_append(expressions, exp);
 	}
 
-	return return_expressions;
+	return expressions;
 }
-
-static AR_ExpNode **_BuildWithExpressions(const cypher_astnode_t *with_clause) {
-	// Clause is of type "WITH *"
-	if(cypher_ast_with_has_include_existing(with_clause)) return _PopulateProjectAll(with_clause);
-
-	uint count = cypher_ast_with_nprojections(with_clause);
-	AR_ExpNode **with_expressions = array_new(AR_ExpNode *, count);
-	for(uint i = 0; i < count; i++) {
-		const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
-		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
-
-		// Construction an AR_ExpNode to represent this entity.
-		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
-
-		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
-		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)").
-		// The WITH clause requires that the resolved name be an alias or identifier.
-		const char *identifier = NULL;
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
-		if(alias_node) {
-			// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
-			/// TODO should issue syntax failure in the latter 2 cases
-			identifier = cypher_ast_identifier_get_name(alias_node);
-		} else {
-			// This expression did not have an alias, so it must be an identifier
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
-			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
-			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
-			identifier = cypher_ast_identifier_get_name(ast_exp);
-		}
-
-		exp->resolved_name = identifier;
-
-		with_expressions = array_append(with_expressions, exp);
-	}
-
-	return with_expressions;
-
-}
-
 
 // Merge all order expressions into the projections array without duplicates,
 static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
@@ -161,14 +157,46 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
-static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
-									   AR_ExpNode **order_exps, int *sort_directions, bool aggregate, bool distinct) {
+static inline void _buildProjectionOps(ExecutionPlan *plan,
+									   const cypher_astnode_t *clause) {
 
-	// Merge order expressions into the projections array.
-	if(order_exps) _combine_projection_arrays(&projections, order_exps);
+	OpBase *op;
+	bool distinct = false;
+	bool aggregate = false;
+	int *sort_directions = NULL;
+	AST *ast = QueryCtx_GetAST();
+	AR_ExpNode **order_exps = NULL;
+	AR_ExpNode **projections = NULL;
+	const cypher_astnode_t *skip_clause = NULL;
+	const cypher_astnode_t *limit_clause = NULL;
+	const cypher_astnode_t *order_clause = NULL;
+
+	cypher_astnode_type_t t = cypher_astnode_type(clause);
+	ASSERT(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN);
+
+	aggregate = AST_ClauseContainsAggregation(clause);
+	projections = _BuildProjectionExpressions(clause);
+
+	if(t == CYPHER_AST_WITH) {
+		distinct = cypher_ast_with_is_distinct(clause);
+		skip_clause = cypher_ast_with_get_skip(clause);
+		limit_clause = cypher_ast_with_get_limit(clause);
+		order_clause = cypher_ast_with_get_order_by(clause);
+	} else {
+		distinct = cypher_ast_return_is_distinct(clause);
+		skip_clause = cypher_ast_return_get_skip(clause);
+		limit_clause = cypher_ast_return_get_limit(clause);
+		order_clause = cypher_ast_return_get_order_by(clause);
+	}
+
+	if(order_clause) {
+		AST_PrepareSortOp(order_clause, &sort_directions);
+		order_exps = _BuildOrderExpressions(projections, order_clause);
+		// Merge order expressions into the projections array.
+		_combine_projection_arrays(&projections, order_exps);
+	}
 
 	// Our fundamental operation will be a projection or aggregation.
-	OpBase *op;
 	if(aggregate) {
 		// An aggregate op's caching policy depends on whether its results will be sorted.
 		bool sorting_after_aggregation = (order_exps != NULL);
@@ -180,64 +208,40 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 
 	/* Add modifier operations in order such that the final execution plan will follow the sequence:
 	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
+
 	if(distinct) {
-		OpBase *op = NewDistinctOp(plan);
+		op = NewDistinctOp(plan);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
-
-	AST *ast = QueryCtx_GetAST();
 
 	if(sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
-		OpBase *op = NewSortOp(plan, order_exps, sort_directions);
+		op = NewSortOp(plan, order_exps, sort_directions);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
 
-	if(AST_GetSkipExpr(ast)) {
-		OpBase *op = NewSkipOp(plan);
+	if(skip_clause) {
+		op = buildSkipOp(plan, skip_clause);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
 
-	if(AST_GetLimitExpr(ast)) {
-		OpBase *op = NewLimitOp(plan);
+	if(limit_clause) {
+		op = buildLimitOp(plan, limit_clause);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
 }
 
-// The RETURN logic is identical to WITH-culminating segments,
-// though a different set of API endpoints must be used for each.
+// RETURN builds a subtree of projection ops with Results as the root.
 void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
-	AR_ExpNode **projections = _BuildReturnExpressions(clause);
+	_buildProjectionOps(plan, clause);
 
-	bool aggregate = AST_ClauseContainsAggregation(clause);
-	bool distinct = cypher_ast_return_is_distinct(clause);
-
-	const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(clause);
-
-	int *sort_directions = NULL;
-	AR_ExpNode **order_exps = NULL;
-	const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(clause);
-	if(order_clause) {
-		AST_PrepareSortOp(order_clause, &sort_directions);
-		order_exps = _BuildOrderExpressions(projections, order_clause);
-	}
-	_buildProjectionOps(plan, projections, order_exps, sort_directions, aggregate, distinct);
+	// follow up with a Result operation
+	OpBase *op = NewResultsOp(plan);
+	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+// RETURN builds a subtree of projection ops.
 void buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
-	AR_ExpNode **projections = _BuildWithExpressions(clause);
-	bool aggregate = AST_ClauseContainsAggregation(clause);
-	bool distinct = cypher_ast_with_is_distinct(clause);
-
-	const cypher_astnode_t *skip_clause = cypher_ast_with_get_skip(clause);
-
-	int *sort_directions = NULL;
-	AR_ExpNode **order_exps = NULL;
-	const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(clause);
-	if(order_clause) {
-		AST_PrepareSortOp(order_clause, &sort_directions);
-		order_exps = _BuildOrderExpressions(projections, order_clause);
-	}
-	_buildProjectionOps(plan, projections, order_exps, sort_directions, aggregate, distinct);
+	_buildProjectionOps(plan, clause);
 }
 
