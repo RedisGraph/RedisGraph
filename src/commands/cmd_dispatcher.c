@@ -168,6 +168,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// return incase caller provided a mismatched graph version
 	if(!_verifyGraphVersion(gc, version)) {
 		_rejectOnVersionMismatch(ctx, GraphContext_GetVersion(gc));
+		GraphContext_Release(gc);
 		return REDISMODULE_OK;
 	}
 
