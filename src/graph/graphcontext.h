@@ -68,9 +68,6 @@ void GraphContext_Rename(GraphContext *gc, const char *name);
 // Get graph context version
 XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc);
 
-// Update graph context version
-void GraphContext_UpdateVersion(GraphContext *gc);
-
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------

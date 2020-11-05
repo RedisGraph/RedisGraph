@@ -10,17 +10,15 @@
 #include "../bulk_insert/bulk_insert.h"
 #include "../util/rmalloc.h"
 
-void _MGraph_BulkInsert(void *args) {
-	// Establish thread-safe environment for batch insertion
-	CommandCtx *command_ctx = (CommandCtx *)args;
+void _MGraph_BulkInsert(CommandCtx *command_ctx, RedisModuleString **argv, int argc) {
 	CommandCtx_TrackCtx(command_ctx);
 
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 
-	RedisModuleString **argv = command_ctx->argv + 1; // skip "GRAPH.BULK"
+	argv += 1; // skip "GRAPH.BULK"
 	RedisModuleString *rs_graph_name = *argv++;
 	const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
-	int argc = command_ctx->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
+	argc -= 2; // skip "GRAPH.BULK [GRAPHNAME]"
 	RedisModuleKey *key;
 
 	char reply[1024] = {0}; // Prepare the Redis string response
@@ -105,8 +103,8 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
 	// Bulk commands should always modify slaves.
 	bool is_replicated = false;
-	context = CommandCtx_New(ctx, NULL, NULL, NULL, argc, argv, NULL, is_replicated);
-	_MGraph_BulkInsert(context);
+	context = CommandCtx_New(ctx, NULL, NULL, NULL, NULL, is_replicated, false, 0);
+	_MGraph_BulkInsert(context, argv, argc);
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }

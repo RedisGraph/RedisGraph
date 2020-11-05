@@ -19,17 +19,17 @@ CommandCtx *CommandCtx_New
 	RedisModuleBlockedClient *bc,
 	RedisModuleString *cmd_name,
 	RedisModuleString *query,
-	int argc,
-	RedisModuleString **argv,
 	GraphContext *graph_ctx,
-	bool replicated_command
+	bool replicated_command,
+	bool compact,
+	long long timeout
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc = bc;
 	context->ctx = ctx;
-	context->argv = argv;
-	context->argc = argc;
 	context->query = NULL;
+	context->compact = compact;
+	context->timeout = timeout;
 	context->command_name = NULL;
 	context->graph_ctx = graph_ctx;
 	context->replicated_command = replicated_command;

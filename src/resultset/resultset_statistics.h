@@ -19,7 +19,6 @@ typedef struct {
 	int indices_created;        // number of indices created
 	int indices_deleted;        // number of indices deleted
 	bool cached;                // indication for a cached query execution
-	const char *version;        // graph version
 } ResultSetStatistics;
 
 // Checks to see if resultset-statistics indicate that a modification was made

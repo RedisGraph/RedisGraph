@@ -27,6 +27,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
+static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
 
 static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
@@ -55,6 +56,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 
 	gc->ref_count = 0;      // No refences.
 	gc->index_count = 0;    // No indicies.
+	gc->version = 0;        // Initial graph version.
 
 	// Initialize the graph's matrices and datablock storage
 	gc->g = Graph_New(node_cap, edge_cap);
@@ -83,7 +85,6 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 																(CacheItemFreeFunc)ExecutionCtx_Free));
 	}
 
-	GraphContext_UpdateVersion(gc); // set graph context version
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
 
@@ -197,16 +198,23 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 }
 
 // Update graph context version
-void GraphContext_UpdateVersion(GraphContext *gc) {
+static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	ASSERT(gc != NULL);
+	ASSERT(str != NULL);
 
-	// create a new graph version
-	size_t uuid_len = 37;                    // UUID string length
-	char *uuid = UUID_New();                 // version UUID
-	gc->version = XXH32(uuid, uuid_len, 0);  // store hash(UUID)
+	/* Update graph version by hashing 'str' representing the current
+	 * addition to the graph schema: (Label, Relationship-type, Attribute)
+	 *
+	 * Using the current graph version as a seed, by doing so we avoid
+	 * hashing the entire graph schema on each change, while guaranteeing the
+	 * exact same version across a cluster: same graph version on both
+	 * primary and replica shards. */
 
-	// TODO: have UUID_New accept a buffer
-	rm_free(uuid);
+	XXH32_state_t *state = XXH32_createState();
+	XXH32_reset(state, gc->version);
+	XXH32_update(state, str, strlen(str));
+	gc->version = XXH32_digest(state);
+	XXH32_freeState(state);
 }
 
 //------------------------------------------------------------------------------
@@ -256,7 +264,7 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 	}
 
 	// new schema added, update graph version
-	GraphContext_UpdateVersion(gc);
+	_GraphContext_UpdateVersion(gc, label);
 
 	return schema;
 }
@@ -307,7 +315,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 			gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 
 			// new attribute been added, update graph version
-			GraphContext_UpdateVersion(gc);
+			_GraphContext_UpdateVersion(gc, attribute);
 		}
 	}
 
