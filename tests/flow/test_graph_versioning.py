@@ -22,25 +22,25 @@ class testGraphVersioning(FlowTestsBase):
 
         # Adding a node without a label shouldn't update graph version.
         q = """CREATE ()"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
 
         # Adding a labeled node should update graph version.
         q = """CREATE (:L)"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
 
         q = """RETURN 1"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertTrue(isinstance(res[0], ResponseError))
 
         # Update version
         VERSION = int(res[1])
 
         # Adding a node with an existing label shouldn't update graph version
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
         q = """RETURN 1"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
     # Make sure graph version changes once a new relationship type is created
@@ -50,11 +50,11 @@ class testGraphVersioning(FlowTestsBase):
 
         # Adding edge with a new relationship type should update graph version
         q = """CREATE ()-[:R]->()"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
         q = """RETURN 1"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertTrue(isinstance(res[0], ResponseError))
 
         # Update version
@@ -62,11 +62,11 @@ class testGraphVersioning(FlowTestsBase):
 
         # Adding edge with existing relationship type shouldn't update graph version
         q = """CREATE ()-[:R]->()"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
         q = """RETURN 1"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
     # Make sure graph version changes once a new attribute is created
@@ -76,11 +76,11 @@ class testGraphVersioning(FlowTestsBase):
 
         # Adding a new attribute should update graph version
         q = """CREATE ({v:1})"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
         q = """RETURN 1"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertTrue(isinstance(res[0], ResponseError))
 
         # Update version
@@ -88,16 +88,16 @@ class testGraphVersioning(FlowTestsBase):
 
         # Adding a new node with existing attribute shouldn't update graph version
         q = """CREATE ({v:1})"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
         # Adding a new edge with a new attribute should update graph version
         q = """CREATE ()-[:R {q:1}]->()"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 
         q = """RETURN 1"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertTrue(isinstance(res[0], ResponseError))
 
         # Update version
@@ -105,6 +105,6 @@ class testGraphVersioning(FlowTestsBase):
 
         # Adding a new edge with existing attribute shouldn't update graph version
         q = """CREATE ()-[:R {v:1}]->()"""
-        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "--version", VERSION)
+        res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 

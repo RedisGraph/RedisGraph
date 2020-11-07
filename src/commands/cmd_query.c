@@ -72,7 +72,6 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 	Cron_AddTask(timeout, QueryTimedOut, plan);
 }
 
-
 void Graph_Query(void *args) {
 	bool lockAcquired = false;
 	ResultSet *result_set = NULL;

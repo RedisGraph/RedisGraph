@@ -42,17 +42,17 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 			continue;
 		}
 
-		if(!strcasecmp(arg, "--version")) {
+		if(!strcasecmp(arg, "version")) {
+			long long v = GRAPH_VERSION_MISSING;
 			int err = REDISMODULE_ERR;
 			if(i < argc - 1) {
-				i++; // Set the current argument to the timeout value.
-				long long v = GRAPH_VERSION_MISSING;
+				i++; // Set the current argument to the version value.
 				err = RedisModule_StringToLongLong(argv[i], &v);
 				*graph_version = v;
 			}
 
-			// Emit error on missing, negative, or non-numeric timeout values.
-			if(err != REDISMODULE_OK || *graph_version < 0) {
+			// Emit error on missing, negative, or non-numeric version values.
+			if(err != REDISMODULE_OK || v < 0 || v > UINT_MAX) {
 				asprintf(errmsg, "Failed to parse graph version value");
 				return REDISMODULE_ERR;
 			}
