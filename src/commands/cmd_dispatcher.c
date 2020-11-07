@@ -99,7 +99,7 @@ static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 	case CMD_EXPLAIN:
 	case CMD_PROFILE:
 		// Expect a command, graph name, a query, and optional config flags.
-		return arity >= 3 && arity <= 6;
+		return arity >= 3 && arity <= 8;
 	case CMD_SLOWLOG:
 		// Expect just a command and graph name.
 		return arity == 2;
