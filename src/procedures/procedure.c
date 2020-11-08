@@ -13,7 +13,7 @@
 #include "../util/strutil.h"
 #include "../graph/graphcontext.h"
 
-static rax *__procedures = NULL;
+rax *__procedures = NULL;
 
 static void _procRegister(const char *procedure, ProcGenerator gen) {
 	char lowercase_proc_name[128];
@@ -28,9 +28,11 @@ void Proc_Register() {
 	__procedures = raxNew();
 	_procRegister("db.labels", Proc_LabelsCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
+	_procRegister("dbms.procedures", Proc_ProceduresCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
 
 	// Register graph algorithms.
+	_procRegister("algo.BFS", Proc_BFS_Ctx);
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
 	_procRegister("algo.BFS", Proc_BFS_Ctx);
 
@@ -78,7 +80,6 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 
 ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield) {
 	ASSERT(proc != NULL);
-
 	// Procedure is expected to be in the `PROCEDURE_NOT_INIT` state.
 	if(proc->state != PROCEDURE_NOT_INIT) {
 		proc->state = PROCEDURE_ERROR;
@@ -93,7 +94,7 @@ ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char 
 }
 
 SIValue *Proc_Step(ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	// Validate procedure state, can only consumed if state is initialized.
 	if(proc->state != PROCEDURE_INIT) return NULL;
 
@@ -105,12 +106,12 @@ SIValue *Proc_Step(ProcedureCtx *proc) {
 }
 
 uint Procedure_Argc(const ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	return proc->argc;
 }
 
 uint Procedure_OutputCount(const ProcedureCtx *proc) {
-	assert(proc);
+	ASSERT(proc != NULL);
 	return array_len(proc->output);
 }
 
@@ -130,17 +131,14 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 	return false;
 }
 
-bool Proc_ReadOnly(const char *proc_name) {
-	assert(__procedures);
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name,
-	  			strlen(proc_name));
-	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
-	/* TODO It would be preferable to be able to determine whether a procedure is read-only
-	 * without creating its entire context; this is wasteful. */
-	ProcedureCtx *ctx = gen(NULL, NULL);
-	bool read_only = ctx->readOnly;
-	Proc_Free(ctx);
-	return read_only;
+const char *Procedure_GetName(const ProcedureCtx *proc) {
+	ASSERT(proc != NULL);
+	return proc->name;
+}
+
+bool Procedure_IsReadOnly(const ProcedureCtx *proc) {
+	ASSERT(proc != NULL);
+	return proc->readOnly;
 }
 
 void Proc_Free(ProcedureCtx *proc) {

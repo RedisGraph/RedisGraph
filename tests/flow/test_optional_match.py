@@ -262,6 +262,16 @@ class testOptionalFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         query = """OPTIONAL MATCH (n {v: 'v1'}) OPTIONAL MATCH (m {v: 'v2'}) WHERE (n)--(m) RETURN n.v, m.v"""
+
+    # Test placement of filters that don't rely on variable references.
+    def test21_optional_filters_without_references(self):
+        global redis_graph
+        query = """OPTIONAL MATCH (a {v: 'v1'}), (b {v: 'v2'}) WHERE false RETURN a, b"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None, None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """OPTIONAL MATCH (a {v: 'v1'}), (b {v: 'v2'}) WHERE true RETURN a.v, b.v"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1', 'v2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
