@@ -1,9 +1,13 @@
+#include "RG.h"
 #include "errors.h"
 #include "util/arr.h"
 #include "query_ctx.h"
 #include "util/rax_extensions.h"
+#include "../deps/libcypher-parser/lib/src/operators.h"
 
 void Error_InvalidFilterPlacement(rax *entitiesRax) {
+	ASSERT(entitiesRax != NULL);
+
 	// Something is wrong - could not find a matching op where all references are solved.
 	raxIterator it;
 	raxStart(&it, entitiesRax);
@@ -19,12 +23,22 @@ void Error_InvalidFilterPlacement(rax *entitiesRax) {
 	raxFree(entitiesRax);
 }
 
-inline void Error_SITypeMismatch(SIValue received, SIType expected) {
+void Error_SITypeMismatch(SIValue received, SIType expected) {
 	QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(expected),
 					  SIType_ToString(SI_TYPE(received)));
 }
 
-inline void Error_UnsupportedASTNodeType(const char *type) {
-	QueryCtx_SetError("RedisGraph does not currently support %s", type);
+void Error_UnsupportedASTNodeType(const cypher_astnode_t *node) {
+	ASSERT(node != NULL);
+
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	const char *type_str = cypher_astnode_typestr(type);
+	QueryCtx_SetError("RedisGraph does not currently support %s", type_str);
+}
+
+void Error_UnsupportedASTOperator(const cypher_operator_t *op) {
+	ASSERT(op != NULL);
+
+	QueryCtx_SetError("RedisGraph does not currently support %s", op->str);
 }
 

@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include "rax.h"
 #include "value.h"
+#include "cypher-parser.h"
 
 // Report an error in filter placement with the first unresolved entity.
 void Error_InvalidFilterPlacement(rax *entitiesRax);
@@ -17,4 +18,8 @@ void Error_InvalidFilterPlacement(rax *entitiesRax);
 void Error_SITypeMismatch(SIValue received, SIType expected);
 
 // Report an error on receiving an unhandled AST node type.
-void Error_UnsupportedASTNodeType(const char *type);
+void Error_UnsupportedASTNodeType(const cypher_astnode_t *node);
+
+// Report an error on receiving an unhandled AST operator.
+void Error_UnsupportedASTOperator(const cypher_operator_t *op);
+
