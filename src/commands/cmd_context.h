@@ -16,10 +16,10 @@ typedef struct {
 	RedisModuleCtx *ctx;            // Redis module context.
 	char *command_name;             // Command to execute.
 	GraphContext *graph_ctx;        // Graph context.
-	RedisModuleString **argv;       // Arguments.
 	RedisModuleBlockedClient *bc;   // Blocked client.
-	int argc;                       // Argument count.
 	bool replicated_command;        // Whether this instance was spawned by a replication command.
+	bool compact;                   // Whether this query was issued with the compact flag.
+	long long timeout;              // The query timeout, if specified.
 } CommandCtx;
 
 // Create a new command context.
@@ -29,10 +29,10 @@ CommandCtx *CommandCtx_New
 	RedisModuleBlockedClient *bc,   // Blocked client.
 	RedisModuleString *cmd_name,    // Command to execute.
 	RedisModuleString *query,       // Query string.
-	int argc,                       // Argument count.
-	RedisModuleString **argv,       // Arguments.
 	GraphContext *graph_ctx,        // Graph context.
-	bool replicated_command         // Whether this instance was spawned by a replication command.
+	bool replicated_command,        // Whether this instance was spawned by a replication command.
+	bool compact,                   // Whether this query was issued with the compact flag.
+	long long timeout               // The query timeout, if specified.
 );
 
 // Tracks given 'ctx' such that in case of a crash we will be able to report

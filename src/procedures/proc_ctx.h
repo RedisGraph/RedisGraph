@@ -34,7 +34,7 @@ typedef struct {
 struct ProcedureCtx;
 
 // Procedure instance generator.
-typedef struct ProcedureCtx *(*ProcGenerator)();
+typedef struct ProcedureCtx *(*ProcGenerator)(void);
 // Procedure step function.
 typedef SIValue *(*ProcStep)(struct ProcedureCtx *ctx);
 // Procedure function pointer.

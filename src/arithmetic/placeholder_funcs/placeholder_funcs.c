@@ -22,3 +22,4 @@ void Register_PlaceholderFuncs() {
 	func_desc = AR_FuncDescNew("path_filter", AR_PATH_FILTER, 0, 0, types, false);
 	AR_RegFunc(func_desc);
 }
+

@@ -11,7 +11,6 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-
 // Registers procedures.
 void Proc_Register();
 
@@ -42,8 +41,11 @@ const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx);
 /* Returns true if given output can be yield by procedure */
 bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output);
 
-/* Returns true if procedure is read-only. */
-bool Proc_ReadOnly(const char *proc_name);
-
 // Free procedure context.
 void Proc_Free(ProcedureCtx *proc);
+
+// Returns true if the procedure is read-only.
+bool Procedure_IsReadOnly(const ProcedureCtx *proc);
+
+// Returns the procedure's name.
+const char *Procedure_GetName(const ProcedureCtx *proc);

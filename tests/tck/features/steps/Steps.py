@@ -98,7 +98,7 @@ def step_impl(context):
 def step_impl(context):
     global exception
     assert exception != None
-    assert "expected a map" in exception.message
+    assert "Type mismatch" in exception.message
 
 @then(u'a ArgumentError should be raised at runtime: NumberOutOfRange')
 def step_impl(context):

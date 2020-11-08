@@ -23,6 +23,9 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
 
+	// Set the GraphCtx in thread-local storage.
+	QueryCtx_SetGraphCtx(gc);
+
 	return gc;
 }
 

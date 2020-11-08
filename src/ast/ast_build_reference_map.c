@@ -1,6 +1,6 @@
 #include "ast.h"
+#include "../RG.h"
 #include "../util/arr.h"
-#include <assert.h>
 
 // Forward declerations:
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path);
@@ -16,12 +16,6 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 
 	// In case of identifier.
 	if(type == CYPHER_AST_IDENTIFIER) {
-		const char *identifier_name = cypher_ast_identifier_get_name(exp);
-		_AST_UpdateRefMap(ast, identifier_name);
-	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-		// In case of property.
-		exp = cypher_ast_property_operator_get_expression(exp);
-		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
 		const char *identifier_name = cypher_ast_identifier_get_name(exp);
 		_AST_UpdateRefMap(ast, identifier_name);
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
@@ -279,7 +273,7 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 // Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
 static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *projection) {
 	cypher_astnode_type_t type = cypher_astnode_type(projection);
-	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
+	ASSERT(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
 
 	if(type == CYPHER_AST_WITH) {
 		// If the projection clause is WITH *, all user-defined aliases are referenced.
