@@ -14,7 +14,7 @@
 
 static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	char buff[512] = {0};
-	size_t resultset_size = 2; /* query execution time and cached execution. */
+	size_t resultset_size = 2; // execution time, cached
 	int buflen;
 
 	if(set->stats.labels_added > 0) resultset_size++;
