@@ -253,7 +253,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QueryGraph_Free(qg);
 }
 
-TEST_F(TraversalOrderingTest, TwoOptimalArrangements) {
+TEST_F(TraversalOrderingTest, OptimalArrangements) {
 	/* Given the set of algebraic expressions:
 	 * { [AB], [BC], [BD] }
 	 * We represent the traversal:
@@ -261,7 +261,9 @@ TEST_F(TraversalOrderingTest, TwoOptimalArrangements) {
 	 * The optimal order of traversals should always be:
 	 * { 
      *      {[AB], [BC], [BD]}
+	 * 		{[AB], [BD], [BC]}
      *      {[BC]', [AB]', [BD]}
+	 * 		{[BD]', [AB]', [BC]}
      *  }
 	 * Validate this for all input permutations.
 	 */
@@ -272,20 +274,25 @@ TEST_F(TraversalOrderingTest, TwoOptimalArrangements) {
 	QueryGraph *qg = BuildQueryGraph(ast);
 
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
-
 	AlgebraicExpression *TAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
 	AlgebraicExpression_Transpose(&TAB);
+
 	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
 	AlgebraicExpression *TBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
 	AlgebraicExpression_Transpose(&TBC);
+
 	AlgebraicExpression *ExpBD = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL, "L");
+	AlgebraicExpression *TBD = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
+	AlgebraicExpression_Transpose(&TBD);
 
 	filters = build_filter_tree_from_query(
 				  "MATCH (A:L {v: 1})-[]->(B)-[]->(C), (B)-[]->(D:L {v: 1})) RETURN *");
 
 	AlgebraicExpression *expected[] = {
 		ExpAB, ExpBC, ExpBD,
-		TBC, TAB, ExpBD
+		ExpAB, ExpBD, ExpBC,
+		TBC, TAB, ExpBD,
+		TBD, TAB, ExpBC
 	};
 
 	AlgebraicExpression *set[3] = {ExpAB, ExpBC, ExpBD};
@@ -294,7 +301,7 @@ TEST_F(TraversalOrderingTest, TwoOptimalArrangements) {
 	do {
 		AlgebraicExpression *tmp[3] = {AlgebraicExpression_Clone(set[0]), AlgebraicExpression_Clone(set[1]), AlgebraicExpression_Clone(set[2])};
 		orderExpressions(qg, tmp, 3, filters, NULL);
-		assert_valid_permutation(tmp, expected, 3, 2);
+		assert_valid_permutation(tmp, expected, 3, 4);
 		free_algebraic_expressions(tmp, 3);
 	} while(std::next_permutation(set, set + 3));
 
@@ -302,6 +309,9 @@ TEST_F(TraversalOrderingTest, TwoOptimalArrangements) {
 	FilterTree_Free(filters);
 	AlgebraicExpression_Free(TAB);
 	AlgebraicExpression_Free(TBC);
+	AlgebraicExpression_Free(TBD);
+	AlgebraicExpression_Free(ExpAB);
+	AlgebraicExpression_Free(ExpBC);
 	AlgebraicExpression_Free(ExpBD);
 	QueryGraph_Free(qg);
 }

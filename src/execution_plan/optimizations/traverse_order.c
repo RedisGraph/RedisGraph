@@ -13,7 +13,7 @@
 #include "traverse_order_utils.h"
 
 // Compare macro used to sort scored expressions.
-#define score_cmp(a,b) ((*a).score >= (*b).score)
+#define score_cmp(a,b) ((*a).score > (*b).score)
 
 // Algebraic expression associated with a score
 typedef struct {
