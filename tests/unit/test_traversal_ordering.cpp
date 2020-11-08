@@ -434,23 +434,9 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 			FT_FilterNode *filters = build_filter_tree_from_query(filter_str);
 			rax *filters_rax = FilterTree_CollectModified(filters);
 			score_ctx.filtered_entities = filters_rax;
-			if(to_label == 1 && to_filter == 2) {
-				// printf("%s\n", filter_str);
-			}
 			// Order the expressions and obtain the score.
 			orderExpressions(qg, set, exp_count, filters, NULL);
 			int first_score = score_arrangement(&score_ctx, set, exp_count);
-			if(to_label == 5 && to_filter == 5) {
-				printf("%s\n", filter_str);
-				for(uint j = 0; j < node_count; j ++) {
-					printf("Node %d:%s, ", j, nodes[j]->label ? "L" : "");
-				}
-				printf("\n");
-				for(uint j = 0; j < exp_count; j ++) {
-					printf("Expression %d:\n", j);
-					AlgebraicExpression_PrintTree(set[j]);
-				}
-			}
 			memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 
 			// Test every permutation of the set.
@@ -466,17 +452,7 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 				// No valid arrangement should have a higher score than the first computed one.
 				if(valid) {
 					ctr++;
-					if(ctr == 6507) {
-						printf("i ");
-					}
 					int score = score_arrangement(&score_ctx, set, exp_count);
-					if(score > first_score) {
-						printf("aah\n");
-						for(uint j = 0; j < exp_count; j ++) {
-							printf("Expression %d:\n", j);
-							AlgebraicExpression_PrintTree(set[j]);
-						}
-					}
 					ASSERT_LE(score, first_score);
 				}
 
@@ -486,13 +462,6 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 				orderExpressions(qg, tmp, exp_count, filters, NULL);
 				// Each order should produce the optimal result.
 				int score = score_arrangement(&score_ctx, tmp, exp_count);
-				if(score != first_score) {
-					for(uint j = 0; j < exp_count; j ++) {
-						printf("Expression %d:\n", j);
-						AlgebraicExpression_PrintTree(set[j]);
-					}
-					printf("Scored %d, first score was %d\n", score, first_score);
-				}
 				// Every sequence of expressions should achieve the same score.
 				ASSERT_EQ(score, first_score);
 			} while(std::next_permutation(set, set + exp_count));
@@ -565,9 +534,6 @@ TEST_F(TraversalOrderingTest, SuboptimalOrder) {
 		orderExpressions(qg, tmp, exp_count, filters, bound_vars);
 		// Each order should produce the optimal result.
 		int score = score_arrangement(&score_ctx, tmp, exp_count);
-		if(score != first_score) {
-			printf("Scored %d, first score was %d\n", score, first_score);
-		}
 		// Every sequence of expressions should achieve the same score.
 		ASSERT_EQ(score, first_score);
 	} while(std::next_permutation(set, set + exp_count));
