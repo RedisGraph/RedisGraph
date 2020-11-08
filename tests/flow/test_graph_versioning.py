@@ -2,7 +2,6 @@ import os
 import sys
 from RLTest import Env
 from redis import ResponseError
-from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -23,10 +22,12 @@ class testGraphVersioning(FlowTestsBase):
         # Adding a node without a label shouldn't update graph version.
         q = """CREATE ()"""
         res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
+        self.env.assertFalse(isinstance(res[0], ResponseError))
 
         # Adding a labeled node should update graph version.
         q = """CREATE (:L)"""
         res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
+        self.env.assertFalse(isinstance(res[0], ResponseError))
 
         q = """RETURN 1"""
         res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
@@ -36,6 +37,7 @@ class testGraphVersioning(FlowTestsBase):
         VERSION = int(res[1])
 
         # Adding a node with an existing label shouldn't update graph version
+        q = """CREATE (:L)"""
         res = con.execute_command("GRAPH.QUERY", GRAPH_ID, q, "version", VERSION)
         self.env.assertFalse(isinstance(res[0], ResponseError))
 

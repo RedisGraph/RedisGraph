@@ -78,7 +78,8 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 	return REDISMODULE_OK;
 }
 
-// Returns false if client provided graph version mismatch queried graph version
+// Returns false if client provided a graph version
+// which mismatch the current graph version
 static bool _verifyGraphVersion(GraphContext *gc, uint version) {
 	// caller did not specify graph version
 	if(version == GRAPH_VERSION_MISSING) return true;
