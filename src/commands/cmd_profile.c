@@ -32,11 +32,11 @@ void Graph_Profile(void *args) {
 	AST *ast = NULL;
 	ExecutionPlan *plan = NULL;
 	bool cached = false;
-	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
-	ast = exec_ctx.ast;
-	plan = exec_ctx.plan;
-	ExecutionType exec_type = exec_ctx.exec_type;
+	ast = exec_ctx->ast;
+	plan = exec_ctx->plan;
+	ExecutionType exec_type = exec_ctx->exec_type;
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();
@@ -85,8 +85,7 @@ cleanup:
 	}
 
 	ResultSet_Free(result_set);
-	AST_Free(ast);
-	ExecutionPlan_Free(plan);
+	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.

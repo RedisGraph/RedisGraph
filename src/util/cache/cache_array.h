@@ -12,6 +12,7 @@
 #include <sys/types.h>
 
 typedef void (*CacheEntryFreeFunc)(void *);
+typedef void *(*CacheEntryCopyFunc)(void *);
 
 /**
  * @brief  A struct for a an entry in cache array with a key and value.

@@ -19,33 +19,39 @@ class CacheTest:
 };
 
 TEST_F(CacheTest, ExecutionPlanCache) {
-	// Use rm_free since we do not insert actual EP to the cache.
-	Cache *cache = Cache_New(3, (CacheEntryFreeFunc)rm_free);
+	// Build a cache of strings in this case for simplicity.
+	Cache *cache = Cache_New(3, (CacheEntryFreeFunc)rm_free, (CacheEntryCopyFunc)rm_strdup);
 
-	ExecutionPlan *ep1 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
-	ExecutionPlan *ep2 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
-	ExecutionPlan *ep3 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
-	ExecutionPlan *ep4 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
+	char *item1 = rm_strdup("1");
+	char *item2 = rm_strdup("2");
+	char *item3 = rm_strdup("3");
+	char *item4 = rm_strdup("4");
 
-	char *query1 = "MATCH (a) RETURN a";
-	char *query2 = "MATCH (b) RETURN b";
-	char *query3 = "MATCH (c) RETURN c";
-	char *query4 = "MATCH (d) RETURN d";
+	char *query1 = rm_strdup("MATCH (a) RETURN a");
+	char *query2 = rm_strdup("MATCH (b) RETURN b");
+	char *query3 = rm_strdup("MATCH (c) RETURN c");
+	char *query4 = rm_strdup("MATCH (d) RETURN d");
 
 	// Check for not existing key.
 	ASSERT_FALSE(Cache_GetValue(cache, query1));
 
 	// Add single entry
-	Cache_SetValue(cache, query1, ep1);
-	ASSERT_EQ(ep1, Cache_GetValue(cache, query1));
+	char *to_cache = (char *)Cache_SetGetValue(cache, query1, item1);
+	char *from_cache = (char *)Cache_GetValue(cache, query1);
+	ASSERT_EQ(*item1, *from_cache);
+	rm_free(from_cache);
+	rm_free(to_cache);
 
 	// Add multiple entries.
-	Cache_SetValue(cache, query2, ep2);
-	ASSERT_EQ(ep2, Cache_GetValue(cache, query2));
-	Cache_SetValue(cache, query3, ep3);
-	ASSERT_EQ(ep3, Cache_GetValue(cache, query3));
-	Cache_SetValue(cache, query4, ep4);
-	ASSERT_EQ(ep4, Cache_GetValue(cache, query4));
+	to_cache = (char *)Cache_SetGetValue(cache, query2, item2);
+	from_cache = (char *)Cache_GetValue(cache, query2);
+	ASSERT_EQ(*item2, *from_cache);
+	rm_free(from_cache);
+	rm_free(to_cache);
+	to_cache = (char *)Cache_SetGetValue(cache, query3, item3);
+	rm_free(to_cache);
+	to_cache = (char *)Cache_SetGetValue(cache, query4, item4);
+	rm_free(to_cache);
 
 	// Verify that oldest entry do not exists - queue is [ 4 | 3 | 2 ].
 	ASSERT_FALSE(Cache_GetValue(cache, query1));

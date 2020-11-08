@@ -132,12 +132,12 @@ void Graph_Query(void *args) {
 	AST *ast = NULL;
 	bool cached = false;
 	ExecutionPlan *plan = NULL;
-	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
-	ast = exec_ctx.ast;
-	plan = exec_ctx.plan;
-	cached = exec_ctx.cached;
-	ExecutionType exec_type = exec_ctx.exec_type;
+	ast = exec_ctx->ast;
+	plan = exec_ctx->plan;
+	cached = exec_ctx->cached;
+	ExecutionType exec_type = exec_ctx->exec_type;
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();
@@ -206,7 +206,7 @@ void Graph_Query(void *args) {
 		if(ExecutionPlan_Drained(plan)) QueryCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
-		plan = NULL;
+		exec_ctx->plan = NULL;
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
 			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		_index_operation(ctx, gc, ast, exec_type);
@@ -230,9 +230,9 @@ cleanup:
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
 				QueryCtx_GetExecutionTime(), NULL);
-	if(plan) ExecutionPlan_Free(plan);
+
+	ExecutionCtx_Free(exec_ctx);
 	ResultSet_Free(result_set);
-	AST_Free(ast);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.

@@ -34,11 +34,11 @@ void Graph_Explain(void *args) {
 	AST *ast = NULL;
 	bool cached = false;
 	ExecutionPlan *plan = NULL;
-	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
-	ExecutionType exec_type = exec_ctx.exec_type;
-	ast = exec_ctx.ast;
-	plan = exec_ctx.plan;
+	ExecutionType exec_type = exec_ctx->exec_type;
+	ast = exec_ctx->ast;
+	plan = exec_ctx->plan;
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();
@@ -63,9 +63,7 @@ void Graph_Explain(void *args) {
 
 cleanup:
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
-
-	AST_Free(ast);
-	ExecutionPlan_Free(plan);
+	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
