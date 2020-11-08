@@ -3,6 +3,7 @@
 #include "../execution_plan.h"
 #include "../../RG.h"
 #include "../ops/ops.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_filter_tree.h"
@@ -51,38 +52,25 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
-		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound,
-				upper_bound, FILTER_RECURSE_BLACKLIST, BLACKLIST_OP_COUNT,
-				references);
+		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound, upper_bound, FILTER_RECURSE_BLACKLIST,
+														BLACKLIST_OP_COUNT, references);
 		if(!op) {
-			// Something is wrong - could not find a matching op where all references are solved.
-			unsigned char **entities = raxKeys(references);
-			char *entities_str;
-			asprintf(&entities_str, "%s", entities[0]);
-			for(uint64_t i = 1; i < references_count; i++) {
-				asprintf(&entities_str, "%s, %s", entities_str, entities[i]);
-			}
-			// Build-time error - execution plan will not run.
-			QueryCtx_SetError("Unable to place filter op for entities: %s", entities_str);
-			// Cleanup.
+			// Failed to resolve all filter references.
+			Error_InvalidFilterPlacement(references);
 			OpBase_Free(filter);
-			free(entities_str);
-			for(uint64_t i = 0; i < references_count; i++) rm_free(entities[i]);
-			array_free(entities);
-			raxFree(references);
 			return;
 		}
 	} else {
 		/* The filter tree does not contain references, like:
 		 * WHERE 1=1
-		 * TODO This logic is inadequate. For now, we'll place the op
-		 * directly below the first projection (hopefully there is one!). */
+		 * Place the op directly below the first projection if there is one,
+		 * otherwise update the ExecutionPlan root. */
 		op = plan->root;
-		while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
+		while(op && op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
 			op = op->children[0];
 		}
+		if(op == NULL || (op->type != OPType_PROJECT && op->type != OPType_AGGREGATE)) op = plan->root;
 	}
-	ASSERT(op != NULL);
 
 	// In case this is a pre-existing filter (this function is not called out from ExecutionPlan_PlaceFilterOps)
 	if(filter->childCount > 0) {
@@ -91,6 +79,10 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
 			ExecutionPlan_PushBelow(op, (OpBase *)filter);
 		}
+	} else if(op == NULL) {
+		// No root was found, place filter at the root.
+		ExecutionPlan_UpdateRoot(plan, (OpBase *)filter);
+		op = filter;
 	} else {
 		// This is a new filter.
 		ExecutionPlan_PushBelow(op, (OpBase *)filter);

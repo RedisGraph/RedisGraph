@@ -34,6 +34,7 @@ nav:
   - 'Design Documents':
       - 'Result Set structure': result_structure.md
       - 'Client Specification': client_spec.md
+      - 'GRAPH.BULK Implementation': bulk_spec.md
   - 'Design': design.md
   - 'Contributor agreement': contrib.md
   - 'Cypher coverage': cypher_support.md

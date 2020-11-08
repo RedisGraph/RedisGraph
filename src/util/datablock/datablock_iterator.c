@@ -12,7 +12,7 @@
 #include <stdbool.h>
 
 DataBlockIterator *DataBlockIterator_New(Block *block, uint64_t start_pos, uint64_t end_pos, uint step) {
-	assert(block && start_pos >= 0 && end_pos >= start_pos && step >= 1);
+	assert(block && end_pos >= start_pos && step >= 1);
 
 	DataBlockIterator *iter = rm_malloc(sizeof(DataBlockIterator));
 	iter->_start_block = block;
