@@ -71,7 +71,7 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
 	  			proc_name_len);
 	if(gen == raxNotFound) return NULL;
-	ProcedureCtx *ctx = gen(NULL, NULL);
+	ProcedureCtx *ctx = gen();
 
 	// Set procedure state to not initialized.
 	ctx->state = PROCEDURE_NOT_INIT;
