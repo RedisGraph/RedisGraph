@@ -12,7 +12,7 @@
 #include "../rmalloc.h"
 #include "cache_array.h"
 
-Cache *Cache_New(uint cap, CacheEntryFreeFunc freeFunc) {
+Cache *Cache_New(uint cap, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc) {
 	Cache *cache = rm_malloc(sizeof(Cache));
 	cache->cap = cap;
 	cache->size = 0;
@@ -20,7 +20,8 @@ Cache *Cache_New(uint cap, CacheEntryFreeFunc freeFunc) {
 	cache->counter = 0;
 	// Instantiate a new array to store cached values.
 	cache->arr = rm_calloc(cap, sizeof(CacheEntry));
-	cache->free_entry = freeFunc;
+	cache->copy_item = copyFunc;
+	cache->free_item = freeFunc;
 	// Instantiate the lookup rax for fast cache retrievals.
 	cache->lookup = raxNew();
 	// Initialize the read-write lock to protect access to the cache.
@@ -41,11 +42,12 @@ inline void *Cache_GetValue(Cache *cache, const char *key) {
 	ulong curr_LRU = atomic_load(&entry->LRU);
 	atomic_compare_exchange_strong(&entry->LRU, &curr_LRU, curr_counter);
 	atomic_fetch_add(&cache->counter, 1);
+	void *value_to_return = cache->copy_item(entry->value);
 	pthread_rwlock_unlock(&cache->_cache_rwlock);
-	return entry->value;
+	return value_to_return;
 }
 
-bool Cache_SetValue(Cache *cache, const char *orig_key, void *value) {
+void *Cache_SetGetValue(Cache *cache, const char *orig_key, void *value) {
 	pthread_rwlock_wrlock(&cache->_cache_rwlock);
 	/* In case that another working thread had already inserted the query to the
 	 * cache, no need to insert it again. */
@@ -54,7 +56,7 @@ bool Cache_SetValue(Cache *cache, const char *orig_key, void *value) {
 	  					key_len);
 	if(entry != raxNotFound) {
 		pthread_rwlock_unlock(&cache->_cache_rwlock);
-		return false;
+		return value;
 	}
 	if(cache->size == cache->cap) {
 		/* The cache is full, evict the least-recently-used element
@@ -63,7 +65,7 @@ bool Cache_SetValue(Cache *cache, const char *orig_key, void *value) {
 		// Remove evicted element from the rax.
 		raxRemove(cache->lookup, (unsigned  char *)entry->key, strlen(entry->key),
 		  	NULL);
-		CacheArray_CleanEntry(entry, cache->free_entry);
+		CacheArray_CleanEntry(entry, cache->free_item);
 
 	} else {
 		// The array has not yet been filled, use the next available entry.
@@ -76,8 +78,9 @@ bool Cache_SetValue(Cache *cache, const char *orig_key, void *value) {
 
 	// Add the new entry to the rax.
 	raxInsert(cache->lookup, (unsigned char *)key, key_len, entry, NULL);
+	void *value_to_return = cache->copy_item(value);
 	pthread_rwlock_unlock(&cache->_cache_rwlock);
-	return true;
+	return value_to_return;
 }
 
 void Cache_Free(Cache *cache) {
@@ -85,7 +88,7 @@ void Cache_Free(Cache *cache) {
 		CacheEntry *entry = cache->arr + i;
 		if(i < cache->size) {
 			rm_free(entry->key);
-			cache->free_entry(entry->value);
+			cache->free_item(entry->value);
 		}
 	}
 	rm_free(cache->arr);
