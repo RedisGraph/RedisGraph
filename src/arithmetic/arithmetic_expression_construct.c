@@ -7,6 +7,7 @@
 #include "arithmetic_expression_construct.h"
 #include "../RG.h"
 #include "funcs.h"
+#include "../errors.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_build_filter_tree.h"
@@ -477,8 +478,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
 		*/
-		const char *type_str = cypher_astnode_typestr(t);
-		QueryCtx_SetError("RedisGraph does not currently support the type '%s'", type_str);
+		Error_UnsupportedASTNodeType(expr);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
