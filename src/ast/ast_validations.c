@@ -1136,30 +1136,16 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *ident
 	}
 }
 
-/* Check that all referred identifiers been defined in the same AST scope. */
-static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint start_offset,
-													   uint end_offset) {
+static AST_Validation _Validate_Aliases_DefinedInClause(const cypher_astnode_t *clause,
+														rax *defined_aliases) {
 	AST_Validation res = AST_VALID;
-	rax *defined_aliases = raxNew();
 	rax *referred_identifiers = raxNew();
 
-	for(uint i = start_offset; i < end_offset; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
-			/* If this is a WITH clause, we only want to collect defined aliases if this is the start
-			 * of the segment, and only want to collect referred aliases if this is the end of the segment.
-			 * Otherwise, queries like "MATCH (a) WITH e RETURN e" would incorrectly register 'e' as a valid reference. */
-			if(i == start_offset) _AST_GetDefinedIdentifiers(clause, defined_aliases);
-			else if(i == end_offset - 1) _AST_GetReferredIdentifiers(clause, referred_identifiers);
-			continue;
-		}
+	// Get defined identifiers.
+	_AST_GetDefinedIdentifiers(clause, defined_aliases);
 
-		// Get defined identifiers.
-		_AST_GetDefinedIdentifiers(clause, defined_aliases);
-
-		// Get referred identifiers.
-		_AST_GetReferredIdentifiers(clause, referred_identifiers);
-	}
+	// Get referred identifiers.
+	_AST_GetReferredIdentifiers(clause, referred_identifiers);
 
 	raxIterator it;
 	_prepareIterateAll(referred_identifiers, &it);
@@ -1177,7 +1163,6 @@ static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint star
 
 	// Clean up:
 	raxStop(&it);
-	raxFree(defined_aliases);
 	raxFree(referred_identifiers);
 	return res;
 }
@@ -1188,25 +1173,22 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each scope.
 	// If the query does not have a WITH clause, there is only one scope.
-	uint end_offset;
-	uint start_offset = 0;
-	uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
-	if(with_clause_count > 0) {
-		uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-		for(uint i = 0; i < with_clause_count; i++) {
-			end_offset = segment_indices[i] + 1;
-			res = _Validate_Aliases_DefinedInScope(ast, start_offset, end_offset);
-			if(res != AST_VALID) break;
-			// Update the start offset for the next scope, decrementing by 1 to get entities introduced
-			// by the WITH clause.
-			start_offset = end_offset - 1;
+	uint end_offset = cypher_ast_query_nclauses(ast->root);
+	rax *defined_aliases = raxNew();
+	for(uint i = 0; i < end_offset; i++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		// For each clause, confirm that all referred aliases have been previously defined.
+		res = _Validate_Aliases_DefinedInClause(clause, defined_aliases);
+		if(res != AST_VALID) break;
+		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+			// Each WITH clause marks the beginning of a new scope for defined aliases.
+			raxFree(defined_aliases);
+			defined_aliases = raxNew();
+			_AST_GetDefinedIdentifiers(clause, defined_aliases);
 		}
-		array_free(segment_indices);
-		if(res != AST_VALID) return res;  // Return early if we've encountered an error
 	}
-
-	end_offset = cypher_ast_query_nclauses(ast->root);
-	return _Validate_Aliases_DefinedInScope(ast, start_offset, end_offset);
+	raxFree(defined_aliases);
+	return res;
 }
 
 // Report encountered errors by libcypher-parser.

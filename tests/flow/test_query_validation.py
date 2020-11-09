@@ -344,3 +344,34 @@ class testQueryValidationFlow(FlowTestsBase):
         query = """CALL db.idx.fulltext.queryNodes('A', 'B') YIELD node AS n RETURN n"""
         redis_graph.query(query)
 
+    # Applying a filter for a non-boolean constant should raise a compile-time error.
+    def test23_invalid_constant_filter(self):
+        try:
+            query = """MATCH (a) WHERE 1 RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            assert("Expected boolean predicate" in e.message)
+            pass
+
+    # Referencing a variable before defining it should raise a compile-time error.
+    def test24_reference_before_definition(self):
+        try:
+            query = """MATCH ({prop: reference}) MATCH (reference) RETURN *"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
+
+    # Invalid filters in cartesian products should raise errors.
+    def test25_cartesian_product_invalid_filter(self):
+        try:
+            query = """MATCH p1=(), (n), ({prop: p1.path_val}) WHERE null RETURN *"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Type mismatch: expected Node but was Path" in e.message)
+            pass

@@ -399,3 +399,8 @@ class testOptimizationsPlan(FlowTestsBase):
         # traversal from a to b shouldn't be effected by the limit.
         self.env.assertNotIn("Conditional Traverse | (a)->(b) | Records produced: 64", profile)
 
+    # "WHERE true" predicates should not build filter ops.
+    def test24_compact_true_predicates(self):
+        query = """MATCH (a) WHERE true RETURN a"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertNotIn("Filter", executionPlan)

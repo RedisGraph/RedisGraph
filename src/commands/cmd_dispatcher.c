@@ -4,24 +4,29 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "../RG.h"
 #include "commands.h"
 #include "cmd_context.h"
 #include "../RG.h"
 #include <assert.h>
 #include <strings.h>
 
+#define GRAPH_VERSION_MISSING -1
+
 // Command handler function pointer.
 typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
-static int _read_flags(RedisModuleString **argv, int argc, bool *compact, long long *timeout,
-					   char **errmsg) {
+static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
+		long long *timeout, uint *graph_version, char **errmsg) {
+
 	ASSERT(compact);
 	ASSERT(timeout);
 
 	// set defaults
 	*timeout = 0;      // no timeout
 	*compact = false;  // verbose
+	*graph_version = GRAPH_VERSION_MISSING;
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -34,6 +39,24 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact, long l
 		// compact result-set
 		if(!strcasecmp(arg, "--compact")) {
 			*compact = true;
+			continue;
+		}
+
+		if(!strcasecmp(arg, "version")) {
+			long long v = GRAPH_VERSION_MISSING;
+			int err = REDISMODULE_ERR;
+			if(i < argc - 1) {
+				i++; // Set the current argument to the version value.
+				err = RedisModule_StringToLongLong(argv[i], &v);
+				*graph_version = v;
+			}
+
+			// Emit error on missing, negative, or non-numeric version values.
+			if(err != REDISMODULE_OK || v < 0 || v > UINT_MAX) {
+				asprintf(errmsg, "Failed to parse graph version value");
+				return REDISMODULE_ERR;
+			}
+
 			continue;
 		}
 
@@ -55,6 +78,20 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact, long l
 	return REDISMODULE_OK;
 }
 
+// Returns false if client provided a graph version
+// which mismatch the current graph version
+static bool _verifyGraphVersion(GraphContext *gc, uint version) {
+	// caller did not specify graph version
+	if(version == GRAPH_VERSION_MISSING) return true;
+	return (GraphContext_GetVersion(gc) == version);
+}
+
+static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, uint version) {
+	RedisModule_ReplyWithArray(ctx, 2);
+	RedisModule_ReplyWithError(ctx, "version mismatch");
+	RedisModule_ReplyWithLongLong(ctx, version);
+}
+
 // Return true if the command has a valid number of arguments.
 static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 	switch(cmd) {
@@ -63,7 +100,7 @@ static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 	case CMD_EXPLAIN:
 	case CMD_PROFILE:
 		// Expect a command, graph name, a query, and optional config flags.
-		return arity >= 3 && arity <= 6;
+		return arity >= 3 && arity <= 8;
 	case CMD_SLOWLOG:
 		// Expect just a command and graph name.
 		return arity == 2;
@@ -103,17 +140,20 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 }
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	CommandCtx *context;
+	char *errmsg;
+	bool compact;
+	uint version;
+	long long timeout;
+	CommandCtx *context = NULL;
 
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
 	GRAPH_Commands cmd = determine_command(command_name);
+
 	// Parse additional query arguments.
-	char *errmsg;
-	bool compact;
-	long long timeout;
-	int res = _read_flags(argv, argc, &compact, &timeout, &errmsg);
+	int res = _read_flags(argv, argc, &compact, &timeout, &version, &errmsg);
+
 	if(res == REDISMODULE_ERR) {
 		// Emit error and exit if argument parsing failed.
 		RedisModule_ReplyWithError(ctx, errmsg);
@@ -123,10 +163,18 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
+
 	Command_Handler handler = get_command_handler(cmd);
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
 	// If the GraphContext is null, key access failed and an error has been emitted.
 	if(!gc) return REDISMODULE_ERR;
+
+	// return incase caller provided a mismatched graph version
+	if(!_verifyGraphVersion(gc, version)) {
+		_rejectOnVersionMismatch(ctx, GraphContext_GetVersion(gc));
+		GraphContext_Release(gc);
+		return REDISMODULE_OK;
+	}
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must
