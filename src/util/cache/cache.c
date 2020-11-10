@@ -38,8 +38,8 @@ inline void *Cache_GetValue(Cache *cache, const char *key) {
 	}
 	// Element is now the most recently used; update its LRU.
 	// Multiple threads can be here simultaneously, make atomic updates.
-	ulong curr_counter = atomic_load(&cache->counter);
-	ulong curr_LRU = atomic_load(&entry->LRU);
+	long long curr_counter = atomic_load(&cache->counter);
+	long long curr_LRU = atomic_load(&entry->LRU);
 	atomic_compare_exchange_strong(&entry->LRU, &curr_LRU, curr_counter);
 	atomic_fetch_add(&cache->counter, 1);
 	void *value_to_return = cache->copy_item(entry->value);
