@@ -12,18 +12,6 @@ Returns: [Result set](result_structure.md#redisgraph-result-set-structure)
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-## GRAPH.RO_QUERY
-
-Executes a given read only query against a specified graph.
-
-Arguments: `Graph name, Query`
-
-Returns: [Result set](result_structure.md#redisgraph-result-set-structure) for a read only query or an error if a write query was given.
-
-```sh
-GRAPH.RO_QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
-```
-
 ### Query language
 
 The syntax is based on [Cypher](http://www.opencypher.org/), and only a subset of the language currently
