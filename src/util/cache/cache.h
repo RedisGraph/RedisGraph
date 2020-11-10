@@ -1,26 +1,26 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018 - 2020 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #pragma once
 
 #include "cache_array.h"
-#include "../../../deps/rax/rax.h"
+#include "rax.h"
 
 /**
- * @brief Key-value cache with hard limit of items stored. Uses LRU policy for cache eviction.
- * Stores actual copy (memcpy) of the object itself.
+ * @brief Key-value cache, uses LRU policy for eviction.
+ * Assumes owership over stored objects.
  */
 typedef struct Cache {
 	uint cap;                          // Cache capacity.
 	uint size;                         // Cache current size.
-	long long counter;                 // Atomic counter of read operations to the cache.
-	rax *lookup;                       // Rax of queries to cache values for fast lookups.
+	long long counter;                 // Atomic counter for number of reads.
+	rax *lookup;                       // Mapping between keys to entries, for fast lookups.
 	CacheEntry *arr;                   // Array of cache elements.
-	CacheEntryFreeFunc free_item;      // Function that frees cache entry value.
-	CacheEntryCopyFunc copy_item;      // Function that copies cache entry value.
+	CacheEntryFreeFunc free_item;      // Callback function that free cached value.
+	CacheEntryCopyFunc copy_item;      // Callback function that copies cached value.
 	pthread_rwlock_t _cache_rwlock;    // Read-write lock to protect access to the cache.
 } Cache;
 
@@ -28,19 +28,21 @@ typedef struct Cache {
  * @brief  Initialize a cache.
  * @param  size: Number of entries.
  * @param  freeCB: callback for freeing the stored values.
- *                 Note: if the original object is a nested compound object,
- *                 supply an appropriate function to avoid double resource releasing
+ * @param copyFunc: TODO: add doc.
  * @retval cache pointer - Initialized empty cache.
  */
-Cache *Cache_New(uint size, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc);
+Cache *Cache_New(uint size, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc)
 
 /**
- * @brief  Returns a value if it is cached, NULL otherwise.
+ * @brief  Returns a copy of value if it is cached, NULL otherwise.
  * @param  *cache: cache pointer.
  * @param  *key: Key to look for.
  * @retval  pointer with the cached answer, NULL if the key isn't cached.
  */
 void *Cache_GetValue(Cache *cache, const char *key);
+
+// TODO: Document and implement.
+void *Cache_SetValue(Cache *cache, const char *key, void *item)
 
 /**
  * @brief  Stores value under key within the cache.
@@ -53,7 +55,7 @@ void *Cache_GetValue(Cache *cache, const char *key);
 void *Cache_SetGetValue(Cache *cache, const char *key, void *value);
 
 /**
- * @brief  Destroy a cache and free all of the stored items.
+ * @brief  Destroys the cache and free all stored items.
  * @param  *cache: cache pointer
  */
 void Cache_Free(Cache *cache);
