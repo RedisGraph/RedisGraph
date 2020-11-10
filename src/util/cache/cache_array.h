@@ -19,7 +19,7 @@ typedef void *(*CacheEntryCopyFunc)(void *);
  */
 typedef struct CacheEntry_t {
 	char *key;      // Entry key.
-	ulong LRU;      // Indicates the time when the entry was last recently used.
+	long long LRU;  // Indicates the time when the entry was last recently used.
 	void *value;    // Entry stored value.
 } CacheEntry;
 
@@ -28,7 +28,7 @@ typedef struct CacheEntry_t {
 CacheEntry *CacheArray_FindMinLRU(CacheEntry *cache_arr, uint cap);
 
 // Assign new values to the fields of a cache entry.
-CacheEntry *CacheArray_PopulateEntry(ulong counter, CacheEntry *entry, char *key,
+CacheEntry *CacheArray_PopulateEntry(long long counter, CacheEntry *entry, char *key,
   			void *value);
 
 // Free the fields of a cache entry to prepare it for reuse.
