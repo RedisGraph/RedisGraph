@@ -187,12 +187,10 @@ class testOptimizationsPlan(FlowTestsBase):
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected
 
-        # Validate identical results in a query that doesn't leverage this optimization.
-        # TODO this query could in the future be optimized with a "Node Hash Join"
         query = """MATCH (p1:person)-[:know]->({name: 'Roi'}) MATCH (p2)-[]->(:person {name: 'Alon'}) WHERE p1 = p2 RETURN p2.name ORDER BY p2.name"""
         executionPlan = graph.execution_plan(query)
-        self.env.assertNotIn("Value Hash Join", executionPlan)
-        self.env.assertIn("Cartesian Product", executionPlan)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
 
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected
@@ -401,3 +399,8 @@ class testOptimizationsPlan(FlowTestsBase):
         # traversal from a to b shouldn't be effected by the limit.
         self.env.assertNotIn("Conditional Traverse | (a)->(b) | Records produced: 64", profile)
 
+    # "WHERE true" predicates should not build filter ops.
+    def test24_compact_true_predicates(self):
+        query = """MATCH (a) WHERE true RETURN a"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertNotIn("Filter", executionPlan)

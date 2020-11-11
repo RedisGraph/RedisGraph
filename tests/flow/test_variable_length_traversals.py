@@ -93,3 +93,15 @@ class testVariableLengthTraversals(FlowTestsBase):
         query = """MATCH (a)-[:not_knows*0..1]->(b) RETURN a"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(len(actual_result.result_set), 4)
+
+    # Test traversal with a possibly-null source.
+    def test08_optional_source(self):
+        query = """OPTIONAL MATCH (a:fake) OPTIONAL MATCH (a)-[*]->(b) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None, None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """OPTIONAL MATCH (a:node {name: 'A'}) OPTIONAL MATCH (a)-[*]->(b {name: 'B'}) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['A', 'B']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

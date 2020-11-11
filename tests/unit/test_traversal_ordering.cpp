@@ -12,6 +12,7 @@ extern "C" {
 
 #include "../../src/util/rmalloc.h"
 #include "../../src/query_ctx.h"
+#include "../../src/arithmetic/funcs.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
@@ -27,12 +28,25 @@ class TraversalOrderingTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
-
-		// Prepare thread-local variables
-		ASSERT_TRUE(QueryCtx_Init());
+		_fake_graph_context();
 	}
 
 	static void TearDownTestCase() {
+	}
+
+	static void _fake_graph_context() {
+		/* Filter tree construction requires access to schemas,
+		 * those inturn resides within graph context
+		 * accessible via thread local storage, as such we're creating a
+		 * fake graph context and placing it within thread local storage. */
+		GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
+		gc->attributes = raxNew();
+		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
+
+		// Prepare thread-local variables
+		ASSERT_TRUE(QueryCtx_Init());
+		QueryCtx_SetGraphCtx(gc);
+		AR_RegisterFuncs();
 	}
 
 	AST *_build_ast(const char *query) {
