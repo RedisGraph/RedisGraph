@@ -21,12 +21,11 @@ class CacheTest:
 static int free_count = 0;
 
 typedef struct {
-	bool free;
 	const char *str;
 } CacheObj;
 
-void InitCacheObj(CacheObj *obj, const char *str) {
-	obj->free = false;
+CacheObj *InitCacheObj(const char *str) {
+	CacheObj *obj = (CacheObj *)rm_malloc(sizeof(CacheObj));
 	obj->str = str;
 }
 
@@ -36,14 +35,14 @@ void CacheObjFree(CacheObj *obj) {
 }
 
 CacheObj *CacheObjDup(const CacheObj *obj) {
-	CacheObj *dup = rm_malloc(sizeof(CacheObj));
+	CacheObj *dup = (CacheObj *)rm_malloc(sizeof(CacheObj));
 	memcpy(dup, obj, sizeof(CacheObj));
 	return dup;
 }
 
 bool CacheObjEQ(const CacheObj *a, const CacheObj *b) {
 	if(a == b) return true;
-	return ( (a->free == b->free) && strcmp(a->str, b->str) == 0);
+	return (strcmp(a->str, b->str) == 0);
 }	
 
 TEST_F(CacheTest, ExecutionPlanCache) {
@@ -51,15 +50,10 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	Cache *cache = Cache_New(3, (CacheEntryFreeFunc)CacheObjFree,
 			(CacheEntryCopyFunc)CacheObjDup);
 
-	CacheObj item1;
-	CacheObj item2;
-	CacheObj item3;
-	CacheObj item4;
-
-	InitCacheObj(&item1, "1");
-	InitCacheObj(&item2, "2");
-	InitCacheObj(&item3, "3");
-	InitCacheObj(&item4, "4");
+	CacheObj *item1 = InitCacheObj("1");
+	CacheObj *item2 = InitCacheObj("2");
+	CacheObj *item3 = InitCacheObj("3");
+	CacheObj *item4 = InitCacheObj("4");
 
 	const char *key1 = "MATCH (a) RETURN a";
 	const char *key2 = "MATCH (b) RETURN b";
@@ -73,33 +67,32 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	// Set Get single item
 	//--------------------------------------------------------------------------
 	CacheObj *from_cache = NULL;
-	Cache_Set(cache, key1, &item1);
+	Cache_SetValue(cache, key1, item1);
 	from_cache = (CacheObj*)Cache_GetValue(cache, key1);
-	ASSERT_EQ(CacheObjEQ(&item1, from_cache));
+	ASSERT_TRUE(CacheObjEQ(item1, from_cache));
 	CacheObjFree(from_cache);
 
 	//--------------------------------------------------------------------------
 	// Set multiple items
 	//--------------------------------------------------------------------------
 
-	to_cache = (CacheObj*)Cache_SetGetValue(cache, key2, &item2);
-	from_cache = (CacheObj*)Cache_GetValue(cache, query2);
-	ASSERT_TRUE(CacheObjEQ(&item2, from_cache));
+	CacheObj* to_cache = (CacheObj*)Cache_SetGetValue(cache, key2, item2);
+	from_cache = (CacheObj*)Cache_GetValue(cache, key2);
+	ASSERT_TRUE(CacheObjEQ(item2, from_cache));
 	CacheObjFree(to_cache);
 	CacheObjFree(from_cache);
 
 	// Fill up cache
-	to_cache = (CacheObj*)Cache_SetGetValue(cache, key3, &item3);
+	to_cache = (CacheObj*)Cache_SetGetValue(cache, key3, item3);
 	CacheObjFree(to_cache);
-	to_cache = (CacheObj*)Cache_SetGetValue(cache, key4, &item4);
+	to_cache = (CacheObj*)Cache_SetGetValue(cache, key4, item4);
 	CacheObjFree(to_cache);
 
 	// Verify that oldest entry do not exists - queue is [ 4 | 3 | 2 ].
-	ASSERT_EQ(Cache_GetValue(cache, key1), NULL);
+	ASSERT_TRUE(Cache_GetValue(cache, key1) == NULL);
 
 	Cache_Free(cache);
 
 	// Expecting CacheObjFree to be called 9 times.
 	ASSERT_EQ(free_count, 9);
 }
-

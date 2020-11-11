@@ -11,6 +11,48 @@
 #include "../rmalloc.h"
 #include "cache_array.h"
 
+static CacheEntry *_CacheEvictLRU(Cache *cache) {
+	CacheEntry *entry = CacheArray_FindMinLRU(cache->arr, cache->cap);
+	// Remove evicted element from the rax.
+	raxRemove(cache->lookup, (unsigned  char *)entry->key,
+	  strlen(entry->key), NULL);
+	CacheArray_CleanEntry(entry, cache->free_item);
+	return entry;
+}
+
+static bool _Cache_SetValue(Cache *cache, const char *key, void *value,
+  		size_t key_len) {
+	ASSERT(cache != NULL);
+	ASSERT(key != NULL);
+
+	/* In case that another working thread had already inserted the item to the
+	 * cache, no need to re-insert it. */
+	CacheEntry *entry = raxFind(cache->lookup, (unsigned char *)key, key_len);
+	if(entry != raxNotFound) {
+		return false;
+	}
+
+	// key is not in cache! test to see if we cache is full?
+	if(cache->size == cache->cap) {
+		/* The cache is full, evict the least-recently-used element
+ 		 * and reuse its space for the new element. */
+		entry = _CacheEvictLRU(cache);
+	} else {
+		// The array has space left in it, use the next available entry.
+		entry = cache->arr + cache->size++;
+	}
+
+	// Populate the entry.
+	char *k = rm_strdup(key);
+	cache->counter++;
+	CacheArray_PopulateEntry(cache->counter, entry, k, value);
+
+
+	// Add the new entry to the rax.
+	raxInsert(cache->lookup, (unsigned char *)key, key_len, entry, NULL);
+	return true;
+}
+
 Cache *Cache_New(uint cap, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc) {
 	ASSERT(cap > 0);
 	ASSERT(copyFunc != NULL);
@@ -44,11 +86,10 @@ void *Cache_GetValue(Cache *cache, const char *key) {
 	if(entry == raxNotFound) goto cleanup;
 
 	// Element is now the most recently used; update its LRU.
-	// Multiple threads can be here simultaneously, use atomic updates.
-	long long curr_counter = atomic_load(&cache->counter);
-	long long curr_LRU = atomic_load(&entry->LRU);
-	atomic_compare_exchange_strong(&entry->LRU, &curr_LRU, curr_counter);
-	atomic_fetch_add(&cache->counter, 1);
+	// Note that multiple threads can be here simultaneously.
+	cache->counter++;
+	entry->LRU = cache->counter;
+
 	item = cache->copy_item(entry->value);
 
 cleanup:
@@ -57,55 +98,35 @@ cleanup:
 	return item;
 }
 
-void *Cache_SetValue(Cache *cache, const char *key, void *value) {
-	// TODO: Implement
-	ASSERT(false);
+void Cache_SetValue(Cache *cache, const char *key, void *value) {
+	ASSERT(cache != NULL);
+	size_t key_len = strlen(key);
+
+	// Acquire WRITE lock
+	int res = pthread_rwlock_wrlock(&cache->_cache_rwlock);
+	ASSERT(res == 0);
+
+	// Insert the value to the cache.
+	_Cache_SetValue(cache, key, value, key_len);
+
+	res = pthread_rwlock_unlock(&cache->_cache_rwlock);
+	ASSERT(res == 0);
 }
 
 void *Cache_SetGetValue(Cache *cache, const char *key, void *value) {
 	ASSERT(cache != NULL);
-	ASSERT(key != NULL);
-	ASSERT(value != NULL);
 
 	size_t key_len = strlen(key);
 	void *value_to_return = value;
 
 	// Acquire WRITE lock
-	res = pthread_rwlock_wrlock(&cache->_cache_rwlock);
+	int res = pthread_rwlock_wrlock(&cache->_cache_rwlock);
 	ASSERT(res == 0);
 
-	/* In case that another working thread had already inserted the item to the
-	 * cache, no need to re-insert it. */
-	CacheEntry *entry = raxFind(cache->lookup, (unsigned char *)key, key_len);
-	if(entry != raxNotFound) goto cleanup;
+	// If the value wasn't in the cache before, insert and copy it.
+	bool inserted_to_cache = _Cache_SetValue(cache, key, value, key_len);
+	if(inserted_to_cache) value_to_return = cache->copy_item(value);
 
-	// key is not in cache! test to see if we cache is full?
-	if(cache->size == cache->cap) {
-		ASSERT("Implement");
-		entry = _CacheEvictLRU(cache);
-
-		/* The cache is full, evict the least-recently-used element
-		 * and reuse its space for the new element. */
-		entry = CacheArray_FindMinLRU(cache->arr, cache->cap)
-		// Remove evicted element from the rax.
-		raxRemove(cache->lookup, (unsigned  char *)entry->key,
-				strlen(entry->key), NULL)
-		CacheArray_CleanEntry(entry, cache->free_item)
-	} else {
-		// The array has space left in it, use the next available entry.
-		entry = cache->arr + cache->size++;
-	}
-
-	// Populate the entry.
-	char *k = rm_strdup(key);
-	CacheArray_PopulateEntry(cache->counter, entry, k, value);
-	atomic_fetch_add(&cache->counter, 1);
-
-	// Add the new entry to the rax.
-	raxInsert(cache->lookup, (unsigned char *)key, key_len, entry, NULL);
-	value_to_return = cache->copy_item(value);
-
-cleanup:
 	res = pthread_rwlock_unlock(&cache->_cache_rwlock);
 	ASSERT(res == 0);
 
@@ -129,4 +150,3 @@ void Cache_Free(Cache *cache) {
 
 	rm_free(cache);
 }
-

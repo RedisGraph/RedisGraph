@@ -27,11 +27,11 @@ typedef struct Cache {
 /**
  * @brief  Initialize a cache.
  * @param  size: Number of entries.
- * @param  freeCB: callback for freeing the stored values.
- * @param copyFunc: TODO: add doc.
+ * @param  freeFUnc: callback for freeing the stored values.
+ * @param  copyFunc: callback for copying cached items before returning it to the caller.
  * @retval cache pointer - Initialized empty cache.
  */
-Cache *Cache_New(uint size, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc)
+Cache *Cache_New(uint size, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copyFunc);
 
 /**
  * @brief  Returns a copy of value if it is cached, NULL otherwise.
@@ -41,11 +41,17 @@ Cache *Cache_New(uint size, CacheEntryFreeFunc freeFunc, CacheEntryCopyFunc copy
  */
 void *Cache_GetValue(Cache *cache, const char *key);
 
-// TODO: Document and implement.
-void *Cache_SetValue(Cache *cache, const char *key, void *item)
-
 /**
  * @brief  Stores value under key within the cache.
+ * @note   In case the cache is full, this operation causes a cache eviction.
+ * @param  *cache: cache pointer.
+ * @param  *key: Key for associating with value.
+ * @param  *value: pointer with the relevant value.
+ */
+void Cache_SetValue(Cache *cache, const char *key, void *item);
+
+/**
+ * @brief  Stores value under key within the cache, and return a copy of that value.
  * @note   In case the cache is full, this operation causes a cache eviction.
  * @param  *cache: cache pointer.
  * @param  *key: Key for associating with value.
