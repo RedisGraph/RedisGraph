@@ -8,6 +8,7 @@
 #include "../RG.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
 #include "../datatypes/array.h"
@@ -403,29 +404,46 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 	}
 }
 
+/* If a filter node that's not a child of a predicate is an expression,
+ * it should resolve to a boolean value. */
+static inline bool _FilterTree_ValidExpressionNode(const FT_FilterNode *root) {
+	bool valid = AR_EXP_ReturnsBoolean(root->exp.exp);
+	if(!valid) QueryCtx_SetError("Expected boolean predicate.");
+	return valid;
+}
+
 bool FilterTree_Valid(const FT_FilterNode *root) {
 	// An empty tree is has a valid structure.
 	if(!root) return true;
 
 	switch(root->t) {
 	case FT_N_EXP:
-		// No need to validate expression.
-		return true;
+		return _FilterTree_ValidExpressionNode(root);
 		break;
 	case FT_N_PRED:
 		// Empty or semi empty predicate, invalid structure.
-		if((!root->pred.lhs || !root->pred.rhs)) return false;
+		if((!root->pred.lhs || !root->pred.rhs)) {
+			QueryCtx_SetError("Filter predicate did not compare two expressions.");
+			return false;
+		}
 		break;
 	case FT_N_COND:
 		// Empty condition, invalid structure.
 		// OR, AND should utilize both left and right children
 		// NOT utilize only the left child.
-		if(!root->cond.left && !root->cond.right) return false;
+		if(!root->cond.left && !root->cond.right) {
+			QueryCtx_SetError("Empty filter condition.");
+			return false;
+		}
+		if(root->cond.op == OP_NOT && root->cond.right) {
+			QueryCtx_SetError("Invalid usage of 'NOT' filter.");
+			return false;
+		}
 		if(!FilterTree_Valid(root->cond.left)) return false;
 		if(!FilterTree_Valid(root->cond.right)) return false;
 		break;
 	default:
-		assert("Unknown filter tree node" && false);
+		ASSERT("Unknown filter tree node" && false);
 	}
 	return true;
 }

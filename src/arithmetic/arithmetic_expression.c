@@ -145,7 +145,7 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias) {
 }
 
 AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
-		const char *attr) {
+										  const char *attr) {
 
 	ASSERT(attr != NULL);
 	ASSERT(entity != NULL);
@@ -156,7 +156,7 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	SIValue prop_idx = SI_LongVal(ATTRIBUTE_NOTFOUND);
-	SIValue prop_name = SI_ConstStringVal((char*)attr);
+	SIValue prop_name = SI_ConstStringVal((char *)attr);
 	Attribute_ID idx = GraphContext_GetAttributeID(gc, attr);
 
 	if(idx != ATTRIBUTE_NOTFOUND) prop_idx = SI_LongVal(idx);
@@ -576,6 +576,17 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
 	}
 
 	return true;
+}
+
+bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp) {
+	ASSERT(exp != NULL && exp->type != AR_EXP_UNKNOWN);
+
+	// If the node does not represent a constant, assume it returns a boolean.
+	// TODO We can add greater introspection in the future if required.
+	if(exp->type == AR_EXP_OP) return true;
+
+	// Operand node, return true if it is a boolean or NULL constant.
+	return (exp->operand.type == AR_EXP_CONSTANT && SI_TYPE(exp->operand.constant) & (T_BOOL | T_NULL));
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
