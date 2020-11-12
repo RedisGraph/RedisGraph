@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include "graph.h"
+#include "../RG.h"
 #include "../config.h"
 #include "../util/arr.h"
 #include "../util/qsort.h"
@@ -88,13 +89,18 @@ bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index n
 
 /* ========================= RG_Matrix functions =============================== */
 
-// Creates a new matrix;
+// Creates a new matrix
 static RG_Matrix RG_Matrix_New(GrB_Type data_type, GrB_Index nrows, GrB_Index ncols) {
 	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
+
+	matrix->allow_multi_edge = true;
+
 	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, nrows, ncols);
-	assert(matrix_res == GrB_SUCCESS);
+	ASSERT(matrix_res == GrB_SUCCESS);
+
 	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
-	assert(mutex_res == 0);
+	ASSERT(mutex_res == 0);
+
 	return matrix;
 }
 
@@ -111,6 +117,10 @@ static inline void RG_Matrix_Lock(RG_Matrix matrix) {
 // Unlocks the matrix.
 static inline void _RG_Matrix_Unlock(RG_Matrix matrix) {
 	pthread_mutex_unlock(&matrix->mutex);
+}
+
+static inline bool _RG_Matrix_MultiEdgeEnabled(RG_Matrix matrix) {
+	return matrix->allow_multi_edge;
 }
 
 // Free RG_Matrix.
@@ -545,47 +555,67 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 }
 
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
+	GrB_Info info;
+	RG_Matrix M = g->relations[r];
+	GrB_Matrix t_relationMat = NULL;
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
 	GrB_Matrix tadj = Graph_GetTransposedAdjacencyMatrix(g);
 	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
 
+	if(Config_MaintainTranspose()) {
+		t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
+	}
+
 	// Rows represent source nodes, columns represent destination nodes.
+	edge_id = SET_MSB(edge_id);
 	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
 	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
-	GrB_Index I = src;
-	GrB_Index J = dest;
-	edge_id = SET_MSB(edge_id);
-	GrB_Info info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-					(
-						relationMat,         // input/output matrix for results
-						GrB_NULL,            // optional mask for C(I,J), unused if NULL
-						_graph_edge_accum,    // optional accum for Z=accum(C(I,J),x)
-						edge_id,             // scalar to assign to C(I,J)
-						&I,                  // row indices
-						1,                   // number of row indices
-						&J,                  // column indices
-						1,                   // number of column indices
-						GrB_NULL             // descriptor for C(I,J) and Mask
-					);
-	assert(info == GrB_SUCCESS);
 
-	// Update the transposed matrix if one is present.
-	if(Config_MaintainTranspose()) {
-		// Perform the same update to the J,I coordinates of the transposed matrix.
-		GrB_Matrix t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
-		GrB_Info info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-						(
-							t_relationMat,       // input/output matrix for results
-							GrB_NULL,            // optional mask for C(J,I), unused if NULL
-							_graph_edge_accum,   // optional accum for Z=accum(C(J,I),x)
-							edge_id,             // scalar to assign to C(J,I)
-							&J,                  // row indices
-							1,                   // number of row indices
-							&I,                  // column indices
-							1,                   // number of column indices
-							GrB_NULL             // descriptor for C(J,I) and Mask
-						);
+	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
+	if(_RG_Matrix_MultiEdgeEnabled(M)) {
+		GrB_Index I = src;
+		GrB_Index J = dest;
+		info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+			(
+			 relationMat,          // input/output matrix for results
+			 GrB_NULL,             // optional mask for C(I,J), unused if NULL
+			 _graph_edge_accum,    // optional accum for Z=accum(C(I,J),x)
+			 edge_id,              // scalar to assign to C(I,J)
+			 &I,                   // row indices
+			 1,                    // number of row indices
+			 &J,                   // column indices
+			 1,                    // number of column indices
+			 GrB_NULL              // descriptor for C(I,J) and Mask
+			);
 		assert(info == GrB_SUCCESS);
+
+		// Update the transposed matrix if one is present.
+		if(t_relationMat != NULL) {
+			// Perform the same update to the J,I coordinates of the transposed matrix.
+			info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+				(
+				 t_relationMat,       // input/output matrix for results
+				 GrB_NULL,            // optional mask for C(J,I), unused if NULL
+				 _graph_edge_accum,   // optional accum for Z=accum(C(J,I),x)
+				 edge_id,             // scalar to assign to C(J,I)
+				 &J,                  // row indices
+				 1,                   // number of row indices
+				 &I,                  // column indices
+				 1,                   // number of column indices
+				 GrB_NULL             // descriptor for C(J,I) and Mask
+				);
+			ASSERT(info == GrB_SUCCESS);
+		}
+	} else {
+		// Multi-edge is disabled, use GrB_Matrix_setElement.
+		info = GrB_Matrix_setElement_UINT64(relationMat, edge_id, src, dest);
+		ASSERT(info == GrB_SUCCESS);
+
+		// Update the transposed matrix if one is present.
+		if(t_relationMat != NULL) {
+			info = GrB_Matrix_setElement_UINT64(t_relationMat, edge_id, dest, src);
+			ASSERT(info == GrB_SUCCESS);
+		}
 	}
 }
 

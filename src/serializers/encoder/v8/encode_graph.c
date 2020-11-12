@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v7.h"
+#include "encode_v8.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -14,34 +14,71 @@ static inline bool _shouldAcquireLocks(void) {
 	return !process_is_child;
 }
 
+// Determine if matrix 'R' contains entries representing multiple edges
+static bool _MultiEdgeMatrix(GrB_Matrix R, GrB_Monoid min_monoid) {
+	GrB_Info info;
+	bool multi_edge;
+	uint64_t edgeID = 0;
+
+	// To determine if matrix R contains an entry which represents
+	// multiple edges, we need to find the minimum value entry
+	// as a single-edge entry has its MSB turned on, by searching for the
+	// minimum value entry we'll get an entry with a pointer value in
+	// it (if such exists) as these have thier MSB turned off
+	info = GrB_Matrix_reduce_UINT64(&edgeID, NULL, min_monoid, R, NULL);
+	assert(info == GrB_SUCCESS);
+	multi_edge = !(SINGLE_EDGE(edgeID));
+
+	return multi_edge;
+}
+
 static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Header format:
 	 * Graph name
 	 * Node count
 	 * Edge count
 	 * Label matrix count
-	 * Relation matrix count
+	 * Relation matrix count - N
+	 * Does relationship Ri holds mutiple edges under a single entry X N 
 	 * Number of graph keys (graph context key + meta keys)
 	 */
+
+	Graph *g = gc->g;
 
 	// Graph name.
 	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
 	// Node count.
-	RedisModule_SaveUnsigned(rdb, Graph_NodeCount(gc->g));
+	RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
 
 	// Edge count.
-	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(gc->g));
+	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
 
 	// Label matrix count
-	RedisModule_SaveUnsigned(rdb, Graph_LabelTypeCount(gc->g));
+	RedisModule_SaveUnsigned(rdb, Graph_LabelTypeCount(g));
 
 	// Relation matrix count
-	RedisModule_SaveUnsigned(rdb, Graph_RelationTypeCount(gc->g));
+	uint relation_type_count = Graph_RelationTypeCount(g);
+	RedisModule_SaveUnsigned(rdb, relation_type_count);
+
+	// Denote for each relationship matrix Ri if it contains muti-edge entries
+	// this information alows for an optimization when loading the data
+	// as construction of a matrix without multiple edge entry is cheaper
+	GrB_Monoid min_monoid;
+	GrB_Info info = GrB_Monoid_new_UINT64(&min_monoid, GrB_MIN_UINT64, 0);
+	assert(info == GrB_SUCCESS);
+
+	for(uint i = 0; i < relation_type_count; i++) {
+		GrB_Matrix R = Graph_GetRelationMatrix(g, i);
+		bool multi_edge = _MultiEdgeMatrix(R, min_monoid);
+		RedisModule_SaveUnsigned(rdb, multi_edge);
+	}
+
+	info = GrB_free(&min_monoid);
+	assert(info == GrB_SUCCESS);
 
 	// Number of keys
 	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetKeyCount(gc->encoding_context));
-
 }
 
 // Returns the a state information regarding the number of entities required to encode in this state.
@@ -127,7 +164,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	return payloads;
 }
 
-void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
+void RdbSaveGraph_v8(RedisModuleIO *rdb, void *value) {
 	/* Encoding format for graph context and graph meta key:
 	 *  Header
 	 *  Payload(s) count: N
@@ -165,19 +202,19 @@ void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v7(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v7(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v7(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v7(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v7(rdb, gc);
+			RdbSaveGraphSchema_v8(rdb, gc);
 			break;
 		default:
 			assert(false && "Unkown encoding phase");
