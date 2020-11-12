@@ -1410,6 +1410,11 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 	// Require all RETURN clauses to perform the exact same projection.
 	uint *return_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
 	uint return_clause_count = array_len(return_indices);
+	// We should have one more RETURN clause than we have UNION clauses.
+	if(return_clause_count != union_clause_count + 1) {
+			QueryCtx_SetError("Found %d UNION clauses but only %d RETURN clauses.", union_clause_count, return_clause_count);
+			return AST_INVALID;
+	}
 
 	const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, return_indices[0]);
 	uint proj_count = cypher_ast_return_nprojections(return_clause);
