@@ -81,13 +81,13 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		// Try to create a cartesian product, followed by the current filter.
 		OpFilter *filter_op = filter_ctx_arr[i].filter;
 		OpBase **solving_branches = _find_entities_solving_branches(filter_ctx_arr[i].entities, cp);
-		uint solving_branch_count = array_len(solving_branches);
-		if(solving_branches == NULL || solving_branch_count == 0) {
+		if(solving_branches == NULL) {
 			// Filter placement failed, return early.
 			array_free(filter_ctx_arr);
 			return;
 		}
 
+		uint solving_branch_count = array_len(solving_branches);
 		// In case this filter is solved by the entire cartesian product, it does not need to be repositioned.
 		if(solving_branch_count == cp->childCount) {
 			array_free(solving_branches);
