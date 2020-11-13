@@ -586,7 +586,12 @@ bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp) {
 	if(exp->type == AR_EXP_OP) return true;
 
 	// Operand node, return true if it is a boolean or NULL constant.
-	return (exp->operand.type == AR_EXP_CONSTANT && SI_TYPE(exp->operand.constant) & (T_BOOL | T_NULL));
+	if(exp->operand.type == AR_EXP_CONSTANT) {
+		return (SI_TYPE(exp->operand.constant) & (T_BOOL | T_NULL));
+	}
+
+	// Node is a variable or parameter, whether it evaluates to boolean cannot be determined now.
+	return true;
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
