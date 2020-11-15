@@ -14,25 +14,7 @@ static inline bool _shouldAcquireLocks(void) {
 	return !process_is_child;
 }
 
-// Determine if matrix 'R' contains entries representing multiple edges
-static bool _MultiEdgeMatrix(GrB_Matrix R, GrB_Monoid min_monoid) {
-	GrB_Info info;
-	bool multi_edge;
-	uint64_t edgeID = 0;
-
-	// To determine if matrix R contains an entry which represents
-	// multiple edges, we need to find the minimum value entry
-	// as a single-edge entry has its MSB turned on, by searching for the
-	// minimum value entry we'll get an entry with a pointer value in
-	// it (if such exists) as these have thier MSB turned off
-	info = GrB_Matrix_reduce_UINT64(&edgeID, NULL, min_monoid, R, NULL);
-	assert(info == GrB_SUCCESS);
-	multi_edge = !(SINGLE_EDGE(edgeID));
-
-	return multi_edge;
-}
-
-static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
 	/* Header format:
 	 * Graph name
 	 * Node count
@@ -43,42 +25,33 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	 * Number of graph keys (graph context key + meta keys)
 	 */
 
-	Graph *g = gc->g;
+	assert(ctx != NULL);
+
+	GraphEncodeHeader *header = &(ctx->header);
 
 	// Graph name.
-	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
+	RedisModule_SaveStringBuffer(rdb, header->graph_name, strlen(header->graph_name) + 1);
 
 	// Node count.
-	RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
+	RedisModule_SaveUnsigned(rdb, header->node_count);
 
 	// Edge count.
-	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
+	RedisModule_SaveUnsigned(rdb, header->edge_count);
 
-	// Label matrix count
-	RedisModule_SaveUnsigned(rdb, Graph_LabelTypeCount(g));
+	// Label matrix count.
+	RedisModule_SaveUnsigned(rdb, header->label_matrix_count);
 
-	// Relation matrix count
-	uint relation_type_count = Graph_RelationTypeCount(g);
-	RedisModule_SaveUnsigned(rdb, relation_type_count);
+	// Relation matrix count.
+	RedisModule_SaveUnsigned(rdb, header->relationship_matrix_count);
 
-	// Denote for each relationship matrix Ri if it contains muti-edge entries
-	// this information alows for an optimization when loading the data
-	// as construction of a matrix without multiple edge entry is cheaper
-	GrB_Monoid min_monoid;
-	GrB_Info info = GrB_Monoid_new_UINT64(&min_monoid, GrB_MIN_UINT64, 0);
-	assert(info == GrB_SUCCESS);
-
-	for(uint i = 0; i < relation_type_count; i++) {
-		GrB_Matrix R = Graph_GetRelationMatrix(g, i);
-		bool multi_edge = _MultiEdgeMatrix(R, min_monoid);
-		RedisModule_SaveUnsigned(rdb, multi_edge);
+	// Does relationship Ri holds mutiple edges under a single entry X N.
+	for(int i = 0; i < header->relationship_matrix_count; i++) {
+		// true if R[i] contain a multi edge entry
+		RedisModule_SaveUnsigned(rdb, header->multi_edge[i]);
 	}
 
-	info = GrB_free(&min_monoid);
-	assert(info == GrB_SUCCESS);
-
-	// Number of keys
-	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetKeyCount(gc->encoding_context));
+	// Number of keys.
+	RedisModule_SaveUnsigned(rdb, header->key_count);
 }
 
 // Returns the a state information regarding the number of entities required to encode in this state.
@@ -125,6 +98,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
 	// If it is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
+
 	uint64_t remaining_entities = Config_GetVirtualKeyEntityCount();
 	// No limit on the entities, the graph is encoded in one key.
 	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
@@ -136,8 +110,10 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 		bool last_key = GraphEncodeContext_GetProcessedKeyCount(gc->encoding_context) ==
 						(GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
 		if(last_key) remaining_entities = VKEY_ENTITY_COUNT_UNLIMITED;
+
 		// Get the current state encoded entities count.
 		uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
+
 		// While there are still remaining entities to encode in this key and the state is valid.
 		while(remaining_entities > 0 && current_state < ENCODE_STATE_FINAL) {
 			// Get the current state payload info, with respect to offset.
@@ -152,8 +128,8 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 		}
 	}
 
-	uint payloads_count = array_len(payloads);
 	// Save the number of payloads.
+	uint payloads_count = array_len(payloads);
 	RedisModule_SaveUnsigned(rdb, payloads_count);
 	for(uint i = 0; i < payloads_count; i++) {
 		// For each payload, save its type and the number of entities it contains.
@@ -161,6 +137,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 		RedisModule_SaveUnsigned(rdb, payload_info.state);
 		RedisModule_SaveUnsigned(rdb, payload_info.entities_count);
 	}
+
 	return payloads;
 }
 
@@ -189,8 +166,15 @@ void RdbSaveGraph_v8(RedisModuleIO *rdb, void *value) {
 	// Acquire a read lock if we're not in a thread-safe context.
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
+	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
+
+	if(current_state == ENCODE_STATE_INIT) {
+		// Inital state, populate encoding context header
+		GraphEncodeContext_InitHeader(gc->encoding_context, gc->graph_name, gc->g);
+	}
+
 	// Save header
-	_RdbSaveHeader(rdb, gc);
+	_RdbSaveHeader(rdb, gc->encoding_context);
 
 	// Save payloads info for this key and retrive the key schema.
 	PayloadInfo *key_schema = _RdbSaveKeySchema(rdb, gc);

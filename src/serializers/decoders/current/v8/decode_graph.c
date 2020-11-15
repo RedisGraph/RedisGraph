@@ -50,7 +50,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	 * Edge count
 	 * Label matrix count
 	 * Relation matrix count - N
-	 * Does relationship Ri holds mutiple edges under a single entry X N 
+	 * Does relationship matrix Ri holds mutiple edges under a single entry X N
 	 * Number of graph keys (graph context key + meta keys)
 	 */
 
@@ -130,10 +130,10 @@ GraphContext *RdbLoadGraph_v8(RedisModuleIO *rdb) {
 	/* The decode process contains the decode operation of many meta keys, representing independent parts of the graph.
 	 * Each key contains data on one or more of the following:
 	 * 1. Nodes - The nodes that are currently valid in the graph.
-	 * 2. Deleted nodes - Nodes that were deleted and there ids can be re-used. Used for exact replication of data black state.
+	 * 2. Deleted nodes - Nodes that were deleted and there ids can be re-used. Used for exact replication of data block state.
 	 * 3. Edges - The edges that are currently valid in the graph.
-	 * 4. Deleted edges - Edges that were deleted and there ids can be re-used. Used for exact replication of data black state.
-	 * 5. Graph schema - Propertoes, indices.
+	 * 4. Deleted edges - Edges that were deleted and there ids can be re-used. Used for exact replication of data block state.
+	 * 5. Graph schema - Properties, indices.
 	 * The following switch checks which part of the graph the current key holds, and decodes it accordingly. */
 	uint payloads_count = array_len(key_schema);
 	for(uint i = 0; i < payloads_count; i++) {
