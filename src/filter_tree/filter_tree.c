@@ -7,7 +7,9 @@
 #include "filter_tree.h"
 #include "../RG.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
 #include "../datatypes/array.h"
@@ -70,9 +72,7 @@ FT_FilterNode *FilterTree_AppendRightChild(FT_FilterNode *root, FT_FilterNode *c
 }
 
 FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp) {
-	// TODO: make sure exp return boolean.
-	assert(exp);
-
+	ASSERT(exp);
 	FT_FilterNode *node = rm_malloc(sizeof(FT_FilterNode));
 	node->t = FT_N_EXP;
 	node->exp.exp = exp;
@@ -203,28 +203,28 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 		return _applyPredicateFilters(root, r);
 	}
 	case FT_N_EXP: {
+		int retval = FILTER_PASS;
 		SIValue res = AR_EXP_Evaluate(root->exp.exp, r);
 		if(SIValue_IsNull(res)) {
 			/* Expression evaluated to NULL should return false. */
-			return FILTER_FAIL;
-		} else if(SI_TYPE(res) & (SI_NUMERIC | T_BOOL)) {
-			/* Numeric or Boolean evaluated to anything but 0
-			* should return true. */
-			if(SI_GET_NUMERIC(res) == 0) return FILTER_FAIL;
+			retval = FILTER_FAIL;
+		} else if(SI_TYPE(res) & T_BOOL) {
+			/* Return false if this boolean value is false. */
+			if(res.longval == 0) retval = FILTER_FAIL;
 		} else if(SI_TYPE(res) & T_ARRAY) {
 			/* An empty array is falsey, all other arrays should return true. */
-			if(SIArray_Length(res) == 0) {
-				SIValue_Free(res); // Free dangling pointer.
-				return FILTER_FAIL;
-			}
+			if(SIArray_Length(res) == 0) retval = FILTER_FAIL;
+		} else {
+			// If the expression node evaluated to an unexpected type (numeric, string, node, edge), emit an error.
+			Error_SITypeMismatch(res, T_BOOL);
+			retval = FILTER_FAIL;
 		}
 
-		/* Boolean or Numeric != 0, String, Node, Edge, Ptr all evaluate to true. */
 		SIValue_Free(res); // If this was a heap allocation, free it.
-		return FILTER_PASS;
+		return retval;
 	}
 	default:
-		assert(false);
+		ASSERT(false);
 	}
 
 	// We shouldn't be here.
@@ -403,29 +403,46 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 	}
 }
 
+/* If a filter node that's not a child of a predicate is an expression,
+ * it should resolve to a boolean value. */
+static inline bool _FilterTree_ValidExpressionNode(const FT_FilterNode *root) {
+	bool valid = AR_EXP_ReturnsBoolean(root->exp.exp);
+	if(!valid) QueryCtx_SetError("Expected boolean predicate.");
+	return valid;
+}
+
 bool FilterTree_Valid(const FT_FilterNode *root) {
 	// An empty tree is has a valid structure.
 	if(!root) return true;
 
 	switch(root->t) {
 	case FT_N_EXP:
-		// No need to validate expression.
-		return true;
+		return _FilterTree_ValidExpressionNode(root);
 		break;
 	case FT_N_PRED:
 		// Empty or semi empty predicate, invalid structure.
-		if((!root->pred.lhs || !root->pred.rhs)) return false;
+		if((!root->pred.lhs || !root->pred.rhs)) {
+			QueryCtx_SetError("Filter predicate did not compare two expressions.");
+			return false;
+		}
 		break;
 	case FT_N_COND:
 		// Empty condition, invalid structure.
 		// OR, AND should utilize both left and right children
 		// NOT utilize only the left child.
-		if(!root->cond.left && !root->cond.right) return false;
+		if(!root->cond.left && !root->cond.right) {
+			QueryCtx_SetError("Empty filter condition.");
+			return false;
+		}
+		if(root->cond.op == OP_NOT && root->cond.right) {
+			QueryCtx_SetError("Invalid usage of 'NOT' filter.");
+			return false;
+		}
 		if(!FilterTree_Valid(root->cond.left)) return false;
 		if(!FilterTree_Valid(root->cond.right)) return false;
 		break;
 	default:
-		assert("Unknown filter tree node" && false);
+		ASSERT("Unknown filter tree node" && false);
 	}
 	return true;
 }

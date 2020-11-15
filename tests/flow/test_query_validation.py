@@ -368,10 +368,82 @@ class testQueryValidationFlow(FlowTestsBase):
     # Invalid filters in cartesian products should raise errors.
     def test25_cartesian_product_invalid_filter(self):
         try:
-            query = """MATCH p1=(), (n), ({prop: p1.path_val}) WHERE null RETURN *"""
+            query = """MATCH p1=(), (n), ({prop: p1.path_val}) RETURN *"""
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Type mismatch: expected Node but was Path" in e.message)
             pass
+
+    # Scalar predicates in filters should raise errors.
+    def test26_invalid_filter_predicate(self):
+        try:
+            query = """WITH 1 AS a WHERE '' RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Expected boolean predicate" in e.message)
+            pass
+
+    # Conditional filters with non-boolean scalar predicate children should raise errors.
+    def test27_invalid_filter_predicate_child(self):
+        try:
+            # 'Amor' is an invalid construct for the RHS of 'OR'.
+            query = """MATCH (a:Author) WHERE a.name CONTAINS 'Ernest' OR 'Amor' RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Expected boolean predicate" in e.message)
+            pass
+
+    # The NOT operator does not compare left and right side expressions.
+    def test28_invalid_filter_binary_not(self):
+        try:
+            # Query should have been:
+            # MATCH (u) where u.v IS NOT NULL RETURN u
+            query = """MATCH (u) where u.v NOT NULL RETURN u"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Invalid usage of 'NOT' filter" in e.message)
+            pass
+
+    def test29_invalid_filter_non_boolean_constant(self):
+        try:
+            query = """MATCH (a) WHERE a RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("expected Boolean but was Node" in e.message)
+            pass
+
+        try:
+            query = """MATCH (a) WHERE 1+rand() RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("expected Boolean but was Float" in e.message)
+            pass
+
+        try:
+            query = """CYPHER p=3 WITH 1 AS a WHERE $p RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("expected Boolean but was Integer" in e.message)
+            pass
+
+        # 'val' is a boolean, so this query is valid.
+        query = """WITH true AS val WHERE val return val"""
+        redis_graph.query(query)
+
+        # Non-existent properties are treated as NULLs, which are boolean in Cypher's 3-valued logic.
+        query = """MATCH (a) WHERE a.fakeprop RETURN a"""
+        redis_graph.query(query)

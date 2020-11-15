@@ -336,16 +336,6 @@ TEST_F(FilterTreeTest, NOTReduction) {
 	}
 }
 
-TEST_F(FilterTreeTest, InvalidTree) {
-	/* MATCH (u) where u.v NOT NULL RETURN u
-	 * is an invalid query,
-	 * should have been:
-	 * MATCH (u) where u.v IS NOT NULL RETURN u */
-	const char *query = "MATCH (u) where u.v NOT NULL RETURN u";
-	FT_FilterNode *tree = build_tree_from_query(query);
-	ASSERT_TRUE(tree == NULL);
-}
-
 TEST_F(FilterTreeTest, ContainsFunc) {
 	bool found = false;
 	FT_FilterNode *node = NULL;
