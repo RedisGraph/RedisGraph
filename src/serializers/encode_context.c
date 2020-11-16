@@ -16,26 +16,101 @@ GraphEncodeContext *GraphEncodeContext_New() {
 	return ctx;
 }
 
+static void _GraphEncodeContext_ResetHeader(GraphEncodeContext *ctx) {
+	assert(ctx != NULL);
+
+	GraphEncodeHeader *header = &(ctx->header);
+
+	header->key_count = 0;
+	header->node_count = 0;
+	header->edge_count = 0;
+	header->graph_name = NULL;
+	header->label_matrix_count = 0;
+	header->relationship_matrix_count = 0;
+
+	if(header->multi_edge != NULL) {
+		rm_free(header->multi_edge);
+		header->multi_edge = NULL;
+	}
+}
+
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
-	assert(ctx);
-	ctx->state = ENCODE_STATE_INIT;
-	ctx->keys_processed = 0;
+	assert(ctx != NULL);
+
+	_GraphEncodeContext_ResetHeader(ctx);
+
 	ctx->offset = 0;
+	ctx->keys_processed = 0;
+	ctx->state = ENCODE_STATE_INIT;
+	ctx->multiple_edges_src_id = 0;
+	ctx->multiple_edges_dest_id = 0;
+	ctx->multiple_edges_array = NULL;
+	ctx->current_relation_matrix_id = 0;
+	ctx->multiple_edges_current_index = 0;
+
 	// Avoid leaks in case or reset during encodeing.
 	if(ctx->datablock_iterator != NULL) {
 		DataBlockIterator_Free(ctx->datablock_iterator);
+		ctx->datablock_iterator = NULL;
 	}
-	ctx->datablock_iterator = NULL;
+
 	// Avoid leaks in case or reset during encodeing.
 	if(ctx->matrix_tuple_iterator != NULL) {
 		GxB_MatrixTupleIter_free(ctx->matrix_tuple_iterator);
+		ctx->matrix_tuple_iterator = NULL;
 	}
-	ctx->matrix_tuple_iterator = NULL;
-	ctx->current_relation_matrix_id = 0;
-	ctx->multiple_edges_array = NULL;
-	ctx->multiple_edges_current_index = 0;
-	ctx->multiple_edges_src_id = 0;
-	ctx->multiple_edges_dest_id = 0;
+}
+
+// Determine if matrix 'R' contains entries representing multiple edges
+// TODO: consider relocating this function
+static bool _MultiEdgeMatrix(GrB_Matrix R, GrB_Monoid min_monoid) {
+	GrB_Info info;
+	bool multi_edge;
+	uint64_t edgeID = 0;
+
+	// To determine if matrix R contains an entry which represents
+	// multiple edges, we need to find the minimum value entry
+	// as a single-edge entry has its MSB turned on, by searching for the
+	// minimum value entry we'll get an entry with a pointer value in
+	// it (if such exists) as these have thier MSB turned off
+	info = GrB_Matrix_reduce_UINT64(&edgeID, NULL, min_monoid, R, NULL);
+	assert(info == GrB_SUCCESS);
+	multi_edge = !(SINGLE_EDGE(edgeID));
+
+	return multi_edge;
+}
+
+void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g) {
+	assert(g != NULL);
+	assert(ctx != NULL);
+
+	int r_count = Graph_RelationTypeCount(g);
+	GraphEncodeHeader *header = &(ctx->header);
+	assert(header->multi_edge == NULL);
+
+	header->graph_name = graph_name;
+	header->node_count = Graph_NodeCount(g);
+	header->edge_count = Graph_EdgeCount(g);
+	header->relationship_matrix_count = r_count;
+	header->label_matrix_count = Graph_LabelTypeCount(g);
+	header->key_count = GraphEncodeContext_GetKeyCount(ctx);
+	header->multi_edge = rm_malloc(sizeof(bool) * r_count);
+
+	// Denote for each relationship matrix Ri if it contains muti-edge entries
+	// this information alows for an optimization when loading the data
+	// as construction of a matrix without multiple edge entry is cheaper
+	GrB_Monoid min_monoid;
+	GrB_Info info = GrB_Monoid_new_UINT64(&min_monoid, GrB_MIN_UINT64, 0);
+	assert(info == GrB_SUCCESS);
+
+	for(uint i = 0; i < r_count; i++) {
+		GrB_Matrix R = Graph_GetRelationMatrix(g, i);
+		bool multi_edge = _MultiEdgeMatrix(R, min_monoid);
+		header->multi_edge[i] = multi_edge;
+	}
+
+	info = GrB_free(&min_monoid);
+	assert(info == GrB_SUCCESS);
 }
 
 EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx) {
@@ -161,9 +236,15 @@ void GraphEncodeContext_IncreaseProcessedKeyCount(GraphEncodeContext *ctx) {
 	ctx->keys_processed++;
 }
 
+static void GraphEncodeContext_FreeHeader(GraphEncodeContext *ctx) {
+	if(ctx->header.multi_edge != NULL) rm_free(ctx->header.multi_edge);
+}
+
 void GraphEncodeContext_Free(GraphEncodeContext *ctx) {
 	if(ctx) {
+		GraphEncodeContext_FreeHeader(ctx);
 		raxFree(ctx->meta_keys);
 		rm_free(ctx);
 	}
 }
+
