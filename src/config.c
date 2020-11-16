@@ -14,7 +14,7 @@
 #define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
-#define PRIORITIZE_MEMORY "PRIORITIZE_MEMORY" // Config param, set all configs that reduce memory overhead
+#define OPTIMIZE_FOR_MEMORY "OPTIMIZE_FOR_MEMORY" // Config param, set all configs that reduce memory overhead
 #define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER" // Config param, true if we save space for future nodes
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
@@ -53,7 +53,7 @@ static inline int _Config_ParsePositiveInteger(RedisModuleString *integer_str, u
 	return REDISMODULE_OK;
 }
 
-static int _Config_SetPrioritizeMemory(RedisModuleString *arg) {
+static int _Config_SetOptimizeForMemory(RedisModuleString *arg) {
 	bool prioritize_memory;
 	if(_Config_ParseYesNoChoice(arg, &prioritize_memory) != REDISMODULE_OK) return REDISMODULE_ERR;
 	if(prioritize_memory) {
@@ -105,8 +105,8 @@ static int _Config_ParseUmbrellaConfigs(RedisModuleString **argv, int argc) {
 		const char *param = RedisModule_StringPtrLen(argv[cur], NULL);
 		RedisModuleString *val = argv[cur + 1];
 
-		if(!(strcasecmp(param, PRIORITIZE_MEMORY))) {
-			if(_Config_SetPrioritizeMemory(val) != REDISMODULE_OK) return REDISMODULE_ERR;
+		if(!(strcasecmp(param, OPTIMIZE_FOR_MEMORY))) {
+			if(_Config_SetOptimizeForMemory(val) != REDISMODULE_OK) return REDISMODULE_ERR;
 		}
 	}
 
@@ -146,7 +146,7 @@ static int _Config_ParseConfigs(RedisModuleString **argv, int argc) {
 		} else if(!(strcasecmp(param, NODE_CREATION_BUFFER))) {
 			// User-defined toggle to maintain node creation buffer.
 			res = _Config_ParseYesNoChoice(val, &config.node_creation_buffer);
-		} else if(!(strcasecmp(param, PRIORITIZE_MEMORY))) {
+		} else if(!(strcasecmp(param, OPTIMIZE_FOR_MEMORY))) {
 			continue; // Already processed umbrella parameters.
 		} else {
 			RedisModule_Log(NULL, "warning", "Encountered unknown module argument '%s'", param);
