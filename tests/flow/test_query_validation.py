@@ -418,7 +418,6 @@ class testQueryValidationFlow(FlowTestsBase):
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            # Expecting an error.
             assert("expected Boolean but was Node" in e.message)
             pass
 
@@ -427,7 +426,6 @@ class testQueryValidationFlow(FlowTestsBase):
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            # Expecting an error.
             assert("expected Boolean but was Float" in e.message)
             pass
 
@@ -436,7 +434,6 @@ class testQueryValidationFlow(FlowTestsBase):
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            # Expecting an error.
             assert("expected Boolean but was Integer" in e.message)
             pass
 
@@ -447,3 +444,32 @@ class testQueryValidationFlow(FlowTestsBase):
         # Non-existent properties are treated as NULLs, which are boolean in Cypher's 3-valued logic.
         query = """MATCH (a) WHERE a.fakeprop RETURN a"""
         redis_graph.query(query)
+
+    # Encountering traversals as property values or ORDER BY expressions should raise compile-time errors.
+    def test30_unexpected_traversals(self):
+        try:
+            query = """MATCH (a {prop: ()-[]->()}) RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered path traversal" in e.message)
+            pass
+
+        try:
+            query = """MATCH (a) RETURN a ORDER BY (a)-[]->()"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered path traversal" in e.message)
+            pass
+
+        try:
+            query = """MATCH (a) RETURN (a)-[]->()"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered path traversal" in e.message)
+            pass
