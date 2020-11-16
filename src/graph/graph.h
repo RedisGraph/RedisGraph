@@ -53,6 +53,7 @@ typedef enum {
 
 // Forward declaration of RG_Matrix type. Internal to graph.
 typedef struct {
+	bool allow_multi_edge;              // Entry i,j can contain multiple edges
 	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix.
 	pthread_mutex_t mutex;              // Lock.
 } _RG_Matrix;
