@@ -534,3 +534,11 @@ class testGraphMergeFlow(FlowTestsBase):
         # Verify that no data was modified and no results were returned.
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
+
+    def test26_merge_set_invalid_property(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("M", redis_con)
+
+        query = """MATCH p=() MERGE () ON MATCH SET p.prop4 = 5"""
+        result = graph.query(query)
+        self.env.assertEquals(result.properties_set, 0)
