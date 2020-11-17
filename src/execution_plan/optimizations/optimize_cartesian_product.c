@@ -54,9 +54,11 @@ static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 	// Iterate over all the children or until all the entities are resolved.
 	for(int i = 0; i < cp->childCount && entities_count > 0; i++) {
 		OpBase *branch = cp->children[i];
+		// Don't recurse into previous scopes when trying to resolve references.
+		OpBase *recurse_limit = ExecutionPlan_LocateOpMatchingType(branch, PROJECT_OPS, PROJECT_OP_COUNT);
 		/* Locate references reduces the amount of entities upon each call
 		 * that partially solves the references. */
-		ExecutionPlan_LocateReferences(branch, NULL, entities);
+		ExecutionPlan_LocateReferences(branch, recurse_limit, entities);
 		int new_entities_count = raxSize(entities);
 		if(new_entities_count != entities_count) {
 			// Update entity count.
