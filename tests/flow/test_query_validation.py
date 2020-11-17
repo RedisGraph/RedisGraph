@@ -447,29 +447,14 @@ class testQueryValidationFlow(FlowTestsBase):
 
     # Encountering traversals as property values or ORDER BY expressions should raise compile-time errors.
     def test30_unexpected_traversals(self):
-        try:
-            query = """MATCH (a {prop: ()-[]->()}) RETURN a"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("Encountered path traversal" in e.message)
-            pass
-
-        try:
-            query = """MATCH (a) RETURN a ORDER BY (a)-[]->()"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("Encountered path traversal" in e.message)
-            pass
-
-        try:
-            query = """MATCH (a) RETURN (a)-[]->()"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("Encountered path traversal" in e.message)
-            pass
+        queries = ["""MATCH (a {prop: ()-[]->()}) RETURN a""",
+                   """MATCH (a) RETURN a ORDER BY (a)-[]->()""",
+                   """MATCH (a) RETURN (a)-[]->()"""]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                assert("Encountered path traversal" in e.message)
+                pass
