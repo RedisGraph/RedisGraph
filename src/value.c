@@ -30,31 +30,31 @@ static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen
 
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
-		.longval = i, .type = T_INT64
+		.longval = i, .type = T_INT64, .allocation = M_NONE
 	};
 }
 
 SIValue SI_DoubleVal(double d) {
 	return (SIValue) {
-		.doubleval = d, .type = T_DOUBLE
+		.doubleval = d, .type = T_DOUBLE, .allocation = M_NONE
 	};
 }
 
 SIValue SI_NullVal(void) {
 	return (SIValue) {
-		.longval = 0, .type = T_NULL
+		.longval = 0, .type = T_NULL, .allocation = M_NONE
 	};
 }
 
 SIValue SI_BoolVal(int b) {
 	return (SIValue) {
-		.longval = b, .type = T_BOOL
+		.longval = b, .type = T_BOOL, .allocation = M_NONE
 	};
 }
 
 SIValue SI_PtrVal(void *v) {
 	return (SIValue) {
-		.ptrval = v, .type = T_PTR
+		.ptrval = v, .type = T_PTR, .allocation = M_NONE
 	};
 }
 
