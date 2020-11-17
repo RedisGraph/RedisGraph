@@ -8,6 +8,7 @@
 #include "node.h"
 #include "edge.h"
 #include "../../RG.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
@@ -22,7 +23,7 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
  * Return true if the value is valid, emit an error and return false otherwise. */
 static inline bool _GraphEntity_ValidatePropertyValue(SIValue v) {
 	if(!(SI_TYPE(v) & SI_VALID_PROPERTY_VALUE)) {
-		QueryCtx_SetError("Property values can only be of primitive types or arrays thereof");
+		Error_InvalidPropertyValue();
 		return false;
 	}
 	return true;
