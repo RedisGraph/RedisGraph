@@ -309,18 +309,18 @@ static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
 		if(child_type == CYPHER_AST_PATTERN_PATH) {
 			const cypher_astnode_type_t root_type = cypher_astnode_type(root);
 			if(root_type != CYPHER_AST_PATTERN &&
-					root_type != CYPHER_AST_MATCH &&
-					root_type != CYPHER_AST_MERGE &&
-					root_type != CYPHER_AST_WITH &&
-					root_type != CYPHER_AST_NAMED_PATH &&
-					root_type != CYPHER_AST_UNARY_OPERATOR &&
-					root_type != CYPHER_AST_BINARY_OPERATOR) {
+			   root_type != CYPHER_AST_MATCH &&
+			   root_type != CYPHER_AST_MERGE &&
+			   root_type != CYPHER_AST_WITH &&
+			   root_type != CYPHER_AST_NAMED_PATH &&
+			   root_type != CYPHER_AST_UNARY_OPERATOR &&
+			   root_type != CYPHER_AST_BINARY_OPERATOR) {
 				QueryCtx_SetError("Encountered path traversal in unsupported location '%s'",
-						cypher_astnode_typestr(child_type));
+								  cypher_astnode_typestr(child_type));
 				return AST_INVALID;
 			}
 		}
-		if (_Validate_Path_Locations(child) != AST_VALID) return AST_INVALID;
+		if(_Validate_Path_Locations(child) != AST_VALID) return AST_INVALID;
 	}
 	return AST_VALID;
 }
@@ -1010,8 +1010,6 @@ static AST_Validation _ValidateQuerySequence(const AST *ast) {
 	// Validate the final clause
 	if(_ValidateQueryTermination(ast) != AST_VALID) return AST_INVALID;
 
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-
 	// The query cannot begin with a "WITH/RETURN *" projection.
 	const cypher_astnode_t *start_clause = cypher_ast_query_get_clause(ast->root, 0);
 	if(cypher_astnode_type(start_clause) == CYPHER_AST_WITH &&
@@ -1438,8 +1436,9 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 	uint return_clause_count = array_len(return_indices);
 	// We should have one more RETURN clause than we have UNION clauses.
 	if(return_clause_count != union_clause_count + 1) {
-			QueryCtx_SetError("Found %d UNION clauses but only %d RETURN clauses.", union_clause_count, return_clause_count);
-			return AST_INVALID;
+		QueryCtx_SetError("Found %d UNION clauses but only %d RETURN clauses.", union_clause_count,
+						  return_clause_count);
+		return AST_INVALID;
 	}
 
 	const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, return_indices[0]);

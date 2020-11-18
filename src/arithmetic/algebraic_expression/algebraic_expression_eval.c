@@ -111,8 +111,8 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 				GrB_Matrix_nrows(&nrows, res);
 				GrB_Matrix_ncols(&ncols, res);
 				GrB_Matrix_new(&inter, GrB_BOOL, nrows, ncols);
+				b = _AlgebraicExpression_Eval(right, inter);
 			}
-			b = _AlgebraicExpression_Eval(right, inter);
 		}
 
 		// Perform addition.

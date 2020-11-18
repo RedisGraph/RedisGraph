@@ -14,6 +14,7 @@
 #include "../execution_plan/execution_plan.h"
 
 void Graph_Profile(void *args) {
+	bool readonly = true;
 	bool lockAcquired = false;
 	ResultSet *result_set = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
@@ -49,7 +50,7 @@ void Graph_Profile(void *args) {
 		goto cleanup;
 	}
 
-	bool readonly = AST_ReadOnly(ast->root);
+	readonly = AST_ReadOnly(ast->root);
 
 	// Acquire the appropriate lock.
 	if(readonly) {
@@ -91,3 +92,4 @@ cleanup:
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
+

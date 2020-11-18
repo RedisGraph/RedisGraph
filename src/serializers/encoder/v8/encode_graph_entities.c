@@ -118,8 +118,6 @@ static void _RdbSaveNode_v8(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *n
 
 static void _RdbSaveDeletedEntities_v8(RedisModuleIO *rdb, GraphContext *gc,
 									   uint64_t deleted_entities_to_encode, uint64_t *deleted_id_list) {
-	// Get deleted entities count.
-	uint64_t deleted_entities = array_len(deleted_id_list);
 	// Get the number of deleted entities already encoded.
 	uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
 
@@ -328,3 +326,4 @@ finish:
 	GraphEncodeContext_SetMutipleEdgesArray(gc->encoding_context, multiple_edges_array,
 											multiple_edges_current_index, src, dest);
 }
+

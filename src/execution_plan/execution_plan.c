@@ -125,7 +125,7 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 }
 
 static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx,
-		uint segment_end_idx) {
+									   uint segment_end_idx) {
 	ASSERT(ast != NULL);
 	ASSERT(segment_start_idx <= segment_end_idx);
 
@@ -194,7 +194,7 @@ static ExecutionPlan **_process_segments(AST *ast) {
 }
 
 static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
-		uint segment_count) {
+									uint segment_count) {
 	FT_FilterNode *ft = NULL;            // filters following WITH
 	OpBase *connecting_op = NULL;        // op connecting one segment to another
 	OpBase *prev_connecting_op = NULL;   // root of previous segment
@@ -332,7 +332,7 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	// Get a Record from the pool and set its owner and mapping.
 	Record r = ObjectPool_NewItem(plan->record_pool);
 	r->owner = plan;
-	r->mapping = plan->record_map;
+	r->mapping = mapping;
 	return r;
 }
 

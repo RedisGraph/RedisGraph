@@ -96,7 +96,7 @@ static void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	for(uint64_t i = 0; i < nodeCount; i++) {
 		Node n;
 		// * ID
-		NodeID id = RedisModule_LoadUnsigned(rdb);
+		RedisModule_LoadUnsigned(rdb);
 
 		// Extend this logic when multi-label support is added.
 		// * #labels M
@@ -129,7 +129,7 @@ static void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	// Construct connections.
 	for(int i = 0; i < edgeCount; i++) {
 		Edge e;
-		EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
+		RedisModule_LoadUnsigned(rdb); // Edge ID
 		NodeID srcId = RedisModule_LoadUnsigned(rdb);
 		NodeID destId = RedisModule_LoadUnsigned(rdb);
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);

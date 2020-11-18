@@ -14,7 +14,7 @@ static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 	uint edge_count = array_len(edges);
 	for(uint i = 0; i < edge_count; i++) {
 		QGEdge *ie = edges[i];
-		if(e == edges[i]) {
+		if(e == ie) {
 			array_del_fast(edges, i);
 			return;
 		}
