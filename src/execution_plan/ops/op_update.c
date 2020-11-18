@@ -259,9 +259,10 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		EntityUpdateEvalCtx *update_ctx = ctx->exps + i;
 		SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
 
-		// Emit an error and return NULL if we're trying to add an invalid type.
+		// Emit an error and exit if we're trying to add an invalid type.
 		if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
 			Error_InvalidPropertyValue();
+			QueryCtx_RaiseRuntimeException();
 			break;
 		}
 

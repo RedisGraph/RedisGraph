@@ -24,6 +24,7 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 static inline bool _GraphEntity_ValidatePropertyValue(SIValue v) {
 	if(!(SI_TYPE(v) & SI_VALID_PROPERTY_VALUE)) {
 		Error_InvalidPropertyValue();
+		QueryCtx_RaiseRuntimeException();
 		return false;
 	}
 	return true;
