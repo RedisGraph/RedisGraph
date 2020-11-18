@@ -42,3 +42,7 @@ void Error_UnsupportedASTOperator(const cypher_operator_t *op) {
 	QueryCtx_SetError("RedisGraph does not currently support %s", op->str);
 }
 
+inline void Error_InvalidPropertyValue(void) {
+	QueryCtx_SetError("Property values can only be of primitive types or arrays thereof");
+}
+
