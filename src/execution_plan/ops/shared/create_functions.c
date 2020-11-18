@@ -167,6 +167,7 @@ PendingProperties *ConvertPropertyMap(Record r, const PropertyMap *map) {
 		// Emit an error and return NULL if we're trying to add an invalid type.
 		if(!(SI_TYPE(converted->values[i]) & SI_VALID_PROPERTY_VALUE)) {
 			converted->property_count = i;
+			PendingPropertiesFree(converted);
 			Error_InvalidPropertyValue();
 			QueryCtx_RaiseRuntimeException();
 			break;

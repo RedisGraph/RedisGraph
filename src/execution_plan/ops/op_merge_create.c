@@ -106,6 +106,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 			converted_properties = ConvertPropertyMap(r, map);
 			for(int i = 0; i < converted_properties->property_count; i++) {
 				if(SI_TYPE(converted_properties->values[i]) & T_NULL) {
+					PendingPropertiesFree(converted_properties);
 					QueryCtx_SetError("Cannot merge node using null property value");
 					QueryCtx_RaiseRuntimeException();
 				}
@@ -152,6 +153,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 			converted_properties = ConvertPropertyMap(r, map);
 			for(int i = 0; i < converted_properties->property_count; i++) {
 				if(SI_TYPE(converted_properties->values[i]) & T_NULL) {
+					PendingPropertiesFree(converted_properties);
 					QueryCtx_SetError("Cannot merge relationship using null property value");
 					QueryCtx_RaiseRuntimeException();
 				}
