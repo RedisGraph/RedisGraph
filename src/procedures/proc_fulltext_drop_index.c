@@ -18,7 +18,8 @@
 // CALL db.idx.fulltext.drop(label)
 // CALL db.idx.fulltext.drop('books')
 
-ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, const SIValue *args) {
+ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx,
+		const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 1) return PROCEDURE_ERR;
 	if(!(SI_TYPE(args[0]) & T_STRING)) return PROCEDURE_ERR;
 
@@ -44,7 +45,7 @@ ProcedureResult Proc_FulltextDropIndexFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_FulltextDropIdxGen() {
 	void *privateData = NULL;
-	ProcedureOutput **output = array_new(ProcedureOutput *, 0);
+	ProcedureOutput *output = array_new(ProcedureOutput, 0);
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.drop",
 								   1,
 								   output,

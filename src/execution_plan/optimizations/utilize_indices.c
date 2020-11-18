@@ -4,6 +4,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../ops/op_index_scan.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 #include "../../ast/ast_shared.h"
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
@@ -34,7 +35,7 @@ void _normalize_filter(FT_FilterNode **filter) {
 	// Normalize, left hand side should be variadic, right hand side const.
 	switch(filter_tree->t) {
 	case FT_N_PRED:
-		if(filter_tree->pred.rhs->operand.type == AR_EXP_VARIADIC) {
+		if(filter_tree->pred.lhs->operand.type == AR_EXP_CONSTANT) {
 			// Swap.
 			AR_ExpNode *tmp = filter_tree->pred.rhs;
 			filter_tree->pred.rhs = filter_tree->pred.lhs;
@@ -87,22 +88,32 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 bool _simple_predicates(FT_FilterNode *filter) {
 	bool res = false;
 
+	SIValue v;
+	AR_ExpNode *exp = NULL;
+	AR_ExpNode *lhs_exp = NULL;
+	AR_ExpNode *rhs_exp = NULL;
+
 	switch(filter->t) {
 	case FT_N_PRED:
-		if(filter->pred.rhs->type == AR_EXP_OPERAND &&
-		   filter->pred.lhs->type == AR_EXP_OPERAND) {
-			SIValue v_lhs = SI_NullVal();
-			SIValue v_rhs = SI_NullVal();
-			bool lhs_scalar = AR_EXP_ReduceToScalar(filter->pred.lhs, true, &v_lhs);
-			bool rhs_scalar = AR_EXP_ReduceToScalar(filter->pred.rhs, true, &v_rhs);
-			// Predicate should be in the form of variable=scalar or scalar=variadic
-			if((lhs_scalar && !rhs_scalar) || (!lhs_scalar && rhs_scalar)) {
-				// Validate constant type.
-				SIValue c = lhs_scalar ? v_lhs : v_rhs;
-				SIType t = SI_TYPE(c);
-				res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
-			}
-		}
+		lhs_exp = filter->pred.lhs;
+		rhs_exp = filter->pred.rhs;
+		// filter should be in the form of variable=scalar or scalar=variable
+		// find out which part of the filter performs entity attribute access
+
+		// n.v = exp
+		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;
+		// exp = n.v
+		if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp;
+		// filter is not of the form n.v = exp or exp = n.v
+		if(exp == NULL) break;
+
+		// make sure 'exp' represents a scalar
+		bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
+		if(scalar == false) break;
+
+		// validate constant type
+		SIType t = SI_TYPE(v);
+		res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
 		break;
 	case FT_N_EXP:
 		if(_isInFilter(filter)) {
@@ -153,7 +164,11 @@ RSQNode *_filterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 
 	// extract both field name and list from expression
 	AR_ExpNode *inOp = filter->exp.exp;
-	const char *field = inOp->op.children[0]->operand.variadic.entity_prop;
+
+	char *field;
+	bool attribute = AR_EXP_IsAttribute(inOp->op.children[0], &field);
+	ASSERT(attribute == true);
+
 	SIValue list = inOp->op.children[1]->operand.constant;
 	uint list_len = SIArray_Length(list);
 
@@ -223,7 +238,10 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 	}
 	case FT_N_PRED: {
 		double d;
-		const char *field = filter->pred.lhs->operand.variadic.entity_prop;
+		char *field;
+		bool attribute = AR_EXP_IsAttribute(filter->pred.lhs, &field);
+		ASSERT(attribute == true);
+
 		SIValue v = filter->pred.rhs->operand.constant;
 		switch(SI_TYPE(v)) {
 		case T_STRING:
@@ -340,6 +358,7 @@ bool _applicableFilter(Index *idx, FT_FilterNode **filter) {
 			if(filter_attribute_count == 0) break;
 		}
 	}
+
 	if(filter_attribute_count != 0) {
 		res = false;
 		goto cleanup;
@@ -380,12 +399,15 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
  * Return true if filter was reduce, false otherwise. */
 void _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges, rax *numeric_ranges) {
 	// Simple predicate trees are used to build up a range object.
-	assert(tree->pred.lhs->operand.type == AR_EXP_VARIADIC &&
-		   tree->pred.rhs->operand.type == AR_EXP_CONSTANT);
+	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
+
+	char *prop;
+	bool attribute = AR_EXP_IsAttribute(tree->pred.lhs, &prop);
+	ASSERT(attribute == true);
 
 	int op = tree->pred.op;
 	SIValue c = tree->pred.rhs->operand.constant;
-	const char *prop = tree->pred.lhs->operand.variadic.entity_prop;
+
 	StringRange *sr = raxFind(string_ranges, (unsigned char *)prop, strlen(prop));
 	NumericRange *nr = raxFind(numeric_ranges, (unsigned char *)prop, strlen(prop));
 

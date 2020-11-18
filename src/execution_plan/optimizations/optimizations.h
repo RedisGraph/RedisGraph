@@ -8,6 +8,8 @@
 #define __OPTIMIZATIONS_H__
 
 #include "./apply_join.h"
+#include "./apply_skip.h"
+#include "./apply_limit.h"
 #include "./seek_by_id.h"
 #include "./reduce_count.h"
 #include "./reduce_scans.h"

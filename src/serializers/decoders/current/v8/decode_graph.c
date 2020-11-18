@@ -4,14 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v7.h"
+#include "decode_v8.h"
 
 // Module event handler functions declarations.
 void ModuleEventHandler_IncreaseDecodingGraphsCount(void);
 void ModuleEventHandler_DecreaseDecodingGraphsCount(void);
 
 static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
-
 	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
 		// New graph is being decoded. Inform the module and create new graph context.
@@ -22,6 +21,9 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	}
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
+
+	// Set the GraphCtx in thread-local storage.
+	QueryCtx_SetGraphCtx(gc);
 
 	return gc;
 }
@@ -36,13 +38,19 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 }
 
+static void _EnableMultiEdgeSupport(Graph *g) {
+	uint n = Graph_RelationTypeCount(g);
+	for(uint i = 0; i < n; i++) g->relations[i]->allow_multi_edge = true;
+}
+
 static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	/* Header format:
 	 * Graph name
 	 * Node count
 	 * Edge count
 	 * Label matrix count
-	 * Relation matrix count
+	 * Relation matrix count - N
+	 * Does relationship matrix Ri holds mutiple edges under a single entry X N
 	 * Number of graph keys (graph context key + meta keys)
 	 */
 
@@ -54,16 +62,32 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	uint64_t edge_count = RedisModule_LoadUnsigned(rdb);
 	uint64_t label_count = RedisModule_LoadUnsigned(rdb);
 	uint64_t relation_count = RedisModule_LoadUnsigned(rdb);
+	uint64_t multi_edge[relation_count];
+
+	for(uint i = 0; i < relation_count; i++) {
+		multi_edge[i] = RedisModule_LoadUnsigned(rdb);
+	}
 
 	// Total keys representing the graph.
 	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
+	Graph *g = gc->g;
 	// If it is the first key of this graph, allocate all the data structures, with the appropriate dimensions.
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
+
+		// Mark relationship matrices for support of multi-edge entries
+		for(uint i = 0; i < relation_count; i++) {
+			// Enable/Disable support for multi-edge
+			// we will enable support for multi-edge on all relationship
+			// matrices once we finish loading the graph
+			g->relations[i]->allow_multi_edge = multi_edge[i];
+		}
+
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	}
+
 	return gc;
 }
 
@@ -88,7 +112,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraph_v8(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
@@ -106,29 +130,29 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 	/* The decode process contains the decode operation of many meta keys, representing independent parts of the graph.
 	 * Each key contains data on one or more of the following:
 	 * 1. Nodes - The nodes that are currently valid in the graph.
-	 * 2. Deleted nodes - Nodes that were deleted and there ids can be re-used. Used for exact replication of data black state.
+	 * 2. Deleted nodes - Nodes that were deleted and there ids can be re-used. Used for exact replication of data block state.
 	 * 3. Edges - The edges that are currently valid in the graph.
-	 * 4. Deleted edges - Edges that were deleted and there ids can be re-used. Used for exact replication of data black state.
-	 * 5. Graph schema - Propertoes, indices.
+	 * 4. Deleted edges - Edges that were deleted and there ids can be re-used. Used for exact replication of data block state.
+	 * 5. Graph schema - Properties, indices.
 	 * The following switch checks which part of the graph the current key holds, and decodes it accordingly. */
 	uint payloads_count = array_len(key_schema);
 	for(uint i = 0; i < payloads_count; i++) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbLoadNodes_v7(rdb, gc, payload.entities_count);
+			RdbLoadNodes_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbLoadDeletedNodes_v7(rdb, gc, payload.entities_count);
+			RdbLoadDeletedNodes_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbLoadEdges_v7(rdb, gc, payload.entities_count);
+			RdbLoadEdges_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbLoadDeletedEdges_v7(rdb, gc, payload.entities_count);
+			RdbLoadDeletedEdges_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbLoadGraphSchema_v7(rdb, gc);
+			RdbLoadGraphSchema_v8(rdb, gc);
 			break;
 		default:
 			assert(false && "Unknown encoding");
@@ -160,6 +184,10 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
+
+		// Enable support for multi edge on all relationship matrices.
+		_EnableMultiEdgeSupport(gc->g);
+
 		QueryCtx_Free(); // Release thread-local variables.
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// Graph has finished decoding, inform the module.

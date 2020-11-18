@@ -236,3 +236,42 @@ class testOptionalFlow(FlowTestsBase):
         # that needs to be tracked.
         self.env.assertIn("Expand Into", plan)
 
+    # Validate that filters are created properly when OPTIONAL MATCH is the first clause.
+    def test19_leading_optional_match(self):
+        global redis_graph
+        query = """MATCH (n) WHERE n.v = 'v1' RETURN n.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Validate that path filters on OPTIONAL MATCH clauses are constructed properly.
+    def test20_optional_path_filter(self):
+        global redis_graph
+        query = """MATCH (n {v: 'v1'}) OPTIONAL MATCH (m:L)-[]->() WHERE (n)--() RETURN n.v, m.v ORDER BY n.v, m.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (n) OPTIONAL MATCH (m {v:'v1'})--() WHERE (n)--() RETURN n.v, m.v ORDER BY n.v, m.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v2', 'v1'],
+                           ['v3', 'v1'],
+                           ['v4', None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """OPTIONAL MATCH (n {v: 'v1'}) OPTIONAL MATCH (m {v: 'v2'}) WHERE (n)--(m) RETURN n.v, m.v"""
+
+    # Test placement of filters that don't rely on variable references.
+    def test21_optional_filters_without_references(self):
+        global redis_graph
+        query = """OPTIONAL MATCH (a {v: 'v1'}), (b {v: 'v2'}) WHERE false RETURN a, b"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None, None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """OPTIONAL MATCH (a {v: 'v1'}), (b {v: 'v2'}) WHERE true RETURN a.v, b.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

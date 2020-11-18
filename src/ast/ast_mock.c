@@ -16,8 +16,6 @@ AST *AST_MockMatchClause(AST *master_ast, cypher_astnode_t *node, bool node_is_p
 	ast->referenced_entities = master_ast->referenced_entities;
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->free_root = true;
-	ast->skip = NULL;
-	ast->limit = NULL;
 	cypher_astnode_t *pattern;
 	struct cypher_input_range range = {0};
 	const cypher_astnode_t *predicate = NULL;

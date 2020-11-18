@@ -5,7 +5,7 @@ from base import FlowTestsBase
 
 redis_con = None
 
-CACHE_SIZE = 3
+CACHE_SIZE = 16
 
 class testCache(FlowTestsBase):
 
@@ -187,3 +187,39 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(0, cached_result.relationships_created)
         self.env.assertEqual(uncached_result.result_set, cached_result.result_set)
 
+    def test10_test_labelscan_update(self):
+        # In this scenario a label scan is made for non existing label
+        # than the label is created and the label scan query is re-used.
+        graph = Graph('Cache_test_labelscan_update', redis_con)
+        query = "MATCH (n:Label) return n"
+        result = graph.query(query)
+        self.env.assertEqual(0, len(result.result_set))
+        query = "MERGE (n:Label)"
+        result = graph.query(query)
+        self.env.assertEqual(1, result.nodes_created)
+        query = "MATCH (n:Label) return n"
+        result = graph.query(query)
+        self.env.assertEqual(1, len(result.result_set))
+        self.env.assertEqual("Label", result.result_set[0][0].label)
+
+    def test11_test_skip_limit(self):
+        # Test using parameters for skip and limit values,
+        # ensuring cached executions always use the parameterized values.
+        graph = Graph('Cache_Empty_Key', redis_con)
+        query = "UNWIND [1,2,3,4] AS arr RETURN arr SKIP $s LIMIT $l"
+        params = {'s': 1, 'l': 1}
+        uncached_result = graph.query(query, params)
+        expected_result = [[2]]
+        cached_result = graph.query(query, params)
+        self.env.assertEqual(expected_result, cached_result.result_set)
+        self.env.assertEqual(uncached_result.result_set, cached_result.result_set)
+        self.env.assertFalse(uncached_result.cached_execution)
+        self.env.assertTrue(cached_result.cached_execution)
+
+        # Update the params
+        params = {'s': 2, 'l': 2}
+        # The new result should respect the new skip and limit.
+        expected_result = [[3], [4]]
+        cached_result = graph.query(query, params)
+        self.env.assertEqual(expected_result, cached_result.result_set)
+        self.env.assertTrue(cached_result.cached_execution)

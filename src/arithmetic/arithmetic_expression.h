@@ -35,7 +35,7 @@ typedef enum {
 typedef enum {
 	AR_EXP_OP_UNKNOWN,     // Should not occur.
 	AR_EXP_CONSTANT,       // A constant, e.g. 3
-	AR_EXP_VARIADIC,       // A variable, e.g. node.property
+	AR_EXP_VARIADIC,       // A variable, e.g. n
 	AR_EXP_PARAM,          // A parameter, e.g. $p.
 	AR_EXP_BORROW_RECORD   // A directive to store the current record.
 } AR_OperandNodeType;
@@ -59,17 +59,14 @@ typedef struct {
 	AR_OPType type;
 } AR_OpNode;
 
-/* OperandNode represents either a constant numeric value,
- * a graph entity property or a parameter. */
+// OperandNode represents either constant, parameter, or graph entity
 typedef struct {
 	union {
-		const char *param_name;
 		SIValue constant;
+		const char *param_name;
 		struct {
 			const char *entity_alias;
-			const char *entity_prop;
 			int entity_alias_idx;
-			Attribute_ID entity_prop_idx;
 		} variadic;
 	};
 	AR_OperandNodeType type;
@@ -96,7 +93,10 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count);
 
 /* Creates a new Arithmetic expression variable operand node */
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop);
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias);
+
+/* Creates a new Arithmetic expression extracting an attribute from an entity */
+AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity, const char *attr);
 
 /* Creates a new Arithmetic expression constant operand node */
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
@@ -121,7 +121,10 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
-/* Utility functions */
+//------------------------------------------------------------------------------
+// Utility functions
+//------------------------------------------------------------------------------
+
 /* Traverse an expression tree and add all entity aliases to a rax. */
 void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases);
 
@@ -147,6 +150,14 @@ bool AR_EXP_IsConstant(const AR_ExpNode *exp);
 
 /* Returns true if an arithmetic expression node is a parameter. */
 bool AR_EXP_IsParameter(const AR_ExpNode *exp);
+
+/* Returns true if 'exp' represent attribute extraction
+ * sets 'attr' to attribute name if provided. */
+bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr);
+
+/* Returns true if the arithmetic expression returns
+ * a boolean value and false otherwise. */
+bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
 
 /* Generate a heap-allocated name for an arithmetic expression.
  * This routine is only used to name ORDER BY expressions. */

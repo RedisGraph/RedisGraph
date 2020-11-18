@@ -44,5 +44,11 @@ void optimizePlan(ExecutionPlan *plan) {
 
 	// Try to reduce execution plan incase it perform node or edge counting.
 	reduceCount(plan);
+
+	// Let operations know about specified limit(s)
+	applyLimit(plan);
+
+	// Let operations know about specified skip(s)
+	applySkip(plan);
 }
 

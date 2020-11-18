@@ -9,6 +9,7 @@
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 #include <assert.h>
 
 /* Forward declarations. */
@@ -52,6 +53,7 @@ static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *u
 							  Record *records, uint record_count) {
 	assert(updates && record_count > 0);
 	uint update_count = array_len(updates);
+	uint failed_updates = 0;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Lock everything.
 	QueryCtx_LockForCommit();
@@ -61,16 +63,21 @@ static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *u
 		for(uint j = 0; j < update_count; j ++) { // For each pending update.
 			EntityUpdateEvalCtx *update_ctx = &updates[j];
 
-			// Retrieve the appropriate entry from the Record, make sure it's either a node or an edge.
+			// Get the type of the entity to update. If the expected entity was not
+			// found, make no updates but do not error.
 			RecordEntryType t = Record_GetType(r, update_ctx->record_idx);
-			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
+			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+				failed_updates++;
+				continue;
+			}
+
 			GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
 
 			_UpdateProperty(r, ge, update_ctx); // Update the entity.
 			if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
 		}
 	}
-	if(stats) stats->properties_set += update_count * record_count;
+	if(stats) stats->properties_set += (update_count * record_count) - failed_updates;
 }
 
 //------------------------------------------------------------------------------

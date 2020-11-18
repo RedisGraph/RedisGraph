@@ -12,6 +12,18 @@ Returns: [Result set](result_structure.md#redisgraph-result-set-structure)
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
+## GRAPH.RO_QUERY
+
+Executes a given read only query against a specified graph.
+
+Arguments: `Graph name, Query`
+
+Returns: [Result set](result_structure.md#redisgraph-result-set-structure) for a read only query or an error if a write query was given.
+
+```sh
+GRAPH.RO_QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
+```
+
 ### Query language
 
 The syntax is based on [Cypher](http://www.opencypher.org/), and only a subset of the language currently
@@ -704,15 +716,33 @@ GRAPH.QUERY social "CALL db.labels() YIELD label"
 
 YIELD modifiers are only required if explicitly specified; by default the value in the 'Yields' column will be emitted automatically.
 
-|Procedure | Arguments | Yields | Description|
-| -------  |:-------|:-------|:-----------|
-|db.labels | none | `label` | Yields all node labels in the graph. |
-|db.relationshipTypes | none | `relationshipType` | Yields all relationship types in the graph. |
-|db.propertyKeys | none | `propertyKey` | Yields all property keys in the graph. |
-|db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...] | none | Builds a full-text searchable index on a label and the 1 or more specified properties. |
-|db.idx.fulltext.drop | `label` | none | Deletes the full-text index associated with the given label. |
-|db.idx.fulltext.queryNodes | `label`, `string` | `node` | Retrieve all nodes that contain the specified string in the full-text indexes on the given label. |
-|algo.pageRank | `label`, `relationship-type` | `node`, `score` | Runs the pagerank algorithm over nodes of given label (NULL to consider all nodes), inspecting only edges of given relationship type (NULL to consider all edges). |
+| Procedure                       | Arguments                                       | Yields             | Description                                                                                                                                                                            |
+| -------                         | :-------                                        | :-------           | :-----------                                                                                                                                                                           |
+| db.labels                       | none                                            | `label`            | Yields all node labels in the graph.                                                                                                                                                   |
+| db.relationshipTypes            | none                                            | `relationshipType` | Yields all relationship types in the graph.                                                                                                                                            |
+| db.propertyKeys                 | none                                            | `propertyKey`      | Yields all property keys in the graph.                                                                                                                                                 |
+| db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none               | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
+| db.idx.fulltext.drop            | `label`                                         | none               | Deletes the full-text index associated with the given label.                                                                                                                           |
+| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`             | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
+| algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`    | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
+| [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`   | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
+
+### Algorithms
+
+#### BFS
+The breadth-first-search algorithm accepts 4 arguments:
+
+`source-node (node)` - The root of the search.
+
+`max-level (integer)` - If greater than zero, this argument indicates how many levels should be traversed by BFS. 1 would retrieve only the source's neighbors, 2 would retrieve all nodes within 2 hops, and so on.
+
+`relationship-type (string)` - If this argument is NULL, all relationship types will be traversed. Otherwise, it specifies a single relationship type to perform BFS over.
+
+It can yield two outputs:
+
+`nodes` - An array of all nodes connected to the source without violating the input constraints.
+
+`edges` - An array of all edges traversed during the search. This does not necessarily contain all edges connecting nodes in the tree, as cycles or multiple edges connecting the same source and destination do not have a bearing on the reachability this algorithm tests for. These can be used to construct the directed acyclic graph that represents the BFS tree. Emitting edges incurs a small performance penalty.
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
