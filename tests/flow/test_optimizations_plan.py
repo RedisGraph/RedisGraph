@@ -422,3 +422,12 @@ class testOptimizationsPlan(FlowTestsBase):
                     [0, 3],
                     [0, 3]]
         self.env.assertEqual(resultset, expected)
+
+    # Filters on single Cartesian Product branches should be placed properly.
+    def test27_optimize_cartesian_product_complex_filter_trees(self):
+        query = """MATCH (a), (b), (c) WHERE a.val = 0 OR 'lit' > 3 AND b.val <> b.fake RETURN a.val, b.val ORDER BY a.val, b.val DESC LIMIT 3"""
+        resultset = graph.query(query).result_set
+        expected = [[0, 3],
+                    [0, 3],
+                    [0, 3]]
+        self.env.assertEqual(resultset, expected)
