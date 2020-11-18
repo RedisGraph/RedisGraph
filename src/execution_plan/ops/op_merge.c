@@ -66,7 +66,7 @@ static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *u
 			// Get the type of the entity to update. If the expected entity was not
 			// found, make no updates but do not error.
 			RecordEntryType t = Record_GetType(r, update_ctx->record_idx);
-			if(t == REC_TYPE_UNKNOWN) {
+			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 				failed_updates++;
 				continue;
 			}
