@@ -5,12 +5,12 @@
 */
 
 #include "op_update.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static OpResult UpdateInit(OpBase *opBase);
@@ -259,6 +259,12 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	for(uint i = 0; i < exp_count; i++) {
 		EntityUpdateEvalCtx *update_ctx = ctx->exps + i;
 		SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
+
+		// Emit an error and return NULL if we're trying to add an invalid type.
+		if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
+			Error_InvalidPropertyValue();
+			break;
+		}
 
 		/* Determine whether we must update the index for this set of updates.
 		 * If at least one property being updated is indexed, each node will be reindexed. */

@@ -23,3 +23,5 @@ void Error_UnsupportedASTNodeType(const cypher_astnode_t *node);
 // Report an error on receiving an unhandled AST operator.
 void Error_UnsupportedASTOperator(const cypher_operator_t *op);
 
+// Report an error on trying to assign a complex type to a property.
+void Error_InvalidPropertyValue(void);
