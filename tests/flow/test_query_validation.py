@@ -447,3 +447,15 @@ class testQueryValidationFlow(FlowTestsBase):
         # Non-existent properties are treated as NULLs, which are boolean in Cypher's 3-valued logic.
         query = """MATCH (a) WHERE a.fakeprop RETURN a"""
         redis_graph.query(query)
+
+    def test31_set_invalid_property_type(self):
+        queries = ["""MATCH (a) CREATE (:L {v: a})""",
+                   """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a"""]
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                assert("Property values can only be of primitive types" in e.message)
+                pass
