@@ -50,6 +50,7 @@ static FilterCtx *_locate_filters_and_entities(OpBase *cp) {
 // Finds all the cartesian product's children which solve a specific filter entities.
 static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 	int entities_count = raxSize(entities);
+	if(entities_count == 0) return NULL; // No dependencies in filters.
 	OpBase **solving_branches = array_new(OpBase *, 1);
 	// Iterate over all the children or until all the entities are resolved.
 	for(int i = 0; i < cp->childCount && entities_count > 0; i++) {

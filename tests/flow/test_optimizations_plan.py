@@ -413,3 +413,12 @@ class testOptimizationsPlan(FlowTestsBase):
                     [0, 3],
                     [0, 3]]
         self.env.assertEqual(resultset, expected)
+
+    # Constant filters should not break Cartesian Product placement.
+    def test26_optimize_cartesian_product_constant_filters(self):
+        query = """MATCH (a) WHERE 2 > rand() MATCH (a), (b) RETURN a.val, b.val ORDER BY a.val, b.val DESC LIMIT 3"""
+        resultset = graph.query(query).result_set
+        expected = [[0, 3],
+                    [0, 3],
+                    [0, 3]]
+        self.env.assertEqual(resultset, expected)
