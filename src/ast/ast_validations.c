@@ -299,6 +299,32 @@ cleanup:
 	return res;
 }
 
+/* While Cypher allows paths to appear in a number of places, RedisGraph
+ * only supports them in the appropriate clauses and in path filters. */
+static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
+	uint nchildren = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < nchildren; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+		const cypher_astnode_type_t child_type = cypher_astnode_type(child);
+		if(child_type == CYPHER_AST_PATTERN_PATH) {
+			const cypher_astnode_type_t root_type = cypher_astnode_type(root);
+			if(root_type != CYPHER_AST_PATTERN &&
+					root_type != CYPHER_AST_MATCH &&
+					root_type != CYPHER_AST_MERGE &&
+					root_type != CYPHER_AST_WITH &&
+					root_type != CYPHER_AST_NAMED_PATH &&
+					root_type != CYPHER_AST_UNARY_OPERATOR &&
+					root_type != CYPHER_AST_BINARY_OPERATOR) {
+				QueryCtx_SetError("Encountered path traversal in unsupported location '%s'",
+						cypher_astnode_typestr(child_type));
+				return AST_INVALID;
+			}
+		}
+		if (_Validate_Path_Locations(child) != AST_VALID) return AST_INVALID;
+	}
+	return AST_VALID;
+}
+
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
 	return raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound;
 }
@@ -1671,6 +1697,9 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	AST mock_ast; // Build a fake AST with the correct AST root
 	mock_ast.root = body;
+
+	// Check for path traversals in unsupported locations.
+	if(_Validate_Path_Locations(mock_ast.root) != AST_VALID) return AST_INVALID;
 
 	// Check for invalid queries not captured by libcypher-parser
 	AST_Validation res;
