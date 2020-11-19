@@ -44,3 +44,14 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 3)
         self.env.assertEquals(result.properties_set, 3)
         self.env.assertEquals(result.result_set, expected_result)
+
+    def test04_create_with_null_properties(self):
+        query = """CREATE (a:L {v1: NULL, v2: 'prop'}) RETURN a"""
+        result = redis_graph.query(query)
+        node = Node(label="L", properties={"v2": "prop"})
+        expected_result = [[node]]
+
+        self.env.assertEquals(result.labels_added, 1)
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 1)
+        self.env.assertEquals(result.result_set, expected_result)

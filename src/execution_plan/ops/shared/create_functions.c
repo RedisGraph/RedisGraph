@@ -12,11 +12,13 @@
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 								  PendingProperties *props) {
+	int failed_updates = 0;
 	for(int i = 0; i < props->property_count; i++) {
-		GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
+		bool added = GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
+		if(!added) failed_updates ++;
 	}
 
-	if(stats) stats->properties_set += props->property_count;
+	if(stats) stats->properties_set += props->property_count - failed_updates;
 }
 
 /* Commit insertions. */
@@ -164,8 +166,8 @@ PendingProperties *ConvertPropertyMap(Record r, const PropertyMap *map) {
 	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
 	for(int i = 0; i < map->property_count; i++) {
 		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
-		// Emit an error and return NULL if we're trying to add an invalid type.
-		if(!(SI_TYPE(converted->values[i]) & SI_VALID_PROPERTY_VALUE)) {
+		// Emit an error and exit if we're trying to add an invalid type.
+		if(!(SI_TYPE(converted->values[i]) & (SI_VALID_PROPERTY_VALUE | T_NULL))) {
 			converted->property_count = i;
 			PendingPropertiesFree(converted);
 			Error_InvalidPropertyValue();

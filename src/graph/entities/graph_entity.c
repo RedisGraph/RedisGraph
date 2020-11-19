@@ -20,12 +20,14 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 };
 
 /* Only primitives or arrays of primitives can be assigned as a property value.
- * Return true if the value is valid, emit an error and return false otherwise. */
+ * Return true if the value is valid and false if the value is NULL.
+ * If the value is a non-NULL invalid (like a node reference), emit an error and exit. */
 static inline bool _GraphEntity_ValidatePropertyValue(SIValue v) {
 	if(!(SI_TYPE(v) & SI_VALID_PROPERTY_VALUE)) {
+		// Return false without erroring if value is null.
+		if(SI_TYPE(v) & T_NULL) return false;
 		Error_InvalidPropertyValue();
-		QueryCtx_RaiseRuntimeException();
-		return false;
+		Error_RaiseRuntimeException();
 	}
 	return true;
 }
@@ -98,8 +100,8 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
 
-	// Emit an error and return if we're trying to add an invalid type.
-	if(!_GraphEntity_ValidatePropertyValue(value)) return;
+	// Emit an error and exit if we're trying to add an invalid type.
+	_GraphEntity_ValidatePropertyValue(value);
 
 	// Setting an attribute value to NULL removes that attribute.
 	if(SIValue_IsNull(value)) {

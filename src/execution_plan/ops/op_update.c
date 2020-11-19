@@ -260,7 +260,8 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
 
 		// Emit an error and exit if we're trying to add an invalid type.
-		if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
+		// NULL is acceptable here as it indicates a deletion.
+		if(!(SI_TYPE(new_value) & (SI_VALID_PROPERTY_VALUE | T_NULL))) {
 			Error_InvalidPropertyValue();
 			Error_RaiseRuntimeException();
 			break;
