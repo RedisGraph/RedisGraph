@@ -54,7 +54,6 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 			for(int j = i + 1; j < op->childCount; j++) {
 				OpBase *candidate = op->children[j];
 				if(candidate->type == OPType_FILTER) {
-					OpBase *tmp = candidate;
 					op->children[i] = candidate;
 					op->children[j] = child;
 					swapped = true;

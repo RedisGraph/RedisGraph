@@ -23,8 +23,8 @@ void _normalize_in_filter(FT_FilterNode *filter_tree) {
 	if(left_child->operand.type == AR_EXP_CONSTANT) {
 		// Swap!
 		AR_ExpNode *temp = left_child;
-		left_child = right_child;
-		right_child = temp;
+		filter_tree->exp.exp->op.children[0] = right_child;
+		filter_tree->exp.exp->op.children[1] = temp;
 	}
 }
 

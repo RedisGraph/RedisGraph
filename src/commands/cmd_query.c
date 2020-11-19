@@ -73,6 +73,7 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 }
 
 void Graph_Query(void *args) {
+	bool readonly = true;
 	bool lockAcquired = false;
 	ResultSet *result_set = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
@@ -103,7 +104,7 @@ void Graph_Query(void *args) {
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	bool readonly = AST_ReadOnly(ast->root);
+	readonly = AST_ReadOnly(ast->root);
 	if(!readonly && _readonly_cmd_mode(command_ctx)) {
 		QueryCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
 		QueryCtx_EmitException();
