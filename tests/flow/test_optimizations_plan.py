@@ -407,7 +407,7 @@ class testOptimizationsPlan(FlowTestsBase):
 
     # Cartesian product filter placement should not recurse into earlier scopes.
     def test25_optimize_cartesian_product_scoping(self):
-        query = """MATCH (a {name: 'Ailon'})-[]->(b {name: 'Roi'}) WITH 5 AS c MATCH (a), (b) WHERE a.val = 3 OR b.val = 3 RETURN a.val, b.val ORDER BY a.val, b.val LIMIT 3"""
+        query = """MATCH (a {name: 'Ailon'})-[]->(b {name: 'Roi'}) WITH 'const' AS c MATCH (a), (b) WHERE a.val = 3 OR b.val = 3 RETURN a.val, b.val ORDER BY a.val, b.val LIMIT 3"""
         resultset = graph.query(query).result_set
         expected = [[0, 3],
                     [0, 3],
