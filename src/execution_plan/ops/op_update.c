@@ -233,7 +233,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
 						  ctx->alias);
-		QueryCtx_RaiseRuntimeException();
+		Error_RaiseRuntimeException();
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -262,7 +262,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		// Emit an error and exit if we're trying to add an invalid type.
 		if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
 			Error_InvalidPropertyValue();
-			QueryCtx_RaiseRuntimeException();
+			Error_RaiseRuntimeException();
 			break;
 		}
 

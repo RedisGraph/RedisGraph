@@ -6,6 +6,7 @@
 
 #include "cmd_query.h"
 #include "../RG.h"
+#include "../errors.h"
 #include "cmd_context.h"
 #include "../ast/ast.h"
 #include "../util/arr.h"
@@ -99,7 +100,7 @@ void Graph_Query(void *args) {
 	ExecutionType exec_type = exec_ctx.exec_type;
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
-		QueryCtx_EmitException();
+		Error_EmitException();
 		goto cleanup;
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
@@ -107,7 +108,7 @@ void Graph_Query(void *args) {
 	readonly = AST_ReadOnly(ast->root);
 	if(!readonly && _readonly_cmd_mode(command_ctx)) {
 		QueryCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
-		QueryCtx_EmitException();
+		Error_EmitException();
 		goto cleanup;
 	}
 
@@ -116,7 +117,7 @@ void Graph_Query(void *args) {
 		if(!readonly) {
 			// Disallow timeouts on write operations to avoid leaving the graph in an inconsistent state.
 			QueryCtx_SetError("Query timeouts may only be specified on read-only queries");
-			QueryCtx_EmitException();
+			Error_EmitException();
 			goto cleanup;
 		}
 

@@ -169,7 +169,7 @@ PendingProperties *ConvertPropertyMap(Record r, const PropertyMap *map) {
 			converted->property_count = i;
 			PendingPropertiesFree(converted);
 			Error_InvalidPropertyValue();
-			QueryCtx_RaiseRuntimeException();
+			Error_RaiseRuntimeException();
 			break;
 		}
 	}

@@ -45,7 +45,7 @@ static void _initList(OpUnwind *op) {
 	if(SI_TYPE(new_list) != T_ARRAY) {
 		Error_SITypeMismatch(new_list, T_ARRAY);
 		SIValue_Free(new_list);
-		QueryCtx_RaiseRuntimeException();
+		Error_RaiseRuntimeException();
 	}
 	// Update the list value.
 	op->list = new_list;

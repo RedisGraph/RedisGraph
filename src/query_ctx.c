@@ -6,6 +6,7 @@
 
 #include "query_ctx.h"
 #include "RG.h"
+#include "errors.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
@@ -25,18 +26,6 @@ static inline QueryCtx *_QueryCtx_GetCtx(void) {
 	return ctx;
 }
 
-/* Retrieve the exception handler. */
-static jmp_buf *_QueryCtx_GetExceptionHandler(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.breakpoint;
-}
-
-/* Retrieve the error message if the query generated one. */
-static char *_QueryCtx_GetError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.error;
-}
-
 /* rax callback routine for freeing computed parameter values. */
 static void _ParameterFreeCallback(void *param_val) {
 	AR_EXP_Free(param_val);
@@ -54,24 +43,6 @@ void QueryCtx_Finalize(void) {
 void QueryCtx_BeginTimer(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
 	simple_tic(ctx->internal_exec_ctx.timer); // Start the execution timer.
-}
-
-/* An error was encountered during evaluation, and has already been set in the QueryCtx.
- * If an exception handler has been set, exit this routine and return to
- * the point on the stack where the handler was instantiated.  */
-void QueryCtx_RaiseRuntimeException(void) {
-	jmp_buf *env = _QueryCtx_GetExceptionHandler();
-	// If the exception handler hasn't been set, this function returns to the caller,
-	// which will manage its own freeing and error reporting.
-	if(env) longjmp(*env, 1);
-}
-
-void QueryCtx_EmitException(void) {
-	char *error = _QueryCtx_GetError();
-	if(error) {
-		RedisModuleCtx *ctx = QueryCtx_GetRedisModuleCtx();
-		RedisModule_ReplyWithError(ctx, error);
-	}
 }
 
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {
@@ -132,6 +103,12 @@ GraphContext *QueryCtx_GetGraphCtx(void) {
 	return ctx->gc;
 }
 
+/* Retrieve the error message if the query generated one. */
+char *QueryCtx_GetError(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->internal_exec_ctx.error;
+}
+
 Graph *QueryCtx_GetGraph(void) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	return gc->g;
@@ -150,6 +127,12 @@ ResultSet *QueryCtx_GetResultSet(void) {
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return &ctx->internal_exec_ctx.result_set->stats;
+}
+
+/* Retrieve the exception handler. */
+jmp_buf *QueryCtx_GetExceptionHandler(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->internal_exec_ctx.breakpoint;
 }
 
 void QueryCtx_PrintQuery(void) {
@@ -203,7 +186,7 @@ clean_up:
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 	// If there is a break point for runtime exception, raise it, otherwise return false.
-	QueryCtx_RaiseRuntimeException();
+	Error_RaiseRuntimeException();
 	return false;
 
 }
@@ -287,3 +270,4 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
+

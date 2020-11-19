@@ -6,6 +6,7 @@
 
 #include "proc_fulltext_query.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../index/index.h"
@@ -66,7 +67,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 		rm_free(err);
 		/* Raise the exception, we expect an exception handler to be set.
 		 * as procedure invocation is done at runtime. */
-		QueryCtx_RaiseRuntimeException();
+		Error_RaiseRuntimeException();
 	}
 	assert(pdata->iter);
 

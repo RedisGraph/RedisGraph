@@ -63,11 +63,6 @@ void QueryCtx_Finalize(void);
 /* Start timing query execution. */
 void QueryCtx_BeginTimer(void);
 
-/* Jump to a runtime exception breakpoint if one has been set. */
-void QueryCtx_RaiseRuntimeException(void);
-/* Reply back to the user with error. */
-void QueryCtx_EmitException(void);
-
 /* Setters */
 /* Sets the global execution context */
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx);
@@ -91,12 +86,16 @@ rax *QueryCtx_GetParams(void);
 Graph *QueryCtx_GetGraph(void);
 /* Retrieve the GraphCtx. */
 GraphContext *QueryCtx_GetGraphCtx(void);
+/* Retrieve the error message if the query generated one. */
+char *QueryCtx_GetError(void);
 /* Retrieve the Redis module context. */
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 /* Retrive the resultset. */
 ResultSet *QueryCtx_GetResultSet(void);
 /* Retrive the resultset statistics. */
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
+/* Retrieve the exception handler. */
+jmp_buf *QueryCtx_GetExceptionHandler(void);
 
 /* Print the current query. */
 void QueryCtx_PrintQuery(void);

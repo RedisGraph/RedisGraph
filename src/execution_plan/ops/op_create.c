@@ -5,6 +5,7 @@
 */
 
 #include "op_create.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include <assert.h>
@@ -79,7 +80,7 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		// verify that the endpoints of the new edge resolved properly; fail otherwise
 		if(!src_node || !dest_node) {
 			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
-			QueryCtx_RaiseRuntimeException();
+			Error_RaiseRuntimeException();
 		}
 
 		// create the actual edge

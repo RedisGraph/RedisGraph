@@ -25,3 +25,9 @@ void Error_UnsupportedASTOperator(const cypher_operator_t *op);
 
 // Report an error on trying to assign a complex type to a property.
 void Error_InvalidPropertyValue(void);
+
+/* Jump to a runtime exception breakpoint if one has been set. */
+void Error_RaiseRuntimeException(void);
+
+/* Reply back to the user with error. */
+void Error_EmitException(void);

@@ -5,6 +5,7 @@
 */
 
 #include "op_merge_create.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include <assert.h>
@@ -108,7 +109,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 				if(SI_TYPE(converted_properties->values[i]) & T_NULL) {
 					PendingPropertiesFree(converted_properties);
 					QueryCtx_SetError("Cannot merge node using null property value");
-					QueryCtx_RaiseRuntimeException();
+					Error_RaiseRuntimeException();
 				}
 			}
 		}
@@ -135,7 +136,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		// verify that the endpoints of the new edge resolved properly; fail otherwise
 		if(!src_node || !dest_node) {
 			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
-			QueryCtx_RaiseRuntimeException();
+			Error_RaiseRuntimeException();
 		}
 
 		// create the actual edge
@@ -155,7 +156,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 				if(SI_TYPE(converted_properties->values[i]) & T_NULL) {
 					PendingPropertiesFree(converted_properties);
 					QueryCtx_SetError("Cannot merge relationship using null property value");
-					QueryCtx_RaiseRuntimeException();
+					Error_RaiseRuntimeException();
 				}
 			}
 		}

@@ -5,6 +5,7 @@
 */
 
 #include "cmd_profile.h"
+#include "../errors.h"
 #include "cmd_context.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -40,7 +41,7 @@ void Graph_Profile(void *args) {
 	ExecutionType exec_type = exec_ctx.exec_type;
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
-		QueryCtx_EmitException();
+		Error_EmitException();
 		goto cleanup;
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;

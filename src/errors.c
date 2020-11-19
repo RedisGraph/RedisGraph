@@ -46,3 +46,21 @@ inline void Error_InvalidPropertyValue(void) {
 	QueryCtx_SetError("Property values can only be of primitive types or arrays thereof");
 }
 
+/* An error was encountered during evaluation, and has already been set in the QueryCtx.
+ * If an exception handler has been set, exit this routine and return to
+ * the point on the stack where the handler was instantiated.  */
+void Error_RaiseRuntimeException(void) {
+	jmp_buf *env = QueryCtx_GetExceptionHandler();
+	// If the exception handler hasn't been set, this function returns to the caller,
+	// which will manage its own freeing and error reporting.
+	if(env) longjmp(*env, 1);
+}
+
+void Error_EmitException(void) {
+	char *error = QueryCtx_GetError();
+	if(error) {
+		RedisModuleCtx *ctx = QueryCtx_GetRedisModuleCtx();
+		RedisModule_ReplyWithError(ctx, error);
+	}
+}
+

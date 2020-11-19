@@ -6,6 +6,7 @@
 
 #include "resultset.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
@@ -215,7 +216,7 @@ void ResultSet_Reply(ResultSet *set) {
 
 	/* Check to see if we've encountered a run-time error.
 	 * If so, emit it as the last top-level response. */
-	if(QueryCtx_EncounteredError()) QueryCtx_EmitException();
+	if(QueryCtx_EncounteredError()) Error_EmitException();
 	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
 }
 
