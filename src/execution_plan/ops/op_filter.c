@@ -25,7 +25,7 @@ OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 /* FilterConsume next operation
  * returns OP_OK when graph passes filter tree. */
 static Record FilterConsume(OpBase *opBase) {
-	Record r;
+	Record r = NULL;
 	OpFilter *filter = (OpFilter *)opBase;
 	OpBase *child = filter->op.children[0];
 

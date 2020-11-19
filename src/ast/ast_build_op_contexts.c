@@ -16,8 +16,8 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QGEdge *e,
 											  const cypher_astnode_t *edge) {
 	const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
 
-	EdgeCreateCtx new_edge = {	.alias = e->alias,
-		                        .relation = e->reltypes[0],
+	EdgeCreateCtx new_edge = {  .alias = e->alias,
+								.relation = e->reltypes[0],
 								.reltypeId = e->reltypeIDs[0],
 								.properties = PropertyMap_New(gc, props),
 								.src = e->src->alias,
@@ -31,7 +31,7 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
 
 	NodeCreateCtx new_node = {  .alias = n->alias,
-		                        .label = n->label,
+								.label = n->label,
 								.labelId = n->labelID,
 								.properties = PropertyMap_New(gc, ast_props)
 							 };
@@ -87,7 +87,6 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_
 }
 
 AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
-	AST *ast = QueryCtx_GetAST();
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, delete_count);
 

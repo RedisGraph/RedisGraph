@@ -161,7 +161,6 @@ void Index_Construct(Index *idx) {
 	}
 
 	RSIndex *rsIdx = NULL;
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
 	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
 	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);

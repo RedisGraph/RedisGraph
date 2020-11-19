@@ -35,7 +35,7 @@ static void _CommitNodes(PendingCreations *pending) {
 		const char *label = node_ctx->label;
 		if(label) {
 			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
-				Schema *s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 				pending->stats->labels_added++;
 			}
 		}
@@ -83,7 +83,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		const char *relation = edge_ctx->relation;
 		if(relation) {
 			if(GraphContext_GetSchema(gc, relation, SCHEMA_EDGE) == NULL) {
-				Schema *s = GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
+				GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
 			}
 		}
 	}

@@ -326,8 +326,6 @@ bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier)
 			const char *alias = cypher_ast_identifier_get_name(alias_node);
 			if(!strcmp(alias, identifier)) return true; // The identifier is an alias.
 		} else {
-			// Retrieve the projected expression.
-			const cypher_astnode_t *expression_node = cypher_ast_projection_get_expression(root);
 			if(cypher_astnode_type(root) == CYPHER_AST_IDENTIFIER) {
 				// If the projection itself is the identifier, it is not an alias.
 				const char *current_identifier = cypher_ast_identifier_get_name(alias_node);

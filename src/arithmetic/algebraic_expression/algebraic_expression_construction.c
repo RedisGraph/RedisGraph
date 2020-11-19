@@ -189,7 +189,6 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 ) {
 	GrB_Matrix mat;
 	uint reltype_id;
-	Graph *g = QueryCtx_GetGraph();
 	AlgebraicExpression *add = NULL;
 	AlgebraicExpression *root = NULL;
 	AlgebraicExpression *src_filter = NULL;
@@ -537,3 +536,4 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	QueryGraph_Free(g);
 	return exps;
 }
+
