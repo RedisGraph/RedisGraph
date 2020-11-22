@@ -5,6 +5,7 @@
  */
 
 #include "create_functions.h"
+#include "../../../RG.h"
 #include "../../../errors.h"
 #include "../../../query_ctx.h"
 
@@ -106,7 +107,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
 		Schema *schema = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
-		if(!schema) schema = GraphContext_AddSchema(gc, e->relationship, SCHEMA_EDGE);
+		ASSERT(schema); // All schemas have been created in the edge blueprint loop or earlier.
 		int relation_id = schema->id;
 
 		assert(Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e));
