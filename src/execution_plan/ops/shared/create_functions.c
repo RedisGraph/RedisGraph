@@ -12,13 +12,11 @@
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 								  PendingProperties *props) {
-	int failed_updates = 0;
 	for(int i = 0; i < props->property_count; i++) {
-		bool added = GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
-		if(!added) failed_updates ++;
+		GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
 	}
 
-	if(stats) stats->properties_set += props->property_count - failed_updates;
+	if(stats) stats->properties_set += props->property_count;
 }
 
 /* Commit insertions. */
@@ -159,22 +157,44 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 }
 
 // Resolve the properties specified in the query into constant values.
-PendingProperties *ConvertPropertyMap(Record r, const PropertyMap *map) {
+PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_null) {
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
-	converted->property_count = map->property_count;
-	converted->attr_keys = map->keys; // This pointer can be copied directly.
 	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
 	for(int i = 0; i < map->property_count; i++) {
-		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
-		// Emit an error and exit if we're trying to add an invalid type.
-		if(!(SI_TYPE(converted->values[i]) & (SI_VALID_PROPERTY_VALUE | T_NULL))) {
-			converted->property_count = i;
-			PendingPropertiesFree(converted);
-			Error_InvalidPropertyValue();
-			Error_RaiseRuntimeException();
-			break;
+		SIValue val = AR_EXP_Evaluate(map->values[i], r);
+		if(!(SI_TYPE(val) & SI_VALID_PROPERTY_VALUE)) {
+			// This value is of an invalid type.
+			if(!SIValue_IsNull(val)) {
+				// If the value was a complex type, emit an exception.
+				Error_InvalidPropertyValue();
+				Error_RaiseRuntimeException();
+			}
+			/* The value was NULL. If this was prohibited in this context, raise an exception,
+			 * otherwise skip this value. */
+			if(fail_on_null) {
+				// Emit an error and exit.
+				converted->property_count = i;
+				PendingPropertiesFree(converted);
+				QueryCtx_SetError("Cannot merge node using null property value");
+				Error_RaiseRuntimeException();
+			} else {
+				// Replace the NULL value with the final conversion and reset the loop.
+				Attribute_ID *keys = (Attribute_ID *)map->keys;
+				AR_EXP_Free(map->values[i]);
+				keys[i] = keys[map->property_count - 1];
+				map->values[i] = map->values[map->property_count - 1];
+
+				i--;
+				map->property_count--;
+				continue;
+
+			}
 		}
+		// Set the converted property.
+		converted->values[i] = val;
 	}
+	converted->property_count = map->property_count;
+	converted->attr_keys = map->keys; // This pointer can be copied directly.
 
 	return converted;
 }

@@ -19,19 +19,6 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
 };
 
-/* Only primitives or arrays of primitives can be assigned as a property value.
- * Return true if the value is valid and false if the value is NULL.
- * If the value is a non-NULL invalid (like a node reference), emit an error and exit. */
-static inline bool _GraphEntity_ValidatePropertyValue(SIValue v) {
-	if(!(SI_TYPE(v) & SI_VALID_PROPERTY_VALUE)) {
-		// Return false without erroring if value is null.
-		if(SIValue_IsNull(v)) return false;
-		Error_InvalidPropertyValue();
-		Error_RaiseRuntimeException();
-	}
-	return true;
-}
-
 /* Removes entity's property. */
 static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	// Quick return if attribute is missing.
@@ -65,9 +52,6 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
 
-	// Emit an error and return NULL if we're trying to add an invalid type.
-	if(!_GraphEntity_ValidatePropertyValue(value)) return NULL;
-
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
 	} else {
@@ -99,9 +83,6 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 // Updates existing property value.
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
-
-	// Emit an error and exit if we're trying to add an invalid type.
-	_GraphEntity_ValidatePropertyValue(value);
 
 	// Setting an attribute value to NULL removes that attribute.
 	if(SIValue_IsNull(value)) {
