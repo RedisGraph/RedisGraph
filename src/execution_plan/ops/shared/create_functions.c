@@ -166,6 +166,8 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 			// This value is of an invalid type.
 			if(!SIValue_IsNull(val)) {
 				// If the value was a complex type, emit an exception.
+				converted->property_count = i;
+				PendingPropertiesFree(converted);
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException();
 			}
