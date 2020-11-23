@@ -22,6 +22,7 @@ void Graph_Profile(void *args) {
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
 
+	ErrorCtx_New();
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
@@ -40,8 +41,8 @@ void Graph_Profile(void *args) {
 	plan = exec_ctx.plan;
 	ExecutionType exec_type = exec_ctx.exec_type;
 	// See if there were any query compile time errors
-	if(QueryCtx_EncounteredError()) {
-		Error_EmitException();
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
@@ -92,5 +93,6 @@ cleanup:
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	ErrorCtx_Free(); // Free the error context if one has been instantiated.
 }
 

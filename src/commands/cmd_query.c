@@ -41,10 +41,10 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		QueryCtx_UnlockCommit(NULL);
 
 		if(res != INDEX_OK) {
-			QueryCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+			ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
 		}
 	} else {
-		QueryCtx_SetError("ERR Encountered unknown query execution type.");
+		ErrorCtx_SetError("ERR Encountered unknown query execution type.");
 	}
 }
 
@@ -81,6 +81,7 @@ void Graph_Query(void *args) {
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
 
+	ErrorCtx_New();
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
@@ -99,16 +100,16 @@ void Graph_Query(void *args) {
 	cached = exec_ctx.cached;
 	ExecutionType exec_type = exec_ctx.exec_type;
 	// See if there were any query compile time errors
-	if(QueryCtx_EncounteredError()) {
-		Error_EmitException();
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
 	readonly = AST_ReadOnly(ast->root);
 	if(!readonly && _readonly_cmd_mode(command_ctx)) {
-		QueryCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
-		Error_EmitException();
+		ErrorCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
+		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 
@@ -116,8 +117,8 @@ void Graph_Query(void *args) {
 	if(command_ctx->timeout != 0) {
 		if(!readonly) {
 			// Disallow timeouts on write operations to avoid leaving the graph in an inconsistent state.
-			QueryCtx_SetError("Query timeouts may only be specified on read-only queries");
-			Error_EmitException();
+			ErrorCtx_SetError("Query timeouts may only be specified on read-only queries");
+			ErrorCtx_EmitException();
 			goto cleanup;
 		}
 
@@ -155,7 +156,7 @@ void Graph_Query(void *args) {
 		result_set = ExecutionPlan_Execute(plan);
 
 		// Emit error if query timed out.
-		if(ExecutionPlan_Drained(plan)) QueryCtx_SetError("Query timed out");
+		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
 		plan = NULL;
@@ -188,5 +189,6 @@ cleanup:
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	ErrorCtx_Free(); // Free the error context if one has been instantiated.
 }
 

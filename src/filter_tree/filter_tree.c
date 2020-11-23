@@ -407,7 +407,7 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
  * it should resolve to a boolean value. */
 static inline bool _FilterTree_ValidExpressionNode(const FT_FilterNode *root) {
 	bool valid = AR_EXP_ReturnsBoolean(root->exp.exp);
-	if(!valid) QueryCtx_SetError("Expected boolean predicate.");
+	if(!valid) ErrorCtx_SetError("Expected boolean predicate.");
 	return valid;
 }
 
@@ -422,7 +422,7 @@ bool FilterTree_Valid(const FT_FilterNode *root) {
 	case FT_N_PRED:
 		// Empty or semi empty predicate, invalid structure.
 		if((!root->pred.lhs || !root->pred.rhs)) {
-			QueryCtx_SetError("Filter predicate did not compare two expressions.");
+			ErrorCtx_SetError("Filter predicate did not compare two expressions.");
 			return false;
 		}
 		break;
@@ -431,11 +431,11 @@ bool FilterTree_Valid(const FT_FilterNode *root) {
 		// OR, AND should utilize both left and right children
 		// NOT utilize only the left child.
 		if(!root->cond.left && !root->cond.right) {
-			QueryCtx_SetError("Empty filter condition.");
+			ErrorCtx_SetError("Empty filter condition.");
 			return false;
 		}
 		if(root->cond.op == OP_NOT && root->cond.right) {
-			QueryCtx_SetError("Invalid usage of 'NOT' filter.");
+			ErrorCtx_SetError("Invalid usage of 'NOT' filter.");
 			return false;
 		}
 		if(!FilterTree_Valid(root->cond.left)) return false;

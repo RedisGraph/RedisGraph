@@ -167,7 +167,7 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 			if(!SIValue_IsNull(val)) {
 				// If the value was a complex type, emit an exception.
 				Error_InvalidPropertyValue();
-				Error_RaiseRuntimeException();
+				ErrorCtx_RaiseRuntimeException();
 			}
 			/* The value was NULL. If this was prohibited in this context, raise an exception,
 			 * otherwise skip this value. */
@@ -175,8 +175,8 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 				// Emit an error and exit.
 				converted->property_count = i;
 				PendingPropertiesFree(converted);
-				QueryCtx_SetError("Cannot merge node using null property value");
-				Error_RaiseRuntimeException();
+				ErrorCtx_SetError("Cannot merge node using null property value");
+				ErrorCtx_RaiseRuntimeException();
 			} else {
 				// Replace the NULL value with the final conversion and reset the loop.
 				Attribute_ID *keys = (Attribute_ID *)map->keys;

@@ -64,17 +64,6 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	ctx->gc = gc;
 }
 
-void QueryCtx_SetError(char *err_fmt, ...) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	// An error is already set - free it
-	if(ctx->internal_exec_ctx.error) free(ctx->internal_exec_ctx.error);
-	// Set the new error
-	va_list valist;
-	va_start(valist, err_fmt);
-	vasprintf(&ctx->internal_exec_ctx.error, err_fmt, valist);
-	va_end(valist);
-}
-
 void QueryCtx_SetResultSet(ResultSet *result_set) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->internal_exec_ctx.result_set = result_set;
@@ -103,12 +92,6 @@ GraphContext *QueryCtx_GetGraphCtx(void) {
 	return ctx->gc;
 }
 
-/* Retrieve the error message if the query generated one. */
-char *QueryCtx_GetError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.error;
-}
-
 Graph *QueryCtx_GetGraph(void) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	return gc->g;
@@ -127,12 +110,6 @@ ResultSet *QueryCtx_GetResultSet(void) {
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return &ctx->internal_exec_ctx.result_set->stats;
-}
-
-/* Retrieve the exception handler. */
-jmp_buf *QueryCtx_GetExceptionHandler(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.breakpoint;
 }
 
 void QueryCtx_PrintQuery(void) {
@@ -161,16 +138,16 @@ bool QueryCtx_LockForCommit(void) {
 	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
 	RedisModule_FreeString(redis_ctx, graphID);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		QueryCtx_SetError("Encountered an empty key when opened key %s", ctx->gc->graph_name);
+		ErrorCtx_SetError("Encountered an empty key when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 	}
 	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-		QueryCtx_SetError("Encountered a non-graph value type when opened key %s", ctx->gc->graph_name);
+		ErrorCtx_SetError("Encountered a non-graph value type when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 
 	}
 	if(gc != RedisModule_ModuleTypeGetValue(key)) {
-		QueryCtx_SetError("Encountered different graph value when opened key %s", ctx->gc->graph_name);
+		ErrorCtx_SetError("Encountered different graph value when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 	}
 	ctx->internal_exec_ctx.key = key;
@@ -186,7 +163,7 @@ clean_up:
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 	// If there is a break point for runtime exception, raise it, otherwise return false.
-	Error_RaiseRuntimeException();
+	ErrorCtx_RaiseRuntimeException();
 	return false;
 
 }
@@ -238,11 +215,6 @@ void QueryCtx_ForceUnlockCommit() {
 	_QueryCtx_UnlockCommit(ctx);
 }
 
-inline bool QueryCtx_EncounteredError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.error != NULL;
-}
-
 double QueryCtx_GetExecutionTime(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return simple_toc(ctx->internal_exec_ctx.timer) * 1000;
@@ -250,16 +222,6 @@ double QueryCtx_GetExecutionTime(void) {
 
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-
-	if(ctx->internal_exec_ctx.error) {
-		free(ctx->internal_exec_ctx.error);
-		ctx->internal_exec_ctx.error = NULL;
-	}
-
-	if(ctx->internal_exec_ctx.breakpoint) {
-		rm_free(ctx->internal_exec_ctx.breakpoint);
-		ctx->internal_exec_ctx.breakpoint = NULL;
-	}
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);

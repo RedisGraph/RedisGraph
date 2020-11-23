@@ -216,7 +216,7 @@ void ResultSet_Reply(ResultSet *set) {
 
 	/* Check to see if we've encountered a run-time error.
 	 * If so, emit it as the last top-level response. */
-	if(QueryCtx_EncounteredError()) Error_EmitException();
+	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
 }
 

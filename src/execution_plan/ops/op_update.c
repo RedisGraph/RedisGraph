@@ -231,9 +231,9 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 
 	// Make sure we're updating either a node or an edge.
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
+		ErrorCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
 						  ctx->alias);
-		Error_RaiseRuntimeException();
+		ErrorCtx_RaiseRuntimeException();
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -263,7 +263,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		// NULL is acceptable here as it indicates a deletion.
 		if(!(SI_TYPE(new_value) & (SI_VALID_PROPERTY_VALUE | T_NULL))) {
 			Error_InvalidPropertyValue();
-			Error_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException();
 			break;
 		}
 

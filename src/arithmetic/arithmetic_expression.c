@@ -255,14 +255,14 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	// Make sure number of arguments is as expected.
 	if(fdesc->min_argc > argc) {
 		// Set the query-level error.
-		QueryCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
 						  fdesc->min_argc);
 		return false;
 	}
 
 	if(fdesc->max_argc < argc) {
 		// Set the query-level error.
-		QueryCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
 						  fdesc->max_argc);
 		return false;
 	}
@@ -343,7 +343,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 	/* Evaluate self. */
 	*result = node->op.f->func(sub_trees, child_count);
 
-	if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
+	if(SIValue_IsNull(*result) && ErrorCtx_EncounteredError()) {
 		/* An error was encountered while evaluating this function, and has already been set in
 		 * the QueryCtx. Exit with an error. */
 		res = EVAL_ERR;
@@ -357,14 +357,14 @@ cleanup:
 static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 	if(!r) {
 // Set the query-level error.
-		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
+		ErrorCtx_SetError("_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
 						  node->variadic.entity_alias);
 		return false;
 	}
 	int entry_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
 	if(entry_alias_idx == INVALID_INDEX) {
 		// Set the query-level error.
-		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
+		ErrorCtx_SetError("_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
 						  node->variadic.entity_alias);
 		return false;
 	} else {
@@ -393,7 +393,7 @@ static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
 									 strlen(node->operand.param_name));
 	if(param_node == raxNotFound) {
 		// Set the query-level error.
-		QueryCtx_SetError("Missing parameters");
+		ErrorCtx_SetError("Missing parameters");
 		return EVAL_ERR;
 	}
 	// In place replacement;
@@ -443,7 +443,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
 	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
 	if(res == EVAL_ERR) {
-		Error_RaiseRuntimeException();  // Raise an exception if we're in a run-time context.
+		ErrorCtx_RaiseRuntimeException();  // Raise an exception if we're in a run-time context.
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
 	// At least one param node was encountered during evaluation, tree should be param node free.
