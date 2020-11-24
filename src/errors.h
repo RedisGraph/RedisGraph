@@ -28,6 +28,10 @@ typedef struct {
     setjmp(*ctx->breakpoint);                                           \
 })
 
+// Instantiate the thread-local ErrorCtx on module load.
+bool ErrorCtx_Init(void);
+
+// Allocate a new error context for use during the lifetime of a query.
 void ErrorCtx_New(void);
 
 // Set the error message for this query.

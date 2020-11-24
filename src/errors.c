@@ -10,6 +10,11 @@ pthread_key_t _tlsErrorCtx; // Error-handling context held in thread-local stora
 //------------------------------------------------------------------------------
 // Error setting and emitting
 //------------------------------------------------------------------------------
+
+bool ErrorCtx_Init(void) {
+	return (pthread_key_create(&_tlsErrorCtx, NULL) == 0);
+}
+
 void ErrorCtx_New(void) {
 	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
 	ctx = rm_calloc(1, sizeof(ErrorCtx));
