@@ -12,6 +12,7 @@ extern "C"
 #endif
 
 #include "../../src/value.h"
+#include "../../src/errors.h"
 #include "../../src/query_ctx.h"
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
@@ -40,6 +41,7 @@ class ArithmeticTest: public ::testing::Test {
 		// Prepare thread-local variables
 		ASSERT_TRUE(QueryCtx_Init());
 
+		ErrorCtx_New();
 		// Register functions
 		AR_RegisterFuncs();
 		Agg_RegisterFuncs();
