@@ -12,11 +12,13 @@
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 								  PendingProperties *props) {
+	int failed_updates = 0;
 	for(int i = 0; i < props->property_count; i++) {
-		GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
+		bool updated = GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
+		if(!updated) failed_updates++;
 	}
 
-	if(stats) stats->properties_set += props->property_count;
+	if(stats) stats->properties_set += props->property_count - failed_updates;
 }
 
 /* Commit insertions. */
@@ -178,17 +180,6 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 				converted->property_count = i;
 				PendingPropertiesFree(converted);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
-			} else {
-				// Replace the NULL value with the final conversion and reset the loop.
-				Attribute_ID *keys = (Attribute_ID *)map->keys;
-				AR_EXP_Free(map->values[i]);
-				keys[i] = keys[map->property_count - 1];
-				map->values[i] = map->values[map->property_count - 1];
-
-				i--;
-				map->property_count--;
-				continue;
-
 			}
 		}
 		// Set the converted property.

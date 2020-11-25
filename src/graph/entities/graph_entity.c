@@ -51,6 +51,7 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 /* Add a new property to entity */
 SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
+	if(SIValue_IsNull(value)) return NULL;
 
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));

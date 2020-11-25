@@ -55,3 +55,13 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.properties_set, 1)
         self.env.assertEquals(result.result_set, expected_result)
+
+        # Create 2 new nodes, one with no properties and one with a property 'v'
+        query = """CREATE (:M), (:M {v: 1})"""
+        redis_graph.query(query)
+
+        # Verify that a MATCH...CREATE accesses the property correctly.
+        query = """MATCH (m:M) WITH m ORDER BY m.v DESC CREATE ({v: m.v})"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.properties_set, 1)
