@@ -30,7 +30,7 @@ static ErrorCtx *_ErrorCtx_Get(void) {
 	return ctx;
 }
 
-static void _ErrorCtx_Clear(void) {
+void ErrorCtx_Clear(void) {
 	ErrorCtx *ctx = _ErrorCtx_Get();
 	ASSERT(ctx != NULL);
 
@@ -99,7 +99,7 @@ void ErrorCtx_EmitException(void) {
 	}
 
 	// clear error context once error emitted
-	_ErrorCtx_Clear();
+	ErrorCtx_Clear();
 }
 
 // Returns true if error is set

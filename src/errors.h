@@ -24,12 +24,19 @@ typedef struct {
 #define SET_EXCEPTION_HANDLER()                                         \
    ({                                                                   \
     ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);                  \
+    if(ctx == NULL) {                                                   \
+        ctx = rm_calloc(1, sizeof(ErrorCtx));                           \
+        pthread_setspecific(_tlsErrorCtx, ctx);                         \
+    }                                                                   \
     if(!ctx->breakpoint) ctx->breakpoint = rm_malloc(sizeof(jmp_buf));  \
     setjmp(*ctx->breakpoint);                                           \
 })
 
 // Instantiate the thread-local ErrorCtx on module load.
 bool ErrorCtx_Init(void);
+
+// Zero-set the members of the ErrorCtx.
+void ErrorCtx_Clear(void);
 
 // Set the error message for this query.
 void ErrorCtx_SetError(const char *err_fmt, ...);

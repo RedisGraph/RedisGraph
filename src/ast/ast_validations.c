@@ -620,7 +620,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast) {
 
 	rax *edge_aliases = raxNew();
 	rax *reused_entities = raxNew();
-	AST_Validation res;
+	AST_Validation res = AST_VALID;
 
 	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
 	rax *projections = _AST_GetReturnProjections(return_clause);
