@@ -23,17 +23,16 @@ typedef struct {
  * Upon encountering an exception, execution will resume at this point and return nonzero. */
 #define SET_EXCEPTION_HANDLER()                                         \
    ({                                                                   \
-    ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);                  \
-    if(ctx == NULL) {                                                   \
-        ctx = rm_calloc(1, sizeof(ErrorCtx));                           \
-        pthread_setspecific(_tlsErrorCtx, ctx);                         \
-    }                                                                   \
+    ErrorCtx *ctx = ErrorCtx_Get();                                     \
     if(!ctx->breakpoint) ctx->breakpoint = rm_malloc(sizeof(jmp_buf));  \
     setjmp(*ctx->breakpoint);                                           \
 })
 
 // Instantiate the thread-local ErrorCtx on module load.
 bool ErrorCtx_Init(void);
+
+// Retrieve the ErrorCtx, building one if it does not exist.
+ErrorCtx *ErrorCtx_Get(void);
 
 // Zero-set the members of the ErrorCtx.
 void ErrorCtx_Clear(void);

@@ -18,7 +18,7 @@ bool ErrorCtx_Init(void) {
 	return (res == 0);
 }
 
-static ErrorCtx *_ErrorCtx_Get(void) {
+ErrorCtx *ErrorCtx_Get(void) {
 	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
 
 	if(ctx == NULL) {
@@ -31,7 +31,7 @@ static ErrorCtx *_ErrorCtx_Get(void) {
 }
 
 void ErrorCtx_Clear(void) {
-	ErrorCtx *ctx = _ErrorCtx_Get();
+	ErrorCtx *ctx = ErrorCtx_Get();
 	ASSERT(ctx != NULL);
 
 	if(ctx->error != NULL) {
@@ -50,7 +50,7 @@ void ErrorCtx_Clear(void) {
 //------------------------------------------------------------------------------
 
 static void _ErrorCtx_SetError(const char *err_fmt, va_list args) {
-	ErrorCtx *ctx = _ErrorCtx_Get();
+	ErrorCtx *ctx = ErrorCtx_Get();
 	ASSERT(ctx != NULL);
 
 	// An error is already set - free it
@@ -71,7 +71,7 @@ void ErrorCtx_SetError(const char *err_fmt, ...) {
  * If an exception handler has been set, exit this routine and return to
  * the point on the stack where the handler was instantiated. */
 void ErrorCtx_RaiseRuntimeException(const char *err_fmt, ...) {
-	ErrorCtx *ctx = _ErrorCtx_Get();
+	ErrorCtx *ctx = ErrorCtx_Get();
 	ASSERT(ctx != NULL);
 
 	// set error if specified
@@ -90,7 +90,7 @@ void ErrorCtx_RaiseRuntimeException(const char *err_fmt, ...) {
 
 // Reply to caller with error
 void ErrorCtx_EmitException(void) {
-	ErrorCtx *ctx = _ErrorCtx_Get();
+	ErrorCtx *ctx = ErrorCtx_Get();
 	ASSERT(ctx != NULL);
 
 	if(ctx->error != NULL) {
@@ -104,7 +104,7 @@ void ErrorCtx_EmitException(void) {
 
 // Returns true if error is set
 inline bool ErrorCtx_EncounteredError(void) {
-	ErrorCtx *ctx = _ErrorCtx_Get();
+	ErrorCtx *ctx = ErrorCtx_Get();
 	ASSERT(ctx != NULL);
 
 	return ctx->error != NULL;

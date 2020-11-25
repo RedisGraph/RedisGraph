@@ -13,7 +13,7 @@
    <reused ErrorCtx>
    Memcheck:Leak
    ...
-   fun:_ErrorCtx_Get
+   fun:ErrorCtx_Get
    ...
 }
 
