@@ -12,7 +12,6 @@ extern "C"
 #endif
 
 #include "../../src/value.h"
-#include "../../src/errors.h"
 #include "../../src/query_ctx.h"
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
