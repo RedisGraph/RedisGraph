@@ -81,7 +81,6 @@ void Graph_Query(void *args) {
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
 
-	ErrorCtx_New();
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
@@ -189,6 +188,5 @@ cleanup:
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
-	ErrorCtx_Free(); // Free the error context if one has been instantiated.
 }
 

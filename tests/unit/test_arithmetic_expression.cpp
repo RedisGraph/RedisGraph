@@ -41,7 +41,6 @@ class ArithmeticTest: public ::testing::Test {
 		// Prepare thread-local variables
 		ASSERT_TRUE(QueryCtx_Init());
 
-		ErrorCtx_New();
 		// Register functions
 		AR_RegisterFuncs();
 		Agg_RegisterFuncs();

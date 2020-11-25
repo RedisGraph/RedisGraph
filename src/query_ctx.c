@@ -163,7 +163,7 @@ clean_up:
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 	// If there is a break point for runtime exception, raise it, otherwise return false.
-	ErrorCtx_RaiseRuntimeException();
+	ErrorCtx_RaiseRuntimeException(NULL);
 	return false;
 
 }

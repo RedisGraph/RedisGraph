@@ -8,61 +8,106 @@
 pthread_key_t _tlsErrorCtx; // Error-handling context held in thread-local storage.
 
 //------------------------------------------------------------------------------
-// Error setting and emitting
+// Error context initialization
 //------------------------------------------------------------------------------
 
 bool ErrorCtx_Init(void) {
-	return (pthread_key_create(&_tlsErrorCtx, NULL) == 0);
+	int res = pthread_key_create(&_tlsErrorCtx, NULL);
+	ASSERT(res == 0);
+
+	return (res == 0);
 }
 
-void ErrorCtx_New(void) {
+static ErrorCtx *_ErrorCtx_Get(void) {
 	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
-	ctx = rm_calloc(1, sizeof(ErrorCtx));
-	pthread_setspecific(_tlsErrorCtx, ctx);
+
+	if(ctx == NULL) {
+		ctx = rm_calloc(1, sizeof(ErrorCtx));
+		int res = pthread_setspecific(_tlsErrorCtx, ctx);
+		ASSERT(res == 0);
+	}
+
+	return ctx;
 }
 
-void ErrorCtx_SetError(char *err_fmt, ...) {
-	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
+static void _ErrorCtx_Clear(void) {
+	ErrorCtx *ctx = _ErrorCtx_Get();
+	ASSERT(ctx != NULL);
+
+	if(ctx->error != NULL) {
+		free(ctx->error);
+		ctx->error = NULL;
+	}
+
+	if(ctx->breakpoint != NULL) {
+		rm_free(ctx->breakpoint);
+		ctx->breakpoint = NULL;
+	}
+}
+
+//------------------------------------------------------------------------------
+// Error setting and emitting
+//------------------------------------------------------------------------------
+
+static void _ErrorCtx_SetError(const char *err_fmt, va_list args) {
+	ErrorCtx *ctx = _ErrorCtx_Get();
+	ASSERT(ctx != NULL);
+
 	// An error is already set - free it
-	if(ctx->error) free(ctx->error);
+	if(ctx->error != NULL) free(ctx->error);
+
+	vasprintf(&ctx->error, err_fmt, args);
+}
+
+void ErrorCtx_SetError(const char *err_fmt, ...) {
 	// Set the new error
 	va_list valist;
 	va_start(valist, err_fmt);
-	vasprintf(&ctx->error, err_fmt, valist);
+	_ErrorCtx_SetError(err_fmt, valist);
 	va_end(valist);
 }
 
 /* An error was encountered during evaluation, and has already been set in the ErrorCtx.
  * If an exception handler has been set, exit this routine and return to
  * the point on the stack where the handler was instantiated. */
-void ErrorCtx_RaiseRuntimeException(void) {
-	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
+void ErrorCtx_RaiseRuntimeException(const char *err_fmt, ...) {
+	ErrorCtx *ctx = _ErrorCtx_Get();
+	ASSERT(ctx != NULL);
+
+	// set error if specified
+	if(err_fmt != NULL) {
+		va_list valist;
+		va_start(valist, err_fmt);
+		_ErrorCtx_SetError(err_fmt, valist);
+		va_end(valist);
+	}
+
 	jmp_buf *env = ctx->breakpoint;
 	// If the exception handler hasn't been set, this function returns to the caller,
 	// which will manage its own freeing and error reporting.
-	if(env) longjmp(*env, 1);
+	if(env != NULL) longjmp(*env, 1);
 }
 
+// Reply to caller with error
 void ErrorCtx_EmitException(void) {
-	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
-	if(ctx->error) {
+	ErrorCtx *ctx = _ErrorCtx_Get();
+	ASSERT(ctx != NULL);
+
+	if(ctx->error != NULL) {
 		RedisModuleCtx *rm_ctx = QueryCtx_GetRedisModuleCtx();
 		RedisModule_ReplyWithError(rm_ctx, ctx->error);
 	}
+
+	// clear error context once error emitted
+	_ErrorCtx_Clear();
 }
 
+// Returns true if error is set
 inline bool ErrorCtx_EncounteredError(void) {
-	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
-	return ctx->error != NULL;
-}
+	ErrorCtx *ctx = _ErrorCtx_Get();
+	ASSERT(ctx != NULL);
 
-void ErrorCtx_Free(void) {
-	ErrorCtx *ctx = pthread_getspecific(_tlsErrorCtx);
-	if(ctx->error) free(ctx->error);
-	if(ctx->breakpoint) rm_free(ctx->breakpoint);
-	rm_free(ctx);
-	// NULL-set the context for reuse the next time this thread receives a query
-	pthread_setspecific(_tlsErrorCtx, NULL);
+	return ctx->error != NULL;
 }
 
 //------------------------------------------------------------------------------

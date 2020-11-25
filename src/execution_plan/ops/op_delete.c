@@ -104,8 +104,7 @@ static Record DeleteConsume(OpBase *opBase) {
 			// If evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 
-			ErrorCtx_SetError("Delete type mismatch, expecting either Node or Relationship.");
-			ErrorCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("Delete type mismatch, expecting either Node or Relationship.");
 			break;
 		}
 	}

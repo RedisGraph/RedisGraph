@@ -102,8 +102,7 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 		assert(SI_TYPE(argv[2]) == T_INT64);
 		interval = argv[2].longval;
 		if(interval < 1) {
-			ErrorCtx_SetError("ArgumentError: step argument to range() must be >= 1");
-			ErrorCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() must be >= 1");
 			// Incase expection handler wasn't set, return NULL.
 			return SI_NullVal();
 		}

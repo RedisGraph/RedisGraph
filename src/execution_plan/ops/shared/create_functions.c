@@ -169,7 +169,7 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 				converted->property_count = i;
 				PendingPropertiesFree(converted);
 				Error_InvalidPropertyValue();
-				ErrorCtx_RaiseRuntimeException();
+				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 			/* The value was NULL. If this was prohibited in this context, raise an exception,
 			 * otherwise skip this value. */
@@ -177,8 +177,7 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 				// Emit an error and exit.
 				converted->property_count = i;
 				PendingPropertiesFree(converted);
-				ErrorCtx_SetError("Cannot merge node using null property value");
-				ErrorCtx_RaiseRuntimeException();
+				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			} else {
 				// Replace the NULL value with the final conversion and reset the loop.
 				Attribute_ID *keys = (Attribute_ID *)map->keys;

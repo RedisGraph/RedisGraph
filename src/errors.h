@@ -15,8 +15,8 @@
 extern pthread_key_t _tlsErrorCtx; // Error-handling context held in thread-local storage.
 
 typedef struct {
-	char *error;                // The error message produced by this query, if any.
-	jmp_buf *breakpoint;        // The breakpoint to return to if the query causes an exception.
+	char *error;                // The error message produced, if any.
+	jmp_buf *breakpoint;        // The breakpoint to jump to in the case of an exception.
 } ErrorCtx;
 
 /* On invocation, set an exception handler, returning 0 from this macro.
@@ -31,22 +31,16 @@ typedef struct {
 // Instantiate the thread-local ErrorCtx on module load.
 bool ErrorCtx_Init(void);
 
-// Allocate a new error context for use during the lifetime of a query.
-void ErrorCtx_New(void);
-
 // Set the error message for this query.
-void ErrorCtx_SetError(char *err_fmt, ...);
+void ErrorCtx_SetError(const char *err_fmt, ...);
 
 /* Jump to a runtime exception breakpoint if one has been set. */
-void ErrorCtx_RaiseRuntimeException(void);
+void ErrorCtx_RaiseRuntimeException(const char *err_fmt, ...);
 
 /* Reply back to the user with error. */
 void ErrorCtx_EmitException(void);
 
 bool ErrorCtx_EncounteredError(void);
-
-/* Free the error context and its allocations. */
-void ErrorCtx_Free(void);
 
 // Report an error in filter placement with the first unresolved entity.
 void Error_InvalidFilterPlacement(rax *entitiesRax);

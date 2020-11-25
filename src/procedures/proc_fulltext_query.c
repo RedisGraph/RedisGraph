@@ -67,7 +67,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 		rm_free(err);
 		/* Raise the exception, we expect an exception handler to be set.
 		 * as procedure invocation is done at runtime. */
-		ErrorCtx_RaiseRuntimeException();
+		ErrorCtx_RaiseRuntimeException(NULL);
 	}
 	assert(pdata->iter);
 
