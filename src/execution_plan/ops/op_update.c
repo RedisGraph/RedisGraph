@@ -231,9 +231,8 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 
 	// Make sure we're updating either a node or an edge.
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
+		ErrorCtx_RaiseRuntimeException("Update error: alias '%s' did not resolve to a graph entity",
 						  ctx->alias);
-		QueryCtx_RaiseRuntimeException();
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -259,9 +258,11 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		EntityUpdateEvalCtx *update_ctx = ctx->exps + i;
 		SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
 
-		// Emit an error and return NULL if we're trying to add an invalid type.
-		if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
+		// Emit an error and exit if we're trying to add an invalid type.
+		// NULL is acceptable here as it indicates a deletion.
+		if(!(SI_TYPE(new_value) & (SI_VALID_PROPERTY_VALUE | T_NULL))) {
 			Error_InvalidPropertyValue();
+			ErrorCtx_RaiseRuntimeException(NULL);
 			break;
 		}
 

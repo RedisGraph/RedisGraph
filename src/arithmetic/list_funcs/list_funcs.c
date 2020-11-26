@@ -6,6 +6,7 @@
 
 #include "list_funcs.h"
 #include "../func_desc.h"
+#include "../../errors.h"
 #include "../../datatypes/array.h"
 #include "../../util/arr.h"
 #include"../../query_ctx.h"
@@ -101,8 +102,7 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 		assert(SI_TYPE(argv[2]) == T_INT64);
 		interval = argv[2].longval;
 		if(interval < 1) {
-			QueryCtx_SetError("ArgumentError: step argument to range() must be >= 1");
-			QueryCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() must be >= 1");
 			// Incase expection handler wasn't set, return NULL.
 			return SI_NullVal();
 		}

@@ -6,6 +6,7 @@
 
 #include "query_ctx.h"
 #include "RG.h"
+#include "errors.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
@@ -23,18 +24,6 @@ static inline QueryCtx *_QueryCtx_GetCtx(void) {
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
-}
-
-/* Retrieve the exception handler. */
-static jmp_buf *_QueryCtx_GetExceptionHandler(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.breakpoint;
-}
-
-/* Retrieve the error message if the query generated one. */
-static char *_QueryCtx_GetError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.error;
 }
 
 /* rax callback routine for freeing computed parameter values. */
@@ -56,24 +45,6 @@ void QueryCtx_BeginTimer(void) {
 	simple_tic(ctx->internal_exec_ctx.timer); // Start the execution timer.
 }
 
-/* An error was encountered during evaluation, and has already been set in the QueryCtx.
- * If an exception handler has been set, exit this routine and return to
- * the point on the stack where the handler was instantiated.  */
-void QueryCtx_RaiseRuntimeException(void) {
-	jmp_buf *env = _QueryCtx_GetExceptionHandler();
-	// If the exception handler hasn't been set, this function returns to the caller,
-	// which will manage its own freeing and error reporting.
-	if(env) longjmp(*env, 1);
-}
-
-void QueryCtx_EmitException(void) {
-	char *error = _QueryCtx_GetError();
-	if(error) {
-		RedisModuleCtx *ctx = QueryCtx_GetRedisModuleCtx();
-		RedisModule_ReplyWithError(ctx, error);
-	}
-}
-
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->gc = CommandCtx_GetGraphContext(cmd_ctx);
@@ -91,17 +62,6 @@ void QueryCtx_SetAST(AST *ast) {
 void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->gc = gc;
-}
-
-void QueryCtx_SetError(char *err_fmt, ...) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	// An error is already set - free it
-	if(ctx->internal_exec_ctx.error) free(ctx->internal_exec_ctx.error);
-	// Set the new error
-	va_list valist;
-	va_start(valist, err_fmt);
-	vasprintf(&ctx->internal_exec_ctx.error, err_fmt, valist);
-	va_end(valist);
 }
 
 void QueryCtx_SetResultSet(ResultSet *result_set) {
@@ -178,16 +138,16 @@ bool QueryCtx_LockForCommit(void) {
 	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
 	RedisModule_FreeString(redis_ctx, graphID);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		QueryCtx_SetError("Encountered an empty key when opened key %s", ctx->gc->graph_name);
+		ErrorCtx_SetError("Encountered an empty key when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 	}
 	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-		QueryCtx_SetError("Encountered a non-graph value type when opened key %s", ctx->gc->graph_name);
+		ErrorCtx_SetError("Encountered a non-graph value type when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 
 	}
 	if(gc != RedisModule_ModuleTypeGetValue(key)) {
-		QueryCtx_SetError("Encountered different graph value when opened key %s", ctx->gc->graph_name);
+		ErrorCtx_SetError("Encountered different graph value when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 	}
 	ctx->internal_exec_ctx.key = key;
@@ -203,7 +163,7 @@ clean_up:
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 	// If there is a break point for runtime exception, raise it, otherwise return false.
-	QueryCtx_RaiseRuntimeException();
+	ErrorCtx_RaiseRuntimeException(NULL);
 	return false;
 
 }
@@ -255,11 +215,6 @@ void QueryCtx_ForceUnlockCommit() {
 	_QueryCtx_UnlockCommit(ctx);
 }
 
-inline bool QueryCtx_EncounteredError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.error != NULL;
-}
-
 double QueryCtx_GetExecutionTime(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return simple_toc(ctx->internal_exec_ctx.timer) * 1000;
@@ -267,16 +222,6 @@ double QueryCtx_GetExecutionTime(void) {
 
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-
-	if(ctx->internal_exec_ctx.error) {
-		free(ctx->internal_exec_ctx.error);
-		ctx->internal_exec_ctx.error = NULL;
-	}
-
-	if(ctx->internal_exec_ctx.breakpoint) {
-		rm_free(ctx->internal_exec_ctx.breakpoint);
-		ctx->internal_exec_ctx.breakpoint = NULL;
-	}
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);
@@ -287,3 +232,4 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
+

@@ -5,6 +5,7 @@
 */
 
 #include "cmd_explain.h"
+#include "../errors.h"
 #include "cmd_context.h"
 #include "../query_ctx.h"
 #include "execution_ctx.h"
@@ -40,8 +41,8 @@ void Graph_Explain(void *args) {
 	ast = exec_ctx.ast;
 	plan = exec_ctx.plan;
 	// See if there were any query compile time errors
-	if(QueryCtx_EncounteredError()) {
-		QueryCtx_EmitException();
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
@@ -69,4 +70,6 @@ cleanup:
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	ErrorCtx_Clear();
 }
+

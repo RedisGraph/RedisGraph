@@ -6,8 +6,9 @@
 
 #include "comprehension_funcs.h"
 #include "../../RG.h"
-#include "../func_desc.h"
 #include "../../value.h"
+#include "../func_desc.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/array.h"
@@ -58,9 +59,8 @@ static void _PopulateComprehensionCtx(ListComprehensionCtx *ctx, Record outer_re
 						  strlen(ctx->variable_str), (void *)id, NULL);
 	if(rc == 0) {
 		// The local variable's name shadows an outer variable, emit an error.
-		QueryCtx_SetError("Variable '%s' redefined inside of list comprehension",
-		  	(unsigned char *)ctx->variable_str);
-		QueryCtx_RaiseRuntimeException();
+		ErrorCtx_RaiseRuntimeException("Variable '%s' redefined inside of list comprehension",
+						  (unsigned char *)ctx->variable_str);
 	}
 
 	ctx->local_record = Record_New(local_record_map);

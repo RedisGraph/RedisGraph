@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include "redismodule.h"
 #include "debug.h"
+#include "errors.h"
 #include "config.h"
 #include "version.h"
 #include "util/arr.h"
@@ -118,8 +119,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
-	// Create thread local storage key.
+	// Create thread local storage keys for query and error contexts.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
+	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
 
 	int threadCount = Config_GetThreadCount();
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
