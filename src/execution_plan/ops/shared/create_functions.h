@@ -36,7 +36,7 @@ PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCt
 void CommitNewEntities(OpBase *op, PendingCreations *pending);
 
 // Resolve the properties specified in the query into constant values.
-PendingProperties *ConvertPropertyMap(Record r, const PropertyMap *map);
+PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_null);
 
 // Free all data associated with a PendingProperties container.
 void PendingPropertiesFree(PendingProperties *props);

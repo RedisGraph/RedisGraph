@@ -104,7 +104,6 @@ Feature: CreateAcceptance
       | +nodes      | 1 |
       | +properties | 1 |
 
-@skip
   Scenario: Creating a node with null properties should not return those properties
     Given any graph
     When executing query:
@@ -119,7 +118,6 @@ Feature: CreateAcceptance
       | +nodes      | 1 |
       | +properties | 1 |
 
-@skip
   Scenario: Creating a relationship with null properties should not return those properties
     Given any graph
     When executing query:

@@ -5,6 +5,7 @@
 */
 
 #include "./op_delete.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -103,8 +104,7 @@ static Record DeleteConsume(OpBase *opBase) {
 			// If evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 
-			QueryCtx_SetError("Delete type mismatch, expecting either Node or Relationship.");
-			QueryCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("Delete type mismatch, expecting either Node or Relationship.");
 			break;
 		}
 	}

@@ -7,6 +7,7 @@
 #include "execution_plan.h"
 #include "../RG.h"
 #include "./ops/ops.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"

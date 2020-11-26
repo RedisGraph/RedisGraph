@@ -5,6 +5,7 @@
 */
 
 #include "op_merge_create.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include <assert.h>
@@ -102,7 +103,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		/* Convert query-level properties. */
 		PropertyMap *map = n->properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map, true);
 
 		/* Update the hash code with this entity. */
 		_IncrementalHashEntity(op->hash_state, n->label, converted_properties);
@@ -125,8 +126,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// verify that the endpoints of the new edge resolved properly; fail otherwise
 		if(!src_node || !dest_node) {
-			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
-			QueryCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("Failed to create relationship; endpoint was not found.");
 		}
 
 		// create the actual edge
@@ -140,7 +140,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		// convert query-level properties
 		PropertyMap *map = e->properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map, true);
 
 		/* Update the hash code with this entity, an edge is represented by its
 		 * relation, properties and nodes.
