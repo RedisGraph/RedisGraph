@@ -17,6 +17,7 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | redisgraph_php  | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [GitHub][redisgraph_php-url]  |
 | redisgraph-ex   | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [GitHub][redisgraph-ex-url]   |
 | redisgraph-rs   | RUST       | MIT     | [malte-v][redisgraph-rs-author]    | [GitHub][redisgraph-rs-url]   |
+| redis_graph     | RUST       | BSD     | [tompro][redis_graph-author]       | [GitHub][redis_graph-url]     |
 
 [redisgraph-py-author]: https://redislabs.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
@@ -50,6 +51,9 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 
 [redisgraph-rs-author]: https://github.com/malte-v
 [redisgraph-rs-url]: https://github.com/malte-v/redisgraph-rs
+
+[redis_graph-author]: https://github.com/tompro
+[redis_graph-url]: https://github.com/tompro/redis_graph
 
 ## Implementing a client
 
