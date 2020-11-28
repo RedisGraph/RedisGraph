@@ -714,6 +714,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 | db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`             | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
 | algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`    | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
 | [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`   | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
+| dbms.procedures()               | none                                            | `name`, `mode`     | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
 
 ### Algorithms
 
