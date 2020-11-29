@@ -622,7 +622,8 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast) {
 	rax *reused_entities = raxNew();
 	AST_Validation res = AST_VALID;
 
-	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+	const cypher_astnode_t *return_clause = AST_GetClause(ast,
+			CYPHER_AST_RETURN, NULL);
 	rax *projections = _AST_GetReturnProjections(return_clause);
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
@@ -662,7 +663,8 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 	// Verify that all functions used in the WITH clause and (if present) its WHERE predicate
 	// are defined and used validly.
 	// An AST segment has at most 1 WITH clause.
-	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
+	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH,
+			NULL);
 	if(with_clause == NULL) return AST_VALID;
 
 	// Verify that each WITH projection either is aliased or is itself an identifier.
@@ -862,19 +864,46 @@ cleanup:
 }
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
-	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
+	const cypher_astnode_t *delete_clause = AST_GetClause(ast,
+			CYPHER_AST_DELETE, NULL);
 	if(!delete_clause) return AST_VALID;
 	// TODO: Validated that the deleted entities are indeed matched or projected.
 	return AST_VALID;
 }
 
 static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
-	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+	uint clause_idx = 0;                   // clause index within the AST
+	const cypher_astnode_t *return_clause; // RETURN clause
+
+	return_clause = AST_GetClause(ast, CYPHER_AST_RETURN, &clause_idx);
+
+	// no RETURN clause, nothing to validate
 	if(!return_clause) return AST_VALID;
 
 	// Validate all user-specified functions in RETURN clause.
 	bool include_aggregates = true;
 	AST_Validation res = _ValidateFunctionCalls(return_clause, include_aggregates);
+
+	// validate following clauses
+	// only SKIP, LIMIT, ORDER-BY and UNION are allowed
+	// SKIP and LIMIT are attributes of the RETURN clause
+	const cypher_astnode_t *following_clause = NULL;
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	for(uint i = clause_idx + 1; i < clause_count; i++) {
+		following_clause = AST_GetClauseByIdx(ast, i);
+		cypher_astnode_type_t type = cypher_astnode_type(following_clause);
+
+		if(type == CYPHER_AST_ORDER_BY) {
+			continue;
+		} else if(type == CYPHER_AST_UNION) {
+			break; // sub-query begins
+		} else {
+			// unexpected clause following RETURN
+			res = AST_INVALID;
+			ErrorCtx_SetError("Unexpected clause following RETURN");
+			break;
+		}
+	}
 
 	return res;
 }
@@ -906,7 +935,8 @@ cleanup:
 // LIMIT and SKIP are not independent clauses, but modifiers that can be applied to WITH or RETURN clauses
 static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast) {
 	// Handle modifiers on the RETURN clause
-	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+	const cypher_astnode_t *return_clause = AST_GetClause(ast,
+			CYPHER_AST_RETURN, NULL);
 	// Skip check if the RETURN clause does not specify a limit
 	if(return_clause) {
 		// Handle LIMIT modifier
@@ -1675,6 +1705,22 @@ cleanup:
 	return res;
 }
 
+AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
+	char *err;
+	int index;
+	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) return AST_INVALID;
+
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
+
+	// In case of no parameters.
+	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
+
+	if(_ValidateParamsOnly(root) != AST_VALID) return AST_INVALID;
+	if(_ValidateDuplicateParameters(root) != AST_VALID) return AST_INVALID;
+
+	return AST_VALID;
+}
+
 AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	int index;
 	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) {
@@ -1710,21 +1756,5 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	}
 
 	return res;
-}
-
-AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
-	char *err;
-	int index;
-	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) return AST_INVALID;
-
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
-
-	// In case of no parameters.
-	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
-
-	if(_ValidateParamsOnly(root) != AST_VALID) return AST_INVALID;
-	if(_ValidateDuplicateParameters(root) != AST_VALID) return AST_INVALID;
-
-	return AST_VALID;
 }
 
