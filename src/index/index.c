@@ -5,7 +5,7 @@
 */
 
 #include "index.h"
-#include "RG.h"
+#include "../RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"

@@ -591,6 +591,7 @@ static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
 	if(node->cond.op == OP_AND) return _FilterTree_Compact_And(node);
 	if(node->cond.op == OP_OR) return _FilterTree_Compact_Or(node);
 	ASSERT(false && "_FilterTree_Compact_Cond: Unkown filter operator to compact");
+	return false;
 }
 
 // Compacts a predicate node if possible,

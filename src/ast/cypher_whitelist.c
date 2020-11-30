@@ -7,7 +7,6 @@
 #include "cypher_whitelist.h"
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "rax.h"
-#include <assert.h>
 #include "../errors.h"
 #include "../query_ctx.h"
 
@@ -243,8 +242,8 @@ AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root) {
 }
 
 void CypherWhitelist_Build() {
-	assert(_astnode_type_whitelist == NULL && _operator_whitelist == NULL &&
-		   "Attempted to build query whitelist twice - was the module correctly?");
+	ASSERT(_astnode_type_whitelist == NULL && _operator_whitelist == NULL &&
+		   "Attempted to build query whitelist twice - was the module correctly loaded?");
 
 	_buildTypesWhitelist();
 	_buildOperatorsWhitelist();

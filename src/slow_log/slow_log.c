@@ -5,7 +5,6 @@
 */
 
 #include <stdio.h>
-#include <assert.h>
 #include <unistd.h>
 
 #include "./slow_log.h"
@@ -54,7 +53,7 @@ static SlowLogItem *_SlowLogItem_New
 }
 
 static void _SlowLog_Item_Free(SlowLogItem *item) {
-	assert(item);
+	ASSERT(item);
 	rm_free(item->cmd);
 	rm_free(item->query);
 	rm_free(item);
@@ -72,7 +71,7 @@ static inline size_t _compute_key(char **s, const char *cmd, const char *query) 
 }
 
 static size_t _SlowLogItem_ToString(const SlowLogItem *item, char **s) {
-	assert(item);
+	ASSERT(item);
 	return _compute_key(s, item->cmd, item->query);
 }
 
@@ -80,7 +79,8 @@ static void _SlowLog_RemoveItemFromLookup(SlowLog *slowlog, int t_id, const Slow
 	char *key;
 	rax *lookup = slowlog->lookup[t_id];
 	size_t key_len = _SlowLogItem_ToString(item, &key);
-	assert(raxRemove(lookup, (unsigned char *)key, key_len, NULL) == 1);
+	int removed = raxRemove(lookup, (unsigned char *)key, key_len, NULL);
+	ASSERT(removed == 1);
 	free(key);
 }
 
@@ -108,7 +108,8 @@ SlowLog *SlowLog_New() {
 	for(int i = 0; i < thread_count; i++) {
 		slowlog->lookup[i] = raxNew();
 		slowlog->min_heap[i] = heap_new(_slowlog_elem_compare, NULL);
-		assert(pthread_mutex_init(slowlog->locks + i, NULL) == 0);
+		int res = pthread_mutex_init(slowlog->locks + i, NULL);
+		ASSERT(res == 0);
 	}
 
 	return slowlog;
@@ -116,8 +117,10 @@ SlowLog *SlowLog_New() {
 
 void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 				 double latency, time_t *t) {
-	assert(slowlog && cmd && query && latency >= 0);
+	ASSERT(slowlog && cmd && query && latency >= 0);
 
+	int res;
+	UNUSED(res);
 	char *key;
 	time_t _time;
 	SlowLogItem *existing_item;
@@ -127,7 +130,7 @@ void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 	pthread_mutex_t *lock = slowlog->locks + t_id;
 
 	// initialise time
-	(t) ? _time = *t: time(&_time);
+	(t) ? _time = *t : time(&_time);
 
 	if(pthread_mutex_lock(lock) != 0) {
 		// Failed to lock, skip logging.
@@ -171,7 +174,9 @@ void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 		}
 	}   // End of critical section.
 cleanup:
-	assert(pthread_mutex_unlock(lock) == 0);
+
+	res = pthread_mutex_unlock(lock);
+	ASSERT(res == 0);
 	free(key);
 }
 
@@ -191,7 +196,7 @@ void SlowLog_Replay(const SlowLog *slowlog, RedisModuleCtx *ctx) {
 			while(raxNext(&iter)) {
 				SlowLogItem *item = iter.data;
 				SlowLog_Add(aggregated_slowlog, item->cmd, item->query,
-						item->latency, &item->time);
+							item->latency, &item->time);
 			}
 			raxStop(&iter);
 			// End of critical section.
@@ -230,7 +235,8 @@ void SlowLog_Free(SlowLog *slowlog) {
 
 		raxFree(lookup);
 		heap_free(heap);
-		assert(pthread_mutex_destroy(slowlog->locks + i) == 0);
+		int res = pthread_mutex_destroy(slowlog->locks + i);
+		ASSERT(res == 0);
 	}
 
 	rm_free(slowlog->locks);
@@ -238,3 +244,4 @@ void SlowLog_Free(SlowLog *slowlog) {
 	rm_free(slowlog->min_heap);
 	rm_free(slowlog);
 }
+

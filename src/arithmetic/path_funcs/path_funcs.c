@@ -10,7 +10,6 @@
 #include "../../ast/ast.h"
 #include "../../util/rmalloc.h"
 #include "../../util/arr.h"
-#include "assert.h"
 
 /* Creates a path from a given sequence of graph entities.
  * The first argument is the ast node represents the path.
@@ -22,7 +21,7 @@
 SIValue AR_TOPATH(SIValue *argv, int argc) {
 	const cypher_astnode_t *ast_path = argv[0].ptrval;
 	uint nelements = cypher_ast_pattern_path_nelements(ast_path);
-	assert(argc == (nelements + 1));
+	ASSERT(argc == (nelements + 1));
 
 	SIValue path = SIPathBuilder_New(nelements);
 	for(uint i = 0; i < nelements; i++) {

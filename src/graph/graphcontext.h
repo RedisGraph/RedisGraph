@@ -7,7 +7,6 @@
 #ifndef GRAPHCONTEXT_H
 #define GRAPHCONTEXT_H
 
-#include <assert.h>
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"

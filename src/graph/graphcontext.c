@@ -72,7 +72,8 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->decoding_context = GraphDecodeContext_New();
 
 	// Initialize the read-write lock to protect access to the attributes rax.
-	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
+	int res = pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
+	ASSERT(res == 0);
 
 	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
 	 * Each thread is getting its cache by its thread id. */
@@ -153,7 +154,7 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 }
 
 void GraphContext_Release(GraphContext *gc) {
-	assert(gc);
+	ASSERT(gc);
 	_GraphContext_DecreaseRefCount(gc);
 }
 
@@ -232,7 +233,7 @@ int _GraphContext_GetLabelID(const GraphContext *gc, const char *label, SchemaTy
 }
 
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
-	assert(gc);
+	ASSERT(gc);
 	if(t == SCHEMA_NODE) return array_len(gc->node_schemas);
 	else return array_len(gc->relation_schemas);
 }
@@ -276,7 +277,7 @@ const char *GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
 
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
-	assert(reltype_id != GRAPH_NO_RELATION);
+	ASSERT(reltype_id != GRAPH_NO_RELATION);
 	return gc->relation_schemas[reltype_id]->name;
 }
 
@@ -325,7 +326,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 
 const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-	assert(id < array_len(gc->string_mapping));
+	ASSERT(id < array_len(gc->string_mapping));
 	const char *name = gc->string_mapping[id];
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return name;
@@ -366,7 +367,7 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribut
 
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
 						  IndexType type) {
-	assert(idx && gc && label && field);
+	ASSERT(idx && gc && label && field);
 
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
@@ -454,7 +455,7 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 
 // Return slowlog associated with graph context.
 SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
-	assert(gc);
+	ASSERT(gc);
 	return gc->slowlog;
 }
 
@@ -464,7 +465,7 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 
 // Return cache associated with graph context and current thread id.
 Cache *GraphContext_GetCache(const GraphContext *gc) {
-	assert(gc);
+	ASSERT(gc);
 	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
 	* most likely Redis main thread */
 	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
@@ -512,7 +513,8 @@ static void _GraphContext_Free(void *arg) {
 		}
 		array_free(gc->string_mapping);
 	}
-	assert(pthread_rwlock_destroy(&gc->_attribute_rwlock) == 0);
+	int res = pthread_rwlock_destroy(&gc->_attribute_rwlock);
+	ASSERT(res == 0);
 
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 

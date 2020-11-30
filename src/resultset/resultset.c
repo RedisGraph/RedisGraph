@@ -107,7 +107,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 }
 
 static void _ResultSet_SetColumns(ResultSet *set) {
-	ASSERT(set->columns != NULL);
+	ASSERT(set->columns == NULL);
 
 	AST *ast = QueryCtx_GetAST();
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);

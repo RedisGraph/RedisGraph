@@ -155,7 +155,7 @@ GraphContext *RdbLoadGraph_v8(RedisModuleIO *rdb) {
 			RdbLoadGraphSchema_v8(rdb, gc);
 			break;
 		default:
-			assert(false && "Unknown encoding");
+			ASSERT(false && "Unknown encoding");
 			break;
 		}
 	}

@@ -6,13 +6,13 @@
 */
 
 #include "funcs.h"
+#include "../RG.h"
 #include "../../deps/rax/rax.h"
-#include <assert.h>
 
 extern rax *__aeRegisteredFuncs;
 
 void AR_RegisterFuncs() {
-	assert(!__aeRegisteredFuncs);
+	ASSERT(!__aeRegisteredFuncs);
 	__aeRegisteredFuncs = raxNew();
 
 	Register_ListFuncs();

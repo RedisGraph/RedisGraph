@@ -6,7 +6,6 @@
 
 #include "cmd_delete.h"
 
-#include <assert.h>
 #include "./cmd_context.h"
 #include "../graph/graph.h"
 #include "../graph/graphcontext.h"

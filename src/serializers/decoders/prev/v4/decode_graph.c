@@ -5,7 +5,6 @@
 */
 
 #include "decode_v4.h"
-#include <assert.h>
 
 typedef enum {
 	V4_T_NULL = 0,
@@ -33,7 +32,8 @@ static SIType _ConvertSIType(PrevSIType prev_type) {
 	case V4_T_NULL:
 		return T_NULL;
 	default: // should not occur
-		assert(false);
+		ASSERT(false);
+		return T_NULL;
 	}
 }
 
@@ -73,7 +73,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 		char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		SIValue attr_value = _RdbLoadSIValue(rdb);
 		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
-		assert(attr_id != ATTRIBUTE_NOTFOUND);
+		ASSERT(attr_id != ATTRIBUTE_NOTFOUND);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		RedisModule_Free(attr_name);
 		SIValue_Free(attr_value);
@@ -133,7 +133,10 @@ static void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 		NodeID srcId = RedisModule_LoadUnsigned(rdb);
 		NodeID destId = RedisModule_LoadUnsigned(rdb);
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);
-		assert(Graph_ConnectNodes(gc->g, srcId, destId, relation, &e));
+		int res;
+		UNUSED(res);
+		res = Graph_ConnectNodes(gc->g, srcId, destId, relation, &e);
+		ASSERT(res == 1);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
 	}
 }

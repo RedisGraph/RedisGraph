@@ -5,7 +5,6 @@
  */
 
 #include "ast.h"
-#include <assert.h>
 #include <pthread.h>
 
 #include "../RG.h"
@@ -247,11 +246,11 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
 	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
-	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	ast->root = cypher_ast_statement_get_body(statement);
 
 	// Empty queries should be captured by AST validations
-	assert(ast->root);
+	ASSERT(ast->root);
 
 	// Set thread-local AST.
 	QueryCtx_SetAST(ast);
@@ -305,7 +304,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 
 void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result) {
 	// When setting this value in AST, the ast should no hold invalid pointers or leftovers from previous executions.
-	assert(ast->params_parse_result == NULL);
+	ASSERT(ast->params_parse_result == NULL);
 	ast->params_parse_result = params_parse_result;
 }
 
@@ -346,14 +345,14 @@ bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier)
 // TODO Consider augmenting libcypher-parser so that we don't need to perform this
 // work in-module.
 inline long AST_ParseIntegerNode(const cypher_astnode_t *int_node) {
-	assert(int_node);
+	ASSERT(int_node);
 
 	const char *value_str = cypher_ast_integer_get_valuestr(int_node);
 	return strtol(value_str, NULL, 0);
 }
 
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
-	assert(clause);
+	ASSERT(clause);
 
 	bool aggregated = false;
 
@@ -366,7 +365,7 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	_prepareIterateAll(referred_funcs, &it);
 	while(raxNext(&it)) {
 		size_t len = it.key_len;
-		assert(len < 32);
+		ASSERT(len < 32);
 		// Copy the triemap key so that we can safely add a terinator character
 		memcpy(funcName, it.key, len);
 		funcName[len] = 0;
@@ -434,7 +433,7 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 				identifier = cypher_ast_identifier_get_name(alias_node);
 			} else {
 				// This expression did not have an alias, so it must be an identifier
-				assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 				identifier = cypher_ast_identifier_get_name(ast_exp);
 			}
@@ -444,7 +443,7 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 		// If the procedure call is missing its yield part, include procedure outputs.
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 		ProcedureCtx *proc = Proc_Get(proc_name);
-		assert(proc);
+		ASSERT(proc);
 		unsigned int output_count = Procedure_OutputCount(proc);
 		proc_output_columns = array_new(const char *, output_count);
 		for(uint i = 0; i < output_count; i++) {
@@ -460,9 +459,9 @@ const char *_AST_ExtractQueryString(const cypher_parse_result_t *partial_result)
 	const cypher_astnode_t *statement = _AST_parse_result_root(partial_result);
 	// We are parsing with the CYPHER_PARSE_ONLY_PARAMETERS flag.
 	// Given that, only the parameters were processed. extract the actual query and return to caller.
-	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(statement);
-	assert(cypher_astnode_type(body) == CYPHER_AST_STRING);
+	ASSERT(cypher_astnode_type(body) == CYPHER_AST_STRING);
 	return cypher_ast_string_get_value(body);
 }
 

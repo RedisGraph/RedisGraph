@@ -4,8 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
-
 #include "op_cond_var_len_traverse.h"
 #include "shared/print_functions.h"
 #include "../../util/arr.h"
@@ -23,7 +21,7 @@ static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph, AlgebraicExpression_Edge(op->ae));
-	assert(e->minHops <= e->maxHops);
+	ASSERT(e->minHops <= e->maxHops);
 	op->minHops = e->minHops;
 	op->maxHops = e->maxHops;
 
@@ -77,7 +75,7 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 }
 
 OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	assert(ae && g);
+	ASSERT(ae && g);
 
 	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
 	op->g = g;
@@ -91,7 +89,8 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
 				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
 
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	ASSERT(aware);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
 	// Populate edge value in record only if it is referenced.
@@ -171,7 +170,7 @@ static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 }
 
 static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
+	ASSERT(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
 	CondVarLenTraverse *op = (CondVarLenTraverse *) opBase;
 	OpBase *op_clone = NewCondVarLenTraverseOp(plan, QueryCtx_GetGraph(),
 											   AlgebraicExpression_Clone(op->ae));

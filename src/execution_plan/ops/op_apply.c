@@ -29,7 +29,7 @@ OpBase *NewApplyOp(const ExecutionPlan *plan) {
 }
 
 static OpResult ApplyInit(OpBase *opBase) {
-	assert(opBase->childCount == 2);
+	ASSERT(opBase->childCount == 2);
 
 	Apply *op = (Apply *)opBase;
 	/* The op's bound branch and optional match branch have already been built as
@@ -39,7 +39,7 @@ static OpResult ApplyInit(OpBase *opBase) {
 
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->rhs_branch, OPType_ARGUMENT);
-	assert(op->op_arg);
+	ASSERT(op->op_arg);
 
 	return OP_OK;
 }

@@ -5,7 +5,6 @@
 */
 
 #include "encode_v8.h"
-#include <assert.h>
 
 // Forword decleration.
 static void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v);
@@ -49,7 +48,7 @@ static void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
 	case T_NULL:
 		return; // No data beyond the type needs to be encoded for a NULL value.
 	default:
-		assert(0 && "Attempted to serialize value of invalid type.");
+		ASSERT(0 && "Attempted to serialize value of invalid type.");
 	}
 }
 

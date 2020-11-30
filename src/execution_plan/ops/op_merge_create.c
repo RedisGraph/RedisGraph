@@ -216,7 +216,7 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		/* Buffer all entity creations.
 		 * If this operation has no children, it should always have unique creations. */
 		bool entities_created = _CreateEntities(op, r);
-		ASSERT(entities_create == true);
+		ASSERT(entities_created == true);
 
 		// Save record for later use.
 		op->records = array_append(op->records, r);

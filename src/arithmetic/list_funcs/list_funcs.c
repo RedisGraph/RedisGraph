@@ -5,6 +5,7 @@
  */
 
 #include "list_funcs.h"
+#include "../../RG.h"
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../datatypes/array.h"
@@ -26,9 +27,9 @@ SIValue AR_TOLIST(SIValue *argv, int argc) {
    Invalid index will return null.
    "RETURN [1, 2, 3][0]" will yield 1. */
 SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
-	assert(argc == 2);
+	ASSERT(argc == 2);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
-	assert(SI_TYPE(argv[0]) == T_ARRAY && SI_TYPE(argv[1]) == T_INT64);
+	ASSERT(SI_TYPE(argv[0]) == T_ARRAY && SI_TYPE(argv[1]) == T_INT64);
 	SIValue list = argv[0];
 	int32_t index = (int32_t)argv[1].longval;
 	uint32_t arrayLen = SIArray_Length(list);
@@ -51,13 +52,13 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
    If one of the indices is null, null will be returnd.
    "RETURN [1, 2, 3][0..1]" will yield [1, 2] */
 SIValue AR_SLICE(SIValue *argv, int argc) {
-	assert(argc == 3);
+	ASSERT(argc == 3);
 	if(SI_TYPE(argv[0]) == T_NULL ||
 	   SI_TYPE(argv[1]) == T_NULL ||
 	   SI_TYPE(argv[2]) == T_NULL) {
 		return SI_NullVal();
 	}
-	assert(SI_TYPE(argv[0]) == T_ARRAY && SI_TYPE(argv[1]) == T_INT64 && SI_TYPE(argv[2]) == T_INT64);
+	ASSERT(SI_TYPE(argv[0]) == T_ARRAY && SI_TYPE(argv[1]) == T_INT64 && SI_TYPE(argv[2]) == T_INT64);
 	SIValue array = argv[0];
 
 	// get array length
@@ -99,7 +100,7 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 	int64_t end = argv[1].longval;
 	int64_t interval = 1;
 	if(argc == 3) {
-		assert(SI_TYPE(argv[2]) == T_INT64);
+		ASSERT(SI_TYPE(argv[2]) == T_INT64);
 		interval = argv[2].longval;
 		if(interval < 1) {
 			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() must be >= 1");
@@ -118,9 +119,9 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 /* Checks if a value is in a given list.
    "RETURN 3 IN [1, 2, 3]" will return true */
 SIValue AR_IN(SIValue *argv, int argc) {
-	assert(argc == 2);
+	ASSERT(argc == 2);
 	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
-	assert(SI_TYPE(argv[1]) == T_ARRAY);
+	ASSERT(SI_TYPE(argv[1]) == T_ARRAY);
 	SIValue lookupValue = argv[0];
 	SIValue lookupList = argv[1];
 	// indicate if there was a null comparison during the array scan
@@ -143,7 +144,7 @@ SIValue AR_IN(SIValue *argv, int argc) {
    "RETURN size([1, 2, 3])" will return 3
    TODO: when map and path are implemented, add their functionality */
 SIValue AR_SIZE(SIValue *argv, int argc) {
-	assert(argc == 1);
+	ASSERT(argc == 1);
 	SIValue value = argv[0];
 	switch(SI_TYPE(value)) {
 	case T_ARRAY:
@@ -153,17 +154,18 @@ SIValue AR_SIZE(SIValue *argv, int argc) {
 	case T_NULL:
 		return SI_NullVal();
 	default:
-		assert(false);
+		ASSERT(false);
+		return SI_NullVal();
 	}
 }
 
 /* Return the first member of a list.
    "RETURN head([1, 2, 3])" will return 1 */
 SIValue AR_HEAD(SIValue *argv, int argc) {
-	assert(argc == 1);
+	ASSERT(argc == 1);
 	SIValue value = argv[0];
 	if(SI_TYPE(value) == T_NULL) return SI_NullVal();
-	assert(SI_TYPE(value) == T_ARRAY);
+	ASSERT(SI_TYPE(value) == T_ARRAY);
 	uint arrayLen = SIArray_Length(value);
 	if(arrayLen == 0) return SI_NullVal();
 	SIValue retval = SIArray_Get(value, 0);
@@ -174,10 +176,10 @@ SIValue AR_HEAD(SIValue *argv, int argc) {
 /* Return a sublist of a list, which contains all the values withiout the first value.
    "RETURN tail([1, 2, 3])" will return [2, 3] */
 SIValue AR_TAIL(SIValue *argv, int argc) {
-	assert(argc == 1);
+	ASSERT(argc == 1);
 	SIValue value = argv[0];
 	if(SI_TYPE(value) == T_NULL) return SI_NullVal();
-	assert(SI_TYPE(value) == T_ARRAY);
+	ASSERT(SI_TYPE(value) == T_ARRAY);
 	uint arrayLen = SIArray_Length(value);
 	SIValue array = SI_Array(arrayLen);
 	if(arrayLen < 2) return array;

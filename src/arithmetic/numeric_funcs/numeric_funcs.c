@@ -122,7 +122,7 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc) {
 		return SI_LongVal(floor(parsedval));
 	default:
 		ASSERT(false);
-		break;
+		return SI_NullVal();
 	}
 }
 

@@ -19,7 +19,7 @@ ResultSetFormatter *ResultSetFormatter_GetFormatter(ResultSetFormatterType t) {
 		formatter = &ResultSetFormatterCompact;
 		break;
 	default:
-		RedisModule_Assert(false && "Unknown formater");
+		RedisModule_Assert(false && "Unknown formatter");
 	}
 
 	return formatter;

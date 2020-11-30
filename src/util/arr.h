@@ -26,7 +26,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "RG.h"
+#include "../RG.h"
 #include "rmalloc.h"
 
 #ifdef __cplusplus

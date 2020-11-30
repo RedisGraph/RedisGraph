@@ -45,7 +45,8 @@ static OpResult IndexScanInit(OpBase *opBase) {
 static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 	// Populate the Record with the graph entity data.
 	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
-	assert(Graph_GetNode(op->g, node_id, &n));
+	int res = Graph_GetNode(op->g, node_id, &n);
+	ASSERT(res != 0);
 	// Get a pointer to the node's allocated space within the Record.
 	Record_AddNode(r, op->nodeRecIdx, n);
 }

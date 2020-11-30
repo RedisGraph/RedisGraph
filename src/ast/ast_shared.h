@@ -14,6 +14,8 @@
 
 struct AR_ExpNode;
 
+/* Updates to this enum require parallel updates to the
+ * OpName array in arithmetic_expression_construct.c */
 typedef enum {
 	OP_UNKNOWN = 0,
 	OP_NULL = 1,
