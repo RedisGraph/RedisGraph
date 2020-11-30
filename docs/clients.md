@@ -4,19 +4,19 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 
 ## Currently-available Libraries
 
-| Project         | Language   | License | Author                             | Repository                    | 
-| --------------- | ---------- | ------- | ---------------------------------- | ----------------------------- |
-| redisgraph-py   | Python     | BSD     | [Redis Labs][redisgraph-py-author] | [![redisgraph-py-stars]][redisgraph-py-url]  |  
-| JRedisGraph     | Java       | BSD     | [Redis Labs][JRedisGraph-author]   | [![JRedisGraph-stars]][JRedisGraph-url]     |
-| redisgraph-rb   | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author] | [![redisgraph-rb-stars]][redisgraph-rb-url]   |
-| redisgraph-go   | Go         | BSD     | [Redis Labs][redisgraph-go-author] | [![redisgraph-go-stars]][redisgraph-go-url]   |
-| redisgraph.js   | JavaScript | BSD     | [Redis Labs][redisgraph.js-author] | [![redisgraph.js-stars]][redisgraph.js-url]   |
-| ioredisgraph    | JavaScript | ISC     | [Jonah][ioredisgraph-author]       | [![ioredisgraph-stars]][ioredisgraph-url]    |
-| @hydre/rgraph   | JavaScript | MIT     | [Sceat][rgraph-author]             | [![rgraph-stars]][rgraph-url]          |
-| php-redis-graph | PHP        | MIT     | [KJDev][php-redis-graph-author]    | [![php-redis-graph-stars]][php-redis-graph-url] |
-| redisgraph_php  | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [![redisgraph_php-stars]][redisgraph_php-url]  |
-| redisgraph-ex   | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [![redisgraph-ex-stars]][redisgraph-ex-url]   |
-| redisgraph-rs   | RUST       | MIT     | [malte-v][redisgraph-rs-author]    | [![redisgraph-rs-stars]][redisgraph-rs-url]   |
+| Project                                | Language   | License | Author                             | Stars                                      | 
+| -------------------------------------- | ---------- | ------- | ---------------------------------- | ------------------------------------------------|
+| [redisgraph-py][redisgraph-py-url]     | Python     | BSD     | [Redis Labs][redisgraph-py-author] | [![redisgraph-py-stars]][redisgraph-py-url]     |  
+| [JRedisGraph][JRedisGraph-url]         | Java       | BSD     | [Redis Labs][JRedisGraph-author]   | [![JRedisGraph-stars]][JRedisGraph-url]         |
+| [redisgraph-rb][redisgraph-rb-url]     | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author] | [![redisgraph-rb-stars]][redisgraph-rb-url]     |
+| [redisgraph-go][redisgraph-go-url]     | Go         | BSD     | [Redis Labs][redisgraph-go-author] | [![redisgraph-go-stars]][redisgraph-go-url]     |
+| [redisgraph.js][redisgraph.js-url]     | JavaScript | BSD     | [Redis Labs][redisgraph.js-author] | [![redisgraph.js-stars]][redisgraph.js-url]     |
+| [ioredisgraph][ioredisgraph-url]       | JavaScript | ISC     | [Jonah][ioredisgraph-author]       | [![ioredisgraph-stars]][ioredisgraph-url]       |
+| [@hydre/rgraph][rgraph-url]            | JavaScript | MIT     | [Sceat][rgraph-author]             | [![rgraph-stars]][rgraph-url]                   |
+| [php-redis-graph][php-redis-graph-url] | PHP        | MIT     | [KJDev][php-redis-graph-author]    | [![php-redis-graph-stars]][php-redis-graph-url] |
+| [redisgraph_php][redisgraph_php-url]   | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [![redisgraph_php-stars]][redisgraph_php-url]   |
+| [redisgraph-ex][redisgraph-ex-url]     | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [![redisgraph-ex-stars]][redisgraph-ex-url]     |
+| [redisgraph-rs][redisgraph-rs-url]     | RUST       | MIT     | [malte-v][redisgraph-rs-author]    | [![redisgraph-rs-stars]][redisgraph-rs-url]     |
 
 [redisgraph-py-author]: https://redislabs.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
