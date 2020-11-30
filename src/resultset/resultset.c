@@ -5,6 +5,7 @@
 */
 
 #include "resultset.h"
+#include "RG.h"
 #include "../value.h"
 #include "../errors.h"
 #include "../util/arr.h"
@@ -85,13 +86,13 @@ void ResultSet_MapProjection(ResultSet *set, const Record r) {
 	for(uint i = 0; i < set->column_count; i++) {
 		const char *column = set->columns[i];
 		uint idx = Record_GetEntryIdx(r, column);
-		assert(idx != INVALID_INDEX);
+		ASSERT(idx != INVALID_INDEX);
 		set->columns_record_map[i] = idx;
 	}
 }
 
 static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
-	assert(set->recordCount == 0);
+	ASSERT(set->recordCount == 0);
 
 	// Prepare a response containing a header, records, and statistics
 	RedisModule_ReplyWithArray(set->ctx, 3);
@@ -106,7 +107,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 }
 
 static void _ResultSet_SetColumns(ResultSet *set) {
-	assert(!set->columns);
+	ASSERT(set->columns != NULL);
 
 	AST *ast = QueryCtx_GetAST();
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -205,7 +206,7 @@ void ResultSet_Reply(ResultSet *set) {
 		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
 	} else if(set->header_emitted == false && set->columns != NULL) {
-		assert(set->recordCount == 0);
+		ASSERT(set->recordCount == 0);
 		// Handle the edge case in which the query was intended to return results, but none were created.
 		_ResultSet_ReplyWithPreamble(set, NULL);
 		RedisModule_ReplySetArrayLength(set->ctx, 0);

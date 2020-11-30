@@ -5,13 +5,13 @@
  */
 
 #include "./reduce_scans.h"
+#include "RG.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../execution_plan_build/execution_plan_modify.h"
-#include <assert.h>
 
 static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 	Graph *g = QueryCtx_GetGraph();
@@ -26,7 +26,7 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	if(scan->childCount == 0) return;
 
 	// The scan operation should be operating on a single alias.
-	assert(array_len(scan->modifies) == 1);
+	ASSERT(array_len(scan->modifies) == 1);
 	const char *scanned_alias = scan->modifies[0];
 
 	// Collect variables bound before this operation.

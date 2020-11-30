@@ -1,6 +1,6 @@
 #pragma once
 
-#include <assert.h>
+#include "redismodule.h"
 
 //------------------------------------------------------------------------------
 // code development settings
@@ -29,7 +29,7 @@
 		{                                           \
 			printf ("assert(" #X ") failed: "       \
 			__FILE__ " line %d\n", __LINE__) ;      \
-			assert(false);							\
+			RedisModule_Assert(X);                  \
 		}                                           \
 	}
 

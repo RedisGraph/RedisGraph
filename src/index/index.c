@@ -1,4 +1,11 @@
+/*
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include "index.h"
+#include "RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -13,7 +20,10 @@ static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, c
 	GraphContext *gc = (GraphContext *)ctx;
 	Graph *g = gc->g;
 
-	assert(Graph_GetNode(g, nId, &n));
+	int node_found = Graph_GetNode(g, nId, &n);
+	UNUSED(node_found);
+	ASSERT(node_found != 0);
+
 	Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
 	SIValue *v = GraphEntity_GetProperty((GraphEntity *)&n, attrId);
 	int ret;
@@ -73,7 +83,7 @@ Index *Index_New(const char *label, IndexType type) {
 
 // Adds field to index.
 void Index_AddField(Index *idx, const char *field) {
-	assert(idx);
+	ASSERT(idx != NULL);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
 	if(Index_ContainsAttribute(idx, fieldID)) return;
@@ -85,7 +95,7 @@ void Index_AddField(Index *idx, const char *field) {
 
 // Removes fields from index.
 void Index_RemoveField(Index *idx, const char *field) {
-	assert(idx);
+	ASSERT(idx != NULL);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, field);
 	if(!Index_ContainsAttribute(idx, attribute_id)) return;
@@ -144,14 +154,14 @@ void Index_IndexNode(Index *idx, const Node *n) {
 }
 
 void Index_RemoveNode(Index *idx, const Node *n) {
-	assert(idx && n);
+	ASSERT(idx != NULL && n != NULL);
 	NodeID node_id = ENTITY_GET_ID(n);
 	RediSearch_DeleteDocument(idx->idx, &node_id, sizeof(EntityID));
 }
 
 // Constructs index.
 void Index_Construct(Index *idx) {
-	assert(idx);
+	ASSERT(idx != NULL);
 
 	/* RediSearch index already exists
 	 * re-construct */
@@ -193,30 +203,30 @@ void Index_Construct(Index *idx) {
 
 // Query index.
 RSResultsIterator *Index_Query(const Index *idx, const char *query, char **err) {
-	assert(idx && query);
+	ASSERT(idx != NULL && query != NULL);
 	return RediSearch_IterateQuery(idx->idx, query, strlen(query), err);
 }
 
 // Return indexed label.
 const char *Index_GetLabel(const Index *idx) {
-	assert(idx);
+	ASSERT(idx != NULL);
 	return (const char *)idx->label;
 }
 
 // Returns number of fields indexed.
 uint Index_FieldsCount(const Index *idx) {
-	assert(idx);
+	ASSERT(idx != NULL);
 	return idx->fields_count;
 }
 
 // Returns indexed fields.
 const char **Index_GetFields(const Index *idx) {
-	assert(idx);
+	ASSERT(idx != NULL);
 	return (const char **)idx->fields;
 }
 
 bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
-	assert(idx);
+	ASSERT(idx != NULL);
 	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
 	for(uint i = 0; i < idx->fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) return true;
@@ -227,7 +237,7 @@ bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
 
 // Free index.
 void Index_Free(Index *idx) {
-	assert(idx);
+	ASSERT(idx != NULL);
 	if(idx->idx) RediSearch_DropIndex(idx->idx);
 
 	rm_free(idx->label);

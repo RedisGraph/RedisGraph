@@ -5,6 +5,7 @@
 */
 
 #include "value.h"
+#include "RG.h"
 #include "graph/entities/graph_entity.h"
 #include "graph/entities/node.h"
 #include "graph/entities/edge.h"
@@ -13,7 +14,6 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/param.h>
-#include <assert.h>
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
 #include "datatypes/path/sipath.h"
@@ -142,7 +142,7 @@ SIValue SI_CloneValue(const SIValue v) {
 	} else if(v.type == T_EDGE) {
 		size = sizeof(Edge);
 	} else {
-		assert(false && "Encountered heap-allocated SIValue of unhandled type");
+		ASSERT(false && "Encountered heap-allocated SIValue of unhandled type");
 	}
 
 	clone.ptrval = rm_malloc(size);
@@ -182,12 +182,12 @@ inline bool SIValue_IsNull(SIValue v) {
 }
 
 inline bool SIValue_IsFalse(SIValue v) {
-	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
+	ASSERT(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
 	return !v.longval;
 }
 
 inline bool SIValue_IsTrue(SIValue v) {
-	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
+	ASSERT(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
 	return v.longval;
 }
 
@@ -264,7 +264,8 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	default:
 		// unrecognized type
 		printf("unrecognized type: %d\n", v.type);
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 }
 
@@ -488,7 +489,8 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			break;
 		default:
 			// Both inputs were of an incomparable type, like a pointer, or not implemented comparison yet.
-			assert(false);
+			ASSERT(false);
+			break;
 		}
 	}
 
@@ -517,7 +519,8 @@ XXH64_hash_t SINode_HashCode(const SIValue v) {
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
+	UNUSED(res);
+	ASSERT(res != XXH_ERROR);
 
 	Node *n = (Node *)v.ptrval;
 	int id = ENTITY_GET_ID(n);
@@ -535,7 +538,8 @@ XXH64_hash_t SIEdge_HashCode(const SIValue v) {
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
+	UNUSED(res);
+	ASSERT(res != XXH_ERROR);
 
 	Edge *e = (Edge *)v.ptrval;
 	int id = ENTITY_GET_ID(e);
@@ -602,7 +606,8 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 		return;
 	// TODO: Implement for Map and temporal types once we support them.
 	default:
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 }
 
@@ -610,7 +615,9 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 XXH64_hash_t SIValue_HashCode(SIValue v) {
 	// Initialize the hash state.
 	XXH64_state_t state;
-	assert(XXH64_reset(&state, 0) != XXH_ERROR);
+	XXH_errorcode res = XXH64_reset(&state, 0);
+	UNUSED(res);
+	ASSERT(res != XXH_ERROR);
 
 	// Update the state with the SIValue.
 	SIValue_HashUpdate(v, &state);

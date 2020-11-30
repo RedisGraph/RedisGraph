@@ -16,7 +16,6 @@
 #include "execution_plan_build/execution_plan_construct.h"
 #include "execution_plan_build/execution_plan_modify.h"
 
-#include <assert.h>
 #include <setjmp.h>
 
 // Allocate a new ExecutionPlan segment.
@@ -51,7 +50,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
 	union_indices = array_append(union_indices, clause_count);
 	int union_count = array_len(union_indices);
-	assert(union_count > 1);
+	ASSERT(union_count > 1);
 
 	/* Placeholder for each execution plan, these all will be joined
 	 * via a single UNION operation. */
@@ -102,7 +101,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	// Join execution plans.
 	for(int i = 0; i < union_count; i++) {
 		ExecutionPlan *sub_plan = plans[i];
-		assert(sub_plan->root->type == OPType_RESULTS);
+		ASSERT(sub_plan->root->type == OPType_RESULTS);
 
 		// Remove OP_Result.
 		OpBase *op_result = sub_plan->root;
@@ -315,7 +314,7 @@ inline AST *ExecutionPlan_GetAST(const ExecutionPlan *plan) {
 
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
 	// Plan should be prepared only once.
-	assert(!plan->prepared);
+	ASSERT(!plan->prepared);
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
 	plan->prepared = true;
@@ -375,7 +374,7 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	assert(plan->prepared);
+	ASSERT(plan->prepared)
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */

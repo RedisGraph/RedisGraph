@@ -5,6 +5,7 @@
 */
 
 #include "op_aggregate.h"
+#include "RG.h"
 #include "op_sort.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
@@ -138,7 +139,7 @@ cleanup:
 static void _aggregateRecord(OpAggregate *op, Record r) {
 	/* Get group */
 	Group *group = _GetGroup(op, r);
-	assert(group);
+	ASSERT(group != NULL);
 
 	// Aggregate group exps.
 	for(uint i = 0; i < op->aggregate_count; i++) {
@@ -251,7 +252,7 @@ static OpResult AggregateReset(OpBase *opBase) {
 }
 
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_AGGREGATE);
+	ASSERT(opBase->type == OPType_AGGREGATE);
 	OpAggregate *op = (OpAggregate *)opBase;
 	uint key_count = op->key_count;
 	uint aggregate_count = op->aggregate_count;

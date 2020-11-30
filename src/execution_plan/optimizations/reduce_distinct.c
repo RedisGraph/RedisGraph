@@ -5,6 +5,7 @@
 */
 
 #include "reduce_distinct.h"
+#include "RG.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 void reduceDistinct(ExecutionPlan *plan) {
@@ -13,7 +14,7 @@ void reduceDistinct(ExecutionPlan *plan) {
 
 	for(uint i = 0; i < array_len(distinct_ops); i++) {
 		OpBase *distinct = distinct_ops[i];
-		assert(distinct->childCount == 1);
+		ASSERT(distinct->childCount == 1);
 		if(distinct->children[0]->type == OPType_AGGREGATE) {
 			// We can remove the Distinct op if its child is an aggregate operation,
 			// as its results will inherently be unique.

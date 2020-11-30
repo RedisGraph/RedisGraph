@@ -5,6 +5,7 @@
  */
 
 #include "op_join.h"
+#include "RG.h"
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
@@ -70,7 +71,7 @@ static OpResult JoinReset(OpBase *opBase) {
 }
 
 static inline OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_JOIN);
+	ASSERT(opBase->type == OPType_JOIN);
 	return NewJoinOp(plan);
 }
 

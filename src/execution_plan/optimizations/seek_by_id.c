@@ -101,7 +101,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 }
 
 void seekByID(ExecutionPlan *plan) {
-	assert(plan);
+	ASSERT(plan != NULL);
 
 	const OPType types[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN};
 	OpBase **scan_ops = ExecutionPlan_CollectOpsMatchingType(plan->root, types, 2);

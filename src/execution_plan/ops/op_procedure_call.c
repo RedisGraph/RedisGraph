@@ -32,7 +32,9 @@ static void _construct_output_mappings(OpProcCall *op, SIValue *outputs) {
 			char *key = (outputs + j)->stringval;
 			if(strcmp(output, key) == 0) {
 				int idx;
-				assert(OpBase_Aware((OpBase *)op, key, &idx));
+				bool aware = OpBase_Aware((OpBase *)op, key, &idx);
+				UNUSED(aware);
+				ASSERT(aware == true);
 				op->yield_map[i].proc_out_idx = j + 1;
 				op->yield_map[i].rec_idx = idx;
 				break;
@@ -156,7 +158,7 @@ static OpResult ProcCallReset(OpBase *ctx) {
 }
 
 static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_PROC_CALL);
+	ASSERT(opBase->type == OPType_PROC_CALL);
 	OpProcCall *op = (OpProcCall *)opBase;
 	AR_ExpNode **args_exp;
 	AR_ExpNode **yield_exps;

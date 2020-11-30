@@ -6,6 +6,7 @@
 
 #include "reduce_traversal.h"
 
+#include "RG.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../ops/op_expand_into.h"
@@ -50,7 +51,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
 			ae = traverse->ae;
 		} else {
-			assert(false);
+			ASSERT(false);
 		}
 
 		/* If traverse src and dest nodes are the same,

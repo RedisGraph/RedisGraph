@@ -5,7 +5,7 @@
 */
 
 #include "filter_tree.h"
-#include "../RG.h"
+#include "RG.h"
 #include "../value.h"
 #include "../errors.h"
 #include "../util/arr.h"
@@ -13,7 +13,6 @@
 #include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
 #include "../datatypes/array.h"
-#include <assert.h>
 
 /* forward declarations */
 void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count);
@@ -46,7 +45,8 @@ static AST_Operator _NegateOperator(AST_Operator op) {
 	case OP_GE:
 		return OP_LT;
 	default:
-		assert(false);
+		ASSERT(false);
+		return OP_UNKNOWN;
 	}
 }
 
@@ -72,7 +72,7 @@ FT_FilterNode *FilterTree_AppendRightChild(FT_FilterNode *root, FT_FilterNode *c
 }
 
 FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp) {
-	ASSERT(exp);
+	ASSERT(exp != NULL);
 	FT_FilterNode *node = rm_malloc(sizeof(FT_FilterNode));
 	node->t = FT_N_EXP;
 	node->exp.exp = exp;
@@ -161,7 +161,8 @@ int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 		return rel <= 0;
 	default:
 		/* Op should be enforced by AST. */
-		assert(0);
+		ASSERT(0);
+		break;
 	}
 
 	/* We shouldn't reach this point. */
@@ -225,6 +226,7 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 	}
 	default:
 		ASSERT(false);
+		break;
 	}
 
 	// We shouldn't be here.
@@ -255,7 +257,7 @@ void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
 		break;
 	}
 	default: {
-		assert(0);
+		ASSERT(0);
 		break;
 	}
 	}
@@ -289,7 +291,8 @@ void _FilterTree_CollectAttributes(const FT_FilterNode *root, rax *attributes) {
 		break;
 	}
 	default: {
-		assert(0);
+		ASSERT(0);
+		break;
 	}
 	}
 }
@@ -336,7 +339,7 @@ bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
 	case FT_N_PRED:
 		return (root->pred.op == op);
 	default:
-		assert(false);
+		ASSERT(false);
 		return false;
 	}
 }
@@ -363,13 +366,14 @@ bool _FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_Fi
 		return false;
 	}
 	default:
-		assert("Unkown filter tree node type" && false);
+		ASSERT("Unkown filter tree node type" && false);
+		break;
 	}
 	return false;
 }
 
 bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
-	assert(root && func && node);
+	ASSERT(root && func && node);
 	*node = NULL;
 	return _FilterTree_ContainsFunc(root, func, node);
 }
@@ -399,7 +403,8 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 		}
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 }
 
@@ -443,6 +448,7 @@ bool FilterTree_Valid(const FT_FilterNode *root) {
 		break;
 	default:
 		ASSERT("Unknown filter tree node" && false);
+		break;
 	}
 	return true;
 }
@@ -453,7 +459,7 @@ void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count) {
 
 	// Node is of type condition.
 	if((*root)->cond.op == OP_NOT) {
-		assert((*root)->cond.right == NULL);
+		ASSERT((*root)->cond.right == NULL);
 		_FilterTree_ApplyNegate(&(*root)->cond.left, negate_count + 1);
 		// Replace NOT node with only child
 		FT_FilterNode *child = (*root)->cond.left;
@@ -584,7 +590,7 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
 	if(node->cond.op == OP_AND) return _FilterTree_Compact_And(node);
 	if(node->cond.op == OP_OR) return _FilterTree_Compact_Or(node);
-	assert(false && "_FilterTree_Compact_Cond: Unkown filter operator to compact");
+	ASSERT(false && "_FilterTree_Compact_Cond: Unkown filter operator to compact");
 }
 
 // Compacts a predicate node if possible,
@@ -617,7 +623,7 @@ bool FilterTree_Compact(FT_FilterNode *root) {
 	case FT_N_PRED:
 		return _FilterTree_Compact_Pred(root);
 	default:
-		assert(false && "FilterTree_Compact: Unkown filter tree node to compect");
+		ASSERT(false && "FilterTree_Compact: Unkown filter tree node to compect");
 		return false;
 	}
 }
@@ -656,7 +662,7 @@ FT_FilterNode *FilterTree_Clone(FT_FilterNode *root) {
 	case FT_N_PRED:
 		return _FilterTree_Clone_Pred(root);
 	default:
-		assert(false && "Unkown filter tree node to clone");
+		ASSERT(false && "Unkown filter tree node to clone");
 		return NULL;
 	}
 }
@@ -689,7 +695,8 @@ void _FilterTree_Print(const FT_FilterNode *root, int ident) {
 		_FilterTree_Print(RightChild(root), ident + 4);
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 }
 
@@ -716,7 +723,8 @@ void FilterTree_Free(FT_FilterNode *root) {
 		FilterTree_Free(root->cond.right);
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 
 	rm_free(root);
