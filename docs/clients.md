@@ -15,6 +15,7 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | @hydre/rgraph   | JavaScript | MIT     | [Sceat][rgraph-author]             | [Github][rgraph-url]          |
 | php-redis-graph | PHP        | MIT     | [KJDev][php-redis-graph-author]    | [GitHub][php-redis-graph-url] |
 | redisgraph_php  | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [GitHub][redisgraph_php-url]  |
+| redislabs-redisgraph-php | PHP        | MIT     | [mkorkmaz][redislabs-redisgraph-php-author]    | [GitHub][redislabs-redisgraph-php-url] |
 | redisgraph-ex   | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [GitHub][redisgraph-ex-url]   |
 | redisgraph-rs   | RUST       | MIT     | [malte-v][redisgraph-rs-author]    | [GitHub][redisgraph-rs-url]   |
 
@@ -44,6 +45,9 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 
 [redisgraph_php-author]: https://github.com/jpbourbon
 [redisgraph_php-url]: https://github.com/jpbourbon/redisgraph_php
+
+[redislabs-redisgraph-php-author]: https://github.com/mkorkmaz
+[redislabs-redisgraph-php-url]: https://github.com/mkorkmaz/redislabs-redisgraph-php
 
 [redisgraph-ex-author]: https://github.com/crflynn
 [redisgraph-ex-url]: https://github.com/crflynn/redisgraph-ex
