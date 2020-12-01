@@ -190,7 +190,7 @@ void Register_ComprehensionFuncs() {
 	types = array_append(types, T_ARRAY | T_NULL);
 	types = array_append(types, T_PTR);
 	types = array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("any", AR_ANY, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("any", AR_ANY, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 	func_desc->bfree = ListComprehension_Free;
@@ -200,7 +200,7 @@ void Register_ComprehensionFuncs() {
 	types = array_append(types, T_ARRAY | T_NULL);
 	types = array_append(types, T_PTR);
 	types = array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("all", AR_ALL, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("all", AR_ALL, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 	func_desc->bfree = ListComprehension_Free;
@@ -210,7 +210,7 @@ void Register_ComprehensionFuncs() {
 	types = array_append(types, T_ARRAY | T_NULL);
 	types = array_append(types, T_PTR);
 	types = array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, true);
+	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 	func_desc->bfree = ListComprehension_Free;

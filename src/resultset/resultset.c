@@ -12,7 +12,6 @@
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../grouping/group_cache.h"
-#include "../arithmetic/aggregate.h"
 
 static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	char buff[512] = {0};

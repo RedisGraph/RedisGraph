@@ -7,7 +7,6 @@
 #include "ast_build_op_contexts.h"
 #include "../util/arr.h"
 #include "../util/rax_extensions.h"
-#include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 #include "../query_ctx.h"
 

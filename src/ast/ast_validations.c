@@ -12,7 +12,6 @@
 #include "cypher_whitelist.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
-#include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 
 // Forward declaration
@@ -211,15 +210,11 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool i
 
 		if(AR_FuncExists(funcName)) continue;
 
-		if(Agg_FuncExists(funcName)) {
-			if(include_aggregates) {
-				continue;
-			} else {
-				// Provide a unique error for using aggregate functions from inappropriate contexts
-				ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
-				res = AST_INVALID;
-				break;
-			}
+		if(include_aggregates && AR_FuncIsAggregate(funcName)) {
+			// Provide a unique error for using aggregate functions from inappropriate contexts
+			ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
+			res = AST_INVALID;
+			break;
 		}
 
 		// If we reach this point, the function was not found

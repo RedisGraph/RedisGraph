@@ -12,7 +12,6 @@
 #include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../procedures/procedure.h"
-#include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -384,7 +383,7 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 		memcpy(funcName, it.key, len);
 		funcName[len] = 0;
 
-		if(Agg_FuncExists(funcName)) {
+		if(AR_FuncIsAggregate(funcName)) {
 			aggregated = true;
 			break;
 		}

@@ -6,9 +6,8 @@
 
 #pragma once
 
-#include "./agg_ctx.h"
+#include <stddef.h>
 #include "rax.h"
-#include "./agg_ctx.h"
 #include "./func_desc.h"
 #include "../../deps/rax/rax.h"
 #include "../execution_plan/record.h"
@@ -21,15 +20,6 @@ typedef enum {
 	AR_EXP_OP,
 	AR_EXP_OPERAND
 } AR_ExpNodeType;
-
-/* AR_OPType type of operation
- * either an aggregation function which requires a context
- * or a stateless function. */
-typedef enum {
-	AR_OP_UNKNOWN,
-	AR_OP_AGGREGATE,
-	AR_OP_FUNC,
-} AR_OPType;
 
 /* AR_OperandNodeType - Type of an expression tree's leaf node. */
 typedef enum {
@@ -49,14 +39,10 @@ typedef enum {
 
 /* Op represents an operation applied to child args. */
 typedef struct {
-	union {
-		AR_FuncDesc *f;
-		AggCtx *agg_func;
-	};                              /* Operation to perform on children. */
+	AR_FuncDesc *f;                 /* Operation to perform on children. */
 	const char *func_name;          /* Name of function. */
 	int child_count;                /* Number of children. */
 	struct AR_ExpNode **children;   /* Child nodes. */
-	AR_OPType type;
 } AR_OpNode;
 
 // OperandNode represents either constant, parameter, or graph entity
@@ -89,9 +75,6 @@ typedef struct AR_ExpNode {
 /* Creates a new Arithmetic expression operation node */
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
-/* Creates a new distinct arithmetic expression operation node */
-AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count);
-
 /* Creates a new Arithmetic expression variable operand node */
 AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias);
 
@@ -107,9 +90,6 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 /* Creates a new Arithmetic expression that will resolve to the current Record. */
 AR_ExpNode *AR_EXP_NewRecordNode(void);
 
-/* Returns if the operation is distinct aggregation */
-bool AR_EXP_PerformDistinct(AR_ExpNode *op);
-
 /* Compact tree by evaluating all contained functions that can be resolved right now.
  * The function returns true if it managed to compact the expression.
  * The reduce_params flag indicates if parameters should be evaluated.
@@ -118,8 +98,9 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val);
 
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
-void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
-void AR_EXP_Reduce(const AR_ExpNode *root);
+
+/* Evaluate expression tree, retrieving final results from aggregate nodes. */
+SIValue AR_EXP_AggregateGetResults(AR_ExpNode *root, const Record r);
 
 //------------------------------------------------------------------------------
 // Utility functions

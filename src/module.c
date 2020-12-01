@@ -19,7 +19,6 @@
 #include "util/thpool/thpool.h"
 #include "graph/graphcontext.h"
 #include "ast/cypher_whitelist.h"
-#include "arithmetic/agg_funcs.h"
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "module_event_handlers.h"
@@ -108,7 +107,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
-	Agg_RegisterFuncs();     // Register aggregation functions.
 	Cron_Start();            // Start CRON
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);

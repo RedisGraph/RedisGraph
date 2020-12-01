@@ -10,10 +10,12 @@
 #include "../../deps/rax/rax.h"
 
 extern rax *__aeRegisteredFuncs;
+extern rax *__aggFuncs; // Set of all aggregate function names.
 
 void AR_RegisterFuncs() {
 	ASSERT(!__aeRegisteredFuncs);
 	__aeRegisteredFuncs = raxNew();
+	__aggFuncs = raxNew();
 
 	Register_ListFuncs();
 	Register_TimeFuncs();
@@ -25,5 +27,6 @@ void AR_RegisterFuncs() {
 	Register_ComprehensionFuncs();
 	Register_PathFuncs();
 	Register_PlaceholderFuncs();
+	Register_AggFuncs();
 }
 

@@ -63,3 +63,5 @@ void Error_UnsupportedASTOperator(const cypher_operator_t *op);
 // Report an error on trying to assign a complex type to a property.
 void Error_InvalidPropertyValue(void);
 
+// Report an error on user-facing function receiving invalid number of arguments.
+void Error_IncorrectFunctionArgumentCount(const char *func_name, int received, int expected);
