@@ -987,7 +987,7 @@ static AST_Validation _ValidateQueryTermination(const AST *ast) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	// libcypher-parser do not enforce clause sequance order:
-	// queries as such 'RETURN CREATE' and 'RETURN RETURN' are considered
+	// queries such as 'RETURN CREATE' and 'RETURN RETURN' are considered
 	// valid by the parser
 	// make sure the only clause following RETURN is UNION
 
