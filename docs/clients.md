@@ -22,33 +22,41 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | [NRedisGraph][NRedisGraph-url]                            | C#         | BSD     | [tombatron][NRedisGraph-author]             | [![NRedisGraph-stars]][redis_graph-url]                        |
 | [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]    | C#         | BSD     | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url] |
 
-
 [redisgraph-py-author]: https://redislabs.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
+[redisgraph-py-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-py.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [JRedisGraph-author]: https://redislabs.com
 [JRedisGraph-url]: https://github.com/RedisGraph/JRedisGraph
+[JRedisGraph-stars]: https://img.shields.io/github/stars/RedisGraph/JRedisGraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph-rb-author]: https://redislabs.com
 [redisgraph-rb-url]: https://github.com/RedisGraph/redisgraph-rb
+[redisgraph-rb-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-rb.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph-go-author]: https://redislabs.com
 [redisgraph-go-url]: https://github.com/RedisGraph/redisgraph-go
+[redisgraph-go-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-go.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph.js-author]: https://redislabs.com
 [redisgraph.js-url]: https://github.com/RedisGraph/redisgraph.js
+[redisgraph.js-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph.js.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [rgraph-author]: https://github.com/Sceat
 [rgraph-url]: https://github.com/HydreIO/rgraph
+[rgraph-stars]: https://img.shields.io/github/stars/HydreIO/rgraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [ioredisgraph-author]: https://github.com/Jonahss
 [ioredisgraph-url]: https://github.com/Jonahss/ioredisgraph
+[ioredisgraph-stars]: https://img.shields.io/github/stars/Jonahss/ioredisgraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [php-redis-graph-author]: https://github.com/kjdev
 [php-redis-graph-url]: https://github.com/kjdev/php-redis-graph
+[php-redis-graph-stars]: https://img.shields.io/github/stars/kjdev/php-redis-graph.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph_php-author]: https://github.com/jpbourbon
 [redisgraph_php-url]: https://github.com/jpbourbon/redisgraph_php
+[redisgraph_php-stars]: https://img.shields.io/github/stars/jpbourbon/redisgraph_php.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redislabs-redisgraph-php-author]: https://github.com/mkorkmaz
 [redislabs-redisgraph-php-url]: https://github.com/mkorkmaz/redislabs-redisgraph-php
@@ -56,9 +64,11 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 
 [redisgraph-ex-author]: https://github.com/crflynn
 [redisgraph-ex-url]: https://github.com/crflynn/redisgraph-ex
+[redisgraph-ex-stars]: https://img.shields.io/github/stars/crflynn/redisgraph-ex.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redisgraph-rs-author]: https://github.com/malte-v
 [redisgraph-rs-url]: https://github.com/malte-v/redisgraph-rs
+[redisgraph-rs-stars]: https://img.shields.io/github/stars/malte-v/redisgraph-rs.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [redis_graph-author]: https://github.com/tompro
 [redis_graph-url]: https://github.com/tompro/redis_graph
