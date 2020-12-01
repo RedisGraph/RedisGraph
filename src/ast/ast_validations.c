@@ -208,14 +208,14 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool i
 		memcpy(funcName, it.key, len);
 		funcName[len] = 0;
 
-		if(AR_FuncExists(funcName)) continue;
-
-		if(include_aggregates && AR_FuncIsAggregate(funcName)) {
+		if(!include_aggregates && AR_FuncIsAggregate(funcName)) {
 			// Provide a unique error for using aggregate functions from inappropriate contexts
 			ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
 			res = AST_INVALID;
 			break;
 		}
+
+		if(AR_FuncExists(funcName)) continue;
 
 		// If we reach this point, the function was not found
 		found = false;

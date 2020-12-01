@@ -116,7 +116,7 @@ class testResultSetFlow(FlowTestsBase):
         query = """MATCH (a) return max(a.missing_field)"""
         result = graph.query(query)
         self.env.assertEqual(None, result.result_set[0][0])
-        
+
         # Min default value is null.
         query = """MATCH (a) return min(a.missing_field)"""
         result = graph.query(query)
@@ -132,7 +132,7 @@ class testResultSetFlow(FlowTestsBase):
         result = graph.query(query)
         self.env.assertEqual(0, result.result_set[0][0])
 
-         # Collect default value is an empty array.
+        # Collect default value is an empty array.
         query = """MATCH (a) return collect(a.missing_field)"""
         result = graph.query(query)
         self.env.assertEqual([], result.result_set[0][0])

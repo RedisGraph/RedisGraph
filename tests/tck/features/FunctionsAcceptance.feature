@@ -280,7 +280,6 @@ Feature: FunctionsAcceptance
             | 0.5 | 20.0   |
             | 1.0 | 30.0   |
 
-    @skip
     Scenario Outline: `percentileCont()` failing on bad arguments
         Given an empty graph
         And having executed:
@@ -292,8 +291,7 @@ Feature: FunctionsAcceptance
             | param | <percentile> |
         When executing query:
             """
-            MATCH (n)
-            RETURN percentileCont(n.price, $param)
+            MATCH (n) RETURN percentileCont(n.price, $param)
             """
         Then a ArgumentError should be raised at runtime: NumberOutOfRange
 
@@ -303,7 +301,6 @@ Feature: FunctionsAcceptance
             | -1         |
             | 1.1        |
 
-    @skip
     Scenario Outline: `percentileDisc()` failing on bad arguments
         Given an empty graph
         And having executed:
@@ -326,8 +323,6 @@ Feature: FunctionsAcceptance
             | -1         |
             | 1.1        |
 
-    # Fails in create query
-    @crash
     @skip
     Scenario: `percentileDisc()` failing in more involved query
         Given an empty graph
