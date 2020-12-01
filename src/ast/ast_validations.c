@@ -872,40 +872,15 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 }
 
 static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
-	uint clause_idx = 0;                   // clause index within the AST
-	const cypher_astnode_t *return_clause; // RETURN clause
-
-	return_clause = AST_GetClause(ast, CYPHER_AST_RETURN, &clause_idx);
+	const cypher_astnode_t *return_clause;
+	return_clause = AST_GetClause(ast, CYPHER_AST_RETURN, NULL);
 
 	// no RETURN clause, nothing to validate
-	if(!return_clause) return AST_VALID;
+	if(return_clause == NULL) return AST_VALID;
 
-	// Validate all user-specified functions in RETURN clause.
+	// validate all user-specified functions in RETURN clause
 	bool include_aggregates = true;
-	AST_Validation res = _ValidateFunctionCalls(return_clause, include_aggregates);
-
-	// validate following clauses
-	// only SKIP, LIMIT, ORDER-BY and UNION are allowed
-	// SKIP and LIMIT are attributes of the RETURN clause
-	const cypher_astnode_t *following_clause = NULL;
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	for(uint i = clause_idx + 1; i < clause_count; i++) {
-		following_clause = AST_GetClauseByIdx(ast, i);
-		cypher_astnode_type_t type = cypher_astnode_type(following_clause);
-
-		if(type == CYPHER_AST_ORDER_BY) {
-			continue;
-		} else if(type == CYPHER_AST_UNION) {
-			break; // sub-query begins
-		} else {
-			// unexpected clause following RETURN
-			res = AST_INVALID;
-			ErrorCtx_SetError("Unexpected clause following RETURN");
-			break;
-		}
-	}
-
-	return res;
+	return _ValidateFunctionCalls(return_clause, include_aggregates);
 }
 
 static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
@@ -1004,7 +979,31 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast) {
 // A query must end in a RETURN clause, a procedure, or an updating clause
 // (CREATE, MERGE, DELETE, SET, or REMOVE once supported)
 static AST_Validation _ValidateQueryTermination(const AST *ast) {
+	ASSERT(ast != NULL);
+
+	uint clause_idx = 0;
+	const cypher_astnode_t *return_clause = NULL;
+	const cypher_astnode_t *following_clause = NULL;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
+
+	// libcypher-parser do not enforce clause sequance order:
+	// queries as such 'RETURN CREATE' and 'RETURN RETURN' are considered
+	// valid by the parser
+	// make sure the only clause following RETURN is UNION
+
+	// get first instance of a RETURN clause
+	return_clause = AST_GetClause(ast, CYPHER_AST_RETURN, &clause_idx);
+	if(return_clause != NULL && clause_idx < clause_count - 1) {
+		// RETURN clause isn't the last clause
+		// the only clause which can follow a RETURN is the UNION clause
+		following_clause = AST_GetClauseByIdx(ast, clause_idx + 1);
+		if(cypher_astnode_type(following_clause) != CYPHER_AST_UNION) {
+			// unexpected clause following RETURN
+			ErrorCtx_SetError("Unexpected clause following RETURN");
+			return AST_INVALID;
+		}
+	}
+
 	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
 	cypher_astnode_type_t type = cypher_astnode_type(last_clause);
 	if(type != CYPHER_AST_RETURN   &&
@@ -1019,7 +1018,6 @@ static AST_Validation _ValidateQueryTermination(const AST *ast) {
 		return AST_INVALID;
 	}
 	return AST_VALID;
-
 }
 
 static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, rax *identifiers) {
