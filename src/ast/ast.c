@@ -127,7 +127,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 }
 
 inline bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
-	return AST_GetClause(ast, clause) != NULL;
+	return AST_GetClause(ast, clause, NULL) != NULL;
 }
 
 // Checks to see if an AST tree contains specified node type.
@@ -156,14 +156,28 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 }
 
 // Retrieve the first instance of the specified clause in the AST segment, if any.
-const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type) {
+const cypher_astnode_t *AST_GetClause(const AST *ast,
+		cypher_astnode_type_t clause_type, uint *clause_idx) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
-		if(cypher_astnode_type(child) == clause_type) return child;
+		if(cypher_astnode_type(child) == clause_type) {
+			if(clause_idx) *clause_idx = i;
+			return child;
+		}
 	}
 
 	return NULL;
+}
+
+const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i) {
+	ASSERT(ast != NULL);
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	ASSERT(i < clause_count);
+
+	const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+
+	return clause;
 }
 
 uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
