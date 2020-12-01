@@ -99,8 +99,8 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val);
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 
-/* Evaluate expression tree, retrieving final results from aggregate nodes. */
-SIValue AR_EXP_AggregateGetResults(AR_ExpNode *root, const Record r);
+/* Evaluate aggregate functions in expression tree. */
+void AR_EXP_Aggregate(AR_ExpNode *root, const Record r);
 
 //------------------------------------------------------------------------------
 // Utility functions

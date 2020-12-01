@@ -143,7 +143,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 	// Aggregate group exps.
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		AR_ExpNode *exp = group->aggregationFunctions[i];
-		AR_EXP_Evaluate(exp, r);
+		AR_EXP_Aggregate(exp, r);
 	}
 
 	// Free record.
@@ -172,7 +172,7 @@ static Record _handoff(OpAggregate *op) {
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
-		SIValue res = AR_EXP_AggregateGetResults(exp, r);
+		SIValue res = AR_EXP_Evaluate(exp, r);
 		Record_AddScalar(r, rec_idx, res);
 	}
 

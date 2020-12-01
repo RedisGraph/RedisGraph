@@ -291,7 +291,8 @@ Feature: FunctionsAcceptance
             | param | <percentile> |
         When executing query:
             """
-            MATCH (n) RETURN percentileCont(n.price, $param)
+            MATCH (n)
+            RETURN percentileCont(n.price, $param)
             """
         Then a ArgumentError should be raised at runtime: NumberOutOfRange
 

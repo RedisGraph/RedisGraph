@@ -23,7 +23,8 @@
 #include <ctype.h>
 
 // Forward declaration
-static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result, bool finalize);
+static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result,
+									  bool aggregate);
 // Clear an op node internals, without free the node allocation itself.
 static void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node);
 
@@ -218,14 +219,14 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	if(fdesc->min_argc > argc) {
 		// Set the query-level error.
 		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc - offset,
-				fdesc->name, fdesc->min_argc - offset);
+						  fdesc->name, fdesc->min_argc - offset);
 		return false;
 	}
 
 	if(fdesc->max_argc < argc) {
 		// Set the query-level error.
 		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc - offset,
-				fdesc->name, fdesc->max_argc - offset);
+						  fdesc->name, fdesc->max_argc - offset);
 		return false;
 	}
 
@@ -246,7 +247,6 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 		}
 	}
 
-
 	return true;
 }
 
@@ -262,10 +262,10 @@ static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 }
 
 static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record r,
-												  SIValue *result, bool finalize) {
+												  SIValue *result, bool aggregate) {
 	AR_EXP_Result res = EVAL_OK;
-	// Handle aggregate function.
-	if(finalize && node->op.f->aggregate == true) {
+	// Produce the results of aggregation functions.
+	if(!aggregate && node->op.f->aggregate == true) {
 		AR_Finalize(node->op.f);
 		*result = Aggregate_GetResult(node->op.f->privdata);
 		return EVAL_OK;
@@ -280,7 +280,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
-		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v, finalize);
+		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v, aggregate);
 		if(eval_result == EVAL_ERR) {
 			/* Encountered an error while evaluating a subtree.
 			 * Free all values generated up to this point. */
@@ -312,7 +312,6 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 		}
 	} else {
 		node->op.f->agg_func(sub_trees, child_count);
-		*result = SI_NullVal(); // TODO tmp
 	}
 
 
@@ -379,11 +378,12 @@ static inline AR_EXP_Result _AR_EXP_EvaluateBorrowRecord(AR_ExpNode *node, const
 
 /* Evaluate an expression tree, placing the calculated value in 'result' and returning
  * whether an error occurred during evaluation. */
-static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result, bool finalize) {
+static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result,
+									  bool aggregate) {
 	AR_EXP_Result res = EVAL_OK;
 	switch(root->type) {
 	case AR_EXP_OP:
-		return _AR_EXP_EvaluateFunctionCall(root, r, result, finalize);
+		return _AR_EXP_EvaluateFunctionCall(root, r, result, aggregate);
 	case AR_EXP_OPERAND:
 		switch(root->operand.type) {
 		case AR_EXP_CONSTANT:
@@ -419,10 +419,22 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	return result;
 }
 
-SIValue AR_EXP_AggregateGetResults(AR_ExpNode *root, const Record r) {
-	SIValue res;
-	_AR_EXP_EvaluateFunctionCall(root, r, &res, true);
-	return res;
+void AR_EXP_Aggregate(AR_ExpNode *root, const Record r) {
+	if(root->type == AR_EXP_OP) {
+		if(root->op.f->aggregate == true) {
+			AR_EXP_Result res = _AR_EXP_EvaluateFunctionCall(root, r, NULL, true);
+			if(res == EVAL_ERR) {
+				ErrorCtx_RaiseRuntimeException(NULL);  // Raise an exception if we're in a run-time context.
+				return;
+			}
+		} else {
+			/* Keep searching for aggregation nodes. */
+			for(int i = 0; i < root->op.child_count; i++) {
+				AR_ExpNode *child = root->op.children[i];
+				AR_EXP_Aggregate(child, r);
+			}
+		}
+	}
 }
 
 void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases) {

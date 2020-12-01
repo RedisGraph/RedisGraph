@@ -16,7 +16,6 @@ extern "C"
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/graph/entities/node.h"
-#include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/execution_plan/record.h"
 #include "../../src/execution_plan/execution_plan.h"
 #include "../../src/util/rmalloc.h"
@@ -42,7 +41,6 @@ class ArithmeticTest: public ::testing::Test {
 
 		// Register functions
 		AR_RegisterFuncs();
-		Agg_RegisterFuncs();
 	}
 
 	static void TearDownTestCase() {
@@ -251,7 +249,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	AR_EXP_Reduce(arExp);
+	AR_Finalize(arExp->op.f);
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 3);
 	AR_EXP_Free(arExp);
@@ -262,9 +260,9 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	AR_EXP_Reduce(arExp);
+	AR_Finalize(arExp->op.f);
 	/* Just for the kick of it, call reduce more than once.*/
-	AR_EXP_Reduce(arExp);
+	AR_Finalize(arExp->op.f);
 
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 5);

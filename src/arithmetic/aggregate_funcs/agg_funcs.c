@@ -166,7 +166,7 @@ void AGG_PERC(SIValue *argv, int argc) {
 		perc_ctx->values = array_new(double, 1024);
 		if(perc_ctx->percentile < 0 || perc_ctx->percentile > 1) {
 			ErrorCtx_SetError("Invalid input - '%d' is not a valid argument, must be a number in the range 0.0 to 1.0",
-					perc_ctx->percentile);
+							  perc_ctx->percentile);
 		}
 	}
 
@@ -276,7 +276,7 @@ void StDevGenericFinalize(AggregateCtx *ctx, int is_sampled) {
 	_agg_StDevCtx *stdev_ctx = ctx->private_ctx;
 
 	uint count = array_len(stdev_ctx->values);
-	if(count == 0) {
+	if(count - is_sampled == 0) {
 		Aggregate_SetResult(ctx, SI_DoubleVal(0));
 		return;
 	}
@@ -294,11 +294,11 @@ void StDevGenericFinalize(AggregateCtx *ctx, int is_sampled) {
 }
 
 void StDevFinalize(void *ctx_ptr) {
-	StDevGenericFinalize(ctx_ptr, 0);
+	StDevGenericFinalize(ctx_ptr, 1);
 }
 
 void StDevPFinalize(void *ctx_ptr) {
-	StDevGenericFinalize(ctx_ptr, 1);
+	StDevGenericFinalize(ctx_ptr, 0);
 }
 
 void StDev_Free(void *ctx_ptr) {
