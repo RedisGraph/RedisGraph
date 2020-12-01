@@ -469,3 +469,28 @@ class testQueryValidationFlow(FlowTestsBase):
                 # Expecting an error.
                 assert("Property values can only be of primitive types" in e.message)
                 pass
+
+    def test32_return_following_clauses(self):
+        # After a RETURN clause we're expecting only the following clauses:
+        # SKIP, LIMIT, ORDER-BY and UNION, given that SKIP and LIMIT are
+        # actually attributes of the RETURN clause this leaves us with
+        # ORDER-BY and UNION.
+
+        invalid_queries = ["""RETURN 1 CREATE ()""",
+                """RETURN 1 RETURN 2""",
+                """MATCH(n) RETURN n DELETE n""",
+                """MATCH(n) RETURN n SET n.v = 1""",
+                """RETURN 1 MERGE ()""",
+                """RETURN 1 MATCH (n) RETURN n""",
+                """RETURN 1 WITH 1 as one RETURN one""" ]
+
+        # Invalid queries, expecting errors.
+        for q in invalid_queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                assert("Unexpected clause following RETURN" in e.message)
+                pass
+
