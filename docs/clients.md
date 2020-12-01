@@ -14,7 +14,7 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                      |
 | [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                  |
 | [php-redis-graph][php-redis-graph-url]                    | PHP        | MIT     | [KJDev][php-redis-graph-author]             | [![php-redis-graph-stars]][php-redis-graph-url]                |
-| [redislabs-redisgraph-php] [redislabs-redisgraph-php-url] | PHP        | MIT     | [mkorkmaz][redislabs-redisgraph-php-author] | [redislabs-redisgraph-php-stars][redislabs-redisgraph-php-url] |
+| [redislabs-redisgraph-php] [redislabs-redisgraph-php-url] | PHP        | MIT     | [mkorkmaz][redislabs-redisgraph-php-author] | [![redislabs-redisgraph-php-stars]][redislabs-redisgraph-php-url] |
 | [redisgraph_php][redisgraph_php-url]                      | PHP        | MIT     | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                  |
 | [redisgraph-ex][redisgraph-ex-url]                        | Elixir     | MIT     | [crflynn][redisgraph-ex-author]             | [![redisgraph-ex-stars]][redisgraph-ex-url]                    |
 | [redisgraph-rs][redisgraph-rs-url]                        | RUST       | MIT     | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                    |
