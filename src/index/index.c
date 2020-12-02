@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "index.h"
-#include "../RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"

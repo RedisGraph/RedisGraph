@@ -38,6 +38,7 @@
 				__FILE__ " line %d\n", __LINE__) ;                  \
 				/* force crash */                                   \
 				char x = *((char*)NULL); /* produce stack trace */  \
+				assert(x); /* solves C++ unused var warning */      \
 			}                                                       \
 		}                                                           \
 	}
