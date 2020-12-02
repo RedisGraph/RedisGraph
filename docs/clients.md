@@ -19,6 +19,9 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | [redisgraph-ex][redisgraph-ex-url]                        | Elixir     | MIT     | [crflynn][redisgraph-ex-author]             | [![redisgraph-ex-stars]][redisgraph-ex-url]                    |
 | [redisgraph-rs][redisgraph-rs-url]                        | RUST       | MIT     | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                    |
 | [redis_graph][redis_graph-url]                            | RUST       | BSD     | [tompro][redis_graph-author]                | [![redis_graph-stars]][redis_graph-url]                        |
+| [NRedisGraph][NRedisGraph-url]                            | C#         | BSD     | [tombatron][NRedisGraph-author]             | [![NRedisGraph-stars]][redis_graph-url]                        |
+| [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]    | C#         | BSD     | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url] |
+
 
 [redisgraph-py-author]: https://redislabs.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
@@ -71,6 +74,14 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 [redis_graph-author]: https://github.com/tompro
 [redis_graph-url]: https://github.com/tompro/redis_graph
 [redis_graph-stars]: https://img.shields.io/github/stars/tompro/redis_graph.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[NRedisGraph-author]: https://github.com/tombatron
+[NRedisGraph-url]: https://github.com/tombatron/NRedisGraph
+[NRedisGraph-stars]: https://img.shields.io/github/stars/tombatron/NRedisGraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[RedisGraphDotNet.Client-author]: https://github.com/Sgawrys
+[RedisGraphDotNet.Client-url]: https://github.com/Sgawrys/RedisGraphDotNet.Client
+[RedisGraphDotNet.Client-stars]: https://img.shields.io/github/stars/Sgawrys/RedisGraphDotNet.Client.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 
 ## Implementing a client
