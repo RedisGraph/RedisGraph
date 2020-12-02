@@ -88,7 +88,8 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	ExecutionPlan_UpdateRoot(plan, results_op);
 
 	// Introduce distinct only if `ALL` isn't specified.
-	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION);
+	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION,
+			NULL);
 	if(!cypher_ast_union_has_all(union_clause)) {
 		OpBase *distinct_op = NewDistinctOp(plan);
 		ExecutionPlan_AddOp(results_op, distinct_op);
