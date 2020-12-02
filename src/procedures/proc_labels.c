@@ -5,6 +5,7 @@
 */
 
 #include "proc_labels.h"
+#include "RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -35,7 +36,7 @@ ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx,
 }
 
 SIValue *Proc_LabelsStep(ProcedureCtx *ctx) {
-	assert(ctx->privateData);
+	ASSERT(ctx->privateData != NULL);
 
 	LabelsContext *pdata = (LabelsContext *)ctx->privateData;
 

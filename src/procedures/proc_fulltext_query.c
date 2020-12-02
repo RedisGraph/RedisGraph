@@ -5,6 +5,7 @@
 */
 
 #include "proc_fulltext_query.h"
+#include "RG.h"
 #include "../value.h"
 #include "../errors.h"
 #include "../util/arr.h"
@@ -69,7 +70,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 		 * as procedure invocation is done at runtime. */
 		ErrorCtx_RaiseRuntimeException(NULL);
 	}
-	assert(pdata->iter);
+	ASSERT(pdata->iter != NULL);
 
 	return PROCEDURE_OK;
 }

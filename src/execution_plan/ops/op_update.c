@@ -5,6 +5,7 @@
 */
 
 #include "op_update.h"
+#include "RG.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/arr.h"
@@ -360,7 +361,7 @@ static EntityUpdateEvalCtx *_CollectEvalContexts(EntityUpdateCtx *inputs) {
 }
 
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_UPDATE);
+	ASSERT(opBase->type == OPType_UPDATE);
 	OpUpdate *op = (OpUpdate *)opBase;
 
 	// Recreate original input.

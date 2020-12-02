@@ -49,7 +49,7 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		_ResultSet_VerboseReplyWithPath(ctx, v);
 		return;
 	default:
-		assert("Unhandled value type" && false);
+		RedisModule_Assert("Unhandled value type" && false);
 	}
 }
 

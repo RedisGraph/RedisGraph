@@ -5,6 +5,7 @@
 */
 
 #include "op_cartesian_product.h"
+#include "RG.h"
 
 /* Forward declarations. */
 static OpResult CartesianProductInit(OpBase *opBase);
@@ -112,7 +113,7 @@ static OpResult CartesianProductReset(OpBase *opBase) {
 }
 
 static OpBase *CartesianProductClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CARTESIAN_PRODUCT);
+	ASSERT(opBase->type == OPType_CARTESIAN_PRODUCT);
 	return NewCartesianProductOp(plan);
 }
 

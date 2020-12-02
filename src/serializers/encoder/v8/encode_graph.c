@@ -25,7 +25,7 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
 	 * Number of graph keys (graph context key + meta keys)
 	 */
 
-	assert(ctx != NULL);
+	ASSERT(ctx != NULL);
 
 	GraphEncodeHeader *header = &(ctx->header);
 
@@ -75,7 +75,7 @@ static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 		required_entities_count = 1;
 		break;
 	default:
-		assert(false && "Unkown encoding state in _CurrentStatePayloadInfo");
+		ASSERT(false && "Unknown encoding state in _CurrentStatePayloadInfo");
 	}
 	PayloadInfo payload_info;
 	payload_info.state = state;
@@ -201,7 +201,7 @@ void RdbSaveGraph_v8(RedisModuleIO *rdb, void *value) {
 			RdbSaveGraphSchema_v8(rdb, gc);
 			break;
 		default:
-			assert(false && "Unkown encoding phase");
+			ASSERT(false && "Unknown encoding phase");
 			break;
 		}
 		// Save the current state and the number of encoded entities.

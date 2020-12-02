@@ -5,6 +5,7 @@
 */
 
 #include "proc_labels.h"
+#include "RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -34,7 +35,7 @@ ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const SIValue *args, con
 }
 
 SIValue *Proc_RelationsStep(ProcedureCtx *ctx) {
-	assert(ctx->privateData);
+	ASSERT(ctx->privateData != NULL);
 
 	RelationsContext *pdata = (RelationsContext *)ctx->privateData;
 

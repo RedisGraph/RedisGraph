@@ -12,8 +12,6 @@
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
-#include <stdio.h>
-#include <assert.h>
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
@@ -91,7 +89,7 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	}
 
 	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
-	assert(prop != PROPERTY_NOTFOUND);
+	ASSERT(prop != PROPERTY_NOTFOUND);
 	SIValue_Free(*prop);
 	*prop = SI_CloneValue(value);
 }
@@ -191,7 +189,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 		}
 
 		default:
-			assert(false);
+			ASSERT(false);
 		}
 	}
 
@@ -209,7 +207,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 }
 
 void FreeEntity(Entity *e) {
-	assert(e);
+	ASSERT(e);
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
 		rm_free(e->properties);

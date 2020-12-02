@@ -8,7 +8,6 @@
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
-#include <assert.h>
 
 #define T 1           // Transpose penalty.
 #define L 2 * T       // Label score.
@@ -24,7 +23,7 @@ static inline Arrangement _Arrangement_New(uint size) {
 
 // Clone arrangement.
 static inline Arrangement _Arrangement_Clone(const Arrangement arrangement, uint size) {
-	assert(arrangement);
+	ASSERT(arrangement != NULL);
 	Arrangement clone = _Arrangement_New(size);
 	memcpy(clone, arrangement, sizeof(AlgebraicExpression *) * size);
 	return clone;
@@ -42,7 +41,7 @@ static inline void _Arrangement_Print(Arrangement arrangement, uint size) {
 
 // Free arrangement.
 static inline void _Arrangement_Free(Arrangement arrangement) {
-	assert(arrangement);
+	ASSERT(arrangement != NULL);
 	rm_free(arrangement);
 }
 
@@ -84,7 +83,7 @@ static Arrangement *_permutations(const Arrangement exps, uint exps_count) {
 
 	// Compute permutations.
 	_permute(exps, 0, exps_count - 1, &permutations);
-	assert(array_len(permutations) == permutation_count);
+	ASSERT(array_len(permutations) == permutation_count);
 
 	return permutations;
 }
@@ -311,7 +310,7 @@ static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *f
  * exps will reordered. */
 void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count,
 					  const FT_FilterNode *filters, rax *bound_vars) {
-	assert(exps && exp_count > 0);
+	ASSERT(exps && exp_count > 0);
 
 	/* Return early if we only have one expression that represents a scan rather than a traversal.
 	 * e.g. MATCH (n:L) RETURN n */
@@ -336,7 +335,7 @@ void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count
 		}
 	}
 	uint valid_arrangement_count = array_len(valid_arrangements);
-	assert(valid_arrangement_count > 0);
+	ASSERT(valid_arrangement_count > 0);
 
 	/* Score each arrangement,
 	 * keep track after arrangement with highest score. */

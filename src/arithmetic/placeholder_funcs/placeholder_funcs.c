@@ -7,10 +7,9 @@
 #include "placeholder_funcs.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
-#include <assert.h>
 
 SIValue AR_PATH_FILTER(SIValue *argv, int argc) {
-	assert(false);
+	ASSERT(false);
 	return SI_NullVal();
 }
 

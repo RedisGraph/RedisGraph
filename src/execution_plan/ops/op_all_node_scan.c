@@ -96,7 +96,7 @@ static OpResult AllNodeScanReset(OpBase *op) {
 }
 
 static inline OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_ALL_NODE_SCAN);
+	ASSERT(opBase->type == OPType_ALL_NODE_SCAN);
 	return NewAllNodeScanOp(plan, ((AllNodeScan *)opBase)->alias);
 }
 
