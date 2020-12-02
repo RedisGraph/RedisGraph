@@ -150,6 +150,11 @@ SIValue SI_CloneValue(const SIValue v) {
 	return clone;
 }
 
+SIValue SI_ShallowCloneValue(const SIValue v) {
+	if(v.allocation == M_CONST || v.allocation == M_NONE) return v;
+	return SI_CloneValue(v);
+}
+
 /* Make an SIValue that shares the original's allocations but can safely expect those allocations
  *  to remain in scope. This is most frequently the case for GraphEntity properties. */
 SIValue SI_ConstValue(const SIValue v) {
