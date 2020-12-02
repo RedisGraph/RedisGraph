@@ -165,7 +165,7 @@ void AGG_PERC(SIValue *argv, int argc) {
 		SIValue_ToDouble(&argv[1], &perc_ctx->percentile);
 		perc_ctx->values = array_new(double, 1024);
 		if(perc_ctx->percentile < 0 || perc_ctx->percentile > 1) {
-			ErrorCtx_SetError("Invalid input - '%d' is not a valid argument, must be a number in the range 0.0 to 1.0",
+			ErrorCtx_SetError("Invalid input - '%f' is not a valid argument, must be a number in the range 0.0 to 1.0",
 							  perc_ctx->percentile);
 		}
 	}
