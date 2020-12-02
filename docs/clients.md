@@ -82,7 +82,6 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 [RedisGraphDotNet.Client-url]: https://github.com/Sgawrys/RedisGraphDotNet.Client
 [RedisGraphDotNet.Client-stars]: https://img.shields.io/github/stars/Sgawrys/RedisGraphDotNet.Client.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-
 ## Implementing a client
 
 Information on some of the tasks involved in writing a RedisGraph client can be found in the [Client Specification](client_spec.md).
