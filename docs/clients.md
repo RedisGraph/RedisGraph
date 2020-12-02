@@ -4,19 +4,23 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 
 ## Currently-available Libraries
 
-| Project                                | Language   | License | Author                             | Stars                                      | 
-| -------------------------------------- | ---------- | ------- | ---------------------------------- | ------------------------------------------------|
-| [redisgraph-py][redisgraph-py-url]     | Python     | BSD     | [Redis Labs][redisgraph-py-author] | [![redisgraph-py-stars]][redisgraph-py-url]     |  
-| [JRedisGraph][JRedisGraph-url]         | Java       | BSD     | [Redis Labs][JRedisGraph-author]   | [![JRedisGraph-stars]][JRedisGraph-url]         |
-| [redisgraph-rb][redisgraph-rb-url]     | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author] | [![redisgraph-rb-stars]][redisgraph-rb-url]     |
-| [redisgraph-go][redisgraph-go-url]     | Go         | BSD     | [Redis Labs][redisgraph-go-author] | [![redisgraph-go-stars]][redisgraph-go-url]     |
-| [redisgraph.js][redisgraph.js-url]     | JavaScript | BSD     | [Redis Labs][redisgraph.js-author] | [![redisgraph.js-stars]][redisgraph.js-url]     |
-| [ioredisgraph][ioredisgraph-url]       | JavaScript | ISC     | [Jonah][ioredisgraph-author]       | [![ioredisgraph-stars]][ioredisgraph-url]       |
-| [@hydre/rgraph][rgraph-url]            | JavaScript | MIT     | [Sceat][rgraph-author]             | [![rgraph-stars]][rgraph-url]                   |
-| [php-redis-graph][php-redis-graph-url] | PHP        | MIT     | [KJDev][php-redis-graph-author]    | [![php-redis-graph-stars]][php-redis-graph-url] |
-| [redisgraph_php][redisgraph_php-url]   | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [![redisgraph_php-stars]][redisgraph_php-url]   |
-| [redisgraph-ex][redisgraph-ex-url]     | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [![redisgraph-ex-stars]][redisgraph-ex-url]     |
-| [redisgraph-rs][redisgraph-rs-url]     | RUST       | MIT     | [malte-v][redisgraph-rs-author]    | [![redisgraph-rs-stars]][redisgraph-rs-url]     |
+| Project                                                   | Language   | License | Author                                      | Stars                                                          | 
+| --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | -------------------------------------------------------------- |
+| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                    |  
+| [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                        |
+| [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                    |
+| [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis Labs][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                    |
+| [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis Labs][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                    |
+| [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                      |
+| [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                  |
+| [php-redis-graph][php-redis-graph-url]                    | PHP        | MIT     | [KJDev][php-redis-graph-author]             | [![php-redis-graph-stars]][php-redis-graph-url]                |
+| [redislabs-redisgraph-php][redislabs-redisgraph-php-url]  | PHP        | MIT     | [mkorkmaz][redislabs-redisgraph-php-author] | [![redislabs-redisgraph-php-stars]][redislabs-redisgraph-php-url] |
+| [redisgraph_php][redisgraph_php-url]                      | PHP        | MIT     | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                  |
+| [redisgraph-ex][redisgraph-ex-url]                        | Elixir     | MIT     | [crflynn][redisgraph-ex-author]             | [![redisgraph-ex-stars]][redisgraph-ex-url]                    |
+| [redisgraph-rs][redisgraph-rs-url]                        | RUST       | MIT     | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                    |
+| [redis_graph][redis_graph-url]                            | RUST       | BSD     | [tompro][redis_graph-author]                | [![redis_graph-stars]][redis_graph-url]                        |
+| [NRedisGraph][NRedisGraph-url]                            | C#         | BSD     | [tombatron][NRedisGraph-author]             | [![NRedisGraph-stars]][redis_graph-url]                        |
+| [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]    | C#         | BSD     | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url] |
 
 [redisgraph-py-author]: https://redislabs.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
@@ -61,6 +65,18 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 [redisgraph-rs-author]: https://github.com/malte-v
 [redisgraph-rs-url]: https://github.com/malte-v/redisgraph-rs
 [redisgraph-rs-stars]: https://img.shields.io/github/stars/malte-v/redisgraph-rs.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[redis_graph-author]: https://github.com/tompro
+[redis_graph-url]: https://github.com/tompro/redis_graph
+[redis_graph-stars]: https://img.shields.io/github/stars/tompro/redis_graph.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[NRedisGraph-author]: https://github.com/tombatron
+[NRedisGraph-url]: https://github.com/tombatron/NRedisGraph
+[NRedisGraph-stars]: https://img.shields.io/github/stars/tombatron/NRedisGraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[RedisGraphDotNet.Client-author]: https://github.com/Sgawrys
+[RedisGraphDotNet.Client-url]: https://github.com/Sgawrys/RedisGraphDotNet.Client
+[RedisGraphDotNet.Client-stars]: https://img.shields.io/github/stars/Sgawrys/RedisGraphDotNet.Client.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 ## Implementing a client
 
