@@ -5,6 +5,7 @@
  */
 
 #include "op_results.h"
+#include "RG.h"
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_ctx.h"
@@ -48,6 +49,6 @@ static OpResult ResultsInit(OpBase *opBase) {
 }
 
 static inline OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_RESULTS);
+	ASSERT(opBase->type == OPType_RESULTS);
 	return NewResultsOp(plan);
 }

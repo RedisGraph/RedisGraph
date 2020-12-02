@@ -5,9 +5,7 @@
  */
 
 #include "decode_previous.h"
-#include "prev/v4/decode_v4.h"
-#include "prev/v5/decode_v5.h"
-#include "prev/v6/decode_v6.h"
+#include "prev/decoders.h"
 
 GraphContext *Decode_Previous(RedisModuleIO *rdb, int encver) {
 	switch(encver) {
@@ -17,8 +15,11 @@ GraphContext *Decode_Previous(RedisModuleIO *rdb, int encver) {
 		return RdbLoadGraphContext_v5(rdb);
 	case 6:
 		return RdbLoadGraphContext_v6(rdb);
+	case 7:
+		return RdbLoadGraphContext_v7(rdb);
 	default:
-		assert(false && "attempted to read unsupported RedisGraph version from RDB file.");
+		ASSERT(false && "attempted to read unsupported RedisGraph version from RDB file.");
 		return NULL;
 	}
 }
+

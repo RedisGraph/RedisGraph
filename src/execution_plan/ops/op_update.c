@@ -5,12 +5,13 @@
 */
 
 #include "op_update.h"
+#include "RG.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static OpResult UpdateInit(OpBase *opBase);
@@ -223,7 +224,6 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	Schema *s = NULL;
 	const char *label = NULL;
 	bool update_index = false;
-	int label_id = GRAPH_NO_LABEL;
 
 	// Get the type of the entity to update. If the expected entity was not
 	// found, make no updates but do not error.
@@ -232,9 +232,8 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 
 	// Make sure we're updating either a node or an edge.
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
+		ErrorCtx_RaiseRuntimeException("Update error: alias '%s' did not resolve to a graph entity",
 						  ctx->alias);
-		QueryCtx_RaiseRuntimeException();
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -246,7 +245,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		// Retrieve the node's local label if present.
 		label = NODE_GET_LABEL(n);
 		// Retrieve the node's Label ID from a local member or the graph.
-		label_id = NODE_GET_LABEL_ID(n, gc->g);
+		int label_id = NODE_GET_LABEL_ID(n, gc->g);
 		if((label == NULL) && (label_id != GRAPH_NO_LABEL)) {
 			// Label ID has been found but its name is unknown, retrieve its name and update the node.
 			s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
@@ -259,6 +258,14 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	for(uint i = 0; i < exp_count; i++) {
 		EntityUpdateEvalCtx *update_ctx = ctx->exps + i;
 		SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
+
+		// Emit an error and exit if we're trying to add an invalid type.
+		// NULL is acceptable here as it indicates a deletion.
+		if(!(SI_TYPE(new_value) & (SI_VALID_PROPERTY_VALUE | T_NULL))) {
+			Error_InvalidPropertyValue();
+			ErrorCtx_RaiseRuntimeException(NULL);
+			break;
+		}
 
 		/* Determine whether we must update the index for this set of updates.
 		 * If at least one property being updated is indexed, each node will be reindexed. */
@@ -354,7 +361,7 @@ static EntityUpdateEvalCtx *_CollectEvalContexts(EntityUpdateCtx *inputs) {
 }
 
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_UPDATE);
+	ASSERT(opBase->type == OPType_UPDATE);
 	OpUpdate *op = (OpUpdate *)opBase;
 
 	// Recreate original input.

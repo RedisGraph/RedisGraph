@@ -6,6 +6,7 @@
 
 #include "cmd_query.h"
 #include "../RG.h"
+#include "../errors.h"
 #include "cmd_context.h"
 #include "../ast/ast.h"
 #include "../util/arr.h"
@@ -40,10 +41,10 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		QueryCtx_UnlockCommit(NULL);
 
 		if(res != INDEX_OK) {
-			QueryCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+			ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
 		}
 	} else {
-		QueryCtx_SetError("ERR Encountered unknown query execution type.");
+		ErrorCtx_SetError("ERR Encountered unknown query execution type.");
 	}
 }
 
@@ -73,6 +74,7 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 }
 
 void Graph_Query(void *args) {
+	bool readonly = true;
 	bool lockAcquired = false;
 	ResultSet *result_set = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
@@ -97,16 +99,16 @@ void Graph_Query(void *args) {
 	cached = exec_ctx.cached;
 	ExecutionType exec_type = exec_ctx.exec_type;
 	// See if there were any query compile time errors
-	if(QueryCtx_EncounteredError()) {
-		QueryCtx_EmitException();
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	bool readonly = AST_ReadOnly(ast->root);
+	readonly = AST_ReadOnly(ast->root);
 	if(!readonly && _readonly_cmd_mode(command_ctx)) {
-		QueryCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
-		QueryCtx_EmitException();
+		ErrorCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
+		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 
@@ -114,8 +116,8 @@ void Graph_Query(void *args) {
 	if(command_ctx->timeout != 0) {
 		if(!readonly) {
 			// Disallow timeouts on write operations to avoid leaving the graph in an inconsistent state.
-			QueryCtx_SetError("Query timeouts may only be specified on read-only queries");
-			QueryCtx_EmitException();
+			ErrorCtx_SetError("Query timeouts may only be specified on read-only queries");
+			ErrorCtx_EmitException();
 			goto cleanup;
 		}
 
@@ -153,7 +155,7 @@ void Graph_Query(void *args) {
 		result_set = ExecutionPlan_Execute(plan);
 
 		// Emit error if query timed out.
-		if(ExecutionPlan_Drained(plan)) QueryCtx_SetError("Query timed out");
+		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
 		plan = NULL;
@@ -161,7 +163,7 @@ void Graph_Query(void *args) {
 			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		_index_operation(ctx, gc, ast, exec_type);
 	} else {
-		assert("Unhandled query type" && false);
+		ASSERT("Unhandled query type" && false);
 	}
 	QueryCtx_ForceUnlockCommit();
 	ResultSet_Reply(result_set);    // Send result-set back to client.
@@ -186,5 +188,6 @@ cleanup:
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	ErrorCtx_Clear();
 }
 

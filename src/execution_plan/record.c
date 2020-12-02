@@ -5,9 +5,9 @@
 */
 
 #include "xxhash.h"
+#include "../RG.h"
 #include "./record.h"
 #include "../util/rmalloc.h"
-#include <assert.h>
 
 /* Migrate the entry at the given index in the source Record at the same index in the destination.
  * The source retains access to but not ownership of the entry if it is a heap allocation. */
@@ -20,7 +20,7 @@ static void _RecordPropagateEntry(Record dest, Record src, uint idx) {
 
 // This function is currently unused.
 Record Record_New(rax *mapping) {
-	assert(mapping);
+	ASSERT(mapping);
 	// Determine record size.
 	uint entries_count = raxSize(mapping);
 	uint rec_size = sizeof(_Record);
@@ -34,13 +34,13 @@ Record Record_New(rax *mapping) {
 
 // Returns the number of entries held by record.
 uint Record_length(const Record r) {
-	assert(r);
+	ASSERT(r);
 	return raxSize(r->mapping);
 }
 
 // Retrieve the offset into the Record of the given alias.
 int Record_GetEntryIdx(Record r, const char *alias) {
-	assert(r && alias);
+	ASSERT(r && alias);
 
 	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
 
@@ -67,7 +67,7 @@ void Record_Clone(const Record r, Record clone) {
 }
 
 void Record_Merge(Record a, const Record b) {
-	assert(a->owner == b->owner);
+	ASSERT(a->owner == b->owner);
 	uint len = Record_length(a);
 
 	for(uint i = 0; i < len; i++) {
@@ -103,7 +103,8 @@ Node *Record_GetNode(const Record r, int idx) {
 		// Null scalar values are expected here; otherwise fall through.
 		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
 	default:
-		assert("encountered unexpected type in Record; expected Node" && false);
+		ASSERT("encountered unexpected type in Record; expected Node" && false);
+		return NULL;
 	}
 }
 
@@ -117,7 +118,8 @@ Edge *Record_GetEdge(const Record r, int idx) {
 		// Null scalar values are expected here; otherwise fall through.
 		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
 	default:
-		assert("encountered unexpected type in Record; expected Edge" && false);
+		ASSERT("encountered unexpected type in Record; expected Edge" && false);
+		return NULL;
 	}
 }
 
@@ -133,7 +135,8 @@ SIValue Record_Get(Record r, int idx) {
 	case REC_TYPE_UNKNOWN:
 		return SI_NullVal();
 	default:
-		assert(false);
+		ASSERT(false);
+		return SI_NullVal();
 	}
 }
 
@@ -145,13 +148,13 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 	case REC_TYPE_EDGE:
 		return (GraphEntity *)Record_GetEdge(r, idx);
 	default:
-		assert(false && "encountered unexpected type when trying to retrieve graph entity");
+		ASSERT(false && "encountered unexpected type when trying to retrieve graph entity");
 	}
 	return NULL;
 }
 
 void Record_Add(Record r, int idx, SIValue v) {
-	assert(idx < Record_length(r));
+	ASSERT(idx < Record_length(r));
 	switch(SI_TYPE(v)) {
 	case T_NODE:
 		Record_AddNode(r, idx, *(Node *)v.ptrval);
@@ -217,7 +220,7 @@ unsigned long long Record_Hash64(const Record r) {
 	// Initialize the hash state.
 	XXH64_state_t state;
 	XXH_errorcode res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
+	ASSERT(res != XXH_ERROR);
 
 	uint rec_len = Record_length(r);
 	for(uint idx = 0; idx < rec_len; idx++) {

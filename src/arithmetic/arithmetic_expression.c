@@ -23,7 +23,6 @@
 #include "../ast/ast_shared.h"
 
 #include <ctype.h>
-#include <assert.h>
 
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
@@ -36,7 +35,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	switch(exp->operand.type) {
 	case AR_EXP_CONSTANT:
 		clone->operand.type = AR_EXP_CONSTANT;
-		clone->operand.constant = SI_CloneValue(exp->operand.constant);
+		clone->operand.constant = SI_ShallowCloneValue(exp->operand.constant);
 		break;
 	case AR_EXP_VARIADIC:
 		clone->operand.type = exp->operand.type;
@@ -51,7 +50,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		clone->operand.type = AR_EXP_BORROW_RECORD;
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
 		break;
 	}
 	return clone;
@@ -145,7 +144,7 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias) {
 }
 
 AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
-		const char *attr) {
+										  const char *attr) {
 
 	ASSERT(attr != NULL);
 	ASSERT(entity != NULL);
@@ -156,7 +155,7 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	SIValue prop_idx = SI_LongVal(ATTRIBUTE_NOTFOUND);
-	SIValue prop_name = SI_ConstStringVal((char*)attr);
+	SIValue prop_name = SI_ConstStringVal((char *)attr);
 	Attribute_ID idx = GraphContext_GetAttributeID(gc, attr);
 
 	if(idx != ATTRIBUTE_NOTFOUND) prop_idx = SI_LongVal(idx);
@@ -255,14 +254,14 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	// Make sure number of arguments is as expected.
 	if(fdesc->min_argc > argc) {
 		// Set the query-level error.
-		QueryCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
 						  fdesc->min_argc);
 		return false;
 	}
 
 	if(fdesc->max_argc < argc) {
 		// Set the query-level error.
-		QueryCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
+		ErrorCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
 						  fdesc->max_argc);
 		return false;
 	}
@@ -343,7 +342,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 	/* Evaluate self. */
 	*result = node->op.f->func(sub_trees, child_count);
 
-	if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
+	if(SIValue_IsNull(*result) && ErrorCtx_EncounteredError()) {
 		/* An error was encountered while evaluating this function, and has already been set in
 		 * the QueryCtx. Exit with an error. */
 		res = EVAL_ERR;
@@ -357,14 +356,14 @@ cleanup:
 static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 	if(!r) {
 // Set the query-level error.
-		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
+		ErrorCtx_SetError("_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
 						  node->variadic.entity_alias);
 		return false;
 	}
 	int entry_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
 	if(entry_alias_idx == INVALID_INDEX) {
 		// Set the query-level error.
-		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
+		ErrorCtx_SetError("_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
 						  node->variadic.entity_alias);
 		return false;
 	} else {
@@ -393,7 +392,7 @@ static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
 									 strlen(node->operand.param_name));
 	if(param_node == raxNotFound) {
 		// Set the query-level error.
-		QueryCtx_SetError("Missing parameters");
+		ErrorCtx_SetError("Missing parameters");
 		return EVAL_ERR;
 	}
 	// In place replacement;
@@ -430,10 +429,10 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 		case AR_EXP_BORROW_RECORD:
 			return _AR_EXP_EvaluateBorrowRecord(root, r, result);
 		default:
-			assert(false && "Invalid expression type");
+			ASSERT(false && "Invalid expression type");
 		}
 	default:
-		assert(false && "Unknown expression type");
+		ASSERT(false && "Unknown expression type");
 	}
 
 	return res;
@@ -443,7 +442,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
 	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
 	if(res == EVAL_ERR) {
-		QueryCtx_RaiseRuntimeException();  // Raise an exception if we're in a run-time context.
+		ErrorCtx_RaiseRuntimeException(NULL);  // Raise an exception if we're in a run-time context.
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
 	// At least one param node was encountered during evaluation, tree should be param node free.
@@ -578,6 +577,22 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
 	return true;
 }
 
+bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp) {
+	ASSERT(exp != NULL && exp->type != AR_EXP_UNKNOWN);
+
+	// If the node does not represent a constant, assume it returns a boolean.
+	// TODO We can add greater introspection in the future if required.
+	if(exp->type == AR_EXP_OP) return true;
+
+	// Operand node, return true if it is a boolean or NULL constant.
+	if(exp->operand.type == AR_EXP_CONSTANT) {
+		return (SI_TYPE(exp->operand.constant) & (T_BOOL | T_NULL));
+	}
+
+	// Node is a variable or parameter, whether it evaluates to boolean cannot be determined now.
+	return true;
+}
+
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 					  size_t *bytes_written) {
 	/* Make sure there are at least 64 bytes in str. */
@@ -667,7 +682,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 		clone = _AR_EXP_CloneOp(exp);
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
 		break;
 	}
 	clone->resolved_name = exp->resolved_name;

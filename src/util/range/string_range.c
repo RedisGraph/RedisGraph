@@ -5,9 +5,9 @@
 */
 
 #include "string_range.h"
+#include "RG.h"
 #include "../rmalloc.h"
 #include "../../ast/ast_shared.h"
-#include <assert.h>
 
 StringRange *StringRange_New(void) {
 	StringRange *range = rm_malloc(sizeof(StringRange));
@@ -106,7 +106,8 @@ void StringRange_TightenRange(StringRange *range, int op, const char *v) {
 		break;
 
 	default:
-		assert("none supported operation");
+		ASSERT(false && "none supported operation");
+		break;
 	}
 
 	// See if range is still valid.
@@ -114,7 +115,7 @@ void StringRange_TightenRange(StringRange *range, int op, const char *v) {
 }
 
 void StringRange_ToString(const StringRange *range) {
-	assert(range);
+	ASSERT(range != NULL);
 	int offset = 0;
 	char buff[1024];
 
@@ -135,8 +136,9 @@ void StringRange_ToString(const StringRange *range) {
 }
 
 void StringRange_Free(StringRange *range) {
-	assert(range);
+	ASSERT(range != NULL);
 	if(range->min) rm_free(range->min);
 	if(range->max) rm_free(range->max);
 	rm_free(range);
 }
+

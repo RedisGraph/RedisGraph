@@ -39,7 +39,7 @@ static Record DistinctConsume(OpBase *opBase) {
 }
 
 static inline OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_DISTINCT);
+	ASSERT(opBase->type == OPType_DISTINCT);
 	return NewDistinctOp(plan);
 }
 

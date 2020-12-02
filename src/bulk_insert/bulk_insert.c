@@ -5,11 +5,11 @@
 */
 
 #include "bulk_insert.h"
+#include "RG.h"
 #include "../schema/schema.h"
 #include "../util/rmalloc.h"
 #include "../datatypes/array.h"
 #include <errno.h>
-#include <assert.h>
 
 // The first byte of each property in the binary stream
 // is used to indicate the type of the subsequent SIValue
@@ -100,7 +100,7 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 			SIArray_Append(&v, _BulkInsert_ReadProperty(data, data_idx));
 		}
 	} else {
-		assert(0);
+		ASSERT(false);
 	}
 	return v;
 }
@@ -179,7 +179,8 @@ int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc, int token_cou
 		*argv += 1;
 		*argc -= 1;
 		rc = _BulkInsert_ProcessNodeFile(ctx, gc, data, len);
-		assert(rc == BULK_OK);
+		UNUSED(rc);
+		ASSERT(rc == BULK_OK);
 	}
 	return BULK_OK;
 }
@@ -194,7 +195,8 @@ int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc, int token_co
 		*argv += 1;
 		*argc -= 1;
 		rc = _BulkInsert_ProcessRelationFile(ctx, gc, data, len);
-		assert(rc == BULK_OK);
+		UNUSED(rc);
+		ASSERT(rc == BULK_OK);
 	}
 	return BULK_OK;
 }
@@ -238,7 +240,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
 		}
 	}
 
-	assert(argc == 0);
+	ASSERT(argc == 0);
 
 	return BULK_OK;
 }

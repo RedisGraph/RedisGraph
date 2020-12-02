@@ -33,7 +33,6 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
 	AST *ast = QueryCtx_GetAST();
-	uint projection_count = array_len(projections);
 	uint count = cypher_ast_order_by_nitems(order_clause);
 	AR_ExpNode **order_exps = array_new(AR_ExpNode *, count);
 
@@ -164,7 +163,6 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	bool distinct = false;
 	bool aggregate = false;
 	int *sort_directions = NULL;
-	AST *ast = QueryCtx_GetAST();
 	AR_ExpNode **order_exps = NULL;
 	AR_ExpNode **projections = NULL;
 	const cypher_astnode_t *skip_clause = NULL;

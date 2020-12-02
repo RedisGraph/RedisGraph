@@ -5,9 +5,9 @@
 */
 
 #include "op_merge_create.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include <assert.h>
 
 /* Forward declarations. */
 static Record MergeCreateConsume(OpBase *opBase);
@@ -18,18 +18,26 @@ static void MergeCreateFree(OpBase *opBase);
 static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
 								   PendingProperties *props) {
 	// Update hash with label if one is provided.
-	if(label) assert(XXH64_update(state, label, strlen(label)) != XXH_ERROR);
+	XXH_errorcode res;
+	UNUSED(res);
+	if(label) {
+		res = XXH64_update(state, label, strlen(label));
+		ASSERT(res != XXH_ERROR);
+	}
 
 	if(props) {
 		// Update hash with attribute count.
-		assert(XXH64_update(state, &props->property_count, sizeof(props->property_count)) != XXH_ERROR);
+		res = XXH64_update(state, &props->property_count, sizeof(props->property_count));
+		ASSERT(res != XXH_ERROR);
 		for(int i = 0; i < props->property_count; i++) {
 			// Update hash with attribute ID.
-			assert(XXH64_update(state, &props->attr_keys[i], sizeof(props->attr_keys[i])) != XXH_ERROR);
+			res = XXH64_update(state, &props->attr_keys[i], sizeof(props->attr_keys[i]));
+			ASSERT(res != XXH_ERROR);
 
 			// Update hash with the hashval of the associated SIValue.
 			XXH64_hash_t value_hash = SIValue_HashCode(props->values[i]);
-			assert(XXH64_update(state, &value_hash, sizeof(value_hash)) != XXH_ERROR);
+			res = XXH64_update(state, &value_hash, sizeof(value_hash));
+			ASSERT(res != XXH_ERROR);
 		}
 	}
 }
@@ -75,8 +83,12 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
 		EdgeCreateCtx *e = edges + i;
 		e->edge_idx = OpBase_Modifies((OpBase *)op, e->alias);
-		assert(OpBase_Aware((OpBase *)op, e->src, &e->src_idx));
-		assert(OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx));
+		bool aware;
+		UNUSED(aware);
+		aware = OpBase_Aware((OpBase *)op, e->src, &e->src_idx);
+		ASSERT(aware == true);
+		aware = OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx);
+		ASSERT(aware == true);
 	}
 
 	return (OpBase *)op;
@@ -86,7 +98,9 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
  * Returns false and does not buffer data if every entity to create for this Record
  * has been created in a previous call. */
 static bool _CreateEntities(OpMergeCreate *op, Record r) {
-	assert(XXH64_reset(op->hash_state, 0) != XXH_ERROR); // Reset hash state
+	XXH_errorcode res = XXH64_reset(op->hash_state, 0); // Reset hash state
+	UNUSED(res);
+	ASSERT(res != XXH_ERROR);
 
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
@@ -102,7 +116,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		/* Convert query-level properties. */
 		PropertyMap *map = n->properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map, true);
 
 		/* Update the hash code with this entity. */
 		_IncrementalHashEntity(op->hash_state, n->label, converted_properties);
@@ -125,8 +139,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		// verify that the endpoints of the new edge resolved properly; fail otherwise
 		if(!src_node || !dest_node) {
-			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
-			QueryCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("Failed to create relationship; endpoint was not found.");
 		}
 
 		// create the actual edge
@@ -140,7 +153,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		// convert query-level properties
 		PropertyMap *map = e->properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map, true);
 
 		/* Update the hash code with this entity, an edge is represented by its
 		 * relation, properties and nodes.
@@ -152,13 +165,15 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;
 			size_t len = sizeof(id);
-			assert(XXH64_update(op->hash_state, data, len) != XXH_ERROR);
+			res = XXH64_update(op->hash_state, data, len);
+			ASSERT(res != XXH_ERROR);
 		}
 		if(dest_node->entity != NULL) {
 			EntityID id = ENTITY_GET_ID(dest_node);
 			void *data = &id;
 			size_t len = sizeof(id);
-			assert(XXH64_update(op->hash_state, data, len) != XXH_ERROR);
+			res = XXH64_update(op->hash_state, data, len);
+			ASSERT(res != XXH_ERROR);
 		}
 
 		/* Save edge for later insertion. */
@@ -200,7 +215,8 @@ static Record MergeCreateConsume(OpBase *opBase) {
 
 		/* Buffer all entity creations.
 		 * If this operation has no children, it should always have unique creations. */
-		assert(_CreateEntities(op, r));
+		bool entities_created = _CreateEntities(op, r);
+		ASSERT(entities_created == true);
 
 		// Save record for later use.
 		op->records = array_append(op->records, r);
@@ -234,7 +250,7 @@ void MergeCreate_Commit(OpBase *opBase) {
 }
 
 static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_MERGE_CREATE);
+	ASSERT(opBase->type == OPType_MERGE_CREATE);
 	OpMergeCreate *op = (OpMergeCreate *)opBase;
 	NodeCreateCtx *nodes;
 	EdgeCreateCtx *edges;

@@ -5,6 +5,7 @@
  */
 
 #include "resultset_formatters.h"
+#include "RG.h"
 #include "../../util/arr.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/path/sipath.h"
@@ -80,7 +81,8 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		_ResultSet_CompactReplyWithPath(ctx, gc, v);
 		return;
 	default:
-		assert("Unhandled value type" && false);
+		RedisModule_Assert("Unhandled value type" && false);
+		break;
 	}
 }
 
@@ -149,7 +151,7 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 
 	// reltype string index, retrieve reltype.
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
-	assert(reltype_id != GRAPH_NO_RELATION);
+	ASSERT(reltype_id != GRAPH_NO_RELATION);
 	RedisModule_ReplyWithLongLong(ctx, reltype_id);
 
 	// src node ID

@@ -10,7 +10,6 @@
 #include "../util/strutil.h"
 #include "../../deps/rax/rax.h"
 #include <ctype.h>
-#include <assert.h>
 
 /* Arithmetic function repository. */
 rax *__aeRegisteredFuncs = NULL;
@@ -35,8 +34,9 @@ void AR_RegFunc(AR_FuncDesc *func) {
 	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
 	str_tolower(func->name, lower_func_name, &lower_func_name_len);
-	assert(raxInsert(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len, func,
-					 NULL) == 1);
+	int res = raxInsert(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len,
+						func, NULL);
+	ASSERT(res == 1);
 }
 
 /* Get arithmetic function. */

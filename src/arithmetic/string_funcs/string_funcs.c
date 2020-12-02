@@ -10,8 +10,6 @@
 #include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
 #include "../../util/strutil.h"
-#include <assert.h>
-
 
 /* returns a string containing the specified number of leftmost characters of the original string. */
 SIValue AR_LEFT(SIValue *argv, int argc) {
@@ -108,13 +106,13 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 	int64_t length;
 
 	/* Make sure start doesn't overreach. */
-	assert(start < original_len && start >= 0);
+	ASSERT(start < original_len && start >= 0);
 
 	if(argc == 2) {
 		length = original_len - start;
 	} else {
 		length = argv[2].longval;
-		assert(length >= 0);
+		ASSERT(length >= 0);
 
 		/* Make sure length does not overreach. */
 		if(start + length > original_len) {
@@ -313,3 +311,4 @@ void Register_StringFuncs() {
 	func_desc = AR_FuncDescNew("randomuuid", AR_RANDOMUUID, 0, 0, types, false);
 	AR_RegFunc(func_desc);
 }
+

@@ -58,6 +58,10 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 [redisgraph_php-url]: https://github.com/jpbourbon/redisgraph_php
 [redisgraph_php-stars]: https://img.shields.io/github/stars/jpbourbon/redisgraph_php.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
+[redislabs-redisgraph-php-author]: https://github.com/mkorkmaz
+[redislabs-redisgraph-php-url]: https://github.com/mkorkmaz/redislabs-redisgraph-php
+[redislabs-redisgraph-php-stars]: https://img.shields.io/github/stars/mkorkmaz/redislabs-redisgraph-php.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
 [redisgraph-ex-author]: https://github.com/crflynn
 [redisgraph-ex-url]: https://github.com/crflynn/redisgraph-ex
 [redisgraph-ex-stars]: https://img.shields.io/github/stars/crflynn/redisgraph-ex.svg?style=social&amp;label=Star&amp;maxAge=2592000

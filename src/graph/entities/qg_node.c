@@ -8,13 +8,12 @@
 #include "qg_edge.h"
 #include "../graph.h"
 #include "../../util/arr.h"
-#include <assert.h>
 
 static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 	uint edge_count = array_len(edges);
 	for(uint i = 0; i < edge_count; i++) {
 		QGEdge *ie = edges[i];
-		if(e == edges[i]) {
+		if(e == ie) {
 			array_del_fast(edges, i);
 			return;
 		}
@@ -86,7 +85,7 @@ QGNode *QGNode_Clone(const QGNode *orig) {
 }
 
 int QGNode_ToString(const QGNode *n, char *buff, int buff_len) {
-	assert(n && buff);
+	ASSERT(n && buff);
 
 	int offset = 0;
 	offset += snprintf(buff + offset, buff_len - offset, "(");

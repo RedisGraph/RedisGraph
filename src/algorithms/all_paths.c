@@ -5,6 +5,7 @@
 */
 
 #include "all_paths.h"
+#include "RG.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
@@ -52,7 +53,8 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 			Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
 			break;
 		default:
-			assert(false && "encountered unexpected traversal direction in AllPaths");
+			ASSERT(false && "encountered unexpected traversal direction in AllPaths");
+			break;
 		}
 		// Add the node and edge to the frontier.
 		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
@@ -62,7 +64,7 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
 							 GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
-	assert(src);
+	ASSERT(src != NULL);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
 	ctx->g = g;

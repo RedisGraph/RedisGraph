@@ -5,12 +5,12 @@
 */
 
 #include "op_merge.h"
+#include "RG.h"
 #include "op_merge_create.h"
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../execution_plan_build/execution_plan_modify.h"
-#include <assert.h>
 
 /* Forward declarations. */
 static OpResult MergeInit(OpBase *opBase);
@@ -51,8 +51,9 @@ static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *upda
 // Apply a set of updates to the given records.
 static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *updates,
 							  Record *records, uint record_count) {
-	assert(updates && record_count > 0);
+	ASSERT(updates != NULL && record_count > 0);
 	uint update_count = array_len(updates);
+	uint failed_updates = 0;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Lock everything.
 	QueryCtx_LockForCommit();
@@ -62,16 +63,21 @@ static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *u
 		for(uint j = 0; j < update_count; j ++) { // For each pending update.
 			EntityUpdateEvalCtx *update_ctx = &updates[j];
 
-			// Retrieve the appropriate entry from the Record, make sure it's either a node or an edge.
+			// Get the type of the entity to update. If the expected entity was not
+			// found, make no updates but do not error.
 			RecordEntryType t = Record_GetType(r, update_ctx->record_idx);
-			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
+			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+				failed_updates++;
+				continue;
+			}
+
 			GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
 
 			_UpdateProperty(r, ge, update_ctx); // Update the entity.
 			if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
 		}
 	}
-	if(stats) stats->properties_set += update_count * record_count;
+	if(stats) stats->properties_set += (update_count * record_count) - failed_updates;
 }
 
 //------------------------------------------------------------------------------
@@ -128,7 +134,7 @@ static OpResult MergeInit(OpBase *opBase) {
 	 * - If there are 3 children, the first should resolve the Merge pattern's bound variables.
 	 * - The next (first if there are 2 children, second otherwise) should attempt to match the pattern.
 	 * - The last creates the pattern. */
-	assert(opBase->childCount == 2 || opBase->childCount == 3);
+	ASSERT(opBase->childCount == 2 || opBase->childCount == 3);
 	OpMerge *op = (OpMerge *)opBase;
 	op->stats = QueryCtx_GetResultSetStatistics();
 	if(opBase->childCount == 2) {
@@ -181,7 +187,9 @@ static OpResult MergeInit(OpBase *opBase) {
 		}
 	}
 
-	assert(op->bound_variable_stream && op->match_stream && op->create_stream);
+	ASSERT(op->bound_variable_stream != NULL &&
+			op->match_stream != NULL &&
+			op->create_stream != NULL);
 
 	// Migrate the children so that EXPLAIN calls print properly.
 	opBase->children[0] = op->bound_variable_stream;
@@ -264,7 +272,9 @@ static Record MergeConsume(OpBase *opBase) {
 				Argument_AddRecord(op->create_argument_tap, lhs_record);
 				lhs_record = NULL;
 			}
-			assert(_pullFromStream(op->create_stream) == NULL); // Don't expect returned records
+			Record r = _pullFromStream(op->create_stream);
+			UNUSED(r);
+			ASSERT(r == NULL); // Don't expect returned records
 			must_create_records = true;
 		}
 
@@ -306,7 +316,7 @@ static Record MergeConsume(OpBase *opBase) {
 }
 
 static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_MERGE);
+	ASSERT(opBase->type == OPType_MERGE);
 	OpMerge *op = (OpMerge *)opBase;
 	EntityUpdateEvalCtx *on_match;
 	EntityUpdateEvalCtx *on_create;

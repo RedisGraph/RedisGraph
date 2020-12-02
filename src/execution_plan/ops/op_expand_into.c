@@ -81,8 +81,12 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx));
+	bool aware;
+	UNUSED(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	ASSERT(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
+	ASSERT(aware);
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
@@ -205,7 +209,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 }
 
 static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_EXPAND_INTO);
+	ASSERT(opBase->type == OPType_EXPAND_INTO);
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }

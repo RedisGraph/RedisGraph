@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import redis
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -534,3 +535,30 @@ class testGraphMergeFlow(FlowTestsBase):
         # Verify that no data was modified and no results were returned.
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
+
+    def test26_merge_set_invalid_property(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("M", redis_con)
+
+        query = """MATCH p=() MERGE () ON MATCH SET p.prop4 = 5"""
+        result = graph.query(query)
+        self.env.assertEquals(result.properties_set, 0)
+
+    def test27_merge_create_invalid_entity(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("N", redis_con) # Instantiate a new graph.
+
+        try:
+            # Try to create a node with an invalid NULL property.
+            query = """MERGE (n {v: NULL})"""
+            graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Cannot merge node using null property value" in e.message)
+            pass
+
+        # Verify that no entities were created.
+        query = """MATCH (a) RETURN a"""
+        result = graph.query(query)
+        self.env.assertEquals(result.result_set, [])

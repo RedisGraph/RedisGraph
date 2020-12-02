@@ -9,7 +9,6 @@
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include <assert.h>
 
 Schema *Schema_New(const char *name, int id) {
 	Schema *schema = rm_malloc(sizeof(Schema));
@@ -21,17 +20,17 @@ Schema *Schema_New(const char *name, int id) {
 }
 
 const char *Schema_GetName(const Schema *s) {
-	assert(s);
+	ASSERT(s);
 	return s->name;
 }
 
 bool Schema_HasIndices(const Schema *s) {
-	assert(s);
+	ASSERT(s);
 	return (s->fulltextIdx || s->index);
 }
 
 unsigned short Schema_IndexCount(const Schema *s) {
-	assert(s);
+	ASSERT(s);
 	unsigned short n = 0;
 
 	if(s->index) n += Index_FieldsCount(s->index);
@@ -63,7 +62,7 @@ Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType ty
 }
 
 int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
-	assert(field);
+	ASSERT(field);
 
 	*idx = NULL;
 	Index *_idx = Schema_GetIndex(s, NULL, type);
@@ -98,12 +97,12 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 
 	// Currently dropping a full-text index doesn't take into account fields.
 	if(type == IDX_FULLTEXT) {
-		assert(field == NULL);
+		ASSERT(field == NULL);
 		Index_Free(idx);
 		s->fulltextIdx = NULL;
 	} else {
 		// Index is of type IDX_EXACT_MATCH
-		assert(type == IDX_EXACT_MATCH);
+		ASSERT(type == IDX_EXACT_MATCH);
 		Index_RemoveField(idx, field);
 
 		// If index field count dropped to 0, remove index from schema.
