@@ -5,6 +5,7 @@
 */
 
 #include "op_filter.h"
+#include "RG.h"
 
 /* Forward declarations. */
 static Record FilterConsume(OpBase *opBase);
@@ -42,7 +43,7 @@ static Record FilterConsume(OpBase *opBase) {
 }
 
 static inline OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_FILTER);
+	ASSERT(opBase->type == OPType_FILTER);
 	OpFilter *op = (OpFilter *)opBase;
 	return NewFilterOp(plan, FilterTree_Clone(op->filterTree));
 }

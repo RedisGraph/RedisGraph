@@ -8,7 +8,6 @@
 #include "../func_desc.h"
 #include "../../util/arr.h"
 #include "../../datatypes/temporal_value.h"
-#include <assert.h>
 
 /* returns a timestamp - millis from epoch */
 SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
@@ -23,3 +22,4 @@ void Register_TimeFuncs() {
 	func_desc = AR_FuncDescNew("timestamp", AR_TIMESTAMP, 0, 0, types, false);
 	AR_RegFunc(func_desc);
 }
+

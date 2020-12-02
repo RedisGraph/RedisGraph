@@ -5,10 +5,10 @@
 */
 
 #include "op_create.h"
+#include "RG.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include <assert.h>
 
 /* Forward declarations. */
 static Record CreateConsume(OpBase *opBase);
@@ -34,8 +34,12 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateC
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
 		EdgeCreateCtx *e = edges + i;
 		e->edge_idx = OpBase_Modifies((OpBase *)op, e->alias);
-		assert(OpBase_Aware((OpBase *)op, e->src, &e->src_idx));
-		assert(OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx));
+		bool aware;
+		UNUSED(aware);
+		aware = OpBase_Aware((OpBase *)op, e->src, &e->src_idx);
+		ASSERT(aware == true);
+		aware = OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx);
+		ASSERT(aware == true);
 	}
 
 	return (OpBase *)op;
@@ -155,7 +159,7 @@ static Record CreateConsume(OpBase *opBase) {
 }
 
 static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CREATE);
+	ASSERT(opBase->type == OPType_CREATE);
 	OpCreate *op = (OpCreate *)opBase;
 	NodeCreateCtx *nodes;
 	EdgeCreateCtx *edges;

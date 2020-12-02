@@ -23,7 +23,6 @@
 #include "../ast/ast_shared.h"
 
 #include <ctype.h>
-#include <assert.h>
 
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
@@ -51,7 +50,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		clone->operand.type = AR_EXP_BORROW_RECORD;
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
 		break;
 	}
 	return clone;
@@ -430,10 +429,10 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 		case AR_EXP_BORROW_RECORD:
 			return _AR_EXP_EvaluateBorrowRecord(root, r, result);
 		default:
-			assert(false && "Invalid expression type");
+			ASSERT(false && "Invalid expression type");
 		}
 	default:
-		assert(false && "Unknown expression type");
+		ASSERT(false && "Unknown expression type");
 	}
 
 	return res;
@@ -683,7 +682,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 		clone = _AR_EXP_CloneOp(exp);
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
 		break;
 	}
 	clone->resolved_name = exp->resolved_name;

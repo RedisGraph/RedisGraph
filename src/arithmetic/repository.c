@@ -8,7 +8,6 @@
 #include "../util/rmalloc.h"
 #include "rax.h"
 #include <ctype.h>
-#include <assert.h>
 #include "../util/strutil.h"
 
 static rax *__aggRegisteredFuncs = NULL;

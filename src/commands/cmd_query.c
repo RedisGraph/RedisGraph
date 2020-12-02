@@ -163,7 +163,7 @@ void Graph_Query(void *args) {
 			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		_index_operation(ctx, gc, ast, exec_type);
 	} else {
-		assert("Unhandled query type" && false);
+		ASSERT("Unhandled query type" && false);
 	}
 	QueryCtx_ForceUnlockCommit();
 	ResultSet_Reply(result_set);    // Send result-set back to client.

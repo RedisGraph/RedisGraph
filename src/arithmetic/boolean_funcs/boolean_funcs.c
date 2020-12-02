@@ -9,7 +9,6 @@
 #include "../func_desc.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include <assert.h>
 
 #define CONTAINS_NULL 2 // Macro used for efficiently evaluating 3-valued truth table
 
@@ -100,7 +99,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
-	assert(disjointOrNull != DISJOINT);
+	ASSERT(disjointOrNull != DISJOINT);
 
 	return SI_BoolVal(res >= 0);
 }

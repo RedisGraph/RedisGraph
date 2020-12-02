@@ -5,8 +5,8 @@
 */
 
 #include "module_event_handlers.h"
+#include "RG.h"
 #include <pthread.h>
-#include <assert.h>
 #include <stdbool.h>
 #include "graph/graphcontext.h"
 #include "serializers/graphcontext_type.h"
@@ -239,7 +239,8 @@ static void RG_AfterForkChild() {
 static void _RegisterForkHooks() {
 	/* Register handlers to control the behavior of fork calls.
 	 * Only the child process requires a handler, to prevent the acquisition of locks it doesn't own. */
-	assert(pthread_atfork(NULL, NULL, RG_AfterForkChild) == 0);
+	int res = pthread_atfork(NULL, NULL, RG_AfterForkChild);
+	ASSERT(res == 0);
 }
 
 static void _ModuleEventHandler_TryClearKeyspace(void) {

@@ -5,6 +5,7 @@
 */
 
 #include "numeric_funcs.h"
+#include "RG.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
@@ -120,7 +121,8 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc) {
 		// Remove floating point.
 		return SI_LongVal(floor(parsedval));
 	default:
-		assert(false);
+		ASSERT(false);
+		return SI_NullVal();
 	}
 }
 

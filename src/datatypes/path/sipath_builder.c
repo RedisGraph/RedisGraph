@@ -5,8 +5,8 @@
 */
 
 #include "sipath_builder.h"
+#include "../../RG.h"
 #include "../../util/rmalloc.h"
-#include "assert.h"
 
 /**
  * @brief  Reverse the direction of an edge.
@@ -44,13 +44,13 @@ void SIPathBuilder_AppendNode(SIValue p, SIValue n) {
 void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge) {
 	Path *path = (Path *) p.ptrval;
 	Edge *edge = (Edge *) e.ptrval;
-	assert(Path_NodeCount(path) > 0);
+	ASSERT(Path_NodeCount(path) > 0);
 	// The edge should connect nodes[edge_count] to nodes[edge_count+1]
 	uint edge_count = Path_EdgeCount(path);
 	Node *n = Path_GetNode(path, edge_count);
 	EntityID nId = ENTITY_GET_ID(n);
 	// Validate source node is in the right place.
-	assert(nId == edge->srcNodeID || nId == edge->destNodeID);
+	ASSERT(nId == edge->srcNodeID || nId == edge->destNodeID);
 	/* Reverse direction if needed. A direction change is needed if the last node in the path, reading
 	 * RTL is the source node in the edge, and the edge direction in the query is LTR.
 	 * path =[(a)]
@@ -64,7 +64,7 @@ void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge) {
 
 void SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
 	uint path_node_count = SIPath_NodeCount(path);
-	assert(path_node_count > 0);
+	ASSERT(path_node_count > 0);
 	// No need to append empty paths.
 	uint new_path_node_count = SIPath_NodeCount(new_path);
 
@@ -77,7 +77,7 @@ void SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
 	SIValue new_path_last_node = SIPath_Last(new_path);
 	EntityID new_path_last_node_id = ENTITY_GET_ID((Node *)new_path_last_node.ptrval);
 	// Validate current last LTR node is in either edges of the path.
-	assert(last_LTR_node_id == new_path_node_0_id || last_LTR_node_id == new_path_last_node_id);
+	ASSERT(last_LTR_node_id == new_path_node_0_id || last_LTR_node_id == new_path_last_node_id);
 	int new_path_edge_count = SIPath_Length(new_path);
 
 	// Check if path needs to be rverse inserated or not.
