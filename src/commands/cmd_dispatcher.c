@@ -16,7 +16,7 @@ typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-		long long *timeout, uint *graph_version, char **errmsg) {
+					   long long *timeout, uint *graph_version, char **errmsg) {
 
 	ASSERT(compact);
 	ASSERT(timeout);
@@ -185,12 +185,12 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 											REDISMODULE_CTX_FLAGS_LOADING));
 	if(execute_on_main_thread) {
 		// Run query on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, is_replicated, compact, timeout);
+		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, is_replicated, compact, timeout, version);
 		handler(context);
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, argv[0], query, gc, is_replicated, compact, timeout);
+		context = CommandCtx_New(NULL, bc, argv[0], query, gc, is_replicated, compact, timeout, version);
 		thpool_add_work(_thpool, handler, context);
 	}
 

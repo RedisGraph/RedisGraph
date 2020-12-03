@@ -5,7 +5,7 @@
 */
 
 #include "resultset.h"
-#include "RG.h"
+#include "../RG.h"
 #include "../value.h"
 #include "../errors.h"
 #include "../util/arr.h"
@@ -93,8 +93,8 @@ void ResultSet_MapProjection(ResultSet *set, const Record r) {
 static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	ASSERT(set->recordCount == 0);
 
-	// Prepare a response containing a header, records, and statistics
-	RedisModule_ReplyWithArray(set->ctx, 3);
+	// Prepare a response containing a header, records, statistics, and possibly a metadata footer.
+	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 
 	// Emit the table header using the appropriate formatter
 	set->formatter->EmitHeader(set->ctx, set->columns, r, set->columns_record_map);
@@ -125,6 +125,14 @@ static void _ResultSet_SetColumns(ResultSet *set) {
 	}
 }
 
+/* If appropriate, update the ResultSet to emit a footer.
+ * Currently, we never emit a footer unless we are also emitting results
+ * and are using the compact formatter. */
+inline void ResultSet_MaybeEmitFooter(ResultSet *set) {
+	if(set->columns == NULL || set->format != FORMATTER_COMPACT) return;
+	set->require_footer = true;
+}
+
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
@@ -135,6 +143,7 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	set->recordCount = 0;
 	set->column_count = 0;
 	set->header_emitted = false;
+	set->require_footer = false;
 	set->columns_record_map = NULL;
 
 	set->stats.labels_added = 0;
@@ -206,14 +215,21 @@ void ResultSet_CachedExecution(ResultSet *set) {
 }
 
 void ResultSet_Reply(ResultSet *set) {
-	if(set->header_emitted) {
-		// If we have emitted a header, set the number of elements in the preceding array.
-		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
-	} else if(set->header_emitted == false && set->columns != NULL) {
-		ASSERT(set->recordCount == 0);
-		// Handle the edge case in which the query was intended to return results, but none were created.
-		_ResultSet_ReplyWithPreamble(set, NULL);
-		RedisModule_ReplySetArrayLength(set->ctx, 0);
+	if(set->columns != NULL) {
+		// The query emits data.
+		if(set->header_emitted) {
+			// If we have emitted a header, set the number of elements in the preceding array.
+			RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
+		} else {
+			ASSERT(set->recordCount == 0);
+			// Handle the edge case in which the query was intended to return results, but none were created.
+			_ResultSet_ReplyWithPreamble(set, NULL);
+			RedisModule_ReplySetArrayLength(set->ctx, 0);
+		}
+
+		// If the output requires a footer, accommodate it in the replied arrays.
+		if(set->require_footer == false) RedisModule_ReplySetArrayLength(set->ctx, 3);
+		else RedisModule_ReplySetArrayLength(set->ctx, 4);
 	} else {
 		// Queries that don't emit data will only emit statistics
 		RedisModule_ReplyWithArray(set->ctx, 1);
@@ -223,6 +239,8 @@ void ResultSet_Reply(ResultSet *set) {
 	 * If so, emit it as the last top-level response. */
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
+
+	if(set->require_footer) ResultSet_ReplyWithMetadata(set);
 }
 
 /* Report execution timing. */

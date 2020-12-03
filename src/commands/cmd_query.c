@@ -165,6 +165,10 @@ void Graph_Query(void *args) {
 	} else {
 		ASSERT("Unhandled query type" && false);
 	}
+
+	// If this query has updated the graph version, the ResultSet may include a footer.
+	if(command_ctx->version != GraphContext_GetVersion(gc)) ResultSet_MaybeEmitFooter(result_set);
+
 	QueryCtx_ForceUnlockCommit();
 	ResultSet_Reply(result_set);    // Send result-set back to client.
 
