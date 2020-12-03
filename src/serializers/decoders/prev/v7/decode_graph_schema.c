@@ -22,6 +22,7 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	uint index_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
+		if(type == IDX_ANY) type = IDX_EXACT_MATCH;
 		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
 
 		Schema_AddIndex(&idx, s, field, type);
