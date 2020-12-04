@@ -673,7 +673,9 @@ char *AR_EXP_BuildResolvedName(AR_ExpNode *root) {
 
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 	if(exp == NULL) return NULL;
-	AR_ExpNode *clone;
+
+	AR_ExpNode *clone = NULL;
+
 	switch(exp->type) {
 	case AR_EXP_OPERAND:
 		clone = _AR_EXP_CloneOperand(exp);
@@ -685,6 +687,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 		ASSERT(false);
 		break;
 	}
+
 	clone->resolved_name = exp->resolved_name;
 	return clone;
 }

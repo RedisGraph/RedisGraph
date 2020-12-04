@@ -68,9 +68,11 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 	 * - Null-terminated C string if type is string
 	 * - 8-byte array length followed by N values if type is array
 	 */
-	SIValue v;
+
+	SIValue v = SI_NullVal();
 	TYPE t = data[*data_idx];
 	*data_idx += 1;
+
 	if(t == BI_NULL) {
 		v = SI_NullVal();
 	} else if(t == BI_BOOL) {
