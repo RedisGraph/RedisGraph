@@ -233,7 +233,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	// Make sure we're updating either a node or an edge.
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 		ErrorCtx_RaiseRuntimeException("Update error: alias '%s' did not resolve to a graph entity",
-						  ctx->alias);
+									   ctx->alias);
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -269,8 +269,8 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 
 		/* Determine whether we must update the index for this set of updates.
 		 * If at least one property being updated is indexed, each node will be reindexed. */
+		Attribute_ID attr_id = update_ctx->attribute_id;
 		if(!update_index && label) {
-			Attribute_ID attr_id = update_ctx->attribute_id;
 			// If the label-index combination has an index, we must reindex this entity.
 			update_index = GraphContext_GetIndex(gc, label, &attr_id, IDX_ANY) != NULL;
 			if(update_index && (i > 0)) {
@@ -286,7 +286,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 			.entity_type = type,
 			.new_value = new_value,
 			.update_index = update_index,
-			.attr_id = update_ctx->attribute_id,
+			.attr_id = attr_id,
 		};
 
 		if(type == GETYPE_EDGE) {
