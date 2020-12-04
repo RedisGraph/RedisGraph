@@ -267,15 +267,20 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 			break;
 		}
 
+		/* Retrieve the ID of the attribute being updated.
+		 * It is important that this is stored in a variable rather than referring to
+		 * the update_ctx because if we swap an indexed property context to the first position
+		 * in the next condition, the update_ctx reference will be incorrect. */
+		Attribute_ID attr_id = update_ctx->attribute_id;
 		/* Determine whether we must update the index for this set of updates.
 		 * If at least one property being updated is indexed, each node will be reindexed. */
-		Attribute_ID attr_id = update_ctx->attribute_id;
 		if(!update_index && label) {
 			// If the label-index combination has an index, we must reindex this entity.
 			update_index = GraphContext_GetIndex(gc, label, &attr_id, IDX_ANY) != NULL;
 			if(update_index && (i > 0)) {
 				/* Swap the current update expression with the first one
-				 * so that subsequent searches will find the index immediately. */
+				 * so that subsequent searches will find the index immediately.
+				 * Note that this invalidates further references to the update_ctx in this loop! */
 				EntityUpdateEvalCtx first = ctx->exps[0];
 				ctx->exps[0] = ctx->exps[i];
 				ctx->exps[i] = first;
