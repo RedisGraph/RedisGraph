@@ -112,7 +112,7 @@ ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_FulltextQueryNodeGen() {
 	void *privateData = NULL;
 	ProcedureOutput *output = array_new(ProcedureOutput, 1);
-	ProcedureOutput out_node = {name: "node", type: T_NODE};
+	ProcedureOutput out_node = {.name = "node", .type = T_NODE};
 	output = array_append(output, out_node);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",

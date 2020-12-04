@@ -64,7 +64,7 @@ ProcedureResult Proc_RelationsFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_RelationsCtx() {
 	void *privateData = NULL;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
-	ProcedureOutput output = {name: "relationshipType", type: T_STRING};
+	ProcedureOutput output = {.name = "relationshipType", .type = T_STRING};
 	outputs = array_append(outputs, output);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",

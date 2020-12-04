@@ -43,7 +43,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 
 	for(uint i = 0; i < traversals_count; i++) {
 		OpBase *op = traversals[i];
-		AlgebraicExpression *ae;
+		AlgebraicExpression *ae = NULL;
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			OpCondTraverse *traverse = (OpCondTraverse *)op;
 			ae = traverse->ae;
