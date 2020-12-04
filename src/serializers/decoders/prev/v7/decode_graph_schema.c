@@ -20,12 +20,31 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 
 	Index *idx = NULL;
 	uint index_count = RedisModule_LoadUnsigned(rdb);
+	char *fields[index_count];
+	IndexType types[index_count];
+	/* There is a compatibility issue in the encoding format v7
+	 * in which IndexType will have the values:
+	 * [IDX_EXACT_MATCH, IDX_FULLTEXT]
+	 * in earlier RDBs, and:
+	 * [IDX_ANY, IDX_EXACT_MATCH, IDX_FULLTEXT]
+	 * in later ones.
+	 * As such, we will iterate over the serialized values looking
+	 * for invalid type values of 0 (IDX_ANY). If any are found,
+	 * all types will be incremented by 1, causing correct deserialization of
+	 * indexes unless an early RDB had only full-text indexes. */
+	bool adjust_for_idx_any = false;
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
+		types[i] = type;
+		if(type == IDX_ANY) adjust_for_idx_any = true; // Invalid IDX_ANY value found.
 		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
+		fields[i] = field;
+	}
 
-		Schema_AddIndex(&idx, s, field, type);
-		RedisModule_Free(field);
+	for(uint i = 0; i < index_count; i++) {
+		if(adjust_for_idx_any) types[i] += 1; // Adjust for invalid IDX_ANY value.
+		Schema_AddIndex(&idx, s, fields[i], types[i]);
+		RedisModule_Free(fields[i]);
 	}
 
 	return s;
