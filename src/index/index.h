@@ -14,9 +14,9 @@
 #define INDEX_FAIL 0
 
 typedef enum {
-	IDX_ANY,
-	IDX_EXACT_MATCH,
-	IDX_FULLTEXT,
+	IDX_ANY = 0,
+	IDX_EXACT_MATCH = 1,
+	IDX_FULLTEXT = 2,
 } IndexType;
 
 typedef struct {
