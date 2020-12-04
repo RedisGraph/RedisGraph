@@ -136,7 +136,7 @@ SIValue SI_CloneValue(const SIValue v) {
 	clone.type = v.type;
 	clone.allocation = M_SELF;
 
-	size_t size;
+	size_t size = 0;
 	if(v.type == T_NODE) {
 		size = sizeof(Node);
 	} else if(v.type == T_EDGE) {

@@ -253,8 +253,8 @@ ProcedureCtx *Proc_BFS_Ctx() {
 
 	// Declare possible outputs.
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
-	ProcedureOutput out_nodes = {name: "nodes", type: T_ARRAY};
-	ProcedureOutput out_edges = {name: "edges", type: T_ARRAY};
+	ProcedureOutput out_nodes = {.name = "nodes", .type = T_ARRAY};
+	ProcedureOutput out_edges = {.name = "edges", .type = T_ARRAY};
 	outputs = array_append(outputs, out_nodes);
 	outputs = array_append(outputs, out_edges);
 
