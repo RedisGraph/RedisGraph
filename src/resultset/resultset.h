@@ -34,6 +34,9 @@ void ResultSet_MapProjection(ResultSet *set, const Record r);
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format);
 
+// returns number of records in result-set
+uint64_t ResultSet_RecordCount(const ResultSet *set);
+
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_IndexCreated(ResultSet *set, int status_code);

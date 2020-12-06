@@ -11,14 +11,24 @@
 #include "util/redis_version.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
-#define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
-#define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
-#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
-#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
+//-----------------------------------------------------------------------------
+// Configuration parameters
+//-----------------------------------------------------------------------------
+
+#define CACHE_SIZE "CACHE_SIZE"             // size of each thread cache size, per graph.
+#define THREAD_COUNT "THREAD_COUNT"         // number of threads in thread pool
+#define RESULTSET_SIZE "RESULTSET_SIZE"     // resultset size limit
+#define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // max number of OpenMP threads
+#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // max number of entities in each virtual key
+#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // whether the module should maintain transposed relationship matrices
+
+//------------------------------------------------------------------------------
+// Configuration defaults
+//------------------------------------------------------------------------------
 
 #define CACHE_SIZE_DEFAULT 25
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
+#define RESULTSET_SIZE_DEFAULT RESULTSET_SIZE_UNLIMITED
 
 extern RG_Config config; // Global module configuration.
 
@@ -45,7 +55,7 @@ static int _Config_SetThreadCount(RedisModuleCtx *ctx, RedisModuleString *count_
 	// Emit notice but do not fail if the specified thread count is greater than the system's
 	// number of cores (which is already set as the default value).
 	if(thread_count > config.thread_count) {
-		RedisModule_Log(ctx, "notice", "Number of threads: %d greater then number of cores: %d.",
+		RedisModule_Log(ctx, "notice", "Number of threads: %lld greater then number of cores: %d.",
 						thread_count, config.thread_count);
 	}
 
@@ -137,6 +147,31 @@ static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_si
 	return REDISMODULE_OK;
 }
 
+static int _Config_SetResultsetSize(RedisModuleCtx *ctx,
+		RedisModuleString *resultset_size_str) {
+	long long resultset_size;
+	int res = _Config_ParsePositiveInteger(resultset_size_str, &resultset_size);
+
+	// Exit with error if integer parsing fails.
+	if(res != REDISMODULE_OK) {
+		const char *invalid_arg = RedisModule_StringPtrLen(resultset_size_str,
+				NULL);
+
+		RedisModule_Log(ctx, "warning", "Could not parse resultset size argument '%s' as an integer",
+				invalid_arg);
+
+		return REDISMODULE_ERR;
+	}
+
+	// Log the resultset size
+	RedisModule_Log(ctx, "notice", "Resultset size is set to %lld.",
+			resultset_size);
+
+	// Update the resultset size in the configuration.
+	config.resultset_size = resultset_size;
+
+	return REDISMODULE_OK;
+}
 // Initialize every module-level configuration to its default value.
 static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	// The thread pool's default size is equal to the system's number of cores.
@@ -164,9 +199,12 @@ static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 		config.async_delete = true;
 		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
 	#endif
+
+	config.cache_size = CACHE_SIZE_DEFAULT;
 	// Always build transposed matrices by default.
 	config.maintain_transposed_matrices = true;
-	config.cache_size = CACHE_SIZE_DEFAULT;
+	// No limit on result-set size
+	config.resultset_size = RESULTSET_SIZE_DEFAULT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -200,6 +238,8 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			res = _Config_BuildTransposedMatrices(ctx, val);
 		} else if(!(strcasecmp(param, CACHE_SIZE))) {
 			res = _Config_SetCacheSize(ctx, val);
+		} else if(!(strcasecmp(param, RESULTSET_SIZE))) {
+			res = _Config_SetResultsetSize(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 			return REDISMODULE_ERR;
@@ -235,3 +275,8 @@ uint64_t Config_GetCacheSize() {
 bool Config_GetAsyncDelete(void) {
 	return config.async_delete;
 }
+
+uint64_t Config_GetResultsetSize(void) {
+	return config.resultset_size;
+}
+
