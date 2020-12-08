@@ -100,7 +100,9 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	// If it is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
 
-	uint64_t remaining_entities = Config_GetVirtualKeyEntityCount();
+	uint64_t remaining_entities;
+	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &remaining_entities);
+
 	// No limit on the entities, the graph is encoded in one key.
 	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
 		for(uint state = ENCODE_STATE_NODES; state < ENCODE_STATE_FINAL; state++) {
