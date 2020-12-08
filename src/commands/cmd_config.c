@@ -5,7 +5,7 @@
  */
 
 #include "cmd_config.h"
-#include "config.h"
+#include "../config.h"
 #include <string.h>
 
 void _Config_get_all(RedisModuleCtx *ctx) {
@@ -34,7 +34,7 @@ void _Config_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	const char *config_name = RedisModule_StringPtrLen(argv[2], NULL);
 
 	// return entire configuration
-	if(config_name[0] == '*') {
+	if(!strcmp(config_name, "*")) {
 		_Config_get_all(ctx);
 		return;
 	}
@@ -57,10 +57,6 @@ void _Config_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 }
 
 void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	// list of configurable fields
-	size_t n_whitelist = 1;
-	Config_Option_Field whitelist[1] = { Config_RESULTSET_MAX_SIZE };
-
 	//--------------------------------------------------------------------------
 	// retrieve and validate config field
 	//--------------------------------------------------------------------------
@@ -75,8 +71,8 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	// ensure field is whitelisted
 	bool configurable_field = false;
-	for(int i = 0; i < n_whitelist; i++) {
-		if(whitelist[i] == config_field) {
+	for(int i = 0; i < RUNTIME_CONFIG_COUNT; i++) {
+		if(RUNTIME_CONFIGS[i] == config_field) {
 			configurable_field = true;
 			break;
 		}

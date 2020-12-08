@@ -16,13 +16,13 @@
 // Configuration parameters
 //-----------------------------------------------------------------------------
 
-#define CACHE_SIZE "CACHE_SIZE"
-#define ASYNC_DELETE "ASYNC_DELETE"
-#define THREAD_COUNT "THREAD_COUNT"
-#define RESULTSET_SIZE "RESULTSET_SIZE"
-#define OMP_THREAD_COUNT "OMP_THREAD_COUNT"
-#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT"
-#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
+#define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
+#define ASYNC_DELETE "ASYNC_DELETE" // whether graphs should be deleted asynchronously
+#define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
+#define RESULTSET_SIZE "RESULTSET_SIZE" // resultset size limit
+#define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
+#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
+#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
 
 //------------------------------------------------------------------------------
 // Configuration defaults
@@ -327,9 +327,9 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// OpenMP thread count
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// OpenMP thread count
+		//----------------------------------------------------------------------
 
 		case Config_OPENMP_NTHREAD:
 			{
@@ -340,9 +340,9 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// thread-pool size
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// thread-pool size
+		//----------------------------------------------------------------------
 
 		case Config_THREAD_POOL_SIZE:
 			{
@@ -353,9 +353,9 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// result-set size
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// result-set size
+		//----------------------------------------------------------------------
 
 		case Config_RESULTSET_MAX_SIZE:
 			{
@@ -366,9 +366,9 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// maintain transpose
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// maintain transpose
+		//----------------------------------------------------------------------
 
 		case Config_MAINTAIN_TRANSPOSE:
 			{
@@ -379,9 +379,9 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// virtual key entity count
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// virtual key entity count
+		//----------------------------------------------------------------------
 
 		case Config_VKEY_MAX_ENTITY_COUNT:
 			{
@@ -392,9 +392,9 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// async deleteion
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// async deleteion
+		//----------------------------------------------------------------------
 
 		case Config_ASYNC_DELETE:
 			{
@@ -405,13 +405,12 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-        //----------------------------------------------------------------------
-        // invalid option
-        //----------------------------------------------------------------------
+	    //----------------------------------------------------------------------
+	    // invalid option
+	    //----------------------------------------------------------------------
 
         default : 
-			ASSERT("invalid option field" && false);
-            return false;
+			return false;
     }
 
 	return true;
@@ -437,14 +436,14 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				uint64_t *cache_size = va_arg(ap, uint64_t*);
 				va_end(ap);
 
-				if(cache_size == NULL) return false;
+				ASSERT(cache_size != NULL);
 				(*cache_size) = Config_cache_size_get();
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// OpenMP thread count
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// OpenMP thread count
+		//----------------------------------------------------------------------
 
 		case Config_OPENMP_NTHREAD:
 			{
@@ -452,14 +451,14 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				uint *omp_nthreads = va_arg(ap, uint*);
 				va_end(ap);
 
-				if(omp_nthreads == NULL) return false;
+				ASSERT(omp_nthreads != NULL);
 				(*omp_nthreads) = Config_OMP_thread_count_get();
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// thread-pool size
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// thread-pool size
+		//----------------------------------------------------------------------
 
 		case Config_THREAD_POOL_SIZE:
 			{
@@ -467,14 +466,14 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				uint *pool_nthreads = va_arg(ap, uint*);
 				va_end(ap);
 
-				if(pool_nthreads == NULL) return false;
+				ASSERT(pool_nthreads != NULL);
 				(*pool_nthreads) = Config_thread_pool_size_get();
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// result-set size
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// result-set size
+		//----------------------------------------------------------------------
 
 		case Config_RESULTSET_MAX_SIZE:
 			{
@@ -482,14 +481,14 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				uint64_t *resultset_max_size = va_arg(ap, uint64_t*);
 				va_end(ap);
 
-				if(resultset_max_size == NULL) return false;
+				ASSERT(resultset_max_size != NULL);
 				(*resultset_max_size) = Config_resultset_max_size_get();
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// maintain transpose
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// maintain transpose
+		//----------------------------------------------------------------------
 
 		case Config_MAINTAIN_TRANSPOSE:
 			{
@@ -497,14 +496,14 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				bool *maintain_transpose = va_arg(ap, bool*);
 				va_end(ap);
 
-				if(maintain_transpose == NULL) return false;
+				ASSERT(maintain_transpose != NULL);
 				(*maintain_transpose) = Config_maintain_transpose_get();
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// virtual key entity count
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// virtual key entity count
+		//----------------------------------------------------------------------
 
 		case Config_VKEY_MAX_ENTITY_COUNT:
 			{
@@ -512,14 +511,14 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				uint64_t *vkey_max_entity_count = va_arg(ap, uint64_t*);
 				va_end(ap);
 
-				if(vkey_max_entity_count == NULL) return false;
+				ASSERT(vkey_max_entity_count != NULL);
 				(*vkey_max_entity_count) = Config_virtual_key_entity_count_get();
 			}
 			break;
 
-			//----------------------------------------------------------------------
-			// async deleteion
-			//----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// async deleteion
+		//----------------------------------------------------------------------
 
 		case Config_ASYNC_DELETE:
 			{
@@ -527,7 +526,7 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				bool *async_delete = va_arg(ap, bool*);
 				va_end(ap);
 
-				if(async_delete == NULL) return false;
+				ASSERT(async_delete != NULL);
 				(*async_delete) = Config_async_delete_get();
 			}
 			break;
@@ -538,7 +537,7 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
         default : 
 			ASSERT("invalid option field" && false);
-            return false;
+			return false;
     }
 
 	return true;

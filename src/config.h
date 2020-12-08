@@ -27,12 +27,16 @@ typedef enum {
 typedef struct {
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
 	uint64_t cache_size;               // The cache size for each thread, per graph.
-	uint thread_pool_size;              // Thread count for thread pool.
-	uint omp_thread_count;              // Maximum number of OpenMP threads.
+	uint thread_pool_size;             // Thread count for thread pool.
+	uint omp_thread_count;             // Maximum number of OpenMP threads.
 	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 } RG_Config;
+
+// Run-time configurable fields
+#define RUNTIME_CONFIG_COUNT 1
+static const Config_Option_Field RUNTIME_CONFIGS[] = { Config_RESULTSET_MAX_SIZE };
 
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
