@@ -437,7 +437,8 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 
 	GrB_Index n = nrows ;
 
-	int nthreads = Config_GetOMPThreadCount();
+	int nthreads;
+	Config_Option_get(Config_OPENMP_NTHREAD, &nthreads);
 	nthreads = LAGRAPH_MIN(n / 4096, nthreads) ;
 	nthreads = LAGRAPH_MAX(nthreads, 1) ;
 

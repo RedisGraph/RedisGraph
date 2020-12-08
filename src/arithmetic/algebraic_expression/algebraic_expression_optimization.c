@@ -536,10 +536,11 @@ void AlgebraicExpression_Optimize
 	_AlgebraicExpression_PopulateOperands(*exp, QueryCtx_GetGraphCtx());
 
 	// If we are maintaining transposed matrices, all transpose operations have already been replaced.
-	if(Config_MaintainTranspose() == false) {
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+	if(maintain_transpose == false) {
 		// Replace transpose operators with actual transposed operands.
 		_AlgebraicExpression_ApplyTranspose(*exp);
 	}
-
 }
 
