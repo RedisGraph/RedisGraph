@@ -265,7 +265,9 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 	case AL_OPERATION:
 		child_count = AlgebraicExpression_ChildCount(root);
 		// If we are maintaining transposed matrices, it can be retrieved now.
-		if(root->operation.op == AL_EXP_TRANSPOSE && Config_MaintainTranspose()) {
+		bool maintain_transpose = false;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+		if(root->operation.op == AL_EXP_TRANSPOSE && maintain_transpose) {
 			ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
 			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
 			// Fetch the transposed matrix and update the operand.
