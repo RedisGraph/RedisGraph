@@ -36,12 +36,20 @@ extern RG_Config config; // global module configuration
 // config value parsing
 //------------------------------------------------------------------------------
 
+// parse integer
+// return true if string represents an integer
+static inline bool _Config_ParseInteger(RedisModuleString *integer_str, long long *value) {
+	int res = RedisModule_StringToLongLong(integer_str, value);
+	// Return an error code if integer parsing fails or value is not positive.
+	return (res == REDISMODULE_OK);
+}
+
 // parse positive integer
 // return true if string represents a positive integer > 0
 static inline bool _Config_ParsePositiveInteger(RedisModuleString *integer_str, long long *value) {
-	int res = RedisModule_StringToLongLong(integer_str, value);
+	bool res = _Config_ParseInteger(integer_str, value);
 	// Return an error code if integer parsing fails or value is not positive.
-	return (res == REDISMODULE_OK && *value > 0);
+	return (res == true && *value > 0);
 }
 
 // return true if 'rm_str' is either "yes" or "no" otherwise returns false
@@ -143,8 +151,9 @@ bool Config_async_delete_get(void) {
 // result-set max size
 //------------------------------------------------------------------------------
 
-void Config_resultset_max_size_set(uint64_t max_size) {
-	config.resultset_size = max_size;
+void Config_resultset_max_size_set(int64_t max_size) {
+	if(max_size < 0) config.resultset_size = RESULTSET_SIZE_UNLIMITED;
+	else config.resultset_size = max_size;
 }
 
 uint64_t Config_resultset_max_size_get(void) {
@@ -152,25 +161,27 @@ uint64_t Config_resultset_max_size_get(void) {
 }
 
 bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
-	ASSERT(field != NULL);
 	ASSERT(field_str != NULL);
 
+	Config_Option_Field f;
+
 	if(!strcasecmp(field_str, THREAD_COUNT)) {
-		*field = Config_THREAD_POOL_SIZE;
+		f = Config_THREAD_POOL_SIZE;
 	} else if(!strcasecmp(field_str, OMP_THREAD_COUNT)) {
-		*field = Config_OPENMP_NTHREAD;
+		f = Config_OPENMP_NTHREAD;
 	} else if(!strcasecmp(field_str, VKEY_MAX_ENTITY_COUNT)) {
-		*field = Config_VKEY_MAX_ENTITY_COUNT;
+		f = Config_VKEY_MAX_ENTITY_COUNT;
 	} else if(!strcasecmp(field_str, MAINTAIN_TRANSPOSED_MATRICES)) {
-		*field = Config_MAINTAIN_TRANSPOSE;
+		f = Config_MAINTAIN_TRANSPOSE;
 	} else if(!(strcasecmp(field_str, CACHE_SIZE))) {
-		*field = Config_CACHE_SIZE;
+		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
-		*field = Config_RESULTSET_MAX_SIZE;
+		f = Config_RESULTSET_MAX_SIZE;
 	} else {
 		return false;
 	}
 
+	if(field) *field = f;
 	return true;
 }
 
@@ -223,11 +234,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		return REDISMODULE_ERR;
 	}
 
-	long long v;                    // config value
-	int res = REDISMODULE_OK;       // return value
-	const char *invalid_arg = NULL; // error message
-
-	for(int cur = 0; cur < argc; cur += 2) {
+	for(int i = 0; i < argc; i += 2) {
 		// Each configuration is a key-value pair. (K, V)
 
 		//----------------------------------------------------------------------
@@ -235,8 +242,8 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		//----------------------------------------------------------------------
 
 		Config_Option_Field field;
-		const char *field_str = RedisModule_StringPtrLen(argv[cur], NULL);
-		RedisModuleString *val = argv[cur + 1];
+		RedisModuleString *val = argv[i + 1];
+		const char *field_str = RedisModule_StringPtrLen(argv[i], NULL);
 
 		// exit if configuration is not aware of field
 		if(!Config_Contains_field(field_str, &field)) {
@@ -245,196 +252,21 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			return REDISMODULE_ERR;
 		}
 
-		switch(field) {
-
-			//------------------------------------------------------------------
-			// cache size
-			//------------------------------------------------------------------
-
-			case Config_CACHE_SIZE:
-				if(!_Config_ParsePositiveInteger(val, &v)) {
-					invalid_arg = RedisModule_StringPtrLen(val, NULL);
-
-					RedisModule_Log(ctx, "warning",
-							"Could not parse cache size argument '%s' as an integer",
-							invalid_arg);
-
-					return REDISMODULE_ERR;
-				}
-
-				res = Config_Option_set(field, v);
-				ASSERT(res == 1);
-
-				// log the cache size
-				RedisModule_Log(ctx, "notice", "Cache size is set to %lld.", v);
-				break;
-
-			//------------------------------------------------------------------
-			// OpenMP thread count
-			//------------------------------------------------------------------
-			case Config_OPENMP_NTHREAD:
-				{
-					if(!_Config_ParsePositiveInteger(val, &v)) {
-						invalid_arg = RedisModule_StringPtrLen(val, NULL);
-
-						RedisModule_Log(ctx, "warning",
-								"Specified invalid maximum '%s' for OpenMP thread count",
-								invalid_arg);
-
-						return REDISMODULE_ERR;
-					}
-
-					res = Config_Option_set(field, v);
-					ASSERT(res == 1);
-
-					// log the OpenMP thread count
-					RedisModule_Log(ctx, "notice",
-							"OpenMP thread count set to %lld.", v);
-
-					break;
-				}
-
-			//------------------------------------------------------------------
-			// thread pool size
-			//------------------------------------------------------------------
-
-			case Config_THREAD_POOL_SIZE:
-				{
-					if(!_Config_ParsePositiveInteger(val, &v)) {
-						invalid_arg = RedisModule_StringPtrLen(val, NULL);
-
-						RedisModule_Log(ctx, "warning",
-								"Received invalid value '%s' as thread count argument",
-								invalid_arg);
-
-						return REDISMODULE_ERR;
-					}
-
-					if(v > INT_MAX) {
-						invalid_arg = RedisModule_StringPtrLen(val, NULL);
-
-						RedisModule_Log(ctx, "warning",
-								"Received invalid value '%s' as thread count argument",
-								invalid_arg);
-
-						return REDISMODULE_ERR;
-					}
-					// Emit notice but do not fail if the specified thread count is greater than the system's
-					// number of cores (which is already set as the default value).
-					if(v > config.thread_pool_size) {
-						RedisModule_Log(ctx, "notice",
-								"thread pool size: %lld greater then number of cores: %d.",
-								v, config.thread_pool_size);
-					}
-
-					res = Config_Option_set(field, v);
-					ASSERT(res == 1);
-
-					// log thread pool size
-					RedisModule_Log(ctx, "notice",
-							"thread pool size is set to %lld.", v);
-				}
-
-				break;
-
-			//------------------------------------------------------------------
-			// result-set max size
-			//------------------------------------------------------------------
-
-			case Config_RESULTSET_MAX_SIZE:
-				{
-					if(!_Config_ParsePositiveInteger(val, &v)) {
-						invalid_arg = RedisModule_StringPtrLen(val, NULL);
-
-						RedisModule_Log(ctx, "warning",
-								"Could not parse resultset size argument '%s' as an integer",
-								invalid_arg);
-
-						return REDISMODULE_ERR;
-					}
-
-					res = Config_Option_set(field, v);
-					ASSERT(res == 1);
-
-					// log the resultset size
-					RedisModule_Log(ctx, "notice",
-							"Resultset size is set to %lld.", v);
-				}
-
-				break;
-
-			//------------------------------------------------------------------
-			// maintain transpose matrices
-			//------------------------------------------------------------------
-
-			case Config_MAINTAIN_TRANSPOSE:
-				{
-					bool maintain_transpose;
-
-					// Exit with error if argument was not "yes" or "no".
-					if(!_Config_ParseYesNo(val, &maintain_transpose)) {
-						invalid_arg = RedisModule_StringPtrLen(val, NULL);
-
-						RedisModule_Log(ctx, "warning",
-								"Invalid argument '%s' for maintain_transposed_matrices, expected 'yes' or 'no'",
-								invalid_arg);
-
-						return REDISMODULE_ERR;
-					}
-
-					res = Config_Option_set(field, v);
-					ASSERT(res == 1);
-
-					if(maintain_transpose)
-						RedisModule_Log(ctx, "notice",
-								"Maintaining transposed copies of relationship matrices.");
-					else 
-						RedisModule_Log(ctx, "notice",
-								"Not maintaining transposed copies of relationship matrices.");
-				}
-				break;
-
-			//------------------------------------------------------------------
-			// virtual key element count
-			//------------------------------------------------------------------
-
-			case Config_VKEY_MAX_ENTITY_COUNT:
-				{
-					if(!_Config_ParsePositiveInteger(val, &v)) {
-						invalid_arg = RedisModule_StringPtrLen(val, NULL);
-
-						RedisModule_Log(ctx, "warning",
-								"Could not parse virtual key size argument '%s' as an integer",
-								invalid_arg);
-
-						return REDISMODULE_ERR;
-					}
-
-					res = Config_Option_set(field, v);
-					ASSERT(res == 1);
-
-					// log the new entity threshold
-					RedisModule_Log(ctx, "notice",
-							"Max number of entities per graph meta key set to %lld.",
-							v);
-				}
-				break;
-
-			default:
-				ASSERT("Unknown configuration field" && false);
-				return REDISMODULE_ERR;
+		// exit if encountered an error when setting configuration
+		if(!Config_Option_set(field, val)) {
+			RedisModule_Log(ctx, "warning",
+					"Failed setting field '%s'", field_str);
+			return REDISMODULE_ERR;
 		}
 	}
 
-	return res;
+	return REDISMODULE_OK;
 }
 
-int Config_Option_set(Config_Option_Field field, ...) {
+bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 	//--------------------------------------------------------------------------
 	// set the option
 	//--------------------------------------------------------------------------
-
-	va_list ap;
 
 	switch (field)
 	{
@@ -444,11 +276,8 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
 		case Config_CACHE_SIZE:
 			{
-				va_start(ap, field);
-				uint64_t cache_size = va_arg(ap, uint64_t);
-				va_end(ap);
-
-				// TODO: validate cache_size
+				long long cache_size;
+				if(!_Config_ParsePositiveInteger(val, &cache_size)) return false;
 				Config_cache_size_set(cache_size);
 			}
 			break;
@@ -459,9 +288,8 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
 		case Config_OPENMP_NTHREAD:
 			{
-				va_start(ap, field);
-				uint omp_nthreads = va_arg(ap, uint);
-				va_end(ap);
+				long long omp_nthreads;
+				if(!_Config_ParsePositiveInteger(val, &omp_nthreads)) return false;
 
 				Config_OMP_thread_count_set(omp_nthreads);
 			}
@@ -473,12 +301,10 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
 		case Config_THREAD_POOL_SIZE:
 			{
-				va_start(ap, field);
-				uint *pool_nthreads = va_arg(ap, uint*);
-				va_end(ap);
+				long long pool_nthreads;
+				if(!_Config_ParsePositiveInteger(val, &pool_nthreads)) return false;
 
-				if(pool_nthreads == NULL) return 0;
-				(*pool_nthreads) = Config_thread_pool_size_get();
+				Config_thread_pool_size_set(pool_nthreads);
 			}
 			break;
 
@@ -488,12 +314,10 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
 		case Config_RESULTSET_MAX_SIZE:
 			{
-				va_start(ap, field);
-				uint64_t *resultset_max_size = va_arg(ap, uint64_t*);
-				va_end(ap);
+				long long resultset_max_size;
+				if(!_Config_ParseInteger(val, &resultset_max_size)) return false;
 
-				if(resultset_max_size == NULL) return 0;
-				(*resultset_max_size) = Config_resultset_max_size_get();
+				Config_resultset_max_size_set(resultset_max_size);
 			}
 			break;
 
@@ -503,12 +327,10 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
 		case Config_MAINTAIN_TRANSPOSE:
 			{
-				va_start(ap, field);
-				bool *maintain_transpose = va_arg(ap, bool*);
-				va_end(ap);
+				bool maintain_transpose;
+				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
 
-				if(maintain_transpose == NULL) return 0;
-				(*maintain_transpose) = Config_maintain_transpose_get();
+				Config_maintain_transpose_set(maintain_transpose);
 			}
 			break;
 
@@ -518,12 +340,10 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
 		case Config_VKEY_MAX_ENTITY_COUNT:
 			{
-				va_start(ap, field);
-				uint64_t *vkey_max_entity_count = va_arg(ap, uint64_t*);
-				va_end(ap);
+				long long vkey_max_entity_count;
+				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
 
-				if(vkey_max_entity_count == NULL) return 0;
-				(*vkey_max_entity_count) = Config_virtual_key_entity_count_get();
+				Config_virtual_key_entity_count_set(vkey_max_entity_count);
 			}
 			break;
 
@@ -533,12 +353,10 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
 		case Config_ASYNC_DELETE:
 			{
-				va_start(ap, field);
-				bool *async_delete = va_arg(ap, bool*);
-				va_end(ap);
+				bool async_delete;
+				if(!_Config_ParseYesNo(val, &async_delete)) return false;
 
-				if(async_delete == NULL) return 0;
-				(*async_delete) = Config_async_delete_get();
+				Config_async_delete_set(async_delete);
 			}
 			break;
 
@@ -548,10 +366,10 @@ int Config_Option_set(Config_Option_Field field, ...) {
 
         default : 
 			ASSERT("invalid option field" && false);
-            return 0;
+            return false;
     }
 
-	return 1;
+	return true;
 }
 
 int Config_Option_get(Config_Option_Field field, ...) {

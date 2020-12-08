@@ -37,7 +37,11 @@ typedef struct {
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 
-int Config_Option_set(Config_Option_Field field, ...);
+// returns true if 'field_str' reffers to a configuration field and sets
+// 'field' accordingly
+bool Config_Contains_field(const char *field_str, Config_Option_Field *field);
+
+bool Config_Option_set(Config_Option_Field field, RedisModuleString *val);
 
 int Config_Option_get(Config_Option_Field field, ...);
 
