@@ -16,12 +16,13 @@
 // Configuration parameters
 //-----------------------------------------------------------------------------
 
-#define CACHE_SIZE "CACHE_SIZE"             // number of entries in cache
-#define THREAD_COUNT "THREAD_COUNT"         // number of threads in thread pool
-#define RESULTSET_SIZE "RESULTSET_SIZE"     // resultset size limit
-#define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // max number of OpenMP threads
-#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // max number of entities in each virtual key
-#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // whether the module should maintain transposed relationship matrices
+#define CACHE_SIZE "CACHE_SIZE"
+#define ASYNC_DELETE "ASYNC_DELETE"
+#define THREAD_COUNT "THREAD_COUNT"
+#define RESULTSET_SIZE "RESULTSET_SIZE"
+#define OMP_THREAD_COUNT "OMP_THREAD_COUNT"
+#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT"
+#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
 
 //------------------------------------------------------------------------------
 // Configuration defaults
@@ -183,6 +184,50 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 
 	if(field) *field = f;
 	return true;
+}
+
+const char *Config_Field_name(Config_Option_Field field) {
+	const char *name = NULL;
+	switch (field)
+	{
+		case Config_CACHE_SIZE:
+			name = CACHE_SIZE;
+			break;
+
+		case Config_OPENMP_NTHREAD:
+			name = OMP_THREAD_COUNT;
+			break;
+
+		case Config_THREAD_POOL_SIZE:
+			name = THREAD_COUNT;
+			break;
+
+		case Config_RESULTSET_MAX_SIZE:
+			name = RESULTSET_SIZE;
+			break;
+
+		case Config_MAINTAIN_TRANSPOSE:
+			name = MAINTAIN_TRANSPOSED_MATRICES;
+			break;
+
+		case Config_VKEY_MAX_ENTITY_COUNT:
+			name = VKEY_MAX_ENTITY_COUNT;
+			break;
+
+		case Config_ASYNC_DELETE:
+			name = ASYNC_DELETE;
+			break;
+
+        //----------------------------------------------------------------------
+        // invalid option
+        //----------------------------------------------------------------------
+
+        default :
+			ASSERT("invalid option field" && false);
+            break;
+    }
+
+	return name;
 }
 
 // Initialize every module-level configuration to its default value.
@@ -372,7 +417,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 	return true;
 }
 
-int Config_Option_get(Config_Option_Field field, ...) {
+bool Config_Option_get(Config_Option_Field field, ...) {
 
 	//--------------------------------------------------------------------------
 	// get the option
@@ -392,7 +437,7 @@ int Config_Option_get(Config_Option_Field field, ...) {
 				uint64_t *cache_size = va_arg(ap, uint64_t*);
 				va_end(ap);
 
-				if(cache_size == NULL) return 0;
+				if(cache_size == NULL) return false;
 				(*cache_size) = Config_cache_size_get();
 			}
 			break;
@@ -407,7 +452,7 @@ int Config_Option_get(Config_Option_Field field, ...) {
 				uint *omp_nthreads = va_arg(ap, uint*);
 				va_end(ap);
 
-				if(omp_nthreads == NULL) return 0;
+				if(omp_nthreads == NULL) return false;
 				(*omp_nthreads) = Config_OMP_thread_count_get();
 			}
 			break;
@@ -422,7 +467,7 @@ int Config_Option_get(Config_Option_Field field, ...) {
 				uint *pool_nthreads = va_arg(ap, uint*);
 				va_end(ap);
 
-				if(pool_nthreads == NULL) return 0;
+				if(pool_nthreads == NULL) return false;
 				(*pool_nthreads) = Config_thread_pool_size_get();
 			}
 			break;
@@ -437,7 +482,7 @@ int Config_Option_get(Config_Option_Field field, ...) {
 				uint64_t *resultset_max_size = va_arg(ap, uint64_t*);
 				va_end(ap);
 
-				if(resultset_max_size == NULL) return 0;
+				if(resultset_max_size == NULL) return false;
 				(*resultset_max_size) = Config_resultset_max_size_get();
 			}
 			break;
@@ -452,7 +497,7 @@ int Config_Option_get(Config_Option_Field field, ...) {
 				bool *maintain_transpose = va_arg(ap, bool*);
 				va_end(ap);
 
-				if(maintain_transpose == NULL) return 0;
+				if(maintain_transpose == NULL) return false;
 				(*maintain_transpose) = Config_maintain_transpose_get();
 			}
 			break;
@@ -467,7 +512,7 @@ int Config_Option_get(Config_Option_Field field, ...) {
 				uint64_t *vkey_max_entity_count = va_arg(ap, uint64_t*);
 				va_end(ap);
 
-				if(vkey_max_entity_count == NULL) return 0;
+				if(vkey_max_entity_count == NULL) return false;
 				(*vkey_max_entity_count) = Config_virtual_key_entity_count_get();
 			}
 			break;
@@ -482,7 +527,7 @@ int Config_Option_get(Config_Option_Field field, ...) {
 				bool *async_delete = va_arg(ap, bool*);
 				va_end(ap);
 
-				if(async_delete == NULL) return 0;
+				if(async_delete == NULL) return false;
 				(*async_delete) = Config_async_delete_get();
 			}
 			break;
@@ -493,9 +538,9 @@ int Config_Option_get(Config_Option_Field field, ...) {
 
         default : 
 			ASSERT("invalid option field" && false);
-            return 0;
+            return false;
     }
 
-	return 1;
+	return true;
 }
 

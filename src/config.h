@@ -19,7 +19,8 @@ typedef enum {
 	Config_THREAD_POOL_SIZE         = 3,  // number of threads in thread pool
 	Config_RESULTSET_MAX_SIZE       = 4,  // max number of records in result-set
 	Config_MAINTAIN_TRANSPOSE       = 5,  // maintain transpose matrices
-	Config_VKEY_MAX_ENTITY_COUNT    = 6   // max number of elements in vkey
+	Config_VKEY_MAX_ENTITY_COUNT    = 6,  // max number of elements in vkey
+	Config_END_MARKER               = 7
 } Config_Option_Field;
 
 // configuration object
@@ -41,7 +42,10 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 // 'field' accordingly
 bool Config_Contains_field(const char *field_str, Config_Option_Field *field);
 
+// returns field name
+const char *Config_Field_name(Config_Option_Field field);
+
 bool Config_Option_set(Config_Option_Field field, RedisModuleString *val);
 
-int Config_Option_get(Config_Option_Field field, ...);
+bool Config_Option_get(Config_Option_Field field, ...);
 
