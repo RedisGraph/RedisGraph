@@ -178,26 +178,6 @@ jobs:
             aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
             public-read --recursive --exclude "*" --include "*.zip"
 
-  run_automation:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
-    steps:
-      - setup-automation
-          name: Setup automation
-          command: |
-            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-            PIP=1 ./deps/readies/bin/getpy2
-            python2 -m pip install ./deps/readies/paella/requirements.txt
-      - run:
-          name: Run QA Automation
-          command: |
-            apt-get update &&
-            apt-get -y install curl &&
-            curl -k -u $QA_AUTOMATION_USERNAME:$QA_AUTOMATION_PASS -X POST
-            -H "Content-Type: application/json"
-            -d '{"service_id":"single_module_test_cycle", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.6.0", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"rhel7.5-x86_64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
-            https://qa-automation-center.redislabs.com/processes
-
   release_automation:
     docker:
       - image: redisfab/rmbuilder:6.0.9-x64-buster
