@@ -21,7 +21,7 @@ commands:
           command: |
             (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
             PIP=1 ./deps/readies/bin/getpy2
-            python2 -m pip install ./deps/readies/paella/requirements.txt
+            python2 -m pip install -r ./deps/readies/paella/requirements.txt
 
 jobs:
   build:
