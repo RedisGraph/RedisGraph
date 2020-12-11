@@ -339,7 +339,7 @@ void Register_AggFuncs() {
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	types = array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("sum", AGG_SUM, 2, 2, types, true, true);
+	func_desc = AR_FuncDescNew("sum", AGG_SUM, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_RegFunc(func_desc);
 
@@ -419,6 +419,6 @@ bool Aggregate_PerformsDistinct(AggregateCtx *ctx) {
 }
 
 SIValue Aggregate_GetResult(AggregateCtx *ctx) {
-	return SI_ShareValue(ctx->result);
+	return SI_TransferOwnership(&ctx->result);
 }
 

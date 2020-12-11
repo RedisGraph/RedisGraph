@@ -39,10 +39,10 @@ typedef enum {
 
 /* Op represents an operation applied to child args. */
 typedef struct {
-	AR_FuncDesc *f;                 /* Operation to perform on children. */
-	const char *func_name;          /* Name of function. */
-	int child_count;                /* Number of children. */
-	struct AR_ExpNode **children;   /* Child nodes. */
+	AR_FuncDesc *f;                 // Operation to perform on children
+	const char *func_name;          // Name of function
+	int child_count;                // Number of children
+	struct AR_ExpNode **children;   // Child nodes
 } AR_OpNode;
 
 // OperandNode represents either constant, parameter, or graph entity
@@ -102,6 +102,10 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 /* Evaluate aggregate functions in expression tree. */
 void AR_EXP_Aggregate(AR_ExpNode *root, const Record r);
 
+/* Reduce aggregation functions to their scalar values
+ * and evaluates the expression */
+SIValue AR_EXP_Finalize(AR_ExpNode *root, const Record r);
+
 //------------------------------------------------------------------------------
 // Utility functions
 //------------------------------------------------------------------------------
@@ -131,6 +135,9 @@ bool AR_EXP_IsConstant(const AR_ExpNode *exp);
 
 /* Returns true if an arithmetic expression node is a parameter. */
 bool AR_EXP_IsParameter(const AR_ExpNode *exp);
+
+/* Returns true if an arithmetic expression node is an operation. */
+bool AR_EXP_IsOperation(const AR_ExpNode *exp);
 
 /* Returns true if 'exp' represent attribute extraction
  * sets 'attr' to attribute name if provided. */

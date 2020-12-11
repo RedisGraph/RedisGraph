@@ -14,7 +14,6 @@ extern "C"
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/arithmetic/funcs.h"
-#include "../../src/execution_plan/record.h"
 #include "../../src/execution_plan/execution_plan.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/util/arr.h"
@@ -62,10 +61,8 @@ TEST_F(AggregateTest, CountTest) {
 	arExp = _exp_from_query(query);
 
 	int num_values = 5;
-	for(int i = 0; i < num_values; i++)
-		AR_EXP_Aggregate(arExp, NULL);
-	AR_Finalize(arExp->op.f);
-	result = AR_EXP_Evaluate(arExp, NULL);
+	for(int i = 0; i < num_values; i++) AR_EXP_Aggregate(arExp, NULL);
+	result = AR_EXP_Finalize(arExp, NULL);
 	ASSERT_EQ(result.longval, num_values);
 	AR_EXP_Free(arExp);
 }
@@ -97,8 +94,7 @@ TEST_F(AggregateTest, PartialCountTest) {
 			arExp->op.children[0] = arExpNULL;
 		AR_EXP_Aggregate(arExp, NULL);
 	}
-	AR_Finalize(arExp->op.f);
-	SIValue res = AR_EXP_Evaluate(arExp, NULL);
+	SIValue res = AR_EXP_Finalize(arExp, NULL);
 
 	// The counted result should be half the number of inserted entities,
 	// as the null values are ignored.
@@ -157,7 +153,7 @@ TEST_F(AggregateTest, PercentileContTest) {
 			perc->op.children[1] = test_percentiles[i];
 			AR_EXP_Aggregate(perc, NULL);
 		}
-		result = AR_EXP_Evaluate(perc, NULL);
+		result = AR_EXP_Finalize(perc, NULL);
 		ASSERT_EQ(result.doubleval, expected_values[i]);
 		AR_EXP_Free(perc);
 	}
@@ -189,8 +185,7 @@ TEST_F(AggregateTest, PercentileDiscTest) {
 			AR_EXP_Aggregate(perc, NULL);
 		}
 		// Reduce sorts the list and applies the percentile formula
-		AR_Finalize(perc->op.f);
-		SIValue res = AR_EXP_Evaluate(perc, NULL);
+		SIValue res = AR_EXP_Finalize(perc, NULL);
 		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], NULL);
 		ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
 		AR_EXP_Free(perc);
@@ -203,8 +198,7 @@ TEST_F(AggregateTest, StDevTest) {
 	AR_ExpNode *stdev = _exp_from_query("RETURN stDev(1)");
 	stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(5.1));
 	AR_EXP_Aggregate(stdev, NULL);
-	AR_Finalize(stdev->op.f);
-	SIValue result = AR_EXP_Evaluate(stdev, NULL);
+	SIValue result = AR_EXP_Finalize(stdev, NULL);
 	ASSERT_EQ(result.doubleval, 0);
 	AR_EXP_Free(stdev);
 
@@ -226,8 +220,7 @@ TEST_F(AggregateTest, StDevTest) {
 	double sample_variance = tmp_variance / 9;
 	double sample_result = sqrt(sample_variance);
 
-	AR_Finalize(stdev->op.f);
-	result = AR_EXP_Evaluate(stdev, NULL);
+	result = AR_EXP_Finalize(stdev, NULL);
 
 	ASSERT_EQ(result.doubleval, sample_result);
 	AR_EXP_Free(stdev);
@@ -244,8 +237,7 @@ TEST_F(AggregateTest, StDevTest) {
 	double pop_variance = tmp_variance / 10;
 	double pop_result = sqrt(pop_variance);
 
-	AR_Finalize(stdevp->op.f);
-	result = AR_EXP_Evaluate(stdevp, NULL);
+	result = AR_EXP_Finalize(stdevp, NULL);
 
 	ASSERT_EQ(result.doubleval, pop_result);
 	AR_EXP_Free(stdevp);
