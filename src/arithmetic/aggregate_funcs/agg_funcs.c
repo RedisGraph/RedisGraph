@@ -17,6 +17,9 @@
 
 #define ISLT(a,b) ((*a) < (*b))
 
+typedef SIValue AggregateResult;
+AggregateResult AGGREGATE_OK;
+
 // Routine for freeing a generic aggregate function context.
 void Aggregate_Free(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
@@ -42,45 +45,53 @@ static inline void Aggregate_SetResult(AggregateCtx *ctx, SIValue result) {
 	ctx->result = result;
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Sum
+//------------------------------------------------------------------------------
 
-void AGG_SUM(SIValue *argv, int argc) {
+AggregateResult AGG_SUM(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
 	// On the first invocation, initialize the context's value.
 	if(SI_TYPE(ctx->result) == T_NULL) ctx->result = SI_DoubleVal(0);
 
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// Update the total.
 	if(SI_TYPE(v) != T_NULL) ctx->result.doubleval += SI_GET_NUMERIC(v);
+
+	return AGGREGATE_OK;
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Avg
+//------------------------------------------------------------------------------
 
 typedef struct {
 	size_t count;
 	double total;
 } _agg_AvgCtx;
 
-void AGG_AVG(SIValue *argv, int argc) {
+AggregateResult AGG_AVG(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
 	// On the first invocation, initialize the context.
 	if(ctx->private_ctx == NULL) ctx->private_ctx = rm_calloc(1, sizeof(_agg_AvgCtx));
 
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 
 	_agg_AvgCtx *avg_ctx = ctx->private_ctx;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	avg_ctx->count ++;
 	avg_ctx->total += SI_GET_NUMERIC(v);
+
+	return AGGREGATE_OK;
 }
 
 void AvgFinalize(void *ctx_ptr) {
@@ -91,15 +102,17 @@ void AvgFinalize(void *ctx_ptr) {
 }
 
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Max
+//------------------------------------------------------------------------------
 
-void AGG_MAX(SIValue *argv, int argc) {
+AggregateResult AGG_MAX(SIValue *argv, int argc) {
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 	AggregateCtx *ctx = argv[1].ptrval;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// Update the result if the current element is greater.
 	int compared_null;
@@ -107,17 +120,21 @@ void AGG_MAX(SIValue *argv, int argc) {
 	   (compared_null == COMPARED_NULL)) {
 		ctx->result = v;
 	}
+
+	return AGGREGATE_OK;
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Min
+//------------------------------------------------------------------------------
 
-void AGG_MIN(SIValue *argv, int argc) {
+AggregateResult AGG_MIN(SIValue *argv, int argc) {
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 	AggregateCtx *ctx = argv[1].ptrval;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// Update the result if the current element is lesser.
 	int compared_null;
@@ -125,26 +142,34 @@ void AGG_MIN(SIValue *argv, int argc) {
 	   (compared_null == COMPARED_NULL)) {
 		ctx->result = v;
 	}
+
+	return AGGREGATE_OK;
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Count
+//------------------------------------------------------------------------------
 
-void AGG_COUNT(SIValue *argv, int argc) {
+AggregateResult AGG_COUNT(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
 	// On the first invocation, initialize the context's value.
 	if(SI_TYPE(ctx->result) == T_NULL) ctx->result = SI_LongVal(0);
 
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// Increment the result.
 	ctx->result.longval++;
+
+	return AGGREGATE_OK;
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Precentile
+//------------------------------------------------------------------------------
 
 typedef struct {
 	double percentile;
@@ -152,7 +177,7 @@ typedef struct {
 } _agg_PercCtx;
 
 // This function is agnostic as to percentile method
-void AGG_PERC(SIValue *argv, int argc) {
+AggregateResult AGG_PERC(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[2].ptrval;
 	_agg_PercCtx *perc_ctx = ctx->private_ctx;
 
@@ -171,14 +196,16 @@ void AGG_PERC(SIValue *argv, int argc) {
 	}
 
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	double n;
 	SIValue_ToDouble(&v, &n);
 	perc_ctx->values = array_append(perc_ctx->values, n);
+
+	return AGGREGATE_OK;
 }
 
 void PercDiscFinalize(void *ctx_ptr) {
@@ -242,14 +269,16 @@ void Percentile_Free(void *ctx_ptr) {
 	rm_free(ctx);
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Standard deviation
+//------------------------------------------------------------------------------
 
 typedef struct {
 	double *values;
 	double total;
 } _agg_StDevCtx;
 
-void AGG_STDEV(SIValue *argv, int argc) {
+AggregateResult AGG_STDEV(SIValue *argv, int argc) {
 	AggregateCtx *ctx = argv[1].ptrval;
 	_agg_StDevCtx *stdev_ctx = ctx->private_ctx;
 
@@ -261,15 +290,17 @@ void AGG_STDEV(SIValue *argv, int argc) {
 	}
 
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	double n;
 	SIValue_ToDouble(&v, &n);
 	stdev_ctx->values = array_append(stdev_ctx->values, n);
 	stdev_ctx->total += n;
+
+	return AGGREGATE_OK;
 }
 
 void StDevGenericFinalize(AggregateCtx *ctx, int is_sampled) {
@@ -313,35 +344,51 @@ void StDev_Free(void *ctx_ptr) {
 	rm_free(ctx);
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Collect
+//------------------------------------------------------------------------------
 
-void AGG_COLLECT(SIValue *argv, int argc) {
+AggregateResult AGG_COLLECT(SIValue *argv, int argc) {
 	// On the first invocation, initialize the context's value.
 	AggregateCtx *ctx = argv[1].ptrval;
 	if(SI_TYPE(ctx->result) == T_NULL) ctx->result = SI_Array(1);
 
 	SIValue v = argv[0];
-	if(SI_TYPE(v) == T_NULL) return;
+	if(SI_TYPE(v) == T_NULL) return AGGREGATE_OK;
 
 	// If we're uniquing inputs, return early if this value has already been seen.
-	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return;
+	if(ctx->hashSet && Set_Add(ctx->hashSet, v) == false) return AGGREGATE_OK;
 
 	// SIArray_Append will clone the added value, ensuring it can be
 	// safely accessed for the lifetime of the Collect context.
 	SIArray_Append(&ctx->result, v);
+
+	return AGGREGATE_OK;
 }
 
-//------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Function registration
+//------------------------------------------------------------------------------
 
 void Register_AggFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
+	AGGREGATE_OK = SI_NullVal();
+
+	//--------------------------------------------------------------------------
+	// Sum
+	//--------------------------------------------------------------------------
+
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	types = array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("sum", AGG_SUM, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_RegFunc(func_desc);
+
+	//--------------------------------------------------------------------------
+	// Avg
+	//--------------------------------------------------------------------------
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NULL | T_INT64 | T_DOUBLE);
@@ -351,12 +398,20 @@ void Register_AggFuncs() {
 	AR_SetFinalizeRoutine(func_desc, AvgFinalize);
 	AR_RegFunc(func_desc);
 
+	//--------------------------------------------------------------------------
+	// Max
+	//--------------------------------------------------------------------------
+
 	types = array_new(SIType, 2);
 	types = array_append(types, SI_ALL);
 	types = array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("max", AGG_MAX, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_RegFunc(func_desc);
+
+	//--------------------------------------------------------------------------
+	// Min
+	//--------------------------------------------------------------------------
 
 	types = array_new(SIType, 2);
 	types = array_append(types, SI_ALL);
@@ -365,12 +420,20 @@ void Register_AggFuncs() {
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_RegFunc(func_desc);
 
+	//--------------------------------------------------------------------------
+	// Count
+	//--------------------------------------------------------------------------
+
 	types = array_new(SIType, 2);
 	types = array_append(types, SI_ALL);
 	types = array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("count", AGG_COUNT, 2, 2, types, false, true);
 	AR_SetPrivateDataRoutines(func_desc, Aggregate_Free, Aggregate_Clone);
 	AR_RegFunc(func_desc);
+
+	//--------------------------------------------------------------------------
+	// Avg
+	//--------------------------------------------------------------------------
 
 	types = array_new(SIType, 3);
 	types = array_append(types, T_NULL | T_INT64 | T_DOUBLE);
@@ -390,6 +453,10 @@ void Register_AggFuncs() {
 	AR_SetFinalizeRoutine(func_desc, PercContFinalize);
 	AR_RegFunc(func_desc);
 
+	//--------------------------------------------------------------------------
+	// Standard deviation
+	//--------------------------------------------------------------------------
+
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NULL | T_INT64 | T_DOUBLE);
 	types = array_append(types, T_PTR);
@@ -405,6 +472,10 @@ void Register_AggFuncs() {
 	AR_SetPrivateDataRoutines(func_desc, StDev_Free, Aggregate_Clone);
 	AR_SetFinalizeRoutine(func_desc, StDevPFinalize);
 	AR_RegFunc(func_desc);
+
+	//--------------------------------------------------------------------------
+	// Collect
+	//--------------------------------------------------------------------------
 
 	types = array_new(SIType, 2);
 	types = array_append(types, SI_ALL);

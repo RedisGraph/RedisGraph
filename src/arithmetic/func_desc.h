@@ -14,9 +14,6 @@
 /* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
-/* AGG_Func - Function pointer to an aggregate function. */
-typedef void(*AGG_Func)(SIValue *argv, int argc);
-
 /* AR_Func_Finalize - Function pointer to a routine for computing an aggregate function's final value. */
 typedef void (*AR_Func_Finalize)(void *ctx);
 
@@ -26,23 +23,20 @@ typedef void (*AR_Func_Free)(void *ctx);
 typedef void *(*AR_Func_Clone)(void *orig);
 
 typedef struct {
+	AR_Func func;              // Function pointer to scalar function routine.
+	SIType *types;             // Types of arguments.
 	uint min_argc;             // Minimal number of arguments function expects
 	uint max_argc;             // Maximal number of arguments function expects
-	union {
-		AR_Func func;          // Function pointer to scalar function routine.
-		AGG_Func agg_func;     // Function pointer to aggregate function routine.
-	};
+	bool reducible;            // Can be reduced using static evaluation.
+	bool aggregate;            // True if the function is an aggregation.
 	void *privdata;            // [optional] Private data used in evaluating this function.
+	const char *name;          // Function name.
 	AR_Func_Free bfree;        // [optional] Function pointer to function cleanup routine.
 	AR_Func_Clone bclone;      // [optional] Function pointer to function clone routine.
 	AR_Func_Finalize finalize; // [optional] Function pointer to routine for finalizing aggregate value.
-	SIType *types;             // Types of arguments.
-	const char *name;          // Function name.
-	bool reducible;            // Can be reduced using static evaluation.
-	bool aggregate;            // True if the function is an aggregation.
 } AR_FuncDesc;
 
-AR_FuncDesc *AR_FuncDescNew(const char *name, void *func, uint min_argc, uint max_argc,
+AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint max_argc,
 							SIType *types, bool reducible, bool aggregate);
 
 /* Register arithmetic function to repository. */

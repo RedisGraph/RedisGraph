@@ -17,6 +17,8 @@ typedef struct {
 
 void Register_AggFuncs(void);
 
-/* Check to see if the function operates on distinct results. */
+// check to see if the function operates on distinct results
 bool Aggregate_PerformsDistinct(AggregateCtx *ctx);
+
 SIValue Aggregate_GetResult(AggregateCtx *ctx);
+

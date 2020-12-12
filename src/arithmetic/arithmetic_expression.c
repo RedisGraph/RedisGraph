@@ -317,17 +317,14 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node,
 	}
 
 	// Evaluate self.
-	if(AGGREGATION_NODE(node)) {
-		node->op.f->agg_func(sub_trees, child_count);
-	} else {
-		*result = node->op.f->func(sub_trees, child_count);
-		if(SIValue_IsNull(*result) && ErrorCtx_EncounteredError()) {
-			/* An error was encountered while evaluating this function,
-			 * and has already been set in the QueryCtx.
-			 * Exit with an error. */
-			res = EVAL_ERR;
-		}
+	SIValue v = node->op.f->func(sub_trees, child_count);
+	if(SIValue_IsNull(v) && ErrorCtx_EncounteredError()) {
+		/* An error was encountered while evaluating this function,
+		 * and has already been set in the QueryCtx.
+		 * Exit with an error. */
+		res = EVAL_ERR;
 	}
+	if(result) *result = v;
 
 cleanup:
 	_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);

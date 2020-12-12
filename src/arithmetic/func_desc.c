@@ -11,38 +11,29 @@
 #include "../../deps/rax/rax.h"
 #include <ctype.h>
 
-/* Arithmetic function repository. */
+// Arithmetic function repository
 rax *__aeRegisteredFuncs = NULL;
-rax *__aggFuncs = NULL;
 
-AR_FuncDesc *AR_FuncDescNew(const char *name, void *func, uint min_argc, uint max_argc,
+AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint max_argc,
 							SIType *types, bool reducible, bool aggregate) {
 	AR_FuncDesc *desc = rm_malloc(sizeof(AR_FuncDesc));
-	desc->name = name;
-	if(aggregate) {
-		desc->agg_func = func;
 
-		char lower_func_name[32];
-		size_t lower_func_name_len = 32;
-		str_tolower(name, lower_func_name, &lower_func_name_len);
-		raxInsert(__aggFuncs, (unsigned char *)lower_func_name, lower_func_name_len, NULL, NULL);
-		desc->aggregate = true;
-	} else {
-		desc->func = func;
-		desc->aggregate = false;
-	}
+	desc->name = name;
+	desc->func = func;
 	desc->bfree = NULL;
 	desc->bclone = NULL;
+	desc->types = types;
 	desc->finalize = NULL;
 	desc->privdata = NULL;
 	desc->min_argc = min_argc;
 	desc->max_argc = max_argc;
-	desc->types = types;
+	desc->aggregate = aggregate;
 	desc->reducible = reducible;
+
 	return desc;
 }
 
-/* Register an arithmetic function. */
+// register an arithmetic function
 void AR_RegFunc(AR_FuncDesc *func) {
 	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
@@ -52,15 +43,14 @@ void AR_RegFunc(AR_FuncDesc *func) {
 	ASSERT(res == 1);
 }
 
-/* Get arithmetic function. */
+// get arithmetic function
 AR_FuncDesc *AR_GetFunc(const char *func_name) {
 	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
 	str_tolower(func_name, lower_func_name, &lower_func_name_len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
 
-	if(f != raxNotFound) return f;
-	return NULL;
+	return (f != raxNotFound) ? f : NULL;
 }
 
 bool AR_FuncExists(const char *func_name) {
@@ -68,12 +58,8 @@ bool AR_FuncExists(const char *func_name) {
 }
 
 bool AR_FuncIsAggregate(const char *func_name) {
-	char lower_func_name[32];
-	size_t lower_func_name_len = 32;
-	str_tolower(func_name, lower_func_name, &lower_func_name_len);
-	void *f = raxFind(__aggFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
-	if(f != raxNotFound) return true;
-	return false;
+	AR_FuncDesc *f = AR_GetFunc(func_name);
+	return (f != NULL) ? f->aggregate : false;
 }
 
 inline void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree,
