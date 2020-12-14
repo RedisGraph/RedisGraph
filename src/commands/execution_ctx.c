@@ -5,6 +5,7 @@
 */
 
 #include "execution_ctx.h"
+#include "RG.h"
 #include "../query_ctx.h"
 #include "../execution_plan/execution_plan_clone.h"
 
@@ -19,21 +20,26 @@ static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan,
   		ExecutionType exec_type) {
 	ExecutionCtx *exec_ctx = rm_malloc(sizeof(ExecutionCtx));
-	exec_ctx->ast = ast;
-	exec_ctx->plan = plan;
+
+	exec_ctx->ast       = ast;
+	exec_ctx->plan      = plan;
+	exec_ctx->cached    = false;
 	exec_ctx->exec_type = exec_type;
-	exec_ctx->cached = false;
+
 	return exec_ctx;
 }
 
 ExecutionCtx *ExecutionCtx_Clone(ExecutionCtx *orig) {
 	ExecutionCtx *execution_ctx = rm_malloc(sizeof(ExecutionCtx));
-	execution_ctx->ast = AST_ShallowCopy(orig->ast);
-	// Set the AST copy in thread local storage.
-	QueryCtx_SetAST(execution_ctx->ast);
-	execution_ctx->plan = ExecutionPlan_Clone(orig->plan);
+
+	execution_ctx->ast       = AST_ShallowCopy(orig->ast);
+	execution_ctx->plan      = ExecutionPlan_Clone(orig->plan);
+	execution_ctx->cached    = orig->cached;
 	execution_ctx->exec_type = orig->exec_type;
-	execution_ctx->cached = orig->cached;
+
+	// set the AST copy in thread local storage
+	QueryCtx_SetAST(execution_ctx->ast);
+
 	return execution_ctx;
 }
 
@@ -54,15 +60,20 @@ static AST *_ExecutionCtx_ParseAST(const char *query_string,
 }
 
 ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
-	const char *query_string;
+	ASSERT(query != NULL);
+
 	ExecutionCtx *ret;
+	const char *query_string;
 
 	// Have an invalid ctx for errors.
-	ExecutionCtx *invalid_ctx = _ExecutionCtx_New(NULL, NULL, EXECUTION_TYPE_INVALID);
+	ExecutionCtx *invalid_ctx = _ExecutionCtx_New(NULL, NULL,
+			EXECUTION_TYPE_INVALID);
 
 	// Parse and validate parameters only. Extract query string.
 	// Return invalid execution context if there isn't a parser result.
-	cypher_parse_result_t *params_parse_result = parse_params(query, &query_string);
+	cypher_parse_result_t *params_parse_result = parse_params(query,
+			&query_string);
+
 	if(params_parse_result == NULL) return invalid_ctx;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -99,9 +110,10 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 }
 
 void ExecutionCtx_Free(ExecutionCtx *ctx) {
-	if(!ctx) return;
-	if(ctx->plan) ExecutionPlan_Free(ctx->plan);
-	if(ctx->ast) AST_Free(ctx->ast);
+	if(ctx == NULL) return;
+	if(ctx->plan != NULL) ExecutionPlan_Free(ctx->plan);
+	if(ctx->ast != NULL) AST_Free(ctx->ast);
 
 	rm_free(ctx);
 }
+

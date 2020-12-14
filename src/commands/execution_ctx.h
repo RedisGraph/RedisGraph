@@ -27,7 +27,6 @@ typedef struct {
 	bool cached;                // Indicate if this struct was returned from cache.
 	ExecutionPlan *plan;        // Execution plan relevant for the current execution context.
 	ExecutionType exec_type;
-
 } ExecutionCtx;
 
 /**
@@ -49,3 +48,4 @@ ExecutionCtx *ExecutionCtx_Clone(ExecutionCtx *ctx);
  * @param  *ctx: ExecutionCTX struct
  */
 void ExecutionCtx_Free(ExecutionCtx *ctx);
+

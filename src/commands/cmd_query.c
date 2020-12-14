@@ -73,11 +73,11 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 }
 
 void Graph_Query(void *args) {
-	bool lockAcquired = false;
-	ResultSet *result_set = NULL;
+	bool lockAcquired       = false;
+	ResultSet *result_set   = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
-	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
+	RedisModuleCtx *ctx     = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext *gc        = CommandCtx_GetGraphContext(command_ctx);
 
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
@@ -85,11 +85,11 @@ void Graph_Query(void *args) {
 	QueryCtx_BeginTimer(); // Start query timing.
 	/* Retrive the required execution items and information:
 	 * 1. AST
-	 * 2. Execution plan (if any)
+	 * 2. Execution plan
 	 * 3. Whether these items were cached or not */
-	AST *ast = NULL;
-	bool cached = false;
-	ExecutionPlan *plan = NULL;
+	AST *ast               = NULL;
+	bool cached            = false;
+	ExecutionPlan *plan    = NULL;
 	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
 	ast = exec_ctx->ast;
@@ -187,3 +187,4 @@ cleanup:
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
+

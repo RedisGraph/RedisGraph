@@ -54,27 +54,27 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	gc->ref_count = 0;      // No refences.
-	gc->index_count = 0;    // No indicies.
-	gc->version = 0;        // Initial graph version.
-
-	// Initialize the graph's matrices and datablock storage
-	gc->g = Graph_New(node_cap, edge_cap);
-	gc->graph_name = rm_strdup(graph_name);
-	// Allocate the default space for schemas and indices
-	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
-	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-
-	gc->string_mapping = array_new(char *, 64);
-	gc->attributes = raxNew();
-	gc->slowlog = SlowLog_New();
+	gc->version          = 0;  // initial graph version
+	gc->slowlog          = SlowLog_New();
+	gc->ref_count        = 0;  // no refences
+	gc->attributes       = raxNew();
+	gc->index_count      = 0;  // no indicies
+	gc->string_mapping   = array_new(char *, 64);
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
 
-	// Initialize the read-write lock to protect access to the attributes rax.
+	// initialize the graph's matrices and datablock storage
+	gc->g = Graph_New(node_cap, edge_cap);
+	gc->graph_name = rm_strdup(graph_name);
+
+	// allocate the default space for schemas and indices
+	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
+	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+
+	// initialize the read-write lock to protect access to the attributes rax
 	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
 
-	// Build the execution plans cache.
+	// build the execution plans cache
 	uint64_t cache_size = Config_GetCacheSize();
 	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
 	  	(CacheEntryCopyFunc)ExecutionCtx_Clone);
@@ -458,7 +458,7 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 
 // Return cache associated with graph context and current thread id.
 Cache *GraphContext_GetCache(const GraphContext *gc) {
-	assert(gc);
+	ASSERT(gc != NULL);
 
 	return gc->cache;
 }
@@ -476,7 +476,10 @@ static void _GraphContext_Free(void *arg) {
 	Graph_SetMatrixPolicy(gc->g, DISABLED);
 	Graph_Free(gc->g);
 
-	// Free all node schemas
+	//--------------------------------------------------------------------------
+	// Free node schemas
+	//--------------------------------------------------------------------------
+
 	if(gc->node_schemas) {
 		len = array_len(gc->node_schemas);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -485,7 +488,10 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->node_schemas);
 	}
 
-	// Free all relation schemas
+	//--------------------------------------------------------------------------
+	// Free relation schemas
+	//--------------------------------------------------------------------------
+
 	if(gc->relation_schemas) {
 		len = array_len(gc->relation_schemas);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -494,8 +500,12 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->relation_schemas);
 	}
 
+	//--------------------------------------------------------------------------
 	// Free attribute mappings
+	//--------------------------------------------------------------------------
+
 	if(gc->attributes) raxFree(gc->attributes);
+
 	if(gc->string_mapping) {
 		len = array_len(gc->string_mapping);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -503,11 +513,15 @@ static void _GraphContext_Free(void *arg) {
 		}
 		array_free(gc->string_mapping);
 	}
+
 	assert(pthread_rwlock_destroy(&gc->_attribute_rwlock) == 0);
 
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
+	//--------------------------------------------------------------------------
 	// Clear cache
+	//--------------------------------------------------------------------------
+
 	if(gc->cache) Cache_Free(gc->cache);
 
 	GraphEncodeContext_Free(gc->encoding_context);

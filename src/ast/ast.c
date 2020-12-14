@@ -480,26 +480,31 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
+
 	int ref_count = AST_DecRefCount(ast);
 
-	// Free and nullify parameters parse result if needed, after execution, as they are only save for the execution lifetime.
+	/* free and nullify parameters parse result if needed,
+	 * after execution, as they are only save for the execution lifetime */
 	if(ast->params_parse_result) {
 		parse_result_free(ast->params_parse_result);
 	}
 
-	// Check if the ast has additional copies.
+	// check if the ast has additional copies
 	if(ref_count == 0) {
-		// No valid references - the struct can be disposed completely.
-		if(ast->referenced_entities) raxFree(ast->referenced_entities);
+		// no valid references, the struct can be disposed completely
 		if(ast->free_root) {
-			// This is a generated AST, free its root node.
+			// this is a generated AST, free its root node
 			cypher_astnode_free((cypher_astnode_t *) ast->root);
 		} else {
-			// This is the master AST, free the annotation contexts that have been constructed.
+			/* this is the master AST,
+			 * free the annotation contexts that have been constructed */
 			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
 			raxFreeWithCallback(ast->canonical_entity_names, rm_free);
 			parse_result_free(ast->parse_result);
 		}
+
+		if(ast->referenced_entities) raxFree(ast->referenced_entities);
+
 		rm_free(ast->ref_count);
 	}
 
