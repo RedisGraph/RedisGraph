@@ -52,7 +52,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
             self.env.assertIn("Type mismatch", e.message)
-    
+
     def expect_error(self, query, expected_err_msg):
         try:
             graph.query(query)
@@ -299,3 +299,30 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [['a']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test15_aggregate_error_handling(self):
+        functions = ["avg",
+                     "collect",
+                     "count",
+                     "max",
+                     "min",
+                     "sum",
+                     "percentileDisc",
+                     "percentileCont",
+                     "stDev"]
+        # Test all functions for invalid argument counts.
+        for function in functions:
+            query = """UNWIND range(0, 10) AS val RETURN %s(val, val, val)""" % (function)
+            self.expect_error(query, "Received 3 arguments")
+
+        # Test numeric functions for invalid input types.
+        numeric_functions = ["avg",
+                             "sum",
+                             "stDev"]
+        for function in numeric_functions:
+            query = """UNWIND ['a', 'b', 'c'] AS val RETURN %s(val)""" % (function)
+            self.expect_type_error(query)
+
+        # Test invalid numeric input for percentile function.
+        query = """UNWIND range(0, 10) AS val RETURN percentileDisc(val, -1)"""
+        self.expect_error(query, "must be a number in the range 0.0 to 1.0")

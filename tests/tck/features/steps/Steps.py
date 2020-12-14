@@ -104,7 +104,7 @@ def step_impl(context):
 def step_impl(context):
     global exception
     assert exception != None
-    assert "ArgumentError" in exception.message
+    assert "ArgumentError" in exception.message or "Invalid input" in exception.message
 
 @then(u'a SyntaxError should be raised at compile time: InvalidAggregation')
 def step_impl(context):
