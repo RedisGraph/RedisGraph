@@ -21,25 +21,23 @@
 void Graph_Explain(void *args) {
 	bool lock_acquired = false;
 	CommandCtx *command_ctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
-	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
-	QueryCtx_SetGlobalExecutionCtx(command_ctx);
+	RedisModuleCtx *ctx     = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext *gc        = CommandCtx_GetGraphContext(command_ctx);
 
+	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_BeginTimer(); // Start query timing.
 
 	/* Retrieve the required execution items and information:
-	 * 1. AST
-	 * 2. Execution plan (if any)
-	 * 3. Whether these items were cached or not */
-	AST *ast = NULL;
+	 * 1. Execution plan
+	 * 2. Whether these items were cached or not */
 	bool cached = false;
 	ExecutionPlan *plan = NULL;
-	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
-	ExecutionType exec_type = exec_ctx.exec_type;
-	ast = exec_ctx.ast;
-	plan = exec_ctx.plan;
+	plan = exec_ctx->plan;
+	ExecutionType exec_type = exec_ctx->exec_type;
+
 	// See if there were any query compile time errors
 	if(ErrorCtx_EncounteredError()) {
 		ErrorCtx_EmitException();
@@ -64,9 +62,7 @@ void Graph_Explain(void *args) {
 
 cleanup:
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
-
-	AST_Free(ast);
-	ExecutionPlan_Free(plan);
+	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
