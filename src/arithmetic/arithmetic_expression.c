@@ -463,12 +463,12 @@ void _AR_EXP_Finalize(AR_ExpNode *root) {
 		// free node internals
 		_AR_EXP_FreeOpInternals(root);
 
-		// replcae root with constant node
+		// replace root with constant node
 		root->type             = AR_EXP_OPERAND;
 		root->operand.type     = AR_EXP_CONSTANT;
 		root->operand.constant = v;
 
-		// return, aggregation node should not contain sub aggregation nodes
+		// return, aggregation nodes cannot contain nested aggregation nodes
 		return;
 	}
 
@@ -554,7 +554,7 @@ bool inline AR_EXP_IsParameter(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
 }
 
-bool AR_EXP_IsOperation(const AR_ExpNode *exp) {
+bool inline AR_EXP_IsOperation(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OP;
 }
 

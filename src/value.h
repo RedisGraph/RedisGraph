@@ -115,9 +115,9 @@ SIValue SI_CloneValue(const SIValue v);
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
 SIValue SI_ConstValue(const SIValue v);
 
-// SI_TransferOwnership duplicates 'v'
-// in-case 'v' owned its underline value allocation
-// owership is transfered to duplicate and 'v' allocation is set to M_VOLATILE
+// SI_TransferOwnership duplicates 'v'.
+// If 'v' owned its underlying value allocation,
+// owership is transfered to the duplicate and 'v' allocation is set to M_VOLATILE.
 SIValue SI_TransferOwnership(SIValue *v);
 
 // SIValue_MakeVolatile updates an SIValue to mark that its allocations are shared rather than self-owned.

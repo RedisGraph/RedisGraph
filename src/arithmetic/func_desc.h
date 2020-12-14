@@ -23,7 +23,7 @@ typedef void (*AR_Func_Free)(void *ctx);
 typedef void *(*AR_Func_Clone)(void *orig);
 
 typedef struct {
-	AR_Func func;              // Function pointer to scalar function routine.
+	AR_Func func;              // Function pointer to scalar or aggregate function routine.
 	SIType *types;             // Types of arguments.
 	uint min_argc;             // Minimal number of arguments function expects
 	uint max_argc;             // Maximal number of arguments function expects

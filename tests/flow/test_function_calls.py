@@ -310,6 +310,19 @@ class testFunctionCallsFlow(FlowTestsBase):
                      "percentileDisc",
                      "percentileCont",
                      "stDev"]
+        # Test all functions for invalid argument counts.
         for function in functions:
             query = """UNWIND range(0, 10) AS val RETURN %s(val, val, val)""" % (function)
             self.expect_error(query, "Received 3 arguments")
+
+        # Test numeric functions for invalid input types.
+        numeric_functions = ["avg",
+                             "sum",
+                             "stDev"]
+        for function in numeric_functions:
+            query = """UNWIND ['a', 'b', 'c'] AS val RETURN %s(val)""" % (function)
+            self.expect_type_error(query)
+
+        # Test invalid numeric input for percentile function.
+        query = """UNWIND range(0, 10) AS val RETURN percentileDisc(val, -1)"""
+        self.expect_error(query, "must be a number in the range 0.0 to 1.0")

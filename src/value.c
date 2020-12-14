@@ -158,7 +158,7 @@ SIValue SI_ConstValue(const SIValue v) {
 	return dup;
 }
 
-// Clone 'v' and set v's allocation to volatile if 'v' owed the memory
+// Clone 'v' and set v's allocation to volatile if 'v' owned the memory
 SIValue SI_TransferOwnership(SIValue *v) {
 	SIValue dup = *v;
 	if(v->allocation == M_SELF) v->allocation = M_VOLATILE;
