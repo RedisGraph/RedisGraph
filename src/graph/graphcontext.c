@@ -78,7 +78,8 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
 
 	// build the execution plans cache
-	uint64_t cache_size = Config_GetCacheSize();
+	uint64_t cache_size;
+	Config_Option_get(Config_CACHE_SIZE, &cache_size);
 	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
 	  	(CacheEntryCopyFunc)ExecutionCtx_Clone);
 

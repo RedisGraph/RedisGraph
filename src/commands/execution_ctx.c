@@ -33,13 +33,13 @@ static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan,
 ExecutionCtx *ExecutionCtx_Clone(ExecutionCtx *orig) {
 	ExecutionCtx *execution_ctx = rm_malloc(sizeof(ExecutionCtx));
 
-	execution_ctx->ast       = AST_ShallowCopy(orig->ast);
+	execution_ctx->ast = AST_ShallowCopy(orig->ast);
+	// set the AST copy in thread local storage
+	QueryCtx_SetAST(execution_ctx->ast);
+
 	execution_ctx->plan      = ExecutionPlan_Clone(orig->plan);
 	execution_ctx->cached    = orig->cached;
 	execution_ctx->exec_type = orig->exec_type;
-
-	// set the AST copy in thread local storage
-	QueryCtx_SetAST(execution_ctx->ast);
 
 	return execution_ctx;
 }
