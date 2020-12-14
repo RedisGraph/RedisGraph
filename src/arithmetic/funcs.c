@@ -12,9 +12,11 @@
 extern rax *__aeRegisteredFuncs;
 
 void AR_RegisterFuncs() {
-	ASSERT(!__aeRegisteredFuncs);
+	ASSERT(__aeRegisteredFuncs == NULL);
 	__aeRegisteredFuncs = raxNew();
 
+	Register_AggFuncs();
+	Register_PathFuncs();
 	Register_ListFuncs();
 	Register_TimeFuncs();
 	Register_EntityFuncs();
@@ -23,7 +25,6 @@ void AR_RegisterFuncs() {
 	Register_BooleanFuncs();
 	Register_ConditionalFuncs();
 	Register_ComprehensionFuncs();
-	Register_PathFuncs();
 	Register_PlaceholderFuncs();
 }
 

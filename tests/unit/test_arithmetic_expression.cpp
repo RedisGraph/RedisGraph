@@ -16,8 +16,6 @@ extern "C"
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/graph/entities/node.h"
-#include "../../src/arithmetic/agg_funcs.h"
-#include "../../src/execution_plan/record.h"
 #include "../../src/execution_plan/execution_plan.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
@@ -42,7 +40,6 @@ class ArithmeticTest: public ::testing::Test {
 
 		// Register functions
 		AR_RegisterFuncs();
-		Agg_RegisterFuncs();
 	}
 
 	static void TearDownTestCase() {
@@ -56,7 +53,7 @@ void _test_string(const AR_ExpNode *exp, const char *expected) {
 	free(str);
 }
 
-void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
+void _test_ar_func(AR_ExpNode *root, SIValue expected) {
 	SIValue res = AR_EXP_Evaluate(root, NULL);
 	if(SI_TYPE(res) == T_NULL && SI_TYPE(expected) == T_NULL) {
 		// NULLs implicitly match
@@ -251,8 +248,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	AR_EXP_Reduce(arExp);
-	result = AR_EXP_Evaluate(arExp, NULL);
+	result = AR_EXP_Finalize(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 3);
 	AR_EXP_Free(arExp);
 
@@ -262,11 +258,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Aggregate(arExp, NULL);
-	AR_EXP_Reduce(arExp);
-	/* Just for the kick of it, call reduce more than once.*/
-	AR_EXP_Reduce(arExp);
-
-	result = AR_EXP_Evaluate(arExp, NULL);
+	result = AR_EXP_Finalize(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 5);
 	AR_EXP_Free(arExp);
 }
@@ -279,28 +271,28 @@ TEST_F(ArithmeticTest, AbsTest) {
 	query = "RETURN ABS(1)";
 	arExp = _exp_from_query(query);
 	SIValue expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* ABS(-1) */
 	query = "RETURN ABS(-1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* ABS(0) */
 	query = "RETURN ABS(0)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(0);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* ABS() */
 	query = "RETURN ABS(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 }
 
@@ -313,28 +305,28 @@ TEST_F(ArithmeticTest, CeilTest) {
 	query = "RETURN CEIL(0.5)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* CEIL(1) */
 	query = "RETURN CEIL(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* CEIL(0.1) */
 	query = "RETURN CEIL(0.1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* CEIL() */
 	query = "RETURN CEIL(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 }
 
@@ -347,28 +339,28 @@ TEST_F(ArithmeticTest, FloorTest) {
 	query = "RETURN FLOOR(0.5)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* FLOOR(1) */
 	query = "RETURN FLOOR(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* FLOOR(0.1) */
 	query = "RETURN FLOOR(0.1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* FLOOR() */
 	query = "RETURN FLOOR(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 }
 
@@ -381,35 +373,35 @@ TEST_F(ArithmeticTest, RoundTest) {
 	query = "RETURN ROUND(0)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* ROUND(0.49) */
 	query = "RETURN ROUND(0.49)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* ROUND(0.5) */
 	query = "RETURN ROUND(0.5)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* ROUND(1) */
 	query = "RETURN ROUND(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* ROUND() */
 	query = "RETURN ROUND(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 }
 
@@ -422,28 +414,28 @@ TEST_F(ArithmeticTest, SignTest) {
 	query = "RETURN SIGN(0)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(0);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* SIGN(-1) */
 	query = "RETURN SIGN(-1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(-1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* SIGN(1) */
 	query = "RETURN SIGN(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* SIGN() */
 	query = "RETURN SIGN(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 }
 
@@ -456,56 +448,56 @@ TEST_F(ArithmeticTest, ToIntegerTest) {
 	query = "RETURN toInteger(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* toInteger(1.1) */
 	query = "RETURN toInteger(1.1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* toInteger(1.9) */
 	query = "RETURN toInteger(1.9)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* toInteger('1') */
 	query = "RETURN toInteger('1')";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* toInteger('1.1') */
 	query = "RETURN toInteger('1.1')";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* toInteger('1.9') */
 	query = "RETURN toInteger('1.9')";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* toInteger('z') */
 	query = "RETURN toInteger('z')";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
 	/* toInteger(NULL) */
 	query = "RETURN toInteger(null)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, NULL);
+	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 }
 

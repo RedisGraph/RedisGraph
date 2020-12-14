@@ -12,7 +12,6 @@
 #include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../procedures/procedure.h"
-#include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -25,25 +24,31 @@ static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
 // Note each function call within given expression
 // Example: given the expression: "abs(max(min(a), abs(k)))"
 // referred_funcs will include: "abs", "max" and "min".
-static void _consume_function_call_expression(const cypher_astnode_t *expression,
+static void _consume_function_call_expression(const cypher_astnode_t *node,
 											  rax *referred_funcs) {
-	// Expression is an Apply or Apply All operator.
-	bool apply_all = (cypher_astnode_type(expression) == CYPHER_AST_APPLY_ALL_OPERATOR);
+	cypher_astnode_type_t type = cypher_astnode_type(node);
 
-	// Retrieve the function name and add to rax.
-	const cypher_astnode_t *func = (!apply_all) ? cypher_ast_apply_operator_get_func_name(expression) :
-								   cypher_ast_apply_all_operator_get_func_name(expression);
-	const char *func_name = cypher_ast_function_name_get_value(func);
-	raxInsert(referred_funcs, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+	if(type == CYPHER_AST_APPLY_OPERATOR ||
+	   type == CYPHER_AST_APPLY_ALL_OPERATOR) {
+		// Expression is an Apply or Apply All operator.
+		bool apply_all = (type == CYPHER_AST_APPLY_ALL_OPERATOR);
 
-	if(apply_all) return;  // Apply All operators have no arguments.
+		// Retrieve the function name and add to rax.
+		const cypher_astnode_t *func = (!apply_all) ?
+			cypher_ast_apply_operator_get_func_name(node) :
+			cypher_ast_apply_all_operator_get_func_name(node);
 
-	uint narguments = cypher_ast_apply_operator_narguments(expression);
-	for(int i = 0; i < narguments; i++) {
-		const cypher_astnode_t *child_exp = cypher_ast_apply_operator_get_argument(expression, i);
-		cypher_astnode_type_t child_exp_type = cypher_astnode_type(child_exp);
-		if(child_exp_type != CYPHER_AST_APPLY_OPERATOR) continue;
-		_consume_function_call_expression(child_exp, referred_funcs);
+		const char *func_name = cypher_ast_function_name_get_value(func);
+		raxInsert(referred_funcs, (unsigned char *)func_name, strlen(func_name),
+				NULL, NULL);
+
+		if(apply_all) return;  // Apply All operators have no arguments.
+	}
+
+	uint child_count = cypher_astnode_nchildren(node);
+	for(int i = 0; i < child_count; i++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
+		_consume_function_call_expression(child, referred_funcs);
 	}
 }
 
@@ -390,7 +395,7 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 		memcpy(funcName, it.key, len);
 		funcName[len] = 0;
 
-		if(Agg_FuncExists(funcName)) {
+		if(AR_FuncIsAggregate(funcName)) {
 			aggregated = true;
 			break;
 		}
