@@ -329,12 +329,9 @@ class testFunctionCallsFlow(FlowTestsBase):
 
     # startNode and endNode calls should return the appropriate nodes.
     def test16_edge_endpoints(self):
-        query = """MATCH (a)-[e]->() RETURN a.name, startNode(e).name"""
+        query = """MATCH (a)-[e]->(b) RETURN a.name, startNode(e).name, b.name, endNode(e).name"""
         actual_result = graph.query(query)
         for row in actual_result.result_set:
             self.env.assertEquals(row[0], row[1])
+            self.env.assertEquals(row[2], row[3])
 
-        query = """MATCH ()-[e]->(b) RETURN b.name, endNode(e).name"""
-        actual_result = graph.query(query)
-        for row in actual_result.result_set:
-            self.env.assertEquals(row[0], row[1])
