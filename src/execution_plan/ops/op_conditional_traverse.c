@@ -5,6 +5,7 @@
 */
 
 #include "op_conditional_traverse.h"
+#include "RG.h"
 #include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
@@ -87,7 +88,10 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	UNUSED(aware);
+	ASSERT(aware == true);
+
 	const char *dest = AlgebraicExpression_Destination(ae);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
 	// Check the QueryGraph node and retrieve label data if possible.
@@ -208,7 +212,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 }
 
 static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CONDITIONAL_TRAVERSE);
+	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	OpCondTraverse *op = (OpCondTraverse *)opBase;
 	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }

@@ -5,14 +5,15 @@
 */
 
 #include "module_event_handlers.h"
+#include "RG.h"
 #include <pthread.h>
-#include <assert.h>
 #include <stdbool.h>
 #include "graph/graphcontext.h"
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
 #include "config.h"
 #include "util/redis_version.h"
+#include "util/thpool/thpool.h"
 #include "util/uuid.h"
 
 // Global array tracking all extant GraphContexts.
@@ -23,6 +24,8 @@ extern bool process_is_child;
 extern RedisModuleType *GraphContextRedisModuleType;
 // Graph meta keys type as it is registered at Redis.
 extern RedisModuleType *GraphMetaRedisModuleType;
+// Module thread pool, defined in module.c
+extern threadpool _thpool;
 
 /* Both of the following fields are required to verify that the module is replicated
  * in a successful manner. In a sharded environment, there could be a race condition between the decoding of
@@ -76,9 +79,11 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 
 // Calculate how many virtual keys are needed to represent the graph.
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
-	uint64_t vkey_entity_count = Config_GetVirtualKeyEntityCount();
+	uint64_t vkey_entity_count;
+	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &vkey_entity_count);
+
 	// If no limitation, return 0. The graph can be encoded in a single key.
-	if(vkey_entity_count == UNLIMITED) return 0;
+	if(vkey_entity_count == VKEY_ENTITY_COUNT_UNLIMITED) return 0;
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) + Graph_DeletedNodeCount(
 								  gc->g) + Graph_DeletedEdgeCount(gc->g);
 	if(entities_count == 0) return 0;
@@ -200,11 +205,25 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, 
 	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, false);
 }
 
+// Perform clean-up upon server shutdown.
+static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
+		void *data) {
+	// Wait for all wokrer threads to exit.
+	// `thpool_destroy` will block for one second (at most)
+	// giving all worker threads a chance to exit.
+	// after which it will simply call `thread_destroy` and continue.
+	thpool_destroy(_thpool);
+
+	// Server is shutting down, finalize GraphBLAS.
+	GrB_finalize();
+}
+
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
 	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
 		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
 		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
+		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Shutdown, _ShutdownEventHandler);
 	}
 }
 
@@ -222,7 +241,8 @@ static void RG_AfterForkChild() {
 static void _RegisterForkHooks() {
 	/* Register handlers to control the behavior of fork calls.
 	 * Only the child process requires a handler, to prevent the acquisition of locks it doesn't own. */
-	assert(pthread_atfork(NULL, NULL, RG_AfterForkChild) == 0);
+	int res = pthread_atfork(NULL, NULL, RG_AfterForkChild);
+	ASSERT(res == 0);
 }
 
 static void _ModuleEventHandler_TryClearKeyspace(void) {

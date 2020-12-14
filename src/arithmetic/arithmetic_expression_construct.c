@@ -40,10 +40,10 @@ static bool _AR_EXP_ContainsNestedAgg(const AR_ExpNode *exp) {
 	return __AR_EXP_ContainsNestedAgg(exp, in_agg);
 }
 
-#define OP_COUNT 23
+#define OP_COUNT 24
 // The OpName array is strictly parallel with the AST_Operator enum.
 static const char *OpName[OP_COUNT] = {
-	"NULL", "OR", "XOR", "AND", "NOT", "EQ", "NEQ", "LT", "GT", "LE",  "GE",
+	"UNKNOWN", "NULL", "OR", "XOR", "AND", "NOT", "EQ", "NEQ", "LT", "GT", "LE",  "GE",
 	"ADD", "SUB", "MUL", "DIV", "MOD", "POW", "CONTAINS", "STARTS WITH",
 	"ENDS WITH", "IN", "IS NULL", "IS NOT NULL"
 };
@@ -137,7 +137,7 @@ static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
 	int64_t l = strtol(value_str, &endptr, 0);
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.
-		QueryCtx_SetError("Invalid numeric value '%s'", value_str);
+		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 	SIValue converted = SI_LongVal(l);
@@ -150,7 +150,7 @@ static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
 	double d = strtod(value_str, &endptr);
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.
-		QueryCtx_SetError("Invalid numeric value '%s'", value_str);
+		ErrorCtx_SetError("Invalid numeric value '%s'", value_str);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 	SIValue converted = SI_DoubleVal(d);
@@ -385,7 +385,7 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 		AST_ConvertFilters(&ctx->ft, predicate_node);
 	} else if(type != CYPHER_AST_LIST_COMPREHENSION) {
 		// Functions like any() and all() must have a predicate node.
-		QueryCtx_SetError("'%s' function requires a WHERE predicate", func_name);
+		ErrorCtx_SetError("'%s' function requires a WHERE predicate", func_name);
 		rm_free(ctx);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
@@ -494,7 +494,7 @@ AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	 * count(max(n.v)) */
 	if(_AR_EXP_ContainsNestedAgg(root)) {
 		// Set error (compile-time), this error will be raised later on.
-		QueryCtx_SetError("Can't use aggregate functions inside of aggregate functions.");
+		ErrorCtx_SetError("Can't use aggregate functions inside of aggregate functions.");
 	}
 
 	return root;

@@ -5,6 +5,7 @@
 */
 
 #include "cmd_profile.h"
+#include "../errors.h"
 #include "cmd_context.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -14,6 +15,7 @@
 #include "../execution_plan/execution_plan.h"
 
 void Graph_Profile(void *args) {
+  bool readonly           = true;
 	bool lockAcquired       = false;
 	ResultSet *result_set   = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
@@ -39,8 +41,8 @@ void Graph_Profile(void *args) {
 	ExecutionType exec_type = exec_ctx->exec_type;
 
 	// See if there were any query compile time errors
-	if(QueryCtx_EncounteredError()) {
-		QueryCtx_EmitException();
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 
@@ -52,7 +54,7 @@ void Graph_Profile(void *args) {
 		goto cleanup;
 	}
 
-	bool readonly = AST_ReadOnly(ast->root);
+	readonly = AST_ReadOnly(ast->root);
 
 	// Acquire the appropriate lock.
 	if(readonly) {
@@ -92,5 +94,5 @@ cleanup:
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	ErrorCtx_Clear();
 }
-

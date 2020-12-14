@@ -5,7 +5,9 @@
 */
 
 #include "resultset.h"
+#include "RG.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
@@ -84,13 +86,13 @@ void ResultSet_MapProjection(ResultSet *set, const Record r) {
 	for(uint i = 0; i < set->column_count; i++) {
 		const char *column = set->columns[i];
 		uint idx = Record_GetEntryIdx(r, column);
-		assert(idx != INVALID_INDEX);
+		ASSERT(idx != INVALID_INDEX);
 		set->columns_record_map[i] = idx;
 	}
 }
 
 static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
-	assert(set->recordCount == 0);
+	ASSERT(set->recordCount == 0);
 
 	// Prepare a response containing a header, records, and statistics
 	RedisModule_ReplyWithArray(set->ctx, 3);
@@ -105,7 +107,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 }
 
 static void _ResultSet_SetColumns(ResultSet *set) {
-	assert(!set->columns);
+	ASSERT(set->columns == NULL);
 
 	AST *ast = QueryCtx_GetAST();
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -149,6 +151,11 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	_ResultSet_SetColumns(set);
 
 	return set;
+}
+
+uint64_t ResultSet_RecordCount(const ResultSet *set) {
+	ASSERT(set != NULL);
+	return set->recordCount;
 }
 
 int ResultSet_AddRecord(ResultSet *set, Record r) {
@@ -204,7 +211,7 @@ void ResultSet_Reply(ResultSet *set) {
 		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
 	} else if(set->header_emitted == false && set->columns != NULL) {
-		assert(set->recordCount == 0);
+		ASSERT(set->recordCount == 0);
 		// Handle the edge case in which the query was intended to return results, but none were created.
 		_ResultSet_ReplyWithPreamble(set, NULL);
 		RedisModule_ReplySetArrayLength(set->ctx, 0);
@@ -215,7 +222,7 @@ void ResultSet_Reply(ResultSet *set) {
 
 	/* Check to see if we've encountered a run-time error.
 	 * If so, emit it as the last top-level response. */
-	if(QueryCtx_EncounteredError()) QueryCtx_EmitException();
+	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
 }
 

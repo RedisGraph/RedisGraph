@@ -53,7 +53,14 @@ bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t cl
 void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs);
 
 // Returns specified clause or NULL.
-const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
+// if 'clause_idx' is specified and requested clause type is found
+// 'clause_idx' is set to the index of the returned clause
+// otherwise 'clause_idx' isn't modified.
+const cypher_astnode_t *AST_GetClause(const AST *ast,
+		cypher_astnode_type_t clause_type, uint *clause_idx);
+
+// Return clause at position 'i'
+const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i);
 
 // Returns the indexes into the AST of all instances of the given clause.
 uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);

@@ -23,8 +23,8 @@ void _normalize_in_filter(FT_FilterNode *filter_tree) {
 	if(left_child->operand.type == AR_EXP_CONSTANT) {
 		// Swap!
 		AR_ExpNode *temp = left_child;
-		left_child = right_child;
-		right_child = temp;
+		filter_tree->exp.exp->op.children[0] = right_child;
+		filter_tree->exp.exp->op.children[1] = temp;
 	}
 }
 
@@ -51,7 +51,8 @@ void _normalize_filter(FT_FilterNode **filter) {
 		// NOP, expression already normalized
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 }
 
@@ -66,7 +67,7 @@ static inline bool _isInFilter(const FT_FilterNode *filter) {
 }
 
 static bool _validateInExpression(AR_ExpNode *exp) {
-	assert(exp->op.child_count == 2);
+	ASSERT(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
 	SIValue listValue = SI_NullVal();
@@ -125,7 +126,8 @@ bool _simple_predicates(FT_FilterNode *filter) {
 		res = (_simple_predicates(filter->cond.left) && _simple_predicates(filter->cond.right));
 		break;
 	default:
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 
 	return res;
@@ -198,7 +200,7 @@ RSQNode *_filterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 			node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
 			break;
 		default:
-			assert(false && "unexpected conditional operation");
+			ASSERT(false && "unexpected conditional operation");
 			break;
 		}
 		RediSearch_QueryNodeAddChild(U, node);
@@ -232,7 +234,8 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 			RediSearch_QueryNodeAddChild(node, right);
 			break;
 		default:
-			assert(false && "unexpected conditional operation");
+			ASSERT(false && "unexpected conditional operation");
+			break;
 		}
 		break;
 	}
@@ -263,10 +266,11 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
 				break;
 			case OP_NEQUAL: // !=
-				assert(false && "Index can't utilize the 'not equals' operation.");
+				ASSERT(false && "Index can't utilize the 'not equals' operation.");
 				break;
 			default:
-				assert(false && "unexpected operation");
+				ASSERT(false && "unexpected operation");
+				break;
 			}
 
 			RediSearch_QueryNodeAddChild(parent, node);
@@ -294,14 +298,16 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
 				break;
 			case OP_NEQUAL: // !=
-				assert(false && "Index can't utilize the 'not equals' operation.");
+				ASSERT(false && "Index can't utilize the 'not equals' operation.");
 				break;
 			default:
-				assert(false && "unexpected operation");
+				ASSERT(false && "unexpected operation");
+				break;
 			}
 			break;
 		default:
-			assert(false && "unexpected value type");
+			ASSERT(false && "unexpected value type");
+			break;
 		}
 
 		break;
@@ -311,7 +317,8 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		break;
 	}
 	default: {
-		assert("unknown filter tree node type");
+		ASSERT("unknown filter tree node type");
+		break;
 	}
 	}
 	return node;
@@ -427,7 +434,7 @@ void _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges, rax *n
 		}
 		StringRange_TightenRange(sr, op, c.stringval);
 	} else {
-		assert(false);
+		ASSERT(false);
 	}
 }
 

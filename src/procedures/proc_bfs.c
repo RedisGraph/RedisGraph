@@ -120,7 +120,9 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 		if(!s) return PROCEDURE_OK; // Failed to find schema, first step will return NULL.
 		bfs_ctx->reltype_id = s->id;
 		R = Graph_GetRelationMatrix(gc->g, s->id);
-		if(Config_MaintainTranspose()) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
+		bool maintain_transpose;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+		if(maintain_transpose) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
 		else TR = GrB_NULL;
 	}
 
@@ -253,8 +255,8 @@ ProcedureCtx *Proc_BFS_Ctx() {
 
 	// Declare possible outputs.
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
-	ProcedureOutput out_nodes = {name: "nodes", type: T_ARRAY};
-	ProcedureOutput out_edges = {name: "edges", type: T_ARRAY};
+	ProcedureOutput out_nodes = {.name = "nodes", .type = T_ARRAY};
+	ProcedureOutput out_edges = {.name = "edges", .type = T_ARRAY};
 	outputs = array_append(outputs, out_nodes);
 	outputs = array_append(outputs, out_edges);
 

@@ -1,10 +1,15 @@
+/*
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include "cmd_context.h"
-#include "../RG.h"
+#include "RG.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
 #include "../slow_log/slow_log.h"
-#include <assert.h>
 
 extern threadpool _thpool; // Declared in module.c
 
@@ -85,32 +90,32 @@ void CommandCtx_UntrackCtx(CommandCtx *ctx) {
 }
 
 RedisModuleCtx *CommandCtx_GetRedisCtx(CommandCtx *command_ctx) {
-	assert(command_ctx);
+	ASSERT(command_ctx != NULL);
 	// Either we already have a context or block client is set.
 	if(command_ctx->ctx) return command_ctx->ctx;
 
-	assert(command_ctx->bc);
+	ASSERT(command_ctx->bc != NULL);
 	command_ctx->ctx = RedisModule_GetThreadSafeContext(command_ctx->bc);
 	return command_ctx->ctx;
 }
 
 RedisModuleBlockedClient *CommandCtx_GetBlockingClient(const CommandCtx *command_ctx) {
-	assert(command_ctx);
+	ASSERT(command_ctx != NULL);
 	return command_ctx->bc;
 }
 
 GraphContext *CommandCtx_GetGraphContext(const CommandCtx *command_ctx) {
-	assert(command_ctx);
+	ASSERT(command_ctx != NULL);
 	return command_ctx->graph_ctx;
 }
 
 const char *CommandCtx_GetCommandName(const CommandCtx *command_ctx) {
-	assert(command_ctx);
+	ASSERT(command_ctx != NULL);
 	return command_ctx->command_name;
 }
 
 const char *CommandCtx_GetQuery(const CommandCtx *command_ctx) {
-	assert(command_ctx);
+	ASSERT(command_ctx != NULL);
 	return command_ctx->query;
 }
 
@@ -118,7 +123,7 @@ void CommandCtx_ThreadSafeContextLock(const CommandCtx *command_ctx) {
 	/* Acquire lock only when working with a blocked client
 	 * otherwise we're running on Redis main thread,
 	 * no need to acquire lock. */
-	assert(command_ctx && command_ctx->ctx);
+	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
 	if(command_ctx->bc) RedisModule_ThreadSafeContextLock(command_ctx->ctx);
 }
 
@@ -126,7 +131,7 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 	/* Release lock only when working with a blocked client
 	 * otherwise we're running on Redis main thread,
 	 * no need to release lock. */
-	assert(command_ctx && command_ctx->ctx);
+	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
 	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
 }
 

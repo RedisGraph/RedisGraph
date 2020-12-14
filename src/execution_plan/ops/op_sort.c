@@ -27,7 +27,7 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 		SIValue aVal = Record_Get(a, op->record_offsets[i]);
 		SIValue bVal = Record_Get(b, op->record_offsets[i]);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel == 0) continue;  	// Elements are equal; try next ORDER BY element.
+		if(rel == 0) continue;      // Elements are equal; try next ORDER BY element.
 		rel *= op->directions[i];   // Flip value for descending order.
 		return rel;
 	}
@@ -93,7 +93,8 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 	op->record_offsets = array_new(uint, comparison_count);
 	for(uint i = 0; i < comparison_count; i ++) {
 		int record_idx;
-		assert(OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx));
+		bool aware = OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx);
+		ASSERT(aware);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
@@ -183,7 +184,7 @@ static OpResult SortReset(OpBase *ctx) {
 }
 
 static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_SORT);
+	ASSERT(opBase->type == OPType_SORT);
 	OpSort *op = (OpSort *)opBase;
 	int *directions;
 	AR_ExpNode **exps;

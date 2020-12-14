@@ -5,7 +5,9 @@
 */
 
 #include "proc_fulltext_query.h"
+#include "RG.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../index/index.h"
@@ -62,13 +64,13 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 		/* RediSearch error message is allocated using `rm_strdup`
 		 * QueryCtx is expecting to free `error` using `free`
 		 * in which case we have no option but to clone error. */
-		QueryCtx_SetError("RediSearch: %s", err);
+		ErrorCtx_SetError("RediSearch: %s", err);
 		rm_free(err);
 		/* Raise the exception, we expect an exception handler to be set.
 		 * as procedure invocation is done at runtime. */
-		QueryCtx_RaiseRuntimeException();
+		ErrorCtx_RaiseRuntimeException(NULL);
 	}
-	assert(pdata->iter);
+	ASSERT(pdata->iter != NULL);
 
 	return PROCEDURE_OK;
 }
@@ -110,7 +112,7 @@ ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_FulltextQueryNodeGen() {
 	void *privateData = NULL;
 	ProcedureOutput *output = array_new(ProcedureOutput, 1);
-	ProcedureOutput out_node = {name: "node", type: T_NODE};
+	ProcedureOutput out_node = {.name = "node", .type = T_NODE};
 	output = array_append(output, out_node);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",

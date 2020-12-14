@@ -11,3 +11,4 @@
 GraphContext *RdbLoadGraphContext_v6(RedisModuleIO *rdb);
 void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc);
 Schema *RdbLoadSchema_v6(RedisModuleIO *rdb, SchemaType type);
+

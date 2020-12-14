@@ -11,7 +11,7 @@
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 bool IsAcyclicGraph(const QueryGraph *qg) {
-	assert(qg);
+	ASSERT(qg);
 
 	bool acyclic = true;
 
@@ -27,9 +27,10 @@ bool IsAcyclicGraph(const QueryGraph *qg) {
 	// Build matrix representation of query graph.
 	m = QueryGraph_MatrixRepresentation(qg);
 	res = GrB_Matrix_dup(&c, m);
-	assert(res == GrB_SUCCESS);
+	UNUSED(res);
+	ASSERT(res == GrB_SUCCESS);
 	res = GrB_Matrix_new(&t, GrB_BOOL, node_count, node_count);
-	assert(res == GrB_SUCCESS);
+	ASSERT(res == GrB_SUCCESS);
 
 	/* Perform traversals, stop when:
 	* 1. Node i manged to reach itself, x[i,i] is set (cycle detected).
@@ -37,19 +38,19 @@ bool IsAcyclicGraph(const QueryGraph *qg) {
 	for(uint i = 0; i < edge_count; i++) {
 		// c = c * m.
 		res = GrB_mxm(c, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, c, m, GrB_NULL);
-		assert(res == GrB_SUCCESS);
+		ASSERT(res == GrB_SUCCESS);
 
 		/*  Extract main diagonal of `c` into `t`.
 		 * Check if C[i,i] is set.
 		 * t = c<identity> */
 		res = GxB_Matrix_select(t, GrB_NULL, GrB_NULL, GxB_DIAG, c, GrB_NULL, GrB_NULL);
-		assert(res == GrB_SUCCESS);
+		ASSERT(res == GrB_SUCCESS);
 
 		/* How many entries are there in `t`?
 		 * if there are any entires in `t` this means node `k` was able to reach itself cycle! */
 		GrB_Index nvals = 0;
 		res = GrB_Matrix_nvals(&nvals, t);
-		assert(res == GrB_SUCCESS);
+		ASSERT(res == GrB_SUCCESS);
 		if(nvals != 0) {
 			acyclic = false;
 			break;

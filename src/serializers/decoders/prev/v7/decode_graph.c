@@ -91,7 +91,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
@@ -134,7 +134,7 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 			RdbLoadGraphSchema_v7(rdb, gc);
 			break;
 		default:
-			assert(false && "Unknown encoding");
+			ASSERT(false && "Unknown encoding");
 			break;
 		}
 	}

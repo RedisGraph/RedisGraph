@@ -4,14 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <stdio.h>
-#include <assert.h>
 #include "graph_entity.h"
-#include "../../query_ctx.h"
-#include "../../util/rmalloc.h"
-#include "../graphcontext.h"
 #include "node.h"
 #include "edge.h"
+#include "../../RG.h"
+#include "../../errors.h"
+#include "../../query_ctx.h"
+#include "../graphcontext.h"
+#include "../../util/rmalloc.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
@@ -48,6 +48,9 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 
 /* Add a new property to entity */
 SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
+	ASSERT(e);
+	if(SIValue_IsNull(value)) return NULL;
+
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
 	} else {
@@ -78,7 +81,7 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 
 // Updates existing property value.
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
-	assert(e);
+	ASSERT(e);
 
 	// Setting an attribute value to NULL removes that attribute.
 	if(SIValue_IsNull(value)) {
@@ -86,7 +89,7 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	}
 
 	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
-	assert(prop != PROPERTY_NOTFOUND);
+	ASSERT(prop != PROPERTY_NOTFOUND);
 	SIValue_Free(*prop);
 	*prop = SI_CloneValue(value);
 }
@@ -186,7 +189,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 		}
 
 		default:
-			assert(false);
+			ASSERT(false);
 		}
 	}
 
@@ -204,7 +207,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 }
 
 void FreeEntity(Entity *e) {
-	assert(e);
+	ASSERT(e);
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
 		rm_free(e->properties);

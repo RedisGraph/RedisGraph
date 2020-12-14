@@ -6,7 +6,6 @@
 
 #include "cmd_delete.h"
 
-#include <assert.h>
 #include "./cmd_context.h"
 #include "../graph/graph.h"
 #include "../graph/graphcontext.h"
@@ -39,7 +38,7 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	double t = QueryCtx_GetExecutionTime();
 	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	
+
 	// Delete commands should always modify slaves.
 	RedisModule_ReplicateVerbatim(ctx);
 
@@ -48,3 +47,4 @@ cleanup:
 	if(strElapsed) free(strElapsed);
 	return res;
 }
+

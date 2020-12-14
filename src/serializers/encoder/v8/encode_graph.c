@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v7.h"
+#include "encode_v8.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -14,40 +14,50 @@ static inline bool _shouldAcquireLocks(void) {
 	return !process_is_child;
 }
 
-static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
 	/* Header format:
 	 * Graph name
 	 * Node count
 	 * Edge count
 	 * Label matrix count
-	 * Relation matrix count
+	 * Relation matrix count - N
+	 * Does relationship Ri holds mutiple edges under a single entry X N 
 	 * Number of graph keys (graph context key + meta keys)
 	 */
 
+	ASSERT(ctx != NULL);
+
+	GraphEncodeHeader *header = &(ctx->header);
+
 	// Graph name.
-	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
+	RedisModule_SaveStringBuffer(rdb, header->graph_name, strlen(header->graph_name) + 1);
 
 	// Node count.
-	RedisModule_SaveUnsigned(rdb, Graph_NodeCount(gc->g));
+	RedisModule_SaveUnsigned(rdb, header->node_count);
 
 	// Edge count.
-	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(gc->g));
+	RedisModule_SaveUnsigned(rdb, header->edge_count);
 
-	// Label matrix count
-	RedisModule_SaveUnsigned(rdb, Graph_LabelTypeCount(gc->g));
+	// Label matrix count.
+	RedisModule_SaveUnsigned(rdb, header->label_matrix_count);
 
-	// Relation matrix count
-	RedisModule_SaveUnsigned(rdb, Graph_RelationTypeCount(gc->g));
+	// Relation matrix count.
+	RedisModule_SaveUnsigned(rdb, header->relationship_matrix_count);
 
-	// Number of keys
-	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetKeyCount(gc->encoding_context));
+	// Does relationship Ri holds mutiple edges under a single entry X N.
+	for(int i = 0; i < header->relationship_matrix_count; i++) {
+		// true if R[i] contain a multi edge entry
+		RedisModule_SaveUnsigned(rdb, header->multi_edge[i]);
+	}
 
+	// Number of keys.
+	RedisModule_SaveUnsigned(rdb, header->key_count);
 }
 
 // Returns the a state information regarding the number of entities required to encode in this state.
 static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 									 uint64_t offset, uint64_t entities_to_encode) {
-	uint64_t required_entities_count;
+	uint64_t required_entities_count = 0;
 	switch(state) {
 	case ENCODE_STATE_NODES:
 		required_entities_count = Graph_NodeCount(gc->g);
@@ -65,7 +75,8 @@ static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 		required_entities_count = 1;
 		break;
 	default:
-		assert(false && "Unkown encoding state in _CurrentStatePayloadInfo");
+		ASSERT(false && "Unknown encoding state in _CurrentStatePayloadInfo");
+		break;
 	}
 	PayloadInfo payload_info;
 	payload_info.state = state;
@@ -88,7 +99,10 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
 	// If it is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
-	uint64_t remaining_entities = Config_GetVirtualKeyEntityCount();
+
+	uint64_t remaining_entities;
+	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &remaining_entities);
+
 	// No limit on the entities, the graph is encoded in one key.
 	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
 		for(uint state = ENCODE_STATE_NODES; state < ENCODE_STATE_FINAL; state++) {
@@ -99,8 +113,10 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 		bool last_key = GraphEncodeContext_GetProcessedKeyCount(gc->encoding_context) ==
 						(GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
 		if(last_key) remaining_entities = VKEY_ENTITY_COUNT_UNLIMITED;
+
 		// Get the current state encoded entities count.
 		uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
+
 		// While there are still remaining entities to encode in this key and the state is valid.
 		while(remaining_entities > 0 && current_state < ENCODE_STATE_FINAL) {
 			// Get the current state payload info, with respect to offset.
@@ -115,8 +131,8 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 		}
 	}
 
-	uint payloads_count = array_len(payloads);
 	// Save the number of payloads.
+	uint payloads_count = array_len(payloads);
 	RedisModule_SaveUnsigned(rdb, payloads_count);
 	for(uint i = 0; i < payloads_count; i++) {
 		// For each payload, save its type and the number of entities it contains.
@@ -124,10 +140,11 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 		RedisModule_SaveUnsigned(rdb, payload_info.state);
 		RedisModule_SaveUnsigned(rdb, payload_info.entities_count);
 	}
+
 	return payloads;
 }
 
-void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
+void RdbSaveGraph_v8(RedisModuleIO *rdb, void *value) {
 	/* Encoding format for graph context and graph meta key:
 	 *  Header
 	 *  Payload(s) count: N
@@ -152,8 +169,15 @@ void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 	// Acquire a read lock if we're not in a thread-safe context.
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
+	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
+
+	if(current_state == ENCODE_STATE_INIT) {
+		// Inital state, populate encoding context header
+		GraphEncodeContext_InitHeader(gc->encoding_context, gc->graph_name, gc->g);
+	}
+
 	// Save header
-	_RdbSaveHeader(rdb, gc);
+	_RdbSaveHeader(rdb, gc->encoding_context);
 
 	// Save payloads info for this key and retrive the key schema.
 	PayloadInfo *key_schema = _RdbSaveKeySchema(rdb, gc);
@@ -165,22 +189,22 @@ void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v7(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v7(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v7(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v7(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v7(rdb, gc);
+			RdbSaveGraphSchema_v8(rdb, gc);
 			break;
 		default:
-			assert(false && "Unkown encoding phase");
+			ASSERT(false && "Unknown encoding phase");
 			break;
 		}
 		// Save the current state and the number of encoded entities.

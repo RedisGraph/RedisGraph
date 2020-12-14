@@ -8,8 +8,6 @@
 #include "commands.h"
 #include "cmd_context.h"
 #include "../RG.h"
-#include <assert.h>
-#include <strings.h>
 
 #define GRAPH_VERSION_MISSING -1
 
@@ -105,7 +103,8 @@ static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 		// Expect just a command and graph name.
 		return arity == 2;
 	default:
-		assert("encountered unhandled query type" && false);
+		ASSERT("encountered unhandled query type" && false);
+		return false;
 	}
 }
 
@@ -122,7 +121,7 @@ static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 	case CMD_SLOWLOG:
 		return Graph_Slowlog;
 	default:
-		assert(false);
+		ASSERT(false);
 	}
 	return NULL;
 }
@@ -135,7 +134,7 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 	if(strcasecmp(cmd_name, "graph.PROFILE") == 0) return CMD_PROFILE;
 	if(strcasecmp(cmd_name, "graph.SLOWLOG") == 0) return CMD_SLOWLOG;
 
-	assert(false);
+	ASSERT(false);
 	return CMD_UNKNOWN;
 }
 

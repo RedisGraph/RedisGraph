@@ -14,7 +14,8 @@ static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	if(root_type == CYPHER_AST_QUERY) return EXECUTION_TYPE_QUERY;
 	if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX) return EXECUTION_TYPE_INDEX_CREATE;
 	if(root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) return EXECUTION_TYPE_INDEX_DROP;
-	assert(false && "Uknown execution type");
+	ASSERT(false && "Unknown execution type");
+	return 0;
 }
 
 static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan,

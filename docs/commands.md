@@ -726,6 +726,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 | db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`             | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
 | algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`    | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
 | [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`   | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
+| dbms.procedures()               | none                                            | `name`, `mode`     | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
 
 ### Algorithms
 
@@ -906,4 +907,17 @@ GRAPH.SLOWLOG graph_id
     2) "GRAPH.QUERY"
     3) "MATCH (me:Person)-[:FRIEND]->(:Person)-[:FRIEND]->(fof:Person) RETURN fof.name"
     4) "0.288"
+```
+
+## GRAPH.CONFIG
+Retrieves or updates a RedisGraph configuration.
+Arguments: `GET/SET, <config name> [value]`
+`value` should only be specified in `SET` contexts, while `*` may be substituted for an explict `config name` if all configurations should be returned.
+Only run-time configurations may be `SET`, though all configurations may be retrieved.
+```sh
+127.0.0.1:6379> GRAPH.CONFIG SET RESULTSET_SIZE 1000
+OK
+127.0.0.1:6379> GRAPH.CONFIG GET RESULTSET_SIZE
+1) "RESULTSET_SIZE"
+2) (integer) 1000
 ```

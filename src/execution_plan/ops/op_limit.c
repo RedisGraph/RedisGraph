@@ -6,7 +6,7 @@
 
 #include "op_limit.h"
 #include "../../RG.h"
-#include "../../query_ctx.h"
+#include "../../errors.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
@@ -27,7 +27,7 @@ static void _eval_limit(OpLimit *op, AR_ExpNode *limit_exp) {
 
 	// Validate that the limit value is numeric and non-negative.
 	if(SI_TYPE(l) != T_INT64 || SI_GET_NUMERIC(l) < 0) {
-		QueryCtx_SetError("Limit operates only on non-negative integers");
+		ErrorCtx_SetError("Limit operates only on non-negative integers");
 	}
 
 	op->limit = SI_GET_NUMERIC(l);

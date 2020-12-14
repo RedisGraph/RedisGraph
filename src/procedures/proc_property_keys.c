@@ -5,6 +5,7 @@
 */
 
 #include "proc_property_keys.h"
+#include "RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -34,7 +35,7 @@ ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const SIValue *args, cons
 }
 
 SIValue *Proc_PropKeysStep(ProcedureCtx *ctx) {
-	assert(ctx->privateData);
+	ASSERT(ctx->privateData != NULL);
 
 	RelationsContext *pdata = (RelationsContext *)ctx->privateData;
 
@@ -62,7 +63,7 @@ ProcedureResult Proc_PropKeysFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_PropKeysCtx() {
 	void *privateData = NULL;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
-	ProcedureOutput output = {name: "propertyKey", type: T_STRING};
+	ProcedureOutput output = {.name = "propertyKey", .type = T_STRING};
 	outputs = array_append(outputs, output);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.propertyKeys",

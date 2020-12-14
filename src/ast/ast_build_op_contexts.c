@@ -10,14 +10,13 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 #include "../query_ctx.h"
-#include <assert.h>
 
 static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QGEdge *e,
 											  const cypher_astnode_t *edge) {
 	const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
 
-	EdgeCreateCtx new_edge = {	.alias = e->alias,
-		                        .relation = e->reltypes[0],
+	EdgeCreateCtx new_edge = {  .alias = e->alias,
+								.relation = e->reltypes[0],
 								.reltypeId = e->reltypeIDs[0],
 								.properties = PropertyMap_New(gc, props),
 								.src = e->src->alias,
@@ -31,7 +30,7 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
 
 	NodeCreateCtx new_node = {  .alias = n->alias,
-		                        .label = n->label,
+								.label = n->label,
 								.labelId = n->labelID,
 								.properties = PropertyMap_New(gc, ast_props)
 							 };
@@ -43,7 +42,7 @@ static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_
 	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
 	// TODO Add handling for when we're setting labels (CYPHER_AST_SET_LABELS)
 	// or all properties (CYPHER_AST_SET_ALL_PROPERTIES)
-	assert(type == CYPHER_AST_SET_PROPERTY);
+	ASSERT(type == CYPHER_AST_SET_PROPERTY);
 
 	// The SET_ITEM contains the entity alias and property key being set - type == CYPHER_AST_PROPERTY_OPERATOR
 	const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(set_item);
@@ -53,7 +52,7 @@ static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_
 	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
 	AR_ExpNode *entity = AR_EXP_FromASTNode(prop_expr);
 	// Can this ever be anything strange? Assuming it's always just an alias wrapper right now.
-	assert(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC &&
+	ASSERT(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC &&
 		   entity->operand.variadic.entity_alias);
 
 	// Updated value - type == CYPHER_AST_SET_PROPERTY
@@ -87,7 +86,6 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_
 }
 
 AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
-	AST *ast = QueryCtx_GetAST();
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, delete_count);
 
@@ -101,7 +99,7 @@ AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
 
 // Get direction of each sort operation, append to an array, return the array in the form of out parameter
 void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directions) {
-	assert(order_clause && sort_directions);
+	ASSERT(order_clause && sort_directions);
 
 	unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
 	int *directions = array_new(int, nitems);
@@ -201,7 +199,7 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 				on_match_items = array_append(on_match_items, _NewUpdateCtx(gc, match_item));
 			}
 		} else {
-			assert(false);
+			ASSERT(false);
 		}
 	}
 

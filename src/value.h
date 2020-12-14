@@ -50,6 +50,8 @@ typedef enum {
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
 #define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR)
+#define SI_VALID_PROPERTY_VALUE (T_ARRAY | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE)
+
 
 /* Any values (except durations) are comparable with other values of the same type.
  * Integer and floating-point values are also comparable with each other. */
@@ -109,6 +111,9 @@ SIValue SI_ShareValue(const SIValue v);
 
 // SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
 SIValue SI_CloneValue(const SIValue v);
+
+// SI_CloneValue creates an SIValue that duplicates all of the original's self-owned or volatile allocations.
+SIValue SI_ShallowCloneValue(const SIValue v);
 
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
 SIValue SI_ConstValue(const SIValue v);

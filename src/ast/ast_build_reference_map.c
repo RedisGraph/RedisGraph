@@ -1,5 +1,5 @@
 #include "ast.h"
-#include "../RG.h"
+#include "RG.h"
 #include "../util/arr.h"
 
 // Forward declerations:
@@ -38,7 +38,7 @@ static inline void _AST_MapProjectionAlias(AST *ast, const cypher_astnode_t *pro
 	if(ast_alias == NULL) {
 		// The projection was not aliased, so the projection itself must be an identifier.
 		ast_alias = cypher_ast_projection_get_expression(projection);
-		assert(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER);
+		ASSERT(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER);
 	}
 	// WITH and RETURN projections are always either aliased or themselves identifiers.
 	const char *alias = cypher_ast_identifier_get_name(ast_alias);
@@ -131,7 +131,7 @@ static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_
 	// Retrieve the alias being modified from the property descriptor.
 	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
 	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-	assert(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
+	ASSERT(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
 
 	const char *alias = cypher_ast_identifier_get_name(ast_entity);
 	_AST_UpdateRefMap(ast, alias);
@@ -147,7 +147,7 @@ static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_cl
 	for(uint i = 0; i < nitems; i++) {
 		// Get the SET directive at this index.
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
+		ASSERT(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
 		_AST_MapSetPropertyReferences(ast, set_item);
 	}
 }
@@ -177,7 +177,7 @@ static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge
 			uint on_create_items = cypher_ast_on_create_nitems(action);
 			for(uint j = 0; j < on_create_items; j ++) {
 				const cypher_astnode_t *set_item = cypher_ast_on_create_get_item(action, j);
-				assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
+				ASSERT(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
 				_AST_MapSetPropertyReferences(ast, set_item);
 			}
 		} else if(type == CYPHER_AST_ON_MATCH) {
@@ -185,7 +185,7 @@ static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge
 			uint on_match_items = cypher_ast_on_match_nitems(action);
 			for(uint j = 0; j < on_match_items; j ++) {
 				const cypher_astnode_t *set_item = cypher_ast_on_match_get_item(action, j);
-				assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
+				ASSERT(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
 				_AST_MapSetPropertyReferences(ast, set_item);
 			}
 		}

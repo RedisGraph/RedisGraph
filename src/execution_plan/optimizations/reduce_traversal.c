@@ -6,6 +6,7 @@
 
 #include "reduce_traversal.h"
 
+#include "RG.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../ops/op_expand_into.h"
@@ -42,7 +43,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 
 	for(uint i = 0; i < traversals_count; i++) {
 		OpBase *op = traversals[i];
-		AlgebraicExpression *ae;
+		AlgebraicExpression *ae = NULL;
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			OpCondTraverse *traverse = (OpCondTraverse *)op;
 			ae = traverse->ae;
@@ -50,7 +51,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
 			ae = traverse->ae;
 		} else {
-			assert(false);
+			ASSERT(false);
 		}
 
 		/* If traverse src and dest nodes are the same,

@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_label_scan.h"
+#include "RG.h"
 #include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../query_ctx.h"
@@ -181,7 +182,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 }
 
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_NODE_BY_LABEL_SCAN);
+	ASSERT(opBase->type == OPType_NODE_BY_LABEL_SCAN);
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 	OpBase *clone = NewNodeByLabelScanOp(plan, op->n);
 	return clone;
