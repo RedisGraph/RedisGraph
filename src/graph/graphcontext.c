@@ -57,41 +57,31 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	gc->ref_count = 0;      // No refences.
-	gc->index_count = 0;    // No indicies.
-	gc->version = 0;        // Initial graph version.
-
-	// Initialize the graph's matrices and datablock storage
-	gc->g = Graph_New(node_cap, edge_cap);
-	gc->graph_name = rm_strdup(graph_name);
-	// Allocate the default space for schemas and indices
-	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
-	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-
-	gc->string_mapping = array_new(char *, 64);
-	gc->attributes = raxNew();
-	gc->slowlog = SlowLog_New();
+	gc->version          = 0;  // initial graph version
+	gc->slowlog          = SlowLog_New();
+	gc->ref_count        = 0;  // no refences
+	gc->attributes       = raxNew();
+	gc->index_count      = 0;  // no indicies
+	gc->string_mapping   = array_new(char *, 64);
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
 
-	// Initialize the read-write lock to protect access to the attributes rax.
-	int res = pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
-	ASSERT(res == 0);
+	// initialize the graph's matrices and datablock storage
+	gc->g = Graph_New(node_cap, edge_cap);
+	gc->graph_name = rm_strdup(graph_name);
 
-	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
-	 * Each thread is getting its cache by its thread id. */
-	uint thread_count;
-	Config_Option_get(Config_THREAD_POOL_SIZE, &thread_count);
-	thread_count += 1; // Add 1 for redis main thread.
+	// allocate the default space for schemas and indices
+	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
+	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
+	// initialize the read-write lock to protect access to the attributes rax
+	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
+
+	// build the execution plans cache
 	uint64_t cache_size;
 	Config_Option_get(Config_CACHE_SIZE, &cache_size);
-	gc->cache_pool = array_new(Cache *, thread_count);
-
-	for(uint i = 0; i < thread_count; i++) {
-		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size,
-																(CacheItemFreeFunc)ExecutionCtx_Free));
-	}
+	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
+	  	(CacheEntryCopyFunc)ExecutionCtx_Clone);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -472,12 +462,8 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 
 // Return cache associated with graph context and current thread id.
 Cache *GraphContext_GetCache(const GraphContext *gc) {
-	ASSERT(gc);
-	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
-	* most likely Redis main thread */
-	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
-	thread_id += 1; // +1 to compensate for Redis main thread.
-	return gc->cache_pool[thread_id];
+	ASSERT(gc != NULL);
+	return gc->cache;
 }
 
 //------------------------------------------------------------------------------
@@ -493,7 +479,10 @@ static void _GraphContext_Free(void *arg) {
 	Graph_SetMatrixPolicy(gc->g, DISABLED);
 	Graph_Free(gc->g);
 
-	// Free all node schemas
+	//--------------------------------------------------------------------------
+	// Free node schemas
+	//--------------------------------------------------------------------------
+
 	if(gc->node_schemas) {
 		len = array_len(gc->node_schemas);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -502,7 +491,10 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->node_schemas);
 	}
 
-	// Free all relation schemas
+	//--------------------------------------------------------------------------
+	// Free relation schemas
+	//--------------------------------------------------------------------------
+
 	if(gc->relation_schemas) {
 		len = array_len(gc->relation_schemas);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -511,8 +503,12 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->relation_schemas);
 	}
 
+	//--------------------------------------------------------------------------
 	// Free attribute mappings
+	//--------------------------------------------------------------------------
+
 	if(gc->attributes) raxFree(gc->attributes);
+
 	if(gc->string_mapping) {
 		len = array_len(gc->string_mapping);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -520,17 +516,17 @@ static void _GraphContext_Free(void *arg) {
 		}
 		array_free(gc->string_mapping);
 	}
+
 	int res = pthread_rwlock_destroy(&gc->_attribute_rwlock);
 	ASSERT(res == 0);
 
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
+	//--------------------------------------------------------------------------
 	// Clear cache
-	if(gc->cache_pool) {
-		len = array_len(gc->cache_pool);
-		for(uint i = 0; i < len; i++) Cache_Free(gc->cache_pool[i]);
-		array_free(gc->cache_pool);
-	}
+	//--------------------------------------------------------------------------
+
+	if(gc->cache) Cache_Free(gc->cache);
 
 	GraphEncodeContext_Free(gc->encoding_context);
 	GraphDecodeContext_Free(gc->decoding_context);

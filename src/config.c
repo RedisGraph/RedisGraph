@@ -542,4 +542,3 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 	return true;
 }
-
