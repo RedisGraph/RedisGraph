@@ -57,7 +57,7 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
 // Returns the a state information regarding the number of entities required to encode in this state.
 static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 									 uint64_t offset, uint64_t entities_to_encode) {
-	uint64_t required_entities_count;
+	uint64_t required_entities_count = 0;
 	switch(state) {
 	case ENCODE_STATE_NODES:
 		required_entities_count = Graph_NodeCount(gc->g);
@@ -76,6 +76,7 @@ static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 		break;
 	default:
 		ASSERT(false && "Unknown encoding state in _CurrentStatePayloadInfo");
+		break;
 	}
 	PayloadInfo payload_info;
 	payload_info.state = state;
@@ -99,7 +100,9 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	// If it is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
 
-	uint64_t remaining_entities = Config_GetVirtualKeyEntityCount();
+	uint64_t remaining_entities;
+	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &remaining_entities);
+
 	// No limit on the entities, the graph is encoded in one key.
 	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
 		for(uint state = ENCODE_STATE_NODES; state < ENCODE_STATE_FINAL; state++) {

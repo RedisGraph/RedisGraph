@@ -1,4 +1,5 @@
 version: 2.1
+
 commands:
   early_return_for_forked_pull_requests:
     description: >-
@@ -13,15 +14,24 @@ commands:
               circleci step halt
             fi
 
+  setup-automation:
+    steps:
+      - run:
+          name: Setup automation
+          command: |
+            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+            PIP=1 ./deps/readies/bin/getpy2
+            python2 -m pip install -r ./deps/readies/paella/requirements.txt
+
 jobs:
   build:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
     steps:
       - checkout
       - run:
           name: Fetch submodules
-          command: >-
+          command: |
             git submodule update --init --recursive
 
       - run:
@@ -38,6 +48,8 @@ jobs:
             python -m pip install git+https://github.com/RedisLabsModules/RLTest.git@master
             python -m pip install git+https://github.com/RedisLabs/RAMP@master
             python -m pip install -r tests/requirements.txt
+
+      - setup-automation
 
       # Validate source complies with formatting
       #- run:
@@ -93,8 +105,8 @@ jobs:
           name: Test for memory leaks
           command: |
               # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
-              git clone https://github.com/antirez/redis.git; cd redis; git checkout 6.0.1; make valgrind; make install; cd ..
-              make clean;
+              python ./deps/readies/bin/getredis --force --valgrind
+              make clean
               make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
           # Allow RediSearch global destructors.
           environment:
@@ -102,7 +114,7 @@ jobs:
 
   package_branch:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
     steps:
       - attach_workspace:
           at: /workspace
@@ -120,7 +132,7 @@ jobs:
           path: /workspace/build
   package_release:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
     steps:
       - attach_workspace:
           at: /workspace
@@ -144,7 +156,7 @@ jobs:
           path: /workspace/build
   deploy_branch:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
     steps:
       - attach_workspace:
           at: /workspace
@@ -156,7 +168,7 @@ jobs:
 
   deploy_release:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
     steps:
       - attach_workspace:
           at: /workspace
@@ -166,51 +178,91 @@ jobs:
             aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
             public-read --recursive --exclude "*" --include "*.zip"
 
-  run_automation:
+  release_automation:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: redisfab/rmbuilder:6.0.9-x64-buster
     steps:
+      - checkout
+      - setup-automation
       - run:
           name: Run QA Automation
-          command: >-
-            apt-get update &&
-            apt-get -y install curl &&
-            curl -k -u $QA_AUTOMATION_USERNAME:$QA_AUTOMATION_PASS -X POST
-            -H "Content-Type: application/json"
-            -d '{"service_id":"single_module_test_cycle", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.6.0", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"rhel7.5-x86_64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
-            https://qa-automation-center.redislabs.com/processes
+          command: MODULE_VERSION=$CIRCLE_TAG VERBOSE=1 TEST=release ./tests/qa/run
+
+  nightly_automation:
+    docker:
+      - image: redisfab/rmbuilder:6.0.9-x64-buster
+    steps:
+      - checkout
+      - setup-automation
+      - run:
+          name: Run QA Automation
+          command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
+
+
+on-any-branch: &on-any-branch
+  filters:
+    branches:
+      only: /.*/
+    tags:
+      only: /.*/
+
+never: &never
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      ignore: /.*/
+
+on-master: &on-master
+  filters:
+    branches:
+      only: master
+
+on-version-tags: &on-version-tags
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      only: /^v[0-9].*/
+
+on-master-and-version-tags: &on-master-and-version-tags
+  filters:
+    branches:
+      only:
+        - master
+    tags:
+      only: /^v[0-9].*/
+
 
 workflows:
   version: 2
   build_and_package:
     jobs:
       - build:
-          filters:
-            tags:
-              only: /.*/
+          <<: *on-any-branch
       - package_branch:
+          <<: *on-master
           requires:
             - build
-          filters:
-            branches:
-              only: master
       - package_release:
+          <<: *on-version-tags
           requires:
             - build
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: '/^v[0-9].*/'
       - deploy_branch:
           requires:
             - package_branch
-      - run_automation:
+      - release_automation:
           requires:
             - deploy_branch
       - deploy_release:
-          filters:
-            tags:
-              only: '/^v[0-9].*/'
+          <<: *on-version-tags
           requires:
             - package_release
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "07 20 * * *"
+          <<: *on-master
+    jobs:
+      - nightly_automation

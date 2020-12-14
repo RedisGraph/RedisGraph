@@ -121,19 +121,23 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
 
-	int threadCount = Config_GetThreadCount();
+	int threadCount;
+	Config_Option_get(Config_THREAD_POOL_SIZE, &threadCount);
+
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
-	// Initialize array of command contexts
-	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
+	int ompThreadCount;
+	Config_Option_get(Config_OPENMP_NTHREAD, &ompThreadCount);
 
-	int ompThreadCount = Config_GetOMPThreadCount();
 	if(GxB_set(GxB_NTHREADS, ompThreadCount) != GrB_SUCCESS) {
 		RedisModule_Log(ctx, "warning", "Failed to set OpenMP thread count to %d", ompThreadCount);
 		return REDISMODULE_ERR;
 	}
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
+
+	// Initialize array of command contexts
+	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
@@ -168,6 +172,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	if(RedisModule_CreateCommand(ctx, "graph.SLOWLOG", CommandDispatch, "readonly", 1, 1,
+								 1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", MGraph_Config, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}

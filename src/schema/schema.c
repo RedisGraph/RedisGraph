@@ -72,10 +72,8 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
 		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
-	}
-
-	// Index doesn't exists, create it.
-	if(!_idx) {
+	} else {
+		// Index doesn't exist, create it.
 		_idx = Index_New(s->name, type);
 		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
 		else s->index = _idx;

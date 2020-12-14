@@ -152,6 +152,11 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	return set;
 }
 
+uint64_t ResultSet_RecordCount(const ResultSet *set) {
+	ASSERT(set != NULL);
+	return set->recordCount;
+}
+
 int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// If result-set format is NOP, don't process record.
 	if(set->format == FORMATTER_NOP) return RESULTSET_OK;

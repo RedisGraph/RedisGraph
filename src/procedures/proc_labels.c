@@ -65,7 +65,7 @@ ProcedureResult Proc_LabelsFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_LabelsCtx() {
 	void *privateData = NULL;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
-	ProcedureOutput output = {name: "label", type: T_STRING};
+	ProcedureOutput output = {.name = "label", .type = T_STRING};
 	outputs = array_append(outputs, output);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.labels",

@@ -36,7 +36,10 @@ static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
-		if(Config_GetAsyncDelete()) {
+		bool async_delete;
+		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
+
+		if(async_delete) {
 			// Async delete
 			thpool_add_work(_thpool, _GraphContext_Free, gc);
 		} else {
@@ -77,8 +80,12 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 
 	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
 	 * Each thread is getting its cache by its thread id. */
-	uint64_t thread_count = Config_GetThreadCount() + 1; // Add 1 for redis main thread.
-	uint64_t cache_size = Config_GetCacheSize();
+	uint thread_count;
+	Config_Option_get(Config_THREAD_POOL_SIZE, &thread_count);
+	thread_count += 1; // Add 1 for redis main thread.
+
+	uint64_t cache_size;
+	Config_Option_get(Config_CACHE_SIZE, &cache_size);
 	gc->cache_pool = array_new(Cache *, thread_count);
 
 	for(uint i = 0; i < thread_count; i++) {

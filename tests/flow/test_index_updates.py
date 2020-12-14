@@ -139,3 +139,16 @@ class testIndexUpdatesFlow(FlowTestsBase):
         result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group A' DELETE a")
         self.env.assertGreater(result.nodes_deleted, 0)
         self.validate_state()
+
+    def test05_unindexed_property_update(self):
+        # Add an unindexed property to all nodes.
+        redis_graph.query("MATCH (a) SET a.unindexed = 'unindexed'")
+
+        # Retrieve a single node
+        result = redis_graph.query("MATCH (a) RETURN a.unique LIMIT 1")
+        unique_prop = result.result_set[0][0]
+        query = """MATCH (a {unique: %s }) SET a.unindexed = 5, a.unique = %s RETURN a.unindexed, a.unique""" % (unique_prop, unique_prop)
+        result = redis_graph.query(query)
+        expected_result = [[5, unique_prop]]
+        self.env.assertEquals(result.result_set, expected_result)
+        self.env.assertEquals(result.properties_set, 2)

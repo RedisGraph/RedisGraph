@@ -136,7 +136,7 @@ SIValue SI_CloneValue(const SIValue v) {
 	clone.type = v.type;
 	clone.allocation = M_SELF;
 
-	size_t size;
+	size_t size = 0;
 	if(v.type == T_NODE) {
 		size = sizeof(Node);
 	} else if(v.type == T_EDGE) {
@@ -148,6 +148,11 @@ SIValue SI_CloneValue(const SIValue v) {
 	clone.ptrval = rm_malloc(size);
 	memcpy(clone.ptrval, v.ptrval, size);
 	return clone;
+}
+
+SIValue SI_ShallowCloneValue(const SIValue v) {
+	if(v.allocation == M_CONST || v.allocation == M_NONE) return v;
+	return SI_CloneValue(v);
 }
 
 /* Make an SIValue that shares the original's allocations but can safely expect those allocations

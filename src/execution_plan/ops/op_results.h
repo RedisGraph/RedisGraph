@@ -17,6 +17,7 @@
 typedef struct {
 	OpBase op;
 	ResultSet *result_set;
+	uint64_t result_set_size_limit;
 } Results;
 
 /* Creates a new Results operation */
