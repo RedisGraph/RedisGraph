@@ -339,7 +339,6 @@ Feature: MergeRelationshipAcceptance
       | +nodes      | 1 |
       | +properties | 1 |
 
-@skip
   Scenario: Use outgoing direction when unspecified
     Given an empty graph
     When executing query:

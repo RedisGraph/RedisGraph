@@ -189,6 +189,11 @@ void SIValue_Persist(SIValue *v) {
 	*v = SI_CloneValue(*v);
 }
 
+/* Update an SIValue's allocation type to the provided value. */
+inline void SIValue_SetAllocationType(SIValue *v, SIAllocation allocation) {
+	v->allocation = allocation;
+}
+
 inline bool SIValue_IsNull(SIValue v) {
 	return v.type == T_NULL;
 }
