@@ -326,3 +326,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         # Test invalid numeric input for percentile function.
         query = """UNWIND range(0, 10) AS val RETURN percentileDisc(val, -1)"""
         self.expect_error(query, "must be a number in the range 0.0 to 1.0")
+
+    # startNode and endNode calls should return the appropriate nodes.
+    def test16_edge_endpoints(self):
+        query = """MATCH (a)-[e]->(b) RETURN a.name, startNode(e).name, b.name, endNode(e).name"""
+        actual_result = graph.query(query)
+        for row in actual_result.result_set:
+            self.env.assertEquals(row[0], row[1])
+            self.env.assertEquals(row[2], row[3])
+

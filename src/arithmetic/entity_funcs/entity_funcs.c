@@ -43,6 +43,38 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
 	return SI_ConstStringVal(type);
 }
 
+/* returns the start node of a relationship. */
+SIValue AR_STARTNODE(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+	Edge *e = argv[0].ptrval;
+	NodeID start_id = Edge_GetSrcNodeID(e);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Node *src = rm_malloc(sizeof(Node));
+	*src = GE_NEW_NODE();
+	// Retrieve the node from the graph.
+	Graph_GetNode(gc->g, start_id, src);
+	SIValue si_node = SI_Node(src);
+	// Mark this value as a heap allocation so that it gets freed properly.
+	SIValue_SetAllocationType(&si_node, M_SELF);
+	return si_node;
+}
+
+/* returns the end node of a relationship. */
+SIValue AR_ENDNODE(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+	Edge *e = argv[0].ptrval;
+	NodeID end_id = Edge_GetDestNodeID(e);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Node *dest = rm_malloc(sizeof(Node));
+	*dest = GE_NEW_NODE();
+	// Retrieve the node from the graph.
+	Graph_GetNode(gc->g, end_id, dest);
+	SIValue si_node = SI_Node(dest);
+	// Mark this value as a heap allocation so that it gets freed properly.
+	SIValue_SetAllocationType(&si_node, M_SELF);
+	return si_node;
+}
+
 /* returns true if the specified property exists in the node, or relationship. */
 SIValue AR_EXISTS(SIValue *argv, int argc) {
 	/* MATCH (n) WHERE EXISTS(n.name) RETURN n
@@ -138,6 +170,16 @@ void Register_EntityFuncs() {
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NULL | T_EDGE);
 	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, 1, types, false, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_NULL | T_EDGE);
+	func_desc = AR_FuncDescNew("startNode", AR_STARTNODE, 1, 1, types, false, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_NULL | T_EDGE);
+	func_desc = AR_FuncDescNew("endNode", AR_ENDNODE, 1, 1, types, false, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

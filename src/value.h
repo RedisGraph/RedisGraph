@@ -129,6 +129,9 @@ void SIValue_MakeVolatile(SIValue *v);
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);
 
+// SIValue_SetAllocationType changes the SIValue's allocation to the explicitly provided value.
+void SIValue_SetAllocationType(SIValue *v, SIAllocation allocation);
+
 bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);
 bool SIValue_IsFalse(SIValue v);
