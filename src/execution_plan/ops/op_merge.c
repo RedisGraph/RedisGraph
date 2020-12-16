@@ -5,7 +5,8 @@
 */
 
 #include "op_merge.h"
-#include "RG.h"
+#include "../../RG.h"
+#include "../../errors.h"
 #include "op_merge_create.h"
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
@@ -33,19 +34,36 @@ static void _UpdateIndices(GraphContext *gc, Node *n) {
 }
 
 // Update the appropriate property on a graph entity.
-static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *update_ctx) {
+static int _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *update_ctx) {
+	int res = 1;
 	SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
+
+	// Emit an error and exit if we're trying to add an invalid type.
+	if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
+		Error_InvalidPropertyValue();
+		ErrorCtx_RaiseRuntimeException(NULL);
+		goto cleanup;
+	}
 
 	// Try to get current property value.
 	SIValue *old_value = GraphEntity_GetProperty(ge, update_ctx->attribute_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
+		// Adding a new property; do nothing if its value is NULL.
+		if(SI_TYPE(new_value) == T_NULL) {
+			res = 0;
+			goto cleanup;
+		}
 		// Add new property.
 		GraphEntity_AddProperty(ge, update_ctx->attribute_id, new_value);
 	} else {
 		// Update property.
 		GraphEntity_SetProperty(ge, update_ctx->attribute_id, new_value);
 	}
+
+cleanup:
+	SIValue_Free(new_value);
+	return res;
 }
 
 // Apply a set of updates to the given records.
@@ -73,7 +91,11 @@ static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *u
 
 			GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
 
-			_UpdateProperty(r, ge, update_ctx); // Update the entity.
+			int res = _UpdateProperty(r, ge, update_ctx); // Update the entity.
+			if(res == 0) {
+				failed_updates++;
+				continue;
+			}
 			if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
 		}
 	}
@@ -188,8 +210,8 @@ static OpResult MergeInit(OpBase *opBase) {
 	}
 
 	ASSERT(op->bound_variable_stream != NULL &&
-			op->match_stream != NULL &&
-			op->create_stream != NULL);
+		   op->match_stream != NULL &&
+		   op->create_stream != NULL);
 
 	// Migrate the children so that EXPLAIN calls print properly.
 	opBase->children[0] = op->bound_variable_stream;

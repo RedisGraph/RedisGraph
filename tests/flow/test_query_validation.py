@@ -460,7 +460,8 @@ class testQueryValidationFlow(FlowTestsBase):
 
     def test31_set_invalid_property_type(self):
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
-                   """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a"""]
+                   """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a""",
+                   """MERGE (a) ON MATCH SET a.age = a"""]
         for q in queries:
             try:
                 redis_graph.query(q)
