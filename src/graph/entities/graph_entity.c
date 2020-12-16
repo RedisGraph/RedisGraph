@@ -207,7 +207,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 }
 
 inline bool GraphEntity_IsDeleted(const GraphEntity *e) {
-	return DataBlock_ItemIsDeleted(e->entity);
+	return Graph_EntityIsDeleted(e->entity);
 }
 
 void FreeEntity(Entity *e) {
