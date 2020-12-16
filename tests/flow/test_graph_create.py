@@ -65,3 +65,9 @@ class testGraphCreationFlow(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.properties_set, 1)
+
+    def test05_create_with_property_reference(self):
+        query = """CREATE (a), (b {val: a.val})"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.properties_set, 0)

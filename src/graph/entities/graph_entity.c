@@ -68,6 +68,12 @@ SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue v
 
 SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
+	if(e->entity == NULL) {
+		// The internal entity pointer should only be NULL if the entity
+		// is in an intermediate state, such as a node scheduled for creation.
+		ASSERT(e->id == INVALID_ENTITY_ID);
+		return PROPERTY_NOTFOUND;
+	}
 
 	for(int i = 0; i < e->entity->prop_count; i++) {
 		if(attr_id == e->entity->properties[i].id) {
