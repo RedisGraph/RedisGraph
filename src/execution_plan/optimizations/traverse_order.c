@@ -253,8 +253,8 @@ static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count
  * it is worthwhile to transpose it and thus swap the source and destination.
  * If the source is bounded, we will not transpose, if only the destination is bounded, we will.
  * If neither are bounded, we fall back to label and filter heuristics.
- * We'll choose to transpose if the destination is filtered and the source is not, or
- * if neither is filtered, if the destination is labeled and the source is not. */
+ * Filters are considered more valuable than labels in selecting a starting point,
+ * so we'll select the starting point with the best combination available of filters and labels. */
 static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *filtered_entities,
 								rax *bound_vars) {
 	if(AlgebraicExpression_OperandCount(*ae) == 1 &&
@@ -273,16 +273,15 @@ static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *f
 	}
 
 	// See if either source or destination nodes are filtered.
-	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Source(*ae),
-			   strlen(AlgebraicExpression_Source(*ae))) != raxNotFound) {
-		return; // The source node is filtered, making the current order most appealing.
-	}
+	int srcFiltered = raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Source(*ae),
+							  strlen(AlgebraicExpression_Source(*ae))) != raxNotFound;
+	int destFiltered = raxFind(filtered_entities,
+							   (unsigned char *)AlgebraicExpression_Destination(*ae),
+							   strlen(AlgebraicExpression_Destination(*ae))) != raxNotFound;
 
-	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Destination(*ae),
-			   strlen(AlgebraicExpression_Destination(*ae))) != raxNotFound) {
-		AlgebraicExpression_Transpose(ae); // The destination is filtered and the source is not, transpose.
-		return;
-	}
+	// Filters are more valuable in choosing a starting point than labels.
+	srcFiltered *= 2;
+	destFiltered *= 2;
 
 	/* Prefer filter over label
 	 * if no filters are applied prefer labeled entity. */
@@ -291,17 +290,12 @@ static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *f
 	bool srcLabeled = src->label != NULL;
 	bool destLabeled = dest->label != NULL;
 
-	/* TODO: when additional statistics are available
-	 * do not use label scan if for every node N such that
-	 * (N)-[relation]->(T) N is of the same type T, and type of
-	 * either source or destination node is T. */
-	if(srcLabeled) {
-		// Neither end is filtered and the source is labeled, making the current order most appealing.
-		return;
-	} else if(destLabeled) {
-		// The destination is labeled and the source is not, transpose.
-		AlgebraicExpression_Transpose(ae);
-	}
+	// Compute the score for the source and destination.
+	int srcScore = srcFiltered + srcLabeled;
+	int destScore = destFiltered + destLabeled;
+
+	// If the destination is a superior starting point, transpose the expression.
+	if(destScore > srcScore) AlgebraicExpression_Transpose(ae);
 }
 
 /* Given a set of algebraic expressions representing a graph traversal
