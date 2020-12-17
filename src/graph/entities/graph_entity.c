@@ -72,6 +72,7 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 		// The internal entity pointer should only be NULL if the entity
 		// is in an intermediate state, such as a node scheduled for creation.
 		ASSERT(e->id == INVALID_ENTITY_ID);
+		ErrorCtx_SetError("Attempted to access undefined property");
 		return PROPERTY_NOTFOUND;
 	}
 
