@@ -40,6 +40,7 @@ static int _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *updat
 
 	// Emit an error and exit if we're trying to add an invalid type.
 	if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
+		res = 0;
 		Error_InvalidPropertyValue();
 		ErrorCtx_RaiseRuntimeException(NULL);
 		goto cleanup;
