@@ -25,6 +25,12 @@ static int _UpdateEntity(GraphEntity *ge, PendingUpdateCtx *update) {
 	SIValue new_value = update->new_value;
 	Attribute_ID attr_id = update->attr_id;
 
+	// If this entity has been deleted, perform no updates and return early.
+	if(GraphEntity_IsDeleted(ge)) {
+		res = 0;
+		goto cleanup;
+	}
+
 	// Try to get current property value.
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 

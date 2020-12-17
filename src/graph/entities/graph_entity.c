@@ -206,12 +206,17 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
 }
 
+inline bool GraphEntity_IsDeleted(const GraphEntity *e) {
+	return Graph_EntityIsDeleted(e->entity);
+}
+
 void FreeEntity(Entity *e) {
 	ASSERT(e);
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
 		rm_free(e->properties);
 		e->properties = NULL;
+		e->prop_count = 0;
 	}
 }
 

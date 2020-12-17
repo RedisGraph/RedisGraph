@@ -161,6 +161,11 @@ int Graph_DeleteEdge(
 	Edge *e
 );
 
+// Returns true if the given entity has been deleted.
+bool Graph_EntityIsDeleted(
+	Entity *e
+);
+
 // Removes both nodes and edges from graph.
 void Graph_BulkDelete(
 	Graph *g,           // Graph to delete entities from.

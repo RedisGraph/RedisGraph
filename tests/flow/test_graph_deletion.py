@@ -282,3 +282,32 @@ class testGraphDeletionFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test15_update_deleted_entities(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("delete_test", redis_con)
+
+        src = Node()
+        dest = Node()
+        edge = Edge(src, "R", dest)
+
+        redis_graph.add_node(src)
+        redis_graph.add_node(dest)
+        redis_graph.add_edge(edge)
+        redis_graph.flush()
+
+        # Attempt to update entities after deleting them.
+        query = """MATCH (a)-[e]->(b) DELETE a, b SET a.v = 1, e.v = 2, b.v = 3"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_deleted, 2)
+        self.env.assertEquals(actual_result.relationships_deleted, 1)
+        # No properties should be set.
+        # (Note that this behavior is left unspecified by Cypher.)
+        self.env.assertEquals(actual_result.properties_set, 0)
+
+        # Validate that the graph is empty.
+        query = """MATCH (a) RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
