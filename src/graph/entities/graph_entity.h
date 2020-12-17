@@ -78,7 +78,11 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 						  size_t *bytesWritten,
 						  GraphEntityStringFromat format, GraphEntityType entityType);
 
+// Returns true if the given graph entity has been deleted.
+bool GraphEntity_IsDeleted(const GraphEntity *e);
+
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);
 
 #endif
+

@@ -827,6 +827,10 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	return 1;
 }
 
+inline bool Graph_EntityIsDeleted(Entity *e) {
+	return DataBlock_ItemIsDeleted(e);
+}
+
 void Graph_DeleteNode(Graph *g, Node *n) {
 	/* Assumption, node is completely detected,
 	 * there are no incoming nor outgoing edges
