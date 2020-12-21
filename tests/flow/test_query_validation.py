@@ -495,3 +495,13 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert("Unexpected clause following RETURN" in e.message)
                 pass
 
+    # Parameters cannot reference aliases.
+    def test33_alias_reference_in_param(self):
+        try:
+            query = """CYPHER A=[a] RETURN 5"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Attempted to access variable" in e.message)
+            pass
