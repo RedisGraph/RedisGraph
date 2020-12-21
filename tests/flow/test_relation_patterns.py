@@ -261,17 +261,3 @@ class testRelationPattern(FlowTestsBase):
         actual_result = g.query(q)
         expected_result = [['a', 'c', 'a'], ['a', 'c', 'e'], ['e', 'c', 'a'], ['e', 'c', 'e']]
         self.env.assertEquals(actual_result.result_set, expected_result)
-
-    # Validate that multi-hop queries select an optimal starting point.
-    def test09_starting_point(self):
-        # The optimal starting point is 'c', as it is the only node that's both labeled and filtered.
-        query = """MATCH (a {val: 'v1'})-[]-(b:L)-[:e]->(c:L {val: 'v3'}) RETURN a.val ORDER BY a.val"""
-        plan = redis_graph.execution_plan(query)
-
-        # Verify that the execution plan contains two traversals following opposing edge directions.
-        self.env.assertIn("Node By Label Scan | (c:L)", plan)
-
-        # Verify results.
-        actual_result = redis_graph.query(query)
-        expected_result = [['v1']]
-        self.env.assertEquals(actual_result.result_set, expected_result)
