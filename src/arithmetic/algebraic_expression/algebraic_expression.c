@@ -361,7 +361,10 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 	AlgebraicExpression *prev = *root;
 	AlgebraicExpression *current = *root;
 
-	while(current->type == AL_OPERATION) {
+	/* This loop iterates until it reaches an operand node or a transpose node
+	 * with an operand child. */
+	while(current->type == AL_OPERATION &&
+		  !(current->operation.op == AL_EXP_TRANSPOSE && FIRST_CHILD(current)->type == AL_OPERAND)) {
 		prev = current;
 		switch(current->operation.op) {
 		case AL_EXP_TRANSPOSE:
@@ -413,9 +416,9 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 		 * it can be replaced by that child:
 		 * MUL(A,B) after removing A will become just B
 		 * Currently, this point is unreachable for transpose ops,
-		 * as at this point their child is always an operation.
-		 * If that changes, logic should be added such that:
-		 * TRANSPOSE(A) after removing A should become NULL. */
+		 * as when we encounter a structure like:
+		 * MUL(T(A),B)
+		 * The entire T(A) subtree has already been freed. */
 		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(prev);
 		_AlgebraicExpression_InplaceRepurpose(prev, replacement);
 	}
