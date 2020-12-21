@@ -496,6 +496,10 @@ class testQueryValidationFlow(FlowTestsBase):
                 pass
 
     def test33_self_referential_properties(self):
+        # Skip this test if running under Valgrind, as it causes a memory leak.
+        if Env().envRunner.debugger is not None:
+            Env().skip()
+
         try:
             # The server should emit an error on trying to create a node with a self-referential property.
             query = """CREATE (a:L {v: a.v})"""
