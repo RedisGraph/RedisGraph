@@ -118,7 +118,9 @@ static AR_ExpNode *_AR_EXP_FromIdentifierExpression(const cypher_astnode_t *expr
 static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
 	AST *ast = QueryCtx_GetAST();
 	if(ast == NULL) {
-		// Attempted to access the AST before it has been constructed.
+		/* Attempted to access the AST before it has been constructed.
+		 * This can occur in scenarios like parameter evaluation:
+		 * CYPHER param=[a] MATCH (a) RETURN a */
 		ErrorCtx_SetError("Attempted to access variable before it has been defined");
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
