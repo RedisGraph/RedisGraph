@@ -284,14 +284,14 @@ TEST_F(TraversalOrderingTest, OptimalStartingPoint) {
 	 * as it is both labeled and filtered. */
 
 	FT_FilterNode *filters;
-	QGNode *A = QGNode_New("A");
-	QGNode *B = QGNode_New("B");
-	B->label = "L";
-	QGNode *C = QGNode_New("C");
-	C->label = "L";
-
+	QGNode *A  = QGNode_New("A");
+	QGNode *B  = QGNode_New("B");
+	QGNode *C  = QGNode_New("C");
 	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
+	QGEdge *BC = QGEdge_New(B, C, "E", "BC");	
+
+	B->label = "L";
+	C->label = "L";
 
 	QueryGraph *qg = QueryGraph_New(3, 2);
 
@@ -310,8 +310,8 @@ TEST_F(TraversalOrderingTest, OptimalStartingPoint) {
 	filters = build_filter_tree_from_query(
 				  "MATCH (A {val: 'v1'})-[]-(B:L)-[]->(C:L {val: 'v3'}) RETURN A");
 
+	ASSERT_STRNE(AlgebraicExpression_Source(root), "C");
 	orderExpressions(qg, &root, 1, filters, NULL);
-
 	ASSERT_STREQ(AlgebraicExpression_Source(root), "C");
 
 	// Clean up.
@@ -320,4 +320,3 @@ TEST_F(TraversalOrderingTest, OptimalStartingPoint) {
 	AlgebraicExpression_Free(ExpBC);
 	QueryGraph_Free(qg);
 }
-
