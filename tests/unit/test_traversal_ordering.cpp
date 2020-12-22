@@ -274,3 +274,49 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QueryGraph_Free(qg);
 }
 
+TEST_F(TraversalOrderingTest, OptimalStartingPoint) {
+	/* Given the single algebraic expression that represents the traversal:
+	 * (A)->(B:L)->(C:L)
+	 * And a set of filters:
+	 * A.V = X, C.V = Y
+	 *
+	 * The starting point of the traversal should be C,
+	 * as it is both labeled and filtered. */
+
+	FT_FilterNode *filters;
+	QGNode *A  = QGNode_New("A");
+	QGNode *B  = QGNode_New("B");
+	QGNode *C  = QGNode_New("C");
+	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
+	QGEdge *BC = QGEdge_New(B, C, "E", "BC");	
+
+	B->label = "L";
+	C->label = "L";
+
+	QueryGraph *qg = QueryGraph_New(3, 2);
+
+	QueryGraph_AddNode(qg, A);
+	QueryGraph_AddNode(qg, B);
+	QueryGraph_AddNode(qg, C);
+	QueryGraph_ConnectNodes(qg, A, B, AB);
+	QueryGraph_ConnectNodes(qg, B, C, BC);
+
+	AlgebraicExpression *root = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
+	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
+	AlgebraicExpression_AddChild(root, ExpAB);
+	AlgebraicExpression_AddChild(root, ExpBC);
+
+	filters = build_filter_tree_from_query(
+				  "MATCH (A {val: 'v1'})-[]-(B:L)-[]->(C:L {val: 'v3'}) RETURN A");
+
+	ASSERT_STRNE(AlgebraicExpression_Source(root), "C");
+	orderExpressions(qg, &root, 1, filters, NULL);
+	ASSERT_STREQ(AlgebraicExpression_Source(root), "C");
+
+	// Clean up.
+	FilterTree_Free(filters);
+	AlgebraicExpression_Free(ExpAB);
+	AlgebraicExpression_Free(ExpBC);
+	QueryGraph_Free(qg);
+}
