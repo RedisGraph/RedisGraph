@@ -54,15 +54,19 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
 static inline void _setTraverseDirection(CondVarLenTraverse *op, const QGEdge *e) {
 	if(e->bidirectional) {
 		op->traverseDir = GRAPH_EDGE_DIR_BOTH;
-	} else if(AlgebraicExpression_Transposed(op->ae)) {
-		// If the sole operand in the AlgebraicExpression is transposed, we are traversing right-to-left.
-		op->traverseDir = GRAPH_EDGE_DIR_INCOMING;
 	} else {
-		op->traverseDir = GRAPH_EDGE_DIR_OUTGOING;
+		if(AlgebraicExpression_Transposed(op->ae)) {
+			// traverse in the opposite direction, (dest)->(src) incoming edges
+			op->traverseDir = GRAPH_EDGE_DIR_INCOMING;
+		} else {
+			op->traverseDir = GRAPH_EDGE_DIR_OUTGOING;
+		}
 	}
 }
 
 static inline int CondVarLenTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+	// TODO: tmp, improve TraversalToString
+	AlgebraicExpression_Optimize(&((CondVarLenTraverse *)ctx)->ae);
 	return TraversalToString(ctx, buf, buf_len, ((const CondVarLenTraverse *)ctx)->ae);
 }
 
@@ -75,7 +79,8 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 }
 
 OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	ASSERT(ae && g);
+	ASSERT(g != NULL);
+	ASSERT(ae != NULL);
 
 	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
 	op->g = g;
@@ -93,7 +98,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	ASSERT(aware);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
-	// Populate edge value in record only if it is referenced.
+	// populate edge value in record only if it is referenced
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;

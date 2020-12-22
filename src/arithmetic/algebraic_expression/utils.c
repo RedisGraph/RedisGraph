@@ -235,8 +235,8 @@ static void _AlgebraicExpression_PopulateTransposedOperand(AlgebraicExpression *
 														   const GraphContext *gc) {
 	// Swap the row and column domains of the operand.
 	const char *tmp = operand->operand.dest;
-	operand->operand.src = operand->operand.dest;
-	operand->operand.dest = tmp;
+	operand->operand.dest = operand->operand.src;
+	operand->operand.src = tmp;
 
 	// Diagonal matrices do not need to be transposed.
 	if(operand->operand.diagonal == true) return;
