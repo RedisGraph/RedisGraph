@@ -358,14 +358,13 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 ) {
 	ASSERT(*root);
 	bool transpose = false;
-	AlgebraicExpression *prev = *root;
+	AlgebraicExpression *parent = *root;
 	AlgebraicExpression *current = *root;
+	AlgebraicExpression *grandparent = NULL;
 
-	/* This loop iterates until it reaches an operand node or a transpose node
-	 * with an operand child. */
-	while(current->type == AL_OPERATION &&
-		  !(current->operation.op == AL_EXP_TRANSPOSE && FIRST_CHILD(current)->type == AL_OPERAND)) {
-		prev = current;
+	while(current->type == AL_OPERATION) {
+		grandparent = parent;
+		parent = current;
 		switch(current->operation.op) {
 		case AL_EXP_TRANSPOSE:
 			transpose = !transpose;
@@ -386,31 +385,35 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 	}
 	ASSERT(current->type == AL_OPERAND);
 
-	if(prev == current) {
+	if(parent == current) {
 		/* Expression is just a single operand
 		 * return operand and update root to NULL. */
 		*root = NULL;
 		return current;
 	}
 
-	switch(prev->operation.op) {
+	switch(parent->operation.op) {
 	case AL_EXP_TRANSPOSE:
+		/* A subtree that consists of a transpose operation with an operand child
+		 * should be entirely removed, and the transpose's parent should be updated accordingly. */
+		parent = grandparent;
+		current = _AlgebraicExpression_OperationRemoveSource(parent);
+		break;
 	case AL_EXP_ADD:
-		/* Transpose ops only have one child and the order of operands for
-		 * addition is not modified by transposition, so always remove the source. */
-		current = _AlgebraicExpression_OperationRemoveSource(prev);
+		// Addition is not modified by transposition, so always remove the source.
+		current = _AlgebraicExpression_OperationRemoveSource(parent);
 		break;
 	case AL_EXP_MUL:
 		/* Remove the destination if we're in a transposed context,
 		 * otherwise remove the source. */
-		if(transpose) current = _AlgebraicExpression_OperationRemoveDest(prev);
-		else current = _AlgebraicExpression_OperationRemoveSource(prev);
+		if(transpose) current = _AlgebraicExpression_OperationRemoveDest(parent);
+		else current = _AlgebraicExpression_OperationRemoveSource(parent);
 		break;
 	default:
 		ASSERT("Unknown algebraic expression operation" && false);
 	}
 
-	uint child_count = AlgebraicExpression_ChildCount(prev);
+	uint child_count = AlgebraicExpression_ChildCount(parent);
 	if(child_count == 1) {
 		/* If we just previous operation only has one remaining child,
 		 * it can be replaced by that child:
@@ -419,8 +422,8 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 		 * as when we encounter a structure like:
 		 * MUL(T(A),B)
 		 * The entire T(A) subtree has already been freed. */
-		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(prev);
-		_AlgebraicExpression_InplaceRepurpose(prev, replacement);
+		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(parent);
+		_AlgebraicExpression_InplaceRepurpose(parent, replacement);
 	}
 
 	return current;
@@ -433,11 +436,13 @@ AlgebraicExpression *AlgebraicExpression_RemoveDest
 ) {
 	ASSERT(*root);
 	bool transpose = false;
-	AlgebraicExpression *prev = *root;
+	AlgebraicExpression *parent = *root;
 	AlgebraicExpression *current = *root;
+	AlgebraicExpression *grandparent = NULL;
 
 	while(current->type == AL_OPERATION) {
-		prev = current;
+		grandparent = parent;
+		parent = current;
 		switch(current->operation.op) {
 		case AL_EXP_TRANSPOSE:
 			transpose = !transpose;
@@ -458,44 +463,48 @@ AlgebraicExpression *AlgebraicExpression_RemoveDest
 	}
 	ASSERT(current->type == AL_OPERAND);
 
-	if(prev == current) {
+	if(parent == current) {
 		/* Expression is just a single operand
 		 * return operand and update root to NULL. */
 		*root = NULL;
 		return current;
 	}
 
-	switch(prev->operation.op) {
+	switch(parent->operation.op) {
 	case AL_EXP_TRANSPOSE:
+		/* A subtree that consists of a transpose operation with an operand child
+		 * should be entirely removed, and the transpose's parent should be updated accordingly. */
+		parent = grandparent;
+		current = _AlgebraicExpression_OperationRemoveSource(parent);
+		break;
 	case AL_EXP_ADD:
-		/* Transpose ops only have one child and the order of operands for
-		 * addition is not modified by transposition, so always remove the destination. */
-		current = _AlgebraicExpression_OperationRemoveDest(prev);
+		// Addition is not modified by transposition, so always remove the destination.
+		current = _AlgebraicExpression_OperationRemoveDest(parent);
 		break;
 	case AL_EXP_MUL:
 		// Remove the source if we're in a transposed context,
 		// otherwise remove the destination.
 		if(transpose) {
-			current = _AlgebraicExpression_OperationRemoveSource(prev);
+			current = _AlgebraicExpression_OperationRemoveSource(parent);
 		} else {
-			current = _AlgebraicExpression_OperationRemoveDest(prev);
+			current = _AlgebraicExpression_OperationRemoveDest(parent);
 		}
 		break;
 	default:
 		ASSERT("Unknown algebraic expression operation" && false);
 	}
 
-	uint child_count = AlgebraicExpression_ChildCount(prev);
+	uint child_count = AlgebraicExpression_ChildCount(parent);
 	if(child_count == 1) {
 		/* If we just previous operation only has one remaining child,
 		 * it can be replaced by that child:
 		 * MUL(A,B) after removing A will become just B
 		 * Currently, this point is unreachable for transpose ops,
-		 * as at this point their child is always an operation.
-		 * If that changes, logic should be added such that:
-		 * TRANSPOSE(A) after removing A should become NULL. */
-		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(prev);
-		_AlgebraicExpression_InplaceRepurpose(prev, replacement);
+		 * as when we encounter a structure like:
+		 * MUL(T(A),B)
+		 * The entire T(A) subtree has already been freed. */
+		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(parent);
+		_AlgebraicExpression_InplaceRepurpose(parent, replacement);
 	}
 
 	return current;
