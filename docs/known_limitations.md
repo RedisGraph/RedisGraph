@@ -57,14 +57,3 @@ $ redis-cli GRAPH.EXPLAIN social "MATCH (p:person) WHERE p.id < 5 RETURN p"
 2) "    Project"
 3) "        Index Scan | (p:person)"
 ```
-
-## Memory leaks in some run-time error contexts
-
-RedisGraph may not be able to free all its allocated memory properly in the case of certain run-time errors.
-
-This is the case with CREATE queries that reference properties before they have been created, such as:
-
-```sh
-127.0.0.1:6379> GRAPH.QUERY G "CREATE (a {val: 2}), (b {val: a.val})"
-1) (error) Attempted to access undefined property
-```

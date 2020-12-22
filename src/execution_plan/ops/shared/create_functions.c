@@ -164,6 +164,10 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
 	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
 	for(int i = 0; i < map->property_count; i++) {
+		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
+		 * the allocations in this function will be memory leaks.
+		 * For example, this occurs in the query:
+		 * CREATE (a {val: 2}), (b {val: a.val}) */
 		SIValue val = AR_EXP_Evaluate(map->values[i], r);
 		if(!(SI_TYPE(val) & SI_VALID_PROPERTY_VALUE)) {
 			// This value is of an invalid type.
