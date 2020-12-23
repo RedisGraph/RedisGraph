@@ -1,5 +1,6 @@
 import os
 import sys
+import redis
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
@@ -65,3 +66,16 @@ class testGraphCreationFlow(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.properties_set, 1)
+
+    def test05_create_with_property_reference(self):
+        # Skip this test if running under Valgrind, as it causes a memory leak.
+        if Env().envRunner.debugger is not None:
+            Env().skip()
+
+        # Queries that reference properties before they have been created should emit an error.
+        try:
+            query = """CREATE (a {val: 2}), (b {val: a.val})"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("undefined property", e.message)
