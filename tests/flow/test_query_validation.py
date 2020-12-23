@@ -495,7 +495,18 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert("Unexpected clause following RETURN" in e.message)
                 pass
 
-    def test33_self_referential_properties(self):
+    # Parameters cannot reference aliases.
+    def test33_alias_reference_in_param(self):
+        try:
+            query = """CYPHER A=[a] RETURN 5"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Attempted to access variable" in e.message)
+            pass
+
+    def test34_self_referential_properties(self):
         # Skip this test if running under Valgrind, as it causes a memory leak.
         if Env().envRunner.debugger is not None:
             Env().skip()
