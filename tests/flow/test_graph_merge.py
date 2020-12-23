@@ -545,6 +545,10 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 0)
 
     def test27_merge_create_invalid_entity(self):
+        # Skip this test if running under Valgrind, as it causes a memory leak.
+        if Env().envRunner.debugger is not None:
+            Env().skip()
+
         redis_con = self.env.getConnection()
         graph = Graph("N", redis_con) # Instantiate a new graph.
 
@@ -562,3 +566,12 @@ class testGraphMergeFlow(FlowTestsBase):
         query = """MATCH (a) RETURN a"""
         result = graph.query(query)
         self.env.assertEquals(result.result_set, [])
+
+        try:
+            # Try to merge a node with a self-referential property.
+            query = """MERGE (a:L {v: a.v})"""
+            graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertIn("undefined property", e.message)
