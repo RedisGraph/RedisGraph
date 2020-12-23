@@ -116,8 +116,16 @@ static AR_ExpNode *_AR_EXP_FromIdentifierExpression(const cypher_astnode_t *expr
 }
 
 static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
-	// check if the identifier is a named path identifier
 	AST *ast = QueryCtx_GetAST();
+	if(ast == NULL) {
+		/* Attempted to access the AST before it has been constructed.
+		 * This can occur in scenarios like parameter evaluation:
+		 * CYPHER param=[a] MATCH (a) RETURN a */
+		ErrorCtx_SetError("Attempted to access variable before it has been defined");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	// check if the identifier is a named path identifier
 	AnnotationCtx *named_paths_ctx =
 		AST_AnnotationCtxCollection_GetNamedPathsCtx(ast->anot_ctx_collection);
 
