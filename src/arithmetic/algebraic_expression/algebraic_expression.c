@@ -57,6 +57,97 @@ static AlgebraicExpression *_AlgebraicExpression_CloneOperand
 	return clone;
 }
 
+// Remove leftmost child node from 'root' if 'src' is set to true
+// rightmost child node otherwise
+static AlgebraicExpression *_AlgebraicExpression_RemoveOperand
+(
+	AlgebraicExpression **root, // Root from which to remove left most child.
+	bool src                    // Remove src operand if set, dest otherwise.
+) {
+	ASSERT(*root);
+	bool transpose                   = false;
+	AlgebraicExpression *ret         = NULL;
+	AlgebraicExpression *parent      = NULL;
+	AlgebraicExpression *current     = *root;
+	AlgebraicExpression *replacement = NULL;
+	AlgebraicExpression **stack      = array_new(AlgebraicExpression*, 0);
+
+	// search for operand
+	while(current->type == AL_OPERATION) {
+		stack = array_append(stack, current);
+		switch(current->operation.op) {
+		case AL_EXP_TRANSPOSE:
+			transpose = !transpose;
+			current = FIRST_CHILD(current); // transpose have only one child
+			break;
+		case AL_EXP_ADD:
+			// Addition order of operands is not effected by transpose
+			if(src) current = FIRST_CHILD(current);
+			else current = LAST_CHILD(current);
+			break;
+		case AL_EXP_MUL:
+			// Multiplication order of operands depends on transpose
+			// | transpose     | src     | get dest |
+			// | transpose     | not src | get src  |
+			// | not transpose | src     | get src  |
+			// | not transpose | not src | get dest |
+			if(transpose && src) current = LAST_CHILD(current);
+			else if(transpose && !src) current = FIRST_CHILD(current);
+			else if(!transpose && src) current = FIRST_CHILD(current);
+			else if(!transpose && !src) current = LAST_CHILD(current);
+
+			break;
+		default:
+			ASSERT("Unknown algebraic expression operation" && false);
+		}
+	}
+
+	ret = current;
+	ASSERT(current->type == AL_OPERAND);
+
+	// expression is just a single operand, set root to NULL
+	if(array_len(stack) == 0) *root = NULL;
+
+	/* propegate operand removal upward
+	 * when removing A from MUL(A,B) root should become B
+	 * when removing A from T(T(A)) root should become NULL
+	 * when removing A from ADD(MUL(T(A),B),C) root should become ADD(B,C) */
+
+	while(array_len(stack) > 0) {
+		parent = array_pop(stack);
+		_AlgebraicExpression_OperationRemoveChild(parent, current);
+
+		// do not free return value
+		if(current != ret) AlgebraicExpression_Free(current);
+
+		AL_EXP_OP op = parent->operation.op;
+		/* binary operation with a single child, replace operaion with child
+		 * removing A from A+B should become B */
+		if(op == AL_EXP_ADD || op == AL_EXP_MUL) {
+			if(AlgebraicExpression_ChildCount(parent) == 1) {
+				// replace operation with only child
+				replacement = _AlgebraicExpression_OperationRemoveDest(parent);
+				_AlgebraicExpression_InplaceRepurpose(parent, replacement);
+			}
+			// stop here, no need to propagate further
+			break;
+		}
+
+		current = parent;
+	}
+
+	// handle last parent situation, e.g. removing A from T(T(T(A)))
+	if(parent && parent->type == AL_OPERATION) {
+		if(AlgebraicExpression_ChildCount(parent) == 0) {
+			AlgebraicExpression_Free(parent);
+			*root = NULL;
+		}
+	}
+
+	array_free(stack);
+	return ret;
+}
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression Node creation functions.
 //------------------------------------------------------------------------------
@@ -356,71 +447,8 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 (
 	AlgebraicExpression **root  // Root from which to remove left most child.
 ) {
-	ASSERT(*root);
-	bool transpose = false;
-	AlgebraicExpression *prev = *root;
-	AlgebraicExpression *current = *root;
-
-	while(current->type == AL_OPERATION) {
-		prev = current;
-		switch(current->operation.op) {
-		case AL_EXP_TRANSPOSE:
-			transpose = !transpose;
-			current = FIRST_CHILD(current); // transpose have only one child
-			break;
-		case AL_EXP_ADD:
-			// Addition order of operands is not effected by transpose
-			current = FIRST_CHILD(current);
-			break;
-		case AL_EXP_MUL:
-			// Multiplication order of operands depends on transpose
-			if(transpose) current = LAST_CHILD(current);
-			else current = FIRST_CHILD(current);
-			break;
-		default:
-			ASSERT("Unknown algebraic expression operation" && false);
-		}
-	}
-	ASSERT(current->type == AL_OPERAND);
-
-	if(prev == current) {
-		/* Expression is just a single operand
-		 * return operand and update root to NULL. */
-		*root = NULL;
-		return current;
-	}
-
-	switch(prev->operation.op) {
-	case AL_EXP_TRANSPOSE:
-	case AL_EXP_ADD:
-		/* Transpose ops only have one child and the order of operands for
-		 * addition is not modified by transposition, so always remove the source. */
-		current = _AlgebraicExpression_OperationRemoveSource(prev);
-		break;
-	case AL_EXP_MUL:
-		/* Remove the destination if we're in a transposed context,
-		 * otherwise remove the source. */
-		if(transpose) current = _AlgebraicExpression_OperationRemoveDest(prev);
-		else current = _AlgebraicExpression_OperationRemoveSource(prev);
-		break;
-	default:
-		ASSERT("Unknown algebraic expression operation" && false);
-	}
-
-	uint child_count = AlgebraicExpression_ChildCount(prev);
-	if(child_count == 1) {
-		/* If we just previous operation only has one remaining child,
-		 * it can be replaced by that child:
-		 * MUL(A,B) after removing A will become just B
-		 * Currently, this point is unreachable for transpose ops,
-		 * as at this point their child is always an operation.
-		 * If that changes, logic should be added such that:
-		 * TRANSPOSE(A) after removing A should become NULL. */
-		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(prev);
-		_AlgebraicExpression_InplaceRepurpose(prev, replacement);
-	}
-
-	return current;
+	bool src = true;
+	return _AlgebraicExpression_RemoveOperand(root, src);
 }
 
 // Remove right most child node from root.
@@ -428,74 +456,8 @@ AlgebraicExpression *AlgebraicExpression_RemoveDest
 (
 	AlgebraicExpression **root  // Root from which to remove left most child.
 ) {
-	ASSERT(*root);
-	bool transpose = false;
-	AlgebraicExpression *prev = *root;
-	AlgebraicExpression *current = *root;
-
-	while(current->type == AL_OPERATION) {
-		prev = current;
-		switch(current->operation.op) {
-		case AL_EXP_TRANSPOSE:
-			transpose = !transpose;
-			current = LAST_CHILD(current); // transpose have only one child
-			break;
-		case AL_EXP_ADD:
-			// Addition order of operands is not effected by transpose
-			current = LAST_CHILD(current);
-			break;
-		case AL_EXP_MUL:
-			// Multiplication order of operands depends on transpose
-			if(transpose) current = FIRST_CHILD(current);
-			else current = LAST_CHILD(current);
-			break;
-		default:
-			ASSERT("Unknown algebraic expression operation" && false);
-		}
-	}
-	ASSERT(current->type == AL_OPERAND);
-
-	if(prev == current) {
-		/* Expression is just a single operand
-		 * return operand and update root to NULL. */
-		*root = NULL;
-		return current;
-	}
-
-	switch(prev->operation.op) {
-	case AL_EXP_TRANSPOSE:
-	case AL_EXP_ADD:
-		/* Transpose ops only have one child and the order of operands for
-		 * addition is not modified by transposition, so always remove the destination. */
-		current = _AlgebraicExpression_OperationRemoveDest(prev);
-		break;
-	case AL_EXP_MUL:
-		// Remove the source if we're in a transposed context,
-		// otherwise remove the destination.
-		if(transpose) {
-			current = _AlgebraicExpression_OperationRemoveSource(prev);
-		} else {
-			current = _AlgebraicExpression_OperationRemoveDest(prev);
-		}
-		break;
-	default:
-		ASSERT("Unknown algebraic expression operation" && false);
-	}
-
-	uint child_count = AlgebraicExpression_ChildCount(prev);
-	if(child_count == 1) {
-		/* If we just previous operation only has one remaining child,
-		 * it can be replaced by that child:
-		 * MUL(A,B) after removing A will become just B
-		 * Currently, this point is unreachable for transpose ops,
-		 * as at this point their child is always an operation.
-		 * If that changes, logic should be added such that:
-		 * TRANSPOSE(A) after removing A should become NULL. */
-		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(prev);
-		_AlgebraicExpression_InplaceRepurpose(prev, replacement);
-	}
-
-	return current;
+	bool src = false;
+	return _AlgebraicExpression_RemoveOperand(root, src);
 }
 
 /* Multiply root to the left with op.
@@ -579,7 +541,7 @@ void AlgebraicExpression_Free
 (
 	AlgebraicExpression *root  // Root node.
 ) {
-	ASSERT(root);
+	ASSERT(root != NULL);
 	switch(root->type) {
 	case AL_OPERATION:
 		_AlgebraicExpression_FreeOperation(root);

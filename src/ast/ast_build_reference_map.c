@@ -60,6 +60,8 @@ static void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *order_by
 static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool force_mapping) {
 
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
+	// Disregard empty property maps.
+	if(properties && cypher_astnode_nchildren(properties) == 0) properties = NULL;
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties || force_mapping) {
@@ -76,6 +78,8 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool force_mapping) {
 
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
+	// Disregard empty property maps.
+	if(properties && cypher_astnode_nchildren(properties) == 0) properties = NULL;
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties || force_mapping) {

@@ -1458,3 +1458,208 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	array_free(ae);
 }
 
+TEST_F(AlgebraicExpressionTest, RemoveOperand) {
+	GrB_Matrix A                          = GrB_NULL;
+	GrB_Matrix B                          = GrB_NULL;
+	AlgebraicExpression *exp              = NULL;
+	AlgebraicExpression *expected         = NULL;
+	AlgebraicExpression *removed_operand  = NULL;
+
+	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+
+	const char *exps[13];
+	const char *removed[13];
+	const char *expectations[13];
+
+	//--------------------------------------------------------------------------
+	// Remove SOURCE operand from expression
+	//--------------------------------------------------------------------------
+
+	// Exp: A, remove A, expecting NULL
+	exps[0]         = "A";
+	removed[0]      = "A";
+	expectations[0] = NULL;
+
+	// Exp: A+B, remove A, expecting B
+	exps[1]         = "A+B";
+	removed[1]      = "A";
+	expectations[1] = "B";
+
+	// Exp: A*B, remove A, expecting B
+	exps[2]         = "A*B";
+	removed[2]      = "A";
+	expectations[2] = "B";
+
+	// Exp: T(A), remove A, expecting NULL
+	exps[3]         = "T(A)";
+	removed[3]      = "A";
+	expectations[3] = NULL;
+
+	// Exp: T(T(A)), remove A, expecting NULL
+	exps[4]         = "T(T(A))";
+	removed[4]      = "A";
+	expectations[4] = NULL;
+
+	// Exp: T(A) + B remove A, expecting B
+	exps[5]         = "T(A)+B";
+	removed[5]      = "A";
+	expectations[5] = "B";
+
+	// Exp: T(T(A)) + B remove A, expecting B
+	exps[6]         = "T(T(A))+B";
+	removed[6]      = "A";
+	expectations[6] = "B";
+
+	// Exp: T(A+B), remove A, expecting T(B)
+	exps[7]         = "T(A+B)";
+	removed[7]      = "A";
+	expectations[7] = "T(B)";
+
+	// Exp: T(T(A)+B), remove A, expecting T(B)
+	exps[8]         = "T(T(A)+B)";
+	removed[8]      = "A";
+	expectations[8] = "T(B)";
+
+	// Exp: T(A) * B remove A, expecting B
+	exps[9]         = "T(A)*B";
+	removed[9]      = "A";
+	expectations[9] = "B";
+
+	// Exp: T(T(A)) * B remove A, expecting B
+	exps[10]         = "T(T(A))*B";
+	removed[10]      = "A";
+	expectations[10] = "B";
+
+	// Exp: T(A*B), remove B, expecting T(A)
+	exps[11]         = "T(A*B)";
+	removed[11]      = "B";
+	expectations[11] = "T(A)";
+
+	// Exp: T(T(A)*B), remove B, expecting T(T(A))
+	exps[12]         = "T(T(A)*B)";
+	removed[12]      = "B";
+	expectations[12] = "T(T(A))";
+
+	for(int i = 0; i < 13; i++) {
+		exp = AlgebraicExpression_FromString(exps[i], matrices);
+		removed_operand = AlgebraicExpression_FromString(removed[i], matrices);
+
+		if(expectations[i] == NULL) expected = NULL;
+		else expected = AlgebraicExpression_FromString(expectations[i], matrices);
+
+		/* remove source operand and compare both modified expression
+		 * and removed source */
+		AlgebraicExpression *src = AlgebraicExpression_RemoveSource(&exp);
+		compare_algebraic_expression(src, removed_operand);
+
+		if(expected == NULL) ASSERT_EQ(NULL, exp);
+		else compare_algebraic_expression(exp, expected);
+
+		// clean up
+		AlgebraicExpression_Free(src);
+		AlgebraicExpression_Free(removed_operand);
+		if(expected != NULL) {
+			AlgebraicExpression_Free(exp);
+			AlgebraicExpression_Free(expected);
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// Remove DESTINATION operand from expression
+	//--------------------------------------------------------------------------
+
+	// Exp: A, remove A, expecting NULL
+	exps[0]         = "A";
+	removed[0]      = "A";
+	expectations[0] = NULL;
+
+	// Exp: A+B, remove B, expecting A
+	exps[1]         = "A+B";
+	removed[1]      = "B";
+	expectations[1] = "A";
+
+	// Exp: A*B, remove B, expecting A
+	exps[2]         = "A*B";
+	removed[2]      = "B";
+	expectations[2] = "A";
+
+	// Exp: T(A), remove A, expecting NULL
+	exps[3]         = "T(A)";
+	removed[3]      = "A";
+	expectations[3] = NULL;
+
+	// Exp: T(T(A)), remove A, expecting NULL
+	exps[4]         = "T(T(A))";
+	removed[4]      = "A";
+	expectations[4] = NULL;
+
+	// Exp: T(A) + B remove B, expecting T(A)
+	exps[5]         = "T(A)+B";
+	removed[5]      = "B";
+	expectations[5] = "T(A)";
+
+	// Exp: T(T(A)) + B remove B, expecting T(T(A))
+	exps[6]         = "T(T(A))+B";
+	removed[6]      = "B";
+	expectations[6] = "T(T(A))";
+
+	// Exp: T(A+B), remove B, expecting T(A)
+	exps[7]         = "T(A+B)";
+	removed[7]      = "B";
+	expectations[7] = "T(A)";
+
+	// Exp: T(T(A)+B), remove B, expecting T(T(A))
+	exps[8]         = "T(T(A)+B)";
+	removed[8]      = "B";
+	expectations[8] = "T(T(A))";
+
+	// Exp: T(A) * B remove B, expecting T(A)
+	exps[9]         = "T(A)*B";
+	removed[9]      = "B";
+	expectations[9] = "T(A)";
+
+	// Exp: T(T(A)) * B remove B, expecting T(T(A))
+	exps[10]         = "T(T(A))*B";
+	removed[10]      = "B";
+	expectations[10] = "T(T(A))";
+
+	// Exp: T(A*B), remove A, expecting T(B)
+	exps[11]         = "T(A*B)";
+	removed[11]      = "A";
+	expectations[11] = "T(B)";
+
+	// Exp: T(T(A)*B), remove A, expecting T(B)
+	exps[12]         = "T(T(A)*B)";
+	removed[12]      = "A";
+	expectations[12] = "T(B)";
+
+	for(int i = 0; i < 13; i++) {
+		exp = AlgebraicExpression_FromString(exps[i], matrices);
+		removed_operand = AlgebraicExpression_FromString(removed[i], matrices);
+
+		if(expectations[i] == NULL) expected = NULL;
+		else expected = AlgebraicExpression_FromString(expectations[i], matrices);
+
+		/* remove source operand and compare both modified expression
+		 * and removed source */
+		AlgebraicExpression *dest = AlgebraicExpression_RemoveDest(&exp);
+		compare_algebraic_expression(dest, removed_operand);
+
+		if(expected == NULL) ASSERT_EQ(NULL, exp);
+		else compare_algebraic_expression(exp, expected);
+
+		// clean up
+		AlgebraicExpression_Free(dest);
+		AlgebraicExpression_Free(removed_operand);
+		if(expected != NULL) {
+			AlgebraicExpression_Free(exp);
+			AlgebraicExpression_Free(expected);
+		}
+	}
+}
+

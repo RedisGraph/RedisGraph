@@ -36,6 +36,34 @@ void _AlgebraicExpression_InplaceRepurpose
 	rm_free(replacement);
 }
 
+void _AlgebraicExpression_OperationRemoveChild
+(
+	AlgebraicExpression *parent,
+	const AlgebraicExpression *child
+) {
+	ASSERT(parent != NULL);
+	ASSERT(child != NULL);
+
+	if(parent->type != AL_OPERATION) return;
+
+	uint child_count = AlgebraicExpression_ChildCount(parent);
+	// no child nodes to remove
+	if(child_count == 0) return;
+
+	// search for child in parent
+	for(uint i = 0; i < child_count; i++) {
+		if(parent->operation.children[i] != child) continue;
+
+		// child found, remove it
+		// shift-left following children
+		for(uint j = i; j < child_count - 1; j++) {
+			parent->operation.children[j] = parent->operation.children[j+1];
+		}
+		array_pop(parent->operation.children);
+		break;
+	}
+}
+
 // Removes the rightmost direct child node of root.
 AlgebraicExpression *_AlgebraicExpression_OperationRemoveDest
 (
