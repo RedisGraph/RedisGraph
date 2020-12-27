@@ -176,19 +176,25 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 
 Some languages have client libraries that provide support for RedisGraph's commands:
 
-| Project         | Language   | License | Author                             | URL                           |
-| --------------- | ---------- | ------- | ---------------------------------- | ----------------------------- |
-| redisgraph-py   | Python     | BSD     | [Redis Labs][redisgraph-py-author] | [GitHub][redisgraph-py-url]   |
-| JRedisGraph     | Java       | BSD     | [Redis Labs][JRedisGraph-author]   | [GitHub][JRedisGraph-url]     |
-| redisgraph-rb   | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author] | [GitHub][redisgraph-rb-url]   |
-| redisgraph-go   | Go         | BSD     | [Redis Labs][redisgraph-go-author] | [GitHub][redisgraph-go-url]   |
-| redisgraph.js   | JavaScript | BSD     | [Redis Labs][redisgraph.js-author] | [GitHub][redisgraph.js-url]   |
-| ioredisgraph    | JavaScript | ISC     | [Jonah][ioredisgraph-author]       | [GitHub][ioredisgraph-url]    |
-| @hydre/rgraph   | JavaScript | MIT     | [Sceat][rgraph-author]             | [Github][rgraph-url]          |
-| php-redis-graph | PHP        | MIT     | [KJDev][php-redis-graph-author]    | [GitHub][php-redis-graph-url] |
-| redisgraph_php  | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [GitHub][redisgraph_php-url]  |
-| redisgraph-ex   | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [GitHub][redisgraph-ex-url]   |
-| redisgraph-rs   | RUST       | MIT     | [malte-v][redisgraph-rs-author]    | [GitHub][redisgraph-rs-url]   |
+| Project                                                   | Language   | License | Author                                      | Stars                                                          | 
+| --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | -------------------------------------------------------------- |
+| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                    |  
+| [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                        |
+| [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                    |
+| [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis Labs][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                    |
+| [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis Labs][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                    |
+| [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                      |
+| [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                  |
+| [redis-modules-sdk][redis-modules-sdk-url]                | TypeScript | MIT     | [Dani Tseitlin][redis-modules-sdk-author]   | [![redis-modules-sdk-stars]][redis-modules-sdk-url]                                  |
+| [php-redis-graph][php-redis-graph-url]                    | PHP        | MIT     | [KJDev][php-redis-graph-author]             | [![php-redis-graph-stars]][php-redis-graph-url]                |
+| [redislabs-redisgraph-php][redislabs-redisgraph-php-url]  | PHP        | MIT     | [mkorkmaz][redislabs-redisgraph-php-author] | [![redislabs-redisgraph-php-stars]][redislabs-redisgraph-php-url] |
+| [redisgraph_php][redisgraph_php-url]                      | PHP        | MIT     | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                  |
+| [redisgraph-ex][redisgraph-ex-url]                        | Elixir     | MIT     | [crflynn][redisgraph-ex-author]             | [![redisgraph-ex-stars]][redisgraph-ex-url]                    |
+| [redisgraph-rs][redisgraph-rs-url]                        | RUST       | MIT     | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                    |
+| [redis_graph][redis_graph-url]                            | RUST       | BSD     | [tompro][redis_graph-author]                | [![redis_graph-stars]][redis_graph-url]                        |
+| [NRedisGraph][NRedisGraph-url]                            | C#         | BSD     | [tombatron][NRedisGraph-author]             | [![NRedisGraph-stars]][redis_graph-url]                        |
+| [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]    | C#         | BSD     | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url] |
+
 
 [redisgraph-py-author]: https://redislabs.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
@@ -207,6 +213,10 @@ Some languages have client libraries that provide support for RedisGraph's comma
 
 [rgraph-author]: https://github.com/Sceat
 [rgraph-url]: https://github.com/HydreIO/rgraph
+
+[redis-modules-sdk-author]: https://github.com/danitseitlin
+[redis-modules-sdk-url]: https://github.com/danitseitlin/redis-modules-sdk
+[redis-modules-sdk-stars]: https://img.shields.io/github/stars/danitseitlin/redis-modules-sdk.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [ioredisgraph-author]: https://github.com/Jonahss
 [ioredisgraph-url]: https://github.com/Jonahss/ioredisgraph
