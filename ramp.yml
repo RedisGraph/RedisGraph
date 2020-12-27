@@ -17,3 +17,5 @@ capabilities:
     - replica_of
     - backup_restore
     - no_multi_key
+exclude_commands:
+    - GRAPH.CONFIG
