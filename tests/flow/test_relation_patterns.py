@@ -261,3 +261,10 @@ class testRelationPattern(FlowTestsBase):
         actual_result = g.query(q)
         expected_result = [['a', 'c', 'a'], ['a', 'c', 'e'], ['e', 'c', 'a'], ['e', 'c', 'e']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test08_transposed_varlen_traversal(self):
+        # Verify that variable-length traversals with nested transpose operations perform correctly.
+        query = """MATCH (a {val: 'v1'})-[*]-(b {val: 'v2'})-[:e]->(:L {val: 'v3'}) RETURN a.val ORDER BY a.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

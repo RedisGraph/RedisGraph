@@ -11,7 +11,6 @@
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 #include "../../grouping/group.h"
-#include "../../arithmetic/aggregate.h"
 
 /* Forward declarations. */
 static Record AggregateConsume(OpBase *opBase);
@@ -173,8 +172,8 @@ static Record _handoff(OpAggregate *op) {
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
-		AR_EXP_Reduce(exp);
-		SIValue res = AR_EXP_Evaluate(exp, r);
+
+		SIValue res = AR_EXP_Finalize(exp, r);
 		Record_AddScalar(r, rec_idx, res);
 	}
 

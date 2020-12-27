@@ -17,7 +17,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr);
 
 static bool __AR_EXP_ContainsNestedAgg(const AR_ExpNode *root, bool in_agg) {
 	// Is this an aggregation node?
-	bool agg_node = (root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE);
+	bool agg_node = (root->type == AR_EXP_OP && root->op.f->aggregate == true);
 	// Aggregation node nested within another aggregation node.
 	if(agg_node && in_agg) return true;
 
@@ -64,14 +64,25 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
 	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	if(distinct) op = AR_EXP_NewDistinctOpNode(func_name, arg_count);
-	else op = AR_EXP_NewOpNode(func_name, arg_count);
+	bool aggregate = AR_FuncIsAggregate(func_name);
+	op = AR_EXP_NewOpNode(func_name, arg_count);
 
 	for(unsigned int i = 0; i < arg_count; i ++) {
 		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
 		// Recursively convert arguments
 		op->op.children[i] = _AR_EXP_FromASTNode(arg);
 	}
+
+	if(aggregate) {
+		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+		ctx->hashSet = NULL;
+		ctx->private_ctx = NULL;
+		ctx->result = SI_NullVal();
+		if(distinct) ctx->hashSet = Set_New();
+		// Add the context to the function descriptor as the function's private data.
+		op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	}
+
 	return op;
 }
 
@@ -80,11 +91,20 @@ static AR_ExpNode *_AR_EXP_FromApplyAllExpression(const cypher_astnode_t *expr) 
 	// that they have no argument accessors - by definition, they have one argument (all/STAR).
 	const cypher_astnode_t *func_node = cypher_ast_apply_all_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
-
+	bool aggregate = AR_FuncIsAggregate(func_name);
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 1);
 
 	// Introduce a fake child constant so that the function always operates on something.
 	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_BoolVal(1));
+
+	if(aggregate) {
+		AggregateCtx *ctx = rm_malloc(sizeof(AggregateCtx));
+		ctx->hashSet = NULL;
+		ctx->private_ctx = NULL;
+		ctx->result = SI_NullVal();
+		// Add the context to the function descriptor as the function's private data.
+		op->op.f = AR_SetPrivateData(op->op.f, ctx);
+	}
 
 	return op;
 }
@@ -96,8 +116,16 @@ static AR_ExpNode *_AR_EXP_FromIdentifierExpression(const cypher_astnode_t *expr
 }
 
 static AR_ExpNode *_AR_EXP_FromIdentifier(const cypher_astnode_t *expr) {
-	// check if the identifier is a named path identifier
 	AST *ast = QueryCtx_GetAST();
+	if(ast == NULL) {
+		/* Attempted to access the AST before it has been constructed.
+		 * This can occur in scenarios like parameter evaluation:
+		 * CYPHER param=[a] MATCH (a) RETURN a */
+		ErrorCtx_SetError("Attempted to access variable before it has been defined");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	// check if the identifier is a named path identifier
 	AnnotationCtx *named_paths_ctx =
 		AST_AnnotationCtxCollection_GetNamedPathsCtx(ast->anot_ctx_collection);
 

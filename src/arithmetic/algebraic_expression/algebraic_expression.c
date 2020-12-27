@@ -289,10 +289,19 @@ bool AlgebraicExpression_Transposed
 	const AlgebraicExpression *root   // Root of expression.
 ) {
 	// Empty expression.
-	if(!root) return false;
+	if(root == NULL) return false;
 
-	//TODO: handle cases such as T(A) + T(B).
-	return (root->type == AL_OPERATION && root->operation.op == AL_EXP_TRANSPOSE);
+	const AlgebraicExpression *n = root;
+
+	// handle directly nested transposes, e.g. T(T(T(X)))
+	bool transposed = false;
+	while(n->type == AL_OPERATION && n->operation.op == AL_EXP_TRANSPOSE) {
+		transposed = !transposed;
+		n = FIRST_CHILD(n);
+	}
+
+	// TODO: handle cases such as T(A) + T(B).
+	return transposed;
 }
 
 // Returns true if expression contains operation.

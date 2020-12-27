@@ -68,6 +68,14 @@ SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue v
 
 SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
+	if(e->entity == NULL) {
+		/* The internal entity pointer should only be NULL if the entity
+		 * is in an intermediate state, such as a node scheduled for creation.
+		 * Note that this exception may cause memory to be leaked in the caller. */
+		ASSERT(e->id == INVALID_ENTITY_ID);
+		ErrorCtx_SetError("Attempted to access undefined property");
+		return PROPERTY_NOTFOUND;
+	}
 
 	for(int i = 0; i < e->entity->prop_count; i++) {
 		if(attr_id == e->entity->properties[i].id) {
@@ -206,12 +214,17 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
 }
 
+inline bool GraphEntity_IsDeleted(const GraphEntity *e) {
+	return Graph_EntityIsDeleted(e->entity);
+}
+
 void FreeEntity(Entity *e) {
 	ASSERT(e);
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
 		rm_free(e->properties);
 		e->properties = NULL;
+		e->prop_count = 0;
 	}
 }
 

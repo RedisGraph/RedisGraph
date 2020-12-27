@@ -62,4 +62,3 @@ void Error_UnsupportedASTOperator(const cypher_operator_t *op);
 
 // Report an error on trying to assign a complex type to a property.
 void Error_InvalidPropertyValue(void);
-

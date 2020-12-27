@@ -174,6 +174,11 @@ uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock) {
 	return array_len(dataBlock->deletedIdx);
 }
 
+inline bool DataBlock_ItemIsDeleted(void *item) {
+	DataBlockItemHeader *header = GET_ITEM_HEADER(item);
+	return IS_ITEM_DELETED(header);
+}
+
 void DataBlock_Free(DataBlock *dataBlock) {
 	for(uint i = 0; i < dataBlock->blockCount; i++) Block_Free(dataBlock->blocks[i]);
 

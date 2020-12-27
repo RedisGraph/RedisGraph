@@ -460,7 +460,8 @@ class testQueryValidationFlow(FlowTestsBase):
 
     def test31_set_invalid_property_type(self):
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
-                   """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a"""]
+                   """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a""",
+                   """MERGE (a) ON MATCH SET a.age = a"""]
         for q in queries:
             try:
                 redis_graph.query(q)
@@ -494,3 +495,33 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert("Unexpected clause following RETURN" in e.message)
                 pass
 
+    # Parameters cannot reference aliases.
+    def test33_alias_reference_in_param(self):
+        try:
+            query = """CYPHER A=[a] RETURN 5"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Attempted to access variable" in e.message)
+            pass
+
+    def test34_self_referential_properties(self):
+        # Skip this test if running under Valgrind, as it causes a memory leak.
+        if Env().envRunner.debugger is not None:
+            Env().skip()
+
+        try:
+            # The server should emit an error on trying to create a node with a self-referential property.
+            query = """CREATE (a:L {v: a.v})"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertIn("undefined property", e.message)
+
+        # MATCH clauses should be able to use self-referential properties as existential filters.
+        query = """MATCH (a {age: a.age}) RETURN a.age"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

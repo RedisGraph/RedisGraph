@@ -7,6 +7,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include "../block.h"
 #include "./datablock_iterator.h"
@@ -82,5 +83,9 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 // Returns the number of deleted items.
 uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock);
 
+// Returns true if the given item has been deleted.
+bool DataBlock_ItemIsDeleted(void *item);
+
 // Free block.
 void DataBlock_Free(DataBlock *block);
+

@@ -12,7 +12,6 @@
 #include "cypher_whitelist.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
-#include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 
 // Forward declaration
@@ -209,18 +208,14 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool i
 		memcpy(funcName, it.key, len);
 		funcName[len] = 0;
 
-		if(AR_FuncExists(funcName)) continue;
-
-		if(Agg_FuncExists(funcName)) {
-			if(include_aggregates) {
-				continue;
-			} else {
-				// Provide a unique error for using aggregate functions from inappropriate contexts
-				ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
-				res = AST_INVALID;
-				break;
-			}
+		if(!include_aggregates && AR_FuncIsAggregate(funcName)) {
+			// Provide a unique error for using aggregate functions from inappropriate contexts
+			ErrorCtx_SetError("Invalid use of aggregating function '%s'", funcName);
+			res = AST_INVALID;
+			break;
 		}
+
+		if(AR_FuncExists(funcName)) continue;
 
 		// If we reach this point, the function was not found
 		found = false;
@@ -1584,7 +1579,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	}
 	struct cypher_input_range range = {};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
-	ast->ref_count = 1;
+	ast->ref_count = rm_malloc(sizeof(uint));
+	*(ast->ref_count) = 1;
 	ast->parse_result = NULL;
 	ast->params_parse_result = NULL;
 	return ast;

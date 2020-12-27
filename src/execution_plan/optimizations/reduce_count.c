@@ -8,6 +8,7 @@
 #include "../ops/ops.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../arithmetic/aggregate_funcs/agg_funcs.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 static GrB_UnaryOp countMultipleEdges = NULL;
@@ -32,9 +33,9 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 
 	// Make sure aggregation performs counting.
 	if(exp->type != AR_EXP_OP ||
-	   exp->op.type != AR_OP_AGGREGATE ||
-	   AR_EXP_PerformDistinct(exp) ||
-	   strcasecmp(exp->op.func_name, "count")) return 0;
+	   exp->op.f->aggregate != true ||
+	   strcasecmp(exp->op.func_name, "count") ||
+	   Aggregate_PerformsDistinct(exp->op.f->privdata)) return 0;
 
 	// Make sure Count acts on an alias.
 	if(exp->op.child_count != 1) return 0;

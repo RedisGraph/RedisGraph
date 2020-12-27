@@ -163,6 +163,13 @@ SIValue SI_ConstValue(const SIValue v) {
 	return dup;
 }
 
+// Clone 'v' and set v's allocation to volatile if 'v' owned the memory
+SIValue SI_TransferOwnership(SIValue *v) {
+	SIValue dup = *v;
+	if(v->allocation == M_SELF) v->allocation = M_VOLATILE;
+	return dup;
+}
+
 /* Update an SIValue marked as owning its internal allocations so that it instead is sharing them,
  * with no responsibility for freeing or guarantee regarding scope.
  * This is used in cases like performing shallow copies of scalars in Record entries. */
@@ -180,6 +187,11 @@ void SIValue_Persist(SIValue *v) {
 
 	// For volatile values, persisting uses the same logic as cloning.
 	*v = SI_CloneValue(*v);
+}
+
+/* Update an SIValue's allocation type to the provided value. */
+inline void SIValue_SetAllocationType(SIValue *v, SIAllocation allocation) {
+	v->allocation = allocation;
 }
 
 inline bool SIValue_IsNull(SIValue v) {

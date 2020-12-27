@@ -118,11 +118,19 @@ SIValue SI_ShallowCloneValue(const SIValue v);
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
 SIValue SI_ConstValue(const SIValue v);
 
+// SI_TransferOwnership duplicates 'v'.
+// If 'v' owned its underlying value allocation,
+// owership is transfered to the duplicate and 'v' allocation is set to M_VOLATILE.
+SIValue SI_TransferOwnership(SIValue *v);
+
 // SIValue_MakeVolatile updates an SIValue to mark that its allocations are shared rather than self-owned.
 void SIValue_MakeVolatile(SIValue *v);
 
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);
+
+// SIValue_SetAllocationType changes the SIValue's allocation to the explicitly provided value.
+void SIValue_SetAllocationType(SIValue *v, SIAllocation allocation);
 
 bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);
