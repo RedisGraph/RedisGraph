@@ -348,6 +348,54 @@ static AR_ExpNode *_AR_ExpFromMapExpression(const cypher_astnode_t *expr) {
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
+	// MATCH (n) RETURN n { .name, .age, scores: collect(m.score) }
+
+	cypher_astnode_type_t t;
+	const cypher_astnode_t *identifier = cypher_ast_map_projection_get_expression(expr);
+	AR_ExpNode *entity = AR_EXP_FromASTNode(identifier);
+
+	const cypher_astnode_t *selector = NULL;
+	unsigned int n_selectors = cypher_ast_map_projection_nselectors(expr);
+
+	AR_ExpNode *op = AR_EXP_NewOpNode("tomap", n_selectors*2);
+	AR_ExpNode **children = op->op.children;
+
+	for(uint i = 0; i < n_selectors; i++) {
+		selector = cypher_ast_map_projection_get_selector(expr, i);
+
+		const char *prop_name = NULL;
+		const cypher_astnode_t *prop = NULL;
+		t = cypher_astnode_type(selector);
+
+		if(t == CYPHER_AST_MAP_PROJECTION_PROPERTY) {
+			// { .name }
+			prop = cypher_ast_map_projection_property_get_prop_name(selector);
+			prop_name = cypher_ast_prop_name_get_value(prop);
+
+			children[i*2] =
+				AR_EXP_NewConstOperandNode(SI_ConstStringVal((char*)prop_name));
+
+			children[i*2+1] = AR_EXP_NewAttributeAccessNode(entity, prop_name);
+		} else if(t == CYPHER_AST_MAP_PROJECTION_LITERAL) {
+			// { v: n.v }
+			prop = cypher_ast_map_projection_literal_get_prop_name(selector);
+			prop_name = cypher_ast_prop_name_get_value(prop);
+			const cypher_astnode_t *literal_exp =
+				cypher_ast_map_projection_literal_get_expression(selector);
+
+			children[i*2] =
+				AR_EXP_NewConstOperandNode(SI_ConstStringVal((char*)prop_name));
+
+			children[i*2+1] = AR_EXP_FromASTNode(literal_exp);
+		} else {
+			ASSERT("Unexpected AST node type" && false);
+		}
+	}
+
+	return op;
+}
+
 static AR_ExpNode *_AR_ExpFromSubscriptExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op = AR_EXP_NewOpNode("subscript", 2);
 	const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(expr);
@@ -519,11 +567,12 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromComprehensionFunction(expr, t);
 	} else if(t == CYPHER_AST_MAP) {
 		return _AR_ExpFromMapExpression(expr);
+	} else if(t == CYPHER_AST_MAP_PROJECTION) {
+		return _AR_ExpFromMapProjection(expr);
 	} else {
 		/*
 		   Unhandled types:
 		   CYPHER_AST_LABELS_OPERATOR
-		   CYPHER_AST_MAP_PROJECTION
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
 		*/
