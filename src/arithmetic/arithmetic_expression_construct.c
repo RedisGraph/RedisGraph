@@ -328,6 +328,26 @@ static AR_ExpNode *_AR_ExpFromCollectionExpression(const cypher_astnode_t *expr)
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromMapExpression(const cypher_astnode_t *expr) {
+	/* create a new map construction expression
+	 * determine number of elements in map
+	 * double argument count to accommodate both key and value */
+	uint element_count = cypher_ast_map_nentries(expr);
+	AR_ExpNode *op = AR_EXP_NewOpNode("tomap", element_count * 2);
+
+	// process each key value pair
+	for(uint i = 0; i < element_count; i++) {
+		const cypher_astnode_t *key_node = cypher_ast_map_get_key(expr, i);
+		const char *key = cypher_ast_prop_name_get_value(key_node);
+		const cypher_astnode_t *val = cypher_ast_map_get_value(expr, i);
+		// this is a bit of an overkill, as key is supposed to be a const string
+		op->op.children[i*2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char*)key));
+		op->op.children[i*2+1] = AR_EXP_FromASTNode(val);
+	}
+
+	return op;
+}
+
 static AR_ExpNode *_AR_ExpFromSubscriptExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op = AR_EXP_NewOpNode("subscript", 2);
 	const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(expr);
@@ -497,11 +517,12 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_LIST_COMPREHENSION || t == CYPHER_AST_ANY ||
 			  t == CYPHER_AST_ALL) {
 		return _AR_ExpNodeFromComprehensionFunction(expr, t);
+	} else if(t == CYPHER_AST_MAP) {
+		return _AR_ExpFromMapExpression(expr);
 	} else {
 		/*
 		   Unhandled types:
 		   CYPHER_AST_LABELS_OPERATOR
-		   CYPHER_AST_MAP
 		   CYPHER_AST_MAP_PROJECTION
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
