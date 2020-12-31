@@ -31,3 +31,4 @@ TEST_F(ArrTest, TestArrCloneWithCB) {
 	array_free(arr);
 	array_free(arr_clone);
 }
+

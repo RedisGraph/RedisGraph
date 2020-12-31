@@ -40,10 +40,10 @@ void ErrorCtx_Clear(void);
 // Set the error message for this query.
 void ErrorCtx_SetError(const char *err_fmt, ...);
 
-/* Jump to a runtime exception breakpoint if one has been set. */
+// Jump to a runtime exception breakpoint if one has been set
 void ErrorCtx_RaiseRuntimeException(const char *err_fmt, ...);
 
-/* Reply back to the user with error. */
+// Reply back to the user with error
 void ErrorCtx_EmitException(void);
 
 bool ErrorCtx_EncounteredError(void);

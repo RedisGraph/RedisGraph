@@ -1268,27 +1268,6 @@ static void _AST_ReportErrors(const cypher_parse_result_t *result) {
 	}
 }
 
-static AST_Validation _ValidateMaps(const cypher_astnode_t *root) {
-	if(!root) return AST_VALID;
-
-
-	cypher_astnode_type_t type = cypher_astnode_type(root);
-
-	if(type == CYPHER_AST_REL_PATTERN || type == CYPHER_AST_NODE_PATTERN) return AST_VALID;
-
-	if(type == CYPHER_AST_MAP) {
-		ErrorCtx_SetError("Maps are not currently supported outside of node and relation patterns.");
-		return AST_INVALID;
-	}
-
-	uint child_count = cypher_astnode_nchildren(root);
-	for(uint i = 0; i < child_count; i++) {
-		if(_ValidateMaps(cypher_astnode_get_child(root, i)) != AST_VALID) return AST_INVALID;
-	}
-
-	return AST_VALID;
-}
-
 /* validate list usage in subscript is correct */
 static AST_Validation _validateList(const cypher_astnode_t *root) {
 
@@ -1424,8 +1403,6 @@ static AST_Validation _ValidateClauses(const AST *ast) {
 	if(_Validate_SET_Clauses(ast) == AST_INVALID) return AST_INVALID;
 
 	if(_Validate_LIMIT_SKIP_Modifiers(ast) == AST_INVALID) return AST_INVALID;
-
-	if(_ValidateMaps(ast->root) == AST_INVALID) return AST_INVALID;
 
 	return AST_VALID;
 }

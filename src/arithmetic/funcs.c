@@ -16,6 +16,7 @@ void AR_RegisterFuncs() {
 	__aeRegisteredFuncs = raxNew();
 
 	Register_AggFuncs();
+	Register_MapFuncs();
 	Register_PathFuncs();
 	Register_ListFuncs();
 	Register_TimeFuncs();

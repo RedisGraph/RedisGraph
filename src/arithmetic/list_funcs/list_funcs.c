@@ -5,7 +5,7 @@
  */
 
 #include "list_funcs.h"
-#include "../../RG.h"
+#include "RG.h"
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../datatypes/array.h"
