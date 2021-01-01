@@ -185,7 +185,7 @@ Some languages have client libraries that provide support for RedisGraph's comma
 | [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis Labs][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                    |
 | [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                      |
 | [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                  |
-| [redis-modules-sdk][redis-modules-sdk-url]                | TypeScript | MIT     | [Dani Tseitlin][redis-modules-sdk-author]   | [![redis-modules-sdk-stars]][redis-modules-sdk-url]                                  |
+| [redis-modules-sdk][redis-modules-sdk-url] | TypeScript | BSD-3-Clause | [Dani Tseitlin][redis-modules-sdk-author] | [![redis-modules-sdk-stars]][redis-modules-sdk-url]                                  |
 | [php-redis-graph][php-redis-graph-url]                    | PHP        | MIT     | [KJDev][php-redis-graph-author]             | [![php-redis-graph-stars]][php-redis-graph-url]                |
 | [redislabs-redisgraph-php][redislabs-redisgraph-php-url]  | PHP        | MIT     | [mkorkmaz][redislabs-redisgraph-php-author] | [![redislabs-redisgraph-php-stars]][redislabs-redisgraph-php-url] |
 | [redisgraph_php][redisgraph_php-url]                      | PHP        | MIT     | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                  |
