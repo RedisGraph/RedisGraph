@@ -183,6 +183,77 @@ SIValue *Map_Keys
 	return keys;
 }
 
+int Map_Compare
+(
+	SIValue mapA,
+	SIValue mapB,
+	int *disjointOrNull
+)
+{
+	int   order        =  0;
+	Map   A            =  mapA.map;
+	Map   B            =  mapB.map;
+	uint  A_key_count  =  Map_KeyCount(mapA);
+	uint  B_key_count  =  Map_KeyCount(mapB);
+
+	if(A_key_count != B_key_count) {
+		if(A_key_count > B_key_count) return 1;
+		else return -1;
+	}
+
+	// TODO: sort maps
+
+	uint len = MIN(A_key_count, B_key_count);
+
+	// Check empty list.
+	// notEqual holds the first false (result != 0)
+	// comparison result between two values from the same type,
+	// which are not equal.
+
+	// go over the common range for both maps
+	for(uint i = 0; i < len; i++) {
+		Pair Ap = A[i];
+		Pair Bp = B[i];
+
+		// compare keys
+		order = strcmp(Ap.key.stringval, Bp.key.stringval);
+		if(order != 0) return order;
+
+		// same key, compare values
+		order = SIValue_Compare(Ap.val, Bp.val, disjointOrNull);
+		if(*disjointOrNull == COMPARED_NULL || *disjointOrNull == DISJOINT)
+			return 0;
+
+		if(order != 0) return order;
+	}
+
+	// maps are equal
+	return 0;
+}
+
+/* This method referenced by Java ArrayList.hashCode() method, which takes
+ * into account the hasing of nested values.*/
+XXH64_hash_t Map_HashCode
+(
+	SIValue map
+)
+{
+	// TODO: sort on key
+	// {a:1, b:1} and {b:1, a:1} should have the same hash value
+
+	SIType t = SI_TYPE(map);
+	XXH64_hash_t hashCode = XXH64(&t, sizeof(t), 0);
+	uint key_count = Map_KeyCount(map);
+
+	for(uint i = 0; i < key_count; i++) {
+		Pair p = map.map[i];
+		hashCode = 31 * hashCode + SIValue_HashCode(p.key);
+		hashCode = 31 * hashCode + SIValue_HashCode(p.val);
+	}
+
+	return hashCode;
+}
+
 void Map_ToString
 (
 	SIValue map,          // map to get string representation from

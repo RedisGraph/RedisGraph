@@ -82,6 +82,33 @@ SIValue *Map_Keys
 	SIValue map  // map to extract keys from
 );
 
+// compare two maps
+// if maps length is not equal the map with the greater length is
+// considered greater
+//
+// {a:1, b:2} > {Z:100}
+//
+// if both maps have the same length they are sorted and comparision is done
+// on a key by key basis:
+//
+// first if Key i of A is compared to Key i of B, if keys are equal
+// we're comparing Value i of A against Value i of B
+//
+// {a:1, b:3} > {a:1, b:2} as 3 > 2
+// {a:1, c:1} > {b:1, a:1} as 'c' > 'b'
+int Map_Compare
+(
+	SIValue mapA,
+	SIValue mapB,
+	int *disjointOrNull
+);
+
+// compute hash code for map
+XXH64_hash_t Map_HashCode
+(
+	SIValue map
+);
+
 // populate 'buf' with string representation of map
 void Map_ToString
 (
