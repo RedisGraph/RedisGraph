@@ -518,6 +518,8 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			return SIArray_Compare(a, b, disjointOrNull);
 		case T_PATH:
 			return SIPath_Compare(a, b);
+		case T_MAP:
+			return Map_Compare(a, b, disjointOrNull);
 		case T_NULL:
 			break;
 		default:
@@ -567,7 +569,6 @@ XXH64_hash_t SINode_HashCode(const SIValue v) {
 
 /* Hashes the id and properties of the edge. */
 XXH64_hash_t SIEdge_HashCode(const SIValue v) {
-
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
@@ -631,6 +632,10 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 		return;
 	case T_ARRAY:
 		inner_hash = SIArray_HashCode(v);
+		XXH64_update(state, &inner_hash, sizeof(inner_hash));
+		return;
+	case T_MAP:
+		inner_hash = Map_HashCode(v);
 		XXH64_update(state, &inner_hash, sizeof(inner_hash));
 		return;
 	case T_PATH:
