@@ -7,6 +7,7 @@
 #include "resultset_formatters.h"
 #include "RG.h"
 #include "../../util/arr.h"
+#include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/path/sipath.h"
 
@@ -16,6 +17,7 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
 											   SIValue array);
 static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path);
+static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc, SIValue v);
 
 static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
@@ -37,6 +39,8 @@ static inline ValueType _mapValueType(const SIValue v) {
 		return VALUE_EDGE;
 	case T_PATH:
 		return VALUE_PATH;
+	case T_MAP:
+		return VALUE_MAP;
 	default:
 		return VALUE_UNKNOWN;
 	}
@@ -79,6 +83,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_PATH:
 		_ResultSet_CompactReplyWithPath(ctx, gc, v);
+		return;
+	case T_MAP:
+		_ResultSet_CompactReplyWithMap(ctx, gc, v);
 		return;
 	default:
 		RedisModule_Assert("Unhandled value type" && false);
@@ -221,6 +228,39 @@ static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *g
 	SIValue relationships = SIPath_Relationships(path);
 	_ResultSet_CompactReplyWithSIValue(ctx, gc, relationships);
 	SIValue_Free(relationships);
+}
+
+static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc, SIValue v) {
+	// map will be returned as an array of key/value pairs
+	// consider the map object: {a:1, b:'str', c: {x:1, y:2}}
+	//
+	// replay would be structured:
+	// [
+	//     string(1), int(1),
+	//     string(b), string(str),
+	//     string(c), [
+	//                    string(x), int(1),
+	//                    string(y), int(2)
+	//                ]
+	// ]
+
+	uint key_count = Map_KeyCount(v);
+	Map m = v.map;
+
+	// response consists of N pairs array:
+	// (string, value type, value)
+	RedisModule_ReplyWithArray(ctx, key_count * 3);
+	for(int i = 0; i < key_count; i++) {
+		Pair     p     =  m[i];
+		SIValue  val   =  p.val;
+		char     *key  =  p.key.stringval;
+
+		// emit key
+		RedisModule_ReplyWithStringBuffer(ctx, key, strlen(key));
+
+		// emit value
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, val);
+	}
 }
 
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
