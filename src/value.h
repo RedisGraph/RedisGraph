@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include "xxhash.h"
 
-/* Type defines the supported types by the indexing system. The types are powers
+/* Type defines the supported types by the system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
  *
  * The order of these values is significant, as the delta between values of
@@ -37,6 +37,7 @@ typedef enum {
 	T_DOUBLE = (1 << 14),
 	T_NULL = (1 << 15),
 	T_PTR = (1 << 16),
+	T_POINT = (1 << 17), // TODO: verify type order of point
 } SIType;
 
 typedef enum {
@@ -84,6 +85,10 @@ typedef struct SIValue {
 		void *ptrval;
 		struct Pair *map;
 		struct SIValue *array;
+		struct {
+			float latitude;   // 32 bit
+			float longitude;  // 32 bit
+		} point;
 	};
 	SIType type;
 	SIAllocation allocation;
@@ -102,6 +107,7 @@ SIValue SI_LongVal(int64_t i);
 SIValue SI_DoubleVal(double d);
 SIValue SI_Map(u_int64_t initialCapacity);
 SIValue SI_Array(u_int64_t initialCapacity);
+SIValue SI_Point(float latitude, float longitude);
 
 // Duplicate and ultimately free the input string.
 SIValue SI_DuplicateStringVal(const char *s);

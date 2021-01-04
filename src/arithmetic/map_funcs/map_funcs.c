@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *

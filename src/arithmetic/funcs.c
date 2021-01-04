@@ -20,6 +20,7 @@ void AR_RegisterFuncs() {
 	Register_PathFuncs();
 	Register_ListFuncs();
 	Register_TimeFuncs();
+	Register_PointFuncs();
 	Register_EntityFuncs();
 	Register_StringFuncs();
 	Register_NumericFuncs();
