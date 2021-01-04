@@ -136,6 +136,7 @@ bool Map_Get
 
 	// key isn't in map, set 'value' to NULL and return
 	if(idx == -1) {
+		*value = SI_NullVal();
 		return false;
 	} else {
 		*value = map.map[idx].val;
