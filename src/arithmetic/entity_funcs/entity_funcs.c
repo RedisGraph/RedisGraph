@@ -8,6 +8,7 @@
 #include "../func_desc.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../datatypes/map.h"
 #include "../../graph/graphcontext.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
@@ -130,7 +131,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
 	// inputs:
-	// argv[0] - node/edge
+	// argv[0] - node/edge/map
 	// argv[1] - property string
 	// argv[2] - property index
 
@@ -138,19 +139,31 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 	// Process inputs
 	//--------------------------------------------------------------------------
 
-	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
-	const char *prop_name = argv[1].stringval;
-	Attribute_ID prop_idx = argv[2].longval;
+	SIValue obj = argv[0];
 
-	// We have the property string, attempt to look up the index now.
-	if(prop_idx == ATTRIBUTE_NOTFOUND) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		prop_idx = GraphContext_GetAttributeID(gc, prop_name);
+	if(SI_TYPE(obj) & SI_GRAPHENTITY) {
+		// retrieve entity property
+		GraphEntity *graph_entity = (GraphEntity *)obj.ptrval;
+		const char *prop_name     = argv[1].stringval;
+		Attribute_ID prop_idx     = argv[2].longval;
+
+		// We have the property string, attempt to look up the index now.
+		if(prop_idx == ATTRIBUTE_NOTFOUND) {
+			GraphContext *gc = QueryCtx_GetGraphCtx();
+			prop_idx = GraphContext_GetAttributeID(gc, prop_name);
+		}
+
+		// Retrieve the property.
+		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
+		return SI_ConstValue(*value);
+	} else {
+		// retrieve map key
+		SIValue key = argv[1];
+		SIValue value;
+
+		Map_Get(obj, key, &value);
+		return SI_ConstValue(value);
 	}
-
-	// Retrieve the property.
-	SIValue *property = GraphEntity_GetProperty(graph_entity, prop_idx);
-	return SI_ConstValue(*property);
 }
 
 void Register_EntityFuncs() {
@@ -200,7 +213,7 @@ void Register_EntityFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
-	types = array_append(types, T_NULL | T_NODE | T_EDGE);
+	types = array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP);
 	types = array_append(types, T_STRING);
 	types = array_append(types, T_INT64);
 	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, false, false);
