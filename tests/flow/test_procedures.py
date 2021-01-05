@@ -333,7 +333,7 @@ class testProcedures(FlowTestsBase):
 
     def test11_procedure_indexes(self):
         # Verify that the full-text index is reported properly.
-        actual_resultset = redis_graph.call_procedure("db.indexes").result_set
+        actual_resultset = redis_graph.query("CALL db.indexes() YIELD type, label, properties").result_set
         expected_results = [["full-text", "fruit", ["name"]]]
         self.env.assertEquals(actual_resultset, expected_results)
 
@@ -342,7 +342,7 @@ class testProcedures(FlowTestsBase):
         self.env.assertEquals(result.indices_created, 1)
 
         # Verify that all indexes are reported.
-        actual_resultset = redis_graph.call_procedure("db.indexes").result_set
+        actual_resultset = redis_graph.query("CALL db.indexes() YIELD type, label, properties RETURN type, label, properties ORDER BY type").result_set
         expected_results = [["exact-match", "fruit", ["other_property"]],
                             ["full-text", "fruit", ["name"]]]
         self.env.assertEquals(actual_resultset, expected_results)
@@ -352,7 +352,7 @@ class testProcedures(FlowTestsBase):
         self.env.assertEquals(result.indices_created, 1)
 
         # Verify that all indexes are reported.
-        actual_resultset = redis_graph.call_procedure("db.indexes").result_set
+        actual_resultset = redis_graph.query("CALL db.indexes() YIELD type, label, properties RETURN type, label, properties ORDER BY type").result_set
         expected_results = [["exact-match", "fruit", ["other_property", "name"]],
                             ["full-text", "fruit", ["name"]]]
         self.env.assertEquals(actual_resultset, expected_results)
@@ -362,3 +362,4 @@ class testProcedures(FlowTestsBase):
         expected_results = [["fruit"],
                             ["fruit"]]
         self.env.assertEquals(actual_resultset, expected_results)
+

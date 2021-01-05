@@ -5,13 +5,13 @@
 */
 
 #include "proc_list_indexes.h"
+#include "RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
 #include "../datatypes/array.h"
-#include "RG.h"
 
 typedef struct {
 	SIValue *out;               // outputs
@@ -27,23 +27,24 @@ typedef struct {
 ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 								   const char **yield) {
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+	ASSERT(ctx != NULL && args != NULL && yield != NULL);
 
 	// TODO: introduce invoke validation, similar to arithmetic expressions
 	// expecting no arguments
 	uint arg_count = array_len((SIValue *)args);
 	if(arg_count != 0) return PROCEDURE_ERR;
 
-	IndexesContext *pdata = rm_malloc(sizeof(IndexesContext));
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	IndexesContext *pdata   = rm_malloc(sizeof(IndexesContext));
 	pdata->gc               = gc;
-	pdata->out              = array_new(SIValue, 8);
-	pdata->schema_id        = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
+	pdata->out              = array_new(SIValue, 6);
 	pdata->type             = IDX_EXACT_MATCH;
+	pdata->schema_id        = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
 	pdata->yield_type       = NULL;
 	pdata->yield_label      = NULL;
 	pdata->yield_properties = NULL;
 
-	ASSERT(yield);
 	uint yield_count = array_len(yield);
 	for(uint i = 0; i < yield_count; i++) {
 		if(strcasecmp("type", yield[i]) == 0) {
@@ -71,12 +72,12 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 	return PROCEDURE_OK;
 }
 
-static bool _Proc_IndexesEmitIndex(IndexesContext *ctx, Schema *s, IndexType idx_type) {
-	Index *idx = Schema_GetIndex(s, NULL, idx_type);
+static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
+	Index *idx = Schema_GetIndex(s, NULL, type);
 	if(idx == NULL) return false;
 
 	if(ctx->yield_type != NULL) {
-		if(idx_type == IDX_EXACT_MATCH) {
+		if(type == IDX_EXACT_MATCH) {
 			*ctx->yield_type = SI_ConstStringVal("exact-match");
 		} else {
 			*ctx->yield_type = SI_ConstStringVal("full-text");
@@ -89,11 +90,12 @@ static bool _Proc_IndexesEmitIndex(IndexesContext *ctx, Schema *s, IndexType idx
 
 	if(ctx->yield_properties) {
 		uint fields_count        = Index_FieldsCount(idx);
-		*ctx->yield_properties   = SI_Array(fields_count);
 		const char **fields      = Index_GetFields(idx);
+		*ctx->yield_properties   = SI_Array(fields_count);
 
 		for(uint i = 0; i < fields_count; i++) {
-			SIArray_Append(ctx->yield_properties, SI_ConstStringVal((char *)fields[i]));
+			SIArray_Append(ctx->yield_properties,
+					SI_ConstStringVal((char *)fields[i]));
 		}
 	}
 
@@ -103,26 +105,27 @@ static bool _Proc_IndexesEmitIndex(IndexesContext *ctx, Schema *s, IndexType idx
 SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
 	ASSERT(ctx->privateData != NULL);
 
+	Schema *s = NULL;
 	IndexesContext *pdata = ctx->privateData;
 
-	// Loop over all schemas from last to first.
+	// loop over all schemas from last to first
 	while(pdata->schema_id >= 0) {
-		Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id, SCHEMA_NODE);
+		s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id, SCHEMA_NODE);
 		if(!Schema_HasIndices(s)) {
-			// No indexes found, continue to the next schema.
+			// no indexes found, continue to the next schema
 			pdata->schema_id--;
 			continue;
 		}
 
-		// Populate index data if one is found.
-		bool found = _Proc_IndexesEmitIndex(pdata, s, pdata->type);
+		// populate index data if one is found
+		bool found = _EmitIndex(pdata, s, pdata->type);
 
 		if(pdata->type == IDX_FULLTEXT) {
-			// All indexes retrieved; update schema_id.
+			// all indexes retrieved; update schema_id, reset schema type
 			pdata->schema_id--;
 			pdata->type = IDX_EXACT_MATCH;
 		} else {
-			// The next iteration will check the same schema for a full-text index.
+			// next iteration will check the same schema for a full-text index
 			pdata->type = IDX_FULLTEXT;
 		}
 
