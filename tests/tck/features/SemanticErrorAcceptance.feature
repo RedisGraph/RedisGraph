@@ -277,7 +277,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: FloatingPointOverflow
 
-@skip
   Scenario: Handling property access on the Any type
     When executing query:
       """
@@ -289,7 +288,6 @@ Feature: SemanticErrorAcceptance
       | 0             |
     And no side effects
 
-@skip
   Scenario: Failing when performing property access on a non-map 1
     When executing query:
       """

@@ -84,6 +84,12 @@ def pathToString(pathToConvert):
     strValue += ">"
     return strValue
 
+def dictToString(dictToConvert):
+    strValue = '{'
+    strValue += ", ".join(map(lambda kv: kv[0] + ": " + toString(kv[1]), dictToConvert.iteritems()))
+    strValue += '}'
+    return strValue
+
 def toString(value):
     if isinstance(value, bool):
         if value is True:
@@ -130,6 +136,8 @@ def prepareActualValue(actualValue):
         actualValue = listToString(actualValue)
     elif isinstance(actualValue, Path):
         actualValue = pathToString(actualValue)
+    elif isinstance(actualValue, dict):
+        actualValue = dictToString(actualValue)
     else:
         # actual value is null or boolean
         assert isinstance(actualValue, (type(None), bool))

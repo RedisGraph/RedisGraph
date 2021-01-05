@@ -298,7 +298,6 @@ Feature: WithAcceptance
             | a | b |
         And no side effects
 
-    @skip
     Scenario: Nested maps
         Given an empty graph
         When executing query:

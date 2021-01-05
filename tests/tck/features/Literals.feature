@@ -125,7 +125,6 @@ Feature: Literals
             | [0, 1, 2] |
         And no side effects
 
-    @skip
     Scenario: Return an empty map
         When executing query:
             """
@@ -136,7 +135,6 @@ Feature: Literals
             | {}      |
         And no side effects
 
-    @skip
     Scenario: Return a nonempty map
         When executing query:
             """

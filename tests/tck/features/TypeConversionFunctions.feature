@@ -197,7 +197,6 @@ Feature: TypeConversionFunctions
       | 0      |
     And no side effects
 
-@skip
   Scenario Outline: `toInteger()` failing on invalid arguments
     Given an empty graph
     And having executed:

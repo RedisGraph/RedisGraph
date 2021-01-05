@@ -283,7 +283,6 @@ Feature: ReturnAcceptance2
             | ({numbers: [1, 2, 3]}) |
         And no side effects
 
-    @skip
     Scenario: Returning a projected map
         Given an empty graph
         And having executed:
@@ -449,7 +448,6 @@ Feature: ReturnAcceptance2
             | ({id: 42}) | 4            |
         And no side effects
 
-    @skip
     Scenario: Multiple aliasing and backreferencing
         Given any graph
         When executing query:
@@ -483,7 +481,6 @@ Feature: ReturnAcceptance2
             | 2     |
         And no side effects
 
-    @skip
     Scenario: Reusing variable names
         Given an empty graph
         And having executed:
@@ -505,7 +502,6 @@ Feature: ReturnAcceptance2
             | 20160614 |
         And no side effects
 
-    @skip
     Scenario: DISTINCT inside aggregation should work with lists in maps
         Given an empty graph
         And having executed:
@@ -522,7 +518,6 @@ Feature: ReturnAcceptance2
             | 1     |
         And no side effects
 
-    @skip
     Scenario: Handling DISTINCT with lists in maps
         Given an empty graph
         And having executed:
@@ -540,7 +535,6 @@ Feature: ReturnAcceptance2
             | 1        |
         And no side effects
 
-    @skip
     Scenario: DISTINCT inside aggregation should work with nested lists in maps
         Given an empty graph
         And having executed:
@@ -557,7 +551,6 @@ Feature: ReturnAcceptance2
             | 1     |
         And no side effects
 
-    @skip
     Scenario: DISTINCT inside aggregation should work with nested lists of maps in maps
         Given an empty graph
         And having executed:

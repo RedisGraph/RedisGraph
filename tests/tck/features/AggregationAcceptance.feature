@@ -82,7 +82,6 @@ Feature: AggregationAcceptance
             | 11               |
         And no side effects
 
-    @skip
     Scenario: Handle aggregates inside non-aggregate expressions
         Given an empty graph
         When executing query:
