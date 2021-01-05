@@ -81,7 +81,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	uint64_t cache_size;
 	Config_Option_get(Config_CACHE_SIZE, &cache_size);
 	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
-	  	(CacheEntryCopyFunc)ExecutionCtx_Clone);
+						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -356,7 +356,7 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 }
 
 Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
-		Attribute_ID *attribute_id, IndexType type) {
+							 Attribute_ID *attribute_id, IndexType type) {
 
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
@@ -370,7 +370,7 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 }
 
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
-		const char *field, IndexType type) {
+						  const char *field, IndexType type) {
 
 	ASSERT(idx && gc && label && field);
 
@@ -384,7 +384,7 @@ int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
-		const char *field, IndexType type) {
+							 const char *field, IndexType type) {
 
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
