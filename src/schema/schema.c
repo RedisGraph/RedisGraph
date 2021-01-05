@@ -113,7 +113,7 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 	return INDEX_OK;
 }
 
-// Index node under all shcema indicies.
+// Index node under all schema indices.
 void Schema_AddNodeToIndices(const Schema *s, const Node *n) {
 	if(!s) return;
 	Index *idx = NULL;
