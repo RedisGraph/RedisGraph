@@ -1,5 +1,0 @@
-#!/bin/csh
-cd trifast
-./go
-cd ../GraphBLAS/Demo
-./go

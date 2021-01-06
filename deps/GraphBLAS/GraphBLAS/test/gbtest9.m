@@ -1,6 +1,9 @@
 function gbtest9
 %GBTEST9 test eye and speye
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 types = gbtest_types ;
 
 A = eye ;
@@ -29,19 +32,20 @@ for m = -1:10
         for k = 1:length (types)
             type = types {k} ;
 
-            A = eye (m, n, type) ;
+            A = gbtest_cast (eye (m, n), type) ;
+
             G = GrB.eye (m, n, type) ;
             assert (gbtest_eq (A, G)) ;
             G = GrB.speye (m, n, type) ;
             assert (gbtest_eq (A, G)) ;
 
-            A = eye ([m n], type) ;
             G = GrB.eye ([m n], type) ;
             assert (gbtest_eq (A, G)) ;
             G = GrB.speye ([m n], type) ;
             assert (gbtest_eq (A, G)) ;
 
-            A = eye (m, type) ;
+            A = gbtest_cast (eye (m, m), type) ;
+
             G = GrB.eye (m, type) ;
             assert (gbtest_eq (A, G)) ;
             G = GrB.speye (m, type) ;

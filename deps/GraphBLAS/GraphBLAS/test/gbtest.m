@@ -1,11 +1,9 @@
 function gbtest
-%GBTESTALL test GraphBLAS MATLAB interface
+%GBTEST test GraphBLAS MATLAB interface
 % First compile the GraphBLAS library by typing 'make' in the top-level
 % GraphBLAS folder, in your system shell.  That statement will use cmake to
 % compile GraphBLAS.  Use 'make JOBS=40' to compile in parallel (replace '40'
-% with the number of cores in your system).  Next, go to the
-% GraphBLAS/GraphBLAS/@GrB/private folder, and type the following in the MATLAB
-% command window:
+% with the number of cores in your system).  Next, do the following in MATLAB:
 %
 % Example:
 %
@@ -24,8 +22,8 @@ function gbtest
 %
 % See also GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % gbtest3 requires ../demo/dnn_matlab.m and ../demo/dnn_mat2gb.m.
 demo_folder = fullfile (fileparts (mfilename ('fullpath')), '../demo') ;
@@ -111,8 +109,38 @@ gbtest70  % test GrB.random
 gbtest71  % test GrB.selectopinfo
 gbtest72  % test any-pair semiring
 gbtest73  % test GrB.normdiff
+gbtest74  % test bitwise operators
+gbtest75  % test bitshift
+gbtest76  % test trig functions
+gbtest77  % test error handling
+gbtest78  % test integer operations
+gbtest79  % test power
+gbtest80  % test complex division and power
+gbtest81  % test complex operators
+gbtest82  % test complex A*B, A'*B, A*B', A'*B', A+B
+gbtest83  % test GrB.apply
+gbtest84  % test GrB.assign
+gbtest85  % test GrB.subassign
+gbtest86  % test GrB.mxm
+gbtest87  % test GrB.eadd
+gbtest88  % test GrB.emult
+gbtest89  % test GrB.extract
+gbtest90  % test GrB.reduce
+gbtest91  % test GrB.trans
+gbtest92  % test GrB.kronecker
+gbtest93  % test GrB.select
+gbtest94  % test GrB.vreduce
+gbtest95  % test indexing
+gbtest96  % test GrB.optype
+gbtest97  % test GrB.apply2
+gbtest98  % test row/col degree for hypersparse matrices
+gbtest99  % test performance of C=A'*B and C=A'
+gbtest100 % test GrB.ver and GrB.version
+gbtest00  % test GrB.bfs and plot (graph (G))
 
-gbtest99  % test GrB.bfs and plot (graph (G))
+% restore default # of threads
+maxNumCompThreads ('automatic') ;
+GrB.clear
 
 fprintf ('\ngbtest: all tests passed\n') ;
 

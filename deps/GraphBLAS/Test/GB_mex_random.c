@@ -2,8 +2,8 @@
 // GB_mex_random: construct a random matrix, double or Complex
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@
 
 #define GET_DEEP_COPY ;
 #define FREE_DEEP_COPY ;
-#define FREE_ALL GB_mx_put_global (true, 0) ;
+#define FREE_ALL GB_mx_put_global (true) ;   
 
 void mexFunction
 (
@@ -29,7 +29,6 @@ void mexFunction
     GrB_Matrix A = NULL ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin == 0 || nargin > 8)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;

@@ -2,8 +2,8 @@
 // GB_red:  hard-coded functions for reductions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -20,8 +20,6 @@
 
 // Assemble tuples:    GB_red_build__max_uint8
 // Reduce to scalar:   GB_red_scalar__max_uint8
-// Reduce each vector: GB_red_eachvec__max_uint8
-// Reduce each index:  GB_red_eachindex__max_uint8
 
 // A type:   uint8_t
 // C type:   uint8_t
@@ -36,10 +34,15 @@
 #define GB_CTYPE \
     uint8_t
 
-// declare scalar
+// monoid identity value
 
-    #define GB_SCALAR(s)                            \
-        uint8_t s
+    #define GB_IDENTITY \
+        0
+
+// declare a scalar and set it equal to the monoid identity value
+
+    #define GB_SCALAR_IDENTITY(s)                   \
+        uint8_t s = GB_IDENTITY
 
 // Array to array
 
@@ -92,10 +95,13 @@
     #define GB_HAS_TERMINAL                         \
         1
 
+    #define GB_IS_TERMINAL(s)                       \
+        (s == UINT8_MAX)
+
     #define GB_TERMINAL_VALUE                       \
         UINT8_MAX
 
-    #define GB_BREAK_IF_TERMINAL(t)                 \
+    #define GB_BREAK_IF_TERMINAL(s)                 \
         if (s == UINT8_MAX) break ;
 
 // panel size for built-in operators
@@ -123,6 +129,7 @@ GrB_Info GB_red_scalar__max_uint8
     uint8_t *result,
     const GrB_Matrix A,
     GB_void *GB_RESTRICT W_space,
+    bool *GB_RESTRICT F,
     int ntasks,
     int nthreads
 )
@@ -131,70 +138,17 @@ GrB_Info GB_red_scalar__max_uint8
     return (GrB_NO_VALUE) ;
     #else
     uint8_t s = (*result) ;
-    #include "GB_reduce_panel.c"
+    uint8_t *GB_RESTRICT W = (uint8_t *) W_space ;
+    if (A->nzombies > 0 || GB_IS_BITMAP (A))
+    {
+        #include "GB_reduce_to_scalar_template.c"
+    }
+    else
+    {
+        #include "GB_reduce_panel.c"
+    }
     (*result) = s ;
     return (GrB_SUCCESS) ;
-    #endif
-}
-
-
-
-//------------------------------------------------------------------------------
-// reduce to each vector: each vector A(:,k) reduces to a scalar Tx (k)
-//------------------------------------------------------------------------------
-
-
-
-GrB_Info GB_red_eachvec__max_uint8
-(
-    uint8_t *GB_RESTRICT Tx,
-    GrB_Matrix A,
-    const int64_t *GB_RESTRICT kfirst_slice,
-    const int64_t *GB_RESTRICT klast_slice,
-    const int64_t *GB_RESTRICT pstart_slice,
-    GB_void *Wfirst_space,
-    GB_void *Wlast_space,
-    int ntasks,
-    int nthreads
-)
-{ 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
-    #include "GB_reduce_each_vector.c"
-    return (GrB_SUCCESS) ;
-    #endif
-}
-
-
-
-//------------------------------------------------------------------------------
-// reduce to each index: each A(i,:) reduces to a scalar T (i)
-//------------------------------------------------------------------------------
-
-
-
-GrB_Info GB_red_eachindex__max_uint8
-(
-    GrB_Matrix *Thandle,
-    GrB_Type ttype,
-    GrB_Matrix A,
-    const int64_t *GB_RESTRICT pstart_slice,
-    int nth,
-    int nthreads,
-    GB_Context Context
-)
-{ 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
-    GrB_Info info = GrB_SUCCESS ;
-    GrB_Matrix T = NULL ;
-    (*Thandle) = NULL ;
-    #define GB_FREE_ALL ;
-    #include "GB_reduce_each_index.c"
-    (*Thandle) = T ;
-    return (info) ;
     #endif
 }
 

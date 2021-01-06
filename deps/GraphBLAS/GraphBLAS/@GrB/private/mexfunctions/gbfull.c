@@ -1,14 +1,27 @@
 //------------------------------------------------------------------------------
-// gbfull: convert a GraphBLAS matrix struct into a MATLAB dense matrix
+// gbfull: add identity values to a matrix so all entries are present
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // The input may be either a GraphBLAS matrix struct or a standard MATLAB
-// sparse or dense matrix.  The output is a standard MATLAB dense matrix.
+// sparse or full matrix.  The output is a GraphBLAS matrix by default, with
+// all entries present, of the given type.  Entries are filled in with the id
+// value, whose default value is zero.
+
+// If desc.kind = 'grb', or if the descriptor is not present, the output is a
+// GraphBLAS full matrix.  Otherwise the output is a MATLAB full matrix
+// (desc.kind = 'full').   The two other cases, desc.kind = 'sparse' and
+// 'matlab' are treated as 'full'.
+
+// Usage:
+//  C = gbfull (A)
+//  C = gbfull (A, type)
+//  C = gbfull (A, type, id)
+//  C = gbfull (A, type, id, desc)
 
 #include "gb_matlab.h"
 
@@ -25,8 +38,8 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 2 && nargin <= 4 && nargout <= 1,
-        "usage: C = GrB.full (A, type, id, desc)") ;
+    gb_usage (nargin >= 1 && nargin <= 4 && nargout <= 2,
+        "usage: C = gbfull (A, type, id, desc)") ;
 
     //--------------------------------------------------------------------------
     // get a shallow copy of the input matrix
@@ -41,74 +54,74 @@ void mexFunction
     // get the type of C
     //--------------------------------------------------------------------------
 
-    GrB_Matrix type = gb_mxstring_to_type (pargin [1]) ;
+    GrB_Matrix type ;
+    if (nargin > 1)
+    { 
+        type = gb_mxstring_to_type (pargin [1]) ;
+    }
+    else
+    { 
+        // the output type defaults to the same as the input type
+        OK (GxB_Matrix_type (&type, A)) ;
+    }
 
     //--------------------------------------------------------------------------
     // get the identity scalar
     //--------------------------------------------------------------------------
 
-    GrB_Matrix id ;
+    GrB_Matrix id = NULL ;
     if (nargin > 2)
     { 
         id = gb_get_shallow (pargin [2]) ;
     }
-    else
-    { 
-        // Assume the identity is zero, of the same type as C.
-        // The format does not matter, since only id (0,0) will be used.
-        OK (GrB_Matrix_new (&id, type, 1, 1)) ;
-    }
 
     //--------------------------------------------------------------------------
-    // get the descriptor (kind defaults to KIND_FULL)
+    // get the descriptor
     //--------------------------------------------------------------------------
 
     base_enum_t base = BASE_DEFAULT ;
-    kind_enum_t kind = KIND_FULL ;
+    kind_enum_t kind = KIND_GRB ;
     GxB_Format_Value fmt = GxB_NO_FORMAT ;
+    int sparsity = 0 ;
     GrB_Descriptor desc = NULL ;
     if (nargin > 3)
     { 
-        desc = gb_mxarray_to_descriptor (pargin [nargin-1], &kind, &fmt, &base);
+        desc = gb_mxarray_to_descriptor (pargin [nargin-1], &kind, &fmt,
+            &sparsity, &base) ;
     }
-
-    // A determines the format of C, unless defined by the descriptor
-    fmt = gb_get_format (nrows, ncols, A, NULL, fmt) ;
-
-    //--------------------------------------------------------------------------
-    // expand the identity into a dense matrix B the same size as C
-    //--------------------------------------------------------------------------
-
-    GrB_Matrix B ;
-    OK (GrB_Matrix_new (&B, type, nrows, ncols)) ;
-    OK (GxB_Matrix_Option_set (B, GxB_FORMAT, fmt)) ;
-    gb_matrix_assign_scalar (B, NULL, NULL, id, GrB_ALL, 0, GrB_ALL, 0, NULL,
-        false) ;
-
-    //--------------------------------------------------------------------------
-    // C = first (A, B)
-    //--------------------------------------------------------------------------
-
-    GrB_Matrix C ;
-    OK (GrB_Matrix_new (&C, type, nrows, ncols)) ;
-    OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
-    OK (GrB_eWiseAdd_Matrix_BinaryOp (C, NULL, NULL,
-        gb_first_binop (type), A, B, NULL)) ;
-
-    //--------------------------------------------------------------------------
-    // free workspace
-    //--------------------------------------------------------------------------
-
-    OK (GrB_Matrix_free (&id)) ;
-    OK (GrB_Matrix_free (&B)) ;
-    OK (GrB_Matrix_free (&A)) ;
     OK (GrB_Descriptor_free (&desc)) ;
 
     //--------------------------------------------------------------------------
-    // export C to a MATLAB dense matrix
+    // finalize the kind and format
+    //--------------------------------------------------------------------------
+
+    // ignore desc.kind = 'sparse' or 'matlab' and just use 'full' instead
+    kind = (kind == KIND_SPARSE || kind == KIND_MATLAB) ? KIND_FULL : kind ;
+
+    if (kind == KIND_FULL)
+    {
+        // MATLAB matrices are always held by column
+        fmt = GxB_BY_COL ;
+    }
+    else
+    {
+        // A determines the format of C, unless defined by the descriptor
+        fmt = gb_get_format (nrows, ncols, A, NULL, fmt) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // expand A to a full matrix
+    //--------------------------------------------------------------------------
+
+    GrB_Matrix C = gb_expand_to_full (A, type, fmt, id) ;
+    OK (GrB_Matrix_free (&A)) ;
+
+    //--------------------------------------------------------------------------
+    // export C
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;
+    pargout [1] = mxCreateDoubleScalar (kind) ;
     GB_WRAPUP ;
 }
 

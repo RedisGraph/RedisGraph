@@ -2,8 +2,8 @@
 // GB_mex_binaryop: parse a binaryop, for testing
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ void mexFunction
 {
 
     // check inputs
-    GB_WHERE (USAGE) ;
+    GB_CONTEXT (USAGE) ;
     if (nargin != 1)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -29,13 +29,13 @@ void mexFunction
 
     GrB_BinaryOp binaryop = NULL ;
     GB_mx_mxArray_to_BinaryOp (&binaryop, pargin [0], "binaryop",
-        GB_PLUS_opcode, mxDOUBLE_CLASS, false, false) ;
+        GrB_FP64, false) ;
 
     GrB_Info info = GB_BinaryOp_check (binaryop, "binaryop", GxB_COMPLETE,
-        stdout, Context) ;
+        stdout) ;
     if (info != GrB_SUCCESS)
     {
-        mexErrMsgTxt (GrB_error ( )) ;
+        mexErrMsgTxt ("binaryop failed") ;
     }
 }
 

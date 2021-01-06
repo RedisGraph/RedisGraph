@@ -1,16 +1,11 @@
-function Cout = extract (varargin)
+function C = extract (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %GRB.EXTRACT extract sparse submatrix.
 %
-% GrB.extract is an interface to GrB_Matrix_extract and
-% GrB_Matrix_extract_[TYPE], computing the GraphBLAS expression:
+%   C = GrB.extract (Cin, M, accum, A, I, J, desc)
 %
-%   C<#M,replace> = accum (C, A(I,J)) or accum(C, A(J,I)')
+%   C<M> = A(I,J) or accum (C, A(I,J))
 %
-% Usage:
-%
-%   Cout = GrB.extract (Cin, M, accum, A, I, J, desc)
-%
-% A is a required parameters.  All others are optional, but if M or accum
+% A is a required parameter.  All others are optional, but if M or accum
 % appears, then Cin is also required.  If desc.in0 is 'transpose', then
 % the description below assumes A = A' is computed first before the
 % extraction (A is not changed on output, however).
@@ -48,39 +43,73 @@ function Cout = extract (varargin)
 %       default), then indices are intrepetted as 1-based, just as in MATLAB.
 %
 % Cin: an optional input matrix, containing the initial content of the
-%       matrix C.  Cout is the content of C after the assignment is made.
-%       If present, Cin argument has size length(I)-by-length(J).
+%       matrix C.  C on output is the content of C after the assignment is
+%       made.  If present, Cin argument has size length(I)-by-length(J).
 %       If accum is present then Cin is a required input.
 %
 % accum: an optional binary operator, defined by a string ('+.double') for
-%       example.  This allows for Cout = Cin + A(I,J) to be computed.  If
-%       not present, no accumulator is used and Cout=A(I,J) is computed.
+%       example.  This allows for C = Cin + A(I,J) to be computed.  If
+%       not present, no accumulator is used and C=A(I,J) is computed.
 %       If accum is present then Cin is a required input.
 %
 % M: an optional mask matrix, the same size as C.
-%
-% All input matrices may be either GraphBLAS and/or MATLAB matrices, in
-% any combination.  Cout is returned as a GraphBLAS matrix, by default;
-% see 'help GrB/descriptorinfo' for more options.
 %
 % Example:
 %
 %   A = sprand (5, 4, 0.5)
 %   I = [2 1 5]
 %   J = [3 3 1 2]
-%   Cout = GrB.extract (A, {I}, {J})
+%   C = GrB.extract (A, {I}, {J})
 %   C2 = A (I,J)
-%   C2 - Cout
+%   C2 - C
 %
-% See also subsref.
+% See also GrB/subsref.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-[args, is_gb] = gb_get_args (varargin {:}) ;
-if (is_gb)
-    Cout = GrB (gbextract (args {:})) ;
-else
-    Cout = gbextract (args {:}) ;
+if (isobject (arg1))
+    arg1 = arg1.opaque ;
+end
+
+if (nargin > 1 && isobject (arg2))
+    arg2 = arg2.opaque ;
+end
+
+if (nargin > 2 && isobject (arg3))
+    arg3 = arg3.opaque ;
+end
+
+if (nargin > 3 && isobject (arg4))
+    arg4 = arg4.opaque ;
+end
+
+if (nargin > 4 && isobject (arg5))
+    arg5 = arg5.opaque ;
+end
+
+if (nargin > 5 && isobject (arg6))
+    arg6 = arg6.opaque ;
+end
+
+switch (nargin)
+    case 1
+        [C, k] = gbextract (arg1) ;
+    case 2
+        [C, k] = gbextract (arg1, arg2) ;
+    case 3
+        [C, k] = gbextract (arg1, arg2, arg3) ;
+    case 4
+        [C, k] = gbextract (arg1, arg2, arg3, arg4) ;
+    case 5
+        [C, k] = gbextract (arg1, arg2, arg3, arg4, arg5) ;
+    case 6
+        [C, k] = gbextract (arg1, arg2, arg3, arg4, arg5, arg6) ;
+    case 7
+        [C, k] = gbextract (arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
+end
+
+if (k == 0)
+    C = GrB (C) ;
 end
 

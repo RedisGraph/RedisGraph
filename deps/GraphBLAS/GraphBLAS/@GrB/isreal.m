@@ -1,13 +1,14 @@
 function s = isreal (G)
-%ISREAL true for real GraphBLAS matrices.
+%ISREAL true for real matrices.
 % isreal (G) is true for a GraphBLAS matrix G, unless it has a type of
-% 'complex'.  Note that complex matrices are not yet supported, so
-% currently isreal (G) is true for all GraphBLAS matrices.
+% 'single complex' or 'double complex'.
 %
-% See also isnumeric, isfloat, isinteger, islogical, GrB.type, isa, GrB.
+% See also GrB/isnumeric, GrB/isfloat, GrB/isinteger, GrB/islogical,
+% GrB.type, GrB/isa, GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-s = ~isequal (gbtype (G.opaque), 'complex') ;
+G = G.opaque ;
+s = ~contains (gbtype (G), 'complex') ;
 

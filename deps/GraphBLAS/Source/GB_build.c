@@ -2,22 +2,19 @@
 // GB_build: build a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// CALLED BY: GB_matvec_build and GB_reduce_to_vector
+// CALLED BY: GB_matvec_build
 // CALLS:     GB_builder
 
 // GB_matvec_build constructs a GrB_Matrix or GrB_Vector from the tuples
 // provided by the user.  In that case, the tuples must be checked for
 // duplicates.  They might be sorted on input, so this condition is checked and
-// exploited if found.  GB_reduce_to_vector constructs a GrB_Vector froma
-// GrB_Matrix, by discarding the vector index.  As a result, duplicates are
-// likely to appear, and the input is likely to be unsorted.  But for
-// GB_reduce_to_vector, the validity of the tuples need not be checked.  All of
-// these conditions are checked in GB_builder.
+// exploited if that condition is found.  All of these conditions are checked
+// in GB_builder.
 
 // GB_build constructs a matrix C from a list of indices and values.  Any
 // duplicate entries with identical indices are assembled using the binary dup
@@ -55,14 +52,14 @@
 
 // However, with this well-defined order, the SECOND operator will result in
 // the last tuple overwriting the earlier ones.  This is relied upon internally
-// by GB_wait.
+// by GB_Matrix_wait.
 
 // After the matrix T is assembled, it is typecasted into the type of C, the
 // final output matrix.  No typecasting is done during assembly of duplicates,
 // since mixing the two can break associativity and lead to unpredictable
-// results.  Note that this is not the case for GB_wait, which must typecast
-// each tuple into its output matrix in the same order they are seen in
-// the [I,J,S] pending tuples.
+// results.  Note that this is not the case for GB_Matrix_wait, which must
+// typecast each tuple into its output matrix in the same order they are seen
+// in the [I,J,S] pending tuples.
 
 // On input, C must not be NULL.  C->type, C->vlen, C->vdim and C->is_csc must
 // be valid on input and are unchanged on output.  C must not have any existing
@@ -93,14 +90,13 @@ GrB_Info GB_build               // build matrix
 (
     GrB_Matrix C,               // matrix to build
     const GrB_Index *I_input,   // "row" indices of tuples (as if CSC)
-    const GrB_Index *J_input,   // "col" indices of tuples (as if CSC) NULL for
-                                // GrB_Vector_build or GB_reduce_to_vector
+    const GrB_Index *J_input,   // "col" indices of tuples (as if CSC)
+                                // J_input is NULL for GrB_Vector_build
     const void *S_input,        // values
     const GrB_Index nvals,      // number of tuples
     const GrB_BinaryOp dup,     // binary function to assemble duplicates
     const GB_Type_code scode,   // GB_Type_code of S_input array
     const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
-    const bool ijcheck,         // true if I and J are to be checked
     GB_Context Context
 )
 {
@@ -110,14 +106,16 @@ GrB_Info GB_build               // build matrix
     //--------------------------------------------------------------------------
 
     ASSERT (C != NULL) ;
+    ASSERT (dup != NULL) ;
+    ASSERT (!GB_OP_IS_POSITIONAL (dup)) ;
 
     //--------------------------------------------------------------------------
     // free all content of C
     //--------------------------------------------------------------------------
 
-    // the type, dimensions, and hyper ratio are still preserved in C.
-    GB_PHIX_FREE (C) ;
-    ASSERT (GB_EMPTY (C)) ;
+    // the type, dimensions, and hyper_switch are still preserved in C.
+    GB_phbix_free (C) ;
+    ASSERT (GB_IS_EMPTY (C)) ;
     ASSERT (!GB_ZOMBIES (C)) ;
     ASSERT (C->magic == GB_MAGIC2) ;
 
@@ -125,8 +123,8 @@ GrB_Info GB_build               // build matrix
     // build the matrix T
     //--------------------------------------------------------------------------
 
-    // T is always hypersparse.  Its type is the same as the z output of the
-    // z=dup(x,y) operator.
+    // T is always built as hypersparse .  Its type is the same as the z output
+    // of the z=dup(x,y) operator.
 
     // S_input must be treated as read-only, so GB_builder is not allowed to
     // transplant it into T->x.
@@ -147,13 +145,12 @@ GrB_Info GB_build               // build matrix
         &no_J_work,     // J_work_handle, not used here
         &no_S_work,     // S_work_handle, not used here
         false,          // known_sorted: not yet known
-        false,          // known_no_duplicatces: not yet known
+        false,          // known_no_duplicates: not yet known
         0,              // I_work, J_work, and S_work not used here
         is_matrix,      // true if T is a GrB_Matrix
-        ijcheck,        // true if I and J are to be checked
         (int64_t *) ((C->is_csc) ? I_input : J_input),
         (int64_t *) ((C->is_csc) ? J_input : I_input),
-        S_input,        // original values, each of size nvals, not modified
+        (const GB_void *) S_input,   // original values, each of size nvals
         nvals,          // number of tuples
         dup,            // operator to assemble duplicates
         scode,          // type of the S array
@@ -170,6 +167,10 @@ GrB_Info GB_build               // build matrix
     // transplant and typecast T into C, conform C, and free T
     //--------------------------------------------------------------------------
 
+    ASSERT (GB_IS_HYPERSPARSE (T)) ;
+    ASSERT (!GB_ZOMBIES (T)) ;
+    ASSERT (!GB_JUMBLED (T)) ;
+    ASSERT (!GB_PENDING (T)) ;
     return (GB_transplant_conform (C, C->type, &T, Context)) ;
 }
 

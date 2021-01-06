@@ -1,14 +1,23 @@
 function s = isfull (A)
 %GRB.ISFULL determine if all entries are present.
-% For a GraphBLAS matrix, or a MATLAB sparse matrix, GrB.isfull (A) is true if
-% numel (A) == nnz (A).  A can be a GraphBLAS matrix, or a MATLAB sparse or
-% full matrix.  GrB.isfull (A) is always true if A is a MATLAB full matrix.
+% For either a GraphBLAS or MATLAB matrix, GrB.isfull (A) is true if
+% numel(A) == nnz(A).  GrB.isfull (A) is always true if A is a GraphBLAS
+% or MATLAB full matrix.
 %
-% See also issparse.
+% See also GrB/issparse, GrB/full.
 
-if (isa (A, 'GrB') || issparse (A))
-    s = (numel (A) == GrB.entries (A)) ;
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
+if (isobject (A))
+    % GraphBLAS matrix
+    A = A.opaque ;
+    s = gb_isfull (A) ;
+elseif (issparse (A))
+    % MATLAB sparse matrix
+    s = (numel (A) == nnz (A)) ;
 else
+    % MATLAB full matrix, string, struct, etc
     s = true ;
 end
 

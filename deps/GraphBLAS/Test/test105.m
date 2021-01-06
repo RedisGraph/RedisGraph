@@ -1,8 +1,8 @@
 function test105
 %TEST105 eWiseAdd with hypersparse matrices
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng 'default'
 fprintf ('\ntest105: eWiseAdd with hypersparse\n') ;
@@ -14,31 +14,31 @@ for m = [0 1 5 100]
                 for is_hyper = 0:1
 
                     if (is_hyper)
-                        hyper_ratio = 1 ;
+                        hyper_switch = 1 ;
                     else
-                        hyper_ratio = 0 ;
+                        hyper_switch = 0 ;
                     end
 
                     A = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_ratio) ;
+                        is_csc, is_hyper, hyper_switch) ;
                     B = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_ratio) ;
+                        is_csc, is_hyper, hyper_switch) ;
                     C = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_ratio) ;
+                        is_csc, is_hyper, hyper_switch) ;
                     M = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_ratio) ;
+                        is_csc, is_hyper, hyper_switch) ;
 
                     % C = A+B, no mask
-                    C0 = GB_spec_eWiseAdd_Matrix (C, [ ], [ ], ...
+                    C0 = GB_spec_Matrix_eWiseAdd (C, [ ], [ ], ...
                                                  'plus', A, B, [ ], 'test') ;
-                    C1 = GB_mex_eWiseAdd_Matrix  (C, [ ], [ ], ...
+                    C1 = GB_mex_Matrix_eWiseAdd  (C, [ ], [ ], ...
                                                  'plus', A, B, [ ], 'test') ;
                     GB_spec_compare (C0, C1) ;
 
                     % C = A+B, with mask
-                    C0 = GB_spec_eWiseAdd_Matrix (C, M, [ ], ...
+                    C0 = GB_spec_Matrix_eWiseAdd (C, M, [ ], ...
                                                  'plus', A, B, [ ], 'test') ;
-                    C1 = GB_mex_eWiseAdd_Matrix  (C, M, [ ], ...
+                    C1 = GB_mex_Matrix_eWiseAdd  (C, M, [ ], ...
                                                  'plus', A, B, [ ], 'test') ;
                     GB_spec_compare (C0, C1) ;
 

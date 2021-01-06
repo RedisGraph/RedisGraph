@@ -2,8 +2,8 @@
 // GB_reduce_to_scalar_template: s=reduce(A), reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -16,9 +16,12 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const GB_ATYPE *GB_RESTRICT Ax = A->x ;
-    int64_t anz = GB_NNZ (A) ;
+    const int8_t   *GB_RESTRICT Ab = A->b ;
+    const int64_t  *GB_RESTRICT Ai = A->i ;
+    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) A->x ;
+    int64_t anz = GB_NNZ_HELD (A) ;
     ASSERT (anz > 0) ;
+    const bool A_has_zombies = (A->nzombies > 0) ;
 
     //--------------------------------------------------------------------------
     // reduce A to a scalar
@@ -31,14 +34,17 @@
         // single thread
         //----------------------------------------------------------------------
 
-        // s = (ztype) Ax [0]
-        GB_CAST_ARRAY_TO_SCALAR (s, Ax, 0) ;
-        for (int64_t p = 1 ; p < anz ; p++)
+        for (int64_t p = 0 ; p < anz ; p++)
         { 
-            // check for early exit
-            GB_BREAK_IF_TERMINAL (s) ;
+            // skip if the entry is a zombie or if not in the bitmap
+            if (A_has_zombies && GB_IS_ZOMBIE (Ai [p])) continue ;
+            if (!GBB (Ab, p)) continue ;
             // s = op (s, (ztype) Ax [p])
             GB_ADD_CAST_ARRAY_TO_SCALAR (s, Ax, p) ;
+            // check for early exit
+            #if GB_HAS_TERMINAL
+            if (GB_IS_TERMINAL (s)) break ;
+            #endif
         }
 
     }
@@ -50,26 +56,41 @@
         //----------------------------------------------------------------------
 
         bool early_exit = false ;
-
         int tid ;
+
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
         for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t pstart, pend ;
             GB_PARTITION (pstart, pend, anz, tid, ntasks) ;
-            // ztype t = (ztype) Ax [pstart], with typecast
-            GB_SCALAR (t) ;
-            GB_CAST_ARRAY_TO_SCALAR (t, Ax, pstart) ;
-            GB_IF_NOT_EARLY_EXIT
+            // ztype t = identity
+            GB_SCALAR_IDENTITY (t) ;
+            bool my_exit, found = false ;
+            GB_ATOMIC_READ
+            my_exit = early_exit ;
+            if (!my_exit)
             {
-                for (int64_t p = pstart+1 ; p < pend ; p++)
+                for (int64_t p = pstart ; p < pend ; p++)
                 { 
-                    // check for early exit
-                    GB_PARALLEL_BREAK_IF_TERMINAL (t) ;
+                    // skip if the entry is a zombie or if not in the bitmap
+                    if (A_has_zombies && GB_IS_ZOMBIE (Ai [p])) continue ;
+                    if (!GBB (Ab, p)) continue ;
+                    found = true ;
                     // t = op (t, (ztype) Ax [p]), with typecast
                     GB_ADD_CAST_ARRAY_TO_SCALAR (t, Ax, p) ;
+                    // check for early exit
+                    #if GB_HAS_TERMINAL
+                    if (GB_IS_TERMINAL (t))
+                    { 
+                        // tell the other tasks to exit early
+                        GB_ATOMIC_WRITE
+                        early_exit = true ;
+                        break ;
+                    }
+                    #endif
                 }
             }
+            F [tid] = found ;
             // W [tid] = t, no typecast
             GB_COPY_SCALAR_TO_ARRAY (W, tid, t) ;
         }
@@ -78,12 +99,13 @@
         // sum up the results of each slice using a single thread
         //----------------------------------------------------------------------
 
-        // s = W [0], no typecast
-        GB_COPY_ARRAY_TO_SCALAR (s, W, 0) ;
-        for (int tid = 1 ; tid < ntasks ; tid++)
-        { 
-            // s = op (s, W [tid]), no typecast
-            GB_ADD_ARRAY_TO_SCALAR (s, W, tid) ;
+        for (int tid = 0 ; tid < ntasks ; tid++)
+        {
+            if (F [tid])
+            { 
+                // s = op (s, W [tid]), no typecast
+                GB_ADD_ARRAY_TO_SCALAR (s, W, tid) ;
+            }
         }
     }
 }

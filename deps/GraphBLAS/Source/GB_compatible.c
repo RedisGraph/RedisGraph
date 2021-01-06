@@ -2,8 +2,8 @@
 // GB_compatible: check input and operators for type compatibility
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -63,10 +63,10 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     // also C<M> = accum(C,T) for entries in T but not C
     if (!GB_Type_compatible (ctype, ttype))
     { 
-        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
-            "result of computation of type [%s]\n"
+        GB_ERROR (GrB_DOMAIN_MISMATCH,
+            "Result of computation of type [%s]\n"
             "cannot be typecast to final output of type [%s]",
-            ttype->name, ctype->name))) ;
+            ttype->name, ctype->name) ;
     }
 
     //--------------------------------------------------------------------------

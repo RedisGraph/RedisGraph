@@ -1,8 +1,8 @@
 function gbtest46
 %GBTEST46 test GrB.subassign and GrB.assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 d.kind = 'sparse' ;
@@ -10,10 +10,10 @@ d.kind = 'sparse' ;
 types = gbtest_types ;
 for k = 1:length (types)
     type = types {k} ;
-    A = cast (rand (4) * 100, type) ;
-    C = GrB.subassign (A, {1}, {1}, cast (pi, type)) ;
+    A = gbtest_cast (rand (4) * 100, type) ;
+    C = GrB.subassign (A, {1}, {1}, gbtest_cast (pi, type)) ;
     A (1,1) = pi ;
-    assert (isequal (A, C)) ;
+    assert (gbtest_err (A, C) == 0) ;
 end
 
 for trial = 1:40

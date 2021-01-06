@@ -1,7 +1,5 @@
 function C = build (varargin)
-%GRB.BUILD construct a GraphBLAS sparse matrix from a list of entries.
-%
-% Usage
+%GRB.BUILD construct a sparse matrix from a list of entries.
 %
 %   C = GrB.build (I, J, X, m, n, dup, type, desc)
 %
@@ -35,9 +33,8 @@ function C = build (varargin)
 %
 % type is a string that defines the type of C (see 'help GrB' for a list
 % of types).  The type need not be the same type as the dup operator
-% (unless one has a type of 'complex', in which case both must be
-% 'complex').  If the type is not specified, it defaults to the type of
-% X.
+% (unless one has a complex type, in which case both must have a complex
+% type).  If the type is not specified, it defaults to the type of X.
 %
 % The integer arrays I and J may be double, int64, or uint64:
 % If I, J, and X are double, the following examples construct the same
@@ -48,10 +45,10 @@ function C = build (varargin)
 %   S = double (GrB.build (I, J, X)) ;
 %   S = double (GrB.build (uint64(I), uint64(J), X)) ;
 %
-% I and J need not be in any particular order, but GrB.build is fastest if I
-% and J are provided in column-major order if building a MATLAB sparse
-% matrix.  If desc.format is 'by row', then GrB.build is fastest if I and
-% J are in row-major order.
+% The row and column indices I and J need not be in any particular order,
+% but GrB.build is fastest if I and J are provided in column-major order
+% if building a MATLAB sparse matrix.  If desc.format is 'by row', then
+% GrB.build is fastest if I and J are in row-major order.
 %
 % If desc.base is 'zero-based', then I and J are treated as zero-based,
 % where (0,0) is the first entry in the top left of S, and (m-1,n-1)
@@ -63,15 +60,13 @@ function C = build (varargin)
 % length e, the scalars are expanded into vectors of length e.  Any
 % vectors I, J, and X must all be the same size, e.
 %
-% See also sparse, find, GrB.extracttuples.
+% See also sparse, GrB/sparse, GrB/find, GrB.extracttuples.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-[args, is_gb] = gb_get_args (varargin {:}) ;
-if (is_gb)
-    C = GrB (gbbuild (args {:})) ;
-else
-    C = gbbuild (args {:}) ;
+[C, k] = gbbuild (varargin {:}) ;
+if (k == 0)
+    C = GrB (C) ;
 end
 

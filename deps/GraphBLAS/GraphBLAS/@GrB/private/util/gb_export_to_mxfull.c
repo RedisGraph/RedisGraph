@@ -1,20 +1,21 @@
 //------------------------------------------------------------------------------
-// gb_export_to_mxfull: export a dense array to a MATLAB dense matrix
+// gb_export_to_mxfull: export a full array to a MATLAB full matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// The input (void *) X is exported to a MATLAB dense mxArray S.
+// The input (void *) X is exported to a MATLAB full mxArray S.
 
-// The input array must be deep.  The output is a standard
-// MATLAB dense matrix as an mxArray.  No typecasting is done.
+// The input array must be deep, but this cannot be checked here.  The caller
+// must ensure that the input X is deep.  The output is a standard MATLAB full
+// matrix as an mxArray.  No typecasting is done.
 
 #include "gb_matlab.h"
 
-mxArray *gb_export_to_mxfull    // return exported MATLAB dense matrix F
+mxArray *gb_export_to_mxfull    // return exported MATLAB full matrix F
 (
     void **X_handle,            // pointer to array to export
     const GrB_Index nrows,      // dimensions of F
@@ -31,13 +32,13 @@ mxArray *gb_export_to_mxfull    // return exported MATLAB dense matrix F
     CHECK_ERROR (type == NULL, "internal error 11") ;
 
     //--------------------------------------------------------------------------
-    // allocate an empty dense matrix of the right type, then set content
+    // allocate an empty full matrix of the right type, then set content
     //--------------------------------------------------------------------------
 
     mxArray *F ;
     void *X = (*X_handle) ;
     if (X == NULL)
-    { 
+    {
         // A GrB_Matrix C has a null C->x array, if C has no entries.  Since
         // C has already been expanded to a full matrix, C->x can be NULL
         // only if nrows or ncols is zero.
@@ -100,13 +101,16 @@ mxArray *gb_export_to_mxfull    // return exported MATLAB dense matrix F
         F = mxCreateNumericMatrix (0, 0, mxUINT64_CLASS, mxREAL) ;
         mxSetUint64s (F, X) ;
     }
-    #ifdef GB_COMPLEX_TYPE
-    else if (type == gb_complex_type)
+    else if (type == GxB_FC32)
+    {
+        F = mxCreateNumericMatrix (0, 0, mxSINGLE_CLASS, mxCOMPLEX) ;
+        mxSetComplexSingles (F, X) ;
+    }
+    else if (type == GxB_FC64)
     {
         F = mxCreateNumericMatrix (0, 0, mxDOUBLE_CLASS, mxCOMPLEX) ;
-        mxSetComplexDouble (F, X) ;
+        mxSetComplexDoubles (F, X) ;
     }
-    #endif
     else
     {
         ERROR ("unsupported type") ;
@@ -120,7 +124,7 @@ mxArray *gb_export_to_mxfull    // return exported MATLAB dense matrix F
     (*X_handle) = NULL ;
 
     //--------------------------------------------------------------------------
-    // return the new MATLAB dense matrix
+    // return the new MATLAB full matrix
     //--------------------------------------------------------------------------
 
     return (F) ;

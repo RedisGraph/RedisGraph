@@ -2,14 +2,14 @@
 // GB_mxm.h: definitions for C=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #ifndef GB_MXM_H
 #define GB_MXM_H
-#include "GB_AxB_saxpy3.h"
+#include "GB_AxB_saxpy.h"
 
 //------------------------------------------------------------------------------
 
@@ -28,13 +28,14 @@ GrB_Info GB_mxm                     // C<M> = A*B
     const bool B_transpose,         // if true, use B' instead of B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
+    const int do_sort,              // if nonzero, try to return C unjumbled
     GB_Context Context
 ) ;
 
 GrB_Info GB_AxB_dot                 // dot product (multiple methods)
 (
     GrB_Matrix *Chandle,            // output matrix, NULL on input
-    GrB_Matrix C_in_place,          // input/output matrix, if done in place
+    GrB_Matrix C_in_place,          // input/output matrix, if done in-place
     GrB_Matrix M,                   // optional mask matrix
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
@@ -43,25 +44,15 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     bool *mask_applied,             // if true, mask was applied
-    bool *done_in_place,            // if true, C_in_place was computed in place
+    bool *done_in_place,            // if true, C_in_place was computed in-place
     GB_Context Context
 ) ;
 
-GrB_Info GB_AxB_flopcount
-(
-    int64_t *Mwork,             // amount of work to handle the mask M
-    int64_t *Bflops,            // size B->nvec+1 and all zero
-    const GrB_Matrix M,         // optional mask matrix
-    const bool Mask_comp,       // if true, mask is complemented
-    const GrB_Matrix A,
-    const GrB_Matrix B,
-    GB_Context Context
-) ;
-
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 (
-    GrB_Matrix *Chandle,            // output matrix (if not done in place)
-    GrB_Matrix C_in_place,          // input/output matrix, if done in place
+    GrB_Matrix *Chandle,            // output matrix (if not done in-place)
+    GrB_Matrix C_in_place,          // input/output matrix, if done in-place
     bool C_replace,                 // C matrix descriptor
     const bool C_is_csc,            // desired CSR/CSC format of C
     GrB_Matrix *MT_handle,          // return MT = M' to caller, if computed
@@ -76,9 +67,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     bool B_transpose,               // if true, use B', else B
     bool flipxy,                    // if true, do z=fmult(b,a) vs fmult(a,b)
     bool *mask_applied,             // if true, mask was applied
-    bool *done_in_place,            // if true, C was computed in place
+    bool *done_in_place,            // if true, C was computed in-place
     GrB_Desc_Value AxB_method,      // for auto vs user selection of methods
-    GrB_Desc_Value *AxB_method_used,// method selected
+    const int do_sort,              // if nonzero, try to return C unjumbled
     GB_Context Context
 ) ;
 
@@ -115,29 +106,22 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     // outputs, unused by caller if this function returns false
     GB_Opcode *mult_opcode,         // multiply opcode
     GB_Opcode *add_opcode,          // add opcode
-    GB_Type_code *xycode,           // type code for x and y inputs
+    GB_Type_code *xcode,            // type code for x input
+    GB_Type_code *ycode,            // type code for y input
     GB_Type_code *zcode             // type code for z output
 ) ;
 
-
-GrB_Info GB_AxB_dot2                // C = A'*B using dot product method
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 (
     GrB_Matrix *Chandle,            // output matrix
     const GrB_Matrix M,             // mask matrix for C<!M>=A'*B
-#if 0
-    // for dot2, if the mask M is present, this is now always true.
-    // dot3 is used for C<M>=A'*B
     const bool Mask_comp,           // if true, use !M
-#endif
     const bool Mask_struct,         // if true, use the only structure of M
-    const GrB_Matrix *Aslice,       // input matrices (already sliced)
+    const GrB_Matrix A,             // input matrix
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    bool *mask_applied,             // if true, mask was applied
-    int nthreads,
-    int naslice,
-    int nbslice,
     GB_Context Context
 ) ;
 
@@ -147,6 +131,7 @@ bool GB_is_diagonal             // true if A is diagonal
     GB_Context Context
 ) ;
 
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 (
     GrB_Matrix *Chandle,            // output matrix
@@ -183,21 +168,6 @@ GrB_Info GB_AxB_dot3_one_slice
     GB_Context Context
 ) ;
 
-GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
-(
-    GrB_Matrix *Chandle,            // output matrix
-    GrB_Matrix M_input,             // optional mask matrix
-    const bool Mask_comp,           // if true, use !M
-    const bool Mask_struct,         // if true, use the only structure of M
-    const GrB_Matrix A,             // input matrix A
-    const GrB_Matrix B,             // input matrix B
-    const GrB_Semiring semiring,    // semiring that defines C=A*B
-    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    bool *mask_applied,             // if true, then mask was applied
-    const GrB_Desc_Value AxB_method,    // Default, Gustavson, or Hash
-    GB_Context Context
-) ;
-
 GrB_Info GB_AxB_dot4                // C+=A'*B, dot product method
 (
     GrB_Matrix C,                   // input/output matrix, must be dense
@@ -205,6 +175,63 @@ GrB_Info GB_AxB_dot4                // C+=A'*B, dot product method
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C+=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    GB_Context Context
+) ;
+
+void GB_AxB_pattern
+(
+    // outputs:
+    bool *A_is_pattern,     // true if A is pattern-only, because of the mult
+    bool *B_is_pattern,     // true if B is pattern-only, because of the mult
+    // inputs:
+    const bool flipxy,      // if true,  z = mult (b,a) will be computed
+                            // if false, z = mult (a,b) will be computed
+    const GB_Opcode mult_opcode // opcode of multiply operator
+) ;
+
+//------------------------------------------------------------------------------
+// GB_AxB_dot4_control: determine if the dot4 method should be used
+//------------------------------------------------------------------------------
+
+// C += A'*B where C is modified in-place
+
+static inline bool GB_AxB_dot4_control
+(
+    const GrB_Matrix C_in,      // NULL if C cannot be modified in-place
+    const GrB_Matrix M,
+    const bool Mask_comp
+)
+{
+    return (C_in != NULL && M == NULL && !Mask_comp && !GB_IS_BITMAP (C_in)) ;
+}
+
+//------------------------------------------------------------------------------
+// GB_AxB_dot3_control: determine if the dot3 method should be used
+//------------------------------------------------------------------------------
+
+// C<M>=A'*B where M is sparse or hypersparse, and not complemented
+
+static inline bool GB_AxB_dot3_control
+(
+    const GrB_Matrix M,
+    const bool Mask_comp
+)
+{
+    return (M != NULL && !Mask_comp &&
+        (GB_IS_SPARSE (M) || GB_IS_HYPERSPARSE (M))) ;
+}
+
+//------------------------------------------------------------------------------
+// GB_AxB_dot2_control: determine if the dot2 method should be used
+//------------------------------------------------------------------------------
+
+// C=A'*B, C<M>=A'*B, or C<!M>=A'*B where C is constructed in bitmap format.
+// C must be small and likely very dense.
+
+bool GB_AxB_dot2_control  // true: use dot2, false: use saxpy
+(
+    const GrB_Matrix A,
+    const GrB_Matrix B,
     GB_Context Context
 ) ;
 

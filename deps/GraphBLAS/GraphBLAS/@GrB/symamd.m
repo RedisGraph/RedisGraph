@@ -1,11 +1,11 @@
 function [p, varargout] = symamd (G, varargin)
-%SYMAMD approximate minimum degree ordering of a GraphBLAS matrix.
+%SYMAMD approximate minimum degree ordering.
 % See 'help symamd' for details.
 %
-% See also symamd, GrB/amd, GrB/colamd, GrB/symrcm.
+% See also GrB/amd, GrB/colamd, GrB/symrcm.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [p, varargout{1:nargout-1}] = symamd (double (G), varargin {:}) ;
 

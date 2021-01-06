@@ -1,12 +1,14 @@
 #!/bin/sh
 
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # V="valgrind --error-limit=no --tool=memcheck -q --log-file=valgrind_%p.log --leak-check=full --show-leak-kinds=all"
 V="valgrind --error-limit=no --tool=memcheck -q --log-file=valgrind_%p.log"
 
 $V ../build/wildtype_demo                         > wildtype_demo.out
 $V ../build/simple_demo                           > simple_demo.out
 $V ../build/complex_demo                          > complex_demo_out.m
-$V ../build/pthread_demo                          > pthread_demo.out
 
 # NOTE: OpenMP will cause valgrind to report memory leaks.  These are not a
 # problem.  They are malloc'ed objects that OpenMP intentionaly keeps until the
@@ -98,7 +100,7 @@ echo "number of mismatches between dpagerank and ipagerank in your tests: "
 grep mismatch pagerank_demo.out | wc -l
 echo "number of mismatches between dpagerank and ipagerank in Demo/Output: "
 grep mismatch Output/pagerank_demo.out | wc -l
-echo "Compare pthread_demo.out and openmp_demo.out with Output/* manually,"
+echo "Compare openmp_demo.out with Output/* manually,"
 echo "since the threads can print their results in random order."
 
 exit 0

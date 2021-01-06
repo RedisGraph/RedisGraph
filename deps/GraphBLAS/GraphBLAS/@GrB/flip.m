@@ -1,45 +1,52 @@
-function C = flip (G, dim)
-%FLIP flip the order of elements
-% C = flip (G) flips the order of elements in each column of G.  That is,
-% C = G (end:-1:1,:).  C = flip (G, dim) specifies the dimension to flip,
-% so that flip (G,1) and flip (G) are the same thing, and flip (G,2) flips
-% the columns so that C = G (:,end:-1,1).
+function C = flip (A, dim)
+%FLIP flip the order of elements.
+% C = flip (A) flips the order of elements in each column of A.  That is,
+% C = A (end:-1:1,:).  C = flip (A, dim) specifies the dimension to flip,
+% so that flip (A,1) and flip (A) are the same thing, and flip (A,2) flips
+% the columns so that C = A (:,end:-1,1).
 %
-% See also transpose.
+% To use this function on a MATLAB matrix, use C = flip (A, GrB (dim)).
+%
+% See also GrB/transpose.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-if (nargin < 2)
-    if (isrow (G))
+a_is_object = isobject (A) ;
+if (a_is_object)
+    G = A.opaque ;
+else
+    G = A ;
+end
+
+[m, n] = gbsize (G) ;
+
+if (nargin == 1)
+    if (m == 1)
         dim = 2 ;
     else
         dim = 1 ;
     end
+else
+    dim = gb_get_scalar (dim) ;
 end
 
-[m, n] = size (G) ;
-
-if (~isscalar (dim))
-    gb_error ('dim must be a scalar') ;
-end
 dim = floor (double (dim)) ;
 if (dim <= 0)
-    gb_error ('dim must be positive') ;
+    error ('dim must be positive') ;
 end
 
 if (dim == 1 && m ~= 1)
-    % C = G (m:-1:1, :)
-    I = { m, -1, 1 } ;
-    J = { } ;
-    C = GrB.extract (G, I, J) ;
+    % C = A (m:-1:1, :)
+    C = GrB (gbextract (G, {m,-1,1}, { })) ;
 elseif (dim == 2 && n ~= 1)
-    % C = G (:, n:-1:1)
-    I = { } ;
-    J = { n, -1, 1 } ;
-    C = GrB.extract (G, I, J) ;
-else
+    % C = A (:, n:-1:1)
+    C = GrB (gbextract (G, { }, {n,-1,1})) ;
+elseif (a_is_object)
     % nothing to do
-    C = G ;
+    C = A ;
+else
+    % nothing to do except convert A to GrB
+    C = GrB (A) ;
 end
 

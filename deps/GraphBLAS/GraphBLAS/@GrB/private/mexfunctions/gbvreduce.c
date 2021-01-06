@@ -2,8 +2,8 @@
 // gbvreduce: reduce a matrix to a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -11,17 +11,18 @@
 
 // Usage:
 
-//  Cout = GrB.vreduce (op, A, desc)
-//  Cout = GrB.vreduce (Cin, M, op, A, desc)
-//  Cout = GrB.vreduce (Cin, accum, op, A, desc)
-//  Cout = GrB.vreduce (Cin, M, accum, op, A, desc)
+//  C = gbvreduce (op, A)
+//  C = gbvreduce (op, A, desc)
+//  C = gbvreduce (Cin, M, op, A, desc)
+//  C = gbvreduce (Cin, accum, op, A, desc)
+//  C = gbvreduce (Cin, M, accum, op, A, desc)
 
 // If Cin is not present then it is implicitly a matrix with no entries, of the
 // right size (which depends on A and the descriptor).
 
 #include "gb_matlab.h"
 
-#define USAGE "usage: Cout = GrB.vreduce (Cin, M, accum, op, A, desc)"
+#define USAGE "usage: C = GrB.vreduce (Cin, M, accum, op, A, desc)"
 
 void mexFunction
 (
@@ -36,8 +37,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage ((nargin == 3 || nargin == 5 || nargin == 6) && nargout <= 1,
-        USAGE) ;
+    gb_usage (nargin >= 2 && nargin <= 6 && nargout <= 2, USAGE) ;
 
     //--------------------------------------------------------------------------
     // find the arguments
@@ -47,13 +47,20 @@ void mexFunction
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
-    int nmatrices, nstrings, ncells ;
+    int nmatrices, nstrings, ncells, sparsity ;
     GrB_Descriptor desc ;
     gb_get_mxargs (nargin, pargin, USAGE, Matrix, &nmatrices, String, &nstrings,
-        Cell, &ncells, &desc, &base, &kind, &fmt) ;
+        Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
 
     CHECK_ERROR (nmatrices < 1 || nmatrices > 3 || nstrings < 1 || ncells > 0,
         USAGE) ;
+
+    // ensure the descriptor is present, and set GxB_SORT to true
+    if (desc == NULL)
+    { 
+        OK (GrB_Descriptor_new (&desc)) ;
+    }
+    OK (GxB_Desc_set (desc, GxB_SORT, true)) ;
 
     //--------------------------------------------------------------------------
     // get the matrices
@@ -81,6 +88,9 @@ void mexFunction
     OK (GxB_Matrix_type (&atype, A)) ;
     if (C != NULL)
     { 
+        CHECK_ERROR (C->h != NULL, "Cin cannot be hypersparse") ;
+        CHECK_ERROR (!(C->is_csc), "Cin must be stored by column") ;
+        CHECK_ERROR (!GB_VECTOR_OK (C), "Cin must be a column vector") ;
         OK (GxB_Matrix_type (&ctype, C)) ;
     }
 
@@ -99,7 +109,7 @@ void mexFunction
     { 
         // if accum appears, then Cin must also appear
         CHECK_ERROR (C == NULL, USAGE) ;
-        accum  = gb_mxstring_to_binop  (String [0], ctype) ;
+        accum  = gb_mxstring_to_binop  (String [0], ctype, ctype) ;
         monoid = gb_mxstring_to_monoid (String [1], atype) ;
     }
 
@@ -130,16 +140,17 @@ void mexFunction
         OK (GxB_Monoid_operator (&binop, monoid)) ;
         OK (GxB_BinaryOp_ztype (&ctype, binop)) ;
 
-        OK (GrB_Matrix_new (&C, ctype, cnrows, 1)) ;
+        // create the matrix C and set its format and sparsity
         fmt = gb_get_format (cnrows, 1, A, NULL, fmt) ;
-        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
+        sparsity = gb_get_sparsity (A, NULL, sparsity) ;
+        C = gb_new (ctype, cnrows, 1, fmt, sparsity) ;
     }
 
     //--------------------------------------------------------------------------
     // compute C<M> += reduce(A)
     //--------------------------------------------------------------------------
 
-    OK (GrB_Matrix_reduce_Monoid (C, M, accum, monoid, A, desc)) ;
+    OK1 (C, GrB_Matrix_reduce_Monoid (C, M, accum, monoid, A, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
@@ -154,6 +165,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;
+    pargout [1] = mxCreateDoubleScalar (kind) ;
     GB_WRAPUP ;
 }
 

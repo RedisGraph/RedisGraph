@@ -2,18 +2,18 @@
 // GB_ph_free: free the A->p and A->h content of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// Free the A->p and A->h content of a matrix.  If followed by GB_ix_free(A),
-// the header of A is just like GB_new with GB_Ap_null.  No content is left
-// except the header.  The matrix becomes invalid, and would generate a
-// GrB_INVALID_OBJECT error if passed to a user-callable GraphBLAS function.
+// Free the A->p and A->h content of a matrix.  The matrix becomes invalid, and
+// would generate a GrB_INVALID_OBJECT error if passed to a user-callable
+// GraphBLAS function.
 
 #include "GB.h"
 
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 void GB_ph_free                 // free A->p and A->h of a matrix
 (
     GrB_Matrix A                // matrix with content to free
@@ -34,21 +34,17 @@ void GB_ph_free                 // free A->p and A->h of a matrix
     //--------------------------------------------------------------------------
 
     // free A->p unless it is shallow
-    if (!A->p_shallow) GB_FREE_MEMORY (A->p, A->plen+1, sizeof (int64_t)) ;
+    if (!A->p_shallow) GB_FREE (A->p) ;
     A->p = NULL ;
     A->p_shallow = false ;
 
     // free A->h unless it is shallow
-    if (!A->h_shallow) GB_FREE_MEMORY (A->h, A->plen,   sizeof (int64_t)) ;
+    if (!A->h_shallow) GB_FREE (A->h) ;
     A->h = NULL ;
     A->h_shallow = false ;
 
-    if (A->is_hyper)
-    { 
-        A->plen = 0 ;
-        A->nvec = 0 ;
-    }
-
+    A->plen = 0 ;
+    A->nvec = 0 ;
     A->nvec_nonempty = 0 ;
 
     //--------------------------------------------------------------------------

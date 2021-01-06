@@ -2,8 +2,8 @@
 // GB_Type_new: create a new user-defined type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -24,17 +24,20 @@ GrB_Info GB_Type_new
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GrB_Type_new (&type, sizeof (ctype))") ;
+    GB_WHERE1 ("GrB_Type_new (&type, sizeof (ctype))") ;
     GB_RETURN_IF_NULL (type) ;
     (*type) = NULL ;
 
     #if ( ! GB_HAS_VLA )
 
+        // Microsoft Visual Studio does not support variable-length arrays
+        // allocating automatically on the stack.  These arrays are used for
+        // scalar values for a given type.  If VLA is not supported,
+        // user-defined types can be no larger than GB_VLA_MAXSIZE.
+
         if (sizeof_ctype > GB_VLA_MAXSIZE)
         {
-            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG, "user-defined types"
-                " are limited to %d bytes (ANSI C99 or later is required)",
-                GB_VLA_MAXSIZE))) ;
+            return (GrB_INVALID_VALUE) ;
         }
 
     #endif
@@ -44,11 +47,11 @@ GrB_Info GB_Type_new
     //--------------------------------------------------------------------------
 
     // allocate the type
-    GB_CALLOC_MEMORY (*type, 1, sizeof (struct GB_Type_opaque)) ;
+    (*type) = GB_CALLOC (1, struct GB_Type_opaque) ;
     if (*type == NULL)
     { 
         // out of memory
-        return (GB_OUT_OF_MEMORY) ;
+        return (GrB_OUT_OF_MEMORY) ;
     }
 
     // initialize the type

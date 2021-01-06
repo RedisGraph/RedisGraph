@@ -1,8 +1,8 @@
 function gbtest36
 %GBTEST36 test abs, sign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -17,7 +17,7 @@ for k = 1:length (types)
         A = max (A, 0) ;
     end
     G = GrB (A, type) ;
-    B = cast (A, type) ;
+    B = gbtest_cast (A, type) ;
     assert (gbtest_eq (B, G))
 
     H = abs (G) ;
@@ -26,12 +26,11 @@ for k = 1:length (types)
 
     H = sign (G) ;
     if (isequal (type, 'logical'))
-        % sign (B) is not defined for MATLAB logical matrices
-        C = B ;
+        C = double (B) ;
     else
         C = sign (B) ;
     end
-    assert (gbtest_eq (C, H))
+    assert (gbtest_err (C, H) == 0)
 
 end
 

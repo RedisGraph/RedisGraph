@@ -2,15 +2,17 @@
 // GB_matvec_build: check inputs and build a matrix or vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // CALLED BY: GrB_Matrix_build_* and GrB_Vector_build_*
 // CALLS:     GB_build
 
-// This function implements GrB_Matrix_build_* and GrB_Vector_build_*.
+// This function implements GrB_Matrix_build_* and GrB_Vector_build_*.  It
+// first constructs T by GB_builder as hypersparse, and GB_build conforms the
+// result to the appropriate sparsity structure of C.
 
 #include "GB_build.h"
 
@@ -33,17 +35,18 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (C, "C for GB_matvec_build", GB0) ;
+
     GB_RETURN_IF_NULL (I) ;
     if (I == GrB_ALL)
     { 
-        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
-            "List of row indices cannot be GrB_ALL"))) ;
+        GB_ERROR (GrB_INVALID_VALUE, "List of row indices cannot be %s",
+            "GrB_ALL") ;
     }
 
     if (nvals == GxB_RANGE || nvals == GxB_STRIDE || nvals == GxB_BACKWARDS)
     { 
-        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
-            "nvals cannot be GxB_RANGE, GxB_STRIDE, or GxB_BACKWARDS"))) ;
+        GB_ERROR (GrB_INVALID_VALUE, "nvals cannot be %s",
+            "GxB_RANGE, GxB_STRIDE, or GxB_BACKWARDS") ;
     }
 
     if (is_matrix)
@@ -51,8 +54,8 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
         GB_RETURN_IF_NULL (J) ;
         if (J == GrB_ALL)
         { 
-            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
-                "List of column indices cannot be 'GrB_ALL'"))) ;
+            GB_ERROR (GrB_INVALID_VALUE, "List of column indices cannot be %s",
+                "GrB_ALL") ;
         }
     }
     else
@@ -63,16 +66,22 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
 
     GB_RETURN_IF_NULL (X) ;
     GB_RETURN_IF_NULL_OR_FAULTY (dup) ;
+    if (GB_OP_IS_POSITIONAL (dup))
+    { 
+        // dup operator cannot be a positional op
+        GB_ERROR (GrB_DOMAIN_MISMATCH,
+            "Positional op z=%s(x,y) not supported as dup op\n", dup->name) ;
+    }
 
     ASSERT_BINARYOP_OK (dup, "dup operator for assembling duplicates", GB0) ;
     ASSERT (scode <= GB_UDT_code) ;
 
-    if (nvals > GB_INDEX_MAX)
+    if (nvals > GxB_INDEX_MAX)
     { 
         // problem too large
-        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
-            "problem too large: nvals "GBu" exceeds "GBu,
-            nvals, GB_INDEX_MAX))) ;
+        GB_ERROR (GrB_INVALID_VALUE,
+            "Problem too large: nvals " GBu " exceeds " GBu,
+            nvals, GxB_INDEX_MAX) ;
     }
 
     // check types of dup
@@ -80,19 +89,19 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
     { 
         // all 3 types of z = dup (x,y) must be the same.  dup must also be
         // associative but there is no way to check this in general.
-        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG, "All domains of dup "
-        "operator for assembling duplicates must be identical.\n"
-        "operator is: [%s] = %s ([%s],[%s])",
-        dup->ztype->name, dup->name, dup->xtype->name, dup->ytype->name))) ;
+        GB_ERROR (GrB_DOMAIN_MISMATCH, "All domains of dup "
+            "operator for assembling duplicates must be identical.\n"
+            "operator is: [%s] = %s ([%s],[%s])",
+            dup->ztype->name, dup->name, dup->xtype->name, dup->ytype->name) ;
     }
 
     if (!GB_Type_compatible (C->type, dup->ztype))
     { 
         // the type of C and dup must be compatible
-        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
-        "operator dup [%s] has type [%s]\n"
-        "cannot be typecast to entries in output of type [%s]",
-        dup->name, dup->ztype->name, C->type->name))) ;
+        GB_ERROR (GrB_DOMAIN_MISMATCH,
+            "Operator [%s] for assembling duplicates has type [%s],\n"
+            "cannot be typecast to entries in output of type [%s]",
+            dup->name, dup->ztype->name, C->type->name) ;
     }
 
     // C and X must be compatible
@@ -104,22 +113,22 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
         // Thus, if C, dup, or X have any user-defined type, this
         // condition requires all three types to be identical: the same
         // user-defined type.  No casting will be done in this case.
-        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
-        "numerical values of tuples of type [%s]\n"
-        "cannot be typecast as input to the dup operator\n"
-        "z=%s(x,y), whose input types are [%s]",
-        GB_code_string (scode), dup->name, dup->ztype->name))) ;
+        GB_ERROR (GrB_DOMAIN_MISMATCH,
+            "Numerical values of tuples of type [%s]\n"
+            "cannot be typecast as input to the dup operator\n"
+            "z=%s(x,y), whose input types are [%s]",
+            GB_code_string (scode), dup->name, dup->ztype->name) ;
     }
 
-    if (!GB_EMPTY (C))
+    if (!GB_IS_EMPTY (C))
     { 
         // The matrix has existing entries.  This is required by the GraphBLAS
         // API specification to generate an error, so the test is made here.
         // However, any existing content is safely freed immediately below, so
         // this test is not required, except to conform to the spec.  Zombies
         // are excluded from this test.
-        return (GB_ERROR (GrB_OUTPUT_NOT_EMPTY, (GB_LOG,
-            "output already has existing entries"))) ;
+        GB_ERROR (GrB_OUTPUT_NOT_EMPTY,
+            "Output already has %s", "existing entries") ;
     }
 
     //--------------------------------------------------------------------------
@@ -128,6 +137,7 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
 
     // GB_build treats I, J, and X as read-only; they must not be modified
 
-    return (GB_build (C, I, J, X, nvals, dup, scode, is_matrix, true, Context));
+    return (GB_build (C, I, J, X, nvals, dup, scode, is_matrix,
+        /* true, */ Context)) ;
 }
 

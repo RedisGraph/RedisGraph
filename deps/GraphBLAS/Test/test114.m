@@ -1,8 +1,8 @@
 function test114
 %TEST114 performance of reduce-to-scalar
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -49,10 +49,11 @@ fprintf ('MATLAB prod: %g\n', tm) ;
 S.matrix = A ;
 S.pattern = logical (spones (A)) ;
 
-[mult_ops unary_ops add_ops classes semirings selops] = GB_spec_opsall ;
+[~, ~, add_ops, types, ~, ~] = GB_spec_opsall ;
+types = types.all ;
 
-ops = { 'or', 'and', 'xor', 'eq' } ;
-for k1 = 1:4
+ops = { 'or', 'and', 'xor', 'eq', 'any' } ;
+for k1 = 1:length(ops)
     op = ops {k1} ;
     fprintf ('\nGraphBLAS: op %s\n', op) ;
     S.class = 'logical' ;
@@ -76,15 +77,20 @@ for k1 = 1:4
     end
 end
 
-ops = { 'min', 'max', 'plus', 'times' } ;
-for k1 = 1:4
+ops = add_ops ;
+for k1 = 1:length(ops)
     op = ops {k1} ;
     fprintf ('\nGraphBLAS: op %s\n', op) ;
-    for k2 = 2:11
-        aclass = classes {k2} ;
-        S.class = aclass ;
-        fprintf ('\ntype: %s\n', aclass) ;
-        switch aclass
+    for k2 = 2:length(types)
+        atype = types {k2} ;
+        S.class = atype ;
+        fprintf ('\ntype: %s\n', atype) ;
+        try
+            GB_spec_operator (op, atype) ;
+        catch
+            continue
+        end
+        switch atype
             case 'logical'
                 cin = logical (0) ;
             case 'int8'          % GrB_INT8
@@ -107,6 +113,10 @@ for k1 = 1:4
                 cin = single (0) ;
             case 'double'        % GrB_FP64
                 cin = double (0) ;
+            case 'single complex'        % GxB_FC32
+                cin = complex (single (0)) ;
+            case 'double complex'        % GxB_FC64
+                cin = complex (double (0)) ;
         end
         for nthreads = nthreads_list
             if (nthreads > nthreads_max)

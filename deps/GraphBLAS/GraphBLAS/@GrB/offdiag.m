@@ -1,11 +1,15 @@
 function C = offdiag (A)
-%GRB.OFFDIAG removes diaogonal entries from the matrix A.
+%GRB.OFFDIAG remove diaogonal entries.
 % C = GrB.offdiag (A) removes diagonal entries from A.
 %
-% See also tril, triu, diag, GrB.select.
+% See also GrB/tril, GrB/triu, GrB/diag, GrB.select.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-C = GrB.select ('offdiag', A, 0) ;
+if (isobject (A))
+    A = A.opaque ;
+end
+
+C = GrB (gbselect ('offdiag', A, 0)) ;
 

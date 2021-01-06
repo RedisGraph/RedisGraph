@@ -1,11 +1,11 @@
-/* -------------------------------------------------------------------------- */
-/* GraphBLAS/Demo/Program/simple_demo.c: tests simple_rand and simple_timer   */
-/* -------------------------------------------------------------------------- */
+//------------------------------------------------------------------------------
+// GraphBLAS/Demo/Program/simple_demo.c: tests simple_rand and simple_timer
+//------------------------------------------------------------------------------
 
-/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved*/
-/* http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.        */
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
-/* -------------------------------------------------------------------------- */
+//------------------------------------------------------------------------------
 
 /*
     A simple test that illustrates the use of simple_rand and simple_tic/toc.
@@ -47,15 +47,15 @@ int main (void)
     fprintf (stderr, "simple_demo:\n") ;
     double n = ((double) LEN) / 1e6 ;
 
-    /* calloc the space for more accurate timing */
-    x = calloc (LEN, sizeof (double)) ;
+    // calloc the space for more accurate timing
+    x = (double *) calloc (LEN, sizeof (double)) ;
     if (x == NULL)
     {
         fprintf (stderr, "simple_demo: out of memory\n") ;
         exit (1) ;
     }
 
-    /* do lots of tics */
+    // do lots of tics
     simple_tic (tic) ;
     for (i = 0 ; i < LEN/10 ; i++)
     {
@@ -65,7 +65,7 @@ int main (void)
     t = simple_toc (tic) ;
     printf ("time to call simple_tic %g million times: %g\n", n/10, t) ;
 
-    /* generate random numbers */
+    // generate random numbers
     simple_tic (tic) ;
     for (i = 0 ; i < LEN ; i++)
     {
@@ -73,19 +73,19 @@ int main (void)
     }
     t = simple_toc (tic) ;
 
-    /* report the result */
+    // report the result
     printf ("time to generate %g million random numbers: %g\n", n, t) ;
     fprintf (stderr, "time to generate %g million random numbers: %g\n\n",
         n, t) ;
 
-    /* these should be the same on any system and any compiler */
+    // these should be the same on any system and any compiler
     printf ("first 10 random numbers:\n") ;
     for (i = 0 ; i < 10 ; i++)
     {
         printf ("%12.6f\n", x [i]) ;
     }
 
-    /* generate random uint64_t numbers */
+    // generate random uint64_t numbers
     double t1 ;
 
     simple_tic (tic) ;
@@ -98,7 +98,6 @@ int main (void)
     printf ("time to generate %g million random uint64: %g\n", n, t1) ;
     fprintf (stderr, "time to generate %g million random uint64: %g\n\n",
         n, t1) ;
-
 
     free (x) ;
 }

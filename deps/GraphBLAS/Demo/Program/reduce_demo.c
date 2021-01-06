@@ -2,12 +2,15 @@
 // GraphBLAS/Demo/Program/reduce_demo: reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GraphBLAS.h"
+#if defined ( _OPENMP )
+#include <omp.h>
+#endif
 
 // #define N 65536
    #define N 16384
@@ -22,11 +25,11 @@ int main (void)
     // start GraphBLAS
     GrB_init (GrB_NONBLOCKING) ;
     int nthreads ;
-    GxB_get (GxB_NTHREADS, &nthreads) ;
+    GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads) ;
     printf ("demo: reduce a matrix to a scalar, nthreads: %d\n", nthreads) ;
 
     int nthreads_max ;
-    GxB_Global_Option_get (GxB_NTHREADS, &nthreads_max) ;
+    GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads_max) ;
     printf ("# of threads: %d\n", nthreads_max) ;
 
     #if defined ( _OPENMP )
@@ -40,9 +43,9 @@ int main (void)
     GrB_Matrix A ;
     GrB_Matrix_new (&A, GrB_INT64, nrows, ncols) ;
 
-    GrB_Index *I = malloc (nrows * ncols * sizeof (GrB_Index)) ;
-    GrB_Index *J = malloc (nrows * ncols * sizeof (GrB_Index)) ;
-    int64_t   *X = malloc (nrows * ncols * sizeof (int64_t)) ;
+    GrB_Index *I = (GrB_Index *) malloc (nrows * ncols * sizeof (GrB_Index)) ;
+    GrB_Index *J = (GrB_Index *) malloc (nrows * ncols * sizeof (GrB_Index)) ;
+    int64_t   *X = (int64_t   *) malloc (nrows * ncols * sizeof (int64_t)) ;
 
     int64_t k ;
     #pragma omp parallel for num_threads(nthreads_max) schedule(static)
@@ -78,11 +81,11 @@ int main (void)
 
     for (int nthreads = 1 ; nthreads <= nthreads_max ; nthreads++)
     {
-        GxB_Global_Option_set (GxB_NTHREADS, nthreads) ;
+        GxB_Global_Option_set (GxB_GLOBAL_NTHREADS, nthreads) ;
         #if defined ( _OPENMP )
         double t = omp_get_wtime ( ) ;
         #endif
-        GrB_Matrix_reduce_UINT64 (&result, NULL, GxB_PLUS_INT64_MONOID,
+        GrB_Matrix_reduce_UINT64 (&result, NULL, GrB_PLUS_MONOID_INT64,
             A, NULL) ;
         #if defined ( _OPENMP )
         t = omp_get_wtime ( ) - t ;
@@ -92,7 +95,7 @@ int main (void)
         #endif
     }
 
-    printf ("result %"PRId64"\n", result) ;
+    printf ("result %" PRId64 "\n", result) ;
 
     // free everyting
     GrB_Matrix_free (&A) ;

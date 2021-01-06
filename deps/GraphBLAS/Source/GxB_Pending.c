@@ -21,3 +21,4 @@ GrB_Info GxB_Matrix_Pending     // does matrix has pending operations
 
 	return (GrB_SUCCESS) ;
 }
+

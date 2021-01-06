@@ -1,8 +1,8 @@
 function gbtest51
 %GBTEST51 test GrB.tricount
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 files =  {
 '../../Demo/Matrix/2blocks'
@@ -42,24 +42,37 @@ valid_count = [
 [filepath, name, ext] = fileparts (mfilename ('fullpath')) ; %#ok<*ASGLU>
 
 for k = 1:nfiles
+    % fprintf ('--------------------------load file:\n') ;
     filename = files {k} ;
-    T = load (fullfile (filepath, files {k})) ;
-    G = GrB.build (int64 (T (:,1)), int64 (T (:,2)), T (:,3), desc) ;
+    T = load (fullfile (filepath, filename)) ;
+    nz = size (T, 1) ;
+    X = ones (nz,1) ;
+    G = GrB.build (int64 (T (:,1)), int64 (T (:,2)), X, desc) ;
+    A = sparse (T (:,1)+1, T (:,2)+1, X) ;
+    assert (isequal (A,G))
+
+    % fprintf ('--------------------------construct G:\n') ;
     [m, n] = size (G) ;
     if (m ~= n)
         G = [GrB(m,m) G ; G' GrB(n,n)] ; %#ok<*AGROW>
     elseif (~issymmetric (G))
         G = G + G' ;
     end
+
+    % fprintf ('--------------------------tricount (G):\n') ;
     c = GrB.tricount (G) ;
-    fprintf ('triangle count: %-30s : # triangles %d\n', filename, c) ;
+    % fprintf ('triangle count: %-30s : # triangles %d\n', filename, c) ;
     assert (c == valid_count (k)) ;
 
+    % fprintf ('--------------------------convert G to by-row:\n') ;
     G = GrB (G, 'by row') ;
+
+    % fprintf ('--------------------------tricount (G):\n') ;
     c = GrB.tricount (G) ;
     assert (c == valid_count (k)) ;
 end
 
+% fprintf ('--------------------------tricount (G, ''check''):\n') ;
 c = GrB.tricount (G, 'check') ;
 assert (c == valid_count (end)) ;
 

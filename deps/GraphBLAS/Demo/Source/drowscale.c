@@ -2,8 +2,8 @@
 // drowscale: scale the rows of an adjacency matrix by out-degree
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -33,6 +33,8 @@
     C = D*A ;
 */
 
+#include "GraphBLAS.h"
+
 //------------------------------------------------------------------------------
 // helper macros
 //------------------------------------------------------------------------------
@@ -53,12 +55,15 @@
     FREEWORK ;                  \
 }
 
-#include "demos.h"
+#undef GB_PUBLIC
+#define GB_LIBRARY
+#include "graphblas_demos.h"
 
 //------------------------------------------------------------------------------
 // drowscale: C = D*A + I*0 where D(i,i) = 1/sum(A(i,:)
 //------------------------------------------------------------------------------
 
+GB_PUBLIC
 GrB_Info drowscale          // GrB_SUCCESS or error condition
 (
     GrB_Matrix *Chandle,    // output matrix C = rowscale (A)
@@ -95,14 +100,14 @@ GrB_Info drowscale          // GrB_SUCCESS or error condition
     // row i of A has no entries.
 
     // [I,~,X] = find (dout) ;
-    I = malloc ((n+1) * sizeof (GrB_Index)) ;
-    X = malloc ((n+1) * sizeof (double)) ;
+    I = (GrB_Index *) malloc ((n+1) * sizeof (GrB_Index)) ;
+    X = (double *) malloc ((n+1) * sizeof (double)) ;
     CHECK (I != NULL && X != NULL, GrB_OUT_OF_MEMORY) ;
     GrB_Index nvals = n ;
     OK (GrB_Vector_extractTuples_FP64 (I, X, &nvals, dout)) ;
 
     // I and X exclude empty columns of A.  This condition is always true.
-    CHECK (nvals <= n, GrB_PANIC) ;
+    CHECK (nvals <= n, GrB_INVALID_VALUE) ;
 
     // D = diag (1./dout) ;
     OK (GrB_Matrix_new (&D, GrB_FP64, n, n)) ;

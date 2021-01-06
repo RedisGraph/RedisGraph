@@ -1,14 +1,14 @@
 function testc7
 %TESTC7 test complex assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntestc7: all complex assign C(I,J)=A --------------------------\n') ;
 rng ('default')
 
 dclear.outp = 'replace' ;
-dclear.mask = 'scmp' ;
+dclear.mask = 'complement' ;
 tol = 1e-13 ;
 
 seed = 1 ;
@@ -63,17 +63,16 @@ for m = [1 5 10 50]
         c2 = GB_mex_reduce_to_scalar (cin, '', 'plus', C3) ;
         assert (abs (c1-c2) <= tol * (abs (c1) + 1)) ;
 
-        GrB.burble (1) ;
         clear S
         S.matrix = sparse (1i * ones (m,n)) ;
         S.pattern = false (m,n) ;
         cin = complex (1,1) ;
         M = sparse (true (m,n)) ;
-        C2 = GB_mex_subassign (S, M, [ ], sparse (cin), [ ], [ ], struct ('mask', 'structural')) ;
+        C2 = GB_mex_subassign (S, M, [ ], sparse (cin), ...
+            [ ], [ ], struct ('mask', 'structural')) ;
         C1 = sparse (ones (m,n)) ;
         C1 (:,:) = cin ;
         assert (norm (C1-C2.matrix, 1) < 1e-12)
-        GrB.burble (0) ;
 
     end
 end

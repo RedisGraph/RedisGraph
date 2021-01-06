@@ -2,23 +2,21 @@
 // GB_Scalar_check: print a GraphBLAS GxB_Scalar and check if it is valid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // GxB_Scalar: same as a GrB_Vector of length 1
 
-#include "GB_printf.h"
+#include "GB.h"
 
 GrB_Info GB_Scalar_check    // check a GraphBLAS GxB_Scalar
 (
     const GxB_Scalar s,     // GraphBLAS GxB_Scalar to print and check
     const char *name,       // name of the GxB_Scalar
-    int pr,                 // 0: print nothing, 1: print header and errors,
-                            // 2: print brief, 3: print all
-    FILE *f,                // file for output
-    GB_Context Context
+    int pr,                 // print level
+    FILE *f                 // file for output
 )
 {
 
@@ -26,9 +24,8 @@ GrB_Info GB_Scalar_check    // check a GraphBLAS GxB_Scalar
     // check GrB_Matrix conditions
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_matvec_check ((GrB_Matrix) s, name, pr, f, "scalar",
-        Context) ;
-    if (! (info == GrB_INDEX_OUT_OF_BOUNDS || info == GrB_SUCCESS))
+    GrB_Info info = GB_matvec_check ((GrB_Matrix) s, name, pr, f, "scalar") ;
+    if (info != GrB_SUCCESS)
     { 
         // GrB_Matrix form is invalid already
         return (info) ;
@@ -41,10 +38,9 @@ GrB_Info GB_Scalar_check    // check a GraphBLAS GxB_Scalar
     if (!GB_SCALAR_OK (s))
     { 
         GBPR0 ("    GxB_Scalar is invalid [%s]\n", name) ;
-        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
-            "GxB_Scalar is invalid [%s]", name))) ;
+        return (GrB_INVALID_OBJECT) ;
     }
 
-    return (info) ; // pass info directly from GB_matvec_check (jumbled case)
+    return (GrB_SUCCESS) ;
 }
 

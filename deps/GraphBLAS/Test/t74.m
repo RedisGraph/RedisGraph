@@ -1,11 +1,9 @@
 %T74 run test20 and test74
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-clear all
-gbclear
-make
+clear all ; make
 threads {1} = [4 1] ;
 t = threads ;
 logstat ('test20',t) ;  % quick test of GB_mex_mxm on a few semirings

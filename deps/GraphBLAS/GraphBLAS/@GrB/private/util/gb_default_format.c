@@ -2,8 +2,8 @@
 // gb_default_format: determine the default format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -31,8 +31,6 @@ GxB_Format_Value gb_default_format      // GxB_BY_ROW or GxB_BY_COL
     { 
         // get the default format
         OK (GxB_Global_Option_get (GxB_FORMAT, &fmt)) ;
-        // mexPrintf ("got global format: %d (by_row: %d, by_col: %d)\n",
-        //     fmt, GxB_BY_ROW, GxB_BY_COL) ;
     }
     return (fmt) ;
 }
