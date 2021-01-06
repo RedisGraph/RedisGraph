@@ -6,6 +6,7 @@
 
 #include "entity_funcs.h"
 #include "../func_desc.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/map.h"
@@ -130,6 +131,12 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 	// return NULL for missing graph entity
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
+	if(SI_TYPE(argv[1]) != T_STRING) {
+		// String indexes are only permitted on maps, not arrays.
+		Error_SITypeMismatch(argv[1], T_STRING);
+		return SI_NullVal();
+	}
+
 	// inputs:
 	// argv[0] - node/edge/map
 	// argv[1] - property string
@@ -162,7 +169,8 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 		SIValue value;
 
 		Map_Get(obj, key, &value);
-		return SI_ConstValue(value);
+		// Return a volatile copy of the value, as it may be heap-allocated.
+		return SI_ShareValue(value);
 	}
 }
 

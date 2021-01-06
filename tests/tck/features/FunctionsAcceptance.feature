@@ -169,7 +169,6 @@ Feature: FunctionsAcceptance
             | 'Oskar'          |
         And no side effects
 
-    @skip
     Scenario: `exists()` with dynamic property lookup
         Given an empty graph
         And having executed:

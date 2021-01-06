@@ -234,9 +234,9 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 	// map will be returned as an array of key/value pairs
 	// consider the map object: {a:1, b:'str', c: {x:1, y:2}}
 	//
-	// replay would be structured:
+	// the reply will be structured:
 	// [
-	//     string(1), int(1),
+	//     string(a), int(1),
 	//     string(b), string(str),
 	//     string(c), [
 	//                    string(x), int(1),
@@ -256,7 +256,7 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 		char     *key  =  p.key.stringval;
 
 		// emit key
-		RedisModule_ReplyWithStringBuffer(ctx, key, strlen(key));
+		RedisModule_ReplyWithCString(ctx, key);
 
 		// emit value
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, val);
