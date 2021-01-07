@@ -83,7 +83,7 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	}
 
 	// Perform addition.
-	info = GrB_eWiseAdd_Matrix_Semiring(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, a, b, desc);
+	info = GrB_eWiseAdd(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, a, b, desc);
 	ASSERT(info == GrB_SUCCESS);
 
 	// Reset descriptor if non-null.
@@ -118,7 +118,7 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 		}
 
 		// Perform addition.
-		info = GrB_eWiseAdd_Matrix_Semiring(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, b, GrB_NULL);
+		info = GrB_eWiseAdd(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, b, GrB_NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
 

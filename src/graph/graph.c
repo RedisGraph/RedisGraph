@@ -45,8 +45,8 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 }
 
 /* GxB_select_function which delete edges and free edge arrays. */
-bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols, const void *x,
-						  const void *thunk) {
+bool _select_op_free_edge(GrB_Index i, GrB_Index j, const void *x,
+		const void *thunk) {
 	// K is a uint64_t pointer which points to the address of our graph.
 	const Graph *g = (const Graph *) * ((uint64_t *)thunk);
 	const EdgeID *id = (const EdgeID *)x;
@@ -852,7 +852,8 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 		// The select operator has not yet been constructed; build it now.
 		GrB_Info res;
 		UNUSED(res);
-		res = GxB_SelectOp_new(&_select_delete_edges, _select_op_free_edge, GrB_UINT64, GrB_UINT64);
+		res = GxB_SelectOp_new(&_select_delete_edges, _select_op_free_edge,
+				GrB_UINT64, GrB_UINT64);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -1165,7 +1166,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 			}
 
 			// Collect remaining edges. remaining_mask = remaining_mask + R.
-			GrB_eWiseAdd_Matrix_Semiring(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
+			GrB_eWiseAdd(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
 										 R, GrB_NULL);
 		}
 
