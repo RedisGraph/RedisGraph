@@ -236,12 +236,12 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 	//
 	// the reply will be structured:
 	// [
-	//     string(a), int(1),
-	//     string(b), string(str),
-	//     string(c), [
+	//     [string(a), int(1)],
+	//     [string(b), string(str)],
+	//     [string(c), [
 	//                    string(x), int(1),
 	//                    string(y), int(2)
-	//                ]
+	//                 ]]
 	// ]
 
 	uint key_count = Map_KeyCount(v);
@@ -249,16 +249,19 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 
 	// response consists of N pairs array:
 	// (string, value type, value)
-	RedisModule_ReplyWithArray(ctx, key_count * 3);
+	RedisModule_ReplyWithArray(ctx, key_count);
 	for(int i = 0; i < key_count; i++) {
 		Pair     p     =  m[i];
 		SIValue  val   =  p.val;
 		char     *key  =  p.key.stringval;
 
+		// each pair will be a 2-array of [key, [value_type, value]]
+		RedisModule_ReplyWithArray(ctx, 2);
 		// emit key
 		RedisModule_ReplyWithCString(ctx, key);
 
 		// emit value
+		RedisModule_ReplyWithArray(ctx, 2);
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, val);
 	}
 }

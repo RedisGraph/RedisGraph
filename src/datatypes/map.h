@@ -40,7 +40,7 @@ SIValue Map_Clone
 // adds key/value to map
 void Map_Add
 (
-	SIValue map,   // map to add element to
+	SIValue *map,  // map to add element to
 	SIValue key,   // key under which value is added
 	SIValue value  // value to add under key
 );
@@ -91,8 +91,7 @@ SIValue *Map_Keys
 // if both maps have the same length they are sorted and comparision is done
 // on a key by key basis:
 //
-// first if Key i of A is not present in B, A
-// is considered greater
+// if the key sets are not equal, key names are compared lexicographically
 
 // otherwise compare the values for that key and, if they are
 // inequal, return the inequality

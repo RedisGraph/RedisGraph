@@ -131,6 +131,9 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 	// return NULL for missing graph entity
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
+	// AR_PROPERTY may be invoked from AR_SUBSCRIPT in a case like:
+	// WITH {val: 5} AS map RETURN map["val"]
+	// As such, we need to validate the argument's type independently of the invocation validation.
 	if(SI_TYPE(argv[1]) != T_STRING) {
 		// String indexes are only permitted on maps, not arrays.
 		Error_SITypeMismatch(argv[1], T_STRING);

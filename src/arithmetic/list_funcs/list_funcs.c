@@ -45,7 +45,6 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 		return AR_PROPERTY(property_args, 3);
 	}
 
-	ASSERT(SI_TYPE(argv[0]) == T_ARRAY && SI_TYPE(argv[1]) == T_INT64);
 	if(SI_TYPE(argv[1]) == T_STRING) {
 		// String indexes are only permitted on maps, not arrays.
 		Error_SITypeMismatch(argv[1], T_INT64);
@@ -221,7 +220,7 @@ void Register_ListFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, T_ARRAY | T_MAP | T_NODE | T_EDGE | T_NULL);
+	types = array_append(types, T_ARRAY | T_MAP | SI_GRAPHENTITY | T_NULL);
 	types = array_append(types, T_INT64 | T_STRING | T_NULL);
 	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);

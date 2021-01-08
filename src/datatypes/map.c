@@ -6,6 +6,7 @@
 
 #include "map.h"
 #include "../util/arr.h"
+#include "../util/qsort.h"
 #include "../util/strcmp.h"
 #include "../util/rmalloc.h"
 
@@ -64,7 +65,7 @@ SIValue Map_Clone
 
 	for(uint i = 0; i < key_count; i++) {
 		Pair p = map.map[i];
-		Map_Add(clone, p.key, p.val);
+		Map_Add(&clone, p.key, p.val);
 	}
 
 	return clone;
@@ -73,7 +74,7 @@ SIValue Map_Clone
 // adds key/value to map
 void Map_Add
 (
-	SIValue map,
+	SIValue *map,
 	SIValue key,
 	SIValue value
 ) {
@@ -81,13 +82,13 @@ void Map_Add
 	ASSERT(SI_TYPE(key) & T_STRING);
 
 	// remove key if already existed
-	Map_Remove(map, key);
+	Map_Remove(*map, key);
 
 	// create a new pair
 	Pair pair = Pair_New(key, value);
 
 	// add pair to the end of map
-	map.map = array_append(map.map, pair);
+	map->map = array_append(map->map, pair);
 }
 
 // removes key from map
@@ -176,6 +177,7 @@ SIValue *Map_Keys
 	return keys;
 }
 
+#define KEY_ISLT(a,b) (strcmp(a->key.stringval, b->key.stringval) < 0)
 int Map_Compare
 (
 	SIValue mapA,
@@ -184,6 +186,7 @@ int Map_Compare
 ) {
 	int   order        =  0;
 	Map   A            =  mapA.map;
+	Map   B            =  mapB.map;
 	uint  A_key_count  =  Map_KeyCount(mapA);
 	uint  B_key_count  =  Map_KeyCount(mapB);
 
@@ -192,16 +195,24 @@ int Map_Compare
 		else return -1;
 	}
 
-	// For each pair in A, see if the same pair exists in B.
-	for(uint i = 0; i < A_key_count; i++) {
-		Pair Ap = A[i];
-		SIValue a_val = Ap.val;
-		SIValue b_val;
-		bool found = Map_Get(mapB, Ap.key, &b_val);
-		if(!found) return 1;
+	// Sort both maps.
+	QSORT(Pair, A, A_key_count, KEY_ISLT);
+	QSORT(Pair, B, B_key_count, KEY_ISLT);
 
+	// Element-wise key comparison.
+	for(uint i = 0; i < A_key_count; i++) {
+		for(uint i = 0; i < A_key_count; i ++) {
+			// If the maps contain different keys, order in favor
+			// of the first lexicographically greater key.
+			order = strcmp(A[i].key.stringval, B[i].key.stringval);
+			if(order != 0) return order;
+		}
+	}
+
+	// Element-wise value comparison.
+	for(uint i = 0; i < A_key_count; i++) {
 		// Key lookup succeeded; compare values.
-		order = SIValue_Compare(a_val, b_val, disjointOrNull);
+		order = SIValue_Compare(A[i].val, B[i].val, disjointOrNull);
 		if(*disjointOrNull == COMPARED_NULL || *disjointOrNull == DISJOINT)
 			return 0;
 
@@ -218,12 +229,13 @@ XXH64_hash_t Map_HashCode
 (
 	SIValue map
 ) {
-	// TODO: sort on key
-	// {a:1, b:1} and {b:1, a:1} should have the same hash value
+	// Sort the maps by key, so that {a:1, b:1} and {b:1, a:1}
+	// have the same hash value.
+	uint key_count = Map_KeyCount(map);
+	QSORT(Pair, map.map, key_count, KEY_ISLT);
 
 	SIType t = SI_TYPE(map);
 	XXH64_hash_t hashCode = XXH64(&t, sizeof(t), 0);
-	uint key_count = Map_KeyCount(map);
 
 	for(uint i = 0; i < key_count; i++) {
 		Pair p = map.map[i];
@@ -235,7 +247,7 @@ XXH64_hash_t Map_HashCode
 }
 
 // Utility function to increase the size of a buffer.
-static inline void _Map_ExtendBuffer(
+static inline void _ExtendBuffer(
 	char **buf,           // buffer to populate
 	size_t *bufferLen,    // size of buffer
 	size_t extensionLen   // number of bytes to add
@@ -257,7 +269,7 @@ void Map_ToString
 	ASSERT(bytesWritten != NULL);
 
 	// resize buffer if buffer length is less than 64
-	if(*bufferLen - *bytesWritten < 64) _Map_ExtendBuffer(buf, bufferLen, 64);
+	if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
 
 	uint key_count = Map_KeyCount(map);
 
@@ -268,18 +280,18 @@ void Map_ToString
 		Pair p = map.map[i];
 		// write the next key/value pair
 		SIValue_ToString(p.key, buf, bufferLen, bytesWritten);
-		if(*bufferLen - *bytesWritten < 64) _Map_ExtendBuffer(buf, bufferLen, 64);
+		if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ": ");
 		SIValue_ToString(p.val, buf, bufferLen, bytesWritten);
 		// if this is not the last element, add ", "
 		if(i != key_count - 1) {
-			if(*bufferLen - *bytesWritten < 64) _Map_ExtendBuffer(buf, bufferLen, 64);
+			if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
 			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 		}
 	}
 
 	// make sure there's enough space for "}"
-	if(*bufferLen - *bytesWritten < 2) _Map_ExtendBuffer(buf, bufferLen, 2);
+	if(*bufferLen - *bytesWritten < 2) _ExtendBuffer(buf, bufferLen, 2);
 
 	// "}" marks the end of a map
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}");

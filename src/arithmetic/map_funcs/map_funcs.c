@@ -35,7 +35,7 @@ SIValue AR_TOMAP(SIValue *argv, int argc) {
 			break;
 		}
 
-		Map_Add(map, key, val);
+		Map_Add(&map, key, val);
 	}
 
 	return map;
