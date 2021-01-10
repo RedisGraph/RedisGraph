@@ -257,9 +257,12 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 			ASSERT(res == GrB_SUCCESS);
 		}
 
+		GxB_set (m, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
+
 		// Writer under write lock, no need to flush pending changes.
 		return;
 	}
+
 	// Lock the matrix.
 	RG_Matrix_Lock(rg_matrix);
 
@@ -280,6 +283,7 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 		// Flush changes to matrix.
 		_Graph_ApplyPending(m);
 	}
+	GxB_set (m, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
 	// Unlock matrix mutex.
 	_RG_Matrix_Unlock(rg_matrix);
 }
