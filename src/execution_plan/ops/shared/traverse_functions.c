@@ -42,7 +42,7 @@ static GRAPH_EDGE_DIR _Traverse_SetDirection(const AlgebraicExpression *ae, cons
 
 	/* If this operation traverses a transposed edge, the source and destination
 	 * nodes will be swapped in the Record. */
-	if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) return GRAPH_EDGE_DIR_INCOMING;
+	if(AlgebraicExpression_Transposed(ae)) return GRAPH_EDGE_DIR_INCOMING;
 
 	// The default traversal direction is outgoing.
 	return GRAPH_EDGE_DIR_OUTGOING;

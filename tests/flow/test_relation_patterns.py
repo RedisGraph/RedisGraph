@@ -268,3 +268,35 @@ class testRelationPattern(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['v1']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test09_transposed_elem_order(self):
+        redis_con = self.env.getConnection()
+        g = Graph("transpose_patterns", redis_con)
+
+        # Create a new graph of the form:
+        # (A)-[1]->(B)<-[2]-(C)
+        a = Node(label="A", properties={"val": 1})
+        b = Node(label="B", properties={"val": 2})
+        c = Node(label="C", properties={"val": 3})
+
+        g.add_node(a)
+        g.add_node(b)
+        g.add_node(c)
+
+        ba = Edge(b, "e", a, properties={"val": 1})
+        bc = Edge(b, "e", c, properties={"val": 2})
+
+        g.add_edge(ba)
+        g.add_edge(bc)
+
+        g.flush()
+
+        queries = ["MATCH (a:A)<-[e1]-(b:B)-[e2]->(c:C) RETURN e1.val, e2.val",
+                   "MATCH (a:A) WITH a MATCH (a)<-[e1]-(b:B)-[e2]->(c:C) RETURN e1.val, e2.val",
+                   "MATCH (b:B) WITH b MATCH (a:A)<-[e1]-(b)-[e2]->(c:C) RETURN e1.val, e2.val",
+                   "MATCH (c:C) WITH c MATCH (a:A)<-[e1]-(b:B)-[e2]->(c) RETURN e1.val, e2.val",
+                   ]
+        expected_result = [[1, 2]]
+        for query in queries:
+            actual_result = g.query(query)
+            self.env.assertEquals(actual_result.result_set, expected_result)

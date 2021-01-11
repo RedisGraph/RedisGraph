@@ -70,7 +70,7 @@ static AlgebraicExpression *_AlgebraicExpression_RemoveOperand
 	AlgebraicExpression *parent      = NULL;
 	AlgebraicExpression *current     = *root;
 	AlgebraicExpression *replacement = NULL;
-	AlgebraicExpression **stack      = array_new(AlgebraicExpression*, 0);
+	AlgebraicExpression **stack      = array_new(AlgebraicExpression *, 0);
 
 	// search for operand
 	while(current->type == AL_OPERATION) {
@@ -374,6 +374,20 @@ uint AlgebraicExpression_OperationCount
 	return op_count;
 }
 
+void _AlgebraicExpression_Transposed
+(
+	const AlgebraicExpression *root,  // Root of expression.
+	bool *transposed                  // Current state of transpose.
+) {
+	if(root->type == AL_OPERATION) {
+		if(root->operation.op == AL_EXP_TRANSPOSE) *transposed = !*transposed;
+		uint child_count = AlgebraicExpression_ChildCount(root);
+		for(uint i = 0; i < child_count; i++) {
+			_AlgebraicExpression_Transposed(CHILD_AT(root, i), transposed);
+		}
+	}
+}
+
 // Returns true if entire expression is transposed.
 bool AlgebraicExpression_Transposed
 (
@@ -382,16 +396,12 @@ bool AlgebraicExpression_Transposed
 	// Empty expression.
 	if(root == NULL) return false;
 
-	const AlgebraicExpression *n = root;
-
-	// handle directly nested transposes, e.g. T(T(T(X)))
 	bool transposed = false;
-	while(n->type == AL_OPERATION && n->operation.op == AL_EXP_TRANSPOSE) {
-		transposed = !transposed;
-		n = FIRST_CHILD(n);
-	}
 
-	// TODO: handle cases such as T(A) + T(B).
+	// TODO This logic looks inadequate, but what are the edge cases?
+	// This is equivalent to AlgebraicExpression_OperationCount % 2
+	_AlgebraicExpression_Transposed(root, &transposed);
+
 	return transposed;
 }
 
