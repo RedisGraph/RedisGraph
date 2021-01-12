@@ -79,3 +79,12 @@ class testGraphCreationFlow(FlowTestsBase):
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("undefined property", e.message)
+
+    def test06_create_project_volatile_value(self):
+        # The path e is volatile; verify that it can be projected after entity creation.
+        query = """MATCH ()-[e*]->() CREATE (:L) WITH e RETURN 5"""
+        result = redis_graph.query(query)
+        expected_result = [[5], [5]]
+
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.result_set, expected_result)
