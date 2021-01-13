@@ -213,7 +213,7 @@ int Map_Compare
 	for(uint i = 0; i < A_key_count; i++) {
 		// Key lookup succeeded; compare values.
 		order = SIValue_Compare(A[i].val, B[i].val, disjointOrNull);
-		if(*disjointOrNull == COMPARED_NULL || *disjointOrNull == DISJOINT)
+		if(disjointOrNull && (*disjointOrNull == COMPARED_NULL || *disjointOrNull == DISJOINT))
 			return 0;
 
 		if(order != 0) return order;
