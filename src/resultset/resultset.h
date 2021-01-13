@@ -20,7 +20,6 @@ typedef struct {
 	GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
 	uint column_count;              /* Number of columns in result set. */
 	bool header_emitted;            /* Whether a header row has been issued to the user. */
-	bool require_footer;            /* Whether a footer containing metadata should be emitted. */
 	const char **columns;           /* Field names for each column of results. */
 	uint *columns_record_map;       /* Mapping between column name and record index.*/
 	size_t recordCount;             /* Number of records introduced. */
@@ -31,8 +30,6 @@ typedef struct {
 } ResultSet;
 
 void ResultSet_ReplyWithMetadata(ResultSet *set);
-
-void ResultSet_MaybeEmitFooter(ResultSet *set);
 
 void ResultSet_MapProjection(ResultSet *set, const Record r);
 

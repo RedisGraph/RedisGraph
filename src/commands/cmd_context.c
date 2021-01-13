@@ -121,6 +121,11 @@ const char *CommandCtx_GetQuery(const CommandCtx *command_ctx) {
 	return command_ctx->query;
 }
 
+uint CommandCtx_GetVersion(const CommandCtx *command_ctx) {
+	ASSERT(command_ctx != NULL);
+	return command_ctx->version;
+}
+
 void CommandCtx_ThreadSafeContextLock(const CommandCtx *command_ctx) {
 	/* Acquire lock only when working with a blocked client
 	 * otherwise we're running on Redis main thread,

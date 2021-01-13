@@ -32,3 +32,4 @@ int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group);
 void CacheGroupIterator_Free(CacheGroupIterator *iter);
 
 #endif
+

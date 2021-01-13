@@ -4,12 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../RG.h"
+#include "RG.h"
 #include "commands.h"
 #include "cmd_context.h"
-#include "../RG.h"
-
-#define GRAPH_VERSION_MISSING -1
 
 // Command handler function pointer.
 typedef void(*Command_Handler)(void *args);
@@ -18,13 +15,14 @@ typedef void(*Command_Handler)(void *args);
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 					   long long *timeout, uint *graph_version, char **errmsg) {
 
-	ASSERT(compact);
-	ASSERT(timeout);
+	ASSERT(compact != NULL);
+	ASSERT(timeout != NULL);
+	ASSERT(graph_version != NULL);
 
 	// set defaults
-	*timeout = 0;      // no timeout
-	*compact = false;  // verbose
-	*graph_version = GRAPH_VERSION_MISSING;
+	*timeout        =  0;                      // no timeout
+	*compact        =  false;                  // verbose
+	*graph_version  =  GRAPH_VERSION_MISSING;  // no version
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments

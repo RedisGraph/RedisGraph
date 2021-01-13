@@ -5,7 +5,6 @@
  */
 
 #include "resultset.h"
-
 #include "../util/arr.h"
 #include "../query_ctx.h"
 

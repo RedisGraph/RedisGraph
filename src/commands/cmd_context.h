@@ -70,6 +70,11 @@ const char *CommandCtx_GetQuery
 	const CommandCtx *command_ctx
 );
 
+uint CommandCtx_GetVersion
+(
+	const CommandCtx *command_ctx
+);
+
 // Acquire Redis global lock.
 void CommandCtx_ThreadSafeContextLock
 (

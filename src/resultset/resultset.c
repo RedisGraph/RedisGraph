@@ -125,18 +125,12 @@ static void _ResultSet_SetColumns(ResultSet *set) {
 	}
 }
 
-/* If appropriate, update the ResultSet to emit a footer.
- * Currently, we never emit a footer unless we are also emitting results
- * and are using the compact formatter. */
-inline void ResultSet_MaybeEmitFooter(ResultSet *set) {
-	if(set->columns == NULL || set->format != FORMATTER_COMPACT) return;
-	set->require_footer = true;
-}
-
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
-	set->gc = QueryCtx_GetGraphCtx();
+	set->gc = gc;
 	set->format = format;
 	set->formatter = ResultSetFormatter_GetFormatter(format);
 	set->columns = NULL;
@@ -215,30 +209,35 @@ void ResultSet_CachedExecution(ResultSet *set) {
 }
 
 void ResultSet_Reply(ResultSet *set) {
+	int nsections = 1; // queries that don't emit data will only emit statistics
+	bool require_footer = false;
+
 	if(set->columns != NULL) {
-		// The query emits data.
+		uint graph_version = QueryCtx_GetGraphVersion();
+		require_footer = (graph_version != GRAPH_VERSION_MISSING &&
+				graph_version != GraphContext_GetVersion(set->gc) &&
+				set->format == FORMATTER_COMPACT);
+
+		// the query emits data
 		if(set->header_emitted) {
-			// If we have emitted a header, set the number of elements in the preceding array.
+			// if we have emitted a header,
+			// set the number of elements in the preceding array
 			RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
 		} else {
 			ASSERT(set->recordCount == 0);
-			// Handle the edge case in which the query was intended to return results, but none were created.
+			// handle the edge case in which the query was intended to 
+			// return results, but none were created
 			_ResultSet_ReplyWithPreamble(set, NULL);
 			RedisModule_ReplySetArrayLength(set->ctx, 0);
 		}
-
-		// If the output requires a footer, accommodate it in the replied arrays.
-		if(set->require_footer == false) RedisModule_ReplySetArrayLength(set->ctx, 3);
-		else RedisModule_ReplySetArrayLength(set->ctx, 4);
-	} else {
-		// Queries that don't emit data will only emit statistics
-		RedisModule_ReplyWithArray(set->ctx, 1);
+		nsections = (require_footer) ? 4 : 3;
 	}
+	RedisModule_ReplyWithArray(set->ctx, nsections);
 
-	/* Check to see if we've encountered a run-time error.
-	 * If so, emit it as the last top-level response. */
+	/* check to see if we've encountered a run-time error
+	 * if so, emit it as the last top-level response */
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
-	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
+	else _ResultSet_ReplayStats(set->ctx, set); // otherwise, the last response is query statistics
 
 	if(set->require_footer) ResultSet_ReplyWithMetadata(set);
 }

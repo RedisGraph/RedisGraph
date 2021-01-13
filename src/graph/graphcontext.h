@@ -16,6 +16,8 @@
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
 
+#define GRAPH_VERSION_MISSING 0
+
 /* GraphContext holds refrences to various elements of a graph object
  * It is the value sitting behind a Redis graph key
  *
