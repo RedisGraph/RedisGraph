@@ -7,7 +7,7 @@ from redisgraph import Node, Edge, Path
 
 def is_numeric(value):
     # check for value's type to be a number or a string
-    if not isinstance(value, (Number, basestring)):
+    if not isinstance(value, (Number, str)):
         return False
     try:
         # value is either number or string, try to convert to float
@@ -81,18 +81,18 @@ def pathToString(pathToConvert):
         strValue += node_str + "-" + edge_str + "->" if edge.src_node == node.id else node_str + "<-" + edge_str + "-"
 
     strValue += nodeToString(pathToConvert.get_node(nodes_count - 1)) if nodes_count > 0 else ""
-    strValue +=">"
+    strValue += ">"
     return strValue
 
 def toString(value):
     if isinstance(value, bool):
-        if value == True:
+        if value is True:
             return "true"
-        elif value == False:
+        elif value is False:
             return "false"
     elif is_numeric(value):
         return str(value)
-    elif isinstance(value, basestring):
+    elif isinstance(value, str):
         # remove qoutes if any
         return removeQuotes(value)
     # value is a node
@@ -105,7 +105,7 @@ def toString(value):
         return listToString(value)
     elif isinstance(value, Path):
         return pathToString(value)
-    elif value == None:
+    elif value is None:
         return "null"
 
 # prepare the actual value returned from redisgraph to be in
@@ -117,7 +117,7 @@ def prepareActualValue(actualValue):
     if is_numeric(actualValue):
         actualValue = toNumeric(actualValue)
     # value is string
-    elif isinstance(actualValue, basestring):
+    elif isinstance(actualValue, str):
         # remove qoutes if any
         actualValue = removeQuotes(actualValue)
     # value is a node
@@ -163,7 +163,7 @@ def prepare_expected_row(row):
 
 
 def assert_empty_resultset(resultset):
-    assert len(resultset.result_set) is 0
+    assert len(resultset.result_set) == 0
 
 # check value of a designated statistic
 

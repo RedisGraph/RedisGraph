@@ -11,7 +11,7 @@ redis_graph = None
 
 class testIndexScanFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
 
     def setUp(self):
         global redis_graph

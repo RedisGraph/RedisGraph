@@ -17,7 +17,7 @@ redis_graph = None
 
 class testImdbFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
 
     def setUp(self):
         global imdb
