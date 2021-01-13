@@ -12,7 +12,7 @@ GRAPH_ID = "GraphVersion"
 
 class testGraphVersioning(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
 
     # Make sure graph version changes once a new label is created
     def test01_version_update_on_label_creation(self):

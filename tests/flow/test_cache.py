@@ -11,7 +11,7 @@ class testCache(FlowTestsBase):
 
     def __init__(self):
         # Have only one thread handling queries
-        self.env = Env(moduleArgs='THREAD_COUNT 8 CACHE_SIZE {CACHE_SIZE}'.format(CACHE_SIZE = CACHE_SIZE))
+        self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE {CACHE_SIZE}'.format(CACHE_SIZE = CACHE_SIZE))
         global redis_con
         redis_con = self.env.getConnection()
 

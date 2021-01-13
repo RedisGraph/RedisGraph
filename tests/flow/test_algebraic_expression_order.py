@@ -13,7 +13,7 @@ GRAPH_ID = "AlgebraicExpressionOrder"
 
 class testAlgebraicExpressionOrder(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         redis_con = self.env.getConnection()
         graph = Graph(GRAPH_ID, redis_con)
