@@ -11,7 +11,7 @@ class testQueryTimeout(FlowTestsBase):
         if Env().envRunner.debugger is not None:
             Env().skip() # queries will be much slower under Valgrind
 
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
 

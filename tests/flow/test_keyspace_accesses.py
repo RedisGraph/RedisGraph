@@ -18,7 +18,7 @@ NEW_GRAPH_ID = "G2"
 
 class testKeyspaceAccesses(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()

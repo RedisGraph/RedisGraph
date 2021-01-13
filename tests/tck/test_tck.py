@@ -11,7 +11,7 @@ from behave.__main__ import main as behave_main
 
 
 def test_tck():
-    env = Env()
+    env = Env(decodeResponses=True)
     cmd = ["./features/", '--tags=-skip']
     #  cmd = ["./features/", '--tags=-crash'] # Run all tests except crashing tests
     if not env.verbose:

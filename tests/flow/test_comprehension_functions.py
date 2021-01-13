@@ -7,7 +7,7 @@ redis_graph = None
 
 class testComprehensionFunctions(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         graph_id = "list_comprehension"
         redis_con = self.env.getConnection()

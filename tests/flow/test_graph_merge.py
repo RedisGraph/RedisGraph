@@ -11,7 +11,7 @@ graph_2 = None
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         global graph_2
         redis_con = self.env.getConnection()

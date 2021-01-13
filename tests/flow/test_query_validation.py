@@ -14,7 +14,7 @@ redis_graph = None
 class testQueryValidationFlow(FlowTestsBase):
 
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()

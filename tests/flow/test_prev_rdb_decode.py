@@ -8,7 +8,7 @@ redis_con = None
 
 class test_prev_rdb_decode(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
 

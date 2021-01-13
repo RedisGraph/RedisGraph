@@ -68,7 +68,7 @@ def delete_graph(graph, threadID):
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graphs
         graphs = []
         for i in range(0, CLIENT_COUNT):
