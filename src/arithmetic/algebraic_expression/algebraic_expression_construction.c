@@ -397,7 +397,7 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath
 	 * e.g.
 	 * (A)-[E0]->(B)<-[E1]-(C)-[E2]->(D)
 	 * E1 will be transposed:
-	 * (A)-[E0]->(B)-[E1]->(C)-[E2]->(D) */
+	 * (A)-[E0]->(B)-[E1']->(C)-[E2]->(D) */
 
 	// Construct expression.
 	for(int i = 0; i < path_len; i++) {
