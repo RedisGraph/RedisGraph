@@ -27,6 +27,10 @@ jobs:
   build:
     docker:
       - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+        environment:
+            LANG: en_US.UTF-8  
+            LANGUAGE: en_US:en  
+            LC_ALL: en_US.UTF-8     
     steps:
       - checkout
       - run:
@@ -38,7 +42,7 @@ jobs:
           name: Install prerequisite
           command: |
             apt-get -qq update
-            apt-get install -y --no-install-recommends ca-certificates wget git
+            apt-get install -y --no-install-recommends ca-certificates wget git locales
             apt-get install -y --no-install-recommends python python-pip python-psutil
             apt-get install -y --no-install-recommends build-essential cmake m4 automake autoconf libtool peg libgomp1 valgrind astyle
             python3 -m pip install wheel
@@ -48,6 +52,10 @@ jobs:
             python3 -m pip install git+https://github.com/RedisLabsModules/RLTest.git@master
             python3 -m pip install git+https://github.com/RedisLabs/RAMP@master
             python3 -m pip install -r tests/requirements.txt
+
+      - run:
+          name: Setup locale
+          command: dpkg-reconfigure locales
 
       - setup-automation
 
