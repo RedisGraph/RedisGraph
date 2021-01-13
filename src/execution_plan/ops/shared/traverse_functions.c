@@ -36,16 +36,35 @@ static void _Traverse_SetRelationTypes(EdgeTraverseCtx *edge_ctx, QGEdge *e) {
 }
 
 // Determine the edge directions we need to collect.
-static GRAPH_EDGE_DIR _Traverse_SetDirection(const AlgebraicExpression *ae, const QGEdge *e) {
-	// Bidirectional traversals should match both incoming and outgoing edges.
+static GRAPH_EDGE_DIR _Traverse_SetDirection(AlgebraicExpression *ae, const QGEdge *e) {
+	// the default traversal direction is outgoing
+	GRAPH_EDGE_DIR dir = GRAPH_EDGE_DIR_OUTGOING;
+
+	// bidirectional traversals should match both incoming and outgoing edges
 	if(e->bidirectional) return GRAPH_EDGE_DIR_BOTH;
 
-	/* If this operation traverses a transposed edge, the source and destination
-	 * nodes will be swapped in the Record. */
-	if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) return GRAPH_EDGE_DIR_INCOMING;
+	/* if this operation traverses a transposed edge, the source and destination
+	 * nodes will be swapped in the Record */
 
-	// The default traversal direction is outgoing.
-	return GRAPH_EDGE_DIR_OUTGOING;
+	// push down transpose operations to individual operands
+	AlgebraicExpression_PushDownTranspose(ae);
+	AlgebraicExpression *parent = NULL;
+	AlgebraicExpression *operand = NULL;
+
+	// locate operand representing the referenced edge
+	bool located = AlgebraicExpression_LocateOperand(ae, &operand, &parent,
+			e->src->alias, e->dest->alias, e->alias);
+	ASSERT(located == true);
+
+	// if parent exists and it is a transpose operation, edge is reversed
+	if(parent != NULL) {
+		ASSERT(parent->type == AL_OPERATION);
+		if(parent->operation.op == AL_EXP_TRANSPOSE) {
+			dir = GRAPH_EDGE_DIR_INCOMING;
+		}
+	}
+
+	return dir;
 }
 
 EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx) {
