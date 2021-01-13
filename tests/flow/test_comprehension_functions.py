@@ -167,14 +167,14 @@ class testComprehensionFunctions(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertIn("requires a WHERE predicate", e.message)
+            self.env.assertIn("requires a WHERE predicate", str(e))
 
         try:
             redis_graph.query("RETURN all(x IN [1,2])")
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertIn("requires a WHERE predicate", e.message)
+            self.env.assertIn("requires a WHERE predicate", str(e))
 
     def test11_any_all_truth_table(self):
         # Test inputs and predicates where ANY and ALL are both false.

@@ -31,7 +31,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
                                   'group': random.choice(groups),
                                   'doubleval': round(random.uniform(-1, 1), 2),
                                   'intval': random.randint(1, 10000),
-                                  'stringval': ''.join(random.choice(string.lowercase) for x in range(6))})
+                                  'stringval': ''.join(random.choice(string.ascii_lowercase) for x in range(6))})
 
     def populate_graph(self):
         global node_ctr

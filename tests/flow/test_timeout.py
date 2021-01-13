@@ -20,7 +20,7 @@ class testQueryTimeout(FlowTestsBase):
         response = redis_con.execute_command("GRAPH.QUERY", "g", query, "timeout", 1)
         error = response[-1]
         self.env.assertTrue(isinstance(error, ResponseError))
-        self.env.assertContains("Query timed out", error)
+        self.env.assertContains("Query timed out", str(error))
 
         response = redis_con.execute_command("GRAPH.QUERY", "g", query, "timeout", 100)
         self.env.assertFalse(isinstance(response[-1], ResponseError))
