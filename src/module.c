@@ -186,3 +186,14 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	return REDISMODULE_OK;
 }
 
+int RedisModule_OnUnload(RedisModuleCtx *ctx) {
+	GrB_Info info = GrB_finalize();
+
+	if(info != GrB_SUCCESS) {
+		RedisModule_Log(ctx, "warning",
+				"Failed finalizing GraphBLAS, error code: %"PRIu64, info);
+	}
+
+	return REDISMODULE_OK;
+}
+

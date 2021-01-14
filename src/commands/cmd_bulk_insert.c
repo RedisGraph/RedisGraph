@@ -85,7 +85,7 @@ void _MGraph_BulkInsert(CommandCtx *command_ctx, RedisModuleString **argv, int a
 	}
 
 	// Replay to caller.
-	len = snprintf(reply, 1024, "%llu nodes created, %llu edges created",
+	len = snprintf(reply, 1024, "%" PRIu64 " nodes created, %"PRIu64" edges created",
 				   nodes_in_query, relations_in_query);
 	RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 

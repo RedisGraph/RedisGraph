@@ -1179,7 +1179,7 @@ dictType BenchmarkDictType = {
 #define start_benchmark() start = timeInMilliseconds()
 #define end_benchmark(msg) do { \
     elapsed = timeInMilliseconds()-start; \
-    printf(msg ": %ld items in %lld ms\n", count, elapsed); \
+    printf(msg ": %ld items in %" PRId64 " ms\n", count, elapsed); \
 } while(0);
 
 /* dict-benchmark [count] */
