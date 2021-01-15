@@ -187,6 +187,7 @@ int Map_Compare
 	int   order        =  0;
 	Map   A            =  mapA.map;
 	Map   B            =  mapB.map;
+	uint  key_count    =  Map_KeyCount(mapA);
 	uint  A_key_count  =  Map_KeyCount(mapA);
 	uint  B_key_count  =  Map_KeyCount(mapB);
 
@@ -195,26 +196,26 @@ int Map_Compare
 		else return -1;
 	}
 
-	// Sort both maps.
+	// sort both maps
 	QSORT(Pair, A, A_key_count, KEY_ISLT);
 	QSORT(Pair, B, B_key_count, KEY_ISLT);
 
-	// Element-wise key comparison.
-	for(uint i = 0; i < A_key_count; i++) {
-		for(uint i = 0; i < A_key_count; i ++) {
-			// If the maps contain different keys, order in favor
-			// of the first lexicographically greater key.
-			order = strcmp(A[i].key.stringval, B[i].key.stringval);
-			if(order != 0) return order;
-		}
+	// element-wise key comparison
+	for(uint i = 0; i < key_count; i++) {
+		// if the maps contain different keys, order in favor
+		// of the first lexicographically greater key
+		order = strcmp(A[i].key.stringval, B[i].key.stringval);
+		if(order != 0) return order;
 	}
 
 	// Element-wise value comparison.
-	for(uint i = 0; i < A_key_count; i++) {
-		// Key lookup succeeded; compare values.
+	for(uint i = 0; i < key_count; i++) {
+		// key lookup succeeded; compare values
 		order = SIValue_Compare(A[i].val, B[i].val, disjointOrNull);
-		if(disjointOrNull && (*disjointOrNull == COMPARED_NULL || *disjointOrNull == DISJOINT))
+		if(disjointOrNull && (*disjointOrNull == COMPARED_NULL ||
+					*disjointOrNull == DISJOINT)) {
 			return 0;
+		}
 
 		if(order != 0) return order;
 	}
@@ -229,8 +230,8 @@ XXH64_hash_t Map_HashCode
 (
 	SIValue map
 ) {
-	// Sort the maps by key, so that {a:1, b:1} and {b:1, a:1}
-	// have the same hash value.
+	// sort the map by key, so that {a:1, b:1} and {b:1, a:1}
+	// have the same hash value
 	uint key_count = Map_KeyCount(map);
 	QSORT(Pair, map.map, key_count, KEY_ISLT);
 

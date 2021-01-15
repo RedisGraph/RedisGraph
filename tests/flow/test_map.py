@@ -1,17 +1,15 @@
-from RLTest import Env
 import redis
+from RLTest import Env
+from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
 
-from base import FlowTestsBase
-
 redis_graph = None
-GRAPH_ID = "G"
+GRAPH_ID = "map_test"
 
-
-class testList(FlowTestsBase):
+class testMap(FlowTestsBase):
     def __init__(self):
-        self.env = Env(decodeResponses=True)
         global redis_graph
+        self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
         self.populate_graph()
@@ -19,21 +17,8 @@ class testList(FlowTestsBase):
     def populate_graph(self):
         # Construct a graph with the form:
         # (v1)-[:E]->(v2)-[:E]->(v3)
-        node_props = [1, 2, 3]
-
-        nodes = []
-        for idx, v in enumerate(node_props):
-            node = Node(label="L", properties={"val": v})
-            nodes.append(node)
-            redis_graph.add_node(node)
-
-        edge = Edge(nodes[0], "E", nodes[1])
-        redis_graph.add_edge(edge)
-
-        edge = Edge(nodes[1], "E", nodes[2])
-        redis_graph.add_edge(edge)
-
-        redis_graph.commit()
+        q = """CREATE (:L {val:1})-[:E]->(:L {val:2})-[:E]->(:L {val:3})"""
+        redis_graph.query(q)
 
     # Validate basic map lookup operations
     def test01_basic_map_accesses(self):
@@ -84,6 +69,12 @@ class testList(FlowTestsBase):
         expected_result = [['5_nested_str']]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        # Deeply nested map
+        query = """RETURN {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {}}}}}}}}}}}"""
+        query_result = redis_graph.query(query)
+        expected_result = [[{'a': {'b': {'c': {'d': {'e': {'f': {'g': {'h': {'i': {'j': {}}}}}}}}}}}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
     # Validate map sorting logic (first by keys, then by values)
     def test04_map_sorting(self):
         query = """UNWIND[{b: 1}, {a: 2}] AS map RETURN map ORDER BY map"""
@@ -96,6 +87,12 @@ class testList(FlowTestsBase):
         query_result = redis_graph.query(query)
         expected_result = [[{'a': 1}],
                            [{'a': 2}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        query = """UNWIND[{a: 2}, {x: 1, k: 2}] AS map RETURN map ORDER BY map"""
+        query_result = redis_graph.query(query)
+        expected_result = [[{'a': 2}],
+                           [{'x': 1, 'k': 2}]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
     # Validate map comparison logic (first by keys, then by values)
@@ -119,7 +116,7 @@ class testList(FlowTestsBase):
     # Validate that maps are handled correctly by the DISTINCT operator.
     def test05_map_distinct(self):
         # Map uniqueness is not predicated on key order.
-        query = """UNWIND[{b: 2, a: 1}, {a: 1, b: 2}] AS map RETURN DISTINCT map"""
+        query = """UNWIND[{b: 2, a: 1}, {b: 2, a: 1}, {a: 1, b: 2}] AS map RETURN DISTINCT map"""
         query_result = redis_graph.query(query)
         expected_result = [[{'a': 1, 'b': 2}]]
         self.env.assertEquals(query_result.result_set, expected_result)
@@ -132,3 +129,4 @@ class testList(FlowTestsBase):
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("Type mismatch", str(e))
+
