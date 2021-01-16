@@ -1,6 +1,9 @@
 function gbtest31
 %GBTEST31 test GrB and casting
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 types = gbtest_types ;
 fprintf ('gbtest31: typecasting\n') ;
 rng ('default') ;
@@ -11,15 +14,15 @@ for k = 1:length (types)
 
     for m = 0:5
         for n = 0:5
-            A = zeros (m, n, type) ;
+            A = gbtest_cast (zeros (m, n), type) ;
             G = GrB (m, n, type) ;
-            C = cast (G, type) ;
+            C = GrB (G, type) ;
             assert (gbtest_eq (A, C)) ;
         end
     end
 
     A = 100 * rand (5, 5) ;
-    A = cast (A, type) ;
+    A = gbtest_cast (A, type) ;
     G = GrB (A) ;
 
     G2 = sparse (G) ;
@@ -28,13 +31,13 @@ for k = 1:length (types)
     for k2 = 1:length (types)
         type2 = types {k} ;
         G2 = GrB (G, type2) ;
-        A2 = cast (A, type2) ;
-        C = cast (G2, type2) ;
+        A2 = gbtest_cast (A, type2) ;
+        C = GrB (G2, type2) ;
         assert (gbtest_eq (A2, C)) ;
     end
 
     F = 100 * ones (5, 5) ;
-    F = cast (F, type) ;
+    F = gbtest_cast (F, type) ;
     id = F (1,1) ;
 
     A = 100 * sparse (diag (1:5)) ;

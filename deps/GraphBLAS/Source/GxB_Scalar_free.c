@@ -2,8 +2,8 @@
 // GxB_Scalar_free: free a sparse GxB_Scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ GrB_Info GxB_Scalar_free    // free a GxB_Scalar
 )
 { 
 
-    GB_SCALAR_FREE (s) ;
+    GB_Matrix_free ((GrB_Matrix *) s) ;
     return (GrB_SUCCESS) ;
 }
 

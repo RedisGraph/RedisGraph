@@ -1,12 +1,13 @@
 function test25
 %TEST25 test GxB_select
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest25: GxB_select tests\n') ;
 
-[~, ~, ~, classes, ~, select_ops] = GB_spec_opsall ;
+[~, ~, ~, types, ~, select_ops] = GB_spec_opsall ;
+types = types.all ;
 
 rng ('default') ;
 
@@ -14,9 +15,9 @@ m = 10 ;
 n = 6 ;
 dt = struct ('inp0', 'tran') ;
 
-for k1 = 1:length(classes)
-    aclass = classes {k1} ;
-    fprintf ('%s: ', aclass) ;
+for k1 = 1:length(types)
+    atype = types {k1} ;
+    fprintf ('%s: ', atype) ;
 
     for A_is_hyper = 0:1
     for A_is_csc   = 0:1
@@ -43,15 +44,15 @@ for k1 = 1:length(classes)
         hm = 0 ;
     end
 
-    A = GB_spec_random (m, n, 0.3, 100, aclass, A_is_csc, A_is_hyper, ha) ;
+    A = GB_spec_random (m, n, 0.3, 100, atype, A_is_csc, A_is_hyper, ha) ;
     A.matrix (:,1) = rand (m,1) ;
     A.pattern (:,1) = true (m,1) ;
-    Cin = GB_spec_random (m, n, 0.3, 100, aclass, C_is_csc, C_is_hyper, hc) ;
-    B = GB_spec_random (n, m, 0.3, 100, aclass, A_is_csc, A_is_hyper, ha) ;
-    cin = cast (0, aclass) ;
+    Cin = GB_spec_random (m, n, 0.3, 100, atype, C_is_csc, C_is_hyper, hc) ;
+    B = GB_spec_random (n, m, 0.3, 100, atype, A_is_csc, A_is_hyper, ha) ;
+    cin = GB_mex_cast (0, atype) ;
     % Mask = (sprand (m, n, 0.5) ~= 0) ;
     Mask = GB_random_mask (m, n, 0.5, M_is_csc, M_is_hyper) ;
-    Mask.hyper_ratio = hm ;
+    Mask.hyper_switch = hm ;
 
     fprintf ('.') ;
 

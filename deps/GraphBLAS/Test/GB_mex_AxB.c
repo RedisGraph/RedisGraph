@@ -2,8 +2,8 @@
 // GB_mex_AxB: compute C=A*B, A'*B, A*B', or A'*B'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -14,17 +14,17 @@
 
 #define USAGE "C = GB_mex_AxB (A, B, atranspose, btranspose, axb_method)"
 
-#define FREE_ALL                        \
-{                                       \
-    GB_MATRIX_FREE (&A) ;               \
-    GB_MATRIX_FREE (&Aconj) ;           \
-    GB_MATRIX_FREE (&B) ;               \
-    GB_MATRIX_FREE (&Bconj) ;           \
-    GB_MATRIX_FREE (&C) ;               \
-    GB_MATRIX_FREE (&Mask) ;            \
-    GrB_free (&add) ;                   \
-    GrB_free (&semiring) ;              \
-    GB_mx_put_global (true, AxB_method_used) ; \
+#define FREE_ALL                                \
+{                                               \
+    GrB_Matrix_free_(&A) ;                      \
+    GrB_Matrix_free_(&Aconj) ;                  \
+    GrB_Matrix_free_(&B) ;                      \
+    GrB_Matrix_free_(&Bconj) ;                  \
+    GrB_Matrix_free_(&C) ;                      \
+    GrB_Matrix_free_(&Mask) ;                   \
+    GrB_Monoid_free_(&add) ;                    \
+    GrB_Semiring_free_(&semiring) ;             \
+    GB_mx_put_global (true) ;                   \
 }
 
 //------------------------------------------------------------------------------
@@ -44,7 +44,6 @@ int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
 
 GrB_Desc_Value AxB_method = GxB_DEFAULT ;
-GrB_Desc_Value AxB_method_used = GxB_DEFAULT ;
 
 GrB_Info axb (GB_Context Context) ;
 GrB_Info axb_complex (GB_Context Context) ;
@@ -55,19 +54,18 @@ GrB_Info axb (GB_Context Context)
 {
 
     // create the Semiring for regular z += x*y
-    info = GrB_Monoid_new (&add, GrB_PLUS_FP64, (double) 0) ;
+    info = GrB_Monoid_new_FP64_(&add, GrB_PLUS_FP64, (double) 0) ;
     if (info != GrB_SUCCESS) return (info) ;
 
     info = GrB_Semiring_new (&semiring, add, GrB_TIMES_FP64) ;
     if (info != GrB_SUCCESS)
     {
-        GrB_free (&add) ;
+        GrB_Monoid_free_(&add) ;
         return (info) ;
     }
 
     // C = A*B, A'*B, A*B', or A'*B'
-    info = GB_AxB_meta (&C,
-        NULL,       // not in place
+    info = GB_AxB_meta (&C, NULL,       // C cannot be computed in place
         false,      // C_replace
         true,       // CSC
         NULL,       // no MT returned
@@ -75,17 +73,20 @@ GrB_Info axb (GB_Context Context)
         false,      // mask not complemented
         false,      // mask not structural
         NULL,       // no accum
-        A, B,
+        A,
+        B,
         semiring,   // GrB_PLUS_TIMES_FP64
         atranspose,
         btranspose,
         false,      // flipxy
         &ignore,    // mask_applied
         &ignore2,   // done_in_place
-        AxB_method, &AxB_method_used, Context) ;
+        AxB_method,
+        true,       // do the sort
+        Context) ;
 
-    GrB_free (&add) ;
-    GrB_free (&semiring) ;
+    GrB_Monoid_free_(&add) ;
+    GrB_Semiring_free_(&semiring) ;
 
     return (info) ;
 }
@@ -105,10 +106,10 @@ GrB_Info axb_complex (GB_Context Context)
         // Aconj = A
         info = GrB_Matrix_new (&Aconj, Complex, A->vlen, A->vdim) ;
         if (info != GrB_SUCCESS) return (info) ;
-        info = GrB_apply (Aconj, NULL, NULL, Complex_conj, A, NULL) ;
+        info = GrB_Matrix_apply_(Aconj, NULL, NULL, Complex_conj, A, NULL) ;
         if (info != GrB_SUCCESS)
         {
-            GrB_free (&Aconj) ;
+            GrB_Matrix_free_(&Aconj) ;
             return (info) ;
         }
     }
@@ -119,33 +120,46 @@ GrB_Info axb_complex (GB_Context Context)
         info = GrB_Matrix_new (&Bconj, Complex, B->vlen, B->vdim) ;
         if (info != GrB_SUCCESS)
         {
-            GrB_free (&Aconj) ;
+            GrB_Matrix_free_(&Aconj) ;
             return (info) ;
         }
 
-        info = GrB_apply (Bconj, NULL, NULL, Complex_conj, B, NULL) ;
+        info = GrB_Matrix_apply_(Bconj, NULL, NULL, Complex_conj, B, NULL) ;
         if (info != GrB_SUCCESS)
         {
-            GrB_free (&Bconj) ;
-            GrB_free (&Aconj) ;
+            GrB_Matrix_free_(&Bconj) ;
+            GrB_Matrix_free_(&Aconj) ;
             return (info) ;
         }
 
     }
 
     // force completion
-    info = GrB_wait ( ) ;
-    if (info != GrB_SUCCESS)
+    if (Aconj != NULL)
     {
-        GrB_free (&Aconj) ;
-        GrB_free (&Bconj) ;
-        return (info) ;
+        info = GrB_Matrix_wait_(&Aconj) ;
+        if (info != GrB_SUCCESS)
+        {
+            GrB_Matrix_free_(&Aconj) ;
+            GrB_Matrix_free_(&Bconj) ;
+            return (info) ;
+        }
     }
 
-    info = GB_AxB_meta (&C,
-        NULL,       // not in place
+    if (Bconj != NULL)
+    {
+        info = GrB_Matrix_wait_(&Bconj) ;
+        if (info != GrB_SUCCESS)
+        {
+            GrB_Matrix_free_(&Aconj) ;
+            GrB_Matrix_free_(&Bconj) ;
+            return (info) ;
+        }
+    }
+
+    info = GB_AxB_meta (&C, NULL,       // C cannot be computed in place
         false,      // C_replace
-        true,       //CSC
+        true,       // CSC
         NULL,       // no MT returned
         NULL,       // no Mask
         false,      // mask not complemented
@@ -159,10 +173,12 @@ GrB_Info axb_complex (GB_Context Context)
         false,      // flipxy
         &ignore,    // mask_applied
         &ignore2,   // done_in_place
-        AxB_method, &AxB_method_used, Context) ;
+        AxB_method,
+        true,       // do the sort
+        Context) ;
 
-    GrB_free (&Bconj) ;
-    GrB_free (&Aconj) ;
+    GrB_Matrix_free_(&Bconj) ;
+    GrB_Matrix_free_(&Aconj) ;
 
     return (info) ;
 }
@@ -191,7 +207,7 @@ void mexFunction
     add = NULL ;
     semiring = NULL ;
 
-    GB_WHERE (USAGE) ;
+    GB_CONTEXT (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < 2 || nargin > 5)
@@ -225,7 +241,6 @@ void mexFunction
     // get the axb_method
     // 0 or not present: default
     // 1001: Gustavson
-    // 1002: heap
     // 1003: dot
     // 1004: hash
     // 1005: saxpy
@@ -233,7 +248,7 @@ void mexFunction
 
     if (! ((AxB_method == GxB_DEFAULT) ||
         (AxB_method == GxB_AxB_GUSTAVSON) ||
-        (AxB_method == GxB_AxB_HEAP) ||
+        (AxB_method == GxB_AxB_HASH) ||
         (AxB_method == GxB_AxB_DOT)))
     {
         mexErrMsgTxt ("unknown method") ;

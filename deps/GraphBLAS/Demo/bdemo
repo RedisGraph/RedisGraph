@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 ../build/bfs_demo 1 4 4                        > bfs_demo.out
 ../build/bfs_demo 0 5 5 30 1                  >> bfs_demo.out
 ../build/bfs_demo < Matrix/eye3               >> bfs_demo.out

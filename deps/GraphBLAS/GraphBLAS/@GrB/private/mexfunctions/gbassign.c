@@ -2,8 +2,8 @@
 // gbassign: assign entries into a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -16,9 +16,9 @@
 
 // Usage:
 
-//      Cout = gbassign (Cin, M, accum, A, I, J, desc)
+//      C = gbassign (Cin, M, accum, A, I, J, desc)
 
-// Cin, A, and desc are required.  See GrB.m for more details.
+// Cin and A required.  See GrB.m for more details.
 
 #include "gb_matlab.h"
 
@@ -31,6 +31,6 @@ void mexFunction
 )
 {
     gb_assign (nargout, pargout, nargin, pargin, false,
-        "usage: Cout = GrB.assign (Cin, M, accum, A, I, J, desc)") ;
+        "usage: C = GrB.assign (Cin, M, accum, A, I, J, desc)") ;
 }
 

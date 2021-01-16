@@ -2,8 +2,8 @@
 // GB_subassign_05e: C(:,:)<M,struct> = scalar ; no S, C empty, M structural
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -17,6 +17,11 @@
 // accum:       NULL
 // A:           scalar
 // S:           none
+
+// C and M can have any sparsity on input.  The content of C is replace with
+// the structure of M, and the values of C are all set to the scalar.  If M is
+// bitmap, only assignments where (Mb [pC] == 1) are needed, but it's faster to
+// just assign all entries.
 
 #include "GB_subassign_methods.h"
 
@@ -35,6 +40,12 @@ GrB_Info GB_subassign_05e
 {
 
     //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    ASSERT (!GB_aliased (C, M)) ;   // NO ALIAS of C==M
+
+    //--------------------------------------------------------------------------
     // get inputs
     //--------------------------------------------------------------------------
 
@@ -42,13 +53,17 @@ GrB_Info GB_subassign_05e
     ASSERT_MATRIX_OK (C, "C for subassign method_05e", GB0) ;
     ASSERT_MATRIX_OK (M, "M for subassign method_05e", GB0) ;
     ASSERT (GB_NNZ (C) == 0) ;
-    ASSERT (!GB_PENDING (C)) ; ASSERT (!GB_ZOMBIES (C)) ;
-    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+
+    // M can be jumbled, in which case C is jumbled on output 
+    ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (GB_JUMBLED_OK (M)) ;
+    ASSERT (!GB_PENDING (M)) ;
+
     const GB_Type_code ccode = C->type->code ;
     const size_t csize = C->type->size ;
     GB_GET_SCALAR ;
 
-    int64_t mnz = GB_NNZ (M) ;
+    int64_t mnz = GB_NNZ_HELD (M) ;
 
     //--------------------------------------------------------------------------
     // Method 05e: C(:,:)<M> = x ; C is empty, x is a scalar, M is structural
@@ -73,7 +88,7 @@ GrB_Info GB_subassign_05e
     // initialize them.
 
     bool C_is_csc = C->is_csc ;
-    GB_PHIX_FREE (C) ;
+    GB_phbix_free (C) ;
     GB_OK (GB_dup2 (&C, M, false, C->type, Context)) ;
     C->is_csc = C_is_csc ;
     int64_t pC ;
@@ -85,7 +100,7 @@ GrB_Info GB_subassign_05e
     // worker for built-in types
     #define GB_WORKER(ctype)                                                \
     {                                                                       \
-        ctype *GB_RESTRICT Cx = C->x ;                                      \
+        ctype *GB_RESTRICT Cx = (ctype *) C->x ;                            \
         ctype x = (*(ctype *) cwork) ;                                      \
         GB_PRAGMA (omp parallel for num_threads(nthreads) schedule(static)) \
         for (pC = 0 ; pC < mnz ; pC++)                                      \
@@ -112,11 +127,13 @@ GrB_Info GB_subassign_05e
         case GB_UINT64_code : GB_WORKER (uint64_t) ;
         case GB_FP32_code   : GB_WORKER (float) ;
         case GB_FP64_code   : GB_WORKER (double) ;
+        case GB_FC32_code   : GB_WORKER (GxB_FC32_t) ;
+        case GB_FC64_code   : GB_WORKER (GxB_FC64_t) ;
         default:
             {
                 // worker for all user-defined types
-                GB_BURBLE_N (mnz, "generic ") ;
-                GB_void *GB_RESTRICT Cx = C->x ;
+                GB_BURBLE_N (mnz, "(generic C(:,:)<M,struct>=x assign) ") ;
+                GB_void *GB_RESTRICT Cx = (GB_void *) C->x ;
                 #pragma omp parallel for num_threads(nthreads) schedule(static)
                 for (pC = 0 ; pC < mnz ; pC++)
                 { 
@@ -131,7 +148,9 @@ GrB_Info GB_subassign_05e
     //--------------------------------------------------------------------------
 
     GB_FREE_WORK ;
+    C->jumbled = M->jumbled ;       // C is jumbled if M is jumbled
     ASSERT_MATRIX_OK (C, "C output for subassign method_05e", GB0) ;
+    ASSERT (GB_JUMBLED_OK (C)) ;
     return (GrB_SUCCESS) ;
 }
 

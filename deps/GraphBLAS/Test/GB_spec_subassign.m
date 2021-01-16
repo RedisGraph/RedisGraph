@@ -12,8 +12,8 @@ function C = GB_spec_subassign (C, Mask, accum, A, I, J, descriptor, scalar)
 % is the same size as A (after optionally being transpose) and the submatrix
 % C(I,J).  Entries outside the C(I,J) submatrix are never modified.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 %-------------------------------------------------------------------------------
 % get inputs
@@ -23,7 +23,7 @@ if (nargout > 1 || nargin ~= 8)
     error ('usage: C = GB_spec_subassign (C, Mask, accum, A, I, J, descriptor, scalar)') ;
 end
 
-% Convert inputs to dense matrices with explicit patterns and classes,
+% Convert inputs to dense matrices with explicit patterns and types,
 % and with where X(~X.pattern)==identity for all matrices A, B, and C.
 C = GB_spec_matrix (C) ;
 A = GB_spec_matrix (A) ;
@@ -35,7 +35,7 @@ Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 % apply the descriptor to A
 if (Atrans)
-    A.matrix = A.matrix' ;
+    A.matrix = A.matrix.' ;
     A.pattern = A.pattern' ;
 end
 

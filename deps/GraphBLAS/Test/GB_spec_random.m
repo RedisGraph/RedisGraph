@@ -1,18 +1,18 @@
-function A = GB_spec_random (m, n, d, scale, class, is_csc,is_hyper,hyper_ratio)
+function A = GB_spec_random (m, n, d, scale, type, is_csc,is_hyper,hyper_switch)
 %GB_SPEC_RANDOM generate random matrix
 %
-% A = GB_spec_random (m, n, d, scale, class, is_csc, is_hyper, hyper_ratio)
+% A = GB_spec_random (m, n, d, scale, type, is_csc, is_hyper, hyper_switch)
 %
 % m,n,d: parameters to sprandn (m,n,d)
 % m,n: defaults to 4
-% d: defaults to 0.5
+% d: defaults to 0.5.  If d = inf, A is fully populated.
 % scale: a double scalar, defaults to 1.0
-% class: a string; see "help classid". defaults to 'double'
+% type: a string; defaults to 'double'
 % is_csc: true for CSC, false for CSR; defaults to true
 % is_hyper: false for non-hypersparse, true for hypersparse, default false
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin < 1)
     m = 4 ;
@@ -31,7 +31,7 @@ if (nargin < 4)
 end
 
 if (nargin < 5)
-    class = 'double' ;
+    type = 'double' ;
 end
 
 if (nargin >= 6)
@@ -43,10 +43,23 @@ if (nargin >= 7 && ~isempty (is_hyper))
 end
 
 if (nargin >= 8)
-    A.hyper_ratio = hyper_ratio ;
+    A.hyper_switch = hyper_switch ;
 end
 
-A.matrix = scale * sprandn (m, n, d) ;
-A.class = class ;
+if (isinf (d))
+    A.matrix = scale * sparse (rand (m, n)) ;
+else
+    A.matrix = scale * sprandn (m, n, d) ;
+end
+
+if (contains (type, 'complex'))
+    if (isinf (d))
+        A.matrix = A.matrix + 1i * scale * sparse (rand (m, n)) ;
+    else
+        A.matrix = A.matrix + 1i * scale * sprandn (m, n, d) ;
+    end
+end
+
+A.class = type ;
 A.pattern = logical (spones (A.matrix)) ;
 

@@ -1,19 +1,37 @@
 function C = eps (G)
-%EPS Spacing of floating-point numbers in a GraphBLAS matrix.
+%EPS spacing of numbers in a GraphBLAS matrix.
+% C = eps (G) returns the spacing of numbers in a floating-point GraphBLAS
+% matrix.
 %
-% See also isfloat, realmax, realmin.
+% See also GrB/isfloat, realmax, realmin.
 
-% FUTURE: this will be much faster as a mexFunction.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% FUTURE: GraphBLAS should have a built-in unary operator to
+% compute eps.
 
-if (~isfloat (G))
-    gb_error ('Type must be ''single'', ''double'', or ''complex''') ;
+% convert to a MATLAB full matrix and use the MATLAB eps:
+
+% FUTURE: there should be a sparse version of 'eps'.  C is full because
+% eps (0) is 2^(-1024).
+
+switch (GrB.type (G))
+
+    case { 'single' }
+        C = GrB (eps (single (full (G)))) ;
+
+    case { 'double' }
+        C = GrB (eps (double (full (G)))) ;
+
+    case { 'single complex' }
+        C = max (eps (single (real (G))), eps (single (imag (G)))) ;
+
+    case { 'double complex' }
+        C = max (eps (double (real (G))), eps (double (imag (G)))) ;
+
+    otherwise
+        error ('input must be floating-point') ;
+
 end
-
-[m, n] = size (G) ;
-desc.base = 'zero-based' ;
-[i, j, x] = GrB.extracttuples (full (G), desc) ;
-C = GrB.build (i, j, eps (x), m, n, desc) ;
 

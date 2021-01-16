@@ -1,3 +1,7 @@
+
+/* Copyright 2008-2011, Timothy A. Davis, http://suitesparse.com */
+/* SPDX-License-Identifier: Apache-2.0 */
+
 #ifdef MATLAB_MEX_FILE
 #include "mex.h"
 #define SPOK_INT mwSignedIndex

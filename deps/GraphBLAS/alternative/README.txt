@@ -1,5 +1,8 @@
 SuiteSparse/GraphBLAS/alternative/README.txt
 
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+
 CMake is prefered for compiling SuiteSparse/GraphBLAS, but this folder provides
 a simple alternative, if you don't have CMake or if you prefer a simple
 Makefile build process.  The Makefile will typically require modifications

@@ -1,13 +1,18 @@
 function C = real (G)
 %REAL complex real part.
-% C = real (G) returns the real part of the GraphBLAS matrix G.  Since
-% all GraphBLAS matrices are currently real, real (G) is just G.  Complex
-% support will be added in the future.
+% C = real (G) returns the real part of G.
 %
-% See also GrB/conj.
+% See also GrB/conj, GrB/imag.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-C = G ;
+Q = G.opaque ;
+
+if (contains (gbtype (Q), 'complex'))
+    C = GrB (gbapply ('creal', Q)) ;
+else
+    % G is already real
+    C = G ;
+end
 

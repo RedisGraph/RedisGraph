@@ -28,8 +28,8 @@ function [S,p] = GB_spec_build (I, J, X, nrows, ncols, op, order, sclass)
 % ncols: number of cols of S.  Default is ncols = max (J) + 1 ;
 % op: binary operator z=f(x,y) for assembling duplicates.  See
 %       GB_spec_operator.  The GraphBLAS spec requires op to be associative
-%       (min, max, plus, or times) but any binary operator will work; see
-%       the 'order' parameter.
+%       (min, max, plus, or times) but any binary operator with x,y,z
+%       types the same will work; see the 'order' parameter.
 % order: 'natural', or 'random'.  Default is 'natural'.
 %       The GraphBLAS spec does not state what order the duplicates are
 %       assembled.  It only guarantees the result if op is associative.  The
@@ -46,8 +46,8 @@ function [S,p] = GB_spec_build (I, J, X, nrows, ncols, op, order, sclass)
 % parameters, or pass fewer inputs.  For exampe S = GB_spec_build (I, J, X,
 % nrows, ncols) uses defaults for op, and order, but not X, nrows and ncols.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 %-------------------------------------------------------------------------------
 % get inputs
@@ -105,7 +105,14 @@ end
 if (isempty (op))
     op = 'plus' ;
 end
-[opname opclass] = GB_spec_operator (op, class (X)) ;
+[opname optype ztype xtype ytype] = GB_spec_operator (op, GB_spec_type (X)) ;
+
+if (GB_spec_is_positional (opname))
+    error ('dup operator cannot be positional') ;
+end
+
+assert (isequal (ztype, xtype)) ;
+assert (isequal (ztype, ytype)) ;
 
 % get the ordering
 if (nargin < 7)
@@ -129,9 +136,9 @@ J = J (p) ;
 X = X (p) ;
 
 % initialize the matrix S and its pattern
-S.matrix = zeros (nrows, ncols, opclass) ;
+S.matrix = GB_spec_zeros ([nrows ncols], optype) ;
 S.pattern = false (nrows, ncols) ;
-S.class = opclass ;
+S.class = optype ;
 
 % assemble the tuples into S
 for t = 1:nnz
@@ -139,24 +146,24 @@ for t = 1:nnz
     j = 1 + J (t) ;
     if (~S.pattern (i,j))
         % first time S(i,j) is modified: cast x into S
-        S.matrix (i,j) = GB_mex_cast (X (t), opclass) ;
+        S.matrix (i,j) = GB_mex_cast (X (t), optype) ;
         S.pattern (i,j) = true ;
     else
         % a duplicate entry to be assembled with the operator op
         % cast x into the class of S and the operator
-        x = GB_mex_cast (X (t), opclass) ;
-        % apply the operator, result is of class opclass
+        x = GB_mex_cast (X (t), optype) ;
+        % apply the operator, result is of class optype
         S.matrix (i,j) = GB_spec_op (op, S.matrix (i,j), x) ;
     end
 end
 
 % get the sclass
 if (nargin < 8)
-    sclass = opclass ;  % default is opclass
+    sclass = optype ;  % default is optype
 end
 
 % typecast S into the desired class
-if (~isequal (opclass, sclass))
+if (~isequal (optype, sclass))
     S.matrix = GB_mex_cast (S.matrix, sclass) ;
     S.class = sclass ;
 end

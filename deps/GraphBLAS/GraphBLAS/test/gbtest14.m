@@ -1,8 +1,8 @@
 function gbtest14
 %GBTEST14 test kron and GrB.kronecker
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 A = sparse (rand (2,3)) ;
@@ -68,8 +68,8 @@ C = sprand (m, n, 0.5) ;
 G = GrB (C) ;
 T = kron (A,B) ;
 C (M) = T (M) ;
-G = GrB.kronecker (G, M, '*', A, B) ;
-err = norm (C-G, 1) ;
+G2 = GrB.kronecker (G, M, '*', A, B) ;
+err = norm (C-G2, 1) ;
 assert (err < 1e-12)
 
 fprintf ('gbtest14: all tests passed\n') ;

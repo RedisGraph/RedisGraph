@@ -1,10 +1,10 @@
 function test34
 %TEST34 test GrB_eWiseAdd
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-fprintf ('\n----- quick test for GB_mex_eWiseAdd_Matrix\n') ;
+fprintf ('\n----- quick test for GB_mex_Matrix_eWiseAdd\n') ;
 
 A = sparse (rand (4,3)) ;
 B = sparse (rand (4,3)) ;
@@ -16,10 +16,10 @@ accum = 'plus' ;
 
 C0 = Cin + (A+B) ;
 
-C = GB_mex_eWiseAdd_Matrix (Cin, Mask, accum, add, A, B, [ ]) ;
+C = GB_mex_Matrix_eWiseAdd (Cin, Mask, accum, add, A, B, [ ]) ;
 assert (isequal (C.matrix,  C0))
 
-C3 = GB_spec_eWiseAdd_Matrix (Cin, Mask, accum, add, A, B, [ ]) ;
+C3 = GB_spec_Matrix_eWiseAdd (Cin, Mask, accum, add, A, B, [ ]) ;
 assert (isequal (C3.matrix,  C0))
 
 try

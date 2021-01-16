@@ -2,8 +2,8 @@
 // GB_ijlength: get the length and kind of an index list I
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -32,7 +32,7 @@ void GB_ijlength            // get the length and kind of an index list I
 
     ASSERT (I != NULL) ;
     ASSERT (limit >= 0) ;
-    ASSERT (limit <= GB_INDEX_MAX) ;    // GB_INDEX_MAX is 2^60
+    ASSERT (limit <= GxB_INDEX_MAX) ;   // GxB_INDEX_MAX is 2^60
 
     //--------------------------------------------------------------------------
     // determine the length of I

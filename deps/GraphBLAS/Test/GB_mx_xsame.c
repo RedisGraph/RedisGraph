@@ -2,8 +2,8 @@
 // GB_mx_xsame: check if two arrays are equal (ignoring zombies)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -13,6 +13,7 @@ bool GB_mx_xsame    // true if arrays X and Y are the same (ignoring zombies)
 (
     char *X,
     char *Y,
+    int8_t *Xb,     // bitmap of X and Y (NULL if no bitmap)
     int64_t len,    // length of X and Y
     size_t s,       // size of each entry of X and Y
     int64_t *I      // row indices (for zombies), same length as X and Y
@@ -21,11 +22,18 @@ bool GB_mx_xsame    // true if arrays X and Y are the same (ignoring zombies)
     if (X == Y) return (true) ;
     if (X == NULL) return (false) ;
     if (Y == NULL) return (false) ;
-    if (I == NULL) return (false) ;
     for (int64_t i = 0 ; i < len ; i++)
     {
+        if (Xb != NULL && Xb [i] == 0)
+        {
+            // ignore X [i] and Y [i] if they are not in the bitmap
+            continue ;
+        }
         // check X [i] and Y [i], but ignore zombies
-        if (I [i] >= 0 && !GB_mx_same (X+i*s, Y+i*s, s)) return (false) ;
+        if (I == NULL || I [i] >= 0)
+        {
+            if (!GB_mx_same (X+i*s, Y+i*s, s)) return (false) ;
+        }
     }
     return (true) ;
 }

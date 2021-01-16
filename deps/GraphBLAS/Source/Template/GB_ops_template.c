@@ -2,135 +2,257 @@
 // GB_ops_template.c: built-in unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // This file is #include'd many times in GB_ops.c to define the built-in unary
 // and binary operators.  In that file, GB_TYPE is a built-in C type (bool,
-// int8_t, uint64_t, double, etc), and GB(x) is the corresponding macro that
-// creates the function name (GB_*_BOOL, GB_*_INT8, etc).
-
-#define GB_Z_X_ARGS       GB_TYPE *z, const GB_TYPE *x
-#define GB_Z_X_Y_ARGS     GB_TYPE *z, const GB_TYPE *x, const GB_TYPE *y
-#define GB_Zbool_X_Y_ARGS bool *z, const GB_TYPE *x, const GB_TYPE *y
+// int8_t, uint64_t, double, etc) for the inputs x and y, and GB(x) is the
+// corresponding macro that creates the function name (GB_*_BOOL, GB_*_INT8,
+// etc).
 
 //------------------------------------------------------------------------------
-// 6 unary functions z=f(x), where z and x have the same type
+// unary functions z=f(x) where z and x have the same type
 //------------------------------------------------------------------------------
 
-extern void GB (ONE_f)      (GB_Z_X_ARGS) ;
-extern void GB (IDENTITY_f) (GB_Z_X_ARGS) ;
-extern void GB (AINV_f)     (GB_Z_X_ARGS) ;
-extern void GB (ABS_f)      (GB_Z_X_ARGS) ;
-extern void GB (MINV_f)     (GB_Z_X_ARGS) ;
-extern void GB (LNOT_f)     (GB_Z_X_ARGS) ;
+GB_OP1 (GxB_, ONE, "one") ;
 
-GB_UNARY_OP_DEFINE (GxB_, ONE,      "one")
-GB_UNARY_OP_DEFINE (GrB_, IDENTITY, "identity")
-GB_UNARY_OP_DEFINE (GrB_, AINV,     "ainv")
-GB_UNARY_OP_DEFINE (GxB_, ABS,      "abs")
-GB_UNARY_OP_DEFINE (GrB_, MINV,     "minv")
-GB_UNARY_OP_DEFINE (GxB_, LNOT,     "not")
+#if defined ( GB_COMPLEX )
 
-//------------------------------------------------------------------------------
-// 12 binary functions z=f(x,y) where x,y,z have the same type
-//------------------------------------------------------------------------------
+    // complex types
+    GB_OP1 (GxB_, IDENTITY , "identity" ) ;
+    GB_OP1 (GxB_, AINV     , "ainv"     ) ;
+    GB_OP1 (GxB_, MINV     , "minv"     ) ;
 
-extern void GB (FIRST_f)  (GB_Z_X_Y_ARGS) ;
-extern void GB (SECOND_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (PAIR_f)   (GB_Z_X_Y_ARGS) ;
-extern void GB (ANY_f)    (GB_Z_X_Y_ARGS) ;
+#else
 
-extern void GB (PLUS_f)   (GB_Z_X_Y_ARGS) ;
-extern void GB (MINUS_f)  (GB_Z_X_Y_ARGS) ;
-extern void GB (RMINUS_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (TIMES_f)  (GB_Z_X_Y_ARGS) ;
+    // real types
+    GB_OP1 (GrB_, IDENTITY , "identity" ) ;
+    GB_OP1 (GrB_, AINV     , "ainv"     ) ;
+    GB_OP1 (GrB_, MINV     , "minv"     ) ;
 
-extern void GB (MIN_f)    (GB_Z_X_Y_ARGS) ;
-extern void GB (MAX_f)    (GB_Z_X_Y_ARGS) ;
-extern void GB (DIV_f)    (GB_Z_X_Y_ARGS) ;
-extern void GB (RDIV_f)   (GB_Z_X_Y_ARGS) ;
+    // z=abs(x), z and x have the same type
+    GB_OP1 (GrB_, ABS      , "abs"      ) ;
 
-GB_BINARY_OP_DEFINE (GrB_, FIRST,  "first" )
-GB_BINARY_OP_DEFINE (GrB_, SECOND, "second")
-GB_BINARY_OP_DEFINE (GxB_, PAIR,   "pair"  )
-GB_BINARY_OP_DEFINE (GxB_, ANY,    "any"   )
+    // GxB_ABS_* is now GrB_ABS_*, and GxB_ABS is deprecated
+    GB_OP1_RENAME (GxB_, GrB_, ABS) ;
 
-GB_BINARY_OP_DEFINE (GrB_, PLUS,   "plus"  )
-GB_BINARY_OP_DEFINE (GrB_, MINUS,  "minus" )
-GB_BINARY_OP_DEFINE (GxB_, RMINUS, "rminus")
-GB_BINARY_OP_DEFINE (GrB_, TIMES,  "times" )
+    // LNOT is only defined for real types, not complex
+    GB_OP1 (GxB_, LNOT     , "not"      ) ;
 
-GB_BINARY_OP_DEFINE (GrB_, MIN,    "min"   )
-GB_BINARY_OP_DEFINE (GrB_, MAX,    "max"   )
-GB_BINARY_OP_DEFINE (GrB_, DIV,    "div"   )
-GB_BINARY_OP_DEFINE (GxB_, RDIV,   "rdiv"  )
+#endif
 
-//------------------------------------------------------------------------------
-// 6 binary comparison functions z=f(x,y), where x,y,z have the same type
-//------------------------------------------------------------------------------
+#if defined ( GB_FLOATING_POINT )
 
-extern void GB (ISEQ_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (ISNE_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (ISGT_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (ISLT_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (ISGE_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (ISLE_f) (GB_Z_X_Y_ARGS) ;
+    GB_OP1 (GxB_, SQRT     , "sqrt"     ) ;
+    GB_OP1 (GxB_, LOG      , "log"      ) ;
+    GB_OP1 (GxB_, EXP      , "exp"      ) ;
 
-GB_BINARY_OP_DEFINE (GxB_, ISEQ,  "iseq")
-GB_BINARY_OP_DEFINE (GxB_, ISNE,  "isne")
-GB_BINARY_OP_DEFINE (GxB_, ISGT,  "isgt")
-GB_BINARY_OP_DEFINE (GxB_, ISLT,  "islt")
-GB_BINARY_OP_DEFINE (GxB_, ISGE,  "isge")
-GB_BINARY_OP_DEFINE (GxB_, ISLE,  "isle")
+    GB_OP1 (GxB_, SIN      , "sin"      ) ;
+    GB_OP1 (GxB_, COS      , "cos"      ) ;
+    GB_OP1 (GxB_, TAN      , "tan"      ) ;
 
-//------------------------------------------------------------------------------
-// 3 boolean binary functions z=f(x,y), all x,y,z the same type
-//------------------------------------------------------------------------------
+    GB_OP1 (GxB_, ASIN     , "asin"     ) ;
+    GB_OP1 (GxB_, ACOS     , "acos"     ) ;
+    GB_OP1 (GxB_, ATAN     , "atan"     ) ;
 
-extern void GB (LOR_f)  (GB_Z_X_Y_ARGS) ;
-extern void GB (LAND_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (LXOR_f) (GB_Z_X_Y_ARGS) ;
+    GB_OP1 (GxB_, SINH     , "sinh"     ) ;
+    GB_OP1 (GxB_, COSH     , "cosh"     ) ;
+    GB_OP1 (GxB_, TANH     , "tanh"     ) ;
 
-GB_BINARY_OP_DEFINE (GxB_, LOR,  "or" )
-GB_BINARY_OP_DEFINE (GxB_, LAND, "and")
-GB_BINARY_OP_DEFINE (GxB_, LXOR, "xor")
+    GB_OP1 (GxB_, ASINH    , "asinh"    ) ;
+    GB_OP1 (GxB_, ACOSH    , "acosh"    ) ;
+    GB_OP1 (GxB_, ATANH    , "atanh"    ) ;
 
-//------------------------------------------------------------------------------
-// 6 binary functions z=f(x,y) for any built-in type but return bool
-//------------------------------------------------------------------------------
+    GB_OP1 (GxB_, SIGNUM   , "signum"   ) ;
+    GB_OP1 (GxB_, CEIL     , "ceil"     ) ;
+    GB_OP1 (GxB_, FLOOR    , "floor"    ) ;
+    GB_OP1 (GxB_, ROUND    , "round"    ) ;
+    GB_OP1 (GxB_, TRUNC    , "trunc"    ) ;
 
-extern void GB (EQ_f) (GB_Zbool_X_Y_ARGS) ;
-extern void GB (NE_f) (GB_Zbool_X_Y_ARGS) ;
-extern void GB (GT_f) (GB_Zbool_X_Y_ARGS) ;
-extern void GB (LT_f) (GB_Zbool_X_Y_ARGS) ;
-extern void GB (GE_f) (GB_Zbool_X_Y_ARGS) ;
-extern void GB (LE_f) (GB_Zbool_X_Y_ARGS) ;
+    GB_OP1 (GxB_, EXP2     , "exp2"     ) ;
+    GB_OP1 (GxB_, EXPM1    , "expm1"    ) ;
+    GB_OP1 (GxB_, LOG10    , "log10"    ) ;
+    GB_OP1 (GxB_, LOG1P    , "log1p"    ) ;
+    GB_OP1 (GxB_, LOG2     , "log2"     ) ;
 
-GB_BINARY_BOOL_OP_DEFINE (GrB_, EQ, "eq")
-GB_BINARY_BOOL_OP_DEFINE (GrB_, NE, "ne")
-GB_BINARY_BOOL_OP_DEFINE (GrB_, GT, "gt")
-GB_BINARY_BOOL_OP_DEFINE (GrB_, LT, "lt")
-GB_BINARY_BOOL_OP_DEFINE (GrB_, GE, "ge")
-GB_BINARY_BOOL_OP_DEFINE (GrB_, LE, "le")
+    #if defined ( GB_COMPLEX )
+    // complex only
+    GB_OP1 (GxB_, CONJ     , "conj"     ) ;
+    #else
+    // real only
+    GB_OP1 (GxB_, LGAMMA   , "lgamma"   ) ;
+    GB_OP1 (GxB_, TGAMMA   , "tgamma"   ) ;
+    GB_OP1 (GxB_, ERF      , "erf"      ) ;
+    GB_OP1 (GxB_, ERFC     , "erfc"     ) ;
+    GB_OP1 (GxB_, FREXPX   , "frexpx"   ) ;
+    GB_OP1 (GxB_, FREXPE   , "frexpe"   ) ;
+    #endif
+
+#endif
+
+#if defined ( GB_SIGNED_INT ) || defined ( GB_UNSIGNED_INT )
+
+    // bitwise complement
+    GB_OP1 (GrB_, BNOT     , "bnot"     ) ;
+
+#endif
 
 //------------------------------------------------------------------------------
-// unary typecast operators, used in GB_cast_factory.c
+// unary functions z=f(x) where z and x can have different types
 //------------------------------------------------------------------------------
 
-extern void GB_CAST_NAME (bool    ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int8_t  ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint8_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int16_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint16_t) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int32_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint32_t) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int64_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint64_t) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (float   ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (double  ) (void *z, const void *x, size_t s) ;
+#if defined ( GB_FLOAT )
+
+    // z = f(x) where x is float, and z is bool
+    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL ) ;
+    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL ) ;
+    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+
+#elif defined ( GB_DOUBLE )
+
+    // z = f(x) where x is double, and z is bool
+    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL ) ;
+    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL ) ;
+    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+
+#elif defined ( GB_FLOAT_COMPLEX )
+
+    // z = f(x) where x is float complex, and the type of z is listed below:
+    GB_OP1z (GxB_, ABS       , "abs"       , float  , GrB_FP32) ;
+    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL) ;
+    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL) ;
+    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+
+    GB_OP1z (GxB_, CREAL     , "creal"     , float  , GrB_FP32) ;
+    GB_OP1z (GxB_, CIMAG     , "cimag"     , float  , GrB_FP32) ;
+    GB_OP1z (GxB_, CARG      , "carg"      , float  , GrB_FP32) ;
+
+#elif defined ( GB_DOUBLE_COMPLEX )
+
+    // z = f(x) where x is double complex, and the type of z is listed below:
+    GB_OP1z (GxB_, ABS       , "abs"       , double , GrB_FP64) ;
+    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL) ;
+    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL) ;
+    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+
+    GB_OP1z (GxB_, CREAL     , "creal"     , double , GrB_FP64) ;
+    GB_OP1z (GxB_, CIMAG     , "cimag"     , double , GrB_FP64) ;
+    GB_OP1z (GxB_, CARG      , "carg"      , double , GrB_FP64) ;
+
+#endif
+
+//------------------------------------------------------------------------------
+// binary functions z=f(x,y) where z, x, and y all have the same type
+//------------------------------------------------------------------------------
+
+GB_OP2 (GxB_, RMINUS , "rminus")
+GB_OP2 (GxB_, RDIV   , "rdiv"  )
+GB_OP2 (GxB_, PAIR   , "pair"  )
+GB_OP2 (GxB_, ANY    , "any"   )
+GB_OP2 (GxB_, ISEQ   , "iseq"  )
+GB_OP2 (GxB_, ISNE   , "isne"  )
+GB_OP2 (GxB_, POW    , "pow"   )
+
+#if defined ( GB_COMPLEX ) 
+
+    // complex types
+    GB_OP2 (GxB_, FIRST  , "first" )
+    GB_OP2 (GxB_, SECOND , "second")
+    GB_OP2 (GxB_, PLUS   , "plus"  )
+    GB_OP2 (GxB_, MINUS  , "minus" )
+    GB_OP2 (GxB_, TIMES  , "times" )
+    GB_OP2 (GxB_, DIV    , "div"   )
+
+#else
+
+    // real types
+    GB_OP2 (GrB_, FIRST  , "first" )
+    GB_OP2 (GrB_, SECOND , "second")
+    GB_OP2 (GrB_, PLUS   , "plus"  )
+    GB_OP2 (GrB_, MINUS  , "minus" )
+    GB_OP2 (GrB_, TIMES  , "times" )
+    GB_OP2 (GrB_, DIV    , "div"   )
+
+    GB_OP2 (GrB_, MIN    , "min" )
+    GB_OP2 (GrB_, MAX    , "max" )
+
+    GB_OP2 (GxB_, LOR    , "or"  )
+    GB_OP2 (GxB_, LAND   , "and" )
+    GB_OP2 (GxB_, LXOR   , "xor" )
+
+    GB_OP2 (GxB_, ISGT   , "isgt")
+    GB_OP2 (GxB_, ISLT   , "islt")
+    GB_OP2 (GxB_, ISGE   , "isge")
+    GB_OP2 (GxB_, ISLE   , "isle")
+
+#endif
+
+#if defined (GB_FLOAT) || defined (GB_DOUBLE)
+
+    // these operators are only defined for float and double
+    GB_OP2 (GxB_, ATAN2    , "atan2"    )
+    GB_OP2 (GxB_, HYPOT    , "hypot"    )
+    GB_OP2 (GxB_, FMOD     , "fmod"     )
+    GB_OP2 (GxB_, REMAINDER, "remainder")
+    GB_OP2 (GxB_, COPYSIGN , "copysign" )
+    GB_OP2 (GxB_, LDEXP    , "ldexp"    )
+
+#endif
+
+#if defined ( GB_SIGNED_INT ) || defined ( GB_UNSIGNED_INT )
+
+    // bitwise binary operators
+    GB_OP2 (GrB_, BOR      , "bitor"   ) ;
+    GB_OP2 (GrB_, BAND     , "bitand"  ) ;
+    GB_OP2 (GrB_, BXOR     , "bitxor"  ) ;
+    GB_OP2 (GrB_, BXNOR    , "bitxnor" ) ;
+
+    GB_OP2 (GxB_, BGET     , "bitget"   ) ;
+    GB_OP2 (GxB_, BSET     , "bitset"   ) ;
+    GB_OP2 (GxB_, BCLR     , "bitclear" ) ;
+
+    GB_OP2shift (GxB_, BSHIFT, "bitshift") ;
+
+#endif
+
+//------------------------------------------------------------------------------
+// binary functions z=f(x,y) where z, x, and y can have different types
+//------------------------------------------------------------------------------
+
+#if defined ( GB_FLOAT )
+
+    // z = cmplx(x,y) where z is float complex, x and y are float
+    GB_OP2z (GxB_, CMPLX, "cmplx", GxB_FC32_t, GxB_FC32)
+
+#endif
+
+#if defined ( GB_DOUBLE )
+
+    // z = cmplx(x,y) where z is double complex, x and y are double
+    GB_OP2z (GxB_, CMPLX, "cmplx", GxB_FC64_t, GxB_FC64)
+
+#endif
+
+#if defined ( GB_COMPLEX )
+
+    // complex types
+    GB_OP2z (GxB_, EQ, "eq", bool, GrB_BOOL)
+    GB_OP2z (GxB_, NE, "ne", bool, GrB_BOOL)
+
+#else
+
+    // real types
+    GB_OP2z (GrB_, EQ, "eq", bool, GrB_BOOL)
+    GB_OP2z (GrB_, NE, "ne", bool, GrB_BOOL)
+    GB_OP2z (GrB_, GT, "gt", bool, GrB_BOOL)
+    GB_OP2z (GrB_, LT, "lt", bool, GrB_BOOL)
+    GB_OP2z (GrB_, LE, "le", bool, GrB_BOOL)
+    GB_OP2z (GrB_, GE, "ge", bool, GrB_BOOL)
+
+#endif
 
 //------------------------------------------------------------------------------
 // clear macros for next use of this file
@@ -138,15 +260,14 @@ extern void GB_CAST_NAME (double  ) (void *z, const void *x, size_t s) ;
 
 #undef GB
 #undef GB_TYPE
-
-#undef GB_Z_X_ARGS
-#undef GB_Z_X_Y_ARGS
-#undef GB_Zbool_X_Y_ARGS
-
+#undef GB_XTYPE
 #undef GrB_NAME
-#undef GB_CAST_NAME
-#undef GB_CAST_FUNCTION
-#undef GB_BOOLEAN
 #undef GB_FLOATING_POINT
-#undef GB_UNSIGNED
+#undef GB_COMPLEX
+#undef GB_FLOAT
+#undef GB_DOUBLE
+#undef GB_FLOAT_COMPLEX
+#undef GB_DOUBLE_COMPLEX
+#undef GB_SIGNED_INT
+#undef GB_UNSIGNED_INT
 

@@ -4,8 +4,8 @@ function C = accum_mask (C, Mask, accum, T, C_replace, Mask_complement)
 % The purpose is for illustration to describe what the accum/mask operation
 % does, not for actual testing.  This file appears in the User Guide.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [nrows ncols] = size (C.matrix) ;
 Z.matrix  = zeros (nrows, ncols) ;

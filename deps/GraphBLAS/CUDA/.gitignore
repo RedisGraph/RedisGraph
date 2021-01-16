@@ -1,0 +1,10 @@
+# Ignore these files:
+*.o
+*.a
+*.so
+jitFactory
+stringify
+
+# Do not ignore this file
+!.gitignore
+

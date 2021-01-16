@@ -1,8 +1,8 @@
 function [I, J, X] = GB_spec_extractTuples (A, xclass)
 %GB_SPEC_EXTRACTTUPLES a MATLAB mimic of GrB_*_extractTuples
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 A = GB_spec_matrix (A) ;
 if (nargin < 2)

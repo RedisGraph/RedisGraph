@@ -1,0 +1,235 @@
+\documentclass[12pt]{article}
+\usepackage{url}
+\urlstyle{sf}
+\usepackage[svgnames]{xcolor}
+\usepackage[colorlinks,linkcolor=Blue,citecolor=Blue,urlcolor=Blue]{hyperref}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{framed}
+\usepackage{mdframed}
+% \usepackage{geometry}
+% \usepackage{pdflscape}
+\newmdenv[backgroundcolor=white]{spec}
+\newmdenv[backgroundcolor=yellow]{specbeta}
+\hyphenation{Suite-Sparse}
+\hyphenation{Graph-BLAS}
+\hyphenation{Suite-Sparse-Graph-BLAS}
+
+\newenvironment{packed_itemize}{
+\begin{itemize}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{itemize}}
+
+\title{MATLAB test suite for SuiteSparse:GraphBLAS}
+
+\author{Timothy A. Davis \\
+\small
+davis@tamu.edu, Texas A\&M University. \\
+\small
+http://suitesparse.com and http://aldenmath.com
+}
+
+%-------------------------------------------------------------------------------
+\begin{document}
+%-------------------------------------------------------------------------------
+\maketitle
+
+SuiteSparse:GraphBLAS includes a MATLAB implementation of nearly the entire
+GraphBLAS specification, including all built-in types and operators.  The
+typecasting rules and integer operator rules from GraphBLAS are implemented in
+MATLAB via \verb'mexFunctions' that call the GraphBLAS routines in C.  All
+other functions are written purely in MATLAB \verb'M'-files, and are given
+names of the form \verb'GB_spec_*'.  All of these MATLAB interfaces and
+\verb'M'-file functions they are provided in the software distribution of
+SuiteSparse:GraphBLAS.  The purpose of this is two-fold:
+
+\begin{itemize}
+
+\item {\bf Illustration and documentation:}  MATLAB is so expressive, and so
+    beautiful to read and write, that the \verb'GB_spec_*' functions read
+    almost like the exact specifications from the GraphBLAS API.
+    Excerpts and condensed versions of these functions appear in the
+    User Guide.  The reader can benefit from studying the \verb'GB_spec_*'
+    functions to understand what a GraphBLAS operation is computing.  For
+    example, in the User Guide, \verb'GrB_mxm' includes a condensed and
+    simplified version of \verb'GB_spec_mxm'.
+
+\item {\bf Testing:} Testing the C interface to SuiteSparse:GraphBLAS is a
+    significant challenge since it supports so many different kinds of
+    operations on a vast range of semirings.  It is difficult to tell from
+    looking at the result from a C function in GraphBLAS if the result is
+    correct.  Thus, each function has been written twice: once in a
+    highly-optimized function in C, and again in a simple and elegant MATLAB
+    function.  The latter is almost a direct translation of all the mathematics
+    behind the GraphBLAS API, so it is much easier to visually
+    inspect the \verb'GB_spec_*' version in MATLAB to ensure the correct
+    mathematics are being computed.
+
+\end{itemize}
+
+The following functions are included in the SuiteSparse:GraphBLAS software
+distribution.  Each has a name of the form \verb'GB_spec_*', and each of them
+is a ``mimic'' of a corresponding C function in GraphBLAS.  Not all functions
+in the C API have a corresponding mimic; in particular, many of the vector
+functions can be computed directly with the corresponding matrix version in the
+MATLAB implementations.  A list of these files is shown below:
+
+\vspace{0.2in}
+{\footnotesize
+\begin{tabular}{ll}
+MATLAB \verb'GB_spec' function          & corresponding GraphBLAS           \\
+                                        & function or  method               \\
+\hline
+\verb'GB_spec_accum.m'                  & ${\bf Z = C \odot T}$                      \\
+\verb'GB_spec_mask.m'                   & ${\bf C \langle M \rangle = Z}$            \\
+\verb'GB_spec_accum_mask.m'             & ${\bf C \langle M \rangle = C \odot T}$    \\
+\hline
+\verb'GB_spec_Vector_extractElement.m'  & \verb'GrB_Vector_extractElement'   \\
+\hline
+\verb'GB_spec_build.m'                  & \verb'GrB_Matrix_build'            \\
+\verb'GB_spec_Matrix_extractElement.m'  & \verb'GrB_Matrix_extractElement'   \\
+\verb'GB_spec_extractTuples.m'          & \verb'GrB_Matrix_extractTuples'    \\
+\hline
+\verb'GB_spec_mxm.m'                    & \verb'GrB_mxm'                     \\
+\verb'GB_spec_vxm.m'                    & \verb'GrB_vxm'                     \\
+\verb'GB_spec_mxv.m'                    & \verb'GrB_mxv'                     \\
+\hline
+\verb'GB_spec_Vector_eWiseMult.m'       & \verb'GrB_Vector_eWiseMult'        \\
+\verb'GB_spec_Matrix_eWiseMult.m'       & \verb'GrB_Matrix_eWiseMult'        \\
+\verb'GB_spec_Vector_eWiseAdd.m'        & \verb'GrB_Vector_eWiseAdd'         \\
+\verb'GB_spec_Matrix_eWiseAdd.m'        & \verb'GrB_Matrix_eWiseAdd'         \\
+\hline
+\verb'GB_spec_Vector_extract.m'         & \verb'GrB_Vector_extract'          \\
+\verb'GB_spec_Matrix_extract.m'         & \verb'GrB_Matrix_extract'          \\
+\verb'GB_spec_Col_extract.m'            & \verb'GrB_Col_extract'             \\
+\hline
+\verb'GB_spec_subassign.m'              & \verb'GxB_subassign'               \\
+\verb'GB_spec_assign.m'                 & \verb'GrB_assign'                  \\
+\hline
+\verb'GB_spec_apply.m'                  & \verb'GrB_apply'                   \\
+\hline
+\verb'GB_spec_select.m'                 & \verb'GxB_select'                  \\
+\hline
+\verb'GB_spec_reduce_to_vector.m'       & \verb'GrB_reduce' (to vector)      \\
+\verb'GB_spec_reduce_to_scalar.m'       & \verb'GrB_reduce' (to scalar)      \\
+\hline
+\verb'GB_spec_transpose.m'              & \verb'GrB_transpose'               \\
+\hline
+\verb'GB_spec_kron.m'                   & \verb'GrB_kronecker'               \\
+\hline
+\end{tabular}
+}
+\vspace{0.2in}
+
+Additional files are included for creating test problems and providing
+inputs to the above files, or supporting functions:
+
+\vspace{0.1in}
+{\footnotesize
+\begin{tabular}{ll}
+MATLAB \verb'GB_spec' function  & purpose \\
+\hline
+\verb'GB_spec_compare.m'        & Compares output of C and MATLAB functions \\
+\verb'GB_spec_random.m'         & Generates a random matrix \\
+\verb'GB_spec_op.m'             & MATLAB mimic of built-in operators \\
+\verb'GB_spec_operator.m'       & Like \verb'GrB_*Op_new' \\
+\verb'GB_spec_opsall.m'         & List operators, types, and semirings \\
+\verb'GB_spec_semiring.m'       & Like \verb'GrB_Semiring_new' \\
+\verb'GB_spec_descriptor.m'     & mimics a GraphBLAS descriptor \\
+\verb'GB_spec_identity.m'       & returns the identity of a monoid \\
+\verb'GB_spec_matrix.m'         & conforms a MATLAB sparse matrix to GraphBLAS \\
+\verb'GB_define.m'              & creates draft of \verb'GraphBLAS.h' \\
+\hline
+\end{tabular}
+}
+
+An intensive test suite has been written that generates test graphs in MATLAB,
+then computes the result in both the C version of the SuiteSparse:GraphBLAS and
+in the MATLAB \verb'GB_spec_*' functions.  Each C function in GraphBLAS has
+a direct \verb'mexFunction' interface that allow the test suite in MATLAB
+to call both functions.
+
+This approach has its limitations:
+
+\begin{itemize}
+\item {\bf matrix classes:} MATLAB only supports sparse double, sparse double
+    complex, and sparse logical matrices.  MATLAB can represent dense matrices
+    in all 13 built-in GraphBLAS data types, so in all these specification
+    \verb'M'-files, the matrices are either in dense format in the
+    corresponding MATLAB class, or they are held as sparse double or sparse
+    logical, and the actual GraphBLAS type is held with it as a string member
+    of a MATLAB \verb'struct'.  To ensure the correct typecasting is computed,
+    most of the MATLAB scripts work on dense matrices, not sparse ones.  As a
+    result, the MATLAB \verb'GB_spec_*' function are not meant for production
+    use, but just for testing and illustration.
+
+\item {\bf integer operations:}  MATLAB and GraphBLAS handle integer operations
+    differently.  In MATLAB, an integer result outside the range of the integer
+    is set to maximum or minimum integer.  For example, \verb'int8(127)+1' is
+    \verb'127'.  This is useful for many computations such as image processing,
+    but GraphBLAS follows the C rules instead, where integer values wrap,
+    modulo style.  For example, in GraphBLAS and in C, incrementing
+    \verb'(int8_t) 127' by one results in \verb'-128'.  Of course, an
+    alternative would be for a MATLAB interface to create its own integer
+    operators, each of which would follow the MATLAB integer rules of
+    arithmetic.  However, this would obscure the purpose of these
+    \verb'GB_spec_*' and \verb'GB_mex_*' test functions, which is to test the C
+    API of GraphBLAS.  When the \verb'GB_spec_*' functions need to perform
+    integer computations and typecasting, they call GraphBLAS to do the work,
+    instead doing the work in MATLAB.  This ensures that the \verb'GB_spec_*'
+    functions obtain the same results as their GraphBLAS counterparts.
+
+\item {\bf elegance:}  to simplify testing, each MATLAB \verb'mexFunction'
+    interface a GraphBLAS function is a direct translation of the C API.  For
+    example, \verb'GB_mex_mxm' is a direct interface to the GraphBLAS
+    \verb'GrB_mxm', even down the order of parameters.  This approach
+    abandons some of the potential features of MATLAB for creating elegant
+    \verb'M'-file interfaces in a highly usable form, such as the ability to
+    provide fewer parameters when optional parameters are not in use.  These
+    \verb'mexFunctions', as written, are not meant to be usable in a user
+    application.  They are not highly documented.  They are meant to be fast,
+    and direct, to accomplish the goal of testing SuiteSparse:GraphBLAS in
+    MATLAB and comparing their results with the corresponding \verb'GB_spec_*'
+    function.  They are not recommended for use in general applications in
+    MATLAB.
+
+\item {\bf generality:} the MATLAB \verb'mexFunction' interface needs to
+    test the C API directly, so it must access content of SuiteSparse:GraphBLAS
+    objects that are normally opaque to an end user application.  As a result,
+    these \verb'mexFunctions' do not serve as a general interface to any
+    conforming GraphBLAS implementation, but only to SuiteSparse:GraphBLAS.
+
+\end{itemize}
+
+In the MATLAB mimic functions, \verb'GB_spec_*', a GraphBLAS matrix \verb'A' is
+represented as a MATLAB \verb'struct' with the following components:
+
+\begin{itemize}
+\item \verb'A.matrix':  the values of the matrix.  If \verb'A.matrix' is a
+    sparse double matrix, it holds a typecasted copy of the values of a
+    GraphBLAS matrix, unless the GraphBLAS matrix is also double
+    (\verb'GrB_FP64').
+
+\item \verb'A.pattern': a logical matrix holding the pattern;
+    \verb'A.pattern(i,j)=true' if \verb'(i,j)' is in the pattern of \verb'A',
+    and \verb'false' otherwise.
+
+\item \verb'A.class': the MATLAB class of the matrix corresponding to one of
+    the 13 built-in types.  Normally this is simply \verb'class(A.matrix)'.
+
+\item \verb'A.values': most of the GraphBLAS test \verb'mexFunctions' return
+    their result as a MATLAB sparse matrix, in the \verb'double' class.  This
+    works well for all types except for the 64-bit integer types, since a
+    double has about 54 bits of mantissa which is less than the 64 bits
+    available in a long integer.  To ensure no bits are lots, these values are
+    also returned as a vector.  This enables \verb'GB_spec_compare' to ensure
+    the test results are identical down to the very last bit, and not just to
+    within roundoff error.  Nearly all tests, even in double precision, check
+    for perfect equality, not just for results accurate to within round-off
+    error.
+
+\end{itemize}
+\end{document}
+

@@ -2,8 +2,8 @@
 // gb_export: export a GrB_Matrix as a MATLAB matrix or GraphBLAS struct
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -15,9 +15,34 @@
 mxArray *gb_export              // return the exported MATLAB matrix or struct
 (
     GrB_Matrix *C_handle,       // GrB_Matrix to export and free
-    kind_enum_t kind            // GrB, sparse, or full
+    kind_enum_t kind            // GrB, sparse, full, or matlab
 )
 {
+
+    //--------------------------------------------------------------------------
+    // determine if all entries in C are present
+    //--------------------------------------------------------------------------
+
+    GrB_Index nrows, ncols ;
+    bool is_full = false ;
+    if (kind == KIND_MATLAB || kind == KIND_FULL)
+    { 
+        GrB_Index nvals ;
+        OK (GrB_Matrix_nvals (&nvals, *C_handle)) ;
+        OK (GrB_Matrix_nrows (&nrows, *C_handle)) ;
+        OK (GrB_Matrix_ncols (&ncols, *C_handle)) ;
+        is_full = ((double) nrows * (double) ncols == (double) nvals) ;
+    }
+
+    if (kind == KIND_MATLAB)
+    { 
+        // export as full if all entries present, or sparse otherwise
+        kind = (is_full) ? KIND_FULL : KIND_SPARSE ;
+    }
+
+    //--------------------------------------------------------------------------
+    // export the matrix
+    //--------------------------------------------------------------------------
 
     if (kind == KIND_SPARSE)
     { 
@@ -35,32 +60,42 @@ mxArray *gb_export              // return the exported MATLAB matrix or struct
     { 
 
         //----------------------------------------------------------------------
-        // export C as a MATLAB dense matrix
+        // export C as a MATLAB full matrix, adding explicit zeros if needed
         //----------------------------------------------------------------------
 
         // No typecasting is needed since MATLAB supports all the same types.
 
-        // ensure nvals(C) is equal to nrows*ncols
-        GrB_Index nrows, ncols, nvals ;
-        OK (GrB_Matrix_nvals (&nvals, *C_handle)) ;
-        OK (GrB_Matrix_nrows (&nrows, *C_handle)) ;
-        OK (GrB_Matrix_ncols (&ncols, *C_handle)) ;
-        CHECK_ERROR ((double) nrows * (double) ncols != (double) nvals,
-            "matrix must be full to export as full matrix") ;
+        GrB_Matrix C = NULL ;
+        if (!is_full)
+        {
+            // expand C with explicit zeros so all entries are present
+            C = gb_expand_to_full (*C_handle, NULL, GxB_BY_COL, NULL) ;
+            OK (GrB_Matrix_free (C_handle)) ;
+            (*C_handle) = C ;
+            CHECK_ERROR (GB_is_shallow (*C_handle), "internal error 707")
+        }
 
-        GrB_Index nzmax, *Cp, *Ci ;
-        int64_t nonempty ;
-        void *Cx ;
-        GrB_Type ctype ;
-        OK (GxB_Matrix_export_CSC (C_handle, &ctype, &nrows, &ncols, &nzmax,
-            &nonempty, &Cp, &Ci, &Cx, NULL)) ;
-        gb_mxfree (&Cp) ;
-        gb_mxfree (&Ci) ;
+        if (GB_is_shallow (*C_handle))
+        {
+            // C is shallow so make a deep copy
+            OK (GrB_Matrix_dup (&C, *C_handle)) ;
+            OK (GrB_Matrix_free (C_handle)) ;
+            (*C_handle) = C ;
+        }
+
+        CHECK_ERROR (GB_is_shallow (*C_handle), "internal error 717")
+
+        // export as a full matrix, held by column
+        void *Cx = NULL ;
+        GrB_Type ctype = NULL ;
+        GrB_Index Cx_size ;
+        OK (GxB_Matrix_export_FullC (C_handle, &ctype, &nrows, &ncols,
+            &Cx, &Cx_size, NULL)) ;
 
         return (gb_export_to_mxfull (&Cx, nrows, ncols, ctype)) ;
 
     }
-    else
+    else // kind == KIND_GRB
     { 
 
         //----------------------------------------------------------------------

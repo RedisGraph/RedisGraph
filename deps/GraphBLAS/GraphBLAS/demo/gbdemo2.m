@@ -6,8 +6,8 @@ function gbdemo2 (bnz)
 %       gbdemo2             % uses a default bnz = 6000
 %       gbdemo2 (20000)     % uses bnz = 20000
 %
-% The GraphBLAS operations used in gbdemo are perhaps 3x to 50x
-% faster than the corresponding MATLAB operations, depending on how
+% Many of the GraphBLAS operations used in gbdemo are perhaps 3x to
+% 50x faster than the corresponding MATLAB operations, depending on how
 % many cores your computer has.  Here's an example where GraphBLAS is
 % asymptotically far faster than MATLAB R2019a: a simple assignment
 % for a large matrix C:
@@ -35,8 +35,12 @@ function gbdemo2 (bnz)
 %
 % See also GrB.assign, subsasgn.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
+% reset to the default number of threads
+maxNumCompThreads ('automatic') ;
+GrB.clear ;
 
 nthreads = GrB.threads ;
 help gbdemo2

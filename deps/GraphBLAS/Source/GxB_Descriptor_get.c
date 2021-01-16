@@ -2,8 +2,8 @@
 // GxB_Descriptor_get: get a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -23,7 +23,7 @@ GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GxB_Descriptor_get (&value, desc, field)") ;
+    GB_WHERE1 ("GxB_Descriptor_get (&value, desc, field)") ;
     GB_RETURN_IF_NULL (val) ;
     GB_RETURN_IF_FAULTY (desc) ;
 
@@ -55,8 +55,7 @@ GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
 
         default : 
 
-            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
-                "invalid descriptor field"))) ;
+            return (GrB_INVALID_VALUE) ;
     }
 
     return (GrB_SUCCESS) ;

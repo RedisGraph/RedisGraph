@@ -2,8 +2,8 @@
 // GraphBLAS/Demo/Program/kron_demo.c: Kronkecker product
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -22,20 +22,20 @@
 // indices that appear in the files.  The file C.tsv is the filename of the
 // output file for C=kron(A,B), also with 1-based indices.
 
-#include "demos.h"
-
 // macro used by OK(...) to free workspace if an error occurs
-#define FREE_ALL                \
-    GrB_Matrix_free (&A) ;             \
-    GrB_Matrix_free (&B) ;             \
-    GrB_Matrix_free (&C) ;             \
-    if (Afile != NULL) fclose (Afile) ; \
-    if (Bfile != NULL) fclose (Bfile) ; \
-    if (Cfile != NULL) fclose (Cfile) ; \
-    if (I != NULL) free (I) ;   \
-    if (J != NULL) free (J) ;   \
-    if (X != NULL) free (X) ;   \
+#define FREE_ALL                            \
+    GrB_Matrix_free (&A) ;                  \
+    GrB_Matrix_free (&B) ;                  \
+    GrB_Matrix_free (&C) ;                  \
+    if (Afile != NULL) fclose (Afile) ;     \
+    if (Bfile != NULL) fclose (Bfile) ;     \
+    if (Cfile != NULL) fclose (Cfile) ;     \
+    if (I != NULL) free (I) ;               \
+    if (J != NULL) free (J) ;               \
+    if (X != NULL) free (X) ;               \
     GrB_finalize ( ) ;
+
+#include "graphblas_demos.h"
 
 int main (int argc, char **argv)
 {
@@ -52,7 +52,7 @@ int main (int argc, char **argv)
 
     OK (GrB_init (GrB_NONBLOCKING)) ;
     int nthreads ;
-    OK (GxB_get (GxB_NTHREADS, &nthreads)) ;
+    OK (GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads)) ;
     fprintf (stderr, "kron demo: nthreads %d\n", nthreads) ;
 
     // printf ("argc %d\n", argc) ;
@@ -102,7 +102,8 @@ int main (int argc, char **argv)
     OK (GrB_Matrix_new (&C, GrB_FP64, anrows * bnrows, ancols * bncols)) ;
 
     simple_tic (tic) ;
-    OK (GxB_kron (C, NULL, NULL, GrB_TIMES_FP64, A, B, NULL)) ;
+    OK (GrB_Matrix_kronecker_BinaryOp (C, NULL, NULL,
+        GrB_TIMES_FP64, A, B, NULL)) ;
     t = simple_toc (tic) ;
 
     OK (GrB_Matrix_free (&A)) ;
@@ -120,7 +121,7 @@ int main (int argc, char **argv)
     // note that integers of type GrB_Index should be printed with the
     // %PRIu64 format.
 
-    fprintf (stderr, "GraphBLAS GxB_kron:\n"
+    fprintf (stderr, "GraphBLAS GrB_kronecker:\n"
     "A: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
     "B: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
     "C: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"

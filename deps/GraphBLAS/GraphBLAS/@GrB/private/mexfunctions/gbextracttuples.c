@@ -2,14 +2,17 @@
 // gbextracttuples: extract all entries from a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Usage:
 
+// [I J X] = GrB.extracttuples (A)
 // [I J X] = GrB.extracttuples (A, desc)
+
+// The desciptor is optional.  If present, it must be a struct.
 
 // desc.base = 'zero-based':    I and J are returned as 0-based int64 indices
 // desc.base = 'one-based int': I and J are returned as 1-based int64 indices
@@ -40,12 +43,14 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     base_enum_t base = BASE_DEFAULT ;
-    kind_enum_t kind = KIND_GRB ;
-    GxB_Format_Value fmt = GxB_NO_FORMAT ;
+    kind_enum_t kind = KIND_FULL ;              // ignored
+    GxB_Format_Value fmt = GxB_NO_FORMAT ;      // ignored
+    int sparsity = 0 ;                          // ignored
     GrB_Descriptor desc = NULL ;
-    if (nargin == 2)
+    if (nargin > 1)
     { 
-        desc = gb_mxarray_to_descriptor (pargin [1], &kind, &fmt, &base) ;
+        desc = gb_mxarray_to_descriptor (pargin [nargin-1], &kind, &fmt,
+            &sparsity, &base) ;
     }
     OK (GrB_Descriptor_free (&desc)) ;
 
@@ -178,17 +183,24 @@ void mexFunction
             pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GrB_FP64) ;
         }
     }
-    #ifdef GB_COMPLEX_TYPE
-    else if (xtype == gb_complex_type)
+    else if (xtype == GxB_FC32)
     {
-        double *X = extract_X ? mxMalloc (s * sizeof (double complex)) : NULL ;
-        OK (GrB_Matrix_extractTuples_UDT (I, J, X, &nvals, A)) ;
+        GxB_FC32_t *X = extract_X ? mxMalloc (s * sizeof (GxB_FC32_t)) : NULL ;
+        OK (GxB_Matrix_extractTuples_FC32 (I, J, X, &nvals, A)) ;
         if (extract_X)
-        {
-            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, gb_complex_type) ;
+        { 
+            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GxB_FC32) ;
         }
     }
-    #endif
+    else if (xtype == GxB_FC64)
+    {
+        GxB_FC64_t *X = extract_X ? mxMalloc (s * sizeof (GxB_FC64_t)) : NULL ;
+        OK (GxB_Matrix_extractTuples_FC64 (I, J, X, &nvals, A)) ;
+        if (extract_X)
+        { 
+            pargout [2] = gb_export_to_mxfull (&X, nvals, 1, GxB_FC64) ;
+        }
+    }
     else
     {
         ERROR ("unsupported type") ;
@@ -204,12 +216,12 @@ void mexFunction
         OK (GrB_Matrix_nrows (&nrows, A)) ;
         OK (GrB_Matrix_ncols (&ncols, A)) ;
         if (MAX (nrows, ncols) > FLINTMAX)
-        {
+        { 
             // the matrix is too large for I and J to be returned as double
             base = BASE_1_INT64 ;
         }
         else
-        {
+        { 
             // this is the typical case
             base = BASE_1_DOUBLE ;
         }

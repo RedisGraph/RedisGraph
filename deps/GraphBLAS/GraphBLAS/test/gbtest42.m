@@ -1,18 +1,20 @@
 function gbtest42
 %GBTEST42 test for nan
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
-types = { 'single', 'double' } ;
+types = { 'single', 'double', 'single complex', 'double complex' } ;
 
-for trial = 1:40
-    fprintf ('.') ;
+for k1 = 1:length(types)
+    atype = types {k1} ;
+    fprintf ('\n%s ', atype) ;
 
-    for k1 = 1:length(types)
-        atype = types {k1} ;
-        A = cast (full (sprand (4,4,0.5)), atype) ;
+    for trial = 1:40
+        fprintf ('.') ;
+
+        A = gbtest_cast (full (sprand (4,4,0.5)), atype) ;
         A (A > 0.5) = nan ;
 
         A_nan = zeros (4, 4) ;
@@ -20,9 +22,11 @@ for trial = 1:40
         A_notnan = zeros (4, 4) ;
         A_notnan (~isnan (A)) = A (~isnan (A)) ;
 
+        A = gbtest_cast (A, atype) ;
+
         for k2 = 1:length(types)
             xtype = types {k2} ;
-            xnan = cast (nan, xtype) ;
+            xnan = gbtest_cast (nan, xtype) ;
 
             G = GrB.select (A, '==', xnan) ;
             X1 = full (double (G)) ;

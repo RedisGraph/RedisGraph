@@ -2,8 +2,8 @@
 // GB_reduce.h: definitions for GB_reduce
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -26,8 +26,7 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     GrB_Matrix C,                   // input/output for results, size n-by-1
     const GrB_Matrix M,             // optional M for C, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for z=accum(C,T)
-    const GrB_BinaryOp reduce,      // reduce operator for T=reduce(A)
-    const GB_void *terminal,        // for early exit (NULL if none)
+    const GrB_Monoid monoid,        // reduce monoid for T=reduce(A)
     const GrB_Matrix A,             // first input:  matrix A
     const GrB_Descriptor desc,      // descriptor for C, M, and A
     GB_Context Context

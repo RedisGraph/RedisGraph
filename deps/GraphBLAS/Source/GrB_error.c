@@ -2,20 +2,94 @@
 // GrB_error: return an error string describing the last error
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-#include "GB_thread_local.h"
+#include "GB.h"
 
-// if dynamic allocation of memory for POSIX threads fails, use this string:
-const char panic [GB_RLEN+1] = "GraphBLAS error: GrB_PANIC\n"
-    "Out of memory for thread-local storage\n" ;
+const char empty [8] = "" ;
 
-const char *GrB_error ( )       // return a string describing the last error
+GrB_Info GrB_Type_error (const char **error, const GrB_Type type)
 { 
-    char *p = GB_thread_local_get ( ) ;
-    return (p == NULL ? panic : p) ;
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GrB_UnaryOp_error (const char **error, const GrB_UnaryOp op)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GrB_BinaryOp_error (const char **error, const GrB_BinaryOp op)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GxB_SelectOp_error (const char **error, const GxB_SelectOp op)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GrB_Monoid_error (const char **error, const GrB_Monoid monoid)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GrB_Semiring_error (const char **error, const GrB_Semiring semiring)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GxB_Scalar_error (const char **error, const GxB_Scalar s)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    GB_RETURN_IF_NULL_OR_FAULTY (s) ;
+    if (s->logger == NULL) return (GrB_SUCCESS) ;
+    (*error) = s->logger ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GrB_Vector_error (const char **error, const GrB_Vector v)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    GB_RETURN_IF_NULL_OR_FAULTY (v) ;
+    if (v->logger == NULL) return (GrB_SUCCESS) ;
+    (*error) = v->logger ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GrB_Matrix_error (const char **error, const GrB_Matrix A)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    if (A->logger == NULL) return (GrB_SUCCESS) ;
+    (*error) = A->logger ;
+    return (GrB_SUCCESS) ;
+}
+
+GrB_Info GrB_Descriptor_error (const char **error, const GrB_Descriptor d)
+{ 
+    GB_RETURN_IF_NULL (error) ;
+    (*error) = empty ;
+    GB_RETURN_IF_NULL_OR_FAULTY (d) ;
+    if (d->logger == NULL) return (GrB_SUCCESS) ;
+    (*error) = d->logger ;
+    return (GrB_SUCCESS) ;
 }
 

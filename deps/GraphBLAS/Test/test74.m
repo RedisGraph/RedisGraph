@@ -1,10 +1,13 @@
 function test74
 %TEST74 test GrB_mxm: all built-in semirings
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-[mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
+[binops, ~, add_ops, types, ~, ~] = GB_spec_opsall ;
+% mult_ops = binops.positional ;
+mult_ops = binops.all ;
+types = types.all ;
 
 fprintf ('test74 -------- GrB_mxm on all semirings (all methods)\n') ;
 
@@ -19,6 +22,7 @@ dnn_hash = struct ( 'axb', 'hash' ) ;
 ntrials = 0 ;
 
 rng ('default') ;
+GB_builtin_complex_set (1) ;
 
 m_list = [ 1  2    9  ] ;
 n_list = [ 1  2   10  ] ;
@@ -40,44 +44,47 @@ for k0 = 1:size(m_list,2)
 
     clear AT
     AT = A ;
-    AT.matrix  = A.matrix' ;
+    AT.matrix  = A.matrix.' ;
     AT.pattern = A.pattern' ;
     fprintf ('\nm %d n %d k %d: \n', m, n, k) ;
 
     for k1 = 1:length(mult_ops)
         mulop = mult_ops {k1} ;
 
-        fprintf ('%s', mulop) ;
+        fprintf ('\n%-8s', mulop) ;
 
         for k2 = 1:length(add_ops)
             addop = add_ops {k2} ;
-            fprintf ('.') ;
 
-            for k3 = 1:length (classes)
-                clas = classes {k3} ;
+            for k3 = 1:length (types)
+                semiring_type = types {k3} ;
 
                 semiring.multiply = mulop ;
                 semiring.add = addop ;
-                semiring.class = clas ;
+                semiring.class = semiring_type ;
 
                 % create the semiring.  some are not valid because the
                 % or,and,xor monoids can only be used when z is boolean for
                 % z=mult(x,y).
                 try
                     [mult_op add_op id] = GB_spec_semiring (semiring) ;
-                    [mult_opname mult_opclass zclass] = ...
+                    [mult_opname mult_optype ztype xtype ytype] = ...
                         GB_spec_operator (mult_op);
-                    [ add_opname  add_opclass] = GB_spec_operator (add_op) ;
-                    identity = GB_spec_identity (semiring.add, add_opclass) ;
+                    [ add_opname  add_optype] = GB_spec_operator (add_op) ;
+                    identity = GB_spec_identity (semiring.add, add_optype) ;
                 catch
                     continue
                 end
+            
+                fprintf ('.') ;
 
                 n_semirings = n_semirings + 1 ;
-                AT.class = clas ;
-                A.class = clas ;
-                B.class = clas ;
-                C.class = clas ;
+                % fprintf ('[%s.%s.%s]\n', addop, mulop, semiring_type) ;
+
+                AT.class = semiring_type ;
+                A.class = semiring_type ;
+                B.class = semiring_type ;
+                C.class = semiring_type ;
 
                 % C<M> = A'*B, with Mask, no typecasting
                 C1 = GB_mex_mxm  (C, M, [ ], semiring, AT, B, dtn);

@@ -1,8 +1,8 @@
 function test52
 %TEST52 test AdotB vs AxB
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n----------------------- AdotB versus AxB\n') ;
 
@@ -34,13 +34,13 @@ for m = 1:10
             C2 = GB_mex_AdotB (A,B) ;
 
             assert (isequal (C, C2)) ;
-            assert (spok (C2) == 1)
+            assert (GB_spok (C2) == 1)
 
             C = spones (Mask) .* C ;
             C2 = GB_mex_AdotB (A,B, Mask) ;
 
             assert (isequal (C, C2)) ;
-            assert (spok (C2) == 1)
+            assert (GB_spok (C2) == 1)
         end
     end
 end
@@ -75,13 +75,12 @@ for n = [1 10 20:10:60 61:65 70:10:100]
     tic
     C2 = GB_mex_AdotB (A,B) ;
     t2 = toc ;
-    % [tt method] = grbresults ;
 
     % fprintf ('GrB A''*B native:\n') ;
     tic
     C4 = GB_mex_AxB (A,B, true) ;
     t4 = toc ;
-    [t4 method] = grbresults ;
+    t4 = grbresults ;
 
     % fprintf ('GrB A''*B native:\n') ;
     tic
@@ -91,8 +90,8 @@ for n = [1 10 20:10:60 61:65 70:10:100]
     reltime = [reltime t2/t5] ;
 
     fprintf (...
-'m %3d n %3d %10.2e MATLAB: %10.4f AdotB : %10.4f GB,auto:: %10.4f(%s) outer %10.4f', ...
-    m, n, cwork/awork, t1, t2, t4, method (1), t5) ;
+'m %3d n %3d %10.2e MATLAB: %10.4f AdotB : %10.4f GB,auto:: %10.4f outer %10.4f', ...
+    m, n, cwork/awork, t1, t2, t4, t5) ;
     % fprintf (' speedup: %10.4f (no Mask)\n', t2/t5) ;
     fprintf (' rel: %10.4f ', t2/t5) ;
     fprintf (' speedup: %10.4f\n', t1/t4) ;

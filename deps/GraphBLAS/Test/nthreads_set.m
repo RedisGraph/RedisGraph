@@ -6,8 +6,8 @@ function [nthreads chunk] = nthreads_set (nthreads, chunk)
 % If nthreads is empty, or if no input arguments, nthreads is set to 1.
 % If chunk is empty, or if no input arguments, chunk is not modified.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 global GraphBLAS_nthreads
 if (nargin < 1)
@@ -24,7 +24,7 @@ if (nargin > 1 || nargout > 1)
     if (nargin > 1)
         GraphBLAS_chunk = chunk ;
     elseif (isempty (GraphBLAS_chunk))
-        GraphBLAS_chunk = 4096 ;
+        GraphBLAS_chunk = 64*1024 ;
     end
     if (nargout > 1)
         chunk = GraphBLAS_chunk ;

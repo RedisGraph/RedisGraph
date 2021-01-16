@@ -2,8 +2,8 @@
 // GB_hypermatrix_prune: prune empty vectors from a hypersparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -21,8 +21,10 @@ GrB_Info GB_hypermatrix_prune
     //--------------------------------------------------------------------------
 
     ASSERT (A != NULL) ;
-    ASSERT (GB_ZOMBIES_OK (A)) ;
-    if (!A->is_hyper)
+    ASSERT (GB_ZOMBIES_OK (A)) ;        // pattern not accessed
+    ASSERT (GB_JUMBLED_OK (A)) ;
+
+    if (!GB_IS_HYPERSPARSE (A))
     { 
         // nothing to do
         return (GrB_SUCCESS) ;
@@ -41,8 +43,8 @@ GrB_Info GB_hypermatrix_prune
     // prune empty vectors
     //--------------------------------------------------------------------------
 
-    if (A->nvec_nonempty < A->nvec)
-    { 
+    if (A->nvec_nonempty < A->nvec)     // A->nvec_nonempty used here
+    {
         // create new Ap_new and Ah_new arrays, with no empty vectors
         int64_t *GB_RESTRICT Ap_new = NULL ;
         int64_t *GB_RESTRICT Ah_new = NULL ;
@@ -63,13 +65,10 @@ GrB_Info GB_hypermatrix_prune
         A->plen = nvec_new ;
         A->nvec_nonempty = nvec_new ;
         A->magic = GB_MAGIC ;
+        ASSERT (!A->p_shallow) ;
+        ASSERT (!A->h_shallow) ;
     }
 
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
-    ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A, Context)) ;
     return (GrB_SUCCESS) ;
 }
 

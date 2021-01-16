@@ -2,8 +2,8 @@
 // GB_subref.h: definitions for GB_subref_* functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -11,6 +11,7 @@
 #define GB_SUBREF_H
 #include "GB_ij.h"
 
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
 (
     // output
@@ -23,7 +24,7 @@ GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
     const GrB_Index *J,         // index list for C = A(I,J), or GrB_ALL, etc.
     const int64_t nj,           // length of J, or special
     const bool symbolic,        // if true, construct Cx as symbolic
-    const bool must_sort,       // if true, must return C sorted
+//  const bool must_sort,       // if true, must return C sorted
     GB_Context Context
 ) ;
 
@@ -45,7 +46,7 @@ GrB_Info GB_subref_phase0
     const int64_t ni,       // length of I, or special
     const GrB_Index *J,     // index list for C = A(I,J), or GrB_ALL, etc.
     const int64_t nj,       // length of J, or special
-    const bool must_sort,   // true if C must be returned sorted
+//  const bool must_sort,   // true if C must be returned sorted
     GB_Context Context
 ) ;
 
@@ -105,7 +106,7 @@ GrB_Info GB_subref_phase2   // C=A(I,J)
 (
     GrB_Matrix *Chandle,    // output matrix (unallocated on input)
     // from phase1:
-    const int64_t *GB_RESTRICT Cp,         // vector pointers for C
+    const int64_t *GB_RESTRICT *p_Cp,   // vector pointers for C
     const int64_t Cnvec_nonempty,       // # of non-empty vectors in C
     // from phase0b:
     const GB_task_struct *GB_RESTRICT TaskList,    // array of structs
@@ -116,7 +117,7 @@ GrB_Info GB_subref_phase2   // C=A(I,J)
     const int64_t *Inext,               // for I inverse buckets, size nI
     const int64_t nduplicates,          // # of duplicates, if I inverted
     // from phase0:
-    const int64_t *GB_RESTRICT Ch,
+    const int64_t *GB_RESTRICT *p_Ch,
     const int64_t *GB_RESTRICT Ap_start,
     const int64_t *GB_RESTRICT Ap_end,
     const int64_t Cnvec,
@@ -289,6 +290,21 @@ static inline int GB_subref_method  // return the method to use (1 to 12)
     }
     return (method) ;
 }
+
+GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
+(
+    // output
+    GrB_Matrix *Chandle,
+    // input, not modified
+    const bool C_is_csc,        // requested format of C
+    const GrB_Matrix A,
+    const GrB_Index *I,         // index list for C = A(I,J), or GrB_ALL, etc.
+    const int64_t ni,           // length of I, or special
+    const GrB_Index *J,         // index list for C = A(I,J), or GrB_ALL, etc.
+    const int64_t nj,           // length of J, or special
+    const bool symbolic,        // if true, construct C as symbolic
+    GB_Context Context
+) ;
 
 #endif
 

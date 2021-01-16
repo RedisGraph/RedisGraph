@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # usage: tri_run files
 # foreach file ($argv[1-])
         echo ''

@@ -1,10 +1,15 @@
-function [fname, unsigned, bits] = codegen_type (xytype)
-%CODEGEN_TYPE determine C type name, signed, and # bits a type
-unsigned = (xytype (1) == 'u') ;
-switch (xytype)
+function [fname, unsigned, bits] = codegen_type (type)
+%CODEGEN_TYPE determine function _suffix, signed or not
+% and # bits a C type
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
+unsigned = (type (1) == 'u') ;
+switch (type)
     case 'bool'
         fname = 'bool' ;
-        bits = 1 ;
+        bits = 8 ;
     case 'int8_t'
         fname = 'int8' ;
         bits = 8 ;
@@ -35,6 +40,12 @@ switch (xytype)
     case 'double'
         fname = 'fp64' ;
         bits = 64 ;
+    case { 'float complex', 'GxB_FC32_t' }
+        fname = 'fc32' ;
+        bits = 64 ;
+    case { 'double complex', 'GxB_FC64_t' }
+        fname = 'fc64' ;
+        bits = 128 ;
     case 'GB_void'
         fname = 'any' ;
         bits = nan ;
