@@ -171,7 +171,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	GrB_Matrix_nvals(&nvals, res);
+	GrB_wait(&res);
 
 	// Reset descriptor if non-null.
 	if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);

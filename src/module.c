@@ -87,7 +87,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
 	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
 						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {

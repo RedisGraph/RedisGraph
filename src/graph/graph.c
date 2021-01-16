@@ -141,8 +141,7 @@ void Graph_WriterLeave(Graph *g) {
 
 /* Force execution of all pending operations on a matrix. */
 static inline void _Graph_ApplyPending(GrB_Matrix m) {
-	GrB_Index nvals;
-	GrB_Info res = GrB_Matrix_nvals(&nvals, m);
+	GrB_Info res = GrB_wait(&m);
 	ASSERT(res == GrB_SUCCESS);
 }
 
@@ -232,8 +231,6 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 			ASSERT(res == GrB_SUCCESS);
 		}
 
-		GxB_set (m, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
-
 		// Writer under write lock, no need to flush pending changes.
 		return;
 	}
@@ -258,7 +255,6 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 		// Flush changes to matrix.
 		_Graph_ApplyPending(m);
 	}
-	GxB_set (m, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
 	// Unlock matrix mutex.
 	_RG_Matrix_Unlock(rg_matrix);
 }
@@ -1254,8 +1250,23 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 }
 
 int Graph_AddLabel(Graph *g) {
-	ASSERT(g);
-	RG_Matrix m = RG_Matrix_New(GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+	ASSERT(g != NULL);
+
+	GrB_Info info;
+	GrB_Index nrows = Graph_RequiredMatrixDim(g);
+	GrB_Index ncols = nrows;
+	RG_Matrix m = RG_Matrix_New(GrB_BOOL, nrows, ncols);
+
+	/* matrix iterator requires matrix format to be sparse
+	 * to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	 * we set matrix format at creation time, as Label matrices are iterated
+	 * within the LabelScan Execution-Plan operation. */
+
+	GrB_Matrix M = RG_Matrix_Get_GrB_Matrix(m);
+	info = GxB_set(M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	UNUSED(info);
+	ASSERT(info == GrB_SUCCESS);
+
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
@@ -1334,7 +1345,7 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
 	// Make sure zero matrix is indeed empty.
 	GrB_Matrix grb_z = RG_Matrix_Get_GrB_Matrix(z);
 	GrB_Matrix_nvals(&nvals, grb_z);
-	ASSERT(nvals == 0);
+	assert(nvals == 0);
 	return grb_z;
 }
 

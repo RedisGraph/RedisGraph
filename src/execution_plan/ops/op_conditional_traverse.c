@@ -43,10 +43,12 @@ static void _populate_filter_matrix(OpCondTraverse *op) {
 void _traverse(OpCondTraverse *op) {
 	// If op->F is null, this is the first time we are traversing.
 	if(op->F == GrB_NULL) {
-		// Create both filter and result matrices.
+		/* Create both filter and result matrices.
+		 * make sure M's format is SPARSE, required by the matrix iterator */
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		GrB_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
 		GrB_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
+		GxB_set(op->M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
