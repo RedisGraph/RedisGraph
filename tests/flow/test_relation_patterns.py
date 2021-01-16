@@ -13,7 +13,7 @@ GRAPH_ID = "G"
 
 class testRelationPattern(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -268,3 +268,22 @@ class testRelationPattern(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['v1']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test09_transposed_elem_order(self):
+        redis_con = self.env.getConnection()
+        g = Graph("transpose_patterns", redis_con)
+
+        # Create a new graph of the form:
+        # (A)<-[1]-(B)-[2]->(C)
+        g.query("CREATE (a:A)<-[:E {val:'ba'}]-(b:B)-[:E {val:'bc'}]->(c:C)")
+
+        queries = ["MATCH (a:A)<-[e1]-(b:B)-[e2]->(c:C) RETURN e1.val, e2.val",
+                   "MATCH (a:A) WITH a MATCH (a)<-[e1]-(b:B)-[e2]->(c:C) RETURN e1.val, e2.val",
+                   "MATCH (b:B) WITH b MATCH (a:A)<-[e1]-(b)-[e2]->(c:C) RETURN e1.val, e2.val",
+                   "MATCH (c:C) WITH c MATCH (a:A)<-[e1]-(b:B)-[e2]->(c) RETURN e1.val, e2.val",
+                   ]
+        expected_result = [['ba', 'bc']]
+        for query in queries:
+            actual_result = g.query(query)
+            self.env.assertEquals(actual_result.result_set, expected_result)
+

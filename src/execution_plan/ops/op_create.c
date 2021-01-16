@@ -140,7 +140,9 @@ static Record CreateConsume(OpBase *opBase) {
 			/* Create entities. */
 			_CreateNodes(op, r);
 			_CreateEdges(op, r);
-
+			/* Persist scalars from previous ops before storing the record,
+			 * as those ops will be freed before the records are handed off. */
+			Record_PersistScalars(r);
 			// Save record for later use.
 			op->records = array_append(op->records, r);
 		}

@@ -10,7 +10,7 @@ redis_graph = None
 
 class testConfig(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
@@ -36,7 +36,7 @@ class testConfig(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Unknown configuration field" in e.message)
+            assert("Unknown configuration field" in str(e))
             pass
 
     def test03_config_set(self):
@@ -65,7 +65,7 @@ class testConfig(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Unknown configuration field" in e.message)
+            assert("Unknown configuration field" in str(e))
             pass
 
     def test05_config_invalid_subcommand(self):
@@ -77,6 +77,6 @@ class testConfig(FlowTestsBase):
             response = redis_con.execute_command("GRAPH.CONFIG DREP " + config_name + " 3")
             assert(False)
         except redis.exceptions.ResponseError as e:
-            assert("Unknown subcommand for GRAPH.CONFIG" in e.message)
+            assert("Unknown subcommand for GRAPH.CONFIG" in str(e))
             pass
 

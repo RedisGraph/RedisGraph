@@ -23,7 +23,7 @@ node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 # Test over all procedure behavior in addition to procedure specifics.
 class testProcedures(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()

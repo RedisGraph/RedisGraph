@@ -15,7 +15,7 @@ redis_graph = None
 
 class testPath(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -42,6 +42,10 @@ class testPath(FlowTestsBase):
 
         redis_graph.flush()
 
+        # Rewrite the edges with IDs instead of node values to match how they are returned.
+        edge01 = Edge(0, "R1", 1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(1, "R1", 2, edge_id=1, properties={'value': 2})
+
         path01 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1)
         path12 = Path.new_empty_path().add_node(node1).add_edge(edge12).add_node(node2)
         expected_results = [[path01], [path12]]
@@ -64,7 +68,10 @@ class testPath(FlowTestsBase):
         redis_graph.add_edge(edge12)
 
         redis_graph.flush()
-        
+
+        # Rewrite the edges with IDs instead of node values to match how they are returned.
+        edge01 = Edge(0, "R1", 1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(1, "R1", 2, edge_id=1, properties={'value': 2})
 
         path01 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1)
         path12 = Path.new_empty_path().add_node(node1).add_edge(edge12).add_node(node2)
@@ -90,24 +97,27 @@ class testPath(FlowTestsBase):
 
         redis_graph.flush()
 
+        # Rewrite the edges with IDs instead of node values to match how they are returned.
+        edge01 = Edge(0, "R1", 1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(1, "R1", 2, edge_id=1, properties={'value': 2})
         # Reverse direction edges which are not part of the graph. Read only values.
-        edge10 = Edge(1, "R1", 0, edge_id = 0 , properties={'value':1})
-        edge21 = Edge(2, "R1", 1, edge_id = 1 , properties={'value':2})
+        edge10 = Edge(1, "R1", 0, edge_id=0, properties={'value': 1})
+        edge21 = Edge(2, "R1", 1, edge_id=1, properties={'value': 2})
 
         path010 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1).add_edge(edge10).add_node(node0)
         path0121 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1).add_edge(edge12) \
                                         .add_node(node2).add_edge(edge21).add_node(node1)
         path01210 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1).add_edge(edge12) \
-                                        .add_node(node2).add_edge(edge21).add_node(node1).add_edge(edge10).add_node(node0)
+                                         .add_node(node2).add_edge(edge21).add_node(node1).add_edge(edge10).add_node(node0)
         path121 = Path.new_empty_path().add_node(node1).add_edge(edge12).add_node(node2).add_edge(edge21).add_node(node1)
         path1210 = Path.new_empty_path().add_node(node1).add_edge(edge12).add_node(node2).add_edge(edge21) \
                                         .add_node(node1).add_edge(edge10).add_node(node0)
-        expected_results=[[path010], [path0121], [path01210], [path121], [path1210]]
-       
+        expected_results = [[path010], [path0121], [path01210], [path121], [path1210]]
+
         query = "MATCH p=(:L1)-[:R1*]->(:L1)<-[:R1*]-() RETURN p"
 
-        query_info = QueryInfo(query = query, description="Tests bi directional variable length paths", \
-                                expected_result = expected_results)
+        query_info = QueryInfo(query=query, description="Tests bi directional variable length paths",
+                               expected_result=expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
     def test_bi_directional_path_functions(self):
@@ -125,6 +135,9 @@ class testPath(FlowTestsBase):
 
         redis_graph.flush()
 
+        # Rewrite the edges with IDs instead of node values to match how they are returned.
+        edge01 = Edge(0, "R1", 1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(1, "R1", 2, edge_id=1, properties={'value': 2})
         # Reverse direction edges which are not part of the graph. Read only values.
         edge10 = Edge(1, "R1", 0, edge_id = 0 , properties={'value':1})
         edge21 = Edge(2, "R1", 1, edge_id = 1 , properties={'value':2})
@@ -175,6 +188,10 @@ class testPath(FlowTestsBase):
         redis_graph.add_edge(edge12)
 
         redis_graph.flush()
+
+        # Rewrite the edges with IDs instead of node values to match how they are returned.
+        edge01 = Edge(0, "R1", 1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(1, "R1", 2, edge_id=1, properties={'value': 2})
 
         path01 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1)
         path12 = Path.new_empty_path().add_node(node1).add_edge(edge12).add_node(node2)
