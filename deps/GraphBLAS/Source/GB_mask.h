@@ -2,8 +2,8 @@
 // GB_mask: definitions for GB_mask and related functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -23,7 +23,7 @@ GrB_Info GB_mask                // C<M> = Z
     GB_Context Context
 ) ;
 
-GrB_Info GB_masker          // R = masker (M, C, Z)
+GrB_Info GB_masker          // R = masker (C, M, Z)
 (
     GrB_Matrix *Rhandle,    // output matrix (unallocated on input)
     const bool R_is_csc,    // format of output matrix R
@@ -35,14 +35,14 @@ GrB_Info GB_masker          // R = masker (M, C, Z)
     GB_Context Context
 ) ;
 
-GrB_Info GB_mask_phase1                 // count nnz in each R(:,j)
+GrB_Info GB_masker_phase1           // count nnz in each R(:,j)
 (
-    int64_t **Rp_handle,                // output of size Rnvec+1
-    int64_t *Rnvec_nonempty,            // # of non-empty vectors in R
-    // tasks from phase0b:
-    GB_task_struct *GB_RESTRICT TaskList,      // array of structs
-    const int ntasks,                       // # of tasks
-    const int nthreads,                     // # of threads to use
+    int64_t **Rp_handle,            // output of size Rnvec+1
+    int64_t *Rnvec_nonempty,        // # of non-empty vectors in R
+    // tasks from phase1a:
+    GB_task_struct *GB_RESTRICT TaskList,       // array of structs
+    const int R_ntasks,               // # of tasks
+    const int R_nthreads,             // # of threads to use
     // analysis from phase0:
     const int64_t Rnvec,
     const int64_t *GB_RESTRICT Rh,
@@ -50,38 +50,48 @@ GrB_Info GB_mask_phase1                 // count nnz in each R(:,j)
     const int64_t *GB_RESTRICT R_to_C,
     const int64_t *GB_RESTRICT R_to_Z,
     // original input:
-    const GrB_Matrix M,                 // required mask
-    const bool Mask_comp,               // if true, then M is complemented
+    const GrB_Matrix M,             // required mask
+    const bool Mask_comp,           // if true, then M is complemented
     const bool Mask_struct,         // if true, use the only structure of M
     const GrB_Matrix C,
     const GrB_Matrix Z,
     GB_Context Context
 ) ;
 
-GrB_Info GB_mask_phase2     // phase2 for R = masker (M,C,Z)
+GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
 (
-    GrB_Matrix *Rhandle,    // output matrix (unallocated on input)
-    const bool R_is_csc,    // format of output matrix R
+    GrB_Matrix *Rhandle,            // output matrix (unallocated on input)
+    const bool R_is_csc,            // format of output matrix R
     // from phase1:
-    const int64_t *GB_RESTRICT Rp,         // vector pointers for R
-    const int64_t Rnvec_nonempty,       // # of non-empty vectors in R
-    // tasks from phase0b:
-    const GB_task_struct *GB_RESTRICT TaskList,    // array of structs
-    const int ntasks,                           // # of tasks
-    const int nthreads,                         // # of threads to use
+    const int64_t *GB_RESTRICT Rp,  // vector pointers for R
+    const int64_t Rnvec_nonempty,   // # of non-empty vectors in R
+    // tasks from phase1a:
+    const GB_task_struct *GB_RESTRICT TaskList,     // array of structs
+    const int R_ntasks,               // # of tasks
+    const int R_nthreads,             // # of threads to use
     // analysis from phase0:
     const int64_t Rnvec,
     const int64_t *GB_RESTRICT Rh,
     const int64_t *GB_RESTRICT R_to_M,
     const int64_t *GB_RESTRICT R_to_C,
     const int64_t *GB_RESTRICT R_to_Z,
+    const int R_sparsity,
     // original input:
-    const GrB_Matrix M,         // required mask
-    const bool Mask_comp,
+    const GrB_Matrix M,             // required mask
+    const bool Mask_comp,           // if true, then M is complemented
     const bool Mask_struct,         // if true, use the only structure of M
     const GrB_Matrix C,
     const GrB_Matrix Z,
     GB_Context Context
+) ;
+
+int GB_masker_sparsity      // return the sparsity structure for R
+(
+    // input:
+    const GrB_Matrix C,     // input C matrix
+    const GrB_Matrix M,     // mask for C, always present
+    const bool Mask_comp,   // if true, use !M
+    const GrB_Matrix Z      // input Z matrix
 ) ;
 
 #endif

@@ -1,8 +1,8 @@
 function gbtest50
 %GBTEST50 test GrB.ktruss and GrB.tricount
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -25,5 +25,31 @@ nt2 = GrB.tricount (A) ;
 assert (ntriangles == nt2) ;
 assert (ntriangles == 235) ;
 
-fprintf ('gbtest50: all tests passed\n') ;
+d = GrB.entries (A, 'col', 'degree') ;
+nt2 = GrB.tricount (A, d) ;
+assert (ntriangles == nt2) ;
+assert (ntriangles == 235) ;
+
+nt2 = GrB.tricount (A, 'check', d) ;
+assert (ntriangles == nt2) ;
+assert (ntriangles == 235) ;
+
+nt2 = GrB.tricount (A, d, 'check') ;
+assert (ntriangles == nt2) ;
+assert (ntriangles == 235) ;
+
+rng ('default') ;
+for k = 1:200
+    if (mod (k, 10) == 1)
+        fprintf ('.') ;
+    end
+    n = 10000 ;
+    G = GrB.eye (10000) ;
+    j = randperm (n, 10) ;
+    G (:,j) = 1 ;
+    G (j,:) = 1 ;
+    nt = GrB.tricount (G) ; %#ok<NASGU>
+end
+
+fprintf ('\ngbtest50: all tests passed\n') ;
 

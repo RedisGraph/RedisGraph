@@ -1,25 +1,28 @@
 function test62
 %TEST62 test GrB_apply
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n ------------ testing GrB_apply\n') ;
 
 rng ('default')
 
-[accum_ops, unary_ops, ~, classes, ~, ~] = GB_spec_opsall ;
+[binops, unary_ops, ~, types, ~, ~] = GB_spec_opsall ;
+ops = unary_ops.all ;
+accum_ops = binops.all ;
+types = types.all ;
 
 dt = struct ('inp0', 'tran') ;
 
-% class of the matrix C
-for k1 = 1:length (classes)
-    cclass = classes {k1}  ;
-    fprintf ('\n%s', cclass) ;
+% type of the matrix C
+for k1 = 1:length (types)
+    ctype = types {k1}  ;
+    fprintf ('\n%s', ctype) ;
 
-    % class of the matrix A
-    for k2 = 1:length (classes)
-        aclass = classes {k2}  ;
+    % type of the matrix A
+    for k2 = 1:length (types)
+        atype = types {k2} ;
 
         % create a matrix
         for m = [1 10 25]
@@ -27,66 +30,81 @@ for k1 = 1:length (classes)
                 fprintf ('.') ;
                 clear A
                 A.matrix = sprandn (m, n, 0.1) ;
-                A.class = aclass ;
+                A.class = atype ;
 
                 Mask = (sprandn (m, n, 0.1) ~= 0) ;
                 MaskT = Mask' ;
 
                 clear B
                 B.matrix = sprandn (m*n, 1, 0.1) ;
-                B.class = aclass ;
+                B.class = atype ;
 
                 mask = (sprandn (m*n, 1, 0.1) ~= 0) ;
 
                 clear Cin
                 Cin.matrix = sprandn (m, n, 0.1) ;
-                Cin.class = cclass ;
+                Cin.class = ctype ;
 
                 clear CinT
                 CinT.matrix = Cin.matrix' ;
-                CinT.class = cclass ;
+                CinT.class = ctype ;
 
                 clear Cin2
                 Cin2.matrix = sprandn (m*n, 1, 0.1) ;
-                Cin2.class = cclass ;
-
+                Cin2.class = ctype ;
 
                 % unary operator
-                for k3 = 1:length(unary_ops)
-                    unary_op = unary_ops {k3}  ;
-                    nclasses = 1;length (classes) ;
+                for k3 = 1:length(ops)
+                    unary_op = ops {k3}  ;
+                    ntypes = 1;length (types) ;
                     % fprintf ('unary: %s\n', unary_op) ;
-                    % unary operator class
-                    for k4 = nclasses
+                    % unary operator type
+                    for k4 = ntypes
                         clear unary
                         if (~isempty (unary_op))
-                            unary_class = classes {k4}  ;
+                            unary_type = types {k4}  ;
                             unary.opname = unary_op ;
-                            unary.opclass = unary_class ;
+                            unary.optype = unary_type ;
                         else
                             unary = '' ;
-                            unary_class = '' ;
+                            unary_type = '' ;
+                        end
+
+                        try
+                            GB_spec_operator (unary_op) ;
+                        catch
+                            continue
                         end
 
                         % accum operator
                         for k5 = 0:length(accum_ops)
                             if (k5 == 0)
                                 accum_op = ''  ;
-                                nclasses = 1 ;
+                                ntypes = 1 ;
                             else
                                 accum_op = accum_ops {k5}  ;
-                                nclasses = 1;length (classes) ;
+                                ntypes = 1;length (types) ;
                             end
-                            % accum operator class
-                            for k6 = nclasses
+                            % accum operator type
+                            for k6 = ntypes
                                 clear accum
                                 if (~isempty (accum_op))
-                                    accum_class = classes {k6}  ;
+                                    accum_type = types {k6}  ;
                                     accum.opname = accum_op ;
-                                    accum.opclass = accum_class ;
+                                    accum.optype = accum_type ;
                                 else
                                     accum = '' ;
-                                    accum_class = '' ;
+                                    accum_type = '' ;
+                                end
+
+                                if (GB_spec_is_positional (accum))
+                                    continue ;
+                                end
+
+                                try
+                                    GB_spec_operator (accum) ;
+                                catch
+                                    continue
                                 end
 
                                 % apply to A, no mask

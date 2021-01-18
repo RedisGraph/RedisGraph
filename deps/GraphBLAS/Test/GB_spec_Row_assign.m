@@ -9,8 +9,8 @@ function C = GB_spec_Row_assign (C, Mask, accum, A, i, J, descriptor)
 %
 % This function does the same thing as GrB_Row_assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 %-------------------------------------------------------------------------------
 % get inputs
@@ -24,7 +24,7 @@ if (length (i) ~= 1)
     error ('i must be a scalar') ;
 end
 
-% Convert inputs to dense matrices with explicit patterns and classes,
+% Convert inputs to dense matrices with explicit patterns and types,
 C = GB_spec_matrix (C) ;
 
 % extract the C(i,:) row and transpose it

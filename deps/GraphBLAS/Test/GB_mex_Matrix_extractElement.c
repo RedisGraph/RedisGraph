@@ -2,8 +2,8 @@
 // GB_mex_Matrix_extractElement: MATLAB interface for x = A(i,j)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -14,13 +14,13 @@
 
 #include "GB_mex.h"
 
-#define USAGE "x = GB_mex_Matrix_extractElement (A, I, J, xclass)"
+#define USAGE "x = GB_mex_Matrix_extractElement (A, I, J, xtype)"
 
 #define FREE_ALL                        \
 {                                       \
-    GB_MATRIX_FREE (&A) ;               \
-    GB_FREE_MEMORY (Xtemp, ni, sizeof (double complex)) ; \
-    GB_mx_put_global (true, 0) ;        \
+    GrB_Matrix_free_(&A) ;              \
+    GB_FREE (Xtemp) ;                   \
+    GB_mx_put_global (true) ;           \
 }
 
 void mexFunction
@@ -34,16 +34,13 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
-    void *Y = NULL ;
-    void *Xtemp = NULL ;
-    mxClassID xclass ;
-    GrB_Type xtype ;
+    GB_void *Y = NULL ;
+    GB_void *Xtemp = NULL ;
     GrB_Index *I = NULL, ni = 0, I_range [3] ;
     GrB_Index *J = NULL, nj = 0, J_range [3] ;
     bool is_list ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 3 || nargin > 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -59,7 +56,6 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
     }
-    mxClassID aclass = GB_mx_Type_to_classID (A->type) ;
 
     // get I
     if (!GB_mx_mxArray_to_indices (&I, pargin [1], &ni, I_range, &is_list))
@@ -89,31 +85,17 @@ void mexFunction
         mexErrMsgTxt ("I and J must be the same size") ;
     }
 
-    // get xclass, default is class (A), and the corresponding xtype
+    // create Y
+    GrB_Type xtype = GB_mx_string_to_Type (PARGIN (3), A->type) ;
+    pargout [0] = GB_mx_create_full (ni, 1, xtype) ;
+    Y = mxGetData (pargout [0]) ;
 
-    if (A->type == Complex)
-    {
-        // input argument xclass is ignored
-        xtype = Complex ;
-        xclass = mxDOUBLE_CLASS ;
-        // create Xtemp
-        GB_CALLOC_MEMORY (Xtemp, ni, sizeof (double complex)) ;
-    }
-    else
-    {
-        xclass = GB_mx_string_to_classID (aclass, PARGIN (3)) ;
-        xtype = GB_mx_classID_to_Type (xclass) ;
-        if (xtype == NULL)
-        {
-            FREE_ALL ;
-            mexErrMsgTxt ("X must be numeric") ;
-        }
-        // create Y
-        pargout [0] = mxCreateNumericMatrix (ni, 1, xclass, mxREAL) ;
-        Y = mxGetData (pargout [0]) ;
-    }
+    size_t s = 2 * sizeof (double) ;
 
-    size_t s = sizeof (double complex) ;
+    GrB_Index nrows, ncols ;
+    GrB_Matrix_nrows (&nrows, A) ;
+    GrB_Matrix_ncols (&ncols, A) ;
+    bool is_scalar = GB_SCALAR_OK (A) ;
 
     // x = A (i,j)
     switch (xtype->code)
@@ -122,8 +104,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                bool *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                bool *X = (bool *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_BOOL_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_BOOL_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -131,8 +120,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                int8_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                int8_t *X = (int8_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_INT8_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_INT8_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -140,8 +136,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                uint8_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                uint8_t *X = (uint8_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_UINT8_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_UINT8_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -149,8 +152,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                int16_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                int16_t *X = (int16_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_INT16_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_INT16_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -158,8 +168,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                uint16_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                uint16_t *X = (uint16_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_UINT16_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_UINT16_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -167,8 +184,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                int32_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                int32_t *X = (int32_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_INT32_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_INT32_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -176,8 +200,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                uint32_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                uint32_t *X = (uint32_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_UINT32_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_UINT32_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -185,8 +216,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                int64_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                int64_t *X = (int64_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_INT64_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_INT64_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -194,8 +232,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                uint64_t *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                uint64_t *X = (uint64_t *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_UINT64_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_UINT64_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -203,8 +248,15 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                float *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                float *X = (float *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_FP32_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_FP32_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break ;
 
@@ -212,18 +264,63 @@ void mexFunction
 
             for (int64_t k = 0 ; k < ni ; k++)
             {
-                double *X = Y ;
-                METHOD (GrB_Matrix_extractElement (&X [k], A, I [k], J [k])) ;
+                double *X = (double *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_FP64_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_FP64_(&X [k], A, I [k], J [k])) ;
+                }
+            }
+            break;
+
+        case GB_FC32_code   :
+
+            for (int64_t k = 0 ; k < ni ; k++)
+            {
+                GxB_FC32_t *X = (void *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_FC32_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GxB_Matrix_extractElement_FC32_(&X [k], A, I [k], J [k])) ;
+                }
+            }
+            break;
+
+        case GB_FC64_code   :
+
+            for (int64_t k = 0 ; k < ni ; k++)
+            {
+                GxB_FC64_t *X = (void *) Y ;
+                if (is_scalar)
+                {
+                    METHOD (GxB_Scalar_extractElement_FC64_(&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GxB_Matrix_extractElement_FC64_(&X [k], A, I [k], J [k])) ;
+                }
             }
             break;
 
         case GB_UDT_code   :
+
+            // user-defined Complex
+            for (int64_t k = 0 ; k < ni ; k++)
             {
-                // user-defined complex type
-                for (int64_t k = 0 ; k < ni ; k++)
+                GxB_FC64_t *X = (void *) Y ;
+                if (is_scalar)
                 {
-                    METHOD (GrB_Matrix_extractElement (Xtemp +(k*s),
-                        A, I [k], J [k])) ;
+                    METHOD (GxB_Scalar_extractElement_UDT (&X [k], A)) ;
+                }
+                else
+                {
+                    METHOD (GrB_Matrix_extractElement_UDT (&X [k], A, I [k], J [k])) ;
                 }
             }
             break;
@@ -231,14 +328,7 @@ void mexFunction
         default              :
         
             FREE_ALL ;
-            mexErrMsgTxt ("unsupported class") ;
-    }
-
-    if (A->type == Complex)
-    {
-        // create the MATLAB complex X
-        pargout [0] = mxCreateNumericMatrix (ni, 1, mxDOUBLE_CLASS, mxCOMPLEX) ;
-        GB_mx_complex_split (ni, Xtemp, pargout [0]) ;
+            mexErrMsgTxt ("unsupported type") ;
     }
 
     FREE_ALL ;

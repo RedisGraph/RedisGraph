@@ -1,21 +1,29 @@
 function gbtest47
 %GBTEST47 test GrB.entries, GrB.nonz, numel
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
 A = 100 * rand (4) ;
+X = rand (4) ;
 types = gbtest_types ;
 for k = 1:length (types)
+    fprintf ('.') ;
     type = types {k} ;
-    B = cast (A, type) ;
+    if (isequal (type, 'single complex'))
+        B = complex (single (A), single (X)) ;
+    elseif (isequal (type, 'double complex'))
+        B = complex (A, X) ;
+    else
+        B = gbtest_cast (A, type) ;
+    end
     x1 = GrB.entries (B, 'list') ;
     x2 = unique (nonzeros (B)) ;
     assert (isequal (x1, x2)) ;
-    assert (isequal (type, class (x1))) ;
-    assert (isequal (type, class (x2))) ;
+    assert (isequal (type, GrB.type (x1))) ;
+    assert (isequal (type, GrB.type (x2))) ;
 end
 
 A = magic (4) ;
@@ -148,6 +156,12 @@ for trial = 1:40
     d1 = GrB.nonz (B, 'col', 'list') ;
     d2 = GrB.nonz (G, 'col', 'list') ;
     d3 = find (sum (spones (B), 1))' ;
+    assert (isequal (d1, d2)) ;
+    assert (isequal (d1, d3)) ;
+
+    d1 = GrB.nonz (B, 'col', 'degree') ;
+    d2 = GrB.nonz (G, 'col', 'degree') ;
+    d3 = int64 (full (sum (spones (B), 1)))' ;
     assert (isequal (d1, d2)) ;
     assert (isequal (d1, d3)) ;
 

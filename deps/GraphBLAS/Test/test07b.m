@@ -1,8 +1,8 @@
 function test07b
 %TEST07B test GrB_assign with a single pending tuple
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % adds a single pending tuple
 
@@ -23,7 +23,7 @@ C2 (I,J) = A ;
 I0 = uint64 (I-1) ;
 J0 = uint64 (J-1) ;
 
-C3 = GB_mex_assign (C, [ ], '', A, I0, J0, [ ]) ;
+C3 = GB_mex_assign (C, [ ], '', A, I0, J0, [ ]) 
 % C3.matrix
 % full (C3.matrix)
 assert (isequal (C3.matrix, C2))

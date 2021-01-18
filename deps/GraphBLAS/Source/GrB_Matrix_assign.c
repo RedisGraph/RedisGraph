@@ -1,13 +1,14 @@
 //------------------------------------------------------------------------------
-// GrB_Matrix_assign:    C<M>(Rows,Cols) = accum (C(Rows,Cols),A) or A'
+// GrB_Matrix_assign: C<M>(Rows,Cols) = accum (C(Rows,Cols),A) or A'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB_assign.h"
+#include "GB_bitmap_assign.h"
 
 GrB_Info GrB_Matrix_assign          // C<M>(Rows,Cols) += A or A'
 (
@@ -27,7 +28,7 @@ GrB_Info GrB_Matrix_assign          // C<M>(Rows,Cols) += A or A'
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GrB_Matrix_assign"
+    GB_WHERE (C, "GrB_Matrix_assign"
         " (C, M, accum, A, Rows, nRows, Cols, nCols, desc)") ;
     GB_BURBLE_START ("GrB_assign") ;
 
@@ -37,7 +38,7 @@ GrB_Info GrB_Matrix_assign          // C<M>(Rows,Cols) += A or A'
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
-        A_transpose, xx1, xx2) ;
+        A_transpose, xx1, xx2, xx7) ;
 
     //--------------------------------------------------------------------------
     // C<M>(Rows,Cols) = accum (C(Rows,Cols), A) and variations
@@ -52,7 +53,7 @@ GrB_Info GrB_Matrix_assign          // C<M>(Rows,Cols) += A or A'
         Rows, nRows,                // row indices
         Cols, nCols,                // column indices
         false, NULL, GB_ignore_code,// no scalar expansion
-        false, false,               // not GrB_Col_assign nor GrB_row_assign
+        GB_ASSIGN,
         Context) ;
 
     GB_BURBLE_END ;

@@ -2,10 +2,11 @@ function s = ismatrix (G)    %#ok<INUSD>
 %ISMATRIX always true for any GraphBLAS matrix.
 % ismatrix (G) is always true for any GraphBLAS matrix G.
 %
-% See also issparse, isvector, isscalar, sparse, full, isa, GrB.
+% See also GrB/issparse, GrB/isvector, GrB/isscalar, GrB/full, GrB/isa,
+% GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 s = true ;
 

@@ -1,20 +1,12 @@
-function Cout = subassign (varargin)
+function C = subassign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %GRB.SUBASSIGN: assign a submatrix into a matrix.
 %
-% GrB.subassign is an interface to GxB_Matrix_subassign and
-% GxB_Matrix_subassign_[TYPE], computing the GraphBLAS expression:
-%
-%   C(I,J)<#M,replace> = accum (C(I,J), A) or accum(C(I,J), A')
-%
-% where A can be a matrix or a scalar.
-%
-% Usage:
-%
-%   Cout = GrB.subassign (Cin, M, accum, A, I, J, desc)
+%   C = GrB.subassign (Cin, M, accum, A, I, J, desc)
 %
 %   Cin and A are required parameters.  All others are optional.
 %   The arguments are parsed according to their type.  Arguments
-%   with different types can appear in any order.
+%   with different types can appear in any order:
+%
 %       Cin, M, A:  2 or 3 GraphBLAS or MATLAB sparse/full matrices.
 %                   The first three matrix inputs are Cin, M, and A.
 %                   If 2 matrix inputs are present, they are Cin and A.
@@ -23,7 +15,7 @@ function Cout = subassign (varargin)
 %                   with one cell input, I is present and J = { }.
 %                   with two cell inputs, I is the first cell input and J
 %                   is the second cell input.
-%       desc:       an optional struct.
+%       desc:       an optional struct (must appear as the last argument)
 %
 % GrB.subassign is identical to GrB.assign, with two key differences:
 %
@@ -50,15 +42,51 @@ function Cout = subassign (varargin)
 %
 % Refer to GrB.assign for a description of the other input/outputs.
 %
-% See also GrB.assign, subsasgn.
+% See also GrB.assign, GrB/subsasgn.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-[args, is_gb] = gb_get_args (varargin {:}) ;
-if (is_gb)
-    Cout = GrB (gbsubassign (args {:})) ;
-else
-    Cout = gbsubassign (args {:}) ;
+if (isobject (arg1))
+    arg1 = arg1.opaque ;
+end
+
+if (isobject (arg2))
+    arg2 = arg2.opaque ;
+end
+
+if (nargin > 2 && isobject (arg3))
+    arg3 = arg3.opaque ;
+end
+
+if (nargin > 3 && isobject (arg4))
+    arg4 = arg4.opaque ;
+end
+
+if (nargin > 4 && isobject (arg5))
+    arg5 = arg5.opaque ;
+end
+
+if (nargin > 5 && isobject (arg6))
+    arg6 = arg6.opaque ;
+end
+
+switch (nargin)
+    case 2
+        [C, k] = gbsubassign (arg1, arg2) ;
+    case 3
+        [C, k] = gbsubassign (arg1, arg2, arg3) ;
+    case 4
+        [C, k] = gbsubassign (arg1, arg2, arg3, arg4) ;
+    case 5
+        [C, k] = gbsubassign (arg1, arg2, arg3, arg4, arg5) ;
+    case 6
+        [C, k] = gbsubassign (arg1, arg2, arg3, arg4, arg5, arg6) ;
+    case 7
+        [C, k] = gbsubassign (arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
+end
+
+if (k == 0)
+    C = GrB (C) ;
 end
 

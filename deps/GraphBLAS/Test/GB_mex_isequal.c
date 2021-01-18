@@ -2,8 +2,8 @@
 // GB_mex_isequal: returns true if A and B are equal
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -13,9 +13,9 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GB_MATRIX_FREE (&A) ;               \
-    GB_MATRIX_FREE (&B) ;               \
-    GB_mx_put_global (true, 0) ;        \
+    GrB_Matrix_free_(&A) ;               \
+    GrB_Matrix_free_(&B) ;               \
+    GB_mx_put_global (true) ;           \
 }
 
 
@@ -31,8 +31,6 @@ void mexFunction
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     GrB_Matrix B = NULL ;
-
-    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin != 2)
@@ -52,15 +50,10 @@ void mexFunction
         mexErrMsgTxt ("failed") ;
     }
 
-    GrB_BinaryOp op = NULL ;
-    if (mxIsComplex (pargin [0]))
-    {
-        op = Complex_eq ;
-    }
-
-    // C = all (A == B) using the op
+    // C = all (A == B) ; if type is Complex and Complex != GxB_FC64,
+    // use Complex_eq
     bool result ;
-    METHOD (isequal (&result, A, B, op)) ;
+    METHOD (isequal (&result, A, B, Complex_eq)) ;
 
     // return C to MATLAB as a plain sparse matrix
     pargout [0] = mxCreateDoubleScalar ((double) result) ;

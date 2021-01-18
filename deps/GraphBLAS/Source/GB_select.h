@@ -2,14 +2,15 @@
 // GB_select.h: definitions for GrB_select and related functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #ifndef GB_SELECT_H
 #define GB_SELECT_H
 #include "GB.h"
+#include "GB_is_nonzero.h"
 
 GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 (
@@ -38,24 +39,23 @@ GrB_Info GB_selector
     GB_Context Context
 ) ;
 
-//------------------------------------------------------------------------------
-// GB_is_nonzero
-//------------------------------------------------------------------------------
-
-static inline bool GB_is_nonzero (const GB_void *value, int64_t size)
-{ 
-    for (int64_t i = 0 ; i < size ; i++)
-    {
-        if (value [i] != 0) return (true) ;
-    }
-    return (false) ;
-}
+GrB_Info GB_bitmap_selector
+(
+    GrB_Matrix *Chandle,        // output matrix, NULL to modify A in-place
+    GB_Select_Opcode opcode,    // selector opcode
+    const GxB_select_function user_select,      // user select function
+    const bool flipij,          // if true, flip i and j for user operator
+    GrB_Matrix A,               // input matrix
+    const int64_t ithunk,       // (int64_t) Thunk, if Thunk is NULL
+    const GB_void *GB_RESTRICT xthunk,
+    GB_Context Context
+) ;
 
 //------------------------------------------------------------------------------
 // compiler diagnostics
 //------------------------------------------------------------------------------
 
-// Tx unused for some uses of the Generated/GB_sel_* functions
+// Some parameters are unused for some uses of the Generated/GB_sel_* functions
 #include "GB_unused.h"
 
 #endif

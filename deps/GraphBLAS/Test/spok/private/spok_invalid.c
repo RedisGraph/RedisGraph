@@ -2,6 +2,9 @@
 
 /* spok_invalid: returns an invalid sparse matrix to test SPOK. */
 
+/* Copyright 2008-2011, Timothy A. Davis, http://suitesparse.com */
+/* SPDX-License-Identifier: Apache-2.0 */
+
 void mexFunction
 (
     int nargout,

@@ -1,0 +1,51 @@
+//------------------------------------------------------------------------------
+// for_GraphBLAS.h.in: definitions for the GraphBLAS package for MKL
+//------------------------------------------------------------------------------
+
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+//------------------------------------------------------------------------------
+
+// Add this contents file to GraphBLAS/Config/GraohBLAS.h.in
+
+#define GxB_MKL 31
+
+// Add this to the GrB_Desc_Field enum:
+// typedef enum
+// { 
+//      ...
+
+    GxB_DESCRIPTOR_MKL = GxB_MKL,
+
+//      ...
+// }
+// GrB_Desc_Field ;
+
+// Add this to the GxB_Option_Field enum:
+// typedef enum            // for global options or matrix options
+// {
+//      ...
+
+    GxB_GLOBAL_MKL = GxB_MKL,
+
+//      ...
+// } GxB_Option_Field ;
+
+
+//==============================================================================
+// MKL optimization (DRAFT: in progress, do not use)
+//==============================================================================
+
+GrB_Info GxB_mxv_optimize           // analyze C for subsequent use in mxv
+(
+    GrB_Matrix C,                   // input/output matrix
+    int64_t ncalls,                 // estimate # of future calls to GrB_mxv
+    const GrB_Descriptor desc       // currently unused
+) ;
+
+GrB_Info GxB_mxv_optimize_free      // analyze A for subsequent use in mxv
+(
+    GrB_Matrix C                    // input/output matrix
+) ;
+

@@ -1,8 +1,8 @@
 function gbtest22
 %GBTEST22 test reduce to scalar
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 desc.kind = 'sparse' ;
@@ -13,10 +13,21 @@ for k = 1:length (types)
     type = types {k} ;
     if (isequal (type, 'logical'))
         c = false ;
-        c = GrB.reduce (c, '|', '|', cast (A, 'logical')) ; %#ok<*NASGU>
+        c = GrB.reduce (c, '|', '|', gbtest_cast (A, 'logical')) ; %#ok<*NASGU>
     else
-        c = ones (1, 1, type) ;
-        c = GrB.reduce (c, '+', '+', cast (A, type)) ;
+        % c = ones (1, 1, type) ;
+        is_double_complex = isequal (type, 'double complex') ;
+        is_single_complex = isequal (type, 'single complex') ;
+
+        if (is_double_complex)
+            c = complex (ones (1, 1)) ;
+        elseif (is_single_complex)
+            c = complex (ones (1, 1, 'single')) ;
+        else
+            c = ones (1, 1, type) ;
+        end
+
+        c = GrB.reduce (c, '+', '+', gbtest_cast (A, type)) ;
         assert (c == sum (sum (A)) + 1) ;
     end
 end

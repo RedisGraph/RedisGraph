@@ -1,14 +1,19 @@
-% Set locations of files.
+% Run the DNN benchmarks in MATLAB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
+% reset to the default number of threads
+clear all
+maxNumCompThreads ('automatic') ;
+GrB.clear ;
 
 rootdir = '/raid/hyper/GraphChallenge/dnn_data/MATLAB' ;
 ncores = maxNumCompThreads ;
 fprintf ('# of cores :  %d\n', ncores) ;
 GrB.format ('by row') ;
 
-for id = 1 % 1:12
+for id = 1:12
     % load the problem
     tic ;
     fname = sprintf ('%s/HPEC19_dnn_%02d.mat', rootdir, id) ;
@@ -69,3 +74,5 @@ for id = 1 % 1:12
     clear W Y Y0
 end
 
+% restore the default # of threads
+GrB.clear ;

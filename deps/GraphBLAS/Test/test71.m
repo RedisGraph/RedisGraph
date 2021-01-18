@@ -19,8 +19,8 @@ function test71(f)
 %
 % Edit ll_memory_limit and nz_limit to match the memory on your machine.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;

@@ -1,13 +1,17 @@
 function grbcover (what)
-%GBCOVER compile the ../Test mexFunctions for statement coverage testing
+%GBCOVER compile ../Test/* for statement coverage testing
 %
 % This function compiles just the mexFunctions in ../Test.
 % It does not compile the GraphBLAS library itself.
 %
 % See also: grbcover_edit, grbmake
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
+if (ispc)
+    error ('The tests in Tcov are not ported to Windows') ;
+end
 
 % compile the mexFunctions
 
@@ -52,7 +56,7 @@ inc = '-Itmp_include -I../Test -I../Test/Template' ;
 addpath ../Test
 addpath ../Test/spok
 
-flags = '-g -DGBCOVER -largeArrayDims' ;
+flags = '-g -DGBCOVER -R2018a' ;
 
 fprintf ('\nCompiling GraphBLAS tests\nplease wait [') ;
 

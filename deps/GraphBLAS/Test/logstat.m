@@ -1,8 +1,8 @@
 function logstat (testscript, threads)
 %LOGSTAT run a GraphBLAS test and log the results to log.txt 
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [debug, compact, malloc, covered] = GB_mex_debug ;
 
@@ -11,6 +11,13 @@ clast = grb_get_coverage ;
 if (nargin < 2)
     % by default, use 4 threads and a tiny chunk size of 1
     threads {1} = [4 1] ;
+else
+    % only the # of threads is specified; also set the chunk size to 1
+    if (isscalar (threads) && isnumeric (threads))
+        threads = max (threads, 1) ;
+        t {1} = [threads 1] ;
+        threads = t ;
+    end
 end
 
 ntrials = length (threads) ;
@@ -66,6 +73,10 @@ for trial = 1:ntrials
     f = fopen ('log.txt', 'a') ;
 
     s = datestr (now) ;
+
+    % trim the year from the date
+    s = s ([1:6 12:end]) ;
+
     fprintf (   '%s %-10s %7.1f sec ', s, testscript, t) ;
     fprintf (f, '%s %-10s %7.1f sec ', s, testscript, t) ;
 
@@ -75,19 +86,18 @@ for trial = 1:ntrials
         if (isempty (GraphBLAS_debug))
             GraphBLAS_debug = false ;
         end
-        % fprintf ('malloc debug: %d\n', GraphBLAS_debug) ;
         if (~isempty (GraphBLAS_grbcov))
             c = sum (GraphBLAS_grbcov > 0) ;
             n = length (GraphBLAS_grbcov) ;
             if (c == n)
-                fprintf (   'coverage: %5d :   all %5d (full 100%% rate: %8.2f/sec)', ...
+                fprintf (   '%5d:   all %5d full 100%% %8.2f/sec', ...
                     c - clast, n, (c-clast) / t) ;
-                fprintf (f, 'coverage: %5d :   all %5d (full 100%% rate: %8.2f/sec)', ...
+                fprintf (f, '%5d:   all %5d full 100%% %8.2f/sec', ...
                     c - clast, n, (c-clast) / t) ;
             else
-                fprintf (   'coverage: %5d : %5d of %5d (%5.1f%% rate: %8.2f/sec)', ...
+                fprintf (   '%5d: %5d of %5d %5.1f%% %8.2f/sec', ...
                     c - clast, c, n, 100 * (c/n), (c-clast) / t) ;
-                fprintf (f, 'coverage: %5d : %5d of %5d (%5.1f%% rate: %8.2f/sec)', ...
+                fprintf (f, '%5d: %5d of %5d %5.1f%% %8.2f/sec', ...
                     c - clast, c, n, 100 * (c/n), (c-clast) / t) ;
             end
             if (debug)

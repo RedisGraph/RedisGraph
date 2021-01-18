@@ -1,18 +1,23 @@
 function L = laplacian (A, type, check)
-%GRB.LAPLACIAN Graph Laplacian matrix
-% L = laplacian (A) is the graph Laplacian of the matrix A.  spones(A) must be
-% symmetric with no diagonal entries. The diagonal of L is the degree of the
-% nodes.  That is, L(j,j) = sum (spones (A (:,j))).  For off-diagonal entries,
-% L(i,j) = L(j,i) = -1 if the edge (i,j) exists in A.
+%GRB.LAPLACIAN Laplacian matrix
+% L = laplacian (A) is the graph Laplacian of the matrix A.  spones(A)
+% must be symmetric.  The diagonal of A is ignored. The diagonal of L is
+% the degree of the nodes.  That is, L(j,j) = sum (spones (A (:,j))),
+% assuming A has no diagonal entries..  For off-diagonal entries, L(i,j) =
+% L(j,i) = -1 if the edge (i,j) exists in A.
 %
-% The type of L defaults to double.  With a second argument, the type of L can
-% be specified, as L = laplacian (A,type); type may be 'double', 'single',
-% 'int8', 'int16', 'int32', or 'int64'.  Be aware that integer overflow may
-% occur with the smaller integer types.
+% The type of L defaults to double.  With a second argument, the type of L
+% can be specified, as L = laplacian (A,type); type may be 'double',
+% 'single', 'int8', 'int16', 'int32', 'int64', 'single complex', or
+% 'double complex'.  Be aware that integer overflow may occur with the
+% smaller integer types, if the degree of any nodes exceeds the largest
+% integer value.
 %
-% To check the input matrix, use GrB.laplacian (A, 'double', 'check') ;
+% spones(A) must be symmetric on input, but this condition is not checked
+% by default.  If it is not symmetric, the results are undefined.  To
+% check this condition, use GrB.laplacian (A, 'double', 'check') ;
 %
-% L is returned as symmetric matrix.
+% L is returned as symmetric GraphBLAS matrix.
 %
 % Example:
 %
@@ -21,40 +26,45 @@ function L = laplacian (A, type, check)
 %
 % See also graph/laplacian.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
+if (isobject (A))
+    A = A.opaque ;
+end
+
+[m, n] = gbsize (A) ;
+if (m ~= n)
+    error ('A must be square and symmetric') ;
+end
+
+% get the type
 if (nargin < 2)
     type = 'double' ;
-end
-if (nargin < 3)
-    check = false ;
-else
-    check = isequal (check, 'check') ;
-end
-
-if (~GrB.issigned (type))
+elseif (~gb_issigned (type))
     % type must be signed
-    gb_error ('invalid type') ;
+    error ('type cannot be logical or unsigned integer') ;
 end
 
-A = GrB.apply (['1.' type], A) ;
+% S = spones (A)
+S = gbapply (['1.' type], A) ;
 
-if (check)
-    if (~issymmetric (A))
-        gb_error ('A must be symmetric') ;
-    end
-    if (GrB.entries (diag (A)) > 0)
-        gb_error ('A must have no diagonal entries') ;
+% check the input matrix, if requested
+if (nargin > 2 && isequal (check, 'check'))
+    % make sure spones (S) is symmetric
+    if (~gb_issymmetric (S, 'nonskew', false))
+        error ('spones(A) must be symmetric') ;
     end
 end
 
-if (GrB.isbycol (A))
-    D = GrB.vreduce ('+', A, struct ('in0', 'transpose')) ;
-else
-    D = GrB.vreduce ('+', A) ;
+% D = diagonal matrix with d(i,i) = row/column degree of node i
+D = gb_diag (gbdegree (S, true), 0) ;
+if (~isequal (type, gbtype (D)))
+    % gbdegree returns its result as int64; typecast to desired type
+    D = gbnew (D, type) ;
 end
 
 % construct the Laplacian
-L = - GrB.offdiag (A) + diag (D) ;
+% L = D-S
+L = GrB (gbeadd (D, '+', gbapply ('-', S))) ;
 

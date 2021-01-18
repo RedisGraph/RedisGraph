@@ -1,33 +1,44 @@
 function [complex_binaryops complex_unaryops ] = GB_user_opsall
 %GB_USER_OPSALL return list of complex operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
-
-[mult_ops, ~, ~, ~, ~, ~] = GB_spec_opsall ;
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % complex binary operators
-complex_binaryops = mult_ops ;
-complex_binaryops {end+1} = 'complex' ;
+complex_binaryops = {
+% 11 operators where x,y,z are all the same class
+'first',     % z = x
+'second',    % z = y
+'pair',      % z = 1
+'plus',      % z = x + y
+'minus',     % z = x - y
+'rminus',    % z = y - x
+'times',     % z = x * y
+'div',       % z = x / y
+'rdiv',      % z = y / x
+% comparison operators where x,y,z are all the same class
+'iseq',      % z = (x == y)
+'isne',      % z = (x != y)
+%----------------------------
+% comparison operators where x,y are all the same class, z is logical
+'eq',        % z = (x == y)
+'ne',        % z = (x != y)
+%----------------------------
+'complex'    % z = complex (x,y)
+} ;
 
 complex_unaryops = {
-% 7 where x,z are complex
+% 6 where x,z are complex
 'one',         % z = 1
 'identity',    % z = x
 'ainv',        % z = -x
-'abs',         % z = complex(abs(x),0)
+'abs',         % z = abs(x) (z is real)
 'minv'         % z = 1/x
-'not'          % z = ~x
 'conj'         % z = conj(x)
 %----------------------------
 % 4 where x is complex, z is double
 'real'         % z = real(x)
 'imag'         % z = imag(x)
-'cabs'         % z = cabs(x)
-'angle'        % z = angle(x)
-%----------------------------
-% 2 where x is double, z is complex
-'complex_real' % z = complex(x,0)
-'complex_imag' % z = complex(0,x)
- } ;
+'carg'         % z = angle(x)
+} ;
 

@@ -1,13 +1,20 @@
 function s = isdiag (G)
-%ISDIAG True if the GraphBLAS matrix G is a diagonal matrix.
+%ISDIAG true if G is a diagonal matrix.
 % isdiag (G) is true if G is a diagonal matrix, and false otherwise.
 %
 % See also GrB/isbanded.
 
-% FUTURE: this will be much faster when 'bandwidth' is a mexFunction.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% FUTURE: this will be faster when 'gb_bandwidth' is a mexFunction,
+% but this version is fairly fast anyway.
 
-s = isbanded (G, 0, 0) ;
+G = G.opaque ;
+
+% using gb_bandwidth instead:
+% [lo, hi] = gb_bandwidth (G) ;
+% s = (lo == 0) & (hi == 0) ;
+
+s = (gbnvals (gbselect ('diag', G, 0)) == gbnvals (G)) ;
 

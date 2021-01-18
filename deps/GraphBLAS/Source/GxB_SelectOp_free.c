@@ -2,8 +2,8 @@
 // GxB_SelectOp_free: free a select operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -24,8 +24,7 @@ GrB_Info GxB_SelectOp_free          // free a user-created select operator
             if (op->magic == GB_MAGIC)
             { 
                 op->magic = GB_FREED ;  // to help detect dangling pointers
-                GB_FREE_MEMORY (*selectop, 1,
-                    sizeof (struct GB_SelectOp_opaque)) ;
+                GB_FREE (*selectop) ;
             }
             (*selectop) = NULL ;
         }

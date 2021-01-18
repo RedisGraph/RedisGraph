@@ -1,54 +1,50 @@
 function C = mpower (A, B)
-%A^B Matrix power.
+%A^B matrix power.
 % C = A^B computes the matrix power of A raised to the B. A must be a
 % square matrix.  B must an integer >= 0.
 %
-% The inputs may be either GraphBLAS and/or MATLAB matrices/scalars, in
-% any combination.  C is returned as a GraphBLAS matrix.
-%
 % See also GrB/power.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-[m, n] = size (A) ;
-
-if (m ~= n)
-    gb_error ('For C=A^B, A must be square') ;
+if (isobject (A))
+    A = A.opaque ;
 end
 
-if (~isscalar (B))
-    gb_error ('For C=A^B, B must be a non-negative integer scalar') ;
+if (isobject (B))
+    B = B.opaque ;
 end
 
+[am, an, atype] = gbsize (A) ;
+[bm, bn] = gbsize (B) ;
+a_is_scalar = (am == 1) && (an == 1) ;
+b_is_scalar = (bm == 1) && (bn == 1) ;
 
-b = gb_get_scalar (B) ;
-if (isreal (b) && isfinite (b) && round (b) == b && b >= 0)
+if (a_is_scalar && b_is_scalar)
+    C = GrB (gb_power (A, B)) ;
+else
+    if (am ~= an)
+        error ('For C=A^B, A must be square') ;
+    end
+    if (~b_is_scalar)
+        error ('For C=A^B, B must be a non-negative integer scalar') ;
+    end
+    b = gb_scalar (B) ;
+    if (~(isreal (b) && isfinite (b) && round (b) == b && b >= 0))
+        error ('For C=A^B, B must be a non-negative integer scalar') ;
+    end
     if (b == 0)
-        % C is identity, of the same type as A
-        % FUTURE: ones (...) needs to be 'double' if A is complex.
-        C = GrB.build (1:n, 1:n, ones (1, n, GrB.type (A)), n, n) ;
+        % C = A^0 = I
+        if (isequal (atype, 'single complex'))
+            atype = 'single' ;
+        elseif (isequal (atype, 'double complex'))
+            atype = 'double' ;
+        end
+        C = GrB (gb_speye ('mpower', an, atype)) ;
     else
         % C = A^b where b > 0 is an integer
-        C = compute_mpower (A, b) ;
+        C = GrB (gb_mpower (A, b)) ;
     end
-else
-    gb_error ('For C=A^B, B must be a non-negative integer scalar') ;
-end
-
-end
-
-function C = compute_mpower (A, b)
-% C = A^b where b > 0 is an integer
-if (b == 1)
-    C = A ;
-else
-    T = compute_mpower (A, floor (b/2)) ;
-    C = T*T ;
-    clear T ;
-    if (mod (b, 2) == 1)
-        C = C*A ;
-    end
-end
 end
 

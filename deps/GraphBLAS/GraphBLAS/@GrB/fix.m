@@ -1,20 +1,17 @@
 function C = fix (G)
-%FIX Round towards entries in a GraphBLAS matrix to zero.
-% C = fix (G) rounds the entries in the GraphBLAS matrix G to the
-% nearest integers towards zero.
+%FIX Round towards zero.
+% C = fix (G) rounds the entries in the matrix G to the nearest integers
+% towards zero.
 %
-% See also ceil, floor, round.
+% See also GrB/ceil, GrB/floor, GrB/round.
 
-% FUTURE: this will be much faster as a mexFunction.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+Q = G.opaque ;
 
-if (isfloat (G) && GrB.entries (G) > 0)
-    [m, n] = size (G) ;
-    desc.base = 'zero-based' ;
-    [i, j, x] = GrB.extracttuples (G, desc) ;
-    C = GrB.build (i, j, fix (x), m, n, desc) ;
+if (gb_isfloat (gbtype (Q)) && gbnvals (Q) > 0)
+    C = GrB (gbapply ('trunc', Q)) ;
 else
     C = G ;
 end

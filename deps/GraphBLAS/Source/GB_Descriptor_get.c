@@ -2,8 +2,8 @@
 // GB_Descriptor_get: get the status of a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -62,21 +62,21 @@
 //  desc->axb                   can be:
 
 //      GxB_DEFAULT = 0         automatic selection
-
 //      GxB_AxB_GUSTAVSON       gather-scatter saxpy method
-
-//      GxB_AxB_HEAP            heap-based saxpy method
-
 //      GxB_AxB_HASH            hash-based saxpy method
-
+//      GxB_AxB_SAXPY           saxpy: either Gustavson or hash
 //      GxB_AxB_DOT             dot product
 
-//  desc->nthreads_max          max # number of threads to use (auto if <= 0)
+//  desc->do_sort               true or false (default is false) 
 
-//      This is copied from the GrB_Descriptor into the Context.
+//  desc->nthreads_max          max # number of threads to use (auto if <= 0)
+//  desc->chunk                 chunk size for threadds
+
+//      These are copied from the GrB_Descriptor into the Context.
 
 #include "GB.h"
 
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_Descriptor_get      // get the contents of a descriptor
 (
     const GrB_Descriptor desc,  // descriptor to query, may be NULL
@@ -86,6 +86,7 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     bool *In0_transpose,        // if true transpose first input
     bool *In1_transpose,        // if true transpose second input
     GrB_Desc_Value *AxB_method, // method for C=A*B
+    int *do_sort,               // if nonzero, sort in GrB_mxm
     GB_Context Context
 )
 {
@@ -110,6 +111,7 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     GrB_Desc_Value AxB_desc  = GxB_DEFAULT ;
     int nthreads_desc        = GxB_DEFAULT ;
     double chunk_desc        = GxB_DEFAULT ;
+    int do_sort_desc         = GxB_DEFAULT ;
 
     // non-defaults descriptor values
     if (desc != NULL)
@@ -119,7 +121,8 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
         Mask_desc = desc->mask ;  // DEFAULT, COMP, STRUCTURE, or COMP+STRUCTURE
         In0_desc  = desc->in0 ;   // DEFAULT or TRAN
         In1_desc  = desc->in1 ;   // DEFAULT or TRAN
-        AxB_desc  = desc->axb ;   // DEFAULT, GUSTAVSON, HEAP, HASH, or DOT
+        AxB_desc  = desc->axb ;   // DEFAULT, GUSTAVSON, HASH, or DOT
+        do_sort_desc = desc->do_sort ;  // DEFAULT, or true (nonzero)
 
         // default is zero.  if descriptor->nthreads_max <= 0, GraphBLAS selects
         // automatically: any value between 1 and the global nthreads_max.  If
@@ -136,10 +139,10 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
         !(In0_desc  == GxB_DEFAULT || In0_desc  == GrB_TRAN) ||
         !(In1_desc  == GxB_DEFAULT || In1_desc  == GrB_TRAN) ||
         !(AxB_desc  == GxB_DEFAULT || AxB_desc  == GxB_AxB_GUSTAVSON ||
-          AxB_desc  == GxB_AxB_DOT || AxB_desc  == GxB_AxB_HEAP ||
+          AxB_desc  == GxB_AxB_DOT ||
           AxB_desc  == GxB_AxB_HASH || AxB_desc  == GxB_AxB_SAXPY))
     { 
-        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG, "Descriptor invalid"))) ;
+        return (GrB_INVALID_OBJECT) ;
     }
 
     if (C_replace != NULL)
@@ -168,11 +171,17 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     { 
         *AxB_method = AxB_desc ;
     }
+    if (do_sort != NULL)
+    { 
+        *do_sort = do_sort_desc ;
+    }
 
     // The number of threads is copied from the descriptor into the Context, so
     // it is available to any internal function that needs it.
     Context->nthreads_max = nthreads_desc ;
     Context->chunk = chunk_desc ;
+
+    // #include "GB_Descriptor_get_mkl_template.c"
 
     return (GrB_SUCCESS) ;
 }

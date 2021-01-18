@@ -1,10 +1,8 @@
 function test133
 %TEST133 test mask operations (GB_masker)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
-
-% C = GB_mex_transpose (C, M, accum, A, desc, test)
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest133: test the mask operation\n') ;
 
@@ -20,7 +18,7 @@ C2 = GB_spec_transpose (S, M, [ ], Z, dtn) ;
 GB_spec_compare (C1, C2) ;
 
 d2.inp0 = 'tran' ;
-d2.mask = 'scmp' ;
+d2.mask = 'complement' ;
 
 C1 = GB_mex_transpose  (S, Z, [ ], M, d2) ;
 C2 = GB_spec_transpose (S, Z, [ ], M, d2) ;
