@@ -1697,7 +1697,6 @@ Feature: MatchAcceptance2
       | [(:A), [:T], (:B)] |
     And no side effects
 
-@skip
   Scenario: Projecting a map of nodes and relationships
     Given an empty graph
     And having executed:

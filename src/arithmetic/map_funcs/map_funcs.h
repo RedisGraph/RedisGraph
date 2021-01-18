@@ -8,5 +8,5 @@
 
 #include "../../value.h"
 
-void Register_ListFuncs();
+void Register_MapFuncs();
 

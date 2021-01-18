@@ -74,12 +74,15 @@ typedef enum {
 #define DISJOINT INT_MAX
 #define COMPARED_NULL INT_MIN
 
+struct Pair;
+
 typedef struct SIValue {
 	union {
 		int64_t longval;
 		double doubleval;
 		char *stringval;
 		void *ptrval;
+		struct Pair *map;
 		struct SIValue *array;
 	};
 	SIType type;
@@ -87,16 +90,18 @@ typedef struct SIValue {
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
-SIValue SI_LongVal(int64_t i);
-SIValue SI_DoubleVal(double d);
-SIValue SI_NullVal(void);
-SIValue SI_BoolVal(int b);
-SIValue SI_PtrVal(void *v);
+SIValue SI_EmptyMap();
+SIValue SI_EmptyArray();
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_Path(void *p);
+SIValue SI_NullVal(void);
+SIValue SI_BoolVal(int b);
+SIValue SI_PtrVal(void *v);
+SIValue SI_LongVal(int64_t i);
+SIValue SI_DoubleVal(double d);
+SIValue SI_Map(u_int64_t initialCapacity);
 SIValue SI_Array(u_int64_t initialCapacity);
-SIValue SI_EmptyArray();
 
 // Duplicate and ultimately free the input string.
 SIValue SI_DuplicateStringVal(const char *s);

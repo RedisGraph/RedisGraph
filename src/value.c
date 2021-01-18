@@ -15,6 +15,7 @@
 #include <ctype.h>
 #include <sys/param.h>
 #include "util/rmalloc.h"
+#include "datatypes/map.h"
 #include "datatypes/array.h"
 #include "datatypes/path/sipath.h"
 
@@ -75,12 +76,20 @@ SIValue SI_Path(void *p) {
 	return SIPath_New(path);
 }
 
+SIValue SI_EmptyArray() {
+	return SIArray_New(0);
+}
+
 SIValue SI_Array(u_int64_t initialCapacity) {
 	return SIArray_New(initialCapacity);
 }
 
-SIValue SI_EmptyArray() {
-	return SIArray_New(0);
+SIValue SI_EmptyMap() {
+	return Map_New(0);
+}
+
+SIValue SI_Map(u_int64_t initialCapacity) {
+	return Map_New(initialCapacity);
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
@@ -128,6 +137,10 @@ SIValue SI_CloneValue(const SIValue v) {
 
 	if(v.type == T_PATH) {
 		return SIPath_Clone(v);
+	}
+
+	if(v.type == T_MAP) {
+		return Map_Clone(v);
 	}
 
 	// Copy the memory region for Node and Edge values. This does not modify the
@@ -268,6 +281,9 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		break;
 	case T_ARRAY:
 		SIArray_ToString(v, buf, bufferLen, bytesWritten);
+		break;
+	case T_MAP:
+		Map_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_PATH:
 		SIPath_ToString(v, buf, bufferLen, bytesWritten);
@@ -502,6 +518,8 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			return SIArray_Compare(a, b, disjointOrNull);
 		case T_PATH:
 			return SIPath_Compare(a, b);
+		case T_MAP:
+			return Map_Compare(a, b, disjointOrNull);
 		case T_NULL:
 			break;
 		default:
@@ -551,7 +569,6 @@ XXH64_hash_t SINode_HashCode(const SIValue v) {
 
 /* Hashes the id and properties of the edge. */
 XXH64_hash_t SIEdge_HashCode(const SIValue v) {
-
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
@@ -617,11 +634,15 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 		inner_hash = SIArray_HashCode(v);
 		XXH64_update(state, &inner_hash, sizeof(inner_hash));
 		return;
+	case T_MAP:
+		inner_hash = Map_HashCode(v);
+		XXH64_update(state, &inner_hash, sizeof(inner_hash));
+		return;
 	case T_PATH:
 		inner_hash = SIPath_HashCode(v);
 		XXH64_update(state, &inner_hash, sizeof(inner_hash));
 		return;
-	// TODO: Implement for Map and temporal types once we support them.
+	// TODO: Implement for temporal types once we support them.
 	default:
 		ASSERT(false);
 		break;
@@ -662,6 +683,8 @@ void SIValue_Free(SIValue v) {
 	case T_PATH:
 		SIPath_Free(v);
 		return;
+	case T_MAP:
+		Map_Free(v);
 	default:
 		return;
 	}

@@ -169,7 +169,6 @@ Feature: FunctionsAcceptance
             | 'Oskar'          |
         And no side effects
 
-    @skip
     Scenario: `exists()` with dynamic property lookup
         Given an empty graph
         And having executed:
@@ -188,7 +187,6 @@ Feature: FunctionsAcceptance
             | (:Person {name: 'foo'}) |
         And no side effects
 
-    @skip
     Scenario Outline: `exists()` with literal maps
         Given any graph
         When executing query:
@@ -207,7 +205,6 @@ Feature: FunctionsAcceptance
             | {name: null}                    | false  |
             | {notName: 0, notName2: null}    | false  |
 
-    @skip
     Scenario Outline: IS NOT NULL with literal maps
         Given any graph
         When executing query:
@@ -431,7 +428,6 @@ Feature: FunctionsAcceptance
             | 'T'           |
         And no side effects
 
-    @skip
     Scenario Outline: `type()` failing on invalid arguments
         Given an empty graph
         And having executed:

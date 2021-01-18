@@ -9,10 +9,11 @@
 #include "../../datatypes/path/sipath.h"
 
 // Forward declarations.
+static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map);
+static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
+static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
 static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
-static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
-static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
 
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
@@ -47,6 +48,9 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_PATH:
 		_ResultSet_VerboseReplyWithPath(ctx, v);
+		return;
+	case T_MAP:
+		_ResultSet_VerboseReplyWithMap(ctx, v);
 		return;
 	default:
 		RedisModule_Assert("Unhandled value type" && false);
@@ -163,6 +167,15 @@ static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path) {
 	SIValue path_array = SIPath_ToList(path);
 	_ResultSet_VerboseReplyWithArray(ctx, path_array);
 	SIValue_Free(path_array);
+}
+
+static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map) {
+	size_t bufferLen = 512;
+	char *str = rm_calloc(bufferLen, sizeof(char));
+	size_t bytesWrriten = 0;
+	SIValue_ToString(map, &str, &bufferLen, &bytesWrriten);
+	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
+	rm_free(str);
 }
 
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,

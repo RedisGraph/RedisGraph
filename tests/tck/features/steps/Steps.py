@@ -104,6 +104,18 @@ def step_impl(context):
     assert exception != None
     assert "Type mismatch" in str(exception)
 
+@then(u'a TypeError should be raised at runtime: MapElementAccessByNonString')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in str(exception)
+
+@then(u'a TypeError should be raised at runtime: InvalidElementAccess')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in str(exception)
+
 @then(u'a ArgumentError should be raised at runtime: NumberOutOfRange')
 def step_impl(context):
     global exception
@@ -130,7 +142,7 @@ def step_impl(context):
 def step_impl(context):
     global exception
     assert exception != None
-    assert "expected Integer" in str(exception)
+    assert "Type mismatch" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: InvalidArgumentType')
 def step_impl(context):

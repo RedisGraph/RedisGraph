@@ -111,8 +111,6 @@ Feature: UnwindAcceptance
             | 2       |
         And no side effects
 
-    @crash
-    @skip
     Scenario: Creating nodes from an unwound parameter list
         Given an empty graph
         And having executed:
@@ -265,8 +263,6 @@ Feature: UnwindAcceptance
             | 2 | [1, 2] | 4 | [3, 4] | 6 | [5, 6] |
         And no side effects
 
-    @crash
-    @skip
     Scenario: Unwind with merge
         Given an empty graph
         And parameters are:

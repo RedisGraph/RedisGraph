@@ -84,6 +84,17 @@ def pathToString(pathToConvert):
     strValue += ">"
     return strValue
 
+def dictToString(dictToConvert):
+    size = len(dictToConvert)
+    strValue = '{'
+    for idx, item in enumerate(dictToConvert.items()):
+        strValue += item[0] + ": "
+        strValue += toString(item[1])
+        if idx < size - 1:
+            strValue += ", "
+    strValue += '}'
+    return strValue
+
 def toString(value):
     if isinstance(value, bool):
         if value is True:
@@ -105,7 +116,9 @@ def toString(value):
         return listToString(value)
     elif isinstance(value, Path):
         return pathToString(value)
-    elif value is None:
+    elif isinstance(value, dict):
+        return dictToString(value)
+    elif value == None:
         return "null"
 
 # prepare the actual value returned from redisgraph to be in
@@ -130,6 +143,8 @@ def prepareActualValue(actualValue):
         actualValue = listToString(actualValue)
     elif isinstance(actualValue, Path):
         actualValue = pathToString(actualValue)
+    elif isinstance(actualValue, dict):
+        actualValue = dictToString(actualValue)
     else:
         # actual value is null or boolean
         assert isinstance(actualValue, (type(None), bool))

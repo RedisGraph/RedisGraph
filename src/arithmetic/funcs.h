@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "map_funcs/map_funcs.h"
 #include "list_funcs/list_funcs.h"
 #include "time_funcs/time_funcs.h"
 #include "entity_funcs/entity_funcs.h"

@@ -15,10 +15,10 @@ Patterns are fully supported.
 
 ### Composite types
 + Lists
++ Maps
 
   **Unsupported:**
 
-- Maps
 - Temporal types (Date, DateTime, LocalDateTime, Time, LocalTime, Duration)
 
 ### Literal types
