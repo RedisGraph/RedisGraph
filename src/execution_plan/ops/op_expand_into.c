@@ -129,8 +129,11 @@ static Record _handoff(OpExpandInto *op) {
 		NodeID destId = ENTITY_GET_ID(destNode);
 		bool x;
 		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
-		// Src is not connected to dest.
-		if(res != GrB_SUCCESS) continue;
+		// Src is not connected to dest, free the current record and continue.
+		if(res != GrB_SUCCESS) {
+			OpBase_DeleteRecord(op->r);
+			continue;
+		}
 
 		// If we're here, src is connected to dest. Update the edge if necessary.
 		if(op->edge_ctx) {
