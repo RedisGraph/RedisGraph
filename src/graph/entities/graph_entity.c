@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include <inttypes.h>
 #include "graph_entity.h"
 #include "node.h"
 #include "edge.h"
@@ -163,7 +164,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 
 	// write id
 	if(format & ENTITY_ID) {
-		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%llu", ENTITY_GET_ID(e));
+		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%" PRIu64, ENTITY_GET_ID(e));
 	}
 
 	// write label
