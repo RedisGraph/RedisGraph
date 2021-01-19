@@ -16,6 +16,8 @@ def test_tck():
     #  cmd = ["./features/", '--tags=-crash'] # Run all tests except crashing tests
     if not env.verbose:
         cmd.append('--format=progress')
+    if env.getEnvKwargs()['debugger']:
+        cmd.append('--tags=-leak')
     res = behave_main(cmd)
     res = 'pass' if res == 0 else 'fail'
     env.assertEquals(res, 'pass')
