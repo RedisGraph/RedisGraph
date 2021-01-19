@@ -15,19 +15,6 @@
 // Filter normalization
 //------------------------------------------------------------------------------
 
-void _normalize_in_filter(FT_FilterNode *filter_tree) {
-	// Left child should be variadic, while the right child should be constant
-	AR_ExpNode *left_child = filter_tree->exp.exp->op.children[0];
-	AR_ExpNode *right_child = filter_tree->exp.exp->op.children[1];
-
-	if(left_child->operand.type == AR_EXP_CONSTANT) {
-		// Swap!
-		AR_ExpNode *temp = left_child;
-		filter_tree->exp.exp->op.children[0] = right_child;
-		filter_tree->exp.exp->op.children[1] = temp;
-	}
-}
-
 /* Modifies filter tree such that the left-hand side
  * is of type variadic and the right-hand side is constant. */
 void _normalize_filter(FT_FilterNode **filter) {
@@ -117,10 +104,7 @@ bool _simple_predicates(FT_FilterNode *filter) {
 		res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
 		break;
 	case FT_N_EXP:
-		if(_isInFilter(filter)) {
-			_normalize_in_filter(filter);
-			res = _validateInExpression(filter->exp.exp);
-		}
+		res = (_isInFilter(filter) && _validateInExpression(filter->exp.exp));
 		break;
 	case FT_N_COND:
 		res = (_simple_predicates(filter->cond.left) && _simple_predicates(filter->cond.right));
