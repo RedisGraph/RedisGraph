@@ -112,7 +112,7 @@ void Graph_AcquireReadLock(Graph *g) {
 
 /* Acquire a lock for exclusive access to this graph's data */
 void Graph_AcquireWriteLock(Graph *g) {
-	pthread_rwlock_wrlock(&g->_rwlock);
+	// pthread_rwlock_wrlock(&g->_rwlock);
 	g->_writelocked = true;
 }
 
@@ -126,17 +126,17 @@ void Graph_ReleaseLock(Graph *g) {
 	 * underline matrices, consider a context switch after unlocking `_rwlock` but
 	 * before setting `_writelocked` to false. */
 	g->_writelocked = false;
-	pthread_rwlock_unlock(&g->_rwlock);
+	// pthread_rwlock_unlock(&g->_rwlock);
 }
 
 /* Writer request access to graph. */
 void Graph_WriterEnter(Graph *g) {
-	pthread_mutex_lock(&g->_writers_mutex);
+	// pthread_mutex_lock(&g->_writers_mutex);
 }
 
 /* Writer release access to graph. */
 void Graph_WriterLeave(Graph *g) {
-	pthread_mutex_unlock(&g->_writers_mutex);
+	// pthread_mutex_unlock(&g->_writers_mutex);
 }
 
 /* Force execution of all pending operations on a matrix. */
