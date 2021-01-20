@@ -69,7 +69,7 @@ class testProcedures(FlowTestsBase):
     # be included in result-set.
     def test01_no_yield(self):
         actual_result = redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1")
-        assert(len(actual_result.result_set) is 1)
+        assert(len(actual_result.result_set) == 1)
 
         header = actual_result.header
         data = actual_result.result_set[0]
@@ -79,7 +79,7 @@ class testProcedures(FlowTestsBase):
     # Call procedure specify different outputs.
     def test02_yield(self):
         actual_result = redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1", y=["node"])
-        assert(len(actual_result.result_set) is 1)
+        assert(len(actual_result.result_set) == 1)
 
         header = actual_result.header
         data = actual_result.result_set[0]

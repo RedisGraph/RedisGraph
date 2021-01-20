@@ -10,11 +10,9 @@
 #include "../util/strcmp.h"
 #include "../util/rmalloc.h"
 
-static Pair Pair_New(SIValue key, SIValue val) {
+static inline Pair Pair_New(SIValue key, SIValue val) {
 	ASSERT(SI_TYPE(key) & T_STRING);
-	// TODO: should we also clone the key?
-	Pair pair = { .key = key, .val = SI_CloneValue(val) };
-	return pair;
+	return (Pair) { .key = SI_CloneValue(key), .val = SI_CloneValue(val) };
 }
 
 static void Pair_Free(Pair p) {
@@ -109,6 +107,7 @@ void Map_Remove
 	if(idx == -1) return;
 
 	// override removed key with last pair
+	Pair_Free(m[idx]);
 	uint last_idx = array_len(m) - 1;
 	m[idx] = m[last_idx];
 
@@ -204,7 +203,7 @@ int Map_Compare
 	for(uint i = 0; i < key_count; i++) {
 		// if the maps contain different keys, order in favor
 		// of the first lexicographically greater key
-		order = strcmp(A[i].key.stringval, B[i].key.stringval);
+		order = SIValue_Compare(A[i].key, B[i].key, NULL);
 		if(order != 0) return order;
 	}
 
