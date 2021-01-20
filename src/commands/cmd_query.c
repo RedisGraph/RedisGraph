@@ -15,8 +15,25 @@
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../util/cache/cache.h"
+#include "../util/thpool/thpool.h"
+#include "../util/rax_extensions.h"
 #include "../execution_plan/execution_plan.h"
 #include "execution_ctx.h"
+
+extern threadpool _workerpool; // Declared in module.c
+typedef struct {
+	RedisModuleCtx *ctx;
+	GraphContext *gc;
+	ResultSetFormatterType resultset_format;
+	CommandCtx *command_ctx;
+	ExecutionCtx *exec_ctx;
+	bool cached;
+	ExecutionType exec_type;
+	bool readonly;
+	Timer timer;
+	rax *params;
+} Query_InnerCtx;
+
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 							 ExecutionType exec_type) {
@@ -48,6 +65,78 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	}
 }
 
+static void _ExecuteQuery(void *args) {
+	Query_InnerCtx *inner_ctx = args;
+	RedisModuleCtx *ctx = inner_ctx->ctx;
+	GraphContext *gc = inner_ctx->gc;
+	ResultSetFormatterType resultset_format = inner_ctx->resultset_format;
+	CommandCtx *command_ctx = inner_ctx->command_ctx;
+	ExecutionCtx *exec_ctx = inner_ctx->exec_ctx;
+	bool cached = inner_ctx->cached;
+	ExecutionType exec_type = inner_ctx->exec_type;
+	bool readonly = inner_ctx->readonly;
+	Timer timer = inner_ctx->timer;
+	rax *params = inner_ctx->params;
+
+	ExecutionPlan *plan = exec_ctx->plan;
+	AST *ast = exec_ctx->ast;
+
+	if(!readonly) {
+		QueryCtx_SetGlobalExecutionCtx(command_ctx);
+
+		QueryCtx_SetTimer(timer); // Start query timing.
+
+		QueryCtx_SetAST(ast);
+		QueryCtx_SetGraphCtx(gc);
+	}
+	// TODO params currently causing failures
+	QueryCtx_SetParams(params);
+
+	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
+	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	ResultSet *result_set = NewResultSet(ctx, resultset_format);
+	// Indicate a cached execution.
+	if(cached) ResultSet_CachedExecution(result_set);
+
+	QueryCtx_SetResultSet(result_set);
+	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
+		ExecutionPlan_PreparePlan(plan);
+		result_set = ExecutionPlan_Execute(plan);
+
+		// Emit error if query timed out.
+		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
+
+		ExecutionPlan_Free(plan);
+		exec_ctx->plan = NULL;
+	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
+			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
+		_index_operation(ctx, gc, ast, exec_type);
+	} else {
+		ASSERT("Unhandled query type" && false);
+	}
+	QueryCtx_ForceUnlockCommit();
+	ResultSet_Reply(result_set);    // Send result-set back to client.
+
+	// Clean up.
+	// Release the read-write lock
+	// TODO In the case of a failing writing query, we may hold both locks:
+	// "CREATE (a {num: 1}) MERGE ({v: a.num})"
+	if(readonly) Graph_ReleaseLock(gc->g);
+	// else Graph_WriterLeave(gc->g);
+
+	// Log query to slowlog.
+	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
+	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
+				QueryCtx_GetExecutionTime(), NULL);
+
+	ExecutionCtx_Free(exec_ctx);
+	GraphContext_Release(gc);
+	CommandCtx_Free(command_ctx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	ErrorCtx_Clear();
+	ResultSet_Free(result_set);
+}
+
 inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
@@ -74,9 +163,8 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 }
 
 void Graph_Query(void *args) {
-  bool readonly           = true;
+	bool readonly           = true;
 	bool lockAcquired       = false;
-	ResultSet *result_set   = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx     = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc        = CommandCtx_GetGraphContext(command_ctx);
@@ -127,66 +215,33 @@ void Graph_Query(void *args) {
 	bool compact = command_ctx->compact;
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
 
-	// Acquire the appropriate lock.
+	Query_InnerCtx *inner_ctx = rm_malloc(sizeof(Query_InnerCtx));
+	inner_ctx->ctx = ctx;
+	inner_ctx->gc = gc;
+	inner_ctx->resultset_format = resultset_format;
+	inner_ctx->command_ctx = command_ctx;
+	inner_ctx->exec_ctx = exec_ctx;
+	inner_ctx->cached = cached;
+	inner_ctx->exec_type = exec_type;
+	inner_ctx->readonly = readonly;
+	inner_ctx->timer = QueryCtx_RetrieveTimer();
+	inner_ctx->params = raxClone(QueryCtx_GetParams());
+
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
+		_ExecuteQuery(inner_ctx);
+		return;
 	} else {
-		Graph_WriterEnter(gc->g);  // Single writer.
-		/* If this is a writer query we need to re-open the graph key with write flag
-		* this notifies Redis that the key is "dirty" any watcher on that key will
-		* be notified. */
-		CommandCtx_ThreadSafeContextLock(command_ctx);
-		{
-			GraphContext_MarkWriter(ctx, gc);
-		}
-		CommandCtx_ThreadSafeContextUnlock(command_ctx);
+		thpool_add_work(_workerpool, _ExecuteQuery, inner_ctx);
+		return;
 	}
-	lockAcquired = true;
 
-	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-	result_set = NewResultSet(ctx, resultset_format);
-	// Indicate a cached execution.
-	if(cached) ResultSet_CachedExecution(result_set);
-
-	QueryCtx_SetResultSet(result_set);
-	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
-		ExecutionPlan_PreparePlan(plan);
-		result_set = ExecutionPlan_Execute(plan);
-
-		// Emit error if query timed out.
-		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
-
-		ExecutionPlan_Free(plan);
-		exec_ctx->plan = NULL;
-	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
-		_index_operation(ctx, gc, ast, exec_type);
-	} else {
-		ASSERT("Unhandled query type" && false);
-	}
-	QueryCtx_ForceUnlockCommit();
-	ResultSet_Reply(result_set);    // Send result-set back to client.
-
-	// Clean up.
 cleanup:
-	// Release the read-write lock
-	if(lockAcquired) {
-		// TODO In the case of a failing writing query, we may hold both locks:
-		// "CREATE (a {num: 1}) MERGE ({v: a.num})"
-		if(readonly) Graph_ReleaseLock(gc->g);
-		else Graph_WriterLeave(gc->g);
-	}
-
 	// Log query to slowlog.
-	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
-	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
-				QueryCtx_GetExecutionTime(), NULL);
-
 	ExecutionCtx_Free(exec_ctx);
-	ResultSet_Free(result_set);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
+

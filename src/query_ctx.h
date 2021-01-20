@@ -24,7 +24,11 @@ typedef struct {
 } QueryCtx_QueryData;
 
 typedef struct {
-	double timer[2];            // Query execution time tracking.
+	double timer[2];
+} Timer;
+
+typedef struct {
+	Timer timer;                // Query execution time tracking.
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
@@ -50,6 +54,8 @@ bool QueryCtx_Init(void);
 void QueryCtx_Finalize(void);
 /* Start timing query execution. */
 void QueryCtx_BeginTimer(void);
+Timer QueryCtx_RetrieveTimer(void);
+void QueryCtx_SetTimer(Timer timer);
 
 /* Setters */
 /* Sets the global execution context */
@@ -68,6 +74,7 @@ void QueryCtx_SetLastWriter(OpBase *op);
 AST *QueryCtx_GetAST(void);
 /* Retrive the query parameters values map. */
 rax *QueryCtx_GetParams(void);
+void QueryCtx_SetParams(rax *params);
 /* Retrieve the Graph object. */
 Graph *QueryCtx_GetGraph(void);
 /* Retrieve the GraphCtx. */

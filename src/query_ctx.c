@@ -42,7 +42,17 @@ void QueryCtx_Finalize(void) {
 
 void QueryCtx_BeginTimer(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
-	simple_tic(ctx->internal_exec_ctx.timer); // Start the execution timer.
+	simple_tic(ctx->internal_exec_ctx.timer.timer); // Start the execution timer.
+}
+
+Timer QueryCtx_RetrieveTimer(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
+	return ctx->internal_exec_ctx.timer;
+}
+
+void QueryCtx_SetTimer(Timer timer) {
+	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
+	ctx->internal_exec_ctx.timer = timer;
 }
 
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {
@@ -84,6 +94,13 @@ rax *QueryCtx_GetParams(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(!ctx->query_data.params) ctx->query_data.params = raxNew();
 	return ctx->query_data.params;
+}
+
+void QueryCtx_SetParams(rax *params) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	// if(ctx->query_data.params) assert(false && "params found");
+	if(ctx->query_data.params) return;
+	ctx->query_data.params = params;
 }
 
 GraphContext *QueryCtx_GetGraphCtx(void) {
@@ -217,7 +234,7 @@ void QueryCtx_ForceUnlockCommit() {
 
 double QueryCtx_GetExecutionTime(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return simple_toc(ctx->internal_exec_ctx.timer) * 1000;
+	return simple_toc(ctx->internal_exec_ctx.timer.timer) * 1000;
 }
 
 void QueryCtx_Free(void) {
