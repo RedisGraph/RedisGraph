@@ -5,6 +5,7 @@
 */
 
 #include "op_index_scan.h"
+#include "../../query_ctx.h"
 #include "shared/print_functions.h"
 
 /* Forward declarations. */
@@ -39,6 +40,14 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n, RSInd
 
 static OpResult IndexScanInit(OpBase *opBase) {
 	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, IndexScanConsumeFromChild);
+	IndexScan *op = (IndexScan *)opBase;
+	// Resolve label ID now if it is still unknown.
+	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
+		ASSERT(schema != NULL);
+		op->n.label_id = schema->id;
+	}
 	return OP_OK;
 }
 
