@@ -20,7 +20,7 @@ redis_graph = None
 
 class testGraphBulkInsertFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -270,7 +270,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
 
         # The script should fail because a row has the wrong number of fields
         self.env.assertNotEqual(res.exit_code, 0)
-        self.env.assertIn('Expected 2 columns', res.exception.message)
+        self.env.assertIn('Expected 2 columns', str(res.exception))
 
         # Write temporary files
         with open('/tmp/nodes.tmp', mode='w') as csv_file:
@@ -291,7 +291,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
 
         # The script should fail because a row has the wrong number of fields
         self.env.assertNotEqual(res.exit_code, 0)
-        self.env.assertIn('should have at least 2 elements', res.exception.message)
+        self.env.assertIn('should have at least 2 elements', str(res.exception))
 
         with open('/tmp/relations.tmp', mode='w') as csv_file:
             out = csv.writer(csv_file)
@@ -306,7 +306,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
 
         # The script should fail because an invalid node identifier was used
         self.env.assertNotEqual(res.exit_code, 0)
-        self.env.assertIn('fakeidentifier', res.exception.message)
+        self.env.assertIn('fakeidentifier', str(res.exception))
         os.remove('/tmp/nodes.tmp')
         os.remove('/tmp/relations.tmp')
 

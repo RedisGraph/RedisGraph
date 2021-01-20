@@ -23,7 +23,7 @@ node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 # Test over all procedure behavior in addition to procedure specifics.
 class testProcedures(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
@@ -67,7 +67,7 @@ class testProcedures(FlowTestsBase):
     
     # Call procedure, omit yield, expecting all procedure outputs to
     # be included in result-set.
-    def test_no_yield(self):
+    def test01_no_yield(self):
         actual_result = redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1")
         assert(len(actual_result.result_set) is 1)
 
@@ -77,7 +77,7 @@ class testProcedures(FlowTestsBase):
         assert(data[0] is not None)
 
     # Call procedure specify different outputs.
-    def test_yield(self):
+    def test02_yield(self):
         actual_result = redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1", y=["node"])
         assert(len(actual_result.result_set) is 1)
 
@@ -104,7 +104,7 @@ class testProcedures(FlowTestsBase):
             # Expecting an error.
             pass
     
-    def test_arguments(self):
+    def test03_arguments(self):
         # Omit arguments.
         # Expect an error when trying to omit arguments.
         try:
@@ -133,7 +133,7 @@ class testProcedures(FlowTestsBase):
             pass
 
     # Test procedure call while mixing a number of addition clauses.
-    def test_mix_clauses(self):
+    def test04_mix_clauses(self):
         query_params = {'prefix': 'Orange*'}
         # CALL + RETURN.
 
@@ -273,22 +273,22 @@ class testProcedures(FlowTestsBase):
         expected_results = [node4, node2, node3, node1, node4, node2, node3, node1]
         self.queryAndValidate(query, expected_results, query_params=query_params)
 
-    def test_procedure_labels(self):
+    def test05_procedure_labels(self):
         actual_resultset = redis_graph.call_procedure("db.labels").result_set
         expected_results = [["fruit"]]        
         self.env.assertEquals(actual_resultset, expected_results)
     
-    def test_procedure_relationshipTypes(self):
+    def test06_procedure_relationshipTypes(self):
         actual_resultset = redis_graph.call_procedure("db.relationshipTypes").result_set
         expected_results = [["goWellWith"]]
         self.env.assertEquals(actual_resultset, expected_results)
     
-    def test_procedure_propertyKeys(self):
+    def test07_procedure_propertyKeys(self):
         actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
         expected_results = [["name"], ["value"]]
         self.env.assertEquals(actual_resultset, expected_results)
 
-    def test_procedure_fulltext_syntax_error(self):
+    def test08_procedure_fulltext_syntax_error(self):
         try:
             query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange || Apple') YIELD node RETURN node"""
             redis_graph.query(query)
@@ -297,7 +297,7 @@ class testProcedures(FlowTestsBase):
             # Expecting an error.
             pass
 
-    def test_procedure_lookup(self):
+    def test09_procedure_lookup(self):
         try:
             redis_graph.call_procedure("dB.LaBeLS")
         except redis.exceptions.ResponseError:
@@ -320,7 +320,7 @@ class testProcedures(FlowTestsBase):
             self.env.assertFalse(1)
             pass
 
-    def test_procedure_get_all_procedures(self):
+    def test10_procedure_get_all_procedures(self):
         actual_resultset = redis_graph.call_procedure("dbms.procedures").result_set
 
         # The following two procedure are a part of the expected results
@@ -330,3 +330,36 @@ class testProcedures(FlowTestsBase):
                            ["db.idx.fulltext.drop", "WRITE"]]
         for res in expected_result:
             self.env.assertContains(res, actual_resultset)
+
+    def test11_procedure_indexes(self):
+        # Verify that the full-text index is reported properly.
+        actual_resultset = redis_graph.query("CALL db.indexes() YIELD type, label, properties").result_set
+        expected_results = [["full-text", "fruit", ["name"]]]
+        self.env.assertEquals(actual_resultset, expected_results)
+
+        # Add an exact-match index to a different property on the same label..
+        result = redis_graph.query("CREATE INDEX ON :fruit(other_property)")
+        self.env.assertEquals(result.indices_created, 1)
+
+        # Verify that all indexes are reported.
+        actual_resultset = redis_graph.query("CALL db.indexes() YIELD type, label, properties RETURN type, label, properties ORDER BY type").result_set
+        expected_results = [["exact-match", "fruit", ["other_property"]],
+                            ["full-text", "fruit", ["name"]]]
+        self.env.assertEquals(actual_resultset, expected_results)
+
+        # Add an exact-match index to the full-text indexed property on the same label..
+        result = redis_graph.query("CREATE INDEX ON :fruit(name)")
+        self.env.assertEquals(result.indices_created, 1)
+
+        # Verify that all indexes are reported.
+        actual_resultset = redis_graph.query("CALL db.indexes() YIELD type, label, properties RETURN type, label, properties ORDER BY type").result_set
+        expected_results = [["exact-match", "fruit", ["other_property", "name"]],
+                            ["full-text", "fruit", ["name"]]]
+        self.env.assertEquals(actual_resultset, expected_results)
+
+        # Validate the results when yielding only one element.
+        actual_resultset = redis_graph.query("CALL db.indexes() YIELD label").result_set
+        expected_results = [["fruit"],
+                            ["fruit"]]
+        self.env.assertEquals(actual_resultset, expected_results)
+

@@ -16,7 +16,7 @@ redis_graph = None
 
 class testPathFilter(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
 

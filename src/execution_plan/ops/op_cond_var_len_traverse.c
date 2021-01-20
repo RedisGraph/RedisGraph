@@ -126,6 +126,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 			/* The child Record may not contain the source node in scenarios like
 			 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
 			OpBase_DeleteRecord(op->r);
+			op->r = NULL;
 			continue;
 		}
 

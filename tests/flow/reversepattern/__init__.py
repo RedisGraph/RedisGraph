@@ -53,7 +53,7 @@ class ReversePattern(object):
 
         start = q.find("MATCH")
         if start == -1:
-            print "MATCH not found"
+            print("MATCH not found")
             return None
 
         reversed_query = ""
@@ -68,7 +68,7 @@ class ReversePattern(object):
                 break
 
         if end == -1:
-            print "stop word was not found"
+            print("stop word was not found")
             return None
         end -= 1
 

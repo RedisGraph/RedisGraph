@@ -114,5 +114,5 @@ def binary_tree_graph2():
                       ")
 
 
-def query(q, params):
-    return redis_graph.query(q, params)
+def query(q):
+    return redis_graph.query(q)

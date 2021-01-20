@@ -12,7 +12,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -51,7 +51,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertIn("Type mismatch", e.message)
+            self.env.assertIn("Type mismatch", str(e))
 
     def expect_error(self, query, expected_err_msg):
         try:
@@ -59,7 +59,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertIn(expected_err_msg, e.message)
+            self.env.assertIn(expected_err_msg, str(e))
 
     # Validate capturing of errors prior to query execution.
     def test01_compile_time_errors(self):

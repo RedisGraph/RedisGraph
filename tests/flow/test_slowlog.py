@@ -9,7 +9,7 @@ redis_graph = None
 
 class testSlowLog(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
 

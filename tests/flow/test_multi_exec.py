@@ -27,7 +27,7 @@ UPDATE_QUERY = "MATCH (al:person {name:'Al'}) SET al.name = 'Steve'"
 
 class testMultiExecFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
 

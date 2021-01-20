@@ -19,7 +19,7 @@ class testReplication(FlowTestsBase):
         if Env().envRunner.debugger is not None:
             Env().skip() # valgrind is not working correctly with replication
 
-        self.env = Env(env='oss', useSlaves=True)
+        self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
 
     def test_CRUD_replication(self):
         # create a simple graph
