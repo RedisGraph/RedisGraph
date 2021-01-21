@@ -30,8 +30,7 @@ typedef struct {
 	bool cached;
 	ExecutionType exec_type;
 	bool readonly;
-	Timer timer;
-	rax *params;
+	QueryCtx* query_ctx;
 } Query_InnerCtx;
 
 
@@ -75,22 +74,14 @@ static void _ExecuteQuery(void *args) {
 	bool cached = inner_ctx->cached;
 	ExecutionType exec_type = inner_ctx->exec_type;
 	bool readonly = inner_ctx->readonly;
-	Timer timer = inner_ctx->timer;
-	rax *params = inner_ctx->params;
+
 
 	ExecutionPlan *plan = exec_ctx->plan;
 	AST *ast = exec_ctx->ast;
 
 	if(!readonly) {
-		QueryCtx_SetGlobalExecutionCtx(command_ctx);
-
-		QueryCtx_SetTimer(timer); // Start query timing.
-
-		QueryCtx_SetAST(ast);
-		QueryCtx_SetGraphCtx(gc);
+		QueryCtx_SetInTls(inner_ctx->query_ctx);
 	}
-	// TODO params currently causing failures
-	QueryCtx_SetParams(params);
 
 	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
@@ -224,14 +215,20 @@ void Graph_Query(void *args) {
 	inner_ctx->cached = cached;
 	inner_ctx->exec_type = exec_type;
 	inner_ctx->readonly = readonly;
-	inner_ctx->timer = QueryCtx_RetrieveTimer();
-	inner_ctx->params = raxClone(QueryCtx_GetParams());
+	inner_ctx->query_ctx = QueryCtx_GetQueryCtx();
 
-	if(readonly) {
-		Graph_AcquireReadLock(gc->g);
+	int flags = RedisModule_GetContextFlags(ctx);
+	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
+	bool execute_on_main_thread = (flags & (REDISMODULE_CTX_FLAGS_MULTI |
+											REDISMODULE_CTX_FLAGS_LUA |
+											REDISMODULE_CTX_FLAGS_LOADING));
+
+	if(readonly || execute_on_main_thread) {
+		if(readonly) Graph_AcquireReadLock(gc->g);
 		_ExecuteQuery(inner_ctx);
 		return;
 	} else {
+		QueryCtx_RemoveFromTls();
 		thpool_add_work(_workerpool, _ExecuteQuery, inner_ctx);
 		return;
 	}

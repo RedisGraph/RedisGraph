@@ -237,6 +237,17 @@ double QueryCtx_GetExecutionTime(void) {
 	return simple_toc(ctx->internal_exec_ctx.timer.timer) * 1000;
 }
 
+QueryCtx* QueryCtx_GetQueryCtx() {
+	return _QueryCtx_GetCtx();
+}
+void QueryCtx_SetInTls(QueryCtx* query_ctx){
+	pthread_setspecific(_tlsQueryCtxKey, query_ctx);
+}
+
+void QueryCtx_RemoveFromTls(){
+	pthread_setspecific(_tlsQueryCtxKey, NULL);
+}
+
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 
