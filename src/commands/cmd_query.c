@@ -16,21 +16,20 @@
 #include "../util/rmalloc.h"
 #include "../util/cache/cache.h"
 #include "../util/thpool/thpool.h"
-#include "../util/rax_extensions.h"
 #include "../execution_plan/execution_plan.h"
 #include "execution_ctx.h"
 
 extern threadpool _workerpool; // Declared in module.c
-typedef struct {
-	RedisModuleCtx *ctx;
-	GraphContext *gc;
-	CommandCtx *command_ctx;
-	ExecutionCtx *exec_ctx;
-	ExecutionType exec_type;
-	bool readonly;
-	QueryCtx* query_ctx;
-} Query_InnerCtx;
 
+// Query_InnerCtx stores the allocations required to execute a query.
+typedef struct {
+	GraphContext *gc;
+	RedisModuleCtx *ctx;
+	QueryCtx *query_ctx;
+	ExecutionCtx *exec_ctx;
+	CommandCtx *command_ctx;
+	bool readonly;
+} Query_InnerCtx;
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 							 ExecutionType exec_type) {
@@ -62,21 +61,32 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	}
 }
 
+/* _ExecuteQuery accepts a Query_InnerCtx as an argument.
+ * It may be called directly by a reader thread or the Redis main thread,
+ * or dispatched as a worker thread job. */
 static void _ExecuteQuery(void *args) {
 	Query_InnerCtx *inner_ctx = args;
-	RedisModuleCtx *ctx = inner_ctx->ctx;
 	GraphContext *gc = inner_ctx->gc;
-	CommandCtx *command_ctx = inner_ctx->command_ctx;
-	ExecutionCtx *exec_ctx = inner_ctx->exec_ctx;
-	ExecutionType exec_type = inner_ctx->exec_type;
 	bool readonly = inner_ctx->readonly;
-	ExecutionPlan *plan = exec_ctx->plan;
-	AST *ast = exec_ctx->ast;
+	RedisModuleCtx *ctx = inner_ctx->ctx;
+	ExecutionCtx *exec_ctx = inner_ctx->exec_ctx;
+	CommandCtx *command_ctx = inner_ctx->command_ctx;
 
-	if(!readonly) {
-		QueryCtx_SetInTls(inner_ctx->query_ctx);
-	}
-	ResultSet* result_set = QueryCtx_GetResultSet();
+	AST *ast = exec_ctx->ast;
+	ExecutionPlan *plan = exec_ctx->plan;
+	ExecutionType exec_type = exec_ctx->exec_type;
+
+	// If we have migrated to a writer thread, update thread-local storage.
+	if(!readonly) QueryCtx_SetInTLS(inner_ctx->query_ctx);
+
+	// Instantiate the query's ResultSet.
+	bool compact = command_ctx->compact;
+	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
+	ResultSet *result_set = NewResultSet(ctx, resultset_format);
+	// Indicate a cached execution.
+	if(exec_ctx->cached) ResultSet_CachedExecution(result_set);
+
+	QueryCtx_SetResultSet(result_set);
 
 	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
@@ -99,18 +109,15 @@ static void _ExecuteQuery(void *args) {
 	QueryCtx_ForceUnlockCommit();
 	ResultSet_Reply(result_set);    // Send result-set back to client.
 
-	// Clean up.
-	// Release the read-write lock
-	// TODO In the case of a failing writing query, we may hold both locks:
-	// "CREATE (a {num: 1}) MERGE ({v: a.num})"
+	// Release the read-write lock.
 	if(readonly) Graph_ReleaseLock(gc->g);
-	// else Graph_WriterLeave(gc->g);
 
 	// Log query to slowlog.
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
 				QueryCtx_GetExecutionTime(), NULL);
 
+	// Clean up.
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
@@ -147,7 +154,6 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 
 void Graph_Query(void *args) {
 	bool readonly           = true;
-	bool lockAcquired       = false;
 	CommandCtx *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx     = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc        = CommandCtx_GetGraphContext(command_ctx);
@@ -156,27 +162,18 @@ void Graph_Query(void *args) {
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
-	/* Retrive the required execution items and information:
-	 * 1. AST
-	 * 2. Execution plan
-	 * 3. Whether these items were cached or not */
-	AST *ast               = NULL;
-	bool cached            = false;
-	ExecutionPlan *plan    = NULL;
+
+	// Parse query parameters and build an execution plan or retrieve it from the cache.
 	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
-	ast = exec_ctx->ast;
-	plan = exec_ctx->plan;
-	cached = exec_ctx->cached;
-	ExecutionType exec_type = exec_ctx->exec_type;
-	// See if there were any query compile time errors
+	// If there were any query compile time errors, report them.
 	if(ErrorCtx_EncounteredError()) {
 		ErrorCtx_EmitException();
 		goto cleanup;
 	}
-	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
+	if(exec_ctx->exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	readonly = AST_ReadOnly(ast->root);
+	readonly = AST_ReadOnly(exec_ctx->ast->root);
 	if(!readonly && _readonly_cmd_mode(command_ctx)) {
 		ErrorCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
 		ErrorCtx_EmitException();
@@ -192,24 +189,16 @@ void Graph_Query(void *args) {
 			goto cleanup;
 		}
 
-		Query_SetTimeOut(command_ctx->timeout, plan);
+		Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
-	bool compact = command_ctx->compact;
-	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
-	ResultSet *result_set = NewResultSet(ctx, resultset_format);
-	// Indicate a cached execution.
-	if(cached) ResultSet_CachedExecution(result_set);
-
-	QueryCtx_SetResultSet(result_set);
-
+	// Populate the container struct for invoking _ExecuteQuery.
 	Query_InnerCtx *inner_ctx = rm_malloc(sizeof(Query_InnerCtx));
-	inner_ctx->ctx = ctx;
 	inner_ctx->gc = gc;
-	inner_ctx->command_ctx = command_ctx;
-	inner_ctx->exec_ctx = exec_ctx;
-	inner_ctx->exec_type = exec_type;
+	inner_ctx->ctx = ctx;
 	inner_ctx->readonly = readonly;
+	inner_ctx->exec_ctx = exec_ctx;
+	inner_ctx->command_ctx = command_ctx;
 	inner_ctx->query_ctx = QueryCtx_GetQueryCtx();
 
 	int flags = RedisModule_GetContextFlags(ctx);
@@ -220,15 +209,16 @@ void Graph_Query(void *args) {
 	if(readonly || execute_on_main_thread) {
 		if(readonly) Graph_AcquireReadLock(gc->g);
 		_ExecuteQuery(inner_ctx);
-		return;
 	} else {
-		QueryCtx_RemoveFromTls();
+		// Write queries will be executed on a different thread, clear this thread's QueryCtx.
+		QueryCtx_RemoveFromTLS();
+		// Dispatch work to the writer thread.
 		thpool_add_work(_workerpool, _ExecuteQuery, inner_ctx);
-		return;
 	}
+	return;
 
 cleanup:
-	// Log query to slowlog.
+	// Cleanup routine invoked after encountering errors in this function.
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);

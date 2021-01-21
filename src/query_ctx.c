@@ -98,7 +98,6 @@ rax *QueryCtx_GetParams(void) {
 
 void QueryCtx_SetParams(rax *params) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	// if(ctx->query_data.params) assert(false && "params found");
 	if(ctx->query_data.params) return;
 	ctx->query_data.params = params;
 }
@@ -237,14 +236,15 @@ double QueryCtx_GetExecutionTime(void) {
 	return simple_toc(ctx->internal_exec_ctx.timer.timer) * 1000;
 }
 
-QueryCtx* QueryCtx_GetQueryCtx() {
+inline QueryCtx *QueryCtx_GetQueryCtx() {
 	return _QueryCtx_GetCtx();
 }
-void QueryCtx_SetInTls(QueryCtx* query_ctx){
+
+inline void QueryCtx_SetInTLS(QueryCtx *query_ctx) {
 	pthread_setspecific(_tlsQueryCtxKey, query_ctx);
 }
 
-void QueryCtx_RemoveFromTls(){
+inline void QueryCtx_RemoveFromTLS() {
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
 

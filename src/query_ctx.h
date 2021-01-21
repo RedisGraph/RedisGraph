@@ -72,8 +72,9 @@ void QueryCtx_SetLastWriter(OpBase *op);
 /* Getters */
 /* Retrieve the AST. */
 AST *QueryCtx_GetAST(void);
-/* Retrive the query parameters values map. */
+/* Retrieve the query parameters values map. */
 rax *QueryCtx_GetParams(void);
+/* Update the query parameters values map. */
 void QueryCtx_SetParams(rax *params);
 /* Retrieve the Graph object. */
 Graph *QueryCtx_GetGraph(void);
@@ -125,9 +126,12 @@ double QueryCtx_GetExecutionTime(void);
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);
 
-QueryCtx* QueryCtx_GetQueryCtx();
+/* Retrieve this thread's QueryCtx. */
+QueryCtx *QueryCtx_GetQueryCtx();
 
-void QueryCtx_SetInTls(QueryCtx* query_ctx);
+/* Set the provided QueryCtx in this thread's storage key. */
+void QueryCtx_SetInTLS(QueryCtx *query_ctx);
 
-void QueryCtx_RemoveFromTls();
+/* Null-set this thread's storage key. */
+void QueryCtx_RemoveFromTLS();
 
