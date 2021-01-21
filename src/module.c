@@ -146,7 +146,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch, "readonly deny-oom", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch, "readonly", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -156,12 +156,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch, "readonly", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch, "write deny-oom", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
