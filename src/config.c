@@ -23,6 +23,7 @@
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
+#define MEMORY_PROTECTION "MEMORY_PROTECTION" // Whether or not we should avoid allocating to much memory
 
 //------------------------------------------------------------------------------
 // Configuration defaults
@@ -144,8 +145,16 @@ void Config_async_delete_set(bool async_delete) {
 	config.async_delete = async_delete;
 }
 
+void Config_memory_protection_set(bool memory_protection) {
+    config.memory_protection = memory_protection;
+}
+
 bool Config_async_delete_get(void) {
 	return config.async_delete;
+}
+
+bool Config_memory_protection_get(void) {
+    return config.memory_protection;
 }
 
 //------------------------------------------------------------------------------
@@ -178,6 +187,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
 		f = Config_RESULTSET_MAX_SIZE;
+	} else if(!(strcasecmp(field_str, MEMORY_PROTECTION))) {
+                f = Config_MEMORY_PROTECTION;
 	} else {
 		return false;
 	}
@@ -217,6 +228,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 		case Config_ASYNC_DELETE:
 			name = ASYNC_DELETE;
 			break;
+
+		case Config_MEMORY_PROTECTION:
+                        name = MEMORY_PROTECTION;
+                        break;
 
         //----------------------------------------------------------------------
         // invalid option
@@ -265,6 +280,9 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 
 	// No limit on result-set size
 	config.resultset_size = RESULTSET_SIZE_UNLIMITED;
+
+	// memory protection is off by default
+	config.memory_protection = false;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -405,6 +423,15 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
+		case Config_MEMORY_PROTECTION:
+		        {
+			        bool memory_protection;
+         			if(!_Config_ParseYesNo(val, &memory_protection)) return false;
+
+                                Config_memory_protection_set(memory_protection);
+                        }
+                        break;
+
 	    //----------------------------------------------------------------------
 	    // invalid option
 	    //----------------------------------------------------------------------
@@ -530,6 +557,17 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 				(*async_delete) = Config_async_delete_get();
 			}
 			break;
+
+		case Config_MEMORY_PROTECTION:
+                        {
+                                va_start(ap, field);
+                                bool *memory_protection = va_arg(ap, bool*);
+                                va_end(ap);
+
+                                ASSERT(memory_protection != NULL);
+                                (*memory_protection) = Config_memory_protection_get();
+                        }
+                        break;
 
         //----------------------------------------------------------------------
         // invalid option

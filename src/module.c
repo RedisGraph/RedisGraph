@@ -105,14 +105,24 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
+	// Set up the module's configurable variables, using user-defined values where provided.
+        if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+
+        int useMemoryProtection;
+        Config_Option_get(Config_THREAD_POOL_SIZE, &useMemoryProtection);
+        if(useMemoryProtection){
+            if(!Redis_Version_GreaterOrEqual(6, 0, 0)) {
+                RedisModule_Log(ctx, "warning", "Memory protection can only be used with redis 6.0.0 and above");
+                return REDISMODULE_ERR;
+            }
+        }
+        if(rm_alloc_initialize(ctx, useMemoryProtection, NULL) != REDISMODULE_OK) return REDISMODULE_ERR;
+
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Cron_Start();            // Start CRON
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);
-
-	// Set up the module's configurable variables, using user-defined values where provided.
-	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.

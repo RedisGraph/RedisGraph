@@ -52,5 +52,7 @@ static inline char *rm_strndup(const char *s, size_t n) {
  * contexts like unit tests. */
 void Alloc_Reset(void);
 
+int rm_alloc_initialize(RedisModuleCtx* ctx, int useMemoryProtection, void (*OnMaxMemoryReached)());
+
 #endif
 

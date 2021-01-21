@@ -20,7 +20,8 @@ typedef enum {
 	Config_RESULTSET_MAX_SIZE       = 4,  // max number of records in result-set
 	Config_MAINTAIN_TRANSPOSE       = 5,  // maintain transpose matrices
 	Config_VKEY_MAX_ENTITY_COUNT    = 6,  // max number of elements in vkey
-	Config_END_MARKER               = 7
+	Config_MEMORY_PROTECTION        = 8,  // protect from exploding the memory
+	Config_END_MARKER               = 9
 } Config_Option_Field;
 
 // configuration object
@@ -32,6 +33,7 @@ typedef struct {
 	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
+	bool memory_protection;
 } RG_Config;
 
 // Run-time configurable fields
