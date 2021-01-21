@@ -23,11 +23,12 @@ typedef enum {
 	CMD_UNKNOWN        = 0,
 	CMD_QUERY          = 1,
 	CMD_RO_QUERY       = 2,
-	CMD_DELETE         = 3,
-	CMD_CONFIG         = 4,
-	CMD_EXPLAIN        = 5,
-	CMD_PROFILE        = 6,
-	CMD_BULK_INSERT    = 7,
-	CMD_SLOWLOG        = 8
+	CMD_W_QUERY        = 3,
+	CMD_DELETE         = 4,
+	CMD_CONFIG         = 5,
+	CMD_EXPLAIN        = 6,
+	CMD_PROFILE        = 7,
+	CMD_BULK_INSERT    = 8,
+	CMD_SLOWLOG        = 9
 } GRAPH_Commands;
 

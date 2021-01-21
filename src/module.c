@@ -45,6 +45,7 @@ bool process_is_child;              // Flag indicating whether the running proce
 // Thread pool variables
 //------------------------------------------------------------------------------
 threadpool _thpool = NULL;
+threadpool _writers_thpool = NULL;
 
 extern CommandCtx **command_ctxs;
 
@@ -54,8 +55,11 @@ extern CommandCtx **command_ctxs;
  * Returns 1 if thread pool initialized, 0 otherwise. */
 static int _Setup_ThreadPOOL(int threadCount) {
 	// Create thread pool.
-	_thpool = thpool_init(threadCount);
+	_thpool = thpool_init(threadCount, 0);
 	if(_thpool == NULL) return 0;
+
+	_writers_thpool = thpool_init(1, threadCount);
+	if(_writers_thpool == NULL) return 0;
 
 	return 1;
 }
@@ -137,7 +141,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
 	// Initialize array of command contexts
-	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
+	command_ctxs = calloc(threadCount + 2, sizeof(CommandCtx*));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
@@ -147,6 +151,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch, "readonly deny-oom", 1, 1,
+								 1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	if(RedisModule_CreateCommand(ctx, "graph.W_QUERY", CommandDispatch, "readonly deny-oom", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}

@@ -74,7 +74,7 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 }
 
 void Graph_Query(void *args) {
-  bool readonly           = true;
+	bool readonly           = true;
 	bool lockAcquired       = false;
 	ResultSet *result_set   = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
@@ -131,7 +131,7 @@ void Graph_Query(void *args) {
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
 	} else {
-		Graph_WriterEnter(gc->g);  // Single writer.
+		// Graph_WriterEnter(gc->g);  // Single writer.
 		/* If this is a writer query we need to re-open the graph key with write flag
 		* this notifies Redis that the key is "dirty" any watcher on that key will
 		* be notified. */

@@ -102,7 +102,8 @@ static void bsem_wait(struct bsem *bsem_p);
 /* ========================== THREADPOOL ============================ */
 
 /* Initialise thread pool */
-struct thpool_ *thpool_init(int num_threads) {
+//struct thpool_ *thpool_init(int num_threads, int id_offset) {
+struct thpool_ *thpool_init(int num_threads, int id_offset) {
 
 	threads_on_hold = 0;
 	threads_keepalive = 1;
@@ -143,7 +144,7 @@ struct thpool_ *thpool_init(int num_threads) {
 	/* Thread init */
 	int n;
 	for(n = 0; n < num_threads; n++) {
-		thread_init(thpool_p, &thpool_p->threads[n], n);
+		thread_init(thpool_p, &thpool_p->threads[n], id_offset + n);
 #if THPOOL_DEBUG
 		printf("THPOOL_DEBUG: Created thread %d in pool \n", n);
 #endif
