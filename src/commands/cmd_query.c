@@ -76,8 +76,12 @@ static void _ExecuteQuery(void *args) {
 	ExecutionPlan *plan = exec_ctx->plan;
 	ExecutionType exec_type = exec_ctx->exec_type;
 
-	// If we have migrated to a writer thread, update thread-local storage.
-	if(!readonly) QueryCtx_SetInTLS(inner_ctx->query_ctx);
+	// If we have migrated to a writer thread, update thread-local storage and track the CommandCtx.
+	if(!readonly) {
+		QueryCtx_SetInTLS(inner_ctx->query_ctx);
+		command_ctx->writer_thread = true;
+		CommandCtx_TrackCtx(command_ctx);
+	}
 
 	// Instantiate the query's ResultSet.
 	bool compact = command_ctx->compact;
@@ -212,6 +216,8 @@ void Graph_Query(void *args) {
 	} else {
 		// Write queries will be executed on a different thread, clear this thread's QueryCtx.
 		QueryCtx_RemoveFromTLS();
+		// Untrack the CommandCtx.
+		CommandCtx_UntrackCtx(command_ctx);
 		// Dispatch work to the writer thread.
 		thpool_add_work(_workerpool, _ExecuteQuery, inner_ctx);
 	}

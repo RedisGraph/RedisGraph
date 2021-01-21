@@ -37,6 +37,7 @@ CommandCtx *CommandCtx_New
 	context->timeout = timeout;
 	context->command_name = NULL;
 	context->graph_ctx = graph_ctx;
+	context->writer_thread = false;
 	context->replicated_command = replicated_command;
 
 	size_t len;
@@ -68,6 +69,9 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	int tid = thpool_get_thread_id(_thpool, pthread_self());
 	tid += 1; // +1 to compensate for Redis main thread.
 
+	// The writer thread's CommandCtx is always stored at the index thread_count.
+	if(ctx->writer_thread) tid = thpool_num_threads(_thpool);
+
 	ASSERT(command_ctxs[tid] == NULL);
 
 	// set ctx at the current thread entry
@@ -81,6 +85,9 @@ void CommandCtx_UntrackCtx(CommandCtx *ctx) {
 
 	int tid = thpool_get_thread_id(_thpool, pthread_self());
 	tid += 1; // +1 to compensate for Redis main thread.
+
+	// The writer thread's CommandCtx is always stored at the index thread_count.
+	if(ctx->writer_thread) tid = thpool_num_threads(_thpool);
 
 	ASSERT(command_ctxs[tid] == ctx);
 

@@ -141,7 +141,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
 	// Initialize array of command contexts
-	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx *));
+	command_ctxs = calloc(threadCount + 2, sizeof(CommandCtx *));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 

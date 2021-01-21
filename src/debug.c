@@ -28,11 +28,11 @@ static void endCrashReport(void) {
 static void logCommands(void) {
 	int nthreads = thpool_num_threads(_thpool);
 
-	for(int i = 0; i < nthreads; i++) {
+	for(int i = 0; i < nthreads + 1; i++) {
 		CommandCtx *cmd = command_ctxs[i];
 		if(cmd != NULL) {
 			RedisModule_Log(NULL, "warning", "%s %s", cmd->command_name,
-					cmd->query);
+							cmd->query);
 		}
 	}
 }
@@ -51,7 +51,7 @@ void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
 
 	RedisModule_InfoAddSection(ctx, "executing commands");
 
-	for(int i = 0; i < nthreads; i++) {
+	for(int i = 0; i < nthreads + 1; i++) {
 		CommandCtx *cmd = command_ctxs[i];
 		if(cmd != NULL) {
 			asprintf(&command_desc, "%s %s", cmd->command_name, cmd->query);

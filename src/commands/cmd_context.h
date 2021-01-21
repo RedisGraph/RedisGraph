@@ -19,6 +19,7 @@ typedef struct {
 	RedisModuleBlockedClient *bc;   // Blocked client.
 	bool replicated_command;        // Whether this instance was spawned by a replication command.
 	bool compact;                   // Whether this query was issued with the compact flag.
+	bool writer_thread;             // Whether this query is running on the writer thread.
 	long long timeout;              // The query timeout, if specified.
 } CommandCtx;
 
@@ -38,6 +39,9 @@ CommandCtx *CommandCtx_New
 // Tracks given 'ctx' such that in case of a crash we will be able to report
 // back all of the currently running commands
 void CommandCtx_TrackCtx(CommandCtx *ctx);
+
+// Remove the given CommandCtx from tracking.
+void CommandCtx_UntrackCtx(CommandCtx *ctx);
 
 // Get Redis module context
 RedisModuleCtx *CommandCtx_GetRedisCtx
