@@ -73,6 +73,8 @@ static Record ApplyConsume(OpBase *opBase) {
 		// Clone the bound Record and merge the RHS Record into it.
 		Record r = OpBase_CloneRecord(op->r);
 		Record_Merge(r, rhs_record);
+		// Delete the RHS record, as it has been merged into r.
+		OpBase_DeleteRecord(rhs_record);
 
 		return r;
 	}
