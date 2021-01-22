@@ -96,11 +96,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc,
 												  const GraphEntity *e) {
 	int prop_count = ENTITY_PROP_COUNT(e);
-	RedisModule_ReplyWithArray(ctx, prop_count);
 	// Iterate over all properties stored on entity
 	for(int i = 0; i < prop_count; i ++) {
 		// Compact replies include the value's type; verbose replies do not
-		RedisModule_ReplyWithArray(ctx, 3);
 		EntityProperty prop = ENTITY_PROPS(e)[i];
 		// Emit the string index
 		RedisModule_ReplyWithLongLong(ctx, prop.id);
@@ -118,7 +116,8 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	 *  ]
 	 */
 	// 3 top-level entities in node reply
-	RedisModule_ReplyWithArray(ctx, 3);
+	int prop_count = ENTITY_PROP_COUNT(n);
+	RedisModule_ReplyWithArray(ctx, 2 + (prop_count * 3));
 
 	// id (integer)
 	EntityID id = ENTITY_GET_ID(n);
@@ -126,14 +125,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 
 	// [label string index]
 	int label_id = NODE_GET_LABEL_ID(n, gc->g);
-	if(label_id == GRAPH_NO_LABEL) {
-		// Emit an empty array for unlabeled nodes.
-		RedisModule_ReplyWithArray(ctx, 0);
-	} else {
-		// Print label in nested array for multi-label support.
-		RedisModule_ReplyWithArray(ctx, 1);
-		RedisModule_ReplyWithLongLong(ctx, label_id);
-	}
+	RedisModule_ReplyWithLongLong(ctx, label_id);
 
 	// [properties]
 	_ResultSet_CompactReplyWithProperties(ctx, gc, (GraphEntity *)n);
@@ -150,7 +142,8 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 	 *  ]
 	 */
 	// 5 top-level entities in edge reply
-	RedisModule_ReplyWithArray(ctx, 5);
+	int prop_count = ENTITY_PROP_COUNT(e);
+	RedisModule_ReplyWithArray(ctx, 4 + (prop_count * 3));
 
 	// id (integer)
 	EntityID id = ENTITY_GET_ID(e);
@@ -185,9 +178,8 @@ static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext
 	 *  ]
 	 */
 	uint arrayLen = SIArray_Length(array);
-	RedisModule_ReplyWithArray(ctx, arrayLen);
+	RedisModule_ReplyWithArray(ctx, arrayLen * 2);
 	for(uint i = 0; i < arrayLen; i++) {
-		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, SIArray_Get(array, i));
 	}
 }
@@ -217,14 +209,14 @@ static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *g
 	*/
 
 	// Response consists of two arrays.
-	RedisModule_ReplyWithArray(ctx, 2);
+	RedisModule_ReplyWithArray(ctx, 4);
+
 	// First array type and value.
-	RedisModule_ReplyWithArray(ctx, 2);
 	SIValue nodes = SIPath_Nodes(path);
 	_ResultSet_CompactReplyWithSIValue(ctx, gc, nodes);
 	SIValue_Free(nodes);
+
 	// Second array type and value.
-	RedisModule_ReplyWithArray(ctx, 2);
 	SIValue relationships = SIPath_Relationships(path);
 	_ResultSet_CompactReplyWithSIValue(ctx, gc, relationships);
 	SIValue_Free(relationships);
@@ -247,9 +239,9 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 	uint key_count = Map_KeyCount(v);
 	Map m = v.map;
 
-	// response consists of N pairs array:
-	// (string, value type, value)
-	RedisModule_ReplyWithArray(ctx, key_count * 2);
+	// response consists of N triplets:
+	// (string, value type, value) X N
+	RedisModule_ReplyWithArray(ctx, key_count * 3);
 	for(int i = 0; i < key_count; i++) {
 		Pair     p     =  m[i];
 		SIValue  val   =  p.val;
@@ -259,7 +251,6 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 		RedisModule_ReplyWithCString(ctx, key);
 
 		// emit value
-		RedisModule_ReplyWithArray(ctx, 2);
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, val);
 	}
 }
@@ -267,11 +258,10 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
 								 uint numcols, uint *col_rec_map) {
 	// Prepare return array sized to the number of RETURN entities
-	RedisModule_ReplyWithArray(ctx, numcols);
+	RedisModule_ReplyWithArray(ctx, numcols * 2);
 
 	for(uint i = 0; i < numcols; i++) {
 		uint idx = col_rec_map[i];
-		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_Get(r, idx));
 	}
 }
@@ -283,13 +273,7 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
-		RedisModule_ReplyWithArray(ctx, 2);
-		/* Because the types found in the first Record do not necessarily inform the types
-		 * in subsequent records, we will always set the column type as scalar. */
-		ColumnType t = COLUMN_SCALAR;
-		RedisModule_ReplyWithLongLong(ctx, t);
-
-		// Second, emit the identifier string associated with the column
+		// emit the identifier string associated with the column
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
