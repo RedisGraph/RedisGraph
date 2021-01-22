@@ -114,6 +114,14 @@ int Graph_AddLabel(
 	Graph *g
 );
 
+// Associate node with labels by setting label matrix L to 1 at position [id,id]
+void Graph_LabelNode(
+	Graph *g,
+	NodeID id,
+	int *labels,
+   	uint label_count
+);
+
 // Creates a new relation matrix, returns id given to relation.
 int Graph_AddRelationType(
 	Graph *g
@@ -131,11 +139,10 @@ void Graph_AllocateEdges(
 	size_t n                // Number of edges to create.
 );
 
-// Create a single node and labels it accordingly.
+// Create a single node.
 // Return newly created node.
 void Graph_CreateNode(
 	Graph *g,
-	int label,
 	Node *n
 );
 
@@ -237,13 +244,6 @@ int Graph_GetNode(
 	const Graph *g,
 	NodeID id,
 	Node *n
-);
-
-// Retrieves node label
-// Returns GRAPH_NO_LABEL if node has no label.
-int Graph_GetNodeLabel(
-	const Graph *g,
-	NodeID nodeID
 );
 
 // Retrieves edge with given id from graph,

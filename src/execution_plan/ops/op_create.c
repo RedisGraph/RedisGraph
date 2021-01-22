@@ -53,14 +53,14 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		NodeCreateCtx *n = op->pending.nodes_to_create + i;
 
 		// create a new node
-		Node newNode = GE_NEW_LABELED_NODE(n->label, n->labelId);
+		Node newNode = GE_NEW_NODE();
 
 		// add new node to Record and save a reference to it
 		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		// convert query-level properties
-		PropertyMap *map = op->pending.nodes_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
+		PropertyMap *map = op->pending.nodes_to_create[i].properties;
 		if(map) converted_properties = ConvertPropertyMap(r, map, false);
 
 		// save node for later insertion
@@ -68,6 +68,9 @@ static void _CreateNodes(OpCreate *op, Record r) {
 
 		// save properties to insert with node
 		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
+
+		// save labels to assigned to node
+		op->pending.node_labels = array_append(op->pending.node_labels, n->labelsId);
 	}
 }
 

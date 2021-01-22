@@ -5,6 +5,7 @@
 */
 #include "../algebraic_expression.h"
 #include "utils.h"
+#include "../../RG.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../algorithms/algorithms.h"
@@ -110,21 +111,35 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 		// We only care about the source label matrix, when it comes to
 		// the first expression, as in the following expressions
 		// src is the destination of the previous expression.
-		if(expIdx == 0 && src->label) {
-			// Remove src node matrix from expression.
-			AlgebraicExpression *op = AlgebraicExpression_RemoveSource(&exp);
-			res = array_append(res, op);
+		uint label_count = 0;
+		AlgebraicExpression *op = NULL;
+		if(expIdx == 0) {
+			label_count = QGNode_LabelCount(src);
+			if(label_count == 1) {
+				// Remove src node matrix from expression.
+				op = AlgebraicExpression_RemoveSource(&exp);
+			} else if(label_count > 1) {
+				// Remove src node matrix from expression.
+				op = AlgebraicExpression_RemoveSourceOp(&exp);
+			}
+			if(op != NULL) res = array_append(res, op);
 		}
 
 		res = array_append(res, exp);
 
 		// If the expression has a labeled destination, separate it into its own expression.
+		op = NULL;
 		QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(exp));
-		if(dest->label) {
+		label_count = QGNode_LabelCount(dest);
+		if(label_count == 1) {
 			// Remove dest node matrix from expression.
-			AlgebraicExpression *op = AlgebraicExpression_RemoveDest(&exp);
-
-			/* See if dest mat can be prepended to the following expression.
+			op = AlgebraicExpression_RemoveDest(&exp);
+		} else if(label_count > 1) {
+			// Remove dest node matrix from expression.
+			op = AlgebraicExpression_RemoveDestOp(&exp);
+		}
+		if(op != NULL) {
+			/* See if dest exp can be prepended to the following expression.
 			 * If not create a new expression. */
 			if(expIdx < expCount - 1 &&
 			   !_AlgebraicExpression_ContainsVariableLengthEdge(qg, expressions[expIdx + 1])) {
@@ -177,9 +192,30 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 (
 	QGNode *n
 ) {
+	const char *l = NULL;
 	bool diagonal = true;
 	bool transpose = false;
-	return AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, n->label);
+	AlgebraicExpression *exp = NULL;
+	uint label_count = QGNode_LabelCount(n);
+
+	if(label_count == 0) {
+		return AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, NULL);
+	}
+
+	if(label_count == 1) {
+		l = QGNode_Label(n, 0);
+		exp = AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, l);
+		return exp;
+	}
+
+	exp = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+	for(int i = 0; i < label_count; i++) {
+		l = QGNode_Label(n, i);
+		AlgebraicExpression *op = AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, l);
+		AlgebraicExpression_AddChild(exp, op);
+	}
+
+	return exp;
 }
 
 static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
@@ -203,7 +239,7 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	bool var_len_traversal = QGEdge_VariableLength(e);
 
 	// If src node has a label, multiply to the left by label matrix.
-	if(src_node->label) {
+	if(QGNode_LabelCount(src_node) > 0) {
 		src_filter = _AlgebraicExpression_OperandFromNode(src_node);
 	}
 
@@ -414,7 +450,7 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath
 	}   // End of path traversal.
 
 	// If last node on path has a label, multiply by label matrix.
-	if(e->dest->label) {
+	if(QGNode_LabelCount(e->dest) > 0) {
 		root = _AlgebraicExpression_MultiplyToTheRight(root, _AlgebraicExpression_OperandFromNode(e->dest));
 	}
 
@@ -447,7 +483,13 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	 * represent graph traversals, no edges means no traversals. */
 	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
 	uint edge_count = QueryGraph_EdgeCount(qg);
-	if(edge_count == 0) return exps;
+
+	if(edge_count == 0) {
+		ASSERT(QueryGraph_NodeCount(qg) == 1);
+		QGNode *n = qg->nodes[0];
+		exps = array_append(exps, _AlgebraicExpression_OperandFromNode(n));
+		return exps;
+	}
 
 	bool acyclic = IsAcyclicGraph(qg);
 	QueryGraph *g = QueryGraph_Clone(qg);
@@ -499,12 +541,16 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 			if(i > 0) {
 				// Make sure expression i follows previous expression.
 				QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
-				if(src->label) {
-					/* exp[i] shares a label matrix with exp[i-1]
-					 * remove redundancy. */
-					AlgebraicExpression *redundent = AlgebraicExpression_RemoveSource(&exp);
-					AlgebraicExpression_Free(redundent);
+				uint label_count = QGNode_LabelCount(src);
+				AlgebraicExpression *redundent = NULL;
+				/* exp[i] shares a label matrix with exp[i-1]
+				 * remove redundancy. */
+				if(label_count == 1) {
+					redundent = AlgebraicExpression_RemoveSource(&exp);
+				} else if(label_count > 1) {
+					redundent = AlgebraicExpression_RemoveSourceOp(&exp);
 				}
+				if(redundent) AlgebraicExpression_Free(redundent);
 			}
 			// Expression can not be empty.
 			ASSERT(AlgebraicExpression_OperandCount(exp) > 0);

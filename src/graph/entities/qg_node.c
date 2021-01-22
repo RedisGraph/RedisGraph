@@ -7,6 +7,7 @@
 #include "qg_node.h"
 #include "qg_edge.h"
 #include "../graph.h"
+#include "../../RG.h"
 #include "../../util/arr.h"
 
 static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
@@ -22,13 +23,50 @@ static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 
 QGNode *QGNode_New(const char *alias) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
-	n->label = NULL;
+	n->labelsID = array_new(int, 0);
+	n->labels = array_new(const char *, 0);
 	n->alias = alias;
 	n->highly_connected = false;
-	n->labelID = GRAPH_NO_LABEL;
 	n->incoming_edges = array_new(QGEdge *, 0);
 	n->outgoing_edges = array_new(QGEdge *, 0);
 	return n;
+}
+
+uint QGNode_LabelCount(const QGNode *n) {
+	ASSERT(n != NULL);
+	return array_len(n->labels);
+}
+
+int QGNode_LabelID(const QGNode *n, uint idx) {
+	ASSERT(n != NULL);
+	ASSERT(idx < QGNode_LabelCount(n));
+	return n->labelsID[idx];
+}
+
+const char *QGNode_Label(const QGNode *n, uint idx) {
+	ASSERT(n != NULL);
+	ASSERT(idx < QGNode_LabelCount(n));
+	return n->labels[idx];
+}
+
+bool QGNode_HasLabel(const QGNode *n, const char *l) {
+	ASSERT(n != NULL);
+
+	uint label_count = QGNode_LabelCount(n);
+	for(uint i = 0; i < label_count; i++) {
+		if(strcmp(n->labels[i], l) == 0) return true;
+	}
+
+	return false;
+}
+
+void QGNode_AddLabel(QGNode *n, const char *l, int l_id) {
+	ASSERT(n != NULL);
+	ASSERT(l != NULL);
+	ASSERT(QGNode_HasLabel(n, l) == false);
+
+	n->labels = array_append(n->labels, l);
+	n->labelsID = array_append(n->labelsID, l_id);
 }
 
 bool QGNode_HighlyConnected(const QGNode *n) {
@@ -77,6 +115,10 @@ void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e) {
 QGNode *QGNode_Clone(const QGNode *orig) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
 	memcpy(n, orig, sizeof(QGNode));
+
+	array_clone(n->labels, orig->labels);
+	array_clone(n->labelsID, orig->labelsID);
+
 	// Don't save edges when duplicating a node
 	n->incoming_edges = array_new(QGEdge *, 0);
 	n->outgoing_edges = array_new(QGEdge *, 0);
@@ -90,13 +132,18 @@ int QGNode_ToString(const QGNode *n, char *buff, int buff_len) {
 	int offset = 0;
 	offset += snprintf(buff + offset, buff_len - offset, "(");
 	if(n->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", n->alias);
-	if(n->label) offset += snprintf(buff + offset, buff_len - offset, ":%s", n->label);
+	for(uint i = 0; i < QGNode_LabelCount(n); i++) {
+		offset += snprintf(buff + offset, buff_len - offset, ":%s", n->labels[i]);
+	}
 	offset += snprintf(buff + offset, buff_len - offset, ")");
 	return offset;
 }
 
 void QGNode_Free(QGNode *node) {
 	if(!node) return;
+
+	array_free(node->labels);
+	array_free(node->labelsID);
 
 	if(node->outgoing_edges) array_free(node->outgoing_edges);
 	if(node->incoming_edges) array_free(node->incoming_edges);

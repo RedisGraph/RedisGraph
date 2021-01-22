@@ -125,14 +125,13 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithLongLong(ctx, id);
 
 	// [label string index]
-	int label_id = NODE_GET_LABEL_ID(n, gc->g);
-	if(label_id == GRAPH_NO_LABEL) {
-		// Emit an empty array for unlabeled nodes.
-		RedisModule_ReplyWithArray(ctx, 0);
-	} else {
+	Label *lbls = NULL;
+	uint lbls_count = 0;
+	NODE_LABELS(n, lbls, lbls_count);
+	RedisModule_ReplyWithArray(ctx, lbls_count);
+	for(int i = 0; i < lbls_count; i++) {
 		// Print label in nested array for multi-label support.
-		RedisModule_ReplyWithArray(ctx, 1);
-		RedisModule_ReplyWithLongLong(ctx, label_id);
+		RedisModule_ReplyWithLongLong(ctx, lbls[i].id);
 	}
 
 	// [properties]

@@ -102,7 +102,8 @@ static void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 		// * (labels) x M
 		// M will currently always be 0 or 1
 		uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
-		Graph_CreateNode(gc->g, l, &n);
+		Graph_CreateNode(gc->g, &n);
+		if(l != GRAPH_NO_LABEL) Graph_LabelNode(gc->g, n.id, (int*)&l, 1);
 
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
 	}

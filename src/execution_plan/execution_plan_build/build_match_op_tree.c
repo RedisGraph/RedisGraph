@@ -14,8 +14,8 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	// Build the full FilterTree for this AST so that we can order traversals properly.
 	FT_FilterNode *ft = AST_BuildFilterTree(ast);
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
-	uint connectedComponentsCount = array_len(connectedComponents);
 	plan->connected_components = connectedComponents;
+	uint connectedComponentsCount = array_len(connectedComponents);
 	// If we have already constructed any ops, the plan's record map contains all variables bound at this time.
 	rax *bound_vars = plan->record_map;
 
@@ -30,64 +30,51 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	// Keep track after all traversal operations along a pattern.
 	for(uint i = 0; i < connectedComponentsCount; i++) {
 		QueryGraph *cc = connectedComponents[i];
-		uint edge_count = array_len(cc->edges);
 		OpBase *root = NULL; // The root of the traversal chain will be added to the ExecutionPlan.
 		OpBase *tail = NULL;
 
-		if(edge_count == 0) {
-			/* If there are no edges in the component, we only need a node scan. */
-			QGNode *n = cc->nodes[0];
-			if(n->labelID != GRAPH_NO_LABEL) {
-				NodeScanCtx ctx = NODE_CTX_NEW(n->alias, n->label, n->labelID);
-				root = NewNodeByLabelScanOp(plan, ctx);
-			} else {
-				root = NewAllNodeScanOp(plan, n->alias);
+		AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc);
+		uint expCount = array_len(exps);
+
+		// Reorder exps, to the most performant arrangement of evaluation.
+		orderExpressions(qg, exps, expCount, ft, bound_vars);
+
+		/* Create the SCAN operation that will be the tail of the traversal chain. */
+		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
+		if(QGNode_LabelCount(src) > 0) {
+			/* Resolve source node by performing label scan,
+			 * in which case if the first algebraic expression operand
+			 * is a label matrix (diagonal) remove it. */
+			if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
+				AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
 			}
+			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_Label(src, 0), QGNode_LabelID(src, 0));
+			root = tail = NewNodeByLabelScanOp(plan, ctx);
 		} else {
-			/* The component has edges, so we'll build a node scan and a chain of traversals. */
-			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc);
-			uint expCount = array_len(exps);
-
-			// Reorder exps, to the most performant arrangement of evaluation.
-			orderExpressions(qg, exps, expCount, ft, bound_vars);
-
-			/* Create the SCAN operation that will be the tail of the traversal chain. */
-			QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
-			if(src->label) {
-				/* Resolve source node by performing label scan,
-				 * in which case if the first algebraic expression operand
-				 * is a label matrix (diagonal) remove it. */
-				if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
-					AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
-				}
-				NodeScanCtx ctx = NODE_CTX_NEW(src->alias, src->label, src->labelID);
-				root = tail = NewNodeByLabelScanOp(plan, ctx);
-			} else {
-				root = tail = NewAllNodeScanOp(plan, src->alias);
-			}
-
-			/* For each expression, build the appropriate traversal operation. */
-			for(int j = 0; j < expCount; j++) {
-				AlgebraicExpression *exp = exps[j];
-				// Empty expression, already freed.
-				if(AlgebraicExpression_OperandCount(exp) == 0) continue;
-
-				QGEdge *edge = NULL;
-				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
-																					   AlgebraicExpression_Edge(exp));
-				if(edge && QGEdge_VariableLength(edge)) {
-					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
-				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp);
-				}
-				// Insert the new traversal op at the root of the chain.
-				ExecutionPlan_AddOp(root, tail);
-				tail = root;
-			}
-
-			// Free the expressions array, as its parts have been converted into operations
-			array_free(exps);
+			root = tail = NewAllNodeScanOp(plan, src->alias);
 		}
+
+		/* For each expression, build the appropriate traversal operation. */
+		for(int j = 0; j < expCount; j++) {
+			AlgebraicExpression *exp = exps[j];
+			// Empty expression, already freed.
+			if(AlgebraicExpression_OperandCount(exp) == 0) continue;
+
+			QGEdge *edge = NULL;
+			if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
+																				   AlgebraicExpression_Edge(exp));
+			if(edge && QGEdge_VariableLength(edge)) {
+				root = NewCondVarLenTraverseOp(plan, gc->g, exp);
+			} else {
+				root = NewCondTraverseOp(plan, gc->g, exp);
+			}
+			// Insert the new traversal op at the root of the chain.
+			ExecutionPlan_AddOp(root, tail);
+			tail = root;
+		}
+
+		// Free the expressions array, as its parts have been converted into operations
+		array_free(exps);
 
 		if(cartesianProduct) {
 			// We have multiple disjoint traversal chains.

@@ -101,14 +101,14 @@ static void _RdbSaveNode_v8(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *n
 	// Save ID
 	EntityID id = ENTITY_GET_ID(n);
 	RedisModule_SaveUnsigned(rdb, id);
-	int l = Graph_GetNodeLabel(gc->g, id);
 
-	// #labels, currently only one label per node.
-	int label_count = (l == GRAPH_NO_LABEL) ? 0 : 1;
-	RedisModule_SaveUnsigned(rdb, label_count);
+	unsigned short s_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
+	Label lbls[s_count];
+	uint l_count = Node_GetLabels((Node*)n, lbls, s_count);
+	RedisModule_SaveUnsigned(rdb, l_count);
 
-	// (label)
-	if(label_count) RedisModule_SaveUnsigned(rdb, l);
+	// Save labels
+	for(int i = 0; i < l_count; i++) RedisModule_SaveUnsigned(rdb, lbls[i].id);
 
 	// properties N
 	// (name, value type, value) X N

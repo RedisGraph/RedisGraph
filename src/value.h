@@ -106,7 +106,7 @@ SIValue SI_Array(u_int64_t initialCapacity);
 // Duplicate and ultimately free the input string.
 SIValue SI_DuplicateStringVal(const char *s);
 // Neither duplicate nor assume ownership of input string.
-SIValue SI_ConstStringVal(char *s);
+SIValue SI_ConstStringVal(const char *s);
 // Don't duplicate input string, but assume ownership.
 SIValue SI_TransferStringVal(char *s);
 

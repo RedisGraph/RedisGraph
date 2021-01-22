@@ -165,8 +165,20 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 	AlgebraicExpression **root   // Root from which to remove a child.
 );
 
+// Remove source operation of algebraic expression from root.
+AlgebraicExpression *AlgebraicExpression_RemoveSourceOp
+(
+	AlgebraicExpression **root   // Root from which to remove a child.
+);
+
 // Remove destination of algebraic expression from root.
 AlgebraicExpression *AlgebraicExpression_RemoveDest
+(
+	AlgebraicExpression **root   // Root from which to remove a child.
+);
+
+// Remove destination operation of algebraic expression from root.
+AlgebraicExpression *AlgebraicExpression_RemoveDestOp
 (
 	AlgebraicExpression **root   // Root from which to remove a child.
 );

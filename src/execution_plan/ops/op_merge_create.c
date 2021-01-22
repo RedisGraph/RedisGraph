@@ -108,7 +108,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		NodeCreateCtx *n = op->pending.nodes_to_create + i;
 
 		/* Create a new node. */
-		Node newNode = GE_NEW_LABELED_NODE(n->label, n->labelId);
+		Node newNode = GE_NEW_NODE();
 
 		/* Add new node to Record and save a reference to it. */
 		Node *node_ref = Record_AddNode(r, n->node_idx, newNode);
@@ -119,13 +119,18 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		if(map) converted_properties = ConvertPropertyMap(r, map, true);
 
 		/* Update the hash code with this entity. */
-		_IncrementalHashEntity(op->hash_state, n->label, converted_properties);
+		const char *label = NULL;
+		if(array_len(n->labels) > 0) label = n->labels[0];
+		_IncrementalHashEntity(op->hash_state, label, converted_properties);
 
-		/* Save node for later insertion. */
+		// Save node for later insertion
 		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);
 
-		/* Save properties to insert with node. */
+		// Save properties to insert with node
 		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
+
+		// save labels to assigned to node
+		op->pending.node_labels = array_append(op->pending.node_labels, n->labelsId);
 	}
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);

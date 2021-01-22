@@ -266,12 +266,6 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 	return schema;
 }
 
-const char *GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
-	int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-	if(label_id == GRAPH_NO_LABEL) return NULL;
-	return gc->node_schemas[label_id]->name;
-}
-
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
 	ASSERT(reltype_id != GRAPH_NO_RELATION);
@@ -401,24 +395,28 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
 // Delete all references to a node from any indices built upon its properties
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	Schema *s = NULL;
+	Graph *g = gc->g;
+	EntityID node_id = ENTITY_GET_ID(n);
 
-	if(n->label) {
-		// Node will have a label string if one was specified in the query MATCH clause
-		s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
-	} else {
-		EntityID node_id = ENTITY_GET_ID(n);
-		// Otherwise, look up the offset of the matching label (if any)
-		int schema_id = Graph_GetNodeLabel(gc->g, node_id);
-		// Do nothing if node had no label
-		if(schema_id == GRAPH_NO_LABEL) return;
-		s = GraphContext_GetSchemaByID(gc, schema_id, SCHEMA_NODE);
+	// allocate enough space for node labels
+	uint schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
+	Label labels[schema_count];
+
+	// retrieve node labels
+	uint label_count = Node_GetLabels(n, labels, schema_count);
+
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i].id;
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		ASSERT(s != NULL);
+
+		// Update any indices this entity is represented in
+		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		if(idx) Index_RemoveNode(idx, n);
+
+		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+		if(idx) Index_RemoveNode(idx, n);
 	}
-
-	// Update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx) Index_RemoveNode(idx, n);
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-	if(idx) Index_RemoveNode(idx, n);
 }
 
 //------------------------------------------------------------------------------

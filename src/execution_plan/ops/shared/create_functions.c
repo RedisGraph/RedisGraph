@@ -22,6 +22,29 @@ static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 }
 
 /* Commit insertions. */
+static void _CommitNode(GraphContext *gc, Node *n, PendingProperties *props,
+						int *labels, ResultSetStatistics *stats) {
+	Graph *g = gc->g;
+
+	// introduce node into graph
+	Graph_CreateNode(g, n);
+
+	// add node attributres
+	if(props) _AddProperties(stats, (GraphEntity *)n, props);
+
+	// set node labels
+	uint label_count = array_len(labels);
+	for(uint i = 0; i < label_count; i++) {
+		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+		ASSERT(s);
+
+		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+	}
+
+	// label node
+	Graph_LabelNode(g, n->id, labels, label_count);
+}
+
 static void _CommitNodes(PendingCreations *pending) {
 	Node *n;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -34,39 +57,32 @@ static void _CommitNodes(PendingCreations *pending) {
 	uint blueprint_node_count = array_len(pending->nodes_to_create);
 	for(uint i = 0; i < blueprint_node_count; i++) {
 		NodeCreateCtx *node_ctx = pending->nodes_to_create + i;
+		uint label_count = array_len(node_ctx->labels);
 
-		const char *label = node_ctx->label;
-		if(label) {
-			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
-				GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+		for(uint j = 0; j < label_count; j++) {
+			const char *label = node_ctx->labels[j];
+			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+
+			if(s == NULL) {
+				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 				pending->stats->labels_added++;
 			}
+
+			node_ctx->labelsId[j] = s->id;
 		}
 	}
+
+	//--------------------------------------------------------------------------
+	// Commit nodes to graph
+	//--------------------------------------------------------------------------
 
 	uint node_count = array_len(pending->created_nodes);
 	Graph_AllocateNodes(g, node_count);
 
 	for(uint i = 0; i < node_count; i++) {
 		n = pending->created_nodes[i];
-		Schema *s = NULL;
-
-		// Get label ID.
-		int labelID = GRAPH_NO_LABEL;
-		if(n->label != NULL) {
-			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
-			ASSERT(s != NULL);
-			n->labelID = s->id; // Update the label ID within the node.
-			labelID = s->id;
-		}
-
-		// Introduce node into graph.
-		Graph_CreateNode(g, labelID, n);
-
-		if(pending->node_properties[i]) _AddProperties(pending->stats, (GraphEntity *)n,
-														   pending->node_properties[i]);
-
-		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+		_CommitNode(gc, n, pending->node_properties[i], pending->node_labels[i],
+					pending->stats);
 	}
 }
 
@@ -125,6 +141,7 @@ PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCt
 	PendingCreations pending;
 	pending.nodes_to_create = nodes;
 	pending.edges_to_create = edges;
+	pending.node_labels = array_new(int *, 0);
 	pending.created_nodes = array_new(Node *, 0);
 	pending.created_edges = array_new(Edge *, 0);
 	pending.node_properties = array_new(PendingProperties *, 0);
@@ -225,6 +242,11 @@ void PendingCreationsFree(PendingCreations *pending) {
 		}
 		array_free(pending->edges_to_create);
 		pending->edges_to_create = NULL;
+	}
+
+	if(pending->node_labels) {
+		array_free(pending->node_labels);
+		pending->node_labels = NULL;
 	}
 
 	if(pending->created_nodes) {

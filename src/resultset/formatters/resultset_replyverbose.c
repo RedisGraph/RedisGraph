@@ -93,17 +93,15 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	// ["labels", [label (string)]]
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
-	const char *label = NODE_GET_LABEL(n);
+
+	Label *lbls = NULL;
+	uint lbls_count = 0;
+	NODE_LABELS(n, lbls, lbls_count);
 	// Retrieve label if it is not set on the node.
-	// TODO Make a more efficient lookup for this string
-	if(label == NULL) label = GraphContext_GetNodeLabel(gc, n);
-	if(label == NULL) {
-		// Emit an empty array for unlabeled nodes.
-		RedisModule_ReplyWithArray(ctx, 0);
-	} else {
-		// Print label in nested array for multi-label support.
-		RedisModule_ReplyWithArray(ctx, 1);
-		RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+	RedisModule_ReplyWithArray(ctx, lbls_count);
+	for(int i = 0; i < lbls_count; i++) {
+		const char *lbl_name = lbls[i].name;
+		RedisModule_ReplyWithStringBuffer(ctx, lbl_name, strlen(lbl_name));
 	}
 
 	// [properties, [properties]]

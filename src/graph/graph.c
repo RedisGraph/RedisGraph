@@ -45,7 +45,7 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 }
 
 void _binary_op_free_edge(void *z, const void *x, const void *y) {
-	const Graph *g = (const Graph *) *((uint64_t *)x);
+	const Graph *g = (const Graph *) * ((uint64_t *)x);
 	const EdgeID *id = (const EdgeID *)y;
 
 	if((SINGLE_EDGE(*id))) {
@@ -439,22 +439,6 @@ int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
 	return (e->entity != NULL);
 }
 
-int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
-	ASSERT(g);
-	int label = GRAPH_NO_LABEL;
-	for(int i = 0; i < array_len(g->labels); i++) {
-		bool x = false;
-		GrB_Matrix M = Graph_GetLabelMatrix(g, i);
-		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, M, nodeID, nodeID);
-		if(res == GrB_SUCCESS && x == true) {
-			label = i;
-			break;
-		}
-	}
-
-	return label;
-}
-
 int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	ASSERT(g && e);
 	NodeID srcNodeID = Edge_GetSrcNodeID(e);
@@ -519,17 +503,9 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 	}
 }
 
-void Graph_CreateNode(Graph *g, int label, Node *n) {
-	ASSERT(g);
-
-	NodeID id;
-	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
-	n->id = id;
-	n->entity = en;
-	en->prop_count = 0;
-	en->properties = NULL;
-
-	if(label != GRAPH_NO_LABEL) {
+void Graph_LabelNode(Graph *g, NodeID id, int *labels, uint label_count) {
+	for(uint i = 0; i < label_count; i++) {
+		int label = labels[i];
 		// Try to set matrix at position [id, id]
 		// incase of a failure, scale matrix.
 		RG_Matrix matrix = g->labels[label];
@@ -541,6 +517,17 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 			ASSERT(res == GrB_SUCCESS);
 		}
 	}
+}
+
+void Graph_CreateNode(Graph *g, Node *n) {
+	ASSERT(g);
+
+	NodeID id;
+	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
+	n->id = id;
+	n->entity = en;
+	en->prop_count = 0;
+	en->properties = NULL;
 }
 
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
@@ -832,7 +819,7 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 		GrB_Info res;
 		UNUSED(res);
 		res = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
-				GrB_UINT64, GrB_UINT64, GrB_UINT64);
+							   GrB_UINT64, GrB_UINT64, GrB_UINT64);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -851,7 +838,7 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 		GrB_Matrix C = M->grb_matrix;
 
 		GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
-				_binary_op_delete_edges, thunk, C, GrB_NULL);
+									 _binary_op_delete_edges, thunk, C, GrB_NULL);
 
 		// free the matrix itself
 		RG_Matrix_Free(M);
@@ -862,7 +849,7 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 			C = TM->grb_matrix;
 
 			GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
-					_binary_op_delete_edges, thunk, C, GrB_NULL);
+										 _binary_op_delete_edges, thunk, C, GrB_NULL);
 
 			// free the matrix itself
 			RG_Matrix_Free(TM);
@@ -880,7 +867,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		GrB_Info res;
 		UNUSED(res);
 		res = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
-				GrB_UINT64, GrB_UINT64, GrB_UINT64);
+							   GrB_UINT64, GrB_UINT64, GrB_UINT64);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -976,7 +963,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 		// free each multi edge array entry in A
 		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
-				_binary_op_delete_edges, thunk, A, GrB_NULL);
+									 _binary_op_delete_edges, thunk, A, GrB_NULL);
 
 		// clear the relation matrix
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
@@ -1016,7 +1003,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 			// free each multi edge array entry in A
 			GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
-					_binary_op_delete_edges, thunk, A, GrB_NULL);
+										 _binary_op_delete_edges, thunk, A, GrB_NULL);
 
 			// clear the relation matrix
 			GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
@@ -1165,7 +1152,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 
 			// Collect remaining edges. remaining_mask = remaining_mask + R.
 			GrB_eWiseAdd(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
-										 R, GrB_NULL);
+						 R, GrB_NULL);
 		}
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);

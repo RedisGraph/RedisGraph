@@ -24,13 +24,17 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 // Perform necessary index updates.
 static void _UpdateIndices(GraphContext *gc, Node *n) {
-	int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-	if(label_id == GRAPH_NO_LABEL) return; // Unlabeled node, no need to update.
+	Graph *g = gc->g;
+	uint label_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
+	Label labels[label_count];
 
-	Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-	if(!Schema_HasIndices(s)) return; // No indices, no need to update.
+	label_count = Node_GetLabels(n, labels, label_count);
 
-	Schema_AddNodeToIndices(s, n);
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i].id;
+		Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
+	}
 }
 
 // Update the appropriate property on a graph entity.

@@ -14,27 +14,23 @@
 
 // Sets node label and label ID
 static void _QueryGraphSetNodeLabel(QGNode *n, const cypher_astnode_t *ast_entity) {
-	// node label already set
-	if(n->labelID != GRAPH_NO_LABEL) return;
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// Retrieve node labels from the AST entity.
 	uint nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
-	// We currently only support 0 or 1 labels per node, so if any are specified just select the first.
-	const char *label = NULL;
-	if(nlabels > 0) label = cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(ast_entity, 0));
 
-	// Set node label ID.
-	if(label) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-		uint label_id = GRAPH_UNKNOWN_LABEL;
+	// We currently only support 0 or 1 labels per node, so if any are specified just select the first.
+	for(uint i = 0; i < nlabels; i++) {
+		const char *l = cypher_ast_label_get_name(
+				cypher_ast_node_pattern_get_label(ast_entity, i));
+
+		// node already labeled as l
+		if(QGNode_HasLabel(n, l)) continue;
+
 		// If a schema is found, the AST refers to an existing label.
-		if(s) label_id = s->id;
-		n->label = label;
-		n->labelID = label_id;
-	} else {
-		// Label isn't known to the graph.
-		n->labelID = GRAPH_NO_LABEL;
+		Schema *s = GraphContext_GetSchema(gc, l, SCHEMA_NODE);
+		int l_id = (s) ? s->id : GRAPH_UNKNOWN_LABEL;
+		QGNode_AddLabel(n, l, l_id);
 	}
 }
 
@@ -131,8 +127,8 @@ static void _QueryGraph_ExtractNode(const QueryGraph *qg, QueryGraph *graph,
 			n = QGNode_Clone(n);
 
 			// Clear node label information.
-			n->label = NULL;
-			n->labelID = GRAPH_NO_LABEL;
+			array_clear(n->labels);
+			array_clear(n->labelsID);
 
 			QueryGraph_AddNode(graph, n);
 			// Set node label information.
@@ -560,7 +556,11 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 
 	// Give an ID for each node, abuse of `labelID`.
 	uint node_count = QueryGraph_NodeCount(qg_clone);
-	for(uint i = 0; i < node_count; i++) qg_clone->nodes[i]->labelID = i;
+	for(uint i = 0; i < node_count; i++) {
+		QGNode *n = qg_clone->nodes[i];
+		if(QGNode_LabelCount(n) == 0) QGNode_AddLabel(n, "", i);
+		else n->labelsID[0] = i;
+	}
 
 	GrB_Matrix m;   // Matrix representation of QueryGraph.
 	GrB_Info res = GrB_Matrix_new(&m, GrB_BOOL, node_count, node_count);
@@ -570,12 +570,13 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 	// Build matrix representation of query graph.
 	for(uint i = 0; i < node_count; i++) {
 		const QGNode *n = qg_clone->nodes[i];
-		GrB_Index src = n->labelID;
+		GrB_Index src = QGNode_LabelID(n, 0);
 		uint outgoing_degree = QGNode_OutgoingDegree(n);
 
 		for(uint j = 0; j < outgoing_degree; j++) {
 			const QGEdge *e = n->outgoing_edges[j];
-			GrB_Index dest = e->dest->labelID;
+			GrB_Index dest = QGNode_LabelID(e->dest, 0);
+
 			// Populate `m`.
 			res = GrB_Matrix_setElement_BOOL(m, true, src, dest);
 			ASSERT(res == GrB_SUCCESS);

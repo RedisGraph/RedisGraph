@@ -10,6 +10,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/map.h"
+#include "../../datatypes/array.h"
 #include "../../graph/graphcontext.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
@@ -25,13 +26,19 @@ SIValue AR_ID(SIValue *argv, int argc) {
 /* returns a string representations the label of a node. */
 SIValue AR_LABELS(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	char *label = "";
+
 	Node *node = argv[0].ptrval;
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = gc->g;
-	int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
-	if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
-	return SI_ConstStringVal(label);
+	Graph *g = QueryCtx_GetGraph();
+	int label_count = Graph_LabelTypeCount(g);
+	Label labels[label_count];
+	SIValue res = SI_Array(label_count);
+	label_count = Node_GetLabels(node, labels, label_count);
+
+	for(uint i = 0; i < label_count; i++) {
+		SIArray_Append(&res, SI_ConstStringVal(labels[i].name));
+	}
+
+	return res;
 }
 
 /* returns a string representation of the type of a relation. */

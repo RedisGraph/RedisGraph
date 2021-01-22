@@ -112,7 +112,7 @@ static bool _valid_arrangement(const Arrangement arrangement, uint exps_count, Q
 											AlgebraicExpression_Source(exp)); // TODO unwisely expensive
 	QGNode *dest = QueryGraph_GetNodeByAlias(qg,
 											 AlgebraicExpression_Destination(exp)); // TODO unwisely expensive
-	if((src->label || dest->label) &&
+	if((QGNode_LabelCount(src) > 0 || QGNode_LabelCount(dest) > 0) &&
 	   AlgebraicExpression_Edge(exp) &&
 	   AlgebraicExpression_OperandCount(exp) == 1) return false;
 
@@ -187,7 +187,7 @@ static int _penalty_arrangement(Arrangement arrangement, uint exp_count) {
 }
 
 static int _reward_expression(AlgebraicExpression *exp, QueryGraph *qg,
-		rax *filtered_entities, rax *bound_vars, uint reward_factor) {
+							  rax *filtered_entities, rax *bound_vars, uint reward_factor) {
 
 	// A bit naive at the moment.
 	void *res                = NULL;
@@ -216,7 +216,7 @@ static int _reward_expression(AlgebraicExpression *exp, QueryGraph *qg,
 
 	// TODO unwisely expensive
 	QGNode *src_node = QueryGraph_GetNodeByAlias(qg, src);
-	if(src_node->label) reward += L * reward_factor;
+	if(QGNode_LabelCount(src_node) > 0) reward += L * reward_factor;
 
 	return reward;
 }
@@ -230,7 +230,7 @@ static int _reward_arrangement(Arrangement arrangement, uint exp_count, QueryGra
 		uint reward_factor = exp_count - i;
 		AlgebraicExpression *exp = arrangement[i];
 		reward += _reward_expression(exp, qg, filtered_entities, bound_vars,
-				reward_factor);
+									 reward_factor);
 	}
 
 	return reward;
@@ -317,10 +317,10 @@ static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *f
 
 	// see if either source or destination nodes are labeled
 	QGNode *src_node  = QueryGraph_GetNodeByAlias(qg, src);
-	src_score += (src_node->label != NULL) ? L : 0;
+	src_score += (QGNode_LabelCount(src_node) > 0) ? L : 0;
 
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(qg, dest);
-	dest_score += (dest_node->label != NULL) ? L : 0;
+	dest_score += (QGNode_LabelCount(dest_node) > 0) ? L : 0;
 
 	// if the destination is a superior starting point, transpose expression
 	if(dest_score > src_score) AlgebraicExpression_Transpose(ae);

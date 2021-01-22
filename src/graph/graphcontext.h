@@ -73,22 +73,28 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc);
 
 // Retrieve number of schemas created for given type.
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t);
+
 // Retrieve the specific schema for the provided ID
 Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t);
+
 // Retrieve the specific schema for the provided node label or relation type string
 Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, SchemaType t);
+
 // Add a new schema and matrix for the given label
 Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t);
-// Retrieve the label string for a given Node object
-const char *GraphContext_GetNodeLabel(const GraphContext *gc, Node *n);
+
 // Retrieve the relation type string for a given Edge object
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e);
+
 // Retrieve number of unique attribute keys
 uint GraphContext_AttributeCount(GraphContext *gc);
+
 // Retrieve an attribute ID given a string, creating one if not found
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute);
+
 // Retrieve an attribute string given an ID
 const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id);
+
 // Retrieve an attribute ID given a string, or ATTRIBUTE_NOTFOUND if attribute doesn't exist.
 Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *str);
 
@@ -123,6 +129,10 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 //------------------------------------------------------------------------------
 
 SlowLog *GraphContext_GetSlowLog(const GraphContext *gc);
+
+//------------------------------------------------------------------------------
+// Cache API
+//------------------------------------------------------------------------------
 
 /* Cache API - Return cache associated with graph context and current thread id. */
 Cache *GraphContext_GetCache(const GraphContext *gc);

@@ -15,8 +15,8 @@
 struct QGEdge;
 
 typedef struct {
-	int labelID;               // Label ID
-	const char *label;         // Label string
+	int *labelsID;             // Labels ID array
+	const char **labels;       // Labels string array
 	const char *alias;         // User-provided alias associated with this node
 	bool highly_connected;     // Node degree > 2
 	struct QGEdge **outgoing_edges;   // Array of incoming edges (ME)<-(SRC)
@@ -25,6 +25,21 @@ typedef struct {
 
 /* Creates a new node. */
 QGNode *QGNode_New(const char *alias);
+
+/* Returns number of labels attached to node */
+uint QGNode_LabelCount(const QGNode *n);
+
+/* Returns the 'idx' label ID of 'n' */
+int QGNode_LabelID(const QGNode *n, uint idx);
+
+/* Returns the 'idx' label of 'n' */
+const char *QGNode_Label(const QGNode *n, uint idx);
+
+/* Returns true if 'n' has label 'l' */
+bool QGNode_HasLabel(const QGNode *n, const char *l);
+
+/* Label 'n' as 'l' */
+void QGNode_AddLabel(QGNode *n, const char *l, int l_id);
 
 /* Returns true if node is highly connected, false otherwise */
 bool QGNode_HighlyConnected(const QGNode *n);
