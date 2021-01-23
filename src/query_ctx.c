@@ -69,6 +69,11 @@ void QueryCtx_SetResultSet(ResultSet *result_set) {
 	ctx->internal_exec_ctx.result_set = result_set;
 }
 
+void QueryCtx_SetExecutionPlan(ExecutionPlan *plan) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->internal_exec_ctx.exec_plan = plan;
+}
+
 void QueryCtx_SetLastWriter(OpBase *last_writer) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->internal_exec_ctx.last_writer = last_writer;
@@ -105,6 +110,11 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 ResultSet *QueryCtx_GetResultSet(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->internal_exec_ctx.result_set;
+}
+
+ExecutionPlan *QueryCtx_GetExecutionPlan(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->internal_exec_ctx.exec_plan;
 }
 
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {

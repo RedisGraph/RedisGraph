@@ -106,17 +106,16 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	// Set up the module's configurable variables, using user-defined values where provided.
-        if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 
-        int useMemoryProtection = 0;
-        Config_Option_get(Config_MEMORY_PROTECTION, &useMemoryProtection);
-        if(useMemoryProtection){
-            if(!Redis_Version_GreaterOrEqual(6, 0, 0)) {
-                RedisModule_Log(ctx, "warning", "Memory protection can only be used with redis 6.0.0 and above");
-                return REDISMODULE_ERR;
-            }
-        }
-        if(rm_alloc_initialize(ctx, useMemoryProtection, NULL) != REDISMODULE_OK) return REDISMODULE_ERR;
+	bool useMemoryProtection = false;
+	Config_Option_get(Config_MEMORY_PROTECTION, &useMemoryProtection);
+	if(useMemoryProtection && !Redis_Version_GreaterOrEqual(6, 0, 0)) {
+		RedisModule_Log(ctx, "warning", "Memory protection can only be used with redis 6.0.0 or above");
+		return REDISMODULE_ERR;
+	}
+
+	if(rm_alloc_initialize(ctx, useMemoryProtection, NULL) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.

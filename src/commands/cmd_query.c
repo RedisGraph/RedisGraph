@@ -149,7 +149,9 @@ void Graph_Query(void *args) {
 	// Indicate a cached execution.
 	if(cached) ResultSet_CachedExecution(result_set);
 
+	QueryCtx_SetExecutionPlan(plan);
 	QueryCtx_SetResultSet(result_set);
+
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);

@@ -155,3 +155,7 @@ inline void Error_InvalidPropertyValue(void) {
 	ErrorCtx_SetError("Property values can only be of primitive types or arrays thereof");
 }
 
+void Error_OOM(void) {
+	ErrorCtx_SetError("Out of memory");
+}
+
