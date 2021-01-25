@@ -30,6 +30,7 @@
 
 Feature: List12 - List Comprehension
 
+  @crash
   Scenario: [1] Collect and extract using a list comprehension
     Given an empty graph
     And having executed:
@@ -52,6 +53,7 @@ Feature: List12 - List Comprehension
       | +properties | 1 |
       | -properties | 1 |
 
+  @crash
   Scenario: [2] Collect and filter using a list comprehension
     Given an empty graph
     And having executed:

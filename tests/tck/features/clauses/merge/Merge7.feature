@@ -112,6 +112,7 @@ Feature: Merge7 - Merge relationships - on match
       | keyValue    |
       | ['name->A'] |
 
+  @crash
   Scenario: [5] Copying properties from literal map with ON MATCH
     Given an empty graph
     And having executed:

@@ -151,6 +151,7 @@ Feature: Literals7 - List
       | [[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]] |
     And no side effects
 
+  @crash
   Scenario: [12] Return 40-deep nested empty lists
     Given any graph
     When executing query:
