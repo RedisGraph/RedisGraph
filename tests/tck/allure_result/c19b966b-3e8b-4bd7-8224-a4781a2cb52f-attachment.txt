@@ -1,0 +1,6 @@
+MATCH (a:A)-[ab]->(b:B)-[bc]->(c:C)
+DELETE ab, bc, b, c
+MERGE (newB:B {num: 1})
+MERGE (a)-[:REL]->(newB)
+MERGE (newC:C)
+MERGE (newB)-[:REL]->(newC)

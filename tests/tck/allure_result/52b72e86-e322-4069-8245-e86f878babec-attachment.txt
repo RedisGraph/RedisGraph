@@ -1,0 +1,4 @@
+MATCH (a)-[r]->(b)
+WHERE NOT a:A
+DELETE r
+CREATE (b)-[:LIKES]->(a)

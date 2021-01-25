@@ -1,0 +1,3 @@
+MATCH (n:A)
+SET n:Foo
+RETURN n

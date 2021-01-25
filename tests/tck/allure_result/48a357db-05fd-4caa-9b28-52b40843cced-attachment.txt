@@ -1,0 +1,1 @@
+CREATE ({name: 'Emil Eifrem', title: 'CEO'}), ({name: 'Nobody'})

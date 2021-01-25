@@ -1,0 +1,4 @@
+MATCH (n)
+MATCH (n)-[r*]->()
+WHERE r.name = 'apa'
+RETURN r

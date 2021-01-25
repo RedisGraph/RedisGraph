@@ -14,6 +14,8 @@ def test_tck():
     env = Env(decodeResponses=True)
     cmd = ["./features/", '--tags=-skip']
     #  cmd = ["./features/", '--tags=-crash'] # Run all tests except crashing tests
+    # Running the command with '--tags=skip' runs only skipped tests, which is useful for finding which skips to remove.
+    cmd = ["./features/", "-f allure_behave.formatter:AllureFormatter", "-oallure_result"]
     if not env.verbose:
         cmd.append('--format=progress')
     if env.getEnvKwargs()['debugger']:

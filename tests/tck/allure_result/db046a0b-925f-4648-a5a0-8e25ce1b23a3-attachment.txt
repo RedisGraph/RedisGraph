@@ -1,0 +1,2 @@
+MATCH (n)
+RETURN n.num AS n, count(n) AS count

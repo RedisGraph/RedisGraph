@@ -10,13 +10,12 @@ redis_graph = None
 
 
 def redis():
-    return Env.RTestInstance.currEnv
-
+   return Env()
 
 def _brand_new_redis():
     global r
     if r is not None:
-        r.flush()
+        r.stop()
 
     r = redis()
     return r.getConnection()

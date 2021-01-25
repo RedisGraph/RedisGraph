@@ -1,0 +1,2 @@
+WITH [true, {}] AS list
+RETURN toBoolean(list[1]) AS b

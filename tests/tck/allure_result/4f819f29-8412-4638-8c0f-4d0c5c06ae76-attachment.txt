@@ -1,0 +1,4 @@
+MERGE (a {num: 1})
+MERGE (b {num: 2})
+MERGE p = (a)-[:R]->(b)
+RETURN p

@@ -1,0 +1,4 @@
+CREATE (a:A), (b:B), (c:C), (d:D)
+CREATE (b)-[:T]->(a),
+       (c)-[:T]->(b),
+       (d)-[:T]->(c)

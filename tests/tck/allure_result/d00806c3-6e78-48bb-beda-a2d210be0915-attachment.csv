@@ -1,0 +1,4 @@
+x,y
+(:X {val: 1}),(:Y {val: 2})
+(:X {val: 4}),(:Y {val: 5})
+(:X {val: 6}),null

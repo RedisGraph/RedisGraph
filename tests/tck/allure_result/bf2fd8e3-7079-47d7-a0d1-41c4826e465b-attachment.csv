@@ -1,0 +1,4 @@
+a
+(:TheLabel {name: 'ABCDEF'})
+(:TheLabel {name: 'AB'})
+(:TheLabel {name: ''})

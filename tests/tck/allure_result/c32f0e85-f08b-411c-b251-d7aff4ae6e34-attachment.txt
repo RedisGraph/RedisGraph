@@ -1,0 +1,3 @@
+CREATE (:A)-[:T1]->(l:Looper),
+       (l)-[:LOOP]->(l),
+       (l)-[:T2]->(:B)

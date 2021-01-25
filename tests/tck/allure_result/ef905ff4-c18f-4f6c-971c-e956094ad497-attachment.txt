@@ -1,0 +1,4 @@
+MATCH ()
+MERGE (a:L)
+  ON MATCH SET a:M1
+  ON CREATE SET a:M2

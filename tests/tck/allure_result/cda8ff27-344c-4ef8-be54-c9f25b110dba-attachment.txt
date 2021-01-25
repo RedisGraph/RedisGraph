@@ -1,0 +1,2 @@
+MATCH (n:X)
+DETACH DELETE n

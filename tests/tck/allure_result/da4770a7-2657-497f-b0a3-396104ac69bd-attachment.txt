@@ -1,0 +1,2 @@
+MERGE (n)
+  ON MATCH SET x.num = 1

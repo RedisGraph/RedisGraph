@@ -1,0 +1,4 @@
+MATCH (a)
+WITH a.name AS bars, count(*) AS relCount
+ORDER BY a.name
+RETURN *

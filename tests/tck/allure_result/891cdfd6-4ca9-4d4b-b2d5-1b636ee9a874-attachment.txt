@@ -1,0 +1,4 @@
+MATCH (n)-->(x0)
+OPTIONAL MATCH (x0)-->(x1)
+WHERE x1.name = 'bar'
+RETURN x0.name

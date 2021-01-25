@@ -1,0 +1,1 @@
+RETURN [] IN [1, 2] AS res

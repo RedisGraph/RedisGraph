@@ -1,0 +1,2 @@
+MATCH (n)
+RETURN percentileCont(n.price, $param)

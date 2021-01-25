@@ -23,7 +23,7 @@ endif
 # Set the RLTest arguments to check for memory leaks.
 MEMCHECK_ARGS = $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(shell pwd)/../src/valgrind.supp
 
-test: unit flow tck
+test: tck
 
 unit:
 	### unit tests

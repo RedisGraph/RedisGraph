@@ -1,0 +1,2 @@
+CREATE ({var: 42}),
+  ({var: 'not42'})

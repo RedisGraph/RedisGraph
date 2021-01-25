@@ -1,0 +1,8 @@
+MATCH (n)
+WITH n AS a
+MERGE (c)
+MERGE (a)-[:T]->(c)
+WITH a AS x
+MERGE (c)
+MERGE (x)-[:T]->(c)
+RETURN x.id AS x

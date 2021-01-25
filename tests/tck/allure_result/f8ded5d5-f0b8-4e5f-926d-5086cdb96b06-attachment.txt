@@ -1,0 +1,14 @@
+CREATE (andres {name: 'Andres'}),
+(michael {name: 'Michael'}),
+(peter {name: 'Peter'}),
+(bread {type: 'Bread'}),
+(veggies {type: 'Veggies'}),
+(meat {type: 'Meat'})
+CREATE (andres)-[:ATE {times: 10}]->(bread),
+(andres)-[:ATE {times: 8}]->(veggies),
+(michael)-[:ATE {times: 4}]->(veggies),
+(michael)-[:ATE {times: 6}]->(bread),
+(michael)-[:ATE {times: 9}]->(meat),
+(peter)-[:ATE {times: 7}]->(veggies),
+(peter)-[:ATE {times: 7}]->(bread),
+(peter)-[:ATE {times: 4}]->(meat)

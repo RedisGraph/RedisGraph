@@ -1,0 +1,2 @@
+MATCH (n {var: 'start'})-[:T*]->(m {var: 'end'})
+RETURN m

@@ -1,0 +1,3 @@
+CREATE (a:A), (b:B)
+CREATE (a)-[:TYPE {name: 'r1'}]->(b)
+CREATE (a)-[:TYPE {name: 'r2'}]->(b)

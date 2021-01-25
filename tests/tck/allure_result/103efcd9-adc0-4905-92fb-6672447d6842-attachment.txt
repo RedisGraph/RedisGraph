@@ -1,0 +1,5 @@
+CREATE (a:A), (b:B), (c:C), (d:D), (e:E), (f:F)
+CREATE (a)-[:R]->(b)
+CREATE (c)-[:R]->(d)
+CREATE (d)-[:R]->(e)
+CREATE (e)-[:R]->(f)

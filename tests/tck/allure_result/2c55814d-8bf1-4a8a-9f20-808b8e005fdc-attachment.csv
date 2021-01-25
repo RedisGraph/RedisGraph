@@ -1,0 +1,3 @@
+n,b
+(:X {prop: 42}),true
+(:X),false

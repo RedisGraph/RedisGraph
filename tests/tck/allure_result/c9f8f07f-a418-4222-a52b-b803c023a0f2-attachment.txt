@@ -1,0 +1,3 @@
+OPTIONAL MATCH (a:DoesNotExist)
+REMOVE a.num
+RETURN a

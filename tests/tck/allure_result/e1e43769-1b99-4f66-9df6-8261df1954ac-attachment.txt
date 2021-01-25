@@ -1,0 +1,2 @@
+MATCH (n), (m)
+RETURN n.num AS n, m.num AS m

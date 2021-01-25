@@ -1,0 +1,4 @@
+CREATE (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}),
+       (c), (d)
+CREATE (a)-[:T]->(c),
+       (b)-[:T]->(d)

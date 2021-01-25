@@ -1,0 +1,2 @@
+UNWIND [1, 'a', null, [1, 2], 0.2, 'b'] AS x
+RETURN min(x)

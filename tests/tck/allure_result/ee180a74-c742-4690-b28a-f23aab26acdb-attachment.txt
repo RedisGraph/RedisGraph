@@ -1,0 +1,4 @@
+CREATE (a {name: 'A'}), (b {name: 'B'}),
+       (c {name: 'C'})
+CREATE (a)-[:KNOWS]->(b),
+       (b)-[:KNOWS]->(c)

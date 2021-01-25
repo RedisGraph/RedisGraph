@@ -1,0 +1,3 @@
+WITH 'Hi' AS label
+CALL test.labels() YIELD label
+RETURN *

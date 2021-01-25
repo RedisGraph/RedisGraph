@@ -1,0 +1,1 @@
+CREATE (:Year {year: 2016})

@@ -1,0 +1,2 @@
+CALL test.labels() YIELD label
+RETURN label

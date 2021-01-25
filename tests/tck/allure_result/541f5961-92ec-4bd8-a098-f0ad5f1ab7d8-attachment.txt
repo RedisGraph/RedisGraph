@@ -1,0 +1,4 @@
+MATCH (p:Person { name: '42' })
+WITH *
+MATCH (n)
+RETURN toInteger(n.name) AS name

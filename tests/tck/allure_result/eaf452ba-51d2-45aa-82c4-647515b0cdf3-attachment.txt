@@ -1,0 +1,5 @@
+CREATE (root:Root {name: 'x'}),
+       (child1:TextNode {var: 'text'}),
+       (child2:IntNode {var: 0})
+CREATE (root)-[:T]->(child1),
+       (root)-[:T]->(child2)

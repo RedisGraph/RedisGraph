@@ -1,0 +1,4 @@
+MATCH (a:A)
+DELETE a
+MERGE (a2:A)
+RETURN a2.num

@@ -1,0 +1,6 @@
+CREATE (db1:Start), (db2:End), (mid), (other)
+CREATE (mid)-[:CONNECTED_TO]->(db1),
+       (mid)-[:CONNECTED_TO]->(db2),
+       (mid)-[:CONNECTED_TO]->(db2),
+       (mid)-[:CONNECTED_TO]->(other),
+       (mid)-[:CONNECTED_TO]->(other)

@@ -1,0 +1,1 @@
+RETURN [1, 2] >= [1, null] AS result

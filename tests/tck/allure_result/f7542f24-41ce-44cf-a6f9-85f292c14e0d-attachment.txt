@@ -1,0 +1,2 @@
+MERGE (a:TheLabel {num: 43})
+RETURN a.num

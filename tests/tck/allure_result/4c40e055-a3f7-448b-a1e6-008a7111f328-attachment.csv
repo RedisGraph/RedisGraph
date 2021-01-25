@@ -1,0 +1,3 @@
+r,x,p
+[[:X]],({name: 'B'}),<({name: 'A'})-[:X]->({name: 'B'})>
+null,({name: 'C'}),null

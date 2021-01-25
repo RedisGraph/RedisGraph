@@ -1,0 +1,2 @@
+WITH {name: {name2: 'baz'}} AS nestedMap
+RETURN nestedMap.name.name2

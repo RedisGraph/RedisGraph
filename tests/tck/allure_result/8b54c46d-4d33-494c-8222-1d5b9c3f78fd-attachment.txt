@@ -1,0 +1,6 @@
+MATCH (n)
+WITH n AS a
+CREATE (a)-[:T]->()
+WITH a AS x
+CREATE (x)-[:T]->()
+RETURN x

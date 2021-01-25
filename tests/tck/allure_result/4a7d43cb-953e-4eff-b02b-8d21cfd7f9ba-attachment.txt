@@ -1,0 +1,4 @@
+MATCH (a:A), (b:B)
+RETURN coalesce(a.num, b.num) AS foo,
+b.num AS bar,
+{name: count(b)} AS baz

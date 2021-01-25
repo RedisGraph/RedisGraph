@@ -1,0 +1,4 @@
+MATCH (a)
+WITH DISTINCT a.name2 AS bars
+WHERE a.name2 = 'B'
+RETURN *

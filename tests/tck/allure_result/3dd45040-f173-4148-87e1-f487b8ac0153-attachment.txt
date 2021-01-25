@@ -1,0 +1,3 @@
+OPTIONAL MATCH (f:DoesExist)
+OPTIONAL MATCH (n:DoesNotExist)
+RETURN collect(DISTINCT n.num) AS a, collect(DISTINCT f.num) AS b

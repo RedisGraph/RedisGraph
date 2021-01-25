@@ -1,0 +1,5 @@
+CREATE (a {name: 'A'}), (b {name: 'B'}),
+       (c {name: 'C'}), (d {name: 'D'})
+CREATE (a)-[:CONTAINS]->(b),
+       (b)-[:CONTAINS]->(c),
+       (c)-[:CONTAINS]->(d)

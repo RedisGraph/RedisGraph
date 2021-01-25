@@ -1,0 +1,2 @@
+CREATE (a {name: 'A'}), (b {name: 'B'}), (c {name: 'C'})
+CREATE (a)-[:X]->(b)

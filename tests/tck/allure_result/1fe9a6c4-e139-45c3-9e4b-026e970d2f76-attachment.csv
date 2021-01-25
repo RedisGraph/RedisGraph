@@ -1,0 +1,3 @@
+r
+[[:REL {num:1}], [:REL {num:2}]]
+[[:REL {num:2}], [:REL {num:1}]]

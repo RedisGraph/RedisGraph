@@ -1,0 +1,3 @@
+CREATE (a:A {num: 1}),
+  (a)-[:KNOWS]->(b:B {num: 2}),
+  (a)-[:KNOWS]->(c:C {num: 3})

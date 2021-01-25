@@ -1,0 +1,4 @@
+MATCH (a)-[t:T]->(b)
+DELETE t
+MERGE (a)-[t2:T {name: 'rel3'}]->(b)
+RETURN t2.name

@@ -1,0 +1,3 @@
+n.name,count(n.num)
+'a',1
+'b',1

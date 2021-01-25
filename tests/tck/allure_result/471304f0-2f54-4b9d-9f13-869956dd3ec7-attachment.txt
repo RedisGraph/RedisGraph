@@ -1,0 +1,5 @@
+CREATE (a)
+WITH a
+WITH *
+CREATE (b)
+CREATE (a)<-[:T]-(b)

@@ -1,0 +1,12 @@
+CREATE (a {name: 'David'}),
+(b {name: 'Other'}),
+(c {name: 'NotOther'}),
+(d {name: 'NotOther2'}),
+(a)-[:REL]->(b),
+(a)-[:REL]->(c),
+(a)-[:REL]->(d),
+(b)-[:REL]->(),
+(b)-[:REL]->(),
+(c)-[:REL]->(),
+(c)-[:REL]->(),
+(d)-[:REL]->()

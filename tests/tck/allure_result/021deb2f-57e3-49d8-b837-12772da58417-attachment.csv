@@ -1,0 +1,1 @@
+{foo: a.name='Andres', kids: collect(child.name)}

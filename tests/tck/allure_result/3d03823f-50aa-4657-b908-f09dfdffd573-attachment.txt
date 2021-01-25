@@ -1,0 +1,3 @@
+UNWIND [0, 1, 2] AS x
+UNWIND [0, 1, 2] AS y
+CREATE ({x: x, y: y})

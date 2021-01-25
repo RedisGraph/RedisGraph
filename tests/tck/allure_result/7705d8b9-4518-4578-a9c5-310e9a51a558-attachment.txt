@@ -1,0 +1,4 @@
+MATCH (n)
+WITH n.num1 AS foo
+  ORDER BY max(n.num2)
+RETURN foo AS foo

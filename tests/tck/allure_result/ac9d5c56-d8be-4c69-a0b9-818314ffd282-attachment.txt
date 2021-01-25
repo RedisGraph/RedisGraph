@@ -1,0 +1,2 @@
+CREATE ({name: 'Andres', surname: 'Lopez'}),
+       ({otherName: 'Andres', otherSurname: 'Lopez'})

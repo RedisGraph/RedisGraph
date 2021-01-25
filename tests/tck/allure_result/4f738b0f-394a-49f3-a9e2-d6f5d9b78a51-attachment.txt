@@ -1,0 +1,6 @@
+MATCH (a:Label1)
+WITH collect(a) AS nodes
+WITH nodes, [x IN nodes WHERE x.name = 'original'] AS noopFiltered
+UNWIND nodes AS n
+SET n.name = 'newName'
+RETURN n.name, length(noopFiltered)

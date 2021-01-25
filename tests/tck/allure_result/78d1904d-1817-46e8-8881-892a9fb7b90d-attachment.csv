@@ -1,0 +1,3 @@
+coalesce(a.title, a.name)
+'CEO'
+'Nobody'

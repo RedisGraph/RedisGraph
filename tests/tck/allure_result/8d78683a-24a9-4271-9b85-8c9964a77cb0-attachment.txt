@@ -1,0 +1,3 @@
+MATCH (n)
+OPTIONAL MATCH (n)-[r]->(m)
+RETURN size([x IN collect(r) WHERE x <> null]) AS cn

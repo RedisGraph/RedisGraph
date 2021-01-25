@@ -1,0 +1,2 @@
+CREATE (a {time: 10}), (b {time: 20})
+CREATE (a)-[:T]->(b)

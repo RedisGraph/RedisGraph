@@ -1,0 +1,2 @@
+MATCH (x:X)<-[:TYPE]-(y:Y)
+RETURN x, y

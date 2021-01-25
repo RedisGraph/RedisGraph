@@ -1,0 +1,7 @@
+MATCH (a)
+WITH a.name AS property, a.num AS idToUse
+ORDER BY property
+SKIP 1
+MATCH (b)
+WHERE b.id = idToUse
+RETURN DISTINCT b

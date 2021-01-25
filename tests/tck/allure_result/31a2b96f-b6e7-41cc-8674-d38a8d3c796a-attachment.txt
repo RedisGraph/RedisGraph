@@ -1,0 +1,5 @@
+MATCH (n)
+MATCH (m)
+WITH n AS a, m AS b
+CREATE (a)-[:T]->(b)
+RETURN a, b

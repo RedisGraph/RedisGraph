@@ -1,0 +1,8 @@
+CREATE (a {name: 'A'}), (b {name: 'B'}), (c {name: 'C'}),
+       (x1 {name: 'x1'}), (x2 {name: 'x2'})
+CREATE (a)-[:KNOWS]->(x1),
+       (a)-[:KNOWS]->(x2),
+       (b)-[:KNOWS]->(x1),
+       (b)-[:KNOWS]->(x2),
+       (c)-[:KNOWS]->(x1),
+       (c)-[:KNOWS]->(x2)

@@ -1,0 +1,2 @@
+OPTIONAL MATCH (n)
+RETURN exists(n.missing)

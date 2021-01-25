@@ -1,0 +1,6 @@
+CREATE (a:Foo), (b:Bar)
+WITH a, b
+UNWIND ['a,b', 'a,b'] AS str
+WITH a, b, split(str, ',') AS roles
+MERGE (a)-[r:FB {foobar: roles}]->(b)
+RETURN count(*)

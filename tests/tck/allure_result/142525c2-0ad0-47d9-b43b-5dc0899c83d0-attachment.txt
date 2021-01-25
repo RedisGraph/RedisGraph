@@ -1,0 +1,9 @@
+MATCH (n)
+MATCH (m)
+WITH n AS a, m AS b
+MERGE (a)-[:T]->(b)
+WITH a AS x, b AS y
+MERGE (a)
+MERGE (b)
+MERGE (a)-[:T]->(b)
+RETURN x.id AS x, y.id AS y

@@ -1,0 +1,5 @@
+CREATE (a)
+WITH a
+UNWIND [0] AS i
+CREATE (b)
+CREATE (a)<-[:T]-(b)

@@ -1,0 +1,2 @@
+CREATE (a)
+SET a.maplist = [{num: 1}]

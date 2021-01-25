@@ -1,0 +1,3 @@
+OPTIONAL MATCH (n)
+RETURN n.missing IS NOT NULL,
+n.exists IS NOT NULL

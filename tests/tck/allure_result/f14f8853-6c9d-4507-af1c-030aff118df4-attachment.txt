@@ -1,0 +1,3 @@
+MATCH (a:A), (b:B)
+MERGE (a)-[r:KNOWS]->(b)
+  ON MATCH SET r.created = 1

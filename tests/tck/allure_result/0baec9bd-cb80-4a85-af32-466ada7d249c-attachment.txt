@@ -1,0 +1,3 @@
+CREATE (n1), (n2), (n3)
+CREATE (n1)-[:R]->(n2)
+CREATE (n2)-[:R]->(n3)

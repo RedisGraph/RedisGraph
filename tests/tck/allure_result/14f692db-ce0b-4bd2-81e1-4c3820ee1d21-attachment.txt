@@ -1,0 +1,2 @@
+CREATE (s:Person {name: 'Steven'}),
+(c:Person {name: 'Craig'})

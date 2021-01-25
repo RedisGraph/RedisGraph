@@ -1,0 +1,2 @@
+MATCH (n)
+RETURN [(n)-[r:T]->() | r.name] AS list

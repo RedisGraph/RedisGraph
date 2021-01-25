@@ -1,0 +1,6 @@
+CREATE (:Person {name: 'A', bornIn: 'New York'})
+CREATE (:Person {name: 'B', bornIn: 'Ohio'})
+CREATE (:Person {name: 'C', bornIn: 'New Jersey'})
+CREATE (:Person {name: 'D', bornIn: 'New York'})
+CREATE (:Person {name: 'E', bornIn: 'Ohio'})
+CREATE (:Person {name: 'F', bornIn: 'New Jersey'})

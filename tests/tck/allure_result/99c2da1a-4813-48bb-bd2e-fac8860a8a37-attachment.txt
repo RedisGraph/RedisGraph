@@ -1,0 +1,2 @@
+CALL test.my.proc(42.0) YIELD out
+RETURN out

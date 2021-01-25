@@ -1,0 +1,4 @@
+OPTIONAL MATCH (a:TheLabel)
+WITH a
+MATCH (a)-->(b)
+RETURN b

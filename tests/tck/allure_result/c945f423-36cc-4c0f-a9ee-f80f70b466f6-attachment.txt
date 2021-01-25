@@ -1,0 +1,1 @@
+CREATE ({exists: 42})

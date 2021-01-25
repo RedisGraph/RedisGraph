@@ -1,0 +1,2 @@
+CREATE (a:Player), (b:Team)
+CREATE (a)-[:PLAYS_FOR]->(b)

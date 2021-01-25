@@ -1,0 +1,3 @@
+MERGE (t:T {id: 42})
+CREATE (f:R)
+CREATE (t)-[:REL]->(f)

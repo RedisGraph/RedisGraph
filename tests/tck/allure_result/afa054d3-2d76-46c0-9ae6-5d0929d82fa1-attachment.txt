@@ -1,0 +1,2 @@
+MATCH (x:Begin)-[:TYPE]->()
+RETURN x

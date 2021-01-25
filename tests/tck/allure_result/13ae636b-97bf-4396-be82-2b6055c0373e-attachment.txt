@@ -1,0 +1,1 @@
+CREATE (:A {property1: 23, property2: 46})

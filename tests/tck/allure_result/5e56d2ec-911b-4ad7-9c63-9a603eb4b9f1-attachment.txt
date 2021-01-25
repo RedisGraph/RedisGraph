@@ -1,0 +1,5 @@
+UNWIND range(0, 10) AS i
+CREATE (s:S)
+WITH s, i
+UNWIND range(0, i) AS j
+CREATE (s)-[:REL]->()

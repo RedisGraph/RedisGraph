@@ -1,0 +1,1 @@
+RETURN [null] = [1] AS result

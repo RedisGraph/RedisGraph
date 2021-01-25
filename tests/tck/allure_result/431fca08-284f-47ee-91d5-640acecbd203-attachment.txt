@@ -1,0 +1,2 @@
+MATCH (root:R)
+CREATE (root)-[:LINK]->(root)

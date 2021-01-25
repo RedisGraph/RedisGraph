@@ -1,0 +1,1 @@
+CREATE ({name: 'Someone'})<-[:X]-()-[:X]->({name: 'Andres'})

@@ -1,0 +1,4 @@
+CREATE (a:A), (b:B)
+MERGE (a)-[:KNOWS]->(b)
+CREATE (b)-[:KNOWS]->(c:C)
+RETURN count(*)

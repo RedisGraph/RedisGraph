@@ -1,0 +1,1 @@
+CREATE (:X {name: 'A', name2: 'B'})

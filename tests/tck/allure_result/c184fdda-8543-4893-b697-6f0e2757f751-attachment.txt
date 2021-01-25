@@ -1,0 +1,2 @@
+MATCH (x:Begin)
+CREATE (x)-[:TYPE]->(:End)

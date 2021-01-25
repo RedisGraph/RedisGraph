@@ -1,0 +1,3 @@
+CREATE (a {numbers: [3, 4, 5]})
+SET a.numbers = [1, 2] + a.numbers
+RETURN a.numbers

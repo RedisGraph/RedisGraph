@@ -1,0 +1,2 @@
+MATCH (x:X), (y:Y)
+CREATE (x)<-[:TYPE]-(y)

@@ -1,0 +1,2 @@
+CREATE ()-[r:X {id: 12, name: null}]->()
+RETURN r.id

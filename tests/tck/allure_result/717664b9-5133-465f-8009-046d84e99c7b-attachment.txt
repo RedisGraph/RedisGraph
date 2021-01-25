@@ -1,0 +1,3 @@
+CREATE (a {id: 2}), (b {id: 1}), (c {id: 1}), (d {id: 2})
+CREATE (a)-[:KNOWS {name: 'ab'}]->(b)
+CREATE (c)-[:KNOWS {name: 'cd'}]->(d)

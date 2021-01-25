@@ -1,0 +1,2 @@
+MATCH (p:TheLabel)
+RETURN p.id

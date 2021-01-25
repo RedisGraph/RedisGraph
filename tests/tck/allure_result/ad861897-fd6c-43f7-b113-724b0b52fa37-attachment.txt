@@ -1,0 +1,7 @@
+CREATE (a)
+WITH a
+MERGE (x)
+MERGE (y)
+MERGE (x)-[:T]->(y)
+CREATE (b)
+CREATE (a)<-[:T]-(b)

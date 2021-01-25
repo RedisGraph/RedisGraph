@@ -1,0 +1,2 @@
+WITH 42 AS var
+MERGE (c:N {var: var})

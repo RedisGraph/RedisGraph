@@ -1,0 +1,2 @@
+WITH [1, 2, 3] AS list
+RETURN list[0..0] AS r

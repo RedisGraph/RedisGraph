@@ -1,0 +1,5 @@
+CREATE (a:A {name: 'A'}),
+  (b:B {name: 'B'}),
+  (c:C {name: 'C'}),
+  (a)-[:KNOWS]->(b),
+  (a)-[:HATES]->(c)

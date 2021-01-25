@@ -1,0 +1,2 @@
+CREATE (a), (b {name: 'Mark'})
+CREATE (a)-[:T]->(b)

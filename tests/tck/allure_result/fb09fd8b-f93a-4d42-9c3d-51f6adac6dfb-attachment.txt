@@ -1,0 +1,2 @@
+MATCH (a)
+CREATE (a)

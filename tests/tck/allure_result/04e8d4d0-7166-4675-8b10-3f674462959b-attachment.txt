@@ -1,0 +1,1 @@
+CREATE (:L1:L2:L3 {num: 42})

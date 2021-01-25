@@ -1,0 +1,2 @@
+CREATE (:A {num: 1}),
+  (:A {num: 2})

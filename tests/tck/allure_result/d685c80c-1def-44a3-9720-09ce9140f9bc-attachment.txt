@@ -1,0 +1,3 @@
+CREATE (a:Artist:A), (b:Artist:B), (c:Artist:C)
+CREATE (a)-[:WORKED_WITH {year: 1987}]->(b),
+       (b)-[:WORKED_WITH {year: 1988}]->(c)

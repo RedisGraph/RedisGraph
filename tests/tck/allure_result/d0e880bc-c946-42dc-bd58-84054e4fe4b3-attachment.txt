@@ -1,0 +1,2 @@
+MATCH (a:A)-[r1:R]->(b:B)<-[r2:R]-(c:C)
+RETURN a, b, c

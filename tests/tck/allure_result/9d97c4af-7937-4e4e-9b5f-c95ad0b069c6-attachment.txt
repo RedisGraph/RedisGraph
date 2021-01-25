@@ -1,0 +1,3 @@
+CREATE (a:A {id: 1}), (b:B {id: 2})
+CREATE (a)-[:TYPE]->(b)
+CREATE (:A {id: 3}), (:B {id: 4})

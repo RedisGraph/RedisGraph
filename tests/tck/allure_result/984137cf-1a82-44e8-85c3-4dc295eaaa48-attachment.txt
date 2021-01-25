@@ -1,0 +1,2 @@
+CALL test.my.proc(1)
+RETURN out

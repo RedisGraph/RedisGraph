@@ -1,0 +1,2 @@
+CREATE (a:L), (b1), (b2)
+CREATE (a)-[:A]->(b1), (a)-[:A]->(b2)

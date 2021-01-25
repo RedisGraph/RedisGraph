@@ -1,0 +1,2 @@
+MATCH (a)
+RETURN a.num + 1 AS foo

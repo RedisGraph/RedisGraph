@@ -1,0 +1,2 @@
+count(DISTINCT a.name)
+0

@@ -1,0 +1,4 @@
+CREATE (x:X)
+CREATE (x)-[:R]->()
+CREATE (x)-[:R]->()
+CREATE (x)-[:R]->()

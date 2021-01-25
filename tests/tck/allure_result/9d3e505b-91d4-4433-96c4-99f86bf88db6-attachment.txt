@@ -1,0 +1,3 @@
+MERGE (a:A)
+MERGE (b:B)
+MERGE (a)-[:FOO]->(b)
