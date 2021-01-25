@@ -30,6 +30,7 @@
 
 Feature: Mathematical13 - Square root
 
+  @skip
   Scenario: [1] `sqrt()` returning float values
     Given any graph
     When executing query:

@@ -30,6 +30,7 @@
 
 Feature: String4 - String Splitting
 
+  @skip
   Scenario: [1] `split()`
     Given any graph
     When executing query:

@@ -30,6 +30,7 @@
 
 Feature: Graph10 - Retrieve all properties as a property map
 
+  @skip
   Scenario: [1] `properties()` on a node
     Given an empty graph
     And having executed:
@@ -46,6 +47,7 @@ Feature: Graph10 - Retrieve all properties as a property map
       | {name: 'Popeye', level: 9001} |
     And no side effects
 
+  @skip
   Scenario: [2] `properties()` on a relationship
     Given an empty graph
     And having executed:
@@ -62,6 +64,7 @@ Feature: Graph10 - Retrieve all properties as a property map
       | {name: 'Popeye', level: 9001} |
     And no side effects
 
+  @skip
   Scenario: [3] `properties()` on null
     Given any graph
     When executing query:
@@ -75,6 +78,7 @@ Feature: Graph10 - Retrieve all properties as a property map
       | null          | null          | null             |
     And no side effects
 
+  @skip
   Scenario: [4] `properties()` on a map
     Given any graph
     When executing query:
@@ -87,6 +91,7 @@ Feature: Graph10 - Retrieve all properties as a property map
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [5] `properties()` failing on an integer literal
     Given any graph
     When executing query:
@@ -96,6 +101,7 @@ Feature: Graph10 - Retrieve all properties as a property map
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
   @NegativeTest
+  @skip
   Scenario: [6] `properties()` failing on a string literal
     Given any graph
     When executing query:
@@ -105,6 +111,7 @@ Feature: Graph10 - Retrieve all properties as a property map
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
   @NegativeTest
+  @skip
   Scenario: [7] `properties()` failing on a list of booleans
     Given any graph
     When executing query:

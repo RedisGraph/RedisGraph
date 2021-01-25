@@ -79,6 +79,7 @@ Feature: Return6 - Implicit grouping with aggregates
       | 2     |
     And no side effects
 
+  @skip
   Scenario: [4] Support multiple divisions in aggregate function
     Given an empty graph
     And having executed:
@@ -227,6 +228,7 @@ Feature: Return6 - Implicit grouping with aggregates
       | (:L) | 2        |
     And no side effects
 
+  @skip
   Scenario: [13] Returning the minimum length of paths
     Given an empty graph
     And having executed:
@@ -258,6 +260,7 @@ Feature: Return6 - Implicit grouping with aggregates
     Then a SyntaxError should be raised at compile time: NestedAggregation
 
   @NegativeTest
+  @skip
   Scenario: [15] Using `rand()` in aggregations
     Given any graph
     When executing query:
@@ -266,6 +269,7 @@ Feature: Return6 - Implicit grouping with aggregates
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
+  @skip
   Scenario: [16] Aggregation on complex expressions
     Given an empty graph
     And having executed:

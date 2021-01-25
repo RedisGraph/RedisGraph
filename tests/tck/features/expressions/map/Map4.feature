@@ -30,6 +30,7 @@
 
 Feature: Map4 - Field existence check
 
+  @skip
   Scenario Outline: [1] `exists()` with literal maps
     Given any graph
     When executing query:
@@ -57,6 +58,7 @@ Feature: Map4 - Field existence check
       | {notName: 0}                        | name    | false  |
       | {}                                  | name    | false  |
 
+  @skip
   Scenario: [2] Using `exists()` on null map
     Given any graph
     When executing query:

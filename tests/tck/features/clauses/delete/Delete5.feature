@@ -30,6 +30,7 @@
 
 Feature: Delete5 - Delete clause interoperation with built-in data types
 
+  @skip
   Scenario: [1] Delete node from a list
     Given an empty graph
     And having executed:
@@ -53,6 +54,7 @@ Feature: Delete5 - Delete clause interoperation with built-in data types
       | -nodes         | 1 |
       | -relationships | 1 |
 
+  @skip
   Scenario: [2] Delete relationship from a list
     Given an empty graph
     And having executed:
@@ -75,6 +77,7 @@ Feature: Delete5 - Delete clause interoperation with built-in data types
     And the side effects should be:
       | -relationships | 1 |
 
+  @skip
   Scenario: [3] Delete nodes from a map
     Given an empty graph
     And having executed:
@@ -92,6 +95,7 @@ Feature: Delete5 - Delete clause interoperation with built-in data types
       | -nodes  | 2 |
       | -labels | 1 |
 
+  @skip
   Scenario: [4] Delete relationships from a map
     Given an empty graph
     And having executed:
@@ -110,6 +114,7 @@ Feature: Delete5 - Delete clause interoperation with built-in data types
     And the side effects should be:
       | -relationships | 2 |
 
+  @skip
   Scenario: [5] Detach delete nodes from nested map/list
     Given an empty graph
     And having executed:
@@ -129,6 +134,7 @@ Feature: Delete5 - Delete clause interoperation with built-in data types
       | -nodes         | 1 |
       | -relationships | 2 |
 
+  @skip
   Scenario: [6] Delete relationships from nested map/list
     Given an empty graph
     And having executed:
@@ -147,6 +153,7 @@ Feature: Delete5 - Delete clause interoperation with built-in data types
     And the side effects should be:
       | -relationships | 1 |
 
+  @skip
   Scenario: [7] Delete paths from nested map/list
     Given an empty graph
     And having executed:

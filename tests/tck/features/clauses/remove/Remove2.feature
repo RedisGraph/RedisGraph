@@ -30,6 +30,7 @@
 
 Feature: Remove2 - Remove a Label
 
+  @skip
   Scenario: [1] Remove a single label from a node with a single label
     Given an empty graph
     And having executed:
@@ -48,6 +49,7 @@ Feature: Remove2 - Remove a Label
     And the side effects should be:
       | -labels | 1 |
 
+  @skip
   Scenario: [2] Remove a single label from a node with two labels
     Given an empty graph
     And having executed:
@@ -66,6 +68,7 @@ Feature: Remove2 - Remove a Label
     And the side effects should be:
       | -labels | 1 |
 
+  @skip
   Scenario: [3] Remove two labels from a node with three labels
     Given an empty graph
     And having executed:
@@ -84,6 +87,7 @@ Feature: Remove2 - Remove a Label
     And the side effects should be:
       | -labels | 2 |
 
+  @skip
   Scenario: [4] Remove a non-existent node label
     Given an empty graph
     And having executed:
@@ -101,6 +105,7 @@ Feature: Remove2 - Remove a Label
       | ['Foo']   |
     And no side effects
 
+  @skip
   Scenario: [5] Ignore null when removing a node label
     Given an empty graph
     When executing query:

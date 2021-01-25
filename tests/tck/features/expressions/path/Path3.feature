@@ -49,6 +49,7 @@ Feature: Path3 - Length of a path
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [2] Failing when using `length()` on a node
     Given any graph
     When executing query:
@@ -59,6 +60,7 @@ Feature: Path3 - Length of a path
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
   @NegativeTest
+  @skip
   Scenario: [3] Failing when using `length()` on a relationship
     Given any graph
     When executing query:

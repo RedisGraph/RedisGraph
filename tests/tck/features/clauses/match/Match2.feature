@@ -60,6 +60,7 @@ Feature: Match2 - Match relationships
       | [:T1] |
     And no side effects
 
+  @skip
   Scenario: [3] Matching a self-loop with an undirected relationship pattern
     Given an empty graph
     And having executed:
@@ -199,6 +200,7 @@ Feature: Match2 - Match relationships
       | (s), (a)-[q]-(b), (r), (s)-[]->(t)<-[]-(b) |
       | (s), (a)-[q]-(b), (t), (s)-[]->(r)<-[]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [10] Fail when a path has the same variable in a preceding MATCH
     Given any graph
@@ -262,6 +264,7 @@ Feature: Match2 - Match relationships
       | (r), (a)-[q]-(b), (s), (s)-[r]-(t)-[]-(b)   |
       | (r), (a)-[q]-(b), (s), (s)-[r]->(t)<-[]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [12] Fail when a path has the same variable in the same pattern
     Given any graph
@@ -283,6 +286,7 @@ Feature: Match2 - Match relationships
       | (a)-[p]-(s)-[]-(b), r = (s)-[*]-(t), (t), (t)-[r]-(b)  |
       | (a)-[p]-(s)-[]-(b), r = (s)-[*]-(t), (t), (t)-[r*]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [13] Fail when matching a relationship variable bound to a value
     Given any graph

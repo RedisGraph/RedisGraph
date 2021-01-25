@@ -82,6 +82,7 @@ Feature: Merge7 - Merge relationships - on match
     And the side effects should be:
       | +properties | 1 |
 
+  @skip
   Scenario: [4] Copying properties from node with ON MATCH
     Given an empty graph
     And having executed:

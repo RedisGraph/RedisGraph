@@ -133,6 +133,7 @@ Feature: Match3 - Match fixed length patterns
       | (:Foo) |
     And no side effects
 
+  @skip
   Scenario: [7] Matching nodes with many labels
     Given an empty graph
     And having executed:
@@ -201,6 +202,7 @@ Feature: Match3 - Match fixed length patterns
       | b |
     And no side effects
 
+  @skip
   Scenario: [11] Undirected match in self-relationship graph
     Given an empty graph
     And having executed:
@@ -217,6 +219,7 @@ Feature: Match3 - Match fixed length patterns
       | (:A) | [:LOOP] | (:A) |
     And no side effects
 
+  @skip
   Scenario: [12] Undirected match of self-relationship in self-relationship graph
     Given an empty graph
     And having executed:
@@ -265,6 +268,7 @@ Feature: Match3 - Match fixed length patterns
       | (:A) | [:LOOP] |
     And no side effects
 
+  @skip
   Scenario: [15] Mixing directed and undirected pattern parts with self-relationship, simple
     Given an empty graph
     And having executed:
@@ -284,6 +288,7 @@ Feature: Match3 - Match fixed length patterns
       | (:A) | [:T1] | (:Looper) | [:T2]   | (:B)      |
     And no side effects
 
+  @skip
   Scenario: [16] Mixing directed and undirected pattern parts with self-relationship, undirected
     Given an empty graph
     And having executed:
@@ -505,6 +510,7 @@ Feature: Match3 - Match fixed length patterns
       | a1 | r | b2 |
     And no side effects
 
+  @skip
   Scenario: [26] Matching twice with a duplicate predicate
     Given an empty graph
     And having executed:
@@ -554,6 +560,7 @@ Feature: Match3 - Match fixed length patterns
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [29] Fail when re-using a relationship in the same pattern
     Given any graph
     When executing query:
@@ -564,6 +571,7 @@ Feature: Match3 - Match fixed length patterns
     Then a SyntaxError should be raised at compile time: RelationshipUniquenessViolation
 
   @NegativeTest
+  @skip
   Scenario: [30] Fail when using a list or nodes as a node
     Given any graph
     When executing query:

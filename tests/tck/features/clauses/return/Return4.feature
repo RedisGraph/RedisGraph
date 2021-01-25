@@ -111,6 +111,7 @@ Feature: Return4 - Column renaming
     And no side effects
 
   @skipStyleCheck
+  @skip
   Scenario: [6] Keeping used expression 3
     Given an empty graph
     And having executed:
@@ -127,6 +128,7 @@ Feature: Return4 - Column renaming
       | 0                   |
     And no side effects
 
+  @skip
   Scenario: [7] Keeping used expression 4
     Given an empty graph
     And having executed:
@@ -179,6 +181,7 @@ Feature: Return4 - Column renaming
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [10] Fail when returning multiple columns with same name
     Given any graph
     When executing query:

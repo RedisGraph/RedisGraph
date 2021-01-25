@@ -83,6 +83,7 @@ Feature: List6 - List size
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [5] Fail for `size()` on paths
     Given any graph
     When executing query:

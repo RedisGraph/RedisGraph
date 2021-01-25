@@ -30,6 +30,7 @@
 
 Feature: Delete3 - Deleting named paths
 
+  @skip
   Scenario: [1] Detach deleting paths
     Given an empty graph
     And having executed:

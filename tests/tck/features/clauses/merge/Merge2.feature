@@ -30,6 +30,7 @@
 
 Feature: Merge2 - Merge node - on create
 
+  @skip
   Scenario: [1] Merge node with label add label on create
     Given an empty graph
     When executing query:
@@ -90,6 +91,7 @@ Feature: Merge2 - Merge node - on create
       | null  |
     And no side effects
 
+  @skip
   Scenario: [5] Merge should be able to use properties of bound node in ON CREATE
     Given an empty graph
     And having executed:

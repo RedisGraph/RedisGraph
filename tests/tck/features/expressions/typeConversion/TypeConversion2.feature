@@ -42,6 +42,7 @@ Feature: TypeConversion2 - To Integer
       | 82                |
     And no side effects
 
+  @skip
   Scenario: [2] `toInteger()` returning null on non-numerical string
     Given any graph
     When executing query:
@@ -90,6 +91,7 @@ Feature: TypeConversion2 - To Integer
       | [2, 2, null] |
     And no side effects
 
+  @skip
   Scenario: [6] `toInteger()` on a complex-typed expression
     Given any graph
     And parameters are:

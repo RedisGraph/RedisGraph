@@ -91,6 +91,7 @@ Feature: With4 - Variable aliasing
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [4] Fail when forwarding multiple aliases with the same name
     Given any graph
     When executing query:

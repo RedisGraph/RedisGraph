@@ -124,6 +124,7 @@ Feature: Comparison3 - Full-Bound Range
       | 'b'    |
     And no side effects
 
+  @skip
   Scenario: [6] Handling string ranges 2
     Given an empty graph
     And having executed:
@@ -143,6 +144,7 @@ Feature: Comparison3 - Full-Bound Range
       | 'c'    |
     And no side effects
 
+  @skip
   Scenario: [7] Handling string ranges 3
     Given an empty graph
     And having executed:
@@ -162,6 +164,7 @@ Feature: Comparison3 - Full-Bound Range
       | 'b'    |
     And no side effects
 
+  @skip
   Scenario: [8] Handling string ranges 4
     Given an empty graph
     And having executed:

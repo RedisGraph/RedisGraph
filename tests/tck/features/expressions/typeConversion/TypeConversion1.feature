@@ -30,6 +30,7 @@
 
 Feature: TypeConversion1 - To Boolean
 
+  @skip
   Scenario: [1] `toBoolean()` on booleans
     Given any graph
     When executing query:
@@ -43,6 +44,7 @@ Feature: TypeConversion1 - To Boolean
       | false |
     And no side effects
 
+  @skip
   Scenario: [2] `toBoolean()` on valid literal string
     Given any graph
     When executing query:
@@ -54,6 +56,7 @@ Feature: TypeConversion1 - To Boolean
       | true |
     And no side effects
 
+  @skip
   Scenario: [3] `toBoolean()` on variables with valid string values
     Given any graph
     When executing query:
@@ -67,6 +70,7 @@ Feature: TypeConversion1 - To Boolean
       | false |
     And no side effects
 
+  @skip
   Scenario: [4] `toBoolean()` on invalid strings
     Given any graph
     When executing query:
@@ -82,6 +86,7 @@ Feature: TypeConversion1 - To Boolean
       | null |
     And no side effects
 
+  @skip
   @NegativeTest
   Scenario Outline: [5] `toBoolean()` on invalid types
     Given any graph

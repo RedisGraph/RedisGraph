@@ -73,6 +73,7 @@ Feature: WithOrderBy2 - Order by a single expression
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [3] Fail on aggregation in ORDER BY after WITH
     Given any graph
     When executing query:

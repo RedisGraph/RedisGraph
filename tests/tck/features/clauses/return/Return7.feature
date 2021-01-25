@@ -30,6 +30,7 @@
 
 Feature: Return7 - Return all variables
 
+  @skip
   Scenario: [1] Return all variables
     Given an empty graph
     And having executed:
@@ -47,6 +48,7 @@ Feature: Return7 - Return all variables
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [2] Fail when using RETURN * without variables in scope
     Given any graph
     When executing query:

@@ -30,6 +30,7 @@
 
 Feature: ReturnOrderBy3 - Order by multiple expressions (order obey priority of expressions)
 
+  @skip
   Scenario: [1] Sort on aggregate function and normal property
     Given an empty graph
     And having executed:

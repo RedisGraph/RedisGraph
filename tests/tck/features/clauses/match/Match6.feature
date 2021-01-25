@@ -144,6 +144,7 @@ Feature: Match6 - Match named paths scenarios
       | <({name: 'a'})-[:T]->({name: 'b'})> |
     And no side effects
 
+  @skip
   Scenario: [8] Respecting direction when matching non-existent path with multiple directions
     Given an empty graph
     And having executed:
@@ -161,6 +162,7 @@ Feature: Match6 - Match named paths scenarios
       | p |
     And no side effects
 
+  @skip
   Scenario: [9] Longer path query should return results in written order
     Given an empty graph
     And having executed:
@@ -177,6 +179,7 @@ Feature: Match6 - Match named paths scenarios
       | <(:Label1)<-[:T1]-(:Label2)-[:T2]->(:Label3)> |
     And no side effects
 
+  @skip
   Scenario: [10] Named path with alternating directed/undirected relationships
     Given an empty graph
     And having executed:
@@ -195,6 +198,7 @@ Feature: Match6 - Match named paths scenarios
       | <(:C)-[:T]->(:B)-[:T]->(:A)> |
     And no side effects
 
+  @skip
   Scenario: [11] Named path with multiple alternating directed/undirected relationships
     Given an empty graph
     And having executed:
@@ -214,6 +218,7 @@ Feature: Match6 - Match named paths scenarios
       | <(:D)-[:T]->(:C)-[:T]->(:B)-[:T]->(:A)> |
     And no side effects
 
+  @skip
   Scenario: [12] Matching path with multiple bidirectional relationships
     Given an empty graph
     And having executed:
@@ -235,6 +240,7 @@ Feature: Match6 - Match named paths scenarios
       | <(:B)-[:T2]->(:A)-[:T1]->(:B)> |
     And no side effects
 
+  @skip
   Scenario: [13] Matching path with both directions should respect other directions
     Given an empty graph
     And having executed:
@@ -254,6 +260,7 @@ Feature: Match6 - Match named paths scenarios
       | <(:B)<-[:T1]-(:A)<-[:T2]-(:B)> |
     And no side effects
 
+  @skip
   Scenario: [14] Named path with undirected fixed variable length pattern
     Given an empty graph
     And having executed:
@@ -387,6 +394,7 @@ Feature: Match6 - Match named paths scenarios
       | <({name: 'A'})-[:KNOWS]->({name: 'B'})-[:KNOWS]->({name: 'C'})> |
     And no side effects
 
+  @skip
   @NegativeTest
   Scenario Outline: [21] Fail when a node has the same variable in a preceding MATCH
     Given any graph
@@ -415,6 +423,7 @@ Feature: Match6 - Match named paths scenarios
       | (a)-[r*]-(s)-[]-(b), (p), (t)-[]-(b)  |
       | (a)-[r]-(p)<-[*]-(b), (t), (t)-[]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [22] Fail when a relationship has the same variable in a preceding MATCH
     Given any graph
@@ -444,6 +453,7 @@ Feature: Match6 - Match named paths scenarios
       | (a)-[r*]-(s)-[p]-(b), (t), (t)-[]-(b) |
       | (a)-[r]-(s)<-[p]-(b), (t), (t)-[]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [23] Fail when a node has the same variable in the same pattern
     Given any graph
@@ -477,6 +487,7 @@ Feature: Match6 - Match named paths scenarios
       | (a)-[r]-(p)-[]-(b), p = (s)-[]-(t), (t), (t)-[]-(b)   |
       | (a)-[r]-(p)<-[*]-(b), p = (s)-[]-(t), (t), (t)-[]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [24] Fail when a relationship has the same variable in the same pattern
     Given any graph
@@ -510,6 +521,7 @@ Feature: Match6 - Match named paths scenarios
       | (a)-[r]-(s)-[p]-(b), p = (s)-[]-(t), (t), (t)-[]-(b)   |
       | (a)-[r]-(s)<-[p*]-(b), p = (s)-[]-(t), (t), (t)-[]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [25] Fail when matching a path variable bound to a value
     Given any graph

@@ -61,6 +61,7 @@ Feature: Create1 - Creating nodes
       | +nodes  | 1 |
       | +labels | 1 |
 
+  @skip
   Scenario: [4] Create a single node with multiple labels
     Given an empty graph
     When executing query:
@@ -152,6 +153,7 @@ Feature: Create1 - Creating nodes
       | +labels     | 1 |
 
   @NegativeTest
+  @skip
   Scenario: [11] Fail when creating a node that is already bound
     Given any graph
     When executing query:
@@ -162,6 +164,7 @@ Feature: Create1 - Creating nodes
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
   @NegativeTest
+  @skip
   Scenario: [12] Fail when creating a node with properties that is already bound
     Given any graph
     When executing query:
@@ -173,6 +176,7 @@ Feature: Create1 - Creating nodes
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
   @NegativeTest
+  @skip
   Scenario: [13] Fail when adding a new label predicate on a node that is already bound 1
     Given an empty graph
     When executing query:
@@ -184,6 +188,7 @@ Feature: Create1 - Creating nodes
 
   @NegativeTest
   # Consider improve naming of this and the next three scenarios, they seem to test invariant nature of node patterns
+  @skip
   Scenario: [14] Fail when adding new label predicate on a node that is already bound 2
     Given an empty graph
     When executing query:
@@ -194,6 +199,7 @@ Feature: Create1 - Creating nodes
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
   @NegativeTest
+  @skip
   Scenario: [15] Fail when adding new label predicate on a node that is already bound 3
     Given an empty graph
     When executing query:
@@ -204,6 +210,7 @@ Feature: Create1 - Creating nodes
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
   @NegativeTest
+  @skip
   Scenario: [16] Fail when adding new label predicate on a node that is already bound 4
     Given an empty graph
     When executing query:
@@ -214,6 +221,7 @@ Feature: Create1 - Creating nodes
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
   @NegativeTest
+  @skip
   Scenario: [17] Fail when adding new label predicate on a node that is already bound 5
     Given an empty graph
     When executing query:

@@ -58,6 +58,7 @@ Feature: List11 - Create a list from a range
       | 1234  | 1234  | [1234]                                       |
       | 1234  | 1236  | [1234, 1235, 1236]                           |
 
+  @skip
   Scenario Outline: [2] Create list from `range()` with explicitly given step
     Given any graph
     When executing query:
@@ -98,6 +99,7 @@ Feature: List11 - Create a list from a range
       | -2000 | 0     | 1298  | [-2000, -702]                                     |
       | -3412 | 1381  | 1298  | [-3412, -2114, -816, 482]                         |
 
+  @skip
   Scenario: [3] Create an empty list if range direction and step direction are inconsistent
     Given any graph
     When executing query:

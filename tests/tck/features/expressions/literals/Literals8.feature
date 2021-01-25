@@ -140,6 +140,7 @@ Feature: Literals8 - Maps
       | {k: 372036854} |
     And no side effects
 
+  @skip
   Scenario: [11] Return a map containing a float
     Given any graph
     When executing query:
@@ -343,6 +344,7 @@ Feature: Literals8 - Maps
     Then a SyntaxError should be raised at compile time: UnexpectedSyntax
 
   @NegativeTest @skipGrammarCheck
+  @skip
   Scenario: [24] Fail on a map containing a value without key
     Given any graph
     When executing query:

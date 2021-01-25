@@ -41,6 +41,7 @@ Feature: Delete6 - Negative scenarios
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
   @NegativeTest
+  @skip
   Scenario: [2] Failing when deleting an integer expression
     Given any graph
     When executing query:

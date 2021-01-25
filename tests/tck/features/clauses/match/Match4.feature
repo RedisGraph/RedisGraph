@@ -30,6 +30,7 @@
 
 Feature: Match4 - Match variable length patterns scenarios
 
+  @skip
   Scenario: [1] Handling fixed-length variable length pattern
     Given an empty graph
     And having executed:
@@ -90,6 +91,7 @@ Feature: Match4 - Match variable length patterns scenarios
       | ({name: 'A'}) | ({name: 'B'}) | ({name: 'C'}) |
     And no side effects
 
+  @skip
   Scenario: [4] Matching longer variable length paths
     Given an empty graph
     And having executed:
@@ -113,6 +115,7 @@ Feature: Match4 - Match variable length patterns scenarios
       | ({var: 'end'}) |
     And no side effects
 
+  @skip
   Scenario: [5] Matching variable length pattern with property predicate
     Given an empty graph
     And having executed:
@@ -131,6 +134,7 @@ Feature: Match4 - Match variable length patterns scenarios
       | (:Artist:B) | (:Artist:C) |
     And no side effects
 
+  @skip
   Scenario: [6] Matching variable length patterns from a bound node
     Given an empty graph
     And having executed:
@@ -150,6 +154,7 @@ Feature: Match4 - Match variable length patterns scenarios
       | [[:X], [:Y]] |
     And no side effects
 
+  @skip
   Scenario: [7] Matching variable length patterns including a bound relationship
     Given an empty graph
     And having executed:
@@ -173,6 +178,7 @@ Feature: Match4 - Match variable length patterns scenarios
       | 32 |
     And no side effects
 
+  @skip
   Scenario: [8] Matching relationships into a list and matching variable length using the list
     Given an empty graph
     And having executed:

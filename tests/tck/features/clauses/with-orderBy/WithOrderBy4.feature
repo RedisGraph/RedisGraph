@@ -30,6 +30,7 @@
 
 Feature: WithOrderBy4 - Order by in combination with projection
 
+  @skip
   Scenario: [1] Matching using a relationship that is already bound, in conjunction with aggregation and ORDER BY
     Given an empty graph
     And having executed:

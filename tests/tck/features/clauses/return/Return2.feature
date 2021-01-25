@@ -30,6 +30,7 @@
 
 Feature: Return2 - Return single expression (correctly projecting an expression)
 
+  @skip
   Scenario: [1] Arithmetic expressions should propagate null values
     Given any graph
     When executing query:
@@ -137,6 +138,7 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       | [4, 5, 1, 2, 3] |
     And no side effects
 
+  @skip
   Scenario: [8] Returning label predicate expression
     Given an empty graph
     And having executed:
@@ -169,6 +171,7 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       | {a: 1, b: 'foo'} |
     And no side effects
 
+  @skip
   Scenario: [10] Return count aggregation over an empty graph
     Given an empty graph
     When executing query:
@@ -231,6 +234,7 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       | {node1: (:A), rel: [:T], node2: (:B)} |
     And no side effects
 
+  @skip
   Scenario: [14] Do not fail when returning type of deleted relationships
     Given an empty graph
     And having executed:
@@ -250,6 +254,7 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       | -relationships | 1 |
 
   @NegativeTest
+  @skip
   Scenario: [15] Fail when returning properties of deleted nodes
     Given an empty graph
     And having executed:
@@ -265,6 +270,7 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
   @NegativeTest
+  @skip
   Scenario: [16] Fail when returning labels of deleted nodes
     Given an empty graph
     And having executed:
@@ -280,6 +286,7 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
   @NegativeTest
+  @skip
   Scenario: [17] Fail when returning properties of deleted relationships
     Given an empty graph
     And having executed:

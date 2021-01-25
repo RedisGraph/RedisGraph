@@ -264,6 +264,7 @@ Feature: Merge5 - Merge relationships
       | [:KNOWS {name: 'cd'}] |
     And no side effects
 
+  @skip
   Scenario: [14] Using list properties via variable
     Given an empty graph
     When executing query:
@@ -388,6 +389,7 @@ Feature: Merge5 - Merge relationships
     And the side effects should be:
       | +relationships | 1 |
 
+  @skip
   Scenario: [20] Do not match on deleted entities
     Given an empty graph
     And having executed:
@@ -418,6 +420,7 @@ Feature: Merge5 - Merge relationships
       | +properties    | 1 |
       | -properties    | 2 |
 
+  @skip
   Scenario: [21] Do not match on deleted relationships
     Given an empty graph
     And having executed:
@@ -506,6 +509,7 @@ Feature: Merge5 - Merge relationships
     Then a SyntaxError should be raised at compile time: InvalidParameterUse
 
   @NegativeTest
+  @skip
   Scenario: [28] Fail when using variable length relationship in MERGE
     Given any graph
     When executing query:

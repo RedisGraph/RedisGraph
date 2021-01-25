@@ -30,6 +30,7 @@
 
 Feature: Graph8 - Property keys function
 
+  @skip
   Scenario: [1] Using `keys()` on a single node, non-empty result
     Given an empty graph
     And having executed:
@@ -48,6 +49,7 @@ Feature: Graph8 - Property keys function
       | 'surname' |
     And no side effects
 
+  @skip
   Scenario: [2] Using `keys()` on multiple nodes, non-empty result
     Given an empty graph
     And having executed:
@@ -69,6 +71,7 @@ Feature: Graph8 - Property keys function
       | 'otherSurname' |
     And no side effects
 
+  @skip
   Scenario: [3] Using `keys()` on a single node, empty result
     Given an empty graph
     And having executed:
@@ -85,6 +88,7 @@ Feature: Graph8 - Property keys function
       | theProps |
     And no side effects
 
+  @skip
   Scenario: [4] Using `keys()` on an optionally matched node
     Given an empty graph
     And having executed:
@@ -101,6 +105,7 @@ Feature: Graph8 - Property keys function
       | theProps |
     And no side effects
 
+  @skip
   Scenario: [5] Using `keys()` on a relationship, non-empty result
     Given an empty graph
     And having executed:
@@ -119,6 +124,7 @@ Feature: Graph8 - Property keys function
       | 'year'   |
     And no side effects
 
+  @skip
   Scenario: [6] Using `keys()` on a relationship, empty result
     Given an empty graph
     And having executed:
@@ -135,6 +141,7 @@ Feature: Graph8 - Property keys function
       | theProps |
     And no side effects
 
+  @skip
   Scenario: [7] Using `keys()` on an optionally matched relationship
     Given an empty graph
     And having executed:

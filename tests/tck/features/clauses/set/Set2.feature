@@ -30,6 +30,7 @@
 
 Feature: Set2 - Set a Property to Null
 
+  @skip
   Scenario: [1] Setting a node property to null removes the existing property
     Given an empty graph
     And having executed:
@@ -48,6 +49,7 @@ Feature: Set2 - Set a Property to Null
     And the side effects should be:
       | -properties | 1 |
 
+  @skip
   Scenario: [2] Setting a node property to null removes the existing property, but not before SET
     Given an empty graph
     And having executed:
@@ -67,6 +69,7 @@ Feature: Set2 - Set a Property to Null
     And the side effects should be:
       | -properties | 1 |
 
+  @skip
   Scenario: [3] Setting a relationship property to null removes the existing property
     Given an empty graph
     And having executed:

@@ -64,6 +64,7 @@ Feature: Null3 - Null evaluation
       | null  |
     And no side effects
 
+  @skip
   Scenario Outline: [4] Using null in AND
     Given any graph
     And parameters are:
@@ -86,6 +87,7 @@ Feature: Null3 - Null evaluation
       | null  | false | false  |
       | false | null  | false  |
 
+  @skip
   Scenario Outline: [5] Using null in OR
     Given any graph
     And parameters are:
@@ -108,6 +110,7 @@ Feature: Null3 - Null evaluation
       | null  | false | null   |
       | false | null  | null   |
 
+  @skip
   Scenario Outline: [6] Using null in XOR
     Given any graph
     And parameters are:
@@ -130,6 +133,7 @@ Feature: Null3 - Null evaluation
       | null  | false | null   |
       | false | null  | null   |
 
+  @skip
   Scenario Outline: [7] Using null in IN
     Given any graph
     And parameters are:

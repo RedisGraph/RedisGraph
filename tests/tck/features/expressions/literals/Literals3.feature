@@ -189,6 +189,7 @@ Feature: Literals3 - Hexadecimal integer
 #    Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
   @NegativeTest
+  @skip
   Scenario: [16] Fail on a too large hexadecimal integer
     Given any graph
     When executing query:
@@ -198,6 +199,7 @@ Feature: Literals3 - Hexadecimal integer
     Then a SyntaxError should be raised at compile time: IntegerOverflow
 
   @NegativeTest
+  @skip
   Scenario: [17] Fail on a too small hexadecimal integer
     Given any graph
     When executing query:

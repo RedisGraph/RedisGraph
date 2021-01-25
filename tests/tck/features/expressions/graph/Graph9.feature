@@ -99,6 +99,7 @@ Feature: Graph9 - Property existence check
       | false             | true             |
     And no side effects
 
+  @skip
   Scenario: [5] Property existence check on null node
     Given an empty graph
     When executing query:
@@ -112,6 +113,7 @@ Feature: Graph9 - Property existence check
     And no side effects
 
   @NegativeTest
+  @skip
   Scenario: [6] Fail when checking existence of a non-property and non-pattern
     Given any graph
     When executing query:

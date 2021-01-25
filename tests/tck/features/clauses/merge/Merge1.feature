@@ -43,6 +43,7 @@ Feature: Merge1 - Merge node
     And the side effects should be:
       | +nodes | 1 |
 
+  @skip
   Scenario: [2] Merge node with label
     Given an empty graph
     When executing query:
@@ -189,6 +190,7 @@ Feature: Merge1 - Merge node
       | +labels     | 1  |
       | +properties | 30 |
 
+  @skip
   Scenario: [10] Merge must properly handle multiple labels
     Given an empty graph
     And having executed:
@@ -256,6 +258,7 @@ Feature: Merge1 - Merge node
       | +nodes      | 1 |
       | +properties | 1 |
 
+  @skip
   Scenario: [14] Merges should not be able to match on deleted nodes
     Given an empty graph
     And having executed:
@@ -280,6 +283,7 @@ Feature: Merge1 - Merge node
       | -properties | 2 |
 
   @NegativeTest
+  @skip
   Scenario: [15] Fail when merge a node that is already bound
     Given any graph
     When executing query:

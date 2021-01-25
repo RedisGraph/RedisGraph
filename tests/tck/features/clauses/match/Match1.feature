@@ -59,6 +59,7 @@ Feature: Match1 - Match nodes
       | ({name: 'c'})    |
     And no side effects
 
+  @skip
   Scenario: [3] Matching nodes using multiple labels
     Given an empty graph
     And having executed:
@@ -155,6 +156,7 @@ Feature: Match1 - Match nodes
       | ()-[]-()-[]-(), (), ()-[r]-()               |
       | (x), (a)-[q]-(b), (s), (s)-[r]->(t)<-[]-(b) |
 
+  @skip
   @NegativeTest
   Scenario Outline: [8] Fail when a path has the same variable in a preceding MATCH
     Given any graph
@@ -223,6 +225,7 @@ Feature: Match1 - Match nodes
       | ()-[*]-()-[r]-(), (), ()-[*]-(r)                |
       | (x), (a)-[r]-(b), (s), (s)-[]->(r)<-[]-(b)      |
 
+  @skip
   @NegativeTest
   Scenario Outline: [10] Fail when a path has the same variable in the same pattern
     Given any graph
@@ -256,6 +259,7 @@ Feature: Match1 - Match nodes
       | (x), r = (s)-[p]-(t)-[]-(b), (a)-[q]-(r)        |
       | (x), r = (s)-[p]->(t)<-[]-(b), (r)-[q]-(b)      |
 
+  @skip
   @NegativeTest
   Scenario Outline: [11] Fail when matching a node variable bound to a value
     Given any graph
