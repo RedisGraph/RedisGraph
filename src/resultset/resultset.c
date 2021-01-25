@@ -5,7 +5,7 @@
 */
 
 #include "resultset.h"
-#include "../RG.h"
+#include "RG.h"
 #include "../value.h"
 #include "../errors.h"
 #include "../util/arr.h"
@@ -126,18 +126,15 @@ static void _ResultSet_SetColumns(ResultSet *set) {
 }
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
-	set->gc = gc;
+	set->gc = QueryCtx_GetGraphCtx();
 	set->format = format;
 	set->formatter = ResultSetFormatter_GetFormatter(format);
 	set->columns = NULL;
 	set->recordCount = 0;
 	set->column_count = 0;
 	set->header_emitted = false;
-	set->require_footer = false;
 	set->columns_record_map = NULL;
 
 	set->stats.labels_added = 0;
@@ -215,8 +212,8 @@ void ResultSet_Reply(ResultSet *set) {
 	if(set->columns != NULL) {
 		uint graph_version = QueryCtx_GetGraphVersion();
 		require_footer = (graph_version != GRAPH_VERSION_MISSING &&
-				graph_version != GraphContext_GetVersion(set->gc) &&
-				set->format == FORMATTER_COMPACT);
+						  graph_version != GraphContext_GetVersion(set->gc) &&
+						  set->format == FORMATTER_COMPACT);
 
 		// the query emits data
 		if(set->header_emitted) {
@@ -225,21 +222,28 @@ void ResultSet_Reply(ResultSet *set) {
 			RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
 		} else {
 			ASSERT(set->recordCount == 0);
-			// handle the edge case in which the query was intended to 
+			// handle the edge case in which the query was intended to
 			// return results, but none were created
 			_ResultSet_ReplyWithPreamble(set, NULL);
 			RedisModule_ReplySetArrayLength(set->ctx, 0);
 		}
 		nsections = (require_footer) ? 4 : 3;
+		RedisModule_ReplySetArrayLength(set->ctx, nsections);
+	} else {
+		// Queries that don't emit data will only emit statistics
+		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
-	RedisModule_ReplyWithArray(set->ctx, nsections);
+
+	// RedisModule_ReplyWithArray(set->ctx, nsections);
 
 	/* check to see if we've encountered a run-time error
 	 * if so, emit it as the last top-level response */
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	else _ResultSet_ReplayStats(set->ctx, set); // otherwise, the last response is query statistics
 
-	if(set->require_footer) ResultSet_ReplyWithMetadata(set);
+	if(require_footer) {
+		set->formatter->EmitFooter(set->ctx, set->gc);
+	}
 }
 
 /* Report execution timing. */

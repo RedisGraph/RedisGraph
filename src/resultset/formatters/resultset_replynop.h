@@ -7,5 +7,9 @@
 #pragma once
 
 // Formatter for compact (client-parsed) replies
-void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const char **columns, const Record r, uint *col_rec_map);
-void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols, uint *col_rec_map);
+void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const char **columns, const Record r,
+							 uint *col_rec_map);
+void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols,
+							 uint *col_rec_map);
+void ResultSet_EmitNOPFooter(RedisModuleCtx *ctx, GraphContext *gc);
+

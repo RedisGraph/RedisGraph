@@ -40,9 +40,13 @@ typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const 
 typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols,
 							   uint *col_rec_map);
 
+// Typedef for footer formatters.
+typedef void (*EmitFooterFunc)(RedisModuleCtx *ctx, GraphContext *gc);
+
 typedef struct {
 	EmitRecordFunc EmitRecord;
 	EmitHeaderFunc EmitHeader;
+	EmitFooterFunc EmitFooter;
 } ResultSetFormatter;
 
 /* Redis prints doubles with up to 17 digits of precision, which captures

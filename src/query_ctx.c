@@ -80,11 +80,6 @@ AST *QueryCtx_GetAST(void) {
 	return ctx->query_data.ast;
 }
 
-uint QueryCtx_GetGraphVersion(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->query_data.graph_version;
-}
-
 rax *QueryCtx_GetParams(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(!ctx->query_data.params) ctx->query_data.params = raxNew();
@@ -115,6 +110,11 @@ ResultSet *QueryCtx_GetResultSet(void) {
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return &ctx->internal_exec_ctx.result_set->stats;
+}
+
+uint QueryCtx_GetGraphVersion(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->query_data.graph_version;
 }
 
 void QueryCtx_PrintQuery(void) {

@@ -29,8 +29,6 @@ typedef struct {
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-void ResultSet_ReplyWithMetadata(ResultSet *set);
-
 void ResultSet_MapProjection(ResultSet *set, const Record r);
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format);

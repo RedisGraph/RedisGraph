@@ -79,6 +79,8 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 ResultSet *QueryCtx_GetResultSet(void);
 /* Retrive the resultset statistics. */
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
+/* Retrieve the graph version. */
+uint QueryCtx_GetGraphVersion(void);
 
 /* Print the current query. */
 void QueryCtx_PrintQuery(void);
