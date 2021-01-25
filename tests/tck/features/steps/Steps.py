@@ -82,7 +82,7 @@ def step_impl(context):
 def step_impl(context):
     assertions.assert_no_modifications(resultset)
 
-@then(u'the result should be')
+@then(u'the result should be, in any order')
 def step_impl(context):
     if exception:
         raise exception
@@ -90,7 +90,7 @@ def step_impl(context):
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals(resultset, context.table)
 
-@then(u'the result should be, in order')
+@then(u'the result should be')
 def step_impl(context):
     if exception:
         raise exception
