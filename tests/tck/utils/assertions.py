@@ -226,8 +226,4 @@ def assert_resultsets_equals(actual, expected):
     actualCtr = Counter(prepare_actual_row(row) for row in actual.result_set)
     expectedCtr = Counter(prepare_expected_row(row) for row in expected)
     # Validate that the constructed Counters are equal
-    print("actual")
-    print(actualCtr)
-    print("expected")
-    print(expectedCtr)
     assert actualCtr == expectedCtr
