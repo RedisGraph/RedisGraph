@@ -198,6 +198,17 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 	}
 }
 
+void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
+		SIValue **row, uint numcols) {
+	// Prepare return array sized to the number of RETURN entities
+	RedisModule_ReplyWithArray(ctx, numcols);
+
+	for(int i = 0; i < numcols; i++) {
+		SIValue v = *row[i];
+		_ResultSet_VerboseReplyWithSIValue(ctx, gc, v);
+	}
+}
+
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 									  const Record unused, uint *col_rec_map) {

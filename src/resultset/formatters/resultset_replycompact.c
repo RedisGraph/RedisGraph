@@ -264,6 +264,18 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 	}
 }
 
+void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
+		SIValue **row, uint numcols) {
+	// Prepare return array sized to the number of RETURN entities
+	RedisModule_ReplyWithArray(ctx, numcols);
+
+	for(uint i = 0; i < numcols; i++) {
+		SIValue cell = *row[i];
+		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, cell);
+	}
+}
+
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
 								 uint numcols, uint *col_rec_map) {
 	// Prepare return array sized to the number of RETURN entities

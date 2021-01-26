@@ -102,7 +102,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	set->header_emitted = true;
 
 	// We don't know at this point the number of records we're about to return.
-	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+	// RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
 static void _ResultSet_SetColumns(ResultSet *set) {
@@ -136,6 +136,7 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	set->column_count = 0;
 	set->header_emitted = false;
 	set->columns_record_map = NULL;
+	set->rows = DataBlock_New(32, sizeof(SIValue), NULL);
 
 	set->stats.labels_added = 0;
 	set->stats.nodes_created = 0;
@@ -157,6 +158,17 @@ uint64_t ResultSet_RecordCount(const ResultSet *set) {
 	return set->recordCount;
 }
 
+void _ResultSet_ConsumeRecord(ResultSet *set, Record r) {
+	DataBlock_Accommodate(set->rows, set->column_count);
+
+	for(int i = 0; i < set->column_count; i++) {
+		int idx = set->columns_record_map[i];
+		SIValue *cell = DataBlock_AllocateItem(set->rows, NULL);
+		*cell = Record_Get(r, idx);
+		Record_Remove(r, idx);
+	}
+}
+
 int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// If result-set format is NOP, don't process record.
 	if(set->format == FORMATTER_NOP) return RESULTSET_OK;
@@ -169,12 +181,15 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 		_ResultSet_ReplyWithPreamble(set, r);
 	}
 
+	_ResultSet_ConsumeRecord(set, r);
 	set->recordCount++;
 
-	// Output the current record using the defined formatter
-	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count, set->columns_record_map);
-
 	return RESULTSET_OK;
+
+	// Output the current record using the defined formatter
+	//set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count, set->columns_record_map);
+
+	//return RESULTSET_OK;
 }
 
 void ResultSet_IndexCreated(ResultSet *set, int status_code) {
@@ -208,12 +223,27 @@ void ResultSet_CachedExecution(ResultSet *set) {
 void ResultSet_Reply(ResultSet *set) {
 	if(set->header_emitted) {
 		// If we have emitted a header, set the number of elements in the preceding array.
-		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
+		// RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
+		RedisModule_ReplyWithArray(set->ctx, set->recordCount);
+		SIValue* row [set->column_count];
+		int cells = set->recordCount * set->column_count;
+		for(int i = 0; i < cells; i += set->column_count) {
+			for(int j = 0; j < set->column_count; j++) {
+				row[j] = DataBlock_GetItem(set->rows, i + j);
+			}
+
+			set->formatter->EmitRow(set->ctx, set->gc, row, set->column_count);
+
+			for(int j = 0; j < set->column_count; j++) {
+				SIValue_Free(*row[j]);
+			}
+		}
 	} else if(set->header_emitted == false && set->columns != NULL) {
 		ASSERT(set->recordCount == 0);
 		// Handle the edge case in which the query was intended to return results, but none were created.
 		_ResultSet_ReplyWithPreamble(set, NULL);
-		RedisModule_ReplySetArrayLength(set->ctx, 0);
+		//RedisModule_ReplySetArrayLength(set->ctx, 0);
+		RedisModule_ReplyWithEmptyArray(set->ctx);
 	} else {
 		// Queries that don't emit data will only emit statistics
 		RedisModule_ReplyWithArray(set->ctx, 1);
@@ -239,6 +269,7 @@ void ResultSet_Free(ResultSet *set) {
 
 	if(set->columns) array_free(set->columns);
 	if(set->columns_record_map) rm_free(set->columns_record_map);
+	if(set->rows) DataBlock_Free(set->rows);
 
 	rm_free(set);
 }

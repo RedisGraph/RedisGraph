@@ -140,6 +140,10 @@ SIValue Record_Get(Record r, int idx) {
 	}
 }
 
+void Record_Remove(Record r, int idx) {
+	r->entries[idx].type = REC_TYPE_UNKNOWN; 
+}
+
 GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 	Entry e = r->entries[idx];
 	switch(e.type) {

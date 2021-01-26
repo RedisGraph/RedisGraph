@@ -23,6 +23,7 @@ typedef struct {
 	const char **columns;           /* Field names for each column of results. */
 	uint *columns_record_map;       /* Mapping between column name and record index.*/
 	size_t recordCount;             /* Number of records introduced. */
+	DataBlock *rows;                /* Accumulated rows */
 	double timer[2];                /* Query runtime tracker. */
 	ResultSetStatistics stats;      /* ResultSet statistics. */
 	ResultSetFormatterType format;  /* Result-set format; compact/verbose/nop. */

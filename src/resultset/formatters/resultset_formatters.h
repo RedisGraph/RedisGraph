@@ -25,17 +25,21 @@ ResultSetFormatter* ResultSetFormatter_GetFormatter(ResultSetFormatterType t);
  * used when profiling a query */
 static ResultSetFormatter ResultSetNOP __attribute__((used)) = {
 	.EmitRecord = ResultSet_EmitNOPRecord,
-	.EmitHeader = ResultSet_EmitNOPHeader
+	.EmitHeader = ResultSet_EmitNOPHeader,
+	.EmitRow = ResultSet_EmitNOPRow
 };
 
 /* Compact reply formatter, this is the default formatter. */
 static ResultSetFormatter ResultSetFormatterCompact __attribute__((used)) = {
 	.EmitRecord = ResultSet_EmitCompactRecord,
-	.EmitHeader = ResultSet_ReplyWithCompactHeader
+	.EmitHeader = ResultSet_ReplyWithCompactHeader,
+	.EmitRow = ResultSet_EmitCompactRow
 };
 
 /* Verbose reply formatter, used when querying via CLI. */
 static ResultSetFormatter ResultSetFormatterVerbose __attribute__((used)) = {
 	.EmitRecord = ResultSet_EmitVerboseRecord,
-	.EmitHeader = ResultSet_ReplyWithVerboseHeader
+	.EmitHeader = ResultSet_ReplyWithVerboseHeader,
+	.EmitRow = ResultSet_EmitVerboseRow
 };
+
