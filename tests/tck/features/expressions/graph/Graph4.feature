@@ -114,6 +114,7 @@ Feature: Graph4 - Edge relationship type
       | 'T'           |
     And no side effects
 
+  @leak
   @NegativeTest
   Scenario Outline: [6] `type()` failing on invalid arguments
     Given an empty graph
