@@ -117,7 +117,8 @@ void Map_ToString
 	SIValue map,          // map to get string representation from
 	char **buf,           // buffer to populate
 	size_t *bufferLen,    // size of buffer
-	size_t *bytesWritten  // length of string
+	size_t *bytesWritten, // length of string
+	bool json             // whether the string should be encoded as JSON
 );
 
 // free map

@@ -1,6 +1,7 @@
 import redis
 import os
 import sys
+import json
 from RLTest import Env
 from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
@@ -334,4 +335,32 @@ class testFunctionCallsFlow(FlowTestsBase):
         for row in actual_result.result_set:
             self.env.assertEquals(row[0], row[1])
             self.env.assertEquals(row[2], row[3])
+
+    def test17_to_json(self):
+        # Test JSON literal values in an array.
+        query = """RETURN toJSON([1, 'str', true, NULL])"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, [1, "str", True, None])
+
+        # Test converting a map projection.
+        query = """MATCH (n {val: 1}) RETURN toJSON(n {.val, .name})"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"name": "Alon", "val": 1})
+
+        # Test converting a full node.
+        query = """RETURN toJSON([1, 'str', true, NULL])"""
+        query = """MATCH (n {val: 1}) RETURN toJSON(n)"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"type": "node", "id": 1, "labels": ["person"], "properties": {"name": "Alon", "val": 1}})
+
+        # Test converting a full edge.
+        query = """MATCH ({val: 0})-[e:works_with]->({val: 1}) RETURN toJSON(e)"""
+        actual_result = graph.query(query)
+        start = {"id": 0, "labels": ["person"], "properties": {"name": "Roi", "val": 0}}
+        end = {"id": 1, "labels": ["person"], "properties": {"name": "Alon", "val": 1}}
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"type": "relationship", "id": 12, "relationship": "works_with", "properties": {}, "start": start, "end": end})
 

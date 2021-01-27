@@ -9,6 +9,7 @@
 #include "../util/qsort.h"
 #include "../util/strcmp.h"
 #include "../util/rmalloc.h"
+#include "../util/strutil.h"
 
 static inline Pair Pair_New(SIValue key, SIValue val) {
 	ASSERT(SI_TYPE(key) & T_STRING);
@@ -248,22 +249,13 @@ XXH64_hash_t Map_HashCode
 	return hashCode;
 }
 
-// Utility function to increase the size of a buffer.
-static inline void _ExtendBuffer(
-	char **buf,           // buffer to populate
-	size_t *bufferLen,    // size of buffer
-	size_t extensionLen   // number of bytes to add
-) {
-	*bufferLen += extensionLen;
-	*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
-}
-
 void Map_ToString
 (
 	SIValue map,          // map to get string representation from
 	char **buf,           // buffer to populate
 	size_t *bufferLen,    // size of buffer
-	size_t *bytesWritten  // length of string
+	size_t *bytesWritten, // length of string
+	bool json             // whether the string should be encoded as JSON
 ) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	ASSERT(buf != NULL);
@@ -271,7 +263,7 @@ void Map_ToString
 	ASSERT(bytesWritten != NULL);
 
 	// resize buffer if buffer length is less than 64
-	if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
+	if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 
 	uint key_count = Map_KeyCount(map);
 
@@ -281,19 +273,19 @@ void Map_ToString
 	for(uint i = 0; i < key_count; i ++) {
 		Pair p = map.map[i];
 		// write the next key/value pair
-		SIValue_ToString(p.key, buf, bufferLen, bytesWritten);
-		if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
+		SIValue_ToString(p.key, buf, bufferLen, bytesWritten, json);
+		if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ": ");
-		SIValue_ToString(p.val, buf, bufferLen, bytesWritten);
+		SIValue_ToString(p.val, buf, bufferLen, bytesWritten, json);
 		// if this is not the last element, add ", "
 		if(i != key_count - 1) {
-			if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
+			if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 		}
 	}
 
 	// make sure there's enough space for "}"
-	if(*bufferLen - *bytesWritten < 2) _ExtendBuffer(buf, bufferLen, 2);
+	if(*bufferLen - *bytesWritten < 2) str_ExtendBuffer(buf, bufferLen, 2);
 
 	// "}" marks the end of a map
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}");

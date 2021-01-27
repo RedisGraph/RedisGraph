@@ -48,8 +48,9 @@ SIValue SIArray_Clone(SIValue siarray);
   * @param  buf: print buffer (pointer to pointer to allow re allocation)
   * @param  len: print buffer length
   * @param  bytesWritten: the actual number of bytes written to the buffer
+  * @param  json: whether the string should adhere to json formatting
   */
-void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten);
+void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten, bool json);
 
 /**
  * @brief  Returns the array hash code.
@@ -64,3 +65,4 @@ XXH64_hash_t SIArray_HashCode(SIValue siarray);
   * @retval None
   */
 void SIArray_Free(SIValue siarray);
+

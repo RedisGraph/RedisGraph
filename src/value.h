@@ -148,7 +148,7 @@ const char *SIType_ToString(SIType t);
 // of string representation
 // if there is not enough space for the value to be printed, the buffer will be re allocated with
 // more space, and bufferLen will change accordingly
-void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten);
+void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten, bool json);
 
 /* Try to read a value as a double.
  * TODO Only used by agg_funcs, consider refactoring. */

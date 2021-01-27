@@ -78,6 +78,10 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 						  size_t *bytesWritten,
 						  GraphEntityStringFromat format, GraphEntityType entityType);
 
+/* Prints the graph entity to a buffer in JSON format. */
+void GraphEntity_ToJSON(GraphEntity *ge, char **buf, size_t *bufferLen, size_t *bytesWritten,
+						GraphEntityType type);
+
 // Returns true if the given graph entity has been deleted.
 bool GraphEntity_IsDeleted(const GraphEntity *e);
 

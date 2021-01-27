@@ -112,7 +112,7 @@ XXH64_hash_t SIPath_HashCode(SIValue p) {
 	return hashCode;
 }
 
-void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWritten, bool json) {
 	// 64 is defiend arbitrarily.
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
@@ -125,16 +125,16 @@ void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWrit
 	for(size_t i = 0; i < nodeCount - 1; i ++) {
 		// write the next value
 		SIValue node = SIPath_GetNode(p, i);
-		SIValue_ToString(node, buf, bufferLen, bytesWritten);
+		SIValue_ToString(node, buf, bufferLen, bytesWritten, json);
 		* bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 		SIValue edge = SIPath_GetRelationship(p, i);
-		SIValue_ToString(edge, buf, bufferLen, bytesWritten);
+		SIValue_ToString(edge, buf, bufferLen, bytesWritten, json);
 		* bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 	}
 	// Handle last node.
 	if(nodeCount > 0) {
 		SIValue node = SIPath_GetNode(p, nodeCount - 1);
-		SIValue_ToString(node, buf, bufferLen, bytesWritten);
+		SIValue_ToString(node, buf, bufferLen, bytesWritten, json);
 	}
 
 	if(*bufferLen - *bytesWritten < 2) {
@@ -178,3 +178,4 @@ void SIPath_Free(SIValue p) {
 		Path_Free(path);
 	}
 }
+

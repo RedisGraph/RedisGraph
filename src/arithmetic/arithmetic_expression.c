@@ -36,7 +36,7 @@
 //------------------------------------------------------------------------------
 
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r,
-		SIValue *result);
+									  SIValue *result);
 
 // Clear an op node internals, without freeing the node allocation itself.
 static void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node);
@@ -275,7 +275,7 @@ static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 }
 
 static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node,
-		const Record r, SIValue *result) {
+												  const Record r, SIValue *result) {
 	AR_EXP_Result res = EVAL_OK;
 
 	int child_count = node->op.child_count;
@@ -289,7 +289,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node,
 	bool param_found = false;
 	for(int child_idx = 0; child_idx < NODE_CHILD_COUNT(node); child_idx++) {
 		SIValue v;
-		AR_ExpNode *child = NODE_CHILD(node,child_idx);
+		AR_ExpNode *child = NODE_CHILD(node, child_idx);
 		res = _AR_EXP_Evaluate(child, r, &v);
 
 		if(res == EVAL_ERR) {
@@ -391,7 +391,7 @@ static inline AR_EXP_Result _AR_EXP_EvaluateBorrowRecord(AR_ExpNode *node, const
  * placing the calculated value in 'result'
  * and returning whether an error occurred during evaluation. */
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r,
-		SIValue *result) {
+									  SIValue *result) {
 	AR_EXP_Result res = EVAL_OK;
 	switch(root->type) {
 	case AR_EXP_OP:
@@ -652,7 +652,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 	} else {
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
-			SIValue_ToString(root->operand.constant, str, str_size, bytes_written);
+			SIValue_ToString(root->operand.constant, str, str_size, bytes_written, false);
 		} else {
 			*bytes_written += sprintf((*str + *bytes_written), "%s", root->operand.variadic.entity_alias);
 		}

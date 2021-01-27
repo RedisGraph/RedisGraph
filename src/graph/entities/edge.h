@@ -62,7 +62,7 @@ void Edge_SetRelationID(Edge *e, int relationID); // QG, graph.c
 
 /* Prints a string representation of the edge to buffer, return the string length. */
 void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
-				   GraphEntityStringFromat format);
+				   GraphEntityStringFromat format, bool json);
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);

@@ -108,8 +108,9 @@ XXH64_hash_t SIPath_HashCode(SIValue p);
  * @param  buf: print buffer (pointer to pointer to allow re allocation).
  * @param  len: print buffer length.
  * @param  bytesWritten: the actual number of bytes written to the buffer.
+ * @param  json: whether the string should adhere to json formatting
  */
-void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWritten);
+void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWritten, bool json);
 
 /**
  * @brief  Compares between two paths.
@@ -130,3 +131,4 @@ int SIPath_Compare(SIValue p1, SIValue p2);
  * @param  p: SIPath.
  */
 void SIPath_Free(SIValue p);
+

@@ -153,8 +153,18 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	size_t len = SIValue_StringJoinLen(argv, 1, "");
 	char *str = rm_malloc(len * sizeof(char));
 	size_t bytesWritten = 0;
-	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
+	SIValue_ToString(argv[0], &str, &len, &bytesWritten, false);
 	return SI_TransferStringVal(str);
+}
+
+/* Returns a JSON string representation of a map value. */
+SIValue AR_TOJSON(SIValue *argv, int argc) {
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
+	size_t bufferLen = 64;
+	size_t bytesWritten = 0;
+	char *buf = rm_malloc(bufferLen * sizeof(char));
+	SIValue_ToString(argv[0], &buf, &bufferLen, &bytesWritten, true);
+	return SI_TransferStringVal(buf);
 }
 
 /* returns the original string with leading and trailing whitespace removed. */
@@ -282,6 +292,11 @@ void Register_StringFuncs() {
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("tojson", AR_TOJSON, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
