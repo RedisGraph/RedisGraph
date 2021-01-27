@@ -45,12 +45,14 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			// Resolve source node by performing label scan.
 			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_Label(src, 0), QGNode_LabelID(src, 0));
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
+			// The first operand has been converted into a scan op; remove it.
+			if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
+				AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
+			}
 		} else {
 			root = tail = NewAllNodeScanOp(plan, src->alias);
-		}
-		// The first operand has been converted into a scan op; remove it.
-		if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
-			AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
+			// Free the expression source if it has been converted into an AllNodeScan.
+			if(array_len(cc->edges) == 0) AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
 		}
 
 		/* For each expression, build the appropriate traversal operation. */
