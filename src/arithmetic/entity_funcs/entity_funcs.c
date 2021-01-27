@@ -28,14 +28,15 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
 	Node *node = argv[0].ptrval;
-	Graph *g = QueryCtx_GetGraph();
-	int label_count = Graph_LabelTypeCount(g);
-	Label labels[label_count];
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	int label_count = Graph_LabelTypeCount(gc->g);
+	GrB_Index labels[label_count];
 	SIValue res = SI_Array(label_count);
-	label_count = Node_GetLabels(node, labels, label_count);
+	label_count = Graph_GetNodeLabels(gc->g, node, labels, label_count);
 
 	for(uint i = 0; i < label_count; i++) {
-		SIArray_Append(&res, SI_ConstStringVal(labels[i].name));
+		const char *name = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE)->name;
+		SIArray_Append(&res, SI_ConstStringVal(name));
 	}
 
 	return res;

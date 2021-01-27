@@ -42,16 +42,15 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		/* Create the SCAN operation that will be the tail of the traversal chain. */
 		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
 		if(QGNode_LabelCount(src) > 0) {
-			/* Resolve source node by performing label scan,
-			 * in which case if the first algebraic expression operand
-			 * is a label matrix (diagonal) remove it. */
-			if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
-				AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
-			}
+			// Resolve source node by performing label scan.
 			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_Label(src, 0), QGNode_LabelID(src, 0));
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
 		} else {
 			root = tail = NewAllNodeScanOp(plan, src->alias);
+		}
+		// The first operand has been converted into a scan op; remove it.
+		if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
+			AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
 		}
 
 		/* For each expression, build the appropriate traversal operation. */

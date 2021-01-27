@@ -17,33 +17,3 @@ void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *byte
 						 GETYPE_NODE);
 }
 
-uint Node_GetLabels(const Node *n, Label *l, uint ln) {
-	// validate inputs
-	ASSERT(n != NULL);
-	ASSERT(l != NULL);
-
-	GrB_Info res;
-	GrB_Matrix M;
-	uint count = 0;
-	EntityID id = ENTITY_GET_ID(n);
-	Graph *g = QueryCtx_GetGraph();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	int labels_count = Graph_LabelTypeCount(g);
-
-	for(int i = 0; i < labels_count && ln > count; i++) {
-		bool x = false;
-		M = Graph_GetLabelMatrix(g, i);
-		res = GrB_Matrix_extractElement_BOOL(&x, M, id, id);
-
-		if(res == GrB_SUCCESS) {
-			// make sure buffer is big enough
-			const Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			l[count].id = i;
-			l[count].name = Schema_GetName(s);
-			count++;
-		}
-	}
-
-	return count;
-}
-

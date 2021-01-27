@@ -336,6 +336,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->nodes = DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)FreeEntity);
 	g->edges = DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity);
 	g->labels = array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
+	g->node_labels = RG_Matrix_New(GrB_BOOL, node_cap, GRAPH_DEFAULT_LABEL_CAP);
 	g->relations = array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 	g->adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
 	g->_t_adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
@@ -516,6 +517,15 @@ void Graph_LabelNode(Graph *g, NodeID id, int *labels, uint label_count) {
 			res = GrB_Matrix_setElement_BOOL(m, true, id, id);
 			ASSERT(res == GrB_SUCCESS);
 		}
+
+		// Map this label in this node's set of labels.
+		m = RG_Matrix_Get_GrB_Matrix(g->node_labels);
+		res = GrB_Matrix_setElement_BOOL(m, true, id, i);
+		if(res != GrB_SUCCESS) {
+			_MatrixResizeToCapacity(g, matrix);
+			res = GrB_Matrix_setElement_BOOL(m, true, id, i);
+			ASSERT(res == GrB_SUCCESS);
+		}
 	}
 }
 
@@ -682,6 +692,30 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 		// Clean up
 		GxB_MatrixTupleIter_free(tupleIter);
 	}
+}
+
+uint Graph_GetNodeLabels(const Graph *g, const Node *n, GrB_Index *labels, GrB_Index label_count) {
+	// validate inputs
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+	GrB_Info res;
+	UNUSED(res);
+
+	// GrB_Col_extract will iterate over the range of the output size.
+	GrB_Matrix M = Graph_GetNodeLabelMatrix(g);
+	GrB_Index range[2] = {0, label_count - 1};
+
+	// Extract the row associated with this node's ID.
+	GrB_Vector row;
+	GrB_Vector_new(&row, GrB_BOOL, label_count);
+	res = GrB_Col_extract(row, GrB_NULL, GrB_NULL, M, range, GxB_RANGE, n->id, GrB_DESC_T0);
+	ASSERT(res == GrB_SUCCESS);
+
+	// Populate array with the node's labels and update label_count to the real value.
+	res = GrB_Vector_extractTuples_BOOL(labels, GrB_NULL, &label_count, row);
+	ASSERT(res == GrB_SUCCESS);
+
+	return label_count;
 }
 
 /* Removes an edge from Graph and updates graph relevent matrices. */
@@ -1322,6 +1356,15 @@ GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
 		g->SynchronizeMatrix(g, m);
 		return RG_Matrix_Get_GrB_Matrix(m);
 	}
+}
+
+GrB_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
+	ASSERT(g);
+	RG_Matrix m = g->node_labels;
+	// TODO this synchronize call will resize to an invalid square matrix.
+	// Do we need a sync at all?
+	// g->SynchronizeMatrix(g, m);
+	return RG_Matrix_Get_GrB_Matrix(m);
 }
 
 GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {

@@ -176,17 +176,19 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 	if(format & ENTITY_LABELS_OR_RELATIONS) {
 		switch(entityType) {
 		case GETYPE_NODE: {
-			Label l;
+			GrB_Index l;
 			Node *n = (Node *)e;
-			uint label_count = Node_GetLabels(n, &l, 1);
+			GraphContext *gc = QueryCtx_GetGraphCtx();
+			uint label_count = Graph_GetNodeLabels(gc->g, n, &l, 1);
 			if(label_count > 0) {
+				const char *name = GraphContext_GetSchemaByID(gc, l, SCHEMA_NODE)->name;
 				// allocate space if needed
-				size_t labelLen = strlen(l.name);
+				size_t labelLen = strlen(name);
 				if(*bufferLen - *bytesWritten < labelLen) {
 					*bufferLen += labelLen;
 					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
 				}
-				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", l.name);
+				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", name);
 			}
 			break;
 		}

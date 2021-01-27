@@ -94,13 +94,13 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
 
-	Label *lbls = NULL;
+	GrB_Index *lbls = NULL;
 	uint lbls_count = 0;
-	NODE_LABELS(n, lbls, lbls_count);
+	NODE_LABELS(gc->g, n, lbls, lbls_count);
 	// Retrieve label if it is not set on the node.
 	RedisModule_ReplyWithArray(ctx, lbls_count);
 	for(int i = 0; i < lbls_count; i++) {
-		const char *lbl_name = lbls[i].name;
+		const char *lbl_name = GraphContext_GetSchemaByID(gc, lbls[i], SCHEMA_NODE)->name;
 		RedisModule_ReplyWithStringBuffer(ctx, lbl_name, strlen(lbl_name));
 	}
 

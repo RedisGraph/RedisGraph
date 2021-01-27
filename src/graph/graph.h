@@ -70,6 +70,7 @@ struct Graph {
 	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
 	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
 	RG_Matrix *labels;                  // Label matrices.
+	RG_Matrix node_labels;              // Mapping of all node IDs to all labels possessed by each node.
 	RG_Matrix *relations;               // Relation matrices.
 	RG_Matrix *t_relations;             // Transposed relation matrices.
 	RG_Matrix _zero_matrix;             // Zero matrix.
@@ -114,12 +115,19 @@ int Graph_AddLabel(
 	Graph *g
 );
 
+// Retreive all labels associated with node
+#define NODE_LABELS(g, n, l, c) {                \
+    GrB_Index _lbls[16];                         \
+    c = Graph_GetNodeLabels(g, n, _lbls, 16);    \
+    l = (GrB_Index*)_lbls;                       \
+}
+
 // Associate node with labels by setting label matrix L to 1 at position [id,id]
 void Graph_LabelNode(
 	Graph *g,
 	NodeID id,
 	int *labels,
-   	uint label_count
+	uint label_count
 );
 
 // Creates a new relation matrix, returns id given to relation.
@@ -291,6 +299,14 @@ void Graph_GetNodeEdges(
 	Edge **edges            // array_t incoming/outgoing edges.
 );
 
+// Populate array of node's label IDs, return number of labels on node.
+uint Graph_GetNodeLabels(
+	const Graph *g,         // Graph the node belongs to.
+	const Node *n,          // Node to extract edges from.
+	GrB_Index *labels,      // Array to populate with labels.
+	GrB_Index label_count   // Size of labels array.
+);
+
 // Retrieves the adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetAdjacencyMatrix(
@@ -322,6 +338,12 @@ GrB_Matrix Graph_GetRelationMatrix(
 GrB_Matrix Graph_GetTransposedRelationMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
 	int relation        // Relation described by matrix.
+);
+
+// Retrieves the node-label mapping matrix,
+// Matrix is resized if its size doesn't match graph's node count.
+GrB_Matrix Graph_GetNodeLabelMatrix(
+	const Graph *g
 );
 
 // Retrieves the zero matrix.

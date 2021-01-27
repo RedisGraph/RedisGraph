@@ -26,12 +26,12 @@ static void MergeFree(OpBase *opBase);
 static void _UpdateIndices(GraphContext *gc, Node *n) {
 	Graph *g = gc->g;
 	uint label_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
-	Label labels[label_count];
+	GrB_Index labels[label_count];
 
-	label_count = Node_GetLabels(n, labels, label_count);
+	label_count = Graph_GetNodeLabels(g, n, labels, label_count);
 
 	for(uint i = 0; i < label_count; i++) {
-		int label_id = labels[i].id;
+		int label_id = labels[i];
 		Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
 		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
 	}
