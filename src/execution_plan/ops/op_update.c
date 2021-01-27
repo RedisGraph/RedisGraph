@@ -82,16 +82,18 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates,
 	 * GraphEntity object, but only a pointer to an Entity object, to use the
 	 * GraphEntity_Get, GraphEntity_Add functions we'll use a place holder to
 	 * hold our entity. */
-	int attributes_set = 0;
-	bool update_index = false;
-	Node *node = &updates->n;
-	GraphEntity *ge = (GraphEntity *)node;
+	int          attributes_set  =  0;
+	bool         update_index    =  false;
+	Node         *node           =  &updates->n;
+	GraphEntity  *ge             =  (GraphEntity*)node;
 
 	for(uint i = 0; i < update_count; i++) {
 		PendingUpdateCtx *update = updates + i;
-		attributes_set += (int)_UpdateEntity(ge, update);
-		// Do we need to update an index for this property?
-		update_index |= update->update_index;
+		if(_UpdateEntity(ge, update)) {
+			attributes_set++;
+			// Do we need to update an index for this property?
+			update_index |= update->update_index;
+		}
 	}
 
 	// Update index for node entities if indexed fields have been modified.

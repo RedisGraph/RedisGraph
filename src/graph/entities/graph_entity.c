@@ -20,7 +20,7 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 /* Removes entity's property. */
 static bool _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	// Quick return if attribute is missing.
-	if(GraphEntity_GetProperty(e, attr_id) == PROPERTY_NOTFOUND) return false;
+	if(attr_id == ATTRIBUTE_NOTFOUND) return false;
 
 	// Locate attribute position.
 	int prop_count = e->entity->prop_count;
@@ -94,9 +94,7 @@ bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	ASSERT(e);
 
 	// Setting an attribute value to NULL removes that attribute.
-	if(SIValue_IsNull(value)) {
-		return _GraphEntity_RemoveProperty(e, attr_id);
-	}
+	if(SIValue_IsNull(value)) return _GraphEntity_RemoveProperty(e, attr_id);
 
 	SIValue *current = GraphEntity_GetProperty(e, attr_id);
 	ASSERT(current != PROPERTY_NOTFOUND);
