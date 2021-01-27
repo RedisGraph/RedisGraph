@@ -20,30 +20,25 @@ static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
-static int _UpdateEntity(GraphEntity *ge, PendingUpdateCtx *update) {
-	int res = 1;
-	SIValue new_value = update->new_value;
-	Attribute_ID attr_id = update->attr_id;
+static bool _UpdateEntity(GraphEntity *ge, PendingUpdateCtx *update) {
+	bool           res       =  false;
+	Attribute_ID  attr_id    =  update->attr_id;
+	SIValue       new_value  =  update->new_value;
 
 	// If this entity has been deleted, perform no updates and return early.
-	if(GraphEntity_IsDeleted(ge)) {
-		res = 0;
-		goto cleanup;
-	}
+	if(GraphEntity_IsDeleted(ge)) goto cleanup;
 
 	// Try to get current property value.
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(new_value) == T_NULL) {
-			res = 0;
-			goto cleanup;
+		if(SI_TYPE(new_value) != T_NULL) {
+			res = GraphEntity_AddProperty(ge, attr_id, new_value);
 		}
-		GraphEntity_AddProperty(ge, attr_id, new_value);
 	} else {
 		// Update property.
-		GraphEntity_SetProperty(ge, attr_id, new_value);
+		res = GraphEntity_SetProperty(ge, attr_id, new_value);
 	}
 
 cleanup:
@@ -68,7 +63,7 @@ static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *updates,
 
 	for(uint i = 0; i < update_count; i++) {
 		PendingUpdateCtx *update = updates + i;
-		attributes_set += _UpdateEntity(ge, update);
+		attributes_set += (int)_UpdateEntity(ge, update);
 	}
 
 	return attributes_set;
@@ -94,7 +89,7 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates,
 
 	for(uint i = 0; i < update_count; i++) {
 		PendingUpdateCtx *update = updates + i;
-		attributes_set += _UpdateEntity(ge, update);
+		attributes_set += (int)_UpdateEntity(ge, update);
 		// Do we need to update an index for this property?
 		update_index |= update->update_index;
 	}
