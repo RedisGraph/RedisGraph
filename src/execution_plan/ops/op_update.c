@@ -89,13 +89,15 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates,
 
 	for(uint i = 0; i < update_count; i++) {
 		PendingUpdateCtx *update = updates + i;
-		attributes_set += (int)_UpdateEntity(ge, update);
-		// Do we need to update an index for this property?
-		update_index |= update->update_index;
+		if(_UpdateEntity(ge, update)) {
+			attributes_set++;
+			// Do we need to update an index for this property?
+			update_index |= update->update_index;
+		}
 	}
 
 	// Update index for node entities if indexed fields have been modified.
-	if(update_index && attributes_set > 0) {
+	if(update_index) {
 		int label_id = node->labelID;
 		Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
 		// Introduce updated entity to index.
