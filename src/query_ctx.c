@@ -76,7 +76,6 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ASSERT(ctx->query_data.ast);
 	return ctx->query_data.ast;
 }
 

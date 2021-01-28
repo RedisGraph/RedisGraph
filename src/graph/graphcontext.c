@@ -360,7 +360,6 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
-	ASSERT(attribute_id != NULL);
 
 	// Retrieve the schema for this label
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);

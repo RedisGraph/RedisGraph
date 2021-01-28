@@ -12,7 +12,9 @@
 
 static inline Pair Pair_New(SIValue key, SIValue val) {
 	ASSERT(SI_TYPE(key) & T_STRING);
-	return (Pair) { .key = SI_CloneValue(key), .val = SI_CloneValue(val) };
+	return (Pair) {
+		.key = SI_CloneValue(key), .val = SI_CloneValue(val)
+	};
 }
 
 static void Pair_Free(Pair p) {
@@ -76,7 +78,7 @@ void Map_Add
 	SIValue key,
 	SIValue value
 ) {
-	ASSERT(SI_TYPE(map) & T_MAP);
+	ASSERT(SI_TYPE(*map) & T_MAP);
 	ASSERT(SI_TYPE(key) & T_STRING);
 
 	// remove key if already existed
@@ -212,7 +214,7 @@ int Map_Compare
 		// key lookup succeeded; compare values
 		order = SIValue_Compare(A[i].val, B[i].val, disjointOrNull);
 		if(disjointOrNull && (*disjointOrNull == COMPARED_NULL ||
-					*disjointOrNull == DISJOINT)) {
+							  *disjointOrNull == DISJOINT)) {
 			return 0;
 		}
 
