@@ -36,7 +36,10 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 	ASSERT(argc == 2);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
 	if(SI_TYPE(argv[0]) & (T_MAP | SI_GRAPHENTITY)) {
-		ASSERT(SI_TYPE(argv[1]) == T_STRING);
+		if(SI_TYPE(argv[1]) != T_STRING) {
+			Error_SITypeMismatch(argv[1], T_STRING);
+			return SI_NullVal();
+		}
 		/* If the first argument is a map or graph entity, this is a property lookup of a form like:
 		 * WITH {val: 5} AS a return a['val']
 		 * MATCH (a) RETURN a['val']
