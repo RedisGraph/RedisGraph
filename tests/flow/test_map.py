@@ -49,6 +49,13 @@ class testMap(FlowTestsBase):
                            [{'val': 3}]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        query = """WITH 'lit' AS literal MATCH (a) RETURN a {.val, literal} ORDER BY a.val"""
+        query_result = redis_graph.query(query)
+        expected_result = [[{'val': 1, 'literal': 'lit'}],
+                           [{'val': 2, 'literal': 'lit'}],
+                           [{'val': 3, 'literal': 'lit'}]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
     # Validate behaviors of nested maps
     def test03_nested_maps(self):
         # Return a map with nesting
