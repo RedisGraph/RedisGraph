@@ -373,8 +373,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			prop = cypher_ast_map_projection_property_get_prop_name(selector);
 			prop_name = cypher_ast_prop_name_get_value(prop);
 
-			children[i * 2] =
-				AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
+			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
 
 			children[i * 2 + 1] = AR_EXP_NewAttributeAccessNode(entity, prop_name);
 		} else if(t == CYPHER_AST_MAP_PROJECTION_LITERAL) {
@@ -384,10 +383,17 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			const cypher_astnode_t *literal_exp =
 				cypher_ast_map_projection_literal_get_expression(selector);
 
-			children[i * 2] =
-				AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
+			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
 
 			children[i * 2 + 1] = AR_EXP_FromASTNode(literal_exp);
+		} else if(t == CYPHER_AST_MAP_PROJECTION_IDENTIFIER) {
+			// { v }
+			prop = cypher_ast_map_projection_identifier_get_identifier(selector);
+			prop_name = cypher_ast_identifier_get_name(prop);
+
+			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
+
+			children[i * 2 + 1] = AR_EXP_FromASTNode(prop);
 		} else {
 			ASSERT("Unexpected AST node type" && false);
 		}
