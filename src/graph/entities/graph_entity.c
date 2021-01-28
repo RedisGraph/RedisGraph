@@ -18,9 +18,9 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 };
 
 /* Removes entity's property. */
-static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_id) {
+static bool _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	// Quick return if attribute is missing.
-	if(GraphEntity_GetProperty(e, attr_id) == PROPERTY_NOTFOUND) return;
+	if(attr_id == ATTRIBUTE_NOTFOUND) return false;
 
 	// Locate attribute position.
 	int prop_count = e->entity->prop_count;
@@ -41,15 +41,17 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 												   sizeof(EntityProperty) * e->entity->prop_count);
 			}
 
-			break;
+			return true;
 		}
 	}
+
+	return false;
 }
 
 /* Add a new property to entity */
-SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
+bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
-	if(SIValue_IsNull(value)) return NULL;
+	if(SIValue_IsNull(value)) return false;
 
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
@@ -63,7 +65,7 @@ SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue v
 	e->entity->properties[prop_idx].value = SI_CloneValue(value);
 	e->entity->prop_count++;
 
-	return &(e->entity->properties[prop_idx].value);
+	return true;
 }
 
 SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
@@ -88,18 +90,22 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 }
 
 // Updates existing property value.
-void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
+bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
 
 	// Setting an attribute value to NULL removes that attribute.
-	if(SIValue_IsNull(value)) {
-		return _GraphEntity_RemoveProperty(e, attr_id);
-	}
+	if(SIValue_IsNull(value)) return _GraphEntity_RemoveProperty(e, attr_id);
 
-	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
-	ASSERT(prop != PROPERTY_NOTFOUND);
-	SIValue_Free(*prop);
-	*prop = SI_CloneValue(value);
+	SIValue *current = GraphEntity_GetProperty(e, attr_id);
+	ASSERT(current != PROPERTY_NOTFOUND);
+
+	// compare current value to new value, only update if current != new
+	if(SIValue_Compare(*current, value, NULL) == 0) return false;
+
+	// value != current, update entity
+	SIValue_Free(*current);
+	*current = SI_CloneValue(value);
+	return true;
 }
 
 size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
