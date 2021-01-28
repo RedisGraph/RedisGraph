@@ -520,10 +520,10 @@ void Graph_LabelNode(Graph *g, NodeID id, int *labels, uint label_count) {
 
 		// Map this label in this node's set of labels.
 		m = RG_Matrix_Get_GrB_Matrix(g->node_labels);
-		res = GrB_Matrix_setElement_BOOL(m, true, id, i);
+		res = GrB_Matrix_setElement_BOOL(m, true, id, label);
 		if(res != GrB_SUCCESS) {
 			_MatrixResizeToCapacity(g, matrix);
-			res = GrB_Matrix_setElement_BOOL(m, true, id, i);
+			res = GrB_Matrix_setElement_BOOL(m, true, id, label);
 			ASSERT(res == GrB_SUCCESS);
 		}
 	}
@@ -834,7 +834,7 @@ void Graph_DeleteNode(Graph *g, Node *n) {
 	ASSERT(g && n);
 
 	// Clear label matrix at position node ID.
-	uint32_t label_count = array_len(g->labels);
+	uint32_t label_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < label_count; i++) {
 		GrB_Matrix M = Graph_GetLabelMatrix(g, i);
 		GxB_Matrix_Delete(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
@@ -1361,6 +1361,9 @@ GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
 GrB_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 	ASSERT(g);
 	RG_Matrix m = g->node_labels;
+	RG_Matrix_Lock(m);
+	_Graph_ApplyPending(m->grb_matrix);
+	_RG_Matrix_Unlock(m);
 	// TODO this synchronize call will resize to an invalid square matrix.
 	// Do we need a sync at all?
 	// g->SynchronizeMatrix(g, m);

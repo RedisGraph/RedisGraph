@@ -288,10 +288,10 @@ TEST_F(TraversalOrderingTest, OptimalStartingPoint) {
 	QGNode *B  = QGNode_New("B");
 	QGNode *C  = QGNode_New("C");
 	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC");	
+	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
 
-	B->label = "L";
-	C->label = "L";
+	QGNode_AddLabel(B, "L", 0);
+	QGNode_AddLabel(C, "L", 0);
 
 	QueryGraph *qg = QueryGraph_New(3, 2);
 
@@ -320,3 +320,4 @@ TEST_F(TraversalOrderingTest, OptimalStartingPoint) {
 	AlgebraicExpression_Free(ExpBC);
 	QueryGraph_Free(qg);
 }
+

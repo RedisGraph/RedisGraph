@@ -19,10 +19,8 @@ static void _QueryGraphSetNodeLabel(QGNode *n, const cypher_astnode_t *ast_entit
 	// Retrieve node labels from the AST entity.
 	uint nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
 
-	// We currently only support 0 or 1 labels per node, so if any are specified just select the first.
 	for(uint i = 0; i < nlabels; i++) {
-		const char *l = cypher_ast_label_get_name(
-				cypher_ast_node_pattern_get_label(ast_entity, i));
+		const char *l = cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(ast_entity, i));
 
 		// node already labeled as l
 		if(QGNode_HasLabel(n, l)) continue;

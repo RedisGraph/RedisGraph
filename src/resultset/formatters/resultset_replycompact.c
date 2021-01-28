@@ -113,7 +113,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	/*  Compact node reply format:
 	 *  [
 	 *      Node ID (integer),
-	        [label string index (integer)],
+	        [label string index (integer) X N],
 	 *      [[name, value, value type] X N]
 	 *  ]
 	 */
@@ -124,7 +124,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	EntityID id = ENTITY_GET_ID(n);
 	RedisModule_ReplyWithLongLong(ctx, id);
 
-	// [label string index]
+	// [label string index X N]
 	GrB_Index *lbls = NULL;
 	uint lbls_count = 0;
 	NODE_LABELS(gc->g, n, lbls, lbls_count);

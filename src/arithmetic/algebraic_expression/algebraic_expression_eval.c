@@ -192,8 +192,6 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		B = right->operand.matrix;
 
 		if(B != IDENTITY_MATRIX) {
-			// Reset descriptor, as the identity matrix does not need to be transposed.
-			if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 			// Perform multiplication.
 			info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, B, desc);
 			ASSERT(info == GrB_SUCCESS);

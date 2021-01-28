@@ -32,8 +32,8 @@ RG_Config config; // Global module configuration
 
 // Encapsulate the essence of an edge.
 typedef struct {
-	NodeID srcId;   	// Source node ID.
-	NodeID destId;  	// Destination node ID.
+	NodeID srcId;       // Source node ID.
+	NodeID destId;      // Destination node ID.
 	int64_t relationId; // Relation type ID.
 } EdgeDesc;
 
@@ -63,7 +63,7 @@ class GraphTest : public ::testing::Test {
 
 		// Create nodes.
 		Node n;
-		for(uint i = 0; i < node_count; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
+		for(uint i = 0; i < node_count; i++) Graph_CreateNode(g, &n);
 
 		// Validate nodes creation.
 		GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
@@ -134,7 +134,7 @@ class GraphTest : public ::testing::Test {
 		Graph_AllocateNodes(g, prev_node_count + additional_node_count);
 		for(uint i = 0; i < additional_node_count; i++) {
 			Node n;
-			Graph_CreateNode(g, 0, &n);
+			Graph_CreateNode(g, &n);
 		}
 
 		// Validate nodes creation.
@@ -190,14 +190,10 @@ void benchmark_node_creation_with_labels() {
 
 	Node node;
 
-	int labels[n];
 	// Create N nodes with labels.
 	for(int i = 0; i < samples; i++) {
-		// Associate nodes to labels.
-		for(unsigned int j = 0; j < n; j++) labels[j] = (rand() % label_count) - 1;
-
 		simple_tic(tic);
-		for(unsigned int j = 0; j < n; j++) Graph_CreateNode(g, labels[j], &node);
+		for(unsigned int j = 0; j < n; j++) Graph_CreateNode(g, &node);
 		timings[i] = simple_toc(tic);
 
 		printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
@@ -234,7 +230,7 @@ void benchmark_node_creation_no_labels() {
 	for(int i = 0; i < samples; i++) {
 		// Create N nodes, don't use labels.
 		simple_tic(tic);
-		for(int j = 0; j < n; j++) Graph_CreateNode(g, GRAPH_NO_LABEL, &node);
+		for(int j = 0; j < n; j++) Graph_CreateNode(g, &node);
 		timings[i] = simple_toc(tic);
 		printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
 		if(timings[i] > threshold) outliers++;
@@ -270,7 +266,7 @@ void benchmark_edge_creation_with_relationships() {
 
 	// Introduce relations types.
 	for(int i = 0; i < relation_count; i++) Graph_AddRelationType(g);
-	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &node);
+	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, &node);
 	for(int i = 0; i < samples; i++) {
 		// Describe connections;
 		// Node I is connected to Node I+1,
@@ -361,7 +357,7 @@ TEST_F(GraphTest, RemoveNodes) {
 	Node node;
 	Edge edge;
 
-	for(int i = 0; i < 3; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &node);
+	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &node);
 	int r = Graph_AddRelationType(g);
 
 	/* Connections:
@@ -426,7 +422,7 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
 	int relation = Graph_AddRelationType(g);
-	for(int i = 0; i < 8; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
+	for(int i = 0; i < 8; i++) Graph_CreateNode(g, &n);
 
 	// First node.
 	Graph_ConnectNodes(g, 0, 2, relation, &e);
@@ -499,7 +495,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	GrB_Index nnz;
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
-	for(int i = 0; i < 3; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
+	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &n);
 	int r = Graph_AddRelationType(g);
 
 	/* Connections:
@@ -644,7 +640,7 @@ TEST_F(GraphTest, GetNode) {
 
 	Graph_AcquireWriteLock(g);
 	{
-	for(int i = 0 ; i < nodeCount; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
+		for(int i = 0 ; i < nodeCount; i++) Graph_CreateNode(g, &n);
 	}
 	Graph_ReleaseLock(g);
 
@@ -674,7 +670,7 @@ TEST_F(GraphTest, GetEdge) {
 
 	Graph *g = Graph_New(nodeCount, nodeCount);
 	Graph_AcquireWriteLock(g);
-	for(int i = 0; i < nodeCount; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
+	for(int i = 0; i < nodeCount; i++) Graph_CreateNode(g, &n);
 	for(int i = 0; i < relationCount; i++) relations[i] = Graph_AddRelationType(g);
 
 	/* Connect nodes:
@@ -782,7 +778,7 @@ TEST_F(GraphTest, BulkDelete) {
 	int r0 = Graph_AddRelationType(g);
 	int r1 = Graph_AddRelationType(g);
 
-	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, l, &n[i]);
+	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, &n[i]);
 
 	/* Connect nodes:
 	 * (0)-[r0]->(1)

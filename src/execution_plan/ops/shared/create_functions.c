@@ -69,6 +69,7 @@ static void _CommitNodes(PendingCreations *pending) {
 			}
 
 			node_ctx->labelsId[j] = s->id;
+			pending->node_labels[i][j] = s->id;
 		}
 	}
 

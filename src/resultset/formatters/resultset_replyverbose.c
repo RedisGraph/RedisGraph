@@ -77,7 +77,7 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	/*  Verbose node reply format:
 	 *  [
 	 *      ["id", Node ID (integer)]
-	 *      ["label", [label (string or NULL)]]
+	 *      ["label", [label (NULL or string X N)]]
 	 *      ["properties", [[name, value, value type] X N]
 	 *  ]
 	 */
@@ -90,14 +90,13 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
 	RedisModule_ReplyWithLongLong(ctx, id);
 
-	// ["labels", [label (string)]]
+	// ["labels", [label (string) X N]]
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
 
 	GrB_Index *lbls = NULL;
 	uint lbls_count = 0;
 	NODE_LABELS(gc->g, n, lbls, lbls_count);
-	// Retrieve label if it is not set on the node.
 	RedisModule_ReplyWithArray(ctx, lbls_count);
 	for(int i = 0; i < lbls_count; i++) {
 		const char *lbl_name = GraphContext_GetSchemaByID(gc, lbls[i], SCHEMA_NODE)->name;

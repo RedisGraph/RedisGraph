@@ -119,9 +119,11 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		if(map) converted_properties = ConvertPropertyMap(r, map, true);
 
 		/* Update the hash code with this entity. */
-		const char *label = NULL;
-		if(array_len(n->labels) > 0) label = n->labels[0];
-		_IncrementalHashEntity(op->hash_state, label, converted_properties);
+		uint label_count = array_len(n->labels);
+		if(label_count == 0) _IncrementalHashEntity(op->hash_state, NULL, converted_properties);
+		for(uint i = 0; i < label_count; i ++) {
+			_IncrementalHashEntity(op->hash_state, n->labels[i], converted_properties);
+		}
 
 		// Save node for later insertion
 		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);

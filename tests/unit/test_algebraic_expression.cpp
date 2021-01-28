@@ -130,16 +130,18 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		size_t node_count = person_count + city_count;
 
 		// Introduce person and country labels.
-		int city_label = GraphContext_GetSchema(gc, "City", SCHEMA_NODE)->id;
-		int person_label = GraphContext_GetSchema(gc, "Person", SCHEMA_NODE)->id;
+		int city_label[1] = {GraphContext_GetSchema(gc, "City", SCHEMA_NODE)->id};
+		int person_label[1] = {GraphContext_GetSchema(gc, "Person", SCHEMA_NODE)->id};
 		Graph_AllocateNodes(g, node_count);
 
 		for(int i = 0; i < person_count; i++) {
-			Graph_CreateNode(g, person_label, &n);
+			Graph_CreateNode(g, &n);
+			Graph_LabelNode(g, n.id, person_label, 1);
 		}
 
 		for(int i = 0; i < city_count; i++) {
-			Graph_CreateNode(g, city_label, &n);
+			Graph_CreateNode(g, &n);
+			Graph_LabelNode(g, n.id, city_label, 1);
 		}
 
 		// Creates a relation matrices.
@@ -1112,11 +1114,12 @@ TEST_F(AlgebraicExpressionTest, SingleNode) {
 	const char *q = "MATCH (p:Person) RETURN p";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
 	uint exp_count = array_len(actual);
-	ASSERT_EQ(exp_count, 0);
+	ASSERT_EQ(exp_count, 1);
 
-	AlgebraicExpression **expected = NULL;
+	AlgebraicExpression *expected[1];
+	expected[0] = AlgebraicExpression_FromString("p", _matrices);
 
-	compare_algebraic_expressions(actual, expected, 0);
+	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);

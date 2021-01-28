@@ -61,7 +61,6 @@ Feature: Create1 - Creating nodes
       | +nodes  | 1 |
       | +labels | 1 |
 
-  @skip
   Scenario: [4] Create a single node with multiple labels
     Given an empty graph
     When executing query:
