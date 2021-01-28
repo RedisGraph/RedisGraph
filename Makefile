@@ -1,4 +1,4 @@
-.PHONY: all clean package docker docker_push docker_alpine builddocs localdocs deploydocs test test_valgrind
+.PHONY: all clean package docker docker_push docker_alpine builddocs localdocs deploydocs test test-build memcheck
 
 all:
 	@$(MAKE) -C ./src all
@@ -35,6 +35,9 @@ deploydocs: builddocs
 
 test:
 	@$(MAKE) -C ./src test
+
+test-build:
+	@$(MAKE) -C ./src test-build
 
 memcheck:
 	@$(MAKE) -C ./src memcheck

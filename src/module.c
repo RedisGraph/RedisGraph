@@ -186,3 +186,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	return REDISMODULE_OK;
 }
 
+int RedisModule_OnUnload(RedisModuleCtx *ctx) {
+	GrB_Info err = GrB_finalize();
+
+	if (err != GrB_SUCCESS)
+		return REDISMODULE_ERR;
+
+	return REDISMODULE_OK;
+}
+
