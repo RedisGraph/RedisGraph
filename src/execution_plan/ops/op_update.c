@@ -224,9 +224,10 @@ static OpResult UpdateInit(OpBase *opBase) {
 
 static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 							   Record r) {
-	Schema *s = NULL;
+	Schema *s         = NULL;
 	const char *label = NULL;
-	bool update_index = false;
+	bool node_update  = false;
+	bool edge_update  = false;
 
 	// Get the type of the entity to update. If the expected entity was not
 	// found, make no updates but do not error.
@@ -239,11 +240,19 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 									   ctx->alias);
 	}
 
+	GraphEntityType type;
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
-	GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+
+	if(t == REC_TYPE_NODE) {
+		node_update = true;
+		type = GETYPE_NODE;
+	} else {
+		edge_update = true;
+		type = GETYPE_EDGE;
+	}
 
 	// If the entity is a node, set its label if possible.
-	if(type == GETYPE_NODE) {
+	if(node_update) {
 		Node *n = (Node *)entity;
 		// Retrieve the node's local label if present.
 		label = NODE_GET_LABEL(n);
@@ -259,6 +268,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 
 	uint exp_count = array_len(ctx->exps);
 	for(uint i = 0; i < exp_count; i++) {
+		bool update_index = false;
 		EntityUpdateEvalCtx *update_ctx = ctx->exps + i;
 		SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
 
@@ -277,27 +287,19 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		Attribute_ID attr_id = update_ctx->attribute_id;
 		/* Determine whether we must update the index for this set of updates.
 		 * If at least one property being updated is indexed, each node will be reindexed. */
-		if(!update_index && label) {
-			// If the label-index combination has an index, we must reindex this entity.
+		if(node_update && label) {
+			// If the (label:attribute) combination has an index, take note.
 			update_index = GraphContext_GetIndex(gc, label, &attr_id, IDX_ANY) != NULL;
-			if(update_index && (i > 0)) {
-				/* Swap the current update expression with the first one
-				 * so that subsequent searches will find the index immediately.
-				 * Note that this invalidates further references to the update_ctx in this loop! */
-				EntityUpdateEvalCtx first = ctx->exps[0];
-				ctx->exps[0] = ctx->exps[i];
-				ctx->exps[i] = first;
-			}
 		}
 
 		PendingUpdateCtx update = {
-			.entity_type = type,
-			.new_value = new_value,
-			.update_index = update_index,
-			.attr_id = attr_id,
+			.entity_type   =  type,
+			.new_value     =  new_value,
+			.update_index  =  update_index,
+			.attr_id       =  attr_id,
 		};
 
-		if(type == GETYPE_EDGE) {
+		if(edge_update) {
 			// Add the edge to the update context.
 			update.e = *((Edge *)entity);
 		} else {
