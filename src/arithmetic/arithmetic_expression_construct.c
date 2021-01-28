@@ -393,7 +393,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 
 			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
 
-			children[i * 2 + 1] = AR_EXP_FromASTNode(prop);
+			children[i * 2 + 1] = AR_EXP_NewVariableOperandNode(prop_name);
 		} else {
 			ASSERT("Unexpected AST node type" && false);
 		}
