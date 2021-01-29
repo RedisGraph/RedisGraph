@@ -56,7 +56,7 @@ static inline bool _isInFilter(const FT_FilterNode *filter) {
 static bool _validateInExpression(AR_ExpNode *exp) {
 	ASSERT(exp->op.child_count == 2);
 
-	AR_ExpNode *list = exp->op.children[1];
+	AR_ExpNode *list = AR_GET_CHILD_NODE(exp, 1);
 	SIValue listValue = SI_NullVal();
 	AR_EXP_ReduceToScalar(list, true, &listValue);
 	if(SI_TYPE(listValue) != T_ARRAY) return false;
@@ -152,10 +152,10 @@ RSQNode *_filterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 	AR_ExpNode *inOp = filter->exp.exp;
 
 	char *field;
-	bool attribute = AR_EXP_IsAttribute(inOp->op.children[0], &field);
+	bool attribute = AR_EXP_IsAttribute(AR_GET_CHILD_NODE(inOp, 0), &field);
 	ASSERT(attribute == true);
 
-	SIValue list = inOp->op.children[1]->operand.constant;
+	SIValue list = AR_GET_CHILD_NODE(inOp, 1)->operand.constant;
 	uint list_len = SIArray_Length(list);
 
 	if(list_len == 0) {

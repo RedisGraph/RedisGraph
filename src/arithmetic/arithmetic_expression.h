@@ -13,6 +13,18 @@
 #include "../execution_plan/record.h"
 #include "../graph/entities/graph_entity.h"
 
+// returns true if given node 'n' represents an aggregation expression
+#define AR_AGGREGATION_NODE(n) ((AR_EXP_IsOperation(n)) && (n)->op.f->aggregate)
+
+// return number of child nodes of 'n'
+#define AR_GET_CHILD_COUNT(n) (n)->op.child_count
+
+// return child at position 'idx' of 'n'
+#define AR_GET_CHILD_NODE(n, idx) (n)->op.children[(idx)].child
+
+// return arg idx associated with child
+#define AR_GET_CHILD_ARG_IDX(n, idx) (n)->op.children[(idx)].arg_idx
+
 /* AR_ExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
 typedef enum {
@@ -37,12 +49,22 @@ typedef enum {
 	EVAL_FOUND_PARAM = (1 << 1),
 } AR_EXP_Result;
 
+// AR_OpChild contains a child expression of an AR_OpNode
+// in addition 'arg_idx' specifies where the value represented by 'child'
+// should be placed within its parent 'args' array
+typedef struct {
+	int arg_idx;                   // mapping between child node and arg idx
+	struct AR_ExpNode *child;      // child node
+} AR_OpChild;
+
 /* Op represents an operation applied to child args. */
 typedef struct {
-	AR_FuncDesc *f;                 // Operation to perform on children
-	const char *func_name;          // Name of function
-	int child_count;                // Number of children
-	struct AR_ExpNode **children;   // Child nodes
+	AR_FuncDesc *f;                // operation to perform on children
+	const char *func_name;         // name of function
+	int argc;                      // number of arguments
+	int child_count;               // number of children
+	SIValue *args;                 // arguments, inputs to 'f'
+	AR_OpChild children[];	       // children nodes
 } AR_OpNode;
 
 // OperandNode represents either constant, parameter, or graph entity
@@ -90,6 +112,9 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 /* Creates a new Arithmetic expression that will resolve to the current Record. */
 AR_ExpNode *AR_EXP_NewRecordNode(void);
 
+// add child expression to parent children array, parent type must be AR_OpNode
+void AR_EXP_AddChild(AR_ExpNode *parent, AR_ExpNode *child);
+
 /* Compact tree by evaluating all contained functions that can be resolved right now.
  * The function returns true if it managed to compact the expression.
  * The reduce_params flag indicates if parameters should be evaluated.
@@ -98,6 +123,10 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val);
 
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
+
+// Set expression as distinct, e.g. COUNT(distinct, n)
+// 'root' is expected to be an operation node
+void AR_EXP_SetDistinct(AR_ExpNode *root);
 
 /* Evaluate aggregate functions in expression tree. */
 void AR_EXP_Aggregate(AR_ExpNode *root, const Record r);

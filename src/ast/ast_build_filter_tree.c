@@ -207,10 +207,10 @@ static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
 	 * argument 1..alias_count are the referenced aliases,
 	 * required for filter positioning when constructing an execution plan. */
 	AR_ExpNode *exp = AR_EXP_NewOpNode("path_filter", 1 + alias_count);
-	exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity));
+	AR_EXP_AddChild(exp, AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity)));
 	for(uint i = 0; i < alias_count; i++) {
 		AR_ExpNode *child = AR_EXP_NewVariableOperandNode(aliases[i]);
-		exp->op.children[1 + i] = child;
+		AR_EXP_AddChild(exp, child);
 	}
 	array_free(aliases);
 	return FilterTree_CreateExpressionFilter(exp);

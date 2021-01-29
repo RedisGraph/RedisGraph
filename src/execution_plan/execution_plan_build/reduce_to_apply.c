@@ -40,11 +40,11 @@ static OpBase *_ApplyOpFromPathExpression(ExecutionPlan *plan, const char **vars
 	bool anti = false;
 	if(strcasecmp(expression->op.func_name, "not") == 0) {
 		anti = true;
-		expression = expression->op.children[0];
+		expression = AR_GET_CHILD_NODE(expression, 0);
 	}
 	// Build new Semi Apply op.
 	OpBase *op_semi_apply = NewSemiApplyOp(plan, anti);
-	const cypher_astnode_t *path = expression->op.children[0]->operand.constant.ptrval;
+	const cypher_astnode_t *path = AR_GET_CHILD_NODE(expression, 0)->operand.constant.ptrval;
 	// Add a match branch as a Semi Apply op child.
 	OpBase *match_branch = ExecutionPlan_BuildOpsFromPath(plan, vars, path);
 	ExecutionPlan_AddOp(op_semi_apply, match_branch);

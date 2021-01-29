@@ -40,7 +40,7 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 	// Make sure Count acts on an alias.
 	if(exp->op.child_count != 1) return 0;
 
-	AR_ExpNode *arg = exp->op.children[0];
+	AR_ExpNode *arg = AR_GET_CHILD_NODE(exp, 0);
 	return (arg->type == AR_EXP_OPERAND &&
 			arg->operand.type == AR_EXP_VARIADIC);
 }
