@@ -112,24 +112,27 @@ void Index_RemoveField(Index *idx, const char *field) {
 }
 
 void Index_IndexNode(Index *idx, const Node *n) {
-	double score = 0;           // Default score.
-	const char *lang = NULL;    // Default language.
-	RSIndex *rsIdx = idx->idx;
-	NodeID node_id = ENTITY_GET_ID(n);
-	uint doc_field_count = 0;
+	double      score            = 0;     // default score
+	const char  *lang            = NULL;  // default language
+	RSIndex     *rsIdx           = idx->idx;
+	NodeID      node_id          = ENTITY_GET_ID(n);
+	uint        doc_field_count  = 0;
 
-	// Create a document out of node.
+	// create a document out of node
 	RSDoc *doc = RediSearch_CreateDocument(&node_id, sizeof(EntityID), score, lang);
 
-	// Add document field for each indexed property.
+	// add document field for each indexed property
 	for(uint i = 0; i < idx->fields_count; i++) {
+		const char *field_name = idx->fields[i];
 		SIValue *v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
+		SIType t = SI_TYPE(*v);
+
 		if(v == PROPERTY_NOTFOUND) continue;
 
 		doc_field_count++;
 		if(idx->type == IDX_FULLTEXT) {
 			// Value must be of type string.
-			if(SI_TYPE(*v) == T_STRING) {
+			if(t == T_STRING) {
 				RediSearch_DocumentAddFieldString(doc,
 												  idx->fields[i],
 												  v->stringval,
@@ -137,12 +140,16 @@ void Index_IndexNode(Index *idx, const Node *n) {
 												  RSFLDTYPE_FULLTEXT);
 			}
 		} else {
-			if(SI_TYPE(*v) == T_STRING) {
+			if(t == T_STRING) {
 				RediSearch_DocumentAddFieldString(doc, idx->fields[i], v->stringval, strlen(v->stringval),
 												  RSFLDTYPE_TAG);
-			} else if(SI_TYPE(*v) & (SI_NUMERIC | T_BOOL)) {
+			} else if(t & (SI_NUMERIC | T_BOOL)) {
 				double d = SI_GET_NUMERIC(*v);
-				RediSearch_DocumentAddFieldNumber(doc, idx->fields[i], d, RSFLDTYPE_NUMERIC);
+				RediSearch_DocumentAddFieldNumber(doc, field_name, d, RSFLDTYPE_NUMERIC);
+			} else if(t == T_POINT) {
+				char lon_lat[256];
+				size_t n = sprintf(lon_lat, "%lf %lf", v->point.longitude, v->point.latitude);
+				RediSearch_DocumentAddFieldString(doc, field_name, lon_lat, n, RSFLDTYPE_GEO);
 			} else {
 				continue;
 			}
@@ -163,8 +170,7 @@ void Index_RemoveNode(Index *idx, const Node *n) {
 void Index_Construct(Index *idx) {
 	ASSERT(idx != NULL);
 
-	/* RediSearch index already exists
-	 * re-construct */
+	// RediSearch index already exists, re-construct
 	if(idx->idx) {
 		RediSearch_DropIndex(idx->idx);
 		idx->idx = NULL;
@@ -181,17 +187,19 @@ void Index_Construct(Index *idx) {
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
 	RediSearch_FreeIndexOptions(idx_options);
 
-	// Create indexed fields
+	// create indexed fields
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < idx->fields_count; i++) {
-			// Introduce text field.
+			// introduce text field
 			RediSearch_CreateTextField(rsIdx, idx->fields[i]);
 		}
 	} else {
 		for(uint i = 0; i < idx->fields_count; i++) {
-			// Introduce both text and numeric fields.
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i], RSFLDTYPE_NUMERIC | RSFLDTYPE_TAG,
-													   RSFLDOPT_NONE);
+			// introduce both text, numeric and geo fields
+			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
+					types, RSFLDOPT_NONE);
+
 			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, '\0');
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 		}
