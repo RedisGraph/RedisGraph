@@ -137,14 +137,6 @@ static void _CommitUpdates(OpUpdate *op) {
 	}
 }
 
-/* We only cache records if op_update is not the last
- * operation within the execution-plan, which means
- * others operations might inspect thoese records.
- * Example: MATCH (n) SET n.v=n.v+1 RETURN n */
-static inline bool _ShouldCacheRecord(OpUpdate *op) {
-	return (op->op.parent != NULL);
-}
-
 static Record _handoff(OpUpdate *op) {
 	/* TODO: poping a record out of op->records
 	 * will reverse the order in which records
@@ -218,7 +210,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps)
 static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	op->stats = QueryCtx_GetResultSetStatistics();
-	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
+	op->records = array_new(Record, 64);
 	return OP_OK;
 }
 
@@ -323,17 +315,13 @@ static Record UpdateConsume(OpBase *opBase) {
 	uint nctx = array_len(op->update_ctxs);
 
 	while((r = OpBase_Consume(child))) {
+		Record_PersistScalars(r);
+
 		// Evaluate update expressions.
 		for(uint i = 0; i < nctx; i++) {
 			_EvalEntityUpdates(op->update_ctxs + i, op->gc, r);
 		}
-
-		if(_ShouldCacheRecord(op)) {
-			op->records = array_append(op->records, r);
-		} else {
-			// Record not going to be used, discard.
-			OpBase_DeleteRecord(r);
-		}
+		op->records = array_append(op->records, r);
 	}
 
 	/* Done reading; we're not going to call Consume any longer.
