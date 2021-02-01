@@ -66,6 +66,84 @@ static inline bool _isInFilter(const FT_FilterNode *filter) {
 			strcasecmp(filter->exp.exp->op.func_name, "in") == 0);
 }
 
+// extracts both origin and radius from a distance filter
+// distance(n.location, origin) < radius
+static bool _extractOriginAndRadius(const FT_FilterNode *filter,
+		SIValue *origin, SIValue *radius, char **point) {
+	// distance (n.location, origin) < radius
+
+	ASSERT(filter != NULL);
+
+	if(filter->t != FT_N_PRED) return false;
+
+	char        *p             =  NULL;
+	SIValue     d              =  SI_NullVal();      // radius
+	AR_ExpNode  *lhs           =  filter->pred.lhs;
+	AR_ExpNode  *rhs           =  filter->pred.rhs;
+	AR_ExpNode  *radius_exp    =  NULL;
+	AR_ExpNode  *distance_exp  =  NULL;
+
+	// find distance expression
+	if(AR_EXP_IsOperation(lhs) &&
+			strcasecmp(lhs->op.func_name, "distance") == 0) {
+		radius_exp = rhs;
+		distance_exp = lhs;
+	} else if(AR_EXP_IsOperation(rhs) &&
+			strcasecmp(rhs->op.func_name, "distance") == 0) {
+		radius_exp = lhs;
+		distance_exp = rhs;
+	}
+
+	// could not find 'distance' function call
+	if(distance_exp == NULL) return false;
+
+	// make sure radius is constant
+	bool scalar = AR_EXP_ReduceToScalar(radius_exp, true, &d);
+	if(!scalar) return false;
+
+	// TODO: validate radius type (NUMERIC)
+	if(!(SI_TYPE(d) && SI_NUMERIC)) {
+		SIValue_Free(d);
+		return false;
+	}
+
+	// find origin
+	// distance expression should have 2 arguments
+	lhs = distance_exp->op.children[0];
+	rhs = distance_exp->op.children[1];
+
+	SIValue  l         =  SI_NullVal();
+	SIValue  r         =  SI_NullVal();
+	bool     res       =  false;
+	bool     l_scalar  =  AR_EXP_ReduceToScalar(lhs, true, &l);
+	bool     r_scalar  =  AR_EXP_ReduceToScalar(rhs, true, &r);
+
+	if(l_scalar && !r_scalar) {
+		res = AR_EXP_IsAttribute(rhs, &p);
+		if(point) *point = p;
+		if(origin) *origin = l;
+		if(radius) *radius = d;
+	} else if(!l_scalar && r_scalar) {
+		res = AR_EXP_IsAttribute(lhs, &p);
+		if(point) *point = p;
+		if(origin) *origin = r;
+		if(radius) *radius = d;
+	} else {
+		res = false;
+		SIValue_Free(d);
+		if(l_scalar) SIValue_Free(l);
+		if(r_scalar) SIValue_Free(r);
+	}
+
+	return res;
+}
+
+// return true if filter performs distance filtering
+// distance(n.location, point({lat:1.1, lon:2.2})) < 40
+static bool _isDistanceFilter(const FT_FilterNode *filter) {
+	return _extractOriginAndRadius(filter, NULL, NULL, NULL);
+}
+
 static bool _validateInExpression(AR_ExpNode *exp) {
 	ASSERT(exp->op.child_count == 2);
 
@@ -90,9 +168,16 @@ bool _simple_predicates(FT_FilterNode *filter) {
 	bool res = false;
 
 	SIValue v;
-	AR_ExpNode *exp = NULL;
-	AR_ExpNode *lhs_exp = NULL;
-	AR_ExpNode *rhs_exp = NULL;
+	AR_ExpNode  *exp      =  NULL;
+	AR_ExpNode  *lhs_exp  =  NULL;
+	AR_ExpNode  *rhs_exp  =  NULL;
+
+	if(_isInFilter(filter)) {
+		_normalize_in_filter(filter);
+		return _validateInExpression(filter->exp.exp);
+	}
+
+	if(_isDistanceFilter(filter)) return true;
 
 	switch(filter->t) {
 	case FT_N_PRED:
@@ -116,17 +201,10 @@ bool _simple_predicates(FT_FilterNode *filter) {
 		SIType t = SI_TYPE(v);
 		res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
 		break;
-	case FT_N_EXP:
-		if(_isInFilter(filter)) {
-			_normalize_in_filter(filter);
-			res = _validateInExpression(filter->exp.exp);
-		}
-		break;
 	case FT_N_COND:
 		res = (_simple_predicates(filter->cond.left) && _simple_predicates(filter->cond.right));
 		break;
 	default:
-		ASSERT(false);
 		break;
 	}
 
@@ -154,6 +232,21 @@ RSQNode *_StringRangeToQueryNode(RSIndex *idx, const char *field, const StringRa
 												   range->include_max);
 	RediSearch_QueryNodeAddChild(root, child);
 	return root;
+}
+
+RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
+	char     *point  =  NULL;
+	char     *query  =  NULL;
+	SIValue  origin  =  SI_NullVal();
+	SIValue  radius  =  SI_NullVal();
+
+	_extractOriginAndRadius(filter, &origin, &radius, &point);
+
+	// @field:[{lon} {lat} {radius} {m|km|mi|ft}]
+	query = asprintf(&query, "@%s:[{%f} {%f} {%f} {m}]", Point_lon(origin),
+			Point_lat(origin), SI_GET_NUMERIC(radius));
+
+	//RediSearch_CreateNumericNode
 }
 
 // Creates a RediSearch query node out of given IN filter.
@@ -326,13 +419,12 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 
 /* Checks to see if given filter can be resolved by index. */
 bool _applicableFilter(Index *idx, FT_FilterNode **filter) {
-	bool res = true;
-	rax *attr = NULL;
-	rax *entities = NULL;
+	bool           res           =  true;
+	rax            *attr         =  NULL;
+	rax            *entities     =  NULL;
+	FT_FilterNode  *filter_tree  =  *filter;
 
-	FT_FilterNode *filter_tree = *filter;
-
-	/* Make sure the filter root is not a function, other then IN
+	/* Make sure the filter root is not a function, other then IN or distance
 	 * Make sure the "not equal, <>" operator isn't used. */
 	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
 		res = false;
@@ -441,11 +533,11 @@ void _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges, rax *n
 /* Try to replace given Label Scan operation and a set of Filter operations with
  * a single Index Scan operation. */
 void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
-	RSQNode *root = NULL;
-	uint rsqnode_count = 0;
-	RSQNode **rsqnodes = NULL;
-	rax *string_ranges = NULL;
-	rax *numeric_ranges = NULL;
+	RSQNode  *root            =  NULL;
+	uint     rsqnode_count    =  0;
+	RSQNode  **rsqnodes       =  NULL;
+	rax      *string_ranges   =  NULL;
+	rax      *numeric_ranges  =  NULL;
 
 	// Make sure there's an index for scanned label.
 	const char *label = scan->n.label;
@@ -462,17 +554,29 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	if(filters_count == 0) goto cleanup;
 
 	/* Reduce filters into ranges.
-	* we differentiate between between numeric filters
-	* and string filters. */
+	 * we differentiate between between numeric filters
+	 * and string filters. */
 	rsqnodes = array_new(RSQNode *, 1);
 
 	string_ranges = raxNew();
 	numeric_ranges = raxNew();
 
 	for(uint i = 0; i < filters_count; i++) {
-		OpFilter *filter = filters[i];
-		FT_FilterNode *filter_tree = filter->filterTree;
-		RSQNode *rsqnode = NULL;
+		RSQNode        *rsqnode      =  NULL;
+		OpFilter       *filter       =  filters[i];
+		FT_FilterNode  *filter_tree  =  filter->filterTree;
+
+		if(_isInFilter(filter_tree)) {
+			rsqnode = _filterTreeToInQueryNode(filter_tree, rs_idx);
+			rsqnodes = array_append(rsqnodes, rsqnode);
+			continue;
+		}
+
+		if(_isDistanceFilter(filter_tree)) {
+			rsqnode = _filterTreeToDistanceQueryNode(filter_tree, rs_idx);
+			rsqnodes = array_append(rsqnodes, rsqnode);
+			continue;	
+		}
 
 		switch(filter_tree->t) {
 		case FT_N_PRED:
@@ -483,12 +587,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 			rsqnode = _filterTreeToQueryNode(filter_tree, rs_idx);
 			rsqnodes = array_append(rsqnodes, rsqnode);
 			break;
-		case FT_N_EXP:
-			rsqnode = _filterTreeToInQueryNode(filter_tree, rs_idx);
-			rsqnodes = array_append(rsqnodes, rsqnode);
-			break;
 		default:
-			ASSERT("Unknown filter type" && false);
 			break;
 		}
 	}
