@@ -714,6 +714,7 @@ uint Graph_GetNodeLabels(const Graph *g, const Node *n, GrB_Index *labels, GrB_I
 	// Populate array with the node's labels and update label_count to the real value.
 	res = GrB_Vector_extractTuples_BOOL(labels, GrB_NULL, &label_count, row);
 	ASSERT(res == GrB_SUCCESS);
+	GrB_free(&row);
 
 	return label_count;
 }
@@ -1400,6 +1401,7 @@ void Graph_Free(Graph *g) {
 		RG_Matrix_Free(g->labels[i]);
 	}
 	array_free(g->labels);
+	RG_Matrix_Free(g->node_labels);
 
 	it = Graph_ScanNodes(g);
 	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL)

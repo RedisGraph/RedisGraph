@@ -774,11 +774,15 @@ TEST_F(GraphTest, BulkDelete) {
 
 	Graph_AcquireWriteLock(g);
 
-	int l = Graph_AddLabel(g);
+	Graph_AddLabel(g);
 	int r0 = Graph_AddRelationType(g);
 	int r1 = Graph_AddRelationType(g);
 
-	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, &n[i]);
+	int labels[1] = {0};
+	for(int i = 0; i < node_count; i++) {
+		Graph_CreateNode(g, &n[i]);
+		Graph_LabelNode(g, n->id, labels, 1);
+	}
 
 	/* Connect nodes:
 	 * (0)-[r0]->(1)

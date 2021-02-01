@@ -90,6 +90,9 @@ EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx);
 // Clone NodeCreateCtx.
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
 
+// Free NodeCreateCtx.
+void NodeCreateCtx_Free(NodeCreateCtx ctx);
+
 // Clone EdgeCreateCtx.
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);
 

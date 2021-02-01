@@ -8,6 +8,7 @@
 #include "RG.h"
 #include "../../../errors.h"
 #include "../../../query_ctx.h"
+#include "../../../ast/ast_shared.h"
 
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
@@ -230,7 +231,7 @@ void PendingCreationsFree(PendingCreations *pending) {
 	if(pending->nodes_to_create) {
 		uint nodes_to_create_count = array_len(pending->nodes_to_create);
 		for(uint i = 0; i < nodes_to_create_count; i ++) {
-			PropertyMap_Free(pending->nodes_to_create[i].properties);
+			NodeCreateCtx_Free(pending->nodes_to_create[i]);
 		}
 		array_free(pending->nodes_to_create);
 		pending->nodes_to_create = NULL;

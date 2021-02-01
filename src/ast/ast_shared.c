@@ -1,5 +1,6 @@
 #include "ast_shared.h"
 #include "../RG.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -111,8 +112,16 @@ EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx) {
 
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
 	NodeCreateCtx clone = ctx;
+	array_clone(clone.labels, ctx.labels);
+	array_clone(clone.labelsId, ctx.labelsId);
 	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
+}
+
+void NodeCreateCtx_Free(NodeCreateCtx ctx) {
+	array_free(ctx.labels);
+	array_free(ctx.labelsId);
+	PropertyMap_Free(ctx.properties);
 }
 
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
