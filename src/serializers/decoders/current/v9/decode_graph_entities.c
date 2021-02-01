@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v8.h"
+#include "decode_v9.h"
 
 // Forward declarations.
 static SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
@@ -66,7 +66,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 }
 
 
-void RdbLoadNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) {
+void RdbLoadNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) {
 	/* Node Format:
 	 *      ID
 	 *      #labels M
@@ -96,7 +96,7 @@ void RdbLoadNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) 
 	}
 }
 
-void RdbLoadDeletedNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_node_count) {
+void RdbLoadDeletedNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_node_count) {
 	/* Format:
 	* node id X N */
 	for(uint64_t i = 0; i < deleted_node_count; i++) {
@@ -105,7 +105,7 @@ void RdbLoadDeletedNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t delet
 	}
 }
 
-void RdbLoadEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count) {
+void RdbLoadEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count) {
 	/* Format:
 	 * {
 	 *  edge ID
@@ -127,7 +127,7 @@ void RdbLoadEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count) 
 	}
 }
 
-void RdbLoadDeletedEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_edge_count) {
+void RdbLoadDeletedEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_edge_count) {
 	/* Format:
 	 * edge id X N */
 	for(uint64_t i = 0; i < deleted_edge_count; i++) {
