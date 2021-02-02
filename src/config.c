@@ -178,6 +178,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
 		f = Config_RESULTSET_MAX_SIZE;
+	} else if(!(strcasecmp(field_str, ASYNC_DELETE))) {
+		f = Config_ASYNC_DELETE;
 	} else {
 		return false;
 	}
@@ -231,7 +233,7 @@ const char *Config_Field_name(Config_Option_Field field) {
 }
 
 // Initialize every module-level configuration to its default value.
-void _Config_SetToDefaults(RedisModuleCtx *ctx) {
+void _Config_SetToDefaults(void) {
 	// The thread pool's default size is equal to the system's number of cores.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_pool_size = (CPUCount != -1) ? CPUCount : 1;
@@ -251,11 +253,9 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	#ifdef MEMCHECK
 		// Disable async delete during memcheck.
 		config.async_delete = false;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
 	#else
-		// Always perform async delete when no checking for memory issues.
+		// Always perform async delete when not checking for memory issues unless explicitly overridden.
 		config.async_delete = true;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
 	#endif
 
 	config.cache_size = CACHE_SIZE_DEFAULT;
@@ -269,7 +269,7 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Initialize the configuration to its default values.
-	_Config_SetToDefaults(ctx);
+	_Config_SetToDefaults();
 
 	if(argc % 2) {
 		// emit an error if we received an odd number of arguments,
