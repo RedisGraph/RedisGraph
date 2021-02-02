@@ -46,6 +46,13 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 3)
         self.env.assertEquals(result.result_set, expected_result)
 
+        query = """UNWIND ['Vancouver', 'Portland', 'Calgary'] AS city CREATE (p:person {birthplace: city}) RETURN p.birthplace ORDER BY p.birthplace"""
+        result = redis_graph.query(query)
+        expected_result = [['Calgary'], ['Portland'], ['Vancouver']]
+        self.env.assertEquals(result.nodes_created, 3)
+        self.env.assertEquals(result.properties_set, 3)
+        self.env.assertEquals(result.result_set, expected_result)
+
     def test04_create_with_null_properties(self):
         query = """CREATE (a:L {v1: NULL, v2: 'prop'}) RETURN a"""
         result = redis_graph.query(query)

@@ -46,3 +46,8 @@ class testEntityUpdate(FlowTestsBase):
         result = graph.query("MATCH (n) SET n.x = NULL")
         self.env.assertEqual(result.properties_set, 1)
 
+    def test05_update_from_projection(self):
+        result = graph.query("MATCH (n) UNWIND ['Calgary'] as city_name SET n.name = city_name RETURN n.v, n.name")
+        expected_result = [[1, 'Calgary']]
+        self.env.assertEqual(result.properties_set, 1)
+        self.env.assertEqual(result.result_set, expected_result)
