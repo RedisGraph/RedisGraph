@@ -353,7 +353,8 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 
 	cypher_astnode_type_t t;
 	const cypher_astnode_t *identifier = cypher_ast_map_projection_get_expression(expr);
-	AR_ExpNode *entity = AR_EXP_FromASTNode(identifier);
+	ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
+	const char *entity_name = cypher_ast_identifier_get_name(identifier);
 
 	const cypher_astnode_t *selector = NULL;
 	unsigned int n_selectors = cypher_ast_map_projection_nselectors(expr);
@@ -375,6 +376,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 
 			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
 
+			AR_ExpNode *entity = AR_EXP_NewVariableOperandNode(entity_name);
 			children[i * 2 + 1] = AR_EXP_NewAttributeAccessNode(entity, prop_name);
 		} else if(t == CYPHER_AST_MAP_PROJECTION_LITERAL) {
 			// { v: n.v }
