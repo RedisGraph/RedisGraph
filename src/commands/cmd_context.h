@@ -10,6 +10,13 @@
 #include "../redismodule.h"
 #include "../graph/graphcontext.h"
 
+// ExecutorThread lists the diffrent types of threads in the system
+typedef enum {
+	EXEC_THREAD_MAIN,    // redis main thread
+	EXEC_THREAD_READER,  // read only thread
+	EXEC_THREAD_WRITER,  // write only thread
+} ExecutorThread;
+
 /* Query context, used for concurent query processing. */
 typedef struct {
 	char *query;                    // Query string.
@@ -19,7 +26,7 @@ typedef struct {
 	RedisModuleBlockedClient *bc;   // Blocked client.
 	bool replicated_command;        // Whether this instance was spawned by a replication command.
 	bool compact;                   // Whether this query was issued with the compact flag.
-	bool writer_thread;             // Whether this query is running on the writer thread.
+	ExecutorThread thread;          // Which thread executes this command
 	long long timeout;              // The query timeout, if specified.
 } CommandCtx;
 
@@ -31,6 +38,7 @@ CommandCtx *CommandCtx_New
 	RedisModuleString *cmd_name,    // Command to execute.
 	RedisModuleString *query,       // Query string.
 	GraphContext *graph_ctx,        // Graph context.
+	ExecutorThread thread,          // Which thread executes this command
 	bool replicated_command,        // Whether this instance was spawned by a replication command.
 	bool compact,                   // Whether this query was issued with the compact flag.
 	long long timeout               // The query timeout, if specified.

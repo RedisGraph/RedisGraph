@@ -16,12 +16,20 @@ extern RedisModuleType *GraphContextRedisModuleType;
 
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
+inline void QueryCtx_SetTLS(QueryCtx *query_ctx) {
+	pthread_setspecific(_tlsQueryCtxKey, query_ctx);
+}
+
+inline void QueryCtx_RemoveFromTLS() {
+	pthread_setspecific(_tlsQueryCtxKey, NULL);
+}
+
 static inline QueryCtx *_QueryCtx_GetCtx(void) {
 	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
 	if(!ctx) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
-		pthread_setspecific(_tlsQueryCtxKey, ctx);
+		QueryCtx_SetTLS(ctx);
 	}
 	return ctx;
 }
@@ -240,14 +248,6 @@ inline QueryCtx *QueryCtx_GetQueryCtx() {
 	return _QueryCtx_GetCtx();
 }
 
-inline void QueryCtx_SetInTLS(QueryCtx *query_ctx) {
-	pthread_setspecific(_tlsQueryCtxKey, query_ctx);
-}
-
-inline void QueryCtx_RemoveFromTLS() {
-	pthread_setspecific(_tlsQueryCtxKey, NULL);
-}
-
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 
@@ -258,6 +258,6 @@ void QueryCtx_Free(void) {
 
 	rm_free(ctx);
 	// NULL-set the context for reuse the next time this thread receives a query
-	pthread_setspecific(_tlsQueryCtxKey, NULL);
+	QueryCtx_RemoveFromTLS();
 }
 

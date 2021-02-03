@@ -25,6 +25,7 @@ CommandCtx *CommandCtx_New
 	RedisModuleString *cmd_name,
 	RedisModuleString *query,
 	GraphContext *graph_ctx,
+	ExecutorThread thread,
 	bool replicated_command,
 	bool compact,
 	long long timeout
@@ -33,28 +34,23 @@ CommandCtx *CommandCtx_New
 	context->bc = bc;
 	context->ctx = ctx;
 	context->query = NULL;
+	context->thread = thread;
 	context->compact = compact;
 	context->timeout = timeout;
 	context->command_name = NULL;
 	context->graph_ctx = graph_ctx;
-	context->writer_thread = false;
 	context->replicated_command = replicated_command;
 
-	size_t len;
 	if(cmd_name) {
 		// Make a copy of command name.
-		const char *command_name = RedisModule_StringPtrLen(cmd_name, &len);
-		context->command_name = rm_malloc(sizeof(char) * len + 1);
-		memcpy(context->command_name, command_name, len);
-		context->command_name[len] = '\0';
+		const char *command_name = RedisModule_StringPtrLen(cmd_name, NULL);
+		context->command_name = rm_strdup(command_name);
 	}
 
 	if(query) {
 		// Make a copy of query.
-		const char *q = RedisModule_StringPtrLen(query, &len);
-		context->query = rm_malloc(sizeof(char) * len + 1);
-		memcpy(context->query, q, len);
-		context->query[len] = '\0';
+		const char *q = RedisModule_StringPtrLen(query, NULL);
+		context->query = rm_strdup(q);
 	}
 
 	return context;
@@ -66,11 +62,15 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	ASSERT(ctx != NULL);
 	ASSERT(command_ctxs != NULL);
 
-	int tid = thpool_get_thread_id(_thpool, pthread_self());
-	tid += 1; // +1 to compensate for Redis main thread.
+	int tid;
+	if(ctx->thread == EXEC_THREAD_WRITER) {
+		// the writer thread's CommandCtx is always stored at the index thread_count
+		tid = thpool_num_threads(_thpool);
+	} else {
+		// +1 to compensate for Redis main thread
+		tid = thpool_get_thread_id(_thpool, pthread_self()) + 1;
+	}
 
-	// The writer thread's CommandCtx is always stored at the index thread_count.
-	if(ctx->writer_thread) tid = thpool_num_threads(_thpool);
 
 	ASSERT(command_ctxs[tid] == NULL);
 
@@ -83,11 +83,14 @@ void CommandCtx_UntrackCtx(CommandCtx *ctx) {
 	ASSERT(ctx != NULL);
 	ASSERT(command_ctxs != NULL);
 
-	int tid = thpool_get_thread_id(_thpool, pthread_self());
-	tid += 1; // +1 to compensate for Redis main thread.
-
-	// The writer thread's CommandCtx is always stored at the index thread_count.
-	if(ctx->writer_thread) tid = thpool_num_threads(_thpool);
+	int tid;
+	if(ctx->thread == EXEC_THREAD_WRITER) {
+		// the writer thread's CommandCtx is always stored at the index thread_count
+		tid = thpool_num_threads(_thpool);
+	} else {
+		// +1 to compensate for Redis main thread
+		tid = thpool_get_thread_id(_thpool, pthread_self()) + 1;
+	}
 
 	ASSERT(command_ctxs[tid] == ctx);
 

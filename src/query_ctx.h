@@ -130,7 +130,7 @@ void QueryCtx_Free(void);
 QueryCtx *QueryCtx_GetQueryCtx();
 
 /* Set the provided QueryCtx in this thread's storage key. */
-void QueryCtx_SetInTLS(QueryCtx *query_ctx);
+void QueryCtx_SetTLS(QueryCtx *query_ctx);
 
 /* Null-set this thread's storage key. */
 void QueryCtx_RemoveFromTLS();

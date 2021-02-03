@@ -123,6 +123,7 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
 		return NULL;
 	}
+
 	GraphContext *gc = NULL;
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 
