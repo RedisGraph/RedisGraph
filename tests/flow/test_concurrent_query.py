@@ -38,15 +38,24 @@ def query_neighbors(graph, query, threadID):
             assertions[threadID] = False
             break
 
-def query_write(graph, query, threadID):
+def query_write(graph, query, threadid, multi=False):
     global assertions
-    assertions[threadID] = True
+    assertions[threadid] = True
     
     for i in range(10):
-        actual_result = graph.query(query)        
-        if actual_result.nodes_created != 1 or actual_result.properties_set != 1:
-            assertions[threadID] = False
-            break
+        if(multi == True):
+            # RedisGraph Python lib doesn't support MULTI/EXEC
+            # as such we'll use the direct redis connection and skip
+            # result-set validation
+            conn = graph.redis_con
+            conn.execute_command("MULTI")
+            conn.execute_command("GRAPH.QUERY", graph.name, query)
+            conn.execute_command("EXEC")
+        else:
+            actual_result = graph.query(query)
+            if actual_result.nodes_created != 1 or actual_result.properties_set != 1:
+                assertions[threadid] = False
+                break
 
 def thread_run_query(graph, query, threadID):
     global assertions
@@ -145,9 +154,41 @@ class testConcurrentQueryFlow(FlowTestsBase):
             t = threads[i]
             t.join()
             self.env.assertTrue(assertions[i])
+
+    # Issue write queries on both Redis main thread 
+    # and the dedicated writer thread
+    def test_04_alternating_write_queries(self):
+        pass
+        # Determine number of nodes in the graph
+        # node_count_query = "MATCH (n) RETURN count(n)"
+        #resultset = graphs[0].query(node_count_query).result_set
+        #original_node_count = resultset[0][0]
+
+        #threads = []
+        #for i in range(CLIENT_COUNT):
+            #graph = graphs[i]
+            #q = """CREATE (c:country {id:"%d"})""" % i
+
+            #multi_exec = ((i % 2) == 0)
+            #t = threading.Thread(target=query_write, args=(graph, q, i, multi_exec))
+
+            #t.setDaemon(True)
+            #threads.append(t)
+            #t.start()
+
+        # Wait for threads to return.
+        #for i in range(CLIENT_COUNT):
+            #t = threads[i]
+            #t.join()
+            #self.env.assertTrue(assertions[i])
+
+        # Validate graph structure
+        #resultset = graphs[0].query(node_count_query).result_set
+        #new_node_count = resultset[0][0]
+        #self.env.assertEquals(new_node_count, original_node_count + CLIENT_COUNT * 10)
     
     # Try to delete graph multiple times.
-    def test_04_concurrent_delete(self):
+    def test_05_concurrent_delete(self):
         threads = []
         for i in range(CLIENT_COUNT):
             graph = graphs[i]
@@ -165,7 +206,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.env.assertEquals(assertions.count(True), 1)
 
     # Try to delete a graph while multiple queries are executing.
-    def test_05_concurrent_read_delete(self):
+    def test_06_concurrent_read_delete(self):
         redis_con = self.env.getConnection()
         
         ##############################################################################################
@@ -243,7 +284,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
         self.env.assertEquals(resultset[0][0], 0)
 
-    def test_06_concurrent_write_delete(self):
+    def test_07_concurrent_write_delete(self):
         # Test setup - validate that graph exists and possible results are None
         graphs[0].query("MATCH (n) RETURN n")
         assertions[0] = None
@@ -263,7 +304,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         else:
             self.env.assertEquals(1000000, assertions[0].nodes_created)       
     
-    def test_07_concurrent_write_rename(self):
+    def test_08_concurrent_write_rename(self):
         # Test setup - validate that graph exists and possible results are None
         graphs[0].query("MATCH (n) RETURN n")
         assertions[0] = None
@@ -291,7 +332,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         else:
             self.env.assertEquals(1000000, assertions[0].nodes_created)
         
-    def test_08_concurrent_write_replace(self):
+    def test_09_concurrent_write_replace(self):
         # Test setup - validate that graph exists and possible results are None
         graphs[0].query("MATCH (n) RETURN n")
         assertions[0] = None
@@ -315,7 +356,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
             self.env.assertEquals(1000000, assertions[0].nodes_created)
             self.env.assertEquals(set_result, True)
 
-    def test_09_concurrent_multiple_readers_after_big_write(self):
+    def test_10_concurrent_multiple_readers_after_big_write(self):
         # Test issue #890
         global assertions
         global exceptions
@@ -339,3 +380,4 @@ class testConcurrentQueryFlow(FlowTestsBase):
         for i in range(CLIENT_COUNT):
             self.env.assertIsNone(exceptions[i])
             self.env.assertEquals(1000, len(assertions[i].result_set))
+

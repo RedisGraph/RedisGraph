@@ -149,10 +149,26 @@ static void _ExecuteQuery(void *args) {
 
 	QueryCtx_SetResultSet(result_set);
 
-	// set policy after lock acquisition, avoid resetting policies between readers and writers.
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	// acquire the appropriate lock
+	if(readonly) {
+		Graph_AcquireReadLock(gc->g);
+	} else {
+		/* if this is a writer query `we need to re-open the graph key with write flag
+		* this notifies Redis that the key is "dirty" any watcher on that key will
+		* be notified */
+		CommandCtx_ThreadSafeContextLock(command_ctx);
+		{
+			GraphContext_MarkWriter(rm_ctx, gc);
+		}
+		CommandCtx_ThreadSafeContextUnlock(command_ctx);
+		Graph_WriterEnter(gc->g);  // single writer
+	}
 
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
+		// set policy after lock acquisition,
+		// avoid resetting policies between readers and writers
+		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
 
@@ -169,10 +185,12 @@ static void _ExecuteQuery(void *args) {
 	}
 
 	QueryCtx_ForceUnlockCommit();
-	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
 
 	// send result-set back to client
 	ResultSet_Reply(result_set);
+
+	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
+	else Graph_WriterLeave(gc->g);
 
 	// log query to slowlog
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
@@ -213,17 +231,17 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 }
 
 void Graph_Query(void *args) {
-	CommandCtx *command_ctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx     = CommandCtx_GetRedisCtx(command_ctx);
-	GraphContext *gc        = CommandCtx_GetGraphContext(command_ctx);
+	CommandCtx *cmd_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx     = CommandCtx_GetRedisCtx(cmd_ctx);
+	GraphContext *gc        = CommandCtx_GetGraphContext(cmd_ctx);
 
-	CommandCtx_TrackCtx(command_ctx);
-	QueryCtx_SetGlobalExecutionCtx(command_ctx);
+	CommandCtx_TrackCtx(cmd_ctx);
+	QueryCtx_SetGlobalExecutionCtx(cmd_ctx);
 
 	QueryCtx_BeginTimer(); // start query timing
 
 	// parse query parameters and build an execution plan or retrieve it from the cache
-	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(cmd_ctx->query);
 
 	// if there were any query compile time errors, report them
 	if(ErrorCtx_EncounteredError()) {
@@ -235,14 +253,14 @@ void Graph_Query(void *args) {
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
 
 	// write query executing via GRAPH.RO_QUERY isn't allowed
-	if(!readonly && _readonly_cmd_mode(command_ctx)) {
+	if(!readonly && _readonly_cmd_mode(cmd_ctx)) {
 		ErrorCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
 		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 
 	// set the query timeout if one was specified
-	if(command_ctx->timeout != 0) {
+	if(cmd_ctx->timeout != 0) {
 		if(!readonly) {
 			// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
 			ErrorCtx_SetError("Query timeouts may only be specified on read-only queries");
@@ -250,29 +268,26 @@ void Graph_Query(void *args) {
 			goto cleanup;
 		}
 
-		Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
+		Query_SetTimeOut(cmd_ctx->timeout, exec_ctx->plan);
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
-	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
+	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, cmd_ctx,
 			readonly);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
 	// the read-only threadpool
-	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
-		if(readonly) Graph_AcquireReadLock(gc->g);
-		_ExecuteQuery(gq_ctx);
-	} else {
-		_DelegateWriter(gq_ctx);
-	}
+	if(readonly || cmd_ctx->thread == EXEC_THREAD_MAIN) _ExecuteQuery(gq_ctx);
+	else _DelegateWriter(gq_ctx);
+
 	return;
 
 cleanup:
 	// Cleanup routine invoked after encountering errors in this function.
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
-	CommandCtx_Free(command_ctx);
+	CommandCtx_Free(cmd_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }

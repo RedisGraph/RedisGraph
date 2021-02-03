@@ -105,15 +105,18 @@ static int AST_DecRefCount(AST *ast) {
 bool AST_ReadOnly(const cypher_astnode_t *root) {
 	// Check for empty query
 	if(root == NULL) return true;
+
 	cypher_astnode_type_t type = cypher_astnode_type(root);
-	if(type == CYPHER_AST_CREATE                      ||
-	   type == CYPHER_AST_MERGE                  ||
-	   type == CYPHER_AST_DELETE                 ||
-	   type == CYPHER_AST_SET                    ||
+
+	if(type == CYPHER_AST_CREATE                  ||
+	   type == CYPHER_AST_MERGE                   ||
+	   type == CYPHER_AST_DELETE                  ||
+	   type == CYPHER_AST_SET                     ||
 	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 	   type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		return false;
 	}
+
 	// In case of procedure call which modifies the graph/indices.
 	if(type == CYPHER_AST_CALL) {
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(root));
@@ -122,11 +125,13 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 		Proc_Free(proc);
 		if(!read_only) return false;
 	}
+
 	uint num_children = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < num_children; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
 		if(!AST_ReadOnly(child)) return false;
 	}
+
 	return true;
 }
 
