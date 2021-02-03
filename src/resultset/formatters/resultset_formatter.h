@@ -41,7 +41,7 @@ typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Reco
 							   uint *col_rec_map);
 
 // Typedef for footer formatters.
-typedef void (*EmitFooterFunc)(RedisModuleCtx *ctx, GraphContext *gc);
+typedef void (*EmitFooterFunc)(RedisModuleCtx *ctx, GraphContext *gc, SIValue map);
 
 typedef struct {
 	EmitRecordFunc EmitRecord;

@@ -13,7 +13,7 @@ typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-					   long long *timeout, uint *graph_version, char **errmsg) {
+					   long long *timeout, GRAPH_VERSION *graph_version, char **errmsg) {
 
 	ASSERT(compact != NULL);
 	ASSERT(timeout != NULL);
@@ -76,13 +76,13 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 
 // Returns false if client provided a graph version
 // which mismatch the current graph version
-static bool _verifyGraphVersion(GraphContext *gc, uint version) {
+static bool _verifyGraphVersion(GraphContext *gc, GRAPH_VERSION version) {
 	// caller did not specify graph version
 	if(version == GRAPH_VERSION_MISSING) return true;
 	return (GraphContext_GetVersion(gc) == version);
 }
 
-static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, uint version) {
+static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, GRAPH_VERSION version) {
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithError(ctx, "version mismatch");
 	RedisModule_ReplyWithLongLong(ctx, version);
@@ -139,7 +139,7 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	char *errmsg;
 	bool compact;
-	uint version;
+	GRAPH_VERSION version;
 	long long timeout;
 	CommandCtx *context = NULL;
 

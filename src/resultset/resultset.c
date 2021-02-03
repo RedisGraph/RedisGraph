@@ -234,15 +234,15 @@ void ResultSet_Reply(ResultSet *set) {
 		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
 
-	// RedisModule_ReplyWithArray(set->ctx, nsections);
-
 	/* check to see if we've encountered a run-time error
 	 * if so, emit it as the last top-level response */
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	else _ResultSet_ReplayStats(set->ctx, set); // otherwise, the last response is query statistics
 
 	if(require_footer) {
-		set->formatter->EmitFooter(set->ctx, set->gc);
+		SIValue map = ResultSet_PrepareMetadata(set->gc);
+		set->formatter->EmitFooter(set->ctx, set->gc, map);
+		SIValue_Free(map);
 	}
 }
 

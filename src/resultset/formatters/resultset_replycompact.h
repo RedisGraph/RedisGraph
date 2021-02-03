@@ -11,5 +11,5 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 								 uint numcols, uint *col_rec_map);
 void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns, const Record r,
 									  uint *col_rec_map);
-void ResultSet_ReplyWithCompactFooter(RedisModuleCtx *ctx, GraphContext *gc);
+void ResultSet_ReplyWithCompactFooter(RedisModuleCtx *ctx, GraphContext *gc, SIValue map);
 

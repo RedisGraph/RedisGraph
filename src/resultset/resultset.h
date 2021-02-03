@@ -29,6 +29,8 @@ typedef struct {
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
+SIValue ResultSet_PrepareMetadata(GraphContext *gc);
+
 void ResultSet_MapProjection(ResultSet *set, const Record r);
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format);

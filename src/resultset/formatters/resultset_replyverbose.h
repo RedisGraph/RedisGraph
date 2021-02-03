@@ -11,5 +11,5 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 								 uint numcols, uint *col_rec_map);
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns, const Record r,
 									  uint *col_rec_map);
-void ResultSet_ReplyWithVerboseFooter(RedisModuleCtx *ctx, GraphContext *gc);
+void ResultSet_ReplyWithVerboseFooter(RedisModuleCtx *ctx, GraphContext *gc, SIValue map);
 

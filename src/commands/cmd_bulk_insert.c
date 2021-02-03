@@ -103,7 +103,7 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
 	// Bulk commands should always modify slaves.
 	bool is_replicated = false;
-	context = CommandCtx_New(ctx, NULL, NULL, NULL, NULL, is_replicated, false, 0, false);
+	context = CommandCtx_New(ctx, NULL, NULL, NULL, NULL, is_replicated, false, GRAPH_VERSION_MISSING, false);
 	_MGraph_BulkInsert(context, argv, argc);
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;

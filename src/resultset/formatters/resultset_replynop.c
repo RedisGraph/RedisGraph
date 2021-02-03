@@ -17,7 +17,7 @@ void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record
 
 }
 
-void ResultSet_EmitNOPFooter(RedisModuleCtx *ctx, GraphContext *gc) {
+void ResultSet_EmitNOPFooter(RedisModuleCtx *ctx, GraphContext *gc, SIValue map) {
 
 }
 
