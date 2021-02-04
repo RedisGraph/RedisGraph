@@ -13,14 +13,24 @@
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
 
-static int get_thread_id() {
-	extern threadpool _thpool;  // Declared in module.c
+extern threadpool _readers_thpool;  // declared in module.c
+extern threadpool _writers_thpool;  // declared in module.c
 
-	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
-	 * most likely Redis main thread */
-	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
-	thread_id += 1; // +1 to compensate for Redis main thread.
-	return thread_id;
+static int get_thread_id() {
+	// thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
+	// most likely Redis main thread
+	int thread_id;
+	pthread_t pthread = pthread_self();
+
+	// search in writers
+	thread_id = thpool_get_thread_id(_writers_thpool, pthread);
+	if(thread_id != -1) return thpool_num_threads(_readers_thpool) + 1; // compensate for Redis main thread
+
+	// search in readers pool
+	thread_id = thpool_get_thread_id(_readers_thpool, pthread);
+	if(thread_id != -1) return thread_id + 1; // compensate for Redis main thread
+
+	return 0; // Redis main thread
 }
 
 /* Redis prints doubles with up to 17 digits of precision, which captures
@@ -96,9 +106,9 @@ static bool _SlowLog_Contains(const SlowLog *slowlog, int t_id, const char *cmd,
 SlowLog *SlowLog_New() {
 	SlowLog *slowlog = rm_malloc(sizeof(SlowLog));
 
-	extern threadpool _thpool;  // Declared in module.c
-	int thread_count = thpool_num_threads(_thpool);
-	thread_count += 1;  // Redis main thread.
+	// Redis main thread + writer thread.
+	int thread_count = thpool_num_threads(_readers_thpool) +
+		thpool_num_threads(_writers_thpool) + 1;
 
 	slowlog->count = thread_count;
 	slowlog->lookup = rm_malloc(sizeof(rax *) * thread_count);

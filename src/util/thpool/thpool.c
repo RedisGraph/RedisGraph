@@ -73,6 +73,7 @@ typedef struct thread {
 /* Threadpool */
 typedef struct thpool_ {
 	thread **threads;                 /* pointer to threads        */
+	const char *name;                 /* name associated with pool */
 	volatile int num_threads_alive;   /* threads currently alive   */
 	volatile int num_threads_working; /* threads currently working */
 	pthread_mutex_t thcount_lock;     /* used for thread count etc */
@@ -102,7 +103,7 @@ static void bsem_wait(struct bsem *bsem_p);
 /* ========================== THREADPOOL ============================ */
 
 /* Initialise thread pool */
-struct thpool_ *thpool_init(int num_threads) {
+struct thpool_ *thpool_init(int num_threads, const char *name) {
 
 	threads_on_hold = 0;
 	threads_keepalive = 1;
@@ -118,6 +119,12 @@ struct thpool_ *thpool_init(int num_threads) {
 		err("thpool_init(): Could not allocate memory for thread pool\n");
 		return NULL;
 	}
+	if(name == NULL) {
+		err("thpool_init(): missing thread pool name\n");
+		return NULL;
+	}
+
+	thpool_p->name = name;
 	thpool_p->num_threads_alive = 0;
 	thpool_p->num_threads_working = 0;
 
@@ -309,7 +316,7 @@ static void *thread_do(struct thread *thread_p) {
 
 	/* Set thread name for profiling and debuging */
 	char thread_name[128] = {0};
-	sprintf(thread_name, "thread-pool-%d", thread_p->id);
+	sprintf(thread_name, "thread-pool-%s-%d", thread_p->thpool_p->name, thread_p->id);
 
 #if defined(__linux__)
 	/* Use prctl instead to prevent using _GNU_SOURCE flag and implicit declaration */

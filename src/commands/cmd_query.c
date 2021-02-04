@@ -19,7 +19,7 @@
 #include "../execution_plan/execution_plan.h"
 #include "execution_ctx.h"
 
-extern threadpool _workerpool; // Declared in module.c
+extern threadpool _writers_thpool; // Declared in module.c
 
 // GraphQueryCtx stores the allocations required to execute a query.
 typedef struct {
@@ -225,7 +225,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
 
 	// dispatch work to the writer thread
-	int res = thpool_add_work(_workerpool, _ExecuteQuery, gq_ctx);
+	int res = thpool_add_work(_writers_thpool, _ExecuteQuery, gq_ctx);
 	ASSERT(res == 0);
 }
 

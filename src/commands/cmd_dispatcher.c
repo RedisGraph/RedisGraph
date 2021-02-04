@@ -4,12 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../RG.h"
+#include "RG.h"
 #include "commands.h"
 #include "cmd_context.h"
-#include "../RG.h"
 
 #define GRAPH_VERSION_MISSING -1
+
+extern threadpool _readers_thpool;
 
 // Command handler function pointer.
 typedef void(*Command_Handler)(void *args);
@@ -196,7 +197,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 				is_replicated, compact, timeout);
-		thpool_add_work(_thpool, handler, context);
+		thpool_add_work(_readers_thpool, handler, context);
 	}
 
 	return REDISMODULE_OK;

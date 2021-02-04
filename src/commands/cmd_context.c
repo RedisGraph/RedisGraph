@@ -11,7 +11,7 @@
 #include "../util/thpool/thpool.h"
 #include "../slow_log/slow_log.h"
 
-extern threadpool _thpool; // Declared in module.c
+extern threadpool _readers_thpool; // Declared in module.c
 
 /* Array with one entry per worker thread
  * keeps track after currently executing commands
@@ -63,14 +63,17 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	ASSERT(command_ctxs != NULL);
 
 	int tid;
-	if(ctx->thread == EXEC_THREAD_WRITER) {
-		// the writer thread's CommandCtx is always stored at the index thread_count
-		tid = thpool_num_threads(_thpool);
-	} else {
+	if(ctx->thread == EXEC_THREAD_READER) {
 		// +1 to compensate for Redis main thread
-		tid = thpool_get_thread_id(_thpool, pthread_self()) + 1;
+		tid = thpool_get_thread_id(_readers_thpool, pthread_self()) + 1;
+	} else if(ctx->thread == EXEC_THREAD_WRITER) {
+		// the writer thread's CommandCtx is always stored at the index thread_count
+		// +1 to compensate for Redis main thread
+		tid = thpool_num_threads(_readers_thpool) + 1;
+	} else {
+		ASSERT(ctx->thread == EXEC_THREAD_MAIN);
+		tid = 0;
 	}
-
 
 	ASSERT(command_ctxs[tid] == NULL);
 
@@ -84,12 +87,16 @@ void CommandCtx_UntrackCtx(CommandCtx *ctx) {
 	ASSERT(command_ctxs != NULL);
 
 	int tid;
-	if(ctx->thread == EXEC_THREAD_WRITER) {
-		// the writer thread's CommandCtx is always stored at the index thread_count
-		tid = thpool_num_threads(_thpool);
-	} else {
+	if(ctx->thread == EXEC_THREAD_READER) {
 		// +1 to compensate for Redis main thread
-		tid = thpool_get_thread_id(_thpool, pthread_self()) + 1;
+		tid = thpool_get_thread_id(_readers_thpool, pthread_self()) + 1;
+	} else if(ctx->thread == EXEC_THREAD_WRITER) {
+		// the writer thread's CommandCtx is always stored at the index thread_count
+		// +1 to compensate for Redis main thread
+		tid = thpool_num_threads(_readers_thpool) + 1;
+	} else {
+		ASSERT(ctx->thread == EXEC_THREAD_MAIN);
+		tid = 0;
 	}
 
 	ASSERT(command_ctxs[tid] == ctx);

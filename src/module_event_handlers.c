@@ -25,7 +25,8 @@ extern RedisModuleType *GraphContextRedisModuleType;
 // Graph meta keys type as it is registered at Redis.
 extern RedisModuleType *GraphMetaRedisModuleType;
 // Module thread pool, defined in module.c
-extern threadpool _thpool;
+extern threadpool _readers_thpool;
+extern threadpool _writers_thpool;
 
 /* Both of the following fields are required to verify that the module is replicated
  * in a successful manner. In a sharded environment, there could be a race condition between the decoding of
@@ -212,7 +213,8 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 	// `thpool_destroy` will block for one second (at most)
 	// giving all worker threads a chance to exit.
 	// after which it will simply call `thread_destroy` and continue.
-	thpool_destroy(_thpool);
+	thpool_destroy(_readers_thpool);
+	thpool_destroy(_writers_thpool);
 
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();

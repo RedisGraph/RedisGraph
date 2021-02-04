@@ -17,7 +17,7 @@
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-extern threadpool _thpool; // Declared in module.c
+extern threadpool _writers_thpool; // Declared in module.c
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
@@ -41,7 +41,7 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 
 		if(async_delete) {
 			// Async delete
-			thpool_add_work(_thpool, _GraphContext_Free, gc);
+			thpool_add_work(_writers_thpool, _GraphContext_Free, gc);
 		} else {
 			// Sync delete
 			_GraphContext_Free(gc);

@@ -44,8 +44,8 @@ bool process_is_child;              // Flag indicating whether the running proce
 //------------------------------------------------------------------------------
 // Thread pool variables
 //------------------------------------------------------------------------------
-threadpool _thpool = NULL;
-threadpool _workerpool = NULL;
+threadpool _readers_thpool = NULL;
+threadpool _writers_thpool = NULL;
 
 extern CommandCtx **command_ctxs;
 
@@ -55,11 +55,11 @@ extern CommandCtx **command_ctxs;
  * Returns 1 if thread pool initialized, 0 otherwise. */
 static int _Setup_ThreadPOOL(int threadCount) {
 	// Create thread pool.
-	_thpool = thpool_init(threadCount);
-	if(_thpool == NULL) return 0;
+	_readers_thpool = thpool_init(threadCount, "reader");
+	if(_readers_thpool == NULL) return 0;
 
-	_workerpool = thpool_init(1);
-	if(_workerpool == NULL) return 0;
+	_writers_thpool = thpool_init(1, "writer");
+	if(_writers_thpool == NULL) return 0;
 
 	return 1;
 }

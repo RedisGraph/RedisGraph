@@ -12,7 +12,8 @@
 #include "util/thpool/thpool.h"
 #include "commands/cmd_context.h"
 
-extern threadpool _thpool;
+extern threadpool _readers_thpool;
+extern threadpool _writers_thpool;
 extern CommandCtx **command_ctxs;
 
 static struct sigaction old_act;
@@ -26,7 +27,9 @@ static void endCrashReport(void) {
 }
 
 static void logCommands(void) {
-	int nthreads = thpool_num_threads(_thpool);
+	// #readers + #writers + Redis main thread
+	int nthreads = thpool_num_threads(_readers_thpool) +
+		thpool_num_threads(_writers_thpool) + 1;
 
 	for(int i = 0; i < nthreads; i++) {
 		CommandCtx *cmd = command_ctxs[i];
@@ -44,10 +47,13 @@ void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
 	// pause all working threads
 	// NOTE: pausing is not an atomic action;
 	// other threads can potentially change states before being interrupted.
-	thpool_pause(_thpool);
+	thpool_pause(_readers_thpool);
+	thpool_pause(_writers_thpool);
 
 	char *command_desc = NULL;
-	int nthreads = thpool_num_threads(_thpool);
+	// #readers + #writers + Redis main thread
+	int nthreads = thpool_num_threads(_readers_thpool) +
+		thpool_num_threads(_writers_thpool) + 1;
 
 	RedisModule_InfoAddSection(ctx, "executing commands");
 
@@ -64,7 +70,8 @@ void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
 void crashHandler(int sig, siginfo_t *info, void *ucontext) {
 	// pause all working threads
 	// NOTE: pausing is an async operation
-	thpool_pause(_thpool);
+	thpool_pause(_readers_thpool);
+	thpool_pause(_writers_thpool);
 
 	startCrashReport();
 
