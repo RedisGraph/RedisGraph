@@ -45,6 +45,7 @@ bool process_is_child;              // Flag indicating whether the running proce
 // Thread pool variables
 //------------------------------------------------------------------------------
 threadpool _thpool = NULL;
+threadpool _workerpool = NULL;
 
 extern CommandCtx **command_ctxs;
 
@@ -56,6 +57,9 @@ static int _Setup_ThreadPOOL(int threadCount) {
 	// Create thread pool.
 	_thpool = thpool_init(threadCount);
 	if(_thpool == NULL) return 0;
+
+	_workerpool = thpool_init(1);
+	if(_workerpool == NULL) return 0;
 
 	return 1;
 }
