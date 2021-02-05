@@ -8,6 +8,7 @@
 // #include "RG.h"
 #include "rmalloc.h"
 #include "strutil.h"
+#include "sds/sds.h"
 #include "../value.h"
 #include "../query_ctx.h"
 #include "../datatypes/map.h"
