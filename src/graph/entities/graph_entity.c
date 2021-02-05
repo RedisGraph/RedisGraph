@@ -12,7 +12,6 @@
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
-#include "../../util/strutil.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
@@ -132,7 +131,7 @@ size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_
 		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s:", key);
 
 		// print value
-		SIValue_ToString(properties[i].value, buffer, bufferLen, bytesWritten, false);
+		SIValue_ToString(properties[i].value, buffer, bufferLen, bytesWritten);
 
 		// if not the last element print ", "
 		if(i != propCount - 1) *bytesWritten = snprintf(*buffer + *bytesWritten, *bufferLen, ", ");
@@ -219,92 +218,6 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 		*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
 	}
 	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
-}
-
-static void _PropertiesToJSON(const GraphEntity *ge, char **buf, size_t *bufferLen,
-							  size_t *bytesWritten) {
-
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "\"properties\": {");
-	uint prop_count = ENTITY_PROP_COUNT(ge);
-	EntityProperty *properties = ENTITY_PROPS(ge);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	for(uint i = 0; i < prop_count; i ++) {
-		const char *key = GraphContext_GetAttributeString(gc, properties[i].id);
-		if(*bufferLen - *bytesWritten < 64 + strlen(key)) {
-			str_ExtendBuffer(buf, bufferLen, 64 + strlen(key));
-		}
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "\"%s\": ", key);
-		SIValue_ToString(properties[i].value, buf, bufferLen, bytesWritten, true);
-		if(i < prop_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
-	}
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}");
-
-}
-
-static void _Node_ToJSON(const Node *n, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "\"id\": %lu, ", ENTITY_GET_ID(n));
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "\"labels\": [");
-	// Label data will only be populated if provided by the query string.
-	const char *label = NULL;
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	int labelID = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-	if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
-	if(*bufferLen - *bytesWritten < 64 + strlen(label)) {
-		str_ExtendBuffer(buf, bufferLen, 64 + strlen(label));
-	}
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "\"%s\"", label);
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "], ");
-	_PropertiesToJSON((const GraphEntity *)n, buf, bufferLen, bytesWritten);
-}
-
-static void _Edge_ToJSON(Edge *e, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "\"id\": %lu, ", ENTITY_GET_ID(e));
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	// Retrieve reltype data.
-	int id = Graph_GetEdgeRelation(gc->g, e);
-	const char *relationship = gc->relation_schemas[id]->name;
-	if(*bufferLen - *bytesWritten < 64 + strlen(relationship)) {
-		str_ExtendBuffer(buf, bufferLen, 64 + strlen(relationship));
-	}
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "\"relationship\": \"%s\", ",
-							  relationship);
-	_PropertiesToJSON((const GraphEntity *)e, buf, bufferLen, bytesWritten);
-
-	if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", \"start\": {");
-	// Retrieve source node data.
-	Node src;
-	Graph_GetNode(gc->g, e->srcNodeID, &src);
-	_Node_ToJSON(&src, buf, bufferLen, bytesWritten);
-
-	if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}, \"end\": {");
-	// Retrieve dest node data.
-	Node dest;
-	Graph_GetNode(gc->g, e->destNodeID, &dest);
-	_Node_ToJSON(&dest, buf, bufferLen, bytesWritten);
-
-	if(*bufferLen - *bytesWritten < 2) str_ExtendBuffer(buf, bufferLen, 2);
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}");
-}
-
-void GraphEntity_ToJSON(GraphEntity *ge, char **buf, size_t *bufferLen, size_t *bytesWritten,
-						GraphEntityType type) {
-	// resize buffer if buffer length is less than 64
-	if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
-	switch(type) {
-	case GETYPE_NODE:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "{\"type\": \"node\", ");
-		_Node_ToJSON((const Node *)ge, buf, bufferLen, bytesWritten);
-		break;
-	case GETYPE_EDGE:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "{\"type\": \"relationship\", ");
-		_Edge_ToJSON((Edge *)ge, buf, bufferLen, bytesWritten);
-		break;
-	default:
-		ASSERT(false);
-	}
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}");
 }
 
 inline bool GraphEntity_IsDeleted(const GraphEntity *e) {

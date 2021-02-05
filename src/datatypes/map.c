@@ -254,8 +254,7 @@ void Map_ToString
 	SIValue map,          // map to get string representation from
 	char **buf,           // buffer to populate
 	size_t *bufferLen,    // size of buffer
-	size_t *bytesWritten, // length of string
-	bool json             // whether the string should be encoded as JSON
+	size_t *bytesWritten  // length of string
 ) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	ASSERT(buf != NULL);
@@ -273,10 +272,10 @@ void Map_ToString
 	for(uint i = 0; i < key_count; i ++) {
 		Pair p = map.map[i];
 		// write the next key/value pair
-		SIValue_ToString(p.key, buf, bufferLen, bytesWritten, json);
+		SIValue_ToString(p.key, buf, bufferLen, bytesWritten);
 		if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ": ");
-		SIValue_ToString(p.val, buf, bufferLen, bytesWritten, json);
+		SIValue_ToString(p.val, buf, bufferLen, bytesWritten);
 		// if this is not the last element, add ", "
 		if(i != key_count - 1) {
 			if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);

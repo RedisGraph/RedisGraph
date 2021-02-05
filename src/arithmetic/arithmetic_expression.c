@@ -652,7 +652,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 	} else {
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
-			SIValue_ToString(root->operand.constant, str, str_size, bytes_written, false);
+			SIValue_ToString(root->operand.constant, str, str_size, bytes_written);
 		} else {
 			*bytes_written += sprintf((*str + *bytes_written), "%s", root->operand.variadic.entity_alias);
 		}

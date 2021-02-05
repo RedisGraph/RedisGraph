@@ -44,8 +44,7 @@ SIValue SIArray_Clone(SIValue siarray) {
 	return newArray;
 }
 
-void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten,
-					  bool json) {
+void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
 		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
@@ -55,7 +54,7 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 	uint arrayLen = SIArray_Length(list);
 	for(uint i = 0; i < arrayLen; i ++) {
 		// write the next value
-		SIValue_ToString(SIArray_Get(list, i), buf, bufferLen, bytesWritten, json);
+		SIValue_ToString(SIArray_Get(list, i), buf, bufferLen, bytesWritten);
 		// if it is the last element, add ", "
 		if(i != arrayLen - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 	}

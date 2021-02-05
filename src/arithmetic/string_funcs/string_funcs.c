@@ -10,6 +10,7 @@
 #include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
 #include "../../util/strutil.h"
+#include "../../util/json_encoder.h"
 
 /* returns a string containing the specified number of leftmost characters of the original string. */
 SIValue AR_LEFT(SIValue *argv, int argc) {
@@ -153,7 +154,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	size_t len = SIValue_StringJoinLen(argv, 1, "");
 	char *str = rm_malloc(len * sizeof(char));
 	size_t bytesWritten = 0;
-	SIValue_ToString(argv[0], &str, &len, &bytesWritten, false);
+	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
 	return SI_TransferStringVal(str);
 }
 
@@ -163,7 +164,7 @@ SIValue AR_TOJSON(SIValue *argv, int argc) {
 	size_t bufferLen = 64;
 	size_t bytesWritten = 0;
 	char *buf = rm_malloc(bufferLen * sizeof(char));
-	SIValue_ToString(argv[0], &buf, &bufferLen, &bytesWritten, true);
+	JsonEncoder_SIValue(argv[0], &buf, &bufferLen, &bytesWritten);
 	return SI_TransferStringVal(buf);
 }
 

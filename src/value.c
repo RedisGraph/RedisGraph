@@ -20,16 +20,13 @@
 #include "datatypes/path/sipath.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
-									  size_t *bytesWritten, bool quoteStrings) {
+									  size_t *bytesWritten) {
 	size_t strLen = strlen(str.stringval);
-	if(quoteStrings) strLen += 2;
 	if(*bufferLen - *bytesWritten < strLen) {
 		*bufferLen += strLen;
 		*buf = rm_realloc(*buf, *bufferLen);
 	}
-	// Print string to buffer, interpolating with quotes if specified.
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%.*s%s%.*s", quoteStrings, "\"",
-							  str.stringval, quoteStrings, "\"");
+	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", str.stringval);
 }
 
 SIValue SI_LongVal(int64_t i) {
@@ -254,7 +251,7 @@ const char *SIType_ToString(SIType t) {
 	}
 }
 
-void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten, bool json) {
+void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	// uint64 max and int64 min string representation requires 21 bytes
 	// float defaults to print 6 digit after the decimal-point
 	// checkt for enough space
@@ -265,7 +262,7 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 
 	switch(v.type) {
 	case T_STRING:
-		_SIString_ToString(v, buf, bufferLen, bytesWritten, json);
+		_SIString_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_INT64:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);
@@ -277,22 +274,22 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%f", v.doubleval);
 		break;
 	case T_NODE:
-		Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID, json);
+		Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
 		break;
 	case T_EDGE:
-		Edge_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID, json);
+		Edge_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
 		break;
 	case T_ARRAY:
-		SIArray_ToString(v, buf, bufferLen, bytesWritten, json);
+		SIArray_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_MAP:
-		Map_ToString(v, buf, bufferLen, bytesWritten, json);
+		Map_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_PATH:
-		SIPath_ToString(v, buf, bufferLen, bytesWritten, json);
+		SIPath_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_NULL:
-		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "null");
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
 		break;
 	case T_PTR:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
@@ -358,7 +355,7 @@ void SIValue_StringJoin(SIValue *strings, unsigned int string_count, const char 
 						char **buf, size_t *buf_len, size_t *bytesWritten) {
 
 	for(int i = 0; i < string_count; i ++) {
-		SIValue_ToString(strings[i], buf, buf_len, bytesWritten, false);
+		SIValue_ToString(strings[i], buf, buf_len, bytesWritten);
 		if(i < string_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *buf_len, "%s", delimiter);
 	}
 }

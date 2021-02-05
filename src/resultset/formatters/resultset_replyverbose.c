@@ -158,7 +158,7 @@ static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array)
 	size_t bufferLen = 512;
 	char *str = rm_calloc(bufferLen, sizeof(char));
 	size_t bytesWrriten = 0;
-	SIValue_ToString(array, &str, &bufferLen, &bytesWrriten, false);
+	SIValue_ToString(array, &str, &bufferLen, &bytesWrriten);
 	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
 	rm_free(str);
 }
@@ -173,7 +173,7 @@ static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map) {
 	size_t bufferLen = 512;
 	char *str = rm_calloc(bufferLen, sizeof(char));
 	size_t bytesWrriten = 0;
-	SIValue_ToString(map, &str, &bufferLen, &bytesWrriten, false);
+	SIValue_ToString(map, &str, &bufferLen, &bytesWrriten);
 	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
 	rm_free(str);
 }

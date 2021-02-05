@@ -49,5 +49,5 @@ typedef struct {
 
 /* Prints a string representation of the node to buffer, return the string length. */
 void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,
-				   GraphEntityStringFromat format, bool json);
+				   GraphEntityStringFromat format);
 

@@ -183,9 +183,9 @@ TEST_F(MapTest, map_tostring) {
 	size_t buf_len = 256;
 	size_t bytes_written = 0;
 	char *buf = (char *)rm_malloc(sizeof(char) * 256);
-	Map_ToString(map, &buf, &buf_len, &bytes_written, false);
+	Map_ToString(map, &buf, &buf_len, &bytes_written);
 
-	ASSERT_STREQ(buf, "{key0: 0, key1: 1.000000, key2: val0, key3: {inner_key: null}}");
+	ASSERT_STREQ(buf, "{key0: 0, key1: 1.000000, key2: val0, key3: {inner_key: NULL}}");
 
 	rm_free(buf);
 	SIValue_Free(map);
