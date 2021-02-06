@@ -11,27 +11,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
-#include "../util/thpool/thpool.h"
-
-extern threadpool _readers_thpool;  // declared in module.c
-extern threadpool _writers_thpool;  // declared in module.c
-
-static int get_thread_id() {
-	// thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
-	// most likely Redis main thread
-	int thread_id;
-	pthread_t pthread = pthread_self();
-
-	// search in writers
-	thread_id = thpool_get_thread_id(_writers_thpool, pthread);
-	if(thread_id != -1) return thpool_num_threads(_readers_thpool) + 1; // compensate for Redis main thread
-
-	// search in readers pool
-	thread_id = thpool_get_thread_id(_readers_thpool, pthread);
-	if(thread_id != -1) return thread_id + 1; // compensate for Redis main thread
-
-	return 0; // Redis main thread
-}
+#include "../util/thpool/pools.h"
 
 /* Redis prints doubles with up to 17 digits of precision, which captures
  * the inaccuracy of many floating-point numbers (such as 0.1).
@@ -106,9 +86,8 @@ static bool _SlowLog_Contains(const SlowLog *slowlog, int t_id, const char *cmd,
 SlowLog *SlowLog_New() {
 	SlowLog *slowlog = rm_malloc(sizeof(SlowLog));
 
-	// Redis main thread + writer thread.
-	int thread_count = thpool_num_threads(_readers_thpool) +
-		thpool_num_threads(_writers_thpool) + 1;
+	// Redis main thread + writer threads + reader threads.
+	int thread_count = ThreadPools_ThreadCount() + 1;
 
 	slowlog->count = thread_count;
 	slowlog->lookup = rm_malloc(sizeof(rax *) * thread_count);
@@ -134,7 +113,7 @@ void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 	char *key;
 	time_t _time;
 	SlowLogItem *existing_item;
-	int t_id = get_thread_id();
+	int t_id = ThreadPools_GetThreadID();
 	rax *lookup = slowlog->lookup[t_id];
 	heap_t *heap = slowlog->min_heap[t_id];
 	pthread_mutex_t *lock = slowlog->locks + t_id;
@@ -192,7 +171,7 @@ cleanup:
 
 void SlowLog_Replay(const SlowLog *slowlog, RedisModuleCtx *ctx) {
 	SlowLog *aggregated_slowlog = SlowLog_New();
-	int my_t_id = get_thread_id();
+	int my_t_id = ThreadPools_GetThreadID();
 
 	for(int t_id = 0; t_id < slowlog->count; t_id++) {
 		// Don't lock ourselves.

@@ -15,11 +15,9 @@
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../util/cache/cache.h"
-#include "../util/thpool/thpool.h"
+#include "../util/thpool/pools.h"
 #include "../execution_plan/execution_plan.h"
 #include "execution_ctx.h"
-
-extern threadpool _writers_thpool; // Declared in module.c
 
 // GraphQueryCtx stores the allocations required to execute a query.
 typedef struct {
@@ -185,11 +183,12 @@ static void _ExecuteQuery(void *args) {
 	}
 
 	QueryCtx_ForceUnlockCommit();
-	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
-	else Graph_WriterLeave(gc->g);
 
 	// send result-set back to client
 	ResultSet_Reply(result_set);
+
+	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
+	else Graph_WriterLeave(gc->g);
 
 	// log query to slowlog
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
@@ -225,7 +224,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
 
 	// dispatch work to the writer thread
-	int res = thpool_add_work(_writers_thpool, _ExecuteQuery, gq_ctx);
+	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx);
 	ASSERT(res == 0);
 }
 
