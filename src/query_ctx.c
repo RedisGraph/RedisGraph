@@ -35,9 +35,16 @@ bool QueryCtx_Init(void) {
 	return (pthread_key_create(&_tlsQueryCtxKey, NULL) == 0);
 }
 
-void QueryCtx_Finalize(void) {
-	int res = pthread_key_delete(_tlsQueryCtxKey);
-	ASSERT(res == 0);
+inline QueryCtx *QueryCtx_GetQueryCtx() {
+	return _QueryCtx_GetCtx();
+}
+
+inline void QueryCtx_SetTLS(QueryCtx *query_ctx) {
+	pthread_setspecific(_tlsQueryCtxKey, query_ctx);
+}
+
+inline void QueryCtx_RemoveFromTLS() {
+	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
 
 void QueryCtx_BeginTimer(void) {
@@ -230,6 +237,6 @@ void QueryCtx_Free(void) {
 
 	rm_free(ctx);
 	// NULL-set the context for reuse the next time this thread receives a query
-	pthread_setspecific(_tlsQueryCtxKey, NULL);
+	QueryCtx_RemoveFromTLS();
 }
 

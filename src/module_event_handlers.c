@@ -13,6 +13,7 @@
 #include "serializers/graphmeta_type.h"
 #include "config.h"
 #include "util/redis_version.h"
+#include "util/thpool/pools.h"
 #include "util/uuid.h"
 
 // Global array tracking all extant GraphContexts.
@@ -200,6 +201,19 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, 
 									 void *data) {
 	if(_IsEventPersistenceStart(eid, subevent)) _CreateKeySpaceMetaKeys(ctx);
 	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, false);
+}
+
+// Perform clean-up upon server shutdown.
+static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
+		void *data) {
+	// Wait for all wokrer threads to exit.
+	// `thpool_destroy` will block for one second (at most)
+	// giving all worker threads a chance to exit.
+	// after which it will simply call `thread_destroy` and continue.
+	ThreadPools_Destroy();
+
+	// Server is shutting down, finalize GraphBLAS.
+	GrB_finalize();
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {

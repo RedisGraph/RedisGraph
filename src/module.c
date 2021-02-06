@@ -16,7 +16,7 @@
 #include "query_ctx.h"
 #include "arithmetic/funcs.h"
 #include "commands/commands.h"
-#include "util/thpool/thpool.h"
+#include "util/thpool/pools.h"
 #include "graph/graphcontext.h"
 #include "ast/cypher_whitelist.h"
 #include "procedures/procedure.h"
@@ -41,24 +41,7 @@ RG_Config config;                   // Module global configuration.
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
 
-//------------------------------------------------------------------------------
-// Thread pool variables
-//------------------------------------------------------------------------------
-threadpool _thpool = NULL;
-
 extern CommandCtx **command_ctxs;
-
-/* Set up thread pool,
- * number of threads within pool should be
- * the number of available hyperthreads.
- * Returns 1 if thread pool initialized, 0 otherwise. */
-static int _Setup_ThreadPOOL(int threadCount) {
-	// Create thread pool.
-	_thpool = thpool_init(threadCount);
-	if(_thpool == NULL) return 0;
-
-	return 1;
-}
 
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
@@ -121,11 +104,15 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
 
-	int threadCount;
-	Config_Option_get(Config_THREAD_POOL_SIZE, &threadCount);
+	int reader_thread_count;
+	int writer_thread_count = 1;
+	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
 
-	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
-	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
+	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count)) {
+		return REDISMODULE_ERR;
+	}
+
+	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", reader_thread_count);
 
 	int ompThreadCount;
 	Config_Option_get(Config_OPENMP_NTHREAD, &ompThreadCount);
@@ -136,8 +123,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
-	// Initialize array of command contexts
-	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
+	// initialize array of command contexts
+	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx*));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
