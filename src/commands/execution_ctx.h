@@ -23,10 +23,10 @@ typedef enum {
  * @brief  A struct for saving execution objects in cache.
  */
 typedef struct {
-	AST *ast;                   // AST relevant for the current execution context.
-	bool cached;                // Indicate if this struct was returned from cache.
-	ExecutionPlan *plan;        // Execution plan relevant for the current execution context.
-	ExecutionType exec_type;
+	AST *ast;                   // AST
+	bool cached;                // cache hit/miss
+	ExecutionPlan *plan;        // execution plan
+	ExecutionType exec_type;    // execution type: query, index create/delete
 } ExecutionCtx;
 
 /**
