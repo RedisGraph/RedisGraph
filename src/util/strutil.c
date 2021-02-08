@@ -7,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "RG.h"
+#include "rmalloc.h"
 
 void str_tolower(const char *str, char *lower, size_t *lower_len) {
 	size_t str_len = strlen(str);
@@ -33,3 +34,14 @@ void str_toupper(const char *str, char *upper, size_t *upper_len) {
 	for(; i < str_len; i++) upper[i] = toupper(str[i]);
 	upper[i] = 0;
 }
+
+// Utility function to increase the size of a buffer.
+void str_ExtendBuffer(
+	char **buf,           // buffer to populate
+	size_t *bufferLen,    // size of buffer
+	size_t extensionLen   // number of bytes to add
+) {
+	*bufferLen += extensionLen;
+	*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+}
+
