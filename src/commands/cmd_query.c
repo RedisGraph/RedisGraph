@@ -206,7 +206,7 @@ static void _ExecuteQuery(void *args) {
 }
 
 static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
-	ASSERT(qg_ctx != NULL);
+	ASSERT(gq_ctx != NULL);
 
 	//---------------------------------------------------------------------------
 	// Migrate to writer thread
@@ -271,7 +271,7 @@ void Graph_Query(void *args) {
 
 	// populate the container struct for invoking _ExecuteQuery.
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
-			readonly);
+											  readonly);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from

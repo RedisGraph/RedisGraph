@@ -5,27 +5,25 @@
 */
 
 #include "json_encoder.h"
-// #include "RG.h"
 #include "sds/sds.h"
 #include "rmalloc.h"
 #include "strutil.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../query_ctx.h"
-#include "../datatypes/map.h"
-#include "../datatypes/array.h"
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
-#include "../datatypes/path/sipath.h"
+#include "../datatypes/datatypes.h"
 
 // Forward declaration
 sds _JsonEncoder_SIValue(SIValue v, sds s);
 
-static inline char *_JsonEncoder_String(SIValue v, sds s) {
+static inline sds _JsonEncoder_String(SIValue v, sds s) {
 	return sdscatfmt(s, "\"%s\"", v.stringval);
 }
 
-static char *_JsonEncoder_Properties(const GraphEntity *ge, sds s) {
+static sds _JsonEncoder_Properties(const GraphEntity *ge, sds s) {
 	s = sdscat(s, "\"properties\": {");
 	uint prop_count = ENTITY_PROP_COUNT(ge);
 	EntityProperty *properties = ENTITY_PROPS(ge);
@@ -40,7 +38,7 @@ static char *_JsonEncoder_Properties(const GraphEntity *ge, sds s) {
 	return s;
 }
 
-static char *_JsonEncoder_Node(const Node *n, sds s) {
+static sds _JsonEncoder_Node(const Node *n, sds s) {
 	s = sdscatfmt(s, "\"id\": %U", ENTITY_GET_ID(n));
 	s = sdscat(s, ", \"labels\": [");
 	// Label data will only be populated if provided by the query string.
@@ -48,7 +46,10 @@ static char *_JsonEncoder_Node(const Node *n, sds s) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	int labelID = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
 	if(labelID != GRAPH_NO_LABEL) {
-		label = gc->node_schemas[labelID]->name;
+		Schema *schema = GraphContext_GetSchemaByID(gc, labelID, SCHEMA_NODE);
+		ASSERT(schema);
+		label = Schema_GetName(schema);
+		ASSERT(label);
 		s = sdscatfmt(s, "\"%s\"", label);
 	}
 	s = sdscat(s, "], ");
@@ -56,12 +57,15 @@ static char *_JsonEncoder_Node(const Node *n, sds s) {
 	return s;
 }
 
-static char *_JsonEncoder_Edge(Edge *e, sds s) {
+static sds _JsonEncoder_Edge(Edge *e, sds s) {
 	s = sdscatfmt(s, "\"id\": %U", ENTITY_GET_ID(e));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Retrieve reltype data.
 	int id = Graph_GetEdgeRelation(gc->g, e);
-	const char *relationship = gc->relation_schemas[id]->name;
+	Schema *schema = GraphContext_GetSchemaByID(gc, id, SCHEMA_EDGE);
+	ASSERT(schema);
+	const char *relationship = Schema_GetName(schema);
+	ASSERT(relationship);
 	s = sdscatfmt(s, ", \"relationship\": \"%s\", ", relationship);
 
 	s = _JsonEncoder_Properties((const GraphEntity *)e, s);
@@ -82,7 +86,7 @@ static char *_JsonEncoder_Edge(Edge *e, sds s) {
 	return s;
 }
 
-static char *_JsonEncoder_GraphEntity(GraphEntity *ge, sds s, GraphEntityType type) {
+static sds _JsonEncoder_GraphEntity(GraphEntity *ge, sds s, GraphEntityType type) {
 	switch(type) {
 	case GETYPE_NODE:
 		s = sdscat(s, "{\"type\": \"node\", ");
@@ -99,7 +103,7 @@ static char *_JsonEncoder_GraphEntity(GraphEntity *ge, sds s, GraphEntityType ty
 	return s;
 }
 
-static char *_JsonEncoder_Path(SIValue p, sds s) {
+static sds _JsonEncoder_Path(SIValue p, sds s) {
 	// open path with "["
 	s = sdscat(s, "[");
 
@@ -124,7 +128,7 @@ static char *_JsonEncoder_Path(SIValue p, sds s) {
 	return s;
 }
 
-static char *_JsonEncoder_Array(SIValue list, sds s) {
+static sds _JsonEncoder_Array(SIValue list, sds s) {
 	// open array with "["
 	s = sdscat(s, "[");
 	uint arrayLen = SIArray_Length(list);
@@ -140,7 +144,7 @@ static char *_JsonEncoder_Array(SIValue list, sds s) {
 	return s;
 }
 
-static char *_JsonEncoder_Map(SIValue map, sds s) {
+static sds _JsonEncoder_Map(SIValue map, sds s) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 
 	// "{" marks the beginning of a map
@@ -197,7 +201,7 @@ sds _JsonEncoder_SIValue(SIValue v, sds s) {
 		break;
 	default:
 		// unrecognized type
-		printf("unrecognized type: %d\n", v.type);
+		ErrorCtx_RaiseRuntimeException("JSON encoder encountered unrecognized type: %d\n", v.type);
 		ASSERT(false);
 		break;
 	}
