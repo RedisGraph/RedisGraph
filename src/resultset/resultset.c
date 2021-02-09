@@ -90,14 +90,14 @@ void ResultSet_MapProjection(ResultSet *set, const Record r) {
 	}
 }
 
-static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
+static void _ResultSet_ReplyWithPreamble(ResultSet *set) {
 	ASSERT(ResultSet_RowCount(set) == 0);
 
 	// prepare a response containing a header, records, and statistics
 	RedisModule_ReplyWithArray(set->ctx, 3);
 
 	// emit the table header using the appropriate formatter
-	set->formatter->EmitHeader(set->ctx, set->columns, r, set->columns_record_map);
+	set->formatter->EmitHeader(set->ctx, set->columns, set->columns_record_map);
 
 	set->header_emitted = true;
 }
@@ -181,7 +181,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 		// map columns to record indices
 		ResultSet_MapProjection(set, r);
 		// prepare response arrays and emit the header
-		_ResultSet_ReplyWithPreamble(set, r);
+		_ResultSet_ReplyWithPreamble(set);
 	}
 
 	_ResultSet_ConsumeRecord(set, r);
@@ -238,7 +238,7 @@ void ResultSet_Reply(ResultSet *set) {
 	} else if(set->header_emitted == false && set->columns != NULL) {
 		ASSERT(row_count == 0);
 		// Handle the edge case in which the query was intended to return results, but none were created.
-		_ResultSet_ReplyWithPreamble(set, NULL);
+		_ResultSet_ReplyWithPreamble(set);
 		RedisModule_ReplyWithEmptyArray(set->ctx);
 	} else {
 		// Queries that don't emit data will only emit statistics
