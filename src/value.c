@@ -182,11 +182,9 @@ void SIValue_MakeVolatile(SIValue *v) {
  * Heap allocations that are not scoped to the input SIValue, such as strings from the AST
  * or a GraphEntity property, are not modified. */
 void SIValue_Persist(SIValue *v) {
-	// Do nothing for non-volatile values.
-	if(v->allocation != M_VOLATILE) return;
-
-	// For volatile values, persisting uses the same logic as cloning.
-	*v = SI_CloneValue(*v);
+	// do nothing for non-volatile values
+	// for volatile values, persisting uses the same logic as cloning
+	if(v->allocation == M_VOLATILE) *v = SI_CloneValue(*v);
 }
 
 /* Update an SIValue's allocation type to the provided value. */
