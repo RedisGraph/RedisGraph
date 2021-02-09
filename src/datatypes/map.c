@@ -9,10 +9,13 @@
 #include "../util/qsort.h"
 #include "../util/strcmp.h"
 #include "../util/rmalloc.h"
+#include "../util/strutil.h"
 
 static inline Pair Pair_New(SIValue key, SIValue val) {
 	ASSERT(SI_TYPE(key) & T_STRING);
-	return (Pair) { .key = SI_CloneValue(key), .val = SI_CloneValue(val) };
+	return (Pair) {
+		.key = SI_CloneValue(key), .val = SI_CloneValue(val)
+	};
 }
 
 static void Pair_Free(Pair p) {
@@ -76,7 +79,7 @@ void Map_Add
 	SIValue key,
 	SIValue value
 ) {
-	ASSERT(SI_TYPE(map) & T_MAP);
+	ASSERT(SI_TYPE(*map) & T_MAP);
 	ASSERT(SI_TYPE(key) & T_STRING);
 
 	// remove key if already existed
@@ -212,7 +215,7 @@ int Map_Compare
 		// key lookup succeeded; compare values
 		order = SIValue_Compare(A[i].val, B[i].val, disjointOrNull);
 		if(disjointOrNull && (*disjointOrNull == COMPARED_NULL ||
-					*disjointOrNull == DISJOINT)) {
+							  *disjointOrNull == DISJOINT)) {
 			return 0;
 		}
 
@@ -246,16 +249,6 @@ XXH64_hash_t Map_HashCode
 	return hashCode;
 }
 
-// Utility function to increase the size of a buffer.
-static inline void _ExtendBuffer(
-	char **buf,           // buffer to populate
-	size_t *bufferLen,    // size of buffer
-	size_t extensionLen   // number of bytes to add
-) {
-	*bufferLen += extensionLen;
-	*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
-}
-
 void Map_ToString
 (
 	SIValue map,          // map to get string representation from
@@ -269,7 +262,7 @@ void Map_ToString
 	ASSERT(bytesWritten != NULL);
 
 	// resize buffer if buffer length is less than 64
-	if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
+	if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 
 	uint key_count = Map_KeyCount(map);
 
@@ -280,18 +273,18 @@ void Map_ToString
 		Pair p = map.map[i];
 		// write the next key/value pair
 		SIValue_ToString(p.key, buf, bufferLen, bytesWritten);
-		if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
+		if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ": ");
 		SIValue_ToString(p.val, buf, bufferLen, bytesWritten);
 		// if this is not the last element, add ", "
 		if(i != key_count - 1) {
-			if(*bufferLen - *bytesWritten < 64) _ExtendBuffer(buf, bufferLen, 64);
+			if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 		}
 	}
 
 	// make sure there's enough space for "}"
-	if(*bufferLen - *bytesWritten < 2) _ExtendBuffer(buf, bufferLen, 2);
+	if(*bufferLen - *bytesWritten < 2) str_ExtendBuffer(buf, bufferLen, 2);
 
 	// "}" marks the end of a map
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}");

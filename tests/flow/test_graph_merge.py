@@ -139,7 +139,7 @@ class testGraphMergeFlow(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
-        self.env.assertEquals(result.properties_set, 2)
+        self.env.assertEquals(result.properties_set, 1)
         self.env.assertEquals(result.relationships_created, 0)
 
         query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
