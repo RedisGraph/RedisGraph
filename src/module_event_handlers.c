@@ -82,8 +82,6 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t vkey_entity_count;
 	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &vkey_entity_count);
 
-	// If no limitation, return 0. The graph can be encoded in a single key.
-	if(vkey_entity_count == VKEY_ENTITY_COUNT_UNLIMITED) return 0;
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) + Graph_DeletedNodeCount(
 								  gc->g) + Graph_DeletedEdgeCount(gc->g);
 	if(entities_count == 0) return 0;
@@ -220,11 +218,9 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
-	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
-		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
-		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
-		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Shutdown, _ShutdownEventHandler);
-	}
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Shutdown, _ShutdownEventHandler);
 }
 
 static void RG_AfterForkChild() {
