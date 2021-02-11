@@ -525,3 +525,10 @@ class testQueryValidationFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[34]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test a query that allocates a large buffer.
+    def test35_large_query(self):
+        retval = "abcdef" * 1_000
+        query = """RETURN """ + "'" + retval + "'"
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], retval)
