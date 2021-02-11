@@ -74,7 +74,7 @@ void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 }
 
 void Graph_Query(void *args) {
-  bool readonly           = true;
+	bool readonly           = true;
 	bool lockAcquired       = false;
 	ResultSet *result_set   = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;

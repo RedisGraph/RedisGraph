@@ -147,9 +147,9 @@ void Index_IndexNode(Index *idx, const Node *n) {
 				double d = SI_GET_NUMERIC(*v);
 				RediSearch_DocumentAddFieldNumber(doc, field_name, d, RSFLDTYPE_NUMERIC);
 			} else if(t == T_POINT) {
-				char lon_lat[256];
-				size_t n = sprintf(lon_lat, "%lf %lf", v->point.longitude, v->point.latitude);
-				RediSearch_DocumentAddFieldString(doc, field_name, lon_lat, n, RSFLDTYPE_GEO);
+				double lat = Point_lat(*v);
+				double lon = Point_lon(*v);
+				RediSearch_DocumentAddFieldGeo(doc, field_name, lat, lon, RSFLDTYPE_GEO);
 			} else {
 				continue;
 			}

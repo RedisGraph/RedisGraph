@@ -1,5 +1,5 @@
 #include "utilize_indices.h"
-#include "../../RG.h"
+#include "RG.h"
 #include "../../value.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
@@ -9,6 +9,7 @@
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
 #include "../../datatypes/array.h"
+#include "../../datatypes/point.h"
 #include "../../arithmetic/arithmetic_op.h"
 
 //------------------------------------------------------------------------------
@@ -101,8 +102,7 @@ static bool _extractOriginAndRadius(const FT_FilterNode *filter,
 	bool scalar = AR_EXP_ReduceToScalar(radius_exp, true, &d);
 	if(!scalar) return false;
 
-	// TODO: validate radius type (NUMERIC)
-	if(!(SI_TYPE(d) && SI_NUMERIC)) {
+	if(!(SI_TYPE(d) & SI_NUMERIC)) {
 		SIValue_Free(d);
 		return false;
 	}
@@ -235,18 +235,15 @@ RSQNode *_StringRangeToQueryNode(RSIndex *idx, const char *field, const StringRa
 }
 
 RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
-	char     *point  =  NULL;
-	char     *query  =  NULL;
-	SIValue  origin  =  SI_NullVal();
-	SIValue  radius  =  SI_NullVal();
+	char     *field  =  NULL;         // field being filtered
+	SIValue  origin  =  SI_NullVal(); // center of circle
+	SIValue  radius  =  SI_NullVal(); // circle radius
 
-	_extractOriginAndRadius(filter, &origin, &radius, &point);
+	_extractOriginAndRadius(filter, &origin, &radius, &field);
 
-	// @field:[{lon} {lat} {radius} {m|km|mi|ft}]
-	query = asprintf(&query, "@%s:[{%f} {%f} {%f} {m}]", Point_lon(origin),
-			Point_lat(origin), SI_GET_NUMERIC(radius));
-
-	//RediSearch_CreateNumericNode
+	// TODO: applicable only when searching for point within a cycle
+	return RediSearch_CreateGeoNode(idx, field, Point_lat(origin),
+			Point_lon(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
 }
 
 // Creates a RediSearch query node out of given IN filter.
