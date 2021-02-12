@@ -85,7 +85,7 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	return INDEX_OK;
 }
 
-static int _schema_RemoveExactMatchIndex(Schema *s, const char *field) {
+static int _Schema_RemoveExactMatchIndex(Schema *s, const char *field) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
 	if(attribute_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
@@ -104,7 +104,7 @@ static int _schema_RemoveExactMatchIndex(Schema *s, const char *field) {
 	return INDEX_OK;
 }
 
-static int _schema_RemoveFullTextIndex(Schema *s) {
+static int _Schema_RemoveFullTextIndex(Schema *s) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(idx == NULL) return INDEX_FAIL;
@@ -118,9 +118,9 @@ static int _schema_RemoveFullTextIndex(Schema *s) {
 int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 	switch(type) {
 		case IDX_FULLTEXT:
-			return _schema_RemoveFullTextIndex(s);
+			return _Schema_RemoveFullTextIndex(s);
 		case IDX_EXACT_MATCH:
-			return _schema_RemoveExactMatchIndex(s, field);
+			return _Schema_RemoveExactMatchIndex(s, field);
 		default:
 			return INDEX_FAIL;
 	}

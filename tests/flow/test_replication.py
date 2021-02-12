@@ -52,6 +52,10 @@ class testReplication(FlowTestsBase):
         q = "CALL db.idx.fulltext.createNodeIndex('L', 'name')"
         graph.query(q)
 
+        # add fields to existing index
+        q = "CALL db.idx.fulltext.createNodeIndex('L', 'title', 'desc')"
+        graph.query(q)
+
         # update entity
         q = "MATCH (n:L {id:1}) SET n.id = 2"
         graph.query(q)
