@@ -25,13 +25,9 @@ ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx,
 
 	const char *label = args[0].stringval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	// Schema doesn't exists, TODO: report error.
-	if(!s) return PROCEDURE_ERR;
+	GraphContext_DeleteIndex(gc, label, NULL, IDX_FULLTEXT);
 
-	if(Schema_RemoveIndex(s, NULL, IDX_FULLTEXT) == INDEX_FAIL) return PROCEDURE_OK;
-
-	return PROCEDURE_ERR;
+	return PROCEDURE_OK;
 }
 
 SIValue *Proc_FulltextDropIndexStep(ProcedureCtx *ctx) {
