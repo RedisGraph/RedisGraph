@@ -242,8 +242,8 @@ RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 	_extractOriginAndRadius(filter, &origin, &radius, &field);
 
 	// TODO: applicable only when searching for point within a cycle
-	return RediSearch_CreateGeoNode(idx, field, Point_lat(origin),
-			Point_lon(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
+	return RediSearch_CreateGeoNode(idx, field, Point_lat(&origin),
+			Point_lon(&origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
 }
 
 // Creates a RediSearch query node out of given IN filter.

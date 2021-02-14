@@ -7,15 +7,15 @@
 #include "RG.h"
 #include "point.h"
 
-float Point_lat(SIValue point) {
+float Point_lat(SIValue *point) {
 	ASSERT(SI_TYPE(point) == T_POINT);
 
-	return point.point.latitude;
+	return point->point.latitude;
 }
 
-float Point_lon(SIValue point) {
+float Point_lon(SIValue *point) {
 	ASSERT(SI_TYPE(point) == T_POINT);
 
-	return point.point.longitude;
+	return point->point.longitude;
 }
 

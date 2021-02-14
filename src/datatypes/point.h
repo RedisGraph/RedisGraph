@@ -8,6 +8,6 @@
 
 #include "../value.h"
 
-float Point_lat(SIValue point);
-float Point_lon(SIValue point);
+float Point_lat(SIValue *point);
+float Point_lon(SIValue *point);
 
