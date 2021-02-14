@@ -10,6 +10,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../datatypes/point.h"
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
 
@@ -125,9 +126,9 @@ void Index_IndexNode(Index *idx, const Node *n) {
 	for(uint i = 0; i < idx->fields_count; i++) {
 		const char *field_name = idx->fields[i];
 		SIValue *v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
-		SIType t = SI_TYPE(*v);
-
 		if(v == PROPERTY_NOTFOUND) continue;
+
+		SIType t = SI_TYPE(*v);
 
 		doc_field_count++;
 		if(idx->type == IDX_FULLTEXT) {
@@ -147,8 +148,8 @@ void Index_IndexNode(Index *idx, const Node *n) {
 				double d = SI_GET_NUMERIC(*v);
 				RediSearch_DocumentAddFieldNumber(doc, field_name, d, RSFLDTYPE_NUMERIC);
 			} else if(t == T_POINT) {
-				double lat = Point_lat(*v);
-				double lon = Point_lon(*v);
+				double lat = (double)Point_lat(*v);
+				double lon = (double)Point_lon(*v);
 				RediSearch_DocumentAddFieldGeo(doc, field_name, lat, lon, RSFLDTYPE_GEO);
 			} else {
 				continue;
