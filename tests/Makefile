@@ -1,7 +1,7 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: test unit flow tck memcheck clean
+.PHONY: test unit flow tck memcheck benchmark clean
 
 TEST_ARGS+=--clear-logs
 
@@ -42,6 +42,9 @@ memcheck:
 	@$(MAKE) -C flow TEST_ARGS="$(MEMCHECK_ARGS)"
 	@$(MAKE) -C tck TEST_ARGS="$(MEMCHECK_ARGS)"
 	./memcheck.sh
+
+benchmark:
+	cd benchmarks; python3 local-runner.py; cd ..
 
 clean:
 	@find . -name '*.[oad]' -type f -delete

@@ -1,0 +1,18 @@
+name: "UPDATE-BASELINE"
+remote:
+  - setup: redisgraph-r5
+  - type: oss-standalone
+dbconfig:
+  - dataset: "datasets/single_node.rdb"
+clientconfig:
+  - graph: "g"
+  - rps: 0
+  - clients: 32
+  - threads: 4
+  - connections: 32
+  - requests: 1000000
+queries:
+  - { q: "MATCH (n) WHERE ID(n) = 0 SET n.v = n.v + 1", ratio: 1 }
+kpis:
+  - le: { $.OverallClientLatencies.Total.q50: 1.5 }
+  - ge: { $.OverallQueryRates.Total: 20000 }
