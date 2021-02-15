@@ -10,6 +10,10 @@ ifneq ($(V),)
 	TEST_ARGS += --verbose
 endif
 
+ifneq ($(BENCHMARK),)
+	BENCHMARK_ARGS += --test $(BENCHMARK)
+endif
+
 # check environment flag
 ifneq ($(ENV),)
 	TEST_ARGS += --env $(ENV)
@@ -44,7 +48,7 @@ memcheck:
 	./memcheck.sh
 
 benchmark:
-	cd benchmarks; python3 local-runner.py; cd ..
+	cd benchmarks; python3 local-runner.py $(BENCHMARK_ARGS) ; cd ..
 
 clean:
 	@find . -name '*.[oad]' -type f -delete

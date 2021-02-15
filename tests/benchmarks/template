@@ -1,14 +1,18 @@
 name: <BENCHMARK_NAME>
-host: <HOST>
-port: <PORT>
-graph: <GRAPH_KEY>
-dataset: <RDB_FILE>
-RPS: <RPS>
-clients: <#CLIENTS>
-threads: <#THREADS>
-connections: <#CONNECTIONS>
-requests: <#REQUESTS>
+dbconfig:
+  - dataset: <RDB_FILE>
+clientconfig:
+  - graph: <GRAPH_KEY>
+  - rps: <RPS>
+  - clients: <#CLIENTS>
+  - threads: <#THREADS>
+  - connections: <#CONNECTIONS>
+  - requests: <#REQUESTS>
 queries:
   - { q: <QUERY0>, ratio: <R0> }
   - { q: <QUERY1>, ratio: <R1> }
-expectations: { avg_latency: <LATENCY>, throughput: <THROUGHPUT> }
+kpis: 
+  - <RULE (one of le, ge, eq )>: { <METRIC_PATH>: <EXPECTED_VALUE> }
+remote:
+  - setup: <SETUP NAME>
+  - type: <SETUP TYPE>
