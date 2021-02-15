@@ -53,3 +53,6 @@ deps/GraphBLAS/Config/GraphBLAS.h.tmp
 *.xml
 *.iml
 *.d
+
+# local/remote benchmark result files
+tests/benchmarks/*.json
