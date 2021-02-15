@@ -107,7 +107,7 @@ SlowLog *SlowLog_New() {
 
 	for(int i = 0; i < thread_count; i++) {
 		slowlog->lookup[i] = raxNew();
-		slowlog->min_heap[i] = heap_new(_slowlog_elem_compare, NULL);
+		slowlog->min_heap[i] = Heap_new(_slowlog_elem_compare, NULL);
 		int res = pthread_mutex_init(slowlog->locks + i, NULL);
 		ASSERT(res == 0);
 	}
@@ -154,13 +154,13 @@ void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 		/* Similar item does not exist in the log.
 		 * Check if there's enough room to store item. */
 		int introduce_item = 0;
-		if(heap_count(heap) < SLOW_LOG_SIZE) {
+		if(Heap_count(heap) < SLOW_LOG_SIZE) {
 			introduce_item = 1;
 		} else {
 			// Not enough room, see if item should be tracked.
-			SlowLogItem *top = heap_peek(heap);
+			SlowLogItem *top = Heap_peek(heap);
 			if(top->latency < latency) {
-				top = heap_poll(heap);
+				top = Heap_poll(heap);
 				_SlowLog_RemoveItemFromLookup(slowlog, t_id, top);
 				_SlowLog_Item_Free(top);
 				introduce_item = 1;
@@ -169,7 +169,7 @@ void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 
 		if(introduce_item) {
 			SlowLogItem *item = _SlowLogItem_New(cmd, query, latency, _time);
-			heap_offer(slowlog->min_heap + t_id, item);
+			Heap_offer(slowlog->min_heap + t_id, item);
 			raxInsert(lookup, (unsigned char *)key, key_len, item, NULL);
 		}
 	}   // End of critical section.
@@ -205,10 +205,10 @@ void SlowLog_Replay(const SlowLog *slowlog, RedisModuleCtx *ctx) {
 	}
 
 	heap_t *heap = aggregated_slowlog->min_heap[my_t_id];
-	RedisModule_ReplyWithArray(ctx, heap_count(heap));
+	RedisModule_ReplyWithArray(ctx, Heap_count(heap));
 
-	while(heap_count(heap)) {
-		SlowLogItem *item = heap_poll(heap);
+	while(Heap_count(heap)) {
+		SlowLogItem *item = Heap_poll(heap);
 		RedisModule_ReplyWithArray(ctx, 4);
 		RedisModule_ReplyWithDouble(ctx, item->time);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)item->cmd, strlen(item->cmd));
@@ -234,7 +234,7 @@ void SlowLog_Free(SlowLog *slowlog) {
 		raxStop(&iter);
 
 		raxFree(lookup);
-		heap_free(heap);
+		Heap_free(heap);
 		int res = pthread_mutex_destroy(slowlog->locks + i);
 		ASSERT(res == 0);
 	}
