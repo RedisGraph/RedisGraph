@@ -14,5 +14,5 @@ clientconfig:
 queries:
   - { q: "MATCH (n) WHERE ID(n) = 0 SET n.v = n.v + 1", ratio: 1 }
 kpis:
-  - le: { $.OverallClientLatencies.Total.q50: 1.5 }
+  - le: { $.OverallClientLatencies.Total.q50: 2.0 }
   - ge: { $.OverallQueryRates.Total: 20000 }
