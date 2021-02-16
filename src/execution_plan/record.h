@@ -70,6 +70,9 @@ Edge *Record_GetEdge(const Record r, int idx);
 // Get an SIValue containing the entity at position idx.
 SIValue Record_Get(Record r, int idx);
 
+// Remove item at position idx.
+void Record_Remove(Record r, int idx);
+
 // Get a graph entity from record at position idx.
 GraphEntity *Record_GetGraphEntity(const Record r, int idx);
 
