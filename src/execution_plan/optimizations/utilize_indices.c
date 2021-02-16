@@ -29,15 +29,14 @@ void _normalize_in_filter(FT_FilterNode *filter_tree) {
 	}
 }
 
-/* Modifies filter tree such that the left-hand side
- * is of type variadic and the right-hand side is constant. */
+// modifies filter tree such that the right-hand side is of type constant
 void _normalize_filter(FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
-	// Normalize, left hand side should be variadic, right hand side const.
+	// normalize, left hand side should be variadic, right hand side const
 	switch(filter_tree->t) {
 	case FT_N_PRED:
 		if(filter_tree->pred.lhs->operand.type == AR_EXP_CONSTANT) {
-			// Swap.
+			// swap
 			AR_ExpNode *tmp = filter_tree->pred.rhs;
 			filter_tree->pred.rhs = filter_tree->pred.lhs;
 			filter_tree->pred.lhs = tmp;
@@ -140,8 +139,17 @@ static bool _extractOriginAndRadius(const FT_FilterNode *filter,
 
 // return true if filter performs distance filtering
 // distance(n.location, point({lat:1.1, lon:2.2})) < 40
-static bool _isDistanceFilter(const FT_FilterNode *filter) {
-	return _extractOriginAndRadius(filter, NULL, NULL, NULL);
+static bool _isDistanceFilter(FT_FilterNode *filter) {
+	bool res = _extractOriginAndRadius(filter, NULL, NULL, NULL);
+	if(res) {
+		_normalize_filter(&filter);
+		ASSERT(filter->t == FT_N_PRED);
+		AST_Operator op = filter->pred.op;
+		// make sure filter structure is: distance(point, origin) <= radius
+		res = (op == OP_LT || op == OP_LE);
+	}
+
+	return res;
 }
 
 static bool _validateInExpression(AR_ExpNode *exp) {
@@ -242,8 +250,8 @@ RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 	_extractOriginAndRadius(filter, &origin, &radius, &field);
 
 	// TODO: applicable only when searching for point within a cycle
-	return RediSearch_CreateGeoNode(idx, field, Point_lon(origin),
-			Point_lat(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
+	return RediSearch_CreateGeoNode(idx, field, Point_lat(origin),
+			Point_lon(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
 }
 
 // Creates a RediSearch query node out of given IN filter.
