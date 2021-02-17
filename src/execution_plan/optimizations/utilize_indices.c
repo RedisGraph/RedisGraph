@@ -56,7 +56,7 @@ static inline bool _isInFilter(const FT_FilterNode *filter) {
 // extracts both origin and radius from a distance filter
 // distance(n.location, origin) < radius
 static bool _extractOriginAndRadius(const FT_FilterNode *filter,
-		SIValue *origin, SIValue *radius, char **point) {
+									SIValue *origin, SIValue *radius, char **point) {
 	// distance (n.location, origin) < radius
 
 	ASSERT(filter != NULL);
@@ -72,11 +72,11 @@ static bool _extractOriginAndRadius(const FT_FilterNode *filter,
 
 	// find distance expression
 	if(AR_EXP_IsOperation(lhs) &&
-			strcasecmp(lhs->op.func_name, "distance") == 0) {
+	   strcasecmp(lhs->op.func_name, "distance") == 0) {
 		radius_exp = rhs;
 		distance_exp = lhs;
 	} else if(AR_EXP_IsOperation(rhs) &&
-			strcasecmp(rhs->op.func_name, "distance") == 0) {
+			  strcasecmp(rhs->op.func_name, "distance") == 0) {
 		radius_exp = lhs;
 		distance_exp = rhs;
 	}
@@ -235,9 +235,9 @@ RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 
 	_extractOriginAndRadius(filter, &origin, &radius, &field);
 
-	// TODO: applicable only when searching for point within a cycle
+	// TODO: applicable only when searching for point within a circle (TODO done?)
 	return RediSearch_CreateGeoNode(idx, field, Point_lat(origin),
-			Point_lon(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
+									Point_lon(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
 }
 
 // Creates a RediSearch query node out of given IN filter.
@@ -566,7 +566,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 		if(_isDistanceFilter(filter_tree)) {
 			rsqnode = _filterTreeToDistanceQueryNode(filter_tree, rs_idx);
 			rsqnodes = array_append(rsqnodes, rsqnode);
-			continue;	
+			continue;
 		}
 
 		switch(filter_tree->t) {

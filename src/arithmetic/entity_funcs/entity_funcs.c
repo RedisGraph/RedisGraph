@@ -163,7 +163,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 			prop_idx = GraphContext_GetAttributeID(gc, prop_name);
 		}
 
-    // Retrieve the property.
+		// Retrieve the property.
 		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
 		return SI_ConstValue(*value);
 	} else {

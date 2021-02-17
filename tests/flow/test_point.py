@@ -15,7 +15,7 @@ class testPath():
 
     def setUp(self):
         self.env.flush()
-    
+
     def assert_distance(self, a, b, expected_distance):
         # A is 18.07 km away from B
         q = """WITH point({latitude:%f, longitude:%f}) AS a,
@@ -45,8 +45,8 @@ class testPath():
         self.assert_distance(a, b, expected_distance)
 
     def test_point_index_lookup(self):
-        home = {'lat':32.070794860, 'lon':34.820751118}
-        univ = {'lat':30.621734079, 'lon':-96.33775507}
+        home = {'lat': 32.070794860, 'lon': 34.820751118}
+        univ = {'lat': 30.621734079, 'lon': -96.33775507}
         kiosk = {'lat': 32.07011414663042, 'lon': 34.82235394761603}
         austin = {'lat': 30.274919961709788, 'lon': -97.7403239617543}
         miradouro = {'lat': 37.854010999507736, 'lon': -25.775820972037057}
@@ -58,7 +58,7 @@ class testPath():
         # create 2 points: 'home' and 'univ'
         q = """create (:N {name:'home', loc:point({ latitude:%f, longitude:%f })})""" % (home['lat'], home['lon'])
         redis_graph.query(q)
-        q = """create (:N {name:'univ', loc:point({ latitude:%f, longitude:%f })})"""% (univ['lat'], univ['lon'])
+        q = """create (:N {name:'univ', loc:point({ latitude:%f, longitude:%f })})""" % (univ['lat'], univ['lon'])
         redis_graph.query(q)
 
         idx_q = """MATCH (n:N) WHERE distance(n.loc, point({latitude:%f, longitude:%f})) < %d RETURN n.name"""

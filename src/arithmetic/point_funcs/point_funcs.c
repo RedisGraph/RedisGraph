@@ -26,7 +26,8 @@ SIValue AR_TOPOINT(SIValue *argv, int argc) {
 
 	uint key_count = Map_KeyCount(map);
 	if(key_count != 2) {
-		// TODO: error
+		ErrorCtx_RaiseRuntimeException("A point map should have 2 elements, latitude and longitude");
+		return SI_NullVal();
 	}
 
 	SIValue latitude;
@@ -34,15 +35,18 @@ SIValue AR_TOPOINT(SIValue *argv, int argc) {
 
 	// make sure lat is present in map
 	if(!Map_Get(map, SI_ConstStringVal("latitude"), &latitude)) {
-		// TODO: error
+		ErrorCtx_RaiseRuntimeException("Did not find 'latitude' value in point map");
+		return SI_NullVal();
 	}
 	// make sure lon is present in map
 	if(!Map_Get(map, SI_ConstStringVal("longitude"), &longitude)) {
-		// TODO: error
+		ErrorCtx_RaiseRuntimeException("Did not find 'longitude' value in point map");
+		return SI_NullVal();
 	}
 	// validate lat, lon types
-	if(! (SI_NUMERIC & SI_TYPE(latitude) && SI_NUMERIC & SI_TYPE(longitude))) {
-		// TODO: error
+	if(!(SI_NUMERIC & SI_TYPE(latitude) && SI_NUMERIC & SI_TYPE(longitude))) {
+		ErrorCtx_RaiseRuntimeException("'latitude' and 'longitude' values in point map were not both valid numerics");
+		return SI_NullVal();
 	}
 
 	return SI_Point(SI_GET_NUMERIC(latitude), SI_GET_NUMERIC(longitude));
@@ -62,10 +66,12 @@ SIValue AR_DISTANCE(SIValue *argv, int argc) {
 	if(SI_TYPE(p1) == T_NULL || SI_TYPE(p2) == T_NULL) return SI_NullVal();
 
 	float lat[2] = { DegreeToRadians(p1.point.latitude),
-		DegreeToRadians(p2.point.latitude) };
+					 DegreeToRadians(p2.point.latitude)
+				   };
 
 	float lon[2] = { DegreeToRadians(p1.point.longitude),
-		DegreeToRadians(p2.point.longitude) };
+					 DegreeToRadians(p2.point.longitude)
+				   };
 
 	float dlat = lat[1] - lat[0];
 	float dlon = lon[1] - lon[0];
@@ -74,7 +80,7 @@ SIValue AR_DISTANCE(SIValue *argv, int argc) {
 	float a = pow(sin(dlat / 2), 2) + cos(lat[0]) * cos(lat[1]) * pow(sin(dlon / 2), 2);
 
 	// c = 2 * atan2( √a, √(1−a) )
-	float c = 2 * atan2(sqrt(a), sqrt(1-a));
+	float c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
 	// d = R * c
 	float d = EARTH_RADIUS * c;

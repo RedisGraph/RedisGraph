@@ -24,7 +24,7 @@ SIValue AR_TOMAP(SIValue *argv, int argc) {
 
 	SIValue map = SI_Map(argc / 2);
 
-  for(int i = 0; i < argc; i += 2) {
+	for(int i = 0; i < argc; i += 2) {
 		SIValue key = argv[i];
 		SIValue val = argv[i + 1];
 
