@@ -3,12 +3,12 @@ function [nth chnk] = grbinfo
 %
 % nthreads = grbinfo
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-[nthreads threading thread_safety format hyperratio ... 
-name version date about license compiledate compiletime api api_about ...
-chunk ] = GB_mex_init ;
+[nthreads, format, hyper_switch, ...
+name, version, date, about, license, compiledate, compiletime, api, ...
+api_about, chunk, bitmap_switch ] = GB_mex_init ;
 
 d = stat ;
 
@@ -21,33 +21,13 @@ else
 end
 
 ncores = feature ('numcores') ;
-[nthreads chunk] = nthreads_get ;
+[nthreads2 chunk2] = nthreads_get ;
 
-fprintf ('    # of threads to use:   %d\n', nthreads) ;
-fprintf ('    chunk:                 %g\n', chunk) ;
+fprintf ('    # of threads to use:   %d (%d)\n', nthreads, nthreads2) ;
+fprintf ('    chunk:                 %g (%g)\n', chunk, chunk2) ;
+
 fprintf ('    OpenMP max threads:    %d\n', GB_mex_omp_max_threads) ;
 fprintf ('    # of cores for MATLAB: %d\n', ncores) ;
-
-
-switch (threading)
-    case {0}
-        fprintf ('    no internal threading\n') ;
-    case {1}
-        fprintf ('    OpenMP for internal threads\n') ;
-    otherwise
-        error ('?') ;
-end
-
-switch (thread_safety)
-    case {0}
-        fprintf ('    no thread safety\n') ;
-    case {1}
-        fprintf ('    OpenMP for user thread safety\n') ;
-    case {2}
-        fprintf ('    POSIX for user thread safety\n') ;
-    otherwise
-        error ('?') ;
-end
 
 switch (format)
     case {0}
@@ -58,7 +38,8 @@ switch (format)
         error ('?') ;
 end
 
-fprintf ('    hyperratio: %g\n', hyperratio) ;
+fprintf ('    hyper_switch: %g\n', hyper_switch) ;
+fprintf ('    bitmap_switch: %g\n', bitmap_switch) ;
 fprintf ('    date: %s\n', date) ;
 fprintf ('    compile date: %s\n', compiledate) ;
 fprintf ('    compile time: %s\n\n', compiletime) ;

@@ -2,8 +2,8 @@
 # GraphBLAS/Test/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-# http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 #-------------------------------------------------------------------------------
 
@@ -11,11 +11,15 @@
 # created by the make.m function in MATLAB.  To compile GraphBLAS for use in
 # MATLAB type 'make' in MATLAB.  To run the tests in Test/ type 'testall'.
 
+GraphBLAS_Test.pdf: GraphBLAS_Test.tex 
+	pdflatex GraphBLAS_Test.tex
+	pdflatex GraphBLAS_Test.tex
+
 clean:
-	$(RM) *.o *.obj
+	- $(RM) -r *.o *.obj *.out *.aux *.log *.bbl *.blg *.toc
 
 distclean: clean
-	$(RM) *.mex* errlog.txt spok/*.mex* log.txt fprint.txt
+	$(RM) *.mex* errlog*.txt spok/*.mex* log.txt fprint.txt
 
 purge: distclean
 

@@ -2,19 +2,20 @@
 // GB_red_factory.c: switch factory for reduction operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // This is a generic body of code for creating hard-coded versions of code for
-// 55 combinations of associative operators and built-in types: 10 types (all
-// but boolean) with MIN, MAX, PLUS, and TIMES, and one type (boolean) with
-// OR, AND, XOR, and EQ, and all 11 types for the ANY monoid.
+// 61 or 87 combinations of associative operators and built-in types:
 
-// If GB_INCLUDE_SECOND_OPERATOR is defined then an additional 11 built-in
-// workers for the SECOND operator are also created, and 11 for FIRST, for
-// GB_builder.
+//  20:  min, max: 10 non-boolean real types
+//  24:  plus, times:  12 non-boolean types
+//  4:   lor, land, eq (same as lxnor), lxor for boolean
+//  13:  any: for all 13 types
+//  26:  first, second: for all 13 types, if GB_INCLUDE_SECOND_OPERATOR
+//          is defined, for GB_builder.
 
 if (typecode != GB_BOOL_code)
 {
@@ -76,6 +77,8 @@ if (typecode != GB_BOOL_code)
                 case GB_UINT64_code : GB_RED_WORKER (_plus, _uint64, uint64_t)
                 case GB_FP32_code   : GB_RED_WORKER (_plus, _fp32,   float   )
                 case GB_FP64_code   : GB_RED_WORKER (_plus, _fp64,   double  )
+                case GB_FC32_code   : GB_RED_WORKER (_plus, _fc32,   GxB_FC32_t)
+                case GB_FC64_code   : GB_RED_WORKER (_plus, _fc64,   GxB_FC64_t)
                 default: ;
             }
             break ;
@@ -94,6 +97,8 @@ if (typecode != GB_BOOL_code)
                 case GB_UINT64_code : GB_RED_WORKER (_times, _uint64, uint64_t)
                 case GB_FP32_code   : GB_RED_WORKER (_times, _fp32,   float   )
                 case GB_FP64_code   : GB_RED_WORKER (_times, _fp64,   double  )
+                case GB_FC32_code   : GB_RED_WORKER (_times, _fc32, GxB_FC32_t)
+                case GB_FC64_code   : GB_RED_WORKER (_times, _fc64, GxB_FC64_t)
                 default: ;
             }
             break ;
@@ -112,6 +117,8 @@ if (typecode != GB_BOOL_code)
                 case GB_UINT64_code : GB_RED_WORKER (_any, _uint64, uint64_t)
                 case GB_FP32_code   : GB_RED_WORKER (_any, _fp32,   float   )
                 case GB_FP64_code   : GB_RED_WORKER (_any, _fp64,   double  )
+                case GB_FC32_code   : GB_RED_WORKER (_any, _fc32, GxB_FC32_t)
+                case GB_FC64_code   : GB_RED_WORKER (_any, _fc64, GxB_FC64_t)
                 default: ;
             }
             break ;
@@ -136,6 +143,8 @@ if (typecode != GB_BOOL_code)
                 case GB_UINT64_code : GB_RED_WORKER (_first, _uint64, uint64_t)
                 case GB_FP32_code   : GB_RED_WORKER (_first, _fp32,   float   )
                 case GB_FP64_code   : GB_RED_WORKER (_first, _fp64,   double  )
+                case GB_FC32_code   : GB_RED_WORKER (_first, _fc32, GxB_FC32_t)
+                case GB_FC64_code   : GB_RED_WORKER (_first, _fc64, GxB_FC64_t)
                 default: ;
             }
             break ;
@@ -154,6 +163,8 @@ if (typecode != GB_BOOL_code)
                 case GB_UINT64_code : GB_RED_WORKER (_second, _uint64, uint64_t)
                 case GB_FP32_code   : GB_RED_WORKER (_second, _fp32,   float   )
                 case GB_FP64_code   : GB_RED_WORKER (_second, _fp64,   double  )
+                case GB_FC32_code   : GB_RED_WORKER (_second, _fc32, GxB_FC32_t)
+                case GB_FC64_code   : GB_RED_WORKER (_second, _fc64, GxB_FC64_t)
                 default: ;
             }
             break ;

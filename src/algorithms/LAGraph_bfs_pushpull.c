@@ -31,8 +31,6 @@
     See LICENSE file for more details.
 
 */
-#include "LAGraph_bfs_pushpull.h"
-#include "../config.h"
 
 //------------------------------------------------------------------------------
 
@@ -362,6 +360,9 @@
 // The GAP Benchmark Suite, http://arxiv.org/abs/1508.03619, 2015.
 // http://gap.cs.berkeley.edu/
 
+#include "LAGraph_bfs_pushpull.h"
+#include "../config.h"
+
 #define LAGRAPH_FREE_ALL    \
 {                           \
     GrB_free (&v) ;         \
@@ -385,7 +386,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 (
 	GrB_Vector *v_output,   // v(i) is the BFS level of node i in the graph
 	GrB_Vector *pi_output,  // pi(i) = p+1 if p is the parent of node i.
-	// if NULL, the parent is not computed.
+							// if NULL, the parent is not computed.
 	GrB_Matrix A,           // input graph, treated as if boolean in semiring
 	GrB_Matrix AT,          // transpose of A (optional; push-only if NULL)
 	int64_t source,         // starting node of the BFS
@@ -410,11 +411,6 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 
 	(*v_output) = NULL ;
 	bool compute_tree = (pi_output != NULL) ;
-
-	GrB_Descriptor desc_s  = GrB_DESC_S ;
-	GrB_Descriptor desc_sc = GrB_DESC_SC ;
-	GrB_Descriptor desc_rc = GrB_DESC_RC ;
-	GrB_Descriptor desc_r  = GrB_DESC_R ;
 
 	GrB_Index nrows, ncols, nvalA, ignore, nvals ;
 	// A is provided.  AT may or may not be provided
@@ -508,7 +504,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 		//----------------------------------------------------------------------
 
 		// v<q> = level: set v(i) = level for all nodes i in q
-		GrB_assign(v, q, NULL, level, GrB_ALL, n, desc_s) ;
+		GrB_assign(v, q, NULL, level, GrB_ALL, n, GrB_DESC_S) ;
 
 		//----------------------------------------------------------------------
 		// check if done
@@ -526,13 +522,13 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 			// If this case is triggered, it would have been faster to pass in
 			// vsparse = false on input.
 			// v <!v> = 0
-			GrB_assign(v, v, NULL, 0, GrB_ALL, n, desc_sc) ;
+			GrB_assign(v, v, NULL, 0, GrB_ALL, n, GrB_DESC_SC) ;
 			GrB_Vector_nvals(&ignore, v) ;
 
 			if(compute_tree) {
 				// Convert pi from sparse to dense, to speed up the work.
 				// pi<!pi> = 0
-				GrB_assign(pi, pi, NULL, 0, GrB_ALL, n, desc_sc) ;
+				GrB_assign(pi, pi, NULL, 0, GrB_ALL, n, GrB_DESC_SC) ;
 				GrB_Vector_nvals(&ignore, pi) ;
 			}
 
@@ -559,11 +555,11 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 		if(use_vxm_with_A) {
 			// q'<!v> = q'*A
 			// this is a push step if A is in CSR format; pull if CSC
-			GrB_vxm(q, v, NULL, first_semiring, q, A, desc_rc) ;
+			GrB_vxm(q, v, NULL, first_semiring, q, A, GrB_DESC_RC) ;
 		} else {
 			// q<!v> = AT*q
 			// this is a pull step if AT is in CSR format; push if CSC
-			GrB_mxv(q, v, NULL, second_semiring, AT, q, desc_rc) ;
+			GrB_mxv(q, v, NULL, second_semiring, AT, q, GrB_DESC_RC) ;
 		}
 
 		//----------------------------------------------------------------------
@@ -579,7 +575,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 			// q(i) currently contains the parent of node i in tree (off by one
 			// so it won't have any zero values, for valued mask).
 			// pi<q> = q
-			GrB_assign(pi, q, NULL, q, GrB_ALL, n, desc_s) ;
+			GrB_assign(pi, q, NULL, q, GrB_ALL, n, GrB_DESC_S) ;
 
 			//------------------------------------------------------------------
 			// replace q with current node numbers
@@ -589,30 +585,41 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 			// q(i) = i+1 for all entries in q.
 
 			GrB_Index *qi ;
+			bool jumbled ;
+			int64_t q_size ;
+			GrB_Index qi_size, qx_size ;
+
 			if(n > INT32_MAX) {
 				int64_t *qx ;
-				GxB_Vector_export(&q, &int_type, &n, &nq, &qi,
-								  (void **)(&qx), NULL) ;
+				GxB_Vector_export_CSC(&q, &int_type, &n,
+						&qi, (void **) (&qx), &qi_size, &qx_size, &nq,
+						&jumbled, NULL) ;
+
 				int nth = LAGRAPH_MIN(nq / (64 * 1024), nthreads) ;
 				nth = LAGRAPH_MAX(nth, 1) ;
 				#pragma omp parallel for num_threads(nth) schedule(static)
 				for(int64_t k = 0 ; k < nq ; k++) {
 					qx [k] = qi [k] + 1 ;
 				}
-				GxB_Vector_import(&q, int_type, n, nq, &qi,
-								  (void **)(&qx), NULL) ;
+
+				GxB_Vector_import_CSC(&q, int_type, n,
+						&qi, (void **) (&qx), qi_size, qx_size, nq,
+						jumbled, NULL) ;
 			} else {
 				int32_t *qx ;
-				GxB_Vector_export(&q, &int_type, &n, &nq, &qi,
-								  (void **)(&qx), NULL) ;
+				GxB_Vector_export_CSC(&q, &int_type, &n,
+						&qi, (void **) (&qx), &qi_size, &qx_size, &nq,
+						&jumbled, NULL) ;
+
 				int nth = LAGRAPH_MIN(nq / (64 * 1024), nthreads) ;
 				nth = LAGRAPH_MAX(nth, 1) ;
 				#pragma omp parallel for num_threads(nth) schedule(static)
 				for(int32_t k = 0 ; k < nq ; k++) {
 					qx [k] = qi [k] + 1 ;
 				}
-				GxB_Vector_import(&q, int_type, n, nq, &qi,
-								  (void **)(&qx), NULL) ;
+				GxB_Vector_import_CSC(&q, int_type, n,
+						&qi, (void **) (&qx), qi_size, qx_size, nq,
+						jumbled, NULL) ;
 			}
 
 		} else {

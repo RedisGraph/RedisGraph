@@ -83,6 +83,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/slow_log/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/util/sds/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/object_pool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
@@ -161,7 +162,7 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	cd ../deps/libcypher-parser; \
 	sh ./autogen.sh; \
 	./configure --disable-shared;
-	$(MAKE) CFLAGS="-fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
+	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 
@@ -207,3 +208,7 @@ memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
 memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 memcheck: redisgraph.so
 	@$(MAKE) -C ../tests memcheck
+
+
+benchmark: redisgraph.so
+	@$(MAKE) -C ../tests benchmark

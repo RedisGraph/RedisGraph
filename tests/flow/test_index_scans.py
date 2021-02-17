@@ -11,7 +11,7 @@ redis_graph = None
 
 class testIndexScanFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
 
     def setUp(self):
         global redis_graph
@@ -336,3 +336,30 @@ class testIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(q)
         self.env.assertNotIn("Index Scan", plan)
 
+    def test14_index_scan_utilize_array(self):
+        # Querying indexed properties using IN a constant array should utilize indexes.
+        query = "MATCH (a:person) WHERE a.age IN [34, 33] RETURN a.name ORDER BY a.name"
+        plan = redis_graph.execution_plan(query)
+        # One index scan should be performed.
+        self.env.assertEqual(plan.count("Index Scan"), 1)
+        query_result = redis_graph.query(query)
+        expected_result = [["Noam Nativ"],
+                           ["Omri Traub"]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # Querying indexed properties using IN a generated array should utilize indexes.
+        query = "MATCH (a:person) WHERE a.age IN range(33, 34) RETURN a.name ORDER BY a.name"
+        plan = redis_graph.execution_plan(query)
+        # One index scan should be performed.
+        self.env.assertEqual(plan.count("Index Scan"), 1)
+        query_result = redis_graph.query(query)
+        expected_result = [["Noam Nativ"],
+                           ["Omri Traub"]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
+        # Querying indexed properties using IN a non-constant array should not utilize indexes.
+        query = "MATCH (a:person)-[]->(b) WHERE a.age IN b.arr RETURN a"
+        plan = redis_graph.execution_plan(query)
+        # No index scans should be performed.
+        self.env.assertEqual(plan.count("Label Scan"), 1)
+        self.env.assertEqual(plan.count("Index Scan"), 0)

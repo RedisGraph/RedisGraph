@@ -2,8 +2,8 @@
 // GraphBLAS/Demo/Program/bfs_demo.c: breadth first search using vxm with a mask
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -32,15 +32,15 @@
 // nx-by-ny grid.  Method is 0 to 3; refer to wathen.c for details.
 
 // macro used by OK(...) to free workspace if an error occurs
-#define FREE_ALL            \
-    GrB_Vector_free (&v) ;         \
-    GrB_Vector_free (&v0) ;        \
-    GrB_Matrix_free (&A) ;         \
-    GrB_Matrix_free (&Abool) ;     \
-    GrB_Vector_free (&is_reachable) ; \
+#define FREE_ALL                        \
+    GrB_Vector_free (&v) ;              \
+    GrB_Vector_free (&v0) ;             \
+    GrB_Matrix_free (&A) ;              \
+    GrB_Matrix_free (&Abool) ;          \
+    GrB_Vector_free (&is_reachable) ;   \
     GrB_Monoid_free (&max_monoid) ;
 
-#include "demos.h"
+#include "graphblas_demos.h"
 
 int main (int argc, char **argv)
 {
@@ -55,7 +55,8 @@ int main (int argc, char **argv)
     double tic [2], t ;
     OK (GrB_init (GrB_NONBLOCKING)) ;
     int nthreads ;
-    OK (GxB_get (GxB_NTHREADS, &nthreads)) ;
+    OK (GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads)) ;
+    OK (GxB_Global_Option_set (GxB_BURBLE, false)) ;
     fprintf (stderr, "bfs_demo: nthreads %d\n", nthreads) ;
 
     //--------------------------------------------------------------------------
@@ -92,7 +93,6 @@ int main (int argc, char **argv)
         // All methods give identical results, just using different methods
 
         GrB_Index s = 0 ;
-        GxB_Global_Option_set (GxB_NTHREADS, 2) ;
 
         switch (method)
         {
@@ -142,21 +142,16 @@ int main (int argc, char **argv)
         OK (GrB_Vector_new (&is_reachable, GrB_BOOL, n)) ;
         OK (GrB_Vector_apply (is_reachable, NULL, NULL, GrB_IDENTITY_BOOL,
             v, NULL)) ;
-        OK (GrB_Vector_reduce_UINT64 (&nreachable, NULL, GxB_PLUS_INT32_MONOID,
+        OK (GrB_Vector_reduce_UINT64 (&nreachable, NULL, GrB_PLUS_MONOID_INT32,
             is_reachable, NULL)) ;
         OK (GrB_Vector_free (&is_reachable)) ;
         // OK (GrB_Vector_nvals (&nreachable, v)) ;
         printf ("nodes reachable from node %.16g: %.16g out of %.16g\n",
             (double) s, (double) nreachable, (double) n) ;
 
-//      // note the typecast to int32_t
-//      // using a predefined monoid instead, GrB_MAX_INT32_MONOID.
-//      OK (GrB_Monoid_new_INT32 (&max_monoid, GrB_MAX_INT32,
-//              (int32_t) INT32_MIN)) ;
-
         // find the max BFS level
         int64_t nlevels = -1 ;
-        OK (GrB_Vector_reduce_INT64 (&nlevels, NULL, GxB_MAX_INT32_MONOID,
+        OK (GrB_Vector_reduce_INT64 (&nlevels, NULL, GrB_MAX_MONOID_INT32,
             v, NULL)) ;
         printf ("max BFS level: %.16g\n", (double) nlevels) ;
 
@@ -196,8 +191,8 @@ int main (int argc, char **argv)
             {
                 fprintf (stderr, "test failure!\n") ;
                 printf  ("test failure!\n") ;
-                GxB_Vector_fprint (v0, "v0", 3, stdout) ;
-                GxB_Vector_fprint (v , "v",  3, stdout) ;
+                GxB_Vector_fprint (v0, "v0", GxB_COMPLETE, stdout) ;
+                GxB_Vector_fprint (v , "v",  GxB_COMPLETE, stdout) ;
                 exit (1) ;
             }
         }
@@ -219,12 +214,12 @@ int main (int argc, char **argv)
         // constant "0".
         GrB_Monoid Lor ;
         info = GrB_Monoid_new_INT32 (&Lor, GrB_LOR, false) ;        
-        printf ("\n------------------- this fails:\n%s\n", GrB_error ( )) ;
+        printf ("\n------------------- this fails: info %d\n", info) ;
         GrB_Monoid_free (&Lor) ;
 
         // this selects the correct GrB_Monoid_new_BOOL function
         info = GrB_Monoid_new_BOOL (&Lor, GrB_LOR, (bool) false) ;        
-        printf ("\n------------------- this is OK: %d (should be"
+        printf ("\n------------------- this is OK %d (should be"
             " GrB_SUCCESS = %d)\n", info, GrB_SUCCESS) ;
         GrB_Monoid_free (&Lor) ;
     }

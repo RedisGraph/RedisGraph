@@ -14,7 +14,7 @@ redis_graph = None
 class testQueryValidationFlow(FlowTestsBase):
 
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
@@ -183,7 +183,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Encountered unhandled type" in e.message)
+            assert("Encountered unhandled type" in str(e))
             pass
 
     # Validate that the module fails properly with incorrect argument counts.
@@ -194,7 +194,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("wrong number of arguments" in e.message)
+            assert("wrong number of arguments" in str(e))
             pass
 
     # Run queries in which compile-time variables are accessed but not defined.
@@ -205,7 +205,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("not defined" in e.message)
+            assert("not defined" in str(e))
             pass
 
         try:
@@ -214,7 +214,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("not defined" in e.message)
+            assert("not defined" in str(e))
             pass
 
         try:
@@ -223,7 +223,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("not defined" in e.message)
+            assert("not defined" in str(e))
             pass
 
     def test19_invalid_cypher_options(self):
@@ -267,7 +267,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Only directed relationships" in e.message)
+            assert("Only directed relationships" in str(e))
             pass
 
     # Applying a filter for non existing entity.
@@ -278,7 +278,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Type mismatch: expected Node but was Path" in e.message)
+            assert("Type mismatch: expected Node but was Path" in str(e))
             pass
 
     # Comments should not affect query functionality.
@@ -323,7 +323,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("not defined" in e.message)
+            assert("not defined" in str(e))
             pass
 
         # refer to procedure call original output when output is aliased.
@@ -333,7 +333,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("not defined" in e.message)
+            assert("not defined" in str(e))
             pass
 
         # valid procedure call, no output aliasing
@@ -351,7 +351,7 @@ class testQueryValidationFlow(FlowTestsBase):
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            assert("Expected boolean predicate" in e.message)
+            assert("Expected boolean predicate" in str(e))
             pass
 
     # Referencing a variable before defining it should raise a compile-time error.
@@ -362,7 +362,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("not defined" in e.message)
+            assert("not defined" in str(e))
             pass
 
     # Invalid filters in cartesian products should raise errors.
@@ -373,7 +373,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Type mismatch: expected Node but was Path" in e.message)
+            assert("Type mismatch: expected Node but was Path" in str(e))
             pass
 
     # Scalar predicates in filters should raise errors.
@@ -384,7 +384,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Expected boolean predicate" in e.message)
+            assert("Expected boolean predicate" in str(e))
             pass
 
     # Conditional filters with non-boolean scalar predicate children should raise errors.
@@ -396,7 +396,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Expected boolean predicate" in e.message)
+            assert("Expected boolean predicate" in str(e))
             pass
 
     # The NOT operator does not compare left and right side expressions.
@@ -409,7 +409,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Invalid usage of 'NOT' filter" in e.message)
+            assert("Invalid usage of 'NOT' filter" in str(e))
             pass
 
     def test29_invalid_filter_non_boolean_constant(self):
@@ -418,7 +418,7 @@ class testQueryValidationFlow(FlowTestsBase):
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            assert("expected Boolean but was Node" in e.message)
+            assert("expected Boolean but was Node" in str(e))
             pass
 
         try:
@@ -426,7 +426,7 @@ class testQueryValidationFlow(FlowTestsBase):
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            assert("expected Boolean but was Float" in e.message)
+            assert("expected Boolean but was Float" in str(e))
             pass
 
         try:
@@ -434,7 +434,7 @@ class testQueryValidationFlow(FlowTestsBase):
             redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
-            assert("expected Boolean but was Integer" in e.message)
+            assert("expected Boolean but was Integer" in str(e))
             pass
 
         # 'val' is a boolean, so this query is valid.
@@ -456,7 +456,7 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 # Expecting an error.
-                assert("Encountered path traversal" in e.message)
+                assert("Encountered path traversal" in str(e))
 
     def test31_set_invalid_property_type(self):
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
@@ -468,7 +468,7 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 # Expecting an error.
-                assert("Property values can only be of primitive types" in e.message)
+                assert("Property values can only be of primitive types" in str(e))
                 pass
 
     def test32_return_following_clauses(self):
@@ -492,7 +492,7 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert(False)
             except redis.exceptions.ResponseError as e:
                 # Expecting an error.
-                assert("Unexpected clause following RETURN" in e.message)
+                assert("Unexpected clause following RETURN" in str(e))
                 pass
 
     # Parameters cannot reference aliases.
@@ -503,7 +503,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Attempted to access variable" in e.message)
+            assert("Attempted to access variable" in str(e))
             pass
 
     def test34_self_referential_properties(self):
@@ -518,10 +518,17 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("undefined property", e.message)
+            self.env.assertIn("undefined property", str(e))
 
         # MATCH clauses should be able to use self-referential properties as existential filters.
         query = """MATCH (a {age: a.age}) RETURN a.age"""
         actual_result = redis_graph.query(query)
         expected_result = [[34]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test a query that allocates a large buffer.
+    def test35_large_query(self):
+        retval = "abcdef" * 1_000
+        query = "RETURN " + "\"" + retval + "\""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], retval)

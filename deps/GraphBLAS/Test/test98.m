@@ -1,10 +1,10 @@
 function test98
 %TEST98 test GrB_mxm, typecasting on the fly
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-% This test is for the case when the auto AxB method selects the heap
+% This test is for the case when the auto AxB method selects the hash
 
 rng ('default') ;
 

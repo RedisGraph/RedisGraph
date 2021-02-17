@@ -2,8 +2,8 @@
 // GB_nvec_nonempty: count the number of non-empty vectors
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -12,6 +12,7 @@
 
 #include "GB.h"
 
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 int64_t GB_nvec_nonempty        // return # of non-empty vectors
 (
     const GrB_Matrix A,         // input matrix to examine
@@ -25,13 +26,22 @@ int64_t GB_nvec_nonempty        // return # of non-empty vectors
 
     ASSERT (A != NULL) ;
     ASSERT (GB_ZOMBIES_OK (A)) ;
+    ASSERT (GB_JUMBLED_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ;
 
     //--------------------------------------------------------------------------
-    // trivial case
+    // trivial cases
     //--------------------------------------------------------------------------
+
+    if (GB_IS_FULL (A) || GB_IS_BITMAP (A))
+    { 
+        // A is full or bitmap; nvec_nonempty depends only on the dimensions
+        return ((A->vlen == 0) ? 0 : A->vdim) ;
+    }
 
     if (GB_NNZ (A) == 0)
     { 
+        // A is sparse or hypersparse, with no entries
         return (0) ;
     }
 
@@ -40,7 +50,6 @@ int64_t GB_nvec_nonempty        // return # of non-empty vectors
     //--------------------------------------------------------------------------
 
     int64_t anvec = A->nvec ;
-
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = GB_nthreads (anvec, chunk, nthreads_max) ;
 

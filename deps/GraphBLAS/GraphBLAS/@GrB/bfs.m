@@ -1,11 +1,12 @@
 function [v, parent] = bfs (A, s, varargin)
-%GRB.BFS breadth-first search of a graph, using its adjacency matrix.  v
-%= GrB.bfs (A, s) computes the breadth-first search of the directed graph
-%represented by the square adjacency matrix A.  The breadth-first search
-%starts at node s.  The output v is a sparse vector of size n-by-1, with
-%the level of each node, where v(s)=1, and v(i)=k if the path with the
-%fewest edges from from s to i has k-1 edges.  If i is not reachable from
-%s, then v(i) is implicitly zero and does not appear in the pattern of v.
+%GRB.BFS breadth-first search of a graph, using its adjacency matrix.
+% v = GrB.bfs (A, s) performs the breadth-first search of the directed
+% graph represented by the square adjacency matrix A.  The breadth-first
+% search starts at node s.  The output v is a sparse vector of size
+% n-by-1, with the level of each node, where v(s)=1, and v(i)=k if the
+% path with the fewest edges from from s to i has k-1 edges.  If i is not
+% reachable from s, then v(i) is implicitly zero and does not appear in
+% the pattern of v.
 %
 % [v, parent] = GrB.bfs (A, s) also computes the parent vector,
 % representing the breadth-first search tree.  parent(s)=s denotes the
@@ -33,7 +34,7 @@ function [v, parent] = bfs (A, s, varargin)
 % format ('by row' or 'by col').
 %
 % A must be square.  Only the pattern, spones (A), is considered; the
-% values of its entries (the edge weights of the graph) are ignored. 
+% values of its entries (the edge weights of the graph) are ignored.
 %
 % Example:
 %
@@ -57,16 +58,18 @@ function [v, parent] = bfs (A, s, varargin)
 %
 % See also graph/bfsearch, graph/shortestpathtree, treeplot.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-%-------------------------------------------------------------------------------
+% NOTE: this is a high-level algorithm that uses GrB objects.
+
+%-------------------------------------------------------------------------
 % initializations
-%-------------------------------------------------------------------------------
+%-------------------------------------------------------------------------
 
 [m, n] = size (A) ;
 if (m ~= n)
-    gb_error ('A must be square') ;
+    error ('A must be square') ;
 end
 
 % get the string options
@@ -82,7 +85,7 @@ for k = 1:nargin-2
         case { 'check' }
             check = true ;
         otherwise
-            gb_error ('unknown option') ;
+            error ('unknown option') ;
     end
 end
 
@@ -94,7 +97,7 @@ desc_s.mask = 'structural' ;
 % determine the method to use, and convert A if necessary
 if (isequal (kind, 'undirected'))
     if (check && ~issymmetric (A))
-        gb_error ('A must be symmetric') ;
+        error ('A must be symmetric') ;
     end
     if (GrB.isbycol (A))
         % A is stored by column but undirected, so use q*A' instead of q*A
@@ -107,22 +110,24 @@ else
     end
 end
 
-% determine the integer type to use, and initialize v as a full integer vector
+% determine the integer type to use
 int_type = 'int64' ;
 if (n < intmax ('int32'))
     int_type = 'int32' ;
 end
+
+% initialize v as a full integer vector
 v = full (GrB (1, n, int_type)) ;
 
-%-------------------------------------------------------------------------------
+%-------------------------------------------------------------------------
 % do the BFS
-%-------------------------------------------------------------------------------
+%-------------------------------------------------------------------------
 
 if (nargout == 1)
 
-    %---------------------------------------------------------------------------
+    %---------------------------------------------------------------------
     % just compute the level of each node
-    %---------------------------------------------------------------------------
+    %---------------------------------------------------------------------
 
     q = GrB (1, n, 'logical') ;                  % q = sparse (1,n)
     q = GrB.subassign (q, { s }, true) ;         % q (s) = 1
@@ -137,9 +142,9 @@ if (nargout == 1)
 
 else
 
-    %---------------------------------------------------------------------------
+    %---------------------------------------------------------------------
     % compute both the level and the parent
-    %---------------------------------------------------------------------------
+    %---------------------------------------------------------------------
 
     parent = full (GrB (1, n, int_type)) ;       % parent = zeros (1,n)
     parent = GrB.subassign (parent, { s }, s) ;  % parent (s) = s

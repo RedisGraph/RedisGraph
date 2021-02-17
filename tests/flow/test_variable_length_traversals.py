@@ -12,7 +12,7 @@ max_results = 6
 
 class testVariableLengthTraversals(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()

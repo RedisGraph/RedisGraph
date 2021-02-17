@@ -1,11 +1,11 @@
 function p = amd (G, varargin)
-%AMD approximate minimum degree ordering of a GraphBLAS matrix.
+%AMD approximate minimum degree ordering.
 % See 'help amd' for details.
 %
-% See also amd, GrB/colamd, GrB/symrcm.
+% See also GrB/colamd, GrB/symrcm.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 p = builtin ('amd', logical (G), varargin {:}) ;
 

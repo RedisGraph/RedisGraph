@@ -1,12 +1,18 @@
 function C = ctranspose (G)
 %CTRANSPOSE C = G', transpose a GraphBLAS matrix.
-% Note that complex matrices are not yet supported.  When they are, this
-% will compute the complex conjugate transpose C=G' when G is complex.
+% C = G' is the complex conjugate transpose of G.
 %
-% See also GrB.trans, transpose.
+% See also GrB.trans, GrB/transpose, GrB/conj.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-C = GrB.trans (G) ;
+G = G.opaque ;
+
+if (contains (gbtype (G), 'complex'))
+    desc.in0 = 'transpose' ;
+    C = GrB (gbapply ('conj', G, desc)) ;
+else
+    C = GrB (gbtrans (G)) ;
+end
 

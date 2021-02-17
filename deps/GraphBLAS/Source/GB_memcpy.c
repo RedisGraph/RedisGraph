@@ -2,8 +2,8 @@
 // GB_memcpy: parallel memcpy
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ void GB_memcpy                  // parallel memcpy
     void *dest,                 // destination
     const void *src,            // source
     size_t n,                   // # of bytes to copy
-    int nthreads                // # of threads to use
+    int nthreads                // max # of threads to use
 )
 {
 
@@ -35,13 +35,16 @@ void GB_memcpy                  // parallel memcpy
     {
 
         //----------------------------------------------------------------------
-        // memcpy using a multiple threads
+        // memcpy using multiple threads
         //----------------------------------------------------------------------
 
-        nthreads = GB_IMIN (nthreads, n / GB_MEM_CHUNK) ;
         size_t nchunks = 1 + (n / GB_MEM_CHUNK) ;
-        GB_void *pdest = dest ;
-        const GB_void *psrc = src ;
+        if (((size_t) nthreads) > nchunks)
+        { 
+            nthreads = (int) nchunks ;
+        }
+        GB_void *pdest = (GB_void *) dest ;
+        const GB_void *psrc = (GB_void *) src ;
 
         int64_t k ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)

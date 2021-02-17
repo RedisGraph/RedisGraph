@@ -12,6 +12,9 @@
 #include "../../util/arr.h"
 #include"../../query_ctx.h"
 
+// Forward declaration of property function.
+SIValue AR_PROPERTY(SIValue *argv, int argc);
+
 /* Create a list from a given squence of values.
    "RETURN [1, '2', True, null]" */
 SIValue AR_TOLIST(SIValue *argv, int argc) {
@@ -22,14 +25,35 @@ SIValue AR_TOLIST(SIValue *argv, int argc) {
 	return array;
 }
 
-/* Returns a value in a specific index in an array.
+/* If given an array, returns a value in a specific index in an array.
    Valid index range is [-arrayLen, arrayLen).
    Invalid index will return null.
-   "RETURN [1, 2, 3][0]" will yield 1. */
+   "RETURN [1, 2, 3][0]" will yield 1.
+
+   If given a map or graph entity, returns the property value associated
+   with the given key string. */
 SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 	ASSERT(argc == 2);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
-	ASSERT(SI_TYPE(argv[0]) == T_ARRAY && SI_TYPE(argv[1]) == T_INT64);
+	if(SI_TYPE(argv[0]) & (T_MAP | SI_GRAPHENTITY)) {
+		if(SI_TYPE(argv[1]) != T_STRING) {
+			Error_SITypeMismatch(argv[1], T_STRING);
+			return SI_NullVal();
+		}
+		/* If the first argument is a map or graph entity, this is a property lookup of a form like:
+		 * WITH {val: 5} AS a return a['val']
+		 * MATCH (a) RETURN a['val']
+		 * Pass the arguments to the AR_PROPERTY function. */
+		SIValue property_args[3] = {argv[0], argv[1], SI_LongVal(ATTRIBUTE_NOTFOUND)};
+		return AR_PROPERTY(property_args, 3);
+	}
+
+	if(SI_TYPE(argv[1]) == T_STRING) {
+		// String indexes are only permitted on maps, not arrays.
+		Error_SITypeMismatch(argv[1], T_INT64);
+		return SI_NullVal();
+	}
+
 	SIValue list = argv[0];
 	int32_t index = (int32_t)argv[1].longval;
 	uint32_t arrayLen = SIArray_Length(list);
@@ -199,8 +223,8 @@ void Register_ListFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, T_ARRAY | T_NULL);
-	types = array_append(types, T_INT64 | T_NULL);
+	types = array_append(types, T_ARRAY | T_MAP | SI_GRAPHENTITY | T_NULL);
+	types = array_append(types, T_INT64 | T_STRING | T_NULL);
 	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 

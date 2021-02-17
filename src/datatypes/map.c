@@ -6,14 +6,16 @@
 
 #include "map.h"
 #include "../util/arr.h"
+#include "../util/qsort.h"
 #include "../util/strcmp.h"
 #include "../util/rmalloc.h"
+#include "../util/strutil.h"
 
-static Pair Pair_New(SIValue key, SIValue val) {
+static inline Pair Pair_New(SIValue key, SIValue val) {
 	ASSERT(SI_TYPE(key) & T_STRING);
-	// TODO: should we also clone the key?
-	Pair pair = { .key = key, .val = SI_CloneValue(val) };
-	return pair;
+	return (Pair) {
+		.key = SI_CloneValue(key), .val = SI_CloneValue(val)
+	};
 }
 
 static void Pair_Free(Pair p) {
@@ -44,8 +46,7 @@ static int Map_KeyIdx(SIValue map, SIValue key) {
 SIValue Map_New
 (
 	uint capacity
-)
-{
+) {
 	SIValue map;
 	map.map = array_new(Pair, capacity);
 	map.type = T_MAP;
@@ -57,8 +58,7 @@ SIValue Map_New
 SIValue Map_Clone
 (
 	SIValue map  // map to clone
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 
 	uint key_count = Map_KeyCount(map);
@@ -78,8 +78,7 @@ void Map_Add
 	SIValue *map,
 	SIValue key,
 	SIValue value
-)
-{
+) {
 	ASSERT(SI_TYPE(*map) & T_MAP);
 	ASSERT(SI_TYPE(key) & T_STRING);
 
@@ -98,8 +97,7 @@ void Map_Remove
 (
 	SIValue map,
 	SIValue key
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	ASSERT(SI_TYPE(key) & T_STRING);
 
@@ -107,11 +105,12 @@ void Map_Remove
 
 	// search for key in map
 	int idx = Map_KeyIdx(map, key);
-	
+
 	// key missing from map
 	if(idx == -1) return;
-	
+
 	// override removed key with last pair
+	Pair_Free(m[idx]);
 	uint last_idx = array_len(m) - 1;
 	m[idx] = m[last_idx];
 
@@ -126,8 +125,7 @@ bool Map_Get
 	SIValue map,
 	SIValue key,
 	SIValue *value
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	ASSERT(SI_TYPE(key) & T_STRING);
 	ASSERT(value != NULL);
@@ -139,7 +137,7 @@ bool Map_Get
 		*value = SI_NullVal();
 		return false;
 	} else {
-		*value = map.map[idx].val;
+		*value = SI_ShareValue(map.map[idx].val);
 		return true;
 	}
 }
@@ -149,8 +147,7 @@ bool Map_Contains
 (
 	SIValue map,
 	SIValue key
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	ASSERT(SI_TYPE(key) & T_STRING);
 
@@ -160,8 +157,7 @@ bool Map_Contains
 uint Map_KeyCount
 (
 	SIValue map
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	return array_len(map.map);
 }
@@ -169,13 +165,12 @@ uint Map_KeyCount
 SIValue *Map_Keys
 (
 	SIValue map
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
-	
+
 	uint key_count = Map_KeyCount(map);
 	SIValue *keys = array_new(SIValue, key_count);
-	
+
 	for(uint i = 0; i < key_count; i++) {
 		Pair p = map.map[i];
 		keys = array_append(keys, p.key);
@@ -184,16 +179,17 @@ SIValue *Map_Keys
 	return keys;
 }
 
+#define KEY_ISLT(a,b) (strcmp(a->key.stringval, b->key.stringval) < 0)
 int Map_Compare
 (
 	SIValue mapA,
 	SIValue mapB,
 	int *disjointOrNull
-)
-{
+) {
 	int   order        =  0;
 	Map   A            =  mapA.map;
 	Map   B            =  mapB.map;
+	uint  key_count    =  Map_KeyCount(mapA);
 	uint  A_key_count  =  Map_KeyCount(mapA);
 	uint  B_key_count  =  Map_KeyCount(mapB);
 
@@ -202,28 +198,26 @@ int Map_Compare
 		else return -1;
 	}
 
-	// TODO: sort maps
+	// sort both maps
+	QSORT(Pair, A, A_key_count, KEY_ISLT);
+	QSORT(Pair, B, B_key_count, KEY_ISLT);
 
-	uint len = MIN(A_key_count, B_key_count);
-
-	// Check empty list.
-	// notEqual holds the first false (result != 0)
-	// comparison result between two values from the same type,
-	// which are not equal.
-
-	// go over the common range for both maps
-	for(uint i = 0; i < len; i++) {
-		Pair Ap = A[i];
-		Pair Bp = B[i];
-
-		// compare keys
-		order = strcmp(Ap.key.stringval, Bp.key.stringval);
+	// element-wise key comparison
+	for(uint i = 0; i < key_count; i++) {
+		// if the maps contain different keys, order in favor
+		// of the first lexicographically greater key
+		order = SIValue_Compare(A[i].key, B[i].key, NULL);
 		if(order != 0) return order;
+	}
 
-		// same key, compare values
-		order = SIValue_Compare(Ap.val, Bp.val, disjointOrNull);
-		if(*disjointOrNull == COMPARED_NULL || *disjointOrNull == DISJOINT)
+	// Element-wise value comparison.
+	for(uint i = 0; i < key_count; i++) {
+		// key lookup succeeded; compare values
+		order = SIValue_Compare(A[i].val, B[i].val, disjointOrNull);
+		if(disjointOrNull && (*disjointOrNull == COMPARED_NULL ||
+							  *disjointOrNull == DISJOINT)) {
 			return 0;
+		}
 
 		if(order != 0) return order;
 	}
@@ -233,18 +227,18 @@ int Map_Compare
 }
 
 /* This method referenced by Java ArrayList.hashCode() method, which takes
- * into account the hasing of nested values.*/
+ * into account the hashing of nested values.*/
 XXH64_hash_t Map_HashCode
 (
 	SIValue map
-)
-{
-	// TODO: sort on key
-	// {a:1, b:1} and {b:1, a:1} should have the same hash value
+) {
+	// sort the map by key, so that {a:1, b:1} and {b:1, a:1}
+	// have the same hash value
+	uint key_count = Map_KeyCount(map);
+	QSORT(Pair, map.map, key_count, KEY_ISLT);
 
 	SIType t = SI_TYPE(map);
 	XXH64_hash_t hashCode = XXH64(&t, sizeof(t), 0);
-	uint key_count = Map_KeyCount(map);
 
 	for(uint i = 0; i < key_count; i++) {
 		Pair p = map.map[i];
@@ -261,18 +255,14 @@ void Map_ToString
 	char **buf,           // buffer to populate
 	size_t *bufferLen,    // size of buffer
 	size_t *bytesWritten  // length of string
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	ASSERT(buf != NULL);
 	ASSERT(bufferLen != NULL);
 	ASSERT(bytesWritten != NULL);
 
 	// resize buffer if buffer length is less than 64
-	if(*bufferLen - *bytesWritten < 64) {
-		*bufferLen += 64;
-		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
-	}
+	if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 
 	uint key_count = Map_KeyCount(map);
 
@@ -283,17 +273,18 @@ void Map_ToString
 		Pair p = map.map[i];
 		// write the next key/value pair
 		SIValue_ToString(p.key, buf, bufferLen, bytesWritten);
+		if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ": ");
 		SIValue_ToString(p.val, buf, bufferLen, bytesWritten);
 		// if this is not the last element, add ", "
-		if(i != key_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
+		if(i != key_count - 1) {
+			if(*bufferLen - *bytesWritten < 64) str_ExtendBuffer(buf, bufferLen, 64);
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
+		}
 	}
 
 	// make sure there's enough space for "}"
-	if(*bufferLen - *bytesWritten < 2) {
-		*bufferLen += 2;
-		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
-	}
+	if(*bufferLen - *bytesWritten < 2) str_ExtendBuffer(buf, bufferLen, 2);
 
 	// "}" marks the end of a map
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "}");
@@ -303,8 +294,7 @@ void Map_ToString
 void Map_Free
 (
 	SIValue map
-)
-{
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 
 	uint l = Map_KeyCount(map);
@@ -312,9 +302,8 @@ void Map_Free
 	// free stored pairs
 	for(uint i = 0; i < l; i++) {
 		Pair p = map.map[i];
-		Pair_Free(p);	
+		Pair_Free(p);
 	}
 
 	array_free(map.map);
 }
-

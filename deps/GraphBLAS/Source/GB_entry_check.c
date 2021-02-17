@@ -2,19 +2,20 @@
 // GB_entry_check: print a single entry for a built-in type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-#include "GB_printf.h"
+#include "GB.h"
 
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_entry_check     // print a single value
 (
     const GrB_Type type,    // type of value to print
     const void *x,          // value to print
-    FILE *f,                // file to print to
-    GB_Context Context
+    int pr,                 // print level
+    FILE *f                 // file to print to
 )
 { 
 
@@ -29,6 +30,6 @@ GrB_Info GB_entry_check     // print a single value
     // print the value
     //--------------------------------------------------------------------------
 
-    return (GB_code_check (type->code, x, f, Context)) ;
+    return (GB_code_check (type->code, x, pr, f)) ;
 }
 

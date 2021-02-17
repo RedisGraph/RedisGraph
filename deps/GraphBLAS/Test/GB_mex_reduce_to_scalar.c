@@ -2,8 +2,8 @@
 // GB_mex_reduce_to_scalar: c = accum(c,reduce_to_scalar(A))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -15,16 +15,12 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GB_MATRIX_FREE (&A) ;               \
-    if (!reduce_is_complex)             \
+    GrB_Matrix_free_(&A) ;               \
+    if (reduce_monoid_allocated)        \
     {                                   \
-        GrB_free (&reduce) ;            \
+        GrB_Monoid_free_(&reduce) ;     \
     }                                   \
-    if (ctype == Complex)               \
-    {                                   \
-        GB_FREE_MEMORY (c, 1, sizeof (double complex)) ; \
-    }                                   \
-    GB_mx_put_global (true, 0) ;        \
+    GB_mx_put_global (true) ;           \
 }
 
 void mexFunction
@@ -40,9 +36,9 @@ void mexFunction
     GrB_Matrix A = NULL ;
     GrB_Monoid reduce = NULL ;
     bool reduce_is_complex = false ;
+    bool reduce_monoid_allocated = false ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin != 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -52,13 +48,11 @@ void mexFunction
     #define FREE_DEEP_COPY ;
 
     // get the scalar c
-    void *c ;
+    GB_void *c ;
     int64_t cnrows, cncols ;
-    mxClassID cclass ;
     GrB_Type ctype ;
 
-    GB_mx_mxArray_to_array (pargin [0], &c, &cnrows, &cncols, &cclass,
-        &ctype) ;
+    GB_mx_mxArray_to_array (pargin [0], &c, &cnrows, &cncols, &ctype) ;
     if (cnrows != 1 || cncols != 1)
     {
         mexErrMsgTxt ("c must be a scalar") ;
@@ -76,25 +70,32 @@ void mexFunction
         mexErrMsgTxt ("A failed") ;
     }
 
-    // get reduce; default: NOP, default class is class(C)
+    // get reduce
+    bool user_complex = (Complex != GxB_FC64) && (ctype == Complex) ;
     GrB_BinaryOp reduceop ;
     if (!GB_mx_mxArray_to_BinaryOp (&reduceop, pargin [2], "reduceop",
-        GB_NOP_opcode, cclass, ctype == Complex, ctype == Complex))
+        ctype, user_complex) || reduceop == NULL) 
     {
         FREE_ALL ;
         mexErrMsgTxt ("reduceop failed") ;
     }
 
     // get the reduce monoid
-    if (reduceop == Complex_plus)
+    if (user_complex)
     {
-        reduce_is_complex = true ;
-        reduce = Complex_plus_monoid ;
-    }
-    else if (reduceop == Complex_times)
-    {
-        reduce_is_complex = true ;
-        reduce = Complex_times_monoid ;
+        if (reduceop == Complex_plus)
+        {
+            reduce = Complex_plus_monoid ;
+        }
+        else if (reduceop == Complex_times)
+        {
+            reduce = Complex_times_monoid ;
+        }
+        else
+        {
+            FREE_ALL ;
+            mexErrMsgTxt ("reduce failed") ;
+        }
     }
     else
     {
@@ -104,111 +105,78 @@ void mexFunction
             FREE_ALL ;
             mexErrMsgTxt ("reduce failed") ;
         }
+        reduce_monoid_allocated = true ;
     }
 
-    // get accum; default: NOP, default class is class(C)
+    // get accum, if present
     GrB_BinaryOp accum ;
     if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [1], "accum",
-        GB_NOP_opcode, cclass, ctype == Complex, reduce_is_complex))
+        ctype, user_complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;
     }
-
-    GrB_Descriptor d = NULL ;
 
     // c = accum(C,A*B)
 
     // test both Vector and Matrix methods.  The typecast is not necessary,
     // just to test.
 
-    #define REDUCE(type,X) \
-        METHOD (GrB_reduce ((type *) c, accum, reduce, X, d)) ;
-
-    if (A->type == Complex)
+    if (user_complex)
     {
         if (A->vdim == 1)
         {
             GrB_Vector V ;
             V = (GrB_Vector) A ;
-            REDUCE (void, V) ;
+            METHOD (GrB_Vector_reduce_UDT (c, accum, reduce, V, NULL)) ;
         }
         else
         {
-            REDUCE (void, A) ;
+            METHOD (GrB_Matrix_reduce_UDT (c, accum, reduce, A, NULL)) ;
         }
     }
     else
     {
-        if (A->vdim == 1)
-        {
-            GrB_Vector V ;
-            V = (GrB_Vector) A ;
-            switch (cclass)
-            {
-                // all GraphBLAS built-in types are supported
-                case mxLOGICAL_CLASS : REDUCE (bool     , V) ; break ;
-                case mxINT8_CLASS    : REDUCE (int8_t   , V) ; break ;
-                case mxUINT8_CLASS   : REDUCE (uint8_t  , V) ; break ;
-                case mxINT16_CLASS   : REDUCE (int16_t  , V) ; break ;
-                case mxUINT16_CLASS  : REDUCE (uint16_t , V) ; break ;
-                case mxINT32_CLASS   : REDUCE (int32_t  , V) ; break ;
-                case mxUINT32_CLASS  : REDUCE (uint32_t , V) ; break ;
-                case mxINT64_CLASS   : REDUCE (int64_t  , V) ; break ;
-                case mxUINT64_CLASS  : REDUCE (uint64_t , V) ; break ;
-                case mxSINGLE_CLASS  : REDUCE (float    , V) ; break ;
-                case mxDOUBLE_CLASS  : REDUCE (double   , V) ; break ;
-                case mxCELL_CLASS    :
-                case mxCHAR_CLASS    :
-                case mxUNKNOWN_CLASS :
-                case mxFUNCTION_CLASS:
-                case mxSTRUCT_CLASS  :
-                default              :
-                    FREE_ALL ;
-                    mexErrMsgTxt ("unsupported class") ;
-            }
+
+        #define REDUCE(prefix,suffix,type)              \
+        if (A->vdim == 1)                               \
+        {                                               \
+            GrB_Vector V ;                              \
+            V = (GrB_Vector) A ;                        \
+            METHOD (prefix ## Vector_reduce ## suffix   \
+                ((type *) c, accum, reduce, V, NULL)) ; \
+        }                                               \
+        else                                            \
+        {                                               \
+            METHOD (prefix ## Matrix_reduce ## suffix   \
+                ((type *) c, accum, reduce, A, NULL)) ; \
         }
-        else
+
+        switch (ctype->code)
         {
-            switch (cclass)
-            {
-                // all GraphBLAS built-in types are supported
-                case mxLOGICAL_CLASS : REDUCE (bool     , A) ; break ;
-                case mxINT8_CLASS    : REDUCE (int8_t   , A) ; break ;
-                case mxUINT8_CLASS   : REDUCE (uint8_t  , A) ; break ;
-                case mxINT16_CLASS   : REDUCE (int16_t  , A) ; break ;
-                case mxUINT16_CLASS  : REDUCE (uint16_t , A) ; break ;
-                case mxINT32_CLASS   : REDUCE (int32_t  , A) ; break ;
-                case mxUINT32_CLASS  : REDUCE (uint32_t , A) ; break ;
-                case mxINT64_CLASS   : REDUCE (int64_t  , A) ; break ;
-                case mxUINT64_CLASS  : REDUCE (uint64_t , A) ; break ;
-                case mxSINGLE_CLASS  : REDUCE (float    , A) ; break ;
-                case mxDOUBLE_CLASS  : REDUCE (double   , A) ; break ;
-                case mxCELL_CLASS    :
-                case mxCHAR_CLASS    :
-                case mxUNKNOWN_CLASS :
-                case mxFUNCTION_CLASS:
-                case mxSTRUCT_CLASS  :
-                default              :
-                    FREE_ALL ;
-                    mexErrMsgTxt ("unsupported class") ;
-            }
+            case GB_BOOL_code   : REDUCE (GrB_, _BOOL,   bool    ) ; break ;
+            case GB_INT8_code   : REDUCE (GrB_, _INT8,   int8_t  ) ; break ;
+            case GB_INT16_code  : REDUCE (GrB_, _INT16,  int16_t ) ; break ;
+            case GB_INT32_code  : REDUCE (GrB_, _INT32,  int32_t ) ; break ;
+            case GB_INT64_code  : REDUCE (GrB_, _INT64,  int64_t ) ; break ;
+            case GB_UINT8_code  : REDUCE (GrB_, _UINT8,  uint8_t ) ; break ;
+            case GB_UINT16_code : REDUCE (GrB_, _UINT16, uint16_t) ; break ;
+            case GB_UINT32_code : REDUCE (GrB_, _UINT32, uint32_t) ; break ;
+            case GB_UINT64_code : REDUCE (GrB_, _UINT64, uint64_t) ; break ;
+            case GB_FP32_code   : REDUCE (GrB_, _FP32,   float   ) ; break ;
+            case GB_FP64_code   : REDUCE (GrB_, _FP64,   double  ) ; break ;
+            case GB_FC32_code   : REDUCE (GxB_, _FC32, GxB_FC32_t) ; break ;
+            case GB_FC64_code   : REDUCE (GxB_, _FC64, GxB_FC64_t) ; break ;
+            default             :
+                FREE_ALL ;
+                mexErrMsgTxt ("unknown type: reduce to scalar") ;
         }
     }
 
     // return C to MATLAB as a scalar
-    if (ctype == Complex)
-    {
-        pargout [0] = mxCreateNumericMatrix (1, 1, mxDOUBLE_CLASS, mxCOMPLEX) ;
-        GB_mx_complex_split (1, c, pargout [0]) ;
-    }
-    else
-    {
-        pargout [0] = mxCreateNumericMatrix (1, 1, cclass, mxREAL) ;
-        void *p = mxGetData (pargout [0]) ;
-        memcpy (p, c, ctype->size) ;
-    }
-
+    pargout [0] = GB_mx_create_full (1, 1, ctype) ;
+    GB_void *p = mxGetData (pargout [0]) ;
+    memcpy (p, c, ctype->size) ;
     FREE_ALL ;
 }
 

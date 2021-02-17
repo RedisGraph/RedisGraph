@@ -2,8 +2,8 @@
 // GB_is_diagonal: check if A is a diagonal matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -26,6 +26,9 @@ bool GB_is_diagonal             // true if A is diagonal
 
     ASSERT (A != NULL) ;
     ASSERT_MATRIX_OK (A, "A check diag", GB0) ;
+    ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (GB_JUMBLED_OK (A)) ;
+    ASSERT (!GB_PENDING (A)) ;
 
     //--------------------------------------------------------------------------
     // trivial cases
@@ -37,6 +40,20 @@ bool GB_is_diagonal             // true if A is diagonal
     if (n != ncols)
     { 
         // A is rectangular
+        return (false) ;
+    }
+
+    if (GB_IS_BITMAP (A))
+    { 
+        // never treat bitmaps as diagonal
+        return (false) ;
+    }
+
+    if (GB_IS_FULL (A))
+    { 
+        // A is full, and is diagonal only if 1-by-1, but always return
+        // false so that GB_AxB_rowscale and GB_AxB_colscale are not used
+        // by GB_reduce_to_vector.
         return (false) ;
     }
 
@@ -83,13 +100,8 @@ bool GB_is_diagonal             // true if A is diagonal
 
         int diag = true ;
         { 
-            #if GB_MICROSOFT
-                #pragma omp critical (GB_is_diagonal)
-                diag = diagonal ;
-            #else
-                GB_ATOMIC_READ
-                diag = diagonal ;
-            #endif
+            GB_ATOMIC_READ
+            diag = diagonal ;
         }
         if (!diag) continue ;
 
@@ -122,13 +134,8 @@ bool GB_is_diagonal             // true if A is diagonal
 
         if (!diag)
         { 
-            #if GB_MICROSOFT
-                #pragma omp critical (GB_is_diagonal)
-                diagonal = false ;
-            #else
-                GB_ATOMIC_WRITE
-                diagonal = false ;
-            #endif
+            GB_ATOMIC_WRITE
+            diagonal = false ;
         }
     }
 
@@ -136,7 +143,6 @@ bool GB_is_diagonal             // true if A is diagonal
     // return result
     //--------------------------------------------------------------------------
 
-    if (diagonal) A->nvec_nonempty = n ;
     return ((bool) diagonal) ;
 }
 

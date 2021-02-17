@@ -1,12 +1,12 @@
-% SuiteSparse/GraphBLAS/GraphBLAS/test: tests for GraphBLAS MATLAB interface
+% SuiteSparse/GraphBLAS/GraphBLAS/test: testing GraphBLAS MATLAB interface
 %
-%  gbtest    - test GraphBLAS MATLAB interface (runs all tests listed below)
+%  gbtest    - test GraphBLAS MATLAB interface
 %
 %  gbtest0   - test GrB.clear
 %  gbtest1   - test GrB
 %  gbtest2   - list all binary operators
 %  gbtest3   - test dnn
-%  gbtest4   - list all 1865 possible semirings
+%  gbtest4   - list all semirings
 %  gbtest5   - test GrB.descriptorinfo
 %  gbtest6   - test GrB.mxm
 %  gbtest7   - test GrB.build
@@ -35,7 +35,7 @@
 %  gbtest30  - test colon notation
 %  gbtest31  - test GrB and casting
 %  gbtest32  - test nonzeros
-%  gbtest33  - test spones, numel, nzmax, size, length, isempty, issparse, ...
+%  gbtest33  - test spones, numel, nzmax, size, length, is*, ...
 %  gbtest34  - test repmat
 %  gbtest35  - test reshape
 %  gbtest36  - test abs, sign
@@ -62,7 +62,7 @@
 %  gbtest57  - test fprintf and sprintf
 %  gbtest58  - test uplus
 %  gbtest59  - test end
-%  gbtest60  - test issigned
+%  gbtest60  - test GrB.issigned
 %  gbtest61  - test GrB.laplacian
 %  gbtest62  - test ldivide, rdivide, mldivide, mrdivide
 %  gbtest63  - test GrB.incidence
@@ -76,16 +76,46 @@
 %  gbtest71  - test GrB.selectopinfo
 %  gbtest72  - test any-pair semiring
 %  gbtest73  - test GrB.normdiff
-%  gbtest97  - test A*x performance
-%  gbtest98  - test A'*x performance
-%  gbtest99  - test GrB.bfs and plot (graph (G))
+%  gbtest74  - test bitwise operators
+%  gbtest75  - test bitshift
+%  gbtest76  - test trig and other functions
+%  gbtest77  - test error handling
+%  gbtest78  - test integer operators
+%  gbtest79  - test real power
+%  gbtest80  - test complex division and power
+%  gbtest81  - test complex operators
+%  gbtest82  - test complex A*B, A'*B, A*B', A'*B', A+B
+%  gbtest83  - test GrB.apply
+%  gbtest84  - test GrB.assign
+%  gbtest85  - test GrB.subassign
+%  gbtest86  - test GrB.mxm
+%  gbtest87  - test GrB.eadd
+%  gbtest88  - test GrB.emult
+%  gbtest89  - test GrB.extract
+%  gbtest90  - test GrB.reduce
+%  gbtest91  - test GrB.trans
+%  gbtest92  - test GrB.kronecker
+%  gbtest93  - test GrB.select
+%  gbtest94  - test GrB.vreduce
+%  gbtest95  - test indexing
+%  gbtest96  - test GrB.optype
+%  gbtest97  - test GrB.apply2
+%  gbtest98  - test row/col degree for hypersparse matrices
+%  gbtest99  - test performance of C=A'*B and C=A'
+%  gbtest00  - test GrB.bfs and plot (graph (G))
+%  gbtest100 - test GrB.ver and GrB.version
 %
-% Utilities:
+% Utilities and other tests:
 %
-%  gbtest_binops - return a cell array of strings, listing all binary operators
-%  gbtest_types  - return a cell array of strings, listing all types
-%  gbtest_eq     - tests if A and B are equal, after dropping zeros.
+%  gbtest_binops  - list of all binary operators
+%  gbtest_types   - return a cell array of strings, listing all types
+%  gbtest_eq      - tests if A and B are equal, after dropping zeros.
+%  gbtest_perf1   - test A*x performance
+%  gbtest_perf2   - test A'*x performance
+%  gbtest_cast    - cast a MATLAB matrix to another type.
+%  gbtest_complex - return list of complex operators
+%  gbtest_err     - compare two matrices
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 

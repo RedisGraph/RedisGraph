@@ -1,10 +1,13 @@
 function test75
 %TEST75 test GrB_mxm and GrB_vxm on all semirings
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-[mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
+[binops, ~, add_ops, types, ~, ~] = GB_spec_opsall ;
+% mult_ops = binops.positional ;
+mult_ops = binops.all ;
+types = types.all ;
 
 rng ('default') ;
 
@@ -79,8 +82,6 @@ dtt = struct ( 'inp0', 'tran', 'inp1', 'tran' ) ;
 
 n_semirings = 0 ;
 
-% eq_eq_bool: 18, 8, 1
-
 for k1 = 1:length(mult_ops)
     mulop = mult_ops {k1} ;
     fprintf ('\n%s', mulop) ;
@@ -88,33 +89,29 @@ for k1 = 1:length(mult_ops)
     for k2 = 1:length(add_ops)
         addop = add_ops {k2} ;
 
-        for k3 = 1:length (classes)
-            clas = classes {k3} ;
+        for k3 = 1:length (types)
+            semiring_type = types {k3} ;
 
             semiring.multiply = mulop ;
             semiring.add = addop ;
-            semiring.class = clas ;
+            semiring.class = semiring_type ;
 
             % create the semiring.  some are not valid because the or,and,xor,eq
             % monoids can only be used when z is boolean for z=mult(x,y).
             try
                 [mult_op add_op id] = GB_spec_semiring (semiring) ;
-                [mult_opname mult_opclass zclass] = GB_spec_operator (mult_op) ;
-                [ add_opname  add_opclass] = GB_spec_operator (add_op) ;
-                identity = GB_spec_identity (semiring.add, add_opclass) ;
-            catch me
-                if (~isempty (strfind (me.message, 'gotcha')))
-                    semiring
-                    pause
-                end
+                [mult_opname mult_optype ztype xtype ytype] = GB_spec_operator (mult_op) ;
+                [ add_opname  add_optype] = GB_spec_operator (add_op) ;
+                identity = GB_spec_identity (semiring.add, add_optype) ;
+            catch
                 continue
             end
 
-            A.class = clas ;
-            B.class = clas ;
-            X.class = clas ;
-            Y.class = clas ;
-            D.class = add_op.opclass ;
+            A.class = semiring_type ;
+            B.class = semiring_type ;
+            X.class = semiring_type ;
+            Y.class = semiring_type ;
+            D.class = add_op.optype ;
 
             n_semirings = n_semirings + 1 ;
             fprintf ('.') ;

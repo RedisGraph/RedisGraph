@@ -58,3 +58,4 @@ TEST_F(RecordTest, RecordToString) {
 	rm_free(record_str);
 	Record_Free(r);
 }
+

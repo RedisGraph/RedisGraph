@@ -1,9 +1,9 @@
 //------------------------------------------------------------------------------
-// GB_mex_msort_3: sort using GB_msort_3
+// GB_mex_msort_3: sort using GB_msort_3b
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -56,34 +56,22 @@ void mexFunction
 
     int GET_SCALAR (3, int, nthreads, 1) ;
 
-    pargout [0] = mxCreateNumericMatrix (n, 1, mxINT64_CLASS, mxREAL) ;
+    pargout [0] = GB_mx_create_full (n, 1, GrB_INT64) ;
     int64_t *Iout = mxGetData (pargout [0]) ;
     memcpy (Iout, I, n * sizeof (int64_t)) ;
 
-    pargout [1] = mxCreateNumericMatrix (n, 1, mxINT64_CLASS, mxREAL) ;
+    pargout [1] = GB_mx_create_full (n, 1, GrB_INT64) ;
     int64_t *Jout = mxGetData (pargout [1]) ;
     memcpy (Jout, J, n * sizeof (int64_t)) ;
 
-    pargout [2] = mxCreateNumericMatrix (n, 1, mxINT64_CLASS, mxREAL) ;
+    pargout [2] = GB_mx_create_full (n, 1, GrB_INT64) ;
     int64_t *Kout = mxGetData (pargout [2]) ;
     memcpy (Kout, K, n * sizeof (int64_t)) ;
 
-    // get workspace
-    int64_t *Work_0 = mxMalloc ((n+1) * sizeof (int64_t)) ;
-    int64_t *Work_1 = mxMalloc ((n+1) * sizeof (int64_t)) ;
-    int64_t *Work_2 = mxMalloc ((n+1) * sizeof (int64_t)) ;
-
     GB_MEX_TIC ;
-
-    GB_msort_3 (Iout, Jout, Kout, Work_0, Work_1, Work_2, n, nthreads) ;
-
+    GB_msort_3b (Iout, Jout, Kout, n, nthreads) ;
     GB_MEX_TOC ;
 
-    // free workspace
-    mxFree (Work_0) ;
-    mxFree (Work_1) ;
-    mxFree (Work_2) ;
-
-    GB_mx_put_global (true, 0) ;
+    GB_mx_put_global (true) ;   
 }
 

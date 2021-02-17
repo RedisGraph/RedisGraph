@@ -73,7 +73,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-		GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+		GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
 
 		// Create a graph
 		_fake_graph_context();
@@ -1661,5 +1661,47 @@ TEST_F(AlgebraicExpressionTest, RemoveOperand) {
 			AlgebraicExpression_Free(expected);
 		}
 	}
+}
+
+TEST_F(AlgebraicExpressionTest, LocateOperand) {
+	// construct algebraic expression
+	bool                 located  =  false;
+	GrB_Matrix           mat      =  GrB_NULL;
+	AlgebraicExpression  *A       =  NULL;
+	AlgebraicExpression  *B       =  NULL;
+	AlgebraicExpression  *r       =  NULL;
+	AlgebraicExpression  *op      =  NULL;
+	AlgebraicExpression  *p       =  NULL;
+
+	// ( T(A) * B )
+	A = AlgebraicExpression_NewOperand(mat, false, "a", "b", "e0", "E");
+	B = AlgebraicExpression_NewOperand(mat, false, "b", "c", "e1", "E");
+	AlgebraicExpression_Transpose(&A);
+	r = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+	AlgebraicExpression_AddChild(r, A);
+	AlgebraicExpression_AddChild(r, B);
+
+	// search for A operand
+	located = AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "e0");
+
+	// validate located operand
+	ASSERT_TRUE(located);
+	ASSERT_EQ(op->type, AL_OPERAND);
+	ASSERT_STREQ(op->operand.src, "a");
+	ASSERT_STREQ(op->operand.dest, "b");
+	ASSERT_STREQ(op->operand.edge, "e0");
+
+	ASSERT_EQ(p->type, AL_OPERATION);
+	ASSERT_EQ(p->operation.op, AL_EXP_TRANSPOSE);
+
+	// search for none existing operand
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "x", "b", "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "x", "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "x"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, NULL, "b", "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", NULL, "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", NULL));
+
+	AlgebraicExpression_Free(r);
 }
 

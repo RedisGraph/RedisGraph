@@ -31,10 +31,11 @@ typedef struct thpool_* threadpool;
  *    ..
  *
  * @param  num_threads   number of threads to be created in the threadpool
+ * @param  name          name associated with pool
  * @return threadpool    created threadpool on success,
  *                       NULL on error
  */
-threadpool thpool_init(int num_threads);
+threadpool thpool_init(int num_threads, const char *name);
 
 
 /**

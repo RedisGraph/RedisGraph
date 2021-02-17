@@ -367,7 +367,7 @@ static void _Pushdown_TransposeExp
  *    (transpose)     (transpose)
  *         (B)            (A)
  * */
-static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
+void AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 	uint i = 0;
 	uint child_count = 0;
 	AlgebraicExpression *child = NULL;
@@ -384,7 +384,7 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 			child_count = AlgebraicExpression_ChildCount(root);
 			for(; i < child_count; i++) {
 				AlgebraicExpression *child = root->operation.children[i];
-				_AlgebraicExpression_PushDownTranspose(child);
+				AlgebraicExpression_PushDownTranspose(child);
 			}
 			break;
 
@@ -402,7 +402,7 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 
 				/* It is possible for `root` to contain a transpose subexpression
 				 * push it further down. */
-				_AlgebraicExpression_PushDownTranspose(root);
+				AlgebraicExpression_PushDownTranspose(root);
 			}
 			break;
 		default:
@@ -439,14 +439,18 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 	GxB_Matrix_type(&type, A);
 	GrB_Info info = GrB_Matrix_new(&replacement, type, nrows, ncols);
 	if(info != GrB_SUCCESS) {
-		fprintf(stderr, "%s", GrB_error());
+		const char *error_msg = NULL;
+		GrB_error(&error_msg, replacement);
+		fprintf(stderr, "%s", error_msg);
 		ASSERT(false);
 	}
 
 	// Populate the replacement with the transposed contents of the original.
 	info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, A, GrB_NULL);
 	if(info != GrB_SUCCESS) {
-		fprintf(stderr, "%s", GrB_error());
+		const char *error_msg = NULL;
+		GrB_error(&error_msg, replacement);
+		fprintf(stderr, "%s", error_msg);
 		ASSERT(false);
 	}
 
@@ -528,7 +532,7 @@ void AlgebraicExpression_Optimize
 ) {
 	ASSERT(exp);
 
-	_AlgebraicExpression_PushDownTranspose(*exp);
+	AlgebraicExpression_PushDownTranspose(*exp);
 	_AlgebraicExpression_MulOverAdd(exp);
 	_AlgebraicExpression_FlattenMultiplications(*exp);
 

@@ -6,6 +6,7 @@
 
 #include "entity_funcs.h"
 #include "../func_desc.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/map.h"
@@ -130,6 +131,15 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 	// return NULL for missing graph entity
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
+	// AR_PROPERTY may be invoked from AR_SUBSCRIPT in a case like:
+	// WITH {val: 5} AS map RETURN map["val"]
+	// As such, we need to validate the argument's type independently of the invocation validation.
+	if(SI_TYPE(argv[1]) != T_STRING) {
+		// String indexes are only permitted on maps, not arrays.
+		Error_SITypeMismatch(argv[1], T_STRING);
+		return SI_NullVal();
+	}
+
 	// inputs:
 	// argv[0] - node/edge/map
 	// argv[1] - property string
@@ -153,7 +163,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 			prop_idx = GraphContext_GetAttributeID(gc, prop_name);
 		}
 
-		// Retrieve the property.
+    // Retrieve the property.
 		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
 		return SI_ConstValue(*value);
 	} else {
@@ -162,7 +172,8 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 		SIValue value;
 
 		Map_Get(obj, key, &value);
-		return SI_ConstValue(value);
+		// Return a volatile copy of the value, as it may be heap-allocated.
+		return SI_ShareValue(value);
 	}
 }
 

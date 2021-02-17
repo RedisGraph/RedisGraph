@@ -1,10 +1,10 @@
-function [multiply_op add_op identity zclass] = GB_spec_semiring (semiring)
+function [multiply_op add_op identity ztype xtype ytype] = GB_spec_semiring (semiring)
 %GB_SPEC_SEMIRING create a semiring
 %
-% [multiply_op add_op identity zclass] = GB_spec_semiring (semiring)
+% [multiply_op add_op identity ztype xtype ytype] = GB_spec_semiring (semiring)
 %
 % Given a semiring, extract the multiply operator, additive operator, additive
-% identity, and the class of z for z=multiply(...) and the monoid z=add(z,z).
+% identity, and the ztype of z for z=multiply(...) and the monoid z=add(z,z).
 %
 % A semiring is a struct with 3 fields, each a string, with defaults used if
 % fields are not present.  None of the content of the semiring should be
@@ -21,10 +21,11 @@ function [multiply_op add_op identity zclass] = GB_spec_semiring (semiring)
 %               built-in GraphBLAS types:
 %               'logical' (boolean in GraphBLAS), 'int8', 'uint8', 'int16',
 %               'uint16', 'int32', 'uint32', 'int64', 'uint64', 'single' (FP43
-%               in GraphBLAS), 'double' (FP64 in GraphBLAS).
+%               in GraphBLAS), 'double' (FP64 in GraphBLAS),
+%               'single complex', and 'double complex'
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % set the default semiring
 if (isempty (semiring))
@@ -42,115 +43,55 @@ end
 
 % create the multiply operator.  No error checks; it will be checked later
 % and can be any valid GraphBLAS binary operator.
-[mult multclass zclass] = GB_spec_operator (semiring.multiply, semiring.class);
+[mult mult_optype ztype xtype ytype] = GB_spec_operator (semiring.multiply, semiring.class);
 multiply_op.opname =  mult ;
-multiply_op.opclass = multclass ;
+multiply_op.optype = mult_optype ;
+
+if (isequal (ytype, 'none'))
+    error ('invalid multiply op') ;
+end
 
 % create the add operator
-[add_opname add_opclass] = GB_spec_operator (semiring.add, zclass) ;
+[add_opname add_optype add_ztype add_xtype add_ytype] = GB_spec_operator (semiring.add, ztype) ;
 add_op.opname = add_opname ;
-add_op.opclass = add_opclass ;
+add_op.optype = add_optype ;
 
 % get the identity of the add operator
 identity = GB_spec_identity (add_op) ;
 
-switch mult
-
-    % 11, the monoid has the same type as x, y, and z, all semiring.class
-    case 'first'      % z = x
-         ;
-    case 'second'     % z = y
-         ;
-    case 'pair'       % z = 1
-         ;
-    case 'min'        % z = min(x,y)
-         ;
-    case 'max'        % z = max(x,y)
-         ;
-    case 'plus'       % z = x + y
-         ;
-    case 'minus'      % z = x - y
-         ;
-    case 'rminus'     % z = y - x
-         ;
-    case 'times'      % z = x * y
-         ;
-    case 'rdiv'       % z = y / x
-         ;
-    case 'div'        % z = x / y
-         ;
-
-    % 6, the monoid has the same type as x, y, and z, all semiring.class
-    case 'iseq'         % z = (x == y)
-         ;
-    case 'isne'         % z = (x != y)
-         ;
-    case 'isgt'         % z = (x >  y)
-         ;
-    case 'islt'         % z = (x <  y)
-         ;
-    case 'isge'         % z = (x >= y)
-         ;
-    case 'isle'         % z = (x <= y)
-         ;
-
-    % 6 ops, the class of x and y are semiring.class, but z logical
-    case 'eq'         % z = (x == y)
-        ;
-    case 'ne'         % z = (x != y)
-        ;
-    case 'gt'         % z = (x >  y)
-        ;
-    case 'lt'         % z = (x <  y)
-        ;
-    case 'ge'         % z = (x >= y)
-        ;
-    case 'le'         % z = (x <= y)
-        ;
-
-    % 3 boolean ops, class of x, y, z are semiring.class (not just logical)
-    case 'or'         % z = x || y
-        ;
-    case 'and'        % z = x && y
-        ;
-    case 'xor'        % z = x != y
-        ;
-
-    otherwise
-        error ('invalid multiply op for semiring') ;
+% make sure the monoid is valid
+if (~isequal (add_ztype, add_xtype) || ~isequal (add_ztype, add_xtype))
+    error ('invalid monoid') ;
 end
 
-zbool = isequal (zclass, 'logical') ;
-
-% min, max, plus, times, any monoids: valid for all 11 classes
-% or, and, xor, eq monoids:  valid only for logical
-switch add_opname
-    case 'min'
-        ok = 1 ;
-    case 'max'
-        ok = 1 ;
-    case 'plus'
-        ok = 1 ;
-    case 'times'
-        ok = 1 ;
-    case 'any'
-        ok = 1 ;
-    case 'or'
-        ok = zbool ;
-    case 'and'
-        ok = zbool ;
-    case 'xor'
-        ok = zbool ;
-    case 'eq'
-        ok = zbool ;
-    case 'iseq'
-        ok = zbool ;
+switch (add_opname)
+    case { 'min', 'max', 'plus', 'times', 'any', ...
+        'or', 'and', 'xor', 'eq', ...
+        'lor', 'land', 'lxor', 'lnxor', ...
+        'bitor', 'bitand', 'bitxor', 'bitxnor', ...
+        'bor', 'band', 'bxor', 'bxnor' }
+        % valid monoid
     otherwise
-        ok = false ;
-        error ('invalid add monoid for semiring') ;
+        error ('invalid monoid') ;
 end
 
-if (~ok)
-    error ([add_opname ' operator a valid monoid only for logical case']) ;
+% make sure the monoid matches the operator ztype
+if (~isequal (add_ztype, ztype))
+    error ('invalid monoid: must match ztype of multiplier') ;
+end
+
+%   semiring
+%   multiply_op
+%   add_op
+%   identity
+%   ztype
+%   xtype
+%   ytype
+
+% make sure the semiring is built-in
+try
+    GB_mex_semiring (semiring, 0) ;
+catch
+    error ('not builtin semiring: %s.%s.%s', add_opname, mult, xtype) ;
 end
 

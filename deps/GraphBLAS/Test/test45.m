@@ -1,8 +1,8 @@
 function test45(use_ssget)
 %TEST45 test GrB_*_setElement and GrB_*_*build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest45\n------------------ testing GrB_setElement and _build\n') ;
 
@@ -20,7 +20,7 @@ A (2,2) = 0 ;
 A = sparse (A)  ;
 
 C = GB_mex_setElement (A, uint64(1), uint64(1), 99) ;
-spok (C.matrix) ;
+GB_spok (C.matrix) ;
 
 if (use_ssget)
     Prob = ssget ('HB/west0067') ;
@@ -44,7 +44,7 @@ end
 
 A2 = A ;
 A3 = GB_mex_setElement (A2, I0, J0, X) ;
-assert (spok (A3.matrix) == 1)
+assert (GB_spok (A3.matrix) == 1)
 
 assert (isequal (A3.matrix, A1)) ;
 % nnz (A)
@@ -125,8 +125,8 @@ for trial = 1:3
     fprintf ('GraphBLAS setElement: %g sec from scratch, nnz %d\n', ...
         t5, nnz (S.matrix)) ;
 
-    % fprintf ('spok it 1\n') ;
-    assert (spok (S.matrix*1) == 1) ;
+    % fprintf ('GB_spok it 1\n') ;
+    assert (GB_spok (S.matrix*1) == 1) ;
     assert (isequal (G, S.matrix)) ;
 
     if (trial == 3)
@@ -149,8 +149,8 @@ for trial = 1:3
     fprintf ('GraphBLAS build:      %g sec from scratch, nnz %d\n', ...
         t4, nnz (T.matrix)) ;
 
-    % fprintf ('spok it 2\n') ;
-    assert (spok (T.matrix*1) == 1) ;
+    % fprintf ('GB_spok it 2\n') ;
+    assert (GB_spok (T.matrix*1) == 1) ;
     assert (isequal (G, T.matrix)) ;
 
     fprintf ('\n------------------- now try a vector B = A(:)\n') ;
@@ -186,8 +186,8 @@ for trial = 1:3
     fprintf ('GraphBLAS setElement: %g sec from scratch, nnz %d\n', ...
         t5, nnz (S.matrix)) ;
 
-    % fprintf ('spok it 3\n') ;
-    assert (spok (S.matrix*1) == 1) ;
+    % fprintf ('GB_spok it 3\n') ;
+    assert (GB_spok (S.matrix*1) == 1) ;
     assert (isequal (G, S.matrix)) ;
 
     if (trial == 3)
@@ -210,9 +210,9 @@ for trial = 1:3
     fprintf ('GraphBLAS mtx: build: %g sec from scratch, nnz %d\n', ...
         t4, nnz (T.matrix)) ;
 
-    % fprintf ('spok it 4\n') ;
+    % fprintf ('GB_spok it 4\n') ;
     T_matrix = T.matrix * 1 ;
-    assert (spok (T_matrix) == 1) ;
+    assert (GB_spok (T_matrix) == 1) ;
     % assert (isequal (G, T.matrix)) ;
     assert (norm (G -  T_matrix, 1) / norm (G,1) < 1e-12) ;
 
@@ -222,9 +222,9 @@ for trial = 1:3
     fprintf ('GraphBLAS vec: build: %g sec from scratch, nnz %d\n', ...
         t4, nnz (T.matrix)) ;
 
-    % fprintf ('spok it 4\n') ;
+    % fprintf ('GB_spok it 4\n') ;
     T_matrix = T.matrix * 1 ;
-    assert (spok (T_matrix) == 1) ;
+    assert (GB_spok (T_matrix) == 1) ;
     assert (norm (G -  T_matrix, 1) / norm (G,1) < 1e-12) ;
 
 end

@@ -1,8 +1,8 @@
 function test87
 %TEST87 performance test of GrB_mxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
@@ -40,14 +40,14 @@ fprintf ('GrB A''*B native:\n') ;
 % tic
 C4 = GB_mex_AxB (A,B, true) ;
 % toc
-[tg method] = grbresults ;
+tg = grbresults ;
 
 assert (norm (C-C2,1) / norm (C,1) < 1e-12)
 assert (norm (C-C3,1) / norm (C,1) < 1e-12)
 assert (norm (C-C4,1) / norm (C,1) < 1e-12)
 
-fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
-    tm, tg, method (1), tm/tg) ;
+fprintf ('MATLAB: %10.4f  GB:auto: %10.4f speedup %10.4f\n', ...
+    tm, tg, tm/tg) ;
 
 %-------------------------------------------------------------------------------
 fprintf ('\n--------------------------------------------------\n') ;
@@ -73,8 +73,8 @@ fprintf ('GrB (A'')*B:\n') ;
 tic
 C3 = GB_mex_AxB (A',B) ;
 toc
-[tg1 method1] = grbresults ;
-fprintf ('just A*B %g method %s (both A and B non-hypersparse)\n', tg1, method1) ;
+tg1 = grbresults ;
+fprintf ('just A*B %g (both A and B non-hypersparse)\n', tg1) ;
 
 % this is slower than GB_mex_AxB (A',B) even though it uses the
 % same method, because the MATLAB A' above is non-hypersparse,
@@ -84,10 +84,10 @@ fprintf ('GrB A''*B native (AT becomes hypersparse):\n') ;
 tic
 C4 = GB_mex_AxB (A,B, true) ;
 toc
-[tg method] = grbresults ;
+tg = grbresults ;
 
 fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
-    tm, tg, method (1), tm/tg) ;
+    tm, tg, tm/tg) ;
 
 assert (norm (C-C2,1) / norm (C,1) < 1e-12)
 assert (norm (C-C3,1) / norm (C,1) < 1e-12)
@@ -109,7 +109,7 @@ S = sparse (mm,nn) ;
 tic
 AT2 = GB_mex_transpose (S, [ ], [ ], A)
 toc
-[tg method] = grbresults ;
+tg = grbresults ;
 
 assert (isequal (AT1, AT2.matrix)) ;
 
@@ -120,8 +120,8 @@ fprintf ('GrB (AT)*B:\n') ;
 tic
 C3 = GB_mex_AxB (AT1,B) ;
 toc
-[tg1 method1] = grbresults ;
-fprintf ('just A*B %g method %s\n', tg1, method1) ;
+tg1 = grbresults ;
+fprintf ('just A*B %g\n', tg1) ;
 
 %-------------------------------------------------------------------------------
 fprintf ('\n--------------------------------------------------\n') ;
@@ -153,7 +153,7 @@ fprintf ('GrB A''xB auto select:\n') ;
 tic
 y3 = GB_mex_AxB (A,x, true) ;
 toc
-[tg method] = grbresults ;
+tg = grbresults ;
 fprintf ('GrB time is %g\n', tg) ;
 
 fprintf ('GrB (A'')xB outer:\n') ;
@@ -166,8 +166,8 @@ assert (isequal (y1, y2)) ;
 % assert (isequal (y1, y3)) ;
 assert (norm (y1-y3,1) / norm (y1,1) < eps)
 
-fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
-    tm, tg, method (1), tm/tg) ;
+fprintf ('MATLAB: %10.4f  GB:auto: %10.4f speedup %10.4f\n', ...
+    tm, tg, tm/tg) ;
 
 %-------------------------------------------------------------------------------
 fprintf ('\n--------------------------------------------------\n') ;
@@ -194,7 +194,7 @@ fprintf ('GrB A''xB auto select:\n') ;
 tic
 y3 = GB_mex_AxB (x, A, true) ;
 toc
-[tg method] = grbresults ;
+tg = grbresults ;
 
 fprintf ('GrB (A''B outer:\n') ;
 tic
@@ -206,8 +206,8 @@ assert (isequal (y1, y2)) ;
 % assert (isequal (y1, y3)) ;
 assert (norm (y1-y2,1) / norm (y2,1) < eps)
 
-fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
-    tm, tg, method (1), tm/tg) ;
+fprintf ('MATLAB: %10.4f  GB:auto: %10.4f speedup %10.4f\n', ...
+    tm, tg, tm/tg) ;
 
 %-------------------------------------------------------------------------------
 fprintf ('\n--------------------------------------------------\n') ;
@@ -228,14 +228,14 @@ fprintf ('GrB AxB:\n') ;
 tic
 y3 = GB_mex_AxB (A, x, false) ;
 toc
-[tg method] = grbresults ;
+tg = grbresults ;
 
 assert (isequal (y1, sparse (y0))) ;
 % assert (isequal (y1, y3)) ;
 assert (norm (y1-y3,1) / norm (y1,1) < eps)
 
-fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
-    tm, tg, method (1), tm/tg) ;
+fprintf ('MATLAB: %10.4f  GB:auto: %10.4f speedup %10.4f\n', ...
+    tm, tg, tm/tg) ;
 
 %-------------------------------------------------------------------------------
 fprintf ('\n--------------------------------------------------\n') ;
@@ -258,7 +258,7 @@ fprintf ('GrB A''xB auto select:\n') ;
 tic
 y3 = GB_mex_AxB (A,x, true) ;
 toc
-[tg method] = grbresults ;
+tg = grbresults ;
 
 fprintf ('GrB (A'')xB outer:\n') ;
 tic
@@ -269,8 +269,8 @@ assert (isequal (y1, y2)) ;
 % assert (isequal (y1, y3)) ;
 assert (norm (y1-y3,1) / norm (y1,1) < eps)
 
-fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
-    tm, tg, method (1), tm/tg) ;
+fprintf ('MATLAB: %10.4f  GB:auto: %10.4f speedup %10.4f\n', ...
+    tm, tg, tm/tg) ;
 
 fprintf ('\ntest87: all tests passed\n') ;
 

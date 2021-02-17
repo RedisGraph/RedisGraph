@@ -240,14 +240,14 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 	// map will be returned as an array of key/value pairs
 	// consider the map object: {a:1, b:'str', c: {x:1, y:2}}
 	//
-	// replay would be structured:
+	// the reply will be structured:
 	// [
-	//     string(1), int(1),
+	//     string(a), int(1),
 	//     string(b), string(str),
 	//     string(c), [
 	//                    string(x), int(1),
 	//                    string(y), int(2)
-	//                ]
+	//                 ]
 	// ]
 
 	uint key_count = Map_KeyCount(v);
@@ -255,16 +255,17 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 
 	// response consists of N pairs array:
 	// (string, value type, value)
-	RedisModule_ReplyWithArray(ctx, key_count * 3);
+	RedisModule_ReplyWithArray(ctx, key_count * 2);
 	for(int i = 0; i < key_count; i++) {
 		Pair     p     =  m[i];
 		SIValue  val   =  p.val;
 		char     *key  =  p.key.stringval;
 
 		// emit key
-		RedisModule_ReplyWithStringBuffer(ctx, key, strlen(key));
+		RedisModule_ReplyWithCString(ctx, key);
 
 		// emit value
+		RedisModule_ReplyWithArray(ctx, 2);
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, val);
 	}
 }
@@ -277,21 +278,21 @@ static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *
 	_ResultSet_ReplyWithRoundedDouble(ctx, Point_lon(v));
 }
 
-void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 uint numcols, uint *col_rec_map) {
+void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
+		SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(uint i = 0; i < numcols; i++) {
-		uint idx = col_rec_map[i];
+		SIValue cell = *row[i];
 		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-		_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_Get(r, idx));
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, cell);
 	}
 }
 
 // For every column in the header, emit a 2-array containing the ColumnType enum
 // followed by the column alias.
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns, const Record r,
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 									  uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
@@ -306,4 +307,3 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
-

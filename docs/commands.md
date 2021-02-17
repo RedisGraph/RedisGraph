@@ -644,18 +644,19 @@ This section contains information on all supported functions from the Cypher que
 
 ## String functions
 
-|Function | Description|
-| ------- |:-----------|
-|left() | Returns a string containing the specified number of leftmost characters of the original string |
-|lTrim() | Returns the original string with leading whitespace removed |
-|reverse() | Returns a string in which the order of all characters in the original string are reversed |
-|right() | Returns a string containing the specified number of rightmost characters of the original string |
-|rTrim() | Returns the original string with trailing whitespace removed |
-|substring() | Returns a substring of the original string, beginning with a 0-based index start and length |
-|toLower() | Returns the original string in lowercase |
-|toString() | Converts an integer, float or boolean value to a string |
-|toUpper() | Returns the original string in uppercase |
-|trim() | Returns the original string with leading and trailing whitespace removed |
+| Function    | Description                                                                                     |
+| -------     | :-----------                                                                                    |
+| left()      | Returns a string containing the specified number of leftmost characters of the original string  |
+| lTrim()     | Returns the original string with leading whitespace removed                                     |
+| reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
+| right()     | Returns a string containing the specified number of rightmost characters of the original string |
+| rTrim()     | Returns the original string with trailing whitespace removed                                    |
+| substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
+| toLower()   | Returns the original string in lowercase                                                        |
+| toString()  | Returns a string representation of a value                                                      |
+| toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
+| toUpper()   | Returns the original string in uppercase                                                        |
+| trim()      | Returns the original string with leading and trailing whitespace removed                        |
 
 ## Node functions
 |Function | Description|
@@ -703,6 +704,35 @@ They can operate on any form of input array, but are particularly useful for pat
 MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
 ```
 
+#### JSON format
+`toJSON()` returns the input value in JSON formatting. For primitive data types and arrays, this conversion is conventional. Maps and map projections (`toJSON(node { .prop} )`) are converted to JSON objects, as are nodes and relationships.
+
+The format for a node object in JSON is:
+```sh
+{
+  "type": "node",
+  "id": id(int),
+  "labels": [label(string) X N],
+  "properties": {
+    property_key(string): property_value X N
+  }
+}
+```
+
+The format for a relationship object in JSON is:
+```sh
+{
+  "type": "relationship",
+  "id": id(int),
+  "label": label(string),
+  "properties": {
+    property_key(string): property_value X N
+  }
+  "start": src_node(node),
+  "end": dest_node(node)
+}
+```
+
 ## Procedures
 Procedures are invoked using the syntax:
 ```sh
@@ -716,17 +746,18 @@ GRAPH.QUERY social "CALL db.labels() YIELD label"
 
 YIELD modifiers are only required if explicitly specified; by default the value in the 'Yields' column will be emitted automatically.
 
-| Procedure                       | Arguments                                       | Yields             | Description                                                                                                                                                                            |
-| -------                         | :-------                                        | :-------           | :-----------                                                                                                                                                                           |
-| db.labels                       | none                                            | `label`            | Yields all node labels in the graph.                                                                                                                                                   |
-| db.relationshipTypes            | none                                            | `relationshipType` | Yields all relationship types in the graph.                                                                                                                                            |
-| db.propertyKeys                 | none                                            | `propertyKey`      | Yields all property keys in the graph.                                                                                                                                                 |
-| db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none               | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
-| db.idx.fulltext.drop            | `label`                                         | none               | Deletes the full-text index associated with the given label.                                                                                                                           |
-| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`             | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
-| algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`    | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
-| [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`   | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
-| dbms.procedures()               | none                                            | `name`, `mode`     | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
+| Procedure                       | Arguments                                       | Yields                        | Description                                                                                                                                                                            |
+| -------                         | :-------                                        | :-------                      | :-----------                                                                                                                                                                           |
+| db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
+| db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
+| db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
+| db.indexes                      | none                                            | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                         |
+| db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
+| db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
+| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`                        | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
+| algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`               | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
+| [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`              | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
+| dbms.procedures()               | none                                            | `name`, `mode`                | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
 
 ### Algorithms
 

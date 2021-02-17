@@ -2,8 +2,8 @@
 // GrB_Matrix_ncols: number of columns of a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -20,7 +20,7 @@ GrB_Info GrB_Matrix_ncols   // get the number of columns of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GrB_Matrix_ncols (&ncols, A)") ;
+    GB_WHERE1 ("GrB_Matrix_ncols (&ncols, A)") ;
     GB_RETURN_IF_NULL (ncols) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 

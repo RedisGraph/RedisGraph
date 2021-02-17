@@ -16,7 +16,7 @@
 #include "query_ctx.h"
 #include "arithmetic/funcs.h"
 #include "commands/commands.h"
-#include "util/thpool/thpool.h"
+#include "util/thpool/pools.h"
 #include "graph/graphcontext.h"
 #include "ast/cypher_whitelist.h"
 #include "procedures/procedure.h"
@@ -41,24 +41,7 @@ RG_Config config;                   // Module global configuration.
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
 
-//------------------------------------------------------------------------------
-// Thread pool variables
-//------------------------------------------------------------------------------
-threadpool _thpool = NULL;
-
 extern CommandCtx **command_ctxs;
-
-/* Set up thread pool,
- * number of threads within pool should be
- * the number of available hyperthreads.
- * Returns 1 if thread pool initialized, 0 otherwise. */
-static int _Setup_ThreadPOOL(int threadCount) {
-	// Create thread pool.
-	_thpool = thpool_init(threadCount);
-	if(_thpool == NULL) return 0;
-
-	return 1;
-}
 
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
@@ -82,11 +65,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	/* TODO: when module unloads call GrB_finalize. */
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true);
 	if(res != GrB_SUCCESS) {
-		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS: '%s'", GrB_error());
+		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS");
 		return REDISMODULE_ERR;
 	}
+
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
 	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
 						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
@@ -121,11 +104,15 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
 
-	int threadCount;
-	Config_Option_get(Config_THREAD_POOL_SIZE, &threadCount);
+	int reader_thread_count;
+	int writer_thread_count = 1;
+	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
 
-	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
-	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
+	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count)) {
+		return REDISMODULE_ERR;
+	}
+
+	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", reader_thread_count);
 
 	int ompThreadCount;
 	Config_Option_get(Config_OPENMP_NTHREAD, &ompThreadCount);
@@ -136,8 +123,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
-	// Initialize array of command contexts
-	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
+	// initialize array of command contexts
+	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx*));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
@@ -146,7 +133,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch, "readonly deny-oom", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.RO_QUERY", CommandDispatch, "readonly", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -156,12 +143,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", CommandDispatch, "write deny-oom", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", CommandDispatch, "write deny-oom", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}

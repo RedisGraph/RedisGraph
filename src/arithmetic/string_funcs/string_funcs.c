@@ -10,6 +10,7 @@
 #include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
 #include "../../util/strutil.h"
+#include "../../util/json_encoder.h"
 
 /* returns a string containing the specified number of leftmost characters of the original string. */
 SIValue AR_LEFT(SIValue *argv, int argc) {
@@ -157,6 +158,13 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	return SI_TransferStringVal(str);
 }
 
+/* Returns a JSON string representation of a map value. */
+SIValue AR_TOJSON(SIValue *argv, int argc) {
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
+	char *buf = JsonEncoder_SIValue(argv[0]);
+	return SI_TransferStringVal(buf);
+}
+
 /* returns the original string with leading and trailing whitespace removed. */
 SIValue AR_TRIM(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
@@ -282,6 +290,11 @@ void Register_StringFuncs() {
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("tojson", AR_TOJSON, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

@@ -2,8 +2,8 @@
 // GxB_Scalar_new: create a new GxB_Scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -23,7 +23,7 @@ GrB_Info GxB_Scalar_new     // create a new GxB_Scalar with no entries
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GxB_Scalar_new (&s, type)") ;
+    GB_WHERE1 ("GxB_Scalar_new (&s, type)") ;
     GB_RETURN_IF_NULL (s) ;
     (*s) = NULL ;
     GB_RETURN_IF_NULL_OR_FAULTY (type) ;
@@ -34,9 +34,9 @@ GrB_Info GxB_Scalar_new     // create a new GxB_Scalar with no entries
 
     GrB_Info info ;
 
-    // *s == NULL ;                 // allocate a new header for s
-    GB_NEW ((GrB_Matrix *) s, type, 1, 1, GB_Ap_calloc, true,
-        GB_AUTO_HYPER, GB_HYPER_DEFAULT, 1, Context) ;
+    info = GB_new ((GrB_Matrix *) s,    // new scalar (sparse), new header
+        type, 1, 1, GB_Ap_calloc, true,
+        GxB_SPARSE, GB_Global_hyper_switch_get ( ), 1, Context) ;
     ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_SCALAR_OK (*s))) ;
     return (info) ;
 }

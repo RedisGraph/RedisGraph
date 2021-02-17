@@ -70,7 +70,7 @@ static AlgebraicExpression *_AlgebraicExpression_RemoveOperand
 	AlgebraicExpression *parent      = NULL;
 	AlgebraicExpression *current     = *root;
 	AlgebraicExpression *replacement = NULL;
-	AlgebraicExpression **stack      = array_new(AlgebraicExpression*, 0);
+	AlgebraicExpression **stack      = array_new(AlgebraicExpression *, 0);
 
 	// search for operand
 	while(current->type == AL_OPERATION) {
@@ -426,6 +426,85 @@ bool AlgebraicExpression_DiagonalOperand
 	const AlgebraicExpression *op = _AlgebraicExpression_GetOperand(root, operand_idx);
 	ASSERT(op && op->type == AL_OPERAND);
 	return op->operand.diagonal;
+}
+
+bool _AlgebraicExpression_LocateOperand
+(
+	AlgebraicExpression *root,      // Root to search
+	AlgebraicExpression *proot,     // Root to search
+	AlgebraicExpression **operand,  // [output] set to operand
+	AlgebraicExpression **parent,   // [output] set to operand parent
+	const char *row_domain,         // operand row domain
+	const char *column_domain,      // operand column domain
+	const char *edge                // operand edge name
+) {
+	if(root == NULL) return false;
+
+	if(root->type == AL_OPERAND) {
+		// check row domain
+		if(row_domain != NULL && root->operand.src != NULL) {
+			if(strcmp(row_domain, root->operand.src) != 0) {
+				return false;
+			}
+		} else if(row_domain != root->operand.src) {
+			return false;
+		}
+
+		// check column domain
+		if(column_domain != NULL && root->operand.dest != NULL) {
+			if(strcmp(column_domain, root->operand.dest) != 0) {
+				return false;
+			}
+		} else if(column_domain != root->operand.dest) {
+			return false;
+		}
+
+		// check edge
+		if(edge != NULL && root->operand.edge != NULL) {
+			if(strcmp(edge, root->operand.edge) != 0) {
+				return false;
+			}
+		} else if (edge != root->operand.edge) {
+			return false;
+		}
+
+		// found seeked operand
+		*operand = root;
+		if(parent != NULL) *parent = proot;
+		return true;
+	}
+
+	if(root->type == AL_OPERATION) {
+		uint child_count = AlgebraicExpression_ChildCount(root);
+		for(uint i = 0; i < child_count; i++) {
+			AlgebraicExpression *child = CHILD_AT(root, i);
+			if(_AlgebraicExpression_LocateOperand(child, root, operand, parent,
+						row_domain, column_domain, edge)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool AlgebraicExpression_LocateOperand
+(
+	AlgebraicExpression *root,       // Root to search
+	AlgebraicExpression **operand,   // [output] set to operand, NULL if missing
+	AlgebraicExpression **parent,    // [output] set to operand parent
+	const char *row_domain,          // operand row domain
+	const char *column_domain,       // operand column domain
+	const char *edge                 // operand edge name
+) {
+	ASSERT(root != NULL);
+	ASSERT(operand != NULL);
+
+	*operand = NULL;
+	if(parent) *parent = NULL;
+
+	return _AlgebraicExpression_LocateOperand(root, NULL, operand, parent, row_domain,
+			column_domain, edge);
 }
 
 //------------------------------------------------------------------------------

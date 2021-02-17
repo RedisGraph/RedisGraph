@@ -2,12 +2,12 @@
 // GB_mex_eWiseMult_second: C<Mask> = accum(C,second(A,B))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// This is a simplified version of GB_mex_eWiseMult_Matrix.  The op is
+// This is a simplified version of GB_mex_Matrix_eWiseMult.  The op is
 // always GrB_SECOND_FP64.
 
 #include "GB_mex.h"
@@ -16,12 +16,12 @@
 
 #define FREE_ALL                    \
 {                                   \
-    GB_MATRIX_FREE (&A) ;           \
-    GB_MATRIX_FREE (&B) ;           \
-    GB_MATRIX_FREE (&C) ;           \
-    GrB_free (&desc) ;              \
-    GB_MATRIX_FREE (&Mask) ;        \
-    GB_mx_put_global (true, 0) ;        \
+    GrB_Matrix_free_(&A) ;           \
+    GrB_Matrix_free_(&B) ;           \
+    GrB_Matrix_free_(&C) ;           \
+    GrB_Descriptor_free_(&desc) ;   \
+    GrB_Matrix_free_(&Mask) ;        \
+    GB_mx_put_global (true) ;       \
 }
 
 void mexFunction
@@ -41,7 +41,6 @@ void mexFunction
     GrB_Descriptor desc = NULL ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 6 || nargin > 7)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -50,14 +49,13 @@ void mexFunction
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
     C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
-    #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
+    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
-    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get Mask (shallow copy)
     Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
@@ -87,10 +85,12 @@ void mexFunction
     GrB_BinaryOp mult ;
     mult = GrB_SECOND_FP64 ;
 
-    // get accum; default: NOP, default class is class(C)
+    // get accum, if present
+    bool user_complex = (Complex != GxB_FC64)
+        && (C->type == Complex || mult->ztype == Complex) ;
     GrB_BinaryOp accum ;
     if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [2], "accum",
-        GB_NOP_opcode, cclass, C->type == Complex, mult->ztype == Complex))
+        C->type, user_complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;
@@ -104,7 +104,7 @@ void mexFunction
     }
 
     // C<Mask> = accum(C,A.*B)
-    METHOD (GrB_eWiseMult (C, Mask, accum, mult, A, B, desc)) ;
+    METHOD (GrB_Matrix_eWiseMult_BinaryOp_(C, Mask, accum, mult, A, B, desc)) ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;

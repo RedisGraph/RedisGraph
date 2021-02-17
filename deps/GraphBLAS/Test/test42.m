@@ -1,8 +1,8 @@
 function test42
 %TEST42 test GrB_Matrix_build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n----------------------- performance tests for GrB_Matrix_build\n') ;
 
@@ -25,7 +25,7 @@ assert (isequal (A,T)) ;
 S = GB_mex_Matrix_build (i,j,x) ;
 S = S.matrix ;
 assert (isequal (A,S)) ;
-assert (spok (S) == 1) ;
+assert (GB_spok (S) == 1) ;
 
 nz = nnz (A) ;
 p = randperm (nz) ;
@@ -37,7 +37,7 @@ S = GB_mex_Matrix_build (i,j,x) ;
 S = S.matrix ;
 assert (isequal (A,(S')'))
 assert (isequal (A,S)) ;
-assert (spok (S) == 1) ;
+assert (GB_spok (S) == 1) ;
 
 % duplicates
 rng ('default') ;
@@ -53,14 +53,7 @@ S = GB_mex_Matrix_build (i,j,x) ;
 S = S.matrix ;
 assert (isequal (spones (S), spones (T)))
 assert (norm (S-T,1) == 0) ;
-assert (spok (T) == 1) ;
-
-% for col = 1:n
-%     S (:,col)
-%     T (:,col)
-%     norm (S (:,col) - T (:,col), 1)
-%     % pause
-% end
+assert (GB_spok (T) == 1) ;
 
 %-------------------------------------------------------------------------------
 fprintf ('----------------------- matrix from collection, no sorting:\n') ;
@@ -90,7 +83,7 @@ for nth = [1 2 4 8 16 20 40]
     t = toc ;
     fprintf ('GrB with %d threads: %g\n', nth, t) ;
     assert (isequal (A,S))
-    assert (spok (S) == 1) ;
+    assert (GB_spok (S) == 1) ;
 end
 
 try 
@@ -98,7 +91,7 @@ try
     tic
     W = cs_sparse (i1,j1,x) ;
     toc
-    ok = isequal (A,W) && (spok (W) == 1) ;
+    ok = isequal (A,W) && (GB_spok (W) == 1) ;
 catch
     % CSparse not available
     ok = true ;
@@ -110,7 +103,7 @@ try
     tic
     Y = sparse2 (i1,j1,x) ;
     toc
-    ok = (isequal (A,Y)) && assert (spok (Y) == 1) ;
+    ok = (isequal (A,Y)) && assert (GB_spok (Y) == 1) ;
 catch
     % CHOLMOD not available
     ok = true ;
@@ -146,7 +139,7 @@ for nth = [1 2 4 8 16 20 40]
     t = toc ;
     fprintf ('GrB with %d threads: %g\n', nth, t) ;
     assert (isequal (T,S))
-    assert (spok (S) == 1) ;
+    assert (GB_spok (S) == 1) ;
 end
 
 %-------------------------------------------------------------------------------
@@ -178,7 +171,7 @@ for nth = [1 2 4 8 16 20 40]
     t = toc ;
     fprintf ('GrB with %d threads: %g\n', nth, t) ;
     assert (isequal (T,S))
-    assert (spok (S) == 1) ;
+    assert (GB_spok (S) == 1) ;
 end
 
 try
@@ -186,7 +179,7 @@ try
     tic
     W = cs_sparse (i1,j1,x) ;
     toc
-    ok = isequal (T,W) && (spok (W) == 1) ;
+    ok = isequal (T,W) && (GB_spok (W) == 1) ;
 catch
     % CSparse not available
     ok = true ;
@@ -199,7 +192,7 @@ try
     Y = sparse2 (i1,j1,x) ;
     toc
     % norm (T-Y,1)
-    ok = (isequal (T,Y)) && assert (spok (Y) == 1) ;
+    ok = (isequal (T,Y)) && assert (GB_spok (Y) == 1) ;
 catch
     % CHOLMOD not available
     ok = true ;
@@ -232,7 +225,7 @@ for nth = [1 2 4 8 16 20 40]
     t = toc ;
     fprintf ('GrB with %d threads: %g\n', nth, t) ;
     assert (isequal (T,S))
-    assert (spok (S) == 1) ;
+    assert (GB_spok (S) == 1) ;
 end
 
 try
@@ -240,7 +233,7 @@ try
     tic
     W = cs_sparse (i1,j1,x) ;
     toc
-    ok = isequal (T,W) && (spok (W) == 1) ;
+    ok = isequal (T,W) && (GB_spok (W) == 1) ;
 catch
     % CSparse not available
     ok = true ;
@@ -253,7 +246,7 @@ try
     Y = sparse2 (i1,j1,x) ;
     toc
     % norm (T-Y,1)
-    ok = (isequal (T,Y)) && assert (spok (Y) == 1) ;
+    ok = (isequal (T,Y)) && assert (GB_spok (Y) == 1) ;
 catch
     % CHOLMOD not available
     ok = true ;

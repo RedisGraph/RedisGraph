@@ -17,5 +17,6 @@ capabilities:
     - replica_of
     - backup_restore
     - no_multi_key
+    - intershard_tls
 exclude_commands:
     - GRAPH.CONFIG

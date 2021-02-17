@@ -137,11 +137,15 @@ static Record CreateConsume(OpBase *opBase) {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
 		while((r = OpBase_Consume(child))) {
-			/* Create entities. */
+			/* Persist scalars from previous ops before storing the record,
+			 * as those ops will be freed before the records are handed off. */
+			Record_PersistScalars(r);
+
+			// create entities
 			_CreateNodes(op, r);
 			_CreateEdges(op, r);
 
-			// Save record for later use.
+			// save record for later use
 			op->records = array_append(op->records, r);
 		}
 	}

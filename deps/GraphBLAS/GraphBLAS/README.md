@@ -1,7 +1,7 @@
 # GraphBLAS/GraphBLAS: MATLAB interface for SuiteSparse:GraphBLAS
 
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 
 The GrB class provides an easy-to-use MATLAB interface to SuiteSparse:GraphBLAS.
 
@@ -31,8 +31,14 @@ On the Mac, use the following:
     DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/lib
     export DYLD_LIBRARY_PATH
 
-If you modify your library path, above, you need to execute those commands as
-well, before you start MATLAB.
+On Windows 10, on the Search bar type env and hit enter; (or you can
+right-click My Computer or This PC and select Properties, and then select
+Advanced System Settings).  Select "Edit the system environment variables",
+then "Environment Variables".  Under "System Variables" select "Path" and click
+"Edit".  These "New" to add a path and then "Browse".  Browse to the folder
+(for example: C:/Users/me/Documents/SuiteSparse/GraphBLAS/build/Release) and
+add it to your path.  Then close the editor, sign out of Windows and sign back
+in again.
 
 For more details on setting your Linux/Unix/Mac library path for MATLAB see
 https://www.mathworks.com/help/matlab/matlab_external/building-on-unix-operating-systems.html
@@ -91,20 +97,28 @@ error messages during the test.  This is expected.
 # FUTURE: Not yet supported for GrB matrices in MATLAB:
 
     linear indexing
-    complex matrices
     2nd output for [x,i] = max (...) and [x,i] = min (...); needs
         modified reduction methods inside GraphBLAS
     'includenan' for min and max
+    min and max for complex matrices
     singleton expansion
     3D and higher dimensional matrices:
         this might be done by converting the higher dimensioal
-        indices down to a large 2D space, ad relying on hypersparsity.
-    saturating element-wise binary and unary operators for integers 
+        indices down to a large 2D space, and relying on hypersparsity.
+    saturating element-wise binary and unary operators for integers.
+        See also the discussion in the User Guide, and the details
+        in MATLAB_vs_GraphBLAS.txt in this folder.
 
 The last two features don't exist for MATLAB sparse matrices.
 
-For Windows: Microsoft Visual Studio does not support OpenMP tasking,
-    which means that the internal sort is not parallel, but sequential.
-    This affects GrB.build, and some uses of matrix subreferencing.
-    (C(I,J) when I and/or J are unsorted lists).
+These features are supported, but are not as fast as they could be:
+
+    concatenation: [A B], [A;B], and the built-in functions: bandwidth, eps,
+    isbanded, isdiag, ishermitian, issymmetric, istril, istriu, spfun.
+
+A GrB matrix object can be saved to a mat-file and loaded back in, but
+must be loaded in with the same major version of SuiteSparse:GraphBLAS.
+v4.0.1. cannot load mat-files saved from v3.3.3 for example.  In the
+future, I will consider GrB.load and GrB.save methods that would work
+across different versions.
 

@@ -2,8 +2,8 @@
 // GxB_Type_fprint: print and check a GrB_Type object
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -22,12 +22,12 @@ GrB_Info GxB_Type_fprint            // print and check a GrB_Type
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GxB_Type_fprint (type, name, pr, f)") ;
+    GB_WHERE1 ("GxB_Type_fprint (type, name, pr, f)") ;
 
     //--------------------------------------------------------------------------
     // print and check the object
     //--------------------------------------------------------------------------
 
-    return (GB_Type_check (type, name, pr, f, Context)) ;
+    return (GB_Type_check (type, name, pr, f)) ;
 }
 

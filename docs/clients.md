@@ -1,8 +1,9 @@
-# Client Libraries
+# RedisGraph Client Libraries
 
-The full functionality of RedisGraph is available through `redis-cli` and the Redis API, but a number of client libraries have been written to improve abstractions and allow for a more natural experience in a project's native language. Additionally, these clients take advantage of some RedisGraph features that may reduce network throughput in some circumstances.
+The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redislabs.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.  
+In addition there are severeal client libraries to improve abstractions and allow for a more natural experience in a project's native language. Additionally, these clients take advantage of some RedisGraph features that may reduce network throughput in some circumstances.
 
-## Currently-available Libraries
+## Currently available Libraries
 
 | Project                                                   | Language   | License | Author                                      | Stars                                                          | 
 | --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | -------------------------------------------------------------- |
@@ -13,6 +14,7 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis Labs][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                    |
 | [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                      |
 | [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                  |
+| [redis-modules-sdk][redis-modules-sdk-url] | TypeScript | BSD-3-Clause | [Dani Tseitlin][redis-modules-sdk-author] | [![redis-modules-sdk-stars]][redis-modules-sdk-url]                                |
 | [php-redis-graph][php-redis-graph-url]                    | PHP        | MIT     | [KJDev][php-redis-graph-author]             | [![php-redis-graph-stars]][php-redis-graph-url]                |
 | [redislabs-redisgraph-php][redislabs-redisgraph-php-url]  | PHP        | MIT     | [mkorkmaz][redislabs-redisgraph-php-author] | [![redislabs-redisgraph-php-stars]][redislabs-redisgraph-php-url] |
 | [redisgraph_php][redisgraph_php-url]                      | PHP        | MIT     | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                  |
@@ -46,6 +48,10 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 [rgraph-author]: https://github.com/Sceat
 [rgraph-url]: https://github.com/HydreIO/rgraph
 [rgraph-stars]: https://img.shields.io/github/stars/HydreIO/rgraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
+[redis-modules-sdk-author]: https://github.com/danitseitlin
+[redis-modules-sdk-url]: https://github.com/danitseitlin/redis-modules-sdk
+[redis-modules-sdk-stars]: https://img.shields.io/github/stars/danitseitlin/redis-modules-sdk.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [ioredisgraph-author]: https://github.com/Jonahss
 [ioredisgraph-url]: https://github.com/Jonahss/ioredisgraph

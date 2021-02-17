@@ -2,16 +2,19 @@
 // GB_subassign_one_slice: slice the entries and vectors for subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Constructs a set of tasks to compute C for a subassign method, based on
 // slicing a single input matrix (M or A).  Fine tasks must also find their
-// location in their vector C(:,jC).
+// location in their vector C(:,jC).  Currently this method is only used to
+// slice M, not A.
 
-// This method is used by GB_subassign_05, 06n, and 07
+// This method is used by GB_subassign_05, 06n, and 07.  Each of those methods
+// apply this function to M, but they use TaskList[...].pA and pA_end to
+// partition the matrix.
 
         //  =====================       ==============
         //  M   cmp rpl acc A   S       method: action
@@ -20,17 +23,19 @@
         //  M   -   -   +   -   -       07:  C(I,J)<M> += x      for M
         //  M   -   -   -   A   -       06n: C(I,J)<M> = A       for M
 
+// C: not bitmap
+
 #include "GB_subassign_methods.h"
 
 #undef  GB_FREE_WORK
-#define GB_FREE_WORK \
-    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
+#define GB_FREE_WORK    \
+    GB_FREE (Coarse) ;
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL                                                     \
-{                                                                       \
-    GB_FREE_WORK ;                                                      \
-    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
+#define GB_FREE_ALL         \
+{                           \
+    GB_FREE_WORK ;          \
+    GB_FREE (TaskList) ;    \
 }
 
 //------------------------------------------------------------------------------
@@ -54,7 +59,7 @@ GrB_Info GB_subassign_one_slice
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
-    const GrB_Matrix A,             // matrix to slice (M or A)
+    const GrB_Matrix M,             // matrix to slice
     GB_Context Context
 )
 {
@@ -68,7 +73,12 @@ GrB_Info GB_subassign_one_slice
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
     ASSERT_MATRIX_OK (C, "C for 1_slice", GB0) ;
-    ASSERT_MATRIX_OK (A, "A/M for 1_slice", GB0) ;
+    ASSERT_MATRIX_OK (M, "M for 1_slice", GB0) ;
+
+    ASSERT (!GB_IS_BITMAP (C)) ;
+
+    ASSERT (!GB_JUMBLED (C)) ;
+    ASSERT (!GB_JUMBLED (M)) ;
 
     (*p_TaskList  ) = NULL ;
     (*p_max_ntasks) = 0 ;
@@ -82,22 +92,24 @@ GrB_Info GB_subassign_one_slice
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
 
     //--------------------------------------------------------------------------
-    // get A and C
+    // get M and C
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Ap = A->p ;
-    const int64_t *GB_RESTRICT Ah = A->h ;
-    const int64_t *GB_RESTRICT Ai = A->i ;
-    const int64_t anz = GB_NNZ (A) ;
-    const int64_t anvec = A->nvec ;
+    const int64_t *GB_RESTRICT Mp = M->p ;
+    const int64_t *GB_RESTRICT Mh = M->h ;
+//  const int8_t  *GB_RESTRICT Mb = M->b ;
+    const int64_t *GB_RESTRICT Mi = M->i ;
+    const int64_t mnz = GB_NNZ_HELD (M) ;
+    const int64_t mnvec = M->nvec ;
+    const int64_t mvlen = M->vlen ;
 
     const int64_t *GB_RESTRICT Cp = C->p ;
     const int64_t *GB_RESTRICT Ch = C->h ;
     const int64_t *GB_RESTRICT Ci = C->i ;
-    const bool C_is_hyper = C->is_hyper ;
+    const bool C_is_hyper = (Ch != NULL) ;
     const int64_t nzombies = C->nzombies ;
     const int64_t Cnvec = C->nvec ;
-    const int64_t cvlen = C->vlen ;
+    const int64_t Cvlen = C->vlen ;
 
     //--------------------------------------------------------------------------
     // allocate the initial TaskList
@@ -105,7 +117,7 @@ GrB_Info GB_subassign_one_slice
 
     int64_t *GB_RESTRICT Coarse = NULL ; // size ntasks1+1
     int ntasks1 = 0 ;
-    int nthreads = GB_nthreads (anz, chunk, nthreads_max) ;
+    int nthreads = GB_nthreads (mnz, chunk, nthreads_max) ;
     GB_task_struct *GB_RESTRICT TaskList = NULL ;
     int max_ntasks = 0 ;
     int ntasks = 0 ;
@@ -116,14 +128,14 @@ GrB_Info GB_subassign_one_slice
     // check for quick return for a single task
     //--------------------------------------------------------------------------
 
-    if (anvec == 0 || ntasks0 == 1)
+    if (mnvec == 0 || ntasks0 == 1)
     { 
         // construct a single coarse task that does all the work
         TaskList [0].kfirst = 0 ;
-        TaskList [0].klast  = anvec-1 ;
+        TaskList [0].klast  = mnvec-1 ;
         (*p_TaskList  ) = TaskList ;
         (*p_max_ntasks) = max_ntasks ;
-        (*p_ntasks    ) = (anvec == 0) ? 0 : 1 ;
+        (*p_ntasks    ) = (mnvec == 0) ? 0 : 1 ;
         (*p_nthreads  ) = 1 ;
         return (GrB_SUCCESS) ;
     }
@@ -132,20 +144,21 @@ GrB_Info GB_subassign_one_slice
     // determine # of threads and tasks for the subassign operation
     //--------------------------------------------------------------------------
 
-    double target_task_size = ((double) anz) / (double) (ntasks0) ;
+    double target_task_size = ((double) mnz) / (double) (ntasks0) ;
     target_task_size = GB_IMAX (target_task_size, chunk) ;
-    ntasks1 = ((double) anz) / target_task_size ;
+    ntasks1 = ((double) mnz) / target_task_size ;
     ntasks1 = GB_IMAX (ntasks1, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    if (!GB_pslice (&Coarse, /* A */ A->p, A->nvec, ntasks1))
+    // M may be hypersparse, sparse, bitmap, or full
+    if (!GB_pslice (&Coarse, Mp, mnvec, ntasks1, false))
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GB_OUT_OF_MEMORY) ;
+        return (GrB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -156,13 +169,13 @@ GrB_Info GB_subassign_one_slice
     {
 
         //----------------------------------------------------------------------
-        // coarse task computes C (I, J(k:klast)) = A (I, k:klast)
+        // coarse task computes C (I, J(k:klast)) = M (I, k:klast)
         //----------------------------------------------------------------------
 
         int64_t k = Coarse [t] ;
-        int64_t klast  = Coarse [t+1] - 1 ;
+        int64_t klast = Coarse [t+1] - 1 ;
 
-        if (k >= anvec)
+        if (k >= mnvec)
         { 
 
             //------------------------------------------------------------------
@@ -180,7 +193,7 @@ GrB_Info GB_subassign_one_slice
             //------------------------------------------------------------------
 
             // This is a non-empty coarse-grain task that does two or more
-            // entire vectors of A, vectors k:klast, inclusive.
+            // entire vectors of M, vectors k:klast, inclusive.
             GB_REALLOC_TASK_LIST (TaskList, ntasks + 1, max_ntasks) ;
             TaskList [ntasks].kfirst = k ;
             TaskList [ntasks].klast  = klast ;
@@ -218,19 +231,19 @@ GrB_Info GB_subassign_one_slice
             // get the vector of C
             //------------------------------------------------------------------
 
-            ASSERT (k >= 0 && k < anvec) ;
-            int64_t j = (Ah == NULL) ? k : Ah [k] ;
+            ASSERT (k >= 0 && k < mnvec) ;
+            int64_t j = GBH (Mh, k) ;
             ASSERT (j >= 0 && j < nJ) ;
             int64_t GB_LOOKUP_jC ;
 
-            bool jC_dense = (pC_end - pC_start == cvlen) ;
+            bool jC_dense = (pC_end - pC_start == Cvlen) ;
 
             //------------------------------------------------------------------
             // determine the # of fine-grain tasks to create for vector k
             //------------------------------------------------------------------
 
-            int64_t aknz = Ap [k+1] - Ap [k] ;
-            int nfine = ((double) aknz) / target_task_size ;
+            int64_t mknz = (Mp == NULL) ? mvlen : (Mp [k+1] - Mp [k]) ;
+            int nfine = ((double) mknz) / target_task_size ;
             nfine = GB_IMAX (nfine, 1) ;
 
             // make the TaskList bigger, if needed
@@ -256,7 +269,7 @@ GrB_Info GB_subassign_one_slice
             {
 
                 //--------------------------------------------------------------
-                // slice vector A(:,k) into nfine fine tasks
+                // slice vector M(:,k) into nfine fine tasks
                 //--------------------------------------------------------------
 
                 ASSERT (ntasks < max_ntasks) ;
@@ -264,17 +277,18 @@ GrB_Info GB_subassign_one_slice
                 for (int tfine = 0 ; tfine < nfine ; tfine++)
                 {
 
-                    // this fine task operates on vector A(:,k)
+                    // this fine task operates on vector M(:,k)
                     TaskList [ntasks].kfirst = k ;
                     TaskList [ntasks].klast  = -1 ;
 
-                    // slice A(:,k) for this task
+                    // slice M(:,k) for this task
                     int64_t p1, p2 ;
-                    GB_PARTITION (p1, p2, aknz, tfine, nfine) ;
-                    int64_t pA     = Ap [k] + p1 ;
-                    int64_t pA_end = Ap [k] + p2 ;
-                    TaskList [ntasks].pA     = pA ;
-                    TaskList [ntasks].pA_end = pA_end ;
+                    GB_PARTITION (p1, p2, mknz, tfine, nfine) ;
+                    int64_t pM_start = GBP (Mp, k, mvlen) ;
+                    int64_t pM     = pM_start + p1 ;
+                    int64_t pM_end = pM_start + p2 ;
+                    TaskList [ntasks].pA     = pM ;
+                    TaskList [ntasks].pA_end = pM_end ;
 
                     if (jC_dense)
                     { 
@@ -285,10 +299,10 @@ GrB_Info GB_subassign_one_slice
                     else
                     { 
                         // find where this task starts and ends in C(:,jC)
-                        int64_t iA_start = Ai [pA] ;
-                        int64_t iC1 = GB_ijlist (I, iA_start, Ikind, Icolon) ;
-                        int64_t iA_end = Ai [pA_end-1] ;
-                        int64_t iC2 = GB_ijlist (I, iA_end, Ikind, Icolon) ;
+                        int64_t iM_start = GBI (Mi, pM, mvlen) ;
+                        int64_t iC1 = GB_ijlist (I, iM_start, Ikind, Icolon) ;
+                        int64_t iM_end = GBI (Mi, pM_end-1, mvlen) ;
+                        int64_t iC2 = GB_ijlist (I, iM_end, Ikind, Icolon) ;
 
                         // If I is an explicit list, it must be already sorted
                         // in ascending order, and thus iC1 <= iC2.  If I is

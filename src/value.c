@@ -202,11 +202,9 @@ void SIValue_MakeVolatile(SIValue *v) {
  * Heap allocations that are not scoped to the input SIValue, such as strings from the AST
  * or a GraphEntity property, are not modified. */
 void SIValue_Persist(SIValue *v) {
-	// Do nothing for non-volatile values.
-	if(v->allocation != M_VOLATILE) return;
-
-	// For volatile values, persisting uses the same logic as cloning.
-	*v = SI_CloneValue(*v);
+	// do nothing for non-volatile values
+	// for volatile values, persisting uses the same logic as cloning
+	if(v->allocation == M_VOLATILE) *v = SI_CloneValue(*v);
 }
 
 /* Update an SIValue's allocation type to the provided value. */
@@ -649,7 +647,7 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 		inner_hash = SIPath_HashCode(v);
 		XXH64_update(state, &inner_hash, sizeof(inner_hash));
 		return;
-	// TODO: Implement for Map and temporal types once we support them.
+	// TODO: Implement for temporal types once we support them.
 	default:
 		ASSERT(false);
 		break;
@@ -690,6 +688,8 @@ void SIValue_Free(SIValue v) {
 	case T_PATH:
 		SIPath_Free(v);
 		return;
+	case T_MAP:
+		Map_Free(v);
 	default:
 		return;
 	}

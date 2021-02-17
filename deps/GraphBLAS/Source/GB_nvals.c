@@ -1,13 +1,15 @@
 //------------------------------------------------------------------------------
-// GB_nvals: number of entries in a sparse matrix
+// GB_nvals: number of entries in a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB.h"
+
+#define GB_FREE_ALL ;
 
 GrB_Info GB_nvals           // get the number of entries in a matrix
 (
@@ -21,18 +23,25 @@ GrB_Info GB_nvals           // get the number of entries in a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    // delete any lingering zombies and assemble any pending tuples
-    // do this as early as possible (see Table 2.4 in spec)
-    GB_WAIT (A) ;
-
-    // only now check nvals, for both GrB_Matrix_nvals and GrB_Vector_nvals
     GB_RETURN_IF_NULL (nvals) ;
+
+    // leave zombies alone, and leave jumbled, but assemble any pending tuples
+    GB_MATRIX_WAIT_IF_PENDING (A) ;
 
     //--------------------------------------------------------------------------
     // return the number of entries in the matrix
     //--------------------------------------------------------------------------
 
-    (*nvals) = GB_NNZ (A) ;
+    // Pending tuples are disjoint from the zombies and the live entries in the
+    // matrix.  However, there can be duplicates in the pending tuples, and the
+    // number of duplicates has not yet been determined.  Thus, zombies can be
+    // tolerated but pending tuples cannot.
+
+    ASSERT (GB_ZOMBIES_OK (A)) ;
+    ASSERT (GB_JUMBLED_OK (A)) ;
+    ASSERT (!GB_PENDING (A)) ;
+
+    (*nvals) = GB_NNZ (A) - (A->nzombies) ;
     return (GrB_SUCCESS) ;
 }
 

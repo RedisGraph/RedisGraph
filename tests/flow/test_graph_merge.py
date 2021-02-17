@@ -11,7 +11,7 @@ graph_2 = None
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         global graph_2
         redis_con = self.env.getConnection()
@@ -139,7 +139,7 @@ class testGraphMergeFlow(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
-        self.env.assertEquals(result.properties_set, 2)
+        self.env.assertEquals(result.properties_set, 1)
         self.env.assertEquals(result.relationships_created, 0)
 
         query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
@@ -559,7 +559,7 @@ class testGraphMergeFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Cannot merge node using null property value" in e.message)
+            assert("Cannot merge node using null property value" in str(e))
             pass
 
         # Verify that no entities were created.
@@ -574,4 +574,4 @@ class testGraphMergeFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("undefined property", e.message)
+            self.env.assertIn("undefined property", str(e))

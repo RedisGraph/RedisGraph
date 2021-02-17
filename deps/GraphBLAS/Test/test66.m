@@ -1,15 +1,15 @@
 function test66
 %TEST66 test GrB_reduce
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest66: ---- quick test for GrB_reduce_to_scalar and vector\n') ;
 
 rng ('default') ;
 A = sparse (rand (4,3)) ;
-x = full (sum (sum (A))) + 1.3 ;
-c = GB_mex_reduce_to_scalar (1.3, 'plus', 'plus', A) ;
+x = full (sum (sum (A))) + 3.1416
+c = GB_mex_reduce_to_scalar (3.1416, 'plus', 'plus', A) ;
 assert (isequal (x,c))
 
 tic

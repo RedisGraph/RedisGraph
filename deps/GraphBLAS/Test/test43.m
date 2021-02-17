@@ -1,8 +1,8 @@
 function test43
 %TEST43 test subref
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\n------------------------------ testing GB_mex_Matrix_subref\n') ;
 
@@ -27,9 +27,6 @@ assert (isequal (C, C0))
 C0 = A (:,1) ;
 C = GB_mex_Matrix_subref (A, [ ], uint64(0)) ;
 assert (isequal (C, C0))
-
-% 'hit'
-% pause
 
 I = uint64 ([0 1]) ;
 J = uint64 ([0 1]) ;

@@ -10,7 +10,7 @@ graph3 = None
 class testReturnDistinctFlow1(FlowTestsBase):
 
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph1
         redis_con = self.env.getConnection()
         graph1 = Graph("G1", redis_con)
@@ -76,7 +76,7 @@ class testReturnDistinctFlow1(FlowTestsBase):
 class testReturnDistinctFlow2(FlowTestsBase):
 
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph2
         redis_con = self.env.getConnection()
         graph2 = Graph("G2", redis_con)
@@ -135,7 +135,7 @@ class testReturnDistinctFlow2(FlowTestsBase):
 class testDistinct(FlowTestsBase):
     def __init__(self):
         global graph3
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
         graph3 = Graph("G3", redis_con)
         self.populate_graph()

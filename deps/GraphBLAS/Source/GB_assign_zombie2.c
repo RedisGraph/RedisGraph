@@ -2,15 +2,17 @@
 // GB_assign_zombie2: delete all entries in C(i,:) for GB_assign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // C(i,:)<!> = anything: GrB_Row_assign or GrB_Col_assign with an empty
 // complemented mask requires all entries in C(i,:) to be deleted.
+// C must be sparse or hypersparse.
 
 #include "GB_assign.h"
+#include "GB_assign_zombie.h"
 
 void GB_assign_zombie2
 (
@@ -19,6 +21,16 @@ void GB_assign_zombie2
     GB_Context Context
 )
 {
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    ASSERT (!GB_IS_FULL (C)) ;
+    ASSERT (!GB_IS_BITMAP (C)) ;
+    ASSERT (GB_ZOMBIES_OK (C)) ;
+    ASSERT (!GB_JUMBLED (C)) ;      // binary search is used
+    ASSERT (!GB_PENDING (C)) ;
 
     //--------------------------------------------------------------------------
     // get C

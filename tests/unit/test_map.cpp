@@ -32,13 +32,13 @@ TEST_F(MapTest, empty_map) {
 	//--------------------------------------------------------------------------
 	// map should be empty
 	//--------------------------------------------------------------------------
-	
+
 	ASSERT_EQ(0, Map_KeyCount(map));
-	
+
 	SIValue *keys = Map_Keys(map);
 	ASSERT_EQ(0, array_len(keys));
 	array_free(keys);
-	
+
 	//--------------------------------------------------------------------------
 	// try getting a key
 	//--------------------------------------------------------------------------
@@ -47,7 +47,7 @@ TEST_F(MapTest, empty_map) {
 	SIValue v;
 	ASSERT_FALSE(Map_Contains(map, key));
 	ASSERT_FALSE(Map_Get(map, key, &v));
-	
+
 	//--------------------------------------------------------------------------
 	// try removing a none existing key
 	//--------------------------------------------------------------------------
@@ -140,7 +140,7 @@ TEST_F(MapTest, map_remove) {
 		Map_Remove(map, keys[i]);
 
 		// validate key count
-		ASSERT_EQ(3-i-1, Map_KeyCount(map));
+		ASSERT_EQ(3 - i - 1, Map_KeyCount(map));
 
 		// get removed key
 		ASSERT_FALSE(Map_Contains(map, keys[i]));
@@ -182,14 +182,12 @@ TEST_F(MapTest, map_tostring) {
 
 	size_t buf_len = 256;
 	size_t bytes_written = 0;
-	char *buf = (char*)rm_malloc(sizeof(char) * 256);
+	char *buf = (char *)rm_malloc(sizeof(char) * 256);
 	Map_ToString(map, &buf, &buf_len, &bytes_written);
 
-	printf("buf: %s\n", buf);
 	ASSERT_STREQ(buf, "{key0: 0, key1: 1.000000, key2: val0, key3: {inner_key: NULL}}");
 
 	rm_free(buf);
 	SIValue_Free(map);
 	SIValue_Free(inner_map);
 }
-

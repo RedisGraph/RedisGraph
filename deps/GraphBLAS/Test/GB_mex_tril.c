@@ -2,8 +2,8 @@
 // GB_mex_tril: compute C=tril(A,1)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -15,10 +15,10 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GB_VECTOR_FREE (&Thunk) ;           \
-    GB_MATRIX_FREE (&A) ;               \
-    GB_MATRIX_FREE (&C) ;               \
-    GB_mx_put_global (true, 0) ;        \
+    GxB_Scalar_free_(&Thunk) ;          \
+    GrB_Matrix_free_(&A) ;              \
+    GrB_Matrix_free_(&C) ;              \
+    GB_mx_put_global (true) ;           \
 }
 
 void mexFunction
@@ -32,10 +32,9 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL, C = NULL ;
-    GrB_Vector Thunk = NULL ;
+    GxB_Scalar Thunk = NULL ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -66,15 +65,14 @@ void mexFunction
     #undef FREE_DEEP_COPY
 
     #define GET_DEEP_COPY  GrB_Matrix_new (&C, GrB_FP64, A->vlen, A->vdim) ;
-    #define FREE_DEEP_COPY GrB_free (&C) ;
+    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
 
-    GrB_Vector_new (&Thunk, GrB_INT64, 1) ;
-    GrB_Vector_setElement (Thunk, k, 0) ;
-    GrB_Index ignore ;
-    GrB_Vector_nvals (&ignore, Thunk) ;
+    GxB_Scalar_new (&Thunk, GrB_INT64) ;
+    GxB_Scalar_setElement_INT64_(Thunk, k) ;
+    GxB_Scalar_wait_(&Thunk) ;
 
     // C = tril (A,k)
-    METHOD (GxB_Matrix_select (C, NULL, NULL, GxB_TRIL, A, Thunk, NULL)) ;
+    METHOD (GxB_Matrix_select_(C, NULL, NULL, GxB_TRIL, A, Thunk, NULL)) ;
 
     // return C to MATLAB as a regular MATLAB sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C tril", false) ;

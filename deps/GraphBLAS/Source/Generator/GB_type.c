@@ -2,8 +2,8 @@
 // GB_type:  hard-coded functions for each built-in type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -19,11 +19,15 @@
 
 // C<M>=x (C is dense): GB_Cdense_05d
 // C<A>=A (C is dense): GB_Cdense_06d
+// C<M>=A (C is empty, A dense): GB_Cdense_25
 
 // C type:   GB_ctype
 
 #define GB_CTYPE \
     GB_ctype
+
+// C must have the same type as A or the scalar x
+#define GB_ATYPE GB_CTYPE
 
 #define GB_CX(p) Cx [p]
 
@@ -34,10 +38,11 @@
 #define GB_COPY_A_TO_C(Cx,p,Ax,pA) Cx [p] = Ax [pA]
 
 // test the mask condition with Ax [pA]
-#define GB_AX_MASK(Ax,pA,asize) (Ax [pA] != 0)
+#define GB_AX_MASK(Ax,pA,asize) \
+    GB_ax_mask(Ax,pA,asize)
 
 // hard-coded loops can be vectorized
-#define GB_PRAGMA_VECTORIZE GB_PRAGMA_SIMD
+#define GB_PRAGMA_SIMD_VECTORIZE GB_PRAGMA_SIMD
 
 // disable this operator and use the generic case if these conditions hold
 #define GB_DISABLE \
@@ -52,7 +57,7 @@ GrB_Info GB_Cdense_05d
     GrB_Matrix C,
     const GrB_Matrix M,
     const bool Mask_struct,
-    const GB_void *p_cwork,
+    const GB_void *p_cwork,     // scalar of type C->type
     const int64_t *GB_RESTRICT kfirst_slice,
     const int64_t *GB_RESTRICT klast_slice,
     const int64_t *GB_RESTRICT pstart_slice,
@@ -88,6 +93,7 @@ GrB_Info GB_Cdense_06d
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
+    ASSERT (C->type == A->type) ;
     #include "GB_dense_subassign_06d_template.c"
     return (GrB_SUCCESS) ;
     #endif
@@ -112,7 +118,33 @@ GrB_Info GB_Cdense_25
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
+    ASSERT (C->type == A->type) ;
     #include "GB_dense_subassign_25_template.c"
+    return (GrB_SUCCESS) ;
+    #endif
+}
+
+//------------------------------------------------------------------------------
+// convert sparse to bitmap
+//------------------------------------------------------------------------------
+
+GrB_Info GB_convert_s2b
+(
+    GrB_Matrix A,
+    GB_void *GB_RESTRICT Ax_new_void,
+    int8_t  *GB_RESTRICT Ab,
+    const int64_t *GB_RESTRICT kfirst_slice,
+    const int64_t *GB_RESTRICT klast_slice,
+    const int64_t *GB_RESTRICT pstart_slice,
+    const int ntasks,
+    const int nthreads
+)
+{ 
+    #if GB_DISABLE
+    return (GrB_NO_VALUE) ;
+    #else
+    GB_ctype *GB_RESTRICT Ax_new = (GB_ctype *) Ax_new_void ;
+    #include "GB_convert_sparse_to_bitmap_template.c"
     return (GrB_SUCCESS) ;
     #endif
 }

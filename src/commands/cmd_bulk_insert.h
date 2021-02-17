@@ -9,8 +9,6 @@
 #include "../redismodule.h"
 #include "../util/thpool/thpool.h"
 
-extern threadpool _thpool;
-
 /* Multi threaded bulk insert context. */
 typedef struct {
 	RedisModuleBlockedClient *bc;   // Blocked client.

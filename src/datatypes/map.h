@@ -6,12 +6,12 @@
 
 #pragma once
 
-/* A map is a set of key/value pairs 
+/* A map is a set of key/value pairs
  * where key is a string and value can be anyone of the following types:
- * map, array, node, edge, path, date, string, bool, numeric and NULL 
+ * map, array, node, edge, path, date, string, bool, numeric and NULL
  *
  * this implimantaion of map, uses SIValue for the stored values
- * and keeps the keys sorted for quick lookup. 
+ * and keeps the keys sorted for quick lookup.
  *
  * the underline structure of map is an array of key/value pairs
  * [ (key/value), (key/value), ... (key/value) ] */
@@ -23,7 +23,7 @@ typedef struct Pair {
 	SIValue val;  // value stored under key
 } Pair;
 
-typedef Pair* Map;
+typedef Pair *Map;
 
 // create a new map
 SIValue Map_New
@@ -83,7 +83,7 @@ SIValue *Map_Keys
 );
 
 // compare two maps
-// if maps length is not equal the map with the greater length is
+// if map lengths are not equal, the map with the greater length is
 // considered greater
 //
 // {a:1, b:2} > {Z:100}
@@ -91,8 +91,10 @@ SIValue *Map_Keys
 // if both maps have the same length they are sorted and comparision is done
 // on a key by key basis:
 //
-// first if Key i of A is compared to Key i of B, if keys are equal
-// we're comparing Value i of A against Value i of B
+// if the key sets are not equal, key names are compared lexicographically
+
+// otherwise compare the values for that key and, if they are
+// inequal, return the inequality
 //
 // {a:1, b:3} > {a:1, b:2} as 3 > 2
 // {a:1, c:1} > {b:1, a:1} as 'c' > 'b'
@@ -123,4 +125,3 @@ void Map_Free
 (
 	SIValue map  // map to free
 );
-

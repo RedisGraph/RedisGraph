@@ -1,12 +1,11 @@
 function s = normdiff (A,B,kind)
 %NORMDIFF norm (A-B,kind)
-%
 % If A-B is a matrix:
 %
 %   norm (A-B,1) is the maximum sum of the columns of abs (A-B).
 %   norm (A-B,inf) is the maximum sum of the rows of abs (A-B).
-%   norm (A-B,'fro') is the Frobenius norm of A-B: the sqrt of the sum of the
-%       squares of the entries in A-B.
+%   norm (A-B,'fro') is the Frobenius norm of A-B: the sqrt of the sum of
+%       the squares of the entries in A-B.
 %   The 2-norm is not available for either MATLAB or GraphBLAS sparse
 %       matrices.
 %
@@ -17,20 +16,20 @@ function s = normdiff (A,B,kind)
 %   norm (A-B,inf) is the maximum of abs (A-B)
 %   norm (A-B,-inf) is the minimum of abs (A-B)
 %
-% See also GrB.reduce, GrB.norm.
+% See also GrB.reduce, GrB/norm.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin < 3)
     kind = 2 ;
 end
 
-if (isa (A, 'GrB'))
+if (isobject (A))
     A = A.opaque ;
 end
 
-if (isa (B, 'GrB'))
+if (isobject (B))
     B = B.opaque ;
 end
 

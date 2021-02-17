@@ -8,10 +8,8 @@
 #include "RG.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
-#include "../util/thpool/thpool.h"
+#include "../util/thpool/pools.h"
 #include "../slow_log/slow_log.h"
-
-extern threadpool _thpool; // Declared in module.c
 
 /* Array with one entry per worker thread
  * keeps track after currently executing commands
@@ -25,6 +23,7 @@ CommandCtx *CommandCtx_New
 	RedisModuleString *cmd_name,
 	RedisModuleString *query,
 	GraphContext *graph_ctx,
+	ExecutorThread thread,
 	bool replicated_command,
 	bool compact,
 	long long timeout
@@ -33,27 +32,23 @@ CommandCtx *CommandCtx_New
 	context->bc = bc;
 	context->ctx = ctx;
 	context->query = NULL;
+	context->thread = thread;
 	context->compact = compact;
 	context->timeout = timeout;
 	context->command_name = NULL;
 	context->graph_ctx = graph_ctx;
 	context->replicated_command = replicated_command;
 
-	size_t len;
 	if(cmd_name) {
 		// Make a copy of command name.
-		const char *command_name = RedisModule_StringPtrLen(cmd_name, &len);
-		context->command_name = rm_malloc(sizeof(char) * len + 1);
-		memcpy(context->command_name, command_name, len);
-		context->command_name[len] = '\0';
+		const char *command_name = RedisModule_StringPtrLen(cmd_name, NULL);
+		context->command_name = rm_strdup(command_name);
 	}
 
 	if(query) {
 		// Make a copy of query.
-		const char *q = RedisModule_StringPtrLen(query, &len);
-		context->query = rm_malloc(sizeof(char) * len + 1);
-		memcpy(context->query, q, len);
-		context->query[len] = '\0';
+		const char *q = RedisModule_StringPtrLen(query, NULL);
+		context->query = rm_strdup(q);
 	}
 
 	return context;
@@ -65,9 +60,7 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	ASSERT(ctx != NULL);
 	ASSERT(command_ctxs != NULL);
 
-	int tid = thpool_get_thread_id(_thpool, pthread_self());
-	tid += 1; // +1 to compensate for Redis main thread.
-
+	int tid = ThreadPools_GetThreadID();
 	ASSERT(command_ctxs[tid] == NULL);
 
 	// set ctx at the current thread entry
@@ -79,9 +72,7 @@ void CommandCtx_UntrackCtx(CommandCtx *ctx) {
 	ASSERT(ctx != NULL);
 	ASSERT(command_ctxs != NULL);
 
-	int tid = thpool_get_thread_id(_thpool, pthread_self());
-	tid += 1; // +1 to compensate for Redis main thread.
-
+	int tid = ThreadPools_GetThreadID();
 	ASSERT(command_ctxs[tid] == ctx);
 
 	// set ctx at the current thread entry
@@ -147,4 +138,3 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 	rm_free(command_ctx->command_name);
 	rm_free(command_ctx);
 }
-

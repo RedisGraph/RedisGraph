@@ -1,8 +1,8 @@
 function test136
 %TEST136 GxB_subassign, method 08, 09, 11
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test136: GxB_subassign, special cases\n') ;
 
@@ -99,7 +99,10 @@ for k = 1:length (Work)
         Work (k).A, Work (k).I, Work (k).J, Work (k).desc, false) ;
 end
 
-C2 = GB_mex_subassign  (C, Work2) ;
+C2 = GB_mex_subassign (C, Work2) ;
+GB_spec_compare (C1, C2) ;
+
+C2 = GB_mex_subassign (C, Work2, [2 2]) ;
 GB_spec_compare (C1, C2) ;
 
 fprintf ('test136: all tests passed\n') ;

@@ -1,8 +1,8 @@
 function test103
 %TEST103 test aliases in GrB_transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng 'default'
 fprintf ('\ntest103: test aliases in GrB_transpose\n') ;
@@ -14,21 +14,21 @@ for m = [1 5 10]
                 for is_hyper = 0:1
 
                     if (is_hyper)
-                        hyper_ratio = 1 ;
+                        hyper_switch = 1 ;
                     else
-                        hyper_ratio = 0 ;
+                        hyper_switch = 0 ;
                     end
 
                     % A = GB_spec_random (m, n, d, scale, class,
-                    % is_csc,is_hyper,hyper_ratio)
+                    % is_csc,is_hyper,hyper_switch)
 
                     C = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_ratio) ;
+                        is_csc, is_hyper, hyper_switch) ;
 
                     M = sparse (ones (m, n)) ;
 
                     A = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_ratio) ;
+                        is_csc, is_hyper, hyper_switch) ;
 
                     % C<M>=A, to test shallow cast
                     desc.inp0 = 'tran' ;

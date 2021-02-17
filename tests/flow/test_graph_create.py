@@ -11,7 +11,7 @@ redis_graph = None
 
 class testGraphCreationFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -42,6 +42,13 @@ class testGraphCreationFlow(FlowTestsBase):
         query = """UNWIND [10,20,30] AS x CREATE (p:person {age:x}) RETURN p.age ORDER BY p.age"""
         result = redis_graph.query(query)
         expected_result = [[10], [20], [30]]
+        self.env.assertEquals(result.nodes_created, 3)
+        self.env.assertEquals(result.properties_set, 3)
+        self.env.assertEquals(result.result_set, expected_result)
+
+        query = """UNWIND ['Vancouver', 'Portland', 'Calgary'] AS city CREATE (p:person {birthplace: city}) RETURN p.birthplace ORDER BY p.birthplace"""
+        result = redis_graph.query(query)
+        expected_result = [['Calgary'], ['Portland'], ['Vancouver']]
         self.env.assertEquals(result.nodes_created, 3)
         self.env.assertEquals(result.properties_set, 3)
         self.env.assertEquals(result.result_set, expected_result)
@@ -78,4 +85,20 @@ class testGraphCreationFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("undefined property", e.message)
+            self.env.assertIn("undefined property", str(e))
+
+    def test06_create_project_volatile_value(self):
+        # The path e is volatile; verify that it can be projected after entity creation.
+        query = """MATCH ()-[e*]->() CREATE (:L) WITH e RETURN 5"""
+        result = redis_graph.query(query)
+        expected_result = [[5], [5]]
+
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.result_set, expected_result)
+
+        query = """UNWIND [1, 2] AS val WITH collect(val) AS arr CREATE (:L) RETURN arr"""
+        result = redis_graph.query(query)
+        expected_result = [[[1, 2]]]
+
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.result_set, expected_result)

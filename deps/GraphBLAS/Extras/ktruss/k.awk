@@ -1,3 +1,0 @@
-/GraphChallenge/
-
-/rate/

@@ -16,7 +16,7 @@ SIValue AR_TOMAP(SIValue *argv, int argc) {
 	 * expecting an even number of arguments
 	 * argv[even] = key
 	 * argv[odd] = value */
-	
+
 	// validate number of arguments
 	if(argc % 2 != 0) {
 		ErrorCtx_RaiseRuntimeException("map expects even number of elements");
@@ -24,9 +24,9 @@ SIValue AR_TOMAP(SIValue *argv, int argc) {
 
 	SIValue map = SI_Map(argc / 2);
 
-	for(int i = 0; i < argc; i+=2) {
+  for(int i = 0; i < argc; i += 2) {
 		SIValue key = argv[i];
-		SIValue val = argv[i+1];
+		SIValue val = argv[i + 1];
 
 		// make sure key is a string
 		if(!(SI_TYPE(key) & T_STRING)) {

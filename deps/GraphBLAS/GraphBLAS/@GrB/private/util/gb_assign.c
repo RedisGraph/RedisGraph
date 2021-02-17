@@ -2,8 +2,8 @@
 // gb_assign: assign entries into a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -21,14 +21,15 @@
 // then it is first expanded to an empty matrix of size length(I)-by-length(J),
 // and G*B_Matrix_*assign is used (not GraphBLAS scalar assignment).
 
-// MATLAB Usage:
+// Usage:
 
-//      Cout = GrB.assign    (Cin, M, accum, A, I, J, desc)
-//      Cout = GrB.subassign (Cin, M, accum, A, I, J, desc)
+//      C = gbassign    (Cin, M, accum, A, I, J, desc)
+//      C = gbsubassign (Cin, M, accum, A, I, J, desc)
 
-// Cin, A, and desc are required.  See GrB.m for more details.
+// Cin and A are required.  See GrB.m for more details.
 
 #include "gb_matlab.h"
+#include "GB_ij.h"
 
 void gb_assign                  // gbassign or gbsubassign mexFunctions
 (
@@ -45,7 +46,7 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 3 && nargin <= 7 && nargout <= 1, usage) ;
+    gb_usage (nargin >= 2 && nargin <= 7 && nargout <= 2, usage) ;
 
     //--------------------------------------------------------------------------
     // find the arguments
@@ -55,10 +56,10 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
-    int nmatrices, nstrings, ncells ;
+    int nmatrices, nstrings, ncells, sparsity ;
     GrB_Descriptor desc ;
     gb_get_mxargs (nargin, pargin, usage, Matrix, &nmatrices, String, &nstrings,
-        Cell, &ncells, &desc, &base, &kind, &fmt) ;
+        Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
 
     CHECK_ERROR (nmatrices < 2 || nmatrices > 3 || nstrings > 1, usage) ;
 
@@ -92,7 +93,7 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
 
     if (nstrings == 1)
     { 
-        accum = gb_mxstring_to_binop (String [0], ctype) ;
+        accum = gb_mxstring_to_binop (String [0], ctype, ctype) ;
     }
 
     //--------------------------------------------------------------------------
@@ -111,6 +112,11 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     GrB_Index *J = (GrB_Index *) GrB_ALL ;
     GrB_Index ni = cnrows, nj = cncols ;
     bool I_allocated = false, J_allocated = false ;
+
+    if (cnrows > 1 && cncols > 1 && ncells == 1)
+    {
+        ERROR ("linear indexing not yet supported") ;
+    }
 
     if (cnrows == 1 && ncells == 1)
     { 
@@ -141,12 +147,17 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
 
     if (scalar_assignment && anvals == 0)
     { 
-        // A is a sparse scalar.  Expand it to an ni-by-nj sparse matrix with
-        // the same type as C, with no entries, and use matrix assignment.
+        // A is a sparse scalar with no entry.  Expand it to an empty ni-by-nj
+        // sparse matrix with the same type as C, with no entries, and use
+        // matrix assignment.
+        int64_t nI, nJ, Icolon [3], Jcolon [3] ;
+        int Ikind, Jkind ;
+        GB_ijlength (I, ni, cnrows, &nI, &Ikind, Icolon) ;
+        GB_ijlength (J, nj, cncols, &nJ, &Jkind, Jcolon) ;
         OK (GrB_Matrix_free (&A)) ;
-        OK (GrB_Matrix_new (&A, ctype, ni, nj)) ;
         OK (GxB_Matrix_Option_get (C, GxB_FORMAT, &fmt)) ;
-        OK (GxB_Matrix_Option_set (A, GxB_FORMAT, fmt)) ;
+        OK (GxB_Matrix_Option_get (C, GxB_SPARSITY_CONTROL, &sparsity)) ;
+        A = gb_new (ctype, nI, nJ, fmt, sparsity) ;
         scalar_assignment = false ;
     }
 
@@ -163,11 +174,11 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     {
         if (do_subassign)
         { 
-            OK (GxB_Matrix_subassign (C, M, accum, A, I, ni, J, nj, desc)) ;
+            OK1 (C, GxB_Matrix_subassign (C, M, accum, A, I, ni, J, nj, desc)) ;
         }
         else
         { 
-            OK (GrB_Matrix_assign (C, M, accum, A, I, ni, J, nj, desc)) ;
+            OK1 (C, GrB_Matrix_assign (C, M, accum, A, I, ni, J, nj, desc)) ;
         }
     }
 
@@ -186,6 +197,7 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;
+    pargout [1] = mxCreateDoubleScalar (kind) ;
     GB_WRAPUP ;
 }
 

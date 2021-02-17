@@ -18,7 +18,7 @@ node_ctr = 0
 
 class testIndexUpdatesFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -31,7 +31,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
                                   'group': random.choice(groups),
                                   'doubleval': round(random.uniform(-1, 1), 2),
                                   'intval': random.randint(1, 10000),
-                                  'stringval': ''.join(random.choice(string.lowercase) for x in range(6))})
+                                  'stringval': ''.join(random.choice(string.ascii_lowercase) for x in range(6))})
 
     def populate_graph(self):
         global node_ctr
@@ -151,4 +151,4 @@ class testIndexUpdatesFlow(FlowTestsBase):
         result = redis_graph.query(query)
         expected_result = [[5, unique_prop]]
         self.env.assertEquals(result.result_set, expected_result)
-        self.env.assertEquals(result.properties_set, 2)
+        self.env.assertEquals(result.properties_set, 1)

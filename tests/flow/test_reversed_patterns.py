@@ -12,7 +12,7 @@ redis_graph = None
 
 class testReversedPatterns(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()

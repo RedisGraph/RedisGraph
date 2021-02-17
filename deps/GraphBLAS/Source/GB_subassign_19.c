@@ -2,8 +2,8 @@
 // GB_subassign_19: C(I,J)<!M,repl> += scalar ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -16,6 +16,9 @@
 // A:           scalar
 // S:           constructed
 
+// C: not bitmap
+// M: not bitmap
+
 #include "GB_subassign_methods.h"
 
 GrB_Info GB_subassign_19
@@ -23,10 +26,12 @@ GrB_Info GB_subassign_19
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
+    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
+    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
@@ -35,27 +40,37 @@ GrB_Info GB_subassign_19
     const GrB_BinaryOp accum,
     const void *scalar,
     const GrB_Type atype,
-    const GrB_Matrix S,
     GB_Context Context
 )
 {
 
     //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    ASSERT (!GB_IS_BITMAP (C)) ; ASSERT (!GB_IS_FULL (C)) ;
+    ASSERT (!GB_aliased (C, M)) ;   // NO ALIAS of C==M
+
+    //--------------------------------------------------------------------------
+    // S = C(I,J)
+    //--------------------------------------------------------------------------
+
+    GB_EMPTY_TASKLIST ;
+    GB_OK (GB_subassign_symbolic (&S, C, I, ni, J, nj, true, Context)) ;
+
+    //--------------------------------------------------------------------------
     // get inputs
     //--------------------------------------------------------------------------
 
-    GB_GET_C ;
-    const bool C_is_hyper = C->is_hyper ;
-    const int64_t Cnvec = C->nvec ;
+    GB_MATRIX_WAIT_IF_JUMBLED (M) ;
+
+    GB_GET_C ;      // C must not be bitmap
     const int64_t *GB_RESTRICT Ch = C->h ;
     const int64_t *GB_RESTRICT Cp = C->p ;
+    const bool C_is_hyper = (Ch != NULL) ;
+    const int64_t Cnvec = C->nvec ;
     GB_GET_MASK ;
-    const bool M_is_hyper = M->is_hyper ;
-    const int64_t Mnvec = M->nvec ;
     GB_GET_S ;
-    const int64_t *GB_RESTRICT Sh = S->h ;
-    const int64_t Snvec = S->nvec ;
-    const bool S_is_hyper = S->is_hyper ;
     GB_GET_ACCUM_SCALAR ;
 
     //--------------------------------------------------------------------------
@@ -77,7 +92,6 @@ GrB_Info GB_subassign_19
     // phase 1: create zombies, update entries, and count pending tuples
     //--------------------------------------------------------------------------
 
-    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
     for (taskid = 0 ; taskid < ntasks ; taskid++)
@@ -87,7 +101,7 @@ GrB_Info GB_subassign_19
         // get the task descriptor
         //----------------------------------------------------------------------
 
-        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE1 ;
+        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE1 (iA_start, iA_end) ;
 
         //----------------------------------------------------------------------
         // compute all vectors in this task
@@ -100,14 +114,14 @@ GrB_Info GB_subassign_19
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
 
             //------------------------------------------------------------------
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S) ;
-            GB_GET_VECTOR_FOR_IXJ (M) ;
+            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M,repl> += scalar
@@ -120,8 +134,8 @@ GrB_Info GB_subassign_19
                 // Get the indices at the top of each list.
                 //--------------------------------------------------------------
 
-                int64_t iS = (pS < pS_end) ? Si [pS] : INT64_MAX ;
-                int64_t iM = (pM < pM_end) ? Mi [pM] : INT64_MAX ;
+                int64_t iS = (pS < pS_end) ? GBI (Si, pS, Svlen) : INT64_MAX ;
+                int64_t iM = (pM < pM_end) ? GBI (Mi, pM, Mvlen) : INT64_MAX ;
 
                 //--------------------------------------------------------------
                 // find the smallest index of [iS iA iM] (always iA)
@@ -137,7 +151,7 @@ GrB_Info GB_subassign_19
                 if (i == iM)
                 { 
                     // mij = (bool) M [pM]
-                    mij = GB_mcast (Mx, pM, msize) ;
+                    mij = GBB (Mb, pM) && GB_mcast (Mx, pM, msize) ;
                     GB_NEXT (M) ;
                 }
                 else
@@ -211,7 +225,7 @@ GrB_Info GB_subassign_19
         // get the task descriptor
         //----------------------------------------------------------------------
 
-        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE2 ;
+        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE2 (iA_start, iA_end) ;
 
         //----------------------------------------------------------------------
         // compute all vectors in this task
@@ -224,14 +238,14 @@ GrB_Info GB_subassign_19
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_GET_jC ;
+            int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
 
             //------------------------------------------------------------------
             // get S(iA_start:end,j) and M(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S) ;
-            GB_GET_VECTOR_FOR_IXJ (M) ;
+            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_GET_VECTOR_FOR_IXJ (M, iA_start) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC)<!M,repl> += scalar
@@ -244,8 +258,8 @@ GrB_Info GB_subassign_19
                 // Get the indices at the top of each list.
                 //--------------------------------------------------------------
 
-                int64_t iS = (pS < pS_end) ? Si [pS] : INT64_MAX ;
-                int64_t iM = (pM < pM_end) ? Mi [pM] : INT64_MAX ;
+                int64_t iS = (pS < pS_end) ? GBI (Si, pS, Svlen) : INT64_MAX ;
+                int64_t iM = (pM < pM_end) ? GBI (Mi, pM, Mvlen) : INT64_MAX ;
 
                 //--------------------------------------------------------------
                 // find the smallest index of [iS iA iM] (always iA)
@@ -261,7 +275,7 @@ GrB_Info GB_subassign_19
                 if (i == iM)
                 { 
                     // mij = (bool) M [pM]
-                    mij = GB_mcast (Mx, pM, msize) ;
+                    mij = GBB (Mb, pM) && GB_mcast (Mx, pM, msize) ;
                     GB_NEXT (M) ;
                 }
                 else

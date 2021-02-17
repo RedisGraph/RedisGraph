@@ -19,7 +19,7 @@ class testReplication(FlowTestsBase):
         if Env().envRunner.debugger is not None:
             Env().skip() # valgrind is not working correctly with replication
 
-        self.env = Env(env='oss', useSlaves=True)
+        self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
 
     def test_CRUD_replication(self):
         # create a simple graph
@@ -35,8 +35,8 @@ class testReplication(FlowTestsBase):
         # create a simple graph
         graph = Graph(GRAPH_ID, source_con)
         replica = Graph(GRAPH_ID, replica_con)
-        s = Node(label='L', properties={'id': 0, 'name': 'a'})
-        t = Node(label='L', properties={'id': 1, 'name': 'b'})
+        s = Node(label='L', properties={'id': 0, 'name': 'abcd'})
+        t = Node(label='L', properties={'id': 1, 'name': 'efgh'})
         e = Edge(s, 'R', t)
 
         graph.add_node(s)
@@ -48,12 +48,20 @@ class testReplication(FlowTestsBase):
         q = "CREATE INDEX ON :L(id)"
         graph.query(q)
 
+        # create full-text index
+        q = "CALL db.idx.fulltext.createNodeIndex('L', 'name')"
+        graph.query(q)
+
+        # add fields to existing index
+        q = "CALL db.idx.fulltext.createNodeIndex('L', 'title', 'desc')"
+        graph.query(q)
+
         # update entity
-        q = "MATCH (n:L {id:0}) SET n.id = 2, n.name = 'c'"
+        q = "MATCH (n:L {id:1}) SET n.id = 2"
         graph.query(q)
 
         # delete entity
-        q = "MATCH (n:L {id:1}) DELETE n"
+        q = "MATCH (n:L {id:0}) DELETE n"
         graph.query(q)
 
         # give replica some time to catch up
@@ -68,6 +76,37 @@ class testReplication(FlowTestsBase):
 
         # issue query on both source and replica
         # make sure results are the same
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        self.env.assertEquals(replica_result, result)
+
+        # make sure node count on both primary and replica is the same
+        q = "MATCH (n) RETURN count(n)"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        self.env.assertEquals(replica_result, result)
+
+        # make sure nodes are in sync
+        q = "MATCH (n) RETURN n ORDER BY n"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        self.env.assertEquals(replica_result, result)
+
+        # make sure both primary and replica have the same set of indexes
+        q = "CALL db.indexes()"
+        result = graph.query(q).result_set
+        replica_result = replica.query(q).result_set
+        self.env.assertEquals(replica_result, result)
+
+        # drop fulltext index
+        q = "CALL db.idx.fulltext.drop('L')"
+        graph.query(q)
+
+        # give replica some time to catch up
+        time.sleep(1)
+
+        # make sure both primary and replica have the same set of indexes
+        q = "CALL db.indexes()"
         result = graph.query(q).result_set
         replica_result = replica.query(q).result_set
         self.env.assertEquals(replica_result, result)

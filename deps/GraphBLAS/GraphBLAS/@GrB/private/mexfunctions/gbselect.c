@@ -2,8 +2,8 @@
 // gbselect: select entries from a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -11,61 +11,90 @@
 
 // Usage:
 
-// Cout = gbselect (op, A, desc)
-// Cout = gbselect (op, A, b, desc)
+// C = gbselect (op, A)
+// C = gbselect (op, A, desc)
+// C = gbselect (op, A, b, desc)
 
-// Cout = gbselect (Cin, accum, op, A, desc)
-// Cout = gbselect (Cin, accum, op, A, b, desc)
+// C = gbselect (Cin, accum, op, A, desc)
+// C = gbselect (Cin, accum, op, A, b, desc)
 
-// Cout = gbselect (Cin, M, op, A, desc)
-// Cout = gbselect (Cin, M, op, A, b, desc)
+// C = gbselect (Cin, M, op, A, desc)
+// C = gbselect (Cin, M, op, A, b, desc)
 
-// Cout = gbselect (Cin, M, accum, op, A, desc)
-// Cout = gbselect (Cin, M, accum, op, A, b, desc)
+// C = gbselect (Cin, M, accum, op, A, desc)
+// C = gbselect (Cin, M, accum, op, A, b, desc)
 
 // If Cin is not present then it is implicitly a matrix with no entries, of the
 // right size (which depends on A, and the descriptor).  The type if Cin, if
 // not present, is determined by the ztype of the accum, if present, or
 // otherwise it has the same time as A.
 
-// If op is '==' or '~=' and b is a NaN, and A has type GrB_FP32 or GrB_FP64,
-// then a user-defined operator is used instead of GxB_EQ_THUNK or
-// GxB_NE_THUNK.
+// If op is '==' or '~=' and b is a NaN, and A has type GrB_FP32, GrB_FP64,
+// GxB_FC32, or GxB_FC64, then a user-defined operator is used instead of
+// GxB_EQ_THUNK or GxB_NE_THUNK.
 
 // The 'tril', 'triu', 'diag', 'offdiag', and 2-input operators all require
 // the b scalar.  The b scalar must not appear for the '*0' operators.
 
 #include "gb_matlab.h"
 
-#define USAGE "usage: Cout = GrB.select (Cin, M, accum, op, A, b, desc)"
+#define USAGE "usage: C = GrB.select (Cin, M, accum, op, A, b, desc)"
 
-bool gb_isnan32 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b)
+//------------------------------------------------------------------------------
+// nan operators
+//------------------------------------------------------------------------------
+
+bool gb_isnan32 (GrB_Index i, GrB_Index j, const void *x, const void *b)
 { 
     float aij = * ((float *) x) ;
     return (isnan (aij)) ;
 }
 
-bool gb_isnan64 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b)
+bool gb_isnan64 (GrB_Index i, GrB_Index j, const void *x, const void *b)
 { 
     double aij = * ((double *) x) ;
     return (isnan (aij)) ;
 }
 
-bool gb_isnotnan32 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b)
+bool gb_isnotnan32 (GrB_Index i, GrB_Index j, const void *x, const void *b)
 { 
     float aij = * ((float *) x) ;
     return (!isnan (aij)) ;
 }
 
-bool gb_isnotnan64 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b)
+bool gb_isnotnan64 (GrB_Index i, GrB_Index j, const void *x, const void *b)
 { 
     double aij = * ((double *) x) ;
     return (!isnan (aij)) ;
 }
+
+bool gb_isnanfc32 (GrB_Index i, GrB_Index j, const void *x, const void *b)
+{ 
+    GxB_FC32_t aij = * ((GxB_FC32_t *) x) ;
+    return (isnan (crealf (aij)) || isnan (cimagf (aij))) ;
+}
+
+bool gb_isnanfc64 (GrB_Index i, GrB_Index j, const void *x, const void *b)
+{ 
+    GxB_FC64_t aij = * ((GxB_FC64_t *) x) ;
+    return (isnan (creal (aij)) || isnan (cimag (aij))) ;
+}
+
+bool gb_isnotnanfc32 (GrB_Index i, GrB_Index j, const void *x, const void *b)
+{ 
+    GxB_FC32_t aij = * ((GxB_FC32_t *) x) ;
+    return (!isnan (crealf (aij)) && !isnan (cimagf (aij))) ;
+}
+
+bool gb_isnotnanfc64 (GrB_Index i, GrB_Index j, const void *x, const void *b)
+{ 
+    GxB_FC64_t aij = * ((GxB_FC64_t *) x) ;
+    return (!isnan (creal (aij)) && !isnan (cimag (aij))) ;
+}
+
+//------------------------------------------------------------------------------
+// gbselect mexFunction
+//------------------------------------------------------------------------------
 
 void mexFunction
 (
@@ -80,7 +109,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 3 && nargin <= 7 && nargout <= 1, USAGE) ;
+    gb_usage (nargin >= 2 && nargin <= 7 && nargout <= 2, USAGE) ;
 
     //--------------------------------------------------------------------------
     // find the arguments
@@ -90,10 +119,10 @@ void mexFunction
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
-    int nmatrices, nstrings, ncells ;
+    int nmatrices, nstrings, ncells, sparsity ;
     GrB_Descriptor desc ;
     gb_get_mxargs (nargin, pargin, USAGE, Matrix, &nmatrices, String, &nstrings,
-        Cell, &ncells, &desc, &base, &kind, &fmt) ;
+        Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
 
     CHECK_ERROR (nmatrices < 1 || nstrings < 1 || ncells > 0, USAGE) ;
 
@@ -180,7 +209,7 @@ void mexFunction
     { 
         // if accum appears, then Cin must also appear
         CHECK_ERROR (C == NULL, USAGE) ;
-        accum = gb_mxstring_to_binop (String [0], ctype) ;
+        accum = gb_mxstring_to_binop (String [0], ctype, ctype) ;
     }
 
     //--------------------------------------------------------------------------
@@ -209,9 +238,10 @@ void mexFunction
         // C has the same type as A
         OK (GxB_Matrix_type (&ctype, A)) ;
 
-        OK (GrB_Matrix_new (&C, ctype, cnrows, cncols)) ;
+        // create the matrix C and set its format and sparsity
         fmt = gb_get_format (cnrows, cncols, A, NULL, fmt) ;
-        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
+        sparsity = gb_get_sparsity (A, NULL, sparsity) ;
+        C = gb_new (ctype, cnrows, cncols, fmt, sparsity) ;
     }
 
     //--------------------------------------------------------------------------
@@ -239,6 +269,18 @@ void mexFunction
             OK (GrB_Matrix_extractElement_FP64 (&b_value, b, 0, 0)) ;
             b_is_nan = isnan (b_value) ;
         }
+        else if (b_type == GxB_FC32)
+        { 
+            GxB_FC32_t b_value = GxB_CMPLXF (0, 0) ;
+            OK (GxB_Matrix_extractElement_FC32 (&b_value, b, 0, 0)) ;
+            b_is_nan = GB_cisnanf (b_value) ;
+        }
+        else if (b_type == GxB_FC64)
+        { 
+            GxB_FC64_t b_value = GxB_CMPLX (0, 0) ;
+            OK (GxB_Matrix_extractElement_FC64 (&b_value, b, 0, 0)) ;
+            b_is_nan = GB_cisnan (b_value) ;
+        }
 
         if (b_is_nan)
         {
@@ -246,23 +288,52 @@ void mexFunction
             // instead of the built-in GxB_EQ_THUNK or GxB_NE_THUNK operators.
             // These operators do not need a b input, since it is now known
             // to be a NaN.
-            if (op == GxB_EQ_THUNK && atype == GrB_FP32)
-            { 
-                OK (GxB_SelectOp_new (&nan_test, gb_isnan32, GrB_FP32, NULL)) ;
+
+            if (op == GxB_EQ_THUNK)
+            {
+                if (atype == GrB_FP32)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnan32,
+                        GrB_FP32, NULL)) ;
+                }
+                else if (atype == GrB_FP64)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnan64,
+                        GrB_FP64, NULL)) ;
+                }
+                else if (atype == GxB_FC32)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnanfc32,
+                        GxB_FC32, NULL)) ;
+                }
+                else if (atype == GxB_FC64)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnanfc64,
+                        GxB_FC64, NULL)) ;
+                }
             }
-            else if (op == GxB_EQ_THUNK && atype == GrB_FP64)
-            { 
-                OK (GxB_SelectOp_new (&nan_test, gb_isnan64, GrB_FP64, NULL)) ;
-            }
-            else if (op == GxB_NE_THUNK && atype == GrB_FP32)
-            { 
-                OK (GxB_SelectOp_new (&nan_test, gb_isnotnan32, GrB_FP32,
-                    NULL)) ;
-            }
-            else if (op == GxB_NE_THUNK && atype == GrB_FP64)
-            { 
-                OK (GxB_SelectOp_new (&nan_test, gb_isnotnan64, GrB_FP64,
-                    NULL)) ;
+            else if (op == GxB_NE_THUNK)
+            {
+                if (atype == GrB_FP32)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnotnan32,
+                        GrB_FP32, NULL)) ;
+                }
+                else if (atype == GrB_FP64)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnotnan64,
+                        GrB_FP64, NULL)) ;
+                }
+                else if (atype == GxB_FC32)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnotnanfc32,
+                        GxB_FC32, NULL)) ;
+                }
+                else if (atype == GxB_FC64)
+                { 
+                    OK (GxB_SelectOp_new (&nan_test, gb_isnotnanfc64,
+                        GxB_FC64, NULL)) ;
+                }
             }
         }
 
@@ -278,7 +349,7 @@ void mexFunction
     // compute C<M> += select (A, b2)
     //--------------------------------------------------------------------------
 
-    OK (GxB_Matrix_select (C, M, accum, op, A, b2, desc)) ;
+    OK1 (C, GxB_Matrix_select (C, M, accum, op, A, b2, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
@@ -295,6 +366,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;
+    pargout [1] = mxCreateDoubleScalar (kind) ;
     GB_WRAPUP ;
 }
 

@@ -13,11 +13,10 @@
 #include "../query_ctx.h"
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
-#include "../util/thpool/thpool.h"
+#include "../util/thpool/pools.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-extern threadpool _thpool; // Declared in module.c
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
@@ -41,7 +40,7 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 
 		if(async_delete) {
 			// Async delete
-			thpool_add_work(_thpool, _GraphContext_Free, gc);
+			ThreadPools_AddWorkWriter(_GraphContext_Free, gc);
 		} else {
 			// Sync delete
 			_GraphContext_Free(gc);
@@ -81,7 +80,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	uint64_t cache_size;
 	Config_Option_get(Config_CACHE_SIZE, &cache_size);
 	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
-	  	(CacheEntryCopyFunc)ExecutionCtx_Clone);
+						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -346,6 +345,8 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute
 // Index API
 //------------------------------------------------------------------------------
 bool GraphContext_HasIndices(GraphContext *gc) {
+	ASSERT(gc != NULL);
+
 	uint schema_count = array_len(gc->node_schemas);
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->node_schemas[i])) return true;
@@ -353,8 +354,12 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	return false;
 }
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribute_ID *attribute_id,
-							 IndexType type) {
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
+							 Attribute_ID *attribute_id, IndexType type) {
+
+	ASSERT(gc != NULL);
+	ASSERT(label != NULL);
+
 	// Retrieve the schema for this label
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(schema == NULL) return NULL;
@@ -362,27 +367,43 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribut
 	return Schema_GetIndex(schema, attribute_id, type);
 }
 
-int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
-						  IndexType type) {
+int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
+						  const char *field, IndexType type) {
+
 	ASSERT(idx && gc && label && field);
 
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+
 	int res = Schema_AddIndex(idx, s, field, type);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexCreated(result_set, res);
+	if(res == INDEX_OK) {
+		ResultSet *result_set = QueryCtx_GetResultSet();
+		ResultSet_IndexCreated(result_set, res);
+	}
+
 	return res;
 }
 
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field,
-							 IndexType type) {
+int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
+							 const char *field, IndexType type) {
+	ASSERT(gc != NULL);
+	ASSERT(label != NULL);
+	ASSERT(field != NULL);
+
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	int res = INDEX_FAIL;
-	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexDeleted(result_set, res);
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+
+	if(s != NULL) {
+		res = Schema_RemoveIndex(s, field, type);
+		if(res != INDEX_FAIL) {
+			// update resultset statistics
+			ResultSet *result_set = QueryCtx_GetResultSet();
+			ResultSet_IndexDeleted(result_set, res);
+		}
+	}
+
 	return res;
 }
 

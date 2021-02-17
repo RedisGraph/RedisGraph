@@ -191,29 +191,20 @@ static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point)
 	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 }
 
-void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 uint numcols, uint *col_rec_map) {
+void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
+		SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(int i = 0; i < numcols; i++) {
-		uint idx = col_rec_map[i];
-		switch(Record_GetType(r, idx)) {
-		case REC_TYPE_NODE:
-			_ResultSet_VerboseReplyWithNode(ctx, gc, Record_GetNode(r, idx));
-			break;
-		case REC_TYPE_EDGE:
-			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, idx));
-			break;
-		default:
-			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_Get(r, idx));
-		}
+		SIValue v = *row[i];
+		_ResultSet_VerboseReplyWithSIValue(ctx, gc, v);
 	}
 }
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-									  const Record unused, uint *col_rec_map) {
+		uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
@@ -221,4 +212,3 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
-

@@ -6,7 +6,7 @@ GRAPH_ID = "G"
 
 class testHashJoin(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
 
     def test_multi_hashjoins(self):
         # See issue https://github.com/RedisGraph/RedisGraph/issues/1124

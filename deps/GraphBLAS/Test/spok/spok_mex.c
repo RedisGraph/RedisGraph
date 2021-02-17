@@ -4,6 +4,9 @@
 /* SPOK mexFunction */
 /* -------------------------------------------------------------------------- */
 
+/* Copyright 2008-2011, Timothy A. Davis, http://suitesparse.com */
+/* SPDX-License-Identifier: Apache-2.0 */
+
 /* Checks the validity of a MATLAB sparse matrix.  Returns 1 if OK (or if the
    matrix is not sparse), 0 if the row indices are jumbled (C=A' might lead to
    a valid C matrix) or if the matrix includes explicit zero entries (which can
