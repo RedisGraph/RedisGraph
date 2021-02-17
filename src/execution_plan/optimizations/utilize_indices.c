@@ -168,7 +168,6 @@ bool _simple_predicates(FT_FilterNode *filter) {
 	AR_ExpNode  *rhs_exp  =  NULL;
 
 	if(_isInFilter(filter)) {
-		_normalize_in_filter(filter);
 		return _validateInExpression(filter->exp.exp);
 	}
 
