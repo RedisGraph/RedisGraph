@@ -7,6 +7,7 @@
 #include "decode_v9.h"
 
 // Forward declarations.
+static SIValue _RdbLoadPoint(RedisModuleIO *rdb);
 static SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
 
 static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
@@ -27,10 +28,18 @@ static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 		return SI_BoolVal(RedisModule_LoadSigned(rdb));
 	case T_ARRAY:
 		return _RdbLoadSIArray(rdb);
+	case T_POINT:
+		return _RdbLoadPoint(rdb);
 	case T_NULL:
 	default: // currently impossible
 		return SI_NullVal();
 	}
+}
+
+static SIValue _RdbLoadPoint(RedisModuleIO *rdb) {
+	double lat = RedisModule_LoadDouble(rdb);
+	double lon = RedisModule_LoadDouble(rdb);
+	return SI_Point(lat, lon);
 }
 
 static SIValue _RdbLoadSIArray(RedisModuleIO *rdb) {
@@ -131,3 +140,4 @@ void RdbLoadDeletedEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t delet
 		Serializer_Graph_MarkEdgeDeleted(gc->g, id);
 	}
 }
+

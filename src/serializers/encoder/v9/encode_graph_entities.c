@@ -5,6 +5,7 @@
 */
 
 #include "encode_v9.h"
+#include "../../../datatypes/datatypes.h"
 
 // Forword decleration.
 static void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v);
@@ -45,6 +46,9 @@ static void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
 	case T_ARRAY:
 		_RdbSaveSIArray(rdb, *v);
 		return;
+	case T_POINT:
+		RedisModule_SaveDouble(rdb, Point_lat(*v));
+		RedisModule_SaveDouble(rdb, Point_lon(*v));
 	case T_NULL:
 		return; // No data beyond the type needs to be encoded for a NULL value.
 	default:

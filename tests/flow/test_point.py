@@ -61,6 +61,17 @@ class testPath():
         q = """create (:N {name:'univ', loc:point({ latitude:%f, longitude:%f })})""" % (univ['lat'], univ['lon'])
         redis_graph.query(q)
 
+        # validate that the entities were created and can be returned properly
+        q = """match (n:N) RETURN n.name, n.loc ORDER BY n.name"""
+        actual_result = redis_graph.query(q)
+        self.env.assertEquals(actual_result.result_set[0][0], "home")
+        self.env.assertAlmostEqual(actual_result.result_set[0][1]["x"], 32.070794860, 1e-5)
+        self.env.assertAlmostEqual(actual_result.result_set[0][1]["y"], 34.820751118, 1e-5)
+
+        self.env.assertEquals(actual_result.result_set[1][0], "univ")
+        self.env.assertAlmostEqual(actual_result.result_set[1][1]["x"], 30.621734079, 1e-5)
+        self.env.assertAlmostEqual(actual_result.result_set[1][1]["y"], -96.33775507, 1e-5)
+
         idx_q = """MATCH (n:N) WHERE distance(n.loc, point({latitude:%f, longitude:%f})) < %d RETURN n.name"""
         none_idx_q = """MATCH (n) WHERE distance(n.loc, point({latitude:%f, longitude:%f})) < %d RETURN n.name"""
 
