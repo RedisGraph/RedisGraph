@@ -283,3 +283,56 @@ class testIndexScanFlow(FlowTestsBase):
         # One index scan should be performed.
         self.env.assertEqual(plan.count("Index Scan"), 1)
 
+    def test13_point_index_scan(self):
+        # create index
+        q = "CREATE INDEX ON :restaurant(location)"
+        redis_graph.query(q)
+
+        # create restaurant
+        q = "CREATE (:restaurant {location: point({latitude:30.27822306, longitude:-97.75134723})})"
+        redis_graph.query(q)
+
+        # locate other restaurants within a 1000m radius
+        q = """MATCH (r:restaurant)
+        WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) < 1000
+        RETURN r"""
+
+        # make sure index is used
+        plan = redis_graph.execution_plan(q)
+        self.env.assertIn("Index Scan", plan)
+
+        # refine query from '<' to '<='
+        q = """MATCH (r:restaurant)
+        WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) <= 1000
+        RETURN r"""
+
+        # make sure index is used
+        plan = redis_graph.execution_plan(q)
+        self.env.assertIn("Index Scan", plan)
+
+        # index should NOT be used when searching for points outside of circle
+        # testing operand: '>', '>=' and '='
+        q = """MATCH (r:restaurant)
+        WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) > 1000
+        RETURN r"""
+
+        # make sure index is NOT used
+        plan = redis_graph.execution_plan(q)
+        self.env.assertNotIn("Index Scan", plan)
+
+        q = """MATCH (r:restaurant)
+        WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) >= 1000
+        RETURN r"""
+
+        # make sure index is NOT used
+        plan = redis_graph.execution_plan(q)
+        self.env.assertNotIn("Index Scan", plan)
+
+        q = """MATCH (r:restaurant)
+        WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) = 1000
+        RETURN r"""
+
+        # make sure index is NOT used
+        plan = redis_graph.execution_plan(q)
+        self.env.assertNotIn("Index Scan", plan)
+
