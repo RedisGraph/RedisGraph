@@ -29,24 +29,23 @@ SIValue AR_TOPOINT(SIValue *argv, int argc) {
 		// TODO: error
 	}
 
-	bool key_exists;
 	SIValue latitude;
 	SIValue longitude;
 
+	// make sure lat is present in map
 	if(!Map_Get(map, SI_ConstStringVal("latitude"), &latitude)) {
 		// TODO: error
 	}
+	// make sure lon is present in map
 	if(!Map_Get(map, SI_ConstStringVal("longitude"), &longitude)) {
 		// TODO: error
 	}
-
-	if(SI_TYPE(latitude) != T_DOUBLE || SI_TYPE(longitude) != T_DOUBLE) {
+	// validate lat, lon types
+	if(! (SI_NUMERIC & SI_TYPE(latitude) && SI_NUMERIC & SI_TYPE(longitude))) {
 		// TODO: error
 	}
 
-	float lat = latitude.doubleval;
-	float lon = longitude.doubleval;
-	return SI_Point(lat, lon);
+	return SI_Point(SI_GET_NUMERIC(latitude), SI_GET_NUMERIC(longitude));
 }
 
 SIValue AR_DISTANCE(SIValue *argv, int argc) {
