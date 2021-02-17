@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v8.h"
+#include "encode_v9.h"
 
 // Forword decleration.
 static void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v);
@@ -90,7 +90,7 @@ static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e, int 
 	_RdbSaveEntity(rdb, e->entity);
 }
 
-static void _RdbSaveNode_v8(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *n) {
+static void _RdbSaveNode_v9(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *n) {
 	/* Format:
 	*      ID
 	*      #labels M
@@ -115,7 +115,7 @@ static void _RdbSaveNode_v8(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *n
 	_RdbSaveEntity(rdb, n->entity);
 }
 
-static void _RdbSaveDeletedEntities_v8(RedisModuleIO *rdb, GraphContext *gc,
+static void _RdbSaveDeletedEntities_v9(RedisModuleIO *rdb, GraphContext *gc,
 									   uint64_t deleted_entities_to_encode, uint64_t *deleted_id_list) {
 	// Get the number of deleted entities already encoded.
 	uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
@@ -126,7 +126,7 @@ static void _RdbSaveDeletedEntities_v8(RedisModuleIO *rdb, GraphContext *gc,
 	}
 }
 
-void RdbSaveDeletedNodes_v8(RedisModuleIO *rdb, GraphContext *gc,
+void RdbSaveDeletedNodes_v9(RedisModuleIO *rdb, GraphContext *gc,
 							uint64_t deleted_nodes_to_encode) {
 	/* Format:
 	 * node id X N */
@@ -134,10 +134,10 @@ void RdbSaveDeletedNodes_v8(RedisModuleIO *rdb, GraphContext *gc,
 	if(deleted_nodes_to_encode == 0) return;
 	// Get deleted nodes list.
 	uint64_t *deleted_nodes_list = Serializer_Graph_GetDeletedNodesList(gc->g);
-	_RdbSaveDeletedEntities_v8(rdb, gc, deleted_nodes_to_encode, deleted_nodes_list);
+	_RdbSaveDeletedEntities_v9(rdb, gc, deleted_nodes_to_encode, deleted_nodes_list);
 }
 
-void RdbSaveDeletedEdges_v8(RedisModuleIO *rdb, GraphContext *gc,
+void RdbSaveDeletedEdges_v9(RedisModuleIO *rdb, GraphContext *gc,
 							uint64_t deleted_edges_to_encode) {
 	/* Format:
 	 * edge id X N */
@@ -145,10 +145,10 @@ void RdbSaveDeletedEdges_v8(RedisModuleIO *rdb, GraphContext *gc,
 	if(deleted_edges_to_encode == 0) return;
 	// Get deleted edges list.
 	uint64_t *deleted_edges_list = Serializer_Graph_GetDeletedEdgesList(gc->g);
-	_RdbSaveDeletedEntities_v8(rdb, gc, deleted_edges_to_encode, deleted_edges_list);
+	_RdbSaveDeletedEntities_v9(rdb, gc, deleted_edges_to_encode, deleted_edges_list);
 }
 
-void RdbSaveNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t nodes_to_encode) {
+void RdbSaveNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t nodes_to_encode) {
 	/* Format:
 	 * Node Format * nodes_to_encode:
 	 *  ID
@@ -174,7 +174,7 @@ void RdbSaveNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t nodes_to_enc
 	for(uint64_t i = 0; i < nodes_to_encode; i++) {
 		GraphEntity e;
 		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);
-		_RdbSaveNode_v8(rdb, gc, &e);
+		_RdbSaveNode_v9(rdb, gc, &e);
 	}
 
 	// Check if done encodeing nodes.
@@ -216,7 +216,7 @@ static void _RdbSaveMultipleEdges(RedisModuleIO *rdb,                  // RDB IO
 	*multiple_edges_current_index = i;
 }
 
-void RdbSaveEdges_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_encode) {
+void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_encode) {
 	/* Format:
 	 * Edge format * edges_to_encode:
 	 *  edge ID

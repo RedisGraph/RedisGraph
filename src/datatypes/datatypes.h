@@ -8,6 +8,8 @@
 
 #include "map.h"
 #include "set.h"
+#include "point.h"
 #include "array.h"
 #include "path/sipath.h"
 #include "temporal_value.h"
+
