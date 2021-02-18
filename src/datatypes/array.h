@@ -64,3 +64,4 @@ XXH64_hash_t SIArray_HashCode(SIValue siarray);
   * @retval None
   */
 void SIArray_Free(SIValue siarray);
+

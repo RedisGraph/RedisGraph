@@ -142,7 +142,24 @@ static Record ProcCallConsume(OpBase *opBase) {
 		 * TODO: replace with Proc_Reset */
 		Proc_Free(op->procedure);
 		op->procedure = Proc_Get(op->proc_name);
+
+		// at the moment the only two procedures that can modify the graph are:
+		// proc_fulltext_create_index
+		// proc_fulltext_drop_index
+		// both perform the modification once invoked without returning any
+		// additional data (consume/step) function
+		// this is why acquiring the write lock as we do below works
+		// we will have to revisit this logic once new "write" procedures are
+		// introduced
+
+		// lock if procedure can modify the graph
+		if(!Procedure_IsReadOnly(op->procedure)) QueryCtx_LockForCommit();
+
 		ProcedureResult res = Proc_Invoke(op->procedure, op->args, op->output);
+
+		// unlock if procedure can modify the graph
+		if(!Procedure_IsReadOnly(op->procedure)) QueryCtx_UnlockCommit(opBase);
+
 		/* TODO: should rise run-time exception?
 		 * op->r will be freed in ProcCallFree. */
 		if(res != PROCEDURE_OK) return NULL;

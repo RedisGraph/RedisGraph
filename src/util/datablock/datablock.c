@@ -63,7 +63,9 @@ static inline DataBlockItemHeader *DataBlock_GetItemHeader(const DataBlock *data
 	return (DataBlockItemHeader *)block->data + (idx * block->itemSize);
 }
 
-/* --------- DataBlock API implementation --------*/
+//------------------------------------------------------------------------------
+// DataBlock API implementation
+//------------------------------------------------------------------------------
 
 DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
@@ -78,6 +80,10 @@ DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
 	ASSERT(res == 0);
 	_DataBlock_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
 	return dataBlock;
+}
+
+uint64_t DataBlock_ItemCount(const DataBlock *dataBlock) {
+	return dataBlock->itemCount;
 }
 
 DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {

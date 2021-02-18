@@ -23,33 +23,29 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	uint arg_count = array_len((SIValue *)args);
 	if(arg_count < 2) return PROCEDURE_ERR;
 
-	// Validation, all arguments should be of type string.
+	// validation, all arguments should be of type string
 	for(uint i = 0; i < arg_count; i++) {
 		if(!(SI_TYPE(args[i]) & T_STRING)) return PROCEDURE_ERR;
 	}
 
-	// Create full-text index.
-	const char *label = args[0].stringval;
-	uint fields_count = array_len((SIValue *)args) - 1;
-	const SIValue *fields = args + 1; // Skip index name.
+	// create full-text index
+	int res               = INDEX_FAIL;
+	Index *idx            = NULL;
+	GraphContext *gc      = QueryCtx_GetGraphCtx();
+	uint fields_count     = arg_count - 1;
+	const char *label     = args[0].stringval;
+	const SIValue *fields = args + 1; // skip index name
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_FULLTEXT);
-
-	// Index doesn't exists, create.
-	if(idx == NULL) {
-		GraphContext_AddIndex(&idx, gc, label, fields[0].stringval, IDX_FULLTEXT);
-	}
-
-	// Introduce fields to index.
+	// introduce fields to index
 	for(int i = 0; i < fields_count; i++) {
 		const char *field = fields[i].stringval;
-		// It's OK to add existing field.
-		Index_AddField(idx, field);
+		if(GraphContext_AddIndex(&idx, gc, label, field, IDX_FULLTEXT) == INDEX_OK) {
+			res = INDEX_OK;
+		}
 	}
 
-	// Build index.
-	Index_Construct(idx);
+	// build index
+	if(res == INDEX_OK) Index_Construct(idx);
 
 	return PROCEDURE_OK;
 }

@@ -13,11 +13,10 @@
 #include "../query_ctx.h"
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
-#include "../util/thpool/thpool.h"
+#include "../util/thpool/pools.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-extern threadpool _thpool; // Declared in module.c
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
@@ -41,7 +40,7 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 
 		if(async_delete) {
 			// Async delete
-			thpool_add_work(_thpool, _GraphContext_Free, gc);
+			ThreadPools_AddWorkWriter(_GraphContext_Free, gc);
 		} else {
 			// Sync delete
 			_GraphContext_Free(gc);
@@ -376,25 +375,35 @@ int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+
 	int res = Schema_AddIndex(idx, s, field, type);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexCreated(result_set, res);
+	if(res == INDEX_OK) {
+		ResultSet *result_set = QueryCtx_GetResultSet();
+		ResultSet_IndexCreated(result_set, res);
+	}
+
 	return res;
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
 							 const char *field, IndexType type) {
-
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
 	ASSERT(field != NULL);
 
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	int res = INDEX_FAIL;
-	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexDeleted(result_set, res);
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+
+	if(s != NULL) {
+		res = Schema_RemoveIndex(s, field, type);
+		if(res != INDEX_FAIL) {
+			// update resultset statistics
+			ResultSet *result_set = QueryCtx_GetResultSet();
+			ResultSet_IndexDeleted(result_set, res);
+		}
+	}
+
 	return res;
 }
 
