@@ -49,6 +49,18 @@ SIValue AR_TOPOINT(SIValue *argv, int argc) {
 		return SI_NullVal();
 	}
 
+	// validate latitude is in range [-90,90]
+	if(SI_GET_NUMERIC(latitude) > 90 || SI_GET_NUMERIC(latitude) < -90) {
+		ErrorCtx_RaiseRuntimeException("latitude should be within the -90 to 90 range");
+		return SI_NullVal();
+	}
+
+	// validate longitude is in range [-180,180]
+	if(SI_GET_NUMERIC(longitude) > 180 || SI_GET_NUMERIC(longitude) < -180) {
+		ErrorCtx_RaiseRuntimeException("longitude should be within the -180 to 180 range");
+		return SI_NullVal();
+	}
+
 	return SI_Point(SI_GET_NUMERIC(latitude), SI_GET_NUMERIC(longitude));
 }
 

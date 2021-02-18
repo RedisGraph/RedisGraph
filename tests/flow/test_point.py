@@ -44,6 +44,43 @@ class testPath():
         expected_distance = 11352120
         self.assert_distance(a, b, expected_distance)
 
+    def test_point_values(self):
+        try:
+            # latitude > 90
+            q = "RETURN point({latitude:90.1, longitude:20}) AS p"
+            res = redis_graph.query(q)
+            assert(False)
+        except Exception as e:
+            # Expecting an error.
+            self.env.assertIn('latitude should be within', str(e))
+
+        try:
+            # latitude < -90
+            q = "RETURN point({latitude:-90.1, longitude:20}) AS p"
+            res = redis_graph.query(q)
+            assert(False)
+        except Exception as e:
+            # Expecting an error.
+            self.env.assertIn('latitude should be within', str(e))
+
+        try:
+            # longitude > 180
+            q = "RETURN point({latitude:10, longitude:180.1}) AS p"
+            res = redis_graph.query(q)
+            assert(False)
+        except Exception as e:
+            # Expecting an error.
+            self.env.assertIn('longitude should be within', str(e))
+
+        try:
+            # longitude < -180
+            q = "RETURN point({latitude:10, longitude:-180.1}) AS p"
+            res = redis_graph.query(q)
+            assert(False)
+        except Exception as e:
+            # Expecting an error.
+            self.env.assertIn('longitude should be within', str(e))
+
     def test_point_index_lookup(self):
         home = {'lat': 32.070794860, 'lon': 34.820751118}
         univ = {'lat': 30.621734079, 'lon': -96.33775507}
