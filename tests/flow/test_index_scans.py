@@ -310,7 +310,7 @@ class testIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(q)
         self.env.assertIn("Index Scan", plan)
 
-        # index should NOT be used when searching for points outside of circle
+        # index should NOT be used when searching for points outside of a circle
         # testing operand: '>', '>=' and '='
         q = """MATCH (r:restaurant)
         WHERE distance(r.location, point({latitude:30.27822306, longitude:-97.75134723})) > 1000

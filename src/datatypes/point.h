@@ -8,6 +8,9 @@
 
 #include "../value.h"
 
+// returns latitude of given point
 float Point_lat(SIValue point);
+
+// returns longitude of given point
 float Point_lon(SIValue point);
 

@@ -235,7 +235,6 @@ RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 
 	_extractOriginAndRadius(filter, &origin, &radius, &field);
 
-	// TODO: applicable only when searching for point within a circle (TODO done?)
 	return RediSearch_CreateGeoNode(idx, field, Point_lat(origin),
 									Point_lon(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
 }

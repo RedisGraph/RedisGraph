@@ -160,7 +160,7 @@ class testGraphPersistency(FlowTestsBase):
             actual_result = graph.query(query)
 
             # Verify that the properties are loaded correctly.
-            expected_result = [[True, 5.5, 'str', [1, 2, 3], {"x": 5.5, "y": 6.0}]]
+            expected_result = [[True, 5.5, 'str', [1, 2, 3], {"latitude": 5.5, "longitude": 6.0}]]
             self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Verify multiple edges of the same relation between nodes A and B
@@ -192,3 +192,6 @@ class testGraphPersistency(FlowTestsBase):
             redis_con.execute_command("DEBUG", "RELOAD")
 
             # Verify that the latest edge was properly saved and loaded
+            actual_result = g.query(q)
+            self.env.assertEquals(actual_result.result_set, expected_result)
+

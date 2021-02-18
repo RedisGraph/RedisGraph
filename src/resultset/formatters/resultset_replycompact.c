@@ -7,10 +7,7 @@
 #include "resultset_formatters.h"
 #include "RG.h"
 #include "../../util/arr.h"
-#include "../../datatypes/map.h"
-#include "../../datatypes/point.h"
-#include "../../datatypes/array.h"
-#include "../../datatypes/path/sipath.h"
+#include "../../datatypes/datatypes.h"
 
 // Forward declarations.
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);

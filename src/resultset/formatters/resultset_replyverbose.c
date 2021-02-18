@@ -6,7 +6,7 @@
 
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
-#include "../../datatypes/path/sipath.h"
+#include "../../datatypes/datatypes.h"
 
 // Forward declarations.
 static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map);
@@ -186,7 +186,7 @@ static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point)
 	// point({latitude:56.7, longitude:12.78})
 	char buffer[256];
 	int bytes_written = sprintf(buffer, "point({latitude:%f, longitude:%f})",
-			point.point.latitude, point.point.longitude);
+			Point_lat(point), Point_lon(point));
 
 	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 }
