@@ -116,13 +116,17 @@ static int _Schema_RemoveFullTextIndex(Schema *s) {
 }
 
 int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
+	if(type != IDX_FULLTEXT) {
+		// field may be null when dropping a full-text index
+		ASSERT(field != NULL);
+	}
 	switch(type) {
-		case IDX_FULLTEXT:
-			return _Schema_RemoveFullTextIndex(s);
-		case IDX_EXACT_MATCH:
-			return _Schema_RemoveExactMatchIndex(s, field);
-		default:
-			return INDEX_FAIL;
+	case IDX_FULLTEXT:
+		return _Schema_RemoveFullTextIndex(s);
+	case IDX_EXACT_MATCH:
+		return _Schema_RemoveExactMatchIndex(s, field);
+	default:
+		return INDEX_FAIL;
 	}
 }
 

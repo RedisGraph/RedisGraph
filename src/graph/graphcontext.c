@@ -389,8 +389,6 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
 							 const char *field, IndexType type) {
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
-	// field may be null when dropping a full-text index
-	ASSERT(type == IDX_FULLTEXT || field != NULL);
 
 	// Retrieve the schema for this label
 	int res = INDEX_FAIL;
