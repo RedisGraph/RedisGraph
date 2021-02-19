@@ -113,7 +113,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: os[<< matrix.platform >>]
+      - image: redisfab/rmbuilder:6.0.9-x64-buster
         environment:
             LANG: en_US.UTF-8  
             LANGUAGE: en_US.UTF-8
@@ -347,12 +347,10 @@ workflows:
   build_and_package:
     jobs:
       - build:
-          matrix:
-            parameters:
-              platform: ["ubuntu", "centos"]
-          name: build-<< matrix.platform >>
-          <<: *on-any-branch
-
+        name: build-v<< matrix.version >>
+        matrix:
+          parameters:
+            platform: ["ubuntu", "centos"]
   nightly:
     triggers:
       - schedule:
