@@ -1,0 +1,6 @@
+jsonpath_ng==1.5.2
+redis==3.5.3
+redistimeseries>=1.4.3
+python_terraform==0.10.1
+PyYAML==5.4.1
+redisbench_admin==0.1.40
