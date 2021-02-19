@@ -78,6 +78,10 @@ commands:
               dpkg-reconfigure -f noninteractive locales
     
   benchmark-automation:
+    parameters:
+      github_actor:
+        type: string
+        default: $CIRCLE_USERNAME
     steps:
       - run:
           name: Install remote benchmark tool dependencies
@@ -97,7 +101,7 @@ commands:
               python3 remote-runner.py \
                 --terraform_bin_path /workspace/terraform \
                 --module_path /workspace/$MODULE_ARTIFACT \
-                --github_actor $CIRCLE_USERNAME \
+                --github_actor << parameters.github_actor >> \
                 --github_repo $CIRCLE_PROJECT_REPONAME \
                 --github_org $CIRCLE_PROJECT_USERNAME \
                 --github_sha $CIRCLE_SHA1 \
@@ -299,9 +303,8 @@ jobs:
           name: Build artifact
           command: make
 
-      - benchmark-automation
-
-
+      - benchmark-automation:
+          github_actor: "ci.nightly"
 
 on-any-branch: &on-any-branch
   filters:
