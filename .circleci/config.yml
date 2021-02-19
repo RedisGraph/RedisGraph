@@ -1,5 +1,9 @@
 version: 2.1
 
+os:
+  - ubuntu: "redisfab/rmbuilder:6.0.9-x64-buster"
+  - centos: "redisfab/rmbuilder:6.0.9-x64-centos7"
+
 commands:
   early_return_for_forked_pull_requests:
     description: >-
@@ -109,7 +113,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+      - image: os[<< matrix.platform >>]
         environment:
             LANG: en_US.UTF-8  
             LANGUAGE: en_US.UTF-8
@@ -339,43 +343,15 @@ on-master-and-version-tags: &on-master-and-version-tags
 
 
 workflows:
-  version: 2
+  version: 2.1
   build_and_package:
     jobs:
       - build:
+          matrix:
+            parameters:
+              platform: ["ubuntu", "centos"]
+          name: build-<< matrix.platform >>
           <<: *on-any-branch
-      - build_test:
-          <<: *on-any-branch
-          requires:
-            - build
-      - build_memcheck:
-          <<: *on-any-branch
-          requires:
-            - build
-      - package_branch:
-          <<: *on-master
-          requires:
-            - build_test
-            - build_memcheck
-      - package_release:
-          <<: *on-version-tags
-          requires:
-            - build_test
-            - build_memcheck
-      - deploy_branch:
-          requires:
-            - package_branch
-      - release_automation:
-          requires:
-            - deploy_branch
-      - deploy_release:
-          <<: *on-version-tags
-          requires:
-            - package_release
-      - performance_ci_automation:
-          <<: *on-any-branch
-          requires:
-            - build_test
 
   nightly:
     triggers:
