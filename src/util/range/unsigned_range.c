@@ -120,12 +120,12 @@ void UnsignedRange_ToString(const UnsignedRange *range) {
 	if(range->include_min) offset += sprintf(buff + offset, "[");
 	else offset += sprintf(buff + offset, "(");
 
-	offset += sprintf(buff + offset, "%llu", range->min);
+	offset += sprintf(buff + offset, "%" PRIu64, range->min);
 
 	offset += sprintf(buff + offset, ",");
 
 	if(range->max == UINT64_MAX) offset += sprintf(buff + offset, "UINT64_MAX");
-	else offset += sprintf(buff + offset, "%llu", range->max);
+	else offset += sprintf(buff + offset, "%" PRIu64, range->max);
 
 	if(range->include_max) offset += sprintf(buff + offset, "]");
 	else offset += sprintf(buff + offset, ")");
