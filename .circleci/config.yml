@@ -347,15 +347,7 @@ workflows:
   build_and_package:
     jobs:
       - build:
-        name: build-v<< matrix.version >>
         matrix:
           parameters:
             platform: ["ubuntu", "centos"]
-  nightly:
-    triggers:
-      - schedule:
-          cron: "07 20 * * *"
-          <<: *on-master
-    jobs:
-      - nightly_automation
-      - nightly_performance_automation
+  
