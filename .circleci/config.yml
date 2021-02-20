@@ -366,7 +366,7 @@ workflows:
           <<: *on-any-branch
           matrix:
             parameters:
-              os: [ubuntu]
+              os: [ubuntu, centos7]
               # os: [ubuntu, centos7]
       - build_test:
           <<: *on-any-branch
