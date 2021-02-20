@@ -31,14 +31,14 @@ commands:
               circleci step halt
             fi
 
-  setup-automation:
-    steps:
-      - run:
-          name: Setup automation
-          command: |
-            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-            PIP=1 ./deps/readies/bin/getpy3
-            python3 -m pip install -r ./deps/readies/paella/requirements.txt
+  # setup-automation:
+  #   steps:
+  #     - run:
+  #         name: Setup automation
+  #         command: |
+  #           (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+  #           PIP=1 ./deps/readies/bin/getpy3
+  #           python3 -m pip install -r ./deps/readies/paella/requirements.txt
   
   load-cached-deps:
     steps:
@@ -376,7 +376,8 @@ workflows:
           <<: *on-any-branch
           matrix:
             parameters:
-              os: [ubuntu, centos7]
+              os: [ubuntu]
+              # os: [ubuntu, centos7]
       - build_test:
           <<: *on-any-branch
           requires:
