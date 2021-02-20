@@ -74,19 +74,8 @@ commands:
             git submodule update --init --recursive
 
       - run:
-          name: Install prerequisite
-          command: |
-            apt-get -qq update
-            apt-get install -y --no-install-recommends ca-certificates wget git locales
-            apt-get install -y --no-install-recommends python python-pip python-psutil
-            apt-get install -y --no-install-recommends build-essential cmake m4 automake autoconf libtool peg libgomp1 valgrind astyle
-            python3 -m pip install wheel
-            python3 -m pip install setuptools --upgrade
-            # stick to strict order in the following pakcages:
-            python3 -m pip install git+https://github.com/Grokzen/redis-py-cluster.git@master
-            python3 -m pip install --ignore-installed git+https://github.com/RedisLabsModules/RLTest.git@master
-            python3 -m pip install git+https://github.com/RedisLabs/RAMP@master
-            python3 -m pip install -r tests/requirements.txt
+          name: Install prerequisites
+          command: make setup
 
       - run:
           name: Setup locale

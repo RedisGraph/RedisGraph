@@ -1,7 +1,12 @@
-.PHONY: all clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind
+.PHONY: all setup clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind
 
 all:
 	@$(MAKE) -C ./src all
+
+setup:
+	@echo Setting up system...
+	@./deps/readies/bin/getpy3
+	@./system-setup.py
 
 clean:
 	@$(MAKE) -C ./src $@
