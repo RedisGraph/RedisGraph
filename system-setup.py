@@ -18,11 +18,11 @@ class RedisGraphSetup(paella.Setup):
     def common_first(self):
         self.install_downloaders()
         self.pip_install("wheel")
-        self.install("locales")
         self.pip_install("setuptools --upgrade")
         self.install("git")
 
     def debian_compat(self):
+        self.install("locales")
         self.install("libatomic1")
         self.install("libgomp1")
         self.run("%s/bin/getgcc" % READIES)
