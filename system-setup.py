@@ -40,7 +40,7 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("-IU --force-reinstall setuptools")
 
         # Setup locale
-        self.run("localedef --purge en_US.UTF-8")
+        # TODO
 
     def common_last(self):
         self.install("lcov")
