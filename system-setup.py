@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 import sys
 import os
@@ -23,24 +23,18 @@ class RedisGraphSetup(paella.Setup):
         self.install("git")
 
     def debian_compat(self):
-        self.install("python3-devel")
         self.install("libatomic1")
         self.install("libgomp1")
         self.run("%s/bin/getgcc" % READIES)
 
     def redhat_compat(self):
-        self.group_install("'Development Tools'")
+        self.install("redhat-lsb-core")
         self.install("libatomic")
         self.install("libgomp")
-        self.install("redhat-lsb-core")
         self.run("%s/bin/getgcc --modern" % READIES)
 
-        if not self.dist == "amzn":
-            self.install("epel-release")
-            self.install("python3-devel libaec-devel")
-        else:
-            self.run("amazon-linux-extras install epel")
-            self.install("python3-devel")
+        # fix setuptools
+        self.pip_install("-IU --force-reinstall setuptools")
 
     def common_last(self):
         self.install("lcov")
