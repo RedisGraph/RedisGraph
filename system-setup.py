@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -23,32 +23,31 @@ class RedisGraphSetup(paella.Setup):
         self.install("git")
 
     def debian_compat(self):
+        self.install("python3-devel")
         self.install("libatomic1")
         self.install("libgomp1")
         self.run("%s/bin/getgcc" % READIES)
 
     def redhat_compat(self):
-        self.install("redhat-lsb-core")
+        self.group_install("'Development Tools'")
         self.install("libatomic")
         self.install("libgomp")
-        
+        self.install("redhat-lsb-core")
         self.run("%s/bin/getgcc --modern" % READIES)
 
-        # fix setuptools
-        self.pip_install("-IU --force-reinstall setuptools")
-
-    def fedora(self):
-        self.install("libatomic")
-        self.install("libgomp1")
-        self.run("%s/bin/getgcc" % READIES)
-
+        if not self.dist == "amzn":
+            self.install("epel-release")
+            self.install("python3-devel libaec-devel")
+        else:
+            self.run("amazon-linux-extras install epel")
+            self.install("python3-devel")
 
     def common_last(self):
-        self.run("{PYTHON} {READIES}/bin/getcmake".format(PYTHON=self.python, READIES=READIES))
-        self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
         self.install("lcov")
+        self.run("python3 %s/bin/getrmpytools" % READIES) 
+        self.pip_install("-r tests/flow/requirements.txt")
+        self.run("python3 %s/bin/getcmake" % READIES)
         self.pip_install("pudb awscli")
-        self.pip_install("-r %s/tests/requirements.txt" % ROOT)
 
 #----------------------------------------------------------------------------------------------
 
