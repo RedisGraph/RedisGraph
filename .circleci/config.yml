@@ -2,7 +2,7 @@ version: 2.1
 
 
 executors:
-  centos:
+  centos7:
     docker:
       - image: 'redisfab/rmbuilder:6.0.9-x64-centos7'
         environment:
@@ -385,14 +385,17 @@ workflows:
     jobs:
       - build:
           <<: *on-any-branch
+          matrix:
+            parameters:
+              os: [ubuntu, centos7]
       - build_test:
           <<: *on-any-branch
           requires:
-            - build
+            - build-ubuntu
       - build_memcheck:
           <<: *on-any-branch
           requires:
-            - build
+            - build-ubuntu
       - package_branch:
           <<: *on-master
           requires:
