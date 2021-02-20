@@ -1,5 +1,22 @@
 version: 2.1
 
+
+executors:
+  centos:
+    docker:
+      - image: 'redisfab/rmbuilder:6.0.9-x64-centos7'
+        environment:
+            LANG: en_US.UTF-8  
+            LANGUAGE: en_US.UTF-8
+            LC_ALL: en_US.UTF-8
+  ubuntu:
+    docker:
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+        environment:
+            LANG: en_US.UTF-8  
+            LANGUAGE: en_US.UTF-8
+            LC_ALL: en_US.UTF-8
+
 commands:
   early_return_for_forked_pull_requests:
     description: >-
@@ -112,12 +129,11 @@ commands:
 
 jobs:
   build:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
-        environment:
-            LANG: en_US.UTF-8  
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8  
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - checkout
       - setup-prerequisits
@@ -148,12 +164,11 @@ jobs:
             - build
 
   build_test:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
-        environment:
-            LANG: en_US.UTF-8  
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - checkout
       - setup-prerequisits
@@ -167,12 +182,11 @@ jobs:
           command: make test
 
   build_memcheck:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
-        environment:
-            LANG: en_US.UTF-8  
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - checkout
       - setup-prerequisits
@@ -192,8 +206,11 @@ jobs:
             RS_GLOBAL_DTORS: 1
 
   package_branch:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - attach_workspace:
           at: /workspace
@@ -210,8 +227,11 @@ jobs:
       - store_artifacts:
           path: /workspace/build
   package_release:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - attach_workspace:
           at: /workspace
@@ -234,8 +254,11 @@ jobs:
       - store_artifacts:
           path: /workspace/build
   deploy_branch:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - attach_workspace:
           at: /workspace
@@ -246,8 +269,11 @@ jobs:
             public-read --recursive --exclude "*" --include "*.zip"
 
   deploy_release:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - attach_workspace:
           at: /workspace
@@ -258,8 +284,11 @@ jobs:
             public-read --recursive --exclude "*" --include "*.zip"
 
   release_automation:
-    docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - checkout
       - setup-automation
@@ -268,8 +297,11 @@ jobs:
           command: MODULE_VERSION=$CIRCLE_TAG VERBOSE=1 TEST=release ./tests/qa/run
 
   nightly_automation:
-    docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - checkout
       - setup-automation
@@ -278,8 +310,11 @@ jobs:
           command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
 
   performance_ci_automation:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - early_return_for_forked_pull_requests
       - checkout
@@ -288,8 +323,11 @@ jobs:
       - benchmark-automation
 
   nightly_performance_automation:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    parameters:
+      os:
+        type: executor
+        default: ubuntu
+    executor: << parameters.os >>
     steps:
       - early_return_for_forked_pull_requests
       - checkout
