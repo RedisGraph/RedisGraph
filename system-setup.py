@@ -26,6 +26,9 @@ class RedisGraphSetup(paella.Setup):
         self.install("libatomic1")
         self.install("libgomp1")
         self.run("%s/bin/getgcc" % READIES)
+        # Setup locale
+        self.run("locale-gen --purge en_US.UTF-8")
+        self.run("dpkg-reconfigure -f noninteractive locales")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
@@ -35,6 +38,9 @@ class RedisGraphSetup(paella.Setup):
 
         # fix setuptools
         self.pip_install("-IU --force-reinstall setuptools")
+
+        # Setup locale
+        self.run("localedef --purge en_US.UTF-8")
 
     def common_last(self):
         self.install("lcov")
