@@ -39,7 +39,7 @@ class RedisGraphSetup(paella.Setup):
     def common_last(self):
         self.install("lcov")
         self.run("python3 %s/bin/getrmpytools" % READIES) 
-        self.pip_install("-r tests/flow/requirements.txt")
+        self.pip_install("-r tests/requirements.txt")
         self.run("python3 %s/bin/getcmake" % READIES)
         self.pip_install("pudb awscli")
 
