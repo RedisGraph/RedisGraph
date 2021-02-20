@@ -30,16 +30,7 @@ commands:
               echo "Nothing to do for forked PRs, so marking this step successful"
               circleci step halt
             fi
-
-  # setup-automation:
-  #   steps:
-  #     - run:
-  #         name: Setup automation
-  #         command: |
-  #           (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-  #           PIP=1 ./deps/readies/bin/getpy3
-  #           python3 -m pip install -r ./deps/readies/paella/requirements.txt
-  
+ 
   load-cached-deps:
     steps:
       # Load GraphBLAS from cache if possible.
@@ -126,7 +117,6 @@ jobs:
     steps:
       - checkout
       - setup-prerequisits
-      - setup-automation
       - load-cached-deps
 
       - run:
@@ -161,7 +151,7 @@ jobs:
     steps:
       - checkout
       - setup-prerequisits
-      - setup-automation
+      # - setup-automation
       - attach_workspace:
           at: /workspace
       - load-cached-deps
@@ -179,7 +169,7 @@ jobs:
     steps:
       - checkout
       - setup-prerequisits
-      - setup-automation
+      # - setup-automation
       - load-cached-deps
       - attach_workspace:
           at: /workspace
@@ -280,7 +270,7 @@ jobs:
     executor: << parameters.os >>
     steps:
       - checkout
-      - setup-automation
+      - setup-prerequisits
       - run:
           name: Run QA Automation
           command: MODULE_VERSION=$CIRCLE_TAG VERBOSE=1 TEST=release ./tests/qa/run
@@ -293,7 +283,7 @@ jobs:
     executor: << parameters.os >>
     steps:
       - checkout
-      - setup-automation
+      - setup-prerequisits
       - run:
           name: Run QA Automation
           command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
@@ -321,7 +311,7 @@ jobs:
       - early_return_for_forked_pull_requests
       - checkout
       - setup-prerequisits
-      - setup-automation
+      # - setup-automation
       - attach_workspace:
           at: /workspace
       - load-cached-deps
