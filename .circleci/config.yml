@@ -321,10 +321,6 @@ workflows:
     jobs:
       - build:
           <<: *on-any-branch
-      - build_test:
-          <<: *on-any-branch
-          requires:
-            - build
       - build_memcheck:
           <<: *on-any-branch
           requires:
@@ -332,12 +328,10 @@ workflows:
       - package_branch:
           <<: *on-master
           requires:
-            - build_test
             - build_memcheck
       - package_release:
           <<: *on-version-tags
           requires:
-            - build_test
             - build_memcheck
       - deploy_branch:
           requires:
@@ -352,7 +346,7 @@ workflows:
       - performance_ci_automation:
           <<: *on-any-branch
           requires:
-            - build_test
+            - build_memcheck
 
   nightly:
     triggers:
