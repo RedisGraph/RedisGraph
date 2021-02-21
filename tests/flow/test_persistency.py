@@ -147,20 +147,20 @@ class testGraphPersistency(FlowTestsBase):
         graph_names = ("simple_props", "{tag}_simple_props")
         for graph_name in graph_names:
             graph = Graph(graph_name, redis_con)
-            query = """CREATE (:p {strval: 'str', numval: 5.5, boolval: true, array: [1,2,3], pointval: point({latitude: 5.5, longitude: 6})})"""
+            query = """CREATE (:p {strval: 'str', numval: 5.5, boolval: true, array: [1,2,3]})"""
             actual_result = graph.query(query)
             # Verify that node was created correctly
             self.env.assertEquals(actual_result.nodes_created, 1)
-            self.env.assertEquals(actual_result.properties_set, 5)
+            self.env.assertEquals(actual_result.properties_set, 4)
 
             # Save RDB & Load from RDB
             redis_con.execute_command("DEBUG", "RELOAD")
 
-            query = """MATCH (p) RETURN p.boolval, p.numval, p.strval, p.array, p.pointval"""
+            query = """MATCH (p) RETURN p.boolval, p.numval, p.strval, p.array"""
             actual_result = graph.query(query)
 
             # Verify that the properties are loaded correctly.
-            expected_result = [[True, 5.5, 'str', [1, 2, 3], {"latitude": 5.5, "longitude": 6.0}]]
+            expected_result = [[True, 5.5, 'str', [1, 2, 3]]]
             self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Verify multiple edges of the same relation between nodes A and B
