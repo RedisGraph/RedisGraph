@@ -76,6 +76,39 @@ commands:
           command: |
               locale-gen --purge en_US.UTF-8
               dpkg-reconfigure -f noninteractive locales
+    
+  benchmark-automation:
+    parameters:
+      github_actor:
+        type: string
+        default: $CIRCLE_USERNAME
+    steps:
+      - run:
+          name: Install remote benchmark tool dependencies
+          command: TF_EXE_FILE_NAME=/workspace/terraform ./tests/benchmarks/remote/install_deps.sh
+      - run:
+          name: Install remote benchmark python dependencies
+          command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
+      - run:
+          name: Run CI benchmarks on aws
+          command: |
+              cd ./tests/benchmarks
+              export AWS_ACCESS_KEY_ID=$PERFORMANCE_EC2_ACCESS_KEY
+              export AWS_SECRET_ACCESS_KEY=$PERFORMANCE_EC2_SECRET_KEY
+              export AWS_DEFAULT_REGION=$PERFORMANCE_EC2_REGION
+              export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
+
+              python3 remote-runner.py \
+                --terraform_bin_path /workspace/terraform \
+                --module_path /workspace/$MODULE_ARTIFACT \
+                --github_actor << parameters.github_actor >> \
+                --github_repo $CIRCLE_PROJECT_REPONAME \
+                --github_org $CIRCLE_PROJECT_USERNAME \
+                --github_sha $CIRCLE_SHA1 \
+                --github_branch $CIRCLE_BRANCH \
+                --upload_results_s3 \
+                --triggering_env circleci \
+                --push_results_redistimeseries
 
 jobs:
   build:
@@ -248,37 +281,30 @@ jobs:
     docker:
       - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
     steps:
+      - early_return_for_forked_pull_requests
       - checkout
       - attach_workspace:
           at: /workspace
-      - run:
-          name: Install remote benchmark tool dependencies
-          command: TF_EXE_FILE_NAME=/workspace/terraform ./tests/benchmarks/remote/install_deps.sh
-      - run:
-          name: Install remote benchmark python dependencies
-          command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
-      - run:
-          name: Run CI benchmarks on aws
-          command: |
-              cd ./tests/benchmarks
-              export AWS_ACCESS_KEY_ID=$PERFORMANCE_EC2_ACCESS_KEY
-              export AWS_SECRET_ACCESS_KEY=$PERFORMANCE_EC2_SECRET_KEY
-              export AWS_DEFAULT_REGION=$PERFORMANCE_EC2_REGION
-              export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
+      - benchmark-automation
 
-              python3 remote-runner.py \
-                --terraform_bin_path /workspace/terraform \
-                --module_path /workspace/$MODULE_ARTIFACT \
-                --github_actor $CIRCLE_USERNAME \
-                --github_repo $CIRCLE_PROJECT_REPONAME \
-                --github_org $CIRCLE_PROJECT_USERNAME \
-                --github_sha $CIRCLE_SHA1 \
-                --github_branch $CIRCLE_BRANCH \
-                --upload_results_s3 \
-                --triggering_env circleci \
-                --push_results_redistimeseries
+  nightly_performance_automation:
+    docker:
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    steps:
+      - early_return_for_forked_pull_requests
+      - checkout
+      - setup-prerequisits
+      - setup-automation
+      - attach_workspace:
+          at: /workspace
+      - load-cached-deps
 
+      - run:
+          name: Build artifact
+          command: make
 
+      - benchmark-automation:
+          github_actor: "ci.nightly"
 
 on-any-branch: &on-any-branch
   filters:
@@ -355,3 +381,4 @@ workflows:
           <<: *on-master
     jobs:
       - nightly_automation
+      - nightly_performance_automation
