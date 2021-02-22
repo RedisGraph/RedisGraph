@@ -82,6 +82,22 @@ If enabled, RedisGraph will maintain transposed copies of relationship matrices.
 $ redis-server --loadmodule ./redisgraph.so MAINTAIN_TRANSPOSED_MATRICES no
 ```
 
+---
+
+## ASYNC_DELETE
+
+If enabled, RedisGraph will delete graphs asynchronously in a separate thread. This causes graph deletions, whether triggered by `GRAPH.DELETE`, `DEL`, or `FLUSHDB`, to block for a much briefer period.
+
+### Default
+
+`ASYNC_DELETE` is on by default (config value of `yes`).
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so ASYNC_DELETE no
+```
+
 # Query Configurations
 
 Some configurations may be set per query in the form of additional arguments after the query string. All per-query configurations are off by default unless using a language-specific client, which may establish its own defaults.
