@@ -1,4 +1,5 @@
 redis
+redisgraph>=1.5
 git+git://github.com/RedisGraph/redisgraph-py@point-datatype
 click>=6.7
 behave>=1.2
