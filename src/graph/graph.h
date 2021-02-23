@@ -295,7 +295,7 @@ void Graph_GetNodeEdges(
 // Populate array of node's label IDs, return number of labels on node.
 uint Graph_GetNodeLabels(
 	const Graph *g,         // Graph the node belongs to.
-	const Node *n,          // Node to extract edges from.
+	const Node *n,          // Node to extract labels from.
 	GrB_Index *labels,      // Array to populate with labels.
 	GrB_Index label_count   // Size of labels array.
 );

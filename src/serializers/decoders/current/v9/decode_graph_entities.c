@@ -79,18 +79,13 @@ void RdbLoadNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) 
 		Node n;
 		NodeID id = RedisModule_LoadUnsigned(rdb);
 
-		// Extend this logic when multi-label support is added.
 		// #labels M
 		uint64_t nodeLabelCount = RedisModule_LoadUnsigned(rdb);
 
 		// * (labels) x M
-		if(nodeLabelCount == 0) {
-			Serializer_Graph_SetNode(gc->g, id, NULL, 0, &n);
-		} else {
-			uint64_t labels[nodeLabelCount];
-			for(uint64_t i = 0; i < nodeLabelCount; i ++) labels[i] = RedisModule_LoadUnsigned(rdb);
-			Serializer_Graph_SetNode(gc->g, id, labels, nodeLabelCount, &n);
-		}
+		uint64_t labels[nodeLabelCount];
+		for(uint64_t i = 0; i < nodeLabelCount; i ++) labels[i] = RedisModule_LoadUnsigned(rdb);
+		Serializer_Graph_SetNode(gc->g, id, labels, nodeLabelCount, &n);
 
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
 	}

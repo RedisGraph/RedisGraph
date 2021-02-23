@@ -698,6 +698,7 @@ uint Graph_GetNodeLabels(const Graph *g, const Node *n, LabelID *labels, GrB_Ind
 	// validate inputs
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
+	ASSERT(labels != NULL);
 	GrB_Info res;
 	UNUSED(res);
 

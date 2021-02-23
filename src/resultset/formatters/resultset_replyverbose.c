@@ -98,7 +98,7 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	NODE_GET_LABELS(gc->g, n, lbls, lbls_count);
 	RedisModule_ReplyWithArray(ctx, lbls_count);
 	for(int i = 0; i < lbls_count; i++) {
-		const char *lbl_name = GraphContext_GetSchemaByID(gc, lbls[i], SCHEMA_NODE)->name;
+		const char *lbl_name = Schema_GetName(GraphContext_GetSchemaByID(gc, lbls[i], SCHEMA_NODE));
 		RedisModule_ReplyWithStringBuffer(ctx, lbl_name, strlen(lbl_name));
 	}
 
