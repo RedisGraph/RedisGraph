@@ -694,7 +694,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 	}
 }
 
-uint Graph_GetNodeLabels(const Graph *g, const Node *n, GrB_Index *labels, GrB_Index label_count) {
+uint Graph_GetNodeLabels(const Graph *g, const Node *n, LabelID *labels, GrB_Index label_count) {
 	// validate inputs
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);

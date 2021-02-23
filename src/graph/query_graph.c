@@ -22,12 +22,9 @@ static void _QueryGraphSetNodeLabel(QGNode *n, const cypher_astnode_t *ast_entit
 	for(uint i = 0; i < nlabels; i++) {
 		const char *l = cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(ast_entity, i));
 
-		// node already labeled as l
-		if(QGNode_HasLabel(n, l)) continue;
-
 		// If a schema is found, the AST refers to an existing label.
 		Schema *s = GraphContext_GetSchema(gc, l, SCHEMA_NODE);
-		int l_id = (s) ? s->id : GRAPH_UNKNOWN_LABEL;
+		int l_id = (s) ? Schema_GetID(s) : GRAPH_UNKNOWN_LABEL;
 		QGNode_AddLabel(n, l, l_id);
 	}
 }

@@ -22,11 +22,13 @@ class testMultiLabel(FlowTestsBase):
 
     # Validate basic multi-label scans.
     def test01_multilabel_scan(self):
+        # Issue a query that matches the single (:L0:L1) node.
         query = """MATCH (a:L0:L1) RETURN a.val"""
         query_result = redis_graph.query(query)
         expected_result = [[1]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        # Issue a query that matches all 3 nodes with the label :L1.
         query = """MATCH (a:L1) RETURN a.val ORDER BY a.val"""
         query_result = redis_graph.query(query)
         expected_result = [[1],
@@ -34,6 +36,7 @@ class testMultiLabel(FlowTestsBase):
                            [3]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        # Issue a query that matches no nodes, as the (:L0:L2) label disjunction is not present.
         query = """MATCH (a:L0:L2) RETURN a.val"""
         query_result = redis_graph.query(query)
         expected_result = []

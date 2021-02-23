@@ -6,8 +6,7 @@
 
 #include "qg_node.h"
 #include "qg_edge.h"
-#include "../graph.h"
-#include "../../RG.h"
+#include "RG.h"
 #include "../../util/arr.h"
 
 static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
@@ -32,6 +31,11 @@ QGNode *QGNode_New(const char *alias) {
 	return n;
 }
 
+bool QGNode_Labeled(const QGNode *n) {
+	ASSERT(n != NULL);
+	return array_len(n->labels) > 0;
+}
+
 uint QGNode_LabelCount(const QGNode *n) {
 	ASSERT(n != NULL);
 	return array_len(n->labels);
@@ -53,9 +57,7 @@ bool QGNode_HasLabel(const QGNode *n, const char *l) {
 	ASSERT(n != NULL);
 
 	uint label_count = QGNode_LabelCount(n);
-	for(uint i = 0; i < label_count; i++) {
-		if(strcmp(n->labels[i], l) == 0) return true;
-	}
+	for(uint i = 0; i < label_count; i++) if(strcmp(n->labels[i], l) == 0) return true;
 
 	return false;
 }
@@ -63,7 +65,8 @@ bool QGNode_HasLabel(const QGNode *n, const char *l) {
 void QGNode_AddLabel(QGNode *n, const char *l, int l_id) {
 	ASSERT(n != NULL);
 	ASSERT(l != NULL);
-	ASSERT(QGNode_HasLabel(n, l) == false);
+	// Node already labeled as l, no work to be done.
+	if(QGNode_HasLabel(n, l)) return;
 
 	n->labels = array_append(n->labels, l);
 	n->labelsID = array_append(n->labelsID, l_id);

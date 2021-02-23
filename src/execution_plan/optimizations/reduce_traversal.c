@@ -100,7 +100,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			 * resolved this filtering is redundent and should be removed. */
 			OpBase *t;
 			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, AlgebraicExpression_Source(ae));
-			if(QGNode_LabelCount(src) > 0) {
+			if(QGNode_Labeled(src)) {
 				t = op->children[0];
 				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.
@@ -109,7 +109,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			}
 			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph,
 													 AlgebraicExpression_Destination(ae));
-			if(QGNode_LabelCount(dest) > 0) {
+			if(QGNode_Labeled(dest)) {
 				t = op->parent;
 				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.

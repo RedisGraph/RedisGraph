@@ -44,9 +44,11 @@ static sds _JsonEncoder_Node(const Node *n, sds s) {
 	// Label data will only be populated if provided by the query string.
 	const char *label = NULL;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	int labelID = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-	if(labelID != GRAPH_NO_LABEL) {
-		Schema *schema = GraphContext_GetSchemaByID(gc, labelID, SCHEMA_NODE);
+	int label_count = Graph_LabelTypeCount(gc->g);
+	GrB_Index labels[label_count];
+	label_count = Graph_GetNodeLabels(gc->g, n, labels, label_count);
+	for(uint i = 0; i < label_count; i ++) {
+		Schema *schema = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		ASSERT(schema);
 		label = Schema_GetName(schema);
 		ASSERT(label);

@@ -9,6 +9,8 @@
 #include "../../value.h"
 #include "graph_entity.h"
 
+typedef GrB_Index LabelID;
+
 typedef struct {
 	Entity *entity;       // MUST be the first member of Node
 	EntityID id;          // Unique id, MUST be the second member

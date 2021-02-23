@@ -112,7 +112,7 @@ static bool _valid_arrangement(const Arrangement arrangement, uint exps_count, Q
 											AlgebraicExpression_Source(exp)); // TODO unwisely expensive
 	QGNode *dest = QueryGraph_GetNodeByAlias(qg,
 											 AlgebraicExpression_Destination(exp)); // TODO unwisely expensive
-	if((QGNode_LabelCount(src) > 0 || QGNode_LabelCount(dest) > 0) &&
+	if((QGNode_Labeled(src) || QGNode_Labeled(dest)) &&
 	   AlgebraicExpression_Edge(exp) &&
 	   AlgebraicExpression_OperandCount(exp) == 1) return false;
 
@@ -216,7 +216,7 @@ static int _reward_expression(AlgebraicExpression *exp, QueryGraph *qg,
 
 	// TODO unwisely expensive
 	QGNode *src_node = QueryGraph_GetNodeByAlias(qg, src);
-	if(QGNode_LabelCount(src_node) > 0) reward += L * reward_factor;
+	if(QGNode_Labeled(src_node)) reward += L * reward_factor;
 
 	return reward;
 }
@@ -317,10 +317,10 @@ static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *f
 
 	// see if either source or destination nodes are labeled
 	QGNode *src_node  = QueryGraph_GetNodeByAlias(qg, src);
-	src_score += (QGNode_LabelCount(src_node) > 0) ? L : 0;
+	src_score += (QGNode_Labeled(src_node)) ? L : 0;
 
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(qg, dest);
-	dest_score += (QGNode_LabelCount(dest_node) > 0) ? L : 0;
+	dest_score += (QGNode_Labeled(dest_node)) ? L : 0;
 
 	// if the destination is a superior starting point, transpose expression
 	if(dest_score > src_score) AlgebraicExpression_Transpose(ae);

@@ -24,6 +24,11 @@ const char *Schema_GetName(const Schema *s) {
 	return s->name;
 }
 
+int Schema_GetID(const Schema *s) {
+	ASSERT(s);
+	return s->id;
+}
+
 bool Schema_HasIndices(const Schema *s) {
 	ASSERT(s);
 	return (s->fulltextIdx || s->index);
@@ -117,12 +122,12 @@ static int _Schema_RemoveFullTextIndex(Schema *s) {
 
 int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 	switch(type) {
-		case IDX_FULLTEXT:
-			return _Schema_RemoveFullTextIndex(s);
-		case IDX_EXACT_MATCH:
-			return _Schema_RemoveExactMatchIndex(s, field);
-		default:
-			return INDEX_FAIL;
+	case IDX_FULLTEXT:
+		return _Schema_RemoveFullTextIndex(s);
+	case IDX_EXACT_MATCH:
+		return _Schema_RemoveExactMatchIndex(s, field);
+	default:
+		return INDEX_FAIL;
 	}
 }
 
