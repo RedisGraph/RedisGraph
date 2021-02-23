@@ -385,7 +385,7 @@ workflows:
           #@@ <<: *on-version-tags
           <<: *on-any-branch
           requires:
-            - platform-build
+            - platform_build
       - performance_ci_automation:
           <<: *on-any-branch
           requires:
