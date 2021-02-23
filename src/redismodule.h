@@ -783,6 +783,10 @@ void REDISMODULE_API_FUNC(RedisModule_DeauthenticateAndCloseClient)(RedisModuleC
 																	uint64_t client_id);
 #endif
 
+// enterprise only
+REDISMODULE_API int (*RedisModule_ShardingGetKeySlot)(RedisModuleString *keyname) REDISMODULE_ATTR;
+REDISMODULE_API void (*RedisModule_ShardingGetSlotRange)(int *first_slot, int *last_slot) REDISMODULE_ATTR;
+
 #define RedisModule_IsAOFClient(id) ((id) == UINT64_MAX)
 
 /* This is included inline inside each Redis module. */
@@ -1022,6 +1026,10 @@ static int RedisModule_Init(RedisModuleCtx *ctx, const char *name, int ver, int 
 	REDISMODULE_GET_API(AuthenticateClientWithACLUser);
 	REDISMODULE_GET_API(AuthenticateClientWithUser);
 #endif
+
+    // enterprise only
+    REDISMODULE_GET_API(ShardingGetKeySlot);
+    REDISMODULE_GET_API(ShardingGetSlotRange);
 
 	if(RedisModule_IsModuleNameBusy && RedisModule_IsModuleNameBusy(name)) return REDISMODULE_ERR;
 	RedisModule_SetModuleAttribs(ctx, name, ver, apiver);
