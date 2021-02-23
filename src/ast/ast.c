@@ -35,12 +35,12 @@ static void _consume_function_call_expression(const cypher_astnode_t *node,
 
 		// Retrieve the function name and add to rax.
 		const cypher_astnode_t *func = (!apply_all) ?
-			cypher_ast_apply_operator_get_func_name(node) :
-			cypher_ast_apply_all_operator_get_func_name(node);
+									   cypher_ast_apply_operator_get_func_name(node) :
+									   cypher_ast_apply_all_operator_get_func_name(node);
 
 		const char *func_name = cypher_ast_function_name_get_value(func);
 		raxInsert(referred_funcs, (unsigned char *)func_name, strlen(func_name),
-				NULL, NULL);
+				  NULL, NULL);
 
 		if(apply_all) return;  // Apply All operators have no arguments.
 	}
@@ -161,7 +161,7 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 
 // Retrieve the first instance of the specified clause in the AST segment, if any.
 const cypher_astnode_t *AST_GetClause(const AST *ast,
-		cypher_astnode_type_t clause_type, uint *clause_idx) {
+									  cypher_astnode_type_t clause_type, uint *clause_idx) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
@@ -528,7 +528,9 @@ void AST_Free(AST *ast) {
 }
 
 cypher_parse_result_t *parse_query(const char *query) {
-	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	FILE *f = fmemopen((char *)query, strlen(query), "r");
+	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	fclose(f);
 	if(!result) return NULL;
 	if(AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
@@ -539,7 +541,9 @@ cypher_parse_result_t *parse_query(const char *query) {
 
 
 cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
-	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
+	FILE *f = fmemopen((char *)query, strlen(query), "r");
+	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
+	fclose(f);
 	if(!result) return NULL;
 	if(AST_Validate_QueryParams(result) != AST_VALID) {
 		parse_result_free(result);

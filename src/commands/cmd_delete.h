@@ -10,8 +10,6 @@
 #include "../redismodule.h"
 #include "../util/thpool/thpool.h"
 
-extern threadpool _thpool;
-
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 
 #endif
