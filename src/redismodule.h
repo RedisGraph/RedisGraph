@@ -784,8 +784,8 @@ void REDISMODULE_API_FUNC(RedisModule_DeauthenticateAndCloseClient)(RedisModuleC
 #endif
 
 // enterprise only
-REDISMODULE_API int (*RedisModule_ShardingGetKeySlot)(RedisModuleString *keyname) REDISMODULE_ATTR;
-REDISMODULE_API void (*RedisModule_ShardingGetSlotRange)(int *first_slot, int *last_slot) REDISMODULE_ATTR;
+int REDISMODULE_API_FUNC(RedisModule_ShardingGetKeySlot)(RedisModuleString *keyname);
+void REDISMODULE_API_FUNC(RedisModule_ShardingGetSlotRange)(int *first_slot, int *last_slot);
 
 #define RedisModule_IsAOFClient(id) ((id) == UINT64_MAX)
 
