@@ -41,16 +41,14 @@ static sds _JsonEncoder_Properties(const GraphEntity *ge, sds s) {
 static sds _JsonEncoder_Node(const Node *n, sds s) {
 	s = sdscatfmt(s, "\"id\": %U", ENTITY_GET_ID(n));
 	s = sdscat(s, ", \"labels\": [");
-	// Label data will only be populated if provided by the query string.
-	const char *label = NULL;
+	// Retrieve node labels
+	uint label_count;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	int label_count = Graph_LabelTypeCount(gc->g);
-	GrB_Index labels[label_count];
-	label_count = Graph_GetNodeLabels(gc->g, n, labels, label_count);
+	NODE_GET_LABELS(gc->g, n, labels, label_count);
 	for(uint i = 0; i < label_count; i ++) {
 		Schema *schema = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		ASSERT(schema);
-		label = Schema_GetName(schema);
+		const char *label = Schema_GetName(schema);
 		ASSERT(label);
 		s = sdscatfmt(s, "\"%s\"", label);
 	}

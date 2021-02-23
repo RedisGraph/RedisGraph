@@ -28,9 +28,9 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 
 	Node *node = argv[0].ptrval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	int label_count = Graph_LabelTypeCount(gc->g);
-	GrB_Index labels[label_count];
-	label_count = Graph_GetNodeLabels(gc->g, node, labels, label_count);
+	// Retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(gc->g, node, labels, label_count);
 	SIValue res = SI_Array(label_count);
 
 	for(uint i = 0; i < label_count; i++) {

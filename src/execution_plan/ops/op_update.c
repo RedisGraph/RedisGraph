@@ -98,10 +98,12 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates,
 
 	// Update index for node entities if indexed fields have been modified.
 	if(update_index) {
-		uint label_count = GraphContext_SchemaCount(op->gc, SCHEMA_NODE);
-		if(label_count == 0) return attributes_set;
-		GrB_Index labels[label_count];
-		label_count = Graph_GetNodeLabels(op->gc->g, node, labels, label_count);
+		// Retrieve node labels
+		uint label_count;
+		NODE_GET_LABELS(op->gc->g, node, labels, label_count);
+		// LabelID *labels;
+		// uint label_count;
+		// NODE_GET_LABELS(node, labels, label_count);
 		for(uint i = 0; i < label_count; i ++) {
 			Schema *s = GraphContext_GetSchemaByID(op->gc, labels[i], SCHEMA_NODE);
 			// Introduce updated entity to index.

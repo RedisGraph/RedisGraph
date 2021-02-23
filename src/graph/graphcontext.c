@@ -407,12 +407,9 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	Graph *g = gc->g;
 	EntityID node_id = ENTITY_GET_ID(n);
 
-	// allocate enough space for node labels
-	uint schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
-	GrB_Index labels[schema_count];
-
-	// retrieve node labels
-	uint label_count = Graph_GetNodeLabels(g, n, labels, schema_count);
+	// Retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(g, n, labels, label_count);
 
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];

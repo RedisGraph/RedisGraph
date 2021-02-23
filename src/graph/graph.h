@@ -115,13 +115,6 @@ int Graph_AddLabel(
 	Graph *g
 );
 
-// Retreive all labels associated with node
-#define NODE_LABELS(g, n, l, c) {                \
-    GrB_Index _lbls[16];                         \
-    c = Graph_GetNodeLabels(g, n, _lbls, 16);    \
-    l = (GrB_Index*)_lbls;                       \
-}
-
 // Associate node with labels by setting label matrix L to 1 at position [id,id]
 void Graph_LabelNode(
 	Graph *g,

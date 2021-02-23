@@ -24,12 +24,9 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 // Perform necessary index updates.
 static void _UpdateIndices(GraphContext *gc, Node *n) {
-	Graph *g = gc->g;
-	uint label_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
-	if(label_count == 0) return;
-	GrB_Index labels[label_count];
-
-	label_count = Graph_GetNodeLabels(g, n, labels, label_count);
+	// Retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(gc->g, n, labels, label_count);
 
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];

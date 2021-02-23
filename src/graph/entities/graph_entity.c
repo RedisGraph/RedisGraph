@@ -178,9 +178,10 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 		case GETYPE_NODE: {
 			Node *n = (Node *)e;
 			GraphContext *gc = QueryCtx_GetGraphCtx();
-			uint label_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
-			GrB_Index labels[label_count];
-			label_count = Graph_GetNodeLabels(gc->g, n, labels, label_count);
+
+			// Retrieve node labels
+			uint label_count;
+			NODE_GET_LABELS(gc->g, n, labels, label_count);
 			for(uint i = 0; i < label_count; i ++) {
 				const char *name = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE)->name;
 				// allocate space if needed

@@ -125,9 +125,9 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithLongLong(ctx, id);
 
 	// [label string index X N]
-	GrB_Index *lbls = NULL;
-	uint lbls_count = 0;
-	NODE_LABELS(gc->g, n, lbls, lbls_count);
+	// Retrieve node labels
+	uint lbls_count;
+	NODE_GET_LABELS(gc->g, n, lbls, lbls_count);
 	RedisModule_ReplyWithArray(ctx, lbls_count);
 	for(int i = 0; i < lbls_count; i++) {
 		RedisModule_ReplyWithLongLong(ctx, lbls[i]);
@@ -263,7 +263,7 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 }
 
 void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 

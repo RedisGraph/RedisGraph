@@ -11,6 +11,11 @@
 
 typedef GrB_Index LabelID;
 
+// Helper macro that instantiates 'labels' as a stack array and updates 'label_count'.
+#define NODE_GET_LABELS(g, n, labels, label_count)                      \
+    GrB_Index labels[(label_count) = Graph_LabelTypeCount((g))];        \
+    label_count = Graph_GetNodeLabels((g), (n), labels, (label_count))
+
 typedef struct {
 	Entity *entity;       // MUST be the first member of Node
 	EntityID id;          // Unique id, MUST be the second member
