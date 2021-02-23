@@ -155,7 +155,6 @@ jobs:
     steps:
       - checkout
       - setup-prerequisits
-      - setup-automation
       - load-cached-deps
 
       - run:
@@ -197,7 +196,6 @@ jobs:
     steps:
       - checkout
       - setup-prerequisits
-      - setup-automation
       - attach_workspace:
           at: /workspace
       - load-cached-deps
@@ -216,7 +214,6 @@ jobs:
     steps:
       - checkout
       - setup-prerequisits
-      - setup-automation
       - load-cached-deps
       - attach_workspace:
           at: /workspace
@@ -307,7 +304,6 @@ jobs:
       - early_return_for_forked_pull_requests
       - checkout
       - setup-prerequisits
-      - setup-automation
       - attach_workspace:
           at: /workspace
       - load-cached-deps
