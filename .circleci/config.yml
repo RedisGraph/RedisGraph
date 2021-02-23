@@ -73,11 +73,11 @@ commands:
           command: |
             ./system-setup.py
 
-      - run:
-          name: Setup locale
-          command: |
-              locale-gen --purge en_US.UTF-8
-              dpkg-reconfigure -f noninteractive locales
+#      - run:
+#          name: Setup locale
+#          command: |
+#              locale-gen --purge en_US.UTF-8
+#              dpkg-reconfigure -f noninteractive locales
 
   benchmark-automation:
     parameters:
