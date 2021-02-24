@@ -197,7 +197,6 @@ endif
 	@$(MAKE) -C ../tests clean
 
 package: redisgraph.so
-	@mkdir -p bin/artifacts
 	@../sbin/pack.sh
 
 test: redisgraph.so

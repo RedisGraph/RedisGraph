@@ -52,18 +52,17 @@ ARG ARCH
 ARG REDIS_VER
 ARG PACK
 
-RUN if [ ! -z $(command -v apt-get) ]; then apt-get -qq update; apt-get -q install -y libgomp1; fi
-RUN if [ ! -z $(command -v yum) ]; then yum install -y libgomp; fi 
-
 ENV LIBDIR /usr/lib/redis/modules
-
-COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts
 
 WORKDIR /data
 
 RUN mkdir -p $LIBDIR
 
+COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts
 COPY --from=builder /build/src/redisgraph.so $LIBDIR
+
+RUN if [ ! -z $(command -v apt-get) ]; then apt-get -qq update; apt-get -q install -y libgomp1; fi
+RUN if [ ! -z $(command -v yum) ]; then yum install -y libgomp; fi 
 
 EXPOSE 6379
 CMD ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisgraph.so"]

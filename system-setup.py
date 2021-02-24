@@ -23,17 +23,15 @@ class RedisGraphSetup(paella.Setup):
         self.install("git automake peg libtool autoconf valgrind astyle")
 
     def debian_compat(self):
+        self.install("locales")
         self.run("%s/bin/getgcc" % READIES)
-        # self.install("python-psutil")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
         self.run("%s/bin/getgcc --modern" % READIES)
-        # self.pip_install("psutil")
 
     def fedora(self):
         self.run("%s/bin/getgcc" % READIES)
-        # self.install("python-psutil")
 
     def macos(self):
         self.install_gnu_utils()

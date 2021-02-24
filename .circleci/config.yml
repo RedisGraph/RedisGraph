@@ -73,11 +73,11 @@ commands:
           command: |
             ./system-setup.py
 
-#      - run:
-#          name: Setup locale
-#          command: |
-#              locale-gen --purge en_US.UTF-8
-#              dpkg-reconfigure -f noninteractive locales
+      - run:
+          name: Setup locale
+          command: |
+              locale-gen --purge en_US.UTF-8
+              dpkg-reconfigure -f noninteractive locales
 
   benchmark-automation:
     parameters:
@@ -148,10 +148,10 @@ jobs:
   build:
     docker:
       - image: redisfab/rmbuilder:6.0.9-x64-bionic
-#        environment:
-#            LANG: en_US.UTF-8  
-#            LANGUAGE: en_US.UTF-8
-#            LC_ALL: en_US.UTF-8  
+          environment:
+            LANG: en_US.UTF-8  
+            LANGUAGE: en_US.UTF-8
+            LC_ALL: en_US.UTF-8  
     steps:
       - checkout
       - setup-prerequisits
@@ -186,23 +186,23 @@ jobs:
       #      - ramp.yml
       #      - build
 
-  build_test:
-    docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
-        environment:
-            LANG: en_US.UTF-8  
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8
-    steps:
-      - checkout
-      - setup-prerequisits
-      - attach_workspace:
-          at: /workspace
-      - load-cached-deps
-
-      - run:
-          name: Test
-          command: make test
+#  build_test:
+#    docker:
+#      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+#        environment:
+#            LANG: en_US.UTF-8
+#            LANGUAGE: en_US.UTF-8
+#            LC_ALL: en_US.UTF-8
+#    steps:
+#      - checkout
+#      - setup-prerequisits
+#      - attach_workspace:
+#          at: /workspace
+#      - load-cached-deps
+#
+#      - run:
+#          name: Test
+#          command: make test
 
   build_memcheck:
     docker:
@@ -385,7 +385,7 @@ workflows:
       - performance_ci_automation:
           <<: *on-any-branch
           requires:
-            - build_test
+            - build
 
   nightly:
     triggers:
