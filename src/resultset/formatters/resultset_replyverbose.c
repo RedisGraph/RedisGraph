@@ -6,9 +6,7 @@
 
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
-#include "../../datatypes/map.h"
-#include "../../datatypes/array.h"
-#include "../../datatypes/path/sipath.h"
+#include "../../datatypes/datatypes.h"
 
 // Forward declarations.
 static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map);
@@ -181,7 +179,7 @@ static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map) {
 }
 
 void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -193,7 +191,7 @@ void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-		uint *col_rec_map) {
+									  uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {

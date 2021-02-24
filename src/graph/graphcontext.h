@@ -17,7 +17,7 @@
 #include "../util/cache/cache.h"
 
 typedef uint GRAPH_VERSION;
-#define GRAPH_VERSION_MISSING -1
+#define GRAPH_VERSION_MISSING UINT_MAX
 
 /* GraphContext holds refrences to various elements of a graph object
  * It is the value sitting behind a Redis graph key

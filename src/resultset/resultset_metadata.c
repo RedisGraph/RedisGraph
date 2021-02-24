@@ -34,6 +34,7 @@ SIValue ResultSet_PrepareMetadata(GraphContext *gc) {
 		SIArray_Append(&labels, SI_ConstStringVal(label));
 	}
 	Map_Add(&map, label_key, labels);
+	SIValue_Free(labels); // labels has been cloned into the map
 
 	SIValue reltype_key = SI_ConstStringVal("relationship types");
 	uint reltype_count = array_len(gc->relation_schemas);
@@ -43,6 +44,7 @@ SIValue ResultSet_PrepareMetadata(GraphContext *gc) {
 		SIArray_Append(&reltypes, SI_ConstStringVal(reltype));
 	}
 	Map_Add(&map, reltype_key, reltypes);
+	SIValue_Free(reltypes); // reltypes has been cloned into the map
 
 	SIValue prop_key = SI_ConstStringVal("property keys");
 	uint prop_count = array_len(gc->string_mapping);
@@ -52,6 +54,7 @@ SIValue ResultSet_PrepareMetadata(GraphContext *gc) {
 		SIArray_Append(&props, SI_ConstStringVal(prop));
 	}
 	Map_Add(&map, prop_key, props);
+	SIValue_Free(props); // props has been cloned into the map
 
 	return map;
 }
