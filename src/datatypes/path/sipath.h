@@ -130,3 +130,4 @@ int SIPath_Compare(SIValue p1, SIValue p2);
  * @param  p: SIPath.
  */
 void SIPath_Free(SIValue p);
+

@@ -47,8 +47,16 @@ typedef struct {
 
 /* Instantiate the thread-local QueryCtx on module load. */
 bool QueryCtx_Init(void);
-/* Free the thread-local QueryCtx variable (unused). */
-void QueryCtx_Finalize(void);
+
+/* Retrieve this thread's QueryCtx. */
+QueryCtx *QueryCtx_GetQueryCtx();
+
+/* Set the provided QueryCtx in this thread's storage key. */
+void QueryCtx_SetTLS(QueryCtx *query_ctx);
+
+/* Null-set this thread's storage key. */
+void QueryCtx_RemoveFromTLS();
+
 /* Start timing query execution. */
 void QueryCtx_BeginTimer(void);
 

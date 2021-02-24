@@ -63,6 +63,9 @@ typedef struct {
 // fp - destructor routine for freeing items.
 DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp);
 
+// returns number of items stored
+uint64_t DataBlock_ItemCount(const DataBlock *dataBlock);
+
 // Make sure datablock can accommodate at least k items.
 void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k);
 

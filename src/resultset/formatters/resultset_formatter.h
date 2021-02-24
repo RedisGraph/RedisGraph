@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../../redismodule.h"
-#include "../../execution_plan/record.h"
 #include "../../graph/graphcontext.h"
 #include "../../graph/query_graph.h"
 
@@ -33,18 +32,18 @@ typedef enum {
 } ValueType;
 
 // Typedef for header formatters.
-typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r,
-							   uint *col_rec_map);
-
-// Typedef for record formatters.
-typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols,
+typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns,
 							   uint *col_rec_map);
 
 // Typedef for footer formatters.
 typedef void (*EmitFooterFunc)(RedisModuleCtx *ctx, GraphContext *gc, SIValue map);
 
+// Typedef for row formatters.
+typedef void (*EmitRowFunc)(RedisModuleCtx *ctx, GraphContext *gc,
+							SIValue **row, uint numcols);
+
 typedef struct {
-	EmitRecordFunc EmitRecord;
+	EmitRowFunc    EmitRow;
 	EmitHeaderFunc EmitHeader;
 	EmitFooterFunc EmitFooter;
 } ResultSetFormatter;

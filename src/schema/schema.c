@@ -85,32 +85,46 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	return INDEX_OK;
 }
 
-int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
+static int _Schema_RemoveExactMatchIndex(Schema *s, const char *field) {
+	ASSERT(field != NULL);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	Index *idx = Schema_GetIndex(s, &attribute_id, type);
+	if(attribute_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
+
+	Index *idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
 	if(idx == NULL) return INDEX_FAIL;
 
-	type = idx->type;
+	Index_RemoveField(idx, field);
 
-	// Currently dropping a full-text index doesn't take into account fields.
-	if(type == IDX_FULLTEXT) {
-		ASSERT(field == NULL);
+	// if index field count dropped to 0, remove index from schema
+	if(Index_FieldsCount(idx) == 0) {
 		Index_Free(idx);
-		s->fulltextIdx = NULL;
-	} else {
-		// Index is of type IDX_EXACT_MATCH
-		ASSERT(type == IDX_EXACT_MATCH);
-		Index_RemoveField(idx, field);
-
-		// If index field count dropped to 0, remove index from schema.
-		if(Index_FieldsCount(idx) == 0) {
-			Index_Free(idx);
-			s->index = NULL;
-		}
+		s->index = NULL;
 	}
 
 	return INDEX_OK;
+}
+
+static int _Schema_RemoveFullTextIndex(Schema *s) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(idx == NULL) return INDEX_FAIL;
+
+	Index_Free(idx);
+	s->fulltextIdx = NULL;
+
+	return INDEX_OK;
+}
+
+int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
+	switch(type) {
+	case IDX_FULLTEXT:
+		return _Schema_RemoveFullTextIndex(s);
+	case IDX_EXACT_MATCH:
+		return _Schema_RemoveExactMatchIndex(s, field);
+	default:
+		return INDEX_FAIL;
+	}
 }
 
 // Index node under all schema indices.
