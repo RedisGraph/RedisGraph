@@ -91,6 +91,7 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 }
 
 static int _Schema_RemoveExactMatchIndex(Schema *s, const char *field) {
+	ASSERT(field != NULL);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
 	if(attribute_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;

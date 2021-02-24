@@ -383,7 +383,6 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
 							 const char *field, IndexType type) {
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
-	ASSERT(field != NULL);
 
 	// Retrieve the schema for this label
 	int res = INDEX_FAIL;
