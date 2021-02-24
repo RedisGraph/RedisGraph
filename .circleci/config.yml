@@ -384,7 +384,8 @@ workflows:
           requires:
             - platform_build
       - performance_ci_automation:
-          <<: *on-any-branch
+          #@@ <<: *on-any-branch
+          <<: *never
           requires:
             - build
 

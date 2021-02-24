@@ -14,7 +14,8 @@
       {
         "teardown": true,
         "name": "bionic-amd64-aws",
-        "concurrency": 1
+        "concurrency": 1,
+		"module_url": "http://redismodules.s3.amazonaws.com/{{RS_MODULE_FILE_PREFIX}}/snapshots/{{RS_MODULE_FILE_PREFIX}}.linux-bionic-x64.master.zip"
       }
     ]
   }
