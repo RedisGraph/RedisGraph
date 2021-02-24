@@ -22,8 +22,9 @@ commands:
             apt-get -qq update
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
             bash <(curl -fsSL https://get.docker.com)
-      #@@- setup_remote_docker:
-      #@@    docker_layer_caching: true
+      #@@- setup_remote_docker
+      - setup_remote_docker:
+          docker_layer_caching: true
 
   setup-automation:
     steps:
@@ -248,7 +249,7 @@ jobs:
       - run:
           name: Deploy to S3
           command: |
-            du artifacts/*
+            du -ah --apparent-size artifacts/*
             for f in artifacts/snapshot/*.zip artifacts/snapshot/*.tgz; do
               echo aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
             done
@@ -262,7 +263,7 @@ jobs:
       - run:
           name: Deploy to S3
           command: |
-            du artifacts/*
+            du -ah --apparent-size artifacts/*
             for f in artifacts/*.zip artifacts/*.tgz; do
               echo aws s3 cp $f s3://redismodules/$PACKAGE_NAME/ --acl public-read
             done
