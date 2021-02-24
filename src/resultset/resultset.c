@@ -91,8 +91,6 @@ void ResultSet_MapProjection(ResultSet *set, const Record r) {
 }
 
 static void _ResultSet_ReplyWithPreamble(ResultSet *set) {
-	ASSERT(ResultSet_RowCount(set) == 0);
-
 	if(set->column_count > 0) {
 		// prepare a response containing a header, records, and statistics
 		RedisModule_ReplyWithArray(set->ctx, 3);
