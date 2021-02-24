@@ -12,6 +12,8 @@ LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 DEBUGFLAGS = -g -ggdb -O3
 ifeq ($(DEBUG), 1)
 	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
+	# Enable all assertions in debug mode
+	DEBUGFLAGS += -DRG_DEBUG
 endif
 
 # Default CFLAGS
