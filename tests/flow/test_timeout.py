@@ -18,7 +18,7 @@ class testQueryTimeout(FlowTestsBase):
     def test_read_query_timeout(self):
         query = "UNWIND range(0,100000) AS x WITH x AS x WHERE x = 10000 RETURN x"
         try:
-            # The read query is expected to time out
+            # The query is expected to time out
             redis_con.execute_command("GRAPH.QUERY", "g", query, "timeout", 1)
             assert(False)
         except ResponseError as error:
@@ -26,7 +26,7 @@ class testQueryTimeout(FlowTestsBase):
             self.env.assertContains("Query timed out", str(error))
 
         try:
-            # The write query is expected to succeed
+            # The query is expected to succeed
             redis_con.execute_command("GRAPH.QUERY", "g", query, "timeout", 100)
         except:
             assert(False)
