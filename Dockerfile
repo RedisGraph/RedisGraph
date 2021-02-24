@@ -30,6 +30,10 @@ COPY --from=redis /usr/local/ /usr/local/
 
 ADD ./ /build
 
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8  
+
 # Set up a build environment
 RUN ./deps/readies/bin/getpy3
 RUN ./system-setup.py
@@ -39,7 +43,7 @@ RUN if [ ! -z $(command -v apt-get) ]; then \
         dpkg-reconfigure -f noninteractive locales ;\
 	fi
 
-RUN bash -l -c make
+RUN bash -l -c make -j`nproc`
 
 ARG TEST=0
 ARG PACK=0
