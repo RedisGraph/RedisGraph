@@ -13,18 +13,20 @@
 #define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
 typedef enum {
-	Config_CACHE_SIZE               = 0,  // number of entries in cache
-	Config_ASYNC_DELETE             = 1,  // delete graph asynchronously
-	Config_OPENMP_NTHREAD           = 2,  // max number of OpenMP threads to use
-	Config_THREAD_POOL_SIZE         = 3,  // number of threads in thread pool
-	Config_RESULTSET_MAX_SIZE       = 4,  // max number of records in result-set
-	Config_MAINTAIN_TRANSPOSE       = 5,  // maintain transpose matrices
-	Config_VKEY_MAX_ENTITY_COUNT    = 6,  // max number of elements in vkey
-	Config_END_MARKER               = 7
+	Config_TIMEOUT                  = 0,  // timeout value for queries
+	Config_CACHE_SIZE               = 1,  // number of entries in cache
+	Config_ASYNC_DELETE             = 2,  // delete graph asynchronously
+	Config_OPENMP_NTHREAD           = 3,  // max number of OpenMP threads to use
+	Config_THREAD_POOL_SIZE         = 4,  // number of threads in thread pool
+	Config_RESULTSET_MAX_SIZE       = 5,  // max number of records in result-set
+	Config_MAINTAIN_TRANSPOSE       = 6,  // maintain transpose matrices
+	Config_VKEY_MAX_ENTITY_COUNT    = 7,  // max number of elements in vkey
+	Config_END_MARKER               = 8
 } Config_Option_Field;
 
 // configuration object
 typedef struct {
+	uint64_t timeout;                  // The timeout for each query in milliseconds.
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
 	uint64_t cache_size;               // The cache size for each thread, per graph.
 	uint thread_pool_size;             // Thread count for thread pool.
@@ -35,8 +37,8 @@ typedef struct {
 } RG_Config;
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 1
-static const Config_Option_Field RUNTIME_CONFIGS[] = { Config_RESULTSET_MAX_SIZE };
+#define RUNTIME_CONFIG_COUNT 2
+static const Config_Option_Field RUNTIME_CONFIGS[] = { Config_RESULTSET_MAX_SIZE, Config_TIMEOUT };
 
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.

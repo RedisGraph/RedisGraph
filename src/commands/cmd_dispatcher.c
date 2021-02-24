@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "commands.h"
+#include "../config.h"
 #include "cmd_context.h"
 #include "../util/thpool/pools.h"
 
@@ -162,6 +163,9 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// the API reference dictates that registered functions should always return OK
 		return REDISMODULE_OK;
 	}
+
+	// If the command did not provide an explicit timeout, use the configuration value.
+	if(timeout == 0) Config_Option_get(Config_TIMEOUT, &timeout);
 
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
 	// if GraphContext is null, key access failed and an error been emitted
