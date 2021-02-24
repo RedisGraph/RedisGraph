@@ -9,7 +9,7 @@
 #include "../graph/graph.h"
 
 // Sets a node in the graph
-void Serializer_Graph_SetNode(Graph *g, NodeID id, GrB_Index *labels, uint label_count, Node *n);
+void Serializer_Graph_SetNode(Graph *g, NodeID id, LabelID *labels, uint label_count, Node *n);
 
 // Set a given edge in the graph.
 void Serializer_Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e);

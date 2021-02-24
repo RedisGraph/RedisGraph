@@ -19,7 +19,7 @@ inline void Serializer_Graph_MarkNodeDeleted(Graph *g, NodeID id) {
 	DataBlock_MarkAsDeletedOutOfOrder(g->nodes, id);
 }
 
-void Serializer_Graph_SetNode(Graph *g, NodeID id, GrB_Index *labels, uint label_count, Node *n) {
+void Serializer_Graph_SetNode(Graph *g, NodeID id, LabelID *labels, uint label_count, Node *n) {
 	ASSERT(g);
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
@@ -29,7 +29,7 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, GrB_Index *labels, uint label
 	n->entity = en;
 	GrB_Matrix node_labels = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < label_count; i ++) {
-		GrB_Index label = labels[i];
+		LabelID label = labels[i];
 		// Set label matrix at position [id, id]
 		GrB_Matrix m = Graph_GetLabelMatrix(g, label);
 		GrB_Matrix_setElement_BOOL(m, true, id, id);
