@@ -112,7 +112,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
