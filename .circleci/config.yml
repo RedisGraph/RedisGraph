@@ -135,12 +135,12 @@ commands:
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
-            make publish OSNICK=<<parameters.platform>> X64=1 SHOW=1 -n #@@
+            make publish OSNICK=<<parameters.platform>> X64=1 SHOW=1
       - persist_to_workspace:
           root: bin/artifacts
           paths:
-            - 'snapshot/*.zip'
-            - 'snapshot/*.tgz'
+            - 'snapshots/*.zip'
+            - 'snapshots/*.tgz'
             - '*.zip'
             - '*.tgz'
 
@@ -213,8 +213,8 @@ jobs:
       - run:
           name: Deploy to S3
           command: |
-            du -ah --apparent-size artifacts/*
-            for f in artifacts/snapshot/*.zip artifacts/snapshot/*.tgz; do
+            du -ah --apparent-size artifacts/snapshots/*
+            for f in artifacts/snapshots/*.zip artifacts/snapshots/*.tgz; do
               echo aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
             done
 
@@ -341,39 +341,29 @@ workflows:
   build_and_package:
     jobs:
       - build:
-#          <<: *on-any-branch
           <<: *not-on-integ-branch
-#      - build_test:
-#          <<: *on-any-branch
-#          requires:
-#            - build
       - build_memcheck:
-          #@@ <<: *on-any-branch
-          <<: *never
+          <<: *on-any-branch
       - platform_build:
-#          requires:
-#            - build
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
-          #@@ <<: *on-integ-branch			
+          <<: *on-integ-branch
       - deploy_branch:
           requires:
             - platform_build
-          #@@ <<: *on-integ-branch			
+          <<: *on-integ-branch
       - release_automation:
           requires:
-            - deploy_branch
+            - deploy_release
       - deploy_release:
-          #@@ <<: *on-version-tags
-          <<: *on-any-branch
+          <<: *on-version-tags
           requires:
             - platform_build
       - performance_ci_automation:
-          #@@ <<: *on-any-branch
-          <<: *never
+          <<: *on-integ-branch
           requires:
-            - build
+            - platform_build
 
   nightly:
     triggers:
