@@ -7,4 +7,5 @@
 #include "v5/decode_v5.h"
 #include "v6/decode_v6.h"
 #include "v7/decode_v7.h"
+#include "v8/decode_v8.h"
 
