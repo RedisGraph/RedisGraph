@@ -158,7 +158,7 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 		Attribute_ID prop_idx     = argv[2].longval;
 
 		// We have the property string, attempt to look up the index now.
-		if(prop_idx == ATTRIBUTE_NOTFOUND) {
+		if(prop_idx == ATTRIBUTE_UNKNOWN) {
 			GraphContext *gc = QueryCtx_GetGraphCtx();
 			prop_idx = GraphContext_GetAttributeID(gc, prop_name);
 		}

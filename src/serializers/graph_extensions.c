@@ -23,8 +23,6 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	ASSERT(g);
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
-	en->prop_count = 0;
-	en->properties = NULL;
 	n->id = id;
 	n->entity = en;
 	if(label != GRAPH_NO_LABEL) {
@@ -39,8 +37,6 @@ void Serializer_Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest,
 	GrB_Info info;
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
-	en->prop_count = 0;
-	en->properties = NULL;
 	e->id = edge_id;
 	e->entity = en;
 	e->relationID = r;

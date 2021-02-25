@@ -25,7 +25,8 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 
 // apply a set of updates to the given records
-static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStatistics *stats, raxIterator updates,
+static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStatistics *stats,
+							  raxIterator updates,
 							  Record *records, uint record_count) {
 	ASSERT(record_count > 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -265,14 +266,16 @@ static Record MergeConsume(OpBase *opBase) {
 			}
 			// if we are setting properties with ON CREATE, execute updates on the just-added Records
 			if(op->on_create) {
-				_UpdateProperties(&op->pending_updates, op->stats, op->on_create_it, op->output_records + match_count, create_count);
+				_UpdateProperties(&op->pending_updates, op->stats, op->on_create_it,
+								  op->output_records + match_count, create_count);
 			}
 		}
 	}
 
 	// If we are setting properties with ON MATCH, execute all pending updates.
 	if(op->on_match && match_count > 0)
-		_UpdateProperties(&op->pending_updates, op->stats, op->on_match_it, op->output_records, match_count);
+		_UpdateProperties(&op->pending_updates, op->stats, op->on_match_it, op->output_records,
+						  match_count);
 
 	// lock everything
 	if(array_len(op->pending_updates) > 0) {

@@ -4,48 +4,46 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "graph_entity.h"
 #include "node.h"
 #include "edge.h"
-#include "../../RG.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
 
-SIValue *PROPERTY_NOTFOUND = &(SIValue) {
-	.longval = 0, .type = T_NULL
-};
+inline bool GraphEntity_IsDeleted
+(
+	const GraphEntity *e
+) {
+	return Graph_EntityIsDeleted(e->entity);
+}
 
-/* Removes entity's property. */
-static bool _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_id) {
-	// Quick return if attribute is missing.
-	if(attr_id == ATTRIBUTE_NOTFOUND) return false;
 
-	// Locate attribute position.
-	int prop_count = e->entity->prop_count;
-	for(int i = 0; i < prop_count; i++) {
-		if(attr_id == e->entity->properties[i].id) {
-			SIValue_Free(e->entity->properties[i].value);
-			e->entity->prop_count--;
+static AttributeSet *_GraphEntity_GetAttrSet
+(
+	const GraphEntity *ge
+) {
+	if(ge->entity->sets == NULL) return NULL;
+	return ge->entity->sets;
+}
 
-			if(e->entity->prop_count == 0) {
-				/* Only attribute removed, free properties bag. */
-				rm_free(e->entity->properties);
-				e->entity->properties = NULL;
-			} else {
-				/* Overwrite deleted attribute with the last
-				 * attribute and shrink properties bag. */
-				e->entity->properties[i] = e->entity->properties[prop_count - 1];
-				e->entity->properties = rm_realloc(e->entity->properties,
-												   sizeof(EntityProperty) * e->entity->prop_count);
-			}
+// removes entity's property
+static bool _GraphEntity_RemoveProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id
+) {
+	bool removed = false;
 
-			return true;
-		}
+	if(attr_id != ATTRIBUTE_UNKNOWN) {
+		AttributeSet *s = _GraphEntity_GetAttrSet(e);
+		ASSERT(s != NULL);
+		AttributeSet_RemoveAttr(s, attr_id, &removed);
 	}
 
-	return false;
+	return removed;
 }
 
 int GraphEntity_ClearProperties(GraphEntity *e) {
@@ -65,107 +63,167 @@ int GraphEntity_ClearProperties(GraphEntity *e) {
 	return prop_count;
 }
 
-/* Add a new property to entity */
-bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
-	ASSERT(e);
-	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) return false;
+const AttributeSet GraphEntity_GetAttributeSet
+(
+	const GraphEntity *e
+) {
+	const AttributeSet *s = NULL;
+	AttributeSet *set = _GraphEntity_GetAttrSet(e);
+	if(set != NULL) s = (const AttributeSet) * set;
 
-	if(e->entity->properties == NULL) {
-		e->entity->properties = rm_malloc(sizeof(EntityProperty));
-	} else {
-		e->entity->properties = rm_realloc(e->entity->properties,
-										   sizeof(EntityProperty) * (e->entity->prop_count + 1));
-	}
-
-	int prop_idx = e->entity->prop_count;
-	e->entity->properties[prop_idx].id = attr_id;
-	e->entity->properties[prop_idx].value = SI_CloneValue(value);
-	e->entity->prop_count++;
-
-	return true;
+	return s;
 }
 
-SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
-	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
-	if(e->entity == NULL) {
+uint GraphEntity_PropCount
+(
+	const GraphEntity *e  // entity to get attribute count from
+) {
+	ASSERT(e != NULL);
+
+	uint attr_count = 0;
+	AttributeSet *s = _GraphEntity_GetAttrSet(e);
+	if(s != NULL) attr_count = AttributeSet_AttributeCount(*s);
+	return attr_count;
+}
+
+// add a new property to entity
+void GraphEntity_AddProperty
+(
+	GraphEntity *e,
+	Attribute_ID attr_id,
+	SIValue value
+) {
+	ASSERT(e != NULL);
+	ASSERT(SIValue_IsNull(value) == false);
+
+	AttributeSet *s = _GraphEntity_GetAttrSet(e);
+	ASSERT(s != NULL);
+
+	AttributeSet_SetAttr(s, attr_id, value);
+}
+
+SIValue *GraphEntity_GetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id
+) {
+	if(attr_id == ATTRIBUTE_UNKNOWN) return ATTRIBUTE_NOTFOUND;
+
+	if(ENTITY_GET_ID(e) == INVALID_ENTITY_ID) {
 		/* The internal entity pointer should only be NULL if the entity
 		 * is in an intermediate state, such as a node scheduled for creation.
 		 * Note that this exception may cause memory to be leaked in the caller. */
-		ASSERT(e->id == INVALID_ENTITY_ID);
 		ErrorCtx_SetError("Attempted to access undefined property");
-		return PROPERTY_NOTFOUND;
+		return ATTRIBUTE_NOTFOUND;
 	}
 
-	for(int i = 0; i < e->entity->prop_count; i++) {
-		if(attr_id == e->entity->properties[i].id) {
-			// Note, unsafe as entity properties can get reallocated.
-			return &(e->entity->properties[i].value);
-		}
-	}
-
-	return PROPERTY_NOTFOUND;
+	AttributeSet *s = _GraphEntity_GetAttrSet(e);
+	if(s == NULL) return ATTRIBUTE_NOTFOUND;
+	return AttributeSet_GetAttr(*s, attr_id);
 }
 
-// Updates existing property value.
-bool GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
-	ASSERT(e);
+// updates existing property value
+bool GraphEntity_SetProperty
+(
+	const GraphEntity *e,
+	Attribute_ID attr_id,
+	SIValue value
+) {
+	ASSERT(e != NULL);
 
-	// Setting an attribute value to NULL removes that attribute.
+	// setting an attribute value to NULL removes that attribute
 	if(SIValue_IsNull(value)) return _GraphEntity_RemoveProperty(e, attr_id);
 
-	SIValue *current = GraphEntity_GetProperty(e, attr_id);
-	ASSERT(current != PROPERTY_NOTFOUND);
+	AttributeSet *s = _GraphEntity_GetAttrSet(e);
+	ASSERT(s != NULL);
+
+	SIValue *current = AttributeSet_GetAttr(*s, attr_id);
+	ASSERT(current != ATTRIBUTE_NOTFOUND);
 
 	// compare current value to new value, only update if current != new
 	if(SIValue_Compare(*current, value, NULL) == 0) return false;
 
 	// value != current, update entity
-	SIValue_Free(*current);
-	*current = SI_CloneValue(value);
+	AttributeSet_SetAttr(s, attr_id, value);
 	return true;
 }
 
-size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-									  size_t *bytesWritten) {
+size_t GraphEntity_PropertiesToString
+(
+	const GraphEntity *e,
+	char **buffer,
+	size_t *bufferLen,
+	size_t *bytesWritten
+) {
+	ASSERT(e != NULL);
+	ASSERT(bytesWritten != NULL);
+
+	*bytesWritten = 0;
+
+	AttributeSet *s = _GraphEntity_GetAttrSet(e);
+	if(s == NULL) return *bytesWritten;
+
 	// make sure there is enough space for "{...}\0"
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
 		*buffer = rm_realloc(*buffer, *bufferLen);
 	}
+
 	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	int propCount = ENTITY_PROP_COUNT(e);
-	EntityProperty *properties = ENTITY_PROPS(e);
-	for(int i = 0; i < propCount; i++) {
+
+	int attr_count = AttributeSet_AttributeCount(*s);
+
+	for(int i = 0; i < attr_count; i++) {
+		SIValue val;
+		Attribute_ID id;
+
+		AttributeSet_GetAttrIdx(*s, i, &val, &id);
+
+		ASSERT(!SIValue_IsNull(val));
+		ASSERT(id != ATTRIBUTE_NOTFOUND);
+
 		// print key
-		const char *key = GraphContext_GetAttributeString(gc, properties[i].id);
+		const char *key = GraphContext_GetAttributeString(gc, id);
+
 		// check for enough space
 		size_t keyLen = strlen(key);
 		if(*bufferLen - *bytesWritten < keyLen) {
 			*bufferLen += keyLen;
 			*buffer = rm_realloc(*buffer, *bufferLen);
 		}
-		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s:", key);
+
+		*bytesWritten +=
+			snprintf(*buffer + *bytesWritten, *bufferLen, "%s:", key);
 
 		// print value
-		SIValue_ToString(properties[i].value, buffer, bufferLen, bytesWritten);
+		SIValue_ToString(val, buffer, bufferLen, bytesWritten);
 
 		// if not the last element print ", "
-		if(i != propCount - 1) *bytesWritten = snprintf(*buffer + *bytesWritten, *bufferLen, ", ");
-
+		if(i != attr_count - 1) {
+			*bytesWritten = snprintf(*buffer + *bytesWritten, *bufferLen, ", ");
+		}
 	}
+
 	// check for enough space for close with "}\0"
 	if(*bufferLen - *bytesWritten < 2) {
 		*bufferLen += 2;
 		*buffer = rm_realloc(*buffer, *bufferLen);
 	}
 	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "}");
+
 	return *bytesWritten;
 }
 
-void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-						  size_t *bytesWritten,
-						  GraphEntityStringFromat format, GraphEntityType entityType) {
+void GraphEntity_ToString
+(
+	const GraphEntity *e,
+	char **buffer,
+	size_t *bufferLen,
+	size_t *bytesWritten,
+	GraphEntityStringFromat format,
+	GraphEntityType entityType
+) {
 	// space allocation
 	if(*bufferLen - *bytesWritten < 64)  {
 		*bufferLen += 64;
@@ -237,17 +295,16 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
 }
 
-inline bool GraphEntity_IsDeleted(const GraphEntity *e) {
-	return Graph_EntityIsDeleted(e->entity);
-}
+void Entity_Free(Entity *e) {
+	ASSERT(e != NULL);
 
-void FreeEntity(Entity *e) {
-	ASSERT(e);
-	if(e->properties != NULL) {
-		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
-		rm_free(e->properties);
-		e->properties = NULL;
-		e->prop_count = 0;
+	// free attribute sets
+	AttributeSet *sets = e->sets;
+	uint attr_set_count = array_len(sets);
+	for(uint i = 0; i < attr_set_count; i++) {
+		AttributeSet s = array_pop(sets);
+		AttributeSet_Free(s);
 	}
+	array_free(sets);
 }
 

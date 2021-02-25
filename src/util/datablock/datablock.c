@@ -154,11 +154,13 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, idx);
 	if(IS_ITEM_DELETED(item_header)) return;
 
+	unsigned char *item = ITEM_DATA(item_header);
+
 	// Call item destructor.
-	if(dataBlock->destructor) {
-		unsigned char *item = ITEM_DATA(item_header);
-		dataBlock->destructor(item);
-	}
+	if(dataBlock->destructor) dataBlock->destructor(item);
+
+	// reset memory
+	memset(item, 0, dataBlock->itemSize);
 
 	MARK_HEADER_AS_DELETED(item_header);
 
@@ -186,6 +188,17 @@ inline bool DataBlock_ItemIsDeleted(void *item) {
 }
 
 void DataBlock_Free(DataBlock *dataBlock) {
+	if(dataBlock->destructor) {
+		void *item = NULL;
+		DataBlockIterator *it = DataBlock_Scan(dataBlock);
+
+		while((item = DataBlockIterator_Next(it, NULL)) != NULL) {
+			dataBlock->destructor(item);
+		}
+
+		DataBlockIterator_Free(it);
+	}
+
 	for(uint i = 0; i < dataBlock->blockCount; i++) Block_Free(dataBlock->blocks[i]);
 
 	rm_free(dataBlock->blocks);

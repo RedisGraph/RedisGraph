@@ -14,8 +14,11 @@ static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 								  PendingProperties *props) {
 	int failed_updates = 0;
 	for(int i = 0; i < props->property_count; i++) {
-		bool updated = GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
-		if(!updated) failed_updates++;
+		SIValue       v = props->values[i];
+		Attribute_ID  k = props->attr_keys[i];
+
+        if(SIValue_IsNull(v)) failed_updates++; 
+		else GraphEntity_AddProperty(ge, k, v);
 	}
 
 	if(stats) stats->properties_set += props->property_count - failed_updates;

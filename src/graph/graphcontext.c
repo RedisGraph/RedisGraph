@@ -341,7 +341,7 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute
 	// Release the lock.
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 
-	if(id == raxNotFound) return ATTRIBUTE_NOTFOUND;
+	if(id == raxNotFound) return ATTRIBUTE_UNKNOWN;
 
 	return (uintptr_t)id;
 }

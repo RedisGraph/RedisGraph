@@ -333,8 +333,8 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
 
 	Graph *g = rm_malloc(sizeof(Graph));
-	g->nodes = DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)FreeEntity);
-	g->edges = DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity);
+	g->nodes = DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)Entity_Free);
+	g->edges = DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)Entity_Free);
 	g->labels = array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
 	g->relations = array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 	g->adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
@@ -524,10 +524,9 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 
 	NodeID id;
 	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
+
 	n->id = id;
 	n->entity = en;
-	en->prop_count = 0;
-	en->properties = NULL;
 
 	if(label != GRAPH_NO_LABEL) {
 		// Try to set matrix at position [id, id]
@@ -625,8 +624,6 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 
 	EdgeID id;
 	Entity *en = DataBlock_AllocateItem(g->edges, &id);
-	en->prop_count = 0;
-	en->properties = NULL;
 	e->id = id;
 	e->entity = en;
 	e->relationID = r;
@@ -1368,19 +1365,7 @@ void Graph_Free(Graph *g) {
 	}
 	array_free(g->labels);
 
-	it = Graph_ScanNodes(g);
-	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL)
-		FreeEntity(en);
-
-	DataBlockIterator_Free(it);
-
-	it = Graph_ScanEdges(g);
-	while((en = DataBlockIterator_Next(it, NULL)) != NULL)
-		FreeEntity(en);
-
-	DataBlockIterator_Free(it);
-
-	// Free blocks.
+	// free blocks
 	DataBlock_Free(g->nodes);
 	DataBlock_Free(g->edges);
 

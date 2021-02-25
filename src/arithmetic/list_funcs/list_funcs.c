@@ -44,7 +44,7 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 		 * WITH {val: 5} AS a return a['val']
 		 * MATCH (a) RETURN a['val']
 		 * Pass the arguments to the AR_PROPERTY function. */
-		SIValue property_args[3] = {argv[0], argv[1], SI_LongVal(ATTRIBUTE_NOTFOUND)};
+		SIValue property_args[3] = {argv[0], argv[1], SI_LongVal(ATTRIBUTE_UNKNOWN)};
 		return AR_PROPERTY(property_args, 3);
 	}
 

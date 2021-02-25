@@ -28,7 +28,7 @@ static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, c
 	Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
 	SIValue *v = GraphEntity_GetProperty((GraphEntity *)&n, attrId);
 	int ret;
-	if(v == PROPERTY_NOTFOUND) {
+	if(v == ATTRIBUTE_NOTFOUND) {
 		ret = RSVALTYPE_NOTFOUND;
 	} else if(v->type & T_STRING) {
 		*strVal = v->stringval;
@@ -133,15 +133,15 @@ void Index_IndexNode(Index *idx, const Node *n) {
 		for(uint i = 0; i < idx->fields_count; i++) {
 			field_name = idx->fields[i];
 			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
-			if(v == PROPERTY_NOTFOUND) continue;
+			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
 
 			// value must be of type string
 			if(t == T_STRING) {
 				doc_field_count++;
-				RediSearch_DocumentAddFieldString(doc, idx->fields[i], 
-						v->stringval, strlen(v->stringval), RSFLDTYPE_FULLTEXT);
+				RediSearch_DocumentAddFieldString(doc, idx->fields[i],
+												  v->stringval, strlen(v->stringval), RSFLDTYPE_FULLTEXT);
 			}
 		}
 	} else {
@@ -155,16 +155,16 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			doc_field_count++;
 			if(t == T_STRING) {
 				RediSearch_DocumentAddFieldString(doc, idx->fields[i],
-						v->stringval, strlen(v->stringval), RSFLDTYPE_TAG);
+												  v->stringval, strlen(v->stringval), RSFLDTYPE_TAG);
 			} else if(t & (SI_NUMERIC | T_BOOL)) {
 				double d = SI_GET_NUMERIC(*v);
 				RediSearch_DocumentAddFieldNumber(doc, field_name, d,
-						RSFLDTYPE_NUMERIC);
+												  RSFLDTYPE_NUMERIC);
 			} else if(t == T_POINT) {
 				double lat = (double)Point_lat(*v);
 				double lon = (double)Point_lon(*v);
 				RediSearch_DocumentAddFieldGeo(doc, field_name, lat, lon,
-						RSFLDTYPE_GEO);
+											   RSFLDTYPE_GEO);
 			} else {
 				// none indexable field
 				none_indexable_fields[none_indexable_fields_count++] =
@@ -192,7 +192,7 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			}
 
 			RediSearch_DocumentAddFieldString(doc, INDEX_FIELD_NONE_INDEXED,
-						s, len, RSFLDTYPE_TAG);
+											  s, len, RSFLDTYPE_TAG);
 
 			// free if heap based
 			if(s != stack_fields) rm_free(s);
@@ -247,7 +247,7 @@ void Index_Construct(Index *idx) {
 			// introduce both text, numeric and geo fields
 			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
-					types, RSFLDOPT_NONE);
+													   types, RSFLDOPT_NONE);
 
 			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
@@ -257,7 +257,7 @@ void Index_Construct(Index *idx) {
 		// "none_indexable_fields" which will hold a list of attribute names
 		// that were not indexed
 		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
-				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
+												   INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
 
 		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
@@ -293,7 +293,7 @@ const char **Index_GetFields(const Index *idx) {
 
 bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
 	ASSERT(idx != NULL);
-	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
+	if(attribute_id == ATTRIBUTE_UNKNOWN) return false;
 	for(uint i = 0; i < idx->fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) return true;
 	}
@@ -317,3 +317,4 @@ void Index_Free(Index *idx) {
 
 	rm_free(idx);
 }
+
