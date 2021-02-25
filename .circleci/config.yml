@@ -134,9 +134,9 @@ commands:
       - run:
           name: Build for platform (publish)
           command: |
-            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
+            #@@ docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             pushd build/docker
-            make publish OSNICK=<<parameters.platform>> X64=1 SHOW=1
+            echo make publish OSNICK=<<parameters.platform>> X64=1 SHOW=1
       - persist_to_workspace:
           root: bin/artifacts
           paths:

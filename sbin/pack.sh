@@ -54,6 +54,16 @@ export ARCH=$($READIES/bin/platform --arch)
 export OS=$($READIES/bin/platform --os)
 export OSNICK=$($READIES/bin/platform --osnick)
 
+[[ $ARCH == x64 ]] && ARCH=x86_64
+[[ $OS == linux ]] && OS=Linux
+if [[ $OSNICK == bionic ]]; then
+	OSNICK=ubuntu18.04
+elif [[ $OSNICK == xenial ]]; then
+	OSNICK=ubuntu16.04
+elif [[ $OSNICK == trusty ]]; then
+	OSNICK=ubuntu14.04
+fi
+
 export PRODUCT=redisgraph
 export PRODUCT_LIB=$PRODUCT.so
 export DEPNAMES=""
@@ -70,22 +80,13 @@ pack_ramp() {
 	local platform="$OS-$OSNICK-$ARCH"
 	local stem=${PACKAGE_NAME}.${platform}
 
-	#if [[ $SNAPSHOT == 0 ]]; then
-		local verspec=${SEMVER}${VARIANT}
-		local packdir=.
-		local s3base=""
-	#else
-	#	local verspec=${BRANCH}${VARIANT}
-	#	local packdir=snapshots
-	#	local s3base=snapshots/
-	#fi
+	local verspec=${SEMVER}${VARIANT}
 	
 	local fq_package=$stem.${verspec}.zip
 
-	[[ ! -d $BINDIR/$packdir ]] && mkdir -p $BINDIR/$packdir
+	[[ ! -d $BINDIR ]] && mkdir -p $BINDIR
 
-	local packdir="$BINDIR/$packdir"
-	local packfile="$packdir/$fq_package"
+	local packfile="$BINDIR/$fq_package"
 	local product_so="$INSTALL_DIR/$PRODUCT.so"
 
 	local xtx_vars=""
