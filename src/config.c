@@ -230,40 +230,35 @@ const char *Config_Field_name(Config_Option_Field field) {
 	return name;
 }
 
-// Initialize every module-level configuration to its default value.
+// initialize every module-level configuration to its default value
 void _Config_SetToDefaults(RedisModuleCtx *ctx) {
-	// The thread pool's default size is equal to the system's number of cores.
+	// the thread pool's default size is equal to the system's number of cores
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_pool_size = (CPUCount != -1) ? CPUCount : 1;
 
-	// Use the GraphBLAS-defined number of OpenMP threads by default.
+	// use the GraphBLAS-defined number of OpenMP threads by default
 	GxB_get(GxB_NTHREADS, &config.omp_thread_count);
 
-	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
-		// The default entity count of virtual keys for server versions >= 6 is set by macro.
-		config.vkey_entity_count = VKEY_MAX_ENTITY_COUNT_DEFAULT;
-	} else {
-		// For redis-server versions below 6.0.0, we will not split the graph into virtual keys.
-		config.vkey_entity_count = VKEY_ENTITY_COUNT_UNLIMITED;
-	}
+	// the default entity count of virtual keys
+	config.vkey_entity_count = VKEY_MAX_ENTITY_COUNT_DEFAULT;
 
 	// MEMCHECK compile flag;
 	#ifdef MEMCHECK
-		// Disable async delete during memcheck.
+		// disable async delete during memcheck
 		config.async_delete = false;
 		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
 	#else
-		// Always perform async delete when no checking for memory issues.
+		// always perform async delete when no checking for memory issues
 		config.async_delete = true;
 		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
 	#endif
 
 	config.cache_size = CACHE_SIZE_DEFAULT;
 
-	// Always build transposed matrices by default.
+	// always build transposed matrices by default
 	config.maintain_transposed_matrices = true;
 
-	// No limit on result-set size
+	// no limit on result-set size
 	config.resultset_size = RESULTSET_SIZE_UNLIMITED;
 }
 
