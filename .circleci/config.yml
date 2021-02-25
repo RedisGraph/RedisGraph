@@ -22,7 +22,6 @@ commands:
             apt-get -qq update
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
             bash <(curl -fsSL https://get.docker.com)
-      #@@- setup_remote_docker
       - setup_remote_docker:
           docker_layer_caching: true
 
@@ -128,15 +127,15 @@ commands:
       - run:
           name: Build for platform
           command: |
-            pushd build/docker
+            cd build/docker
             make build OSNICK=<<parameters.platform>> X64=1 ARTIFACTS=1 TEST=1 SHOW=1
       - early_return_for_forked_pull_requests
       - run:
           name: Build for platform (publish)
           command: |
-            #@@ docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            pushd build/docker
-            echo make publish OSNICK=<<parameters.platform>> X64=1 SHOW=1
+            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
+            cd build/docker
+            make publish OSNICK=<<parameters.platform>> X64=1 SHOW=1 -n #@@
       - persist_to_workspace:
           root: bin/artifacts
           paths:
@@ -152,7 +151,7 @@ jobs:
         environment:
           LANG: en_US.UTF-8
           LANGUAGE: en_US.UTF-8
-          LC_ALL: en_US.UTF-8  
+          LC_ALL: en_US.UTF-8
     steps:
       - checkout
       - setup-prerequisits
@@ -169,41 +168,6 @@ jobs:
       - run:
           name: Test
           command: make test
-
-      #- early_return_for_forked_pull_requests
-      #
-      #- run:
-      #    name: Persist Artifacts
-      #    command: |
-      #      strip src/$MODULE_ARTIFACT
-      #      mkdir -p /workspace/build
-      #      cp src/$MODULE_ARTIFACT /workspace
-      #      cp ramp.yml /workspace/
-      #
-      #- persist_to_workspace:
-      #    root: /workspace
-      #    paths:
-      #      - '*.so'
-      #      - ramp.yml
-      #      - build
-
-#  build_test:
-#    docker:
-#      - image: redisfab/rmbuilder:6.0.9-x64-bionic
-#        environment:
-#            LANG: en_US.UTF-8
-#            LANGUAGE: en_US.UTF-8
-#            LC_ALL: en_US.UTF-8
-#    steps:
-#      - checkout
-#      - setup-prerequisits
-#      - attach_workspace:
-#          at: /workspace
-#      - load-cached-deps
-#
-#      - run:
-#          name: Test
-#          command: make test
 
   build_memcheck:
     docker:
@@ -334,6 +298,26 @@ on-master: &on-master
   filters:
     branches:
       only: master
+    tags:
+      ignore: /.*/
+
+on-integ-branch: &on-integ-branch
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
+    tags:
+      ignore: /.*/
+
+not-on-integ-branch: &not-on-integ-branch
+  filters:
+    branches:
+      ignore:
+        - master
+        - /^\d+\.\d+.*$/
+    tags:
+      ignore: /.*/
 
 on-version-tags: &on-version-tags
   filters:
@@ -342,11 +326,12 @@ on-version-tags: &on-version-tags
     tags:
       only: /^v[0-9].*/
 
-on-master-and-version-tags: &on-master-and-version-tags
+on-integ-and-version-tags: &on-integ-and-version-tags
   filters:
     branches:
       only:
         - master
+        - /^\d+\.\d+.*$/
     tags:
       only: /^v[0-9].*/
 
@@ -356,7 +341,8 @@ workflows:
   build_and_package:
     jobs:
       - build:
-          <<: *on-any-branch
+#          <<: *on-any-branch
+          <<: *not-on-integ-branch
 #      - build_test:
 #          <<: *on-any-branch
 #          requires:
@@ -364,17 +350,17 @@ workflows:
       - build_memcheck:
           #@@ <<: *on-any-branch
           <<: *never
-          requires:
-            - build
       - platform_build:
-          requires:
-            - build
+#          requires:
+#            - build
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
+          #@@ <<: *on-integ-branch			
       - deploy_branch:
           requires:
             - platform_build
+          #@@ <<: *on-integ-branch			
       - release_automation:
           requires:
             - deploy_branch
@@ -393,7 +379,9 @@ workflows:
     triggers:
       - schedule:
           cron: "07 20 * * *"
-          <<: *on-master
+          filters:
+            branches:
+              only: master
     jobs:
       - nightly_automation
       - nightly_performance_automation

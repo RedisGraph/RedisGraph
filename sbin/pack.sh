@@ -62,6 +62,8 @@ elif [[ $OSNICK == xenial ]]; then
 	OSNICK=ubuntu16.04
 elif [[ $OSNICK == trusty ]]; then
 	OSNICK=ubuntu14.04
+elif [[ $OSNICK == centos7 ]]; then
+	OSNICK=rhel7
 fi
 
 export PRODUCT=redisgraph
