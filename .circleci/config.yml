@@ -188,7 +188,6 @@ jobs:
           command: |
               # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
               python3 ./deps/readies/bin/getredis --force --valgrind
-              make clean
               make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
           # Allow RediSearch global destructors.
           environment:
