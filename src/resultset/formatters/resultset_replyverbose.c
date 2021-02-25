@@ -11,6 +11,7 @@
 // Forward declarations.
 static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map);
 static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
+static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point);
 static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
 static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
@@ -51,6 +52,9 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_MAP:
 		_ResultSet_VerboseReplyWithMap(ctx, v);
+		return;
+	case T_POINT:
+		_ResultSet_VerboseReplyWithPoint(ctx, v);
 		return;
 	default:
 		RedisModule_Assert("Unhandled value type" && false);
@@ -176,6 +180,15 @@ static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map) {
 	SIValue_ToString(map, &str, &bufferLen, &bytesWrriten);
 	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
 	rm_free(str);
+}
+
+static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point) {
+	// point({latitude:56.7, longitude:12.78})
+	char buffer[256];
+	int bytes_written = sprintf(buffer, "point({latitude:%f, longitude:%f})",
+								Point_lat(point), Point_lon(point));
+
+	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 }
 
 void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,

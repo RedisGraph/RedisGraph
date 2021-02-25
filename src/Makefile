@@ -25,7 +25,7 @@ CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
-	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread -fopenmp
+	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
 	CFLAGS += -mmacosx-version-min=10.14
@@ -43,14 +43,15 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/map_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/path_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/list_funcs/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/placeholder_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/time_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/point_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/entity_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/string_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/boolean_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/numeric_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/aggregate_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/conditional_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/placeholder_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/comprehension_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/algebraic_expression/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)

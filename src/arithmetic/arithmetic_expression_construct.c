@@ -373,9 +373,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			// { .name }
 			prop = cypher_ast_map_projection_property_get_prop_name(selector);
 			prop_name = cypher_ast_prop_name_get_value(prop);
-
 			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
-
 			AR_ExpNode *entity = AR_EXP_NewVariableOperandNode(entity_name);
 			children[i * 2 + 1] = AR_EXP_NewAttributeAccessNode(entity, prop_name);
 		} else if(t == CYPHER_AST_MAP_PROJECTION_LITERAL) {
@@ -384,9 +382,7 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 			prop_name = cypher_ast_prop_name_get_value(prop);
 			const cypher_astnode_t *literal_exp =
 				cypher_ast_map_projection_literal_get_expression(selector);
-
 			children[i * 2] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)prop_name));
-
 			children[i * 2 + 1] = AR_EXP_FromASTNode(literal_exp);
 		} else if(t == CYPHER_AST_MAP_PROJECTION_IDENTIFIER) {
 			// { v }
@@ -605,4 +601,3 @@ AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
 	return root;
 }
-
