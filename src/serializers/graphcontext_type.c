@@ -12,14 +12,12 @@
 #include "decoders/decode_previous.h"
 #include "../util/redis_version.h"
 
-// Forward declerations of the module event handler functions
+// forward declerations of the module event handler functions
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
 
-/* Declaration of the type for redis registration. */
+// declaration of the type for redis registration
 RedisModuleType *GraphContextRedisModuleType;
-
-extern uint redis_major_version;
 
 static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	GraphContext *gc = NULL;
@@ -74,21 +72,21 @@ static void _GraphContextType_Free(void *value) {
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {
-	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-								 .rdb_load = _GraphContextType_RdbLoad,
-								 .rdb_save = _GraphContextType_RdbSave,
-								 .aof_rewrite = _GraphContextType_AofRewrite,
-								 .free = _GraphContextType_Free,
-								};
-
-	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
-		tm.aux_save = _GraphContextType_AuxSave;
-		tm.aux_load = _GraphContextType_AuxLoad;
-		tm.aux_save_triggers = REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB;
-	}
+	RedisModuleTypeMethods tm = {
+		.version           = REDISMODULE_TYPE_METHOD_VERSION,
+		.rdb_load          = _GraphContextType_RdbLoad,
+		.rdb_save          = _GraphContextType_RdbSave,
+		.aof_rewrite       = _GraphContextType_AofRewrite,
+		.free              = _GraphContextType_Free,
+		.aux_save          = _GraphContextType_AuxSave,
+		.aux_load          = _GraphContextType_AuxLoad,
+		.aux_save_triggers = REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB
+	};
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
-															 GRAPH_ENCODING_VERSION_LATEST, &tm);
+			GRAPH_ENCODING_VERSION_LATEST, &tm);
+
 	if(GraphContextRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;
 }
+
