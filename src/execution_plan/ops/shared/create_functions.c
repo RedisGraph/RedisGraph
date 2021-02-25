@@ -26,24 +26,21 @@ static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 static void _CommitNode(GraphContext *gc, Node *n, PendingProperties *props,
 						int *labels, ResultSetStatistics *stats) {
 	Graph *g = gc->g;
+	uint label_count = array_len(labels);
 
 	// introduce node into graph
-	Graph_CreateNode(g, n);
+	Graph_CreateNode(g, n, labels, label_count);
 
 	// add node attributres
 	if(props) _AddProperties(stats, (GraphEntity *)n, props);
 
-	// set node labels
-	uint label_count = array_len(labels);
+	// add node labels
 	for(uint i = 0; i < label_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		ASSERT(s);
 
 		if(Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
 	}
-
-	// label node
-	Graph_LabelNode(g, n->id, labels, label_count);
 }
 
 static void _CommitNodes(PendingCreations *pending) {

@@ -141,10 +141,11 @@ void Graph_AllocateEdges(
 );
 
 // Create a single node.
-// Return newly created node.
 void Graph_CreateNode(
 	Graph *g,
-	Node *n
+	Node *n,
+	int *labels,
+	uint label_count
 );
 
 // Connects source node to destination node.

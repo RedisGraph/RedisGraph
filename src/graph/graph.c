@@ -275,6 +275,22 @@ void _MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
 	}
 }
 
+/* Resize the dimensions of the matrix to the specified values. */
+static void _MatrixResizeToDimensions(const Graph *g, RG_Matrix matrix, GrB_Index rows,
+									  GrB_Index cols) {
+	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
+	GrB_Index nrows;
+	GrB_Index ncols;
+	GrB_Matrix_ncols(&ncols, m);
+	GrB_Matrix_nrows(&nrows, m);
+
+	// This policy should only be used in a thread-safe context, so no locking is required.
+	if(nrows != rows || ncols != cols) {
+		GrB_Info res = GxB_Matrix_resize(m, rows, cols);
+		ASSERT(res == GrB_SUCCESS);
+	}
+}
+
 /* Do not update matrices. */
 void _MatrixNOP(const Graph *g, RG_Matrix matrix) {
 	return;
@@ -522,14 +538,14 @@ void Graph_LabelNode(Graph *g, NodeID id, int *labels, uint label_count) {
 		m = RG_Matrix_Get_GrB_Matrix(g->node_labels);
 		res = GrB_Matrix_setElement_BOOL(m, true, id, label);
 		if(res != GrB_SUCCESS) {
-			_MatrixResizeToCapacity(g, matrix);
+			_MatrixResizeToDimensions(g, g->node_labels, _Graph_NodeCap(g), label_count);
 			res = GrB_Matrix_setElement_BOOL(m, true, id, label);
 			ASSERT(res == GrB_SUCCESS);
 		}
 	}
 }
 
-void Graph_CreateNode(Graph *g, Node *n) {
+void Graph_CreateNode(Graph *g, Node *n, int *labels, uint label_count) {
 	ASSERT(g);
 
 	NodeID id;
@@ -538,6 +554,8 @@ void Graph_CreateNode(Graph *g, Node *n) {
 	n->entity = en;
 	en->prop_count = 0;
 	en->properties = NULL;
+
+	Graph_LabelNode(g, n->id, labels, label_count);
 }
 
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
@@ -695,6 +713,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 }
 
 uint Graph_GetNodeLabels(const Graph *g, const Node *n, LabelID *labels, LabelID label_count) {
+	if(label_count == 0) return 0;
 	// validate inputs
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);

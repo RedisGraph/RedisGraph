@@ -63,7 +63,7 @@ class GraphTest : public ::testing::Test {
 
 		// Create nodes.
 		Node n;
-		for(uint i = 0; i < node_count; i++) Graph_CreateNode(g, &n);
+		for(uint i = 0; i < node_count; i++) Graph_CreateNode(g, &n, NULL, 0);
 
 		// Validate nodes creation.
 		GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
@@ -134,7 +134,7 @@ class GraphTest : public ::testing::Test {
 		Graph_AllocateNodes(g, prev_node_count + additional_node_count);
 		for(uint i = 0; i < additional_node_count; i++) {
 			Node n;
-			Graph_CreateNode(g, &n);
+			Graph_CreateNode(g, &n, NULL, 0);
 		}
 
 		// Validate nodes creation.
@@ -193,7 +193,7 @@ void benchmark_node_creation_with_labels() {
 	// Create N nodes with labels.
 	for(int i = 0; i < samples; i++) {
 		simple_tic(tic);
-		for(unsigned int j = 0; j < n; j++) Graph_CreateNode(g, &node);
+		for(unsigned int j = 0; j < n; j++) Graph_CreateNode(g, &node, NULL, 0);
 		timings[i] = simple_toc(tic);
 
 		printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
@@ -230,7 +230,7 @@ void benchmark_node_creation_no_labels() {
 	for(int i = 0; i < samples; i++) {
 		// Create N nodes, don't use labels.
 		simple_tic(tic);
-		for(int j = 0; j < n; j++) Graph_CreateNode(g, &node);
+		for(int j = 0; j < n; j++) Graph_CreateNode(g, &node, NULL, 0);
 		timings[i] = simple_toc(tic);
 		printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
 		if(timings[i] > threshold) outliers++;
@@ -266,7 +266,7 @@ void benchmark_edge_creation_with_relationships() {
 
 	// Introduce relations types.
 	for(int i = 0; i < relation_count; i++) Graph_AddRelationType(g);
-	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, &node);
+	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, &node, NULL, 0);
 	for(int i = 0; i < samples; i++) {
 		// Describe connections;
 		// Node I is connected to Node I+1,
@@ -357,7 +357,7 @@ TEST_F(GraphTest, RemoveNodes) {
 	Node node;
 	Edge edge;
 
-	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &node);
+	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &node, NULL, 0);
 	int r = Graph_AddRelationType(g);
 
 	/* Connections:
@@ -422,7 +422,7 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
 	int relation = Graph_AddRelationType(g);
-	for(int i = 0; i < 8; i++) Graph_CreateNode(g, &n);
+	for(int i = 0; i < 8; i++) Graph_CreateNode(g, &n, NULL, 0);
 
 	// First node.
 	Graph_ConnectNodes(g, 0, 2, relation, &e);
@@ -495,7 +495,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	GrB_Index nnz;
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
-	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &n);
+	for(int i = 0; i < 3; i++) Graph_CreateNode(g, &n, NULL, 0);
 	int r = Graph_AddRelationType(g);
 
 	/* Connections:
@@ -640,7 +640,7 @@ TEST_F(GraphTest, GetNode) {
 
 	Graph_AcquireWriteLock(g);
 	{
-		for(int i = 0 ; i < nodeCount; i++) Graph_CreateNode(g, &n);
+		for(int i = 0 ; i < nodeCount; i++) Graph_CreateNode(g, &n, NULL, 0);
 	}
 	Graph_ReleaseLock(g);
 
@@ -670,7 +670,7 @@ TEST_F(GraphTest, GetEdge) {
 
 	Graph *g = Graph_New(nodeCount, nodeCount);
 	Graph_AcquireWriteLock(g);
-	for(int i = 0; i < nodeCount; i++) Graph_CreateNode(g, &n);
+	for(int i = 0; i < nodeCount; i++) Graph_CreateNode(g, &n, NULL, 0);
 	for(int i = 0; i < relationCount; i++) relations[i] = Graph_AddRelationType(g);
 
 	/* Connect nodes:
@@ -780,8 +780,7 @@ TEST_F(GraphTest, BulkDelete) {
 
 	int labels[1] = {0};
 	for(int i = 0; i < node_count; i++) {
-		Graph_CreateNode(g, &n[i]);
-		Graph_LabelNode(g, n->id, labels, 1);
+		Graph_CreateNode(g, &n[i], labels, 1);
 	}
 
 	/* Connect nodes:

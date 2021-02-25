@@ -135,13 +135,11 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		Graph_AllocateNodes(g, node_count);
 
 		for(int i = 0; i < person_count; i++) {
-			Graph_CreateNode(g, &n);
-			Graph_LabelNode(g, n.id, person_label, 1);
+			Graph_CreateNode(g, &n, person_label, 1);
 		}
 
 		for(int i = 0; i < city_count; i++) {
-			Graph_CreateNode(g, &n);
-			Graph_LabelNode(g, n.id, city_label, 1);
+			Graph_CreateNode(g, &n, city_label, 1);
 		}
 
 		// Creates a relation matrices.

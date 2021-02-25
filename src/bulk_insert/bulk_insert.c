@@ -118,8 +118,7 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
 
 	while(data_idx < data_len) {
 		Node n;
-		Graph_CreateNode(gc->g, &n);
-		Graph_LabelNode(gc->g, n.id, &label_id, 1);
+		Graph_CreateNode(gc->g, &n, &label_id, 1);
 
 		for(unsigned int i = 0; i < prop_count; i++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);

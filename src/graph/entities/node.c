@@ -4,12 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <stdlib.h>
-
 #include "node.h"
-#include "../graph.h"
-#include "../../RG.h"
-#include "../../query_ctx.h"
 
 void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,
 				   GraphEntityStringFromat format) {
