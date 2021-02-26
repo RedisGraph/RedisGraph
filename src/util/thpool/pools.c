@@ -19,7 +19,7 @@ static threadpool _writers_thpool = NULL;  // writers
 // returns 1 if thread pools initialized, 0 otherwise
 int ThreadPools_CreatePools
 (
-	uint reader_count, 
+	uint reader_count,
 	uint writer_count
 ) {
 	ASSERT(_readers_thpool == NULL);
@@ -38,8 +38,7 @@ int ThreadPools_CreatePools
 uint ThreadPools_ThreadCount
 (
 	void
-)
-{
+) {
 	ASSERT(_readers_thpool != NULL);
 	ASSERT(_writers_thpool != NULL);
 
@@ -70,7 +69,7 @@ int ThreadPools_GetThreadID
 	// search in writers
 	thread_id = thpool_get_thread_id(_writers_thpool, pthread);
 	// compensate for Redis main thread
-	if(thread_id != -1) return readers_count + thread_id + 1; 
+	if(thread_id != -1) return readers_count + thread_id + 1;
 
 	// search in readers pool
 	thread_id = thpool_get_thread_id(_readers_thpool, pthread);
@@ -107,23 +106,23 @@ void ThreadPools_Resume
 // add task for reader thread
 int ThreadPools_AddWorkReader
 (
-	void (*function_p)(void*), 
-	void* arg_p
+	void (*function_p)(void *),
+	void *arg_p
 ) {
 	ASSERT(_readers_thpool != NULL);
 
-	return thpool_add_work(_readers_thpool, function_p, arg_p); 
+	return thpool_add_work(_readers_thpool, function_p, arg_p);
 }
 
 // add task for writer thread
 int ThreadPools_AddWorkWriter
 (
-	void (*function_p)(void*), 
-	void* arg_p
+	void (*function_p)(void *),
+	void *arg_p
 ) {
 	ASSERT(_writers_thpool != NULL);
 
-	return thpool_add_work(_writers_thpool, function_p, arg_p); 
+	return thpool_add_work(_writers_thpool, function_p, arg_p);
 }
 
 // destroy all thread pools

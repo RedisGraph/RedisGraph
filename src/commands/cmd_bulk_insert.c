@@ -5,15 +5,29 @@
 */
 
 #include "cmd_bulk_insert.h"
-#include "./cmd_context.h"
-#include "../graph/graph.h"
-#include "../bulk_insert/bulk_insert.h"
+#include "cmd_context.h"
 #include "../util/rmalloc.h"
+#include "../util/thpool/pools.h"
+#include "../bulk_insert/bulk_insert.h"
 
-void _MGraph_BulkInsert(CommandCtx *command_ctx, RedisModuleString **argv, int argc) {
+typedef struct {
+	CommandCtx *command_ctx;
+	RedisModuleString **argv;
+	int argc;
+} BulkCtx;
+
+void _MGraph_BulkInsert(void *args) {
+	// Unpack arguments
+	BulkCtx *bulk_ctx = args;
+	CommandCtx *command_ctx = bulk_ctx->command_ctx;
+	RedisModuleString **argv = bulk_ctx->argv;
+	int argc = bulk_ctx->argc;
+
 	CommandCtx_TrackCtx(command_ctx);
+	RedisModuleBlockedClient *bc = CommandCtx_GetBlockingClient(command_ctx);
 
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
+	// RedisModule_ThreadSafeContextLock(ctx);
 
 	argv += 1; // skip "GRAPH.BULK"
 	RedisModuleString *rs_graph_name = *argv++;
@@ -84,6 +98,9 @@ void _MGraph_BulkInsert(CommandCtx *command_ctx, RedisModuleString **argv, int a
 		goto cleanup;
 	}
 
+	// Successful bulk commands should always modify slaves.
+	RedisModule_ReplicateVerbatim(ctx);
+
 	// Replay to caller.
 	len = snprintf(reply, 1024, "%llu nodes created, %llu edges created",
 				   nodes_in_query, relations_in_query);
@@ -96,17 +113,20 @@ cleanup:
 	}
 	CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	CommandCtx_Free(command_ctx);
+	rm_free(bulk_ctx);
 }
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc < 3) return RedisModule_WrongArity(ctx);
 
-	// Bulk commands should always modify slaves.
-	CommandCtx *context = CommandCtx_New(ctx, NULL, NULL, NULL, NULL,
-			EXEC_THREAD_MAIN, false, false, 0);
+	BulkCtx *bulk_ctx = rm_malloc(sizeof(BulkCtx));
+	RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+	bulk_ctx->command_ctx = CommandCtx_New(NULL, bc, NULL, NULL, NULL,
+										   EXEC_THREAD_MAIN, false, false, 0);
+	bulk_ctx->argv = argv;
+	bulk_ctx->argc = argc;
+	ThreadPools_AddWorkWriter(_MGraph_BulkInsert, bulk_ctx);
 
-	_MGraph_BulkInsert(context, argv, argc);
-	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 

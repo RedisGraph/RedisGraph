@@ -6,10 +6,9 @@
 
 #include "bulk_insert.h"
 #include "RG.h"
-#include "../schema/schema.h"
 #include "../util/rmalloc.h"
+#include "../schema/schema.h"
 #include "../datatypes/array.h"
-#include <errno.h>
 
 // The first byte of each property in the binary stream
 // is used to indicate the type of the subsequent SIValue
@@ -25,7 +24,7 @@ typedef enum {
 // Read the header of a data stream to parse its property keys and update schemas.
 static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 											const char *data, size_t *data_idx,
-											int *label_id, unsigned int *prop_count) {
+											int *label_id, uint *prop_count) {
 	/* Binary header format:
 	 * - entity name : null-terminated C string
 	 * - property count : 4-byte unsigned integer
@@ -39,22 +38,22 @@ static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 	*label_id = schema->id;
 
 	// Next 4 bytes are property count
-	*prop_count = *(unsigned int *)&data[*data_idx];
+	*prop_count = *(uint *)&data[*data_idx];
 	*data_idx += sizeof(unsigned int);
 
 	if(*prop_count == 0) return NULL;
-	Attribute_ID *prop_indicies = malloc(*prop_count * sizeof(Attribute_ID));
+	Attribute_ID *prop_indices = malloc(*prop_count * sizeof(Attribute_ID));
 
 	// The rest of the line is [char *prop_key] * prop_count
-	for(unsigned int j = 0; j < *prop_count; j ++) {
+	for(uint j = 0; j < *prop_count; j ++) {
 		char *prop_key = (char *)data + *data_idx;
 		*data_idx += strlen(prop_key) + 1;
 
 		// Add properties to schemas
-		prop_indicies[j] = GraphContext_FindOrAddAttribute(gc, prop_key);
+		prop_indices[j] = GraphContext_FindOrAddAttribute(gc, prop_key);
 	}
 
-	return prop_indicies;
+	return prop_indices;
 }
 
 // Read an SIValue from the data stream and update the index appropriately
@@ -112,23 +111,23 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
 	size_t data_idx = 0;
 
 	int label_id;
-	unsigned int prop_count;
-	Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_NODE, data, &data_idx, &label_id,
-														 &prop_count);
+	uint prop_count;
+	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, SCHEMA_NODE, data, &data_idx, &label_id,
+														&prop_count);
 
 	while(data_idx < data_len) {
 		Node n;
 		Graph_CreateNode(gc->g, label_id, &n);
-		for(unsigned int i = 0; i < prop_count; i++) {
+		for(uint i = 0; i < prop_count; i++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
 			// Cypher does not support NULL as a property value.
 			// If we encounter one here, simply skip it.
 			if(SI_TYPE(value) == T_NULL) continue;
-			GraphEntity_AddProperty((GraphEntity *)&n, prop_indicies[i], value);
+			GraphEntity_AddProperty((GraphEntity *)&n, prop_indices[i], value);
 		}
 	}
 
-	free(prop_indicies);
+	free(prop_indices);
 	return BULK_OK;
 }
 
@@ -137,10 +136,10 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
 	size_t data_idx = 0;
 
 	int reltype_id;
-	unsigned int prop_count;
+	uint prop_count;
 	// Read property keys from header and update schema
-	Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_EDGE, data, &data_idx, &reltype_id,
-														 &prop_count);
+	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, SCHEMA_EDGE, data, &data_idx, &reltype_id,
+														&prop_count);
 	NodeID src;
 	NodeID dest;
 
@@ -158,16 +157,16 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
 		if(prop_count == 0) continue;
 
 		// Process and add relation properties
-		for(unsigned int i = 0; i < prop_count; i ++) {
+		for(uint i = 0; i < prop_count; i ++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
 			// Cypher does not support NULL as a property value.
 			// If we encounter one here, simply skip it.
 			if(SI_TYPE(value) == T_NULL) continue;
-			GraphEntity_AddProperty((GraphEntity *)&e, prop_indicies[i], value);
+			GraphEntity_AddProperty((GraphEntity *)&e, prop_indices[i], value);
 		}
 	}
 
-	free(prop_indicies);
+	free(prop_indices);
 	return BULK_OK;
 }
 
@@ -226,20 +225,14 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
 
 	if(node_token_count > 0) {
 		int rc = _BulkInsert_InsertNodes(ctx, gc, node_token_count, &argv, &argc);
-		if(rc != BULK_OK) {
-			return BULK_FAIL;
-		} else if(argc == 0) {
-			return BULK_OK;
-		}
+		if(rc != BULK_OK) return BULK_FAIL;
+		if(argc == 0) return BULK_OK;
 	}
 
 	if(relation_token_count > 0) {
 		int rc = _BulkInsert_Insert_Edges(ctx, gc, relation_token_count, &argv, &argc);
-		if(rc != BULK_OK) {
-			return BULK_FAIL;
-		} else if(argc == 0) {
-			return BULK_OK;
-		}
+		if(rc != BULK_OK) return BULK_FAIL;
+		if(argc == 0) return BULK_OK;
 	}
 
 	ASSERT(argc == 0);
