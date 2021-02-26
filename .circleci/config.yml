@@ -201,6 +201,7 @@ jobs:
       LANGUAGE: en_US.UTF-8
       LC_ALL: en_US.UTF-8
     steps:
+      - checkout
       - setup-prerequisits
       - run:
           name: Build
