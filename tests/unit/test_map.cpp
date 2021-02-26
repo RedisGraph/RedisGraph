@@ -191,4 +191,3 @@ TEST_F(MapTest, map_tostring) {
 	SIValue_Free(map);
 	SIValue_Free(inner_map);
 }
-

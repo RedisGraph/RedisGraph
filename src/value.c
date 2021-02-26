@@ -110,6 +110,13 @@ SIValue SI_TransferStringVal(char *s) {
 	};
 }
 
+SIValue SI_Point(float latitude, float longitude) {
+	return (SIValue) {
+		.type = T_POINT, .allocation = M_NONE,
+			.point = {.latitude = latitude, .longitude = longitude}
+	};
+}
+
 /* Make an SIValue that reuses the original's allocations, if any.
  * The returned value is not responsible for freeing any allocations,
  * and is not guaranteed that these allocations will remain in scope. */

@@ -289,4 +289,3 @@ cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
-

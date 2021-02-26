@@ -146,6 +146,10 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Expression functions
 + case...when
 
+### Geospatial functions
++ distance
++ point
+
 ### Unsupported function classes
 
 - Logarithmic math functions

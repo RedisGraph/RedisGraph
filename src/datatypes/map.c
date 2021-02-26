@@ -307,4 +307,3 @@ void Map_Free
 
 	array_free(map.map);
 }
-

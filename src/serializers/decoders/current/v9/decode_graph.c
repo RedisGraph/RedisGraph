@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v8.h"
+#include "decode_v9.h"
 
 // Module event handler functions declarations.
 void ModuleEventHandler_IncreaseDecodingGraphsCount(void);
@@ -112,7 +112,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v8(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
@@ -140,19 +140,19 @@ GraphContext *RdbLoadGraph_v8(RedisModuleIO *rdb) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbLoadNodes_v8(rdb, gc, payload.entities_count);
+			RdbLoadNodes_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbLoadDeletedNodes_v8(rdb, gc, payload.entities_count);
+			RdbLoadDeletedNodes_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbLoadEdges_v8(rdb, gc, payload.entities_count);
+			RdbLoadEdges_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbLoadDeletedEdges_v8(rdb, gc, payload.entities_count);
+			RdbLoadDeletedEdges_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbLoadGraphSchema_v8(rdb, gc);
+			RdbLoadGraphSchema_v9(rdb, gc);
 			break;
 		default:
 			ASSERT(false && "Unknown encoding");
