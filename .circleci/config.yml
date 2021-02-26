@@ -363,8 +363,8 @@ workflows:
       - build_memcheck:
           <<: *on-any-branch
       - build_macos:
-          <<: *on-any-branch
-          #@@ <<: *on-integ-branch
+          # <<: *on-any-branch
+          <<: *on-integ-branch
       - platform_build:
           matrix:
             parameters:
