@@ -148,7 +148,7 @@ endif
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
 	cd ../deps/RediSearch; \
-	mkdir build; \
+	mkdir -p build; \
 	cd build; \
 	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
 	make;
@@ -180,8 +180,10 @@ endef
 # Build the module...
 redisgraph.so: $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
+ifeq ($(uname_S),Linux)
 ifneq ($(DEBUG),1)
 	$(call extract_symbols,$@)
+endif
 endif
 
 clean:
