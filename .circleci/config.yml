@@ -76,8 +76,10 @@ commands:
       - run:
           name: Setup locale
           command: |
-              locale-gen --purge en_US.UTF-8
-              dpkg-reconfigure -f noninteractive locales
+              if command -v apt-get &> /dev/null; then
+                locale-gen --purge en_US.UTF-8
+                dpkg-reconfigure -f noninteractive locales
+              fi
 
   benchmark-automation:
     parameters:
@@ -195,7 +197,7 @@ jobs:
 
   build_macos:
     macos:
-      xcode: 11.3.0
+      xcode: 12.4.0
     environment:
       LANG: en_US.UTF-8
       LANGUAGE: en_US.UTF-8
