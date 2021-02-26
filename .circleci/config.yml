@@ -71,7 +71,7 @@ commands:
       - run:
           name: Install prerequisites
           command: |
-            ./system-setup.py
+            ./sbin/system-setup.py
 
       - run:
           name: Setup locale
@@ -192,6 +192,24 @@ jobs:
           # Allow RediSearch global destructors.
           environment:
             RS_GLOBAL_DTORS: 1
+
+  build_macos:
+    macos:
+      xcode: 11.3.0
+    environment:
+      LANG: en_US.UTF-8
+      LANGUAGE: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+    steps:
+      - setup-prerequisits
+      - run:
+          name: Build
+          command: |
+            make
+            make package
+      - run:
+          name: Test
+          command: make test
 
   platform_build:
     parameters:
@@ -343,6 +361,9 @@ workflows:
           <<: *not-on-integ-branch
       - build_memcheck:
           <<: *on-any-branch
+      - build_macos:
+          <<: *on-any-branch
+          #@@ <<: *on-integ-branch
       - platform_build:
           matrix:
             parameters:

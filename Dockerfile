@@ -32,7 +32,7 @@ ADD ./ /build
 
 # Set up a build environment
 RUN ./deps/readies/bin/getpy3
-RUN ./system-setup.py
+RUN ./sbin/system-setup.py
 
 RUN if [ ! -z $(command -v apt-get) ]; then \
         locale-gen --purge en_US.UTF-8 ;\

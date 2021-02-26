@@ -4,7 +4,8 @@ import sys
 import os
 import argparse
 
-ROOT = HERE = os.path.abspath(os.path.dirname(__file__))
+HERE = os.path.dirname(__file__)
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
 READIES = os.path.join(ROOT, "deps/readies")
 sys.path.insert(0, READIES)
 import paella
@@ -20,7 +21,7 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
-        self.install("git automake libtool autoconf valgrind astyle")
+        self.install("git automake libtool autoconf astyle")
 
     def debian_compat(self):
         self.install("locales")
@@ -42,8 +43,12 @@ class RedisGraphSetup(paella.Setup):
 
     def macos(self):
         self.install_gnu_utils()
+        self.run("%s/bin/getgcc --modern" % READIES)
         self.install("redis")
         self.install_peg()
+
+    def linux_last(self):
+        self.install("valgrind")
 
     def common_last(self):
         self.run("%s/bin/getcmake" % READIES)
@@ -53,11 +58,16 @@ class RedisGraphSetup(paella.Setup):
 
     def install_peg(self):
         self.run(r"""
+            cd /tmp
+            build_dir=$(mktemp -d)
+            cd $build_dir
             wget https://www.piumarta.com/software/peg/peg-0.1.18.tar.gz
             tar xzf peg-0.1.18.tar.gz
             cd peg-0.1.18
             make
             make install
+            cd /tmp
+            rm -rf $build_dir
             """)
 
 #----------------------------------------------------------------------------------------------
