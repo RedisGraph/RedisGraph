@@ -16,8 +16,8 @@ if [[ $1 == --help || $1 == help ]]; then
 		[ARGVARS...] pack.sh [--help|help]
 		
 		Argument variables:
-		VERBOSE=1     Print commands
-		IGNERR=1      Do not abort on error
+		VERBOSE=1         Print commands
+		IGNERR=1          Do not abort on error
 
 		RAMP=1            Build RAMP file
 		DEPS=1            Build dependencies file
@@ -118,6 +118,8 @@ pack_ramp() {
 		local snap_package=$stem.${BRANCH}${VARIANT}.zip
 		ln -sf ../$fq_package $snap_package
 	fi
+
+	cd $ROOT
 }
 
 #----------------------------------------------------------------------------------------------
@@ -158,12 +160,14 @@ pack_deps() {
 		ln -sf ../$fq_dep $snap_dep
 		ln -sf ../$fq_dep.sha256 $snap_dep.sha256
 	fi
+	
+	cd $ROOT
 }
 
 #----------------------------------------------------------------------------------------------
 
 prepare_symbols_dep() {
-	echo "Building debug symbols dependencies ..."
+	echo "Preparing debug symbols dependencies ..."
 	echo $INSTALL_DIR > $BINDIR/debug.dir
 	echo $PRODUCT.so.debug > $BINDIR/debug.files
 	echo "" > $BINDIR/debug.prefix
@@ -208,6 +212,11 @@ if [[ $RAMP == 1 ]]; then
 	echo "Building RAMP $VARIANT files ..."
 	pack_ramp
 	echo "Done."
+fi
+
+if [[ $VERBOSE == 1 ]]; then
+	echo "Artifacts:"
+	du -ah --apparent-size $BINDIR
 fi
 
 exit 0

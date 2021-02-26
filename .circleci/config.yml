@@ -207,9 +207,7 @@ jobs:
       - setup-prerequisits
       - run:
           name: Build
-          command: |
-            make
-            make package
+          command: make
       - run:
           name: Test
           command: make test
