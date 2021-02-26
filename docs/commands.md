@@ -588,7 +588,9 @@ This section contains information on all supported functions from the Cypher que
 * [List functions](#list-functions)
 * [Mathematical functions](#mathematical-functions)
 * [String functions](#string-functions)
+* [Point functions](#point-functions)
 * [Node functions](#node-functions)
+* [Path functions](#path-functions)
 
 ## Predicate functions
 
@@ -658,6 +660,13 @@ This section contains information on all supported functions from the Cypher que
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
 
+## Point functions
+
+| Function          | Description                                                     |
+| -------           | :-----------                                                    |
+| [point()](#point) | Returns a Point type representing the given lat/lon coordinates |
+| distance()        | Returns the distance in meters between the two given points     |
+
 ## Node functions
 |Function | Description|
 | ------- |:-----------|
@@ -703,6 +712,16 @@ They can operate on any form of input array, but are particularly useful for pat
 ```sh
 MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
 ```
+
+### Point
+The `point()` function expects one map argument of the form:
+```sh
+RETURN point({latitude: lat_value, longitude: lon_val})
+```
+
+The key names `latitude` and `longitude` are case-sensitive.
+
+The point constructed by this function can be saved as a node/relationship property or used within the query, such as in a `distance` function call.
 
 #### JSON format
 `toJSON()` returns the input value in JSON formatting. For primitive data types and arrays, this conversion is conventional. Maps and map projections (`toJSON(node { .prop} )`) are converted to JSON objects, as are nodes and relationships.
@@ -778,6 +797,9 @@ It can yield two outputs:
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
+
+String, numeric, and geospatial data types can be indexed.
+
 The creation syntax is:
 
 ```sh
@@ -800,12 +822,14 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (:Employer {name: 'Dunder Mifflin'})-[:EMPLOYS]->(p:Person) RETURN p"
 ```
 
-RedisGraph can use multiple indexes as ad-hoc composite indexes at query time. For example, if `age` and `years_employed` are both indexed, then both indexes will be utilized in the query:
+An example of utilizing a geospatial index to find `Employer` nodes within 5 kilometers of Scranton is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (p:Person) WHERE p.age < 30 OR p.years_employed < 3 RETURN p"
+"WITH point({latitude:41.4045886, longitude:-75.6969532}) AS scranton MATCH (e:Employer) WHERE distance(e.location, scranton) < 5000 RETURN e"
 ```
+
+Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
 
 Individual indexes can be deleted using the matching syntax:
 

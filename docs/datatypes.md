@@ -42,6 +42,10 @@ All RedisGraph integers are treated as 64-bit signed integers.
 
 All RedisGraph floating-point values are treated as 64-bit signed doubles.
 
+### Geospatial Points
+
+The Point data type is a set of latitude/longitude coordinates, stored within RedisGraph as a pair of 32-bit floats. It is instantiated using the [point() function call](commands.md#point).
+
 ### Nulls
 
 In RedisGraph, `null` is used to stand in for an unknown or missing value.

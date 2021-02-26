@@ -28,7 +28,8 @@ typedef enum {
 	VALUE_EDGE = 7,
 	VALUE_NODE = 8,
 	VALUE_PATH = 9,
-	VALUE_MAP = 10
+	VALUE_MAP = 10,
+	VALUE_POINT = 11
 } ValueType;
 
 // Typedef for header formatters.
@@ -57,4 +58,3 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
 	// Output string-formatted number
 	RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
-

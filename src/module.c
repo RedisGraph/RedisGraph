@@ -30,9 +30,9 @@
 //------------------------------------------------------------------------------
 // Minimal supported Redis version
 //------------------------------------------------------------------------------
-#define MIN_REDIS_VERION_MAJOR 5
+#define MIN_REDIS_VERION_MAJOR 6
 #define MIN_REDIS_VERION_MINOR 0
-#define MIN_REDIS_VERION_PATCH 7
+#define MIN_REDIS_VERION_PATCH 0
 
 //------------------------------------------------------------------------------
 // Module-level global variables
@@ -76,9 +76,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	// Validate minimum redis-server version.
-	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR,
-									 MIN_REDIS_VERION_PATCH)) {
+	// validate minimum redis-server version
+	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR,
+				MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH)) {
 		RedisModule_Log(ctx, "warning", "RedisGraph requires redis-server version %d.%d.%d and up",
 						MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH);
 		return REDISMODULE_ERR;

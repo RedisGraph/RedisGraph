@@ -19,7 +19,6 @@ typedef struct {
 	RedisModuleCtx *ctx;            /* Redis context. */
 	GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
 	uint column_count;              /* Number of columns in result set. */
-	bool header_emitted;            /* Whether a header row has been issued to the user. */
 	const char **columns;           /* Field names for each column of results. */
 	uint *columns_record_map;       /* Mapping between column name and record index.*/
 	DataBlock *cells;               /* Accumulated cells */

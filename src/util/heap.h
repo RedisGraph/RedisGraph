@@ -12,7 +12,7 @@ typedef struct heap_s heap_t;
  * @param[in] cmp Callback used to get an item's priority
  * @param[in] udata User data passed through to cmp callback
  * @return initialised heap */
-heap_t *heap_new(int (*cmp) (const void *,
+heap_t *Heap_new(int (*cmp) (const void *,
                              const void *,
                              const void *udata),
                  const void *udata);
@@ -25,14 +25,14 @@ heap_t *heap_new(int (*cmp) (const void *,
  * @param[in] cmp Callback used to get an item's priority
  * @param[in] udata User data passed through to cmp callback
  * @param[in] size Initial size of the heap's array */
-void heap_init(heap_t* h,
+void Heap_init(heap_t* h,
                int (*cmp) (const void *,
                            const void *,
                            const void *udata),
                const void *udata,
                unsigned int size);
 
-void heap_free(heap_t * hp);
+void Heap_free(heap_t * hp);
 
 /**
  * Add item
@@ -46,7 +46,7 @@ void heap_free(heap_t * hp);
  * @param[in/out] hp_ptr Pointer to the heap. Changed when heap is enlarged.
  * @param[in] item The item to be added
  * @return 0 on success; -1 on failure */
-int heap_offer(heap_t **hp_ptr, void *item);
+int Heap_offer(heap_t **hp_ptr, void *item);
 
 /**
  * Add item
@@ -58,17 +58,17 @@ int heap_offer(heap_t **hp_ptr, void *item);
  *
  * @param[in] item The item to be added
  * @return 0 on success; -1 on error */
-int heap_offerx(heap_t * hp, void *item);
+int Heap_offerx(heap_t * hp, void *item);
 
 /**
  * Remove the item with the top priority
  *
  * @return top item */
-void *heap_poll(heap_t * hp);
+void *Heap_poll(heap_t * hp);
 
 /**
  * @return top item of the heap */
-void *heap_peek(const heap_t * hp);
+void *Heap_peek(const heap_t * hp);
 
 /**
  * Clear all items
@@ -76,32 +76,32 @@ void *heap_peek(const heap_t * hp);
  * NOTE:
  *  Does not free items.
  *  Only use if item memory is managed outside of heap */
-void heap_clear(heap_t * hp);
+void Heap_clear(heap_t * hp);
 
 /**
  * @return number of items in heap */
-int heap_count(const heap_t * hp);
+int Heap_count(const heap_t * hp);
 
 /**
  * @return size of array */
-int heap_size(const heap_t * hp);
+int Heap_size(const heap_t * hp);
 
 /**
  * @return number of bytes needed for a heap of this size. */
-size_t heap_sizeof(unsigned int size);
+size_t Heap_sizeof(unsigned int size);
 
 /**
  * Remove item
  *
  * @param[in] item The item that is to be removed
  * @return item to be removed; NULL if item does not exist */
-void *heap_remove_item(heap_t * hp, const void *item);
+void *Heap_remove_item(heap_t * hp, const void *item);
 
 /**
  * Test membership of item
  *
  * @param[in] item The item to test
  * @return 1 if the heap contains this item; otherwise 0 */
-int heap_contains_item(const heap_t * hp, const void *item);
+int Heap_contains_item(const heap_t * hp, const void *item);
 
 #endif /* HEAP_H */
