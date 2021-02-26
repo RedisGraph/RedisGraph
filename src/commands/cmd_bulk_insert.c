@@ -25,9 +25,7 @@ void _MGraph_BulkInsert(void *args) {
 
 	CommandCtx_TrackCtx(command_ctx);
 	RedisModuleBlockedClient *bc = CommandCtx_GetBlockingClient(command_ctx);
-
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
-	// RedisModule_ThreadSafeContextLock(ctx);
 
 	argv += 1; // skip "GRAPH.BULK"
 	RedisModuleString *rs_graph_name = *argv++;
@@ -39,9 +37,6 @@ void _MGraph_BulkInsert(void *args) {
 	int len;
 
 	GraphContext *gc = NULL;
-
-	// Number of entities already created
-	size_t initial_node_count = 0;
 
 	// Number of entities being created in this query
 	// (declared as long longs to match Redis conversion function)
@@ -77,18 +72,8 @@ void _MGraph_BulkInsert(void *args) {
 	argc -= 2; // already read node count and edge count
 
 	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, true);
-	initial_node_count = Graph_NodeCount(gc->g);
 
-	// Lock the graph for writing.
-	Graph_AcquireWriteLock(gc->g);
-
-	// Disable matrix synchronization for bulk insert operation
-	Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
-
-	// Allocate or extend datablocks to accommodate all incoming entities
-	Graph_AllocateNodes(gc->g, nodes_in_query + initial_node_count);
-
-	int rc = BulkInsert(ctx, gc, argv, argc);
+	int rc = BulkInsert(ctx, gc, argv, argc, nodes_in_query, relations_in_query);
 
 	if(rc == BULK_FAIL) {
 		// If insertion failed, clean up keyspace and free added entities.
@@ -107,10 +92,7 @@ void _MGraph_BulkInsert(void *args) {
 	RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
-	if(gc) {
-		Graph_ReleaseLock(gc->g);
-		GraphContext_Release(gc);
-	}
+	if(gc) GraphContext_Release(gc);
 	CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	CommandCtx_Free(command_ctx);
 	rm_free(bulk_ctx);
