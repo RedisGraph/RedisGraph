@@ -31,13 +31,18 @@ COPY --from=redis /usr/local/ /usr/local/
 ADD ./ /build
 
 # Set up a build environment
+RUN if [ ! -d ./deps/readies ]; then \
+        mkdir -p deps ;\
+        cd deps ;\
+        git clone https://github.com/RedisLabsModules/readies.git ;\
+    fi
 RUN ./deps/readies/bin/getpy3
 RUN ./sbin/system-setup.py
 
 RUN if [ ! -z $(command -v apt-get) ]; then \
         locale-gen --purge en_US.UTF-8 ;\
         dpkg-reconfigure -f noninteractive locales ;\
-	fi
+    fi
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US.UTF-8
