@@ -31,11 +31,6 @@ COPY --from=redis /usr/local/ /usr/local/
 ADD ./ /build
 
 # Set up a build environment
-RUN if [ ! -d ./deps/readies ]; then \
-        mkdir -p deps ;\
-        cd deps ;\
-        git clone https://github.com/RedisLabsModules/readies.git ;\
-    fi
 RUN ./deps/readies/bin/getpy3
 RUN ./sbin/system-setup.py
 

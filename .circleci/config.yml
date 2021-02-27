@@ -30,7 +30,7 @@ commands:
       - run:
           name: Setup automation
           command: |
-            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+            git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
   
   load-cached-deps:
@@ -65,14 +65,11 @@ commands:
           name: Fetch submodules
           command: |
             git submodule update --init --recursive
-
       - setup-automation
-
       - run:
           name: Install prerequisites
           command: |
             ./sbin/system-setup.py
-
       - run:
           name: Setup locale
           command: |
@@ -124,10 +121,6 @@ commands:
     steps:
       - setup-executor
       - checkout
-      - run:
-          name: Checkout submodules
-          command: |
-            git submodule update --init --recursive
       - setup-automation
       - run:
           name: Build for platform
