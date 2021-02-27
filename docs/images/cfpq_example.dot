@@ -1,0 +1,31 @@
+digraph cfpqExample
+{
+node [shape=record]
+director [label="{role = 'director' | { salary = $10, 000 } | { name = 'Bill'}}"];
+manager1 [label="{role = 'manager' | { salary = $4, 150} | { name = 'Jill'}}"];
+manager2 [label="{role = 'manager' | { salary = $4, 450} | { name = 'Ann'}}"];
+
+operator1 [label="{role = 'operator' | { salary = $2, 100} | { name = 'Tim'} }"];
+operator2 [label="{role = 'operator' | { salary = $2, 100} | { name = 'Roy'}}"];
+operator3 [label="{role = 'operator' | { salary = $2, 100} | { name = 'Helen'}}"];
+
+operator4 [label="{role = 'operator' | { salary = $2, 000} | { name = 'Evelyn'}}"];
+operator5 [label="{role = 'operator' | { salary = $2, 150} | { name = 'Christian'}}"];
+
+trainee1 [label="{role = 'trainee' | { salary = $1, 150} | { name = 'James'}}"];
+trainee2 [label="{role = 'trainee' | { salary = $1, 000} | { name = 'Ella'}}"];
+
+
+manager1 -> director [label="boss"]
+manager2 -> director [label="boss"]
+
+operator1 -> manager1[label="boss"]
+operator2 -> manager1[label="boss"]
+operator3 -> manager1[label="boss"]
+
+operator4 -> manager2[label="boss"]
+operator5 -> manager2[label="boss"]
+
+trainee1 -> operator4[label="boss"]
+trainee2 -> operator4[label="boss"]
+}
