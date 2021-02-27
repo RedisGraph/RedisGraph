@@ -10,6 +10,13 @@ ifneq ($(V),)
 	TEST_ARGS += --verbose
 endif
 
+ifneq ($(REMOTE),)
+	BENCHMARK_ARGS = redisbench-admin run-remote 
+else
+	BENCHMARK_ARGS = redisbench-admin run-local 
+endif
+
+BENCHMARK_ARGS += --module_path $(shell pwd)/../src/redisgraph.so
 ifneq ($(BENCHMARK),)
 	BENCHMARK_ARGS += --test $(BENCHMARK)
 endif
@@ -48,7 +55,7 @@ memcheck:
 	./memcheck.sh
 
 benchmark:
-	cd benchmarks; python3 local-runner.py $(BENCHMARK_ARGS) ; cd ..
+	cd benchmarks; $(BENCHMARK_ARGS) ; cd ..
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
