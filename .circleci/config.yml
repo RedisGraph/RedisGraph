@@ -121,6 +121,10 @@ commands:
     steps:
       - setup-executor
       - checkout
+      - run:
+          name: Checkout submodules
+          command: |
+            git submodule update --init --recursive
       - setup-automation
       - run:
           name: Build for platform
