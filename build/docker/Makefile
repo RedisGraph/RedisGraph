@@ -8,6 +8,8 @@ OSNICK ?= buster
 
 REPO=redisgraph
 
+INT_BRANCHES=2.2 2.0 1.2 1.0
+
 ART_DIR=$(ROOT)/bin/artifacts
 ART_INT_DIR=/var/opt/redislabs/artifacts
 
