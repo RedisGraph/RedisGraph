@@ -132,20 +132,20 @@ jobs:
 
       - early_return_for_forked_pull_requests
 
-      - run:
-          name: Persist Artifacts
-          command: |
-            strip src/$MODULE_ARTIFACT
-            mkdir -p /workspace/build
-            cp src/$MODULE_ARTIFACT /workspace
-            cp ramp.yml /workspace/
-
-      - persist_to_workspace:
-          root: /workspace
-          paths:
-            - '*.so'
-            - ramp.yml
-            - build
+#      - run:
+#          name: Persist Artifacts
+#          command: |
+#            strip src/$MODULE_ARTIFACT
+#            mkdir -p /workspace/build
+#            cp src/$MODULE_ARTIFACT /workspace
+#            cp ramp.yml /workspace/
+#
+#      - persist_to_workspace:
+#          root: /workspace
+#          paths:
+#            - '*.so'
+#            - ramp.yml
+#            - build
 
   build_test:
     docker:
@@ -355,36 +355,36 @@ workflows:
           <<: *on-any-branch
           requires:
             - build
-      - package_branch:
-          <<: *on-master
-          requires:
-            - build_test
-            - build_memcheck
-      - package_release:
-          <<: *on-version-tags
-          requires:
-            - build_test
-            - build_memcheck
-      - deploy_branch:
-          requires:
-            - package_branch
-      - release_automation:
-          requires:
-            - deploy_branch
-      - deploy_release:
-          <<: *on-version-tags
-          requires:
-            - package_release
-      - performance_ci_automation:
-          <<: *on-any-branch
-          requires:
-            - build_test
+#      - package_branch:
+#          <<: *on-master
+#          requires:
+#            - build_test
+#            - build_memcheck
+#      - package_release:
+#          <<: *on-version-tags
+#          requires:
+#            - build_test
+#            - build_memcheck
+#      - deploy_branch:
+#          requires:
+#            - package_branch
+#      - release_automation:
+#          requires:
+#            - deploy_branch
+#      - deploy_release:
+#          <<: *on-version-tags
+#          requires:
+#            - package_release
+#      - performance_ci_automation:
+#          <<: *on-any-branch
+#          requires:
+#            - build_test
 
-  nightly:
-    triggers:
-      - schedule:
-          cron: "07 20 * * *"
-          <<: *on-master
-    jobs:
-      - nightly_automation
-      - nightly_performance_automation
+#  nightly:
+#    triggers:
+#      - schedule:
+#          cron: "07 20 * * *"
+#          <<: *on-master
+#    jobs:
+#      - nightly_automation
+#      - nightly_performance_automation
