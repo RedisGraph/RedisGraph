@@ -1,6 +1,7 @@
 [submodule "deps/libcypher-parser"]
 	path = deps/libcypher-parser
-	url = https://github.com/RedisGraph/libcypher-parser.git
+	url = https://github.com/YaccConstructor/libcypher-parser.git
+	branch = path-patterns-support-for-redisgraph
 [submodule "deps/rax"]
 	path = deps/rax
 	url = https://github.com/antirez/rax.git
