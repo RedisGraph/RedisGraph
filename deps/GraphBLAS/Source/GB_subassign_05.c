@@ -2,8 +2,8 @@
 // GB_subassign_05: C(I,J)<M> = scalar ; no S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -15,9 +15,6 @@
 // accum:       NULL
 // A:           scalar
 // S:           none
-
-// C: not bitmap
-// M: any sparsity
 
 #include "GB_subassign_methods.h"
 
@@ -42,26 +39,16 @@ GrB_Info GB_subassign_05
 {
 
     //--------------------------------------------------------------------------
-    // check inputs
-    //--------------------------------------------------------------------------
-
-    ASSERT (!GB_IS_BITMAP (C)) ;
-    ASSERT (!GB_aliased (C, M)) ;   // NO ALIAS of C==M
-
-    //--------------------------------------------------------------------------
     // get inputs
     //--------------------------------------------------------------------------
 
-    GB_EMPTY_TASKLIST ;
-    GB_MATRIX_WAIT_IF_JUMBLED (C) ;
-    GB_MATRIX_WAIT_IF_JUMBLED (M) ;
-
-    GB_GET_C ;      // C must not be bitmap
+    GB_GET_C ;
     int64_t zorig = C->nzombies ;
+    const bool C_is_hyper = C->is_hyper ;
     const int64_t *GB_RESTRICT Ch = C->h ;
     const int64_t *GB_RESTRICT Cp = C->p ;
-    const bool C_is_hyper = (Ch != NULL) ;
     const int64_t Cnvec = C->nvec ;
+    const int64_t cvlen = C->vlen ;
     GB_GET_MASK ;
     GB_GET_SCALAR ;
     GrB_BinaryOp accum = NULL ;
@@ -86,12 +73,13 @@ GrB_Info GB_subassign_05
     // Parallel: slice M into coarse/fine tasks (Method 05, 06n, 07)
     //--------------------------------------------------------------------------
 
-    GB_SUBASSIGN_ONE_SLICE (M) ;    // M cannot be jumbled 
+    GB_SUBASSIGN_ONE_SLICE (M) ;
 
     //--------------------------------------------------------------------------
-    // phase 1: undelete zombies, update entries, and count pending tuples
+    // phase 1: create zombies, update entries, and count pending tuples
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
     for (taskid = 0 ; taskid < ntasks ; taskid++)
@@ -114,8 +102,8 @@ GrB_Info GB_subassign_05
             // get j, the kth vector of M
             //------------------------------------------------------------------
 
-            int64_t j = GBH (Mh, k) ;
-            GB_GET_VECTOR (pM, pM_end, pA, pA_end, Mp, k, Mvlen) ;
+            int64_t j = (Mh == NULL) ? k : Mh [k] ;
+            GB_GET_VECTOR (pM, pM_end, pA, pA_end, Mp, k) ;
             int64_t mjnz = pM_end - pM ;
             if (mjnz == 0) continue ;
 
@@ -125,7 +113,7 @@ GrB_Info GB_subassign_05
 
             GB_GET_jC ;
             int64_t cjnz = pC_end - pC_start ;
-            bool cjdense = (cjnz == Cvlen) ;
+            bool cjdense = (cjnz == cvlen) ;
 
             //------------------------------------------------------------------
             // C(I,jC)<M(:,j)> = scalar ; no S
@@ -145,10 +133,9 @@ GrB_Info GB_subassign_05
                     // update C(iC,jC), but only if M(iA,j) allows it
                     //----------------------------------------------------------
 
-                    bool mij = GBB (Mb, pM) && GB_mcast (Mx, pM, msize) ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     { 
-                        int64_t iA = GBI (Mi, pM, Mvlen) ;
+                        int64_t iA = Mi [pM] ;
                         GB_iC_DENSE_LOOKUP ;
 
                         // ----[C A 1] or [X A 1]-------------------------------
@@ -173,10 +160,9 @@ GrB_Info GB_subassign_05
                     // update C(iC,jC), but only if M(iA,j) allows it
                     //----------------------------------------------------------
 
-                    bool mij = GBB (Mb, pM) && GB_mcast (Mx, pM, msize) ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     {
-                        int64_t iA = GBI (Mi, pM, Mvlen) ;
+                        int64_t iA = Mi [pM] ;
 
                         // find C(iC,jC) in C(:,jC)
                         GB_iC_BINARY_SEARCH ;
@@ -230,8 +216,8 @@ GrB_Info GB_subassign_05
             // get j, the kth vector of M
             //------------------------------------------------------------------
 
-            int64_t j = GBH (Mh, k) ;
-            GB_GET_VECTOR (pM, pM_end, pA, pA_end, Mp, k, Mvlen) ;
+            int64_t j = (Mh == NULL) ? k : Mh [k] ;
+            GB_GET_VECTOR (pM, pM_end, pA, pA_end, Mp, k) ;
             int64_t mjnz = pM_end - pM ;
             if (mjnz == 0) continue ;
 
@@ -240,7 +226,7 @@ GrB_Info GB_subassign_05
             //------------------------------------------------------------------
 
             GB_GET_jC ;
-            bool cjdense = ((pC_end - pC_start) == Cvlen) ;
+            bool cjdense = ((pC_end - pC_start) == cvlen) ;
 
             //------------------------------------------------------------------
             // C(I,jC)<M(:,j)> = scalar ; no S
@@ -260,10 +246,9 @@ GrB_Info GB_subassign_05
                     // update C(iC,jC), but only if M(iA,j) allows it
                     //----------------------------------------------------------
 
-                    bool mij = GBB (Mb, pM) && GB_mcast (Mx, pM, msize) ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     {
-                        int64_t iA = GBI (Mi, pM, Mvlen) ;
+                        int64_t iA = Mi [pM] ;
 
                         // find C(iC,jC) in C(:,jC)
                         GB_iC_BINARY_SEARCH ;

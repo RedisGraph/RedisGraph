@@ -8,12 +8,12 @@ function [C_replace Mask_comp Atrans Btrans Mask_struct descriptor] = ...
 % desc fields:
 %
 % outp:  'default' or 'replace'
-% mask:  'default', 'complement', 'structural', or 'structural complement'
+% mask:  'default' or 'scmp'
 % inp0:  'default' or 'tran'
 % inp1:  'default' or 'tran'
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (isempty (descriptor))
     descriptor = struct ;
@@ -25,7 +25,7 @@ if (~isfield (descriptor, 'outp'))
     descriptor.outp = 'default' ;
 end
 if (~isfield (descriptor, 'mask'))
-    % default is to use Mask, not ~Mask if 'complement'
+    % default is to use Mask, not ~Mask if 'scmp'
     descriptor.mask = 'default' ;
 end
 if (~isfield (descriptor, 'inp0'))
@@ -42,7 +42,7 @@ Atrans    = isequal (descriptor.inp0, 'tran') ;
 Btrans    = isequal (descriptor.inp1, 'tran') ;
 
 switch (descriptor.mask)
-    case {'complement'}
+    case {'scmp', 'complement'}
         Mask_comp = true ;
         Mask_struct = false ;
     case {'structural'}

@@ -1,0 +1,3 @@
+#!/bin/csh
+gunzip -c ~/GraphChallenge/snap/friendster/friendster_adj.tsv.gz | ./ktruss_main
+

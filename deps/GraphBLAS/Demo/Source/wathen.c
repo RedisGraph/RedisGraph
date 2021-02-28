@@ -2,20 +2,17 @@
 // GraphBLAS/Demo/Source/wathen.c: a finite-element matrix on a regular mesh
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+#include "demos.h"
 
 // Create a finite-element matrix on an nx-by-ny 2D mesh, as computed by
 // wathen.m in MATLAB.  To view the wathen.m file, use this command in MATLAB:
 //
 //      type private/wathen
-
-#include "GraphBLAS.h"
-#undef GB_PUBLIC
-#define GB_LIBRARY
-#include "graphblas_demos.h"
 
 //------------------------------------------------------------------------------
 // scale by rho
@@ -31,7 +28,6 @@ void rho_scale (double *f, const double *e)
 // Wathen function
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info wathen             // construct a random Wathen matrix
 (
     GrB_Matrix *A_output,   // output matrix
@@ -103,7 +99,7 @@ GrB_Info wathen             // construct a random Wathen matrix
     if (rho_given == NULL)
     {
         // compute a random RHO matrix
-        rho_rand = (double *) malloc (nx * ny * sizeof (double)) ;
+        rho_rand = malloc (nx * ny * sizeof (double)) ;
         if (rho_rand == NULL)
         {   // out of memory
             FREE_ALL ;
@@ -154,9 +150,9 @@ GrB_Info wathen             // construct a random Wathen matrix
 
             // allocate the tuples
             int64_t ntriplets = nx*ny*64 ;
-            I = (GrB_Index *) malloc (ntriplets * sizeof (GrB_Index)) ;
-            J = (GrB_Index *) malloc (ntriplets * sizeof (GrB_Index)) ;
-            X = (double *) malloc (ntriplets * sizeof (double )) ;
+            I = malloc (ntriplets * sizeof (int64_t)) ;
+            J = malloc (ntriplets * sizeof (int64_t)) ;
+            X = malloc (ntriplets * sizeof (double )) ;
             if (I == NULL || J == NULL || X == NULL)
             {   // out of memory
                 FREE_ALL ;
@@ -329,8 +325,7 @@ GrB_Info wathen             // construct a random Wathen matrix
             }
 
             // create a unary operator to scale by RHO(i,j)
-            OK (GrB_UnaryOp_new (&rho_op, 
-                (GxB_unary_function) rho_scale, GrB_FP64, GrB_FP64)) ;
+            OK (GrB_UnaryOp_new (&rho_op, rho_scale, GrB_FP64, GrB_FP64)) ;
 
             for (int j = 1 ; j <= ny ; j++)
             {

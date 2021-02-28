@@ -1,8 +1,8 @@
 function testca
 %TESTCA test complex mxm, mxv, and vxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('testca: test complex mxm, mxv, and vxm\n') ;
 rng ('default') ;
@@ -11,7 +11,7 @@ dnt = struct ('inp1', 'tran') ;
 dtn = struct ('inp0', 'tran') ;
 dtt = struct ('inp0', 'tran', 'inp1', 'tran') ;
 
-algos = {'auto', 'gustavson', 'dot', 'hash', 'saxpy'} ;
+algos = {'auto', 'heap', 'gustavson', 'dot', 'hash', 'saxpy'} ;
 
 for kk = 1:length(algos)
 dnn.algo = algos {kk} ;
@@ -19,9 +19,6 @@ dnt.algo = algos {kk} ;
 dtn.algo = algos {kk} ;
 dtt.algo = algos {kk} ;
 
-semiring.add = 'plus' ;
-semiring.multiply = 'times' ;
-semiring.class = 'double complex' ;
 
 seed = 1 ;
 for m = [1 5 10 100]
@@ -47,14 +44,14 @@ for m = [1 5 10 100]
                 end
 
                 C = A*B ;
-                C2 = GB_mex_mxm (S, [], [], semiring, A, B, dnn) ;
+                C2 = GB_mex_mxm (S, [], [], [], A, B, dnn) ;
                 assert (isequal_roundoff (C, C2.matrix)) ;
 
                 if (n == 1)
-                    C2 = GB_mex_mxv (S, [], [], semiring, A, B, dnn) ;
+                    C2 = GB_mex_mxv (S, [], [], [], A, B, dnn) ;
                     assert (isequal_roundoff (C, C2.matrix)) ;
 
-                    C2 = GB_mex_vxm (S, [], [], semiring, B, A.', dnn) ;
+                    C2 = GB_mex_vxm (S, [], [], [], B, A.', dnn) ;
                     assert (isequal_roundoff (C, C2.matrix)) ;
                 end
 
@@ -62,37 +59,37 @@ for m = [1 5 10 100]
                     t = min (m,n) ;
                     Eye = speye (m,n) ;
                     C = A*B ;
-                    C2 = GB_mex_mxm (S, Eye, [], semiring, A, B, dnn) ;
+                    C2 = GB_mex_mxm (S, Eye, [], [], A, B, dnn) ;
                     d = full (diag (C)) ;
                     d = GB_mex_complex (sparse (1:t, 1:t, d, m, n)) ;
                     assert (isequal_roundoff (d, C2.matrix)) ;
                 end
 
                 C = D + A*B ;
-                C2 = GB_mex_mxm (D, [], 'plus', semiring, A, B, dnn) ;
+                C2 = GB_mex_mxm (D, [], 'plus', [], A, B, dnn) ;
                 assert (isequal_roundoff (C, C2.matrix)) ;
 
                 if (n == 1)
-                    C2 = GB_mex_mxv (D, [], 'plus', semiring, A, B, dnn) ;
+                    C2 = GB_mex_mxv (D, [], 'plus', [], A, B, dnn) ;
                     assert (isequal_roundoff (C, C2.matrix)) ;
                 end
 
-                C2 = GB_mex_mxm (D, [], 'plus', semiring, A, B.', dnt)  ;
+                C2 = GB_mex_mxm (D, [], 'plus', [], A, B.', dnt)  ;
                 assert (isequal_roundoff (C, C2.matrix)) ;
 
-                C2 = GB_mex_mxm (D, [], 'plus', semiring, A.', B, dtn)  ;
+                C2 = GB_mex_mxm (D, [], 'plus', [], A.', B, dtn)  ;
                 assert (isequal_roundoff (C, C2.matrix)) ;
 
                 if (n == 1)
-                    C2 = GB_mex_mxv (D, [], 'plus', semiring, A.', B, dtn)  ;
+                    C2 = GB_mex_mxv (D, [], 'plus', [], A.', B, dtn)  ;
                     assert (isequal_roundoff (C, C2.matrix)) ;
                 end
 
-                C2 = GB_mex_mxm (D, [], 'plus', semiring, A.', B.', dtt)  ;
+                C2 = GB_mex_mxm (D, [], 'plus', [], A.', B.', dtt)  ;
                 assert (isequal_roundoff (C, C2.matrix)) ;
 
                 M = spones (sprand (m, n, 0.5)) ;
-                C2 = GB_mex_mxm (S, M, [ ], semiring, A.', B.', dtt)  ;
+                C2 = GB_mex_mxm (S, M, [ ], [], A.', B.', dtt)  ;
                 C = (A*B) .* M ;
                 assert (isequal_roundoff (C, C2.matrix)) ;
 

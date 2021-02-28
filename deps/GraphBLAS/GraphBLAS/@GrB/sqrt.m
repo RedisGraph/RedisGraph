@@ -1,12 +1,13 @@
 function C = sqrt (G)
-%SQRT square root.
-% C = sqrt (G) is the square root of the entries of G.
+%SQRT Square root.
+% C = sqrt (G) is the square root of the elements of the GraphBLAS matrix
+% G.  Complex matrices are not yet supported, and thus currently all
+% entries in G must be nonnegative.
 %
-% See also GrB.apply, GrB/hypot.
+% See also GrB.apply.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-G = G.opaque ;
-C = GrB (gb_to_real_if_imag_zero (gb_trig ('sqrt', G))) ;
+C = G.^(.5) ;
 

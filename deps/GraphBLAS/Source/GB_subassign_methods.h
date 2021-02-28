@@ -2,8 +2,8 @@
 // GB_subassign_methods.h: definitions for GB_subassign methods
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -14,8 +14,6 @@
 #include "GB_add.h"
 #include "GB_ij.h"
 #include "GB_Pending.h"
-#include "GB_unused.h"
-#include "GB_subassign_IxJ_slice.h"
 
 //------------------------------------------------------------------------------
 // free workspace
@@ -26,87 +24,62 @@
 #endif
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE_WORK ;          \
-    GB_FREE (TaskList) ;    \
-    GB_FREE (Npending) ;    \
-    GB_FREE (Zh) ;          \
-    GB_FREE (Z_to_X) ;      \
-    GB_FREE (Z_to_S) ;      \
-    GB_FREE (Z_to_A) ;      \
-    GB_FREE (Z_to_M) ;      \
-    GB_Matrix_free (&S);    \
+#define GB_FREE_ALL                                                         \
+{                                                                           \
+    GB_FREE_WORK ;                                                          \
+    GB_FREE_MEMORY (Npending, ntasks+1, sizeof (int64_t)) ;                 \
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;      \
 }
 
 //------------------------------------------------------------------------------
-// GB_EMPTY_TASKLIST: declare an empty TaskList
+// GB_GET_C: get the C matrix
 //------------------------------------------------------------------------------
-
-#define GB_EMPTY_TASKLIST                                                   \
-    GrB_Info info ;                                                         \
-    int taskid, ntasks = 0, max_ntasks = 0, nthreads ;                      \
-    GB_task_struct *TaskList = NULL ;                                       \
-    int64_t *GB_RESTRICT Npending = NULL ;                                  \
-    int64_t *GB_RESTRICT Zh = NULL ;                                        \
-    int64_t *GB_RESTRICT Z_to_X = NULL ;                                    \
-    int64_t *GB_RESTRICT Z_to_S = NULL ;                                    \
-    int64_t *GB_RESTRICT Z_to_A = NULL ;                                    \
-    int64_t *GB_RESTRICT Z_to_M = NULL ;                                    \
-    GrB_Matrix S = NULL ;
-
-//------------------------------------------------------------------------------
-// GB_GET_C: get the C matrix (cannot be bitmap)
-//------------------------------------------------------------------------------
-
-// C cannot be aliased with M or A.
 
 #define GB_GET_C                                                            \
-    ASSERT_MATRIX_OK (C, "C for subassign kernel", GB0) ;                   \
-    ASSERT (!GB_IS_BITMAP (C)) ;                                            \
-    int64_t *GB_RESTRICT Ci = C->i ;                                        \
-    GB_void *GB_RESTRICT Cx = (GB_void *) C->x ;                            \
+    GrB_Info info ;                                                         \
+    ASSERT_MATRIX_OK (C, "C for subassign kernel", GB0) ;               \
+    int64_t *GB_RESTRICT Ci = C->i ;                                           \
+    GB_void *GB_RESTRICT Cx = C->x ;                                           \
     const size_t csize = C->type->size ;                                    \
     const GB_Type_code ccode = C->type->code ;                              \
     const int64_t cvdim = C->vdim ;                                         \
-    const int64_t Cvlen = C->vlen ;                                         \
     int64_t nzombies = C->nzombies ;                                        \
     const bool is_matrix = (cvdim > 1) ;
+
+//  const bool C_is_hyper = C->is_hyper ;
+//  const int64_t Cnvec = C->nvec ;
+//  const int64_t cvlen = C->vlen ;
+//  const int64_t *GB_RESTRICT Ch = C->h ;
+//  const int64_t *GB_RESTRICT Cp = C->p ;
 
 //------------------------------------------------------------------------------
 // GB_GET_MASK: get the mask matrix M
 //------------------------------------------------------------------------------
 
-// M and A can be aliased, but both are const.
+#define GB_GET_MASK                                                            \
+    ASSERT_MATRIX_OK (M, "M for assign", GB0) ;                                \
+    const int64_t *GB_RESTRICT Mp = M->p ;                                     \
+    const int64_t *GB_RESTRICT Mh = M->h ;                                     \
+    const int64_t *GB_RESTRICT Mi = M->i ;                                     \
+    const GB_void *GB_RESTRICT Mx = (Mask_struct ? NULL : (M->x)) ;            \
+    const size_t msize = M->type->size ;
 
-#define GB_GET_MASK                                                         \
-    ASSERT_MATRIX_OK (M, "M for assign", GB0) ;                             \
-    const int64_t *Mp = M->p ;                                              \
-    const int64_t *Mh = M->h ;                                              \
-    const int8_t  *Mb = M->b ;                                              \
-    const int64_t *Mi = M->i ;                                              \
-    const GB_void *Mx = (GB_void *) (Mask_struct ? NULL : (M->x)) ;         \
-    const size_t msize = M->type->size ;                                    \
-    const size_t Mvlen = M->vlen ;                                          \
-    const int64_t Mnvec = M->nvec ;                                         \
-    const bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;                         \
-    const bool M_is_bitmap = GB_IS_BITMAP (M) ;
+//  const bool M_is_hyper = M->is_hyper ;
+//  const int64_t Mnvec = M->nvec ;
 
 //------------------------------------------------------------------------------
 // GB_GET_ACCUM: get the accumulator op and its related typecasting functions
 //------------------------------------------------------------------------------
 
 #define GB_GET_ACCUM                                                        \
-    ASSERT_BINARYOP_OK (accum, "accum for assign", GB0) ;                   \
-    ASSERT (!GB_OP_IS_POSITIONAL (accum)) ;                                 \
-    const GxB_binary_function faccum = accum->function ;                    \
-    const GB_cast_function                                                  \
-        cast_A_to_Y = GB_cast_factory (accum->ytype->code, acode),          \
-        cast_C_to_X = GB_cast_factory (accum->xtype->code, ccode),          \
-        cast_Z_to_C = GB_cast_factory (ccode, accum->ztype->code) ;         \
-    const size_t xsize = accum->xtype->size ;                               \
-    const size_t ysize = accum->ytype->size ;                               \
-    const size_t zsize = accum->ztype->size ;
+    ASSERT_BINARYOP_OK (accum, "accum for assign", GB0) ;                 \
+    GxB_binary_function faccum = accum->function ;                          \
+    GB_cast_function cast_A_to_Y = GB_cast_factory (accum->ytype->code, acode);\
+    GB_cast_function cast_C_to_X = GB_cast_factory (accum->xtype->code, ccode);\
+    GB_cast_function cast_Z_to_C = GB_cast_factory (ccode, accum->ztype->code);\
+    size_t xsize = accum->xtype->size ;                                     \
+    size_t ysize = accum->ytype->size ;                                     \
+    size_t zsize = accum->ztype->size ;
 
 //------------------------------------------------------------------------------
 // GB_GET_A: get the A matrix
@@ -114,16 +87,17 @@
 
 #define GB_GET_A                                                            \
     ASSERT_MATRIX_OK (A, "A for assign", GB0) ;                             \
-    const GrB_Type atype = A->type ;                                        \
-    const size_t asize = atype->size ;                                      \
-    const GB_Type_code acode = atype->code ;                                \
-    const int64_t *Ap = A->p ;                                              \
-    const int8_t  *Ab = A->b ;                                              \
-    const int64_t *Ai = A->i ;                                              \
-    const GB_void *Ax = (GB_void *) A->x ;                                  \
-    const GB_cast_function cast_A_to_C = GB_cast_factory (ccode, acode) ;   \
-    const int64_t Avlen = A->vlen ;                                         \
-    const bool A_is_bitmap = GB_IS_BITMAP (A) ;
+    GrB_Type atype = A->type ;                                              \
+    size_t asize = atype->size ;                                            \
+    GB_Type_code acode = atype->code ;                                      \
+    const int64_t *GB_RESTRICT Ap = A->p ;                                  \
+    const int64_t *GB_RESTRICT Ai = A->i ;                                  \
+    const GB_void *GB_RESTRICT Ax = A->x ;                                  \
+    GB_cast_function cast_A_to_C = GB_cast_factory (ccode, acode) ;
+
+//  const int64_t *GB_RESTRICT Ah = A->h ;
+//  const int64_t Anvec = A->nvec ;
+//  const bool A_is_hyper = A->is_hyper ;
 
 //------------------------------------------------------------------------------
 // GB_GET_SCALAR: get the scalar
@@ -131,9 +105,9 @@
 
 #define GB_GET_SCALAR                                                       \
     ASSERT_TYPE_OK (atype, "atype for assign", GB0) ;                       \
-    const size_t asize = atype->size ;                                      \
-    const GB_Type_code acode = atype->code ;                                \
-    const GB_cast_function cast_A_to_C = GB_cast_factory (ccode, acode) ;   \
+    size_t asize = atype->size ;                                            \
+    GB_Type_code acode = atype->code ;                                      \
+    GB_cast_function cast_A_to_C = GB_cast_factory (ccode, acode) ;         \
     GB_void cwork [GB_VLA(csize)] ;                                         \
     cast_A_to_C (cwork, scalar, asize) ;                                    \
 
@@ -151,18 +125,15 @@
 // GB_GET_S: get the S matrix
 //------------------------------------------------------------------------------
 
-// S is never aliased with any other matrix.
-// FUTURE: S->p could be C->p and S->x NULL if I and J are (:,:)
-
 #define GB_GET_S                                                            \
-    ASSERT_MATRIX_OK (S, "S extraction", GB0) ;                             \
-    const int64_t *GB_RESTRICT Sp = S->p ;                                  \
-    const int64_t *GB_RESTRICT Sh = S->h ;                                  \
-    const int64_t *GB_RESTRICT Si = S->i ;                                  \
-    const int64_t *GB_RESTRICT Sx = (int64_t *) S->x ;                      \
-    const int64_t Svlen = S->vlen ;                                         \
-    const int64_t Snvec = S->nvec ;                                         \
-    const bool S_is_hyper = GB_IS_HYPERSPARSE (S) ;
+    ASSERT_MATRIX_OK (S, "S extraction", GB0) ;                         \
+    const int64_t *GB_RESTRICT Sp = S->p ;                                     \
+    const int64_t *GB_RESTRICT Si = S->i ;                                     \
+    const int64_t *GB_RESTRICT Sx = S->x ;
+
+//  const int64_t *GB_RESTRICT Sh = S->h ;
+//  const int64_t Snvec = S->nvec ;
+//  const bool S_is_hyper = S->is_hyper ;
 
 //------------------------------------------------------------------------------
 // basic actions
@@ -185,7 +156,7 @@
 
     #define GB_C_S_LOOKUP                                                   \
         int64_t pC = Sx [pS] ;                                              \
-        int64_t iC = GBI (Ci, pC, Cvlen) ;                                  \
+        int64_t iC = Ci [pC] ;                                              \
         bool is_zombie = GB_IS_ZOMBIE (iC) ;                                \
         if (is_zombie) iC = GB_FLIP (iC) ;
 
@@ -198,8 +169,8 @@
     #define GB_VECTOR_LOOKUP(pX_start,pX_end,X,j)                           \
     {                                                                       \
         int64_t pleft = 0, pright = X ## nvec-1 ;                           \
-        GB_lookup (X ## _is_hyper, X ## h, X ## p, X ## vlen, &pleft,       \
-            pright, j, &pX_start, &pX_end) ;                                \
+        GB_lookup (X ## _is_hyper, X ## h, X ## p, &pleft, pright, j,       \
+            &pX_start, &pX_end) ;                                           \
     }
 
     //--------------------------------------------------------------------------
@@ -210,7 +181,7 @@
     // time: O(1) if standard, O(log(Cnvec)) if hyper
 
     // This used for GB_subassign_one_slice and GB_subassign_emult_slice,
-    // which compute the parallel schedule for Methods 05, 06n, 07, and 08n.
+    // which compute the parallel schedule for Methods 05, 06n, 07, and 08.
 
     #define GB_LOOKUP_jC                                                    \
         /* lookup jC in C */                                                \
@@ -223,23 +194,23 @@
     // C(:,jC) is dense: iC = I [iA], and then look up C(iC,jC)
     //--------------------------------------------------------------------------
 
-    // C(:,jC) is dense, and thus can be accessed with a O(1)-time lookup
+    // C(:,jC) is dense, and thus can be accessed with a constant-time lookup
     // with the index iC, where the index iC comes from I [iA] or via a
     // colon notation for I.
 
-    // This used for Methods 05, 06n, 07, and 08n, which do not use S.
+    // This used for Methods 05, 06n, 07, and 08, which do not use S.
 
     #define GB_iC_DENSE_LOOKUP                                              \
         int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;                     \
         int64_t pC = pC_start + iC ;                                        \
-        bool is_zombie = (Ci != NULL) && GB_IS_ZOMBIE (Ci [pC]) ;           \
-        ASSERT (GB_IMPLIES (Ci != NULL, GB_UNFLIP (Ci [pC]) == iC)) ;
+        bool is_zombie = GB_IS_ZOMBIE (Ci [pC]) ;                           \
+        ASSERT (GB_UNFLIP (Ci [pC]) == iC) ;
 
     //--------------------------------------------------------------------------
     // get C(iC,jC) via binary search of C(:,jC)
     //--------------------------------------------------------------------------
 
-    // This used for Methods 05, 06n, 07, and 08n, which do not use S.
+    // This used for Methods 05, 06n, 07, and 08, which do not use S.
 
     // New zombies may be introduced into C during the parallel computation.
     // No coarse task shares the same C(:,jC) vector, so no race condition can
@@ -298,7 +269,6 @@
     #define GB_DELETE                                                       \
     {                                                                       \
         /* turn C(iC,jC) into a zombie */                                   \
-        ASSERT (!GB_IS_FULL (C)) ;                                          \
         task_nzombies++ ;                                                   \
         Ci [pC] = GB_FLIP (iC) ;                                            \
     }
@@ -307,7 +277,6 @@
     {                                                                       \
         /* bring a zombie C(iC,jC) back to life;                 */         \
         /* the value of C(iC,jC) must also be assigned.          */         \
-        ASSERT (!GB_IS_FULL (C)) ;                                          \
         Ci [pC] = iC ;                                                      \
         task_nzombies-- ;                                                   \
     }
@@ -704,6 +673,24 @@
                 GB_COPY_scalar_to_C ;                                       \
             }
 
+            // [C A 1] scalar case, with accum
+            #define GB_C_A_1_accum_matrix                                   \
+            {                                                               \
+                /* ----[C A 1] with accum, scalar expansion              */ \
+                /* action: ( =C+A ): apply the accumulator               */ \
+                GB_void ywork [GB_VLA(ysize)] ;                             \
+                GB_COPY_aij_to_ywork ;                                      \
+                GB_ACCUMULATE ;                                             \
+            }                                                               \
+
+            // [C A 1] scalar case, with accum
+            #define GB_C_A_1_accum_scalar                                   \
+            {                                                               \
+                /* ----[C A 1] with accum, scalar expansion              */ \
+                /* action: ( =C+A ): apply the accumulator               */ \
+                GB_ACCUMULATE ;                                             \
+            }
+
             // [C A 1] matrix case when accum is present
             #define GB_withaccum_C_A_1_matrix                               \
             {                                                               \
@@ -715,28 +702,9 @@
                 }                                                           \
                 else                                                        \
                 {                                                           \
-                    /* ----[C A 1] with accum                            */ \
-                    /* action: ( =C+A ): apply the accumulator           */ \
-                    GB_void ywork [GB_VLA(ysize)] ;                         \
-                    GB_COPY_aij_to_ywork ;                                  \
-                    GB_ACCUMULATE ;                                         \
-                }                                                           \
-            }
-
-            // [C A 1] scalar case when accum is present
-            #define GB_withaccum_C_A_1_scalar                               \
-            {                                                               \
-                if (is_zombie)                                              \
-                {                                                           \
-                    /* ----[X A 1]                                       */ \
-                    /* action: ( undelete ): bring a zombie back to life */ \
-                    GB_X_A_1_scalar ;                                       \
-                }                                                           \
-                else                                                        \
-                {                                                           \
                     /* ----[C A 1] with accum, scalar expansion          */ \
                     /* action: ( =C+A ): apply the accumulator           */ \
-                    GB_ACCUMULATE ;                                         \
+                    GB_C_A_1_accum_matrix ;                                 \
                 }                                                           \
             }
 
@@ -754,6 +722,23 @@
                     /* ----[C A 1] no accum, scalar expansion            */ \
                     /* action: ( =A ): copy A into C                     */ \
                     GB_COPY_aij_to_C ;                                      \
+                }                                                           \
+            }
+
+            // [C A 1] scalar case when accum is present
+            #define GB_withaccum_C_A_1_scalar                               \
+            {                                                               \
+                if (is_zombie)                                              \
+                {                                                           \
+                    /* ----[X A 1]                                       */ \
+                    /* action: ( undelete ): bring a zombie back to life */ \
+                    GB_X_A_1_scalar ;                                       \
+                }                                                           \
+                else                                                        \
+                {                                                           \
+                    /* ----[C A 1] with accum, scalar expansion          */ \
+                    /* action: ( =C+A ): apply the accumulator           */ \
+                    GB_C_A_1_accum_scalar ;                                 \
                 }                                                           \
             }
 
@@ -1012,41 +997,22 @@
             // The M(i,j) entry has no effect.  There is nothing to do.
 
 //------------------------------------------------------------------------------
-// GB_subassign_symbolic: S = C(I,J)
+// GB_subassign_00: C(I,J) = empty ; using S
 //------------------------------------------------------------------------------
 
-GrB_Info GB_subassign_symbolic  // S = C(I,J), extracting the pattern not values
-(
-    // output
-    GrB_Matrix *Shandle,        // output matrix 
-    // inputs, not modified:
-    const GrB_Matrix C,         // matrix to extract the pattern of
-    const GrB_Index *I,         // index list for S = C(I,J), or GrB_ALL, etc.
-    const int64_t ni,           // length of I, or special
-    const GrB_Index *J,         // index list for S = C(I,J), or GrB_ALL, etc.
-    const int64_t nj,           // length of J, or special
-    const bool S_must_not_be_jumbled,   // if true, S cannot be jumbled
-    GB_Context Context
-) ;
-
-//------------------------------------------------------------------------------
-// GB_subassign_zombie: C(I,J) = empty ; using S
-//------------------------------------------------------------------------------
-
-GrB_Info GB_subassign_zombie
+GrB_Info GB_subassign_00
 (
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1059,17 +1025,16 @@ GrB_Info GB_subassign_01
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1082,16 +1047,15 @@ GrB_Info GB_subassign_02
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1104,18 +1068,17 @@ GrB_Info GB_subassign_03
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_BinaryOp accum,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1128,17 +1091,16 @@ GrB_Info GB_subassign_04
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_BinaryOp accum,
     const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1202,27 +1164,25 @@ GrB_Info GB_subassign_06n
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_subassign_06s_and_14: C(I,J)<M or !M> = A ; using S
+// GB_subassign_06s: C(I,J)<M> = A ; using S
 //------------------------------------------------------------------------------
 
-GrB_Info GB_subassign_06s_and_14
+GrB_Info GB_subassign_06s
 (
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
-    const bool Mask_struct,         // if true, use the only structure of M
-    const bool Mask_comp,           // if true, !M, else use M
+    const bool Mask_struct,
     const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1251,10 +1211,10 @@ GrB_Info GB_subassign_07
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_subassign_08n: C(I,J)<M> += A ; no S
+// GB_subassign_08: C(I,J)<M> += A ; no S
 //------------------------------------------------------------------------------
 
-GrB_Info GB_subassign_08n
+GrB_Info GB_subassign_08
 (
     GrB_Matrix C,
     // input:
@@ -1282,12 +1242,10 @@ GrB_Info GB_subassign_09
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
@@ -1295,31 +1253,30 @@ GrB_Info GB_subassign_09
     const bool Mask_struct,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_subassign_10_and_18: C(I,J)<M or !M,repl> = A ; using S
+// GB_subassign_10: C(I,J)<M,repl> = A ; using S
 //------------------------------------------------------------------------------
 
-GrB_Info GB_subassign_10_and_18
+GrB_Info GB_subassign_10
 (
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
-    const bool Mask_struct,         // if true, use the only structure of M
-    const bool Mask_comp,           // if true, !M, else use M
+    const bool Mask_struct,
     const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1332,12 +1289,10 @@ GrB_Info GB_subassign_11
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
@@ -1346,32 +1301,31 @@ GrB_Info GB_subassign_11
     const GrB_BinaryOp accum,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_subassign_12_and_20: C(I,J)<M or !M,repl> += A ; using S
+// GB_subassign_12: C(I,J)<M,repl> += A ; using S
 //------------------------------------------------------------------------------
 
-GrB_Info GB_subassign_12_and_20
+GrB_Info GB_subassign_12
 (
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
-    const bool Mask_struct,         // if true, use the only structure of M
-    const bool Mask_comp,           // if true, !M, else use M
+    const bool Mask_struct,
     const GrB_BinaryOp accum,
     const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1384,12 +1338,10 @@ GrB_Info GB_subassign_13
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
@@ -1397,6 +1349,30 @@ GrB_Info GB_subassign_13
     const bool Mask_struct,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
+    GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// GB_subassign_14: C(I,J)<!M> = A ; using S
+//------------------------------------------------------------------------------
+
+GrB_Info GB_subassign_14
+(
+    GrB_Matrix C,
+    // input:
+    const GrB_Index *I,
+    const int64_t nI,
+    const int Ikind,
+    const int64_t Icolon [3],
+    const GrB_Index *J,
+    const int64_t nJ,
+    const int Jkind,
+    const int64_t Jcolon [3],
+    const GrB_Matrix M,
+    const bool Mask_struct,
+    const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1409,12 +1385,10 @@ GrB_Info GB_subassign_15
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
@@ -1423,33 +1397,31 @@ GrB_Info GB_subassign_15
     const GrB_BinaryOp accum,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_subassign_16:  C(I,J)<!M> += A ; using S
-// GB_subassign_08s: C(I,J)<M> += A ; using S.  Compare with method 08n
+// GB_subassign_16: C(I,J)<!M> += A ; using S
 //------------------------------------------------------------------------------
 
-GrB_Info GB_subassign_08s_and_16
+GrB_Info GB_subassign_16
 (
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
-    const bool Mask_struct,         // if true, use the only structure of M
-    const bool Mask_comp,           // if true, !M, else use M
+    const bool Mask_struct,
     const GrB_BinaryOp accum,
     const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1462,12 +1434,10 @@ GrB_Info GB_subassign_17
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
@@ -1475,6 +1445,30 @@ GrB_Info GB_subassign_17
     const bool Mask_struct,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
+    GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// GB_subassign_18: C(I,J)<!M,repl> = A ; using S
+//------------------------------------------------------------------------------
+
+GrB_Info GB_subassign_18
+(
+    GrB_Matrix C,
+    // input:
+    const GrB_Index *I,
+    const int64_t nI,
+    const int Ikind,
+    const int64_t Icolon [3],
+    const GrB_Index *J,
+    const int64_t nJ,
+    const int Jkind,
+    const int64_t Jcolon [3],
+    const GrB_Matrix M,
+    const bool Mask_struct,
+    const GrB_Matrix A,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
 
@@ -1487,12 +1481,10 @@ GrB_Info GB_subassign_19
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
@@ -1501,23 +1493,57 @@ GrB_Info GB_subassign_19
     const GrB_BinaryOp accum,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
     GB_Context Context
 ) ;
+
+//------------------------------------------------------------------------------
+// GB_subassign_20: C(I,J)<!M,repl> += A ; using S
+//------------------------------------------------------------------------------
+
+GrB_Info GB_subassign_20
+(
+    GrB_Matrix C,
+    // input:
+    const GrB_Index *I,
+    const int64_t nI,
+    const int Ikind,
+    const int64_t Icolon [3],
+    const GrB_Index *J,
+    const int64_t nJ,
+    const int Jkind,
+    const int64_t Jcolon [3],
+    const GrB_Matrix M,
+    const bool Mask_struct,
+    const GrB_BinaryOp accum,
+    const GrB_Matrix A,
+    const GrB_Matrix S,
+    GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// GB_EMPTY_TASKLIST: declare an empty TaskList
+//------------------------------------------------------------------------------
+
+#define GB_EMPTY_TASKLIST                                                   \
+    int ntasks = 0, max_ntasks = 0, nthreads ;                              \
+    GB_task_struct *TaskList = NULL ;                                       \
+    int64_t *GB_RESTRICT Npending = NULL ;
 
 //------------------------------------------------------------------------------
 // GB_ALLOCATE_NPENDING: allocate Npending workspace
 //------------------------------------------------------------------------------
 
 #define GB_ALLOCATE_NPENDING                                                \
-    Npending = GB_MALLOC (ntasks+1, int64_t) ;                              \
+    GB_MALLOC_MEMORY (Npending, ntasks+1, sizeof (int64_t)) ;               \
     if (Npending == NULL)                                                   \
     {                                                                       \
         GB_FREE_ALL ;                                                       \
-        return (GrB_OUT_OF_MEMORY) ;                                        \
+        return (GB_OUT_OF_MEMORY) ;                                         \
     }
 
 //------------------------------------------------------------------------------
-// GB_SUBASSIGN_ONE_SLICE: slice one matrix (M)
+// GB_SUBASSIGN_ONE_SLICE: slice one matrix (A or M)
 //------------------------------------------------------------------------------
 
 // Methods: 05, 06n, 07.  If C is dense, it is sliced for a fine task, so that
@@ -1525,11 +1551,12 @@ GrB_Info GB_subassign_19
 // C(:,jC) is not sliced, so the fine task must do a direct lookup via
 // GB_iC_DENSE_LOOKUP.  Otherwise a race condition will occur.
 
-#define GB_SUBASSIGN_ONE_SLICE(M)                                           \
+#define GB_SUBASSIGN_ONE_SLICE(X)                                           \
+    GB_EMPTY_TASKLIST ;                                                     \
     GB_OK (GB_subassign_one_slice (                                         \
         &TaskList, &max_ntasks, &ntasks, &nthreads,                         \
         C, I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,                      \
-        M, Context)) ;                                                      \
+        X, Context)) ;                                                      \
     GB_ALLOCATE_NPENDING ;
 
 //------------------------------------------------------------------------------
@@ -1542,20 +1569,55 @@ GrB_Info GB_subassign_19
 // either A or M.  No need to examine C, since it will be accessed via S, not
 // via binary search.
 
-// If X is bitmap, this method is not used.  Instead, GB_SUBASSIGN_IXJ_SLICE is
-// used to iterate over the matrix X.
-
 #define GB_SUBASSIGN_TWO_SLICE(X,S)                                         \
-    int Z_sparsity = GxB_SPARSE ;                                           \
+    GB_EMPTY_TASKLIST ;                                                     \
     int64_t Znvec ;                                                         \
+    int64_t *GB_RESTRICT Zh = NULL ;                                           \
+    int64_t *GB_RESTRICT Z_to_X = NULL ;                                       \
+    int64_t *GB_RESTRICT Z_to_S = NULL ;                                       \
     GB_OK (GB_add_phase0 (                                                  \
-        &Znvec, &Zh, NULL, &Z_to_X, &Z_to_S, NULL, &Z_sparsity,             \
+        &Znvec, &Zh, NULL, &Z_to_X, &Z_to_S, NULL,                          \
         NULL, X, S, Context)) ;                                             \
     GB_OK (GB_ewise_slice (                                                 \
         &TaskList, &max_ntasks, &ntasks, &nthreads,                         \
         Znvec, Zh, NULL, Z_to_X, Z_to_S, false,                             \
         NULL, X, S, Context)) ;                                             \
     GB_ALLOCATE_NPENDING ;
+
+#define GB_FREE_TWO_SLICE                                                   \
+{                                                                           \
+    GB_FREE_MEMORY (Zh,     Znvec, sizeof (int64_t)) ;                      \
+    GB_FREE_MEMORY (Z_to_X, Znvec, sizeof (int64_t)) ;                      \
+    GB_FREE_MEMORY (Z_to_S, Znvec, sizeof (int64_t)) ;                      \
+}
+
+//------------------------------------------------------------------------------
+// GB_SUBASSIGN_EMULT_SLICE: slice A.*M (just Method 08)
+//------------------------------------------------------------------------------
+
+// Method 08 only.  If C is sparse, it is sliced for a fine task, so that
+// it can do a binary search via GB_iC_BINARY_SEARCH.  But if C(:,jC) is dense,
+// C(:,jC) is not sliced, so the fine task must do a direct lookup via
+// GB_iC_DENSE_LOOKUP.  Otherwise a race condition will occur.
+
+#define GB_SUBASSIGN_EMULT_SLICE(A,M)                                       \
+    GB_EMPTY_TASKLIST ;                                                     \
+    int64_t Znvec ;                                                         \
+    const int64_t *GB_RESTRICT Zh = NULL ;                                     \
+    int64_t *GB_RESTRICT Z_to_A = NULL ;                                       \
+    int64_t *GB_RESTRICT Z_to_M = NULL ;                                       \
+    GB_OK (GB_subassign_emult_slice (                                       \
+        &TaskList, &max_ntasks, &ntasks, &nthreads,                         \
+        &Znvec, &Zh, &Z_to_A, &Z_to_M,                                      \
+        C, I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,                      \
+        A, M, Context)) ;                                                   \
+    GB_ALLOCATE_NPENDING ;
+
+#define GB_FREE_EMULT_SLICE                                                 \
+{                                                                           \
+    GB_FREE_MEMORY (Z_to_A, Znvec, sizeof (int64_t)) ;                      \
+    GB_FREE_MEMORY (Z_to_M, Znvec, sizeof (int64_t)) ;                      \
+}
 
 //------------------------------------------------------------------------------
 // GB_SUBASSIGN_IXJ_SLICE: slice IxJ for a scalar assignement method
@@ -1565,9 +1627,10 @@ GrB_Info GB_subassign_19
 // via S, not via binary search.
 
 #define GB_SUBASSIGN_IXJ_SLICE                                              \
+    GB_EMPTY_TASKLIST ;                                                     \
     GB_OK (GB_subassign_IxJ_slice (                                         \
         &TaskList, &max_ntasks, &ntasks, &nthreads,                         \
-        /* I, */ nI, /* Ikind, Icolon, J, */ nJ, /* Jkind, Jcolon, */       \
+        I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,                         \
         Context)) ;                                                         \
     GB_ALLOCATE_NPENDING ;
 
@@ -1599,7 +1662,32 @@ GrB_Info GB_subassign_one_slice
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_subassign_emult_slice: slice the entries and vectors for GB_subassign_08n
+// GB_subassign_IxJ_slice
+//------------------------------------------------------------------------------
+
+// Slice IxJ for a scalar assignment method (Methods 01, 03, 13, 15, 17, 19)
+
+GrB_Info GB_subassign_IxJ_slice
+(
+    // output:
+    GB_task_struct **p_TaskList,    // array of structs, of size max_ntasks
+    int *p_max_ntasks,              // size of TaskList
+    int *p_ntasks,                  // # of tasks constructed
+    int *p_nthreads,                // # of threads to use
+    // input:
+    const GrB_Index *I,
+    const int64_t nI,
+    const int Ikind,
+    const int64_t Icolon [3],
+    const GrB_Index *J,
+    const int64_t nJ,
+    const int Jkind,
+    const int64_t Jcolon [3],
+    GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// GB_subassign_emult_slice: slice the entries and vectors for GB_subassign_08
 //------------------------------------------------------------------------------
 
 GrB_Info GB_subassign_emult_slice
@@ -1610,7 +1698,7 @@ GrB_Info GB_subassign_emult_slice
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads to use
     int64_t *p_Znvec,               // # of vectors to compute in Z
-    const int64_t *GB_RESTRICT *Zh_handle, // Zh_shallow is A->h, M->h, or NULL
+    const int64_t *GB_RESTRICT *Zh_handle,     // Zh is A->h, M->h, or NULL
     int64_t *GB_RESTRICT *Z_to_A_handle, // Z_to_A: output, size Znvec, or NULL
     int64_t *GB_RESTRICT *Z_to_M_handle, // Z_to_M: output, size Znvec, or NULL
     // input:
@@ -1648,10 +1736,10 @@ GrB_Info GB_subassign_emult_slice
     int64_t task_pending = 0 ;
 
 //------------------------------------------------------------------------------
-// GB_GET_MAPPED: get the content of a vector for a coarse/fine task
+// GB_GET_MAPPED_VECTOR: get the content of a vector for a coarse/fine task
 //------------------------------------------------------------------------------
 
-#define GB_GET_MAPPED(pX_start, pX_fini, pX, pX_end, Xp, j, k, Z_to_X, Xvlen) \
+#define GB_GET_MAPPED_VECTOR(pX_start, pX_fini, pX, pX_end, Xp, j, k, Z_to_X) \
     int64_t pX_start = -1, pX_fini = -1 ;                                   \
     if (fine_task)                                                          \
     {                                                                       \
@@ -1665,16 +1753,16 @@ GrB_Info GB_subassign_emult_slice
         int64_t kX = (Z_to_X == NULL) ? j : Z_to_X [k] ;                    \
         if (kX >= 0)                                                        \
         {                                                                   \
-            pX_start = GBP (Xp, kX, Xvlen) ;                                \
-            pX_fini  = GBP (Xp, kX+1, Xvlen) ;                              \
+            pX_start = Xp [kX] ;                                            \
+            pX_fini  = Xp [kX+1] ;                                          \
         }                                                                   \
     }
 
 //------------------------------------------------------------------------------
-// GB_GET_EVEC: get the content of a vector for Method08n
+// GB_GET_EMULT_VECTOR: get the content of a vector for EMULT_SLICE method
 //------------------------------------------------------------------------------
 
-#define GB_GET_EVEC(pX_start, pX_fini, pX, pX_end, Xp, Xh, j,k,Z_to_X,Xvlen)\
+#define GB_GET_EMULT_VECTOR(pX_start, pX_fini, pX, pX_end, Xp, Xh, j,k,Z_to_X) \
     int64_t pX_start = -1, pX_fini = -1 ;                                   \
     if (fine_task)                                                          \
     {                                                                       \
@@ -1685,12 +1773,11 @@ GrB_Info GB_subassign_emult_slice
     else                                                                    \
     {                                                                       \
         /* vectors are never sliced for a coarse task */                    \
-        int64_t kX = (Zh_shallow == Xh) ? k :                               \
-            ((Z_to_X == NULL) ? j : Z_to_X [k]) ;                           \
+        int64_t kX = (Zh == Xh) ? k : ((Z_to_X == NULL) ? j : Z_to_X [k]) ; \
         if (kX >= 0)                                                        \
         {                                                                   \
-            pX_start = GBP (Xp, kX, Xvlen) ;                                \
-            pX_fini  = GBP (Xp, kX+1, Xvlen) ;                              \
+            pX_start = Xp [kX] ;                                            \
+            pX_fini  = Xp [kX+1] ;                                          \
         }                                                                   \
     }
 
@@ -1712,53 +1799,42 @@ GrB_Info GB_subassign_emult_slice
     }
 
 //------------------------------------------------------------------------------
-// GB_GET_IXJ_TASK_DESCRIPTOR*: get the task descriptor for IxJ
+// GB_GET_I: get the range of indices in I for this task
 //------------------------------------------------------------------------------
 
-// Q denotes the Cartesian product IXJ
-
-#define GB_GET_IXJ_TASK_DESCRIPTOR(iQ_start,iQ_end)                         \
+#define GB_GET_IXJ_TASK_DESCRIPTOR                                          \
     GB_GET_TASK_DESCRIPTOR ;                                                \
-    int64_t iQ_start = 0, iQ_end = nI ;                                     \
+    int64_t iA_start = 0, iA_end = nI ;                                     \
     if (fine_task)                                                          \
     {                                                                       \
-        iQ_start = TaskList [taskid].pA ;                                   \
-        iQ_end   = TaskList [taskid].pA_end ;                               \
+        iA_start = TaskList [taskid].pA ;                                   \
+        iA_end   = TaskList [taskid].pA_end ;                               \
     }
 
-#define GB_GET_IXJ_TASK_DESCRIPTOR_PHASE1(iQ_start,iQ_end)                  \
-    GB_GET_IXJ_TASK_DESCRIPTOR (iQ_start, iQ_end)                           \
+#define GB_GET_IXJ_TASK_DESCRIPTOR_PHASE1                                   \
+    GB_GET_IXJ_TASK_DESCRIPTOR ;                                            \
     int64_t task_nzombies = 0 ;                                             \
     int64_t task_pending = 0 ;
 
-#define GB_GET_IXJ_TASK_DESCRIPTOR_PHASE2(iQ_start,iQ_end)                  \
-    GB_GET_IXJ_TASK_DESCRIPTOR (iQ_start, iQ_end)                           \
+#define GB_GET_IXJ_TASK_DESCRIPTOR_PHASE2                                   \
+    GB_GET_IXJ_TASK_DESCRIPTOR ;                                            \
     GB_START_PENDING_INSERTION ;
 
 //------------------------------------------------------------------------------
 // GB_GET_VECTOR_FOR_IXJ: get the start of a vector for scalar assignment
 //------------------------------------------------------------------------------
 
-// Find pX and pX_end for the vector X (iQ_start:iQ_end, j), for a scalar
-// assignment method, or a method iterating over all IxJ for a bitmap M or A.
+// Find pX and pX_end for the vector X (iA_start:end, j), for a scalar
+// assignment method.
 
-#define GB_GET_VECTOR_FOR_IXJ(X,iQ_start)                                   \
+#define GB_GET_VECTOR_FOR_IXJ(X)                                            \
     int64_t p ## X, p ## X ## _end ;                                        \
     GB_VECTOR_LOOKUP (p ## X, p ## X ## _end, X, j) ;                       \
-    if (iQ_start != 0)                                                      \
+    if (iA_start != 0)                                                      \
     {                                                                       \
-        if (X ## i == NULL)                                                 \
-        {                                                                   \
-            /* X is full or bitmap */                                       \
-            p ## X += iQ_start ;                                            \
-        }                                                                   \
-        else                                                                \
-        {                                                                   \
-            /* X is sparse or hypersparse */                                \
-            int64_t pright = p ## X ## _end - 1 ;                           \
-            bool found ;                                                    \
-            GB_SPLIT_BINARY_SEARCH (iQ_start, X ## i, p ## X, pright, found) ;\
-        }                                                                   \
+        int64_t pright = p ## X ## _end - 1 ;                               \
+        bool found ;                                                        \
+        GB_SPLIT_BINARY_SEARCH (iA_start, X ## i, p ## X, pright, found) ;  \
     }
 
 //------------------------------------------------------------------------------
@@ -1769,13 +1845,7 @@ GrB_Info GB_subassign_emult_slice
 
 #define GB_MIJ_BINARY_SEARCH_OR_DENSE_LOOKUP(i)                             \
     bool mij ;                                                              \
-    if (M_is_bitmap)                                                        \
-    {                                                                       \
-        /* M(:,j) is bitmap, no need for binary search */                   \
-        int64_t pM = pM_start + i ;                                         \
-        mij = Mb [pM] && GB_mcast (Mx, pM, msize) ;                         \
-    }                                                                       \
-    else if (mjdense)                                                       \
+    if (mjdense)                                                            \
     {                                                                       \
         /* M(:,j) is dense, no need for binary search */                    \
         int64_t pM = pM_start + i ;                                         \
@@ -1820,20 +1890,20 @@ GrB_Info GB_subassign_emult_slice
     {                                                                       \
         /* no pending tuples, so skip phase 2 */                            \
         GB_FREE_ALL ;                                                       \
-        ASSERT_MATRIX_OK (C, "C, no pending tuples " __FILE__, \
-            GB_FLIP (GB0)) ;      \
+        /* C is valid, but might not be in the queue; thus the FLIP */      \
+        ASSERT_MATRIX_OK (C, "C, no pending tuples ", GB_FLIP (GB0)) ;  \
         return (GrB_SUCCESS) ;                                              \
     }                                                                       \
     /* ensure that C->Pending is large enough to handle nnew more tuples */ \
     if (!GB_Pending_ensure (&(C->Pending), atype, accum, is_matrix, nnew))  \
     {                                                                       \
         GB_FREE_ALL ;                                                       \
-        return (GrB_OUT_OF_MEMORY) ;                                        \
+        return (GB_OUT_OF_MEMORY) ;                                         \
     }                                                                       \
     GB_Pending Pending = C->Pending ;                                       \
-    int64_t *GB_RESTRICT Pending_i = Pending->i ;                           \
-    int64_t *GB_RESTRICT Pending_j = Pending->j ;                           \
-    GB_void *GB_RESTRICT Pending_x = Pending->x ;                           \
+    int64_t *GB_RESTRICT Pending_i = Pending->i ;                              \
+    int64_t *GB_RESTRICT Pending_j = Pending->j ;                              \
+    GB_void *GB_RESTRICT Pending_x = Pending->x ;                              \
     int64_t npending_orig = Pending->n ;                                    \
     bool pending_sorted = Pending->sorted ;
 
@@ -1883,19 +1953,24 @@ GrB_Info GB_subassign_emult_slice
                 /* (i,j) is the first pending tuple for this task; check */ \
                 /* with the pending tuple just before it                 */ \
                 ASSERT (n < npending_orig + nnew) ;                         \
+                /* printf ("taskid %d n "GBd"\n", taskid, n) ; */           \
                 int64_t i = Pending_i [n] ;                                 \
                 int64_t j = (Pending_j != NULL) ? Pending_j [n] : 0 ;       \
                 int64_t ilast = Pending_i [n-1] ;                           \
                 int64_t jlast = (Pending_j != NULL) ? Pending_j [n-1] : 0 ; \
+                /* printf ("i "GBd" j "GBd" ilast "GBd" jlast "GBd"\n", */  \
+                /*     i, j, ilast, jlast) ; */                             \
                 pending_sorted = pending_sorted &&                          \
                     ((jlast < j) || (jlast == j && ilast <= i)) ;           \
+                /* printf ("pending_sorted now %d\n", pending_sorted) ; */  \
             }                                                               \
         }                                                                   \
     }                                                                       \
     Pending->n += nnew ;                                                    \
     Pending->sorted = pending_sorted ;                                      \
     GB_FREE_ALL ;                                                           \
-    ASSERT_MATRIX_OK (C, "C with pending tuples :" __FILE__, GB_FLIP (GB0)) ;\
+    /* C is valid, but might not be in the queue; thus the FLIP */          \
+    ASSERT_MATRIX_OK (C, "C with pending tuples ", GB_FLIP (GB0)) ;     \
     return (GrB_SUCCESS) ;
 
 #endif

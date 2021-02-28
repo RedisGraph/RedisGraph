@@ -2,8 +2,8 @@
 // GxB_Global_Option_set: set a global default option for all future matrices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -20,7 +20,7 @@ GrB_Info GxB_Global_Option_set      // set a global default option
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE1 ("GxB_Global_Option_set (field, value)") ;
+    GB_WHERE ("GxB_Global_Option_set (field, value)") ;
 
     //--------------------------------------------------------------------------
     // set the global option
@@ -31,63 +31,36 @@ GrB_Info GxB_Global_Option_set      // set a global default option
     switch (field)
     {
 
-        //----------------------------------------------------------------------
-        // matrix format
-        //----------------------------------------------------------------------
+        case GxB_HYPER : 
 
-        case GxB_HYPER_SWITCH : 
-
-            { 
+            {
                 va_start (ap, field) ;
-                double hyper_switch = va_arg (ap, double) ;
+                double hyper_ratio = va_arg (ap, double) ;
                 va_end (ap) ;
-                GB_Global_hyper_switch_set ((float) hyper_switch) ;
-            }
-            break ;
-
-        case GxB_BITMAP_SWITCH : 
-
-            { 
-                va_start (ap, field) ;
-                double *bitmap_switch = va_arg (ap, double *) ;
-                va_end (ap) ;
-                if (bitmap_switch == NULL)
-                {
-                    // set all switches to their default
-                    GB_Global_bitmap_switch_default ( ) ;
-                }
-                else
-                {
-                    for (int k = 0 ; k < GxB_NBITMAP_SWITCH ; k++)
-                    {
-                        float b = (float) (bitmap_switch [k]) ;
-                        GB_Global_bitmap_switch_set (k, b) ;
-                    }
-                }
+                GB_Global_hyper_ratio_set (hyper_ratio) ;
             }
             break ;
 
         case GxB_FORMAT : 
 
-            { 
+            {
                 va_start (ap, field) ;
-                int format = va_arg (ap, int) ;
+                GxB_Format_Value format = va_arg (ap, GxB_Format_Value) ;
                 va_end (ap) ;
                 if (! (format == GxB_BY_ROW || format == GxB_BY_COL))
                 { 
-                    return (GrB_INVALID_VALUE) ;
+                    return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+                            "unsupported format [%d], must be one of:\n"
+                            "GxB_BY_ROW [%d] or GxB_BY_COL [%d]", (int) format,
+                            (int) GxB_BY_ROW, (int) GxB_BY_COL))) ;
                 }
-                GB_Global_is_csc_set (format != (int) GxB_BY_ROW) ; 
+                GB_Global_is_csc_set (format != GxB_BY_ROW) ; 
             }
             break ;
 
-        //----------------------------------------------------------------------
-        // OpenMP control
-        //----------------------------------------------------------------------
-
         case GxB_GLOBAL_NTHREADS :      // same as GxB_NTHREADS
 
-            { 
+            {
                 va_start (ap, field) ;
                 int nthreads_max_new = va_arg (ap, int) ;
                 va_end (ap) ;
@@ -99,7 +72,7 @@ GrB_Info GxB_Global_Option_set      // set a global default option
 
         case GxB_GLOBAL_CHUNK :         // same as GxB_CHUNK
 
-            { 
+            {
                 va_start (ap, field) ;
                 double chunk = va_arg (ap, double) ;
                 va_end (ap) ;
@@ -107,13 +80,9 @@ GrB_Info GxB_Global_Option_set      // set a global default option
             }
             break ;
 
-        //----------------------------------------------------------------------
-        // diagnostics
-        //----------------------------------------------------------------------
+        case GxB_BURBLE :
 
-        case GxB_BURBLE : 
-
-            { 
+            {
                 va_start (ap, field) ;
                 int burble = va_arg (ap, int) ;
                 va_end (ap) ;
@@ -121,35 +90,15 @@ GrB_Info GxB_Global_Option_set      // set a global default option
             }
             break ;
 
-        //----------------------------------------------------------------------
-        // CUDA (DRAFT: in progress, do not use)
-        //----------------------------------------------------------------------
-
-        case GxB_GLOBAL_GPU_CONTROL :       // same as GxB_GPU_CONTROL
-
-            { 
-                va_start (ap, field) ;
-                GrB_Desc_Value gpu_control = (GrB_Desc_Value) va_arg (ap, int) ;
-                va_end (ap) ;
-                GB_Global_gpu_control_set (gpu_control) ;
-            }
-            break ;
-
-        case GxB_GLOBAL_GPU_CHUNK :         // same as GxB_GPU_CHUNK
-
-            { 
-                va_start (ap, field) ;
-                double gpu_chunk = va_arg (ap, double) ;
-                va_end (ap) ;
-                GB_Global_gpu_chunk_set (gpu_chunk) ;
-            }
-            break ;
-
-        // #include "GxB_Global_Option_set_mkl_template.c"
-
         default : 
 
-            return (GrB_INVALID_VALUE) ;
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+                    "invalid option field [%d], must be one of:\n"
+                    "GxB_HYPER [%d], GxB_FORMAT [%d], GxB_NTHREADS [%d]"
+                    " or GxB_CHUNK [%d]",
+                    (int) field, (int) GxB_HYPER, (int) GxB_FORMAT,
+                    (int) GxB_NTHREADS, (int) GxB_CHUNK))) ;
+
     }
 
     return (GrB_SUCCESS) ;

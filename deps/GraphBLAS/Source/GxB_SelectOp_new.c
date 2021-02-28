@@ -2,8 +2,8 @@
 // GxB_SelectOp_new: create a new user-defined select operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -24,6 +24,6 @@ GrB_Info GxB_SelectOp_new       // create a new user-defined select operator
     GrB_Type ttype              // type of input thunk, or NULL if not used
 )
 { 
-    return (GB_SelectOp_new (selectop, function, xtype, ttype, NULL)) ;
+    return (GB_SelectOp_new (selectop, function, xtype, ttype, "f")) ;
 }
 

@@ -2,8 +2,8 @@
 // GB_extract_vector_list: extract vector indices for all entries in a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@
 #include "GB_ek_slice.h"
 
 #define GB_FREE_WORK \
-    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice) ;
+    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ;
 
 bool GB_extract_vector_list     // true if successful, false if out of memory
 (
@@ -33,9 +33,6 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
     ASSERT (J != NULL) ;
     ASSERT (A != NULL) ;
     ASSERT (nthreads >= 1) ;
-    ASSERT (GB_JUMBLED_OK (A)) ;        // pattern not accessed
-    ASSERT (GB_ZOMBIES_OK (A)) ;        // pattern not accessed
-    ASSERT (!GB_IS_BITMAP (A)) ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -43,15 +40,15 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
 
     const int64_t *GB_RESTRICT Ap = A->p ;
     const int64_t *GB_RESTRICT Ah = A->h ;
-    const int64_t avlen = A->vlen ;
 
     //--------------------------------------------------------------------------
     // determine the # of tasks to use
     //--------------------------------------------------------------------------
 
+    int64_t anz = GB_NNZ (A) ;
     int ntasks = (nthreads == 1) ? 1 : (2 * nthreads) ;
-
-    // TODO: use #include "GB_positional_op_ijp.c" here
+    ntasks = GB_IMIN (ntasks, anz) ;
+    ntasks = GB_IMAX (ntasks, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the entries for each task
@@ -62,7 +59,7 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
     // vectors may be shared with prior slices and subsequent slices.
 
     int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
-    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, &ntasks))
+    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, ntasks))
     { 
         // out of memory
         return (false) ;
@@ -88,10 +85,10 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
             // find the part of A(:,k) to be operated on by this task
             //------------------------------------------------------------------
 
-            int64_t j = GBH (Ah, k) ;
+            int64_t j = (Ah == NULL) ? k : Ah [k] ;
             int64_t pA_start, pA_end ;
-            GB_get_pA (&pA_start, &pA_end, tid, k, 
-                kfirst, klast, pstart_slice, Ap, avlen) ;
+            GB_get_pA_and_pC (&pA_start, &pA_end, NULL,
+                tid, k, kfirst, klast, pstart_slice, NULL, NULL, Ap) ;
 
             //------------------------------------------------------------------
             // extract vector indices of A(:,j)

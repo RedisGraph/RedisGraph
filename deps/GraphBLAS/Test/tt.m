@@ -1,7 +1,7 @@
 %TT test eWiseMult and A+B
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 tic ;
 C = A + B ;
@@ -27,7 +27,7 @@ Z = sparse (m,n) ;
 for k = 1:40
     nthreads_set (k) ;
     tic ;
-    C2 = GB_mex_Matrix_eWiseMult (Z, [ ], [ ], 'times', A,B) ;
+    C2 = GB_mex_eWiseMult_Matrix (Z, [ ], [ ], 'times', A,B) ;
     ts (k) = toc ;
     fprintf ('threads %d time %10.4f speedup %10.2f\n', k, ts(k), ts(1)/ts(k)) ;
 end

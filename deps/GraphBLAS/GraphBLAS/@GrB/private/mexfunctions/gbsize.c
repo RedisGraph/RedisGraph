@@ -1,19 +1,15 @@
 //------------------------------------------------------------------------------
-// gbsize: dimension and type of a GraphBLAS or MATLAB matrix
+// gbsize: number of rows and columns in a GraphBLAS matrix struct
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // The input may be either a GraphBLAS matrix struct or a standard MATLAB
-// matrix.  Note that the output may be int64, to accomodate huge hypersparse
-// matrices.  Also returns the type of the matrix.
-
-// Usage:
-
-// [m, n, type] = gbsize (X)
+// sparse matrix.  Note that the output is int64, to accomodate huge
+// hypersparse matrices.
 
 #include "gb_matlab.h"
 
@@ -30,92 +26,65 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin == 1 && nargout <= 4, "usage: [m n type] = gbsize (X)") ;
+    gb_usage (nargin == 1 && nargout <= 2, "usage: [m n] = GrB.size (X)") ;
 
     //--------------------------------------------------------------------------
-    // get the # of rows and columns of a GraphBLAS or MATLAB matrix
+    // get the # of rows and columns in a GraphBLAS matrix struct
     //--------------------------------------------------------------------------
+
+    GrB_Matrix X = gb_get_shallow (pargin [0]) ;
 
     GrB_Index nrows, ncols ;
-    int typecode = -1 ;
-
-    if (mxIsStruct (pargin [0]))
-    { 
-
-        //----------------------------------------------------------------------
-        // get the size of a GraphBLAS matrix
-        //----------------------------------------------------------------------
-
-        // get the type
-        mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv4") ;
-        CHECK_ERROR (mx_type == NULL, "invalid GraphBLASv4 struct") ;
-
-        // get the scalar info
-        mxArray *opaque = mxGetField (pargin [0], 0, "s") ;
-        CHECK_ERROR (opaque == NULL, "invalid GraphBLASv4 struct") ;
-        int64_t *s = mxGetInt64s (opaque) ;
-        int64_t vlen = s [1] ;
-        int64_t vdim = s [2] ;
-        bool is_csc = (bool) (s [6]) ;
-
-        nrows = (is_csc) ? vlen : vdim ;
-        ncols = (is_csc) ? vdim : vlen ;
-
-        //----------------------------------------------------------------------
-        // return type of a GraphBLAS matrix, if requested
-        //----------------------------------------------------------------------
-
-        if (nargout > 2)
-        { 
-            // return the type
-            pargout [2] = mxDuplicateArray (mx_type) ;
-        }
-
-    }
-    else
-    {
-
-        //----------------------------------------------------------------------
-        // get the size of a MATLAB matrix
-        //----------------------------------------------------------------------
-
-        nrows = (GrB_Index) mxGetM (pargin [0]) ;
-        ncols = (GrB_Index) mxGetN (pargin [0]) ;
-
-        //----------------------------------------------------------------------
-        // get the type of a MATLAB matrix, if requested
-        //----------------------------------------------------------------------
-
-        if (nargout > 2)
-        { 
-            mxClassID class = mxGetClassID (pargin [0]) ;
-            bool is_complex = mxIsComplex (pargin [0]) ;
-            pargout [2] = gb_mxclass_to_mxstring (class, is_complex) ;
-        }
-    }
+    OK (GrB_Matrix_nrows (&nrows, X)) ;
+    OK (GrB_Matrix_ncols (&ncols, X)) ;
 
     //--------------------------------------------------------------------------
-    // return the size as int64 or double
+    // return result as int64 or double
     //--------------------------------------------------------------------------
 
     if (nrows > FLINTMAX || ncols > FLINTMAX)
-    { 
+    {
         // output is int64 to avoid flint overflow
         int64_t *p ;
-        pargout [0] = mxCreateNumericMatrix (1, 1, mxINT64_CLASS, mxREAL) ;
-        p = mxGetInt64s (pargout [0]) ;
-        p [0] = (int64_t) nrows ;
-        pargout [1] = mxCreateNumericMatrix (1, 1, mxINT64_CLASS, mxREAL) ;
-        p = mxGetInt64s (pargout [1]) ;
-        p [0] = (int64_t) ncols ;
+        if (nargout <= 1)
+        { 
+            pargout [0] = mxCreateNumericMatrix (1, 2, mxINT64_CLASS, mxREAL) ;
+            p = mxGetInt64s (pargout [0]) ;
+            p [0] = (int64_t) nrows ;
+            p [1] = (int64_t) ncols ;
+        }
+        else
+        { 
+            pargout [0] = mxCreateNumericMatrix (1, 1, mxINT64_CLASS, mxREAL) ;
+            p = mxGetInt64s (pargout [0]) ;
+            p [0] = (int64_t) nrows ;
+            pargout [1] = mxCreateNumericMatrix (1, 1, mxINT64_CLASS, mxREAL) ;
+            p = mxGetInt64s (pargout [1]) ;
+            p [0] = (int64_t) ncols ;
+        }
     }
     else
-    { 
+    {
         // output is double
-        pargout [0] = mxCreateDoubleScalar ((double) nrows) ;
-        pargout [1] = mxCreateDoubleScalar ((double) ncols) ;
+        if (nargout <= 1)
+        { 
+            pargout [0] = mxCreateDoubleMatrix (1, 2, mxREAL) ;
+            double *p = mxGetDoubles (pargout [0]) ;
+            p [0] = (double) nrows ;
+            p [1] = (double) ncols ;
+        }
+        else
+        { 
+            pargout [0] = mxCreateDoubleScalar ((double) nrows) ;
+            pargout [1] = mxCreateDoubleScalar ((double) ncols) ;
+        }
     }
 
+    //--------------------------------------------------------------------------
+    // free shallow copy of X
+    //--------------------------------------------------------------------------
+
+    OK (GrB_Matrix_free (&X)) ;
     GB_WRAPUP ;
 }
 

@@ -1,8 +1,8 @@
 function test61
 %TEST61 performance test of GrB_eWiseMult
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n----------------------------- eWiseMult performance tests\n') ;
 
@@ -28,7 +28,7 @@ d = nnz (A) / prod (size (A)) ;
     t1 = toc ;
 
     tic
-    C2 = GB_mex_Matrix_eWiseMult (S, [ ], [ ], 'times', A, B, [ ]) ;
+    C2 = GB_mex_eWiseMult_Matrix (S, [ ], [ ], 'times', A, B, [ ]) ;
     t2 = toc ;
 
     fprintf (...
@@ -50,7 +50,7 @@ for d = [0.00001:0.00001:0.0001 0.0002:0.0001: 0.001 0.002:.001:0.01 0.02:0.01:.
     t1 = toc ;
 
     tic
-    C2 = GB_mex_Matrix_eWiseMult (S, [ ], [ ], 'times', A, B, [ ]) ;
+    C2 = GB_mex_eWiseMult_Matrix (S, [ ], [ ], 'times', A, B, [ ]) ;
     t2 = toc ;
 
     fprintf (...

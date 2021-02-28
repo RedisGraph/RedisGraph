@@ -1,15 +1,7 @@
 function codegen_unop_method (unop, op, fcast, ztype, xtype)
 %CODEGEN_UNOP_METHOD create a function to compute C=unop(cast(A))
 %
-% codegen_unop_method (unop, op, fcast, ztype, xtype)
-%
-%   unop: the name of the operator
-%   op: a string defining the computation
-%   ztype: the type of z for z=f(x)
-%   xtype: the type of x for z=f(x)
-
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% codegen_unop_method (unop, op, ztype, xtype)
 
 f = fopen ('control.m4', 'w') ;
 
@@ -18,18 +10,9 @@ f = fopen ('control.m4', 'w') ;
 
 name = sprintf ('%s_%s_%s', unop, zname, xname) ;
 
-% determine if the op is identity with no typecast
-is_identity = isequal (unop, 'identity') ;
-no_typecast = isequal (ztype, xtype) ;
-if (is_identity && no_typecast)
-    fprintf (f, 'define(`GB_op_is_identity_with_no_typecast'', `1'')\n') ;
-else
-    fprintf (f, 'define(`GB_op_is_identity_with_no_typecast'', `0'')\n') ;
-end
-
 % function names
-fprintf (f, 'define(`GB_unop_apply'', `GB_unop_apply__%s'')\n', name) ;
-fprintf (f, 'define(`GB_unop_tran'', `GB_unop_tran__%s'')\n', name) ;
+fprintf (f, 'define(`GB_unop'', `GB_unop__%s'')\n', name) ;
+fprintf (f, 'define(`GB_tran'', `GB_tran__%s'')\n', name) ;
 
 % type of C and A
 fprintf (f, 'define(`GB_ctype'', `%s'')\n', ztype) ;
@@ -57,16 +40,16 @@ end
 
 % create the unary operator
 op = strrep (op, 'xarg', '`$2''') ;
-fprintf (f, 'define(`GB_unaryop'', `$1 = %s'')\n', op) ;
+fprintf (f, 'define(`GB_UNARYOP'', `$1 = %s'')\n', op) ;
 
 % create the cast operator
 if (A_is_pattern)
     % cast (A(i,j)) is not needed
-    fprintf (f, 'define(`GB_cast'', `;'')\n') ;
+    fprintf (f, 'define(`GB_CAST'', `;'')\n') ;
 else
     fcast = strrep (fcast, 'zarg', '`$1''') ;
     fcast = strrep (fcast, 'xarg', '`$2''') ;
-    fprintf (f, 'define(`GB_cast'', `%s'')\n', fcast) ;
+    fprintf (f, 'define(`GB_CAST'', `%s'')\n', fcast) ;
 end
 
 % create the disable flag
@@ -84,14 +67,14 @@ fclose (f) ;
 
 % construct the *.c file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_unop.c | m4 | tail -n +10 > Generated/GB_unop__%s.c', ...
+'cat control.m4 Generator/GB_unaryop.c | m4 | tail -n +9 > Generated/GB_unaryop__%s.c', ...
 name) ;
 fprintf ('.') ;
 system (cmd) ;
 
 % append to the *.h file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_unop.h | m4 | tail -n +10 >> Generated/GB_unop__include.h') ;
+'cat control.m4 Generator/GB_unaryop.h | m4 | tail -n +9 >> Generated/GB_unaryop__include.h') ;
 system (cmd) ;
 
 delete ('control.m4') ;

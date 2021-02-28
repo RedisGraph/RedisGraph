@@ -1,8 +1,8 @@
 function test19b(fulltest)
 %TEST19B test GrB_assign and GrB_*_setElement with many pending operations
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest19b: GrB_assign and setElement, many pending computations\n') ;
 
@@ -54,9 +54,9 @@ for problem = 0:2
         if (c == 10)
             d = struct ('outp', 'replace') ;
         elseif (c == 9)
-            d = struct ('outp', 'replace', 'mask', 'complement') ;
+            d = struct ('outp', 'replace', 'mask', 'scmp') ;
         elseif (c == 8)
-            d = struct ('mask', 'complement') ;
+            d = struct ('mask', 'scmp') ;
         else
             d = [ ] ;
         end
@@ -128,30 +128,15 @@ for problem = 0:2
                 % no mask
                 Mask = [ ] ;
             case 2
-                density = rand (1) ;
-                if (density < 0.8)
-                    if (kind == 0)
-                        % mask same size as C: Matrix or Vector assign
-                        Mask = (sprand (m, n, 0.3) ~= 0) ;
-                    elseif (kind == 1)
-                        % mask same size as C(:,j): column assign
-                        Mask = (sprand (m, 1, 0.3) ~= 0) ;
-                    else % (kind == 2)
-                        % mask same size as C(i,:)': row assign
-                        Mask = (sprand (n, 1, 0.3) ~= 0) ;
-                    end
-                else
-                    if (kind == 0)
-                        % mask same size as C: Matrix or Vector assign
-                        Mask = sparse (true (m, n)) ;
-                    elseif (kind == 1)
-                        % mask same size as C(:,j): column assign
-                        Mask = sparse (true (m, 1)) ;
-                    else % (kind == 2)
-                        % mask same size as C(i,:)': row assign
-                        Mask = sparse (true (n, 1)) ;
-                    end
-
+                if (kind == 0)
+                    % mask same size as C: Matrix or Vector assign
+                    Mask = (sprand (m, n, 0.3) ~= 0) ;
+                elseif (kind == 1)
+                    % mask same size as C(:,j): column assign
+                    Mask = (sprand (m, 1, 0.3) ~= 0) ;
+                else % (kind == 2)
+                    % mask same size as C(i,:)': row assign
+                    Mask = (sprand (n, 1, 0.3) ~= 0) ;
                 end
         end
 
@@ -197,24 +182,9 @@ for problem = 0:2
         end
     end
 
-    % default sparsity
     C2 = GB_mex_assign (Corig, Work2) ;
+
     GB_spec_compare (C2, C3) ;
-
-    % with sparsity control
-    for s = 0:15
-        C2 = GB_mex_assign (Corig, Work2, [s s]) ;
-        GB_spec_compare (C2, C3) ;
-    end
-
-    % default sparsity but both C and M sparse
-    C2 = GB_mex_assign (Corig, Work2, [2 2]) ;
-    GB_spec_compare (C2, C3) ;
-
-    % default sparsity but C sparse and M bitmap/full
-    C2 = GB_mex_assign (Corig, Work2, [2 8]) ;
-    GB_spec_compare (C2, C3) ;
-
 end
 
 if (debug_status)

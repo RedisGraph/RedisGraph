@@ -1,17 +1,10 @@
 function x = gb_get_scalar (A)
-%GB_GET_SCALAR get a scalar from a matrix
+%GB_GET_SCALAR get the first scalar from a matrix
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
-
-if (isobject (A))
-    A = A.opaque ;
+[~, ~, x] = GrB.extracttuples (A) ;
+if (isempty (x))
+    x = 0 ;
+else
+    x = x (1) ;
 end
-
-[m, n] = gbsize (A) ;
-if (m ~= 1 || n ~= 1)
-    error ('input parameter %s must be a scalar', inputname (1)) ;
-end
-
-x = gb_scalar (A) ;
 

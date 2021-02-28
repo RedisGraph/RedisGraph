@@ -1,13 +1,10 @@
 function C = abs (G)
-%ABS absolute value.
-% C = abs (G) is the absolute value of each entry of G.
-% C is always real, even if C is complex.
+%ABS Absolute value of a GraphBLAS matrix.
 %
-% See also GrB/sign.
+% See also sign.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-G = G.opaque ;
-C = GrB (gb_abs (G)) ;
+C = GrB.apply ('abs', G) ;
 

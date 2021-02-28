@@ -2,8 +2,8 @@
 // GB_assign_zombie5: delete entries in C for C_replace_phase
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,22 +13,15 @@
 
 // See also GB_assign_zombie3 and GB_assign_zombie4.
 
-// C must be sparse or hypersparse.
-
 #include "GB_assign.h"
-#include "GB_assign_zombie.h"
-#include "GB_subassign_methods.h"
 #include "GB_ek_slice.h"
 
-#undef  GB_FREE_WORK
 #define GB_FREE_WORK \
-    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice) ;
-#undef  GB_FREE_ALL
-#define GB_FREE_ALL GB_FREE_WORK
+    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ;
 
 GrB_Info GB_assign_zombie5
 (
-    GrB_Matrix C,                   // the matrix C, or a copy
+    GrB_Matrix Z,                   // the matrix C, or a copy
     const GrB_Matrix M,
     const bool Mask_comp,
     const bool Mask_struct,
@@ -45,54 +38,37 @@ GrB_Info GB_assign_zombie5
 {
 
     //--------------------------------------------------------------------------
-    // check inputs
+    // get Z
     //--------------------------------------------------------------------------
 
-    ASSERT (!GB_IS_FULL (C)) ;
-    ASSERT (!GB_IS_BITMAP (C)) ;
-    ASSERT (GB_ZOMBIES_OK (C)) ;
-    ASSERT (GB_JUMBLED_OK (C)) ;
-    ASSERT (!GB_PENDING (C)) ;
-    ASSERT (!GB_ZOMBIES (M)) ; 
-    ASSERT (!GB_JUMBLED (M)) ;      // binary search on M
-    ASSERT (!GB_PENDING (M)) ; 
-    ASSERT (!GB_aliased (C, M)) ;   // NO ALIAS of C==M
-
-    //--------------------------------------------------------------------------
-    // get C
-    //--------------------------------------------------------------------------
-
-    const int64_t *GB_RESTRICT Ch = C->h ;
-    const int64_t *GB_RESTRICT Cp = C->p ;
-    // const int64_t Cnvec = C->nvec ;
-    int64_t *GB_RESTRICT Ci = C->i ;
-    int64_t nzombies = C->nzombies ;
-    const int64_t zvlen = C->vlen ;
+    const int64_t *GB_RESTRICT Zh = Z->h ;
+    const int64_t *GB_RESTRICT Zp = Z->p ;
+    // const int64_t Znvec = Z->nvec ;
+    int64_t *GB_RESTRICT Zi = Z->i ;
+    int64_t nzombies = Z->nzombies ;
+    const int64_t znz = GB_NNZ (Z) ;
 
     //--------------------------------------------------------------------------
     // get M
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Mp = M->p ;
     const int64_t *GB_RESTRICT Mh = M->h ;
-    const int8_t  *GB_RESTRICT Mb = M->b ;
+    const int64_t *GB_RESTRICT Mp = M->p ;
     const int64_t *GB_RESTRICT Mi = M->i ;
-    const GB_void *GB_RESTRICT Mx = (GB_void *) (Mask_struct ? NULL : (M->x)) ;
+    const GB_void *GB_RESTRICT Mx = (Mask_struct ? NULL : (M->x)) ;
     const size_t msize = M->type->size ;
     const int64_t Mnvec = M->nvec ;
-    const int64_t Mvlen = M->vlen ;
-    const bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;
-    const bool M_is_bitmap = GB_IS_BITMAP (M) ;
-    const bool M_is_full = GB_IS_FULL (M) ;
+    const bool M_is_hyper = M->is_hyper ;
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    const int64_t znz = GB_NNZ_HELD (C) ;
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = GB_nthreads (znz, chunk, nthreads_max) ;
     int ntasks = (nthreads == 1) ? 1 : (64 * nthreads) ;
+    ntasks = GB_IMIN (ntasks, znz) ;
+    ntasks = GB_IMAX (ntasks, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the entries for each task
@@ -103,10 +79,10 @@ GrB_Info GB_assign_zombie5
     // vectors may be shared with prior slices and subsequent slices.
 
     int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
-    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, C, &ntasks))
-    { 
+    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, Z, ntasks))
+    {
         // out of memory
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -134,52 +110,60 @@ GrB_Info GB_assign_zombie5
         {
 
             //------------------------------------------------------------------
-            // get C(:,j) and determine if j is outside the list J
+            // get Z(:,j) and determine if j is outside the list J
             //------------------------------------------------------------------
 
-            int64_t j = GBH (Ch, k) ;
-            // j_outside is true if column j is outside the C(I,J) submatrix
+            int64_t j = (Zh == NULL) ? k : Zh [k] ;
+            // j_outside is true if column j is outside the Z(I,J) submatrix
             bool j_outside = !GB_ij_is_in_list (J, nJ, j, Jkind, Jcolon) ;
-            int64_t pC_start, pC_end ;
-            GB_get_pA (&pC_start, &pC_end, tid, k,
-                kfirst, klast, pstart_slice, Cp, zvlen) ;
+            int64_t pZ_start, pZ_end ;
+            GB_get_pA_and_pC (&pZ_start, &pZ_end, NULL,
+                tid, k, kfirst, klast, pstart_slice, NULL, NULL, Zp) ;
 
             //------------------------------------------------------------------
             // get M(:,j)
             //------------------------------------------------------------------
 
-            // this works for M with any sparsity structure
             int64_t pM_start, pM_end ;
-            int64_t pright = Mnvec - 1 ;
             int64_t pleft = 0 ;
-            GB_lookup (M_is_hyper, Mh, Mp, Mvlen, &pleft, pright, j,
+            int64_t pright = Mnvec - 1 ;
+            GB_lookup (M_is_hyper, Mh, Mp, &pleft, pright, j,
                 &pM_start, &pM_end) ;
-            bool mjdense = (pM_end - pM_start) == Mvlen ;
 
             //------------------------------------------------------------------
-            // iterate over all entries in C(:,j)
+            // iterate over all entries in Z(:,j)
             //------------------------------------------------------------------
 
-            for (int64_t pC = pC_start ; pC < pC_end ; pC++)
+            for (int64_t pZ = pZ_start ; pZ < pZ_end ; pZ++)
             {
 
                 //--------------------------------------------------------------
-                // consider C(i,j)
+                // consider Z(i,j)
                 //--------------------------------------------------------------
 
-                // C(i,j) is outside the C(I,J) submatrix if either i is
+                // Z(i,j) is outside the Z(I,J) submatrix if either i is
                 // not in the list I, or j is not in J, or both.
-                int64_t i = Ci [pC] ;
+                int64_t i = Zi [pZ] ;
                 if (!GB_IS_ZOMBIE (i) &&
                     (j_outside || !GB_ij_is_in_list (I, nI, i, Ikind, Icolon)))
                 {
 
                     //----------------------------------------------------------
-                    // C(i,j) is a live entry not in the C(I,J) submatrix
+                    // Z(i,j) is a live entry not in the Z(I,J) submatrix
                     //----------------------------------------------------------
 
                     // Check the mask M to see if it should be deleted.
-                    GB_MIJ_BINARY_SEARCH_OR_DENSE_LOOKUP (i) ;
+
+                    int64_t pM     = pM_start ;
+                    int64_t pright = pM_end - 1 ;
+                    bool found ;
+                    GB_BINARY_SEARCH (i, Mi, pM, pright, found) ;
+                    bool mij = false ;
+                    if (found)
+                    { 
+                        // found it
+                        mij = GB_mcast (Mx, pM, msize) ;
+                    }
                     if (Mask_comp)
                     { 
                         // negate the mask if Mask_comp is true
@@ -187,9 +171,9 @@ GrB_Info GB_assign_zombie5
                     }
                     if (!mij)
                     { 
-                        // delete C(i,j) by marking it as a zombie
+                        // delete Z(i,j) by marking it as a zombie
                         nzombies++ ;
-                        Ci [pC] = GB_FLIP (i) ;
+                        Zi [pZ] = GB_FLIP (i) ;
                     }
                 }
             }
@@ -200,7 +184,7 @@ GrB_Info GB_assign_zombie5
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    C->nzombies = nzombies ;
+    Z->nzombies = nzombies ;
     GB_FREE_WORK ;
     return (GrB_SUCCESS) ;
 }

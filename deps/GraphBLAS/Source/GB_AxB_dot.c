@@ -2,8 +2,8 @@
 // GB_AxB_dot: C<M>=A'*B using dot products
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -28,9 +28,9 @@
 // The output matrix C = *Chandle has not been allocated, so C is NULL on
 // input.  The mask M is optional.
 
-// If C is computed in-place, Chandle is ignored, and the result is computed in
-// C_in instead.  This case requires the accum operator to match the monoid of
-// the semiring.
+// If C is computed in place, Chandle is ignored, and the result is computed
+// in C_in_place instead.  This case requires the accum operator to match
+// the monoid of the semiring.
 
 // The semiring defines C=A*B.  flipxy modifies how the semiring multiply
 // operator is applied.  If false, then fmult(aik,bkj) is computed.  If true,
@@ -41,12 +41,24 @@
 // GxB_vxm) and detailed error reports.
 
 #include "GB_mxm.h"
-#define GB_FREE_ALL ;
+
+#define GB_FREE_ALL                                             \
+{                                                               \
+    if (naslice > 1 && Aslice != NULL)                          \
+    {                                                           \
+        for (int tid = 0 ; tid < naslice ; tid++)               \
+        {                                                       \
+            GB_MATRIX_FREE (& (Aslice [tid])) ;                 \
+        }                                                       \
+    }                                                           \
+    GB_FREE_MEMORY (Slice,  naslice+1, sizeof (int64_t)) ;      \
+    GB_FREE_MEMORY (Aslice, naslice+1, sizeof (int64_t)) ;      \
+}
 
 GrB_Info GB_AxB_dot                 // dot product (multiple methods)
 (
     GrB_Matrix *Chandle,            // output matrix, NULL on input
-    GrB_Matrix C_in,                // input/output matrix, if done in-place
+    GrB_Matrix C_in_place,          // input/output matrix, if done in place
     GrB_Matrix M,                   // optional mask matrix
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
@@ -55,7 +67,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     bool *mask_applied,             // if true, mask was applied
-    bool *done_in_place,            // if true, C_in was computed in-place
+    bool *done_in_place,            // if true, C_in_place was computed in place
     GB_Context Context
 )
 {
@@ -66,108 +78,163 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
 
     ASSERT (Chandle != NULL) ;          // C = (*Chandle) is NULL
     ASSERT (*Chandle == NULL) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for parallel A*B", GB0) ;
+    ASSERT_MATRIX_OK (A, "A for parallel A*B", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for parallel A*B", GB0) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT_SEMIRING_OK (semiring, "semiring for parallel A*B", GB0) ;
 
-    ASSERT_MATRIX_OK_OR_NULL (M, "M for dot A'*B", GB0) ;
-    ASSERT (!GB_PENDING (M)) ;
-    ASSERT (GB_JUMBLED_OK (M)) ;
-    ASSERT (!GB_ZOMBIES (M)) ;
+    int64_t naslice = 0 ;
+    int64_t nbslice = 0 ;
+    int64_t *GB_RESTRICT Slice = NULL ;    // size naslice+1
+    GrB_Matrix *Aslice = NULL ;         // size naslice+1
 
-    ASSERT_MATRIX_OK (A, "A for dot A'*B", GB0) ;
-    GB_MATRIX_WAIT (A) ;
-    ASSERT (!GB_PENDING (A)) ;
-    ASSERT (!GB_JUMBLED (A)) ;
-    ASSERT (!GB_ZOMBIES (A)) ;
-
-    ASSERT_MATRIX_OK (B, "B for dot A'*B", GB0) ;
-    GB_MATRIX_WAIT (B) ;
-    ASSERT (!GB_PENDING (B)) ;
-    ASSERT (!GB_JUMBLED (B)) ;
-    ASSERT (!GB_ZOMBIES (B)) ;
-
-    ASSERT_SEMIRING_OK (semiring, "semiring for dot A'*B", GB0) ;
-
-    //--------------------------------------------------------------------------
-    // in-place C+=A'*B.  mask is not present (and not applied)
-    //--------------------------------------------------------------------------
-
-    if (GB_AxB_dot4_control (C_in, M, Mask_comp))
+    if (M != NULL && !Mask_comp)
     { 
-        (*done_in_place) = true ;
-        (*mask_applied) = false ;    // no mask to apply
-        return (GB_AxB_dot4 (C_in, A, B, semiring, flipxy, Context)) ;
+
+        //======================================================================
+        // C<M>=A'*B
+        //======================================================================
+
+        // use dot3 if M is present and not complemented
+        GBBURBLE ("dot3 ") ;
+        (*mask_applied) = true ;
+        return (GB_AxB_dot3 (Chandle, M, Mask_struct, A, B, semiring, flipxy,
+            Context)) ;
+
     }
+    else
+    {
 
-    //--------------------------------------------------------------------------
-    // check the empty case
-    //--------------------------------------------------------------------------
+        //======================================================================
+        // C<!M>=A'*B or C=A'*B
+        //======================================================================
 
-    if (A->vlen == 0)
-    { 
-        // no work to do; C is an empty matrix, normally hypersparse
-        if (C_in != NULL) return (GrB_SUCCESS) ;
-        return (GB_new (Chandle, // auto sparsity, new header
-            semiring->add->op->ztype, A->vdim, B->vdim, GB_Ap_calloc, true,
-            GxB_AUTO_SPARSITY, GB_Global_hyper_switch_get ( ), 1, Context)) ;
-    }
+        GrB_Info info ;
 
-    //--------------------------------------------------------------------------
-    // C<M>=A'*B: general case
-    //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
+        // get A and B
+        //----------------------------------------------------------------------
 
-    if (GB_AxB_dot3_control (M, Mask_comp))
-    { 
+        if (B->nvec_nonempty < 0)
+        { 
+            B->nvec_nonempty = GB_nvec_nonempty (B, NULL) ;
+        }
 
-        // use dot3 if M is present and not complemented, and either sparse or
-        // hypersparse
-        GBURBLE ("dot3 ") ;
-        (*mask_applied) = true ;    // mask is always applied
-        (*done_in_place) = false ;
+        if (A->nvec_nonempty < 0)
+        { 
+            A->nvec_nonempty = GB_nvec_nonempty (A, NULL) ;
+        }
 
-        #if defined ( GBCUDA )
+        //======================================================================
+        // in place C+=A'*B
+        //======================================================================
 
-// [ replace this with:
-// if (GB_AxB_dot3_cuda_branch (M, Mask_struct, A, B, semiring, flipxy, Context)
+        if (C_in_place != NULL && M == NULL && !Mask_comp)
+        { 
+            GBBURBLE ("dense, C+=A'*B in place ") ;
+            (*done_in_place) = true ;
+            return (GB_AxB_dot4 (C_in_place, A, B, semiring, flipxy, Context)) ;
+        }
 
-        // very rough estimate of the work to do
-        int64_t anz = GB_IS_FULL (A) ? GB_NNZ_FULL (A) : GB_NNZ (A) ;
-        int64_t bnz = GB_IS_FULL (B) ? GB_NNZ_FULL (B) : GB_NNZ (B) ;
-        int64_t mnz = GB_NNZ (M) ;
+        //----------------------------------------------------------------------
+        // determine the number of threads to use
+        //----------------------------------------------------------------------
 
-        double adeg = ((double) anz) / ((double) GB_IMAX (1, A->nvec)) ;
-        double bdeg = ((double) bnz) / ((double) GB_IMAX (1, B->nvec)) ;
-        double work = mnz * GB_IMIN (adeg, bdeg) ;
+        int64_t anvec = A->nvec ;
+        int64_t anz   = GB_NNZ (A) ;
 
-        // TODO for GPU: if A or B are not accessed (first, 2nd, or pair
-        // ops) then the type of A can be user-defined here, for CUDA.
+        int64_t bnvec = B->nvec ;
+        int64_t bnz   = GB_NNZ (B) ;
 
-        int ngpus_to_use = GB_ngpus_to_use (work) ;
-        GBURBLE (" work:%g gpus:%d ", work, ngpus_to_use) ;
-        if (ngpus_to_use > 0 && semiring->semiring_is_builtin
-            && (A->type->code != GB_UDT_code)
-            && (B->type->code != GB_UDT_code)
-            && !GB_IS_BITMAP (A) && !GB_IS_BITMAP (B))
-// to here ... ]
+        ASSERT (A->vlen == B->vlen) ;
+
+        GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+        int nthreads = GB_nthreads (anz + bnz, chunk, nthreads_max) ;
+
+        //======================================================================
+        // sequential C<!M>=A'*B or C=A'*B
+        //======================================================================
+
+        if (nthreads == 1)
         {
-            // use "the" GPU (TODO for GPU: could use multiple GPUs too)
-            return (GB_AxB_dot3_cuda (Chandle, M, Mask_struct, A, B, semiring,
-                flipxy, Context)) ;
+            // do the entire computation with a single thread
+            info = GB_AxB_dot2 (Chandle, M, Mask_struct, &A, B, semiring,
+                flipxy, mask_applied, 1, 1, 1, NULL) ;
+            if (info == GrB_SUCCESS)
+            { 
+                ASSERT_MATRIX_OK (*Chandle, "C for sequential A*B", GB0) ;
+            }
+            return ((info == GrB_OUT_OF_MEMORY) ? GB_OUT_OF_MEMORY : info) ;
+        }
+
+        //======================================================================
+        // parallel C<!M>=A'*B or C=A'*B
+        //======================================================================
+
+        ASSERT (nthreads > 1) ;
+
+        //----------------------------------------------------------------------
+        // slice A' for C=A'*B or C<!M>=A'*B
+        //----------------------------------------------------------------------
+
+        // determine number of slices for A' and B
+
+        if (bnvec > 32 * nthreads || bnvec == 0)
+        { 
+            // just slice B
+            nbslice = 32 * nthreads ;
+            naslice = 1 ;
         }
         else
-        #endif
         { 
-            // use the CPU
-            return (GB_AxB_dot3 (Chandle, M, Mask_struct, A, B, semiring,
-                flipxy, Context)) ;
+            // slice B into individual vectors
+            nbslice = bnvec ;
+
+            // slice A' to get a total of about 32*nthreads tasks
+            naslice = (32 * nthreads) / nbslice ;
+
+            // but do not slice A too finely
+            naslice = GB_IMIN (naslice, anvec/4) ;
+            naslice = GB_IMAX (naslice, nthreads) ;
         }
+
+        // thread tid will do rows Slice [tid] to Slice [tid+1]-1 of A'
+
+        //----------------------------------------------------------------------
+        // slice A' by nz
+        //----------------------------------------------------------------------
+
+        GB_CALLOC_MEMORY (Aslice, naslice+1, sizeof (GrB_Matrix)) ;
+        if (Aslice == NULL || !GB_pslice (&Slice, A->p, A->nvec, naslice))
+        { 
+            // out of memory
+            GB_FREE_ALL ;
+            return (GB_OUT_OF_MEMORY) ;
+        }
+
+        //----------------------------------------------------------------------
+        // construct each slice of A'
+        //----------------------------------------------------------------------
+
+        GB_OK (GB_slice (A, naslice, Slice, Aslice, Context)) ;
+
+        //----------------------------------------------------------------------
+        // compute each slice of C = A'*B or C<!M> = A'*B
+        //----------------------------------------------------------------------
+
+        GB_OK (GB_AxB_dot2 (Chandle, M, Mask_struct, Aslice, B, semiring,
+            flipxy, mask_applied, nthreads, naslice, nbslice, Context)) ;
+
+        //----------------------------------------------------------------------
+        // free workspace and return result
+        //----------------------------------------------------------------------
+
+        GB_FREE_ALL ;
+        ASSERT_MATRIX_OK (*Chandle, "C for dot2 A'*B", GB0) ;
+        return (GrB_SUCCESS) ;
     }
-
-    //--------------------------------------------------------------------------
-    // general case: C<M>=A'*B, C<!M>=A'B*, or C=A'*B, not in-place
-    //--------------------------------------------------------------------------
-
-    (*mask_applied) = (M != NULL) ; // mask applied if present
-    (*done_in_place) = false ;      // TODO: allow dot2 to work in-place
-    return (GB_AxB_dot2 (Chandle, M, Mask_comp, Mask_struct, A, B, semiring,
-        flipxy, Context)) ;
 }
 

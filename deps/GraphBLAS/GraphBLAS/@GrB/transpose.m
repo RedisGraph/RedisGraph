@@ -1,12 +1,10 @@
 function C = transpose (G)
-%TRANSPOSE C = G.', array transpose.
-% C = G.' is the array transpose of G.
+%TRANSPOSE C = G.', array transpose of a GraphBLAS matrix.
 %
-% See also GrB.trans, GrB/ctranspose.
+% See also GrB.trans, ctranspose.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-G = G.opaque ;
-C = GrB (gbtrans (G)) ;
+C = GrB.trans (G) ;
 

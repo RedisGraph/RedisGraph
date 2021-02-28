@@ -2,8 +2,8 @@
 // GB_dense.h: defintions for dense matrix operations 
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -58,7 +58,7 @@ GrB_Info GB_dense_subassign_23      // C += A; C is dense, A is sparse or dense
 GrB_Info GB_dense_subassign_22      // C += x where C is dense and x is a scalar
 (
     GrB_Matrix C,                   // input/output matrix
-    const void *scalar,             // input scalar
+    const GB_void *scalar,          // input scalar
     const GrB_Type atype,           // type of the input scalar
     const GrB_BinaryOp accum,       // operator to apply
     GB_Context Context
@@ -68,11 +68,11 @@ GrB_Info GB_dense_subassign_22      // C += x where C is dense and x is a scalar
 // GB_dense_subassign_21: C(:,:) = scalar where C becomes dense
 //------------------------------------------------------------------------------
 
-GrB_Info GB_dense_subassign_21      // C(:,:) = x, scalar to matrix assignment
+GrB_Info GB_dense_subassign_21      // C(:,:) = x; C is a matrix and x a scalar
 (
     GrB_Matrix C,                   // input/output matrix
-    const void *scalar,             // input scalar
-    const GrB_Type scalar_type,     // type of the input scalar
+    const GB_void *scalar,          // input scalar
+    const GrB_Type atype,           // type of the input scalar
     GB_Context Context
 ) ;
 
@@ -86,7 +86,7 @@ GrB_Info GB_dense_subassign_05d
     // input:
     const GrB_Matrix M,
     const bool Mask_struct,
-    const void *scalar,
+    const GB_void *scalar,
     const GrB_Type atype,
     GB_Context Context
 ) ;
@@ -105,10 +105,10 @@ GrB_Info GB_dense_subassign_06d
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_subassign_24: C = A
+// GB_dense_subassign_24: C(:,:) = A ; C is dense
 //------------------------------------------------------------------------------
 
-GrB_Info GB_subassign_24    // C = A, copy A into an existing matrix C
+GrB_Info GB_dense_subassign_24   // C = A, copy A into an existing matrix C
 (
     GrB_Matrix C,           // output matrix to modify
     const GrB_Matrix A,     // input matrix to copy
@@ -126,6 +126,32 @@ GrB_Info GB_dense_subassign_25
     const GrB_Matrix M,
     const GrB_Matrix A,
     GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// GB_cblas_saxpy: Y += alpha*X where X and Y are dense float arrays
+//------------------------------------------------------------------------------
+
+void GB_cblas_saxpy         // Y += alpha*X
+(
+    const int64_t n,        // length of X and Y (note the int64_t type)
+    const float alpha,      // scale factor
+    const float *X,         // the array X, always stride 1
+    float *Y,               // the array Y, always stride 1
+    int nthreads            // maximum # of threads to use
+) ;
+
+//------------------------------------------------------------------------------
+// GB_cblas_daxpy: Y += alpha*X where X and Y are dense double arrays
+//------------------------------------------------------------------------------
+
+void GB_cblas_daxpy         // Y += alpha*X
+(
+    const int64_t n,        // length of X and Y (note the int64_t type)
+    const double alpha,     // scale factor
+    const double *X,        // the array X, always stride 1
+    double *Y,              // the array Y, always stride 1
+    int nthreads            // maximum # of threads to use
 ) ;
 
 #endif

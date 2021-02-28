@@ -65,11 +65,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	/* TODO: when module unloads call GrB_finalize. */
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true);
 	if(res != GrB_SUCCESS) {
-		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS");
+		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS: '%s'", GrB_error());
 		return REDISMODULE_ERR;
 	}
-
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
+	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
 	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
 						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {

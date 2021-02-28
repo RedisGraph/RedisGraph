@@ -1,33 +1,70 @@
 //------------------------------------------------------------------------------
-// GB_AxB_dot3_template: C<M>=A'*B via dot products, where C is sparse/hyper
+// GB_AxB_dot3_template: C<M>=A'*B via dot products
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// C and M are both sparse or hyper, and C->h is a copy of M->h.
-// M is present, and not complemented.  It may be valued or structural.
+#ifndef GB_DOT3
+#define GB_DOT3
+#endif
 
 {
 
-    int tid ;
+    //--------------------------------------------------------------------------
+    // get M, A, B, and C
+    //--------------------------------------------------------------------------
+
+    const int64_t *GB_RESTRICT Cp = C->p ;
+    const int64_t *GB_RESTRICT Ch = C->h ;
+    int64_t  *GB_RESTRICT Ci = C->i ;
+    GB_CTYPE *GB_RESTRICT Cx = C->x ;
+
+    const int64_t *GB_RESTRICT Bp = B->p ;
+    const int64_t *GB_RESTRICT Bh = B->h ;
+    const int64_t *GB_RESTRICT Bi = B->i ;
+    const GB_BTYPE *GB_RESTRICT Bx = B_is_pattern ? NULL : B->x ;
+    const int64_t bvlen = B->vlen ;
+    const int64_t bnvec = B->nvec ;
+    const bool B_is_hyper = B->is_hyper ;
+
+    const int64_t *GB_RESTRICT Mi = M->i ;
+    const GB_void *GB_RESTRICT Mx = (Mask_struct ? NULL : (M->x)) ;
+    const size_t msize = M->type->size ;
+
+    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
+    const int64_t anvec = A->nvec ;
+    const bool A_is_hyper = GB_IS_HYPER (A) ;
+    const GB_ATYPE *GB_RESTRICT Ax = A_is_pattern ? NULL : A->x ;
+
+    //--------------------------------------------------------------------------
+    // C<M> = A'*B
+    //--------------------------------------------------------------------------
+
+    // C and M have the same pattern, except some entries of C may become
+    // zombies.
+    int64_t nzombies = 0 ;
+
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (tid = 0 ; tid < ntasks ; tid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
         // get the task descriptor
         //----------------------------------------------------------------------
 
-        int64_t kfirst = TaskList [tid].kfirst ;
-        int64_t klast  = TaskList [tid].klast ;
-        int64_t pC_first = TaskList [tid].pC ;
-        int64_t pC_last  = TaskList [tid].pC_end ;
-        int64_t bpleft = 0 ;            // Ch is not jumbled
-        int64_t task_nzombies = 0 ;     // # of zombies found by this task
+        int64_t kfirst = TaskList [taskid].kfirst ;
+        int64_t klast  = TaskList [taskid].klast ;
+        int64_t pC_first = TaskList [taskid].pC ;
+        int64_t pC_last  = TaskList [taskid].pC_end ;
+        int64_t task_nzombies = 0 ;
+        int64_t bpleft = 0 ;
 
         //----------------------------------------------------------------------
         // compute all vectors in this task
@@ -40,139 +77,115 @@
             // get C(:,k) and M(:k)
             //------------------------------------------------------------------
 
-            #if defined ( GB_MASK_SPARSE_AND_STRUCTURAL )
-            // M and C are sparse
-            const int64_t j = k ;
-            #else
-            // M and C are either both sparse or both hypersparse
-            const int64_t j = GBH (Ch, k) ;
-            #endif
-
-            int64_t pC_start = Cp [k] ;
-            int64_t pC_end   = Cp [k+1] ;
+            int64_t j = (Ch == NULL) ? k : Ch [k] ;
+            int64_t pC_start, pC_end ;
             if (k == kfirst)
             { 
                 // First vector for task; may only be partially owned.
                 pC_start = pC_first ;
-                pC_end   = GB_IMIN (pC_end, pC_last) ;
+                pC_end   = GB_IMIN (Cp [k+1], pC_last) ;
             }
             else if (k == klast)
             { 
                 // Last vector for task; may only be partially owned.
+                pC_start = Cp [k] ;
                 pC_end   = pC_last ;
             }
             else
             { 
-                // task completely owns this vector C(:,k).
+                // task fully owns this vector C(:,k).
+                pC_start = Cp [k] ;
+                pC_end   = Cp [k+1] ;
             }
 
             //------------------------------------------------------------------
             // get B(:,j)
             //------------------------------------------------------------------
 
-            #if GB_B_IS_HYPER
-                // B is hyper
-                int64_t pB_start, pB_end ;
-                GB_lookup (true, Bh, Bp, vlen, &bpleft, bnvec-1, j,
-                    &pB_start, &pB_end) ;
-            #elif GB_B_IS_SPARSE
-                // B is sparse
-                const int64_t pB_start = Bp [j] ;
-                const int64_t pB_end = Bp [j+1] ;
-            #else
-                // B is bitmap or full
-                const int64_t pB_start = j * vlen ;
-            #endif
-
-            #if (GB_B_IS_SPARSE || GB_B_IS_HYPER)
-                const int64_t bjnz = pB_end - pB_start ;
-                if (bjnz == 0)
-                {
-                    // no work to do if B(:,j) is empty, except for zombies
-                    task_nzombies += (pC_end - pC_start) ;
-                    for (int64_t pC = pC_start ; pC < pC_end ; pC++)
-                    { 
-                        // C(i,j) is a zombie
-                        int64_t i = Mi [pC] ;
-                        Ci [pC] = GB_FLIP (i) ;
-                    }
-                    continue ;
-                }
-                #if (GB_A_IS_SPARSE || GB_A_IS_HYPER)
-                    // Both A and B are sparse; get first and last in B(:,j)
-                    const int64_t ib_first = Bi [pB_start] ;
-                    const int64_t ib_last  = Bi [pB_end-1] ;
-                #endif
-            #endif
+            int64_t pB_start, pB_end ;
+            GB_lookup (B_is_hyper, Bh, Bp, &bpleft, bnvec-1, j,
+                &pB_start, &pB_end) ;
+            int64_t bjnz = pB_end - pB_start ;
 
             //------------------------------------------------------------------
             // C(:,j)<M(:,j)> = A(:,i)'*B(:,j)
             //------------------------------------------------------------------
 
-            for (int64_t pC = pC_start ; pC < pC_end ; pC++)
+            if (bjnz == 0)
+            {
+            
+                //--------------------------------------------------------------
+                // C(:,j) is empty if B(:,j) is empty
+                //--------------------------------------------------------------
+
+                task_nzombies += (pC_end - pC_start) ;
+                for (int64_t pC = pC_start ; pC < pC_end ; pC++)
+                { 
+                    // C(i,j) is a zombie
+                    Ci [pC] = GB_FLIP (Mi [pC]) ;
+                }
+            }
+            else
             {
 
                 //--------------------------------------------------------------
-                // get C(i,j) and M(i,j)
+                // B(:,j) not empty
                 //--------------------------------------------------------------
 
-                bool cij_exists = false ;
-                GB_CIJ_DECLARE (cij) ;
+                int64_t ib_first = Bi [pB_start] ;
+                int64_t ib_last  = Bi [pB_end-1] ;
+                int64_t apleft = 0 ;
 
-                // get the value of M(i,j)
-                int64_t i = Mi [pC] ;
-                #if !defined ( GB_MASK_SPARSE_AND_STRUCTURAL )
-                // if M is structural, no need to check its values
-                if (GB_mcast (Mx, pC, msize))
-                #endif
-                { 
+                for (int64_t pC = pC_start ; pC < pC_end ; pC++)
+                {
 
                     //----------------------------------------------------------
-                    // the mask allows C(i,j) to be computed
+                    // compute C(i,j)
                     //----------------------------------------------------------
 
-                    #if GB_A_IS_HYPER
-                    // A is hyper
-                    int64_t pA, pA_end ;
-                    int64_t apleft = 0 ;    // M might be jumbled
-                    GB_lookup (true, Ah, Ap, vlen, &apleft, anvec-1, i,
-                        &pA, &pA_end) ;
-                    const int64_t ainz = pA_end - pA ;
-                    if (ainz > 0)
-                    #elif GB_A_IS_SPARSE
-                    // A is sparse
-                    int64_t pA = Ap [i] ;
-                    const int64_t pA_end = Ap [i+1] ;
-                    const int64_t ainz = pA_end - pA ;
-                    if (ainz > 0)
-                    #else
-                    // A is bitmap or full
-                    const int64_t pA = i * vlen ;
-                    #endif
+                    // get the value of M(i,j)
+                    int64_t i = Mi [pC] ;
+                    if (GB_mcast (Mx, pC, msize))   // note: Mx [pC], same as Cx
                     { 
+
+                        //------------------------------------------------------
+                        // M(i,j) is true, so compute C(i,j)
+                        //------------------------------------------------------
+
+                        // get A(:,i), if it exists
+                        int64_t pA, pA_end ;
+                        GB_lookup (A_is_hyper, Ah, Ap, &apleft, anvec-1, i,
+                            &pA, &pA_end) ;
+
                         // C(i,j) = A(:,i)'*B(:,j)
                         #include "GB_AxB_dot_cij.c"
                     }
-                }
+                    else
+                    { 
 
-                if (!GB_CIJ_EXISTS)
-                { 
-                    // C(i,j) is a zombie
-                    task_nzombies++ ;
-                    Ci [pC] = GB_FLIP (i) ;
+                        //------------------------------------------------------
+                        // M(i,j) is false, so C(i,j) is a zombie
+                        //------------------------------------------------------
+
+                        task_nzombies++ ;
+                        Ci [pC] = GB_FLIP (i) ;
+                    }
                 }
             }
         }
+
+        //----------------------------------------------------------------------
+        // sum up the zombies found by this task
+        //----------------------------------------------------------------------
+
         nzombies += task_nzombies ;
     }
+
+    //--------------------------------------------------------------------------
+    // finalize the zombie count for C
+    //--------------------------------------------------------------------------
+
+    C->nzombies = nzombies ;
 }
 
-#undef GB_A_IS_SPARSE
-#undef GB_A_IS_HYPER
-#undef GB_A_IS_BITMAP
-#undef GB_A_IS_FULL
-#undef GB_B_IS_SPARSE
-#undef GB_B_IS_HYPER
-#undef GB_B_IS_BITMAP
-#undef GB_B_IS_FULL
-
+#undef GB_DOT3

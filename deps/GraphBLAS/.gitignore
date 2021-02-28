@@ -36,7 +36,6 @@ my_*.out
 .nfs*
 .pyc
 *.tmp
-gunk*
 
 Demo/bfs_demo.out
 Demo/mis_demo.out
@@ -48,20 +47,17 @@ Demo/tri_demo.out
 Demo/wildtype_demo.out
 Demo/*.log
 Demo/complex_demo_out.m
-Demo/complex_demo_out2.m
 Demo/import_demo.out
 Demo/t1.out
 Demo/t2.out
 
 alternative/*.out
 alternative/*_out.m
-alternative/*_out2.m
 alternative/*_demo
 
 Test/*.log
 Test/errlog.txt
 Test/errlog2.txt
-Test/errlog3.txt
 Test/log.txt
 Test/gunk*
 Test/fprint.txt
@@ -71,16 +67,11 @@ Doc/GraphBLAS_UserGuide.out
 
 Tcov/errlog.txt
 Tcov/errlog2.txt
-Tcov/errlog3.txt
 Tcov/log.txt
 Tcov/grbstat.mat
 Tcov/fprint.txt
 
 Doc/html
-
-CUDA/test/googletest/*
-
-desktop.ini
 
 # Do not ignore this file
 !.gitignore

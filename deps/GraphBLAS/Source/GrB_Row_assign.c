@@ -1,16 +1,15 @@
 //------------------------------------------------------------------------------
-// GrB_Row_assign: C<M'>(row,Cols) = accum (C(row,Cols),u')
+// GrB_Row_assign:    C<M'>(row,Cols) = accum (C(row,Cols),u')
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Compare with GxB_Row_subassign, which uses M and C_replace differently
 
 #include "GB_assign.h"
-#include "GB_bitmap_assign.h"
 
 GrB_Info GrB_Row_assign             // C<M'>(row,Cols) += u'
 (
@@ -29,7 +28,7 @@ GrB_Info GrB_Row_assign             // C<M'>(row,Cols) += u'
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE (C, "GrB_Row_assign (C, M, accum, u, row, Cols, nCols, desc)") ;
+    GB_WHERE ("GrB_Row_assign (C, M, accum, u, row, Cols, nCols, desc)") ;
     GB_BURBLE_START ("GrB_assign") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_FAULTY (M) ;
@@ -39,7 +38,7 @@ GrB_Info GrB_Row_assign             // C<M'>(row,Cols) += u'
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
-        xx1, xx2, xx3, xx7) ;
+        xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // C<M'>(row,Cols) = accum (C(row,Cols), u')
@@ -58,7 +57,7 @@ GrB_Info GrB_Row_assign             // C<M'>(row,Cols) += u'
         Rows, 1,                            // a single row index
         Cols, nCols,                        // column indices
         false, NULL, GB_ignore_code,        // no scalar expansion
-        GB_ROW_ASSIGN,
+        false, true,                        // GrB_Row_assign
         Context) ;
 
     GB_BURBLE_END ;

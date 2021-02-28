@@ -2,8 +2,8 @@
 // GB_mex_AplusB: compute C=A+B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -16,10 +16,10 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Matrix_free_(&B) ;               \
-    GrB_Matrix_free_(&C) ;               \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&A) ;               \
+    GB_MATRIX_FREE (&B) ;               \
+    GB_MATRIX_FREE (&C) ;               \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 
@@ -40,7 +40,7 @@ void mexFunction
     GrB_Matrix C = NULL ;
     GrB_BinaryOp op = NULL ;
 
-    GB_CONTEXT (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin != 3)
@@ -59,12 +59,11 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("failed") ;
     }
+    mxClassID aclass = GB_mx_Type_to_classID (A->type) ;
 
-    // get op
-    bool user_complex = (Complex != GxB_FC64)
-        && (A->type == Complex || B->type == Complex) ;
+    // get op; default: NOP, default class is class(A)
     if (!GB_mx_mxArray_to_BinaryOp (&op, pargin [2], "op",
-        A->type, user_complex) || op == NULL)
+        GB_NOP_opcode, aclass, A->type == Complex, B->type == Complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("op failed") ;
@@ -74,9 +73,7 @@ void mexFunction
     // simple_tic (tic2) ;
 
     // C = A+B using the op.  No mask
-    bool ignore ;
-    METHOD (GB_add (&C, A->type, true, NULL, false, false, &ignore, A, B, op,
-        Context)) ;
+    METHOD (GB_add (&C, A->type, true, NULL, false, A, B, op, Context)) ;
 
     // return C to MATLAB as a plain sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AplusB result", false) ;

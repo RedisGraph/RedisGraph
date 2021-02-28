@@ -2,8 +2,8 @@
 // GB_SelectOp_new: create a new select operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,7 +13,6 @@
 //              const void *x, const void *thunk) ;
 
 #include "GB.h"
-#include <ctype.h>
 
 GrB_Info GB_SelectOp_new        // create a new user-defined select operator
 (
@@ -29,7 +28,7 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE1 ("GxB_SelectOp_new (selectop, function, xtype)") ;
+    GB_WHERE ("GxB_SelectOp_new (selectop, function, xtype)") ;
     GB_RETURN_IF_NULL (selectop) ;
     (*selectop) = NULL ;
     GB_RETURN_IF_NULL (function) ;
@@ -41,11 +40,11 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     //--------------------------------------------------------------------------
 
     // allocate the select operator
-    (*selectop) = GB_CALLOC (1, struct GB_SelectOp_opaque) ;
+    GB_CALLOC_MEMORY (*selectop, 1, sizeof (struct GB_SelectOp_opaque)) ;
     if (*selectop == NULL)
     { 
         // out of memory
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     // initialize the select operator
@@ -54,42 +53,8 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     op->xtype = xtype ;
     op->ttype = ttype ;
     op->function = function ;
+    strncpy (op->name, name, GB_LEN-1) ;
     op->opcode = GB_USER_SELECT_opcode ;
-
-    //--------------------------------------------------------------------------
-    // find the name of the operator
-    //--------------------------------------------------------------------------
-
-    if (name == NULL)
-    { 
-        // if no name , a generic name is used instead
-        strncpy (op->name, "user_select_operator", GB_LEN-1) ;
-    }
-    else
-    {
-        // see if the typecast "(GxB_select_function)" appears in the name
-        char *p = NULL ;
-        p = strstr ((char *) name, "GxB_select_function") ;
-        if (p != NULL)
-        { 
-            // skip past the typecast, the left parenthesis, and any whitespace
-            p += 19 ;
-            while (isspace (*p)) p++ ;
-            if (*p == ')') p++ ;
-            while (isspace (*p)) p++ ;
-            strncpy (op->name, p, GB_LEN-1) ;
-        }
-        else
-        { 
-            // copy the entire name as-is
-            strncpy (op->name, name, GB_LEN-1) ;
-        }
-    }
-
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
     ASSERT_SELECTOP_OK (op, "new user-defined select op", GB0) ;
     return (GrB_SUCCESS) ;
 }

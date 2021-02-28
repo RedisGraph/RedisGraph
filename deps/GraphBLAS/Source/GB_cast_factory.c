@@ -2,8 +2,8 @@
 // GB_cast_factory: return a pointer to a typecasting function
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -14,14 +14,8 @@
 // If the operator is FIRST, SECOND, or PAIR, this function is called for the
 // cast function on the unused argument, but the result is then unused. 
 
-// This function returns one of ((13*13) + 1) pointers to a typecasting/copy
-// function.  13*13 is the set of functions named GB_cast_ZTYPE_XTYPE, for each
-// pair of built-in types (ZTYPE, XTYPE).  The last pointer is the function
-// GB_copy_user_user.
-
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
 (
     const GB_Type_code code1,      // the type of z, the output value

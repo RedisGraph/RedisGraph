@@ -2,8 +2,8 @@
 // GB_subref_phase1: find # of entries in C=A(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -47,18 +47,19 @@ GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
 
     ASSERT (Cp_handle != NULL) ;
     ASSERT_MATRIX_OK (A, "A for subref phase1", GB0) ;
-    ASSERT (!GB_IS_BITMAP (A)) ;    // GB_bitmap_subref is used instead
 
     //--------------------------------------------------------------------------
     // allocate the result
     //--------------------------------------------------------------------------
 
+    int64_t *GB_RESTRICT Cp = NULL ;
     (*Cp_handle) = NULL ;
-    int64_t *GB_RESTRICT Cp = GB_CALLOC (GB_IMAX (2, Cnvec+1), int64_t) ;
+
+    GB_CALLOC_MEMORY (Cp, GB_IMAX (2, Cnvec+1), sizeof (int64_t)) ;
     if (Cp == NULL)
     { 
         // out of memory
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -67,13 +68,13 @@ GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
 
     #define GB_PHASE_1_OF_2
     if (symbolic)
-    { 
+    {
         #define GB_SYMBOLIC
         #include "GB_subref_template.c"
         #undef  GB_SYMBOLIC
     }
     else
-    { 
+    {
         #define GB_NUMERIC
         #include "GB_subref_template.c"
         #undef  GB_NUMERIC

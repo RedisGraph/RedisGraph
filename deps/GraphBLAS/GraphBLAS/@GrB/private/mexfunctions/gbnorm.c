@@ -2,8 +2,8 @@
 // gbnorm: norm (A,kind)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -40,9 +40,6 @@ void mexFunction
     OK (GrB_Matrix_nrows (&anrows, A)) ;
     OK (GrB_Matrix_ncols (&ancols, A)) ;
 
-    int sparsity ;
-    OK (GxB_Matrix_Option_get (A, GxB_SPARSITY_STATUS, &sparsity)) ;
-
     //--------------------------------------------------------------------------
     // s = norm (A,kind)
     //--------------------------------------------------------------------------
@@ -50,23 +47,22 @@ void mexFunction
     double s ;
 
     if (norm_kind == INT64_MIN && !GB_is_dense (A))
-    { 
-        // norm (A,-inf) is zero if A is not full
+    {
+        // norm (A,-inf) is zero if A is not dense
         s = 0 ;
     }
     else if ((atype == GrB_FP32 || atype == GrB_FP64)
-        && (sparsity != GxB_BITMAP)
         && (anrows == 1 || ancols == 1 || norm_kind == 0))
-    { 
+    {
         // s = norm (A,p) where A is an FP32 or FP64 vector,
-        // or when p = 0 (for Frobenius norm).  A cannot be bitmap.
+        // or when p = 0 (for Frobenius norm)
         GrB_Index anz ;
         OK (GrB_Matrix_nvals (&anz, A)) ;
         s = GB_matlab_helper10 (A->x, NULL, atype, norm_kind, anz) ;
         if (s < 0) ERROR ("unknown norm") ;
     }
     else
-    { 
+    {
         // s = norm (A, norm_kind)
         s = gb_norm (A, norm_kind) ;
     }

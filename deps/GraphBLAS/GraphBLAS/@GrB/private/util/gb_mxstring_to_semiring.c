@@ -2,8 +2,8 @@
 // gb_mxstring_to_semiring: get a GraphBLAS semiring from a MATLAB string
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -12,8 +12,7 @@
 GrB_Semiring gb_mxstring_to_semiring    // return semiring from a string
 (
     const mxArray *mxstring,            // MATLAB string
-    const GrB_Type atype,               // type of A
-    const GrB_Type btype                // type of B
+    const GrB_Type default_type         // default type if not in the string
 )
 {
 
@@ -38,6 +37,6 @@ GrB_Semiring gb_mxstring_to_semiring    // return semiring from a string
     // convert the string to a semiring
     //--------------------------------------------------------------------------
 
-    return (gb_string_to_semiring (semiring_string, atype, btype)) ;
+    return (gb_string_to_semiring (semiring_string, default_type)) ;
 }
 

@@ -4,7 +4,7 @@
 % \usepackage[colorlinks,linkcolor=Blue,citecolor=Blue,urlcolor=Blue]{hyperref}
 \title{Sparse DNN Results with the MATLAB interface to SuiteSparse:GraphBLAS}
 \author{Tim Davis}
-\date{Sept 2, 2019 (updated Feb 21, 2020)}
+\date{Sept 2, 2019 (updated Feb 20, 2020)}
 
 \begin{document}
 \maketitle
@@ -110,10 +110,10 @@ GrB_Info LAGraph_dnn    // returns GrB_SUCCESS if successful
     for (int layer = 0 ; layer < nlayers ; layer++)
     {
         // Y = Y * W [layer], using the conventional PLUS_TIMES semiring
-        GrB_mxm (Y, NULL, NULL, GxB_PLUS_TIMES_FP32,
+        GrB_mxm (Y, NULL, NULL, GxB__PLUS_TIMES_FP32,
             ((layer == 0) ? Y0 : Y), W [layer], NULL) ;
         // Y = Y * Bias [layer], using the PLUS_PLUS semiring.
-        GrB_mxm (Y, NULL, NULL, GxB_PLUS_PLUS_FP32, Y, Bias [layer], NULL) ;
+        GrB_mxm (Y, NULL, NULL, GxB__PLUS_PLUS_FP32, Y, Bias [layer], NULL) ;
         // delete entries from Y: keep only those entries greater than zero
         GxB_select (Y, NULL, NULL, GxB_GT_ZERO, Y, NULL, NULL) ;
         // threshold maximum values: Y (Y > 32) = 32
@@ -183,7 +183,7 @@ Prob & MATLAB         & LAGraph        & M/L         &   MATLAB      & LAGraph  
 \hline
  10  &                &        4001.3  &      .      &               &        229.4  &      .     \\
  11  &                &       15124.5  &      .      &               &        918.9  &      .     \\
- 12  &                &       59774.9  &      .      &               &       3570.3  &      .     \\
+ 12  &                &            .   &      .      &               &           .   &      .     \\
 \end{tabular}
 }
 
@@ -244,7 +244,7 @@ Prob & MATLAB         & LAGraph        & M/L         &   MATLAB      & LAGraph  
 \hline
  10  &{           .  }& {         3.8 }&        .    &  {        .  }& {       65.8 }&      .     \\
  11  &{           .  }& {         4.0 }&        .    &  {        .  }& {       65.7 }&      .     \\
- 12  &{           .  }& {         4.0 }&        .    &  {        .  }& {       67.7 }&      .     \\
+ 12  &{           .  }& {          .  }&        .    &  {        .  }& {         .  }&      .     \\
 \end{tabular}
 }
 
@@ -289,7 +289,7 @@ the Sauna-based method in v3.1.0.
 Using a single thread on the largest problem takes about 18 hours, and thus
 results were still in progress at the time v3.2.0 was released.  This document
 will be updated after the formal release of v3.2.0 when the runs complete.  See
-the primary branch at \url{https://github.com/DrTimothyAldenDavis/GraphBLAS} for
+the master branch at \url{https://github.com/DrTimothyAldenDavis/GraphBLAS} for
 the updated document.
 
 \end{document}

@@ -2,8 +2,8 @@
 // GB_Pending_alloc: allocate a list of pending tuples
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -30,7 +30,8 @@ bool GB_Pending_alloc       // create a list of pending tuples
     // allocate the Pending header
     //--------------------------------------------------------------------------
 
-    GB_Pending Pending = GB_CALLOC (1, struct GB_Pending_struct) ;
+    GB_Pending Pending ;
+    GB_CALLOC_MEMORY (Pending, 1, sizeof (struct GB_Pending_struct)) ;
     if (Pending == NULL)
     { 
         // out of memory
@@ -49,18 +50,18 @@ bool GB_Pending_alloc       // create a list of pending tuples
     Pending->size = type->size ;        // size of pending tuple type
     Pending->op = op ;                  // pending operator (NULL is OK)
 
-    Pending->i = GB_MALLOC (nmax, int64_t) ;
+    GB_MALLOC_MEMORY (Pending->i, nmax, sizeof (int64_t)) ;
 
     if (is_matrix)
     { 
-        Pending->j = GB_MALLOC (nmax, int64_t) ;
+        GB_MALLOC_MEMORY (Pending->j, nmax, sizeof (int64_t)) ;
     }
     else
     { 
         Pending->j = NULL ;
     }
 
-    Pending->x = GB_MALLOC (nmax * Pending->size, GB_void) ;
+    GB_MALLOC_MEMORY (Pending->x, nmax, Pending->size) ;
 
     if (Pending->i == NULL || Pending->x == NULL
         || (is_matrix && Pending->j == NULL))

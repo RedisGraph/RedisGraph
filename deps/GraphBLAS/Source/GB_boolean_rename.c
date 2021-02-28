@@ -2,8 +2,8 @@
 // GB_boolean_rename: rename a boolean opcode
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -12,20 +12,18 @@
 // boolean inputs, leaving 10 unique binary opcodes z=f(x,y) when all three
 // operands x,y,z are boolean.
 
-// Another 4 boolean operators are not considered here since they share
+// Another 3 boolean operators are not considered here since they share
 // the same opcode:
 
-// GrB_LOR  == GxB_LOR_BOOL     GB_LOR_opcode
-// GrB_LAND == GxB_LAND_BOOL    GB_LAND_opcode
-// GrB_LXOR == GxB_LXOR_BOOL    GB_LXOR_opcode
-// GrB_LXNOR == GxB_EQ_BOOL     GB_EQ_opcode
+// GrB_LOR  == GxB_LOR_BOOL,
+// GrB_LAND == GxB_LAND_BOOL,
+// GrB_LXOR == GxB_LXOR_BOOL
 
 // Those 6 names are in GraphBLAS but the pairs of names are equivalent.
 
 // See discussion on Source/GB.h on boolean and integer division
 
 #include "GB.h"
-#include "GB_binop.h"
 
 GB_Opcode GB_boolean_rename     // renamed opcode
 (
@@ -73,8 +71,7 @@ GB_Opcode GB_boolean_rename     // renamed opcode
         case GB_ISLT_opcode    :            // z = (x < y)
             return (GB_LT_opcode) ;
 
-        // POW, ISGE, GE are the same for boolean:
-        case GB_POW_opcode     :            // z = (x to the y)
+        // ISGE, GE are the same for boolean:
         case GB_ISGE_opcode    :            // z = (x >= y)
             return (GB_GE_opcode) ;
 

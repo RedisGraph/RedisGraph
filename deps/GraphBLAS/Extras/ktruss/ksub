@@ -1,0 +1,23 @@
+#!/bin/csh
+./krun \
+	~/GraphChallenge/snap/facebook_combined/facebook_combined_adj.tsv.gz \
+	~/GraphChallenge/snap/ca-CondMat/ca-CondMat_adj.tsv.gz \
+	~/GraphChallenge/snap/ca-HepPh/ca-HepPh_adj.tsv.gz \
+	~/GraphChallenge/snap/p2p-Gnutella31/p2p-Gnutella31_adj.tsv.gz \
+	~/GraphChallenge/snap/email-Enron/email-Enron_adj.tsv.gz \
+	~/GraphChallenge/snap/ca-AstroPh/ca-AstroPh_adj.tsv.gz \
+	~/GraphChallenge/snap/loc-brightkite_edges/loc-brightkite_edges_adj.tsv.gz \
+	~/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz \
+	~/GraphChallenge/snap/soc-Epinions1/soc-Epinions1_adj.tsv.gz \
+	~/GraphChallenge/snap/cit-HepPh/cit-HepPh_adj.tsv.gz \
+	~/GraphChallenge/snap/soc-Slashdot0902/soc-Slashdot0902_adj.tsv.gz \
+	~/GraphChallenge/snap/amazon0302/amazon0302_adj.tsv.gz \
+	~/GraphChallenge/snap/loc-gowalla_edges/loc-gowalla_edges_adj.tsv.gz \
+	~/GraphChallenge/snap/roadNet-TX/roadNet-TX_adj.tsv.gz \
+	~/GraphChallenge/snap/flickrEdges/flickrEdges_adj.tsv.gz \
+	~/GraphChallenge/synthetic/image-grid/g-4188162-1048576_adj.tsv.gz \
+	~/GraphChallenge/snap/cit-Patents/cit-Patents_adj.tsv.gz \
+	~/GraphChallenge/synthetic/image-grid/g-16764930-4194304_adj.tsv.gz \
+	~/GraphChallenge/synthetic/image-grid/g-268386306-67108864_adj.tsv.gz \
+ 	~/GraphChallenge/snap/friendster/friendster_adj.tsv.gz
+

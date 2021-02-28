@@ -1,14 +1,14 @@
 function gbtest5
 %GBTEST5 test GrB.descriptorinfo
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 list_out  = { [ ], 'default', 'replace' } ;
 list_in   = { [ ], 'default', 'transpose' } ;
 list_mask = { [ ], 'default', 'complement', ...
                    'structural complement', 'structure' } ;
-list_axb  = { [ ], 'default', 'gustavson', 'dot', 'hash', 'saxpy' } ;
+list_axb  = { [ ], 'default', 'gustavson', 'heap', 'dot', 'hash', 'saxpy' } ;
 list_kind = { [ ], 'sparse', 'full', 'grb', 'default' } ;
 
 ntrials = 0;

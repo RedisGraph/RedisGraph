@@ -9,7 +9,7 @@ function result = entries (A, varargin)
 % of zero (or any specified additive identity value) use GrB.nonz
 % instead.
 %
-% Let [m n] = size (A)
+% let [m n] = size (A)
 %
 % e = GrB.entries (A)         number of entries
 % e = GrB.entries (A, 'all')  number of entries
@@ -33,9 +33,6 @@ function result = entries (A, varargin)
 %   then d(j) is an implicit zero, not present in the pattern of d, so
 %   that I = find (d) is the same I = GrB.entries (A, 'col', 'list').
 %
-% The result is a MATLAB scalar or vector, except for the 'degree'
-% usage, in which case the result is a GrB vector d.
-%
 % Example:
 %
 %   A = magic (5) ;
@@ -52,19 +49,75 @@ function result = entries (A, varargin)
 %
 % See also GrB.nonz, nnz, GrB/nnz, nonzeros, GrB/nonzeros.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (isobject (A))
-    % A is a GraphBLAS matrix; get its opaque content
-    A = A.opaque ;
+% get the string arguments
+dim = 'all' ;           % 'all', 'row', or 'col'
+kind = 'count' ;        % 'count', 'list', or 'degree'
+for k = 1:nargin-1
+    arg = varargin {k} ;
+    switch arg
+        case { 'all', 'row', 'col' }
+            dim = arg ;
+        case { 'count', 'list', 'degree' }
+            kind = arg ;
+        otherwise
+            gb_error ('unknown option') ;
+    end
 end
 
-% get the count/list of the entries of A
-result = gb_entries (A, varargin {:}) ;
+if (isequal (dim, 'all'))
 
-% if gb_entries returned a GraphBLAS struct, return it as a GrB matrix
-if (isstruct (result))
-    result = GrB (result) ;
+    switch kind
+        case 'count'
+            % number of entries in A
+            % e = GrB.entries (A)
+            if (isa (A, 'GrB'))
+                result = gbnvals (A.opaque) ;
+            else
+                result = gbnvals (A) ;
+            end
+        case 'list'
+            % list of values of unique entries
+            % X = GrB.entries (A, 'list')
+            if (isa (A, 'GrB'))
+                result = unique (gbextractvalues (A.opaque)) ;
+            else
+                result = unique (gbextractvalues (A)) ;
+            end
+        otherwise
+            gb_error ('''all'' and ''degree'' cannot be combined') ;
+    end
+
+else
+
+    % get the row or column degree
+    f = GrB.format (A) ;
+    native = (isequal (f, 'by row') && isequal (dim, 'row')) || ...
+             (isequal (f, 'by col') && isequal (dim, 'col')) ;
+    if (isa (A, 'GrB'))
+        degree = GrB (gbdegree (A.opaque, native)) ;
+    else
+        degree = GrB (gbdegree (A, native)) ;
+    end
+
+    switch kind
+        case 'count'
+            % number of non-empty rows/cols
+            % e = GrB.entries (A, 'row')
+            % e = GrB.entries (A, 'col')
+            result = nnz (degree) ;
+        case 'list'
+            % list of non-empty rows/cols
+            % I = GrB.entries (A, 'row', 'list')
+            % J = GrB.entries (A, 'col', 'list')
+            result = find (degree) ;
+        case 'degree'
+            % degree of all rows/cols
+            % d = GrB.entries (A, 'row', 'degree')
+            % d = GrB.entries (A, 'col', 'degree')
+            result = degree ;
+    end
 end
 

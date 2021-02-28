@@ -1,8 +1,8 @@
 function test19(fulltest)
 %TEST19 test GxB_subassign and GrB_*_setElement with many pending operations
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
     fulltest = 0 ;
@@ -55,9 +55,9 @@ for problem = 0:2
         if (c == 10)
             d = struct ('outp', 'replace') ;
         elseif (c == 9)
-            d = struct ('outp', 'replace', 'mask', 'complement') ;
+            d = struct ('outp', 'replace', 'mask', 'scmp') ;
         elseif (c == 8)
-            d = struct ('mask', 'complement') ;
+            d = struct ('mask', 'scmp') ;
         else
             d = [ ] ;
         end
@@ -137,6 +137,7 @@ for problem = 0:2
     end
 
     C3 = Corig ;
+
     for k = 1:ntrials
         J = Work (k).J ;
         I = Work (k).I ;
@@ -148,46 +149,9 @@ for problem = 0:2
         C3 = GB_spec_subassign (C3, M, accum, A, I, J, d, scalar) ;
     end
 
-    % default sparsity
     C2 = GB_mex_subassign (Corig, Work2) ;
+
     GB_spec_compare (C2, C3) ;
-
-    % with sparsity control
-    for C_sparsity_control = [1 2 4 8]
-        for M_sparsity_control = [2 12]
-            C2 = GB_mex_subassign (Corig, Work2, ...
-                [C_sparsity_control M_sparsity_control]) ;
-            GB_spec_compare (C2, C3) ;
-        end
-    end
-
-    % with no accum
-
-    C3 = Corig ;
-    for k = 1:ntrials
-        J = Work (k).J ;
-        I = Work (k).I ;
-        A = Work (k).A ;
-        M = Work (k).Mask ;
-        d = Work (k).desc ;
-        scalar = Work (k).scalar ;
-        C3 = GB_spec_subassign (C3, M, [ ], A, I, J, d, scalar) ;
-        Work2 (k).accum = [ ] ;
-    end
-
-    % default sparsity
-    C2 = GB_mex_subassign (Corig, Work2) ;
-    GB_spec_compare (C2, C3) ;
-
-    % with sparsity control
-    for C_sparsity_control = [1 2 4 8]
-        for M_sparsity_control = [2 12]
-            C2 = GB_mex_subassign (Corig, Work2, ...
-                [C_sparsity_control M_sparsity_control]) ;
-            GB_spec_compare (C2, C3) ;
-        end
-    end
-
 end
 
 fprintf ('\ntest19: all tests passed\n') ;

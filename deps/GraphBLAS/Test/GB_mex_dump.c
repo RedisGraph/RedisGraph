@@ -2,8 +2,8 @@
 // GB_mex_dump: copy and print a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,9 +13,9 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;              \
+    GB_MATRIX_FREE (&A) ;               \
     Complex_finalize ( ) ;              \
-    GB_mx_put_global (true) ;           \
+    GB_mx_put_global (false, 0) ;       \
 }
 
 void mexFunction
@@ -31,6 +31,7 @@ void mexFunction
     GrB_Matrix A = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -48,10 +49,10 @@ void mexFunction
     int GET_SCALAR (1, int, pr, 1) ;
 
     // dump the matrix
-    GrB_Info info = GB_Matrix_check (A, "", pr, NULL) ;
+    GrB_Info info = GB_Matrix_check (A, "", pr, stdout, NULL) ;
     if (info != GrB_SUCCESS)
     {
-        mexErrMsgTxt ("matrix fail") ;
+        mexErrMsgTxt (GrB_error ( )) ;
     }
 
     // return A to MATLAB as a struct and free the GraphBLAS A

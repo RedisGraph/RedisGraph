@@ -2,8 +2,8 @@
 // GxB_Matrix_export_CSR: export a matrix in CSR format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,96 +13,88 @@
 
 GrB_Info GxB_Matrix_export_CSR  // export and free a CSR matrix
 (
-    GrB_Matrix *A,      // handle of matrix to export and free
-    GrB_Type *type,     // type of matrix exported
-    GrB_Index *nrows,   // number of rows of the matrix
-    GrB_Index *ncols,   // number of columns of the matrix
-
-    GrB_Index **Ap,     // row "pointers", Ap_size >= nrows+1
-    GrB_Index **Aj,     // row indices, Aj_size >= nvals(A)
-    void **Ax,          // values, Ax_size 1, or >= nvals(A)
-    GrB_Index *Ap_size, // size of Ap
-    GrB_Index *Aj_size, // size of Aj
-    GrB_Index *Ax_size, // size of Ax
-
-    bool *jumbled,      // if true, indices in each row may be unsorted
-    const GrB_Descriptor desc
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // CSR format:
+    int64_t *nonempty,      // number of rows with at least one entry
+    GrB_Index **Ap,         // row "pointers", size nrows+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
-    // check inputs and get the descriptor
+    // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE1 ("GxB_Matrix_export_CSR (&A, &type, &nrows, &ncols, "
-        "&Ap, &Aj, &Ax, &Ap_size, &Aj_size, &Ax_size, &jumbled, desc)") ;
+    GB_WHERE ("GxB_Matrix_export_CSR (&A, &type, &nrows, &ncols, &nvals,"
+        " &nonempty, &Ap, &Aj, &Ax, desc)") ;
     GB_BURBLE_START ("GxB_Matrix_export_CSR") ;
-    GB_RETURN_IF_NULL (A) ;
-    GB_RETURN_IF_NULL_OR_FAULTY (*A) ;
-    GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
-    ASSERT_MATRIX_OK (*A, "A to export as CSR", GB0) ;
+    GB_EXPORT_CHECK ;
 
-    //--------------------------------------------------------------------------
-    // ensure the matrix is sparse CSR
-    //--------------------------------------------------------------------------
-
-    if ((*A)->is_csc)
-    { 
-        // A = A', done in-place, to put A in CSR format
-        GBURBLE ("(transpose) ") ;
-        GB_OK (GB_transpose (NULL, NULL, false, *A,
-            NULL, NULL, NULL, false, Context)) ;
-    }
-
-    //--------------------------------------------------------------------------
-    // finish any pending work
-    //--------------------------------------------------------------------------
-
-    if (jumbled == NULL)
-    { 
-        // the exported matrix cannot be jumbled
-        GB_MATRIX_WAIT (*A) ;
-    }
-    else
-    { 
-        // the exported matrix is allowed to be jumbled
-        GB_MATRIX_WAIT_IF_PENDING_OR_ZOMBIES (*A) ;
-    }
-
-    //--------------------------------------------------------------------------
-    // ensure the matrix is sparse
-    //--------------------------------------------------------------------------
-
-    GB_OK (GB_convert_any_to_sparse (*A, Context)) ;
+    GB_RETURN_IF_NULL (Ap) ;
+    GB_RETURN_IF_NULL (Aj) ;
+    GB_RETURN_IF_NULL (Ax) ;
 
     //--------------------------------------------------------------------------
     // export the matrix
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_IS_SPARSE (*A)) ;
-    ASSERT (!((*A)->is_csc)) ;
-    ASSERT (!GB_ZOMBIES (*A)) ;
-    ASSERT (GB_IMPLIES (jumbled == NULL, !GB_JUMBLED (*A))) ;
-    ASSERT (!GB_PENDING (*A)) ;
-
-    int sparsity ;
-    bool is_csc ;
-
-    info = GB_export (A, type, ncols, nrows,
-        Ap,   Ap_size,  // Ap
-        NULL, NULL,     // Ah
-        NULL, NULL,     // Ab
-        Aj,   Aj_size,  // Ai
-        Ax,   Ax_size,  // Ax
-        NULL, jumbled, NULL,                // jumbled or not
-        &sparsity, &is_csc, Context) ;      // sparse by row
-
-    if (info == GrB_SUCCESS)
-    {
-        ASSERT (sparsity == GxB_SPARSE) ;
-        ASSERT (!is_csc) ;
+    // ensure the matrix is in standard CSR format
+    (*A)->hyper_ratio = GB_NEVER_HYPER ;
+    if ((*A)->is_csc)
+    { 
+        // A = A', done in place, to put A in CSR format
+        GBBURBLE ("(transpose) ") ;
+        GB_OK (GB_transpose (NULL, NULL, false, (*A), NULL, Context)) ;
     }
+    if ((*A)->is_hyper)
+    { 
+        // convert A from hypersparse to standard format
+        GB_OK (GB_to_nonhyper ((*A), Context)) ;
+    }
+
+    ASSERT_MATRIX_OK ((*A), "A export: standard CSR", GB0) ;
+    ASSERT (!((*A)->is_csc)) ;
+    ASSERT (!((*A)->is_hyper)) ;
+
+    if ((*A)->nvec_nonempty < 0)
+    { 
+        // count # of non-empty vectors
+        (*A)->nvec_nonempty = GB_nvec_nonempty (*A, Context) ;
+    }
+    (*nonempty) = (*A)->nvec_nonempty ;
+
+    // export the content and remove it from A
+    (*Ap) = (GrB_Index *) (*A)->p ;
+    (*A)->p = NULL ;
+    if ((*nvals) > 0)
+    { 
+        (*Aj) = (GrB_Index *) (*A)->i ;
+        (*Ax) = (*A)->x ;
+        (*A)->i = NULL ;
+        (*A)->x = NULL ;
+    }
+    else
+    { 
+        (*Aj) = NULL ;
+        (*Ax) = NULL ;
+    }
+    ASSERT ((*A)->h == NULL) ;
+
+    //--------------------------------------------------------------------------
+    // export is successful
+    //--------------------------------------------------------------------------
+
+    // free the matrix header; do not free the exported content of the matrix,
+    // which has already been removed above.
+    GB_MATRIX_FREE (A) ;
+    ASSERT (*A == NULL) ;
     GB_BURBLE_END ;
-    return (info) ;
+    return (GrB_SUCCESS) ;
 }
 

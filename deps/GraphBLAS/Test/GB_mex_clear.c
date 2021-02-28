@@ -2,8 +2,8 @@
 // GB_mex_clear: clear a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -15,9 +15,9 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;              \
-    GrB_Matrix_free_(&C) ;              \
-    GB_mx_put_global (true) ;           \
+    GrB_free (&A) ;                     \
+    GrB_free (&C) ;                     \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -33,13 +33,14 @@ void mexFunction
     GrB_Matrix A = NULL, C = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 3)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     #define GET_DEEP_COPY       GrB_Matrix_dup (&C, A) ;
-    #define FREE_DEEP_COPY      GrB_Matrix_free_(&C) ;
+    #define FREE_DEEP_COPY      GrB_free (&C) ;
 
     // get A (shallow copy)
     A = GB_mx_mxArray_to_Matrix (pargin [0], "A input", false, true) ;
@@ -48,6 +49,7 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
     }
+    mxClassID aclass = GB_mx_Type_to_classID (A->type) ;
 
     // output matrix has same type as input matrix
     GrB_Type ctype = A->type ;

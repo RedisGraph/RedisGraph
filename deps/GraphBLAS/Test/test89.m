@@ -1,8 +1,8 @@
 function test89
 %TEST89 performance test of complex A*B
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
@@ -22,6 +22,7 @@ A = sparse (i,j,x,n,n) ;
 B = sparse (i,j,y,n,n) ;
 clear x y i j
 
+
 for do_real = 0:1
 
     if (do_real)
@@ -39,41 +40,31 @@ for do_real = 0:1
     fprintf ('MATLAB %g\n', tm) ;
 
         % 1001: Gustavson
+        % 1002: heap
         % 1003: dot
 
-    for k = [false true]
-        GB_builtin_complex_set (k) ;
+    % GraphBLAS is slower than it could be because the complex type is
+    % user-defined.  This uses the default method, which selects
+    % Gustavson's method:
 
-        if (k)
-            % GraphBLAS is fast
-            fprintf ('\nbuilt-in GxB_FC64 complex type:\n') ;
-        else
-            % GraphBLAS is slower than it could be because the complex type is
-            % user-defined.
-            fprintf ('\nuser-defined Complex type:\n') ;
-        end
+    C2 = GB_mex_AxB (A, B) ;
+    tg = grbresults ;
+    err = norm (C1-C2,1)
+    fprintf ('GraphBLAS %g speedup %g\n', tg, tm/tg) ;
 
-        % This uses the default method, which selects Gustavson's method:
+    % these are expected to be slower still; they do not use the default method
+    % (Gustavson) which is selected by the auto-strategy.
 
-        C2 = GB_mex_AxB (A, B) ;
-        tg = grbresults ;
-        err = norm (C1-C2,1) ;
-        fprintf ('GraphBLAS %g speedup %g err: %g\n', tg, tm/tg, err) ;
+    C2 = GB_mex_AxB (A, B, 0, 0, 1002) ;
+    tg = grbresults ;
+    err = norm (C1-C2,1)
+    fprintf ('GraphBLAS %g speedup %g (heap)\n', tg, tm/tg) ;
 
-        % these are expected to be slower still; they do not use the default method
-        % (Gustavson) which is selected by the auto-strategy.
 
-        C2 = GB_mex_AxB (A, B, 0, 0, 1004) ;
-        tg = grbresults ;
-        err = norm (C1-C2,1) ;
-        fprintf ('GraphBLAS %g speedup %g (hash) err: %g\n', tg, tm/tg, err) ;
-
-        C2 = GB_mex_AxB (A, B, 0, 0, 1003) ;
-        tg = grbresults ;
-        err = norm (C1-C2,1) ;
-        fprintf ('GraphBLAS %g speedup %g (dot) err: %g\n', tg, tm/tg, err) ;
-
-    end
+    C2 = GB_mex_AxB (A, B, 0, 0, 1003) ;
+    tg = grbresults ;
+    err = norm (C1-C2,1)
+    fprintf ('GraphBLAS %g speedup %g (dot)\n', tg, tm/tg) ;
 
 end
 nthreads_set (save, save_chunk) ;

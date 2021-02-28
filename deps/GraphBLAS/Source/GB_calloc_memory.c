@@ -2,21 +2,25 @@
 // GB_calloc_memory: wrapper for calloc_function
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // A wrapper for calloc_function.  Space is set to zero.
 
-// Parameters are the same as the ANSI C11 calloc, except that asking to
-// allocate a block of zero size causes a block of size 1 to be allocated
-// instead.  This allows the return pointer p to be checked for the
-// out-of-memory condition, even when allocating an object of size zero.
+// This function is called via the GB_CALLOC_MEMORY(p,n,s) macro.
+
+// Parameters are the same as the POSIX calloc, except that asking to allocate
+// a block of zero size causes a block of size 1 to be allocated instead.  This
+// allows the return pointer p to be checked for the out-of-memory condition,
+// even when allocating an object of size zero.
+
+// to turn on memory usage debug printing, uncomment this line:
+// #define GB_PRINT_MALLOC 1
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 void *GB_calloc_memory      // pointer to allocated block of memory
 (
     size_t nitems,          // number of items to allocate
@@ -34,7 +38,7 @@ void *GB_calloc_memory      // pointer to allocated block of memory
     size_of_item = GB_IMAX (1, size_of_item) ;
 
     bool ok = GB_size_t_multiply (&size, nitems, size_of_item) ;
-    if (!ok || nitems > GxB_INDEX_MAX || size_of_item > GxB_INDEX_MAX)
+    if (!ok || nitems > GB_INDEX_MAX || size_of_item > GB_INDEX_MAX)
     { 
         // overflow
         p = NULL ;
@@ -49,16 +53,26 @@ void *GB_calloc_memory      // pointer to allocated block of memory
             // for memory usage testing only
             //------------------------------------------------------------------
 
-            // brutal memory debug; pretend to fail if (count-- <= 0).
+            // brutal memory debug; pretend to fail if (count-- <= 0)
             bool pretend_to_fail = false ;
-            if (GB_Global_malloc_debug_get ( ))
-            {
-                pretend_to_fail = GB_Global_malloc_debug_count_decrement ( ) ;
+            bool malloc_debug = false ;
+            #define GB_CRITICAL_SECTION                                      \
+            {                                                                \
+                malloc_debug = GB_Global_malloc_debug_get ( ) ;              \
+                if (malloc_debug)                                            \
+                {                                                            \
+                    pretend_to_fail =                                        \
+                        GB_Global_malloc_debug_count_decrement ( ) ;         \
+                }                                                            \
             }
+            #include "GB_critical_section.c"
 
             // allocate the memory
             if (pretend_to_fail)
             { 
+                #ifdef GB_PRINT_MALLOC
+                printf ("pretend to fail\n") ;
+                #endif
                 p = NULL ;
             }
             else
@@ -68,9 +82,35 @@ void *GB_calloc_memory      // pointer to allocated block of memory
 
             // check if successful
             if (p != NULL)
-            { 
+            {
                 // success
-                GB_Global_nmalloc_increment ( ) ;
+                #undef GB_CRITICAL_SECTION
+
+                #ifdef GB_PRINT_MALLOC
+
+                    int nmalloc = 0 ;
+                    #define GB_CRITICAL_SECTION                             \
+                    {                                                       \
+                        nmalloc = GB_Global_nmalloc_increment ( ) ;         \
+                        GB_Global_inuse_increment (nitems * size_of_item) ; \
+                    }
+
+                #else
+
+                    #define GB_CRITICAL_SECTION                             \
+                    {                                                       \
+                        GB_Global_nmalloc_increment ( ) ;                   \
+                        GB_Global_inuse_increment (nitems * size_of_item) ; \
+                    }
+
+                #endif
+
+                #include "GB_critical_section.c"
+                #ifdef GB_PRINT_MALLOC
+                printf ("%14p Calloc:  %3d %1d n "GBd" size "GBd"\n", p,
+                    nmalloc, malloc_debug, (int64_t) nitems,
+                    (int64_t) size_of_item) ;
+                #endif
             }
 
         }

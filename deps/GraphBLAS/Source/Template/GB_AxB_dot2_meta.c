@@ -1,181 +1,62 @@
 //------------------------------------------------------------------------------
-// GB_AxB_dot2_meta: C=A'*B, C<M>=A'*B or C<!M>=A'*B via dot products
+// GB_AxB_dot2_meta: C=A'*B or C<!M>=A'*B via dot productes
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
-
-#define GB_DOT2
-
-#include "GB_unused.h"
-#include "GB_AxB_dot_cij.h"
-
-// GB_DOT_ALWAYS_SAVE_CIJ: C(i,j) = cij
-#define GB_DOT_ALWAYS_SAVE_CIJ      \
-{                                   \
-    GB_PUTC (cij, pC) ;             \
-    Cb [pC] = 1 ;                   \
-    task_cnvals++ ;                 \
-}
-
-// GB_DOT_SAVE_CIJ: C(i,j) = cij, unless already done by GB_DOT
-#if GB_IS_ANY_MONOID
-
-    // for the ANY monoid, GB_DOT saves C(i,j) as soon as a value is found
-    #define GB_DOT_SAVE_CIJ
-
-#else
-
-    // all other monoids: C(i,j) = cij if it exists
-    #define GB_DOT_SAVE_CIJ             \
-    {                                   \
-        if (GB_CIJ_EXISTS)              \
-        {                               \
-            GB_DOT_ALWAYS_SAVE_CIJ ;    \
-        }                               \
-    }
-
-#endif
 
 {
 
     //--------------------------------------------------------------------------
-    // get A, B, and C
+    // get B and C
     //--------------------------------------------------------------------------
 
-    // A and B are never hypersparse.  If they are hypersparse on input, they
-    // are converted to packed sparse form first, and the C matrix has smaller
-    // dimensions.  The C bitmap matrix is unpacked into a sparse or
-    // hypersparse matrix when done.
+    #if defined ( GB_PHASE_2_OF_2)
+    int64_t  *GB_RESTRICT Cp = C->p ;
+    int64_t  *GB_RESTRICT Ci = C->i ;
+    GB_CTYPE *GB_RESTRICT Cx = C->x ;
+    const GB_BTYPE *GB_RESTRICT Bx = B_is_pattern ? NULL : B->x ;
+    #endif
 
-    int64_t cnvals = 0 ;
-
-    ASSERT (GB_IS_BITMAP (C)) ;
-    int8_t   *GB_RESTRICT Cb = C->b ;
-    GB_CTYPE *GB_RESTRICT Cx = (GB_CTYPE *) C->x ;
-    const int64_t cvlen = C->vlen ;
-
-    const int64_t *GB_RESTRICT Bp = B->p ;
-    const int8_t  *GB_RESTRICT Bb = B->b ;
     const int64_t *GB_RESTRICT Bi = B->i ;
-    const GB_BTYPE *GB_RESTRICT Bx = (GB_BTYPE *) (B_is_pattern ? NULL : B->x) ;
-    const bool B_is_bitmap = GB_IS_BITMAP (B) ;
-    const bool B_is_sparse = GB_IS_SPARSE (B) ;
-    ASSERT (!GB_IS_HYPERSPARSE (B)) ;
-    #define B_is_hyper false
+    int64_t bvlen = B->vlen ;
 
-    const int64_t *GB_RESTRICT Ap = A->p ;
-    const int8_t  *GB_RESTRICT Ab = A->b ;
-    const int64_t *GB_RESTRICT Ai = A->i ;
-    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) (A_is_pattern ? NULL : A->x) ;
-    const bool A_is_bitmap = GB_IS_BITMAP (A) ;
-    const bool A_is_sparse = GB_IS_SPARSE (A) ;
-    ASSERT (!GB_IS_HYPERSPARSE (A)) ;
-    #define A_is_hyper false
-
-    const int64_t vlen = A->vlen ;
-    ASSERT (A->vlen == B->vlen) ;
-
-    const int ntasks = naslice * nbslice ;
+    // create the iterator for B.  Since the iterator is a read-only object
+    // after initialization with GBI1_init, it can be shared by all threads.
+    GBI_single_iterator Iter ;
+    GBI1_init (&Iter, B) ;
 
     //--------------------------------------------------------------------------
-    // C=A'*B, C<M>=A'*B, or C<!M>=A'*B via dot products
+    // C=A'*B or C<!M>=A'*B via dot products
     //--------------------------------------------------------------------------
 
     if (M == NULL)
     { 
 
-        //----------------------------------------------------------------------
-        // C = A'*B
-        //----------------------------------------------------------------------
-
-        #undef GB_MASK_IS_PRESENT
-        #include "GB_meta16_factory.c"
+        // C = A'*B via dot products
+        #include "GB_AxB_dot2_nomask.c"
 
     }
     else
-    {
+    { 
 
         //----------------------------------------------------------------------
-        // C<M>=A'*B or C<!M>=A'*B
+        // get M
         //----------------------------------------------------------------------
 
-        // 12 possible cases of the mask are handled:
+        const int64_t *GB_RESTRICT Mp = M->p ;
+        const int64_t *GB_RESTRICT Mh = M->h ;
+        const int64_t *GB_RESTRICT Mi = M->i ;
+        const GB_void *GB_RESTRICT Mx = (Mask_struct ? NULL : (M->x)) ;
+        size_t msize = M->type->size ;
+        const int64_t mnvec = M->nvec ;
+        bool M_is_hyper = GB_IS_HYPER (M) ;
 
-        // if M is not complemented (Mask_comp is false): 4 cases
-        // M can be bitmap or full, not sparse or hyper (dot3 handles that)
-        // M can be structural or valued
-
-        // if M is complemented (Mask_comp is true): 8 cases
-        // M can be sparse, hyper, bitmap, or full
-        // M can be structural or valued
-
-        const int8_t *GB_RESTRICT Mb = M->b ;
-        const bool M_is_bitmap = GB_IS_BITMAP (M) ;
-        const bool M_is_full = GB_IS_FULL (M) ;
-
-        #if ( GB_IS_ANY_MONOID )
-        if (B_is_bitmap && A_is_sparse && M_is_bitmap && Mask_struct
-            && Mask_comp)
-        {
-
-            //------------------------------------------------------------------
-            // C<#M,struct> = A'*B, special case
-            //------------------------------------------------------------------
-
-            // GB_ANY_SPECIALIZED is defined if the following conditions hold:
-            // semirings: all built-in semirings with the ANY monoid
-            // A: sparse
-            // B: bitmap
-            // M: bitmap
-            // Mask_comp: true
-            // Mask_struct: true
-
-            GBURBLE ("(specialized) ") ;
-            #define GB_ANY_SPECIALIZED
-            #define GB_MASK_IS_PRESENT
-            #define GB_A_IS_SPARSE 1
-            #define GB_A_IS_HYPER  0
-            #define GB_A_IS_BITMAP 0
-            #define GB_A_IS_FULL   0
-            #define GB_B_IS_SPARSE 0
-            #define GB_B_IS_SPARSE 0
-            #define GB_B_IS_BITMAP 1
-            #define GB_B_IS_FULL   0
-            #include "GB_AxB_dot2_template.c"
-            #undef  GB_ANY_SPECIALIZED
-            #undef GB_MASK_IS_PRESENT
-
-        }
-        else
-        #endif
-        { 
-
-            //------------------------------------------------------------------
-            // C<M>=A'*B or C<!M>=A'*B
-            //------------------------------------------------------------------
-
-            const GB_void *GB_RESTRICT Mx = (GB_void *)
-                (Mask_struct ? NULL : (M->x)) ;
-            const size_t msize = M->type->size ;
-
-            #define GB_MASK_IS_PRESENT
-            #include "GB_meta16_factory.c"
-            #undef GB_MASK_IS_PRESENT
-
-        }
+        // C<!M> = A'*B via dot products
+        #include "GB_AxB_dot2_compmask.c"
     }
 
-    C->nvals = cnvals ;
 }
-
-#undef A_is_hyper
-#undef B_is_hyper
-
-#undef GB_DOT_ALWAYS_SAVE_CIJ
-#undef GB_DOT_SAVE_CIJ
-
-#undef GB_DOT2
 

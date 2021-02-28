@@ -8,8 +8,7 @@ function spok_install
 %
 % See also sparse, spok, spok_test
 
-% Copyright 2008-2011, Timothy A. Davis, http://suitesparse.com
-% SPDX-License-Identifier: Apache-2.0
+% Copyright 2008-2011, Timothy A. Davis, http://www.suitesparse.com
 
 mex -largeArrayDims spok.c spok_mex.c
 addpath (pwd) ;

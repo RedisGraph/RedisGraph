@@ -2,8 +2,8 @@
 // GraphBLAS/Demo/Source/read_matrix.c: read a matrix from stdin
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -14,8 +14,6 @@
 //
 // where i and j are the row and column indices, and x is the value.
 // The matrix is read in double precision.
-
-#include "GraphBLAS.h"
 
 // free all workspace; this used by the OK(...) macro if an error occurs
 #define FREE_ALL                    \
@@ -32,9 +30,7 @@
     GrB_Matrix_free (&B) ;          \
     GrB_Matrix_free (&C) ;
 
-#undef GB_PUBLIC
-#define GB_LIBRARY
-#include "graphblas_demos.h"
+#include "demos.h"
 
 //------------------------------------------------------------------------------
 // unary operator to divide by 2
@@ -49,7 +45,6 @@ void scale2 (double *z, const double *x)
 // read a matrix from a file
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info read_matrix        // read a double-precision or boolean matrix
 (
     GrB_Matrix *A_output,   // handle of matrix to create
@@ -80,8 +75,8 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     //--------------------------------------------------------------------------
 
     size_t xsize = ((boolean) ? sizeof (bool) : sizeof (double)) ;
-    GrB_Index *I = (GrB_Index *) malloc (len * sizeof (GrB_Index)), *I2 = NULL ;
-    GrB_Index *J = (GrB_Index *) malloc (len * sizeof (GrB_Index)), *J2 = NULL ;
+    GrB_Index *I = malloc (len * sizeof (int64_t)), *I2 = NULL ;
+    GrB_Index *J = malloc (len * sizeof (int64_t)), *J2 = NULL ;
     void *X = malloc (len * xsize) ;
     bool *Xbool ;
     double *Xdouble ;
@@ -109,8 +104,8 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
         int64_t j = (int64_t) j2 ;
         if (ntuples >= len)
         {
-            I2 = (GrB_Index *) realloc (I, 2 * len * sizeof (GrB_Index)) ;
-            J2 = (GrB_Index *) realloc (J, 2 * len * sizeof (GrB_Index)) ;
+            I2 = realloc (I, 2 * len * sizeof (int64_t)) ;
+            J2 = realloc (J, 2 * len * sizeof (int64_t)) ;
             X2 = realloc (X, 2 * len * xsize) ;
             if (I2 == NULL || J2 == NULL || X2 == NULL)
             {
@@ -268,7 +263,7 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
             double tic [2], t ;
             simple_tic (tic) ;
             OK (GrB_Matrix_new (&A, xtype, nrows, nrows)) ;
-            OK (GrB_Matrix_eWiseAdd_BinaryOp (A, NULL, NULL, xop, C, C, dt2)) ;
+            OK (GrB_eWiseAdd_Matrix_BinaryOp (A, NULL, NULL, xop, C, C, dt2)) ;
             OK (GrB_Matrix_free (&C)) ;
 
             if (boolean)
@@ -279,8 +274,7 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
             else
             {
                 OK (GrB_Matrix_new (&C, xtype, nrows, nrows)) ;
-                OK (GrB_UnaryOp_new (&scale2_op, 
-                    (GxB_unary_function) scale2, xtype, xtype)) ;
+                OK (GrB_UnaryOp_new (&scale2_op, scale2, xtype, xtype)) ;
                 OK (GrB_Matrix_apply (C, NULL, NULL, scale2_op, A, NULL)) ;
                 OK (GrB_Matrix_free (&A)) ;
                 OK (GrB_UnaryOp_free (&scale2_op)) ;

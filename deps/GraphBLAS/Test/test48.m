@@ -1,8 +1,8 @@
 function test48
 %TEST48 performance test of GrB_mxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
@@ -73,22 +73,25 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, A, x, dt_auto) ;
             % t = toc ;
-            ta = grbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, A, x, dt_dot) ;
             % t = toc ;
-            t = grbresults ;
+            [t method] = grbresults ;
+            assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, A, x, dt_gus) ;
             % t = toc ;
-            tg = grbresults ;
+            [tg method] = grbresults ;
+            assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, A, x, dt_hash) ;
             % t = toc ;
-            th = grbresults ;
+            [th method] = grbresults ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = A'*x ;
@@ -100,8 +103,8 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
-                ta, t, tg, th, t2) ;
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
+                ta, auto_method(1), t, tg, th, t2) ;
             fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
@@ -126,22 +129,25 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, A, x, da_auto) ;
             % t = toc ;
-            ta = grbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, A, x, da_dot) ;
             % t = toc ;
-            t = grbresults ;
+            [t method] = grbresults ;
+            assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, A, x, da_gus) ;
             % t = toc ;
-            tg = grbresults ;
+            [tg method] = grbresults ;
+            assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, A, x, da_hash) ;
             % t = toc ;
-            th = grbresults ;
+            [th method] = grbresults ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = A*x ;
@@ -153,8 +159,8 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
-                ta, t, tg, th, t2) ;
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
+                ta, auto_method(1), t, tg, th, t2) ;
             fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
@@ -181,22 +187,25 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, x, A, dtn_auto) ;
             % t = toc ;
-            ta = grbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, x, A, dtn_dot) ;
             % t = toc ;
-            t = grbresults ;
+            [t method] = grbresults ;
+            assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, x, A, dtn_gus) ;
             % t = toc ;
-            tg = grbresults ;
+            [tg method] = grbresults ;
+            assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, x, A, dtn_hash) ;
             % t = toc ;
-            th = grbresults ;
+            [th method] = grbresults ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = x'*A ;
@@ -209,8 +218,8 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
-                ta, t, tg, th, t2) ;
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
+                ta, auto_method(1), t, tg, th, t2) ;
             fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
@@ -235,22 +244,25 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, x, A, dtt_auto) ;
             % t = toc ;
-            ta = grbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, x, A, dtt_dot) ;
             % t = toc ;
-            t = grbresults ;
+            [t method] = grbresults ;
+            assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, x, A, dtt_gus) ;
             % t = toc ;
-            tg = grbresults ;
+            [tg method] = grbresults ;
+            assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, x, A, dtt_hash) ;
             % t = toc ;
-            th = grbresults ;
+            [th method] = grbresults ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = x'*A' ;
@@ -262,8 +274,8 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
-                ta, t, tg, th, t2) ;
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
+                ta, auto_method(1), t, tg, th, t2) ;
             fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
@@ -291,22 +303,25 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, A, x, dtt_auto) ;
             % t = toc ;
-            ta = grbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, A, x, dtt_dot) ;
             % t = toc ;
-            t = grbresults ;
+            [t method] = grbresults ;
+            assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, A, x, dtt_gus) ;
             % t = toc ;
-            tg = grbresults ;
+            [tg method] = grbresults ;
+            assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, A, x, dtt_hash) ;
             % t = toc ;
-            th = grbresults ;
+            [th method] = grbresults ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = A'*x' ;
@@ -318,8 +333,8 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
-                ta, t, tg, th, t2) ;
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
+                ta, auto_method(1), t, tg, th, t2) ;
             fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 

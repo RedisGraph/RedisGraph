@@ -2,24 +2,25 @@
 // GB_mask: apply a mask: C<M> = Z
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // C<M> = Z
 
-// GB_mask is only called by GB_accum_mask.
-
-// If M is NULL, C can have any sparsity.  Otherwise, if M is present then
-// C is sparse or hypersparse; if bitmap or full, GB_subassign is used instead.
-
 // Nearly all GraphBLAS operations take a mask, which controls how the result
 // of the computations, Z, are copied into the result matrix C.  The following
-// working MATLAB script, GB_spec_mask, defines how this is done.  In the
-// comments, C(i,j) is shorthand for the index i in the jth vector, and
-// likewise for M, Z, and R.  If the matrices are all CSC, then this is row i
-// and column j.  If the matrices are all CSR, then it is row j and column i.
+// working MATLAB script, GB_spec_mask, defines how this is done.
+
+// This function can only handle the case when C, M, and Z all have the same
+// format (all CSC and CSR transposed, or all CSR or CSC transposed).  The
+// caller (GB_accum_mask) must transpose as needed, before calling this
+// function.  This function can handle any combination of hypersparsity of C,
+// M, and/or Z, as needed.  In the comments, C(i,j) is shorthand for the index
+// i in the jth vector, and likewise for M, Z, and R.  If the matrices are all
+// CSC, then this is row i and column j.  If the matrices are all CSR, then it
+// is row j and column i.
 
 #include "GB_mask.h"
 
@@ -111,9 +112,9 @@
 
 #define GB_FREE_ALL                     \
 {                                       \
-    GB_Matrix_free (Zhandle) ;          \
-    GB_Matrix_free (&C_cleared) ;       \
-    GB_Matrix_free (&R) ;               \
+    GB_MATRIX_FREE (Zhandle) ;          \
+    GB_MATRIX_FREE (&C_cleared) ;       \
+    GB_MATRIX_FREE (&R) ;               \
 }
 
 //------------------------------------------------------------------------------
@@ -137,23 +138,20 @@ GrB_Info GB_mask                // C<M> = Z
 
     // C_result may be aliased with M
     ASSERT_MATRIX_OK (C_result, "C_result for GB_mask", GB0) ;
-    // C may be cleared anyway, without the need for finishing it
-    ASSERT (GB_ZOMBIES_OK (C_result)) ;
-    ASSERT (GB_JUMBLED_OK (C_result)) ;
-    ASSERT (GB_PENDING_OK (C_result)) ;
-
     ASSERT_MATRIX_OK_OR_NULL (M, "M for GB_mask", GB0) ;
-    // M may have zombies and pending tuples
-    ASSERT (GB_PENDING_OK (M)) ;
-    ASSERT (GB_JUMBLED_OK (M)) ;
-    ASSERT (GB_ZOMBIES_OK (M)) ;
 
-    // Z has the same type as C_result, with no zombies or pending tuples
+    // C may be cleared anyway, without the need for finishing it
+    ASSERT (GB_PENDING_OK (C_result)) ; ASSERT (GB_ZOMBIES_OK (C_result)) ;
+
+    // M may have zombies and pending tuples
+    ASSERT (GB_PENDING_OK (M)) ; ASSERT (GB_ZOMBIES_OK (M)) ;
+
     ASSERT (Zhandle != NULL) ;
     GrB_Matrix Z = *Zhandle ;
+
+    // Z has the same type as C_result, with no zombies or pending tuples
     ASSERT_MATRIX_OK (Z, "Z for GB_mask", GB0) ;
     ASSERT (!GB_PENDING (Z)) ;
-    ASSERT (GB_JUMBLED_OK (Z)) ;
     ASSERT (!GB_ZOMBIES (Z)) ;
     ASSERT (Z->type == C_result->type) ;
     // Z and C_result are never aliased. C_result and M might be.
@@ -182,8 +180,7 @@ GrB_Info GB_mask                // C<M> = Z
         // there is no mask (implicitly M(i,j)=1 for all i and j)
         //----------------------------------------------------------------------
 
-        // Any pending work on C is abandoned (zombies and/or pending tuples).
-        // C and Z can have any sparsity, including bitmap or full.
+        // Any pending work on C is abandoned (zombies and/or pending tuples)
 
         if (!Mask_comp)
         { 
@@ -195,6 +192,7 @@ GrB_Info GB_mask                // C<M> = Z
             // C_result = Z, but make sure a deep copy is made as needed.  It is
             // possible that Z is a shallow copy of another matrix.
             // Z is freed by GB_transplant_conform.
+            ASSERT (C_result->p != NULL) ;
             ASSERT (!C_result->p_shallow) ;
             ASSERT (!C_result->h_shallow) ;
 
@@ -223,7 +221,7 @@ GrB_Info GB_mask                // C<M> = Z
             ASSERT (GB_DEAD_CODE) ;    // the following is no longer used
 
             // free Z if it exists (this is OK if Zhandle is NULL)
-            GB_Matrix_free (Zhandle) ;
+            GB_MATRIX_FREE (Zhandle) ;
 
             if (C_replace)
             {
@@ -246,8 +244,7 @@ GrB_Info GB_mask                // C<M> = Z
         //----------------------------------------------------------------------
 
         // delete any lingering zombies and assemble any pending tuples
-        GB_MATRIX_WAIT (M) ;        // also sort M if jumbled
-        GB_MATRIX_WAIT (Z) ;        // also sort Z if jumbled
+        if (GB_PENDING (M) || GB_ZOMBIES (M)) GB_OK (GB_wait (M, Context)) ;
 
         // R has the same CSR/CSC format as C_result.  It is hypersparse if
         // both C and Z are hypersparse.
@@ -265,52 +262,40 @@ GrB_Info GB_mask                // C<M> = Z
                 // must be cleared.  To resolve this, a new matrix C_cleared is
                 // created, which is what C_result would look like if cleared.
                 // C_result is left unchanged since changing it would change M.
-                // The C_cleared matrix is created as hypersparse.
-                C_cleared = NULL ;
-                int sparsity = GxB_HYPERSPARSE ;  
-                GB_OK (
-                GB_new_bix (&C_cleared, // auto (sparse or hyper), new header
-                    C_result->type, vlen, vdim, GB_Ap_calloc, R_is_csc,
-                    sparsity, true, C_result->hyper_switch, 0, 0, true,
-                    Context)) ;
+                // The C_cleared matrix has the same hypersparsity and CSC/CSR
+                // format as the orginal C matrix.
+                C_cleared = NULL;   // allocate a new header for C_cleared
+                GB_CREATE (&C_cleared, C_result->type, vlen, vdim,
+                    GB_Ap_calloc, R_is_csc, GB_AUTO_HYPER,
+                    C_result->hyper_ratio, 0, 0, true, Context) ;
+                GB_OK (info) ;
                 C = C_cleared ;
             }
             else
             { 
-                // Clear all entries from C_result, and ensure C is hypersparse
-                // by temporarily changing the sparsity control
-                int save = C_result->sparsity ;         // save control
-                C_result->sparsity = GxB_HYPERSPARSE ;
+                // Clear all entries from C_result
                 GB_OK (GB_clear (C_result, Context)) ;
-                C_result->sparsity = save ;             // restore control
                 C = C_result ;
             }
             // C has been cleared, so it has no zombies or pending tuples
         }
         else
         { 
-            // C has already been finished if C_replace is false, via the
-            // GB_MATRIX_WAIT (C) in GB_accum_mask.
             C = C_result ;
+
+            // delete any lingering zombies and assemble any pending tuples
+            if (GB_PENDING (C) || GB_ZOMBIES (C)) GB_OK (GB_wait (C, Context)) ;
         }
 
-        // C cannot be bitmap or full for GB_masker
-        ASSERT (!GB_IS_BITMAP (C)) ;
-        ASSERT (!GB_IS_FULL (C)) ;
-
-        // no more zombies or pending tuples in M or C
-        ASSERT (!GB_PENDING (M)) ;
-        ASSERT (!GB_JUMBLED (M)) ;
-        ASSERT (!GB_ZOMBIES (M)) ;
-        ASSERT (!GB_PENDING (C)) ;
-        ASSERT (!GB_JUMBLED (C)) ;
-        ASSERT (!GB_ZOMBIES (C)) ;
+        // no more zombies or pending tuples
+        ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+        ASSERT (!GB_PENDING (C)) ; ASSERT (!GB_ZOMBIES (C)) ;
 
         // continue with C, do not use C_result until the end since it may be
         // aliased with M.
 
         //----------------------------------------------------------------------
-        // R = masker (C, M, Z):  compute C<M>=Z, placing results in R
+        // R = masker (M, C, Z):  compute C<M>=Z, placing results in R
         //----------------------------------------------------------------------
 
         GB_OK (GB_masker (&R, R_is_csc, M, Mask_comp, Mask_struct, C, Z,
@@ -320,8 +305,8 @@ GrB_Info GB_mask                // C<M> = Z
         // free temporary matrices Z and C_cleared
         //----------------------------------------------------------------------
 
-        GB_Matrix_free (Zhandle) ;
-        GB_Matrix_free (&C_cleared) ;
+        GB_MATRIX_FREE (Zhandle) ;
+        GB_MATRIX_FREE (&C_cleared) ;
 
         //----------------------------------------------------------------------
         // transplant the result, conform, and free R

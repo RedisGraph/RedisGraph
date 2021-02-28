@@ -1,14 +1,14 @@
 function ok = GB_spec_compare (C_spec, C_mex, identity, tol)
 %GB_SPEC_COMPARE compare MATLAB mimic result with GraphBLAS result
-% ok = GB_spec_compare (C_spec, C_mex, identity, tol)
+% ok = GB_spec_compare (C_spec, C_mex, identity)
 %
 % compares two structs C_spec and C_mex.  The C_spec struct contains a dense
 % matrix and is the output of a MATLAB mimic, C_spec = GB_spec_* (...) for
-% some GraphBLAS method.  C_mex = GB_mex_* (...) is the output of the
+% some GraphBLAS method.  C_mex = GrG_mex_* (...) is the output of the
 % corresponding MATLAB interface to the true GraphBLAS method, in C.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % get the semiring identity
 if (nargin < 3)
@@ -23,7 +23,7 @@ end
 
 if (nargin < 4)
     if (isfloat (identity))
-        tol = 64*eps (class (identity)) ;   % not GB_spec_type.
+        tol = 64*eps (class (identity)) ;
     else
         tol = 0 ;
     end
@@ -90,4 +90,5 @@ end
 if (nargout == 0)
     assert (ok_matrix && ok_pattern && ok_class) ;
 end
+
 

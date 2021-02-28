@@ -2,8 +2,8 @@
 // GB_mex_qsort_1b: sort using GB_qsort_1b
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -43,11 +43,11 @@ void mexFunction
         mexErrMsgTxt ("I and J must be the same length") ;
     }
 
-    pargout [0] = GB_mx_create_full (n, 1, GrB_INT64) ;
+    pargout [0] = mxCreateNumericMatrix (n, 1, mxINT64_CLASS, mxREAL) ;
     int64_t *Iout = mxGetData (pargout [0]) ;
     memcpy (Iout, I, n * sizeof (int64_t)) ;
 
-    pargout [1] = GB_mx_create_full (n, 1, GrB_INT64) ;
+    pargout [1] = mxCreateNumericMatrix (n, 1, mxINT64_CLASS, mxREAL) ;
     int64_t *Jout = mxGetData (pargout [1]) ;
     memcpy (Jout, J, n * sizeof (int64_t)) ;
 
@@ -56,6 +56,6 @@ void mexFunction
     GB_qsort_1b (Iout, Jout, sizeof (int64_t), n) ;
 
     GB_MEX_TOC ;
-    GB_mx_put_time ( ) ;
+    GB_mx_put_time (0) ;
 }
 

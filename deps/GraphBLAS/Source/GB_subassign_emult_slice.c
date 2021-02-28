@@ -1,36 +1,36 @@
 //------------------------------------------------------------------------------
-// GB_subassign_emult_slice: slice the entries and vectors for GB_subassign_08n
+// GB_subassign_emult_slice: slice the entries and vectors for GB_subassign_08
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// Constructs a set of tasks to compute C for GB_subassign_08n, based on
-// slicing two input matricies (A and M).  Fine tasks must also find their
+// Constructs a set of tasks to compute C for GB_subassign_80, based on
+// slicing a two input matrix (A and M).  Fine tasks must also find their
 // location in their vector C(:,jC).
 
-// This method is used only by GB_subassign_08n.  New zombies cannot be
-// created, since no entries are deleted.  Old zombies can be brought back to
-// life, however.
+// This method is used only by GB_subassign_08.  New zombies cannot be created,
+// since no entries are deleted.  Old zombies can be brought back to life,
+// however.
 
         //  =====================       ==============
         //  M   cmp rpl acc A   S       method: action
         //  =====================       ==============
-        //  M   -   -   +   A   -       08n:  C(I,J)<M> += A, no S
-
-// C, M, A: not bitmap.  C can be full.
-
-// If C is bitmap, then GB_bitmap_assign_M_accum is used instead.
-// If M or A are bitmap, but C is sparse or hyper, then Method 08s is used
-// instead (which handles both M and A as bitmap).  As a result, this method
-// does not need to consider the bitmap case for C, M, or A.
+        //  M   -   -   +   A   -       08:  C(I,J)<M> += A, no S
 
 #include "GB_subassign_methods.h"
 #include "GB_emult.h"
 // Npending is set to NULL by the GB_EMPTY_TASKLIST macro, but unused here.
 #include "GB_unused.h"
+
+#undef  GB_FREE_ALL
+#define GB_FREE_ALL                                                         \
+{                                                                           \
+    GB_FREE_EMULT_SLICE ;                                                   \
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;      \
+}
 
 GrB_Info GB_subassign_emult_slice
 (
@@ -40,7 +40,7 @@ GrB_Info GB_subassign_emult_slice
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads to use
     int64_t *p_Znvec,               // # of vectors to compute in Z
-    const int64_t *GB_RESTRICT *Zh_handle, // Zh_shallow is A->h, M->h, or NULL
+    const int64_t *GB_RESTRICT *Zh_handle,     // Zh is A->h, M->h, or NULL
     int64_t *GB_RESTRICT *Z_to_A_handle, // Z_to_A: output size Znvec, or NULL
     int64_t *GB_RESTRICT *Z_to_M_handle, // Z_to_M: output size Znvec, or NULL
     // input:
@@ -63,11 +63,6 @@ GrB_Info GB_subassign_emult_slice
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (!GB_IS_BITMAP (C)) ;
-    ASSERT (!GB_IS_BITMAP (M)) ;    // Method 08n is not used for M bitmap
-    ASSERT (!GB_IS_BITMAP (A)) ;    // Method 08n is not used for A bitmap
-
-    GB_EMPTY_TASKLIST
     ASSERT (p_TaskList != NULL) ;
     ASSERT (p_max_ntasks != NULL) ;
     ASSERT (p_ntasks != NULL) ;
@@ -75,10 +70,6 @@ GrB_Info GB_subassign_emult_slice
     ASSERT_MATRIX_OK (C, "C for emult_slice", GB0) ;
     ASSERT_MATRIX_OK (M, "M for emult_slice", GB0) ;
     ASSERT_MATRIX_OK (A, "A for emult_slice", GB0) ;
-
-    ASSERT (!GB_JUMBLED (C)) ;
-    ASSERT (!GB_JUMBLED (M)) ;
-    ASSERT (!GB_JUMBLED (A)) ;
 
     ASSERT (p_Znvec != NULL) ;
     ASSERT (Zh_handle != NULL) ;
@@ -95,45 +86,48 @@ GrB_Info GB_subassign_emult_slice
     (*Z_to_A_handle) = NULL ;
     (*Z_to_M_handle) = NULL ;
 
+    GB_EMPTY_TASKLIST ;
+
     //--------------------------------------------------------------------------
     // get inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     int64_t *GB_RESTRICT Ci = C->i ;
     int64_t nzombies = C->nzombies ;
+    const bool C_is_hyper = C->is_hyper ;
     const int64_t Cnvec = C->nvec ;
-    const int64_t Cvlen = C->vlen ;
+    const int64_t cvlen = C->vlen ;
     const int64_t *GB_RESTRICT Ch = C->h ;
     const int64_t *GB_RESTRICT Cp = C->p ;
-    const bool C_is_hyper = (Ch != NULL) ;
 
     const int64_t *GB_RESTRICT Mp = M->p ;
     const int64_t *GB_RESTRICT Mh = M->h ;
     const int64_t *GB_RESTRICT Mi = M->i ;
-    const int64_t Mvlen = M->vlen ;
 
     const int64_t *GB_RESTRICT Ap = A->p ;
     const int64_t *GB_RESTRICT Ah = A->h ;
     const int64_t *GB_RESTRICT Ai = A->i ;
-    const int64_t Avlen = A->vlen ;
 
     //--------------------------------------------------------------------------
     // construct fine/coarse tasks for eWise multiply of A.*M
     //--------------------------------------------------------------------------
 
-    // Compare with the first part of GB_emult for A.*B.  Note that M in this
+    // Compare with the first part of GB_emult (A,B).  Note that M in this
     // function takes the place of B in GB_emult.
 
     int64_t Znvec ;
-    int64_t *GB_RESTRICT Zh_shallow = NULL ;
-    int Z_sparsity = GxB_SPARSE ;
+    const int64_t *GB_RESTRICT Zh = NULL ;
+    int64_t *GB_RESTRICT Z_to_A = NULL ;
+    int64_t *GB_RESTRICT Z_to_M = NULL ;
+
     GB_OK (GB_emult_phase0 (
-        &Znvec, &Zh_shallow, NULL, &Z_to_A, &Z_to_M, &Z_sparsity,
+        &Znvec, &Zh, NULL, &Z_to_A, &Z_to_M,
         NULL, A, M, Context)) ;
 
     GB_OK (GB_ewise_slice (
         &TaskList, &max_ntasks, &ntasks, &nthreads,
-        Znvec, Zh_shallow, NULL, Z_to_A, Z_to_M, false,
+        Znvec, Zh, NULL, Z_to_A, Z_to_M, false,
         NULL, A, M, Context)) ;
 
     //--------------------------------------------------------------------------
@@ -145,13 +139,13 @@ GrB_Info GB_subassign_emult_slice
     // at the same time another is attempting to do a binary search on that
     // entry.  This is safe as long as a 64-bit integer read/write is always
     // atomic, but there is no gaurantee that this is true for all
-    // architectures.  Note that GB_subassign_08n cannot create new zombies.
+    // architectures.  Note that GB_subassign_08 cannot create new zombies.
 
     // This work could be done in parallel, but each task does at most 2 binary
     // searches.  The total work for all the binary searches will likely be
     // small.  So do the work with a single thread.
 
-    for (taskid = 0 ; taskid < ntasks ; taskid++)
+    for (int taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -172,9 +166,9 @@ GrB_Info GB_subassign_emult_slice
             //------------------------------------------------------------------
 
             int64_t k = kfirst ;
-            int64_t j = GBH (Zh_shallow, k) ;
-            GB_GET_EVEC (pA, pA_end, pA, pA_end, Ap, Ah, j, k, Z_to_A, Avlen) ;
-            GB_GET_EVEC (pM, pM_end, pB, pB_end, Mp, Mh, j, k, Z_to_M, Mvlen) ;
+            int64_t j = (Zh == NULL) ? k : Zh [k] ;
+            GB_GET_EMULT_VECTOR (pA, pA_end, pA, pA_end, Ap, Ah, j, k, Z_to_A) ;
+            GB_GET_EMULT_VECTOR (pM, pM_end, pB, pB_end, Mp, Mh, j, k, Z_to_M) ;
 
             //------------------------------------------------------------------
             // quick checks for empty intersection of A(:,j) and M(:,j)
@@ -183,10 +177,10 @@ GrB_Info GB_subassign_emult_slice
             int64_t ajnz = pA_end - pA ;
             int64_t mjnz = pM_end - pM ;
             if (ajnz == 0 || mjnz == 0) continue ;
-            int64_t iA_first = GBI (Ai, pA, Avlen) ;
-            int64_t iA_last  = GBI (Ai, pA_end-1, Avlen) ;
-            int64_t iM_first = GBI (Mi, pM, Mvlen) ;
-            int64_t iM_last  = GBI (Mi, pM_end-1, Mvlen) ;
+            int64_t iA_first = Ai [pA] ;
+            int64_t iA_last  = Ai [pA_end-1] ;
+            int64_t iM_first = Mi [pM] ;
+            int64_t iM_last  = Mi [pM_end-1] ;
             if (iA_last < iM_first || iM_last < iA_first) continue ;
 
             //------------------------------------------------------------------
@@ -194,7 +188,7 @@ GrB_Info GB_subassign_emult_slice
             //------------------------------------------------------------------
 
             int64_t GB_LOOKUP_jC ;
-            bool cjdense = (pC_end - pC_start == Cvlen) ;
+            bool cjdense = (pC_end - pC_start == cvlen) ;
 
             //------------------------------------------------------------------
             // slice C(:,jC) for this fine task
@@ -252,7 +246,7 @@ GrB_Info GB_subassign_emult_slice
     (*p_nthreads  ) = nthreads ;
 
     (*p_Znvec      ) = Znvec ;
-    (*Zh_handle    ) = Zh_shallow ;
+    (*Zh_handle    ) = Zh ;
     (*Z_to_A_handle) = Z_to_A ;
     (*Z_to_M_handle) = Z_to_M ;
 

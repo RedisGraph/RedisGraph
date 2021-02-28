@@ -2,8 +2,8 @@
 // GB_ijsort:  sort an index array I and remove duplicates
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -19,11 +19,13 @@
 #include "GB_ij.h"
 #include "GB_sort.h"
 
-#define GB_FREE_WORK    \
-{                       \
-    GB_FREE (Count) ;   \
-    GB_FREE (I1) ;      \
-    GB_FREE (I1k) ;     \
+#define GB_FREE_WORK                                        \
+{                                                           \
+    GB_FREE_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;    \
+    GB_FREE_MEMORY (W0,  ni, sizeof (GrB_Index)) ;          \
+    GB_FREE_MEMORY (W1,  ni, sizeof (GrB_Index)) ;          \
+    GB_FREE_MEMORY (I1,  ni, sizeof (GrB_Index)) ;          \
+    GB_FREE_MEMORY (I1k, ni, sizeof (GrB_Index)) ;          \
 }
 
 GrB_Info GB_ijsort
@@ -54,6 +56,8 @@ GrB_Info GB_ijsort
     GrB_Index *GB_RESTRICT I1k = NULL ;
     GrB_Index *GB_RESTRICT I2  = NULL ;
     GrB_Index *GB_RESTRICT I2k = NULL ;
+    int64_t *GB_RESTRICT W0  = NULL ;
+    int64_t *GB_RESTRICT W1 = NULL ;
     int64_t ni = *p_ni ;
     ASSERT (ni > 1) ;
     int64_t *GB_RESTRICT Count = NULL ;        // size ntasks+1
@@ -70,13 +74,13 @@ GrB_Info GB_ijsort
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    I1  = GB_MALLOC (ni, GrB_Index) ;
-    I1k = GB_MALLOC (ni, GrB_Index) ;
+    GB_MALLOC_MEMORY (I1,  ni, sizeof (GrB_Index)) ;
+    GB_MALLOC_MEMORY (I1k, ni, sizeof (GrB_Index)) ;
     if (I1 == NULL || I1k == NULL)
     { 
         // out of memory
         GB_FREE_WORK ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -99,7 +103,37 @@ GrB_Info GB_ijsort
     // sort [I1 I1k]
     //--------------------------------------------------------------------------
 
-    GB_msort_2b ((int64_t *) I1, (int64_t *) I1k, ni, nthreads) ;
+    if (nthreads == 1)
+    { 
+
+        //----------------------------------------------------------------------
+        // sequential quicksort
+        //----------------------------------------------------------------------
+
+        GB_qsort_2 ((int64_t *) I1, (int64_t *) I1k, ni) ;
+
+    }
+    else
+    {
+
+        //----------------------------------------------------------------------
+        // parallel mergesort
+        //----------------------------------------------------------------------
+
+        GB_MALLOC_MEMORY (W0, ni, sizeof (int64_t)) ;
+        GB_MALLOC_MEMORY (W1, ni, sizeof (int64_t)) ;
+        if (W0 == NULL || W1 == NULL)
+        { 
+            // out of memory
+            GB_FREE_WORK ;
+            return (GB_OUT_OF_MEMORY) ;
+        }
+
+        GB_msort_2 ((int64_t *) I1, (int64_t *) I1k, W0, W1, ni, nthreads) ;
+
+        GB_FREE_MEMORY (W0, ni, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (W1, ni, sizeof (int64_t)) ;
+    }
 
     //--------------------------------------------------------------------------
     // determine number of tasks to create
@@ -113,12 +147,12 @@ GrB_Info GB_ijsort
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Count = GB_MALLOC (ntasks+1, int64_t) ;
+    GB_MALLOC_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
     if (Count == NULL)
     { 
         // out of memory
         GB_FREE_WORK ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -148,15 +182,15 @@ GrB_Info GB_ijsort
     // allocate the result I2
     //--------------------------------------------------------------------------
 
-    I2  = GB_MALLOC (ni2, GrB_Index) ;
-    I2k = GB_MALLOC (ni2, GrB_Index) ;
+    GB_MALLOC_MEMORY (I2 , ni2, sizeof (GrB_Index)) ;
+    GB_MALLOC_MEMORY (I2k, ni2, sizeof (GrB_Index)) ;
     if (I2 == NULL || I2k == NULL)
     { 
         // out of memory
         GB_FREE_WORK ;
-        GB_FREE (I2) ;
-        GB_FREE (I2k) ;
-        return (GrB_OUT_OF_MEMORY) ;
+        GB_FREE_MEMORY (I2 , ni2, sizeof (GrB_Index)) ;
+        GB_FREE_MEMORY (I2k, ni2, sizeof (GrB_Index)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------

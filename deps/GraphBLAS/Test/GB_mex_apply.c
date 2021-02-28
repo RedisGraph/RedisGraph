@@ -2,8 +2,8 @@
 // GB_mex_apply: C<Mask> = accum(C,op(A)) or op(A')
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -15,11 +15,11 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&C) ;              \
-    GrB_Matrix_free_(&Mask) ;           \
-    GrB_Matrix_free_(&A) ;              \
-    GrB_Descriptor_free_(&desc) ;       \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&C) ;               \
+    GB_MATRIX_FREE (&Mask) ;            \
+    GB_MATRIX_FREE (&A) ;               \
+    GrB_free (&desc) ;                  \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 GrB_Matrix C = NULL ;
@@ -38,11 +38,11 @@ GrB_Info apply (bool is_matrix)
 
     if (is_matrix)
     {
-        info = GrB_Matrix_apply_(C, Mask, accum, op, A, desc) ;
+        info = GrB_apply (C, Mask, accum, op, A, desc) ;
     }
     else
     {
-        info = GrB_Vector_apply_((GrB_Vector) C, (GrB_Vector) Mask, accum, op,
+        info = GrB_apply ((GrB_Vector) C, (GrB_Vector) Mask, accum, op,
             (GrB_Vector) A, desc) ;
     }
 
@@ -63,6 +63,7 @@ void mexFunction
     bool malloc_debug = GB_mx_get_global (true) ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 5 || nargin > 6)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -71,13 +72,14 @@ void mexFunction
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
     C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
-    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
+    #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
+    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get Mask (shallow copy)
     Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
@@ -95,19 +97,17 @@ void mexFunction
         mexErrMsgTxt ("A failed") ;
     }
 
-    // get accum, if present
-    bool user_complex = (Complex != GxB_FC64)
-        && (C->type == Complex || A->type == Complex) ;
+    // get accum; default: NOP, default class is class(C)
     if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [2], "accum",
-        C->type, user_complex))
+        GB_NOP_opcode, cclass, C->type == Complex, A->type == Complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;
     }
 
-    // get op
+    // get op; default: NOP, default class is class(C)
     if (!GB_mx_mxArray_to_UnaryOp (&op, pargin [3], "op",
-        A->type, user_complex) || op == NULL)
+        GB_NOP_opcode, cclass, A->type == Complex)) 
     {
         FREE_ALL ;
         mexErrMsgTxt ("UnaryOp failed") ;

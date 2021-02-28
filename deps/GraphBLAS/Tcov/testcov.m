@@ -1,12 +1,9 @@
 %TESTCOV run all GraphBLAS tests, with statement coverage
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (ispc)
-    error ('The tests in Tcov are not ported to Windows') ;
-end
-
+all_tcov_time = tic ;
 try
     addpath ('../Test') ;
     addpath ('../Test/spok') ;
@@ -23,5 +20,6 @@ catch me
     rethrow (me) ;
 end
 
-fprintf ('\ntestcov: all tests passed\n') ;
+t = toc (all_tcov_time) ;
+fprintf ('\ntestcov: all tests passed, total time %0.5g minutes\n', t / 60) ;
 

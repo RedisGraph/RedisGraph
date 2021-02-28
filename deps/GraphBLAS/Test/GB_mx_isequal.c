@@ -2,8 +2,8 @@
 // GB_mx_isequal: check if two matrices are equal
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -18,16 +18,11 @@ bool GB_mx_isequal     // true if A and B are exactly the same
                     // difference is less than or equal to eps.
 )
 {
+    // printf ("mx_isequal\n") ;
 
     if (A == B) return (true) ;
     if (A == NULL) return (false) ;
     if (B == NULL) return (false) ;
-
-    int A_sparsity = GB_sparsity (A) ;
-    if (A_sparsity != GB_sparsity (B))
-    {
-        return (false) ;
-    }
 
     GB_Pending AP = A->Pending ;
     GB_Pending BP = B->Pending ;
@@ -40,19 +35,20 @@ bool GB_mx_isequal     // true if A and B are exactly the same
 
     if (GB_NNZ (A)  != GB_NNZ (B) ) return (false) ;
 
-    if ((A->h != NULL) != (B->h != NULL)) return (false) ;
+    if (A->is_hyper != B->is_hyper) return (false) ;
     if (A->is_csc   != B->is_csc  ) return (false) ;
 
-    // these differences are OK
+    // these differences are OK:
     // if (A->plen  != B->plen ) return (false) ;
     // if (A->nzmax != B->nzmax) return (false) ;
     // if (AP->nmax != BP->nmax) return (false) ;
+    // queue_next and queue_prev are expected to differ
+    // if (A->enqueued != B->enqueued) return (false) ;
 
-//  if (A->p_shallow        != B->p_shallow        ) return (false) ;
-//  if (A->h_shallow        != B->h_shallow        ) return (false) ;
-//  if (A->i_shallow        != B->i_shallow        ) return (false) ;
-//  if (A->x_shallow        != B->i_shallow        ) return (false) ;
-
+    if (A->p_shallow        != B->p_shallow        ) return (false) ;
+    if (A->h_shallow        != B->h_shallow        ) return (false) ;
+    if (A->i_shallow        != B->i_shallow        ) return (false) ;
+    if (A->x_shallow        != B->i_shallow        ) return (false) ;
     if (A->nzombies         != B->nzombies         ) return (false) ;
 
     if ((AP != NULL) != (BP != NULL)) return (false) ;
@@ -72,58 +68,38 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     size_t asize = A->type->size ;
 
     ASSERT (n >= 0 && n <= A->vdim) ;
+    // printf ("mx_isequal: nvec "GBd" nnz "GBd", np "GBd"\n", n, nnz, np) ;
 
-    bool A_is_dense = GB_is_dense (A) || GB_IS_FULL (A) ;
-    bool B_is_dense = GB_is_dense (B) || GB_IS_FULL (B) ;
-
-    if (A_is_dense != B_is_dense) return (false) ;
-
-    if (!A_is_dense)
+    if (!GB_mx_same  ((char *) A->p, (char *) B->p, (n+1) * s)) return (false) ;
+    // printf ("p same\n") ;
+    if (A->is_hyper)
     {
-        if (!GB_mx_same  ((char *) A->p, (char *) B->p, (n+1) * s))
-        {
-            return (false) ;
-        }
-        if (A->h != NULL)
-        {
-            if (!GB_mx_same ((char *) A->h, (char *) B->h, n * s))
-                return (false) ;
-        }
+        if (!GB_mx_same ((char *) A->h, (char *) B->h, n * s)) return (false) ;
     }
-
-    if (A_sparsity == GxB_BITMAP)
-    {
-        if (!GB_mx_same ((char *) A->b, (char *) B->b, nnz))
-        {
-            return (false) ;
-        }
-    }
+    // printf ("h same\n") ;
 
     if (A->nzmax > 0 && B->nzmax > 0)
     {
-        if (!A_is_dense)
-        {
-            if (!GB_mx_same  ((char *) A->i, (char *) B->i, nnz * s))
-            {
-                return (false) ;
-            }
-        }
+        if (!GB_mx_same  ((char *) A->i, (char *) B->i, nnz * s))
+            return (false) ;
+        // printf ("i same\n") ;
 
         if (A->type == GrB_FP32 && eps > 0)
         {
-            if (!GB_mx_xsame32 (A->x, B->x, A->b, nnz, A->i, eps))
+            if (!GB_mx_xsame32 (A->x, B->x, nnz, A->i, eps))
                 return (false) ;
         }
         else if (A->type == GrB_FP64 && eps > 0)
         {
-            if (!GB_mx_xsame64 (A->x, B->x, A->b, nnz, A->i, eps))
+            if (!GB_mx_xsame64 (A->x, B->x, nnz, A->i, eps))
                 return (false) ;
         }
         else
         {
-            if (!GB_mx_xsame (A->x, B->x, A->b, nnz, asize, A->i))
+            if (!GB_mx_xsame (A->x, B->x, nnz, asize, A->i))
                 return (false) ;
         }
+        // printf ("x same\n") ;
     }
 
     if (AP != NULL)
@@ -136,6 +112,7 @@ bool GB_mx_isequal     // true if A and B are exactly the same
         {
             return (false) ;
         }
+        // printf ("xp same\n") ;
     }
 
     return (true) ;

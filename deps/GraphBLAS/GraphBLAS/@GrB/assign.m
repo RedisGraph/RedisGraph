@@ -1,14 +1,20 @@
-function C = assign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+function Cout = assign (varargin)
 %GRB.ASSIGN: assign a submatrix into a matrix.
 %
-%   C = GrB.assign (Cin, M, accum, A, I, J, desc)
+% GrB.assign is an interface to GrB_Matrix_assign and
+% GrB_Matrix_assign_[TYPE], computing the GraphBLAS expression:
 %
-%   C<M>(I,J) = A or accum (C(I,J), A)
+%   C<#M,replace>(I,J) = accum (C(I,J), A) or accum(C(I,J), A')
+%
+% where A can be a matrix or a scalar.
+%
+% Usage:
+%
+%   Cout = GrB.assign (Cin, M, accum, A, I, J, desc)
 %
 %   Cin and A are required parameters.  All others are optional.
 %   The arguments are parsed according to their type.  Arguments
-%   with different types can appear in any order:
-%
+%   with different types can appear in any order.
 %       Cin, M, A:  2 or 3 GraphBLAS or MATLAB sparse/full matrices.
 %                   The first three matrix inputs are Cin, M, and A.
 %                   If 2 matrix inputs are present, they are Cin and A.
@@ -17,7 +23,7 @@ function C = assign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %                   with one cell input, I is present and J = { }.
 %                   with two cell inputs, I is the first cell input and J
 %                   is the second cell input.
-%       desc:       an optional struct (must appear as the last argument)
+%       desc:       an optional struct.
 %
 % desc: see 'help GrB.descriptorinfo' for details.
 %
@@ -64,10 +70,10 @@ function C = assign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % M: an optional mask matrix, the same size as C.
 %
 % Cin: a required input matrix, containing the initial content of the
-% matrix C.
+% matrix C.  Cout is the content of C after the assignment is made.
 %
 % All input matrices may be either GraphBLAS and/or MATLAB matrices, in any
-% combination.  C is returned as a GraphBLAS matrix.
+% combination.  Cout is returned as a GraphBLAS matrix.
 %
 % Example:
 %
@@ -78,65 +84,29 @@ function C = assign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %
 %   d.in0 = 'transpose'
 %   d.mask = 'complement'
-%   C = GrB.assign (Cin, M, A, d)
+%   Cout = GrB.assign (Cin, M, A, d)
 %   C2 = Cin
 %   C2 (~M) = AT (~M)
-%   C2 - sparse (C)
+%   C2 - sparse (Cout)
 %
 %   I = [2 1 5]
 %   J = [3 3 1 2]
 %   B = sprandn (length (I), length (J), 0.5)
 %   Cin = sprand (6, 3, 0.5)
-%   C = GrB.assign (Cin, B, {I}, {J})
+%   Cout = GrB.assign (Cin, B, {I}, {J})
 %   C2 = Cin
 %   C2 (I,J) = B
-%   C2 - sparse (C)
+%   C2 - sparse (Cout)
 %
-% See also GrB.subassign, GrB/subsasgn.
+% See also GrB.subassign, subsasgn
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (isobject (arg1))
-    arg1 = arg1.opaque ;
-end
-
-if (isobject (arg2))
-    arg2 = arg2.opaque ;
-end
-
-if (nargin > 2 && isobject (arg3))
-    arg3 = arg3.opaque ;
-end
-
-if (nargin > 3 && isobject (arg4))
-    arg4 = arg4.opaque ;
-end
-
-if (nargin > 4 && isobject (arg5))
-    arg5 = arg5.opaque ;
-end
-
-if (nargin > 5 && isobject (arg6))
-    arg6 = arg6.opaque ;
-end
-
-switch (nargin)
-    case 2
-        [C, k] = gbassign (arg1, arg2) ;
-    case 3
-        [C, k] = gbassign (arg1, arg2, arg3) ;
-    case 4
-        [C, k] = gbassign (arg1, arg2, arg3, arg4) ;
-    case 5
-        [C, k] = gbassign (arg1, arg2, arg3, arg4, arg5) ;
-    case 6
-        [C, k] = gbassign (arg1, arg2, arg3, arg4, arg5, arg6) ;
-    case 7
-        [C, k] = gbassign (arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
-end
-
-if (k == 0)
-    C = GrB (C) ;
+[args, is_gb] = gb_get_args (varargin {:}) ;
+if (is_gb)
+    Cout = GrB (gbassign (args {:})) ;
+else
+    Cout = gbassign (args {:}) ;
 end
 

@@ -1,12 +1,10 @@
 function test142
 %TEST142 test GrB_assign for dense matrices
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-[binops, ~, ~, types, ~, ~] = GB_spec_opsall ;
-binops = binops.all ;
-types = types.all ;
+[bin_ops, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
 fprintf ('test142 ------------ GrB_assign with dense matrices\n') ;
 
@@ -16,15 +14,9 @@ n = 12 ;
 rng ('default') ;
 
 M = sprand (m, n, 0.5) ;
-
-Amat2 = sparse (2 * rand (m,n)) ;
-Bmat2 = sparse (2 * sprand (m,n, 0.5)) ;
-Cmat2 = sparse (2 * rand (m,n)) ;
-
-Amat = 50 * Amat2 ;
-Bmat = 50 * Bmat2 ;
-Cmat = 50 * Cmat2 ;
-
+Amat = sparse (100 * rand (m,n)) ;
+Bmat = sparse (100 * sprand (m,n, 0.5)) ;
+Cmat = sparse (100 * rand (m,n)) ;
 Smat = sparse (m,n) ;
 Xmat = sparse (pi) ;
 desc.mask = 'structural' ;
@@ -37,29 +29,22 @@ S.matrix = Smat ; S.class = 'see below' ;
 X.matrix = Xmat ; X.class = 'see below' ;
 Bmask = logical (Bmat) ;
 
-for k1 = 1:length (types)
-    type = types {k1}  ;
-    fprintf ('%s ', type) ;
+for k1 = 1:length (classes)
+    clas = classes {k1}  ;
+    fprintf ('%s', clas) ;
 
-    A.class = type ;
+    A.class = clas ;
+    B.class = clas ;
+    X.class = clas ;
 
-    for k3 = 1:3
+    for k3 = 1:2
 
         if (k3 == 1)
-            X.class = type ;
-            B.class = type ;
             C.class = 'logical' ;
             S.class = 'logical' ;
-        elseif (k3 == 2)
-            X.class = type ;
-            B.class = type ;
-            C.class = type ;
-            S.class = type ;
         else
-            X.class = 'int8' ;
-            B.class = 'int8' ;
-            C.class = type ;
-            S.class = type ;
+            C.class = clas ;
+            S.class = clas ;
         end
 
         %---------------------------------------
@@ -130,70 +115,44 @@ for k1 = 1:length (types)
         % with accum operators
         %---------------------------------------
 
-        for k2 = 1:length(binops)
-            binop = binops {k2}  ;
+        for k2 = 1:length(bin_ops)
+            binop = bin_ops {k2}  ;
 
-            tol = 0 ;
-            switch (binop)
-                case { 'pow', 'atan2', 'hypot', 'remainder' }
-                    A.matrix = Amat2 ;
-                    B.matrix = Bmat2 ;
-                    C.matrix = Cmat2 ;
-                    if (contains (type, 'single'))
-                        tol = 1e-5 ;
-                    elseif (contains (type, 'double'))
-                        tol = 1e-12 ;
-                    end
-                otherwise
-                    A.matrix = Amat ;
-                    B.matrix = Bmat ;
-                    C.matrix = Cmat ;
-            end
-
-            accum.opname = binop ;
-            accum.optype = type ;
-
-            try
-                GB_spec_operator (accum) ;
-            catch
-                continue
-            end
-
-            if (GB_spec_is_positional (accum))
-                continue ;
-            end
+            op.opname = binop ;
+            op.opclass = clas ;
+            fprintf ('.') ;
 
             %---------------------------------------
             % C += A where A is dense
             %---------------------------------------
 
-            C0 = GB_spec_assign (C, [ ], accum, A, [ ], [ ], [ ], false) ;
-            C1 = GB_mex_assign  (C, [ ], accum, A, [ ], [ ], [ ]) ;
-            GB_spec_compare (C0, C1, 0, tol) ;
+            C0 = GB_spec_assign (C, [ ], op, A, [ ], [ ], [ ], false) ;
+            C1 = GB_mex_assign  (C, [ ], op, A, [ ], [ ], [ ]) ;
+            GB_spec_compare (C0, C1) ;
 
             %---------------------------------------
             % C += B where B is sparse
             %---------------------------------------
 
-            C0 = GB_spec_assign (C, [ ], accum, B, [ ], [ ], [ ], false) ;
-            C1 = GB_mex_assign  (C, [ ], accum, B, [ ], [ ], [ ]) ;
-            GB_spec_compare (C0, C1, 0, tol) ;
+            C0 = GB_spec_assign (C, [ ], op, B, [ ], [ ], [ ], false) ;
+            C1 = GB_mex_assign  (C, [ ], op, B, [ ], [ ], [ ]) ;
+            GB_spec_compare (C0, C1) ;
 
             %---------------------------------------
             % C += x
             %---------------------------------------
 
-            C0 = GB_spec_assign (C, [ ], accum, X, [ ], [ ], [ ], true) ;
-            C1 = GB_mex_assign  (C, [ ], accum, X, [ ], [ ], [ ]) ;
-            GB_spec_compare (C0, C1, 0, tol) ;
+            C0 = GB_spec_assign (C, [ ], op, X, [ ], [ ], [ ], true) ;
+            C1 = GB_mex_assign  (C, [ ], op, X, [ ], [ ], [ ]) ;
+            GB_spec_compare (C0, C1) ;
 
             %---------------------------------------
             % C<replace> += x
             %---------------------------------------
 
-            C0 = GB_spec_assign (C, [ ], accum, X, [ ], [ ], drep, true) ;
-            C1 = GB_mex_subassign  (C, [ ], accum, X, [ ], [ ], drep) ;
-            GB_spec_compare (C0, C1, 0, tol) ;
+            C0 = GB_spec_assign (C, [ ], op, X, [ ], [ ], drep, true) ;
+            C1 = GB_mex_subassign  (C, [ ], op, X, [ ], [ ], drep) ;
+            GB_spec_compare (C0, C1) ;
 
         end
     end

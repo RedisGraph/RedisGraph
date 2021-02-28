@@ -2,12 +2,16 @@
 // GB_select_phase2: C=select(A,thunk)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 {
+
+    // asize, avlen, avdim, and Ah unused for some uses of this template
+    #include "GB_unused.h"
+
     //--------------------------------------------------------------------------
     // get A
     //--------------------------------------------------------------------------
@@ -15,16 +19,10 @@
     const int64_t  *GB_RESTRICT Ap = A->p ;
     const int64_t  *GB_RESTRICT Ah = A->h ;
     const int64_t  *GB_RESTRICT Ai = A->i ;
-    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) A->x ;
+    const GB_ATYPE *GB_RESTRICT Ax = A->x ;
     size_t asize = A->type->size ;
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
-    // if A is bitmap, the bitmap selector is always used instead
-    ASSERT (!GB_IS_BITMAP (A)) ;
-    #ifndef GB_DIAG_SELECTOR
-    // if A is full, all opcodes except DIAG use the bitmap selector instead
-    ASSERT (!GB_IS_FULL (A)) ;
-    #endif
 
     //--------------------------------------------------------------------------
     // C = select (A)
@@ -51,8 +49,8 @@
             //------------------------------------------------------------------
 
             int64_t pA_start, pA_end, pC ;
-            GB_get_pA_and_pC (&pA_start, &pA_end, &pC, tid, k, kfirst, klast,
-                pstart_slice, C_pstart_slice, Cp, avlen, Ap, avlen) ;
+            GB_get_pA_and_pC (&pA_start, &pA_end, &pC,
+                tid, k, kfirst, klast, pstart_slice, C_pstart_slice, Cp, Ap) ;
 
             //------------------------------------------------------------------
             // compact Ai and Ax [pA_start ... pA_end-1] into Ci and Cx
@@ -63,12 +61,8 @@
                 GB_GET_J ;
                 for (int64_t pA = pA_start ; pA < pA_end ; pA++)
                 {
-                    // A is never full; that case is now handled by the
-                    // bitmap selector instead.
-                    // int64_t i = GBI (Ai, pA, avlen) ;
-                    ASSERT (Ai != NULL) ;
                     int64_t i = Ai [pA] ;
-                    if (GB_TEST_VALUE_OF_ENTRY (pA))
+                    if (GB_SELECT (pA))
                     { 
                         ASSERT (pC >= Cp [k] && pC < Cp [k+1]) ;
                         Ci [pC] = i ;
@@ -87,40 +81,18 @@
                 if (mynz > 0)
                 { 
                     ASSERT (pC >= Cp [k] && pC + mynz <= Cp [k+1]) ;
-                    ASSERT (Ai != NULL) ;
-                    // if (Ai != NULL)
-                    {
-                        // A and C are both sparse or hypersparse
-                        memcpy (Ci +pC, Ai +pA_start, mynz*sizeof (int64_t)) ;
-                    }
-                    #if 0
-                    else
-                    {
-                        // A is full and C is sparse: for triu: the bitmap
-                        // selector is used.  For resize, A is converted to
-                        // hypersparse first.
-                        ASSERT (GB_DEAD_CODE) ;
-                        int64_t i_start = pA_start % avlen ;
-                        for (int64_t s = 0 ; s < mynz ; s++)
-                        {
-                            int64_t i = i_start + s ;
-                            ASSERT (GBI (Ai, pA_start+s, avlen) == i) ;
-                            Ci [pC+s] = i ;
-                        }
-                    }
-                    #endif
+                    memcpy (Ci +pC, Ai +pA_start, mynz*sizeof (int64_t)) ;
                     memcpy (Cx +pC*asize, Ax +pA_start*asize, mynz*asize) ;
                 }
 
             #elif defined ( GB_DIAG_SELECTOR )
 
                 // task that owns the diagonal entry does this work
-                // A can be sparse or full, but not bitmap
                 int64_t p = Zp [k] ;
                 if (pA_start <= p && p < pA_end)
                 { 
                     ASSERT (pC >= Cp [k] && pC + 1 <= Cp [k+1]) ;
-                    Ci [pC] = GBI (Ai, p, avlen) ;
+                    Ci [pC] = Ai [p] ;
                     memcpy (Cx +pC*asize, Ax +p*asize, asize) ;
                 }
 
@@ -132,27 +104,7 @@
                 if (mynz > 0)
                 { 
                     ASSERT (pC >= Cp [k] && pC + mynz <= Cp [k+1]) ;
-                    ASSERT (Ai != NULL) ;
-                    // if (Ai != NULL)
-                    {
-                        // A and C are both sparse or hypersparse
-                        memcpy (Ci +pC, Ai +pA_start, mynz*sizeof (int64_t)) ;
-                    }
-                    #if 0
-                    else
-                    {
-                        // A is full and C is sparse or hypersparse:
-                        // this is now always handled by the bitmap selector
-                        ASSERT (GB_DEAD_CODE) ;
-                        int64_t i_start = pA_start % avlen ;
-                        for (int64_t s = 0 ; s < mynz ; s++)
-                        {
-                            int64_t i = i_start + s ;
-                            ASSERT (GBI (Ai, pA_start+s, avlen) == i) ;
-                            Ci [pC+s] = i ;
-                        }
-                    }
-                    #endif
+                    memcpy (Ci +pC, Ai +pA_start, mynz*sizeof (int64_t)) ;
                     memcpy (Cx +pC*asize, Ax +pA_start*asize, mynz*asize) ;
                     pC += mynz ;
                 }
@@ -164,26 +116,7 @@
                 { 
                     ASSERT (pA_start <= p && p < pA_end) ;
                     ASSERT (pC >= Cp [k] && pC + mynz <= Cp [k+1]) ;
-                    ASSERT (Ai != NULL) ;
-                    // if (Ai != NULL)
-                    {
-                        // A and C are both sparse or hypersparse
-                        memcpy (Ci +pC, Ai +p, mynz*sizeof (int64_t)) ;
-                    }
-                    #if 0
-                    else
-                    {
-                        // A is full and C is sparse or hypersparse
-                        ASSERT (GB_DEAD_CODE) ;
-                        int64_t i_start = p % avlen ;
-                        for (int64_t s = 0 ; s < mynz ; s++)
-                        {
-                            int64_t i = i_start + s ;
-                            ASSERT (GBI (Ai, p+s, avlen) == i) ;
-                            Ci [pC+s] = i ;
-                        }
-                    }
-                    #endif
+                    memcpy (Ci +pC, Ai +p, mynz*sizeof (int64_t)) ;
                     memcpy (Cx +pC*asize, Ax +p*asize, mynz*asize) ;
                 }
 
@@ -196,27 +129,7 @@
                 { 
                     ASSERT (pA_start <= p && p + mynz <= pA_end) ;
                     ASSERT (pC >= Cp [k] && pC + mynz <= Cp [k+1]) ;
-                    ASSERT (Ai != NULL) ;
-                    // if (Ai != NULL)
-                    {
-                        // A and C are both sparse or hypersparse
-                        memcpy (Ci +pC, Ai +p, mynz*sizeof (int64_t)) ;
-                    }
-                    #if 0
-                    else
-                    {
-                        // A is full and C is sparse or hypersparse:
-                        // this is now always handled by the bitmap selector
-                        ASSERT (GB_DEAD_CODE) ;
-                        int64_t i_start = p % avlen ;
-                        for (int64_t s = 0 ; s < mynz ; s++)
-                        {
-                            int64_t i = i_start + s ;
-                            ASSERT (GBI (Ai, p+s, avlen) == i) ;
-                            Ci [pC+s] = i ;
-                        }
-                    }
-                    #endif
+                    memcpy (Ci +pC, Ai +p, mynz*sizeof (int64_t)) ;
                     memcpy (Cx +pC*asize, Ax +p*asize, mynz*asize) ;
                 }
 

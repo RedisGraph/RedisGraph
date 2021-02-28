@@ -5,13 +5,13 @@ function ok = isequal_roundoff (A,B,tol)
 % tol = 64*eps if not present.  NaNs and Infs are ignored in the
 % tol, but the NaN and +/-Inf pattern must be the same.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-% if (~isequal (GB_spec_type (A), GB_spec_type (B)))
-%     ok = false ;
-%     return ;
-% end
+if (~isequal (class (A), class (B)))
+    ok = false ;
+    return ;
+end
 
 if (isequalwithequalnans (A, B))
     ok = true ;
@@ -47,6 +47,5 @@ anorm = norm (A, 1) ;
 if (nargin < 3)
     tol = 64*eps ;
 end
-anorm = max (anorm, 1) ;
 ok = (err == 0) || (err <= tol * anorm) ;
 

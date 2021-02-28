@@ -2,8 +2,8 @@
 // GB_mex_transpose: transpose a sparse matrix and return it to MATLAB
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -18,14 +18,14 @@
     bool A_is_M = (A == M) ;            \
     bool A_is_C = (A == C) ;            \
     bool C_is_M = (C == M) ;            \
-    GrB_Matrix_free_(&A) ;               \
+    GB_MATRIX_FREE (&A) ;               \
     if (A_is_C) C = NULL ;              \
     if (A_is_M) M = NULL ;              \
-    GrB_Matrix_free_(&C) ;               \
+    GB_MATRIX_FREE (&C) ;               \
     if (C_is_M) M = NULL ;              \
-    GrB_Matrix_free_(&M) ;               \
-    GrB_Descriptor_free_(&desc) ;       \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&M) ;               \
+    GrB_free (&desc) ;                  \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -44,6 +44,7 @@ void mexFunction
     GrB_Descriptor desc = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 4 || nargin > 6)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -93,7 +94,7 @@ void mexFunction
     {                               \
         if (A == C) A = NULL ;      \
         if (M == C) M = NULL ;      \
-        GrB_Matrix_free_(&C) ;       \
+        GB_MATRIX_FREE (&C) ;       \
     }
 
     GET_DEEP_COPY ;
@@ -102,13 +103,12 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
+    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
-    // get accum; default: NOP, default is C->type
-    bool user_complex = (Complex != GxB_FC64)
-        && (C->type == Complex || A->type == Complex) ;
+    // get accum; default: NOP, default class is class(C)
     GrB_BinaryOp accum ;
     if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [2], "accum",
-        C->type, user_complex))
+        GB_NOP_opcode, cclass, C->type == Complex, A->type == Complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;

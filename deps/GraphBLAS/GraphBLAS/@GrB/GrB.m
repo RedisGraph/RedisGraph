@@ -3,19 +3,16 @@ classdef GrB
 %
 % GraphBLAS is a library for creating graph algorithms based on sparse
 % linear algebraic operations over semirings.  Visit http://graphblas.org
-% for more details and resources.  See also the SuiteSparse:GraphBLAS User
-% Guide in this package.
+% for more details and resources.  See also the SuiteSparse:GraphBLAS
+% User Guide in this package.
 %
 % The MATLAB GrB class represents a GraphBLAS sparse matrix.  The GrB
 % method creates a GraphBLAS sparse matrix from a MATLAB matrix.  Other
-% methods also generate GrB matrices.  For example:
-%
-%   G = GrB.subassign (C, M, A) ;
-%
-% constructs a GraphBLAS matrix G, which is the result of C<M>=A in
-% GraphBLAS notation (like C(M)=A(M) in MATLAB).  The matrices used in any
-% GrB.method may be MATLAB matrices (sparse or full) or GraphBLAS matrices
-% (hyper, sparse, bitmap, or full, by row or column), in any combination.
+% methods also generate GrB matrices.  For example G = GrB.subassign (C,
+% M, A) constructs a GraphBLAS matrix G, which is the result of C<M>=A in
+% GraphBLAS notation (like C(M)=A(M) in MATLAB).  The matrices used any
+% GrB.method may be MATLAB matrices (sparse or dense) or GraphBLAS sparse
+% matrices, in any combination.
 %
 % --------------------
 % The GrB constructor:
@@ -32,15 +29,13 @@ classdef GrB
 %   The m and n parameters above are MATLAB scalars.  The type and format
 %   parameters are strings.  The default format is 'by col', to match the
 %   format used in MATLAB (see also GrB.format), but many graph
-%   algorithms are faster if the format is 'by row'.  The format can also
-%   specify the data structure to use (hypersparse, sparse, bitmap, and/or
-%   full).
+%   algorithms are faster if the format is 'by row'.
 %
 %   The usage C = GrB (m, n, type) is analgous to A = sparse (m, n),
 %   which creates an empty MATLAB sparse matrix A.  The type parameter is
 %   a string, which defaults to 'double' if not present.
 %
-%   For the usage C = GrB (A, type), A is either a MATLAB sparse or full
+%   For the usage C = GrB (A, type), A is either a MATLAB sparse or dense
 %   matrix, or a GraphBLAS sparse matrix object.  C is created as a
 %   GraphBLAS sparse matrix object that contains a copy of A, typecasted
 %   to the given type if the type string does not match the type of A.
@@ -49,27 +44,22 @@ classdef GrB
 % --------------------
 % Matrix types:
 % --------------------
-%
+% 
 %   Most of the valid type strings correspond to MATLAB class of the same
 %   name (see 'help class'):
 %
-%       'logical'           8-bit boolean
-%       'int8'              8-bit signed integer
-%       'int16'             16-bit signed integer
-%       'int32'             32-bit signed integer
-%       'int64'             64-bit signed integer
-%       'uint8'             8-bit unsigned integer
-%       'uint16'            16-bit unsigned integer
-%       'uint32'            32-bit unsigned integer
-%       'uint64'            64-bit unsigned integer
-%       'double'            64-bit floating-point (real, not complex)
-%       'single'            32-bit floating-point (real, not complex)
-%       'single complex'    single complex
-%       'double complex'    double complex (also just 'complex')
-%
-%   In MATLAB matrices, complex is an attribute, not a class.  In GrB
-%   matrices, 'double complex' and 'single complex' are treated as their
-%   own data types.
+%       'double'    64-bit floating-point (real, not complex)
+%       'single'    32-bit floating-point (real, not complex)
+%       'logical'   8-bit boolean
+%       'int8'      8-bit signed integer
+%       'int16'     16-bit signed integer
+%       'int32'     32-bit signed integer
+%       'int64'     64-bit signed integer
+%       'uint8'     8-bit unsigned integer
+%       'uint16'    16-bit unsigned integer
+%       'uint32'    32-bit unsigned integer
+%       'uint64'    64-bit unsigned integer
+%       'complex'   64-bit double complex (not yet implemented).
 %
 % ---------------
 % Matrix formats:
@@ -77,312 +67,229 @@ classdef GrB
 %
 %   The format of a GraphBLAS matrix can have a large impact on
 %   performance.  GraphBLAS matrices can be stored by column or by row.
-%   The corresponding format string is 'by col' or 'by row', respectively.
-%   Since the only format that MATLAB supports for its sparse and full
-%   matrices is 'by col', that is the default format for GraphBLAS
-%   matrices via this MATLAB interfance.  However, the default for the C
-%   API is 'by row' since graph algorithms tend to be faster with that
-%   format.
+%   The corresponding format string is 'by col' or 'by row',
+%   respectively.  Since the only format that MATLAB supports for its
+%   sparse and full matrices is 'by col', that is the default format for
+%   GraphBLAS matrices via this MATLAB interfance.  However, the default
+%   for the C API is 'by row' since graph algorithms tend to be faster
+%   with that format.
 %
 %   Column vectors are always stored 'by col', and row vectors are always
 %   stored 'by row'.  The format for new matrices propagates from the
 %   format of their inputs.  For example with C=A*B, C takes on the same
-%   format as A, unless A is a vector, in which case C takes on the format
-%   of B.  If both A and B are vectors, then the format of C is determined
-%   by the descriptor (if present), or by the default format (see
-%   GrB.format).
+%   format as A, unless A is a vector, in which case C takes on the
+%   format of B.  If both A and B are vectors, then the format of C is
+%   determined by the descriptor (if present), or by the default format
+%   (see GrB.format).
 %
 %   When a GraphBLAS matrix is converted into a MATLAB sparse or full
 %   matrix, it is always returned to MATLAB 'by col'.
-%
-%   The format can also specify the data structure to use.  By default
-%   GraphBLAS selects automatically between hypersparse, sparse, bitmap,
-%   and full formats.  See 'help GrB.format' for details.
 %
 %--------------------
 % Integer operations:
 %--------------------
 %
 %   Operations on integer values differ from MATLAB.  In MATLAB,
-%   uint8(255)+1 is 255, since the arithmetic saturates.  This is not
+%   uint9(255)+1 is 255, since the arithmetic saturates.  This is not
 %   possible in matrix operations such as C=A*B, since saturation of
 %   integer arithmetic would render most of the monoids useless.
 %   GraphBLAS instead computes a result modulo the word size, so that
 %   GrB(uint8(255))+1 is zero.  However, new unary and binary operators
 %   could be added so that element-wise operations saturate.  The C
 %   interface allows for arbitrary creation of user-defined operators, so
-%   this could be added in the future.  See 'help GrB/MATLAB_vs_GrB' for
-%   more details.
+%   this could be added in the future.
 %
 %-------------------------------------------------------------------------
 % Methods for the GrB class:
 %-------------------------------------------------------------------------
 %
+%   These methods operate on GraphBLAS matrices only, and they overload
+%   the existing MATLAB functions of the same name.
+%
 %   C = GrB (...)           construct a GraphBLAS matrix
-%
-% Overloaded MATLAB operators (all except 'colon'):
-%
-%   C = and (A, B)          C = A & B
-%   C = ctranspose (G)      C = G'
-%   i = end (G, k, ndims)   A(1:end,1:end)
-%   C = eq (A, B)           C = A == B
-%   C = ge (A, B)           C = A >= B
-%   C = gt (A, B)           C = A > B
-%   C = horzcat (A, B)      C = [A , B]
-%   C = ldivide (A, B)      C = A .\ B
-%   C = le (A, B)           C = A <= B
-%   C = lt (A, B)           C = A < B
-%   C = minus (A, B)        C = A - B
-%   C = mldivide (A, B)     C = A \ B
-%   C = mpower (A, B)       C = A ^ B
-%   C = mrdivide (A, B)     C = A / B
-%   C = mtimes (A, B)       C = A * B
-%   C = ne (A, B)           C = A ~= B
-%   C = not (G)             C = ~G
-%   C = or (A, B)           C = A | B
-%   C = plus (A, B)         C = A + B
-%   C = power (A, B)        C = A .^ B
-%   C = rdivide (A, B)      C = A ./ B
-%   I = subsindex (G)       X = A (G)
-%   C = subsasgn (C, S, A)  C (I,J) = A or C (M) = A
-%   C = subsref (A, S)      C = A (I,J) or C = A (M)
-%   C = times (A, B)        C = A .* B
-%   C = transpose (G)       C = G.'
-%   C = uminus (G)          C = -G
-%   C = uplus (G)           C = +G
-%   C = vertcat (A, B)      C = [A ; B]
-%
-% Overloaded MATLAB functions:
-%
-%   C = abs (G)             absolute value
-%   C = acos (G)            inverse cosine
-%   C = acosh (G)           inverse hyperbolic cosine
-%   C = acot (G)            inverse cotangent
-%   C = acoth (G)           inverse hyperbolic cotangent
-%   C = acsc (G)            inverse cosecant
-%   C = acsch (G)           inverse hyperbolic cosecant
-%   C = all (G, ...)        reduce via '&', to vector or scalar
-%   p = amd (G, ...)        approximate minimum degree ordering
-%   C = angle (G)           phase angle of a complex matrix
-%   C = any (G, ...)        reduce via '|', to vector or scalar
-%   C = asec (G)            inverse secant
-%   C = asech (G)           inverse hyperbolic secant
-%   C = asin (G)            inverse sine
-%   C = asinh (G)           inverse hyperbolic sine
-%   assert (G)              generate an error if G is false
-%   C = atan (G)            inverse tangent
-%   C = atanh (G)           inverse hyperbolic tangent
-%   C = atan2 (A, B)        inverse tangent (four-quadrant)
-%
-%   [lo, hi] = bandwidth (G, ...)   lower and upper bandwidth of G
-%   C = bitand (A, B, ...)          bitwise and
-%   C = bitcmp (A, ...)             bitwise negation
-%   C = bitget (A, B, ...)          get bits
-%   C = bitset (A, B, ...)          set bits
-%   C = bitshift (A, B, ...)        shift bits
-%   C = bitor (A, B, ...)           bitwise or
-%   C = bitxor (A, B, ...)          bitwise xor
-%
-%   C = cast (G, ...)       cast GrB matrix to MATLAB matrix
-%   C = ceil (G)            round towards infinity
-%   p = colamd (G)          column approximate minimum degree ordering
-%   C = complex (G)         cast GrB matrix to MATLAB sparse complex
-%   C = conj (G)            complex conjugate
-%   C = cos (G)             cosine
-%   C = cosh (G)            hyperbolic cosine
-%   C = cot (G)             cotangent
-%   C = coth (G)            hyperbolic cotangent
-%   C = csc (G)             cosecant
-%   C = csch (G)            hyperbolic cosecant
-%
-%   C = diag (A, k)         diagonal matrices and diagonals
-%   DiGraph = digraph (G,...)   directed Graph
-%   disp (A, level)         display a MATLAB or GrB matrix A
-%   display (G)             display a GrB matrix G; same as disp(G,2)
-%   [...] = dmperm (G)      Dulmage-Mendelsohn permutation
-%   C = double (G)          cast GrB matrix to MATLAB sparse double
-%
-%   [V, ...] = eig (G,...)  eigenvalues and eigenvectors
-%   G = GrB.empty (m, n)    empty matrix for the GrB class
-%   C = eps (G)             floating-point spacing
-%   C = erf (G)             error function
-%   C = erfc (G)            complementary error function
-%   p = etree (G)           elimination tree
-%   C = exp (G)             natural exponent
-%   C = expm1 (G)           exp (x) - 1
-%
-%   C = false (...)         all-false logical matrix
-%   [I,J,X] = find (G, ...) extract entries from a matrix
-%   C = fix (G)             round towards zero
-%   C = flip (G, dim)       flip the order of entries
-%   C = floor (G)           round towards -infinity
-%   c = fprintf (...)       print to a file or to the Command Window
+%   C = sparse (G)          makes a copy of a GrB matrix
 %   C = full (G, ...)       adds explicit zeros or id values
-%
-%   C = gamma (G)           gamma function
-%   C = gammaln (G)         logarithm of gamma function
-%   Graph = graph (G, ...)  undirected graph
-%
-%   C = hypot (A, B)        sqrt of sum of squares
-%
-%   C = imag (G)            imaginary part of a complex matrix
+%   C = double (G)          cast GrB matrix to MATLAB sparse double
+%   C = logical (G)         cast GrB matrix to MATLAB sparse logical
+%   C = complex (G)         cast GrB matrix to MATLAB sparse complex
+%   C = single (G)          cast GrB matrix to MATLAB full single
 %   C = int8 (G)            cast GrB matrix to MATLAB full int8
 %   C = int16 (G)           cast GrB matrix to MATLAB full int16
 %   C = int32 (G)           cast GrB matrix to MATLAB full int32
 %   C = int64 (G)           cast GrB matrix to MATLAB full int64
-%   s = isa (G, classname)  check if a GrB matrix is of a specific class
-%   s = isbanded (G,...)    true if G is banded
-%   s = iscolumn (G)        true if n=1, for an m-by-n GrB matrix G
-%   s = isdiag (G)          true if G is diagonal
-%   s = isempty (G)         true if any dimension of G is zero
-%   s = isequal (A, B)      test if equal
-%   C = isfinite (G)        test if finite
-%   s = isfloat (G)         true if GrB matrix is double, single, complex
-%   s = ishermitian (G)     true if G is Hermitian
-%   C = isinf (G)           test if infinite
-%   s = isinteger (G)       true if GrB matrix is int8, int16, ..., uint64
-%   s = islogical (G)       true if GrB matrix is logical
-%   s = ismatrix (G)        true for any GrB matrix G
-%   C = isnan (G)           test if NaN
-%   s = isnumeric (G)       true for any GrB matrix G (even logical)
-%   s = isreal (G)          true if GrB matrix is not complex
-%   s = isrow (G)           true if m=1, for an m-by-n GrB matrix G
-%   s = isscalar (G)        true if G is a 1-by-1 GrB matrix
-%   s = issparse (G)        true for any GrB matrix G
-%   s = issymmetric (G)     true if G is symmetric
-%   s = istril (G)          true if G is lower triangular
-%   s = istriu (G)          true if G is upper triangular
-%   s = isvector (G)        true if m=1 or n=1, for an m-by-n GrB matrix G
-%
-%   C = kron (A, B)         Kronecker product
-%
-%   n = length (G)          length of a GrB vector
-%   C = log (G)             natural logarithm
-%   C = log10 (G)           base-10 logarithm
-%   C = log1p (G)           log (1+x)
-%   [F, E] = log2 (G)       base-2 logarithm
-%   C = logical (G)         cast GrB matrix to MATLAB sparse logical
-%
-%   C = max (A,B,option)    reduce via max, to vector or scalar
-%   C = min (A,B,option)    reduce via min, to vector or scalar
-%
-%   e = nnz (G)             number of entries in a GrB matrix G
-%   X = nonzeros (G)        extract all entries from a GrB matrix
-%   s = norm (G, kind)      norm of a GrB matrix
-%   e = numel (G)           m*n for an m-by-n GrB matrix G
-%   e = nzmax (G)           number of entries in a GrB matrix G
-%
-%   C = ones (...)          matrix with all ones, same type as G
-%
-%   C = pow2 (F, E)         base-2 power
-%   C = prod (G, option)    reduce via product, to vector or scalar
-%
-%   C = real (G)            real part of a complex matrix
-%   C = repmat (G, ...)     replicate and tile a GraphBLAS matrix
-%   C = reshape (G, ...)    reshape a GraphBLAS matrix
-%   C = round (G)           round towards nearest
-%
-%   C = sec (G)             secant
-%   C = sech (G)            hyperbolic secant
-%   C = sign (G)            signum function
-%   C = sin (G)             sine
-%   C = single (G)          cast GrB matrix to MATLAB full single
-%   C = sinh (G)            hyperbolic sine
-%   [m,n,t] = size (G,dim)  size and type of a GrB matrix
-%   C = sparse (G)          makes a copy of a GrB matrix
-%   C = spfun (fun, G)      evaluate a function on the entries of G
-%   C = spones (G, type)    return pattern of GrB matrix
-%   C = sprand (...)        random GraphBLAS matrix
-%   C = sprandn (...)       random GraphBLAS matrix, normal distribution
-%   C = sprandsym (...)     random symmetric GraphBLAS matrix
-%   c = sprintf (...)       print to a string
-%   C = sqrt (G)            element-wise square root
-%   C = sum (G, option)     reduce via sum, to vector or scalar
-%   p = symamd (G)          approximate minimum degree ordering
-%   p = symrcm (G)          reverse Cuthill-McKee ordering
-%
-%   C = tan (G)             tangent
-%   C = tanh (G)            hyperbolic tangent
-%   L = tril (G, k)         lower triangular part of GrB matrix G
-%   U = triu (G, k)         upper triangular part of GrB matrix G
-%   C = true (...)          all-true logical matrix
-%
 %   C = uint8 (G)           cast GrB matrix to MATLAB full uint8
 %   C = uint16 (G)          cast GrB matrix to MATLAB full uint16
 %   C = uint32 (G)          cast GrB matrix to MATLAB full uint32
 %   C = uint64 (G)          cast GrB matrix to MATLAB full uint64
+%   C = cast (G,...)        cast GrB matrix to MATLAB matrix (as above)
+%   X = nonzeros (G)        extract all entries from a GrB matrix
+%   [I,J,X] = find (G,...)  extract all entries from a GrB matrix
+%   C = spones (G)          return pattern of GrB matrix
+%   disp (G, level)         display a GrB matrix G
+%   display (G)             display a GrB matrix G; same as disp(G,2)
+%   mn = numel (G)          m*n for an m-by-n GrB matrix G
+%   e = nnz (G)             number of entries in a GrB matrix G
+%   e = nzmax (G)           number of entries in a GrB matrix G
+%   [m n] = size (G)        size of a GrB matrix G
+%   n = length (G)          length of a GrB vector
+%   s = isempty (G)         true if any dimension of G is zero
+%   s = issparse (G)        true for any GrB matrix G
+%   s = ismatrix (G)        true for any GrB matrix G
+%   s = isvector (G)        true if m=1 or n=1, for an m-by-n GrB matrix G
+%   s = iscolumn (G)        true if n=1, for an m-by-n GrB matrix G
+%   s = isrow (G)           true if m=1, for an m-by-n GrB matrix G
+%   s = isscalar (G)        true if G is a 1-by-1 GrB matrix
+%   s = isnumeric (G)       true for any GrB matrix G (even logical)
+%   s = isfloat (G)         true if GrB matrix is double, single, complex
+%   s = isreal (G)          true if GrB matrix is not complex
+%   s = isinteger (G)       true if GrB matrix is int8, int16, ..., uint64
+%   s = islogical (G)       true if GrB matrix is logical
+%   s = isa (G, classname)  check if a GrB matrix is of a specific class
+%   C = diag (G,k)          diagonal matrices and diagonals
+%   L = tril (G,k)          lower triangular part of GrB matrix G
+%   U = triu (G,k)          upper triangular part of GrB matrix G
+%   C = kron (A,B)          Kronecker product
+%   C = repmat (G, ...)     replicate and tile a GraphBLAS matrix
+%   C = reshape (G, ...)    reshape a GraphBLAS matrix
+%   C = abs (G)             absolute value
+%   C = sign (G)            signum function
+%   s = istril (G)          true if G is lower triangular
+%   s = istriu (G)          true if G is upper triangular
+%   s = isbanded (G,...)    true if G is banded
+%   s = isdiag (G)          true if G is diagonal
+%   s = ishermitian (G)     true if G is Hermitian
+%   s = issymmetric (G)     true if G is symmetric
+%   [lo,hi] = bandwidth (G) determine the lower & upper bandwidth of G
+%   C = sum (G, option)     reduce via sum, to vector or scalar
+%   C = prod (G, option)    reduce via product, to vector or scalar
+%   s = norm (G, kind)      norm of a GrB matrix
+%   [C,I] = max (G, ...)    reduce via max, to vector or scalar
+%   C = min (G, ...)        reduce via min, to vector or scalar
+%   C = any (G, ...)        reduce via '|', to vector or scalar
+%   C = all (G, ...)        reduce via '&', to vector or scalar
+%   C = sqrt (G)            element-wise square root
+%   C = eps (G)             floating-point spacing
+%   C = ceil (G)            round towards infinity
+%   C = floor (G)           round towards -infinity
+%   C = round (G)           round towards nearest
+%   C = fix (G)             round towards zero
+%   C = isfinite (G)        test if finite
+%   C = isinf (G)           test if infinite
+%   C = isnan (G)           test if NaN
+%   C = spfun (fun, G)      evaluate a function on the entries of G
+%   p = amd (G)             approximate minimum degree ordering
+%   p = colamd (G)          column approximate minimum degree ordering
+%   p = symamd (G)          approximate minimum degree ordering
+%   p = symrcm (G)          reverse Cuthill-McKee ordering
+%   [...] = dmperm (G)      Dulmage-Mendelsohn permutation
+%   parent = etree (G)      elimination tree
+%   C = conj (G)            complex conjugate
+%   C = real (G)            real part of a complex GraphBLAS matrix
+%   [V, ...] = eig (G,...)  eigenvalues and eigenvectors
+%   assert (G)              generate an error if G is false
+%   C = zeros (...,'like',G)   all-zero matrix, same type as G
+%   C = false (...,'like',G)   all-false logical matrix
+%   C = ones (...,'like',G)    matrix with all ones, same type as G
+%   c = fprintf (...)       print to a file or to the Command Window
+%   c = sprintf (...)       print to a string
+%   C = flip (G, dim)       flip the order of entries
+%   C = sprand (G)          random GraphBLAS matrix
+%   C = sprandn (G)         random GraphBLAS matrix, normal distribution
+%   C = sprandsym (G, ...)  random symmetric GraphBLAS matrix
 %
-%   C = xor (A, B)          exclusive or
+%   operator overloading:
 %
-%   C = zeros (...)         all-zero matrix, same type as G
+%   C = plus (A, B)         C = A + B
+%   C = minus (A, B)        C = A - B
+%   C = uminus (G)          C = -G
+%   C = uplus (G)           C = +G
+%   C = times (A, B)        C = A .* B
+%   C = mtimes (A, B)       C = A * B
+%   C = rdivide (A, B)      C = A ./ B
+%   C = ldivide (A, B)      C = A .\ B
+%   C = mrdivide (A, B)     C = A / B
+%   C = mldivide (A, B)     C = A \ B
+%   C = power (A, B)        C = A .^ B
+%   C = mpower (A, B)       C = A ^ B
+%   C = lt (A, B)           C = A < B
+%   C = gt (A, B)           C = A > B
+%   C = le (A, B)           C = A <= B
+%   C = ge (A, B)           C = A >= B
+%   C = ne (A, B)           C = A ~= B
+%   C = eq (A, B)           C = A == B
+%   C = and (A, B)          C = A & B
+%   C = or (A, B)           C = A | B
+%   C = not (G)             C = ~G
+%   C = ctranspose (G)      C = G'
+%   C = transpose (G)       C = G.'
+%   C = horzcat (A, B)      C = [A , B]
+%   C = vertcat (A, B)      C = [A ; B]
+%   C = subsref (A, I, J)   C = A (I,J) or C = A (M)
+%   C = subsasgn (A, I, J)  C (I,J) = A
+%   index = end (A, k, n)   for object indexing, A(1:end,1:end)
 %
 %-------------------------------------------------------------------------
 % Static Methods:
 %-------------------------------------------------------------------------
 %
 %   The Static Methods for the GrB class can be used on input matrices of
-%   any kind: GraphBLAS sparse matrices, MATLAB sparse matrices, or MATLAB
-%   full matrices, in any combination.  The output matrix C is a GraphBLAS
-%   matrix, by default, but can be optionally returned as a MATLAB sparse
-%   or full matrix.  The static methods divide into three categories:
-%   those that perform basic functions, graph algorithms, and the 12
-%   foundational GraphBLAS operations.
+%   any kind: GraphBLAS sparse matrices, MATLAB sparse matrices, or
+%   MATLAB dense matrices, in any combination.  The output matrix Cout is
+%   a GraphBLAS matrix, by default, but can be optionally returned as a
+%   MATLAB sparse or dense matrix.  The static methods divide into three
+%   categories: those that perform basic functions, graph algorithms,
+%   and the 12 foundational GraphBLAS operations.
 %
 %---------------------------
 % GraphBLAS basic functions:
 %---------------------------
 %
-%   context:
-%   GrB.clear                    clear GraphBLAS workspace and settings
-%   GrB.finalize                 finish GraphBLAS
 %   GrB.init                     initialize GraphBLAS
+%   GrB.finalize                 finish GraphBLAS
+%   GrB.clear                    clear GraphBLAS workspace and settings
+%   GrB.descriptorinfo (d)       list properties of a descriptor
+%   GrB.unopinfo (op, type)      list properties of a unary operator
+%   GrB.binopinfo (op, type)     list properties of a binary operator
+%   GrB.monoidinfo (op, type)    list properties of a monoid
+%   GrB.semiringinfo (s, type)   list properties of a semiring
+%   GrB.selectopinfo (op)        list properties of a select operator
 %   t = GrB.threads (t)          set/get # of threads to use in GraphBLAS
 %   c = GrB.chunk (c)            set/get chunk size to use in GraphBLAS
 %   b = GrB.burble (b)           set/get burble (diagnostic output)
-%
-%   info:
-%   GrB.binopinfo (op, type)     list properties of a binary operator
-%   GrB.descriptorinfo (d)       list properties of a descriptor
-%   GrB.monoidinfo (op, type)    list properties of a monoid
-%   GrB.selectopinfo (op)        list properties of a select operator
-%   GrB.semiringinfo (s, type)   list properties of a semiring
-%   GrB.unopinfo (op, type)      list properties of a unary operator
-%
-%   operations:
-%   C = GrB.build (I,J,X,m,n,dup,type,desc) build a GrB matrix from
-%                                list of entries (like C=sparse(I,J,X...))
+%   result = GrB.entries (G,...) count or query entries in a matrix
+%   result = GrB.nonz (G,...)    count or query nonzeros in a matrix
+%   C = GrB.prune (A, id)        prune entries equal to id
+%   C = GrB.offdiag (A)          prune diagonal entries
+%   s = GrB.isfull (A)           true if all entries present
 %   [C,I,J] = GrB.compact (A,id) remove empty rows and columns
-%   c = GrB.entries (A,...)      count or query entries in a matrix
-%   C = GrB.expand (scalar, A)   expand a scalar (C = scalar*spones(A))
-%   [I,J,X] = GrB.extracttuples (A,desc) extract all entries (like 'find')
-%   C = GrB.eye (m,n,type)       identity matrix of any type (like 'speye')
-%   f = GrB.format (f)           set/get matrix format by row or col
+%   G = GrB.empty (m, n)         return an empty GraphBLAS matrix
+%   s = GrB.type (A)             get the type of a MATLAB or GrB matrix A
+%   s = GrB.issigned (type)      true if type is signed
+%   f = GrB.format (f)           set/get matrix format to use in GraphBLAS
 %   s = GrB.isbyrow (A)          true if format f A is 'by row'
 %   s = GrB.isbycol (A)          true if format f A is 'by col'
-%   s = GrB.isfull (A)           true if all entries present
-%   s = GrB.issigned (type)      true if type is signed
-%   c = GrB.nonz (A,...)         count or query nonzeros in a matrix
-%   s = GrB.normdiff (A,B,kind)  norm (A-B,kind)
-%   C = GrB.offdiag (A)          prune diagonal entries
-%   C = GrB.prune (A, id)        prune entries equal to id
-%   C = GrB.random (...)         random GraphBLAS matrix (like 'sprand')
-%   C = GrB.speye (m,n,type)     identity matrix of any type (like 'speye')
-%   t = GrB.type (A)             get the type of a MATLAB or GrB matrix A
-%   v = GrB.version              string with SuiteSparse:GraphBLAS version
-%   v = GrB.ver                  struct with SuiteSparse:GraphBLAS version
+%   C = GrB.expand (scalar, A)   expand a scalar (C = scalar*spones(A))
+%   C = GrB.eye                  identity matrix of any type
+%   C = GrB.speye                identity matrix (of type 'double')
+%   C = GrB.random (varargin)    random GraphBLAS matrix
+%   C = GrB.build (I, J, X, m, n, dup, type, desc)
+%                               build a GrB matrix from list of entries
+%   [I,J,X] = GrB.extracttuples (A, desc)
+%                               extract all entries from a matrix
+%   s = GrB.normdiff (A, B, kind)   norm (A-B,kind)
 %
 %-------------------------------------
 % Static Methods for graph algorithms:
 %-------------------------------------
 %
-%   [v, parent] = GrB.bfs (A, s, ...) ;     breadth-first search
-%   Y = GrB.dnn (W, bias, Y0) ;             deep neural network
-%   C = GrB.incidence (A, ...) ;            incidence matrix
-%   C = GrB.ktruss (A, k, check) ;          k-truss
-%   L = GrB.laplacian (A, type, check) ;    Laplacian graph
-%   iset = GrB.mis (A, check) ;             maximal independent set
 %   r = GrB.pagerank (A, opts) ;            PageRank of a matrix
+%   C = GrB.ktruss (A, k, check) ;          k-truss
 %   s = GrB.tricount (A, check) ;           triangle count
+%   L = GrB.laplacian (A, type, check) ;    Laplacian graph
+%   C = GrB.incidence (A, ...) ;            incidence matrix
+%   [v, parent] = GrB.bfs (A, s, ...) ;     breadth-first search
+%   iset = GrB.mis (A, check) ;             maximal independent set
+%   Y = GrB.dnn (W, bias, Y0) ;             deep neural network
 %
 %-----------------------------------
 % Foundational GraphBLAS operations:
@@ -391,39 +298,38 @@ classdef GrB
 %   GraphBLAS has 12 foundational operations, listed below.  All have
 %   similar parameters.  The full set of input parameters is listed in
 %   the order in which they appear in the GraphBLAS C API, except that
-%   for the MATLAB interface, Cin and C are different matrices.  They
+%   for the MATLAB interface, Cin and Cout are different matrices.  They
 %   combine into a single input/output matrix in the GraphBLAS C API.  In
 %   the MATLAB interface, many of the parameters become optional, and
 %   they can appear in different order.
 %
-%   GrB.apply       apply a unary operator
-%   GrB.apply2      apply a binary operator
-%   GrB.assign      sparse matrix assignment, such as C(I,J)=A
+%   GrB.mxm         sparse matrix-matrix multiplication over a semiring
+%   GrB.kronecker   Kronecker product
 %   GrB.eadd        element-wise addition
 %   GrB.emult       element-wise multiplication
-%   GrB.extract     extract submatrix, like C=A(I,J) in MATLAB
-%   GrB.kronecker   Kronecker product
-%   GrB.mxm         sparse matrix-matrix multiplication over a semiring
-%   GrB.reduce      reduce a matrix to a scalar
 %   GrB.select      select a subset of entries from a matrix
-%   GrB.subassign   sparse matrix assignment, such as C(I,J)=A
-%   GrB.trans       transpose a matrix
 %   GrB.vreduce     reduce a matrix to a vector
+%   GrB.apply       apply a unary operator
+%   GrB.assign      sparse matrix assignment, such as C(I,J)=A
+%   GrB.subassign   sparse matrix assignment, such as C(I,J)=A
+%   GrB.extract     extract submatrix, like C=A(I,J) in MATLAB
+%   GrB.trans       transpose a matrix
+%   GrB.reduce      reduce a matrix to a scalar
 %
-%   In GraphBLAS notation (with C, Cin arguments for the one matrix
+%   In GraphBLAS notation (with Cout, Cin arguments for the one matrix
 %   C), these take the following form:
 %
 %       C<#M,replace> = accum (C, operation (A or A', B or B'))
 %
 %   C is both an input and output matrix.  In this MATLAB interface to
-%   GraphBLAS, it is split into Cin (the value of C on input) and C
+%   GraphBLAS, it is split into Cin (the value of C on input) and Cout
 %   (the value of C on output).  M is the optional mask matrix, and #M is
 %   either M or ~M depending on whether or not the mask is complemented
 %   via the desc.mask option.  The replace option is determined by
 %   desc.out; if present, C is cleared after it is used in the accum
 %   operation but before the final assignment.  A and/or B may optionally
 %   be transposed via the descriptor fields desc.in0 and desc.in1,
-%   respectively.  To select the format of C, use desc.format.  See
+%   respectively.  To select the format of Cout, use desc.format.  See
 %   GrB.descriptorinfo for more details.
 %
 %   accum is optional; if not is not present, then the operation becomes
@@ -438,19 +344,18 @@ classdef GrB
 %
 %   The full list of parameters is shown below:
 %
-%       C = GrB.apply     (Cin, M, accum, op, A,          desc)
-%       C = GrB.apply2    (Cin, M, accum, op, A, B,       desc)
-%       C = GrB.assign    (Cin, M, accum,     A,    I, J, desc)
-%       C = GrB.eadd      (Cin, M, accum, op, A, B,       desc)
-%       C = GrB.emult     (Cin, M, accum, op, A, B,       desc)
-%       C = GrB.extract   (Cin, M, accum,     A,    I, J, desc)
-%       C = GrB.kronecker (Cin, M, accum, op, A, B,       desc)
-%       C = GrB.mxm       (Cin, M, accum, op, A, B,       desc)
-%       C = GrB.reduce    (Cin,    accum, op, A,          desc)
-%       C = GrB.select    (Cin, M, accum, op, A, b,       desc)
-%       C = GrB.subassign (Cin, M, accum,     A,    I, J, desc)
-%       C = GrB.trans     (Cin, M, accum,     A,          desc)
-%       C = GrB.vreduce   (Cin, M, accum, op, A,          desc)
+%       Cout = GrB.mxm       (Cin, M, accum, op, A, B,    desc)
+%       Cout = GrB.kronecker (Cin, M, accum, op, A, B,    desc)
+%       Cout = GrB.eadd      (Cin, M, accum, op, A, B,    desc)
+%       Cout = GrB.emult     (Cin, M, accum, op, A, B,    desc)
+%       Cout = GrB.select    (Cin, M, accum, op, A, b,    desc)
+%       Cout = GrB.vreduce   (Cin, M, accum, op, A,       desc)
+%       Cout = GrB.apply     (Cin, M, accum, op, A,       desc)
+%       Cout = GrB.assign    (Cin, M, accum,     A, I, J, desc)
+%       Cout = GrB.subassign (Cin, M, accum,     A, I, J, desc)
+%       Cout = GrB.extract   (Cin, M, accum,     A, I, J, desc)
+%       Cout = GrB.trans     (Cin, M, accum,     A,       desc)
+%       Cout = GrB.reduce    (Cin,    accum, op, A,       desc)
 %
 %   The parameters divide into 4 classes: matrices, strings, cells, and a
 %   single optional struct (the descriptor).  The order of parameters
@@ -462,12 +367,11 @@ classdef GrB
 %
 %   (1) Cin, M, A, B are matrices.  If the method takes up to 4 matrices
 %       (mxm, kronecker, select (with operator requiring a b
-%       parameter), eadd, emult, apply2), then they appear in this order:
+%       parameter), eadd, emult), then they appear in this order:
 %       with 2 matrix inputs: A, B
 %       with 3 matrix inputs: Cin, A, B
 %       with 4 matrix inputs: Cin, M, A, B
-%       For GrB.select, b is a scalar.  For GrB.apply2, either A or B
-%       is be a scalar.
+%       For the GrB.select, b is a scalar.
 %
 %       If the method takes up to 3 matrices (vreduce, apply, assign,
 %       subassign, extract, trans, or select without b):
@@ -516,8 +420,16 @@ classdef GrB
 %   strings '+' and '+.*' must appear in that order, but the matrices and
 %   strings may be interleaved arbitrarily.
 %
-%       C = GrB.apply (C, M, '|', '~', A)           C<M> |= ~A
-%       C = GrB.apply ('~', A)                      C = ~A
+%       C = GrB.mxm (C, M, '+', '+.*', A, B)        C<M> += A*B
+%       C = GrB.mxm (C, M, '+', A, '+.*', B)        C<M> += A*B
+%       C = GrB.mxm ('+', '+,*', C, M, A, B)        C<M> += A*B
+%
+%       C = GrB.mxm ('+.*', A, B)                   C = A*B
+%       C = GrB.mxm (A, '+.*', B)                   C = A*B
+%       C = GrB.mxm (C, M, A, '+.*', B)             C<M> = A*B
+%
+%       C = GrB.emult (C, M, '+', A, '*', B)        C<M> += A.*B
+%       C = GrB.emult (A, '*', B)                   C = A.*B
 %
 %       C = GrB.assign (C, M, '+', A, I, J)         C(I,J)<M> += A
 %       C = GrB.assign (C, I, J, M, '+', A)         C(I,J)<M> += A
@@ -529,9 +441,6 @@ classdef GrB
 %       C = GrB.assign (C, M, '+', A)               C<M> += A
 %       C = GrB.assign (C, '+', A, I)               C (I,:) += A
 %
-%       C = GrB.emult (C, M, '+', A, '*', B)        C<M> += A.*B
-%       C = GrB.emult (A, '*', B)                   C = A.*B
-%
 %       C = GrB.extract (C, M, '+', A, I, J)        C<M> += A(I,J)
 %       C = GrB.extract (A, I, J)                   C = A(I,J)
 %       C = GrB.extract (I, J, A)                   C = A(I,J)
@@ -540,13 +449,8 @@ classdef GrB
 %       C = GrB.extract (C, M, '+', A)              C<M> += A
 %       C = GrB.extract (C, '+', A, I)              C += A(I,:)
 %
-%       C = GrB.mxm (C, M, '+', '+.*', A, B)        C<M> += A*B
-%       C = GrB.mxm (C, M, '+', A, '+.*', B)        C<M> += A*B
-%       C = GrB.mxm ('+', '+,*', C, M, A, B)        C<M> += A*B
-%
-%       C = GrB.mxm ('+.*', A, B)                   C = A*B
-%       C = GrB.mxm (A, '+.*', B)                   C = A*B
-%       C = GrB.mxm (C, M, A, '+.*', B)             C<M> = A*B
+%       C = GrB.apply (C, M, '|', '~', A)           C<M> |= ~A
+%       C = GrB.apply ('~', A)                      C = ~A
 %
 %       c = GrB.reduce (c, '+', 'max', A)           c += max (A)
 %       c = GrB.reduce ('max', A)                   c = max (A)
@@ -554,13 +458,12 @@ classdef GrB
 %       c = GrB.reduce (c, 'max', A)                c = max (A)
 %
 % See also sparse.
-%
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 properties (SetAccess = private, GetAccess = private)
-    % The struct contains the entire opaque content of a GraphBLAS
-    % GrB_Matrix.
+    % The struct contains the entire opaque content of a GraphBLAS GrB_Matrix.
     opaque = [ ] ;
 end
 
@@ -570,7 +473,7 @@ methods
     % GrB: GraphBLAS matrix constructor
     %---------------------------------------------------------------------
 
-    function C = GrB (arg1, arg2, arg3, arg4)
+    function C = GrB (varargin)
     %GRB GraphBLAS constructor: create a GraphBLAS sparse matrix.
     %
     % C = GrB (A) ;          GrB copy of a matrix A, same type and format
@@ -582,190 +485,122 @@ methods
     % C = GrB (A, type, format) ;   GrB copy of A, new type and format
     % C = GrB (A, format, type) ;   ditto
     %
-    % C = GrB (m,n, type) ;   empty m-by-n GrB type matrix, default format
-    % C = GrB (m,n, format) ; empty m-by-n GrB double matrix, given format
+    % C = GrB (m, n, type) ;   empty m-by-n GrB type matrix, default format
+    % C = GrB (m, n, format) ; empty m-by-n GrB double matrix, given format
     %
-    % C = GrB (m,n,type,format) ;  empty m-by-n matrix, given type & format
-    % C = GrB (m,n,format,type) ;  ditto
+    % C = GrB (m, n, type, format) ;   empty m-by-n matrix, given type & format
+    % C = GrB (m, n, format, type) ;   ditto
     %
     % See also sparse.
-        if (nargin == 1)
-            if (isstruct (arg1))
-                % C = GrB (A), where the input A is a GraphBLAS struct as
-                % returned by another GrB* function, but this usage is not
-                % meant for the end-user.  It is only used internally in
-                % @GrB, to convert a GraphBLAS struct computed by a
-                % GraphBLAS mexFunction into a GrB matrix object.
-                C.opaque = arg1 ;
-            elseif (isobject (arg1))
-                % arg1 is already a GrB matrix; nothing to do
-                C = arg1 ;
-            else
-                % arg1 is a MATLAB matrix; convert to a GrB matrix
-                C.opaque = gbnew (arg1) ;
-            end
-        else
-            if (isobject (arg1))
-                % extract the contents of the GrB object as its opaque
-                % struct so the gbnew mexFunction can access it.
-                arg1 = arg1.opaque ;
-            end
-            % varargin is more elegant, but it is slower than the switch
-            switch (nargin)
-                case 2
-                    C.opaque = gbnew (arg1, arg2) ;
-                case 3
-                    C.opaque = gbnew (arg1, arg2, arg3) ;
-                case 4
-                    C.opaque = gbnew (arg1, arg2, arg3, arg4) ;
-            end
+    if (nargin == 1 && ...
+        (isstruct (varargin {1}) && isfield (varargin {1}, 'GraphBLAS')))
+        % C = GrB (A), where the input A is a GraphBLAS struct as
+        % returned by another GrB* function, but this usage is not meant
+        % for the end-user.  It is only used internally in @GrB.  See for
+        % @GrB/mxm, which uses C = GrB (gbmxm (args)), and the
+        % typecasting methods, C = double (C), etc.  The output of GrB is
+        % a GraphBLAS object.
+        C.opaque = varargin {1} ;
+    else
+        if (isa (varargin {1}, 'GrB'))
+            % extract the contents of the GrB object as its opaque struct
+            % so the gbnew mexFunction can access it.
+            varargin {1} = varargin {1}.opaque ;
         end
+        C.opaque = gbnew (varargin {:}) ;
+    end
     end
 
     %---------------------------------------------------------------------
     % implicitly-defined methods
     %---------------------------------------------------------------------
 
-    % The following methods work without any implemention needed here,
-    % because they are built-in MATLAB m-files that can operate with GrB
-    % inputs:
+    % The following methods work without any implemention needed here:
     %
-    %   matrix operations: flipdim fliplr flipud cast isrow iscolumn ndims
-    %   sprank etreeplot spy gplot reallog realpow realsqrt
+    %   flipdim fliplr flipud cast isrow iscolumn ndims sprank etreeplot
+    %   spy gplot
     %
-    %   iterative solvers: bicgstabl bicgstab cgs minres gmres bicg pcg
-    %   qmr rjr tfqmr lsqr
+    %   bicgstabl bicgstab cgs minres gmres bicg pcg qmr rjr tfqmr lsqr
 
     %---------------------------------------------------------------------
     % FUTURE:: many these could also be overloaded:
     %---------------------------------------------------------------------
 
-    % methods in the MATLAB/ops folder:
-    %
-    %   colon idivide ismembertol uniquetol
-    %   m-files: intersect ismember setdiff setxorunion unique
-    %       (if 'sort' is overloaded, and 1D indexing added,
-    %       then all these will work for GrB matrices)
+    % Some of these are trivial (like sin and cos, which would be unary
+    % operators defined for GrB matrices of type 'double', 'single', or
+    % 'complex').  Others are not appropriate for sparse matrices (such
+    % as svd), but the inputs to them could be typecasted to MATLAB full
+    % matrices ('double', 'single', or 'complex').  Still more have no
+    % matrix inputs (linspace, ...) and thus cannot be overloaded.
 
-    % methods in the MATLAB/datatypes folder:
+    % methods 'double' that are not yet implemented here:
     %
-    %   typecast swapbytes
-
-    % methods in the MATLAB/datafun folder:
+    %   accumarray acos acosd acosh acot acotd acoth acsc acscd acsch
+    %   airy asec asecd asech asin asind asinh atan atan2 atan2d atand
+    %   atanh bernoulli besselh besseli besselj besselk bessely betainc
+    %   betaincinv bsxfun charpoly chebyshevT chebyshevU cos cosd cosh
+    %   coshint cosint cot cotd coth csc cscd csch cummax cummin cumprod
+    %   cumsum dawson det diff dilog dirac ei ellipticCE ellipticCK
+    %   ellipticCPi ellipticE ellipticF ellipticK ellipticNome ellipticPi
+    %   erf erfc erfcinv erfcx erfi erfinv euler exp expm1 fresnelc
+    %   fresnels gamma gammainc gammaincinv gammaln gegenbauerC harmonic
+    %   hermiteH hess hypot ichol igamma ilu imag inv issorted
+    %   issortedrows jacobiP jordan kummerU laguerreL legendreP linsolve
+    %   log log10 log1p log2 logint ltitr maxk mink minpoly mod ordeig
+    %   permute pochhammer poly2sym polylog pow2 psi qrupdate rcond
+    %   reallog realpow realsqrt rem sec secd sech signIm sin sind sinh
+    %   sinhint sinint sort sortrowsc ssinint superiorfloat tan tand tanh
+    %   whittakerM whittakerW wrightOmega zeta
     %
-    %   cummax cummin cumprod cumsum diff histcounts islocalmax
-    %   ismissing issorted maxk mink movmad movmax movmean movmedian
-    %   movmin movprod movstd movsum movvar rmmissing rmoutliers
-    %   sort sortrows standardizeMissing topkrows
-    %
-    %   m-files: bounds corrcoef cov del2 fillmissing filloutliers
-    %   gradient isoutlier issortedrows mean median mode normalize
-    %   rescale smoothdata std var
-
-    % methods the 'double' class that are not yet implemented here:
-    %
-    %   Possible 'double' functions to overload in the future (note that
-    %   mod and rem are not the same as the ANSI fmod or remainder, but
-    %   the MATLAB rem is almost the same as the ANSI fmod):
-    %
-    %       mod rem unwrap sind asind cosd acosd tand
-    %       atand secd asecd cscd acscd cotd acotd atan2d
-    %
-    %   not needed:
-    %
-    %       special functions: airy bernoulli besselh besseli besselj
-    %       besselk bessely betainc betaincinv chebyshevT chebyshevU
-    %       coshint cosint dawson dilog dirac ei ellipticCE ellipticCK
-    %       ellipticCPi ellipticE ellipticF ellipticK ellipticNome
-    %       ellipticPi erfcinv erfcx erfi erfinv fresnelc fresnels
-    %       gammainc gammaincinv harmonic igamma jacobiP kummerU laguerreL
-    %       legendreP logint pochhammer psi signIm sinhint sinint ssinint
-    %       whittakerM whittakerW wrightOmega zeta triangularPulse
-    %       rectangularPulse
-    %
-    %       eigenvalue-related: charpoly euler gegenbauerC hermiteH jordan
-    %       minpoly poly2sym polylog
-    %
-    %       others: colon factor divisors superiorfloat
+    %   not needed: colon factor divisors delete triangularPulse
+    %   rectangularPulse 
 
     % methods in MATLAB/matfun not implemented here:
     %
-    %       balance cdf2rdf chol cholupdate condeig condest cond
-    %       decomposition det expm funm gsvd hess inv ldl linsolve logm
-    %       lscov lsqminnorm ltitr lu normest1 normest null ordeig ordqz
-    %       ordschur orth pinv planerot polyeig qrdelete qrinsert qr
-    %       qrupdate qz rank rcond rref rsf2csf schur sqrtm svd sylvester
-    %       trace vecnorm
+    %   balance cdf2rdf chol cholupdate condeig condest cond
+    %   decomposition det expm funm gsvd hess inv ldl linsolve logm lscov
+    %   lsqminnorm ltitr lu normest1 normest null ordeig ordqz ordschur
+    %   orth pinv planerot polyeig qrdelete qrinsert qr qrupdate qz rank
+    %   rcond rref rsf2csf schur sqrtm svd sylvester trace vecnorm
 
     % methods in MATLAB/sparfun not implemented here:
     %
-    %       colperm delsq dissect eigs ichol ilu spalloc spaugment
-    %       spconvert spdiags svds symbfact symmlq unmesh
+    %   colperm delsq dissect eigs ichol ilu spalloc spaugment spconvert
+    %   spdiags svds symbfact symmlq unmesh
     %
-    %       not needed: treeplot treelayout numgrid nested spparms
+    %   not needed: treeplot treelayout numgrid nested spparms
 
     % methods in MATLAB/elmat not implemented here:
     %
-    %       accumarray blkdiag bsxfun cat circshift compan gallery
-    %       hadamard hankel hilb inf invhilb ipermute isequaln nan ndgrid
-    %       pascal permute repelem rot90 shiftdim toeplitz vander
-    %       wilkinson
+    %   accumarray blkdiag bsxfun cat circshift compan gallery hadamard
+    %   hankel hilb inf invhilb ipermute isequaln isequalwithequalnans
+    %   nan ndgrid pascal permute repelem rot90 shiftdim toeplitz vander
+    %   wilkinson
     %
-    %       not needed: linspace logspace ind2sub sub2ind meshgrid pi
-    %       freqspace flintmax intmax intmin squeeze realmin realmax i j
-    %       magic rosser
+    %   not needed: linspace logspace ind2sub sub2ind meshgrid pi
+    %   freqspace flintmax intmax intmin squeeze realmin realmax i j
+    %   magic rosser 
 
     % methods for classes graph and digraph not yet implemented:
     %
-    %       addedge addnode bfsearch centrality conncomp dfsearch
-    %       distances findedge findnode isisomorphic isomorphism maxflow
-    %       nearest outedges rmedge rmnode shortestpath shortestpathtree
-    %       simplify
+    %   addedge addnode bfsearch centrality conncomp dfsearch distances
+    %   findedge findnode isisomorphic isomorphism maxflow nearest
+    %   outedges rmedge rmnode shortestpath shortestpathtree simplify
+    %
+    %   GrB.bfs is like graph/bfsearch and graph/shortestpathtree.
 
     % methods for class graph (not in digraph class) not yet implemented:
     %
-    %       bctree biconncomp minspantree neighbors
+    %   bctree biconncomp minspantree neighbors
 
     % methods for class digraph (not in graph class) not yet implemented:
     %
-    %       condensation inedges isdag predecessors successors toposort
-    %       transclosure transreduction
+    %   condensation inedges isdag predecessors successors toposort
+    %   transclosure transreduction
 
-    % methods in LAGraph: (see the LAGraph/Source folder)
-
-    %---------------------------------------------------------------------
-    % MATLAB operator overloading
-    %---------------------------------------------------------------------
-
-    C = and (A, B) ;            % C = (A & B)
-    C = ctranspose (A) ;        % C = A'
-    i = end (A, k, ndims) ;     % for A (1:end,1:end)
-    C = eq (A, B) ;             % C = (A == B)
-    C = ge (A, B) ;             % C = (A >= B)
-    C = gt (A, B) ;             % C = (A > B)
-    C = horzcat (varargin) ;    % C = [A , B]
-    C = ldivide (A, B) ;        % C = A .\ B
-    C = le (A, B) ;             % C = (A <= B)
-    C = lt (A, B) ;             % C = (A < B)
-    C = minus (A, B) ;          % C = A - B
-    C = mldivide (A, B) ;       % C = A \ B
-    C = mpower (A, B) ;         % C = A^B
-    C = mrdivide (A, B) ;       % C = A / B
-    C = mtimes (A, B) ;         % C = A * B
-    C = ne (A, B) ;             % C = (A ~= B)
-    C = not (G) ;               % C = ~A
-    C = or (A, B) ;             % C = (A | B)
-    C = plus (A, B) ;           % C = A + B
-    C = power (A, B) ;          % C = A .^ B
-    C = rdivide (A, B) ;        % C = A ./ B
-    I = subsindex (A) ;         % for C = X (A), using A as index I
-    C = subsasgn (C, S, A) ;    % C (I,J) = A or C (M) = A
-    C = subsref (A, S) ;        % C = A (I,J) or C = A (M)
-    C = times (A, B) ;          % C = A .* B
-    C = transpose (G) ;         % C = A.'
-    C = uminus (G) ;            % C = -A
-    C = uplus (G) ;             % C = +A
-    C = vertcat (varargin) ;    % C = [A ; B]
+    % methods in LAGraph:
+    %
+    %   betweeness-centrality, etc ...
 
     %---------------------------------------------------------------------
     % Methods that overload built-in MATLAB functions:
@@ -782,83 +617,40 @@ methods
     %   DiGraph is a MATLAB directed digraph.
 
     C = abs (G) ;
-    C = acos (G) ;
-    C = acosh (G) ;
-    C = acot (G) ;
-    C = acoth (G) ;
-    C = acsc (G) ;
-    C = acsch (G) ;
     C = all (G, option) ;
     p = amd (G, varargin) ;
-    C = angle (G) ;
+    C = and (A, B) ;
     C = any (G, option) ;
-    C = asec (G) ;
-    C = asech (G) ;
-    C = asin (G) ;
-    C = asinh (G) ;
-    assert (G) ;            % test assertion 
-    C = atan (G) ;
-    C = atanh (G) ;
-    C = atan2 (A, B) ;
-
-    [lo, hi] = bandwidth (G, uplo) ;
-    C = bitand (A, B, assumedtype) ;
-    C = bitcmp (A, assumedtype) ;
-    C = bitget (A, B, assumedtype) ;
-    C = bitset (A, B, arg3, arg4) ;
-    C = bitshift (A, B, arg3) ;
-    C = bitor (A, B, assumedtype) ;
-    C = bitxor (A, B, assumedtype) ;
-
-%   C = cast (G, ...)       built-in works as-is
+    assert (G) ;
+    [arg1, arg2] = bandwidth (G, uplo) ;
     C = ceil (G) ;
     [p, varargout] = colamd (G, varargin) ;
     C = complex (A, B) ;
     C = conj (G) ;
-    C = cos (G) ;
-    C = cosh (G) ;
-    C = cot (G) ;
-    C = coth (G) ;
-    C = csc (G) ;
-    C = csch (G) ;
-
-    C = diag (A, k) ;
+    C = diag (G, k) ;
     DiGraph = digraph (G, option) ;
-    disp (A, level) ;
     display (G) ;
+    disp (G, level) ;
     [p, varargout] = dmperm (G) ;
     C = double (G) ;
-
-    [V, varargout] = eig (G, varargin) ;        % uses GrB matrices
+    [V, varargout] = eig (G, varargin) ;
+    i = end (G, k, ndims) ;
     C = eps (G) ;
-    C = erf (G) ;
-    C = erfc (G) ;
     [parent, varargout] = etree (G, varargin) ;
-    C = exp (G) ;
-    C = expm1 (G) ;
-
     C = false (varargin) ;
-    [I,J,X] = find (G, k, search) ;
+    [I, J, X] = find (G, k, search) ;
     C = fix (G) ;
     C = flip (G, dim) ;
     C = floor (G) ;
     c = fprintf (varargin) ;
     C = full (A, type, identity) ;
-
-    C = gamma (G) ;
-    C = gammaln (G) ;
-    Graph = graph (G, varargin) ;               % uses GrB matrices
-
-    C = hypot (A, B) ;
-
-    C = imag (G) ;
-    C = int8 (G) ;
+    Graph = graph (G, varargin) ;
     C = int16 (G) ;
     C = int32 (G) ;
     C = int64 (G) ;
-    s = isa (G, type) ;
+    C = int8 (G) ;
+    s = isa (G, classname) ;
     s = isbanded (G, lo, hi) ;
-%   s = iscolumn (G)        built-in works as-is
     s = isdiag (G) ;
     s = isempty (G) ;
     s = isequal (A, B) ;
@@ -872,76 +664,82 @@ methods
     C = isnan (G) ;
     s = isnumeric (G) ;
     s = isreal (G) ;
-%   s = isrow (G)           built-in works as-is
     s = isscalar (G) ;
     s = issparse (G) ;
     s = issymmetric (G, option) ;
     s = istril (G) ;
     s = istriu (G) ;
     s = isvector (G) ;
-
     C = kron (A, B) ;
-
     n = length (G) ;
-    C = log (G) ;
-    C = log10 (G) ;
-    C = log1p (G) ;
-    [F, E] = log2 (G) ;
     C = logical (G) ;
-
-    C = max (A, B, option) ;
-    C = min (A, B, option) ;
-
+    [C, I] = max (varargin) ;
+    C = min (varargin) ;
     e = nnz (G) ;
     X = nonzeros (G) ;
-    s = norm (G, kind) ;
+    s = norm (G,kind) ;
     s = numel (G) ;
     e = nzmax (G) ;
-
     C = ones (varargin) ;
-
-    C = pow2 (A, B) ;
     C = prod (G, option) ;
-
     C = real (G) ;
     C = repmat (G, m, n) ;
     C = reshape (G, arg1, arg2) ;
     C = round (G) ;
-
-    C = sec (G) ;
-    C = sech (G) ;
     C = sign (G) ;
-    C = sin (G) ;
     C = single (G) ;
-    C = sinh (G) ;
-    [m, n, t] = size (G, dim) ;
+    [arg1, n] = size (G, dim) ;
     C = sparse (G) ;
     C = spfun (fun, G) ;
     C = spones (G, type) ;
-    C = sprand (arg1, arg2, arg3) ;
-    C = sprandn (arg1, arg2, arg3) ;
-    C = sprandsym (arg1, arg2) ;
+    C = sprand (G) ;
+    C = sprandn (G) ;
+    C = sprandsym (G, varargin) ;
     c = sprintf (varargin) ;
     C = sqrt (G) ;
-    S = struct (G) ;
     C = sum (G, option) ;
     [p, varargout] = symamd (G, varargin) ;
     p = symrcm (G) ;
-
-    C = tan (G) ;
-    C = tanh (G) ;
     L = tril (G, k) ;
     U = triu (G, k) ;
     C = true (varargin) ;
-
-    C = uint8 (G) ;
     C = uint16 (G) ;
     C = uint32 (G) ;
     C = uint64 (G) ;
-
+    C = uint8 (G) ;
     C = xor (A, B) ;
-
     C = zeros (varargin) ;
+
+    %---------------------------------------------------------------------
+    % MATLAB operator overloading
+    %---------------------------------------------------------------------
+
+    C = ctranspose (A) ;            % C = A'
+    C = eq (A, B) ;                 % C = (A == B)
+    C = ge (A, B) ;                 % C = (A >= B)
+    C = gt (A, B) ;                 % C = (A > B)
+    C = horzcat (varargin) ;        % C = [A , B]
+    C = ldivide (A, B) ;            % C = A .\ B
+    C = le (A, B) ;                 % C = (A <= B)
+    C = lt (A, B) ;                 % C = (A < B)
+    C = minus (A, B) ;              % C = A - B
+    C = mldivide (A, B) ;           % C = A \ B
+    C = mpower (A, B) ;             % C = A^B
+    C = mrdivide (A, B) ;           % C = A / B
+    C = mtimes (A, B) ;             % C = A * B
+    C = ne (A, B) ;                 % C = (A ~= B)
+    C = not (G) ;                   % C = ~A
+    C = or (A, B) ;                 % C = (A | B)
+    C = plus (A, B) ;               % C = A + B
+    C = power (A, B) ;              % C = A .^ B
+    C = rdivide (A, B) ;            % C = A ./ B
+    C = subsasgn (C, S, A) ;        % C (I,J) = A
+    C = subsref (A, S) ;            % C = A (I,J)
+    C = times (A, B) ;              % C = A .* B
+    C = transpose (G) ;             % C = A.'
+    C = uminus (G) ;                % C = -A
+    C = uplus (G) ;                 % C = +A
+    C = vertcat (varargin) ;        % C = [A ; B]
 
 end
 
@@ -953,73 +751,60 @@ methods (Static)
 
     % All of these are used as GrB.method (...), with the "GrB." prefix.
     % The input matrices (A, B, C, M, ...) are of any kind (GraphBLAS,
-    % MATLAB sparse, or MATLAB full).  The output matrix C is a GraphBLAS
-    % matrix.
+    % MATLAB sparse, or MATLAB full).  The output matrix C or Cout is a
+    % GraphBLAS matrix.
 
-    % Some of the methods listed below are high-level graph algorithms that
-    % rely on GrB objects internally (bfs, dnn, ktruss, mis, pagerank, and
-    % tricount), for simplicity and readability.  All of the other methods
-    % extract the opaque content of the GrB objects just once, operate on
-    % them, and then cast their results back into a MATLAB GrB object just
-    % once.  This makes for less-readable MATLAB code, but it avoids the
-    % performance cost of accessing/modifying a MATLAB object.
-
-    MATLAB_vs_GrB ;
-    C = apply (Cin, M, accum, op, A, desc) ;
-    C = apply2 (Cin, M, accum, op, A, B, desc) ;
-    C = assign (Cin, M, accum, A, I, J, desc) ;
-    [v, parent] = bfs (A, s, varargin) ;        % uses GrB matrices
-    binopinfo (op, type) ;
-    C = build (I, J, X, m, n, dup, type, desc) ;
-    b = burble (b) ;
-    c = chunk (c) ;
-    clear ;
-    [C, I, J] = compact (A, id) ;
-    descriptorinfo (d) ;
-    Y = dnn (W, bias, Y0) ;                     % uses GrB matrices
-    C = eadd (Cin, M, accum, op, A, B, desc) ;
-    C = empty (arg1, arg2) ;
-    C = emult (Cin, M, accum, op, A, B, desc) ;
-    x = entries (A, arg2, arg3) ;
-    C = expand (scalar, A, type) ;
-    C = extract (Cin, M, accum, A, I, J, desc) ;
-    [I, J, X] = extracttuples (A, desc) ;
-    C = eye (m, n, type) ;
-    finalize ;
-    [f, s] = format (arg) ;
-    C = incidence (A, varargin) ;
     init ;
-    s = isbyrow (A) ;
-    s = isbycol (A) ;
-    s = isfull (A) ;
-    s = issigned (arg) ;
-    C = kronecker (Cin, M, accum, op, A, B, desc) ;
-    C = ktruss (A, k, check) ;                  % uses GrB matrices
-    L = laplacian (A, type, check) ;
-    iset = mis (A, check) ;                     % uses GrB matrices
+    finalize ;
+    clear ;
+    descriptorinfo (d) ;
+    unopinfo (op, type) ;
+    binopinfo (op, type) ;
     monoidinfo (monoid, type) ;
-    C = mxm (Cin, M, accum, semiring, A, B, desc) ;
-    result = nonz (A, varargin) ;
-    s = normdiff (A, B, kind) ;
-    C = offdiag (A) ;
-    ctype = optype (a, b) ;
-    [r, stats] = pagerank (A, opts) ;           % uses GrB matrices
-    C = prune (A, identity) ;
-    C = random (varargin) ;
-    C = reduce (cin, accum, monoid, A, desc) ;
-    C = select (Cin, M, accum, selectop, A, b, desc) ;
     selectopinfo (op) ;
     semiringinfo (s, type) ;
-    C = speye (m, n, type) ;
-    C = subassign (Cin, M, accum, A, I, J, desc) ;
-    nthreads = threads (nthreads) ;
-    C = trans (Cin, M, accum, A, desc) ;
-    s = tricount (A, check, d) ;                % uses GrB matrices
+    nthreads = threads (varargin) ;
+    c = chunk (varargin) ;
+    b = burble (varargin) ;
+    C = empty (arg1, arg2) ;
     s = type (A) ;
-    unopinfo (op, type) ;
-    v = version ;
-    v = ver ;
-    C = vreduce (Cin, M, accum, monoid, A, desc) ;
+    s = issigned (type) ;
+    s = isfull (A) ;
+    f = format (arg) ;
+    s = isbyrow (A) ;
+    s = isbycol (A) ;
+    C = expand (scalar, A) ;
+    C = prune (A, identity) ;
+    C = offdiag (A) ;
+    C = eye (varargin) ;
+    C = speye (varargin) ;
+    C = random (varargin) ;
+    C = build (varargin) ;
+    [I,J,X] = extracttuples (varargin) ;
+    Cout = mxm (varargin) ;
+    Cout = select (varargin) ;
+    Cout = assign (varargin) ;
+    Cout = subassign (varargin) ;
+    Cout = vreduce (varargin) ;
+    Cout = reduce (varargin) ;
+    Cout = kronecker (varargin) ;
+    Cout = trans (varargin) ;
+    Cout = eadd (varargin) ;
+    Cout = emult (varargin) ;
+    Cout = apply (varargin) ;
+    Cout = extract (varargin) ;
+    [r, stats] = pagerank (A, opts) ;
+    C = ktruss (A, k, check) ;
+    s = tricount (A, check) ;
+    L = laplacian (A, type, check) ;
+    C = incidence (A, varargin) ;
+    [v, parent] = bfs (A, s, varargin) ;
+    iset = mis (A, check) ;
+    Y = dnn (W, bias, Y0) ;
+    result = entries (A, varargin) ;
+    result = nonz (A, varargin) ;
+    [C, I, J] = compact (A, id) ;
+    s = normdiff (A, B, kind) ;
 
 end
 end

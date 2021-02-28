@@ -2,8 +2,8 @@
 // gb_mxcell_to_index: convert cell array to index list I or colon expression
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -11,9 +11,9 @@
 
 // I is a cell array.  I contains 0, 1, 2, or 3 items:
 //
-//      0:  { }     This is the MATLAB ':', like C(:,J), refering to all m rows,
+//      0:   { }    This is the MATLAB ':', like C(:,J), refering to all m rows,
 //                  if C is m-by-n.
-//      1:  { list }  A 1D list of row indices, like C(I,J) in MATLAB.
+//      1:   { list }  A 1D list of row indices, like C(I,J) in MATLAB.
 //      2:  { start,fini }  start and fini are scalars (either double, int64,
 //                  or uint64).  This defines I = start:fini in MATLAB colon
 //                  notation.
@@ -54,8 +54,8 @@ GrB_Index *gb_mxcell_to_index   // return index list I
     for (int k = 0 ; k < len ; k++)
     { 
         // convert I_cell {k} content to an integer list
-        Item [k] = (GrB_Index *) gb_mxarray_to_list (mxGetCell (I_cell, k),
-            base, &Item_allocated [k], &Item_len [k], &Item_max [k]) ;
+        Item [k] = gb_mxarray_to_list (mxGetCell (I_cell, k), base,
+            &Item_allocated [k], &Item_len [k], &Item_max [k]) ;
     }
 
     //--------------------------------------------------------------------------

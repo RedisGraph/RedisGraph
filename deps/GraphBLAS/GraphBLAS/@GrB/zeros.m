@@ -1,21 +1,30 @@
 function C = zeros (varargin)
-%ZEROS a matrix with no entries.
-%
-%   C = zeros (n) ;      n-by-n GrB double matrix with no entries.
-%   C = zeros (m,n) ;    m-by-n GrB double matrix with no entries.
-%   C = zeros ([m,n]) ;  m-by-n GrB double matrix with no entries.
-%   C = zeros (..., type) ;      empty matrix of given type.
-%   C = zeros (..., 'like', G) ; empty matrix, same type as G.
-%
-% Since function overloads the MATLAB built-in zeros(...), at least one
-% input must be a GraphBLAS matrix to use this version (for example,
-% C = zeros (GrB (n))).  Alternatively, C = GrB (n,n) can be used.
+%ZEROS an all-zero matrix, the same type as G.
+% C = zeros (m, n, 'like', G) or C = zeros ([m n], 'like', G) returns
+% an m-by-n matrix with no entries, of the same type as G.
 %
 % See also GrB/ones, GrB/false, GrB/true.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-[m, n, type] = gb_parse_args ('zeros', varargin {:}) ;
-C = GrB (gbnew (m, n, type)) ;
+G = varargin {end} ;
+if (nargin == 4)
+    if (~isequal (varargin {3}, 'like'))
+        gb_error ('usage: zeros (m, n, ''like'', G)') ;
+    end
+    m = varargin {1} ;
+    n = varargin {2} ;
+elseif (nargin == 3)
+    if (~isequal (varargin {2}, 'like'))
+        gb_error ('usage: zeros ([m n], ''like'', G)') ;
+    end
+    mn = varargin {1} ;
+    m = mn (1) ;
+    n = mn (2) ;
+else
+    gb_error ('usage: zeros (m, n, ''like'', G)') ;
+end
+
+C = GrB (m, n, GrB.type (G)) ;
 

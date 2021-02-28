@@ -1,0 +1,24 @@
+#!/bin/csh
+# usage: tri_run2 files
+
+# already done:
+# echo "function [T, Tprep, N, Nedges, Ntri, File] = tri_results" > tri_results.m
+# echo "id = 0 ;" >>  tri_results.m
+
+# echo "" > tri_grb_output.txt
+
+# continue a prior experiment, one result per file:
+foreach file ($argv[1-])
+        echo ''
+        echo '--------------------------------------------------------------------------------'
+	echo $file
+	echo $file >& /dev/tty
+        echo "file = '" $file "' ;" >> tri_results.m
+	gunzip -c $file | ./tri_main
+	gunzip -c $file | ../GraphBLAS/build/tri_demo 1 >> tri_grb_output.txt
+end
+
+echo "function [T, Tprep, N, Nedges, Ntri] = tri_grb_results" > tri_grb_results.m
+echo "id = 0 ;" >>  tri_grb_results.m
+awk -f tri_graphblas.awk < tri_grb_output.txt >> tri_grb_results.m
+

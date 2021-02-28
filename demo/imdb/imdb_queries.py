@@ -25,17 +25,17 @@ class IMDBQueries(object):
 
         self.actors_played_with_nicolas_cage_query = QueryInfo(
             query="""MATCH (n:actor{name:"Nicolas Cage"})-[:act]->(m:movie)<-[:act]-(a:actor)
-                    RETURN a.name, m.title ORDER BY a.name""",
+                    RETURN a.name, m.title""",
             description='Which actors played along side Nicolas Cage?',
             max_run_time_ms=4,
             expected_result=[['Cassi Thomson', 'Left Behind'],
-                            ['Chad Michael Murray', 'Left Behind'],
                             ['Gary Grubbs', 'Left Behind'],
-                            ['Jordin Sparks', 'Left Behind'],
-                            ['Lea Thompson', 'Left Behind'],
+                            ['Quinton Aaron', 'Left Behind'],
                             ['Martin Klebba', 'Left Behind'],
+                            ['Lea Thompson', 'Left Behind'],
                             ['Nicolas Cage', 'Left Behind'],
-                            ['Quinton Aaron', 'Left Behind']]
+                            ['Chad Michael Murray', 'Left Behind'],
+                            ['Jordin Sparks', 'Left Behind']]
         )
 
 

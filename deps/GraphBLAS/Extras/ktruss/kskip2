@@ -1,0 +1,23 @@
+#!/bin/csh
+# usage: krun files
+
+foreach file ($argv[1-])
+        echo ''
+        echo '--------------------------------------------------------------------------------'
+	echo $file
+	echo $file >& /dev/tty
+
+        echo "file = '" $file "';" >> allktruss_grb_results.m
+        echo "id = id + 1 ;"       >> allktruss_grb_results.m
+
+        echo "file = '" $file "';" >> allktruss_results.m
+        echo "id = id + 1 ;"       >> allktruss_results.m
+
+#       echo "file = '" $file "';" >> ktruss_grb_results.m
+#       echo "file = '" $file "';" >> ktruss_results.m
+
+#	gunzip -c $file | ./ktruss_main
+#	gunzip -c $file | ./ktruss_graphblas_main 1
+#	gunzip -c $file | ./allktruss_main
+#	gunzip -c $file | ./allktruss_graphblas_main 1
+end

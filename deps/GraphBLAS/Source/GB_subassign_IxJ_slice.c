@@ -2,8 +2,8 @@
 // GB_subassign_IxJ_slice: slice IxJ for subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -46,9 +46,9 @@
 #include "GB_subassign_methods.h"
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE (TaskList) ;    \
+#define GB_FREE_ALL                                                     \
+{                                                                       \
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
 //------------------------------------------------------------------------------
@@ -63,14 +63,14 @@ GrB_Info GB_subassign_IxJ_slice
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads to use
     // input:
-//  const GrB_Index *I,
+    const GrB_Index *I,
     const int64_t nI,
-//  const int Ikind,
-//  const int64_t Icolon [3],
-//  const GrB_Index *J,
+    const int Ikind,
+    const int64_t Icolon [3],
+    const GrB_Index *J,
     const int64_t nJ,
-//  const int Jkind,
-//  const int64_t Jcolon [3],
+    const int Jkind,
+    const int64_t Jcolon [3],
     GB_Context Context
 )
 {
@@ -165,9 +165,11 @@ GrB_Info GB_subassign_IxJ_slice
 
         GB_REALLOC_TASK_LIST (TaskList, nJ * nI_fine_tasks, max_ntasks) ;
 
-        //----------------------------------------------------------------------
+        //------------------------------------------------------------------
         // construct fine tasks for index j
-        //----------------------------------------------------------------------
+        //------------------------------------------------------------------
+
+        // Method 7, 8, 11a, 11b, 12a, 12b: no need for binary search of C
 
         for (int64_t j = 0 ; j < nJ ; j++)
         {

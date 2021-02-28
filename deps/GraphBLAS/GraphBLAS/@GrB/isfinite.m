@@ -1,18 +1,20 @@
 function C = isfinite (G)
-%ISFINITE true for finite elements.
-% C = isfinite (G) is a logical matrix where C(i,j) = true
-% if G(i,j) is finite.  C is a full matrix.
+%ISFINITE True for finite elements.
+% C = isfinite (G) returns a GraphBLAS logical matrix where C(i,j) = true
+% if G(i,j) is finite.
 %
-% See also GrB/isnan, GrB/isinf.
+% See also isnan, isinf.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% FUTURE: this will be much faster as a mexFunction.
 
-G = G.opaque ;
-[m, n, type] = gbsize (G) ;
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (gb_isfloat (type) && m > 0 && n > 0)
-    C = GrB (gbapply ('isfinite', gbfull (G))) ;
+[m, n] = size (G) ;
+if (isfloat (G) && m > 0 && n > 0)
+    desc.base = 'zero-based' ;
+    [i, j, x] = GrB.extracttuples (full (G), desc) ;
+    C = GrB.build (i, j, isfinite (x), m, n, desc) ;
 else
     % C is all true
     C = GrB (true (m, n)) ;

@@ -2,8 +2,8 @@
 // GB_binop:  hard-coded functions for each built-in binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -14,8 +14,6 @@
 #include "GB_control.h"
 #include "GB_ek_slice.h"
 #include "GB_dense.h"
-#include "GB_atomics.h"
-#include "GB_bitmap_assign_methods.h"
 #include "GB_binop__include.h"
 
 // C=binop(A,B) is defined by the following types and operators:
@@ -24,18 +22,14 @@
 // A.*B function (eWiseMult):       GB_AemultB__max_uint32
 // A*D function (colscale):         GB_AxD__max_uint32
 // D*A function (rowscale):         GB_DxB__max_uint32
-// C+=B function (dense accum):     GB_Cdense_accumB__max_uint32
-// C+=b function (dense accum):     GB_Cdense_accumb__max_uint32
+// C+=A function (dense accum):     GB_Cdense_accumA__max_uint32
+// C+=x function (dense accum):     GB_Cdense_accumX__max_uint32
 // C+=A+B function (dense ewise3):  GB_Cdense_ewise3_accum__max_uint32
 // C=A+B function (dense ewise3):   GB_Cdense_ewise3_noaccum__max_uint32
-// C=scalar+B                       GB_bind1st__max_uint32
-// C=scalar+B'                      GB_bind1st_tran__max_uint32
-// C=A+scalar                       GB_bind2nd__max_uint32
-// C=A'+scalar                      GB_bind2nd_tran__max_uint32
 
 // C type:   uint32_t
 // A type:   uint32_t
-// B,b type: uint32_t
+// B type:   uint32_t
 // BinaryOp: cij = GB_IMAX (aij, bij)
 
 #define GB_ATYPE \
@@ -46,18 +40,6 @@
 
 #define GB_CTYPE \
     uint32_t
-
-// true if the types of A and B are identical
-#define GB_ATYPE_IS_BTYPE \
-    1
-
-// true if the types of C and A are identical
-#define GB_CTYPE_IS_ATYPE \
-    1
-
-// true if the types of C and B are identical
-#define GB_CTYPE_IS_BTYPE \
-    1
 
 // aij = Ax [pA]
 #define GB_GETA(aij,Ax,pA)  \
@@ -72,17 +54,15 @@
     uint32_t t
 
 // cij = Ax [pA]
-#define GB_COPY_A_TO_C(cij,Ax,pA) \
-    cij = Ax [pA]
+#define GB_COPY_A_TO_C(cij,Ax,pA) cij = Ax [pA] ;
 
 // cij = Bx [pB]
-#define GB_COPY_B_TO_C(cij,Bx,pB) \
-    cij = Bx [pB]
+#define GB_COPY_B_TO_C(cij,Bx,pB) cij = Bx [pB] ;
 
 #define GB_CX(p) Cx [p]
 
 // binary operator
-#define GB_BINOP(z, x, y, i, j) \
+#define GB_BINOP(z, x, y)   \
     z = GB_IMAX (x, y) ;
 
 // op is second
@@ -105,7 +85,7 @@
 #define GB_PHASE_2_OF_2
 
 // hard-coded loops can be vectorized
-#define GB_PRAGMA_SIMD_VECTORIZE GB_PRAGMA_SIMD
+#define GB_PRAGMA_VECTORIZE GB_PRAGMA_SIMD
 
 // disable this operator and use the generic case if these conditions hold
 #define GB_DISABLE \
@@ -153,13 +133,13 @@ GrB_Info GB_Cdense_ewise3_noaccum__max_uint32
 }
 
 //------------------------------------------------------------------------------
-// C += B, accumulate a sparse matrix into a dense matrix
+// C += A, accumulate a sparse matrix into a dense matrix
 //------------------------------------------------------------------------------
 
-GrB_Info GB_Cdense_accumB__max_uint32
+GrB_Info GB_Cdense_accumA__max_uint32
 (
     GrB_Matrix C,
-    const GrB_Matrix B,
+    const GrB_Matrix A,
     const int64_t *GB_RESTRICT kfirst_slice,
     const int64_t *GB_RESTRICT klast_slice,
     const int64_t *GB_RESTRICT pstart_slice,
@@ -180,13 +160,13 @@ GrB_Info GB_Cdense_accumB__max_uint32
 }
 
 //------------------------------------------------------------------------------
-// C += b, accumulate a scalar into a dense matrix
+// C += x, accumulate a scalar into a dense matrix
 //------------------------------------------------------------------------------
 
-GrB_Info GB_Cdense_accumb__max_uint32
+GrB_Info GB_Cdense_accumX__max_uint32
 (
     GrB_Matrix C,
-    const GB_void *p_bwork,
+    const GB_void *p_ywork,
     const int nthreads
 )
 {
@@ -195,8 +175,7 @@ GrB_Info GB_Cdense_accumb__max_uint32
     #else
     
     { 
-        // get the scalar b for C += b, of type uint32_t
-        uint32_t bwork = (*((uint32_t *) p_bwork)) ;
+        uint32_t ywork = (*((uint32_t *) p_ywork)) ;
         #include "GB_dense_subassign_22_template.c"
         return (GrB_SUCCESS) ;
     }
@@ -208,8 +187,6 @@ GrB_Info GB_Cdense_accumb__max_uint32
 //------------------------------------------------------------------------------
 // C = A*D, column scale with diagonal D matrix
 //------------------------------------------------------------------------------
-
-
 
 GrB_Info GB_AxD__max_uint32
 (
@@ -226,19 +203,15 @@ GrB_Info GB_AxD__max_uint32
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    uint32_t *GB_RESTRICT Cx = (uint32_t *) C->x ;
+    uint32_t *GB_RESTRICT Cx = C->x ;
     #include "GB_AxB_colscale_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
 
-
-
 //------------------------------------------------------------------------------
 // C = D*B, row scale with diagonal D matrix
 //------------------------------------------------------------------------------
-
-
 
 GrB_Info GB_DxB__max_uint32
 (
@@ -251,33 +224,21 @@ GrB_Info GB_DxB__max_uint32
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    uint32_t *GB_RESTRICT Cx = (uint32_t *) C->x ;
+    uint32_t *GB_RESTRICT Cx = C->x ;
     #include "GB_AxB_rowscale_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
 
-
-
 //------------------------------------------------------------------------------
 // eWiseAdd: C = A+B or C<M> = A+B
 //------------------------------------------------------------------------------
 
-#undef  GB_FREE_ALL
-#define GB_FREE_ALL                                                     \
-{                                                                       \
-    GB_ek_slice_free (&pstart_Mslice, &kfirst_Mslice, &klast_Mslice) ;  \
-    GB_ek_slice_free (&pstart_Aslice, &kfirst_Aslice, &klast_Aslice) ;  \
-    GB_ek_slice_free (&pstart_Bslice, &kfirst_Bslice, &klast_Bslice) ;  \
-}
-
 GrB_Info GB_AaddB__max_uint32
 (
     GrB_Matrix C,
-    const int C_sparsity,
     const GrB_Matrix M,
     const bool Mask_struct,
-    const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
     const bool Ch_is_Mh,
@@ -285,19 +246,14 @@ GrB_Info GB_AaddB__max_uint32
     const int64_t *GB_RESTRICT C_to_A,
     const int64_t *GB_RESTRICT C_to_B,
     const GB_task_struct *GB_RESTRICT TaskList,
-    const int C_ntasks,
-    const int C_nthreads,
-    GB_Context Context
+    const int ntasks,
+    const int nthreads
 )
 { 
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    int64_t *pstart_Mslice = NULL, *kfirst_Mslice = NULL, *klast_Mslice = NULL ;
-    int64_t *pstart_Aslice = NULL, *kfirst_Aslice = NULL, *klast_Aslice = NULL ;
-    int64_t *pstart_Bslice = NULL, *kfirst_Bslice = NULL, *klast_Bslice = NULL ;
     #include "GB_add_template.c"
-    GB_FREE_ALL ;
     return (GrB_SUCCESS) ;
     #endif
 }
@@ -309,184 +265,25 @@ GrB_Info GB_AaddB__max_uint32
 GrB_Info GB_AemultB__max_uint32
 (
     GrB_Matrix C,
-    const int C_sparsity,
     const GrB_Matrix M,
     const bool Mask_struct,
-    const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
     const int64_t *GB_RESTRICT C_to_M,
     const int64_t *GB_RESTRICT C_to_A,
     const int64_t *GB_RESTRICT C_to_B,
     const GB_task_struct *GB_RESTRICT TaskList,
-    const int C_ntasks,
-    const int C_nthreads,
-    GB_Context Context
+    const int ntasks,
+    const int nthreads
 )
 { 
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    int64_t *pstart_Mslice = NULL, *kfirst_Mslice = NULL, *klast_Mslice = NULL ;
-    int64_t *pstart_Aslice = NULL, *kfirst_Aslice = NULL, *klast_Aslice = NULL ;
-    int64_t *pstart_Bslice = NULL, *kfirst_Bslice = NULL, *klast_Bslice = NULL ;
     #include "GB_emult_template.c"
-    GB_FREE_ALL ;
     return (GrB_SUCCESS) ;
     #endif
 }
-
-//------------------------------------------------------------------------------
-// Cx = op (x,Bx):  apply a binary operator to a matrix with scalar bind1st
-//------------------------------------------------------------------------------
-
-
-
-GrB_Info GB_bind1st__max_uint32
-(
-    GB_void *Cx_output,         // Cx and Bx may be aliased
-    const GB_void *x_input,
-    const GB_void *Bx_input,
-    const int8_t *GB_RESTRICT Bb,
-    int64_t anz,
-    int nthreads
-)
-{ 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
-    uint32_t *Cx = (uint32_t *) Cx_output ;
-    uint32_t   x = (*((uint32_t *) x_input)) ;
-    uint32_t *Bx = (uint32_t *) Bx_input ;
-    int64_t p ;
-    #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (p = 0 ; p < anz ; p++)
-    {
-        if (!GBB (Bb, p)) continue ;
-        uint32_t bij = Bx [p] ;
-        Cx [p] = GB_IMAX (x, bij) ;
-    }
-    return (GrB_SUCCESS) ;
-    #endif
-}
-
-
-
-//------------------------------------------------------------------------------
-// Cx = op (Ax,y):  apply a binary operator to a matrix with scalar bind2nd
-//------------------------------------------------------------------------------
-
-
-
-GrB_Info GB_bind2nd__max_uint32
-(
-    GB_void *Cx_output,         // Cx and Ax may be aliased
-    const GB_void *Ax_input,
-    const GB_void *y_input,
-    const int8_t *GB_RESTRICT Ab,
-    int64_t anz,
-    int nthreads
-)
-{ 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
-    int64_t p ;
-    uint32_t *Cx = (uint32_t *) Cx_output ;
-    uint32_t *Ax = (uint32_t *) Ax_input ;
-    uint32_t   y = (*((uint32_t *) y_input)) ;
-    #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (p = 0 ; p < anz ; p++)
-    {
-        if (!GBB (Ab, p)) continue ;
-        uint32_t aij = Ax [p] ;
-        Cx [p] = GB_IMAX (aij, y) ;
-    }
-    return (GrB_SUCCESS) ;
-    #endif
-}
-
-
-
-//------------------------------------------------------------------------------
-// C = op (x, A'): transpose and apply a binary operator
-//------------------------------------------------------------------------------
-
-
-
-// cij = op (x, aij), no typecasting (in spite of the macro name)
-#undef  GB_CAST_OP
-#define GB_CAST_OP(pC,pA)                       \
-{                                               \
-    uint32_t aij = Ax [pA] ;                      \
-    Cx [pC] = GB_IMAX (x, aij) ;        \
-}
-
-GrB_Info GB_bind1st_tran__max_uint32
-(
-    GrB_Matrix C,
-    const GB_void *x_input,
-    const GrB_Matrix A,
-    int64_t *GB_RESTRICT *Workspaces,
-    const int64_t *GB_RESTRICT A_slice,
-    int nworkspaces,
-    int nthreads
-)
-{ 
-    // GB_unop_transpose.c uses GB_ATYPE, but A is
-    // the 2nd input to binary operator z=f(x,y).
-    #undef  GB_ATYPE
-    #define GB_ATYPE \
-    uint32_t
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
-    uint32_t x = (*((const uint32_t *) x_input)) ;
-    #include "GB_unop_transpose.c"
-    return (GrB_SUCCESS) ;
-    #endif
-    #undef  GB_ATYPE
-    #define GB_ATYPE \
-    uint32_t
-}
-
-
-
-//------------------------------------------------------------------------------
-// C = op (A', y): transpose and apply a binary operator
-//------------------------------------------------------------------------------
-
-
-
-// cij = op (aij, y), no typecasting (in spite of the macro name)
-#undef  GB_CAST_OP
-#define GB_CAST_OP(pC,pA)                       \
-{                                               \
-    uint32_t aij = Ax [pA] ;                      \
-    Cx [pC] = GB_IMAX (aij, y) ;        \
-}
-
-GrB_Info GB_bind2nd_tran__max_uint32
-(
-    GrB_Matrix C,
-    const GrB_Matrix A,
-    const GB_void *y_input,
-    int64_t *GB_RESTRICT *Workspaces,
-    const int64_t *GB_RESTRICT A_slice,
-    int nworkspaces,
-    int nthreads
-)
-{ 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
-    uint32_t y = (*((const uint32_t *) y_input)) ;
-    #include "GB_unop_transpose.c"
-    return (GrB_SUCCESS) ;
-    #endif
-}
-
-
 
 #endif
 

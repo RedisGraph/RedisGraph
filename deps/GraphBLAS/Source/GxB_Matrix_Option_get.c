@@ -2,8 +2,8 @@
 // GxB_Matrix_Option_get: get an option in a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE1 ("GxB_Matrix_Option_get (A, field, &value)") ;
+    GB_WHERE ("GxB_Matrix_Option_get (A, field, &value)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     ASSERT_MATRIX_OK (A, "A to get option", GB0) ;
 
@@ -34,47 +34,14 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
     switch (field)
     {
 
-        case GxB_HYPER_SWITCH : 
+        case GxB_HYPER : 
 
             {
                 va_start (ap, field) ;
-                double *hyper_switch = va_arg (ap, double *) ;
+                double *hyper_ratio = va_arg (ap, double *) ;
                 va_end (ap) ;
-                GB_RETURN_IF_NULL (hyper_switch) ;
-                (*hyper_switch) = (double) A->hyper_switch ;
-            }
-            break ;
-
-        case GxB_BITMAP_SWITCH : 
-
-            {
-                va_start (ap, field) ;
-                double *bitmap_switch = va_arg (ap, double *) ;
-                va_end (ap) ;
-                GB_RETURN_IF_NULL (bitmap_switch) ;
-                (*bitmap_switch) = (double) A->bitmap_switch ;
-            }
-            break ;
-
-        case GxB_SPARSITY_CONTROL : 
-
-            {
-                va_start (ap, field) ;
-                int *sparsity = va_arg (ap, int *) ;
-                va_end (ap) ;
-                GB_RETURN_IF_NULL (sparsity) ;
-                (*sparsity) = A->sparsity ;
-            }
-            break ;
-
-        case GxB_SPARSITY_STATUS : 
-
-            {
-                va_start (ap, field) ;
-                int *sparsity = va_arg (ap, int *) ;
-                va_end (ap) ;
-                GB_RETURN_IF_NULL (sparsity) ;
-                (*sparsity) = GB_sparsity (A) ;
+                GB_RETURN_IF_NULL (hyper_ratio) ;
+                (*hyper_ratio) = A->hyper_ratio ;
             }
             break ;
 
@@ -89,21 +56,25 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
             }
             break ;
 
-        case GxB_IS_HYPER : // deprecated; use GxB_SPARSITY_STATUS instead
+        case GxB_IS_HYPER : 
 
             {
                 va_start (ap, field) ;
-                bool *A_is_hyper = va_arg (ap, bool *) ;
+                bool *is_hyper = va_arg (ap, bool *) ;
                 va_end (ap) ;
-                GB_RETURN_IF_NULL (A_is_hyper) ;
-                (*A_is_hyper) = (GB_sparsity (A) == GxB_HYPERSPARSE) ;
+                GB_RETURN_IF_NULL (is_hyper) ;
+                (*is_hyper) = A->is_hyper ;
             }
             break ;
 
         default : 
 
-            return (GrB_INVALID_VALUE) ;
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+                    "invalid option field [%d], must be one of:\n"
+                    "GxB_HYPER [%d], GxB_FORMAT [%d], or GxB_IS_HYPER [%d]",
+                    (int) field, (int) GxB_HYPER, (int) GxB_FORMAT,
+                    (int) GxB_IS_HYPER))) ;
+
     }
     return (GrB_SUCCESS) ;
 }
-

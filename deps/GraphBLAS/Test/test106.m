@@ -1,8 +1,8 @@
 function test106
 %TEST106 GxB_subassign with alias
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng 'default'
 fprintf ('\ntest106: GxB_subassign with alias\n') ;
@@ -18,19 +18,19 @@ for m = [0 1 5 100]
                 for is_hyper = 0:1
 
                     if (is_hyper)
-                        hyper_switch = 1 ;
+                        hyper_ratio = 1 ;
                     else
-                        hyper_switch = 0 ;
+                        hyper_ratio = 0 ;
                     end
 
                     A = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_switch) ;
+                        is_csc, is_hyper, hyper_ratio) ;
                     B = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_switch) ;
+                        is_csc, is_hyper, hyper_ratio) ;
                     C = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_switch) ;
+                        is_csc, is_hyper, hyper_ratio) ;
                     M = GB_spec_random (m, n, d, 100, 'double', ...
-                        is_csc, is_hyper, hyper_switch) ;
+                        is_csc, is_hyper, hyper_ratio) ;
 
                     C1a = GB_mex_subassign  (C, [ ], [ ],  C,  I0, J0, [ ]) ;
                     C2  = GB_spec_subassign (C, [ ], [ ],  C,  I1, J1, [ ], 0) ;

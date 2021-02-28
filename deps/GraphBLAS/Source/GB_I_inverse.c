@@ -2,8 +2,8 @@
 // GB_I_inverse: invert an index list
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -48,14 +48,14 @@ GrB_Info GB_I_inverse           // invert the I list for C=A(I,:)
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Mark  = GB_CALLOC (avlen, int64_t) ;
-    Inext = GB_MALLOC (nI,    int64_t) ;
+    GB_CALLOC_MEMORY (Mark,  avlen, sizeof (int64_t)) ;
+    GB_MALLOC_MEMORY (Inext, nI,    sizeof (int64_t)) ;
     if (Inext == NULL || Mark == NULL)
     { 
         // out of memory
-        GB_FREE (Mark) ;
-        GB_FREE (Inext) ;
-        return (GrB_OUT_OF_MEMORY) ;
+        GB_FREE_MEMORY (Mark,  avlen, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (Inext, nI,    sizeof (int64_t)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------

@@ -1,0 +1,7 @@
+#!/bin/csh
+./tri_run \
+	~//GraphChallenge/ssget/LAW/uk-2005/uk-2005_adj.tsv.gz \
+ 	~/GraphChallenge/snap/friendster/friendster_adj.tsv.gz \
+ 	~/GraphChallenge/synthetic/graph500-scale24-ef16/graph500-scale24-ef16_adj.tsv.gz \
+ 	~/GraphChallenge/synthetic/graph500-scale25-ef16/graph500-scale25-ef16_adj.tsv.gz
+

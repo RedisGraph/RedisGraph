@@ -1,8 +1,8 @@
 function testc8
 %TESTC8 test complex eWiseAdd and eWiseMult
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('testc8: test complex eWiseAdd and eWiseMult\n') ;
 
@@ -18,21 +18,21 @@ for m = [1 5 10 100]
             S = GB_mex_complex (sparse (m,n)) ;
 
             C1 = GB_mex_complex (A + B) ;
-            C2 = GB_mex_Matrix_eWiseAdd (S, [], [], 'plus', A, B, []) ;
+            C2 = GB_mex_eWiseAdd_Matrix (S, [], [], 'plus', A, B, []) ;
             assert (isequal (C1, C2.matrix)) ;
 
             if (n == 1)
-                C2 = GB_mex_Vector_eWiseAdd (S, [], [], 'plus', A, B, []) ;
+                C2 = GB_mex_eWiseAdd_Vector (S, [], [], 'plus', A, B, []) ;
                 assert (isequal (C1, C2.matrix)) ;
             end
 
             C1 = GB_mex_complex (A .* B) ;
-            C2 = GB_mex_Matrix_eWiseMult (S, [], [], 'times', A, B, []) ;
+            C2 = GB_mex_eWiseMult_Matrix (S, [], [], 'times', A, B, []) ;
             % drop explicit zeros from C2.matrix:
             assert (isequal (C1, 1*C2.matrix)) ;
 
             if (n == 1)
-                C2 = GB_mex_Vector_eWiseMult (S, [], [], 'times', A, B, []) ;
+                C2 = GB_mex_eWiseMult_Vector (S, [], [], 'times', A, B, []) ;
                 assert (isequal (C1, 1*C2.matrix)) ;
             end
         end

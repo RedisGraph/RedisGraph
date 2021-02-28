@@ -2,65 +2,49 @@ function C = GB_spec_op (op, A, B)
 %GB_SPEC_OP apply a unary or binary operator
 %
 % Apply a binary operator z = f (x,y) element-wise to x and y, or a unary
-% operator z = f(x) just x.  The operator op is any built-in GraphBLAS
-% operator.
+% operator z = f(x) just x.  The operator op
+% is any built-in GraphBLAS operator.
 %
 % op or op.opname is a string with just the operator name.  Valid names of
 % binary operators are 'first', 'second', 'min', 'max', 'plus', 'minus',
 % 'rminus', 'times', 'div', 'rdiv', 'eq', 'ne', 'gt', 'lt', 'ge', 'le', 'or',
-% 'and', 'xor'.  'iseq', 'isne', 'isgt', 'islt', 'isge', 'le', 'pair', 'any',
-% 'pow', ('bitget' or 'bget'), ('bitset' or 'bset'), ('bitclr' or 'bclr'),
-% ('bitand' or 'band'), ('bitor' or 'bor'), ('bitxor' or 'bxor'), ('bitxnor',
-% 'bxnor'), ('bitshift' or 'bshift'), ('bitnot' or 'bitcmp'), 'atan2', 'hypot',
-% ('ldexp' or 'pow2'), ('complex', 'cmplx').  
+% 'and', 'xor'.  'iseq', 'isne', 'isgt', 'islt', 'isge', 'le', 'pair', 'any'
 %
-% Unary operators are 'one', 'identity', 'ainv', 'abs', 'minv', 'not', 'bnot',
-% 'sqrt', 'log', 'exp', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh',
-% 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'signum', 'ceil', 'floor',
-% 'round', ('trunc' or 'fix'), 'exp2', 'expm1', 'log10', 'log2', ('lgamma' or
-% 'gammaln'), ('tgamma' or 'gamma'), 'erf', 'erfc', 'frexpx', 'frexpe', 'conj',
-% ('creal' or 'real'), ('cimag' or 'imag'), ('carg' or 'angle'), 'isinf',
-% 'isnan', 'isfinite'.
+% Unary operators are 'one', 'identity', 'ainv', 'abs', 'minv', and 'not'
 %
-% op.optype: 'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32',
-% 'int64', 'uint64', 'single', 'double', 'single complex' or 'double complex'.
+% op.opclass: 'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32',
+%  'uint32', 'int64', 'uint64', 'single', or 'double'
 %
-% The class of z is the same as the class of the output of the operator, which
-% is op.optype except for: (1) 'eq', 'ne', 'gt', 'lt', 'ge', 'le', in which
-% case z is logical, (2) 'complex', where x and y are real and z is complex,
-% (3) bitshift (where x has the optype and y is int8).
+% The class of Z is the same as the class of the output of the operator,
+% which is op.opclass except for 'eq', 'ne', 'gt', 'lt', 'ge', 'le',
+% in which case Z is logical.
 %
 % Intrinsic MATLAB operators are used as much as possible, so as to test
 % GraphBLAS operators.  Some must be done in GraphBLAS because the
 % divide-by-zero and overflow rules for integers differs between MATLAB and C.
-% Also, typecasting in MATLAB and GraphBLAS differs with underflow and overflow
-% conditions.
-%
-% Positional ops are not computed by this function.
+% Also, typecasting in MATLAB and GraphBLAS differs under underflow and
+% overflow conditions.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % get the operator name and class
-[opname optype ztype xtype ytype] = GB_spec_operator (op, GB_spec_type (A)) ;
-
-if (GB_spec_is_positional (opname))
-    error ('positional op not supported by this funciton') ;
-end
+[opname opclass] = GB_spec_operator (op, class (A)) ;
 
 % cast the inputs A and B to the inputs of the operator
-if (~isequal (GB_spec_type (A), xtype))
-    x = GB_mex_cast (A, xtype) ;
+if (~isequal (class (A), opclass))
+    x = GB_mex_cast (A, opclass) ;
 else
     x = A ;
 end
 
+% use MATLAB for integer and logical plus, minus, times, and div
 use_matlab = (isa (x, 'float') && ...
-    (contains (optype, 'single') || contains (optype, 'double'))) ;
+    (isequal (opclass, 'single') || isequal (opclass, 'double'))) ;
 
-if (nargin > 2 && ~ischar (B))
-    if (~isequal (GB_spec_type (B), ytype))
-        y = GB_mex_cast (B, ytype) ;
+if (nargin > 2)
+    if (~isequal (class (B), opclass))
+        y = GB_mex_cast (B, opclass) ;
     else
         y = B ;
     end
@@ -69,7 +53,7 @@ end
 
 switch opname
 
-    % binary operators, result is ztype
+    % 12 binary operators, result is opclass
     case 'first'
         z = x ;
     case 'second'
@@ -77,7 +61,7 @@ switch opname
     case 'any'
         z = y ;
     case 'pair'
-        z = GB_spec_ones (size (x), ztype) ;
+        z = ones (size (x), opclass) ;
     case 'min'
         % min(x,y) in SuiteSparse:GraphBLAS is min(x,y,'omitnan') in MATLAB.
         % see discussion in SuiteSparse/GraphBLAS/Source/GB.h
@@ -122,26 +106,20 @@ switch opname
         else
             z = GB_mex_op (op, x, y) ;
         end
-    case 'pow'
-        if (use_matlab)
-            z = x .^ y ;
-        else
-            z = GB_mex_op (op, x, y) ;
-        end
 
-    % 6 binary comparison operators (result is ztype)
+    % 6 binary comparison operators (result is same as opclass)
     case 'iseq'
-        z = GB_mex_cast (x == y, ztype) ;
+        z = cast (x == y, opclass) ;
     case 'isne'
-        z = GB_mex_cast (x ~= y, ztype) ;
+        z = cast (x ~= y, opclass) ;
     case 'isgt'
-        z = GB_mex_cast (x >  y, ztype) ;
+        z = cast (x >  y, opclass) ;
     case 'islt'
-        z = GB_mex_cast (x <  y, ztype) ;
+        z = cast (x <  y, opclass) ;
     case 'isge'
-        z = GB_mex_cast (x >= y, ztype) ;
+        z = cast (x >= y, opclass) ;
     case 'isle'
-        z = GB_mex_cast (x <= y, ztype) ;
+        z = cast (x <= y, opclass) ;
 
     % 6 binary comparison operators (result is boolean)
     case 'eq'
@@ -157,81 +135,17 @@ switch opname
     case 'le'
         z = (x <= y) ;
 
-    % 3 binary logical operators (result is ztype)
+    % 3 binary logical operators (result is opclass)
     case 'or'
-        z = GB_mex_cast ((x ~= 0) | (y ~= 0), ztype) ;
+        z = cast ((x ~= 0) | (y ~= 0), opclass) ;
     case 'and'
-        z = GB_mex_cast ((x ~= 0) & (y ~= 0), ztype) ;
+        z = cast ((x ~= 0) & (y ~= 0), opclass) ;
     case 'xor'
-        z = GB_mex_cast ((x ~= 0) ~= (y ~= 0), ztype) ;
+        z = cast ((x ~= 0) ~= (y ~= 0), opclass) ;
 
-    % bitwise operators
-    case { 'bitget', 'bget' }
-        bits = GB_spec_nbits (ztype) ;
-        m = (y > 0 & y <= bits) ;
-        t = bitget (x (m), y (m), ztype) ;
-        z = zeros (size (x), ztype) ;
-        z (m) = t ;
-
-    case { 'bitset', 'bset' }
-        bits = GB_spec_nbits (ztype) ;
-        m = (y > 0 & y <= bits) ;
-        t = bitset (x (m), y (m), 1, ztype) ;
-        z = x ;
-        z (m) = t ;
-
-    case { 'bitclr', 'bclr' }
-        bits = GB_spec_nbits (ztype) ;
-        m = (y > 0 & y <= bits) ;
-        t = bitset (x (m), y (m), 0, ztype) ;
-        z = x ;
-        z (m) = t ;
-
-    case { 'bitand', 'band' }
-        z = bitand (x, y, ztype) ;
-    case { 'bitor', 'bor' }
-        z = bitor (x, y, ztype) ;
-    case { 'bitxor', 'bxor' }
-        z = bitxor (x, y, ztype) ;
-    case { 'bitxnor', 'bxnor' }
-        z = bitcmp (bitxor (x, y, ztype), ztype) ;
-    case { 'bitshift', 'bshift' }
-        z = bitshift (x, y, ztype) ;
-    case { 'bitnot', 'bitcmp', 'bnot', 'bcmp' }
-        z = bitcmp (x, ztype) ;
-
-    case 'atan2'
-        z = atan2 (x,y) ;
-
-    case 'hypot'
-        z = hypot (x,y) ;
-
-    case { 'ldexp', 'pow2' }
-        z = pow2 (x,y) ;
-
-    case { 'fmod', 'rem' }
-        % see ANSI C11 fmod function
-        % the MATLAB rem differs slightly from the ANSI C11 fmod,
-        % if x/y is O(eps) smaller than an integer.
-        z = rem (x,y) ;
-
-    case { 'remainder' }
-        % see ANSI C11 remainder function
-        m = (y ~= 0 & x ~= y)  ;
-        z = nan (size (x), ztype) ;
-        z (x == y) = 0 ;
-        z (m) = x (m) - round (x (m) ./ y (m)) .* y (m) ;
-
-    case { 'copysign' }
-        % see ANSI C11 copysign function
-        z = abs (x) .* (2 * double (y >= 0) - 1) ;
-
-    case { 'complex', 'cmplx' }
-        z = complex (x,y) ;
-
-    % unary operators (result is ztype)
+    % unary operators (result is opclass)
     case 'one'
-        z = GB_mex_cast (1, ztype) ;
+        z = cast (1, opclass) ;
     case 'identity'
         z = x ;
     case 'ainv'
@@ -253,133 +167,13 @@ switch opname
             z = GB_mex_op (op, x) ;
         end
     case 'not'
-        z = GB_mex_cast (~(x ~= 0), ztype) ;
-
-    case 'bnot'
-        z = bitcmp (x) ;
-
-    case 'sqrt'
-        z = sqrt (x) ;
-
-    case 'log'
-        z = log (x) ;
-
-    case 'exp'
-        z = exp (x) ;
-
-    case 'sin'
-        z = sin (x) ;
-
-    case 'cos'
-        z = cos (x) ;
-
-    case 'tan'
-        z = tan (x) ;
-
-    case 'asin'
-        z = asin (x) ;
-
-    case 'acos'
-        z = acos (x) ;
-
-    case 'atan'
-        z = atan (x) ;
-
-    case 'sinh'
-        z = sinh (x) ;
-
-    case 'cosh'
-        z = cosh (x) ;
-
-    case 'tanh'
-        z = tanh (x) ;
-
-    case 'asinh'
-        z = asinh (x) ;
-
-    case 'acosh'
-        z = acosh (x) ;
-
-    case 'atanh'
-        z = atanh (x) ;
-
-    case { 'sign', 'signum' }
-        z = sign (x) ;
-
-    case 'ceil'
-        z = ceil (x) ;
-
-    case 'floor'
-        z = floor (x) ;
-
-    case 'round'
-        z = round (x) ;
-
-    case { 'trunc', 'fix' }
-        z = fix (x) ;
-
-    case { 'exp2' }
-        z = 2.^x ;
-
-    case 'expm1'
-        z = expm1 (x) ;
-
-    case 'log10'
-        z = log10 (x) ;
-
-    case 'log2'
-        z = log2 (x) ;
-
-    case 'log1p'
-        z = log1p (x) ;
-
-    case { 'lgamma', 'gammaln' }
-        z = gammaln (x) ;
-
-    case { 'tgamma', 'gamma' }
-        z = gamma (x) ;
-
-    case 'erf'
-        z = erf (x) ;
-
-    case 'erfc'
-        z = erfc (x) ;
-
-    case 'frexpx'
-        [z,~] = log2 (x) ;
-
-    case 'frexpe'
-        [~,z] = log2 (x) ;
-
-    case 'conj'
-        z = conj (x) ;
-
-    case { 'creal', 'real' }
-        z = real (x) ;
-
-    case { 'cimag', 'imag' }
-        z = imag (x) ;
-
-    case { 'carg', 'angle' }
-        z = angle (x) ;
-
-    case 'isinf'
-        z = isinf (x) ;
-
-    case 'isnan'
-        z = isnan (x) ;
-
-    case 'isfinite'
-        z = isfinite (x) ;
+        z = cast (~(x ~= 0), opclass) ;
 
     otherwise
         opname
         error ('unknown op') ;
 end
 
-if (~isequal (ztype, GB_spec_type (z)))
-    z = GB_mex_cast (z, ztype) ;
-end
-
 C = z ;
+
 

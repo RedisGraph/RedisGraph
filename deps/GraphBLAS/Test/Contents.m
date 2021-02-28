@@ -24,20 +24,20 @@
 %   GB_spec_build                 - a MATLAB version of GrB_Matrix_build and GrB_vector_build
 %   GB_spec_compare               - compare MATLAB mimic result with GraphBLAS result
 %   GB_spec_descriptor            - return components of a descriptor
-%   GB_spec_Matrix_eWiseAdd       - a MATLAB mimic of GrB_Matrix_eWiseAdd
-%   GB_spec_Vector_eWiseAdd       - a MATLAB mimic of GrB_Vector_eWiseAdd
-%   GB_spec_Matrix_eWiseMult      - a MATLAB mimic of GrB_Matrix_eWiseMult
-%   GB_spec_Vector_eWiseMult      - a MATLAB mimic of GrB_Vector_eWiseMult
+%   GB_spec_eWiseAdd_Matrix       - a MATLAB mimic of GrB_eWiseAdd_Matrix
+%   GB_spec_eWiseAdd_Vector       - a MATLAB mimic of GrB_eWiseAdd_Vector
+%   GB_spec_eWiseMult_Matrix      - a MATLAB mimic of GrB_eWiseMult_Matrix
+%   GB_spec_eWiseMult_Vector      - a MATLAB mimic of GrB_eWiseMult_Vector
 %   GB_spec_extractTuples         - a MATLAB mimic of GrB_*_extractTuples
 %   GB_spec_identity              - the additive identity of a monoid
-%   GB_spec_kron                  - a MATLAB mimic of GrB_kronecker
+%   GB_spec_kron                  - a MATLAB mimic of GxB_kron
 %   GB_spec_mask                  - a pure MATLAB implementation of GrB_mask
 %   GB_spec_matrix                - a MATLAB mimic that conforms a matrix to the GraphBLAS spec
 %   GB_spec_mxm                   - a MATLAB mimic of GrB_mxm
 %   GB_spec_mxv                   - a MATLAB mimic of GrB_mxv
 %   GB_spec_op                    - apply a unary or binary operator
 %   GB_spec_operator              - get the contents of an operator
-%   GB_spec_opsall                - return a list of all operators, types, and semirings
+%   GB_spec_opsall                - return a list of all operators, classes, and semirings
 %   GB_spec_random                - generate random matrix
 %   GB_spec_reduce_to_scalar      - a MATLAB mimic of GrB_reduce (to scalar)
 %   GB_spec_reduce_to_vector      - a MATLAB mimic of GrB_reduce (to vector)
@@ -89,7 +89,7 @@
 %   test24   - test GrB_reduce
 %   test25   - test GxB_select
 %   test26   - performance test for GxB_select
-%   test27   - test GxB_select with user-defined select op (LoHi_band)
+%   test27   - test GxB_select with user-defined select op (band)
 %   test28   - test mxm with aliased inputs, C<C> = accum(C,C*C)
 %   test29   - GrB_reduce with zombies
 %   test30   - test GxB_subassign
@@ -100,6 +100,7 @@
 %   test34   - test GrB_eWiseAdd
 %   test35   - test GrB_*_extractTuples
 %   test36   - performance test of matrix subref
+%   test37   - performance test of qsort
 %   test38   - test GrB_transpose
 %   test39   - performance test for GrB_transpose
 %   test40   - test GrB_Matrix_extractElement
@@ -128,7 +129,7 @@
 %   test60   - test min and max operators with NaNs
 %   test61   - performance test of GrB_eWiseMult
 %   test62   - test GrB_apply
-%   test63   - test GraphBLAS binary operators
+%   test63   - test GraphBLAS operators
 %   test64   - test GxB_*_subassign, scalar expansion, with and without duplicates
 %   test64b  - test GrB_*_assign, scalar expansion, with and without duplicates
 %   test65   - test type casting
@@ -142,7 +143,7 @@
 %   test75   - test GrB_mxm and GrB_vxm on all semirings
 %   test75b  - GrB_mxm and GrB_vxm on all semirings (shorter test than test75)
 %   test76   - test GxB_resize
-%   test77   - test GrB_kronecker
+%   test77   - test GxB_kron
 %   test78   - test subref
 %   test79   - run all matrices with test06
 %   test80   - rerun test06 with different matrices
@@ -153,7 +154,7 @@
 %   test85   - test GrB_transpose: 1-by-n with typecasting
 %   test86   - performance test of of GrB_Matrix_extract
 %   test87   - performance test of GrB_mxm
-%   test88   - test hypersparse matrices with hash-based method
+%   test88   - test hypersparse matrices with heap-based method
 %   test89   - performance test of complex A*B
 %   test90   - test AxB with user-defined semirings: plus_rdiv and plus_rdiv2
 %   test91   - test subref performance on dense vectors
@@ -168,7 +169,7 @@
 %   test99   - test GB_mex_transpose with explicit zeros in the Mask
 %   test100  - test GB_mex_isequal
 %   test101  - test import/export
-%   test102  - test GB_AxB_saxpy3_flopcount
+%   test102  - test GB_AxB_flopcount
 %   test103  - test aliases in GrB_transpose
 %   test104  - export/import
 %   test105  - eWiseAdd with hypersparse matrices
@@ -216,13 +217,7 @@
 %   test147  - test C<M>A*B with very sparse M
 %   test148  - eWiseAdd with aliases
 %   test149  - test fine hash method for C<!M>=A*B
-%   test150  - test GrB_mxm with typecasting and zombies (dot3 and saxpy)
-%   test151  - test bitwise operators
-%   test152  - test C = A+B for dense A, B, and C
-%   test153  - list all possible semirings
-%   test154  - test GrB_apply with scalar binding
-%   test155  - test GrB_*_setElement and GrB_*_removeElement
-%   test156  - test assign C=A with typecasting
+%   test150  - test GrB_mxm with typecasting and zombies (dot3)
 
 %   testc1   - test complex operators
 %   testc2   - test complex A*B, A'*B, A*B', A'*B', A+B
@@ -273,12 +268,13 @@
 %   stat             - report status of statement coverage and malloc debugging
 %   GB_define        - create C source code for GraphBLAS.h
 
-%   grbresults       - return time taken by last GraphBLAS function
+%   grbresults       - return time taken by last GraphBLAS function, and AxB method
 %   isequal_roundoff - compare two matrices, allowing for roundoff errors
 
 %   test_other       - installs all packages needed for extensive tests
 
 %   grb_clear_coverage - clear current statement coverage
+%   gbclear            - clear and reload GraphBLAS
 %   grb_get_coverage   - return current statement coverage
 
 %   bfs_book         - run BFS on a small graph
@@ -305,6 +301,5 @@
 %   ../Demo/MATLAB/kron_demo      - test Program/kron_demo.c and compare with MATLAB kron
 %   ../Demo/MATLAB/kron_test      - test kron_demo.m
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
-
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.

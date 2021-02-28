@@ -105,13 +105,8 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 	// GxB_print (d, 3) ;
 
 	// D = (1/diag (d)) * DAMPING
-	bool jumbled ;
 	GrB_Type type ;
-    GrB_Index vi_size;
-    GrB_Index vx_size;
-
-	assert(GxB_Vector_export_CSC(&d, &type, &n, &I, (void **)(&X), &vi_size,
-				&vx_size, &nvals, &jumbled, NULL) == GrB_SUCCESS) ;
+	assert(GxB_Vector_export(&d, &type, &n, &nvals, &I, (void **)(&X), NULL) == GrB_SUCCESS) ;
 
 	for(int64_t k = 0 ; k < nvals ; k++) X [k] = DAMPING / X [k] ;
 	assert(GrB_Matrix_new(&D, GrB_FP32, n, n) == GrB_SUCCESS) ;
@@ -210,8 +205,7 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 	// [r,irank] = sort (r, 'descend') ;
 
 	// extract the contents of r
-	assert(GxB_Vector_export_CSC(&r, &type, &n, &I, (void **)(&X), &vi_size,
-				&vx_size, &nvals, &jumbled, NULL) == GrB_SUCCESS) ;
+	assert(GxB_Vector_export(&r, &type, &n, &nvals, &I, (void **)(&X), NULL) == GrB_SUCCESS) ;
 
 	// this will always be true since r is dense, but check anyway:
 	if(nvals != n) return (GrB_PANIC) ;

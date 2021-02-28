@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
 // SuiteSparse/GraphBLAS/Demo/Source/ipagerank: pagerank using uint64 semiring
 //------------------------------------------------------------------------------ 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------ 
 // A is a square unsymmetric binary matrix of size n-by-n, where A(i,j) is the
@@ -18,19 +18,17 @@
 
 // This method uses no floating-point arithmetic at all.
 
-#include "GraphBLAS.h"
-
 //------------------------------------------------------------------------------
 // helper macros
 //------------------------------------------------------------------------------
 
 // free all workspace
-#define FREEWORK                        \
-{                                       \
-    GrB_Matrix_free (&C) ;              \
-    GrB_Vector_free (&r) ;              \
-    if (I != NULL) free (I) ;           \
-    if (X != NULL) free (X) ;           \
+#define FREEWORK                \
+{                               \
+    GrB_Matrix_free (&C) ;             \
+    GrB_Vector_free (&r) ;             \
+    if (I != NULL) free (I) ;   \
+    if (X != NULL) free (X) ;   \
     GrB_UnaryOp_free (&op_scale) ;      \
     GrB_UnaryOp_free (&op_div) ;        \
 }
@@ -42,9 +40,7 @@
     FREEWORK ;                  \
 }
 
-#undef GB_PUBLIC
-#define GB_LIBRARY
-#include "graphblas_demos.h"
+#include "demos.h"
 
 //------------------------------------------------------------------------------
 // scalar operators
@@ -95,7 +91,6 @@ int icompar (const void *x, const void *y)
 // ipagerank: compute the iPageRank of all nodes in a graph
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info ipagerank          // GrB_SUCCESS or error condition
 (
     iPageRank **Phandle,    // output: pointer to array of iPageRank structs
@@ -178,10 +173,8 @@ GrB_Info ipagerank          // GrB_SUCCESS or error condition
     OK (irowscale (&C, A)) ;    // C = scale A by out-degree
 
     // create unary operators
-    OK (GrB_UnaryOp_new (&op_scale,
-        (GxB_unary_function) iscale, GrB_UINT64, GrB_UINT64)) ;
-    OK (GrB_UnaryOp_new (&op_div,
-        (GxB_unary_function) idiv,   GrB_UINT64, GrB_UINT64)) ;
+    OK (GrB_UnaryOp_new (&op_scale, iscale, GrB_UINT64, GrB_UINT64)) ;
+    OK (GrB_UnaryOp_new (&op_div,   idiv,   GrB_UINT64, GrB_UINT64)) ;
 
     //--------------------------------------------------------------------------
     // iterate to compute the pagerank of each node
@@ -196,7 +189,7 @@ GrB_Info ipagerank          // GrB_SUCCESS or error condition
 
         // s = ia * sum (r) ;
         uint64_t s ;
-        OK (GrB_Vector_reduce_UINT64 (&s, NULL, GrB_PLUS_MONOID_UINT64,
+        OK (GrB_Vector_reduce_UINT64 (&s, NULL, GxB_PLUS_UINT64_MONOID,
             r, NULL)) ;
         s = s * ia ;
 
@@ -224,20 +217,20 @@ GrB_Info ipagerank          // GrB_SUCCESS or error condition
     // [r,irank] = sort (r, 'descend') ;
 
     // [I,X] = find (r) ;
-    X = (uint64_t *) malloc (n * sizeof (uint64_t)) ;
-    I = (GrB_Index *) malloc (n * sizeof (GrB_Index)) ;
+    X = malloc (n * sizeof (uint64_t)) ;
+    I = malloc (n * sizeof (GrB_Index)) ;
     CHECK (I != NULL && X != NULL, GrB_OUT_OF_MEMORY) ;
     GrB_Index nvals = n ;
     OK (GrB_Vector_extractTuples_UINT64 (I, X, &nvals, r)) ;
 
     // this will always be true since r is dense, but double-check anyway:
-    CHECK (nvals == n, GrB_INVALID_VALUE) ;
+    CHECK (nvals == n, GrB_PANIC) ;
 
     // r no longer needed
     GrB_Vector_free (&r) ;
 
     // P = struct (X,I)
-    P = (iPageRank *) malloc (n * sizeof (iPageRank)) ;
+    P = malloc (n * sizeof (iPageRank)) ;
     CHECK (P != NULL, GrB_OUT_OF_MEMORY) ;
     for (int64_t k = 0 ; k < nvals ; k++)
     {

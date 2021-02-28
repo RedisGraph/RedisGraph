@@ -1,17 +1,20 @@
 function C = floor (G)
-%FLOOR round entries to nearest integers towards -infinity.
-% C = floor (G) rounds the entries in the matrix G to the nearest integers
-% towards -infinity.
+%FLOOR round entries of a GraphBLAS matrix to the nearest ints to -inf.
+% C = floor (G) rounds the entries in the GraphBLAS matrix G to the
+% nearest integers towards -infinity.
 %
-% See also GrB/ceil, GrB/round, GrB/fix.
+% See also ceil, round, fix.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% FUTURE: this will be much faster as a mexFunction.
 
-Q = G.opaque ;
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (gb_isfloat (gbtype (Q)) && gbnvals (Q) > 0)
-    C = GrB (gbapply ('floor', Q)) ;
+if (isfloat (G) && GrB.entries (G) > 0)
+    [m, n] = size (G) ;
+    desc.base = 'zero-based' ;
+    [i, j, x] = GrB.extracttuples (G, desc) ;
+    C = GrB.build (i, j, floor (x), m, n, desc) ;
 else
     C = G ;
 end

@@ -2,8 +2,8 @@
 // GB_mex_about: print the 'about' information
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -11,7 +11,6 @@
 
 #include "GB_mex.h"
 #include "GB_mex_errors.h"
-#include "GB_bitmap_AxB_saxpy.h"
 
 #define USAGE "GB_mex_about"
 
@@ -19,26 +18,27 @@ GrB_Info ack (int64_t *stuff, GrB_Matrix GunkIt) ;
 
 GrB_Info ack (int64_t *stuff, GrB_Matrix GunkIt)
 {
+    GB_WHERE ("ack") ;
     GB_RETURN_IF_NULL (stuff) ;
     GB_RETURN_IF_NULL_OR_FAULTY (GunkIt) ;
     return (GrB_SUCCESS) ;
 }
 
-bool select_plus_one (GrB_Index i, GrB_Index j, 
-    const double *x, const double *thunk) ;
+bool select_plus_one (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, const double *x, const double *thunk) ;
 
-bool select_nothing (GrB_Index i, GrB_Index j,
-    const void *x, const void *thunk) ;
+bool select_nothing (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, const void *x, const void *thunk) ;
 
-bool select_plus_one (GrB_Index i, GrB_Index j,
-    const double *x, const double *thunk)
+bool select_plus_one (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, const double *x, const double *thunk)
 {
     // return true if x >= thunk+1
     return ((*x) >= ((*thunk)+1)) ;
 }
 
-bool select_nothing (GrB_Index i, GrB_Index j,
-    const void *x, const void *thunk)
+bool select_nothing (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, const void *x, const void *thunk)
 {
     return (false) ;
 }
@@ -60,7 +60,6 @@ void mexFunction
 
     FILE *f = fopen ("errlog2.txt", "w") ;
     printf ("in %s\n", __FILE__) ;
-    char *err ;
 
     //--------------------------------------------------------------------------
     // test GrB_init with invalid mode
@@ -73,9 +72,27 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
 
-    // GB_CONTEXT (USAGE) ;
+    GB_WHERE (USAGE) ;
 
-    printf ("in %s:\n", __FILE__) ;
+    printf ("table of codes:\n") ;
+    printf ("bool  code: %d class: %d\n", GB_BOOL_code   , mxLOGICAL_CLASS) ;
+    printf ("int8  code: %d class: %d\n", GB_INT8_code   , mxINT8_CLASS   ) ;
+    printf ("uint8 code: %d class: %d\n", GB_UINT8_code  , mxUINT8_CLASS  ) ;
+    printf ("int16 code: %d class: %d\n", GB_INT16_code  , mxINT16_CLASS  ) ;
+    printf ("uin16 code: %d class: %d\n", GB_UINT16_code , mxUINT16_CLASS ) ;
+    printf ("int32 code: %d class: %d\n", GB_INT32_code  , mxINT32_CLASS  ) ;
+    printf ("uin32 code: %d class: %d\n", GB_UINT32_code , mxUINT32_CLASS ) ;
+    printf ("in64  code: %d class: %d\n", GB_INT64_code  , mxINT64_CLASS  ) ;
+    printf ("uin64 code: %d class: %d\n", GB_UINT64_code , mxUINT64_CLASS ) ;
+    printf ("fp32  code: %d class: %d\n", GB_FP32_code   , mxSINGLE_CLASS ) ;
+    printf ("fp64  code: %d class: %d\n", GB_FP64_code   , mxDOUBLE_CLASS ) ;
+    printf ("struct   class: %d\n", mxSTRUCT_CLASS) ;
+    printf ("cell     class: %d\n", mxCELL_CLASS) ;
+    printf ("void     class: %d\n", mxVOID_CLASS) ;
+    printf ("function class: %d\n", mxFUNCTION_CLASS) ;
+    printf ("unknown mxClassID: %d\n", mxUNKNOWN_CLASS ) ;
+
+    printf ("in %s:\n%s", __FILE__, GrB_error ( )) ;
 
     printf ("sizeof (struct GB_Type_opaque) %d\n",
              sizeof (struct GB_Type_opaque)) ;
@@ -96,6 +113,12 @@ void mexFunction
     printf ("sizeof (struct GB_Descriptor_opaque) %d\n",
              sizeof (struct GB_Descriptor_opaque)) ;
 
+    info = GB_ERROR (GrB_PANIC, (GB_LOG,
+        "just testing the error log ... not really a panic\n"
+        "hello world, the answer is %d", 42)) ;
+
+    printf ("%s", GrB_error ( )) ;
+
     size_t s ;
     GxB_Type_size (&s, GrB_BOOL  ) ; printf ("%d %d\n", s, sizeof (bool      ));
     GxB_Type_size (&s, GrB_INT8  ) ; printf ("%d %d\n", s, sizeof (int8_t    ));
@@ -113,71 +136,69 @@ void mexFunction
 
     GrB_Type t ;
 
-    GB_UnaryOp_check (GrB_LNOT, "LNOT", GxB_COMPLETE, stdout) ;
+    GB_UnaryOp_check (GrB_LNOT, "LNOT", GxB_COMPLETE, stdout, Context) ;
     GxB_UnaryOp_ztype (&t, GrB_LNOT) ;
-    GB_UnaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
+    GB_UnaryOp_check (t, "ztype", GxB_COMPLETE, stdout, Context) ;
     GxB_UnaryOp_xtype (&t, GrB_LNOT) ;
-    GB_UnaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
+    GB_UnaryOp_check (t, "xtype", GxB_COMPLETE, stdout, Context) ;
 
-    GB_UnaryOp_check (GxB_LNOT_FP32, "LNOT_FP32", GxB_COMPLETE, stdout) ;
+    GB_UnaryOp_check (GxB_LNOT_FP32, "LNOT_FP32", GxB_COMPLETE, stdout, Context) ;
     GxB_UnaryOp_ztype (&t, GxB_LNOT_FP32) ;
-    GB_UnaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
+    GB_UnaryOp_check (t, "ztype", GxB_COMPLETE, stdout, Context) ;
     GxB_UnaryOp_xtype (&t, GxB_LNOT_FP32) ;
-    GB_UnaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
+    GB_UnaryOp_check (t, "xtype", GxB_COMPLETE, stdout, Context) ;
 
-    GB_BinaryOp_check (GxB_ISEQ_INT32, "ISEQ_INT32", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (GxB_ISEQ_INT32, "ISEQ_INT32", GxB_COMPLETE, stdout, Context) ;
     GxB_BinaryOp_ztype (&t, GxB_ISEQ_INT32) ;
-    GB_BinaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (t, "ztype", GxB_COMPLETE, stdout, Context) ;
     GxB_BinaryOp_xtype (&t, GxB_ISEQ_INT32) ;
-    GB_BinaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (t, "xtype", GxB_COMPLETE, stdout, Context) ;
     GxB_BinaryOp_ytype (&t, GxB_ISEQ_INT32) ;
-    GB_BinaryOp_check (t, "ytype", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (t, "ytype", GxB_COMPLETE, stdout, Context) ;
 
-    GB_BinaryOp_check (GrB_EQ_INT32, "EQ_INT32", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (GrB_EQ_INT32, "EQ_INT32", GxB_COMPLETE, stdout, Context) ;
     GxB_BinaryOp_ztype (&t, GrB_EQ_INT32) ;
-    GB_BinaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (t, "ztype", GxB_COMPLETE, stdout, Context) ;
     GxB_BinaryOp_xtype (&t, GrB_EQ_INT32) ;
-    GB_BinaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (t, "xtype", GxB_COMPLETE, stdout, Context) ;
     GxB_BinaryOp_ytype (&t, GrB_EQ_INT32) ;
-    GB_BinaryOp_check (t, "ytype", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (t, "ytype", GxB_COMPLETE, stdout, Context) ;
 
     GrB_Monoid m ;
     GrB_BinaryOp op ;
 
-    GrB_Monoid_new_UINT16_(&m, GrB_PLUS_UINT16, (uint16_t) 0) ;
-    OK (GrB_Monoid_wait_(&m)) ;
-    GB_Monoid_check (m, "plus uint16 monoid", GxB_COMPLETE, stdout) ;
+    GrB_Monoid_new (&m, GrB_PLUS_UINT16, (uint16_t) 0) ;
+    GB_Monoid_check (m, "plus uint16 monoid", GxB_COMPLETE, stdout, Context) ;
     uint16_t id ;
     GxB_Monoid_identity (&id, m) ;
     printf ("id is %d\n", id) ;
     GxB_Monoid_operator (&op, m) ;
-    GB_Monoid_check (op, "plus op from monoid", GxB_COMPLETE, stdout) ;
+    GB_Monoid_check (op, "plus op from monoid", GxB_COMPLETE, stdout, Context) ;
 
-    GrB_Monoid_free_(&m) ;
+    GrB_free (&m) ;
 
     int16_t id0 = INT16_MIN ;
 
-    GrB_Monoid_new_INT16_(&m, GrB_MAX_INT16, id0) ;
-    GB_Monoid_check (m, "max int16 monoid", GxB_COMPLETE, stdout) ;
+    GrB_Monoid_new (&m, GrB_MAX_INT16, id0) ;
+    GB_Monoid_check (m, "max int16 monoid", GxB_COMPLETE, stdout, Context) ;
     int16_t id1 ;
     GxB_Monoid_identity (&id1, m) ;
     printf ("id1 is %d\n", id1) ;
     GxB_Monoid_operator (&op, m) ;
-    GB_BinaryOp_check (op, "plus op from monoid", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (op, "plus op from monoid", GxB_COMPLETE, stdout, Context) ;
 
     GrB_Semiring sem ;
     GrB_Semiring_new (&sem, m, GrB_TIMES_INT16) ;
-    OK (GrB_Semiring_wait_(&sem)) ;
-    GB_Semiring_check (sem, "\nnew sem", GxB_COMPLETE, stdout) ;
+    GB_Semiring_check (sem, "\nnew sem", GxB_COMPLETE, stdout, Context) ;
 
     GrB_Monoid mm ;
     GxB_Semiring_add (&mm, sem) ;
-    GB_Monoid_check (mm, "sem mm", GxB_COMPLETE, stdout) ;
+    GB_Monoid_check (mm, "sem mm", GxB_COMPLETE, stdout, Context) ;
     GxB_Semiring_multiply (&op, sem) ;
-    GB_BinaryOp_check (op, "sem mult", GxB_COMPLETE, stdout) ;
+    GB_BinaryOp_check (op, "sem mult", GxB_COMPLETE, stdout, Context) ;
 
-    GrB_Monoid_free_(&m) ;
-    GrB_Semiring_free_(&sem) ;
+    GrB_free (&m) ;
+    GrB_free (&sem) ;
 
     int64_t *stuff = NULL ;
     int64_t morestuff = 44 ;
@@ -186,16 +207,15 @@ void mexFunction
     info = ack (&morestuff, Gunk) ;
 
     GxB_Matrix_type (&t, Gunk) ;
-    GB_Type_check (t, "matrix Gunk type is:", GxB_COMPLETE, stdout) ;
+    GB_Type_check (t, "matrix Gunk type is:", GxB_COMPLETE, stdout, Context) ;
 
     GrB_Vector victor ;
     GrB_Vector_new (&victor, GrB_UINT32, 43) ;
     GxB_Vector_type (&t, victor) ;
-    OK (GrB_Vector_wait_(&victor)) ;
-    GB_Type_check (t, "victor type is:", GxB_COMPLETE, stdout) ;
+    GB_Type_check (t, "victor type is:", GxB_COMPLETE, stdout, Context) ;
     GxB_Type_size (&s, t) ;
     printf ("and its size of type is %d\n", s) ;
-    GrB_Vector_free_(&victor) ;
+    GrB_free (&victor) ;
 
     //--------------------------------------------------------------------------
     // descriptor
@@ -205,157 +225,90 @@ void mexFunction
     GrB_Desc_Value val ;
 
     GrB_Descriptor_new (&Duh) ;
-    GB_Descriptor_check (Duh, "\n---------------------------------- Duh:",
-        GxB_COMPLETE, stdout) ;
-    GxB_Desc_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
+    GB_Descriptor_check (Duh, "\n---------------------------------- Duh:", GxB_COMPLETE, stdout, Context) ;
+    GxB_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ;
+    GxB_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ;
+    GxB_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ;
+    GxB_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ;
 
-    GxB_Desc_set (Duh, GrB_INP0, GrB_TRAN) ;
-    GB_Descriptor_check (Duh, "\n------------------------------- Duh set:",
-        GxB_COMPLETE, stdout) ;
-    GxB_Desc_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GrB_TRAN) ;
-    GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
+    GxB_set (Duh, GrB_INP0, GrB_TRAN) ;
+    GB_Descriptor_check (Duh, "\n------------------------------- Duh set:", GxB_COMPLETE, stdout, Context) ;
+    GxB_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ;
+    GxB_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ;
+    GxB_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ;
+    GxB_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ;
 
-    GxB_Desc_set (Duh, GrB_MASK, GrB_COMP) ;
-    GB_Descriptor_check (Duh, "\n-----Duh set mask",
-        GxB_COMPLETE, stdout) ;
-    GxB_Desc_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GrB_COMP) ;
-    GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GrB_TRAN) ;
-    GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
+    GxB_set (Duh, GrB_MASK, GrB_COMP) ;
+    GB_Descriptor_check (Duh, "\n-----Duh set mask", GxB_COMPLETE, stdout, Context) ;
+    GxB_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ;
+    GxB_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ;
+    GxB_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ;
+    GxB_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ;
 
-    GxB_Desc_set (Duh, GrB_OUTP, GrB_REPLACE) ;
-    GB_Descriptor_check (Duh, "\n-----Duh set out",
-        GxB_COMPLETE, stdout) ;
-    GxB_Desc_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ; CHECK (val == GrB_REPLACE) ;
-    GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GrB_COMP) ;
-    GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GrB_TRAN) ;
-    GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
+    GxB_set (Duh, GrB_OUTP, GrB_REPLACE) ;
+    GB_Descriptor_check (Duh, "\n-----Duh set out", GxB_COMPLETE, stdout, Context) ;
+    GxB_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ;
+    GxB_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ;
+    GxB_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ;
+    GxB_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ;
 
-    GrB_Descriptor_set (Duh, GrB_MASK, GrB_STRUCTURE) ;
-    GB_Descriptor_check (Duh, "\n-----Duh set mask structural",
-        GxB_COMPLETE, stdout) ;
-    GxB_Desc_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ; CHECK (val == GrB_REPLACE) ;
-    GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GrB_COMP + GrB_STRUCTURE) ;
-    GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GrB_TRAN) ;
-    GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
+    GxB_set (Duh, GrB_MASK, GxB_DEFAULT) ;
+    GB_Descriptor_check (Duh, "\n-----Duh set mask back", GxB_COMPLETE, stdout, Context) ;
+    GxB_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ;
+    GxB_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ;
+    GxB_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ;
+    GxB_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ;
 
-    GrB_Descriptor_set (Duh, GrB_MASK, GxB_DEFAULT) ;
-    GB_Descriptor_check (Duh, "\n-----Duh set mask back",
-        GxB_COMPLETE, stdout) ;
-    GxB_Desc_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ; CHECK (val == GrB_REPLACE) ;
-    GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GrB_TRAN) ;
-    GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
+    info = GxB_set (Duh, GrB_INP1, GrB_REPLACE) ;
+    printf ("%s\n", GrB_error () ) ;
+    GB_Descriptor_check (Duh, "\n-----Duh set in1", GxB_COMPLETE, stdout, Context) ;
+    GxB_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ;
+    GxB_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ;
+    GxB_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ;
+    GxB_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ;
 
-    info = GxB_Desc_set (Duh, GrB_INP1, GrB_REPLACE) ;
-    OK (GrB_Descriptor_wait_(&Duh)) ;
-    GrB_Descriptor_error_(&err, Duh) ;
-    printf ("%s\n", err) ;
-    GB_Descriptor_check (Duh, "\n-----Duh set in1",
-        GxB_COMPLETE, stdout) ;
-    GxB_Desc_get (Duh, GrB_OUTP, &val) ; printf ("got outp %d\n", val) ; CHECK (val == GrB_REPLACE) ;
-    GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-    GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GrB_TRAN) ;
-    GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
-
-    GrB_Descriptor_free_(&Duh) ;
+    GrB_free (&Duh) ;
 
     //--------------------------------------------------------------------------
     // error handling
     //--------------------------------------------------------------------------
 
+    printf ("ok:\n%s", GrB_error ( )) ;
+
     info = ack (NULL, Gunk) ;
+
+    printf ("%s", GrB_error ( )) ;
 
     Gunk->magic = 999 ;
     info = ack (&morestuff, Gunk) ;
+    printf ("%s", GrB_error ( )) ;
 
     Gunk->magic = GB_MAGIC ;
-    GrB_Matrix_free_(&Gunk) ;
+    GrB_free (&Gunk) ;
 
-    GB_Type_check (Complex, "user Complex type", GxB_COMPLETE, stdout);
+    GB_Type_check (Complex, "user Complex type", GxB_COMPLETE, stdout, Context) ;
     GxB_Type_size (&s, Complex) ;
     printf ("size is %d\n", (int) s) ;
 
     //--------------------------------------------------------------------------
-    // about the spec
-    //--------------------------------------------------------------------------
-
-    int all_version [3] = { -1, -1, -1 } ;
-    unsigned int version = 0 , subversion = 9999 ;
-    char *name, *date, *about, *license, *compile_date, *compile_time, *url ;
-
-    OK (GrB_getVersion (&version, &subversion)) ;
-    printf ("Spec: %d.%d.%d ("GBu"): %d.%d\n",
-        GxB_SPEC_MAJOR, GxB_SPEC_MINOR, GxB_SPEC_SUB, GxB_SPEC_VERSION,
-        version, subversion) ;
-    CHECK (version == GxB_SPEC_MAJOR) ;
-    CHECK (subversion == GxB_SPEC_MINOR) ;
-    CHECK (version == GRB_VERSION) ;
-    CHECK (subversion == GRB_SUBVERSION) ;
-    printf ("Spec Date: %s\n", GxB_SPEC_DATE) ;
-
-    OK (GxB_Global_Option_get_(GxB_API_ABOUT, &about)) ;
-    CHECK (strcmp (about, GxB_SPEC_ABOUT) == 0) ;
-    printf ("About the spec:\n%s\n", about) ;
-
-    OK (GxB_Global_Option_get_(GxB_API_DATE, &date)) ;
-    CHECK (strcmp (date, GxB_SPEC_DATE) == 0) ;
-    printf ("date: %s\n", date) ;
-
-    OK (GxB_Global_Option_get_(GxB_API_URL, &url)) ;
-    printf ("URL: %s\n", url) ;
-
-    OK (GxB_Global_Option_get_(GxB_API_VERSION, all_version)) ;
-    CHECK (all_version [0] == GxB_SPEC_MAJOR) ;
-    CHECK (all_version [1] == GxB_SPEC_MINOR) ;
-    CHECK (all_version [2] == GxB_SPEC_SUB) ;
-    printf ("Spec Version (%d.%d.%d)\n",
-        all_version [0], all_version [1], all_version [2]) ;
-
-    //--------------------------------------------------------------------------
-    // about the library
+    // about
     //--------------------------------------------------------------------------
 
     #ifdef GxB_SUITESPARSE_GRAPHBLAS
-    printf ("library info:\n") ;
 
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_NAME, &name)) ;
-    CHECK (strcmp (name, GxB_IMPLEMENTATION_NAME) == 0) ;
-    printf ("name: %s\n", name) ;
+    printf ("\nAbout:\n%s\n", GxB_IMPLEMENTATION_ABOUT) ;
+    printf ("Date: %s\n", GxB_IMPLEMENTATION_DATE) ;
+    printf ("Implementation: %d.%d.%d ("GBu")\n",
+        GxB_IMPLEMENTATION_MAJOR,
+        GxB_IMPLEMENTATION_MINOR,
+        GxB_IMPLEMENTATION_SUB,
+        GxB_IMPLEMENTATION) ;
+    printf ("License:%s\n", GxB_IMPLEMENTATION_LICENSE) ;
 
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_DATE, &date)) ;
-    if (date != NULL) printf ("date: %s\n", date) ;
-    CHECK (strcmp (date, GxB_IMPLEMENTATION_DATE) == 0) ;
-
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_ABOUT, &about)) ;
-    CHECK (strcmp (about, GxB_IMPLEMENTATION_ABOUT) == 0) ;
-    printf ("about:\n%s\n", about) ;
-
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_LICENSE, &license)) ;
-    CHECK (strcmp (license, GxB_IMPLEMENTATION_LICENSE) == 0) ;
-    printf ("license:\n%s\n", license) ;
-
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_VERSION, all_version)) ;
-    CHECK (all_version [0] == GxB_IMPLEMENTATION_MAJOR) ;
-    CHECK (all_version [1] == GxB_IMPLEMENTATION_MINOR) ;
-    CHECK (all_version [2] == GxB_IMPLEMENTATION_SUB) ;
-    printf ("Version (%d.%d.%d)\n",
-        all_version [0], all_version [1], all_version [2]) ;
-    printf ("Implementation: ("GBu")\n", GxB_IMPLEMENTATION) ;
-
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_COMPILE_DATE, &compile_date)) ;
-    printf ("compile date: %s\n", compile_date) ;
-
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_COMPILE_TIME, &compile_time)) ;
-    printf ("compile time: %s\n", compile_time) ;
-
-    OK (GxB_Global_Option_get_(GxB_LIBRARY_URL, &url)) ;
-    printf ("URL: %s\n", url) ;
+    printf ("Spec: %d.%d.%d ("GBu")\n",
+        GxB_SPEC_MAJOR, GxB_SPEC_MINOR, GxB_SPEC_SUB, GxB_SPEC_VERSION) ;
+    printf ("Spec Date: %s\n", GxB_SPEC_DATE) ;
+    printf ("About the spec:\n%s\n", GxB_SPEC_ABOUT) ;
 
     #if GxB_SPEC_VERSION >= GxB_VERSION(1,0,0)
     printf ("The spec is >= version 1.0.0\n") ;
@@ -378,53 +331,21 @@ void mexFunction
     #endif
 
     //--------------------------------------------------------------------------
-    // CUDA
-    //--------------------------------------------------------------------------
-
-    int gpu_count = GB_Global_gpu_count_get ( ) ;
-    printf ("gpu count: %d\n", gpu_count) ;
-
-    GrB_Desc_Value gpu_control = -99 ;
-    OK (GxB_Global_Option_get_(GxB_GLOBAL_GPU_CONTROL, &gpu_control)) ;
-    printf ("gpu control: %d\n", gpu_control) ;
-
-    OK (GxB_Global_Option_set_(GxB_GLOBAL_GPU_CONTROL, GxB_GPU_NEVER)) ;
-    OK (GxB_Global_Option_get_(GxB_GLOBAL_GPU_CONTROL, &gpu_control)) ;
-    CHECK (gpu_control == GxB_GPU_NEVER) ;
-
-    OK (GxB_Global_Option_set_(GxB_GLOBAL_GPU_CONTROL, GxB_GPU_ALWAYS)) ;
-    OK (GxB_Global_Option_get_(GxB_GLOBAL_GPU_CONTROL, &gpu_control)) ;
-    CHECK (gpu_control == (gpu_count > 0) ? GxB_GPU_ALWAYS : GxB_GPU_NEVER) ;
-
-    OK (GxB_Global_Option_set_(GxB_GLOBAL_GPU_CONTROL, GxB_DEFAULT)) ;
-    OK (GxB_Global_Option_get_(GxB_GLOBAL_GPU_CONTROL, &gpu_control)) ;
-    CHECK (gpu_control == (gpu_count > 0) ? GxB_DEFAULT : GxB_GPU_NEVER) ;
-
-    double gpu_chunk = -1 ;
-    OK (GxB_Global_Option_get_(GxB_GLOBAL_GPU_CHUNK, &gpu_chunk)) ;
-    printf ("gpu chunk: %g\n", gpu_chunk) ;
-
-    double gpu_chunk_42 = 42e6 ;
-    OK (GxB_Global_Option_set_(GxB_GLOBAL_GPU_CHUNK, gpu_chunk_42)) ;
-    OK (GxB_Global_Option_get_(GxB_GLOBAL_GPU_CHUNK, &gpu_chunk)) ;
-    CHECK (gpu_chunk == 42e6) ;
-
-    //--------------------------------------------------------------------------
     // types
     //--------------------------------------------------------------------------
 
     printf ("built-in types:\n") ;
-    GB_Type_check (GrB_BOOL, "bool", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_INT8, "int8", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_UINT8, "uint8", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_INT16, "int16", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_UINT16, "uint16", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_INT32, "int32", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_UINT32, "uint32", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_INT64, "int64", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_UINT64, "uint64", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_FP32, "fp32", GxB_COMPLETE, stdout) ;
-    GB_Type_check (GrB_FP64, "fp64", GxB_COMPLETE, stdout) ;
+    GB_Type_check (GrB_BOOL, "bool", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_INT8, "int8", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_UINT8, "uint8", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_INT16, "int16", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_UINT16, "uint16", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_INT32, "int32", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_UINT32, "uint32", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_INT64, "int64", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_UINT64, "uint64", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_FP32, "fp32", GxB_COMPLETE, stdout, Context) ;
+    GB_Type_check (GrB_FP64, "fp64", GxB_COMPLETE, stdout, Context) ;
 
     printf ("\nprinting built-in types:\n") ;
     bool       b = true ;
@@ -439,18 +360,18 @@ void mexFunction
     float    f32 = 3.14 ;
     double   f64 = 99.4 ;
 
-    GB_code_check (GB_BOOL_code,   &b  , 5, stdout) ; printf ("\n");
-    GB_code_check (GB_INT8_code,   &i8 , 5, stdout) ; printf ("\n");
-    GB_code_check (GB_UINT8_code,  &u8 , 5, stdout) ; printf ("\n");
-    GB_code_check (GB_INT16_code,  &i16, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_UINT16_code, &u16, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_INT32_code,  &i32, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_UINT32_code, &u32, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_INT64_code,  &i64, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_UINT64_code, &u64, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_FP32_code,   &f32, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_FP64_code,   &f64, 5, stdout) ; printf ("\n");
-    GB_code_check (GB_UDT_code,    &f64, 5, stdout) ; printf ("\n");
+    GB_code_check (GB_BOOL_code,   &b  , stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT8_code,   &i8 , stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT8_code,  &u8 , stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT16_code,  &i16, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT16_code, &u16, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT32_code,  &i32, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT32_code, &u32, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_INT64_code,  &i64, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UINT64_code, &u64, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_FP32_code,   &f32, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_FP64_code,   &f64, stdout, Context) ; printf ("\n");
+    GB_code_check (GB_UDT_code,    &f64, stdout, Context) ; printf ("\n");
 
     for (int i = 0 ; i <= GrB_PANIC + 1 ; i++)
     {
@@ -458,30 +379,49 @@ void mexFunction
     }
 
     //--------------------------------------------------------------------------
+    // threading
+    //--------------------------------------------------------------------------
+
+    #if defined (USER_POSIX_THREADS)
+    printf ("User threads: POSIX\n") ;
+    #elif defined (USER_WINDOWS_THREADS)
+    printf ("User threads: Windows\n") ;
+    #elif defined (USER_ANSI_THREADS)
+    printf ("User threads: ANSI\n") ;
+    #elif defined (USER_OPENMP_THREADS)
+    printf ("User threads: OpenMP\n") ;
+    #elif defined (USER_NO_THREADS)
+    printf ("User threads: none\n") ;
+    #else
+    printf ("User threads: not specific (none)\n") ;
+    #endif
+
+    //--------------------------------------------------------------------------
     // global get/set
     //--------------------------------------------------------------------------
 
-    double h, bswitch [GxB_NBITMAP_SWITCH] ;
+    double h ;
     GxB_Format_Value ff ;
-    GxB_Global_Option_get_(GxB_HYPER_SWITCH, &h) ;
-    GxB_Global_Option_get_(GxB_BITMAP_SWITCH, bswitch) ;
-    GxB_Global_Option_get_(GxB_FORMAT, &ff) ;
-    printf ("hyper_switch %g csc %d\n", h, (ff == GxB_BY_COL)) ;
-    for (int k = 0 ; k < GxB_NBITMAP_SWITCH ; k++)
-    {
-        printf ("bitmap_switch [%d]: %g\n", k, bswitch [k]) ;
-    }
+    GxB_get (GxB_HYPER, &h) ;
+    GxB_get (GxB_FORMAT, &ff) ;
+    printf ("hyper_ratio %g csc %d\n", h, (ff == GxB_BY_COL)) ;
 
     GrB_Mode mode ;
-    GxB_Global_Option_get_(GxB_MODE, &mode) ;
+    GxB_get (GxB_MODE, &mode) ;
     printf ("mode: %d\n", mode) ;
 
+    GxB_Thread_Model threading ;
+    GxB_get (GxB_THREAD_SAFETY, &threading) ;
+    printf ("thread safety: %d\n", threading) ;
+    GxB_get (GxB_THREADING, &threading) ;
+    printf ("threading: %d\n", threading) ;
+
     int nthreads ;
-    GxB_Global_Option_get_(GxB_NTHREADS, &nthreads) ;
+    GxB_get (GxB_NTHREADS, &nthreads) ;
     printf ("# threads: %d\n", nthreads) ;
 
     double chunk ;
-    GxB_Global_Option_get_(GxB_CHUNK, &chunk) ;
+    GxB_get (GxB_CHUNK, &chunk) ;
     printf ("chunk: %g\n", chunk) ;
 
     //--------------------------------------------------------------------------
@@ -491,20 +431,21 @@ void mexFunction
     GrB_Matrix A = NULL, B = NULL, C = NULL ;
     OK (GrB_Matrix_new (&A, GrB_BOOL, 10000, 10000)) ;
     OK (GrB_Matrix_new (&B, GrB_BOOL, 10000, 10000)) ;
-    OK (GrB_Matrix_setElement_BOOL (A, true, 0, 0)) ;
-    OK (GrB_Matrix_setElement_BOOL (B, true, 0, 0)) ;
-    OK (GrB_Matrix_wait_(&A)) ;
-    OK (GrB_Matrix_wait_(&B)) ;
+    OK (GrB_Matrix_setElement (A, true, 0, 0)) ;
+    OK (GrB_Matrix_setElement (B, true, 0, 0)) ;
+    GrB_Index nvals ;
+    OK (GrB_Matrix_nvals (&nvals, A)) ;
+    OK (GrB_Matrix_nvals (&nvals, B)) ;
     CHECK (!GB_aliased (A, B)) ;
     int64_t *Bh_save = B->h ;
     B->h = A->h ; B->h_shallow = true ;
     CHECK (GB_aliased (A, B)) ;
     B->h = Bh_save ; B->h_shallow = false ;
     CHECK (!GB_aliased (A, B)) ;
-    OK (GxB_Matrix_fprint_(A, 3, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, 3, NULL)) ;
-    GrB_Matrix_free_(&A) ;
-    GrB_Matrix_free_(&B) ;
+    OK (GxB_print (A, 3)) ;
+    OK (GxB_print (B, 3)) ;
+    GrB_free (&A) ;
+    GrB_free (&B) ;
 
     //--------------------------------------------------------------------------
     // check descripter set/get for nthreads and chunk
@@ -516,11 +457,10 @@ void mexFunction
     OK (GxB_Desc_set (desc, GxB_CHUNK, (double) 12345)) ;
     OK (GxB_Desc_get (desc, GxB_CHUNK, &chunk)) ;
     OK (GxB_Desc_get (desc, GxB_NTHREADS, &nthreads)) ;
-    OK (GrB_Descriptor_wait_(&desc)) ;
-    OK (GxB_Descriptor_fprint_(desc, GxB_COMPLETE, NULL)) ;
+    OK (GxB_print (desc, GxB_COMPLETE)) ;
     CHECK (chunk == 12345) ;
     CHECK (nthreads == 42) ;
-    GrB_Descriptor_free_(&desc) ;
+    GrB_free (&desc) ;
 
     //--------------------------------------------------------------------------
     // make a shallow copy of an empty matrix
@@ -528,25 +468,28 @@ void mexFunction
 
     OK (GrB_Matrix_new (&A, GrB_BOOL, 10000, 10000)) ;
     OK (GB_shallow_copy (&C, A->is_csc, A, NULL)) ;
-    OK (GxB_Matrix_fprint_(C, GxB_COMPLETE, NULL)) ;
-    GrB_Matrix_free_(&A) ;
-    GrB_Matrix_free_(&C) ;
+    OK (GxB_print (C, GxB_COMPLETE)) ;
+    GrB_free (&A) ;
+    GrB_free (&C) ;
 
     //--------------------------------------------------------------------------
     // tests with memory tracking off
     //--------------------------------------------------------------------------
 
     GB_Global_malloc_tracking_set (false) ;
-    GB_void *p = GB_malloc_memory (4, sizeof (int64_t)) ;
+    void *p = GB_malloc_memory (4, sizeof (int64_t)) ;
     CHECK (p != NULL) ;
-    GB_FREE (p) ;
+    GB_free_memory (p, 4, sizeof (int64_t)) ;
     p = GB_calloc_memory (4, sizeof (int64_t)) ;
     CHECK (p != NULL) ;
     bool ok = true ;
     p = GB_realloc_memory (6, 4, sizeof (int64_t), p, &ok) ;
     CHECK (p != NULL) ;
     CHECK (ok) ;
-    GB_FREE (p) ;
+    GB_free_memory (p, 6, sizeof (int64_t)) ;
+    p = NULL ;
+    printf ("in use:   "GBd"\n", GB_Global_inuse_get ( )) ;
+    printf ("max used: "GBd"\n", GB_Global_maxused_get ( )) ;
 
     CHECK (!GB_Global_malloc_is_thread_safe_get ( )) ;
     GB_Global_malloc_is_thread_safe_set (true) ;
@@ -570,9 +513,10 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     int64_t *Slice = NULL ;
-    GB_pslice (&Slice, NULL, 0, 4, true) ;
+    GB_pslice (&Slice, NULL, 0, 4) ;
     for (int t = 0 ; t < 4 ; t++) CHECK (Slice [t] == 0) ;
-    GB_FREE (Slice) ;
+    GB_free_memory (Slice, 5, sizeof (int64_t)) ;
+    Slice = NULL ;
 
     //--------------------------------------------------------------------------
     // renamed boolean monoids
@@ -581,40 +525,40 @@ void mexFunction
     GrB_Monoid mono = NULL ;
 
     // DIV renamed to FIRST
-    OK (GrB_Monoid_new_BOOL_(&mono, GrB_DIV_BOOL, (bool) false)) ;
+    OK (GrB_Monoid_new_BOOL (&mono, GrB_DIV_BOOL, (bool) false)) ;
     printf ("\ndiv_bool monoid:\n") ;
-    OK (GxB_Monoid_fprint_(mono, GxB_COMPLETE, NULL)) ;
-    GrB_Monoid_free_(&mono) ;
+    OK (GxB_print (mono, GxB_COMPLETE)) ;
+    GrB_free (&mono) ;
 
     // RDIV renamed to SECOND
-    OK (GrB_Monoid_new_BOOL_(&mono, GxB_RDIV_BOOL, (bool) false)) ;
+    OK (GrB_Monoid_new_BOOL (&mono, GxB_RDIV_BOOL, (bool) false)) ;
     printf ("\nrdiv_bool monoid:\n") ;
-    OK (GxB_Monoid_fprint_(mono, GxB_COMPLETE, NULL)) ;
-    GrB_Monoid_free_(&mono) ;
+    OK (GxB_print (mono, GxB_COMPLETE)) ;
+    GrB_free (&mono) ;
 
     // ISGT renamed to GT
-    OK (GrB_Monoid_new_BOOL_(&mono, GxB_ISGT_BOOL, (bool) false)) ;
+    OK (GrB_Monoid_new_BOOL (&mono, GxB_ISGT_BOOL, (bool) false)) ;
     printf ("\nisgt_bool monoid:\n") ;
-    OK (GxB_Monoid_fprint_(mono, GxB_COMPLETE, NULL)) ;
-    GrB_Monoid_free_(&mono) ;
+    OK (GxB_print (mono, GxB_COMPLETE)) ;
+    GrB_free (&mono) ;
 
     // ISLT renamed to LT
-    OK (GrB_Monoid_new_BOOL_(&mono, GxB_ISLT_BOOL, (bool) false)) ;
+    OK (GrB_Monoid_new_BOOL (&mono, GxB_ISLT_BOOL, (bool) false)) ;
     printf ("\nislt_bool monoid:\n") ;
-    OK (GxB_Monoid_fprint_(mono, GxB_COMPLETE, NULL)) ;
-    GrB_Monoid_free_(&mono) ;
+    OK (GxB_print (mono, GxB_COMPLETE)) ;
+    GrB_free (&mono) ;
 
     // ISGE renamed to GE
-    OK (GrB_Monoid_new_BOOL_(&mono, GxB_ISGE_BOOL, (bool) false)) ;
+    OK (GrB_Monoid_new_BOOL (&mono, GxB_ISGE_BOOL, (bool) false)) ;
     printf ("\nisge_bool monoid:\n") ;
-    OK (GxB_Monoid_fprint_(mono, GxB_COMPLETE, NULL)) ;
-    GrB_Monoid_free_(&mono) ;
+    OK (GxB_print (mono, GxB_COMPLETE)) ;
+    GrB_free (&mono) ;
 
     // ISLE renamed to LE
-    OK (GrB_Monoid_new_BOOL_(&mono, GxB_ISLE_BOOL, (bool) false)) ;
+    OK (GrB_Monoid_new_BOOL (&mono, GxB_ISLE_BOOL, (bool) false)) ;
     printf ("\nisle_bool monoid:\n") ;
-    OK (GxB_Monoid_fprint_(mono, GxB_COMPLETE, NULL)) ;
-    GrB_Monoid_free_(&mono) ;
+    OK (GxB_print (mono, GxB_COMPLETE)) ;
+    GrB_free (&mono) ;
 
     //--------------------------------------------------------------------------
     // select
@@ -622,7 +566,6 @@ void mexFunction
 
     GrB_Type user_type = NULL ;
     OK (GrB_Type_new (&user_type, sizeof (user_int))) ;
-    OK (GrB_Type_wait_(&user_type)) ;
     OK (GrB_Matrix_new (&A, user_type, 10, 10)) ;
     OK (GrB_Matrix_new (&B, GrB_INT16, 10, 10)) ;
     user_int value ;
@@ -630,107 +573,105 @@ void mexFunction
     {
         value = (int64_t) i ;
         OK (GrB_Matrix_setElement_UDT (A, &value, i, i)) ;
-        OK (GrB_Matrix_setElement_INT16 (B, i, i, i)) ;
+        OK (GrB_Matrix_setElement (B, i, i, i)) ;
     }
-    OK (GrB_Matrix_wait_(&A)) ;
-    OK (GrB_Matrix_wait_(&B)) ;
-    OK (GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GrB_Matrix_nvals (&nvals, A)) ;
+    OK (GrB_Matrix_nvals (&nvals, B)) ;
+    OK (GxB_print (A, GxB_COMPLETE)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
+
+    // expected = GrB_DIMENSION_MISMATCH ;
+    // ERR (GxB_select (A, NULL, NULL, GxB_NE_THUNK, A, A, NULL)) ;
+    // printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
 
     GxB_Scalar thunk = NULL ;
     OK (GxB_Scalar_new (&thunk, user_type)) ;
     GrB_Type type2 = NULL ;
     OK (GxB_Scalar_type (&type2, thunk)) ;
     CHECK (type2 == user_type) ;
-    OK (GxB_Scalar_fprint_(thunk, GxB_COMPLETE, NULL)) ;
-    OK (GxB_Matrix_select_(A, NULL, NULL, GxB_NE_THUNK, A, thunk, NULL)) ;
+    OK (GxB_print (thunk, GxB_COMPLETE)) ;
+    OK (GxB_select (A, NULL, NULL, GxB_NE_THUNK, A, thunk, NULL)) ;
+    // printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
 
     value = (int64_t) 4 ;
     OK (GxB_Scalar_setElement_UDT (thunk, &value)) ;
 
     expected = GrB_DOMAIN_MISMATCH ;
-    ERR1 (A, GxB_Matrix_select_(A, NULL, NULL, GxB_GE_THUNK, A, thunk, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("Expected error: info: %d\n%s\n", info, err) ;
+    ERR (GxB_select (A, NULL, NULL, GxB_GE_THUNK, A, thunk, NULL)) ;
+    printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
 
     GxB_Scalar thunk2 = NULL ;
     OK (GxB_Scalar_new (&thunk2, GrB_INT16)) ;
-    OK (GxB_Scalar_setElement_INT16 (thunk2, 4)) ;
-    OK (GxB_Scalar_wait_(&thunk2)) ;
+    OK (GxB_Scalar_setElement (thunk2, 4)) ;
 
     expected = GrB_DOMAIN_MISMATCH ;
 
-    ERR1 (A, GxB_Matrix_select_(A, NULL, NULL, GxB_GE_ZERO, A, NULL, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("Expected error: info: %d\n%s\n", info, err) ;
+    ERR (GxB_select (A, NULL, NULL, GxB_GE_ZERO, A, NULL, NULL)) ;
+    printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
 
-    ERR1 (A, GxB_Matrix_select_(A, NULL, NULL, GxB_GT_ZERO, A, NULL, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("Expected error: info: %d\n%s\n", info, err) ;
+    ERR (GxB_select (A, NULL, NULL, GxB_GT_ZERO, A, NULL, NULL)) ;
+    printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
 
-    ERR1 (A, GxB_Matrix_select_(A, NULL, NULL, GxB_LT_ZERO, A, NULL, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("Expected error: info: %d\n%s\n", info, err) ;
+    ERR (GxB_select (A, NULL, NULL, GxB_LT_ZERO, A, NULL, NULL)) ;
+    printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
 
-    ERR1 (A, GxB_Matrix_select_(A, NULL, NULL, GxB_LE_ZERO, A, NULL, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("Expected error: info: %d\n%s\n", info, err) ;
+    ERR (GxB_select (A, NULL, NULL, GxB_LE_ZERO, A, NULL, NULL)) ;
+    printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
 
-    ERR1 (B, GxB_Matrix_select_(B, NULL, NULL, GxB_LE_THUNK, B, thunk, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("Expected error: info: %d\n%s\n", info, err) ;
-    GrB_Matrix_free_(&B) ;
+    ERR (GxB_select (B, NULL, NULL, GxB_LE_THUNK, B, thunk, NULL)) ;
+    printf ("Expected error: info: %d\n%s\n", info, GrB_error ( )) ;
+    GrB_free (&B) ;
 
     OK (GrB_Matrix_new (&B, user_type, 10, 10)) ;
     printf ("\n============== B = select (A != 0)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_NONZERO, A, NULL, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_NONZERO, A, NULL, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
     printf ("\n============== B = select (A == 0)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_EQ_ZERO, A, NULL, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_EQ_ZERO, A, NULL, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
     printf ("\n============== B = select (A != 4)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_NE_THUNK, A, thunk, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_NE_THUNK, A, thunk, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
     printf ("\n============== B = select (A == 4)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_EQ_THUNK, A, thunk, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_EQ_THUNK, A, thunk, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
 
-    GrB_Matrix_free_(&B) ;
-    GrB_Matrix_free_(&A) ;
-    GxB_Scalar_free_(&thunk) ;
-    GxB_Scalar_free_(&thunk2) ;
-    GrB_Type_free_(&user_type) ;
+    GrB_free (&B) ;
+    GrB_free (&A) ;
+    GrB_free (&thunk) ;
+    GrB_free (&thunk2) ;
+    GrB_free (&user_type) ;
 
     OK (GrB_Matrix_new (&A, GrB_BOOL, 10, 10)) ;
     OK (GrB_Matrix_new (&B, GrB_BOOL, 10, 10)) ;
     OK (GxB_Scalar_new (&thunk, GrB_BOOL)) ;
-    OK (GxB_Scalar_setElement_BOOL (thunk, 0)) ;
+    OK (GxB_Scalar_setElement (thunk, 0)) ;
     for (int i = 0 ; i < 10 ; i++)
     {
-        OK (GrB_Matrix_setElement_BOOL_(A, (bool) (i % 2), i, i)) ;
+        OK (GrB_Matrix_setElement (A, (bool) (i % 2), i, i)) ;
     }
-    OK (GrB_Matrix_wait_(&A)) ;
-    OK (GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL)) ;
+    OK (GrB_Matrix_nvals (&nvals, A)) ;
+    OK (GxB_print (A, GxB_COMPLETE)) ;
 
     printf ("\n============== B = select (A > 0)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_GT_THUNK, A, thunk, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_GT_THUNK, A, thunk, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
     printf ("\n============== B = select (A >= 0)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_GE_THUNK, A, thunk, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_GE_THUNK, A, thunk, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
     printf ("\n============== B = select (A < 0)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_LT_THUNK, A, thunk, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_LT_THUNK, A, thunk, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
     printf ("\n============== B = select (A <= 0)\n") ;
-    OK (GxB_Matrix_select_(B, NULL, NULL, GxB_LE_THUNK, A, thunk, NULL)) ;
-    OK (GxB_Matrix_fprint_(B, GxB_COMPLETE, NULL)) ;
+    OK (GxB_select (B, NULL, NULL, GxB_LE_THUNK, A, thunk, NULL)) ;
+    OK (GxB_print (B, GxB_COMPLETE)) ;
 
-    GrB_Matrix_free_(&B) ;
-    GrB_Matrix_free_(&A) ;
-    GxB_Scalar_free_(&thunk) ;
+    GrB_free (&B) ;
+    GrB_free (&A) ;
+    GrB_free (&thunk) ;
 
     //--------------------------------------------------------------------------
-    // create a test matrix
+    // GxB_print for a slice or hyperslice
     //--------------------------------------------------------------------------
 
     OK (GrB_Matrix_new (&A, GrB_FP64, 8, 8)) ;
@@ -741,87 +682,69 @@ void mexFunction
             OK (GrB_Matrix_setElement_FP64 (A, i*100+j, i, j)) ;
         }
     }
-    OK (GrB_Matrix_wait_(&A)) ;
+    OK (GrB_Matrix_nvals (&nvals, A)) ;
 
-    GrB_Vector_new (&victor, GrB_FP64, 43) ;
-    OK (GrB_Vector_setElement_FP64 (victor, 99, 0)) ;
-    OK (GrB_Vector_wait_(&victor)) ;
+    expected = GrB_INVALID_OBJECT ;
 
-    //--------------------------------------------------------------------------
-    // GxB_get
-    //--------------------------------------------------------------------------
+    for (int hyper = 0 ; hyper <= 1 ; hyper++)
+    {
+        if (hyper)
+        {
+            OK (GxB_set (A, GxB_HYPER, GxB_ALWAYS_HYPER)) ;
+        }
 
-    int sparsity ;
-    OK (GxB_Matrix_Option_get_(A, GxB_SPARSITY_CONTROL, &sparsity)) ;
-    CHECK (sparsity == GxB_AUTO_SPARSITY) ;
-    OK (GxB_Vector_Option_get_(victor, GxB_SPARSITY_CONTROL, &sparsity)) ;
-    CHECK (sparsity == GxB_AUTO_SPARSITY) ;
-    OK (GxB_Vector_Option_get_(victor, GxB_SPARSITY_STATUS, &sparsity)) ;
-    CHECK (sparsity == GxB_SPARSE) ;
-    GxB_Format_Value fmt ;
-    OK (GxB_Vector_Option_get_(victor, GxB_FORMAT, &fmt)) ;
-    CHECK (fmt == GxB_BY_COL) ;
-    bool is_hyper ;
-    OK (GxB_Vector_Option_get_(victor, GxB_IS_HYPER, &is_hyper)) ;
-    CHECK (!is_hyper) ;
-    expected = GrB_INVALID_VALUE ;
-    ERR (GxB_Vector_Option_get_(victor, -999, &is_hyper)) ;
+        GrB_Matrix Aslice [2] = { NULL, NULL } ;
+        int64_t Slice [8] ;
+        Slice [0] = 0 ;
+        Slice [1] = 4 ;
+        Slice [2] = 8 ;
+        OK (GB_slice (A, 2, Slice, Aslice, Context)) ;
+        OK (GxB_print (Aslice [0], GxB_COMPLETE)) ;
+        OK (GxB_print (Aslice [1], GxB_COMPLETE)) ;
 
-    //--------------------------------------------------------------------------
-    // GxB_set
-    //--------------------------------------------------------------------------
+        GB_Pending gunk ;
+        Aslice [0]->Pending = &gunk ;
+        ERR (GxB_print (Aslice [0], GxB_SHORT)) ;
+        Aslice [0]->Pending = NULL ;
+        OK (GxB_print (Aslice [0], GxB_SILENT)) ;
 
-    ERR (GxB_Vector_Option_set_(victor, -999, &is_hyper)) ;
-    OK (GxB_Vector_Option_set_(victor, GxB_SPARSITY_CONTROL, 9999)) ;
-    OK (GxB_Vector_Option_get_(victor, GxB_SPARSITY_CONTROL, &sparsity)) ;
-    CHECK (sparsity == GxB_AUTO_SPARSITY) ;
+        int64_t a1save = Aslice [0]->nvec ;
+        Aslice [0]->nvec = 999999 ;
+        ERR (GxB_print (Aslice [0], GxB_SHORT)) ;
+        Aslice [0]->nvec = a1save ;
+        OK (GxB_print (Aslice [0], GxB_SILENT)) ;
 
-    //--------------------------------------------------------------------------
-    // removeElement errors
-    //--------------------------------------------------------------------------
+        Aslice [0]->i_shallow = false ;
+        ERR (GxB_print (Aslice [0], GxB_SHORT)) ;
+        Aslice [0]->i_shallow = true ;
+        OK (GxB_print (Aslice [0], GxB_SILENT)) ;
 
-    expected = GrB_INVALID_INDEX ;
-    ERR1 (victor, GrB_Vector_removeElement (victor, 9999)) ;
-    GrB_Vector_error_(&err, victor) ;
-    printf ("expected error: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_removeElement (A, 0, 9999)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("expected error: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_removeElement (A, 9999, 0)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("expected error: %s\n", err) ;
+        int64_t hfirst = Aslice [0]->hfirst ;
+        Aslice [0]->hfirst = -1 ;
+        ERR (GxB_print (Aslice [0], GxB_SHORT)) ;
+        Aslice [0]->hfirst = 0 ;
+        OK (GxB_print (Aslice [0], GxB_SILENT)) ;
+
+        GrB_free (&Aslice [0]) ;
+        GrB_free (&Aslice [1]) ;
+    }
 
     //--------------------------------------------------------------------------
     // pending tuples
     //--------------------------------------------------------------------------
 
-    GrB_Matrix_free_(&A) ;
+    GrB_free (&A) ;
     OK (GrB_Matrix_new (&A, GrB_FP64, 8, 8)) ;
 
     GrB_Index I [1] = { 0 }, J [1] = { 0 } ;
-    OK (GrB_Matrix_assign_FP64_(A, NULL, GrB_PLUS_FP64,
-        (double) 2, I, 1, J, 1, NULL)) ;
-    GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL) ;
-    OK (GrB_Matrix_setElement_FP64_(A, (double) 3, 0, 0)) ;
-    GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL) ;
-    OK (GrB_Matrix_wait_(&A)) ;
-    GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL) ;
+    OK (GrB_assign (A, NULL, GrB_PLUS_FP64, (double) 2, I, 1, J, 1, NULL)) ;
+    GxB_print (A, GxB_COMPLETE) ;
+    OK (GrB_Matrix_setElement (A, (double) 3, 0, 0)) ;
+    GxB_print (A, GxB_COMPLETE) ;
+    OK (GrB_Matrix_nvals (&nvals, A)) ;
+    GxB_print (A, GxB_COMPLETE) ;
 
-    GrB_Matrix_free_(&A) ;
-    GrB_Vector_free_(&victor) ;
-
-    //--------------------------------------------------------------------------
-    // remvoe element with empty matrix and vector
-    //--------------------------------------------------------------------------
-
-    printf ("testing removeElement\n") ;
-    OK (GrB_Vector_new (&victor, GrB_FP64, 4)) ;
-    OK (GrB_Matrix_new (&A, GrB_FP64, 4, 4)) ;
-    OK (GrB_Vector_removeElement (victor, 0)) ;
-    OK (GrB_Matrix_removeElement (A, 0, 0)) ;
-    GrB_Matrix_free_(&A) ;
-    GrB_Vector_free_(&victor) ;
-    printf ("removeElement: OK\n") ;
+    GrB_free (&A) ;
 
     //--------------------------------------------------------------------------
     // select error handling
@@ -829,76 +752,100 @@ void mexFunction
 
     GxB_SelectOp selectop = NULL ;
     OK (GxB_SelectOp_new (&selectop, select_plus_one, GrB_FP64, GrB_FP64)) ;
-    OK (GxB_SelectOp_wait_(&selectop)) ;
     OK (GrB_Matrix_new (&A, GrB_FP64, 8, 8)) ;
     OK (GrB_Matrix_new (&C, GrB_FP64, 8, 8)) ;
     for (int i = 0 ; i < 8 ; i++)
     {
         OK (GrB_Matrix_setElement_FP64 (A, i, i, i)) ;
     }
-    OK (GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL)) ;
+    OK (GxB_print (A, 3)) ;
     OK (GxB_Scalar_new (&thunk, GrB_FP64)) ;
     OK (GxB_Scalar_setElement_FP64 (thunk, 4)) ;
-    OK (GxB_Matrix_select_(C, NULL, NULL, selectop, A, thunk, NULL)) ;
+    OK (GxB_select (C, NULL, NULL, selectop, A, thunk, NULL)) ;
 
     printf ("\nprint in one-based, long format:\n") ;
     GB_Global_print_one_based_set (true) ;
-    OK (GxB_Matrix_fprint_(C, GxB_COMPLETE_VERBOSE, NULL)) ;
+    GB_Global_print_format_set (1) ;
+    OK (GxB_print (C, 3)) ;
     GB_Global_print_one_based_set (false) ;
+    GB_Global_print_format_set (0) ;
 
     expected = GrB_NULL_POINTER ;
-    ERR1 (C, GxB_Matrix_select_(C, NULL, NULL, selectop, A, NULL, NULL)) ;
-    GrB_Matrix_error_(&err, C) ;
-    printf ("Error expected: %d\n%s\n", info, err) ;
+    ERR (GxB_select (C, NULL, NULL, selectop, A, NULL, NULL)) ;
+    printf ("Error expected: %d\n%s\n", info, GrB_error ( )) ;
 
     expected = GrB_INVALID_VALUE ;
     OK (GxB_Scalar_clear (thunk)) ;
-    ERR1 (C, GxB_Matrix_select_(C, NULL, NULL, selectop, A, thunk, NULL)) ;
-    GrB_Matrix_error_(&err, C) ;
-    printf ("Error expected: %d\n%s\n", info, err) ;
+    ERR (GxB_select (C, NULL, NULL, selectop, A, thunk, NULL)) ;
+    printf ("Error expected: %d\n%s\n", info, GrB_error ( )) ;
 
     expected = GrB_DOMAIN_MISMATCH ;
-    GxB_Scalar_free_(&thunk) ;
+    GrB_free (&thunk) ;
     OK (GxB_Scalar_new (&thunk, GrB_FP32)) ;
-    ERR1 (C, GxB_Matrix_select_(C, NULL, NULL, selectop, A, thunk, NULL)) ;
-    GrB_Matrix_error_(&err, C) ;
-    printf ("Error expected: %d\n%s\n", info, err) ;
+    ERR (GxB_select (C, NULL, NULL, selectop, A, thunk, NULL)) ;
+    printf ("Error expected: %d\n%s\n", info, GrB_error ( )) ;
 
-    GxB_SelectOp_free_(&selectop) ;
+    GrB_free (&selectop) ;
     OK (GxB_SelectOp_new (&selectop, select_nothing, GrB_FP64, NULL)) ;
-    ERR1 (C, GxB_Matrix_select_(C, NULL, NULL, selectop, A, thunk, NULL)) ;
-    GrB_Matrix_error_(&err, C) ;
-    printf ("Error expected: %d\n%s\n", info, err) ;
+    ERR (GxB_select (C, NULL, NULL, selectop, A, thunk, NULL)) ;
+    printf ("Error expected: %d\n%s\n", info, GrB_error ( )) ;
 
     expected = GrB_UNINITIALIZED_OBJECT ;
     OK (GrB_Type_new (&user_type, sizeof (user_int))) ;
     user_type->magic = 0xDEAD ;
-    ERR (GxB_Type_fprint_(user_type, GxB_COMPLETE, NULL)) ;
+    ERR (GxB_print (user_type, GxB_COMPLETE)) ;
     expected = GrB_INVALID_OBJECT ;
     selectop->ttype = user_type ;
-    ERR (GxB_SelectOp_fprint_(selectop, GxB_COMPLETE, NULL)) ;
+    ERR (GxB_print (selectop, GxB_COMPLETE)) ;
     user_type->magic = GB_MAGIC ;
 
     expected = GrB_UNINITIALIZED_OBJECT ;
     thunk->magic = 0xDEAD ;
-    ERR (GxB_Scalar_fprint_(thunk, GxB_COMPLETE, NULL)) ;
+    ERR (GxB_print (thunk, GxB_COMPLETE)) ;
     thunk->magic = GB_MAGIC ;
-    printf ("Error expected: %d\n", info) ;
+    printf ("Error expected: %d\n%s\n", info, GrB_error ( )) ;
 
-    GrB_Matrix_free_(&A) ;
-    GrB_Matrix_free_(&C) ;
-    GxB_Scalar_free_(&thunk) ;
-    GxB_SelectOp_free_(&selectop) ;
+    GrB_free (&user_type) ;
+    GrB_free (&A) ;
+    GrB_free (&C) ;
+    GrB_free (&thunk) ;
+    GrB_free (&selectop) ;
+
+    //--------------------------------------------------------------------------
+    // slice vector
+    //--------------------------------------------------------------------------
+
+    // GB_wait constructs a slice, Aslice [1], that is then added to the
+    // pending tuples, B = T.  It then calls GB_add to compute Aslice [1] + T,
+    // where Aslice [1] can either be hypersparse or a hyperslice.  Need to
+    // trigger the condition that the index i appears after all entries in the
+    // implicit hyperlist Ah.  It's hard to test this case directly, via
+    // GB_wait and GB_add.
+
+    int64_t i, pA = -1, pB = -1 ;
+    int64_t Bh [10] ;
+    for (int i = 0 ; i < 10 ; i++)
+    {
+        Bh [i] = 1000 + i ;
+    }
+    GB_slice_vector (&i, NULL, &pA, &pB,
+        0, 0, NULL,     // Mi is empty
+        0, 10, NULL, 1, // Ah is an implicit hyperlist: [1 2 3 4 5 6 7 8 9 10]
+        0, 10, Bh,      // Bh is an explicit hyperlist
+        2001,           // n
+        (double) 10) ;  // target_work
+    printf ("slice_vector: i "GBd" pA "GBd" pB "GBd"\n", i, pA, pB) ;
+    OK (i == 1000) ;    // n is cut in half, i = floor ((0+(n-1))/2) 
+    OK (pA == 10) ;     // first task does all of A
+    OK (pB == 0) ;      // second task does all of B
 
     //--------------------------------------------------------------------------
     // GxB_Scalar
     //--------------------------------------------------------------------------
 
-    GrB_Index nvals = 42 ;
     GxB_Scalar scalar = NULL, scalar2 = NULL ;
     OK (GxB_Scalar_new (&scalar, GrB_FP64)) ;
     OK (GxB_Scalar_nvals (&nvals, scalar)) ;
-    OK (GxB_Scalar_wait_(&scalar)) ;
     CHECK (nvals == 0) ;
 
     bool     b_8 = 0 ;
@@ -913,137 +860,132 @@ void mexFunction
     float    x_32 = 0 ;
     double   x_64 = 0 ;
 
-    OK (GxB_Scalar_setElement_FP64_(scalar, (double) 1.25)) ;
+    OK (GxB_Scalar_setElement (scalar, (double) 1.25)) ;
     OK (GxB_Scalar_nvals (&nvals, scalar)) ;
-    OK (GxB_Scalar_wait_(&scalar)) ;
     CHECK (nvals == 1) ;
 
     OK (GxB_Scalar_dup (&scalar2, scalar)) ;
-    OK (GxB_Scalar_fprint_(scalar2, GxB_COMPLETE, NULL)) ;
+    OK (GxB_print (scalar2, GxB_COMPLETE)) ;
 
-    OK (GxB_Scalar_extractElement_BOOL_(&b_8,  scalar)) ; CHECK (b_8 == 1) ;
+    OK (GxB_Scalar_extractElement (&b_8,  scalar)) ; CHECK (b_8 == 1) ;
 
-    OK (GxB_Scalar_extractElement_INT8_ (&i_8,  scalar)) ; CHECK (i_8  == 1) ;
-    OK (GxB_Scalar_extractElement_INT16_(&i_16, scalar)) ; CHECK (i_16 == 1) ;
-    OK (GxB_Scalar_extractElement_INT32_(&i_32, scalar)) ; CHECK (i_32 == 1) ;
-    OK (GxB_Scalar_extractElement_INT64_(&i_64, scalar)) ; CHECK (i_64 == 1) ;
+    OK (GxB_Scalar_extractElement (&i_8,  scalar)) ; CHECK (i_8  == 1) ;
+    OK (GxB_Scalar_extractElement (&i_16, scalar)) ; CHECK (i_16 == 1) ;
+    OK (GxB_Scalar_extractElement (&i_32, scalar)) ; CHECK (i_32 == 1) ;
+    OK (GxB_Scalar_extractElement (&i_64, scalar)) ; CHECK (i_64 == 1) ;
 
-    OK (GxB_Scalar_extractElement_UINT8_ (&u_8,  scalar)) ; CHECK (u_8  == 1) ;
-    OK (GxB_Scalar_extractElement_UINT16_(&u_16, scalar)) ; CHECK (u_16 == 1) ;
-    OK (GxB_Scalar_extractElement_UINT32_(&u_32, scalar)) ; CHECK (u_32 == 1) ;
-    OK (GxB_Scalar_extractElement_UINT64_(&u_64, scalar)) ; CHECK (u_64 == 1) ;
+    OK (GxB_Scalar_extractElement (&u_8,  scalar)) ; CHECK (u_8  == 1) ;
+    OK (GxB_Scalar_extractElement (&u_16, scalar)) ; CHECK (u_16 == 1) ;
+    OK (GxB_Scalar_extractElement (&u_32, scalar)) ; CHECK (u_32 == 1) ;
+    OK (GxB_Scalar_extractElement (&u_64, scalar)) ; CHECK (u_64 == 1) ;
 
-    OK (GxB_Scalar_extractElement_FP32_(&x_32, scalar)) ; CHECK (x_32 == 1.25) ;
-    OK (GxB_Scalar_extractElement_FP64_(&x_64, scalar)) ; CHECK (x_64 == 1.25) ;
+    OK (GxB_Scalar_extractElement (&x_32, scalar)) ; CHECK (x_32 == 1.25) ;
+    OK (GxB_Scalar_extractElement (&x_64, scalar)) ; CHECK (x_64 == 1.25) ;
 
     OK (GxB_Scalar_clear (scalar)) ;
-    info = GxB_Scalar_extractElement_FP64_(&x_64, scalar) ;
-    CHECK (info == GrB_NO_VALUE) ;
-    CHECK (x_64 == 1.25) ;
-
-    info = GrB_Matrix_extractElement_FP64_(&x_64, (GrB_Matrix) scalar, 0, 0) ;
-    CHECK (info == GrB_NO_VALUE) ;
-    CHECK (x_64 == 1.25) ;
-
-    info = GrB_Vector_extractElement_FP64_(&x_64, (GrB_Vector) scalar, 0) ;
+    info = GxB_Scalar_extractElement (&x_64, scalar) ;
     CHECK (info == GrB_NO_VALUE) ;
     CHECK (x_64 == 1.25) ;
 
     u_64 = 0 ;
-    OK (GxB_Scalar_extractElement_UINT64_(&u_64, scalar2)) ; CHECK (u_64 == 1) ;
+    nvals = 0 ;
+    OK (GxB_Scalar_extractElement (&u_64, scalar2)) ; CHECK (u_64 == 1) ;
     OK (GxB_Scalar_nvals (&nvals, scalar2)) ;
-    OK (GxB_Scalar_wait_(&scalar2)) ;
     CHECK (nvals == 1) ;
 
     expected = GrB_INVALID_OBJECT ;
     scalar2->vlen = 2 ;
-    ERR (GxB_Scalar_fprint_(scalar2, GxB_COMPLETE, NULL)) ;
+    ERR (GxB_print (scalar2, GxB_COMPLETE)) ;
     scalar2->vlen = 1 ;
-    OK (GxB_Scalar_fprint_(scalar2, GxB_COMPLETE, NULL)) ;
+    OK (GxB_print (scalar2, GxB_COMPLETE)) ;
 
-    GxB_Scalar_free_(&scalar) ;
-    GxB_Scalar_free_(&scalar2) ;
+    GrB_free (&scalar) ;
+    GrB_free (&scalar2) ;
 
     //--------------------------------------------------------------------------
     // predefined descriptors
     //--------------------------------------------------------------------------
 
-    OK (GxB_Descriptor_fprint (GrB_DESC_T1     , "T1    ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_T0     , "T0    ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_T0T1   , "T0T1  ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_C      , "C     ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_CT1    , "CT1   ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_CT0    , "CT0   ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_CT0T1  , "CT0T1 ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_S      , "S     ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_ST1    , "ST1   ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_ST0    , "ST0   ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_ST0T1  , "ST0T1 ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_SC     , "SC    ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_SCT1   , "SCT1  ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_SCT0   , "SCT0  ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_SCT0T1 , "SCT0T1", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_R      , "R     ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RT1    , "RT1   ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RT0    , "RT0   ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RT0T1  , "RT0T1 ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RC     , "RC    ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RCT1   , "RCT1  ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RCT0   , "RCT0  ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RCT0T1 , "RCT0T1", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RS     , "RS    ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RST1   , "RST1  ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RST0   , "RST0  ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RST0T1 , "RST0T1", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RSC    , "RSC   ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RSCT1  , "RSCT1 ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RSCT0  , "RSCT0 ", GxB_COMPLETE, NULL));
-    OK (GxB_Descriptor_fprint (GrB_DESC_RSCT0T1, "RSCT0T1",GxB_COMPLETE, NULL));
+    OK (GxB_print (GrB_DESC_T1      , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_T0      , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_T0T1    , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_C       , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_CT1     , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_CT0     , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_CT0T1   , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_S       , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_ST1     , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_ST0     , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_ST0T1   , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_SC      , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_SCT1    , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_SCT0    , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_SCT0T1  , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_R       , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RT1     , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RT0     , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RT0T1   , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RC      , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RCT1    , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RCT0    , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RCT0T1  , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RS      , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RST1    , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RST0    , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RST0T1  , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RSC     , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RSCT1   , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RSCT0   , GxB_COMPLETE)) ;
+    OK (GxB_print (GrB_DESC_RSCT0T1 , GxB_COMPLETE)) ;
 
     GrB_Descriptor_new (&Duh) ;
-    OK (GxB_Desc_set (Duh, GxB_AxB_METHOD, GxB_AxB_SAXPY)) ;
-    OK (GxB_Descriptor_fprint_(Duh, GxB_COMPLETE, NULL)) ;
-    OK (GxB_Desc_set (Duh, GxB_AxB_METHOD, GxB_AxB_HASH)) ;
-    OK (GxB_Descriptor_fprint_(Duh, GxB_COMPLETE, NULL)) ;
-    OK (GxB_Desc_set (Duh, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
-    OK (GxB_Descriptor_fprint_(Duh, GxB_COMPLETE, NULL)) ;
-    OK (GxB_Desc_set (Duh, GxB_AxB_METHOD, GxB_AxB_DOT)) ;
-    OK (GxB_Descriptor_fprint_(Duh, GxB_COMPLETE, NULL)) ;
-    GrB_Descriptor_free_(&Duh) ;
+    OK (GxB_set (Duh, GxB_AxB_METHOD, GxB_AxB_SAXPY)) ;
+    OK (GxB_print (Duh, GxB_COMPLETE)) ;
+    OK (GxB_set (Duh, GxB_AxB_METHOD, GxB_AxB_HASH)) ;
+    OK (GxB_print (Duh, GxB_COMPLETE)) ;
+    OK (GxB_set (Duh, GxB_AxB_METHOD, GxB_AxB_HEAP)) ;
+    OK (GxB_print (Duh, GxB_COMPLETE)) ;
+    OK (GxB_set (Duh, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
+    OK (GxB_print (Duh, GxB_COMPLETE)) ;
+    OK (GxB_set (Duh, GxB_AxB_METHOD, GxB_AxB_DOT)) ;
+    OK (GxB_print (Duh, GxB_COMPLETE)) ;
+    GrB_free (&Duh) ;
 
     expected = GrB_INVALID_VALUE ;
-    ERR (GxB_Desc_set (GrB_DESC_S, GrB_INP0, GrB_TRAN)) ;
+    ERR (GxB_set (GrB_DESC_S, GrB_INP0, GrB_TRAN)) ;
+    printf ("\nExpected error: %s\n", GrB_error ( )) ;
 
     ERR (GrB_Descriptor_set (GrB_DESC_S, GrB_INP0, GrB_TRAN)) ;
+    printf ("\nExpected error: %s\n", GrB_error ( )) ;
 
     //--------------------------------------------------------------------------
     // burble
     //--------------------------------------------------------------------------
 
     bool burble ;
-    OK (GxB_Global_Option_get_(GxB_BURBLE, &burble)) ;
+    OK (GxB_get (GxB_BURBLE, &burble)) ;
     printf ("burble: %d\n", burble) ;
 
     //--------------------------------------------------------------------------
     // select ops
     //--------------------------------------------------------------------------
 
-    OK (GxB_SelectOp_fprint (GxB_TRIL,     "tril"    , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_TRIU,     "triu"    , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_DIAG,     "diag"    , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_OFFDIAG,  "offidiag", GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_NONZERO,  "nonzero" , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_EQ_ZERO,  "eq_zero" , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_GT_ZERO,  "gt_zero" , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_GE_ZERO,  "ge_zero" , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_LT_ZERO,  "lt_zero" , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_LE_ZERO,  "le_zero" , GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_NE_THUNK, "ne_thunk", GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_EQ_THUNK, "eq_thunk", GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_GT_THUNK, "gt_thunk", GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_GE_THUNK, "ge_thunk", GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_LT_THUNK, "lt_thunk", GxB_COMPLETE, NULL)) ;
-    OK (GxB_SelectOp_fprint (GxB_LE_THUNK, "le_thunk", GxB_COMPLETE, NULL)) ;
+    OK (GxB_print (GxB_TRIL, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_TRIU, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_DIAG, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_OFFDIAG, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_NONZERO, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_EQ_ZERO, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_GT_ZERO, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_GE_ZERO, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_LT_ZERO, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_LE_ZERO, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_NE_THUNK, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_EQ_THUNK, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_GT_THUNK, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_GE_THUNK, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_LT_THUNK, GxB_COMPLETE)) ;
+    OK (GxB_print (GxB_LE_THUNK, GxB_COMPLETE)) ;
 
     //--------------------------------------------------------------------------
     // assign scalar into hypersparse
@@ -1053,112 +995,16 @@ void mexFunction
     n = n * 1024 ;
     OK (GrB_Matrix_new (&A, GrB_FP64, n, n)) ;
     expected = GrB_OUT_OF_MEMORY ;
-    ERR1 (A, GrB_Matrix_assign_FP64_(A, NULL, NULL, (double) 1,
+    ERR (GrB_Matrix_assign_FP64 (A, NULL, NULL, (double) 1,
         GrB_ALL, n, GrB_ALL, n, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("\nproblem too large, expected error: %s\n", err) ;
-    OK (GrB_Matrix_free_(&A)) ;
-
-    //--------------------------------------------------------------------------
-    // setElement typecast
-    //--------------------------------------------------------------------------
-
-    OK (GrB_Matrix_new (&A, user_type, 10, 10)) ;
-
-    expected = GrB_DOMAIN_MISMATCH ;
-
-    ERR1 (A, GrB_Matrix_setElement_BOOL   (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_INT8   (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_INT16  (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_INT32  (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_INT64  (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_UINT8  (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_UINT16 (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_UINT32 (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_UINT64 (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_FP32   (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GrB_Matrix_setElement_FP64   (A, 0, 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GxB_Matrix_setElement_FC32   (A, GxB_CMPLXF(0,0), 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-    ERR1 (A, GxB_Matrix_setElement_FC64   (A, GxB_CMPLX (0,0), 0, 0)) ;
-    GrB_Matrix_error_(&err, A) ; printf ("expected: %s\n", err) ;
-
-    //--------------------------------------------------------------------------
-    // GrB_error
-    //--------------------------------------------------------------------------
-
-    GrB_Type_error_(&err, user_type) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    GrB_UnaryOp_error_(&err, GrB_AINV_FP32) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    GrB_BinaryOp_error_(&err, GrB_PLUS_FP32) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    GxB_SelectOp_error_(&err, GxB_TRIL) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    GrB_Monoid_error_(&err, GrB_LOR_MONOID_BOOL) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    GrB_Semiring_error_(&err, GrB_PLUS_TIMES_SEMIRING_FP32) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    GrB_Descriptor_error_(&err, GrB_DESC_T0) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    OK (GxB_Scalar_new (&scalar, GrB_FP32)) ;
-    GxB_Scalar_error_(&err, scalar) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    OK (GrB_Vector_new (&victor, GrB_FP32, 10)) ;
-    GrB_Vector_error_(&err, victor) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    int16_t fortytwo = 42 ;
-    OK (GrB_Matrix_setElement_UDT (A, (void *) &fortytwo, 3, 7)) ;
-    OK (GxB_Matrix_fprint_(A, GxB_COMPLETE, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    CHECK (err != NULL && err [0] == '\0') ;
-
-    GrB_Vector_free_(&victor) ;
-    GxB_Scalar_free_(&scalar) ;
-    GrB_Type_free_(&user_type) ;
-    GrB_Matrix_free_(&A) ;
-
-    //--------------------------------------------------------------------------
-    // test for problem too large in GB_bitmap_AxB_saxpy
-    //--------------------------------------------------------------------------
-
-    n = INT32_MAX ;
-    OK (GrB_Matrix_new (&A, GrB_FP32, n, 0)) ;
-    OK (GrB_Matrix_new (&B, GrB_FP32, 0, n)) ;
-    expected = GrB_OUT_OF_MEMORY ;
-    bool ignore ;
-    ERR (GB_bitmap_AxB_saxpy (&C, GxB_BITMAP, NULL, false, false, A, B,
-        GrB_PLUS_TIMES_SEMIRING_FP32, false, &ignore, NULL)) ;
-    GrB_Matrix_free_(&A) ;
-    GrB_Matrix_free_(&B) ;
-    CHECK (C == NULL) ;
+    printf ("\nproblem too large, expected error: %s\n", GrB_error ( )) ;
+    OK (GrB_free (&A)) ;
 
     //--------------------------------------------------------------------------
     // wrapup
     //--------------------------------------------------------------------------
 
-    // #include "GB_Test_about_mkl_template.c"
-    GB_mx_put_global (true) ;   
+    GB_mx_put_global (true, 0) ;
     fclose (f) ;
     printf ("\nAll errors printed above were expected.\n") ;
     printf ("GB_mex_about: all tests passed\n\n") ;

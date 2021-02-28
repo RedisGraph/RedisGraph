@@ -1,24 +1,7 @@
 function gbtest40
 %GBTEST40 test sum, prod, max, min, any, all, norm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
-
 rng ('default')
-
-x = GrB.random (10, 1, inf, 'range', complex ([0 1])) ;
-s1 = norm (x, 2) ;
-s2 = norm (double (x), 2) ;
-assert (abs (s1-s2) < 1e-12) ;
-
-x = GrB.random (10, 1, inf, 'range', int16 ([1 16])) ;
-s1 = norm (x, 2) ;
-s2 = norm (double (x), 2) ;
-assert (abs (s1-s2) < 1e-6) ;
-
-s1 = norm (x, -inf) ;
-s2 = norm (double (x), -inf) ;
-assert (abs (s1-s2) < 1e-6) ;
 
 old = verLessThan ('matlab', '9.6') ;
 
@@ -141,6 +124,8 @@ for trial = 1:3
                         s1 = min (A, [ ], 1) ;
                         s2 = min (G, [ ], 1) ;
                         assert (gbtest_eq (s1, s2)) ;
+                        s1 = min (A, [ ], 2) ;
+                        s2 = min (G, [ ], 2) ;
                         assert (gbtest_eq (s1, s2)) ;
                         if (old)
                             s1 = min (min (A)) ;

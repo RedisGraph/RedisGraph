@@ -1,8 +1,8 @@
 function gbtest62
 %GBTEST62 test ldivide, rdivide, mldivide, mrdivide
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
 
@@ -71,7 +71,7 @@ for trial = 1:40
 
     x = A \ b ;
     y = GA \ b ;
-    assert (norm (x - y) < 1e-12) ;
+    assert (isequal (x, y)) ;
 
     x = b' / A ;
     y = b' / GA ;

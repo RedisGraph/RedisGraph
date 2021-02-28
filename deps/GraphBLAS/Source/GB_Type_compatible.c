@@ -2,8 +2,8 @@
 // GB_Type_compatible: return true if domains are compatible
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -12,19 +12,14 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 bool GB_Type_compatible             // check if two types can be typecast
 (
     const GrB_Type atype,
     const GrB_Type btype
 )
 {
-    if (atype == NULL || btype == NULL)
-    { 
-        // the op ignores its inputs
-        return (true) ;
-    }
-    else if (atype->code == GB_UDT_code || btype->code == GB_UDT_code)
+
+    if (atype->code == GB_UDT_code || btype->code == GB_UDT_code)
     { 
         // two user types must be identical to be compatible
         return (atype == btype) ;

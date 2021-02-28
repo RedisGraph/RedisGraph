@@ -1,5 +1,5 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-SPDX-License-Identifier: Apache-2.0
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 This is the GraphBLAS/Demo folder.  It contains a set of simple demo programs
 that illustrate the use of GraphBLAS.  To compile and run the demos, see
@@ -23,6 +23,7 @@ in Demo/Source:
     bfs5m_check.c           as above, but with error checking
     bfs6.c                  breadth-first serach using apply
     bfs6_check.c            as above, but with error checking
+    bfs_level.c             assign level for bfs6
     get_matrix.c            get a matrix (file, Wathen, or random)
     mis.c                   maximal independent set
     mis_check.c             as above, but with error checking
@@ -50,17 +51,22 @@ in Demo/Program:
     bfs_demo.c              demo program to test bfs
     complex_demo.c          demo program to test complex type
     import_demo.c           demo program to test import/export
-    kron_demo.c             demo program to test GrB_kronecker
+    kron_demo.c             demo program to test GxB_kron
     mis_demo.c              demo program to test mis
     tri_demo.c              demo program to test tricount
     simple_demo.c           demo program to test simple_rand and simple_timer
     wildtype_demo.c         demo program, arbitrary struct as user-defined type
     pagerank_demo.c         demo program to test dpagerank and ipagerank
     openmp_demo.c           demo program using OpenMP
+    pthread_demo.c          demo program using POSIX pthreads
 
 --------------------------------------------------------------------------------
 in Demo/Output:
 --------------------------------------------------------------------------------
+
+Output generated on an NVIDIA DGX Workstation, Intel Xeon E5-2698 @ 2.2GHz,
+with 20 hardware cores (40 threads), 256GB RAM, Ubuntu 16.04, using the
+icc 19.0.3.199 20190206 compiler, and GraphBLAS v3.0.1 (July 21, 2019, draft):
 
     bfs_demo.out        output of bfs_demo
     complex_demo_out.m  output of complex_demo, run in MATLAB to check results
@@ -71,11 +77,33 @@ in Demo/Output:
     pagerank_demo.out   output of pagerank_demo
     import_demo.out     output of import_demo
 
+Output generated from an earlier version, MacBook Pro, gcc 8.3, Apr 11, 2019:
+
+    6 output files from openmp_demo.c:
+    user_openmp_grb_openmp.out   user threads: OpenMP, GraphBLAS: OpenMP
+    user_openmp_grb_pthread.out  user threads: OpenMP, GraphBLAS: POSIX 
+    user_openmp_grb_none.out     user threads: OpenMP,
+                                 GraphBLAS: none, expect failure
+    user_none_grb_openmp.out     user threads: none, GraphBLAS: OpenMP
+    user_none_grb_pthread.out    user threads: none, GraphBLAS: POSIX 
+    user_none_grb_none.out       user threads: none, GraphBLAS: none (OK)
+
+    3 output files from pthread_demo.c:
+    user_pthread_grb_openmp.out  user threads: POSIX, GraphBLAS: OpenMP
+    user_pthread_grb_pthread.out user threads: POSIX, GraphBLAS: POSIX 
+    user_pthread_grb_none.out    user threads: POSIX,
+                                 GraphBLAS: none, expect failure
+
+Note that two of the above files show expected failures: synchronization
+failures (queue invalid) and mangled error messages, because the user
+application is multithreaded but GraphBLAS was compiled with no threading
+library and is thus not thread-safe.
+
 --------------------------------------------------------------------------------
 in Demo/Include:
 --------------------------------------------------------------------------------
 
-    graphblas_demos.h       include file for all demos
+    demos.h                 include file for all demos
     simple_rand.h           include file for simple_rand.c
     simple_timer.h          include file for simple_timer
     usercomplex.h           include file for usercomplex.h

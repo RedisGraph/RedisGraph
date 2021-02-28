@@ -2,8 +2,8 @@
 // GB_mex_subref_symbolic: S=A(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,9 +13,9 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;              \
-    GrB_Matrix_free_(&C) ;              \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&A) ;               \
+    GB_MATRIX_FREE (&C) ;               \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -35,7 +35,7 @@ void mexFunction
     bool ignore ;
 
     // check inputs
-    GB_CONTEXT (USAGE) ;
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin != 3)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -66,16 +66,9 @@ void mexFunction
         mexErrMsgTxt ("J failed") ;
     }
 
-    // symbolic subref is not needed when A is bitmap.
-    int sparsity = 0 ;
-    GxB_Matrix_Option_get_(A, GxB_SPARSITY_STATUS, &sparsity) ;
-    if (sparsity == GxB_BITMAP)
-    {
-        mexErrMsgTxt ("A failed: cannot be bitmap") ;
-    }
-
-    // C = A(I,J) or A(J,I)', no need to check dimensions of C; symbolic
-    METHOD (GB_subref (&C, true , A, I, ni, J, nj, true, Context)) ;
+    // C = A(I,J) or A(J,I)', no need to check dimensions of C
+//  METHOD (GB_subref_symbolic (&C, true /* CSC */, A, I, ni, J, nj, Context)) ;
+    METHOD (GB_subref (&C, true , A, I, ni, J, nj, true, true, Context)) ;
 
     // return C to MATLAB as a struct
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C subref symbolic", true) ;

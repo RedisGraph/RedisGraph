@@ -2,8 +2,8 @@
 // gbapply: apply a unary operator to a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -11,18 +11,17 @@
 
 // Usage:
 
-// C = gbapply (unop, A)
-// C = gbapply (unop, A, desc)
-// C = gbapply (Cin, accum, unop, A, desc)
-// C = gbapply (Cin, M, unop, A, desc)
-// C = gbapply (Cin, M, accum, unop, A, desc)
+// Cout = GrB.apply (op, A, desc)
+// Cout = GrB.apply (Cin, accum, op, A, desc)
+// Cout = GrB.apply (Cin, M, op, A, desc)
+// Cout = GrB.apply (Cin, M, accum, op, A, desc)
 
 // If Cin is not present then it is implicitly a matrix with no entries, of the
 // right size (which depends on A, B, and the descriptor).
 
 #include "gb_matlab.h"
 
-#define USAGE "usage: C = GrB.apply (Cin, M, accum, op, A, desc)"
+#define USAGE "usage: Cout = GrB.apply (Cin, M, accum, op, A, desc)"
 
 void mexFunction
 (
@@ -37,7 +36,8 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 2 && nargin <= 6 && nargout <= 2, USAGE) ;
+    gb_usage ((nargin == 3 || nargin == 5 || nargin == 6) && nargout <= 1,
+        USAGE) ;
 
     //--------------------------------------------------------------------------
     // find the arguments
@@ -47,10 +47,10 @@ void mexFunction
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
-    int nmatrices, nstrings, ncells, sparsity ;
+    int nmatrices, nstrings, ncells ;
     GrB_Descriptor desc ;
     gb_get_mxargs (nargin, pargin, USAGE, Matrix, &nmatrices, String, &nstrings,
-        Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
+        Cell, &ncells, &desc, &base, &kind, &fmt) ;
 
     CHECK_ERROR (nmatrices < 1 || nmatrices > 3 || nstrings < 1 || ncells > 0,
         USAGE) ;
@@ -93,14 +93,14 @@ void mexFunction
 
     if (nstrings == 1)
     { 
-        op    = gb_mxstring_to_unop  (String [0], atype) ;
+        op     = gb_mxstring_to_unop  (String [0], atype) ;
     }
     else 
     { 
         // if accum appears, then Cin must also appear
         CHECK_ERROR (C == NULL, USAGE) ;
-        accum = gb_mxstring_to_binop (String [0], ctype, ctype) ;
-        op    = gb_mxstring_to_unop  (String [1], atype) ;
+        accum  = gb_mxstring_to_binop (String [0], ctype) ;
+        op     = gb_mxstring_to_unop  (String [1], atype) ;
     }
 
     //--------------------------------------------------------------------------
@@ -130,17 +130,16 @@ void mexFunction
         // use the ztype of the op as the type of C
         OK (GxB_UnaryOp_ztype (&ctype, op)) ;
 
-        // create the matrix C and set its format and sparsity
+        OK (GrB_Matrix_new (&C, ctype, cnrows, cncols)) ;
         fmt = gb_get_format (cnrows, cncols, A, NULL, fmt) ;
-        sparsity = gb_get_sparsity (A, NULL, sparsity) ;
-        C = gb_new (ctype, cnrows, cncols, fmt, sparsity) ;
+        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
     }
 
     //--------------------------------------------------------------------------
     // compute C<M> += f(A)
     //--------------------------------------------------------------------------
 
-    OK1 (C, GrB_Matrix_apply (C, M, accum, op, A, desc)) ;
+    OK (GrB_Matrix_apply (C, M, accum, op, A, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
@@ -155,7 +154,6 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;
-    pargout [1] = mxCreateDoubleScalar (kind) ;
     GB_WRAPUP ;
 }
 

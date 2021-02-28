@@ -1,18 +1,16 @@
-function C = sprandsym (arg1, arg2)
-%SPRANDSYM random symmetric matrix.
-% C = sprandsym (A) is a symmetric random matrix.  Its lower triangle and
-%   diagonal have the same pattern as tril (A).  The values of C have a
-%   normal distribution.  A must be square.  This usage is the same as
-%   C = GrB.random (A, 'symmetric', 'normal').
+function C = sprandsym (G, varargin)
+%SPRANDSYM random symmetric GraphBLAS matrix
+% C = sprandsym (G) is a symmetric random GraphBLAS matrix.  Its
+%   lower triangle and diagonal have the same pattern as tril (G).
+%   The values of C have a normal distribution.  G must be square.
 %
-% C = sprandsym (n,d) is an n-by-n symmetric random matrix with about n*n*d
-%   entries, with a normal distribution.  If d == inf, C is full.  To use
-%   this function instead of the built-in MATLAB sprandsym, use
-%   C = sprandsym (n,GrB(d)), or C = GrB.random (n,d,'symmetric','normal').
+% All optional parameters of GrB.random may be used:
 %
-% For additional options, see GrB.random.
-% The C = sprandsym (n,d,rc) syntax is not supported.
-% C is returned as a double GraphBLAS matrix.
+%   C = sprandsym (G, 'uniform') uses a uniform distribution instead.
+%
+%   C = sprandsym (G, 'range', [lo hi]) modifies the range of the
+%       distribution.  See GrB.random for more details.  The class of
+%       [lo hi] determines the class of C ('double', 'single', ...).
 %
 % Example:
 %
@@ -20,20 +18,35 @@ function C = sprandsym (arg1, arg2)
 %   G = GrB (A) ;
 %   C0 = sprandsym (A) ;                % the built-in sprandsym
 %   C1 = sprandsym (G) ;                % GrB/sprandsym
+%   C2 = sprandsym (G, 'normal') ;      % same as sprandsym(G)
+%   C3 = sprandsym (G, 'uniform') ;     % uniform distribution
 %
-% See also GrB/sprand, GrB/sprandn, GrB.random.
+%   C = sprandsym (G, 'range', int16 ([-3 6])) ;
+%   [i,j,x] = find (C) ;
+%   histogram (x, 'BinMethod', 'integers') ;
+%
+%   C = sprandsym (G, 'uniform', 'range', int16 ([-3 6])) ;
+%   [i,j,x] = find (C) ;
+%   histogram (x, 'BinMethod', 'integers') ;
+%
+% See also sprand, sprandn, GrB/sprand, GrB.random.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (nargin == 1)
-    % C = sprandsym (G)
-    G = arg1.opaque ;
-    C = GrB (gb_random (G, 'symmetric', 'normal')) ;
-else
-    % C = sprandsym (n, d)
-    n = gb_get_scalar (arg1) ;
-    d = gb_get_scalar (arg2) ;
-    C = GrB (gb_random (n, d, 'symmetric', 'normal')) ;
+% make the default 'normal' instead of 'uniform'
+have_dist = false ;
+for k = 1:nargin-1
+    arg = varargin {k} ;
+    if (ischar (arg))
+        if (isequal (arg, 'uniform') || isequal (arg, 'normal'))
+            have_dist = true ;
+        end
+    end
 end
+if (~have_dist)
+    varargin {end+1} = 'normal' ;
+end
+
+C = GrB.random (G, 'symmetric', varargin {:}) ;
 

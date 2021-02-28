@@ -1,12 +1,8 @@
 #!/bin/sh
-
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 ./wildtype_demo                         > wildtype_demo.out
 ./simple_demo                           > simple_demo.out
 ./complex_demo                          > complex_demo_out.m
-./complex_demo 1                        > complex_demo_out2.m
+./pthread_demo                          > pthread_demo.out
 ./openmp_demo                           > openmp_demo.out
 
 ./import_demo   < ../Demo/Matrix/west0067            > import_demo.out
@@ -99,7 +95,7 @@ echo "number of mismatches between dpagerank and ipagerank in your tests: "
 grep mismatch pagerank_demo.out | wc -l
 echo "number of mismatches between dpagerank and ipagerank in Demo/Output: "
 grep mismatch ../Demo/Output/pagerank_demo.out | wc -l
-echo "Compare openmp_demo.out with Output/* manually,"
+echo "Compare pthread_demo.out and openmp_demo.out with Output/* manually,"
 echo "since the threads can print their results in random order."
 
 ./wildtype_demo                         > wildtype_demo.out

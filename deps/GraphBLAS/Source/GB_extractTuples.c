@@ -2,8 +2,8 @@
 // GB_extractTuples: extract all the tuples from a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,16 +13,13 @@
 // which must be at least as large as GrB_nvals (&nvals, A).  The values in the
 // matrix are typecasted to the type of X, as needed.
 
-// This function does the work for the user-callable GrB_*_extractTuples
-// functions.
+// If all arrays I, J, X are NULL, this function does nothing except to force
+// all pending tuples to be assembled.  This is an intended side effect.
+
+// This function is not user-callable.  It does the work for the user-callable
+// GrB_*_extractTuples functions.
 
 #include "GB.h"
-
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE (Ap) ;          \
-    GB_FREE (X_bitmap) ;    \
-}
 
 GrB_Info GB_extractTuples       // extract all tuples from a matrix
 (
@@ -40,28 +37,26 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
-    GB_void *GB_RESTRICT X_bitmap = NULL ; 
-    int64_t *GB_RESTRICT Ap = NULL ; 
-
-    ASSERT_MATRIX_OK (A, "A to extract", GB0) ;
+    // delete any lingering zombies and assemble any pending tuples
+    // do this as early as possible (see Table 2.4 in spec)
+    ASSERT (A != NULL) ;
     ASSERT (p_nvals != NULL) ;
-
-    // delete any lingering zombies and assemble any pending tuples;
-    // allow A to remain jumbled
-    GB_MATRIX_WAIT_IF_PENDING_OR_ZOMBIES (A) ;
-
-    GB_BURBLE_DENSE (A, "(A %s) ") ;
+    GB_WAIT (A) ;
     ASSERT (xcode <= GB_UDT_code) ;
-    const GB_Type_code acode = A->type->code ;
 
     // xcode and A must be compatible
-    if (!GB_code_compatible (xcode, acode))
+    if (!GB_code_compatible (xcode, A->type->code))
     { 
-        return (GrB_DOMAIN_MISMATCH) ;
+        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
+            "entries in A of type [%s] cannot be typecast\n"
+            "to output array X of type [%s]",
+            A->type->name, GB_code_string (xcode)))) ;
     }
 
-    const int64_t anz = GB_NNZ (A) ;
+    ASSERT_MATRIX_OK (A, "A to extract", GB0) ;
+
+    int64_t anz = GB_NNZ (A) ;
+
     if (anz == 0)
     { 
         // no work to do
@@ -74,14 +69,14 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     if (nvals < anz && (I_out != NULL || J_out != NULL || X != NULL))
     { 
         // output arrays are not big enough
-        return (GrB_INSUFFICIENT_SPACE) ;
+        return (GB_ERROR (GrB_INSUFFICIENT_SPACE, (GB_LOG,
+            "output arrays I,J,X are not big enough: nvals "GBd" < "
+            "number of entries "GBd, nvals, anz))) ;
     }
 
-    const size_t asize = A->type->size ;
-
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // determine the number of threads to use
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = GB_nthreads (anz + A->nvec, chunk, nthreads_max) ;
@@ -103,114 +98,55 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     }
 
     //--------------------------------------------------------------------------
-    // bitmap case
+    // extract the row indices
     //--------------------------------------------------------------------------
 
-    if (GB_IS_BITMAP (A))
+    if (I != NULL)
+    { 
+        GB_memcpy (I, A->i, anz * sizeof (int64_t), nthreads) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // extract the column indices
+    //--------------------------------------------------------------------------
+
+    if (J != NULL)
     {
-
-        //----------------------------------------------------------------------
-        // allocate workspace
-        //----------------------------------------------------------------------
-
-        bool need_typecast = (X != NULL) && (xcode != acode) ;
-        if (need_typecast)
-        { 
-            // X must be typecasted
-            int64_t anzmax = GB_IMAX (anz, 1) ;
-            X_bitmap = GB_MALLOC (anzmax * asize, GB_void) ;
-        }
-        Ap = GB_MALLOC (A->vdim+1, int64_t) ;
-        if (Ap == NULL || (need_typecast && X_bitmap == NULL))
+        if (!GB_extract_vector_list ((int64_t *) J, A, nthreads))
         { 
             // out of memory
-            GB_FREE_ALL ;
-            return (GrB_OUT_OF_MEMORY) ;
-        }
-
-        //----------------------------------------------------------------------
-        // extract the tuples
-        //----------------------------------------------------------------------
-
-        // TODO: pass xcode to GB_convert_bitmap_worker and let it do the
-        // typecasting.  This works for now, however.
-
-        GB_OK (GB_convert_bitmap_worker (Ap, I, J,
-            need_typecast ? X_bitmap : X, NULL, A, Context)) ;
-
-        //----------------------------------------------------------------------
-        // typecast the result if needed
-        //----------------------------------------------------------------------
-
-        if (need_typecast)
-        { 
-            // typecast the values from X_bitmap into X
-            GB_cast_array ((GB_void *) X, xcode, X_bitmap,
-                acode, NULL, asize, anz, nthreads) ;
-        }
-
-    }
-    else
-    {
-
-        //----------------------------------------------------------------------
-        // sparse, hypersparse, or full case
-        //----------------------------------------------------------------------
-
-        //----------------------------------------------------------------------
-        // extract the row indices
-        //----------------------------------------------------------------------
-
-        if (I != NULL)
-        {
-            if (A->i == NULL)
-            {
-                // A is full; construct the row indices
-                int64_t avlen = A->vlen ;
-                int64_t p ;
-                #pragma omp parallel for num_threads(nthreads) schedule(static)
-                for (p = 0 ; p < anz ; p++)
-                { 
-                    I [p] = (p % avlen) ;
-                }
-            }
-            else
-            { 
-                GB_memcpy (I, A->i, anz * sizeof (int64_t), nthreads) ;
-            }
-        }
-
-        //----------------------------------------------------------------------
-        // extract the column indices
-        //----------------------------------------------------------------------
-
-        if (J != NULL)
-        {
-            if (!GB_extract_vector_list ((int64_t *) J, A, nthreads))
-            { 
-                // out of memory
-                return (GrB_OUT_OF_MEMORY) ;
-            }
-        }
-
-        //----------------------------------------------------------------------
-        // extract the values
-        //----------------------------------------------------------------------
-
-        if (X != NULL)
-        { 
-            // typecast or copy the values from A into X
-            GB_cast_array ((GB_void *) X, xcode, (GB_void *) A->x,
-                acode, NULL, asize, anz, nthreads) ;
+            return (GB_OUT_OF_MEMORY) ;
         }
     }
 
     //--------------------------------------------------------------------------
-    // free workspace and return result 
+    // extract the values, typecasting as needed
+    //--------------------------------------------------------------------------
+
+    if (X != NULL)
+    {
+        if (xcode > GB_FP64_code || xcode == A->type->code)
+        { 
+            // Copy the values without typecasting.  For user-defined types,
+            // the (void *) X array is assumed to point to values of the right
+            // user-defined type, but this can't be checked.  For built-in
+            // types, xcode has already been determined by the type of X in the
+            // function signature of the caller.
+            GB_memcpy (X, A->x, anz * A->type->size, nthreads) ;
+        }
+        else
+        { 
+            // typecast the values from A into X, for built-in types only
+            GB_cast_array (X, xcode, A->x, A->type->code, anz, Context) ;
+        }
+    }
+
+    //--------------------------------------------------------------------------
+    // return the number of tuples extracted
     //--------------------------------------------------------------------------
 
     *p_nvals = anz ;            // number of tuples extracted
-    GB_FREE_ALL ;
+
     return (GrB_SUCCESS) ;
 }
 

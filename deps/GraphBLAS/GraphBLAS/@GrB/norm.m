@@ -1,5 +1,6 @@
-function s = norm (G, kind)
-%NORM matrix or vector norm.
+function s = norm (G,kind)
+%NORM norm of a GraphBLAS sparse matrix.
+%
 % If G is a matrix:
 %
 %   norm (G,1) is the maximum sum of the columns of abs (G).
@@ -16,25 +17,19 @@ function s = norm (G, kind)
 %   norm (G,inf) is the maximum of abs (G)
 %   norm (G,-inf) is the minimum of abs (G)
 %
-% The p-norm for vectors is not yet supported.
-%
 % See also GrB.reduce, GrB.normdiff.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% FUTURE: the p-norm is not yet supported.
 
-% FUTURE: add the p-norm for vectors.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (isobject (G))
-    G = G.opaque ;
+if (nargin == 1)
+    kind = 2 ;
 end
 
-if (nargin == 2)
-    if (~ischar (kind))
-        kind = gb_get_scalar (kind) ;
-    end
-else
-    kind = 2 ;
+if (isa (G, 'GrB'))
+    G = G.opaque ;
 end
 
 s = gbnorm (G, kind) ;

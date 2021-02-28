@@ -2,8 +2,8 @@
 // GrB_Matrix_new: create a new matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -27,15 +27,25 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE1 ("GrB_Matrix_new (&A, type, nrows, ncols)") ;
+    GB_WHERE ("GrB_Matrix_new (&A, type, nrows, ncols)") ;
     GB_RETURN_IF_NULL (A) ;
     (*A) = NULL ;
     GB_RETURN_IF_NULL_OR_FAULTY (type) ;
 
-    if (nrows > GxB_INDEX_MAX || ncols > GxB_INDEX_MAX)
+    if (nrows > GB_INDEX_MAX)
     { 
         // problem too large
-        return (GrB_INVALID_VALUE) ;
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+            "problem too large: nrows "GBu" exceeds "GBu,
+            nrows, GB_INDEX_MAX))) ;
+    }
+
+    if (ncols > GB_INDEX_MAX)
+    { 
+        // problem too large
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+            "problem too large: ncols "GBu" exceeds "GBu,
+            ncols, GB_INDEX_MAX))) ;
     }
 
     //--------------------------------------------------------------------------
@@ -44,6 +54,9 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
 
     GrB_Info info ;
     int64_t vlen, vdim ;
+
+    // A is created with auto hypersparsity (typically hypersparse unless
+    // vdim <= 1 or hyper_ratio < 0) and default CSR/CSC format.
 
     bool A_is_csc = GB_Global_is_csc_get ( ) ;
 
@@ -58,9 +71,9 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
         vdim = (int64_t) nrows ;
     }
 
-    info = GB_new (A, // auto sparsity, new header
-        type, vlen, vdim, GB_Ap_calloc, A_is_csc,
-        GxB_AUTO_SPARSITY, GB_Global_hyper_switch_get ( ), 1, Context) ;
+    // *A == NULL ;                 // allocate a new header for A
+    GB_NEW (A, type, vlen, vdim, GB_Ap_calloc, A_is_csc,
+        GB_AUTO_HYPER, GB_HYPER_DEFAULT, 1, Context) ;
     return (info) ;
 }
 

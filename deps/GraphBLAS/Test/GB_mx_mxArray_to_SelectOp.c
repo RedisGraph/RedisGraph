@@ -2,8 +2,8 @@
 // GB_mx_mxArray_to_SelectOp
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -18,6 +18,8 @@ bool GB_mx_mxArray_to_SelectOp          // true if successful
     const char *name                    // name of the argument
 )
 {
+    GB_WHERE ("GB_mx_mxArray_to_SelectOp") ;
+
     (*handle) = NULL ;
     const mxArray *opname_mx = NULL ;
 
@@ -28,7 +30,7 @@ bool GB_mx_mxArray_to_SelectOp          // true if successful
     }
     else if (mxIsChar (op_matlab))
     {
-        // op is a string
+        // op is a string.  default class will be used
         opname_mx = op_matlab ;
     }
     else
@@ -68,8 +70,6 @@ bool GB_mx_mxArray_to_SelectOp          // true if successful
     else if (MATCH (opname, "lt_thunk" )) { op = GxB_LT_THUNK ; }
     else if (MATCH (opname, "le_thunk" )) { op = GxB_LE_THUNK ; }
 
-    else if (MATCH (opname, "isnan"    )) { op = NULL ; }
-
     else
     {
         mexWarnMsgIdAndTxt ("GB:warn", "unknown select op") ;
@@ -77,10 +77,7 @@ bool GB_mx_mxArray_to_SelectOp          // true if successful
     }
 
     // return the op
-    if (op != NULL)
-    {
-        ASSERT_SELECTOP_OK (op, name, GB0) ;
-    }
+    ASSERT_SELECTOP_OK (op, name, GB0) ;
     (*handle) = op ;
     return (true) ;
 }

@@ -2,8 +2,8 @@
 // GB_ix_realloc: reallocate a matrix to hold a given number of entries
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,12 +13,11 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_ix_realloc      // reallocate space in a matrix
 (
-    GrB_Matrix A,               // matrix to allocate space for
-    const int64_t nzmax_new,    // new number of entries the matrix can hold
-    const bool numeric,         // if true, reallocate A->x, else A->x is NULL
+    GrB_Matrix A,           // matrix to allocate space for
+    const GrB_Index nzmax,  // new number of entries the matrix can hold
+    const bool numeric,     // if true, reallocate A->x, otherwise A->x is NULL
     GB_Context Context
 )
 {
@@ -27,61 +26,53 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    // This method is used only by GB_ix_resize, which itself is used only by
-    // GrB_Matrix_wait.  Full and bitmap matrices never have pending work, so
-    // this function is only called for hypersparse and sparse matrices.
-    ASSERT (!GB_IS_FULL (A)) ;
-    ASSERT (!GB_IS_BITMAP (A)) ;
-    ASSERT (GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A)) ;
-
-    // A->p has been allocated but might not be initialized.  GB_Matrix_check
-    // fails in this case.  Thus, ASSERT_MATRIX_OK (A, "A", ...) ;  cannot be
+    // GB_new does not always initialize A->p; GB_Matrix_check fails in this
+    // case.  So the following assertion is not possible here.  This is by
+    // design.  Thus, ASSERT_MATRIX_OK (A, "A", ...) ;  cannot be
     // used here.
     ASSERT (A != NULL && A->p != NULL) ;
+    ASSERT (GB_IMPLIES (A->is_hyper, A->h != NULL)) ;
     ASSERT (!A->i_shallow && !A->x_shallow) ;
 
-    // This function tolerates pending tuples, zombies, and jumbled matrices.
-    ASSERT (GB_ZOMBIES_OK (A)) ;
-    ASSERT (GB_JUMBLED_OK (A)) ;
-    ASSERT (GB_PENDING_OK (A)) ;
+    // This function tolerates pending tuples and zombies
+    ASSERT (GB_PENDING_OK (A)) ; ASSERT (GB_ZOMBIES_OK (A)) ;
 
-    if (nzmax_new > GxB_INDEX_MAX)
+    if (nzmax > GB_INDEX_MAX)
     { 
         // problem too large
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
     // reallocate the space
     //--------------------------------------------------------------------------
 
-    size_t nzmax_new1 = GB_IMAX (nzmax_new, 1) ;
+    size_t nzmax1 = GB_IMAX (nzmax, 1) ;
     bool ok1 = true, ok2 = true ;
-    GB_REALLOC (A->i, nzmax_new1, A->nzmax, int64_t, &ok1) ;
+    GB_REALLOC_MEMORY (A->i, nzmax1, A->nzmax, sizeof (int64_t), &ok1) ;
     if (numeric)
     { 
-        size_t asize = A->type->size ;
-        GB_REALLOC (A->x, nzmax_new1*asize, (A->nzmax)*asize, GB_void, &ok2) ;
+        GB_REALLOC_MEMORY (A->x, nzmax1, A->nzmax, A->type->size, &ok2) ;
     }
     else
     { 
-        GB_FREE (A->x) ;
+        GB_FREE_MEMORY (A->x, A->nzmax, A->type->size) ;
     }
     bool ok = ok1 && ok2 ;
 
     // always succeeds if the space shrinks
-    ASSERT (GB_IMPLIES (nzmax_new1 <= A->nzmax, ok)) ;
+    ASSERT (GB_IMPLIES (nzmax1 <= A->nzmax, ok)) ;
 
     if (ok)
     { 
-        A->nzmax = nzmax_new1 ;
+        A->nzmax = nzmax1 ;
     }
 
     // The matrix is always left in a valid state.  If the reallocation fails
     // it just won't have the requested size (and ok is false in this case).
     if (!ok)
     { 
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     return (GrB_SUCCESS) ;

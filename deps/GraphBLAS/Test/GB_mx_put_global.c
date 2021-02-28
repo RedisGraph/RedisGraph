@@ -2,8 +2,8 @@
 // GB_mx_put_global: put the GraphBLAS status in MATLAB workspace
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -11,7 +11,8 @@
 
 void GB_mx_put_global
 (
-    bool cover
+    bool cover,
+    GrB_Desc_Value AxB_method_used
 )
 {
 
@@ -25,7 +26,7 @@ void GB_mx_put_global
     // return the time to MATLAB, if it was computed
     //--------------------------------------------------------------------------
 
-    GB_mx_put_time ( ) ;
+    GB_mx_put_time (AxB_method_used) ;
 
     //--------------------------------------------------------------------------
     // log the statement coverage
@@ -48,8 +49,11 @@ void GB_mx_put_global
     int64_t nmalloc = GB_Global_nmalloc_get ( ) ;
     if (nmalloc != 0)
     {
-        printf ("in GB_mx_put_global: GraphBLAS nmalloc "GBd"!\n", nmalloc) ;
-        mexErrMsgTxt ("memory leak in test!") ;
+        int64_t inuse   = GB_Global_inuse_get ( ) ;
+        int64_t maxused = GB_Global_maxused_get ( ) ;
+        printf ("GraphBLAS nmalloc "GBd"! inuse "GBd" maxused "GBd"\n",
+            nmalloc, inuse, maxused) ;
+        mexErrMsgTxt ("memory leak!") ;
     }
 }
 

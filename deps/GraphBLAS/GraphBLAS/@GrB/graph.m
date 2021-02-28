@@ -1,19 +1,19 @@
 function Graph = graph (G, varargin)
 %GRAPH convert a GraphBLAS matrix into a MATLAB undirected Graph.
 % Graph = graph (G) converts a GraphBLAS matrix G into an undirected MATLAB
-% Graph.  G is assumed to be symmetric; only tril (G) is used by default.
-% G must be square.  If G is logical, then no weights are added to the
-% Graph.  If G is single or double, these become the weights of the MATLAB
-% Graph.  If G is integer, the Graph is constructed with weights of type
-% double.
+% Graph.  G is assumed to be symmetric; only tril (G) is used by default.  G
+% must be square.  If G is logical, then no weights are added to the Graph.  If
+% G is single or double, these become the weights of the MATLAB Graph.  If G is
+% integer, the Graph is constructed with weights of type double.  Optional
+% string arguments can appear after G, in any order:
 %
-% Graph = graph (G, ..., 'upper') uses triu (G) to construct the Graph.
-% Graph = graph (G, ..., 'lower') uses tril (G) to construct the Graph.
-% The default is 'lower'.
+%   Graph = graph (G, ..., 'upper') uses only triu (G) to construct the Graph.
+%   Graph = graph (G, ..., 'lower') uses only tril (G) to construct the Graph.
+%   The default is 'lower'.
 %
-% Graph = graph (G, ..., 'omitselfloops') ignores the diagonal of G, and
-% the resulting MATLAB Graph has no self-edges.  The default is that
-% self-edges are created from any diagonal entries of G.
+%   Graph = graph (G, ..., 'omitselfloops') ignores the diagonal of G, and the
+%   resulting MATLAB Graph has no self-edges.  The default is that self-edges
+%   are created from any diagonal entries of G.
 %
 % Example:
 %
@@ -23,14 +23,13 @@ function Graph = graph (G, varargin)
 %
 % See also graph, digraph, GrB/digraph.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-G = G.opaque ;
-
-[m, n, type] = gbsize (G) ;
+type = GrB.type (G) ;
+[m, n] = size (G) ;
 if (m ~= n)
-    error ('G must be square') ;
+    gb_error ('G must be square') ;
 end
 
 % get the string options
@@ -44,7 +43,7 @@ for k = 1:nargin-1
         case { 'omitselfloops' }
             omitself = true ;
         otherwise
-            error ('unknown option') ;
+            gb_error ('unknown option') ;
     end
 end
 
@@ -52,38 +51,29 @@ end
 if (omitself)
     % ignore diagonal entries of G
     if (isequal (side, 'upper'))
-        G = gbselect ('triu', G, 1) ;
+        G = triu (G, 1) ;
     elseif (isequal (side, 'lower'))
-        G = gbselect ('tril', G, -1) ;
+        G = tril (G, -1) ;
     end
 else
     % include diagonal entries of G
     if (isequal (side, 'upper'))
-        G = gbselect ('triu', G, 0) ;
+        G = triu (G) ;
     elseif (isequal (side, 'lower'))
-        G = gbselect ('tril', G, 0) ;
+        G = tril (G) ;
     end
 end
 
 % construct the graph
-switch (type)
-
-    case { 'single' }
-
-        % The MATLAB graph(...) function can accept x as single, but not
-        % from a MATLAB sparse matrix.  So extract the tuples of G first.
-        [i, j, x] = gbextracttuples (G) ;
-        Graph = graph (i, j, x, n) ;
-
-    case { 'logical' }
-
-        % The MATLAB digraph(...) function allows for logical
-        % adjacency matrices (no edge weights are created).
-        Graph = graph (gbmatlab (G, 'logical'), side) ;
-
-    otherwise
-
-        % typecast to double
-        Graph = graph (gbmatlab (G, 'double'), side) ;
+if (isequal (type, 'logical'))
+    Graph = graph (logical (G), side) ;
+elseif (isequal (type, 'double'))
+    Graph = graph (double (G), side) ;
+elseif (isequal (type, 'single'))
+    [i, j, x] = GrB.extracttuples (G) ;
+    Graph = graph (i, j, x, n) ;
+else
+    % all other types (int* and uint*) must be cast to double
+    Graph = graph (double (GrB (G, 'double')), side) ;
 end
 

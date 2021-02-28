@@ -2,16 +2,12 @@
 // SuiteSparse/GraphBLAS/Demo/Source/import_test: test import/export
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-#include "GraphBLAS.h"
-
-#undef GB_PUBLIC
-#define GB_LIBRARY
-#include "graphblas_demos.h"
+#include "demos.h"
 
 #if defined __INTEL_COMPILER
 #pragma warning (disable: 556)
@@ -19,7 +15,7 @@
 
 #define FREE_ALL                    \
 {                                   \
-    GrB_Matrix_free (C_handle) ;    \
+    GrB_Matrix_free (C_handle) ;           \
     if (Ap != NULL) free (Ap) ;     \
     if (Ah != NULL) free (Ah) ;     \
     if (Ai != NULL) free (Ai) ;     \
@@ -28,7 +24,7 @@
 }
 
 // typecast the values to the exported type
-#define GETVAL                                                  \
+#define GETVAL \
 {                                                               \
     if      (type == GrB_BOOL  ) Ax_bool   = (bool     *) Ax ;  \
     else if (type == GrB_INT8  ) Ax_int8   = (int8_t   *) Ax ;  \
@@ -45,7 +41,7 @@
 }
 
 // print a value
-#define PRINTVAL(p)                                                      \
+#define PRINTVAL(p) \
 {                                                                        \
     if      (type == GrB_BOOL  ) printf ("%g", (double) Ax_bool   [p]) ; \
     else if (type == GrB_INT8  ) printf ("%g", (double) Ax_int8   [p]) ; \
@@ -62,20 +58,13 @@
 
 #include "../Source/GB.h"
 
-GB_PUBLIC
 GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
 {
     
     GrB_Type type ;
-    GrB_Index nrows, ncols, nvec ;
+    GrB_Index nrows, ncols, nvals, nvec ;
     GrB_Index *Ap = NULL, *Ah = NULL, *Ai = NULL, *Aj = NULL ;
-    GrB_Index Ap_size = 0 ;
-    GrB_Index Ah_size = 0 ;
-    GrB_Index Ab_size = 0 ;
-    GrB_Index Ai_size = 0 ;
-    GrB_Index Aj_size = 0 ;
-    GrB_Index Ax_size = 0 ;
-    bool jumbled ;
+    int64_t nonempty ;
 
     void *Ax = NULL ;
 
@@ -83,11 +72,11 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
     int8_t   *Ax_int8   = NULL ;
     int16_t  *Ax_int16  = NULL ;
     int32_t  *Ax_int32  = NULL ;
-    int64_t  *Ax_int64  = NULL ;
+    int32_t  *Ax_int64  = NULL ;
     uint8_t  *Ax_uint8  = NULL ;
     uint16_t *Ax_uint16 = NULL ;
     uint32_t *Ax_uint32 = NULL ;
-    uint64_t *Ax_uint64 = NULL ;
+    uint32_t *Ax_uint64 = NULL ;
     float    *Ax_fp32   = NULL ;
     double   *Ax_fp64   = NULL ;
 
@@ -105,7 +94,7 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSR (C_handle, &type, &nrows, &ncols,
-                &Ap, &Aj, &Ax, &Ap_size, &Aj_size, &Ax_size, &jumbled, NULL)) ;
+                &nvals, &nonempty, &Ap, &Aj, &Ax, NULL)) ;
 
             // the export destroys the matrix (*C_handle), returning its
             // contents in Ap, Aj, and Ax.
@@ -113,8 +102,8 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
 
             if (dump)
             {
-                printf ("export standard CSR: %g-by-%g, Ax_size %g:\n",
-                    (double) nrows, (double) ncols, (double) Ax_size) ;
+                printf ("export standard CSR: %g-by-%g, nvals %g:\n",
+                    (double) nrows, (double) ncols, (double) nvals) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
                 printf ("Ap %p Aj %p Ax %p\n", (void *) Ap, (void *) Aj, Ax) ;
@@ -133,7 +122,7 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
 
             // reimport the matrix
             OK (GxB_Matrix_import_CSR (C_handle, type, nrows, ncols,
-                &Ap, &Aj, &Ax, Ap_size, Aj_size, Ax_size, jumbled, NULL)) ;
+                nvals, nonempty, &Ap, &Aj, &Ax, NULL)) ;
 
             OK (GxB_Matrix_fprint ((*C_handle), "C reimported",
                 dump ? GxB_COMPLETE : GxB_SILENT, stdout)) ;
@@ -144,14 +133,14 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSC (C_handle, &type, &nrows, &ncols,
-                &Ap, &Ai, &Ax, &Ap_size, &Ai_size, &Ax_size, &jumbled, NULL)) ;
+                &nvals, &nonempty, &Ap, &Ai, &Ax, NULL)) ;
 
             CHECK (*C_handle == NULL, GrB_INVALID_VALUE) ;
 
             if (dump)
             {
-                printf ("export standard CSC: %g-by-%g, Ax_size %g:\n",
-                    (double) nrows, (double) ncols, (double) Ax_size) ;
+                printf ("export standard CSC: %g-by-%g, nvals %g:\n",
+                    (double) nrows, (double) ncols, (double) nvals) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
 
@@ -169,7 +158,7 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
             }
 
             OK (GxB_Matrix_import_CSC (C_handle, type, nrows, ncols,
-                &Ap, &Ai, &Ax, Ap_size, Ai_size, Ax_size, jumbled, NULL)) ;
+                nvals, nonempty, &Ap, &Ai, &Ax, NULL)) ;
 
             OK (GxB_Matrix_fprint ((*C_handle), "C reimported",
                 dump ? GxB_COMPLETE : GxB_SILENT, stdout)) ;
@@ -180,15 +169,14 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSR (C_handle, &type, &nrows, &ncols,
-                &Ap, &Ah, &Aj, &Ax, &Ap_size, &Ah_size, &Aj_size, &Ax_size,
-                &nvec, &jumbled, NULL)) ;
+                &nvals, &nonempty, &nvec, &Ah, &Ap, &Aj, &Ax, NULL)) ;
 
             CHECK (*C_handle == NULL, GrB_INVALID_VALUE) ;
 
             if (dump)
             {
-                printf ("export hyper CSR: %g-by-%g, Ax_size %g, nvec %g:\n",
-                (double) nrows, (double) ncols, (double) Ax_size, (double) nvec) ;
+                printf ("export hyper CSR: %g-by-%g, nvals %g, nvec %g:\n",
+                (double) nrows, (double) ncols, (double) nvals, (double) nvec) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
 
@@ -206,8 +194,7 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
             }
 
             OK (GxB_Matrix_import_HyperCSR (C_handle, type, nrows, ncols,
-                &Ap, &Ah, &Aj, &Ax, Ap_size, Ah_size, Aj_size, Ax_size,
-                nvec, jumbled, NULL)) ;
+                nvals, nonempty, nvec, &Ah, &Ap, &Aj, &Ax, NULL)) ;
 
             OK (GxB_Matrix_fprint ((*C_handle), "C reimported",
                 dump ? GxB_COMPLETE : GxB_SILENT, stdout)) ;
@@ -218,15 +205,14 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSC (C_handle, &type, &nrows, &ncols,
-                &Ap, &Ah, &Ai, &Ax, &Ap_size, &Ah_size, &Ai_size, &Ax_size,
-                &nvec, &jumbled, NULL)) ;
+                &nvals, &nonempty, &nvec, &Ah, &Ap, &Ai, &Ax, NULL)) ;
 
             CHECK (*C_handle == NULL, GrB_INVALID_VALUE) ;
 
             if (dump)
             {
-                printf ("export hyper CSC: %g-by-%g, Ax_size %g, nvec %g:\n",
-                (double) nrows, (double) ncols, (double) Ax_size, (double) nvec) ;
+                printf ("export hyper CSC: %g-by-%g, nvals %g, nvec %g:\n",
+                (double) nrows, (double) ncols, (double) nvals, (double) nvec) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
 
@@ -244,8 +230,7 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
             }
 
             OK (GxB_Matrix_import_HyperCSC (C_handle, type, nrows, ncols,
-                &Ap, &Ah, &Ai, &Ax, Ap_size, Ah_size, Ai_size, Ax_size,
-                nvec, jumbled, NULL)) ;
+                nvals, nonempty, nvec, &Ah, &Ap, &Ai, &Ax, NULL)) ;
 
             OK (GxB_Matrix_fprint ((*C_handle), "C reimported",
                 dump ? GxB_COMPLETE : GxB_SILENT, stdout)) ;

@@ -2,8 +2,8 @@
 // GB_subassign_03: C(I,J) += scalar ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -16,8 +16,6 @@
 // A:           scalar
 // S:           constructed
 
-// C is not bitmap: use GB_bitmap_assign instead
-
 #include "GB_subassign_methods.h"
 
 GrB_Info GB_subassign_03
@@ -25,45 +23,34 @@ GrB_Info GB_subassign_03
     GrB_Matrix C,
     // input:
     const GrB_Index *I,
-    const int64_t ni,
     const int64_t nI,
     const int Ikind,
     const int64_t Icolon [3],
     const GrB_Index *J,
-    const int64_t nj,
     const int64_t nJ,
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_BinaryOp accum,
     const void *scalar,
     const GrB_Type atype,
+    const GrB_Matrix S,
     GB_Context Context
 )
 {
 
     //--------------------------------------------------------------------------
-    // check inputs
-    //--------------------------------------------------------------------------
-
-    ASSERT (!GB_IS_BITMAP (C)) ;
-
-    //--------------------------------------------------------------------------
-    // S = C(I,J)
-    //--------------------------------------------------------------------------
-
-    GB_EMPTY_TASKLIST ;
-    GB_OK (GB_subassign_symbolic (&S, C, I, ni, J, nj, true, Context)) ;
-
-    //--------------------------------------------------------------------------
     // get inputs
     //--------------------------------------------------------------------------
 
-    GB_GET_C ;      // C must not be bitmap
+    GB_GET_C ;
+    const bool C_is_hyper = C->is_hyper ;
     const int64_t *GB_RESTRICT Ch = C->h ;
     const int64_t *GB_RESTRICT Cp = C->p ;
-    const bool C_is_hyper = (Ch != NULL) ;
     const int64_t Cnvec = C->nvec ;
     GB_GET_S ;
+    const int64_t *GB_RESTRICT Sh = S->h ;
+    const int64_t Snvec = S->nvec ;
+    const bool S_is_hyper = S->is_hyper ;
     GB_GET_ACCUM_SCALAR ;
 
     //--------------------------------------------------------------------------
@@ -87,6 +74,7 @@ GrB_Info GB_subassign_03
     // phase 1: create zombies, update entries, and count pending tuples
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
     for (taskid = 0 ; taskid < ntasks ; taskid++)
@@ -96,7 +84,7 @@ GrB_Info GB_subassign_03
         // get the task descriptor
         //----------------------------------------------------------------------
 
-        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE1 (iA_start, iA_end) ;
+        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE1 ;
 
         //----------------------------------------------------------------------
         // compute all vectors in this task
@@ -109,13 +97,13 @@ GrB_Info GB_subassign_03
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
+            GB_GET_jC ;
 
             //------------------------------------------------------------------
             // get S(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_GET_VECTOR_FOR_IXJ (S) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC) += scalar
@@ -123,7 +111,7 @@ GrB_Info GB_subassign_03
 
             for (int64_t iA = iA_start ; iA < iA_end ; iA++)
             {
-                bool found = (pS < pS_end) && (GBI (Si, pS, Svlen) == iA) ;
+                bool found = (pS < pS_end) && (Si [pS] == iA) ;
                 if (!found)
                 { 
                     // ----[. A 1]----------------------------------------------
@@ -162,7 +150,7 @@ GrB_Info GB_subassign_03
         // get the task descriptor
         //----------------------------------------------------------------------
 
-        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE2 (iA_start, iA_end) ;
+        GB_GET_IXJ_TASK_DESCRIPTOR_PHASE2 ;
 
         //----------------------------------------------------------------------
         // compute all vectors in this task
@@ -175,13 +163,13 @@ GrB_Info GB_subassign_03
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            int64_t jC = GB_ijlist (J, j, Jkind, Jcolon) ;
+            GB_GET_jC ;
 
             //------------------------------------------------------------------
             // get S(iA_start:end,j)
             //------------------------------------------------------------------
 
-            GB_GET_VECTOR_FOR_IXJ (S, iA_start) ;
+            GB_GET_VECTOR_FOR_IXJ (S) ;
 
             //------------------------------------------------------------------
             // C(I(iA_start,iA_end-1),jC) += scalar
@@ -189,7 +177,7 @@ GrB_Info GB_subassign_03
 
             for (int64_t iA = iA_start ; iA < iA_end ; iA++)
             {
-                bool found = (pS < pS_end) && (GBI (Si, pS, Svlen) == iA) ;
+                bool found = (pS < pS_end) && (Si [pS] == iA) ;
                 if (!found)
                 { 
                     // ----[. A 1]----------------------------------------------

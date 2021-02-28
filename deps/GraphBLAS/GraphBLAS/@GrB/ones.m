@@ -1,21 +1,13 @@
 function C = ones (varargin)
-%ONES a matrix with all ones.
+%ONES a matrix with all ones, the same type as G.
+% C = ones (m, n, 'like', G) or C = ones ([m n], 'like', G) constructs an
+% m-by-n GraphBLAS matrix C with all entries equal to one.  C has the
+% same type as G.
 %
-%   C = ones (n) ;      n-by-n GrB double matrix of all ones.
-%   C = ones (m,n) ;    m-by-n GrB double matrix of all ones.
-%   C = ones ([m,n]) ;  m-by-n GrB double matrix of all ones.
-%   C = ones (..., type) ;      matrix of all ones of given type.
-%   C = ones (..., 'like', G) ; matrix of all ones, same type as G.
-%
-% Since function overloads the MATLAB built-in ones(...), at least one
-% input must be a GraphBLAS matrix to use this version; for example,
-% C = ones (GrB (n), 'int8').
-%
-% See also GrB/zeros, GrB/false, GrB/true.
+% See also zeros, false, true.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-[m, n, type] = gb_parse_args ('ones', varargin {:}) ;
-C = GrB (gb_scalar_to_full (m, n, type, gbformat, 1)) ;
+C = GrB.subassign (zeros (varargin {:}), 1) ;
 

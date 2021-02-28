@@ -2,8 +2,8 @@
 // GB_mex_nonzero: compute C=nonzero(A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -15,9 +15,9 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Matrix_free_(&C) ;               \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&A) ;               \
+    GB_MATRIX_FREE (&C) ;               \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 
@@ -34,6 +34,7 @@ void mexFunction
     GrB_Matrix A = NULL, C = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin != 1)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -60,10 +61,10 @@ void mexFunction
     #undef FREE_DEEP_COPY
 
     #define GET_DEEP_COPY  GrB_Matrix_new (&C, GrB_FP64, A->vlen, A->vdim) ;
-    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
+    #define FREE_DEEP_COPY GrB_free (&C) ;
 
     // C = nonzero (A)
-    METHOD (GxB_Matrix_select_(C, NULL, NULL, GxB_NONZERO, A, NULL, NULL)) ;
+    METHOD (GxB_Matrix_select (C, NULL, NULL, GxB_NONZERO, A, NULL, NULL)) ;
 
     // return C to MATLAB as a regular MATLAB sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C nonzero", false) ;

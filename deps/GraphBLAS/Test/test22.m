@@ -1,17 +1,15 @@
 function test22(fulltest)
 %TEST22 test GrB_transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
     % do a short test, by default
     fulltest = 0 ;
 end
 
-[binops, ~, ~, types, ~, ~] = GB_spec_opsall ;
-binops = binops.all ;
-types = types.all ;
+[mult_ops, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
 if (fulltest)
     fprintf ('\n==== exhaustive test for GB_mex_transpose:\n') ;
@@ -67,17 +65,17 @@ for k0 = 1:size (problems,1) ;
     fprintf ('\nnrows: %d ncols %d nnz %d ymin %g ymax %g\n', ...
         nrows, ncols, nnz, min (Y), max (Y)) ;
 
-    % try every type for A
-    for k1 = 1:length (types)
-        atype = types {k1} ;
-        A.class = atype ;
-        Cempty.class = atype ;
-        Cempty2.class = atype ;
-        fprintf ('%s', atype) ;
+    % try every class for A
+    for k1 = 1:length (classes)
+        aclass = classes {k1} ;
+        A.class = aclass ;
+        Cempty.class = aclass ;
+        Cempty2.class = aclass ;
+        fprintf ('%s', aclass) ;
 
         % C = A'
         C = GB_mex_transpose  (Cempty2, [ ], [ ], A, [ ]) ;
-        assert (GB_spok (C.matrix*1) == 1) ;
+        assert (spok (C.matrix*1) == 1) ;
         S = GB_spec_transpose (Cempty2, [ ], [ ], A, [ ]) ;
         assert (isequal (C.class, A.class)) ;
         assert (isequal (C.class, S.class)) ;
@@ -87,11 +85,11 @@ for k0 = 1:size (problems,1) ;
         end
 
         % C = A
-        clear desc
-        desc = struct ('inp0', 'tran') ;
-        C = GB_mex_transpose  (Cempty, [ ], [ ], A, desc) ;
-        assert (GB_spok (C.matrix*1) == 1) ;
-        S = GB_spec_transpose (Cempty, [ ], [ ], A, desc) ;
+        clear D
+        D = struct ('inp0', 'tran') ;
+        C = GB_mex_transpose  (Cempty, [ ], [ ], A, D) ;
+        assert (spok (C.matrix*1) == 1) ;
+        S = GB_spec_transpose (Cempty, [ ], [ ], A, D) ;
         assert (isequal (C.class, A.class)) ;
         assert (isequal (C.class, S.class)) ;
         assert (isequal (full (double (C.matrix)), double (S.matrix))) ;
@@ -102,7 +100,7 @@ for k0 = 1:size (problems,1) ;
         % C<Mask> = A'
         Cempty2.class = A.class ;
         C = GB_mex_transpose  (Cempty2, Mask', [ ], A, [ ]) ;
-        assert (GB_spok (C.matrix*1) == 1) ;
+        assert (spok (C.matrix*1) == 1) ;
         S = GB_spec_transpose (Cempty2, Mask', [ ], A, [ ]) ;
         assert (isequal (C.class, A.class)) ;
         assert (isequal (C.class, S.class)) ;
@@ -112,12 +110,12 @@ for k0 = 1:size (problems,1) ;
         end
 
         % C<Mask> = A
-        clear desc
-        desc = struct ('inp0', 'tran') ;
+        clear D
+        D = struct ('inp0', 'tran') ;
         Cempty.class = A.class ;
-        C = GB_mex_transpose  (Cempty, Mask, [ ], A, desc) ;
-        assert (GB_spok (C.matrix*1) == 1) ;
-        S = GB_spec_transpose (Cempty, Mask, [ ], A, desc) ;
+        C = GB_mex_transpose  (Cempty, Mask, [ ], A, D) ;
+        assert (spok (C.matrix*1) == 1) ;
+        S = GB_spec_transpose (Cempty, Mask, [ ], A, D) ;
         assert (isequal (C.class, A.class)) ;
         assert (isequal (C.class, S.class)) ;
         assert (isequal (full (double (C.matrix)), double (S.matrix))) ;
@@ -126,47 +124,39 @@ for k0 = 1:size (problems,1) ;
         end
 
         % try every class for Cin
-        for k2 = 1:length (types)
-            cinclass = types {k2} ;
+        for k2 = 1:length (classes)
+            cinclass = classes {k2} ;
             fprintf ('.') ;
             Cin2.class = cinclass ;
             Cin.class = cinclass ;
 
             % try every operator
-            for k3 = 0:length (binops)
+            for k3 = 0:size (mult_ops,1)
                 if (k3 == 0)
                     op = '' ;
-                    ntypes = 1 ;
+                    nclasses = 1 ;
                 else
-                    op = binops {k3} ;
-                    ntypes = length (types) ;
+                    op = mult_ops {k3,1} ;
+                    nclasses = length (classes) ;
                 end
 
                 % try every operator class
-                for k4 = 1:ntypes
+                for k4 = 1:nclasses
                     if (isempty (op))
-                        optype = '' ;
+                        opclass = '' ;
                     else
-                        optype = types {k4} ;
+                        opclass = classes {k4} ;
                     end
 
                     clear accum
                     accum.opname = op ;
-                    accum.optype = optype ;
-
-                    if (GB_spec_is_positional (accum))
-                        continue ;
-                    end
-
-                    try
-                        GB_spec_operator (accum) ;
-                    catch
-                        continue
-                    end
+                    accum.opclass = opclass ;
+                    % z = cast (1, opclass) ;
+                    % opint = isinteger (z) || islogical (z) ;
 
                     % C = op (Cin2,A')
                     C = GB_mex_transpose  (Cin2, [ ], accum, A, [ ]) ;
-                    assert (GB_spok (C.matrix*1) == 1) ;
+                    assert (spok (C.matrix*1) == 1) ;
                     S = GB_spec_transpose (Cin2, [ ], accum, A, [ ]) ;
                     assert (isequal (C.class, cinclass)) ;
                     assert (isequal (C.class, S.class)) ;
@@ -176,11 +166,11 @@ for k0 = 1:size (problems,1) ;
                     end
 
                     % C = op (Cin,A)
-                    clear desc
-                    desc = struct ('inp0', 'tran') ;
-                    C = GB_mex_transpose  (Cin, [ ], accum, A, desc) ;
-                    assert (GB_spok (C.matrix*1) == 1) ;
-                    S = GB_spec_transpose (Cin, [ ], accum, A, desc) ;
+                    clear D
+                    D = struct ('inp0', 'tran') ;
+                    C = GB_mex_transpose  (Cin, [ ], accum, A, D) ;
+                    assert (spok (C.matrix*1) == 1) ;
+                    S = GB_spec_transpose (Cin, [ ], accum, A, D) ;
                     assert (isequal (C.class, cinclass)) ;
                     assert (isequal (C.class, S.class)) ;
                     assert (isequalwithequalnans (full (double (C.matrix)), ...
@@ -188,12 +178,12 @@ for k0 = 1:size (problems,1) ;
 
                     % try with a Mask (Mask must be sparse; logical and double)
                     for k5 = [1 11]
-                        mask_class = types {k5} ;
+                        mask_class = classes {k5} ;
                         M = cast (Mask, mask_class) ;
 
                         % C = op (Cin2,A')
                         C = GB_mex_transpose  (Cin2, M', accum, A, [ ]) ;
-                        assert (GB_spok (C.matrix*1) == 1) ;
+                        assert (spok (C.matrix*1) == 1) ;
                         S = GB_spec_transpose (Cin2, M', accum, A, [ ]) ;
                         assert (isequal (C.class, cinclass)) ;
                         assert (isequal (C.class, S.class)) ;
@@ -202,11 +192,11 @@ for k0 = 1:size (problems,1) ;
                             double (S.matrix))) ;
 
                         % C = op (Cin,A)
-                        clear desc
-                        desc = struct ('inp0', 'tran') ;
-                        C = GB_mex_transpose  (Cin, M, accum, A, desc) ;
-                        assert (GB_spok (C.matrix*1) == 1) ;
-                        S = GB_spec_transpose (Cin, M, accum, A, desc) ;
+                        clear D
+                        D = struct ('inp0', 'tran') ;
+                        C = GB_mex_transpose  (Cin, M, accum, A, D) ;
+                        assert (spok (C.matrix*1) == 1) ;
+                        S = GB_spec_transpose (Cin, M, accum, A, D) ;
                         assert (isequal (C.class, cinclass)) ;
                         assert (isequal (C.class, S.class)) ;
                         assert (isequalwithequalnans (...

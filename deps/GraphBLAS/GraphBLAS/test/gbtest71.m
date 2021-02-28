@@ -1,8 +1,9 @@
 function gbtest71
 %GBTEST71 test GrB.selectopinfo
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 
 ops = {
     'tril'
@@ -28,14 +29,12 @@ ops = {
     '<'
     '<=' } ;
 
-nops = length (ops) ;
-for k = 1:nops
+for k = 1:length(ops)
     GrB.selectopinfo (ops {k}) ;
 end
 
 fprintf ('\n\n') ;
 GrB.selectopinfo
 
-fprintf ('# of select ops: %d\n', nops) ;
 fprintf ('gbtest71: all tests passed\n') ;
 

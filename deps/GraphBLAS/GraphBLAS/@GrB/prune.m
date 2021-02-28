@@ -5,29 +5,12 @@ function C = prune (G, id)
 %
 % See also GrB/full, GrB.select, GrB.prune.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin == 1)
-    id = 0 ;
+    C = GrB.select (G, 'nonzero') ;
 else
-    id = gb_get_scalar (id) ;
-end
-
-if (builtin ('issparse', G) && id == 0)
-    % a MATLAB sparse matrix 'never' contains explicit zeros,
-    % so no need to prune.  C should be returned as a GraphBLAS
-    % matrix, however.
-    C = GrB (G) ;
-else
-    if (isobject (G))
-        % extract the contents of a GraphBLAS matrix
-        G = G.opaque ;
-    end
-    if (id == 0)
-        C = GrB (gbselect (G, 'nonzero')) ;
-    else
-        C = GrB (gbselect (G, '~=', id)) ;
-    end
+    C = GrB.select (G, '~=', id) ;
 end
 

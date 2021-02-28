@@ -1,11 +1,11 @@
-function gbtest65
+% function gbtest65
 %GBTEST65 test GrB.mis
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
-load west0479 ; %#ok<LOAD>
+load west0479 ;
 
 A = GrB.offdiag (spones (west0479)) ;
 A = A+A' ;
@@ -33,7 +33,7 @@ for trial = 1:100
 
     % assert that iset is maximal
     q = find (~iset) ;
-    d = GrB.entries (A (p, q), 'col', 'degree') ; %#ok<FNDSB>
+    d = GrB.entries (A (p, q), 'col', 'degree') ;
     assert (all (d > 0)) ;
 end
 

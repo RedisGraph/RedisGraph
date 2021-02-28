@@ -1,51 +1,98 @@
 function gbtest98
-%GBTEST98 test row/col degree for hypersparse matrices
+%GBTEST98 test A'*x performance
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
-
+max_nthreads = GrB.threads ;
+threads = [1 2 4 8 16 20 32 40 64] ;
+desc = struct ('in0', 'transpose') ;
 rng ('default') ;
 
-n = 2^12 ;
-G = GrB (n, n) ;
-I = randperm (n, 8) ;
-G (I,I) = magic (8) ;
-
-d = double (GrB.entries (G, 'row', 'degree')) ;
+n = 1e6 ; nz = 20e6 ;
+% n = 1e5 ; nz = 1e6 ;
+d = nz / n^2 ;
+% same as A = sprand (n,n,d), but faster:
+G = GrB.random (n,n,d) ;
 A = double (G) ;
-d2 = sum (spones (A))' ;
-assert (isequal (d, d2)) ;
+% warmup to make sure the GrB library is loaded
+y = GrB (rand (2)) * GrB (rand (2)) ;
 
-G = GrB (G, 'by row') ;
-d = double (GrB.entries (G, 'col', 'degree')) ;
-assert (isequal (d, d2)) ;
+degree = sum (spones (G)) ;
+nempty = length (find (degree == 0)) ;
+fprintf ('matrix: n: %d nnz: %d  # empty columns: %d\n', n, nnz (A), nempty) ;
 
-G = G + GrB.eye (n) ;
-A = double (G) ;
-d2 = sum (spones (A))' ;
-d = double (GrB.entries (G, 'col', 'degree')) ;
-assert (isequal (d, d2)) ;
+ntrials = 1 ;
 
-n = 2 * flintmax ;
-G = GrB (n, n) ;
-I = sort (randperm (flintmax-1, 8)) ;
-A = magic (8) ;
-G (I,I) = A ;
-x1 = nonzeros (A) ;
-x2 = nonzeros (G) ;
-assert (isequal (x1, x2)) ;
+for test = 1:4
 
-[i1,j1,x1] = GrB.extracttuples (G) ;
-[~ ,~ ,x2] = GrB.extracttuples (A) ;
-assert (isequal (x1, x2)) ;
+    if (test == 1)
+        X = 'sparse (rand (n,1))' ;
+        x =  sparse (rand (n,1)) ;
+    elseif (test == 2)
+        X = 'rand (n,1)' ;
+        x =  rand (n,1) ;
+    elseif (test == 3)
+        X = 'sprand (n,1,0.5)' ;
+        x =  sprand (n,1,0.5) ;
+    else
+        X = 'sprand (n,1,0.05)' ;
+        x =  sprand (n,1,0.05) ;
+    end
 
-assert (isequal (class (i1), 'int64')) ;
-assert (isequal (class (j1), 'int64')) ;
+    fprintf ('\n\n========================\n') ;
+    fprintf ('in MATLAB: y = A''*x where x = %s\n', X) ;
 
-G = GrB.random (8, 8, 0.5) ;
-A = double (G) ;
-G = full (G, 'double', 1) ;
-A (A == 0) = 1 ;
-assert (isequal (A, G)) ;
+    tic
+    for trial = 1:ntrials
+        y = A'*x ;
+    end
+    tmatlab = toc ;
+    fprintf ('MATLAB time: %8.4f sec\n', tmatlab) ;
+    ymatlab = y ;
 
-fprintf ('\ngbtest98: all tests passed\n') ;
+    fprintf ('\nGrB: y = A''*x where x = %s\n', X) ;
+
+    for nthreads = threads
+        if (nthreads > max_nthreads)
+            break ;
+        end
+        GrB.threads (nthreads) ;
+        tic
+        for trial = 1:ntrials
+            % y = G'*x ;
+            y = GrB.mxm (G, '+.*', x, desc) ;
+        end
+        t = toc ;
+        if (nthreads == 1)
+            t1 = t ;
+        end
+        fprintf (...
+            'threads: %2d GrB time: %8.4f speedup vs MATLAB: %8.2f  vs: GrB(1 thread) %8.2f\n', ...
+            nthreads, t, tmatlab / t, t1 / t) ;
+        assert (norm (y-ymatlab, 1) / norm (ymatlab,1) < 1e-12)
+    end
+
+    fprintf ('\nGrB: y = zeros(n,1) + A''*x where x = %s\n', X) ;
+
+    for nthreads = threads
+        if (nthreads > max_nthreads)
+            break ;
+        end
+        GrB.threads (nthreads) ;
+        tic
+        for trial = 1:ntrials
+            y = zeros (n,1) ;
+            % y = y + G'*x
+            y = GrB.mxm (y, '+', G, '+.*', x, desc) ;
+        end
+        t = toc ;
+        if (nthreads == 1)
+            t1 = t ;
+        end
+        fprintf (...
+            'threads: %2d GrB time: %8.4f speedup vs MATLAB: %8.2f  vs: GrB(1 thread) %8.2f\n', ...
+            nthreads, t, tmatlab / t, t1 / t) ;
+        assert (norm (y-ymatlab, 1) / norm (ymatlab,1) < 1e-12)
+    end
+
+end
+
+GrB.burble (0) ;

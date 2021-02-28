@@ -1,8 +1,8 @@
 function gbtest13
 %GBTEST13 test find and GrB.extracttuples
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 list = gbtest_types ;
 
@@ -19,8 +19,8 @@ desc1_int.base = 'one-based int' ;
 
 for k = 1:length(list)
     xtype = list {k} ;
-    fprintf ('%s ', xtype) ;
-    C = gbtest_cast (A, xtype) ;
+    fprintf ('testing: %s\n', xtype) ;
+    C = cast (A, xtype) ;
     G = GrB (C) ;
 
     [I1, J1, X1] = find (G) ;
@@ -34,7 +34,7 @@ for k = 1:length(list)
     assert (isequal (I (nz), I1)) ;
     assert (isequal (J (nz), J1)) ;
 
-    [I0, J0, X0] = GrB.extracttuples (G, desc0)  ;
+    [I0, J0, X0] = GrB.extracttuples (G, desc0) ;
     assert (isequal (C (:), X0)) ;
     assert (isequal (I_0, I0)) ;
     assert (isequal (J_0, J0)) ;
@@ -51,15 +51,6 @@ for k = 1:length(list)
 
     [I1, J1, X0] = GrB.extracttuples (G, desc_default) ;
     assert (isequal (C (:), X0)) ;
-    assert (isequal (double (I_0+1), I1)) ;
-    assert (isequal (double (J_0+1), J1)) ;
-
-    [I1, J1, X0] = GrB.extracttuples (G) ;
-    assert (isequal (C (:), X0)) ;
-    assert (isequal (double (I_0+1), I1)) ;
-    assert (isequal (double (J_0+1), J1)) ;
-
-    [I1, J1] = GrB.extracttuples (G) ;
     assert (isequal (double (I_0+1), I1)) ;
     assert (isequal (double (J_0+1), J1)) ;
 
@@ -95,5 +86,5 @@ assert (isequal (x1, x2)) ;
 assert (isequal (i1, i2)) ;
 assert (isequal (j1, j2)) ;
 
-fprintf ('\ngbtest13: all tests passed\n') ;
+fprintf ('gbtest13: all tests passed\n') ;
 

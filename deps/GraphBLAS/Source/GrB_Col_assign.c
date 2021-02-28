@@ -1,16 +1,15 @@
 //------------------------------------------------------------------------------
-// GrB_Col_assign: C<M>(Rows,col) = accum (C(Rows,col),u)
+// GrB_Col_assign:    C<M>(Rows,col) = accum (C(Rows,col),u)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Compare with GxB_Col_subassign, which uses the M and C_replace differently
 
 #include "GB_assign.h"
-#include "GB_bitmap_assign.h"
 
 GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
 (
@@ -29,7 +28,7 @@ GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE (C, "GrB_Col_assign (C, M, accum, u, Rows, nRows, col, desc)") ;
+    GB_WHERE ("GrB_Col_assign (C, M, accum, u, Rows, nRows, col, desc)") ;
     GB_BURBLE_START ("GrB_assign") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_FAULTY (M) ;
@@ -39,7 +38,7 @@ GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
-        xx1, xx2, xx3, xx7) ;
+        xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // C(Rows,col)<M> = accum (C(Rows,col), u)
@@ -58,7 +57,7 @@ GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
         Rows, nRows,                        // row indices
         Cols, 1,                            // a single column index
         false, NULL, GB_ignore_code,        // no scalar expansion
-        GB_COL_ASSIGN,
+        true, false,                        // GrB_Col_assign
         Context) ;
 
     GB_BURBLE_END ;

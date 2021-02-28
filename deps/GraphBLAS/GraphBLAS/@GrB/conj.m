@@ -1,17 +1,12 @@
 function C = conj (G)
-%CONJ complex conjugate.
-% C = conj (G) is the complex conjugate of each entry of G.
+%CONJ complex conjugate of a GraphBLAS matrix.
+% Since all GraphBLAS matrices are currently real, conj (G) is just G.
+% Complex support will be added in the future.
 %
-% See also GrB/real, GrB/imag.
+% See also real, imag.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-Q = G.opaque ;
-
-if (contains (gbtype (Q), 'complex'))
-    C = GrB (gbapply ('conj', Q)) ;
-else
-    C = G ;
-end
+C = G ;
 

@@ -1,18 +1,18 @@
 function [I, J, X] = find (G, k, search)
-%FIND extract entries from a matrix.
-% [I, J, X] = find (G) extracts the nonzeros from a matrix G.
+%FIND extract entries from a GraphBLAS matrix.
+% [I, J, X] = find (G) extracts the nonzeros from a GraphBLAS matrix G.
 % X has the same type as G ('double', 'single', 'int8', ...).
 %
 % Linear 1D indexing (I = find (S) for the MATLAB matrix S) is not yet
 % supported.
 %
-% A GraphBLAS matrix G may contain explicit zero entries, and by default
-% these are excluded from the result.  Use GrB.extracttuples (G) to return
-% these explicit zero entries.
+% G may contain explicit zero entries, and by default these are excluded
+% from the result.  Use GrB.extracttuples (G) to return these explicit
+% zero entries.
 %
-% For a column vector, I = find (G) returns I as a list of the row indices
-% of nonzeros in G.  For a row vector, I = find (G) returns I as a list of
-% the column indices of nonzeros in G.
+% For a column vector, I = find (G) returns I as a list of the row
+% indices of nonzeros in G.  For a row vector, I = find (G) returns I as a
+% list of the column indices of nonzeros in G.
 %
 % [...] = find (G, k, 'first') returns the first k nonozeros of G.
 % [...] = find (G, k, 'last')  returns the last k nonozeros of G.
@@ -20,9 +20,6 @@ function [I, J, X] = find (G, k, search)
 % column-major order.
 %
 % See also sparse, GrB.build, GrB.extracttuples.
-
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
 
 % FUTURE: add linear indexing
 
@@ -33,66 +30,57 @@ function [I, J, X] = find (G, k, search)
 % of G, instead of using GrB_Matrix_extractTuples_*, which always extracts
 % the entire matrix.
 
-if (isobject (G))
-    G = G.opaque ;
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+if (nargin > 1 && ~GrB.isbycol (G))
+    % find (G, k) assumes the matrix is stored by column, so reformat G
+    % if it is stored by row.
+    G = GrB (G, 'by col') ;
 end
 
-if (nargin > 1)
-    k = ceil (double (gb_get_scalar (k))) ;
-    if (k < 1)
-        error ('k must be positive') ;
-    end
-    if (~isequal (gbformat (G), 'by col'))
-        % find (G, k) assumes the matrix is stored by column, so reformat G
-        % if it is stored by row.
-        G = gbnew (G, 'by col') ;
-    end
+if (nnz (G) < GrB.entries (G))
+    G = GrB.prune (G) ;
 end
-
-% prune explicit zeros
-G = gbselect (G, 'nonzero') ;
-
-[m, n] = gbsize (G) ;
 
 if (nargout == 3)
-    [I, J, X] = gbextracttuples (G) ;
-    if (m == 1)
+    [I, J, X] = GrB.extracttuples (G) ;
+    if (isrow (G))
         I = I' ;
         J = J' ;
         X = X' ;
     end
 elseif (nargout == 2)
-    [I, J] = gbextracttuples (G) ;
-    if (m == 1)
+    [I, J] = GrB.extracttuples (G) ;
+    if (isrow (G))
         I = I' ;
         J = J' ;
     end
 else
-    if (m == 1)
-        % extract indices from a row vector
-        [~, I] = gbextracttuples (G) ;
+    if (isrow (G))
+        [~, I] = GrB.extracttuples (G) ;
         I = I' ;
-    elseif (n == 1)
-        % extract indices from a column vector
-        I = gbextracttuples (G) ;
     else
-        % FUTURE: this does not return the same thing as I = find (G)
-        % in MATLAB. (need to add 1D linear indexing)
-        error ('Linear indexing not yet supported') ;
-        % I = gbextracttuples (G) ;
+        % FUTURE: this does not return the same thing
+        I = GrB.extracttuples (G) ;
     end
 end
 
 if (nargin > 1)
     % find (G, k, ...): get the first or last k entries
-    if (nargin < 3)
+    if (nargin == 2)
         search = 'first' ;
     end
+    if (~isscalar (k))
+        gb_error ('k must be a scalar') ;
+    end
+    k = ceil (double (k)) ;
+    if (k < 1)
+        gb_error ('k must be positive') ;
+    end
     n = length (I) ;
-    if (k >= n)
-        % output already has all k first or last entries;
-        % nothing more to do
-    elseif (isequal (search, 'first'))
+    k = min (k, n) ;
+    if (isequal (search, 'first'))
         % find (G, k, 'first'): get the first k entries
         I = I (1:k) ;
         if (nargout > 1)
@@ -111,7 +99,7 @@ if (nargin > 1)
             X = X (n-k+1:n) ;
         end
     else
-        error ('invalid search option; must be ''first'' or ''last''') ;
+        gb_error ('invalid search option; must be ''first'' or ''last''') ;
     end
 end
 

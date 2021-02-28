@@ -1,13 +1,12 @@
 function s = isvector (G)
-%ISVECTOR determine if a matrix is a row or column vector.
-% isvector (G) is true for an m-by-n matrix G if m or n is 1.
+%ISVECTOR determine if the GraphBLAS matrix is a row or column vector.
+% isvector (G) is true for an m-by-n GraphBLAS matrix if m or n is 1.
 %
-% See also GrB/issparse, GrB/ismatrix, GrB/isscalar, GrB/issparse,
-% GrB/isfull, GrB/isa, GrB, GrB/size.
+% See also issparse, ismatrix, isscalar, sparse, full, isa, GrB, size.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-G = G.opaque ;
-s = gb_isvector (G) ;
+[m, n] = size (G) ;
+s = (m == 1) || (n == 1) ;
 

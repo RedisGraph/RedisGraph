@@ -2,8 +2,8 @@
 // GB_Type_check: print a built-in type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -12,15 +12,16 @@
 // matrix A:", for example.  The internal name is the C typedef with which the
 // GraphBLAS GrB_Type was created.
 
-#include "GB.h"
+#include "GB_printf.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_Type_check      // check a GraphBLAS Type
 (
     const GrB_Type type,    // GraphBLAS type to print and check
     const char *name,       // name of the type from the caller; optional
-    int pr,                 // print level
-    FILE *f                 // file for output
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f,                // file for output
+    GB_Context Context
 )
 {
 
@@ -29,10 +30,11 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     //--------------------------------------------------------------------------
 
     GBPR0 ("    GraphBLAS type: ") ;
-    if (name != NULL) GBPR0 ("%s ", name) ;
+    if (pr > 0 && name != NULL) GBPR ("%s ", name) ;
 
     if (type == NULL)
     { 
+        // GrB_error status not modified since this may be an optional argument
         GBPR0 ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
@@ -56,11 +58,11 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
         case GB_UINT64_code : GBPR0 ("uint64_t" ) ; break ;
         case GB_FP32_code   : GBPR0 ("float"    ) ; break ;
         case GB_FP64_code   : GBPR0 ("double"   ) ; break ;
-        case GB_FC32_code   : GBPR0 ("float complex" ) ; break ;
-        case GB_FC64_code   : GBPR0 ("double complex") ; break ;
         case GB_UDT_code    : GBPR0 ("user-defined: [%s]", type->name) ; break ;
         default             : GBPR0 ("unknown type\n") ;
-            return (GrB_INVALID_OBJECT) ;
+            return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+                "Type code %d is unknown: %s [%s]",
+                type->code, GB_NAME, type->name))) ;
     }
 
     GBPR0 (" size: %zu\n", type->size) ;
@@ -68,7 +70,8 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     if (type->size == 0 || type->size != GB_code_size (type->code, type->size))
     { 
         GBPR0 ("    Type has an invalid size\n") ;
-        return (GrB_INVALID_OBJECT) ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+            "Type has an invalid size: %s [%s]", GB_NAME, type->name))) ;
     }
 
     return (GrB_SUCCESS) ;

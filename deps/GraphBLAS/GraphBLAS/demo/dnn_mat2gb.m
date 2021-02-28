@@ -23,17 +23,14 @@ function [W, bias, Y0] = dnn_mat2gb (W, bias, Y0)
 %
 % See also GrB.dnn, dnn_matlab.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fmt = 'by row' ;
-prec = 'single' ;
-
-d = struct ('format', fmt) ;
+d = struct ('format', 'by row') ;
 n = size (Y0, 2) ;
-Y0 = GrB (Y0, prec, fmt) ;
+Y0 = GrB (Y0, 'single', 'by row') ;
 for k=1:length(W)
-    W {k} = GrB (W {k}, prec, fmt) ;
-    bias {k} = GrB.build (1:n, 1:n, bias {k}, n, n, '+', prec, d) ;
+    W {k} = GrB (W {k}, 'single', 'by row') ;
+    bias {k} = GrB.build (1:n, 1:n, bias {k}, n, n, '+', 'single', d) ;
 end
 

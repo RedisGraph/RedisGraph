@@ -2,8 +2,8 @@
 // GB_mex_rdiv: compute C=A*B with the rdiv operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -17,12 +17,12 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Matrix_free_(&B) ;               \
-    GrB_Matrix_free_(&C) ;               \
-    GrB_BinaryOp_free_(&My_rdiv) ;      \
-    GrB_Semiring_free_(&My_plus_rdiv) ; \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&A) ;               \
+    GB_MATRIX_FREE (&B) ;               \
+    GB_MATRIX_FREE (&C) ;               \
+    GrB_free (&My_rdiv) ;               \
+    GrB_free (&My_plus_rdiv) ;          \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 //------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ int64_t anrows = 0 ;
 int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
-GrB_Desc_Value AxB_method = GxB_DEFAULT ;
+GrB_Desc_Value AxB_method = GxB_DEFAULT, AxB_method_used ;
 
 GrB_Info axb (GB_Context Context, bool cprint) ;
 
@@ -57,17 +57,16 @@ GrB_Info axb (GB_Context Context, bool cprint)
     // create the rdiv operator
     info = GrB_BinaryOp_new (&My_rdiv, my_rdiv, GrB_FP64, GrB_FP64, GrB_FP64) ;
     if (info != GrB_SUCCESS) return (info) ;
-    GrB_BinaryOp_wait_(&My_rdiv) ;
-    if (info != GrB_SUCCESS) return (info) ;
     info = GrB_Semiring_new (&My_plus_rdiv, GxB_PLUS_FP64_MONOID, My_rdiv) ;
     if (info != GrB_SUCCESS)
     {
-        GrB_BinaryOp_free_(&My_rdiv) ;
+        GrB_free (&My_rdiv) ;
         return (info) ;
     }
 
     // C = A*B
-    info = GB_AxB_meta (&C, NULL,       // C cannot be computed in place
+    info = GB_AxB_meta (&C,
+        NULL,       // not in place
         false,      // C_replace
         true,       // CSC
         NULL,       // no MT returned
@@ -82,17 +81,16 @@ GrB_Info axb (GB_Context Context, bool cprint)
         false,      // no flipxy
         &ignore,    // mask_applied
         &ignore2,   // done_in_place
-        AxB_method,
-        true,       // do the sort
-        Context) ;
+        AxB_method, &AxB_method_used, Context) ;
 
     if (C != NULL)
     {
-        if (cprint) GxB_Matrix_fprint_(C, GxB_COMPLETE, NULL) ;
+        C->AxB_method_used = AxB_method_used ;
+        if (cprint) GxB_print (C, GxB_COMPLETE) ;
     }
 
-    GrB_BinaryOp_free_(&My_rdiv) ;
-    GrB_Semiring_free_(&My_plus_rdiv) ;
+    GrB_free (&My_rdiv) ;
+    GrB_free (&My_plus_rdiv) ;
 
     return (info) ;
 }
@@ -118,7 +116,7 @@ void mexFunction
     My_rdiv = NULL ;
     My_plus_rdiv = NULL ;
 
-    GB_CONTEXT (USAGE) ;
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < 2 || nargin > 4)
@@ -146,6 +144,7 @@ void mexFunction
     // get the axb_method
     // 0 or not present: default
     // 1001: Gustavson
+    // 1002: heap
     // 1003: dot
     // 1004: hash
     // 1005: saxpy
@@ -156,6 +155,7 @@ void mexFunction
 
     if (! ((AxB_method == GxB_DEFAULT) ||
         (AxB_method == GxB_AxB_GUSTAVSON) ||
+        (AxB_method == GxB_AxB_HEAP) ||
         (AxB_method == GxB_AxB_HASH) ||
         (AxB_method == GxB_AxB_SAXPY) ||
         (AxB_method == GxB_AxB_DOT)))

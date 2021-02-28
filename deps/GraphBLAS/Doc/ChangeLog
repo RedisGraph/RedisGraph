@@ -1,93 +1,3 @@
-Version 4.0.1, Jan 4, 2021
-
-    * substantial performance gains: compared with v3.3.3: up to 5x faster in
-        BFS (with LAGraph_bfs_parent2), 2x faster in Betweeness-Centrality (in
-        LAgraph_bc_bactch5); BC now faster than GAP for kron, urand, and
-        twitter (the 3 largest matrices in the GAP benchmark).
-    * GrB_wait(), with no inputs: removed
-    * GrB_wait(&object): polymorphic function added
-    * GrB_*_nvals: no longer guarantees completion; use GrB_wait for that
-    * GrB_error: now has two parameters: a string (char **) and an object
-    * GrB_Matrix_reduce_BinaryOp: limited to certain built-in ops
-    * GrB_*_extractTuples: may return indices out of order
-    * removed internal features: GBI iterator, slice and hyperslice matrices
-    * bitmap/full matrices and vectors added: faster and lower memory usage
-        when many entries present in a matrix or vector
-    * GxB_SPARSITY_CONTROL, GxB_SPARSITY_STATUS added: for matrix get/set
-    * positional operators and semirings: GxB_FIRSTI_INT32 and related ops
-    * jumbled matrices: sort left pending, like zombies and pending tuples
-    * GxB_get/set: added GxB_SPARSITY_* (hyper, sparse, bitmap, or full)
-    * GxB_HYPER: enum renamed to GxB_HYPER_SWITCH
-    * GxB_BITMAP_SWITCH added: for matrix/vector get/set and global get/set
-    * GxB*import/export: API modified
-    * GxB_SelectOp: nrows and ncols removed from function signature
-    * OpenMP tasking removed from mergesort: just as fast; now ports to Windows
-    * GxB_BURBLE added: for diagnostic output
-    * (21) bug fix: A({lo,hi})=scalar in MATLAB; A(lo:hi)=scalar was OK
-
-Version 3.3.3, July 14, 2020
-
-    * (20) bug fix: w<mask>=A*u with mask non-empty and u empty (issue #13).
-        affects mxm (A*B when B is a vector), vxm, and mxv.
-
-Version 3.3.2, July 3, 2020
-
-    * minor changes to build system
-    * GraphBLAS v3.3.2 released as part of SuiteSparse v5.8.0
-
-Version 3.3.1, June 30, 2020
-
-    * (19) bug fix: incorrect typecasting when GrB_assign or GxB_subassign
-        is simple: C=A where A is sparse or dense, in GB_dense_subassign_24.
-        Bug introduced in v3.2.0.
-    * revised gbmake: to allow GraphBLAS to be compiled in Octave
-
-Version 3.3.0, June 26, 2020
-
-    * GrB_wait( ): with no input arguments, has been deprecated.  It will
-        be removed in V4.0.
-    * added complex types: GxB_FC32 and GxB_FC64, many unary operators,
-        binary operators, monoids, and semirings
-    * added GrB_*_apply_BinaryOp1st and 2nd: also GxB version with GxB_Scalar
-    * added bitwise operators: and their monoids and semirings
-    * added predefined GrB* monoids and semirings: from the v1.3 spec.
-    * MATLAB interface: added complex matrices and operators, bitwise
-        operators; improved performance
-    * changed typecasting rules: for casting floating point types to integers
-    * added GrB_*_wait: wait for specific object to complete
-    * added GrB_*_resize: same as prior GxB_*_resize functions
-    * added GrB_kronecker: same as prior GxB_kron
-    * added version methods: GrB_getVersion, GRB_VERSION, GRB_SUBVERSION
-    * added GrB_*_removeElement
-    * (18) bug fix: fixed typecasting in GB_dense_subassign_23, generic case
-    * (17) bug fix: non-polymorphic GrB_eWiseAdd and eWiseMult functions
-        were misnamed.
-
-Version 3.2.2, Apr 2, 2020
-
-    * (16) bug fix to MATLAB interface: for matrices with dimension > 2^53.
-        Note that MATLAB will not display the size correctly in 'whos', which
-        rounds the int64 values of m and n for [m,n]=size(A) of a GrB_matrix to
-        a 'flint', which is a double value, that then gets rounded.  This is
-        outside of my control.  size(A) is correct, just the 'whos' is wrong.
-    * port to Microsoft Visual Studio: including GraphBLAS/Demo and
-        GraphBLAS/Test, which had not been ported in v3.1.2.
-    * remove dependency on m4: end-users no longer need m4;  still needed by
-        the Source/codegen*.m scripts but those are for development only.
-
-Version 3.2.1, Mar 10, 2020
-
-    * GAP benchmarks in MATLAB: in GraphBLAS/GraphBLAS/GAP (all but CC).
-    * atomic read/write: faster atomics for icc (see Source/GB_atomics.h)
-    * install name for Mac: in alternative/Makefile and Tcov/Makefile
-    * enable -DGBCOMPACT from CMake: for faster Travis builds
-    * MATLAB interface: better error message in GrB.reduce
-    * MATLAB triangle count: added sorting heuristic in GrB.tricount.
-    * bug fix for GraphBLAS/Demo/simple_timer: better selection of which
-        timer to use; simple_timer.[ch] made consistent.
-    * no bug fixes needed in primary GraphBLAS library: just in Demo, test,
-        and alternative/Makefile.
-
 Version 3.2.0, Feb 20, 2020
 
     * GxB_*_define for user-defined compile-time objects: removed.  Not
@@ -96,7 +6,7 @@ Version 3.2.0, Feb 20, 2020
         instead.
     * faster saxpy-based matrix multiply (about 5x to 10x for mxv and vxm):
         removed Sauna workspace.  Heap method removed.  Hash method added.
-    * better performance for dense matrix and vectors: NOTE: see bug (19) above
+    * better performance for dense matrix and vectors
     * faster typecast of the mask matrix M: GB_mcast replaces cast_M
     * added GB_BURBLE: for development diagnostics
     * changed default chunk size: from 4K to 64K
@@ -109,7 +19,6 @@ Version 3.2.0, Feb 20, 2020
         subset of "#pragma omp atomic" statements.  This will be resolved in a
         future version; in the meantime, use v3.1.2 with MS Visual Studio
         instead of v3.2.0.
-    * no bug fixes
 
 Version 3.1.2, Dec 16, 2019
 
@@ -154,7 +63,7 @@ Version 3.1.0, Oct 2, 2019
     * (12) bug fix to GB_accum_mask: when C+=T if C has no entries except
         pending tuples
     * (11) bug fix to GB_resize: when pending tuples exist and vdim is growing
-        from vdim <= 1 to vdim > 1, matrix must be finished first.
+        from vdim <= 1 to vdim > 1, GB_WAIT(A) is required first.
     * (10) bug fix to GB_subref_phase1: "int nI" parameter should be int64_t.
 
 Version 3.0.1, July 26, 2019
@@ -238,7 +147,7 @@ Version 2.3.0 (BETA1), Feb 16, 2019
     * added isequal function to Demos/
     * added import/export method
     * added nthreads: to descriptor, the matrix, and a global nthreads
-        setting, and added Context as parameter in many internal
+        for GrB_wait, and added Context as parameter in many internal
         functions, to pass in Context->nthreads for future parallelism
     * defined all enum constants explicitly: no change to their values,
         this just ensures they remain fixed in future versions

@@ -1,12 +1,13 @@
 function test90
 %TEST90 test AxB with user-defined semirings: plus_rdiv and plus_rdiv2
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n -------------- A*B plus_rdiv (user-defined semiring)\n') ;
 
     % 1001: Gustavson
+    % 1002: heap
     % 1003: dot
     % 1004: hash
     % 1005: saxpy
@@ -14,6 +15,8 @@ fprintf ('\n -------------- A*B plus_rdiv (user-defined semiring)\n') ;
 rng ('default') ;
 
 for N = [10 100] % 1000]
+
+    N
 
     % create the problem
     A = sprand (4*N, 5*N, 0.01) ;
@@ -36,7 +39,7 @@ for N = [10 100] % 1000]
     t = grbresults ; fprintf ('GB time %g\n', t) ;
     assert (norm (C1-C2,1) / norm (C1,1) < 1e-10) ;
 
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method: %d\n', method) ;
         cprint = (N <= 10) ;
         tic
@@ -86,7 +89,7 @@ for N = [10 100] % 1000]
     tic
     C0 = X*B ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
@@ -102,7 +105,7 @@ for N = [10 100] % 1000]
     tic
     C0 = X'*B ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
@@ -118,7 +121,7 @@ for N = [10 100] % 1000]
     tic
     C0 = X*B' ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
@@ -134,7 +137,7 @@ for N = [10 100] % 1000]
     tic
     C0 = X'*B' ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
@@ -150,7 +153,7 @@ for N = [10 100] % 1000]
     tic
     C0 = A*Y ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
@@ -166,7 +169,7 @@ for N = [10 100] % 1000]
     tic
     C0 = A'*Y ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
@@ -182,7 +185,7 @@ for N = [10 100] % 1000]
     tic
     C0 = A*Y' ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
@@ -198,7 +201,7 @@ for N = [10 100] % 1000]
     tic
     C0 = A'*Y' ;
     toc
-    for method = [1001 1003 1004 1005]
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;

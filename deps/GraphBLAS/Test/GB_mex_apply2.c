@@ -1,232 +1,25 @@
 //------------------------------------------------------------------------------
-// GB_mex_apply2: C<Mask> = accum(C,op(A,y)) or op(A',y)
+// GB_mex_apply2: C<C> = accum(C,op(A)) or op(A')
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// Apply a binary operator to a matrix or vector, binding y to a scalar
+// Apply a unary operator to a matrix, with C aliased to the Mask
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_apply2 (C, Mask, accum, op, how, A, y, desc)"
-
-// if how == 0: use the GxB_Scalar and GxB_Matrix/Vector_apply_BinaryOp2nd
-// if how == 1: use the C scalar   and GrB_Matrix/Vector_apply_BinaryOp2nd_T
+#define USAGE "C = GB_mex_apply2 (C, accum, op, A, desc)"
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&C) ;               \
-    GrB_Matrix_free_(&Mask) ;            \
-    GrB_Matrix_free_(&S) ;               \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Descriptor_free_(&desc) ;       \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&C) ;               \
+    GB_MATRIX_FREE (&A) ;               \
+    GrB_free (&desc) ;                  \
+    GB_mx_put_global (true, 0) ;        \
 }
-
-GrB_Matrix C = NULL, S = NULL ;
-GxB_Scalar scalar = NULL ;
-GrB_Matrix Mask = NULL ;
-GrB_Matrix A = NULL ;
-GrB_Descriptor desc = NULL ;
-GrB_BinaryOp accum = NULL ;
-GrB_BinaryOp op = NULL ;
-GrB_Info apply2 (bool is_matrix) ;
-int how = 0 ;
-
-//------------------------------------------------------------------------------
-
-GrB_Info apply2 (bool is_matrix)
-{
-    GrB_Info info ;
-    GrB_Type stype ;
-    GxB_Scalar_type (&stype, scalar) ;
-
-    if (is_matrix && how == 1)
-    {
-        if (stype == GrB_BOOL)
-        {
-            bool y = *((bool *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_BOOL_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT8)
-        {
-            int8_t y = *((int8_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_INT8_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT16)
-        {
-            int16_t y = *((int16_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_INT16_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT32)
-        {
-            int32_t y = *((int32_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_INT32_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT64)
-        {
-            int64_t y = *((int64_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_INT64_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT8)
-        {
-            uint8_t y = *((uint8_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_UINT8_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT16)
-        {
-            uint16_t y = *((uint16_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_UINT16_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT32)
-        {
-            uint32_t y = *((uint32_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_UINT32_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT64)
-        {
-            uint64_t y = *((uint64_t *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_UINT64_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_FP32)
-        {
-            float y = *((float *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_FP32_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_FP64)
-        {
-            double y = *((double *) (scalar->x)) ;
-            info = GrB_Matrix_apply_BinaryOp2nd_FP64_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GxB_FC32)
-        {
-            GxB_FC32_t y = *((GxB_FC32_t *) (scalar->x)) ;
-            info = GxB_Matrix_apply_BinaryOp2nd_FC32_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GxB_FC64)
-        {
-            GxB_FC64_t y = *((GxB_FC64_t *) (scalar->x)) ;
-            info = GxB_Matrix_apply_BinaryOp2nd_FC64_
-                (C, Mask, accum, op, A, y, desc) ;
-        }
-    }
-    else if (is_matrix && how == 0)
-    {
-        info = GxB_Matrix_apply_BinaryOp2nd_
-            (C, Mask, accum, op, A, scalar, desc) ;
-    }
-    else if (!is_matrix && how == 1)
-    {
-        GrB_Vector w = (GrB_Vector) C ;
-        GrB_Vector m = (GrB_Vector) Mask ;
-        GrB_Vector a = (GrB_Vector) A ;
-        if (stype == GrB_BOOL)
-        {
-            bool y = *((bool *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_BOOL_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT8)
-        {
-            int8_t y = *((int8_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_INT8_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT16)
-        {
-            int16_t y = *((int16_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_INT16_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT32)
-        {
-            int32_t y = *((int32_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_INT32_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_INT64)
-        {
-            int64_t y = *((int64_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_INT64_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT8)
-        {
-            uint8_t y = *((uint8_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_UINT8_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT16)
-        {
-            uint16_t y = *((uint16_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_UINT16_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT32)
-        {
-            uint32_t y = *((uint32_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_UINT32_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_UINT64)
-        {
-            uint64_t y = *((uint64_t *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_UINT64_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_FP32)
-        {
-            float y = *((float *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_FP32_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GrB_FP64)
-        {
-            double y = *((double *) (scalar->x)) ;
-            info = GrB_Vector_apply_BinaryOp2nd_FP64_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GxB_FC32)
-        {
-            GxB_FC32_t y = *((GxB_FC32_t *) (scalar->x)) ;
-            info = GxB_Vector_apply_BinaryOp2nd_FC32_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-        else if (stype == GxB_FC64)
-        {
-            GxB_FC64_t y = *((GxB_FC64_t *) (scalar->x)) ;
-            info = GxB_Vector_apply_BinaryOp2nd_FC64_
-                (w, Mask, accum, op, A, y, desc) ;
-        }
-    }
-    else if (!is_matrix && how == 0)
-    {
-        GrB_Vector w = (GrB_Vector) C ;
-        GrB_Vector m = (GrB_Vector) Mask ;
-        GrB_Vector a = (GrB_Vector) A ;
-        info = GxB_Vector_apply_BinaryOp2nd_
-            (w, m, accum, op, a, scalar, desc) ;
-    }
-
-    return (info) ;
-}
-
-//------------------------------------------------------------------------------
 
 void mexFunction
 (
@@ -238,9 +31,13 @@ void mexFunction
 {
 
     bool malloc_debug = GB_mx_get_global (true) ;
+    GrB_Matrix C = NULL ;
+    GrB_Matrix A = NULL ;
+    GrB_Descriptor desc = NULL ;
 
     // check inputs
-    if (nargout > 1 || nargin < 7 || nargin > 8)
+    GB_WHERE (USAGE) ;
+    if (nargout > 1 || nargin < 4 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -248,94 +45,58 @@ void mexFunction
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
     C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
-    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
+    #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
-
-    // get Mask (shallow copy)
-    Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
-    if (Mask == NULL && !mxIsEmpty (pargin [1]))
-    {
-        FREE_ALL ;
-        mexErrMsgTxt ("Mask failed") ;
-    }
-
-    // get how.  0: use GxB_Scalar, 1: use bare C scalar
-    GET_SCALAR (4, int, how, 0) ;
-
-    // get scalar (shallow copy)
-    S = GB_mx_mxArray_to_Matrix (pargin [6], "scalar input", false, true) ;
-    if (S == NULL || S->magic != GB_MAGIC)
-    {
-        FREE_ALL ;
-        mexErrMsgTxt ("scalar failed") ;
-    }
-    GrB_Index snrows, sncols, snvals ;
-    GrB_Matrix_nrows (&snrows, S) ;
-    GrB_Matrix_ncols (&sncols, S) ;
-    GrB_Matrix_nvals (&snvals, S) ;
-    GxB_Format_Value fmt ;
-    GxB_Matrix_Option_get_(S, GxB_FORMAT, &fmt) ;
-    if (snrows != 1 || sncols != 1 || snvals != 1 || fmt != GxB_BY_COL)
-    {
-        FREE_ALL ;
-        mexErrMsgTxt ("scalar failed") ;
-    }
-    scalar = (GxB_Scalar) S ;
-    GrB_Info info = GxB_Scalar_fprint (scalar, "scalar", GxB_SILENT, NULL) ;
-    if (info != GrB_SUCCESS)
-    {
-        FREE_ALL ;
-        mexErrMsgTxt ("scalar failed") ;
-    }
+    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get A (shallow copy)
-    A = GB_mx_mxArray_to_Matrix (pargin [5], "A input", false, true) ;
-    if (A == NULL || A->magic != GB_MAGIC)
+    A = GB_mx_mxArray_to_Matrix (pargin [3], "A input", false, true) ;
+    if (A == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
     }
 
-    // get accum, if present
-    bool user_complex = (Complex != GxB_FC64)
-        && (C->type == Complex || A->type == Complex) ;
-    if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [2], "accum",
-        C->type, user_complex))
+    // get accum; default: NOP, default class is class(C)
+    GrB_BinaryOp accum ;
+    if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [1], "accum",
+        GB_NOP_opcode, cclass, C->type == Complex, A->type == Complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;
     }
 
-    // get op
-    if (!GB_mx_mxArray_to_BinaryOp (&op, pargin [3], "op",
-        A->type, user_complex) || op == NULL)
+    // get op; default: NOP, default class is class(C)
+    GrB_UnaryOp op ;
+    if (!GB_mx_mxArray_to_UnaryOp (&op, pargin [2], "op",
+        GB_NOP_opcode, cclass, A->type == Complex)) 
     {
         FREE_ALL ;
         mexErrMsgTxt ("UnaryOp failed") ;
     }
 
     // get desc
-    if (!GB_mx_mxArray_to_Descriptor (&desc, PARGIN (7), "desc"))
+    if (!GB_mx_mxArray_to_Descriptor (&desc, PARGIN (4), "desc"))
     {
         FREE_ALL ;
         mexErrMsgTxt ("desc failed") ;
     }
 
-    // C<Mask> = accum(C,op(x,A))
-    if (GB_NCOLS (C) == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT)
-        && GB_VECTOR_OK (C))
+    // C<C> = accum(C,op(A))
+    if (GB_NCOLS (C) == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
     {
         // this is just to test the Vector version
-        METHOD (apply2 (false)) ;
+        METHOD (GrB_apply ((GrB_Vector) C, (GrB_Vector) C, accum, op,
+            (GrB_Vector) A, desc)) ;
     }
     else
     {
-        METHOD (apply2 (true)) ;
+        METHOD (GrB_apply (C, C, accum, op, A, desc)) ;
     }
 
     // return C to MATLAB as a struct and free the GraphBLAS C

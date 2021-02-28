@@ -2,8 +2,8 @@
 // GB_mex_band: C = tril (triu (A,lo), hi), or with A'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -15,13 +15,13 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GxB_Scalar_free_(&Thunk) ;          \
-    GrB_Matrix_free_(&C) ;              \
-    GrB_Matrix_free_(&A) ;              \
-    GxB_Scalar_free_(&Thunk_type) ;     \
-    GxB_SelectOp_free_(&op) ;           \
-    GrB_Descriptor_free_(&desc) ;       \
-    GB_mx_put_global (true) ;           \
+    GB_SCALAR_FREE (&Thunk) ;           \
+    GB_MATRIX_FREE (&C) ;               \
+    GB_MATRIX_FREE (&A) ;               \
+    GrB_free (&Thunk_type) ;            \
+    GrB_free (&op) ;                    \
+    GrB_free (&desc) ;                  \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #define OK(method)                                      \
@@ -30,6 +30,7 @@
     if (info != GrB_SUCCESS)                            \
     {                                                   \
         FREE_ALL ;                                      \
+        printf ("%s\n", GrB_error ()) ;                 \
         mexErrMsgTxt ("GraphBLAS failed") ;             \
     }                                                   \
 }
@@ -40,11 +41,11 @@ typedef struct
     int64_t hi ;
 } LoHi_type ; 
 
-bool LoHi_band (GrB_Index i, GrB_Index j,
-    /* x is unused: */ const void *x, const LoHi_type *thunk) ;
+bool band (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, /* x is unused: */ const void *x, const LoHi_type *thunk) ;
 
-bool LoHi_band (GrB_Index i, GrB_Index j,
-    /* x is unused: */ const void *x, const LoHi_type *thunk)
+bool band (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, /* x is unused: */ const void *x, const LoHi_type *thunk)
 {
     int64_t i2 = (int64_t) i ;
     int64_t j2 = (int64_t) j ;
@@ -75,6 +76,7 @@ void mexFunction
     #define FREE_DEEP_COPY ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 3 || nargin > 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -98,7 +100,8 @@ void mexFunction
 
     OK (GxB_Scalar_new (&Thunk, Thunk_type)) ;
     OK (GxB_Scalar_setElement_UDT (Thunk, (void *) &bandwidth)) ;
-    OK (GxB_Scalar_wait_(&Thunk)) ;
+    GrB_Index ignore ;
+    OK (GxB_Scalar_nvals (&ignore, Thunk)) ;
 
     // get atranspose
     bool atranspose = false ;
@@ -106,23 +109,14 @@ void mexFunction
     if (atranspose)
     {
         OK (GrB_Descriptor_new (&desc)) ;
-        OK (GxB_Desc_set (desc, GrB_INP0, GrB_TRAN)) ;
+        OK (GxB_set (desc, GrB_INP0, GrB_TRAN)) ;
     }
 
     GB_MEX_TIC ;
 
     // create operator
-    // use the user-defined operator, from the LoHi_band function
-    METHOD (GxB_SelectOp_new (&op, (GxB_select_function) LoHi_band,
-        NULL, Thunk_type)) ;
-
-    GrB_Index nrows, ncols ;
-    GrB_Matrix_nrows (&nrows, A) ;
-    GrB_Matrix_ncols (&ncols, A) ;
-    if (bandwidth.lo == 0 && bandwidth.hi == 0 && nrows == 10 && ncols == 10)
-    {
-        GxB_SelectOp_fprint_ (op, 3, NULL) ;
-    }
+    // use the user-defined operator, from the band function
+    METHOD (GxB_SelectOp_new (&op, band, NULL, Thunk_type)) ;
 
     // create result matrix C
     if (atranspose)
@@ -138,12 +132,12 @@ void mexFunction
     if (GB_NCOLS (C) == 1 && !atranspose)
     {
         // this is just to test the Vector version
-        OK (GxB_Vector_select_((GrB_Vector) C, NULL, NULL, op, (GrB_Vector) A,
+        OK (GxB_select ((GrB_Vector) C, NULL, NULL, op, (GrB_Vector) A,
             Thunk, NULL)) ;
     }
     else
     {
-        OK (GxB_Matrix_select_(C, NULL, NULL, op, A, Thunk, desc)) ;
+        OK (GxB_select (C, NULL, NULL, op, A, Thunk, desc)) ;
     }
 
     GB_MEX_TOC ;

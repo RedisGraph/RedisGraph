@@ -1,14 +1,14 @@
-function [f,s] = format (arg)
+function f = format (arg)
 %GRB.FORMAT get/set the default GraphBLAS matrix format.
 %
 % In its ANSI C interface, SuiteSparse:GraphBLAS stores its matrices by
 % row, by default, since that format tends to be fastest for graph
-% algorithms, but it can also store its matrices by column.  MATLAB sparse
-% and full matrices are always stored by column.  For better compatibility
-% with MATLAB matrices, the default for the MATLAB interface for
-% SuiteSparse:GraphBLAS is to store matrices by column.  This has
-% performance implications, and algorithms should be designed accordingly.
-% The default format can be can changed via:
+% algorithms, but it can also store its matrices by column.  MATLAB
+% sparse and dense sparse matrices are always stored by column.  For
+% better compatibility with MATLAB sparse matrices, the default for the
+% MATLAB interface for SuiteSparse:GraphBLAS is to store matrices by
+% column.  This has performance implications, and algorithms should be
+% designed accordingly.  The default format can be can changed via:
 %
 %   GrB.format ('by row')
 %   GrB.format ('by col')
@@ -39,16 +39,16 @@ function [f,s] = format (arg)
 % all subsequent newly created matrices.
 %
 % All prior matrices created before GrB.format (f) are kept in their same
-% format; this setting only applies to new matrices.  Operations on
-% matrices can be done with any mix of with different formats.  The format
-% only affects time and memory usage, not the results.
+% format; this setting only applies to new matrices.  Operations on matrices
+% can be done with any mix of with different formats.  The format only affects
+% time and memory usage, not the results.
 %
 % The format of the output C of a GraphBLAS method is defined using the
 % following rules.  The first rule that holds is used:
 %
-%   (1) GraphBLAS operations of the form C = GrB.method (Cin, ...)
+%   (1) GraphBLAS operations of the form Cout = GrB.method (Cin, ...)
 %       that take a Cin input matrix, use the format of Cin as the format
-%       for C, if Cin is provided on input.
+%       for Cout, if Cin is provided on input.
 %   (2) If the format is determined by the descriptor to the method, then
 %       that determines the format of C.
 %   (3) If C is a column vector then C is stored by column.
@@ -59,48 +59,16 @@ function [f,s] = format (arg)
 %       it is not a row or column vector, then its format is used for C.
 %   (7) Otherwise, the global default format is used for C.
 %
-% The GrB.format setting is reset to its default ('by col'), via GrB.clear.
+% The GrB.format setting is reset to 'by col', by 'clear all' or by
+% GrB.clear.
 %
 % To query the format for a given GraphBLAS matrix G, use the following
-% (which does not affect the global format setting).  The return value f
-% is 'by row' or 'by col', and s is 'hypersparse', 'sparse', 'bitmap',
-% or 'full'.
+% (which does not affect the global format setting):
 %
-%   [f,s] = GrB.format (G)
+%   f = GrB.format (G)
 %
 % Use G = GrB (G, 'by row') or G = GrB (G, 'by col') to change the format
 % of G after it is constructed.
-%
-% Individual matrices are held in one of four data structurs, each of
-% which can be held 'by row' and 'by col'.  By default, GraphBLAS selects
-% automatically between the following four formats.  Let A by m-by-n with
-% e entries:
-%
-%   (1) 'hypersparse' (or 'hyper' for short):  This is useful if A
-%       n << e and A is 'by col', or m << e if A is 'by row'.  The data
-%       structure takes only O (e) space.
-%   (2) 'sparse':  This the same as the MATLAB sparse matrix, except that
-%       A can be either 'by col' (taking O(n+e) space), or 'by row'
-%       taking O(m+e) space.  A native MATLAB sparse matrix is only held
-%       'by col'.
-%   (3) 'bitmap':  This data structure takes O(m*n) space, but it can
-%       represent a sparse matrix with e < m*n.  It is very efficient
-%       if e is about 0.1*m*n or greater.
-%   (4) 'full':  This takes O(m*n) sparse, and 'full by col' is the same
-%       as a MATLAB full matrix.  All entries must be present (e == m*n).
-%       GraphBLAS can also store a matrix 'full by row'.
-%
-% The sparsity formats can be combined.  For example, to store a matrix in
-% either sparse or bitmap format (but not hypersparse or full) use G = GrB
-% (A, 'sparse/bitmap by col').  GraphBLAS will automatically select
-% between the 'sparse by col' and 'bitmap by col' formats, choosing the
-% latter if the density e/m*n exceeds a default threshold b.  A bitmap
-% matrix is converted to sparse if its density drops below the b/2.  The
-% value of b depends on min(m,n).  A matrix between these two ranges is
-% kept in its current format.  The with 'sparse/bitmap by col' format, a
-% matrix will not be held in hypersparse or full formats.  The default is
-% 'hyper/sparse/bitmap/full by col', which allows GraphBLAS to select
-% between all 4 formats, each column-oriented 'by col'.
 %
 % Examples:
 %
@@ -110,23 +78,23 @@ function [f,s] = format (arg)
 %   GrB.format (G)
 %   GrB.format ('by row') ;      % set the default format to 'by row'
 %   G = GrB.build (1:3, 1:3, 1:3)
-%   [f,s] = GrB.format (G)       % query the format of G
+%   GrB.format (G)               % query the format of G (which is 'by row')
 %
 % See also GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin == 0)
     % f = GrB.format ; get the global format
     f = gbformat ;
 else
-    if (isobject (arg))
-        % f = GrB.format (G) ; get the format of the GraphBLAS matrix
-        arg = arg.opaque ;
+    if (isa (arg, 'GrB'))
+        % f = GrB.format (G) ; get the format of the matrix G
+        f = gbformat (arg.opaque) ;
+    else
+        % f = GrB.format (f) ; set the global format for all future matrices
+        f = gbformat (arg) ;
     end
-    % f = GrB.format (A) ; get the format of the matrix A (MATLAB or GraphBLAS)
-    % f = GrB.format (f) ; set the global format for all matrices.
-    [f,s] = gbformat (arg) ;
 end
 

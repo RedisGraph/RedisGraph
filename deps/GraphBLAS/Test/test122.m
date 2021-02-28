@@ -1,8 +1,8 @@
 function test122
 %TEST122 performance tests for GrB_assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('test120:-------------------  C(I,J)<!M> += A:\n') ;
 
@@ -20,7 +20,7 @@ k = 3000 ;
     I1 = randperm (k) ;
     I0 = uint64 (I1) - 1 ;
 
-d.mask = 'complement' ;
+d.mask = 'scmp' ;
 
 ncores = feature ('numcores') ;
 

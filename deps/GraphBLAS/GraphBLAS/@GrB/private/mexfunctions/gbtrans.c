@@ -2,8 +2,8 @@
 // gbtrans: sparse matrix transpose
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -11,11 +11,10 @@
 
 // Usage:
 
-// C = gbtrans (A)
-// C = gbtrans (A, desc)
-// C = gbtrans (Cin, accum, A, desc)
-// C = gbtrans (Cin, M, A, desc)
-// C = gbtrans (Cin, M, accum, A, desc)
+// Cout = GrB.trans (A, desc)
+// Cout = GrB.trans (Cin, accum, A, desc)
+// Cout = GrB.trans (Cin, M, A, desc)
+// Cout = GrB.trans (Cin, M, accum, A, desc)
 
 // If Cin is not present then it is implicitly a matrix with no entries, of the
 // right size (which depends on A and the descriptor).  Note that if desc.in0
@@ -24,7 +23,7 @@
 
 #include "gb_matlab.h"
 
-#define USAGE "usage: C = GrB.trans (Cin, M, accum, A, desc)"
+#define USAGE "usage: Cout = GrB.trans (Cin, M, accum, A, desc)"
 
 void mexFunction
 (
@@ -39,7 +38,8 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 1 && nargin <= 5 && nargout <= 2, USAGE) ;
+    gb_usage ((nargin == 2 || nargin == 4 || nargin == 5) && nargout <= 1,
+        USAGE) ;
 
     //--------------------------------------------------------------------------
     // find the arguments
@@ -49,10 +49,10 @@ void mexFunction
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
-    int nmatrices, nstrings, ncells, sparsity ;
+    int nmatrices, nstrings, ncells ;
     GrB_Descriptor desc ;
     gb_get_mxargs (nargin, pargin, USAGE, Matrix, &nmatrices, String, &nstrings,
-        Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
+        Cell, &ncells, &desc, &base, &kind, &fmt) ;
 
     CHECK_ERROR (nmatrices < 1 || nmatrices > 3 || nstrings > 1 || ncells > 0,
         USAGE) ;
@@ -96,7 +96,7 @@ void mexFunction
     { 
         // if accum appears, then Cin must also appear
         CHECK_ERROR (C == NULL, USAGE) ;
-        accum = gb_mxstring_to_binop (String [0], ctype, ctype) ;
+        accum = gb_mxstring_to_binop (String [0], ctype) ;
     }
 
     //--------------------------------------------------------------------------
@@ -125,17 +125,16 @@ void mexFunction
         // use the type of A
         OK (GxB_Matrix_type (&ctype, A)) ;
 
-        // create the matrix C and set its format and sparsity
+        OK (GrB_Matrix_new (&C, ctype, cnrows, cncols)) ;
         fmt = gb_get_format (cnrows, cncols, A, NULL, fmt) ;
-        sparsity = gb_get_sparsity (A, NULL, sparsity) ;
-        C = gb_new (ctype, cnrows, cncols, fmt, sparsity) ;
+        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
     }
 
     //--------------------------------------------------------------------------
     // compute C<M> += A or A'
     //--------------------------------------------------------------------------
 
-    OK1 (C, GrB_transpose (C, M, accum, A, desc)) ;
+    OK (GrB_transpose (C, M, accum, A, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
@@ -150,7 +149,6 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;
-    pargout [1] = mxCreateDoubleScalar (kind) ;
     GB_WRAPUP ;
 }
 

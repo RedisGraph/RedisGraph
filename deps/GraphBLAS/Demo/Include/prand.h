@@ -62,24 +62,18 @@
         prand_finalize ( ) ;            // free the prand types and operators
 */
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-
-#ifndef PRAND_H
-#define PRAND_H
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #include "GraphBLAS.h"
 
 // prand_init:  create the random seed type and its operators
-GB_PUBLIC
 GrB_Info prand_init ( ) ;
 
 // prand_finalize:  free the random seed type and its operators
-GB_PUBLIC
 GrB_Info prand_finalize ( ) ;
 
 // prand_seed:  create a Seed vector of random number seeds
-GB_PUBLIC
 GrB_Info prand_seed
 (
     GrB_Vector *Seed,   // vector of random number seeds
@@ -89,7 +83,6 @@ GrB_Info prand_seed
 ) ;
 
 // prand_iget: return a vector of random uint64 integers
-GB_PUBLIC
 GrB_Info prand_iget
 (
     GrB_Vector X,
@@ -97,7 +90,6 @@ GrB_Info prand_iget
 ) ;
 
 // prand_xget: return a vector of random doubles, in range 0 to 1 inclusive
-GB_PUBLIC
 GrB_Info prand_xget
 (
     GrB_Vector X,
@@ -105,7 +97,6 @@ GrB_Info prand_xget
 ) ;
 
 // prand_print:  print the Seed vector
-GB_PUBLIC
 GrB_Info prand_print
 (
     GrB_Vector Seed,
@@ -113,7 +104,6 @@ GrB_Info prand_print
 ) ;
 
 // prand_next: advance the seed
-GB_PUBLIC
 GrB_Info prand_next
 (
     GrB_Vector Seed
@@ -129,14 +119,8 @@ typedef struct
 }
 prand_t ;
 
-GB_PUBLIC
 void prand_next_f (prand_t *z, const prand_t *x) ;
-GB_PUBLIC
 void prand_iget_f (uint64_t *z, const prand_t *x) ;
-GB_PUBLIC
 void prand_xget_f (double *z, prand_t *x) ;
-GB_PUBLIC
 void prand_dup_f (prand_t *z, const prand_t *x, const prand_t *y) ;
-
-#endif
 

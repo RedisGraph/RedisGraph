@@ -2,8 +2,8 @@
 // GxB_init: initialize GraphBLAS and declare malloc/calloc/realloc/free to use
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -35,16 +35,6 @@
         #include "tbb/scalable_allocator.h"
         GxB_init (mode, scalable_malloc, scalable_calloc, scalable_realloc,
             scalable_free, true) ;
-
-    // to use CUDA, do not use this function.  Instead use the following:
-
-        GxB_cuda_init (mode) ;
-
-        // All GraphBLAS objects are allocated with GxB_cuda_malloc,
-        // GxB_cuda_calloc, and GxB_cuda_free.  This function can still be used
-        // if CUDA is not available at compile-time; in this case, it acts just
-        // like GrB_init (mode).  The memory allocators GxB_cuda_malloc, etc.,
-        // just call the ANSI C malloc/calloc/free functions.
 
 */
 
@@ -79,14 +69,8 @@ GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
     // initialize GraphBLAS
     //--------------------------------------------------------------------------
 
-    return (GB_init
-        (mode,                          // blocking or non-blocking mode
-        user_malloc_function,           // user-defined memory managment
-        user_calloc_function,
-        user_realloc_function,
-        user_free_function,
-        user_malloc_is_thread_safe,
-        false,                          // do not use CUDA
+    return (GB_init (mode, user_malloc_function, user_calloc_function,
+        user_realloc_function, user_free_function, user_malloc_is_thread_safe,
         Context)) ;
 }
 

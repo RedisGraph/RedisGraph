@@ -1,8 +1,8 @@
 function test39(use_ssget)
 %TEST39 performance test for GrB_transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest39 performance tests : GrB_transpose \n') ;
 
@@ -112,7 +112,7 @@ tm = toc ;
 
 D = struct ('inp0', 'tran') ;
 
-fprintf ('\nusing accum and subassign, then GB_Matrix_wait:\n') ;
+fprintf ('\nusing accum and subassign, then GB_wait:\n') ;
 tic
 C2 = GB_mex_transpose (A, [ ], 'plus', B, D) ;
 toc
@@ -134,7 +134,7 @@ fprintf ('\nvia GB_add and then accum:\n') ;
 clear Cin
 Cin = sparse (m,n) ;
 tic
-C3 = GB_mex_Matrix_eWiseAdd (Cin, [ ], '', 'plus', A, B) ;
+C3 = GB_mex_eWiseAdd_Matrix (Cin, [ ], '', 'plus', A, B) ;
 toc
 tg = grbresults ;
 fprintf ('GraphBLAS time: %g\n', tg) ;
@@ -185,7 +185,7 @@ toc
 tm5 = toc ;
 
 tic
-C3 = GB_mex_Matrix_eWiseAdd (Cin, [ ], 'plus', 'plus', A, B) ;
+C3 = GB_mex_eWiseAdd_Matrix (Cin, [ ], 'plus', 'plus', A, B) ;
 toc
 tg = grbresults ;
 fprintf ('GraphBLAS time: %g\n', tg) ;

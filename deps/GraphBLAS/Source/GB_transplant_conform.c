@@ -2,18 +2,18 @@
 // GB_transplant_conform: transplant T into C, then conform C
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// C = (type) T, then conform C to its desired sparsity structure.  T is freed.
+// C = (type) T, then conform C to its desired hypersparsity.  T is freed.
 // All prior content of C is cleared; zombies and pending tuples are abandoned
-// in C.  C and T can have any sparsity structure on input.
+// in C.
 
 #include "GB.h"
 
-GrB_Info GB_transplant_conform      // transplant and conform sparsity structure
+GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
 (
     GrB_Matrix C,                   // destination matrix to transplant into
     GrB_Type ctype,                 // type to cast into
@@ -31,8 +31,7 @@ GrB_Info GB_transplant_conform      // transplant and conform sparsity structure
     ASSERT_MATRIX_OK (*Thandle, "T to transplant into C", GB0) ;
     ASSERT_TYPE_OK (ctype, "ctype for transplant into C", GB0) ;
     ASSERT (GB_ZOMBIES_OK (*Thandle)) ;
-    ASSERT (GB_JUMBLED_OK (*Thandle)) ;
-    ASSERT (GB_PENDING_OK (*Thandle)) ;
+    ASSERT (!GB_PENDING (*Thandle)) ;
 
     //--------------------------------------------------------------------------
     // transplant and typecast T into C, and free T
@@ -52,17 +51,9 @@ GrB_Info GB_transplant_conform      // transplant and conform sparsity structure
     ASSERT_MATRIX_OK (C, "C transplanted", GB0) ;
 
     //--------------------------------------------------------------------------
-    // conform C to its desired sparsity structure
+    // conform C to its desired hypersparsity
     //--------------------------------------------------------------------------
 
-    info = GB_conform (C, Context) ;
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory
-        return (info) ;
-    }
-
-    ASSERT_MATRIX_OK (C, "C conformed", GB0) ;
-    return (GrB_SUCCESS) ;
+    return (GB_to_hyper_conform (C, Context)) ;
 }
 

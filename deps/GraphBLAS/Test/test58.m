@@ -1,14 +1,14 @@
 function test58 (cover)
 %TEST58 test GrB_eWiseAdd
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
     cover = 1 ;
 end
 
-fprintf ('\ntest58: ----- quick performance for GB_mex_Matrix_eWiseAdd\n') ;
+fprintf ('\ntest58: ----- quick performance for GB_mex_eWiseAdd_Matrix\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
@@ -30,7 +30,7 @@ if (~cover)
     C = Cin + (A+B) ;
     t1 =toc ;
 
-    C2 = GB_mex_Matrix_eWiseAdd (Cin, Mask, accum, add, A, B, [ ]) ;
+    C2 = GB_mex_eWiseAdd_Matrix (Cin, Mask, accum, add, A, B, [ ]) ;
     t2 = grbresults ;
     assert (isequal (C2.matrix,  C))
 
@@ -71,7 +71,7 @@ for m = nn
 
         tg = 0 ;
         for k = 1:trials
-            C2 = GB_mex_Matrix_eWiseAdd (Cin, [ ], accum, add, A, B, [ ]) ;
+            C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, A, B, [ ]) ;
             tg = tg + grbresults ;
         end
         t2 = tg /trials ;
@@ -92,7 +92,7 @@ for m = nn
 
         tg = 0 ;
         for k = 1:trials
-            C2 = GB_mex_Matrix_eWiseAdd (Cin, [ ], accum, add, A, BT, Dnt) ;
+            C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, A, BT, Dnt) ;
             tg = tg + grbresults ;
         end
         t2 = tg /trials ;
@@ -113,7 +113,7 @@ for m = nn
 
         tg = 0 ;
         for k = 1:trials
-            C2 = GB_mex_Matrix_eWiseAdd (Cin, [ ], accum, add, AT, B, Dtn) ;
+            C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, AT, B, Dtn) ;
             tg = tg + grbresults ;
         end
         t2 = tg /trials ;
@@ -134,7 +134,7 @@ for m = nn
 
         tg = 0 ;
         for k = 1:trials
-            C2 = GB_mex_Matrix_eWiseAdd (Cin, [ ], accum, add, AT, BT, Dtt) ;
+            C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, AT, BT, Dtt) ;
             tg = tg + grbresults ;
         end
         t2 = tg /trials ;

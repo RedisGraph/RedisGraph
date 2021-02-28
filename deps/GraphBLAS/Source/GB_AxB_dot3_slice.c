@@ -2,8 +2,8 @@
 // GB_AxB_dot3_slice: slice the entries and vectors for C<M>=A'*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -24,12 +24,12 @@
 // A(:,i) and B(:,j) would use GB_slice_vector, where no mask would be used.
 
 #define GB_FREE_WORK \
-    GB_FREE (Coarse) ;
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
 
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE_WORK ;          \
-    GB_FREE (TaskList) ;    \
+#define GB_FREE_ALL                                                     \
+{                                                                       \
+    GB_FREE_WORK ;                                                      \
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
 #include "GB_mxm.h"
@@ -63,11 +63,6 @@ GrB_Info GB_AxB_dot3_slice
     // ASSERT_MATRIX_OK (C, ...) cannot be done since C->i is the work need to
     // compute the entry, not the row index itself.
 
-    // C is always constructed as sparse or hypersparse, not full, since it
-    // must accomodate zombies
-    ASSERT (!GB_IS_FULL (C)) ;
-    ASSERT (!GB_IS_BITMAP (C)) ;
-
     (*p_TaskList  ) = NULL ;
     (*p_max_ntasks) = 0 ;
     (*p_ntasks    ) = 0 ;
@@ -86,8 +81,7 @@ GrB_Info GB_AxB_dot3_slice
     const int64_t *GB_RESTRICT Cp = C->p ;
     int64_t *GB_RESTRICT Cwork = C->i ;
     const int64_t cnvec = C->nvec ;
-    const int64_t cvlen = C->vlen ;
-    const int64_t cnz = GB_NNZ_HELD (C) ;
+    const int64_t cnz = GB_NNZ (C) ;
 
     //--------------------------------------------------------------------------
     // compute the cumulative sum of the work
@@ -143,11 +137,11 @@ GrB_Info GB_AxB_dot3_slice
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    if (!GB_pslice (&Coarse, Cwork, cnz, ntasks1, false))
+    if (!GB_pslice (&Coarse, Cwork, cnz, ntasks1))
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -168,13 +162,11 @@ GrB_Info GB_AxB_dot3_slice
         { 
             // find the first vector of the slice for task taskid: the
             // vector that owns the entry Ci [pfirst] and Cx [pfirst].
-            int64_t kfirst = GB_search_for_vector (pfirst, Cp, 0, cnvec,
-                cvlen) ;
+            int64_t kfirst = GB_search_for_vector (pfirst, Cp, 0, cnvec) ;
 
             // find the last vector of the slice for task taskid: the
             // vector that owns the entry Ci [plast] and Cx [plast].
-            int64_t klast = GB_search_for_vector (plast, Cp, kfirst, cnvec,
-                cvlen) ;
+            int64_t klast = GB_search_for_vector (plast, Cp, kfirst, cnvec) ;
 
             // construct a coarse task that computes Ci,Cx [pfirst:plast].
             // These entries appear in C(:,kfirst:klast), but this task does

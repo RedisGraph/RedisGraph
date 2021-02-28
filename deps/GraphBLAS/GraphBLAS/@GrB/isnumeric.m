@@ -4,11 +4,10 @@ function s = isnumeric (G) %#ok<INUSD>
 % logical matrices, since those matrices can be operated on in any
 % semiring, just like any other GraphBLAS matrix.
 %
-% See also GrB/isfloat, GrB/isreal, GrB/isinteger, GrB/islogical,
-% GrB.type, GrB/isa, GrB.
+% See also isfloat, isreal, isinteger, islogical, GrB.type, isa, GrB.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 s = true ;
 

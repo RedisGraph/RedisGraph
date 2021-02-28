@@ -2,8 +2,8 @@
 // GB_ewise_slice: slice the entries and vectors for an ewise operation
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -12,20 +12,16 @@
 // C=op(A,B).  The mask is ignored for computing where to slice the work, but
 // it is sliced once the location has been found.
 
-// M, A, B: any sparsity structure (hypersparse, sparse, bitmap, or full) This
-// function should work if A or B are bitmap, but it is not needed in that
-// case.  C: constructed as sparse or hypersparse in the caller.
-
-#define GB_FREE_WORK    \
-{                       \
-    GB_FREE (Coarse) ;  \
-    GB_FREE (Cwork) ;   \
+#define GB_FREE_WORK                                                    \
+{                                                                       \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;              \
+    GB_FREE_MEMORY (Cwork, Cnvec+1, sizeof (int64_t)) ;                 \
 }
 
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE_WORK ;          \
-    GB_FREE (TaskList) ;    \
+#define GB_FREE_ALL                                                     \
+{                                                                       \
+    GB_FREE_WORK ;                                                      \
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
 #include "GB.h"
@@ -38,7 +34,7 @@ GrB_Info GB_ewise_slice
 (
     // output:
     GB_task_struct **p_TaskList,    // array of structs, of size max_ntasks
-    int *p_TaskList_size,           // size of TaskList
+    int *p_max_ntasks,              // size of TaskList
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads for eWise operation
     // input:
@@ -60,27 +56,14 @@ GrB_Info GB_ewise_slice
     //--------------------------------------------------------------------------
 
     ASSERT (p_TaskList != NULL) ;
-    ASSERT (p_TaskList_size != NULL) ;
+    ASSERT (p_max_ntasks != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
-
     ASSERT_MATRIX_OK (A, "A for ewise_slice", GB0) ;
-    ASSERT (!GB_ZOMBIES (A)) ; 
-    ASSERT (!GB_JUMBLED (A)) ;
-    ASSERT (!GB_PENDING (A)) ; 
-
     ASSERT_MATRIX_OK (B, "B for ewise_slice", GB0) ;
-    ASSERT (!GB_ZOMBIES (B)) ; 
-    ASSERT (!GB_JUMBLED (B)) ;
-    ASSERT (!GB_PENDING (B)) ; 
-
-    ASSERT_MATRIX_OK_OR_NULL (M, "M for ewise_slice", GB0) ;
-    ASSERT (!GB_ZOMBIES (M)) ; 
-    ASSERT (!GB_JUMBLED (M)) ;
-    ASSERT (!GB_PENDING (M)) ; 
 
     (*p_TaskList  ) = NULL ;
-    (*p_TaskList_size) = 0 ;
+    (*p_max_ntasks) = 0 ;
     (*p_ntasks    ) = 0 ;
     (*p_nthreads  ) = 1 ;
 
@@ -121,7 +104,7 @@ GrB_Info GB_ewise_slice
         TaskList [0].kfirst = 0 ;
         TaskList [0].klast  = Cnvec-1 ;
         (*p_TaskList  ) = TaskList ;
-        (*p_TaskList_size) = max_ntasks ;
+        (*p_max_ntasks) = max_ntasks ;
         (*p_ntasks    ) = (Cnvec == 0) ? 0 : 1 ;
         (*p_nthreads  ) = 1 ;
         return (GrB_SUCCESS) ;
@@ -141,26 +124,25 @@ GrB_Info GB_ewise_slice
 
     const int64_t *GB_RESTRICT Mp = NULL ;
     const int64_t *GB_RESTRICT Mi = NULL ;
-    bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;
     if (M != NULL)
     { 
         Mp = M->p ;
         Mi = M->i ;
         // Ch_is_Mh is true if either true on input (for GB_add, which denotes
         // that Ch is a deep copy of M->h), or if Ch is a shallow copy of M->h.
-        Ch_is_Mh = Ch_is_Mh || (Ch != NULL && M_is_hyper && Ch == M->h) ;
+        Ch_is_Mh = Ch_is_Mh || (Ch != NULL && M->h != NULL && Ch == M->h) ;
     }
 
     //--------------------------------------------------------------------------
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Cwork = GB_MALLOC (Cnvec+1, int64_t) ;
+    GB_MALLOC_MEMORY (Cwork, Cnvec+1, sizeof (int64_t)) ;
     if (Cwork == NULL)
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -178,7 +160,7 @@ GrB_Info GB_ewise_slice
         // get the C(:,j) vector
         //----------------------------------------------------------------------
 
-        int64_t j = GBH (Ch, k) ;
+        int64_t j = (Ch == NULL) ? k : Ch [k] ;
 
         //----------------------------------------------------------------------
         // get the corresponding vector of A
@@ -188,25 +170,26 @@ GrB_Info GB_ewise_slice
         if (C_to_A != NULL)
         { 
             // A is hypersparse and the C_to_A mapping has been created
-            ASSERT (GB_IS_HYPERSPARSE (A)) ;
+            ASSERT (A->is_hyper || A->is_slice) ;
             kA = C_to_A [k] ;
             ASSERT (kA >= -1 && kA < A->nvec) ;
             if (kA >= 0)
             {
-                ASSERT (j == GBH (A->h, kA)) ;
+                ASSERT (j == ((A->is_hyper) ? A->h [kA] : (A->hfirst + kA))) ;
             }
         }
         else if (Ch_is_Ah)
         { 
             // A is hypersparse, but Ch is a shallow copy of A->h
-            ASSERT (GB_IS_HYPERSPARSE (A)) ;
             kA = k ;
             ASSERT (j == A->h [kA]) ;
         }
         else
         { 
-            // A is sparse, bitmap, or full
-            ASSERT (!GB_IS_HYPERSPARSE (A)) ;
+            // A is standard
+            ASSERT (!A->is_hyper) ;
+            ASSERT (!A->is_slice) ;
+            ASSERT (A->h == NULL) ;
             kA = j ;
         }
 
@@ -218,25 +201,26 @@ GrB_Info GB_ewise_slice
         if (C_to_B != NULL)
         { 
             // B is hypersparse and the C_to_B mapping has been created
-            ASSERT (GB_IS_HYPERSPARSE (B)) ;
+            ASSERT (B->is_hyper || B->is_slice) ;
             kB = C_to_B [k] ;
             ASSERT (kB >= -1 && kB < B->nvec) ;
             if (kB >= 0)
             {
-                ASSERT (j == GBH (B->h, kB)) ;
+                ASSERT (j == ((B->is_hyper) ? B->h [kB] : (B->hfirst + kB))) ;
             }
         }
         else if (Ch_is_Bh)
         { 
             // B is hypersparse, but Ch is a shallow copy of B->h
-            ASSERT (GB_IS_HYPERSPARSE (B)) ;
             kB = k ;
             ASSERT (j == B->h [kB]) ;
         }
         else
         { 
-            // B is sparse, bitmap, or full
-            ASSERT (!GB_IS_HYPERSPARSE (B)) ;
+            // B is standard
+            ASSERT (!B->is_hyper) ;
+            ASSERT (!B->is_slice) ;
+            ASSERT (B->h == NULL) ;
             kB = j ;
         }
 
@@ -246,10 +230,8 @@ GrB_Info GB_ewise_slice
 
         ASSERT (kA >= -1 && kA < A->nvec) ;
         ASSERT (kB >= -1 && kB < B->nvec) ;
-        int64_t aknz = (kA < 0) ? 0 :
-            ((Ap == NULL) ? vlen : (Ap [kA+1] - Ap [kA])) ;
-        int64_t bknz = (kB < 0) ? 0 :
-            ((Bp == NULL) ? vlen : (Bp [kB+1] - Bp [kB])) ;
+        int64_t aknz = (kA < 0) ? 0 : (Ap [kA+1] - Ap [kA]) ;
+        int64_t bknz = (kB < 0) ? 0 : (Bp [kB+1] - Bp [kB]) ;
 
         Cwork [k] = aknz + bknz + 1 ;
     }
@@ -277,11 +259,11 @@ GrB_Info GB_ewise_slice
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    if (!GB_pslice (&Coarse, Cwork, Cnvec, ntasks1, false))
+    if (!GB_pslice (&Coarse, Cwork, Cnvec, ntasks1))
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -356,7 +338,7 @@ GrB_Info GB_ewise_slice
             // get the vector of C
             //------------------------------------------------------------------
 
-            int64_t j = GBH (Ch, k) ;
+            int64_t j = (Ch == NULL) ? k : Ch [k] ;
 
             //------------------------------------------------------------------
             // get the corresponding vector of A
@@ -366,23 +348,20 @@ GrB_Info GB_ewise_slice
             if (C_to_A != NULL)
             { 
                 // A is hypersparse and the C_to_A mapping has been created
-                ASSERT (GB_IS_HYPERSPARSE (A)) ;
                 kA = C_to_A [k] ;
             }
             else if (Ch_is_Ah)
             { 
                 // A is hypersparse, but Ch is a shallow copy of A->h
-                ASSERT (GB_IS_HYPERSPARSE (A)) ;
                 kA = k ;
             }
             else
             { 
-                // A is sparse, bitmap, or full
-                ASSERT (!GB_IS_HYPERSPARSE (A)) ;
+                // A is standard
                 kA = j ;
             }
-            int64_t pA_start = (kA < 0) ? (-1) : GBP (Ap, kA, vlen) ;
-            int64_t pA_end   = (kA < 0) ? (-1) : GBP (Ap, kA+1, vlen) ;
+            int64_t pA_start = (kA < 0) ? -1 : Ap [kA] ;
+            int64_t pA_end   = (kA < 0) ? -1 : Ap [kA+1] ;
             bool a_empty = (pA_end == pA_start) ;
 
             //------------------------------------------------------------------
@@ -393,30 +372,25 @@ GrB_Info GB_ewise_slice
             if (C_to_B != NULL)
             { 
                 // B is hypersparse and the C_to_B mapping has been created
-                ASSERT (GB_IS_HYPERSPARSE (B)) ;
                 kB = C_to_B [k] ;
             }
             else if (Ch_is_Bh)
             { 
                 // B is hypersparse, but Ch is a shallow copy of B->h
-                ASSERT (GB_IS_HYPERSPARSE (B)) ;
                 kB = k ;
             }
             else
             { 
-                // B is sparse, bitmap, or full
-                ASSERT (!GB_IS_HYPERSPARSE (B)) ;
+                // B is standard
                 kB = j ;
             }
-            int64_t pB_start = (kB < 0) ? (-1) : GBP (Bp, kB, vlen) ;
-            int64_t pB_end   = (kB < 0) ? (-1) : GBP (Bp, kB+1, vlen) ;
+            int64_t pB_start = (kB < 0) ? -1 : Bp [kB] ;
+            int64_t pB_end   = (kB < 0) ? -1 : Bp [kB+1] ;
             bool b_empty = (pB_end == pB_start) ;
 
             //------------------------------------------------------------------
             // get the corresponding vector of M, if present
             //------------------------------------------------------------------
-
-            // M can have any sparsity structure (hyper, sparse, bitmap, full)
 
             int64_t pM_start = -1 ;
             int64_t pM_end   = -1 ;
@@ -426,24 +400,20 @@ GrB_Info GB_ewise_slice
                 if (C_to_M != NULL)
                 { 
                     // M is hypersparse and the C_to_M mapping has been created
-                    ASSERT (GB_IS_HYPERSPARSE (M)) ;
                     kM = C_to_M [k] ;
                 }
                 else if (Ch_is_Mh)
-                { 
-                    // M is hypersparse, but Ch is a copy of Mh
-                    ASSERT (GB_IS_HYPERSPARSE (M)) ;
+                {
                     // Ch is a deep or shallow copy of Mh
                     kM = k ;
                 }
                 else
                 { 
-                    // M is sparse, bitmap, or full
-                    ASSERT (!GB_IS_HYPERSPARSE (M)) ;
+                    // M is standard
                     kM = j ;
                 }
-                pM_start = (kM < 0) ? -1 : GBP (Mp, kM, vlen) ;
-                pM_end   = (kM < 0) ? -1 : GBP (Mp, kM+1, vlen) ;
+                pM_start = (kM < 0) ? -1 : Mp [kM] ;
+                pM_end   = (kM < 0) ? -1 : Mp [kM+1] ;
             }
             bool m_empty = (pM_end == pM_start) ;
 
@@ -497,9 +467,9 @@ GrB_Info GB_ewise_slice
                     double target_work = ((nfine-tfine) * ckwork) / nfine ;
                     int64_t pM, pA, pB ;
                     GB_slice_vector (&i, &pM, &pA, &pB,
-                        pM_start, pM_end, Mi,
-                        pA_start, pA_end, Ai,
-                        pB_start, pB_end, Bi,
+                        pM_start, pM_end, Mi,       // Mi NULL if M not present
+                        pA_start, pA_end, Ai, 0,    // Ai always explicit list
+                        pB_start, pB_end, Bi,       // Bi always explicit list
                         vlen, target_work) ;
 
                     // prior task ends at pM-1, pA-1, and pB-1
@@ -540,10 +510,10 @@ GrB_Info GB_ewise_slice
     //--------------------------------------------------------------------------
 
     GB_FREE_WORK ;
-    (*p_TaskList     ) = TaskList ;
-    (*p_TaskList_size) = max_ntasks ;
-    (*p_ntasks       ) = ntasks ;
-    (*p_nthreads     ) = nthreads ;
+    (*p_TaskList  ) = TaskList ;
+    (*p_max_ntasks) = max_ntasks ;
+    (*p_ntasks    ) = ntasks ;
+    (*p_nthreads  ) = nthreads ;
     return (GrB_SUCCESS) ;
 }
 

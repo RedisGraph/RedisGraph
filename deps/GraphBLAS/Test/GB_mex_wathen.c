@@ -2,8 +2,8 @@
 // GB_mex_wathen: construct a random finite-element matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@
 
 #define USAGE "A = GB_mex_wathen (nx, ny, method, scale, rho)"
 
-#define FREE_ALL GB_mx_put_global (true) ;   
+#define FREE_ALL GB_mx_put_global (true, 0) ;
 
 void mexFunction
 (
@@ -26,6 +26,7 @@ void mexFunction
     GrB_Matrix A = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -51,7 +52,8 @@ void mexFunction
         {
             mexErrMsgTxt ("rho has wrong size") ;
         }
-        if (!mxIsClass (pargin [4], "double") || mxIsSparse (pargin [4]))
+        if (mxGetClassID (pargin [4]) != mxDOUBLE_CLASS ||
+            mxIsSparse (pargin [4]))
         {
             mexErrMsgTxt ("rho must be a dense and double") ;
         }

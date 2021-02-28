@@ -2,8 +2,8 @@
 // GB_sel:  hard-coded functions for selection operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -17,7 +17,9 @@
 
 // phase1: GB_sel_phase1__nonzero_int32
 // phase2: GB_sel_phase2__nonzero_int32
-// A type: int32_t
+
+// A type:   int32_t
+// selectop: (Ax [p] != 0)
 
 // kind
 #define GB_ENTRY_SELECTOR
@@ -25,17 +27,44 @@
 #define GB_ATYPE \
     int32_t
 
-// test value of Ax [p]
-#define GB_TEST_VALUE_OF_ENTRY(p)                       \
-    Ax [p] != 0
+// test Ax [p]
+#define GB_SELECT(p)                                    \
+    (Ax [p] != 0)
 
 // get the vector index (user select operators only)
 #define GB_GET_J                                        \
     ;
 
+// W [k] = s, no typecast
+#define GB_COPY_SCALAR_TO_ARRAY(W,k,s)                  \
+    W [k] = s
+
+// W [k] = S [i], no typecast
+#define GB_COPY_ARRAY_TO_ARRAY(W,k,S,i)                 \
+    W [k] = S [i]
+
+// W [k] += S [i], no typecast
+#define GB_ADD_ARRAY_TO_ARRAY(W,k,S,i)                  \
+    W [k] += S [i]
+
+// no terminal value
+#define GB_BREAK_IF_TERMINAL(t) ;
+
+// ztype s = (ztype) Ax [p], with typecast
+#define GB_CAST_ARRAY_TO_SCALAR(s,Ax,p)                 \
+    s = GB_SELECT (p)
+
+// s += (ztype) Ax [p], with typecast
+#define GB_ADD_CAST_ARRAY_TO_SCALAR(s,Ax,p)             \
+    s += GB_SELECT (p)
+
 // Cx [pC] = Ax [pA], no typecast
 #define GB_SELECT_ENTRY(Cx,pC,Ax,pA)                    \
     Cx [pC] = Ax [pA]
+
+// declare scalar for GB_reduce_each_vector
+#define GB_SCALAR(s)                                    \
+    int64_t s
 
 //------------------------------------------------------------------------------
 // GB_sel_phase1__nonzero_int32
@@ -47,8 +76,8 @@ void GB_sel_phase1__nonzero_int32
 (
     int64_t *GB_RESTRICT Zp,
     int64_t *GB_RESTRICT Cp,
-    int64_t *GB_RESTRICT Wfirst,
-    int64_t *GB_RESTRICT Wlast,
+    GB_void *GB_RESTRICT Wfirst_space,
+    GB_void *GB_RESTRICT Wlast_space,
     const GrB_Matrix A,
     const int64_t *GB_RESTRICT kfirst_slice,
     const int64_t *GB_RESTRICT klast_slice,
@@ -61,6 +90,7 @@ void GB_sel_phase1__nonzero_int32
     const int nthreads
 )
 { 
+    int64_t *GB_RESTRICT Tx = Cp ;
     ;
     #include "GB_select_phase1.c"
 }
@@ -93,28 +123,4 @@ void GB_sel_phase2__nonzero_int32
     ;
     #include "GB_select_phase2.c"
 }
-
-//------------------------------------------------------------------------------
-// GB_sel_bitmap__nonzero_int32
-//------------------------------------------------------------------------------
-
-
-
-void GB_sel_bitmap__nonzero_int32
-(
-    int8_t *Cb,
-    int32_t *GB_RESTRICT Cx,
-    int64_t *cnvals_handle,
-    GrB_Matrix A,
-    const bool flipij,
-    const int64_t ithunk,
-    const int32_t *GB_RESTRICT xthunk,
-    const GxB_select_function user_select,
-    const int nthreads
-)
-{ 
-    ;
-    #include "GB_bitmap_select_template.c"
-}
-
 

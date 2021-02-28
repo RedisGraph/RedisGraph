@@ -2,8 +2,8 @@
 // GB_transpose_bucket: transpose and optionally typecast and/or apply operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -14,6 +14,9 @@
 // type of C.  The type of A must be compatible with the type of of x (A is
 // typecasted into the type of x).  These conditions must be checked in the
 // caller.
+
+// The input matrix A may have jumbled row indices; this is OK.
+// The output matrix C will always have sorted row indices.
 
 // This function is agnostic for the CSR/CSC format of C and A.  C_is_csc is
 // defined by the caller and assigned to C->is_csc, but otherwise unused.
@@ -35,22 +38,22 @@
 
 #include "GB_transpose.h"
 
-#define GB_FREE_WORK                                                    \
-{                                                                       \
-    if (Workspaces != NULL)                                             \
-    {                                                                   \
-        for (int tid = 0 ; tid < nworkspaces ; tid++)                   \
-        {                                                               \
-            GB_FREE (Workspaces [tid]) ;                                \
-        }                                                               \
-    }                                                                   \
-    GB_FREE (Workspaces) ;                                              \
-    GB_FREE (A_slice) ;                                                 \
+#define GB_FREE_WORK                                                        \
+{                                                                           \
+    if (Rowcounts != NULL)                                                  \
+    {                                                                       \
+        for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
+        {                                                                   \
+            GB_FREE_MEMORY (Rowcounts [taskid], vlen+1, sizeof (int64_t)) ; \
+        }                                                                   \
+    }                                                                       \
+    GB_FREE_MEMORY (Rowcounts, naslice, sizeof (int64_t *)) ;               \
+    GB_FREE_MEMORY (A_slice, naslice+1, sizeof (int64_t)) ;                 \
 }
 
 #define GB_FREE_ALL                                                     \
 {                                                                       \
-    GB_Matrix_free (&C) ;                                               \
+    GB_MATRIX_FREE (&C) ;                                               \
     GB_FREE_WORK ;                                                      \
 }
 
@@ -60,13 +63,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     const GrB_Type ctype,       // type of output matrix C
     const bool C_is_csc,        // format of output matrix C
     const GrB_Matrix A,         // input matrix
-        // no operator is applied if both op1 and op2 are NULL
-        const GrB_UnaryOp op1,          // unary operator to apply
-        const GrB_BinaryOp op2,         // binary operator to apply
-        const GxB_Scalar scalar,        // scalar to bind to binary operator
-        bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
-    const int nworkspaces,      // # of workspaces to use
-    const int nthreads,         // # of threads to use
+    const GrB_UnaryOp op,       // operator to apply, NULL if no operator
     GB_Context Context
 )
 {
@@ -78,21 +75,16 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     ASSERT (Chandle != NULL) ;
     (*Chandle) = NULL ;
     ASSERT_TYPE_OK (ctype, "ctype for transpose", GB0) ;
-    ASSERT_MATRIX_OK (A, "A input for transpose_bucket", GB0) ;
-    ASSERT (!GB_PENDING (A)) ;
-    ASSERT (!GB_ZOMBIES (A)) ;
-    ASSERT (GB_JUMBLED_OK (A)) ;
+    // OK if the matrix A is jumbled; this function is intended to sort it.
+    ASSERT_MATRIX_OK_OR_JUMBLED (A, "A input for transpose_bucket", GB0) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
 
-    // if op1 and op2 are NULL, then no operator is applied
-
-    // This method is only be used when A is sparse or hypersparse.
-    // The full and bitmap cases are handled in GB_transpose.
-    ASSERT (!GB_IS_FULL (A)) ;
-    ASSERT (!GB_IS_BITMAP (A)) ;
-    ASSERT (GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A)) ;
-
-    int64_t *GB_RESTRICT A_slice = NULL ;          // size nthreads+1
-    int64_t *GB_RESTRICT *Workspaces = NULL ;      // size nworkspaces
+    if (op != NULL)
+    { 
+        ASSERT_UNARYOP_OK (op, "op for transpose", GB0) ;
+        ASSERT (ctype == op->ztype) ;
+        ASSERT (GB_Type_compatible (A->type, op->xtype)) ;
+    }
 
     //--------------------------------------------------------------------------
     // get A
@@ -105,23 +97,38 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    // # of threads to use in the O(vlen) loops below
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
-    int nth = GB_nthreads (vlen, chunk, nthreads_max) ;
+
+    // # of threads to use in the O(vlen) loops below
+    int nthreads = GB_nthreads (vlen, chunk, nthreads_max) ;
+
+    // A is sliced into naslice parts, so that each part has at least vlen
+    // entries.  The workspace required is naslice*vlen, so this ensures
+    // the workspace is no more than the size of A.
+
+    // naslice < floor (anz / vlen) < anz / vlen
+    // thus naslice*vlen < anz
+
+    // also, naslice < nthreads_max, since each part will be about the same size
+
+    int naslice = GB_nthreads (anz, GB_IMAX (vlen, chunk), nthreads_max) ;
+
+    int64_t *GB_RESTRICT A_slice = NULL ;          // size naslice+1
+    int64_t *GB_RESTRICT *Rowcounts = NULL ;       // size naslice
 
     //--------------------------------------------------------------------------
-    // allocate C: always sparse
+    // allocate C: always non-hypersparse
     //--------------------------------------------------------------------------
 
-    // The bucket transpose only works when C is sparse.
-    // A can be sparse or hypersparse.
+    // The bucket transpose only works when C is not hypersparse.
+    // A can be hypersparse.
 
-    // C->p is allocated but not initialized.
+    // [ C->p is allocated but not initialized.  It is NON-hypersparse.
     GrB_Info info ;
     GrB_Matrix C = NULL ;
-    GB_OK (GB_new_bix (&C, // sparse, new header
-        ctype, A->vdim, vlen, GB_Ap_malloc, C_is_csc,
-        GxB_SPARSE, true, A->hyper_switch, vlen, anz, true, Context)) ;
+    GB_CREATE (&C, ctype, A->vdim, vlen, GB_Ap_malloc, C_is_csc,
+        GB_FORCE_NONHYPER, A->hyper_ratio, vlen, anz, true, Context) ;
+    GB_OK (info) ;
 
     int64_t *GB_RESTRICT Cp = C->p ;
 
@@ -129,192 +136,125 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Workspaces = GB_CALLOC (nworkspaces, int64_t *) ;
-    if (Workspaces == NULL)
+    GB_CALLOC_MEMORY (Rowcounts, naslice, sizeof (int64_t *)) ;
+    if (Rowcounts == NULL)
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
-    for (int tid = 0 ; tid < nworkspaces ; tid++)
+    for (int taskid = 0 ; taskid < naslice ; taskid++)
     {
-        int64_t *workspace = GB_MALLOC (vlen + 1, int64_t) ;
-        if (workspace == NULL)
+        int64_t *rowcount = NULL ;
+        GB_CALLOC_MEMORY (rowcount, vlen + 1, sizeof (int64_t)) ;
+        if (rowcount == NULL)
         { 
             // out of memory
             GB_FREE_ALL ;
-            return (GrB_OUT_OF_MEMORY) ;
+            return (GB_OUT_OF_MEMORY) ;
         }
-        Workspaces [tid] = workspace ;
+        Rowcounts [taskid] = rowcount ;
     }
 
-    //==========================================================================
+    //--------------------------------------------------------------------------
     // phase1: symbolic analysis
-    //==========================================================================
+    //--------------------------------------------------------------------------
 
-    // slice the A matrix, perfectly balanced for one task per thread
-    if (!GB_pslice (&A_slice, A->p, A->nvec, nthreads, true))
+    // create the iterator for A
+    GBI_single_iterator Iter ;
+    if (!GB_pslice (&A_slice, /* A */ A->p, A->nvec, naslice))
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
+    GBI1_init (&Iter, A) ;
+
     // sum up the row counts and find C->p
-    if (nthreads == 1)
+    if (naslice == 1)
     {
 
         //----------------------------------------------------------------------
-        // sequential method: A is not sliced
+        // A is not sliced
         //----------------------------------------------------------------------
 
-        // Only requires a single int64 workspace of size vlen for a single
-        // thread.  The resulting C matrix is not jumbled.
-
         // compute the row counts of A.  No need to scan the A->p pointers
-        ASSERT (nworkspaces == 1) ;
-        int64_t *GB_RESTRICT workspace = Workspaces [0] ;
-        memset (workspace, 0, (vlen + 1) * sizeof (int64_t)) ;
+        int64_t *GB_RESTRICT rowcount = Rowcounts [0] ;
         const int64_t *GB_RESTRICT Ai = A->i ;
         for (int64_t p = 0 ; p < anz ; p++)
         { 
-            int64_t i = Ai [p] ;
-            workspace [i]++ ;
+            rowcount [Ai [p]]++ ;
         }
 
-        // cumulative sum of the workspace, and copy back into C->p
-        GB_cumsum (workspace, vlen, (&C->nvec_nonempty), 1) ;
-        memcpy (Cp, workspace, (vlen + 1) * sizeof (int64_t)) ;
-
-    }
-    else if (nworkspaces == 1)
-    {
-
-        //----------------------------------------------------------------------
-        // atomic method: A is sliced but workspace is shared
-        //----------------------------------------------------------------------
-
-        // Only requires a single int64 workspace of size vlen, shared by all
-        // threads.  Scales well, but requires atomics.  If the # of rows is
-        // very small and the average row degree is high, this can be very slow
-        // because of contention on the atomic workspace.  Otherwise, it is
-        // typically faster than the non-atomic method.  The resulting C matrix
-        // is jumbled.
-
-        // compute the row counts of A.  No need to scan the A->p pointers
-        int64_t *GB_RESTRICT workspace = Workspaces [0] ;
-        GB_memset (workspace, 0, (vlen + 1) * sizeof (int64_t), nth) ;
-        const int64_t *GB_RESTRICT Ai = A->i ;
-        int64_t p ;
-        #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (p = 0 ; p < anz ; p++)
-        { 
-            int64_t i = Ai [p] ;
-            // update workspace [i]++ automically:
-            GB_ATOMIC_UPDATE
-            workspace [i]++ ;
-        }
-
-        C->jumbled = true ; // atomic transpose leaves C jumbled
-
-        // cumulative sum of the workspace, and copy back into C->p
-        GB_cumsum (workspace, vlen, (&C->nvec_nonempty), nth) ;
-        GB_memcpy (Cp, workspace, (vlen+ 1) * sizeof (int64_t), nth) ;
+        // cumulative sum of the rowcount, and copy back into C->p
+        GB_cumsum (rowcount, vlen, (&C->nvec_nonempty), nthreads) ;
+        GB_memcpy (Cp, rowcount, (vlen+1) * sizeof (int64_t), nthreads) ;
 
     }
     else
     {
 
         //----------------------------------------------------------------------
-        // non-atomic method
+        // A is sliced
         //----------------------------------------------------------------------
 
-        // compute the row counts of A for each slice, one per thread; This
-        // method is parallel, but not highly scalable.  Each thread requires
-        // int64 workspace of size vlen, but no atomics are required.  The
-        // resulting C matrix is not jumbled, so this can save work if C needs
-        // to be unjumbled later.
+        // compute the row counts of A for each slice
+        #define GB_PHASE_1_OF_2
+        #include "GB_unaryop_transpose.c"
 
-        ASSERT (nworkspaces == nthreads) ;
-        const int64_t *GB_RESTRICT Ap = A->p ;
-        const int64_t *GB_RESTRICT Ah = A->h ;
-        const int64_t *GB_RESTRICT Ai = A->i ;
-
-        int tid ;
-        #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (tid = 0 ; tid < nthreads ; tid++)
-        {
-            // get the row counts for this slice, of size A->vlen
-            int64_t *GB_RESTRICT workspace = Workspaces [tid] ;
-            memset (workspace, 0, (vlen + 1) * sizeof (int64_t)) ;
-            for (int64_t k = A_slice [tid] ; k < A_slice [tid+1] ; k++)
-            {
-                // iterate over the entries in A(:,j)
-                int64_t j = GBH (Ah, k) ;
-                int64_t pA_start = Ap [k] ;
-                int64_t pA_end = Ap [k+1] ;
-                for (int64_t pA = pA_start ; pA < pA_end ; pA++)
-                { 
-                    // count one more entry in C(i,:) for this slice
-                    int64_t i = Ai [pA] ;
-                    workspace [i]++ ;
-                }
-            }
-        }
-
-        // cumulative sum of the workspaces across the slices
+        // cumulative sum of the rowcounts across the slices
         int64_t i ;
-        #pragma omp parallel for num_threads(nth) schedule(static)
+        #pragma omp parallel for num_threads(nthreads) schedule(static)
         for (i = 0 ; i < vlen ; i++)
         {
             int64_t s = 0 ;
-            for (int tid = 0 ; tid < nthreads ; tid++)
+            for (int taskid = 0 ; taskid < naslice ; taskid++)
             { 
-                int64_t *GB_RESTRICT workspace = Workspaces [tid] ;
-                int64_t c = workspace [i] ;
-                workspace [i] = s ;
+                int64_t *GB_RESTRICT rowcount = Rowcounts [taskid] ;
+                int64_t c = rowcount [i] ;
+                rowcount [i] = s ;
                 s += c ;
             }
             Cp [i] = s ;
         }
         Cp [vlen] = 0 ;
 
-        // compute the vector pointers for C
-        GB_cumsum (Cp, vlen, &(C->nvec_nonempty), nth) ;
+        // compute the vector pointers for C; also compute C->nvec_nonempty
+        GB_cumsum (Cp, vlen, &(C->nvec_nonempty), nthreads) ;
 
-        // add Cp back to all Workspaces
-        #pragma omp parallel for num_threads(nth) schedule(static)
+        // add Cp back to all Rowcounts
+        #pragma omp parallel for num_threads(nthreads) schedule(static)
         for (i = 0 ; i < vlen ; i++)
         {
             int64_t s = Cp [i] ;
-            int64_t *GB_RESTRICT workspace = Workspaces [0] ;
-            workspace [i] = s ;
-            for (int tid = 1 ; tid < nthreads ; tid++)
+            int64_t *GB_RESTRICT rowcount = Rowcounts [0] ;
+            rowcount [i] = s ;
+            for (int taskid = 1 ; taskid < naslice ; taskid++)
             { 
-                int64_t *GB_RESTRICT workspace = Workspaces [tid] ;
-                workspace [i] += s ;
+                int64_t *GB_RESTRICT rowcount = Rowcounts [taskid] ;
+                rowcount [i] += s ;
             }
         }
     }
 
-    C->magic = GB_MAGIC ;
+    C->magic = GB_MAGIC ;      // C is now initialized ]
 
-    //==========================================================================
+    //--------------------------------------------------------------------------
     // phase2: transpose A into C
-    //==========================================================================
+    //--------------------------------------------------------------------------
 
     // transpose both the pattern and the values
-    if (op1 == NULL && op2 == NULL)
+    if (op == NULL)
     { 
-        // do not apply an operator; optional typecast to C->type
-        GB_transpose_ix (C, A, Workspaces, A_slice, nworkspaces, nthreads) ;
+        // do not apply an operator; optional typecast to ctype
+        GB_transpose_ix (C, A, Rowcounts, Iter, A_slice, naslice) ;
     }
     else
     { 
         // apply an operator, C has type op->ztype
-        GB_transpose_op (C, op1, op2, scalar, binop_bind1st, A,
-            Workspaces, A_slice, nworkspaces, nthreads) ;
+        GB_transpose_op (C, op, A, Rowcounts, Iter, A_slice, naslice) ;
     }
 
     //--------------------------------------------------------------------------
@@ -323,7 +263,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     GB_FREE_WORK ;
     ASSERT_MATRIX_OK (C, "C transpose of A", GB0) ;
-    ASSERT (C->h == NULL) ;
+    ASSERT (!C->is_hyper) ;
     (*Chandle) = C ;
     return (GrB_SUCCESS) ;
 }

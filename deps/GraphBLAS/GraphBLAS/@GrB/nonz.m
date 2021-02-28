@@ -8,8 +8,8 @@ function result = nonz (A, varargin)
 %
 % e = GrB.nonz (A)         number of nonzeros
 % e = GrB.nonz (A, 'all')  number of nonzeros
-% e = GrB.nonz (A, 'row')  number of rows with at least one nonzero
-% e = GrB.nonz (A, 'col')  number of columns with at least one nonzero
+% e = GrB.nonz (A, 'row')  number of rows with at least one nonzeros
+% e = GrB.nonz (A, 'col')  number of columns with at least one nonzeros
 %
 % X = GrB.nonz (A, 'list')         list of values of unique nonzeros
 % X = GrB.nonz (A, 'all', 'list')  list of values of unique nonzeros
@@ -32,9 +32,6 @@ function result = nonz (A, varargin)
 % 'zero' can be specified; d = GrB.nonz (A, ..., id).  For example, to
 % count all entries in A not equal to one, use GrB.nonz (A, 1).
 %
-% The result is a MATLAB scalar or vector, except for the 'degree'
-% usage, in which case the result is a GrB vector d.
-%
 % Example:
 %
 %   A = magic (5) ;
@@ -50,47 +47,36 @@ function result = nonz (A, varargin)
 %   GrB.nonz (S)
 %   GrB.nonz (S, 'list')
 %
-% See also GrB.entries, GrB/nnz, GrB/nonzeros, GrB.prune.
+% See also GrB.entries, nnz, GrB/nnz, nonzeros, GrB/nonzeros, GrB.prune.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-matlab_sparse = false ;
-if (isobject (A))
-    % A is a GraphBLAS matrix; get its opaque content
-    A = A.opaque ;
-elseif (builtin ('issparse', A))
-    % A is a MATLAB sparse matrix
-    matlab_sparse = true ;
-end
+% issparse (G) is overloaded for a GraphBLAS matrix, and always returns
+% true.  Here, we need to know if A is truly a MATLAB sparse matrix, not
+% a GraphBLAS sparse matrix.
+matlab_sparse = builtin ('issparse', A) ;
 
-% get the identity value
-id = 0 ;
-nargs = nargin ;
-if (nargin > 1)
-    lastarg = varargin {nargs-1} ;
-    if (~ischar (lastarg))
-        % the last argument is id, if it is not a string
-        id = gb_get_scalar (lastarg) ;
-        nargs = nargs - 1 ;
+if (nargin > 1 && ~ischar (varargin {end}))
+    id = gb_get_scalar (varargin {end}) ;
+    if (id == 0 && matlab_sparse)
+        % id is zero, and A is a MATLAB sparse matrix, so no need to prune.
+        result = GrB.entries (A, varargin {1:end-1}) ;
+    else
+        % id is nonzero, so it can appear in any matrix (GraphBLAS, MATLAB
+        % sparse, or MATLAB full), so it must be pruned from A first.
+        result = GrB.entries (GrB.prune (A, id), varargin {1:end-1}) ;
     end
-end
-
-if (id ~= 0)
-    % id is nonzero, so prune A first (for any matrix A)
-    A = gbselect (A, '~=', id) ;
-elseif (~matlab_sparse)
-    % id is zero, so prune A only if it is a GraphBLAS matrix,
-    % or a MATLAB full matrix.  A MATLAB sparse matrix can remain
-    % unchanged.
-    A = gbselect (A, 'nonzero') ;
-end
-
-% get the count/list of the entries of A
-result = gb_entries (A, varargin {1:nargs-1}) ;
-
-% if gb_entries returned a GraphBLAS struct, return it as a GrB matrix
-if (isstruct (result))
-    result = GrB (result) ;
+else
+    if (matlab_sparse)
+        % id is not present so it defaults to zero, and A is MATLAB sparse
+        % matrix, so no need to prune explicit zeros from A.
+        result = GrB.entries (A, varargin {:}) ;
+    else
+        % A is a GraphBLAS matrix, or a MATLAB full matrix, so zeros
+        % must be pruned.  This does not prune explicit zeros in a MATLAB
+        % full matrix.
+        result = GrB.entries (GrB.prune (A), varargin {:}) ;
+    end
 end
 

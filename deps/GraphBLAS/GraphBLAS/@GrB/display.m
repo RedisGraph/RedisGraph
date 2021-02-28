@@ -4,16 +4,14 @@ function display (G) %#ok<DISPLAY>
 % GraphBLAS sparse matrix object.  Use disp(G,3) to display all of the
 % content of G.
 %
-% See also GrB/disp.
+% See also disp.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 name = inputname (1) ;
 if (~isempty (name))
     fprintf ('\n%s =\n', name) ;
 end
-G = G.opaque ;
-gbdisp (G, gb_nnz (G), 2) ;
-fprintf ('\n') ;
+gbdisp (G.opaque, nnz (G), 2) ;
 

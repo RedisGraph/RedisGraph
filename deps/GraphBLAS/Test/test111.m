@@ -1,8 +1,8 @@
 function test111
 %TEST111 performance test for eWiseAdd
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest111 performance tests : eWiseAdd \n') ;
 rng ('default') ;
@@ -74,7 +74,7 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
             end
             fprintf ('nthreads %2d GraphBLAS time: %12.4f ', nthreads, tg) ;
             fprintf ('speedup %12.4f over MATLAB: %12.4f\n', t1/tg, tm/tg) ;
-            assert (GB_spok (C4) == 1) ;
+            assert (spok (C4) == 1) ;
             assert (isequal (C1, C4)) ;
         end
 
@@ -95,16 +95,16 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
         for nthreads = [1 2 4 8 20 40]
             nthreads_set (nthreads, chunk) ;
             % warmup
-            C4 = GB_mex_Vector_eWiseAdd (Empty, M0, [ ], 'plus', A, B, [ ]) ;
+            C4 = GB_mex_eWiseAdd_Vector (Empty, M0, [ ], 'plus', A, B, [ ]) ;
             %
-            C4 = GB_mex_Vector_eWiseAdd (Empty, M0, [ ], 'plus', A, B, [ ]) ;
+            C4 = GB_mex_eWiseAdd_Vector (Empty, M0, [ ], 'plus', A, B, [ ]) ;
             tg = grbresults ;
             if (nthreads == 1)
                 t1 = tg ;
             end
             fprintf ('nthreads %2d GraphBLAS time: %12.4f ', nthreads, tg) ;
             fprintf ('speedup %12.4f over MATLAB: %12.4f\n', t1/tg, tm/tg) ;
-            assert (GB_spok (C4.matrix) == 1) ;
+            assert (spok (C4.matrix) == 1) ;
             assert (isequal (C1, C4.matrix)) ;
         end
 
@@ -125,12 +125,12 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
         for nthreads = [1 2 4 8 20 40]
             nthreads_set (nthreads, chunk) ;
             % warmup
-            C4 = GB_mex_Vector_eWiseAdd (Empty, [ ], [ ], 'plus', A, B, [ ]) ;
-            C4 = GB_mex_Vector_eWiseMult(Empty, [ ], [ ], 'times',M, C4, [ ]) ;
+            C4 = GB_mex_eWiseAdd_Vector (Empty, [ ], [ ], 'plus', A, B, [ ]) ;
+            C4 = GB_mex_eWiseMult_Vector(Empty, [ ], [ ], 'times',M, C4, [ ]) ;
             %
-            C4 = GB_mex_Vector_eWiseAdd (Empty, [ ], [ ], 'plus', A, B, [ ]) ;
+            C4 = GB_mex_eWiseAdd_Vector (Empty, [ ], [ ], 'plus', A, B, [ ]) ;
             tg1 = grbresults ;
-            C4 = GB_mex_Vector_eWiseMult(Empty, [ ], [ ], 'times',M, C4, [ ]) ;
+            C4 = GB_mex_eWiseMult_Vector(Empty, [ ], [ ], 'times',M, C4, [ ]) ;
             tg2 = grbresults ;
             tg = tg1 + tg2 ;
             if (nthreads == 1)
@@ -138,7 +138,7 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
             end
             fprintf ('nthreads %2d GraphBLAS time: %12.4f ', nthreads, tg) ;
             fprintf ('speedup %12.4f over MATLAB: %12.4f\n', t1/tg, tm/tg) ;
-            assert (GB_spok (C4.matrix) == 1) ;
+            assert (spok (C4.matrix) == 1) ;
             assert (isequal (C1, C4.matrix)) ;
         end
 
@@ -158,16 +158,16 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
         for nthreads = [1 2 4 8 20 40]
             nthreads_set (nthreads, chunk) ;
             % warmup
-            C4 = GB_mex_Vector_eWiseMult (Empty, [ ], [ ], 'times', A,B, [ ]) ;
+            C4 = GB_mex_eWiseMult_Vector (Empty, [ ], [ ], 'times', A,B, [ ]) ;
             %
-            C4 = GB_mex_Vector_eWiseMult (Empty, [ ], [ ], 'times', A,B, [ ]) ;
+            C4 = GB_mex_eWiseMult_Vector (Empty, [ ], [ ], 'times', A,B, [ ]) ;
             tg = grbresults ;
             if (nthreads == 1)
                 t1 = tg ;
             end
             fprintf ('nthreads %2d GraphBLAS time: %12.4f ', nthreads, tg) ;
             fprintf ('speedup %12.4f over MATLAB: %12.4f\n', t1/tg, tm/tg) ;
-            assert (GB_spok (C4.matrix) == 1) ;
+            assert (spok (C4.matrix) == 1) ;
             assert (isequal (C1, C4.matrix)) ;
         end
 
@@ -188,16 +188,16 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
         for nthreads = [1 2 4 8 20 40]
             nthreads_set (nthreads, chunk) ;
             % warmup
-            C4 = GB_mex_Vector_eWiseMult (Empty, M0, [ ], 'times', A,B, [ ]) ;
+            C4 = GB_mex_eWiseMult_Vector (Empty, M0, [ ], 'times', A,B, [ ]) ;
             %
-            C4 = GB_mex_Vector_eWiseMult (Empty, M0, [ ], 'times', A,B, [ ]) ;
+            C4 = GB_mex_eWiseMult_Vector (Empty, M0, [ ], 'times', A,B, [ ]) ;
             tg = grbresults ;
             if (nthreads == 1)
                 t1 = tg ;
             end
             fprintf ('nthreads %2d GraphBLAS time: %12.4f ', nthreads, tg) ;
             fprintf ('speedup %12.4f over MATLAB: %12.4f\n', t1/tg, tm/tg) ;
-            assert (GB_spok (C4.matrix) == 1) ;
+            assert (spok (C4.matrix) == 1) ;
             assert (isequal (C1, C4.matrix)) ;
         end
 

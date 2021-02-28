@@ -1,10 +1,12 @@
-function C = emult (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+function Cout = emult (varargin)
 %GRB.EMULT sparse element-wise 'multiplication'.
 %
-%   C = GrB.emult (op, A, B, desc)
-%   C = GrB.emult (Cin, accum, op, A, B, desc)
-%   C = GrB.emult (Cin, M, op, A, B, desc)
-%   C = GrB.emult (Cin, M, accum, op, A, B, desc)
+% Usage:
+%
+%   Cout = GrB.emult (op, A, B, desc)
+%   Cout = GrB.emult (Cin, accum, op, A, B, desc)
+%   Cout = GrB.emult (Cin, M, op, A, B, desc)
+%   Cout = GrB.emult (Cin, M, accum, op, A, B, desc)
 %
 % GrB.emult computes the element-wise 'multiplication' T=A.*B.  The result
 % T has the pattern of the intersection of A and B. The operator is used
@@ -16,53 +18,23 @@ function C = emult (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %
 % T is then accumulated into C via C<#M,replace> = accum (C,T).
 %
-% Cin, M, accum, and the optional descriptor desc are the same as all other
+% Cin, M, accum, and the descriptor desc are the same as all other
 % GrB.methods; see GrB.mxm and GrB.descriptorinfo for more details.  For the
 % binary operator, see GrB.binopinfo.
 %
+% All input matrices may be either GraphBLAS and/or MATLAB matrices, in
+% any combination.  Cout is returned as a GraphBLAS matrix, by default;
+% see 'help GrB/descriptorinfo' for more options.
+%
 % See also GrB.eadd.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (isobject (arg1))
-    arg1 = arg1.opaque ;
-end
-
-if (isobject (arg2))
-    arg2 = arg2.opaque ;
-end
-
-if (nargin > 2 && isobject (arg3))
-    arg3 = arg3.opaque ;
-end
-
-if (nargin > 3 && isobject (arg4))
-    arg4 = arg4.opaque ;
-end
-
-if (nargin > 4 && isobject (arg5))
-    arg5 = arg5.opaque ;
-end
-
-if (nargin > 5 && isobject (arg6))
-    arg6 = arg6.opaque ;
-end
-
-switch (nargin)
-    case 3
-        [C, k] = gbemult (arg1, arg2, arg3) ;
-    case 4
-        [C, k] = gbemult (arg1, arg2, arg3, arg4) ;
-    case 5
-        [C, k] = gbemult (arg1, arg2, arg3, arg4, arg5) ;
-    case 6
-        [C, k] = gbemult (arg1, arg2, arg3, arg4, arg5, arg6) ;
-    case 7
-        [C, k] = gbemult (arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
-end
-
-if (k == 0)
-    C = GrB (C) ;
+[args, is_gb] = gb_get_args (varargin {:}) ;
+if (is_gb)
+    Cout = GrB (gbemult (args {:})) ;
+else
+    Cout = gbemult (args {:}) ;
 end
 

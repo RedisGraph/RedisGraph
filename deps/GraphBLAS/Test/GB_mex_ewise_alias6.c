@@ -2,8 +2,8 @@
 // GB_mex_ewise_alias5: C<M> = M+A
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,11 +13,11 @@
 
 #define FREE_ALL                            \
 {                                           \
-    GrB_Matrix_free_(&A) ;                   \
-    GrB_Matrix_free_(&M) ;                   \
-    GrB_Matrix_free_(&C) ;                   \
-    GrB_Descriptor_free_(&desc) ;           \
-    GB_mx_put_global (true) ;               \
+    GB_MATRIX_FREE (&A) ;                   \
+    GB_MATRIX_FREE (&M) ;                   \
+    GB_MATRIX_FREE (&C) ;                   \
+    GrB_free (&desc) ;                      \
+    GB_mx_put_global (true, 0) ;            \
 }
 
 void mexFunction
@@ -34,6 +34,7 @@ void mexFunction
     GrB_Descriptor desc = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 4 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -42,13 +43,14 @@ void mexFunction
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
     C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
-    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
+    #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
+    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get M (shallow copy)
     M = GB_mx_mxArray_to_Matrix (pargin [1], "M input", false, true) ;
@@ -58,11 +60,10 @@ void mexFunction
         mexErrMsgTxt ("M failed") ;
     }
 
-    // get op
-    bool user_complex = (Complex != GxB_FC64) && (C->type == Complex) ;
+    // get op; default: NOP, default class is class(C)
     GrB_BinaryOp op ;
     if (!GB_mx_mxArray_to_BinaryOp (&op, pargin [2], "op",
-        C->type, user_complex) || op == NULL)
+        GB_NOP_opcode, cclass, C->type == Complex, C->type == Complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("op failed") ;
@@ -84,7 +85,7 @@ void mexFunction
     }
 
     // C<M> = M+A
-    METHOD (GrB_Matrix_eWiseAdd_BinaryOp_(C, M, NULL, op, M, A, desc)) ;
+    METHOD (GrB_eWiseAdd (C, M, NULL, op, M, A, desc)) ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;

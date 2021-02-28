@@ -2,8 +2,8 @@
 // GraphBLAS/Demo/Program/wildtype_demo: an arbitrary user-defined type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -16,11 +16,7 @@
 #pragma warning (disable: 58 167 144 177 181 186 188 589 593 869 981 1418 1419 1572 1599 2259 2282 2557 2547 3280 )
 #elif defined __GNUC__
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#if defined ( __cplusplus )
-#pragma GCC diagnostic ignored "-Wwrite-strings"
-#else
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
-#endif
 #endif
 
 //------------------------------------------------------------------------------
@@ -158,7 +154,7 @@ int main (void)
     // start GraphBLAS
     GrB_init (GrB_NONBLOCKING) ;
     int nthreads ;
-    GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads) ;
+    GxB_get (GxB_NTHREADS, &nthreads) ;
     fprintf (stderr, "wildtype demo: nthreads %d\n", nthreads) ;
 
     /* alternative method via #defines:
@@ -185,16 +181,16 @@ int main (void)
     char *api_url ;   GxB_Global_Option_get (GxB_API_URL,          &api_url) ;
 
     fprintf (stderr, LINE2 "%s Version %d.%d.%d, %s\n" LINE2 "%s"
-        "(%s)\n" LINE "License:\n%s" LINE "GraphBLAS API Version %d.%d.%d, %s"
+        "(%s)\n" LINE "License: %s" LINE "GraphBLAS API Version %d.%d.%d, %s"
         " (%s)\n%s" LINE2,
         library, version [0], version [1], version [2], date, about, url,
         license, api_ver [0], api_ver [1], api_ver [2], api_date, api_url,
         api_about) ;
     fprintf (stderr, "compiled: %s %s\n", cdate, ctime) ;
 
-    double hyper_switch ;
-    GxB_Global_Option_get (GxB_HYPER_SWITCH, &hyper_switch) ;
-    fprintf (stderr, "hyper switch: %g\n", hyper_switch) ;
+    double hyper_ratio ;
+    GxB_Global_Option_get (GxB_HYPER, &hyper_ratio) ;
+    fprintf (stderr, "hyper ratio: %g\n", hyper_ratio) ;
 
     GxB_Format_Value format ;
     GxB_Global_Option_get (GxB_FORMAT, &format) ;
@@ -205,8 +201,34 @@ int main (void)
     fprintf (stderr, "mode: %s\n", (mode == GrB_BLOCKING) ?
         "blocking" : "non-blocking") ;
 
+    GxB_Thread_Model thread_safety ;
+    GxB_Global_Option_get (GxB_THREAD_SAFETY, &thread_safety) ;
+    fprintf (stderr, "user thread safety via: ") ;
+    switch (thread_safety)
+    {
+        case GxB_THREAD_OPENMP :  fprintf (stderr, "OpenMP\n") ;         break ;
+        case GxB_THREAD_POSIX :   fprintf (stderr, "POSIX threads\n") ;  break ;
+        case GxB_THREAD_WINDOWS : fprintf (stderr, "Windowsthreads\n") ; break ;
+        case GxB_THREAD_ANSI :    fprintf (stderr, "ANSI threads\n") ;   break ;
+        case GxB_THREAD_NONE : 
+        default :                 fprintf (stderr, "none\n") ;
+    }
+
+    GxB_Thread_Model threading ;
+    GxB_Global_Option_get (GxB_THREADING, &threading) ;
+    fprintf (stderr, "GraphBLAS parallelism via: ") ;
+    switch (threading)
+    {
+        case GxB_THREAD_OPENMP :  fprintf (stderr, "OpenMP\n") ; break ;
+        case GxB_THREAD_POSIX :   
+        case GxB_THREAD_WINDOWS : 
+        case GxB_THREAD_ANSI :    
+        case GxB_THREAD_NONE : 
+        default :                 fprintf (stderr, "none\n") ;
+    }
+
     int nthreads_max ;
-    GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads_max) ;
+    GxB_Global_Option_get (GxB_NTHREADS, &nthreads_max) ;
     fprintf (stderr, "max # of threads used internally: %d\n", nthreads_max) ;
 
     // create the WildType
@@ -262,13 +284,11 @@ int main (void)
 
     // create the WildAdd operator
     GrB_BinaryOp WildAdd ;
-    GrB_BinaryOp_new (&WildAdd, 
-        (GxB_binary_function) wildtype_add, WildType, WildType, WildType) ;
+    GrB_BinaryOp_new (&WildAdd, wildtype_add, WildType, WildType, WildType) ;
 
     // create the WildMult operator
     GrB_BinaryOp WildMult ;
-    GrB_BinaryOp_new (&WildMult, 
-        (GxB_binary_function) wildtype_mult, WildType, WildType, WildType) ;
+    GrB_BinaryOp_new (&WildMult, wildtype_mult, WildType, WildType, WildType) ;
 
     // create a matrix B with B (7,2) = scalar2
     GrB_Matrix B ;
@@ -340,23 +360,12 @@ int main (void)
     GrB_Matrix_new (&D, GrB_FP32, 10, 10) ;
     wildtype_print_matrix (D, "D") ;
 
-    // apply some positional operators
-    GrB_Matrix E ;
-    GrB_Matrix_new (&E, GrB_INT64, 10, 10) ;
-
-    GrB_Matrix_apply (E, NULL, NULL, GxB_POSITIONI_INT64, A, NULL) ;
-    GxB_Matrix_fprint (E, "E (positional i)", GxB_COMPLETE, NULL) ;
-
-    GrB_Matrix_apply (E, NULL, NULL, GxB_POSITIONJ_INT64, A, NULL) ;
-    GxB_Matrix_fprint (E, "E (positional j)", GxB_COMPLETE, NULL) ;
-
     // do something invalid
-    info = GrB_Matrix_eWiseAdd_BinaryOp (C, NULL, NULL, WildAdd, A, D, NULL) ;
+    info = GrB_eWiseAdd_Matrix_BinaryOp (C, NULL, NULL, WildAdd, A, D, NULL) ;
     if (info != GrB_SUCCESS)
     {
-        char *s ;
-        GrB_Matrix_error (&s, C) ;
-        printf ("\nThis is supposed to fail, as a demo of GrB_error:\n%s\n", s);
+        printf ("\nThis is supposed to fail, as a demo of GrB_error:\n%s\n",
+            GrB_error ( )) ;
     }
 
     // free everyting
@@ -364,7 +373,6 @@ int main (void)
     GrB_Matrix_free (&A) ;
     GrB_Matrix_free (&B) ;
     GrB_Matrix_free (&D) ;
-    GrB_Matrix_free (&E) ;
     GrB_Semiring_free (&InTheWild) ;
     GrB_Monoid_free (&WildAdder) ;
     GrB_BinaryOp_free (&WildAdd) ;

@@ -2,8 +2,8 @@
 // GB_mex_mxm: C<Mask> = accum(C,A*B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -15,9 +15,9 @@
 
 #define FREE_ALL                            \
 {                                           \
-    GrB_Matrix_free_(&A) ;                   \
-    GrB_Monoid_free_(&Times_terminal) ;     \
-    GB_mx_put_global (true) ;               \
+    GB_MATRIX_FREE (&A) ;                   \
+    GrB_free (&Times_terminal) ;            \
+    GB_mx_put_global (true, 0) ;            \
 }
 
 void mexFunction
@@ -35,6 +35,7 @@ void mexFunction
     GrB_Monoid Times_terminal = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -54,50 +55,38 @@ void mexFunction
         mexErrMsgTxt ("A must be complex") ;
     }
 
-    GxB_FC64_t one  = GxB_CMPLX (1,0) ;
-    GxB_FC64_t zero = GxB_CMPLX (0,0) ;
+    double complex one  = CMPLX(1,0) ;
+    double complex zero = CMPLX(0,0) ;
 
     // create the monoid
-    if (Complex == GxB_FC64)
+    info = GxB_Monoid_terminal_new_UDT (&Times_terminal,
+        Complex_times, &one, &zero) ;
+    if (info != GrB_SUCCESS)
     {
-        Times_terminal = GxB_TIMES_FC64_MONOID ;
-    }
-    else
-    {
-        info = GxB_Monoid_terminal_new_UDT (&Times_terminal,
-            Complex_times, &one, &zero) ;
-        if (info != GrB_SUCCESS)
-        {
-            FREE_ALL ;
-            mexErrMsgTxt ("Times_terminal failed") ;
-        }
+        FREE_ALL ;
+        mexErrMsgTxt ("Times_terminal failed") ;
     }
 
     int64_t GET_SCALAR (1, int64_t, hack, -1) ;
     if (hack >= 0)
     {
-        GxB_FC64_t *Ax = A->x ;
-        Ax [hack] = GxB_CMPLX (0,0) ;
+        double complex *Ax = A->x ;
+        Ax [hack] = 0 ;
     }
-
-    // allocate the MATLAB output scalar
-    pargout [0] = GB_mx_create_full (1, 1, GxB_FC64) ;
-    GxB_FC64_t *c = (GxB_FC64_t *) mxGetComplexDoubles (pargout [0]) ;
 
     // reduce to a scalar
-    if (Complex == GxB_FC64)
-    {
-        info = GxB_Matrix_reduce_FC64_(c, NULL, Times_terminal, A, NULL) ;
-    }
-    else
-    {
-        info = GrB_Matrix_reduce_UDT (c, NULL, Times_terminal, A, NULL) ;
-    }
+    double complex c = zero ;
+    info = GrB_Matrix_reduce_UDT (&c, NULL, Times_terminal, A, NULL) ;
     if (info != GrB_SUCCESS)
     {
+        printf ("Error:\n%s\n", GrB_error ( )) ;
         FREE_ALL ;
         mexErrMsgTxt ("reduce failed") ;
     }
+
+    // return C to MATLAB as a scalar
+    pargout [0] = mxCreateNumericMatrix (1, 1, mxDOUBLE_CLASS, mxCOMPLEX) ;
+    GB_mx_complex_split (1, (double *) (&c), pargout [0]) ;
 
     FREE_ALL ;
 }

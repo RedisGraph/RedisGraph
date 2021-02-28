@@ -2,38 +2,49 @@
 // GB_mx_string_to_BinaryOp.c: get a GraphBLAS operator from MATLAB strings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
 
-// opname_mx: a MATLAB string defining the operator name:
+// opname_mx: a MATLAB string defining the operator name (25 kinds):
 // 10: first, second, pair, min, max, plus, minus, rminus, times, div, rdiv
 //  6: iseq, isne, isgt, islt, isge, isle,
 //  6: eq, ne, gt, lt, ge, le,
 //  3: or, and, xor
-//  ... and more
 
-// optype_mx: a MATLAB string defining one of 11 operator types:
+// default_opcode: default if opname_mx is NULL
+
+// opclass_mx: a MATLAB string defining one of 11 operator types:
 //  'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64',
-//  'uint64', 'single', 'double', 'single complex', or 'double complex'
+//  'uint64', 'single', 'double'
 
-// default_optype: default operator type if optype_mx is NULL or if
-// the type is not part of the string
+// Total # of ops: 25*11 = 275, not including GrB_LOR, GrB_LAND, GrB_XOR,
+// which are equivalent to the GxB_*_BOOL versions.
 
-bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
+// default_opclass: default class if opclass_mx is NULL
+
+// op is NULL if the opname_mx is NULL
+
+bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
 (
-    GrB_BinaryOp *op_handle,        // the binary op
-    const GrB_Type default_optype,  // default operator type
-    const mxArray *opname_mx,       // MATLAB string with operator name
-    const mxArray *optype_mx,       // MATLAB string with operator type
-    const bool user_complex         // if true, use user-defined Complex op
+    GrB_BinaryOp *handle,               // the binary op
+    const GB_Opcode default_opcode,     // default operator
+    const mxClassID default_opclass,    // default operator class
+    const mxArray *opname_mx,           // MATLAB string with operator name
+    const mxArray *opclass_mx,          // MATLAB string with operator class
+    GB_Opcode *opcode_return,           // opcode
+    mxClassID *opclass_return,          // opclass
+    const bool XisComplex,              // true X is complex
+    const bool YisComplex               // true Y is complex
 )
 {
+    
+    GB_WHERE ("GB_mx_string_to_BinaryOp") ;
 
-    (*op_handle) = NULL ;
+    (*handle) = NULL ;
     GrB_BinaryOp op = NULL ;
 
     //--------------------------------------------------------------------------
@@ -47,35 +58,31 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
     {
         return (false) ;
     }
-    if (len == 0)
-    {
-        op = NULL ;                 // op is not present
-        return (true) ;
-    }
-
-    bool cmplx_op = MATCH (opname, "cmplx") || MATCH (opname, "complex" ) ;
-
-    // get the optype from the optype_mx string, if present
-    GrB_Type optype = GB_mx_string_to_Type (optype_mx, default_optype) ;
-    if (optype == NULL)
-    {
-        mexWarnMsgIdAndTxt ("GB:warn", "unrecognized op type") ;
-        return (false) ;
-    }
+    mxClassID opclass ;
+    GB_Opcode opcode ; 
 
     //--------------------------------------------------------------------------
     // convert the string to a GraphBLAS binary operator, built-in or Complex
     //--------------------------------------------------------------------------
 
-    if (user_complex && (optype == Complex || cmplx_op))
+    if (XisComplex || YisComplex)
     {
 
         //----------------------------------------------------------------------
-        // user-defined operators for the Complex type
+        // X or Y complex
         //----------------------------------------------------------------------
 
+        // user-defined Complex binary operator
+        opcode  = GB_USER_opcode ;      // user-defined opcode
+        opclass = mxDOUBLE_CLASS ;      // MATLAB class for complex
+
+        if (len == 0)
+        {
+            op = NULL ;                 // no default Complex operator
+        }
+
         // 12 binary operators z=f(x,y), all x,y,z are Complex
-             if (MATCH (opname, "first"   )) { op = Complex_first  ; }
+        else if (MATCH (opname, "first"   )) { op = Complex_first  ; }
         else if (MATCH (opname, "second"  )) { op = Complex_second ; }
         else if (MATCH (opname, "pair"    )) { op = Complex_pair   ; }
         else if (MATCH (opname, "any"     )) { op = Complex_second ; }
@@ -109,9 +116,6 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
         else if (MATCH (opname, "ge"      )) { op = Complex_ge     ; }
         else if (MATCH (opname, "le"      )) { op = Complex_le     ; }
 
-        // z is complex, x and y are real
-        else if (cmplx_op) { op = Complex_complex ; }
-
         else
         {
             mexWarnMsgIdAndTxt ("GB:warn", "Complex op unrecognized") ;
@@ -122,13 +126,20 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
     {
 
         //----------------------------------------------------------------------
-        // built-in binary operator
+        // X and Y real (Z might be Complex)
         //----------------------------------------------------------------------
 
-        GB_Opcode opcode ; 
+        // convert the opname to an opcode
+        opclass = default_opclass ;         // default if no opclass specified
+
+        if (len == 0)
+        {
+            // default if opname_mx is NULL
+            opcode = default_opcode ;
+        }
 
         // 12 binary operators z=f(x,y), all x,y,z of the same type
-             if (MATCH (opname, "first"   )) { opcode = GB_FIRST_opcode ; }
+        else if (MATCH (opname, "first"   )) { opcode = GB_FIRST_opcode ; }
         else if (MATCH (opname, "second"  )) { opcode = GB_SECOND_opcode ; }
         else if (MATCH (opname, "pair"    )) { opcode = GB_PAIR_opcode ; }
         else if (MATCH (opname, "any"     )) { opcode = GB_ANY_opcode ; }
@@ -150,12 +161,9 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
         else if (MATCH (opname, "isle"    )) { opcode = GB_ISLE_opcode ; }
 
         // 3 binary operators z=f(x,y), all x,y,x the same type
-        else if (MATCH (opname, "or"      ) ||
-                 MATCH (opname, "lor"     )) { opcode = GB_LOR_opcode ; }
-        else if (MATCH (opname, "and"     ) ||
-                 MATCH (opname, "land"    )) { opcode = GB_LAND_opcode ; }
-        else if (MATCH (opname, "xor"     ) ||
-                 MATCH (opname, "lxor"    )) { opcode = GB_LXOR_opcode ; }
+        else if (MATCH (opname, "or"      )) { opcode = GB_LOR_opcode ; }
+        else if (MATCH (opname, "and"     )) { opcode = GB_LAND_opcode ; }
+        else if (MATCH (opname, "xor"     )) { opcode = GB_LXOR_opcode ; }
 
         // 6 ops z=f(x,y), where x,y are the requested type but z is boolean
         else if (MATCH (opname, "eq"      )) { opcode = GB_EQ_opcode ; }
@@ -165,52 +173,14 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
         else if (MATCH (opname, "ge"      )) { opcode = GB_GE_opcode ; }
         else if (MATCH (opname, "le"      )) { opcode = GB_LE_opcode ; }
 
-        else if (MATCH (opname, "atan2"   )) { opcode = GB_ATAN2_opcode ; }
-        else if (MATCH (opname, "hypot"   )) { opcode = GB_HYPOT_opcode ; }
-        else if (MATCH (opname, "fmod"    )) { opcode = GB_FMOD_opcode ; }
-        else if (MATCH (opname,"remainder")) { opcode = GB_REMAINDER_opcode ; }
-        else if (MATCH (opname, "copysign")) { opcode = GB_COPYSIGN_opcode ; }
-        else if (MATCH (opname, "ldexp"   )) { opcode = GB_LDEXP_opcode ; }
-        else if (MATCH (opname, "pow"     )) { opcode = GB_POW_opcode ; }
-
-        // positional ops
-        else if (MATCH (opname, "firsti"  ) ||
-                 MATCH (opname, "1sti"    )) { opcode = GB_FIRSTI_opcode ; }
-        else if (MATCH (opname, "firsti1" ) ||
-                 MATCH (opname, "1sti1"   )) { opcode = GB_FIRSTI1_opcode ; }
-        else if (MATCH (opname, "firstj"  ) ||
-                 MATCH (opname, "1stj"    )) { opcode = GB_FIRSTJ_opcode ; }
-        else if (MATCH (opname, "firstj1" ) ||
-                 MATCH (opname, "1stj1"   )) { opcode = GB_FIRSTJ1_opcode ; }
-        else if (MATCH (opname, "secondi" ) ||
-                 MATCH (opname, "2ndi"    )) { opcode = GB_SECONDI_opcode ; }
-        else if (MATCH (opname, "secondi1") ||
-                 MATCH (opname, "2ndi1"   )) { opcode = GB_SECONDI1_opcode ; }
-        else if (MATCH (opname, "secondj" ) ||
-                 MATCH (opname, "2ndj"    )) { opcode = GB_SECONDJ_opcode ; }
-        else if (MATCH (opname, "secondj1") ||
-                 MATCH (opname, "2ndj1"   )) { opcode = GB_SECONDJ1_opcode ; }
-
-        // z is complex, x and y are real
-        else if (cmplx_op                  ) { opcode = GB_CMPLX_opcode ; }
-
-        // bitwise operators
-        else if (MATCH (opname, "bitor"   ) ||
-                 MATCH (opname, "bor"     )) { opcode = GB_BOR_opcode ; }
-        else if (MATCH (opname, "bitand"  ) ||
-                 MATCH (opname, "band"    )) { opcode = GB_BAND_opcode ; }
-        else if (MATCH (opname, "bitxor"  ) ||
-                 MATCH (opname, "bxor"    )) { opcode = GB_BXOR_opcode ; }
-        else if (MATCH (opname, "bitxnor" ) ||
-                 MATCH (opname, "bxnor"   )) { opcode = GB_BXNOR_opcode ; }
-        else if (MATCH (opname, "bitget"  ) ||
-                 MATCH (opname, "bget"    )) { opcode = GB_BGET_opcode ; }
-        else if (MATCH (opname, "bitset"  ) ||
-                 MATCH (opname, "bset"    )) { opcode = GB_BSET_opcode ; }
-        else if (MATCH (opname, "bitclr"  ) ||
-                 MATCH (opname, "bclr"    )) { opcode = GB_BCLR_opcode ; }
-        else if (MATCH (opname, "bitshift") ||
-                 MATCH (opname, "bshift"  )) { opcode = GB_BSHIFT_opcode ; }
+        // 1 user-defined Complex operator z=f(x,y), x,y double and z Complex
+        else if (MATCH (opname, "complex" ))
+        {
+            // z = complex(x,y) = x + i*y
+            op = Complex_complex ;
+            opcode = GB_USER_opcode ;
+            opclass = mxDOUBLE_CLASS ;
+        }
 
         else
         {
@@ -218,14 +188,13 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
             return (false) ;
         }
 
-        GB_Type_code xcode = optype->code ;
-        bool is64 = (xcode == GB_INT64_code) ;
-
-        if (GB_OPCODE_IS_POSITIONAL (opcode))
+        if (opcode != GB_USER_opcode)
         {
-            if (! (xcode == GB_INT64_code || xcode == GB_INT32_code))
+            // get the opclass from the opclass_mx string, if present
+            opclass = GB_mx_string_to_classID (opclass, opclass_mx) ;
+            if (opclass == mxUNKNOWN_CLASS)
             {
-                mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                mexWarnMsgIdAndTxt ("GB:warn", "unrecognized op class") ;
                 return (false) ;
             }
         }
@@ -235,425 +204,378 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
 
             case GB_FIRST_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_FIRST_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_FIRST_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_FIRST_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_FIRST_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_FIRST_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_FIRST_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_FIRST_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_FIRST_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_FIRST_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_FIRST_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_FIRST_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_FIRST_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_FIRST_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_FIRST_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_FIRST_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_FIRST_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_FIRST_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_FIRST_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_FIRST_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_FIRST_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_FIRST_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_FIRST_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_FIRST_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_FIRST_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_SECOND_opcode:
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_SECOND_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_SECOND_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_SECOND_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_SECOND_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_SECOND_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_SECOND_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_SECOND_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_SECOND_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_SECOND_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_SECOND_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_SECOND_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_SECOND_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_SECOND_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_SECOND_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_SECOND_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_SECOND_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_SECOND_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_SECOND_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_SECOND_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_SECOND_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_SECOND_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_SECOND_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_SECOND_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_SECOND_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_ANY_opcode:
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_ANY_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_ANY_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_ANY_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_ANY_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_ANY_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_ANY_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_ANY_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_ANY_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_ANY_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_ANY_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ANY_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_ANY_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_ANY_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_ANY_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ANY_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ANY_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ANY_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ANY_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ANY_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ANY_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ANY_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ANY_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ANY_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ANY_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_PAIR_opcode:
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_PAIR_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_PAIR_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_PAIR_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_PAIR_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_PAIR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_PAIR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_PAIR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_PAIR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_PAIR_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_PAIR_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_PAIR_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_PAIR_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_PAIR_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_PAIR_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_PAIR_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_PAIR_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_PAIR_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_PAIR_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_PAIR_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_PAIR_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_PAIR_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_PAIR_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_PAIR_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_PAIR_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_MIN_opcode   :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_MIN_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_MIN_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_MIN_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_MIN_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_MIN_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_MIN_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_MIN_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_MIN_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_MIN_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_MIN_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_MIN_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_MIN_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_MIN_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_MIN_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_MIN_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_MIN_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_MIN_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_MIN_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_MIN_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_MIN_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_MIN_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_MIN_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         break ;
                 }
                 break ;
 
             case GB_MAX_opcode   :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_MAX_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_MAX_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_MAX_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_MAX_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_MAX_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_MAX_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_MAX_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_MAX_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_MAX_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_MAX_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_MAX_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_MAX_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_MAX_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_MAX_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_MAX_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_MAX_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_MAX_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_MAX_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_MAX_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_MAX_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_MAX_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_MAX_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_PLUS_opcode  :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_PLUS_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_PLUS_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_PLUS_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_PLUS_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_PLUS_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_PLUS_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_PLUS_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_PLUS_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_PLUS_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_PLUS_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_PLUS_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_PLUS_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_PLUS_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_PLUS_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_PLUS_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_PLUS_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_PLUS_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_PLUS_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_PLUS_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_PLUS_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_PLUS_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_PLUS_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_PLUS_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_PLUS_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_MINUS_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_MINUS_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_MINUS_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_MINUS_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_MINUS_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_MINUS_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_MINUS_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_MINUS_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_MINUS_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_MINUS_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_MINUS_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_MINUS_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_MINUS_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_MINUS_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_MINUS_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_MINUS_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_MINUS_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_MINUS_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_MINUS_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_MINUS_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_MINUS_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_MINUS_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_MINUS_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_MINUS_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_MINUS_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_RMINUS_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_RMINUS_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_RMINUS_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_RMINUS_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_RMINUS_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_RMINUS_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_RMINUS_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_RMINUS_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_RMINUS_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_RMINUS_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_RMINUS_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_RMINUS_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_RMINUS_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_RMINUS_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_RMINUS_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_RMINUS_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_RMINUS_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_RMINUS_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_RMINUS_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_RMINUS_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_RMINUS_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_RMINUS_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_RMINUS_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_RMINUS_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_RMINUS_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_TIMES_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_TIMES_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_TIMES_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_TIMES_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_TIMES_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_TIMES_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_TIMES_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_TIMES_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_TIMES_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_TIMES_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_TIMES_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_TIMES_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_TIMES_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_TIMES_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_TIMES_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_TIMES_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_TIMES_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_TIMES_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_TIMES_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_TIMES_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_TIMES_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_TIMES_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_TIMES_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_TIMES_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_TIMES_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_DIV_opcode   :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_DIV_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_DIV_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_DIV_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_DIV_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_DIV_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_DIV_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_DIV_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_DIV_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_DIV_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_DIV_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_DIV_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_DIV_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_DIV_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_DIV_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_DIV_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_DIV_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_DIV_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_DIV_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_DIV_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_DIV_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_DIV_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_DIV_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_DIV_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_DIV_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_RDIV_opcode   :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_RDIV_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_RDIV_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_RDIV_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_RDIV_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_RDIV_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_RDIV_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_RDIV_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_RDIV_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_RDIV_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_RDIV_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_RDIV_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_RDIV_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_RDIV_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_RDIV_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_RDIV_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_RDIV_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_RDIV_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_RDIV_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_RDIV_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_RDIV_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_RDIV_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_RDIV_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_RDIV_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_RDIV_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_POW_opcode :     // z = pow (x,y)
-
-                switch (xcode)
-                {
-                    case GB_BOOL_code    : op = GxB_POW_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_POW_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_POW_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_POW_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_POW_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_POW_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_POW_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_POW_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_POW_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_POW_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_POW_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_POW_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_POW_FC64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_ISEQ_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_ISEQ_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_ISEQ_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_ISEQ_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_ISEQ_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_ISEQ_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_ISEQ_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_ISEQ_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_ISEQ_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_ISEQ_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_ISEQ_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ISEQ_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_ISEQ_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_ISEQ_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_ISEQ_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ISEQ_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ISEQ_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ISEQ_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ISEQ_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ISEQ_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ISEQ_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ISEQ_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ISEQ_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ISEQ_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ISEQ_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_ISNE_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_ISNE_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_ISNE_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_ISNE_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_ISNE_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_ISNE_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_ISNE_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_ISNE_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_ISNE_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_ISNE_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_ISNE_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ISNE_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_ISNE_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_ISNE_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_ISNE_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ISNE_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ISNE_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ISNE_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ISNE_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ISNE_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ISNE_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ISNE_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ISNE_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ISNE_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ISNE_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_ISGT_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_ISGT_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_ISGT_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_ISGT_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_ISGT_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_ISGT_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_ISGT_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_ISGT_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_ISGT_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_ISGT_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_ISGT_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ISGT_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_ISGT_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ISGT_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ISGT_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ISGT_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ISGT_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ISGT_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ISGT_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ISGT_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ISGT_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ISGT_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ISGT_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_ISLT_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_ISLT_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_ISLT_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_ISLT_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_ISLT_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_ISLT_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_ISLT_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_ISLT_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_ISLT_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_ISLT_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_ISLT_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ISLT_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_ISLT_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ISLT_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ISLT_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ISLT_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ISLT_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ISLT_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ISLT_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ISLT_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ISLT_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ISLT_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ISLT_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_ISGE_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_ISGE_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_ISGE_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_ISGE_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_ISGE_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_ISGE_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_ISGE_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_ISGE_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_ISGE_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_ISGE_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_ISGE_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ISGE_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_ISGE_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ISGE_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ISGE_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ISGE_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ISGE_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ISGE_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ISGE_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ISGE_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ISGE_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ISGE_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ISGE_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_ISLE_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GxB_ISLE_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_ISLE_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_ISLE_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_ISLE_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_ISLE_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_ISLE_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_ISLE_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_ISLE_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_ISLE_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_ISLE_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ISLE_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GxB_ISLE_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ISLE_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ISLE_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ISLE_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ISLE_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ISLE_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ISLE_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ISLE_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ISLE_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ISLE_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ISLE_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
@@ -661,130 +583,126 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
 
             case GB_EQ_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_EQ_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_EQ_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_EQ_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_EQ_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_EQ_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_EQ_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_EQ_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_EQ_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_EQ_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_EQ_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_EQ_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_EQ_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_EQ_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_EQ_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_EQ_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_EQ_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_EQ_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_EQ_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_EQ_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_EQ_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_EQ_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_EQ_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_EQ_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_EQ_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_NE_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_NE_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_NE_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_NE_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_NE_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_NE_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_NE_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_NE_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_NE_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_NE_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_NE_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_NE_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_NE_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_NE_FC64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_NE_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_NE_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_NE_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_NE_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_NE_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_NE_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_NE_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_NE_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_NE_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_NE_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_NE_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_GT_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_GT_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_GT_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_GT_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_GT_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_GT_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_GT_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_GT_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_GT_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_GT_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_GT_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_GT_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_GT_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_GT_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_GT_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_GT_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_GT_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_GT_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_GT_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_GT_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_GT_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_GT_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_GT_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_LT_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_LT_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_LT_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_LT_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_LT_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_LT_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_LT_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_LT_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_LT_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_LT_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_LT_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_LT_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_LT_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_LT_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_LT_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_LT_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_LT_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_LT_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_LT_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_LT_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_LT_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_LT_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_LT_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_GE_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_GE_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_GE_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_GE_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_GE_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_GE_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_GE_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_GE_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_GE_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_GE_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_GE_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_GE_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_GE_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_GE_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_GE_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_GE_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_GE_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_GE_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_GE_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_GE_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_GE_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_GE_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_GE_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_LE_opcode :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_LE_BOOL   ; break ;
-                    case GB_INT8_code    : op = GrB_LE_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_LE_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_LE_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_LE_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_LE_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_LE_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_LE_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_LE_UINT64 ; break ;
-                    case GB_FP32_code    : op = GrB_LE_FP32   ; break ;
-                    case GB_FP64_code    : op = GrB_LE_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_LE_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GrB_LE_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GrB_LE_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GrB_LE_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GrB_LE_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GrB_LE_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GrB_LE_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GrB_LE_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GrB_LE_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GrB_LE_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GrB_LE_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
@@ -792,303 +710,72 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
 
             case GB_LOR_opcode   :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_LOR        ; break ;
-                    case GB_INT8_code    : op = GxB_LOR_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_LOR_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_LOR_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_LOR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_LOR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_LOR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_LOR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_LOR_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_LOR_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_LOR_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_LOR        ; break ;
+                    case mxINT8_CLASS    : op = GxB_LOR_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_LOR_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_LOR_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_LOR_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_LOR_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_LOR_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_LOR_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_LOR_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_LOR_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_LOR_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_LAND_opcode   :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_LAND        ; break ;
-                    case GB_INT8_code    : op = GxB_LAND_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_LAND_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_LAND_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_LAND_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_LAND_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_LAND_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_LAND_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_LAND_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_LAND_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_LAND_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_LAND        ; break ;
+                    case mxINT8_CLASS    : op = GxB_LAND_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_LAND_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_LAND_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_LAND_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_LAND_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_LAND_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_LAND_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_LAND_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_LAND_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_LAND_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
             case GB_LXOR_opcode   :
 
-                switch (xcode)
+                switch (opclass)
                 {
-                    case GB_BOOL_code    : op = GrB_LXOR        ; break ;
-                    case GB_INT8_code    : op = GxB_LXOR_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_LXOR_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_LXOR_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_LXOR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_LXOR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_LXOR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_LXOR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_LXOR_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_LXOR_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_LXOR_FP64   ; break ;
+                    case mxLOGICAL_CLASS : op = GrB_LXOR        ; break ;
+                    case mxINT8_CLASS    : op = GxB_LXOR_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_LXOR_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_LXOR_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_LXOR_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_LXOR_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_LXOR_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_LXOR_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_LXOR_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_LXOR_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_LXOR_FP64   ; break ;
                     default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
                 }
                 break ;
 
-            case GB_ATAN2_opcode :       // z = atan2 (x,y)
+            case GB_NOP_opcode  :
+            case GB_USER_opcode :
 
-                switch (xcode)
-                {
-                    case GB_FP32_code    : op = GxB_ATAN2_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_ATAN2_FP64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
+                // no operation is requested so return NULL, or user-defined
                 break ;
-
-            case GB_HYPOT_opcode :       // z = hypot (x,y)
-
-                switch (xcode)
-                {
-                    case GB_FP32_code    : op = GxB_HYPOT_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_HYPOT_FP64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_FMOD_opcode :        // z = fmod (x,y)
-
-                switch (xcode)
-                {
-                    case GB_FP32_code    : op = GxB_FMOD_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_FMOD_FP64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_REMAINDER_opcode :   // z = remainder (x,y)
-
-                switch (xcode)
-                {
-                    case GB_FP32_code    : op = GxB_REMAINDER_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_REMAINDER_FP64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_COPYSIGN_opcode :    // z = copysign (x,y)
-
-                switch (xcode)
-                {
-                    case GB_FP32_code    : op = GxB_COPYSIGN_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_COPYSIGN_FP64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_LDEXP_opcode :       // z = ldexp (x,y)
-
-                switch (xcode)
-                {
-                    case GB_FP32_code    : op = GxB_LDEXP_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_LDEXP_FP64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_CMPLX_opcode :       // z = cmplx (x,y)
-
-                switch (xcode)
-                {
-                    case GB_FP32_code    : op = GxB_CMPLX_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_CMPLX_FP64   ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BOR_opcode :     // z = (x | y), bitwise or
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GrB_BOR_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_BOR_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_BOR_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_BOR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_BOR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_BOR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_BOR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_BOR_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BAND_opcode :    // z = (x & y), bitwise and
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GrB_BAND_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_BAND_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_BAND_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_BAND_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_BAND_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_BAND_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_BAND_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_BAND_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BXOR_opcode :    // z = (x ^ y), bitwise xor
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GrB_BXOR_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_BXOR_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_BXOR_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_BXOR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_BXOR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_BXOR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_BXOR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_BXOR_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BXNOR_opcode :   // z = ~(x ^ y), bitwise xnor
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GrB_BXNOR_INT8   ; break ;
-                    case GB_INT16_code   : op = GrB_BXNOR_INT16  ; break ;
-                    case GB_INT32_code   : op = GrB_BXNOR_INT32  ; break ;
-                    case GB_INT64_code   : op = GrB_BXNOR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GrB_BXNOR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GrB_BXNOR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GrB_BXNOR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GrB_BXNOR_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BGET_opcode :    // z = bitget (x,y)
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GxB_BGET_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_BGET_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_BGET_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_BGET_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_BGET_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_BGET_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_BGET_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_BGET_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BSET_opcode :    // z = bitset (x,y)
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GxB_BSET_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_BSET_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_BSET_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_BSET_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_BSET_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_BSET_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_BSET_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_BSET_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BCLR_opcode :    // z = bitclr (x,y)
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GxB_BCLR_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_BCLR_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_BCLR_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_BCLR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_BCLR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_BCLR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_BCLR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_BCLR_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_BSHIFT_opcode :  // z = bitshift (x,y)
-
-                switch (xcode)
-                {
-                    case GB_INT8_code    : op = GxB_BSHIFT_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_BSHIFT_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_BSHIFT_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_BSHIFT_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_BSHIFT_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_BSHIFT_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_BSHIFT_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_BSHIFT_UINT64 ; break ;
-                    default              : 
-                        mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
-                        return (false) ;
-                }
-                break ;
-
-            case GB_FIRSTI_opcode   : op = is64 ? GxB_FIRSTI_INT64   : GxB_FIRSTI_INT32   ; break ;
-            case GB_FIRSTI1_opcode  : op = is64 ? GxB_FIRSTI1_INT64  : GxB_FIRSTI1_INT32  ; break ;
-            case GB_FIRSTJ_opcode   : op = is64 ? GxB_FIRSTJ_INT64   : GxB_FIRSTJ_INT32   ; break ;
-            case GB_FIRSTJ1_opcode  : op = is64 ? GxB_FIRSTJ1_INT64  : GxB_FIRSTJ1_INT32  ; break ;
-            case GB_SECONDI_opcode  : op = is64 ? GxB_SECONDI_INT64  : GxB_SECONDI_INT32  ; break ;
-            case GB_SECONDI1_opcode : op = is64 ? GxB_SECONDI1_INT64 : GxB_SECONDI1_INT32 ; break ;
-            case GB_SECONDJ_opcode  : op = is64 ? GxB_SECONDJ_INT64  : GxB_SECONDJ_INT32  ; break ;
-            case GB_SECONDJ1_opcode : op = is64 ? GxB_SECONDJ1_INT64 : GxB_SECONDJ1_INT32 ; break ;
 
             default : 
                 mexWarnMsgIdAndTxt ("GB:warn","unknown binary operator") ;
@@ -1100,9 +787,14 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
     // return result
     //--------------------------------------------------------------------------
 
+    // return the opclass and opcode to the caller
+    if (opclass_return != NULL) *opclass_return = opclass ;
+    if (opcode_return  != NULL) *opcode_return  = opcode ;
+
+
     // return the binary operator to the caller
     ASSERT_BINARYOP_OK_OR_NULL (op, "got binary op", GB0) ;
-    (*op_handle) = op ;
+    (*handle) = op ;
     return (true) ;
 }
 

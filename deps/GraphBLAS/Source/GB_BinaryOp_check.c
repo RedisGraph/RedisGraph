@@ -2,20 +2,21 @@
 // GB_BinaryOp_check: check and print a binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-#include "GB.h"
+#include "GB_printf.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 (
     const GrB_BinaryOp op,  // GraphBLAS operator to print and check
     const char *name,       // name of the operator
-    int pr,                 // print level
-    FILE *f                 // file for output
+    int pr,                 // 0: print nothing, 1: print header and errors,
+                            // 2: print brief, 3: print all
+    FILE *f,                // file for output
+    GB_Context Context
 )
 {
 
@@ -27,7 +28,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 
     if (op == NULL)
     { 
-        // this may be an optional argument
+        // GrB_error status not modified since this may be an optional argument
         GBPR0 ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
@@ -38,66 +39,59 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 
     GB_CHECK_MAGIC (op, "BinaryOp") ;
 
-    GB_Opcode opcode = op->opcode ;
-    if (opcode >= GB_USER_opcode)
-    { 
-        GBPR0 ("(user-defined) ") ;
-    }
-    else
-    { 
-        GBPR0 ("(built-in) ") ;
+    if (pr > 0)
+    {
+        if (op->opcode >= GB_USER_opcode)
+        { 
+            GBPR ("(user-defined) ") ;
+        }
+        else
+        { 
+            GBPR ("(built-in) ") ;
+        }
     }
 
     GBPR0 ("z=%s(x,y)\n", op->name) ;
 
-    bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
-
-    if (!(op_is_positional || op_is_first || op_is_second)
-       && op->function == NULL)
+    if (op->function == NULL)
     { 
         GBPR0 ("    BinaryOp has a NULL function pointer\n") ;
-        return (GrB_INVALID_OBJECT) ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+            "BinaryOp has a NULL function pointer: %s [%s]",
+            GB_NAME, op->name))) ;
     }
 
-    if (opcode < GB_FIRST_opcode || opcode > GB_USER_opcode)
+    if (op->opcode < GB_FIRST_opcode || op->opcode > GB_USER_opcode)
     { 
         GBPR0 ("    BinaryOp has an invalid opcode\n") ;
-        return (GrB_INVALID_OBJECT) ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+            "BinaryOp has an invalid opcode: %s [%s]", GB_NAME, op->name))) ;
     }
 
     GrB_Info info ;
 
-    info = GB_Type_check (op->ztype, "ztype", pr, f) ;
+    info = GB_Type_check (op->ztype, "ztype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
         GBPR0 ("    BinaryOp has an invalid ztype\n") ;
-        return (GrB_INVALID_OBJECT) ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+            "BinaryOp has an invalid ztype: %s [%s]", GB_NAME, op->name))) ;
     }
 
-    if (!op_is_positional && !op_is_pair)
-    {
-        if (!op_is_second)
-        {
-            info = GB_Type_check (op->xtype, "xtype", pr, f) ;
-            if (info != GrB_SUCCESS)
-            { 
-                GBPR0 ("    BinaryOp has an invalid xtype\n") ;
-                return (GrB_INVALID_OBJECT) ;
-            }
-        }
+    info = GB_Type_check (op->xtype, "xtype", pr, f, Context) ;
+    if (info != GrB_SUCCESS)
+    { 
+        GBPR0 ("    BinaryOp has an invalid xtype\n") ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+            "BinaryOp has an invalid xtype: %s [%s]", GB_NAME, op->name))) ;
+    }
 
-        if (!op_is_first)
-        {
-            info = GB_Type_check (op->ytype, "ytype", pr, f) ;
-            if (info != GrB_SUCCESS)
-            { 
-                GBPR0 ("    BinaryOp has an invalid ytype\n") ;
-                return (GrB_INVALID_OBJECT) ;
-            }
-        }
+    info = GB_Type_check (op->ytype, "ytype", pr, f, Context) ;
+    if (info != GrB_SUCCESS)
+    { 
+        GBPR0 ("    BinaryOp has an invalid ytype\n") ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+            "BinaryOp has an invalid ytype: %s [%s]", GB_NAME, op->name))) ;
     }
 
     return (GrB_SUCCESS) ;

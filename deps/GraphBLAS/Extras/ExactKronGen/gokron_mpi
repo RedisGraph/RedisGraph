@@ -1,0 +1,22 @@
+#!/bin/bash
+
+module load beta-gcc-5.2.0
+module load beta-openmpi-2.0.1
+
+# without MPI
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/groups/GraphBLAS/GraphBLAS/build
+gcc -O kron.c kron_submatrix.c read_tuples.c simple_timer.c -o kron \
+    -L/home/gridsan/groups/GraphBLAS/GraphBLAS/build -lgraphblas \
+        -I../GraphBLAS/Include
+./kron data/Theory-3-4-5-9-Bk.tsv data/Theory-16-25-Bk.tsv C.tsv
+diff -q C.tsv data/0/3-4-5-9-Bk-x-16-25-Bk.0.tsv
+
+# now try with np=4 (using MPI)
+mpicc -o kron_mpi kron_mpi.c kron_submatrix.c read_tuples.c simple_timer.c \
+    -L/home/gridsan/groups/GraphBLAS/GraphBLAS/build -lgraphblas \
+        -I../GraphBLAS/Include
+time mpirun -np 4 ./kron_mpi data/Theory-3-4-5-9-Bk.tsv data/Theory-16-25-Bk.tsv C.tsv
+cat *_C.tsv | sort > Csort1.tsv
+sort data/0/3-4-5-9-Bk-x-16-25-Bk.0.tsv > Csort2.tsv
+diff -q Csort1.tsv Csort2.tsv
+

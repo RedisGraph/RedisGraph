@@ -2,8 +2,8 @@
 // GxB_Monoid_terminal_new:  create a new monoid with a terminal value
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -22,26 +22,24 @@ GrB_Info GxB_Monoid_terminal_new_ ## T   /* create a new monoid */          \
     type terminal                   /* terminal value of the monoid  */     \
 )                                                                           \
 {                                                                           \
-    GB_WHERE1 ("GxB_Monoid_terminal_new" GB_STR(T)                          \
+    GB_WHERE ("GxB_Monoid_terminal_new" GB_STR(T)                           \
         " (&monoid, op, identity, terminal)") ;                             \
     type id = identity ;                                                    \
     type tr = terminal ;                                                    \
     return (GB_Monoid_new (monoid, op, &id, &tr, GB_ ## T ## _code, Context)) ;\
 }
 
-GB_MONOID_TERMINAL_NEW (bool      , BOOL   )
-GB_MONOID_TERMINAL_NEW (int8_t    , INT8   )
-GB_MONOID_TERMINAL_NEW (uint8_t   , UINT8  )
-GB_MONOID_TERMINAL_NEW (int16_t   , INT16  )
-GB_MONOID_TERMINAL_NEW (uint16_t  , UINT16 )
-GB_MONOID_TERMINAL_NEW (int32_t   , INT32  )
-GB_MONOID_TERMINAL_NEW (uint32_t  , UINT32 )
-GB_MONOID_TERMINAL_NEW (int64_t   , INT64  )
-GB_MONOID_TERMINAL_NEW (uint64_t  , UINT64 )
-GB_MONOID_TERMINAL_NEW (float     , FP32   )
-GB_MONOID_TERMINAL_NEW (double    , FP64   )
-GB_MONOID_TERMINAL_NEW (GxB_FC32_t, FC32   )
-GB_MONOID_TERMINAL_NEW (GxB_FC64_t, FC64   )
+GB_MONOID_TERMINAL_NEW (bool     , BOOL   )
+GB_MONOID_TERMINAL_NEW (int8_t   , INT8   )
+GB_MONOID_TERMINAL_NEW (uint8_t  , UINT8  )
+GB_MONOID_TERMINAL_NEW (int16_t  , INT16  )
+GB_MONOID_TERMINAL_NEW (uint16_t , UINT16 )
+GB_MONOID_TERMINAL_NEW (int32_t  , INT32  )
+GB_MONOID_TERMINAL_NEW (uint32_t , UINT32 )
+GB_MONOID_TERMINAL_NEW (int64_t  , INT64  )
+GB_MONOID_TERMINAL_NEW (uint64_t , UINT64 )
+GB_MONOID_TERMINAL_NEW (float    , FP32   )
+GB_MONOID_TERMINAL_NEW (double   , FP64   )
 
 GrB_Info GxB_Monoid_terminal_new_UDT        // create a monoid with a user type
 (
@@ -51,8 +49,8 @@ GrB_Info GxB_Monoid_terminal_new_UDT        // create a monoid with a user type
     void *terminal                  // terminal value of the monoid
 )
 { 
-    GB_WHERE1 ("GxB_Monoid_terminal_new_UDT "
-        "(&monoid, op, identity, terminal)") ;
+    GB_WHERE ("GxB_Monoid_terminal_new_UDT (&monoid, op, identity, terminal)") ;
+    GB_RETURN_IF_NULL (identity) ;
     GB_RETURN_IF_NULL (terminal) ;
     return (GB_Monoid_new (monoid, op, identity, terminal, GB_UDT_code,
         Context)) ;

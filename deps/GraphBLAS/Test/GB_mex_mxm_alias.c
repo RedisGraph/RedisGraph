@@ -2,8 +2,8 @@
 // GB_mex_mxm_alias: C<C> = accum(C,C*C)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -11,19 +11,19 @@
 
 #define USAGE "C = GB_mex_mxm_alias (C, accum, semiring, desc)"
 
-#define FREE_ALL                                    \
-{                                                   \
-    GrB_Matrix_free_(&C) ;                           \
-    if (semiring != Complex_plus_times)             \
-    {                                               \
-        if (semiring != NULL)                       \
-        {                                           \
-            GrB_Monoid_free_(&(semiring->add)) ;    \
-        }                                           \
-        GrB_Semiring_free_(&semiring) ;             \
-    }                                               \
-    GrB_Descriptor_free_(&desc) ;                   \
-    GB_mx_put_global (true) ;                       \
+#define FREE_ALL                            \
+{                                           \
+    GB_MATRIX_FREE (&C) ;                   \
+    if (semiring != Complex_plus_times)     \
+    {                                       \
+        if (semiring != NULL)               \
+        {                                   \
+            GrB_free (&(semiring->add)) ;   \
+        }                                   \
+        GrB_free (&semiring) ;              \
+    }                                       \
+    GrB_free (&desc) ;                      \
+    GB_mx_put_global (true, AxB_method_used) ; \
 }
 
 void mexFunction
@@ -39,8 +39,10 @@ void mexFunction
     GrB_Matrix C = NULL ;
     GrB_Semiring semiring = NULL ;
     GrB_Descriptor desc = NULL ;
+    GrB_Desc_Value AxB_method_used = GxB_DEFAULT ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 3 || nargin > 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -49,28 +51,36 @@ void mexFunction
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
     C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
-    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
+    #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
-
-    bool user_complex = (Complex != GxB_FC64) && (C->type == Complex) ;
+    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get semiring
-    if (!GB_mx_mxArray_to_Semiring (&semiring, pargin [2], "semiring",
-        C->type, user_complex))
+    if (C->type == Complex)
     {
-        FREE_ALL ;
-        mexErrMsgTxt ("semiring failed") ;
+        // semiring input argument is ignored and may be empty
+        semiring = Complex_plus_times ;
+    }
+    else
+    {
+        if (!GB_mx_mxArray_to_Semiring (&semiring, pargin [2], "semiring",
+            cclass))
+        {
+            FREE_ALL ;
+            mexErrMsgTxt ("semiring failed") ;
+        }
     }
 
-    // get accum, if present
+    // get accum; default: NOP, default class is class(C)
     GrB_BinaryOp accum ;
     if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [1], "accum",
-        C->type, user_complex))
+        GB_NOP_opcode, cclass, C->type == Complex,
+        semiring->add->op->ztype == Complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;
@@ -85,6 +95,8 @@ void mexFunction
 
     // C<C> = accum(C,C*C)
     METHOD (GrB_mxm (C, C, accum, semiring, C, C, desc)) ;
+
+    if (C != NULL) AxB_method_used = C->AxB_method_used ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;

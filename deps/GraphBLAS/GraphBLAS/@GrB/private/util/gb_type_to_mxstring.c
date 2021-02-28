@@ -2,8 +2,8 @@
 // gb_type_to_mxstring: create a MATLAB string from a GraphBLAS type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -26,8 +26,12 @@ GrB_Type gb_type_to_mxstring    // return the MATLAB string from a GrB_Type
     else if (type == GrB_UINT64) return (mxCreateString ("uint64")) ;
     else if (type == GrB_FP32)   return (mxCreateString ("single")) ;
     else if (type == GrB_FP64)   return (mxCreateString ("double")) ;
-    else if (type == GxB_FC32)   return (mxCreateString ("single complex")) ;
-    else if (type == GxB_FC64)   return (mxCreateString ("double complex")) ;
+    #ifdef GB_COMPLEX_TYPE
+    else if (type == gb_complex_type)
+    {
+        return (mxCreateString ("complex")) ;
+    }
+    #endif
     else
     {
         ERROR ("unsupported type") ;

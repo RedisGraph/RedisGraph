@@ -439,18 +439,14 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 	GxB_Matrix_type(&type, A);
 	GrB_Info info = GrB_Matrix_new(&replacement, type, nrows, ncols);
 	if(info != GrB_SUCCESS) {
-		const char *error_msg = NULL;
-		GrB_error(&error_msg, replacement);
-		fprintf(stderr, "%s", error_msg);
+		fprintf(stderr, "%s", GrB_error());
 		ASSERT(false);
 	}
 
 	// Populate the replacement with the transposed contents of the original.
 	info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, A, GrB_NULL);
 	if(info != GrB_SUCCESS) {
-		const char *error_msg = NULL;
-		GrB_error(&error_msg, replacement);
-		fprintf(stderr, "%s", error_msg);
+		fprintf(stderr, "%s", GrB_error());
 		ASSERT(false);
 	}
 

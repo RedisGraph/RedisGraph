@@ -2,8 +2,8 @@
 // GB_mex_reduce_terminal: [c,flag] = sum(A), reduce to scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -16,10 +16,10 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_BinaryOp_free_(&Max) ;          \
-    GrB_Monoid_free_(&Max_Terminal) ;   \
-    GB_mx_put_global (true) ;           \
+    GB_MATRIX_FREE (&A) ;               \
+    GrB_free (&Max) ;                   \
+    GrB_free (&Max_Terminal) ;          \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void maxdouble (double *z, const double *x, const double *y) ;
@@ -46,6 +46,7 @@ void mexFunction
     GrB_Info info ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -71,27 +72,33 @@ void mexFunction
     // get the terminal value, if present.  Default is 1.
     double GET_SCALAR (1, double, terminal, 1) ;
 
+    // printf ("\nterminal %g\n", terminal) ;
+
     // create the Max operator
     info = GrB_BinaryOp_new (&Max, maxdouble, GrB_FP64, GrB_FP64, GrB_FP64);
     if (info != GrB_SUCCESS)
     {
+        printf ("error: %d %s\n", info, GrB_error ( )) ;
         mexErrMsgTxt ("Max failed") ;
     }
 
+    // printf ("create the monoid:\n") ;
+
     // create the Max monoid
-    info = GxB_Monoid_terminal_new_FP64_(&Max_Terminal, Max, (double) 0,
+    info = GxB_Monoid_terminal_new (&Max_Terminal, Max, (double) 0,
         terminal) ;
     if (info != GrB_SUCCESS)
     {
+        printf ("error: %d %s\n", info, GrB_error ( )) ;
         mexErrMsgTxt ("Max_Terminal failed") ;
     }
 
     // reduce to a scalar
     double c ;
-    info = GrB_Matrix_reduce_FP64_(&c, NULL, Max_Terminal, A, NULL) ;
+    info = GrB_reduce (&c, NULL, Max_Terminal, A, NULL) ;
     if (info != GrB_SUCCESS)
     {
-        printf ("error: %d\n", info) ;
+        printf ("error: %d %s\n", info, GrB_error ( )) ;
         mexErrMsgTxt ("reduce failed") ;
     }
 

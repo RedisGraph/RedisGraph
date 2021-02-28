@@ -2,8 +2,8 @@
 // GB_AxB_dot3_one_slice: slice the entries and vectors of a single matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,12 +13,13 @@
 // simple general-purpose method for slicing a single matrix.  It could be
 // called GB_one_slice, and used for other methods as well.
 
-#define GB_FREE_WORK GB_FREE (Coarse) ;
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
 
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE_WORK ;          \
-    GB_FREE (TaskList) ;    \
+#define GB_FREE_ALL                                                     \
+{                                                                       \
+    GB_FREE_WORK ;                                                      \
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
 #include "GB_mxm.h"
@@ -52,13 +53,6 @@ GrB_Info GB_AxB_dot3_one_slice
     ASSERT (p_nthreads != NULL) ;
     ASSERT_MATRIX_OK (M, "M for dot3_one_slice", GB0) ;
 
-    // the pattern of M is not accessed
-    ASSERT (GB_ZOMBIES_OK (M)) ;
-    ASSERT (GB_JUMBLED_OK (M)) ;
-    ASSERT (GB_PENDING_OK (M)) ;
-    ASSERT (!GB_IS_BITMAP (M)) ;
-    ASSERT (!GB_IS_FULL (M)) ;
-
     (*p_TaskList  ) = NULL ;
     (*p_max_ntasks) = 0 ;
     (*p_ntasks    ) = 0 ;
@@ -75,9 +69,8 @@ GrB_Info GB_AxB_dot3_one_slice
     //--------------------------------------------------------------------------
 
     const int64_t *GB_RESTRICT Mp = M->p ;
-    const int64_t mnz = GB_NNZ_HELD (M) ;
+    const int64_t mnz = GB_NNZ (M) ;
     const int64_t mnvec = M->nvec ;
-    const int64_t mvlen = M->vlen ;
 
     //--------------------------------------------------------------------------
     // allocate the initial TaskList
@@ -121,11 +114,11 @@ GrB_Info GB_AxB_dot3_one_slice
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    if (!GB_pslice (&Coarse, Mp, mnvec, ntasks1, false))
+    if (!GB_pslice (&Coarse, Mp, mnvec, ntasks1))
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -198,7 +191,7 @@ GrB_Info GB_AxB_dot3_one_slice
             // determine the # of fine-grain tasks to create for vector k
             //------------------------------------------------------------------
 
-            int64_t mknz = (Mp == NULL) ? mvlen : (Mp [k+1] - Mp [k]) ;
+            int64_t mknz = Mp [k+1] - Mp [k] ;
             int nfine = ((double) mknz) / target_task_size ;
             nfine = GB_IMAX (nfine, 1) ;
 
@@ -240,9 +233,8 @@ GrB_Info GB_AxB_dot3_one_slice
                     // slice M(:,k) for this task
                     int64_t p1, p2 ;
                     GB_PARTITION (p1, p2, mknz, tfine, nfine) ;
-                    int64_t pM_start = GBP (Mp, k, mvlen) ;
-                    int64_t pM     = pM_start + p1 ;
-                    int64_t pM_end = pM_start + p2 ;
+                    int64_t pM     = Mp [k] + p1 ;
+                    int64_t pM_end = Mp [k] + p2 ;
                     TaskList [ntasks].pM     = pM ;
                     TaskList [ntasks].pM_end = pM_end ;
 

@@ -2,8 +2,8 @@
 // GraphBLAS/Demo/Program/mis_demo.c: maximal independent set
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -30,23 +30,23 @@
 // The 3rd usage (mis_demo 1 ...) creates a finite-element matrix on an
 // nx-by-ny grid.  Method is 0 to 3; refer to wathen.c for details.
 
-// macro used by OK(...) to free workspace if an error occurs
-#define FREE_ALL                        \
-    GrB_Matrix_free (&A) ;              \
-    GrB_Matrix_free (&C) ;              \
-    GrB_Vector_free (&iset1) ;          \
-    GrB_Vector_free (&iset2) ;          \
-    GrB_Vector_free (&e) ;              \
-    GrB_Descriptor_free (&dt) ;         \
-    GrB_Monoid_free (&Lor) ;            \
-    GrB_Semiring_free (&Boolean) ;      \
-    if (I2 != NULL) free (I2) ;         \
-    if (J2 != NULL) free (J2) ;         \
-    if (X2 != NULL) free (X2) ;         \
-    if (I != NULL) free (I) ;           \
-    if (X != NULL) free (X) ;
+#include "demos.h"
 
-#include "graphblas_demos.h"
+// macro used by OK(...) to free workspace if an error occurs
+#define FREE_ALL                \
+    GrB_Matrix_free (&A) ;             \
+    GrB_Matrix_free (&C) ;             \
+    GrB_Vector_free (&iset1) ;         \
+    GrB_Vector_free (&iset2) ;         \
+    GrB_Vector_free (&e) ;             \
+    GrB_Descriptor_free (&dt) ;            \
+    GrB_Monoid_free (&Lor) ;           \
+    GrB_Semiring_free (&Boolean) ;       \
+    if (I2 != NULL) free (I2) ; \
+    if (J2 != NULL) free (J2) ; \
+    if (X2 != NULL) free (X2) ; \
+    if (I != NULL) free (I) ;   \
+    if (X != NULL) free (X) ;
 
 int64_t isize1, isize2 ;
 GrB_Index n ;
@@ -77,14 +77,14 @@ GrB_Info mis_check_results
     //--------------------------------------------------------------------------
 
     int64_t isize ;
-    OK (GrB_Vector_reduce_INT64 (&isize, NULL, GrB_PLUS_MONOID_INT64,
+    OK (GrB_Vector_reduce_INT64 (&isize, NULL, GxB_PLUS_INT64_MONOID,
         iset, NULL)) ;
     (*p_isize) = isize ;
 
     GrB_Index nvals ;
     OK (GrB_Vector_nvals (&nvals, iset)) ;
-    I = (GrB_Index *) malloc (nvals * sizeof (GrB_Index)) ;
-    X = (float *) malloc (nvals * sizeof (float)) ;
+    I = malloc (nvals * sizeof (GrB_Index)) ;
+    X = malloc (nvals * sizeof (float)) ;
 
     if (I == NULL || X == NULL)
     {
@@ -119,9 +119,9 @@ GrB_Info mis_check_results
     OK (GrB_Matrix_extract (C, NULL, NULL, A, I, isize, I, isize, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, C)) ;
 
-    I2 = (GrB_Index *) malloc (nvals * sizeof (GrB_Index)) ;
-    J2 = (GrB_Index *) malloc (nvals * sizeof (GrB_Index)) ;
-    X2 = (bool *) malloc (nvals * sizeof (bool)) ;
+    I2 = malloc (nvals * sizeof (GrB_Index)) ;
+    J2 = malloc (nvals * sizeof (GrB_Index)) ;
+    X2 = malloc (nvals * sizeof (bool)) ;
     if (I2 == NULL || J2 == NULL || X2 == NULL)
     {
         printf ("out of memory\n") ;
@@ -163,7 +163,7 @@ GrB_Info mis_check_results
 
     free (I) ; I = NULL ;
 
-    fprintf (stderr, "maximal independent set OK %.16g of %.16g nodes"
+    fprintf (stderr, "maximal independent set OK: %.16g of %.16g nodes"
         " time: %g\n", (double) isize, (double) n, t) ;
     return (GrB_SUCCESS) ;
 }
@@ -178,7 +178,7 @@ int main (int argc, char **argv)
     double tic [2], t1, t2 ;
     OK (GrB_init (GrB_NONBLOCKING)) ;
     int nthreads ;
-    OK (GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads)) ;
+    OK (GxB_get (GxB_NTHREADS, &nthreads)) ;
     fprintf (stderr, "\nmis_demo: nthreads: %d\n", nthreads) ;
 
     //--------------------------------------------------------------------------

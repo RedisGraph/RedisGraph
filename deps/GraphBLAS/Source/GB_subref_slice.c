@@ -2,8 +2,8 @@
 // GB_subref_slice: construct coarse/fine tasks for C = A(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -29,18 +29,18 @@
 // Compare this function with GB_ewise_slice, which constructs coarse/fine
 // tasks for the eWise operations (C=A+B, C=A.*B, and C<M>=Z).
 
-#define GB_FREE_WORK        \
-{                           \
-    GB_FREE (Coarse) ;      \
-    GB_FREE (Cwork) ;       \
+#define GB_FREE_WORK                                                    \
+{                                                                       \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;              \
+    GB_FREE_MEMORY (Cwork, Cnvec+1, sizeof (int64_t)) ;                 \
 }
 
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE_WORK ;          \
-    GB_FREE (TaskList) ;    \
-    GB_FREE (Mark) ;        \
-    GB_FREE (Inext) ;       \
+#define GB_FREE_ALL                                                     \
+{                                                                       \
+    GB_FREE_WORK ;                                                      \
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
+    GB_FREE_MEMORY (Mark,  avlen, sizeof (int64_t)) ;                   \
+    GB_FREE_MEMORY (Inext, nI,    sizeof (int64_t)) ;                   \
 }
 
 #include "GB_subref.h"
@@ -149,12 +149,12 @@ GrB_Info GB_subref_slice
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Cwork = GB_MALLOC (Cnvec+1, int64_t) ;
+    GB_MALLOC_MEMORY (Cwork, Cnvec+1, sizeof (int64_t)) ;
     if (Cwork == NULL)
     { 
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -169,7 +169,7 @@ GrB_Info GB_subref_slice
     for (kC = 0 ; kC < Cnvec ; kC++)
     { 
         // jC is the (kC)th vector of C = A(I,J)
-        // int64_t jC = GBH (Ch, kC) ;
+        // int64_t jC = (Ch == NULL) ? kC : Ch [kC] ;
         // C(:,kC) = A(I,kA) will be constructed
         int64_t pA      = Ap_start [kC] ;
         int64_t pA_end  = Ap_end   [kC] ;
@@ -248,11 +248,11 @@ GrB_Info GB_subref_slice
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    if (!GB_pslice (&Coarse, Cwork, Cnvec, ntasks1, false))
-    { 
+    if (!GB_pslice (&Coarse, Cwork, Cnvec, ntasks1))
+    {
         // out of memory
         GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------

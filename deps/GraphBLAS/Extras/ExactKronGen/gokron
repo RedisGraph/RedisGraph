@@ -1,0 +1,17 @@
+#!/bin/bash
+
+module load beta-gcc-5.2.0
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/gridsan/groups/GraphBLAS/GraphBLAS/build
+gcc -O kron.c kron_submatrix.c read_tuples.c simple_timer.c -o kron -L/home/gridsan/groups/GraphBLAS/GraphBLAS/build -lgraphblas -I../GraphBLAS/Include
+./kron data/Theory-3-4-5-9-Bk.tsv data/Theory-16-25-Bk.tsv C.tsv
+diff -q C.tsv data/0/3-4-5-9-Bk-x-16-25-Bk.0.tsv
+
+# now try with np=4 (but no MPI, just fake parallelism)
+./kron data/Theory-3-4-5-9-Bk.tsv data/Theory-16-25-Bk.tsv C.tsv 4 0
+./kron data/Theory-3-4-5-9-Bk.tsv data/Theory-16-25-Bk.tsv C.tsv 4 1
+./kron data/Theory-3-4-5-9-Bk.tsv data/Theory-16-25-Bk.tsv C.tsv 4 2
+./kron data/Theory-3-4-5-9-Bk.tsv data/Theory-16-25-Bk.tsv C.tsv 4 3
+cat *_C.tsv | sort > Csort1.tsv
+sort data/0/3-4-5-9-Bk-x-16-25-Bk.0.tsv > Csort2.tsv
+diff -q Csort1.tsv Csort2.tsv
+

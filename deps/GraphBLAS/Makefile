@@ -2,15 +2,22 @@
 # GraphBLAS/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+# http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
 
 # simple Makefile for GraphBLAS, relies on cmake to do the actual build.  Use
 # the CMAKE_OPTIONS argument to this Makefile to pass options to cmake.
 
-JOBS ?= 1
+# Find the OS.
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+# Set number of threads.
+ifeq ($(uname_S),Linux)
+	JOBS ?= $(shell grep -c ^processor /proc/cpuinfo)
+else
+	JOBS ?= $(shell sysctl -n hw.logicalcpu_max)
+endif
 
 default: library
 
@@ -40,15 +47,11 @@ static_only:
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
 install:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) ; $(MAKE) install )
+	( cd build ; $(MAKE) install )
 
 # create the Doc/GraphBLAS_UserGuide.pdf
 docs:
 	( cd Doc ; $(MAKE) )
-
-# compile the CUDA kernels
-gpu:
-	( cd CUDA ; $(MAKE) )
 
 # remove any installed libraries and #include files
 uninstall:
@@ -60,7 +63,7 @@ purge: distclean
 
 # remove all files not in the distribution
 distclean:
-	rm -rf build/* Demo/*.out Demo/complex_demo_out*.m Tcov/log.txt
+	rm -rf build/* Demo/*.out Demo/complex_demo_out.m Tcov/log.txt
 	rm -rf Config/*.tmp Source/control.m4
 	rm -rf Doc/html/* Doc/*.tmp
 	( cd GraphBLAS/test/tcov ; $(MAKE) distclean )

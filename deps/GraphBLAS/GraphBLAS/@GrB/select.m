@@ -1,21 +1,23 @@
-function C = select (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+function Cout = select (varargin)
 %GRB.SELECT: select entries from a GraphBLAS sparse matrix.
 %
-%   C = GrB.select (selectop, A)
-%   C = GrB.select (selectop, A, b)
-%   C = GrB.select (selectop, A, b, desc)
+% Usage:
 %
-%   C = GrB.select (Cin, accum, selectop, A)
-%   C = GrB.select (Cin, accum, selectop, A, b)
-%   C = GrB.select (Cin, accum, selectop, A, b, desc)
+%   Cout = GrB.select (selectop, A)
+%   Cout = GrB.select (selectop, A, b)
+%   Cout = GrB.select (selectop, A, b, desc)
 %
-%   C = GrB.select (Cin, M, selectop, A)
-%   C = GrB.select (Cin, M, selectop, A, b)
-%   C = GrB.select (Cin, M, selectop, A, b, desc)
+%   Cout = GrB.select (Cin, accum, selectop, A)
+%   Cout = GrB.select (Cin, accum, selectop, A, b)
+%   Cout = GrB.select (Cin, accum, selectop, A, b, desc)
 %
-%   C = GrB.select (Cin, M, accum, selectop, A)
-%   C = GrB.select (Cin, M, accum, selectop, A, b)
-%   C = GrB.select (Cin, M, accum, selectop, A, b, desc)
+%   Cout = GrB.select (Cin, M, selectop, A)
+%   Cout = GrB.select (Cin, M, selectop, A, b)
+%   Cout = GrB.select (Cin, M, selectop, A, b, desc)
+%
+%   Cout = GrB.select (Cin, M, accum, selectop, A)
+%   Cout = GrB.select (Cin, M, accum, selectop, A, b)
+%   Cout = GrB.select (Cin, M, accum, selectop, A, b, desc)
 %
 % GrB.select selects a subset of entries from the matrix A, based on
 % their value or position.  For example, L = GrB.select ('tril', A, 0)
@@ -49,8 +51,8 @@ function C = select (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %   '<'             C = A (A <  b)
 %   '<='            C = A (A <= b)
 %
-% Note that C = GrB.select ('diag',A,b) does not return a vector,
-% but a diagonal matrix, instead.
+% Note that C = GrB.select ('diag',A,b) does not returns a vector,
+% but a diagonal matrix.
 %
 % Many of the operations have equivalent synonyms, as listed above.
 %
@@ -74,53 +76,23 @@ function C = select (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % A is the input matrix.  It is transposed on input if desc.in0 =
 % 'transpose'.
 %
-% desc is optional. See 'help GrB.descriptorinfo' for more details.
+% The descriptor desc is optional.  If not present, all default settings
+% are used.  Fields not present are treated as their default values.  See
+% 'help GrB.descriptorinfo' for more details.
 %
-% See also GrB/tril, GrB/triu, GrB/diag.
+% All input matrices may be either GraphBLAS and/or MATLAB matrices, in
+% any combination.  Cout is returned as a GraphBLAS matrix, by default;
+% see 'help GrB/descriptorinfo' for more options.
+%
+% See also tril, triu, diag.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (isobject (arg1))
-    arg1 = arg1.opaque ;
-end
-
-if (isobject (arg2))
-    arg2 = arg2.opaque ;
-end
-
-if (nargin > 2 && isobject (arg3))
-    arg3 = arg3.opaque ;
-end
-
-if (nargin > 3 && isobject (arg4))
-    arg4 = arg4.opaque ;
-end
-
-if (nargin > 4 && isobject (arg5))
-    arg5 = arg5.opaque ;
-end
-
-if (nargin > 5 && isobject (arg6))
-    arg6 = arg6.opaque ;
-end
-
-switch (nargin)
-    case 2
-        [C, k] = gbselect (arg1, arg2) ;
-    case 3
-        [C, k] = gbselect (arg1, arg2, arg3) ;
-    case 4
-        [C, k] = gbselect (arg1, arg2, arg3, arg4) ;
-    case 5
-        [C, k] = gbselect (arg1, arg2, arg3, arg4, arg5) ;
-    case 6
-        [C, k] = gbselect (arg1, arg2, arg3, arg4, arg5, arg6) ;
-    case 7
-        [C, k] = gbselect (arg1, arg2, arg3, arg4, arg5, arg6, arg7) ;
-end
-
-if (k == 0)
-    C = GrB (C) ;
+[args, is_gb] = gb_get_args (varargin {:}) ;
+if (is_gb)
+    Cout = GrB (gbselect (args {:})) ;
+else
+    Cout = gbselect (args {:}) ;
 end
 

@@ -1,5 +1,5 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-SPDX-License-Identifier: Apache-2.0
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 GraphBLAS/Test:
 
@@ -14,8 +14,6 @@ function.  None of the GB_mex_*.c mexFunctions have corresponding GB_mex_*.m
 files to provide 'help GB_mex...' documentation.
 
 Requirements:  the mex command must use a C compiler supporting ANSI C11.
-Microft Visual Studio does not support ANSI C11 so this test is not available
-on Windows unless you use another compiler.
 
 To run the tests, use the following command in this directory, in MATLAB:
 

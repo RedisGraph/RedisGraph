@@ -2,8 +2,8 @@
 // gb_by_col: ensure a matrix is stored by column
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -29,8 +29,7 @@ GrB_Matrix gb_by_col            // return the matrix by column
     { 
         // make a deep copy of A_input and change it to be stored by column
         OK (GrB_Matrix_dup (&A_copy, A_input)) ;
-        OK1 (A_copy, GxB_Matrix_Option_set (A_copy, GxB_FORMAT, GxB_BY_COL)) ;
-        OK1 (A_copy, GrB_Matrix_wait (&A_copy)) ;
+        OK (GxB_Matrix_Option_set (A_copy, GxB_FORMAT, GxB_BY_COL)) ;
         A = A_copy ;
     }
     else
@@ -38,6 +37,10 @@ GrB_Matrix gb_by_col            // return the matrix by column
         // A is just A_input, with no change
         A = A_input ;
     }
+
+    // make sure A is finalized
+    GrB_Index anz ;
+    OK (GrB_Matrix_nvals (&anz, A)) ;
 
     // return results
     (*A_copy_handle) = A_copy ;

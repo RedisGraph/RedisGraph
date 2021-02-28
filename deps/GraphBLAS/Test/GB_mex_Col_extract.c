@@ -2,8 +2,8 @@
 // GB_mex_Col_extract: MATLAB interface for w<mask> = accum (w,A(I,j))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -13,11 +13,11 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Vector_free_(&w) ;              \
-    GrB_Vector_free_(&mask) ;           \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Descriptor_free_(&desc) ;       \
-    GB_mx_put_global (true) ;           \
+    GrB_free (&w) ;                     \
+    GrB_free (&mask) ;                  \
+    GB_MATRIX_FREE (&A) ;               \
+    GrB_free (&desc) ;                  \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -38,6 +38,8 @@ void mexFunction
     GrB_Index *J = NULL, nj = 0, J_range [3] ;
     bool ignore ;
 
+    GB_WHERE (USAGE) ;
+
     // check inputs
     if (nargout > 1 || nargin < 6 || nargin > 7)
     {
@@ -47,13 +49,14 @@ void mexFunction
     // get w (make a deep copy)
     #define GET_DEEP_COPY \
     w = GB_mx_mxArray_to_Vector (pargin [0], "w input", true, true) ;
-    #define FREE_DEEP_COPY GrB_Vector_free_(&w) ;
+    #define FREE_DEEP_COPY GrB_free (&w) ;
     GET_DEEP_COPY ;
     if (w == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("w failed") ;
     }
+    mxClassID cclass = GB_mx_Type_to_classID (w->type) ;
 
     // get mask (shallow copy)
     mask = GB_mx_mxArray_to_Vector (pargin [1], "mask", false, false) ;
@@ -71,12 +74,10 @@ void mexFunction
         mexErrMsgTxt ("A failed") ;
     }
 
-    // get accum, if present
-    bool user_complex = (Complex != GxB_FC64)
-        && (w->type == Complex || A->type == Complex) ;
+    // get accum; default: NOP, default class is class(C)
     GrB_BinaryOp accum ;
     if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [2], "accum",
-        w->type, user_complex))
+        GB_NOP_opcode, cclass, w->type == Complex, A->type == Complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;
@@ -112,7 +113,7 @@ void mexFunction
     }
 
     // w<mask> = accum (w,A(I,j))
-    METHOD (GrB_Col_extract_(w, mask, accum, A, I, ni, j, desc)) ;
+    METHOD (GrB_Col_extract (w, mask, accum, A, I, ni, j, desc)) ;
 
     // return w to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;

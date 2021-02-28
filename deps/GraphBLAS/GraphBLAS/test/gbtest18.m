@@ -1,10 +1,9 @@
 function gbtest18
 %GBTEST18 test comparators (and, or, >, ...)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-tol = 1e-14 ;
 rng ('default') ;
 for trial = 1:21
 
@@ -82,9 +81,9 @@ for trial = 1:21
         C2 = (GA .^ GB) ;
         C3 = (MA .^ GB) ;
         C4 = (GA .^ MB) ;
-        assert (gbtest_err (C1, C2) < tol) ;
-        assert (gbtest_err (C1, C3) < tol) ;
-        assert (gbtest_err (C1, C4) < tol) ;
+        assert (gbtest_eq (C1, C2)) ;
+        assert (gbtest_eq (C1, C3)) ;
+        assert (gbtest_eq (C1, C4)) ;
     end
 
     C1 = (MA & MB) ;
@@ -141,16 +140,12 @@ for trial = 1:21
 
     assert (gbtest_eq (MA <  b, GA <  b)) ;
     assert (gbtest_eq (MA <= b, GA <= b)) ;
-    % MA > b
-    % GA > b
     assert (gbtest_eq (MA >  b, GA >  b)) ;
     assert (gbtest_eq (MA >= b, GA >= b)) ;
     assert (gbtest_eq (MA == b, GA == b)) ;
     assert (gbtest_eq (MA ~= b, GA ~= b)) ;
     if (~islogical (MA))
-        MC = MA .^ b ;
-        GC = GA .^ b ;
-        assert (gbtest_err (MC, GC) < tol) ;
+        assert (gbtest_eq (MA .^ b, GA .^ b)) ;
     end
 
     assert (gbtest_eq (MA <  b, GA <  g)) ;
@@ -160,7 +155,7 @@ for trial = 1:21
     assert (gbtest_eq (MA == b, GA == g)) ;
     assert (gbtest_eq (MA ~= b, GA ~= g)) ;
     if (~islogical (MA))
-        assert (gbtest_err (MA .^ b, GA .^ g) < tol) ;
+        assert (gbtest_eq (MA .^ b, GA .^ g)) ;
     end
 
     assert (gbtest_eq (MA <  b, MA <  g)) ;
@@ -170,7 +165,7 @@ for trial = 1:21
     assert (gbtest_eq (MA == b, MA == g)) ;
     assert (gbtest_eq (MA ~= b, MA ~= g)) ;
     if (~islogical (MA))
-        assert (gbtest_err (MA .^ b, MA .^ g) < tol) ;
+        assert (gbtest_eq (MA .^ b, MA .^ g)) ;
     end
 
     assert (gbtest_eq (b <  MA, b <  GA)) ;
@@ -179,8 +174,8 @@ for trial = 1:21
     assert (gbtest_eq (b >= MA, b >= GA)) ;
     assert (gbtest_eq (b == MA, b == GA)) ;
     assert (gbtest_eq (b ~= MA, b ~= GA)) ;
-    if (~islogical (MA))
-        assert (gbtest_err (b .^ MA, b .^ GA) < tol) ;
+    if (b >= 0 && ~islogical (MA))
+        assert (gbtest_eq (b .^ MA, b .^ GA)) ;
     end
 
     assert (gbtest_eq (b <  MA, g <  GA)) ;
@@ -189,8 +184,8 @@ for trial = 1:21
     assert (gbtest_eq (b >= MA, g >= GA)) ;
     assert (gbtest_eq (b == MA, g == GA)) ;
     assert (gbtest_eq (b ~= MA, g ~= GA)) ;
-    if (~islogical (MA))
-        assert (gbtest_err (b .^ MA, g .^ GA) < tol) ;
+    if (b >= 0 && ~islogical (MA))
+        assert (gbtest_eq (b .^ MA, g .^ GA)) ;
     end
 
     assert (gbtest_eq (b <  MA, g <  MA)) ;
@@ -199,8 +194,8 @@ for trial = 1:21
     assert (gbtest_eq (b >= MA, g >= MA)) ;
     assert (gbtest_eq (b == MA, g == MA)) ;
     assert (gbtest_eq (b ~= MA, g ~= MA)) ;
-    if (~islogical (MA))
-        assert (gbtest_err (b .^ MA, g .^ MA) < tol) ;
+    if (b >= 0 && ~islogical (MA))
+        assert (gbtest_eq (b .^ MA, g .^ MA)) ;
     end
 
     k = (mod (trial,2) == 0) ;
@@ -263,16 +258,14 @@ for trial = 1:21
     assert (gbtest_eq (C1, C3)) ;
     assert (gbtest_eq (C1, C4)) ;
 
-    k = double (k) ;
-    gbk = GrB (k) ;
     if (~islogical (MA))
         C1 = (k   .^ MA) ;
         C2 = (gbk .^ GA) ;
         C3 = (gbk .^ MA) ;
         C4 = (k   .^ GA) ;
-        assert (gbtest_err (C1, C2) < tol) ;
-        assert (gbtest_err (C1, C3) < tol) ;
-        assert (gbtest_err (C1, C4) < tol) ;
+        assert (gbtest_eq (C1, C2)) ;
+        assert (gbtest_eq (C1, C3)) ;
+        assert (gbtest_eq (C1, C4)) ;
     end
 
 end

@@ -3,7 +3,7 @@ function identity = GB_spec_identity (arg1,arg2)
 %
 % identity = GB_spec_identity (add) ;
 % or
-% identity = GB_spec_identity (add_op, add_type) ; % both strings
+% identity = GB_spec_identity (add_op, add_class) ; % both strings
 %
 % Returns the additive identity of an operator of a monoid.
 %
@@ -11,20 +11,18 @@ function identity = GB_spec_identity (arg1,arg2)
 % (identity,x).  For example, for 'plus', the value is zero.  for 'max' the
 % value of identity is -infinity.
 %
-% The addititive monoids supported are 'min', 'max', 'plus', 'times', 'or',
-% 'and', 'xor', 'eq', 'bitor', 'bitand', 'bitxor', and 'bitxnor'.
-% For the 'or', 'and', 'xor', and 'eq' the add_type must be 'logical'.
-% For the 'bit*' operators, the add_type must be unsigned integer.
+% The 8 addititive monoids supported are 'min', 'max', 'plus', 'times', 'or',
+% 'and', 'xor', and 'eq'.   For the last 4 the class must be 'logical'
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin == 1)
     add = arg1 ;
-    [add_operator add_type ztype xtype ytype] = GB_spec_operator (add) ;
+    [add_operator add_class] = GB_spec_operator (add) ;
 else
     add_operator = arg1 ;
-    add_type = arg2 ;
+    add_class = arg2 ;
 end
 
 switch add_operator
@@ -32,7 +30,7 @@ switch add_operator
     case 'min'
 
         % x == min (x, inf)
-        switch add_type
+        switch add_class
             case 'logical'
                 identity = true ;
             case 'int8'
@@ -60,7 +58,7 @@ switch add_operator
     case 'max'
 
         % x == max (x, -inf)
-        switch add_type
+        switch add_class
             case 'logical'
                 identity = false ;
             case 'int8'
@@ -99,85 +97,49 @@ switch add_operator
 
         identity = [ ] ;
 
-    case { 'or', 'lor'}
+    case 'or'
 
         % x == x or false
         identity = false ;
 
-        if (~isequal (add_type, 'logical'))
+        if (~isequal (add_class, 'logical'))
             error ('OR monoid must be logical') ;
         end
 
-    case { 'and', 'land' }
+    case 'and'
 
         % x == x and true
         identity = true ;
 
-        if (~isequal (add_type, 'logical'))
+        if (~isequal (add_class, 'logical'))
             error ('AND monoid must be logical') ;
         end
 
-    case { 'xor', 'lxor' }
+    case 'xor'
 
         % x == x xor false
         identity = false ;
 
-        if (~isequal (add_type, 'logical'))
+        if (~isequal (add_class, 'logical'))
             error ('XOR monoid must be logical') ;
         end
 
-    case { 'eq', 'lxnor'}
+    case 'eq'
 
         % x == (x == true)
         identity = true ;
 
-        if (~isequal (add_type, 'logical'))
+        if (~isequal (add_class, 'logical'))
             error ('EQ monoid must be logical') ;
         end
 
-    case { 'iseq', 'eq' }
+    case 'iseq'
 
         % x == (x == true)
         identity = true ;
 
-        if (~isequal (add_type, 'logical'))
+        if (~isequal (add_class, 'logical'))
             error ('ISEQ monoid must be logical') ;
-        end
-
-    case { 'bitor', 'bor' }
-
-        switch add_type
-            case { 'uint8', 'uint16', 'uint32', 'uint64' }
-                identity = 0 ;
-            otherwise
-                error ('BIT* monoids must be unsigned int') ;
-        end
-
-    case { 'bitand', 'band' }
-
-        switch add_type
-            case { 'uint8', 'uint16', 'uint32', 'uint64' }
-                identity = intmax (add_type) ;
-            otherwise
-                error ('BIT* monoids must be unsigned int') ;
-        end
-
-    case { 'bitxor', 'bxor' }
-
-        switch add_type
-            case { 'uint8', 'uint16', 'uint32', 'uint64' }
-                identity = 0 ;
-            otherwise
-                error ('BIT* monoids must be unsigned int') ;
-        end
-
-    case { 'bitxnor', 'bxnor' }
-
-        switch add_type
-            case { 'uint8', 'uint16', 'uint32', 'uint64' }
-                identity = intmax (add_type) ;
-            otherwise
-                error ('BIT* monoids must be unsigned int') ;
         end
 
     otherwise
@@ -185,5 +147,5 @@ switch add_operator
         error ('unsupported additive monoid') ;
 end
 
-identity = GB_mex_cast (identity, add_type) ;
+identity = GB_mex_cast (identity, add_class) ;
 

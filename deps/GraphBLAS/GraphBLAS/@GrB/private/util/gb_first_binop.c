@@ -2,8 +2,8 @@
 // gb_first_binop: return the GrB_FIRST operator for a given type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
@@ -26,8 +26,12 @@ GrB_BinaryOp gb_first_binop         // return GrB_FIRST_[type] operator
     else if (type == GrB_UINT64) return (GrB_FIRST_UINT64) ;
     else if (type == GrB_FP32)   return (GrB_FIRST_FP32) ;
     else if (type == GrB_FP64)   return (GrB_FIRST_FP64) ;
-    else if (type == GxB_FC32)   return (GxB_FIRST_FC32) ;
-    else if (type == GxB_FC64)   return (GxB_FIRST_FC64) ;
+    #ifdef GB_COMPLEX_TYPE
+    else if (type == gb_complex_type)
+    {
+        return (gb_first_complex) ;
+    }
+    #endif
     else
     {
         ERROR ("unsupported type") ;
