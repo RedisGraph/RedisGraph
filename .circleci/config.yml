@@ -395,9 +395,6 @@ workflows:
           <<: *not-on-integ-branch
       - build_memcheck:
           <<: *on-any-branch
-      - build_macos:
-          # <<: *on-any-branch
-          <<: *on-integ-branch
       - platform_build:
           matrix:
             parameters:
@@ -406,7 +403,6 @@ workflows:
       - deploy_branch:
           requires:
             - platform_build
-            - build_macos
           <<: *on-integ-branch
       - release_automation:
           requires:
@@ -415,7 +411,6 @@ workflows:
           <<: *on-version-tags
           requires:
             - platform_build
-            - build_macos
 
   nightly:
     triggers:
