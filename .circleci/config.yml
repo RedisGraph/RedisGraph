@@ -416,13 +416,6 @@ workflows:
           requires:
             - platform_build
             - build_macos
-      - performance_ci_automation_not_integ:
-          <<: *not-on-integ-branch
-          requires:
-            - build
-      - performance_ci_automation:
-          requires:
-            - platform_build
 
   nightly:
     triggers:
