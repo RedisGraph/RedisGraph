@@ -8,7 +8,7 @@ docker run -p 6379:6379 -it --rm simpletondl/redisgraph:latest
 127.0.0.1:6379>
 ```
 
-This docker image already contains some graph _company_ described below, and also runs the redis-cli at startup. So you can immediately make queries in the shell, f.e. count the number of vertices:
+ [This docker image](https://hub.docker.com/r/simpletondl/redisgraph) already contains some graph _company_ described below, and also runs the redis-cli at startup. So you can immediately make queries in the shell, f.e. count the number of vertices:
 
 ```
 127.0.0.1:6379> GRAPH.QUERY company "MATCH () RETURN COUNT(*)"
