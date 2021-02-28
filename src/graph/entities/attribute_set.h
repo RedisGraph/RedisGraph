@@ -10,6 +10,7 @@
 #include "../../value.h"
 
 #define ATTRIBUTE_UNKNOWN USHRT_MAX
+static SIValue *ATTRIBUTE_NOTFOUND = &(SIValue) { .longval = 0, .type = T_NULL };
 
 typedef uint Version;
 typedef unsigned short Attribute_ID;

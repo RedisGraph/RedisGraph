@@ -184,10 +184,10 @@ AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity,
 	// if the graph is not aware of it in which case we'll try to resolve
 	// the property using its string representation
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	SIValue prop_idx = SI_LongVal(ATTRIBUTE_UNKNOWN);
+	GraphContext *gc  = QueryCtx_GetGraphCtx();
+	SIValue prop_idx  = SI_LongVal(ATTRIBUTE_UNKNOWN);
 	SIValue prop_name = SI_ConstStringVal((char *)attr);
-	Attribute_ID idx = GraphContext_GetAttributeID(gc, attr);
+	Attribute_ID idx  = GraphContext_GetAttributeID(gc, attr);
 
 	if(idx != ATTRIBUTE_UNKNOWN) prop_idx = SI_LongVal(idx);
 

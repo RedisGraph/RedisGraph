@@ -5,7 +5,7 @@
 */
 
 #include "op_merge.h"
-#include "../../RG.h"
+#include "RG.h"
 #include "../../errors.h"
 #include "op_merge_create.h"
 #include "../../query_ctx.h"

@@ -128,7 +128,7 @@ void AttributeSet_GetAttrIdx
 	ASSERT(set != NULL);
 
 	SIValue _v = SI_NullVal();
-	Attribute_ID _id = ATTRIBUTE_NOTFOUND;
+	Attribute_ID _id = ATTRIBUTE_UNKNOWN;
 
 	if(idx < AttributeSet_AttributeCount(set)) {
 		Attribute attr = set->attributes[idx];
@@ -160,11 +160,11 @@ AttributeSet AttributeSet_SetAttr
 		// make room for new attribute
 		uint attr_count = AttributeSet_AttributeCount(s) + 1;
 		size_t size = _AttributeSet_ComputeSize(attr_count);
-		*set = rm_realloc(s, size);
-		s = *set;
+		s = rm_realloc(s, size);
 		s->attribute_count = attr_count;
 		s->attributes[attr_count-1].id = id;
 		s->attributes[attr_count-1].value = SI_CloneValue(v);
+		*set = s;
 	}
 
 	return s;

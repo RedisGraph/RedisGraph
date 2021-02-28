@@ -283,63 +283,39 @@ const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 }
 
 uint GraphContext_AttributeCount(GraphContext *gc) {
-	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-	uint size = raxSize(gc->attributes);
-	pthread_rwlock_unlock(&gc->_attribute_rwlock);
-	return size;
+	return raxSize(gc->attributes);
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
-	// Acquire a read lock for looking up the attribute.
-	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-
 	// See if attribute already exists.
 	void *attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
 
 	if(attribute_id == raxNotFound) {
-		// We are writing to the shared GraphContext; release the held lock and re-acquire as a writer.
-		pthread_rwlock_unlock(&gc->_attribute_rwlock);
-		pthread_rwlock_wrlock(&gc->_attribute_rwlock);
+		attribute_id = (void *)raxSize(gc->attributes);
+		// Insert the new attribute key and ID.
+		raxInsert(gc->attributes,
+				(unsigned char *)attribute,
+				strlen(attribute),
+				attribute_id,
+				NULL);
+		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 
-		// Lookup the attribute again now that we are in a critical region.
-		attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
-		// If it has been set by another thread, use the retrieved value.
-		if(attribute_id == raxNotFound) {
-			// Otherwise, it will be assigned an ID equal to the current mapping size.
-			attribute_id = (void *)raxSize(gc->attributes);
-			// Insert the new attribute key and ID.
-			raxInsert(gc->attributes,
-					  (unsigned char *)attribute,
-					  strlen(attribute),
-					  attribute_id,
-					  NULL);
-			gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
-
-			// new attribute been added, update graph version
-			_GraphContext_UpdateVersion(gc, attribute);
-		}
+		// new attribute been added, update graph version
+		_GraphContext_UpdateVersion(gc, attribute);
 	}
 
-	// Release the lock.
-	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return (uintptr_t)attribute_id;
 }
 
 const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
-	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	ASSERT(id < array_len(gc->string_mapping));
 	const char *name = gc->string_mapping[id];
-	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return name;
 }
 
 Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute) {
-	// Acquire a read lock for looking up the attribute.
-	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	// Look up the attribute ID.
 	void *id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
-	// Release the lock.
-	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 
 	if(id == raxNotFound) return ATTRIBUTE_UNKNOWN;
 

@@ -58,7 +58,7 @@ int GraphEntity_ClearProperties(
 	GraphEntity *e
 );
 
-const AttributeSet GraphEntity_GetAttributeSet
+AttributeSet GraphEntity_GetAttributeSet
 (
 	const GraphEntity *e
 );

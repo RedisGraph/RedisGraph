@@ -160,7 +160,7 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	if(dataBlock->destructor) dataBlock->destructor(item);
 
 	// reset memory
-	memset(item, 0, dataBlock->itemSize);
+	memset(item, 0, dataBlock->itemSize - ITEM_HEADER_SIZE);
 
 	MARK_HEADER_AS_DELETED(item_header);
 

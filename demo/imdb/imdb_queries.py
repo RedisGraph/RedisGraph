@@ -95,7 +95,7 @@ class IMDBQueries(object):
         self.actors_over_50_that_played_in_blockbusters_query = QueryInfo(
             query="""MATCH (a:actor)-[:act]->(m:movie)
                     WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.2
-                    RETURN a, m ORDER BY a.name, m.name""",
+                    RETURN a, m ORDER BY a.name, m.title""",
             description='Which actors who are over 50 played in blockbuster movies?',
             max_run_time_ms=4.0,
             expected_result=expected_result

@@ -25,7 +25,12 @@ static AttributeSet *_GraphEntity_GetAttrSet
 (
 	const GraphEntity *ge
 ) {
-	if(ge->entity->sets == NULL) return NULL;
+	if(ge->entity->sets == NULL) {
+		AttributeSet *sets = array_new(AttributeSet, 1);
+		sets = array_append(sets, AttributeSet_New(0));
+		ge->entity->sets = sets;
+	}
+
 	return ge->entity->sets;
 }
 
@@ -63,11 +68,11 @@ int GraphEntity_ClearProperties(GraphEntity *e) {
 	return prop_count;
 }
 
-const AttributeSet GraphEntity_GetAttributeSet
+AttributeSet GraphEntity_GetAttributeSet
 (
 	const GraphEntity *e
 ) {
-	const AttributeSet *s = NULL;
+	AttributeSet s = NULL;
 	AttributeSet *set = _GraphEntity_GetAttrSet(e);
 	if(set != NULL) s = (const AttributeSet) * set;
 

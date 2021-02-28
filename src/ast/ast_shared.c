@@ -70,14 +70,19 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
 		const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
 		const char *attribute = cypher_ast_prop_name_get_value(ast_key);
-		// Convert the string key to an Attribute ID.
-		map->keys[prop_idx] = GraphContext_FindOrAddAttribute(gc, attribute);
-
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-		// Convert the AST entity representing the value into an expression to be resolved later.
+
+		// convert the string key to an Attribute ID
+		Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute);
+
+		// convert the AST entity representing the value into an expression
+		// to be resolved later
 		AR_ExpNode *value = AR_EXP_FromASTNode(ast_value);
+
+		map->keys[prop_idx] = attr_id;
 		map->values[prop_idx] = value;
 	}
+
 	return map;
 }
 
