@@ -397,12 +397,12 @@ workflows:
           <<: *on-any-branch
       - build_macos:
           # <<: *on-any-branch
-          <<: *on-integ-branch
+          <<: *on-integ-and-version-tags
       - platform_build:
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
-          <<: *on-integ-branch
+          <<: *on-integ-and-version-tags
       - deploy_branch:
           requires:
             - platform_build
