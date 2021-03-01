@@ -399,16 +399,17 @@ workflows:
           # <<: *on-any-branch
           <<: *on-integ-and-version-tags
       - platform_build:
+          <<: *on-integ-and-version-tags
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
-          <<: *on-integ-and-version-tags
       - deploy_branch:
+          <<: *on-integ-branch
           requires:
             - platform_build
             - build_macos
-          <<: *on-integ-branch
       - release_automation:
+          <<: *on-version-tags
           requires:
             - deploy_release
       - deploy_release:
@@ -421,6 +422,7 @@ workflows:
           requires:
             - build
       - performance_ci_automation:
+          <<: *on-integ-and-version-tags
           requires:
             - platform_build
 
