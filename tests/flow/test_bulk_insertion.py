@@ -2,7 +2,9 @@
 import os
 import sys
 import csv
+import time
 import click
+import threading
 from RLTest import Env
 from click.testing import CliRunner
 
@@ -17,6 +19,12 @@ from bulk_insert import bulk_insert
 redis_con = None
 port = None
 redis_graph = None
+
+def run_bulk_loader(graphname):
+    runner = CliRunner()
+    runner.invoke(bulk_insert, ['--port', port,
+                                '--nodes', '/tmp/nodes.tmp',
+                                graphname])
 
 class testGraphBulkInsertFlow(FlowTestsBase):
     def __init__(self):
@@ -346,42 +354,21 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         # The graph should have the correct types for all properties
         self.env.assertEquals(query_result.result_set, expected_result)
 
-    # Verify that numeric, boolean, and null types are properly handled
-    # def test09_utf8(self):
-    #     graphname = "tmpgraph5"
-    #     # Write temporary files
-    #     with open('/tmp/nodes.tmp', mode='w') as csv_file:
-    #         out = csv.writer(csv_file)
-    #         out.writerow(['id', 'utf8_str_ß'])
-    #         out.writerow([0, 'Straße'])
-    #         out.writerow([1, 'auslösen'])
-    #         out.writerow([2, 'zerstören'])
-    #         out.writerow([3, 'français'])
-    #         out.writerow([4, 'américaine'])
-    #         out.writerow([5, 'épais'])
-    #         out.writerow([6, '中國的'])
-    #         out.writerow([7, '英語'])
-    #         out.writerow([8, '美國人'])
+    # Verify that the bulk loader does not block the server
+    def test09_large_bulk_insert(self):
+        graphname = "tmpgraph5"
+        prop_str = "Property value to be repeated 1 million generating a multi-megabyte CSV"
+        # Write temporary files
+        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            for i in range(1_000_000):
+                out.writerow([prop_str])
 
-    #     runner = CliRunner()
-    #     res = runner.invoke(bulk_insert, ['--port', port,
-    #                                       '--nodes', '/tmp/nodes.tmp',
-    #                                       graphname])
+        # Instantiate a thread to run the bulk loader
+        threading.Thread(target=run_bulk_loader, args=(graphname,)).start()
 
-    #     assert res.exit_code == 0
-    #     assert '9 nodes created' in res.output
-
-    #     graph = Graph(graphname, redis_con)
-    #     query_result = graph.query('MATCH (a) RETURN a.utf8_str_ß ORDER BY a.id')
-    #     expected_strs = ['Straße',
-    #                      'auslösen',
-    #                      'zerstören',
-    #                      'français',
-    #                      'américaine',
-    #                      'épais',
-    #                      '中國的',
-    #                      '英語',
-    #                      '美國人']
-
-    #     for i, j in zip(query_result.result_set, expected_strs):
-    #         self.assertEqual(repr(i), repr(j))
+        t0 = time.time()
+        redis_con.ping()
+        t1 = time.time() - t0
+        # Verify that pinging the server takes less than 1 second during bulk insertion
+        self.env.assertLess(t1, 1)

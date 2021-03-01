@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,7 +10,6 @@
 #include "../util/rmalloc.h"
 #include "../schema/schema.h"
 #include "../datatypes/array.h"
-#include "../execution_plan/ops/shared/create_functions.h"
 
 // The first byte of each property in the binary stream
 // is used to indicate the type of the subsequent SIValue
@@ -22,15 +21,6 @@ typedef enum {
 	BI_LONG = 4,
 	BI_ARRAY = 5,
 } TYPE;
-
-// Container struct for nodes and edges that are constructed and committed to the graph.
-typedef struct {
-	Node *nodes;
-	Edge *edges;
-	GraphContext *gc;
-	PendingProperties *node_props;
-	PendingProperties *edge_props;
-} PendingInserts;
 
 // Read the header of a data stream to parse its property keys and update schemas.
 static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
@@ -70,7 +60,7 @@ static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 
 // Read an SIValue from the data stream and update the index appropriately
 static inline SIValue _BulkInsert_ReadProperty(const char *data,
-		size_t *data_idx) {
+											   size_t *data_idx) {
 	/* Binary property format:
 	 * - property type : 1-byte integer corresponding to TYPE enum
 	 * - Nothing if type is NULL
@@ -119,9 +109,8 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data,
 	return v;
 }
 
-static int _BulkInsert_ProcessFile(PendingInserts *bulk_ctx, const char *data,
-		size_t data_len, Attribute_ID **label_props, uint *entities_created,
-		SchemaType type) {
+static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
+								   size_t data_len, SchemaType type) {
 
 	int label_id;
 	uint prop_count;
@@ -129,54 +118,47 @@ static int _BulkInsert_ProcessFile(PendingInserts *bulk_ctx, const char *data,
 
 	// read the CSV file header
 	// and commit all labels and properties it introduces
-	Graph_AcquireWriteLock(bulk_ctx->gc->g);
-	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(bulk_ctx->gc, type, data, &data_idx,
+	Graph_AcquireWriteLock(gc->g);
+	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data, &data_idx,
 														&label_id, &prop_count);
-	Graph_ReleaseLock(bulk_ctx->gc->g);
-
-	*label_props = prop_indices;
 	while(data_idx < data_len) {
+		Node n;
+		Edge e;
+		GraphEntity *ge;
 		if(type == SCHEMA_NODE) {
-			Node n = GE_NEW_LABELED_NODE(NULL, label_id);
-			bulk_ctx->nodes[*entities_created] = n;
+			Graph_CreateNode(gc->g, label_id, &n);
+			ge = (GraphEntity *)&n;
 		} else if(type == SCHEMA_EDGE) {
-			Edge e;
-			e.relationID = label_id;
-			// next 8 bytes are source ID
-			e.srcNodeID = *(NodeID *)&data[data_idx];
+			// Next 8 bytes are source ID
+			NodeID src = *(NodeID *)&data[data_idx];
 			data_idx += sizeof(NodeID);
-			// next 8 bytes are destination ID
-			e.destNodeID = *(NodeID *)&data[data_idx];
+			// Next 8 bytes are destination ID
+			NodeID dest = *(NodeID *)&data[data_idx];
 			data_idx += sizeof(NodeID);
-			bulk_ctx->edges[*entities_created] = e;
+
+			Graph_ConnectNodes(gc->g, src, dest, label_id, &e);
+			ge = (GraphEntity *)&e;
 		} else {
 			ASSERT(false);
 		}
 
-		PendingProperties props;
-		// TODO: for large batches this can be expensive, lots of allocations
-		props.values = rm_malloc(prop_count * sizeof(SIValue));
-		props.attr_keys = prop_indices;
-		props.property_count = prop_count;
 		for(uint i = 0; i < prop_count; i++) {
-			props.values[i] = _BulkInsert_ReadProperty(data, &data_idx);
+			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
+			// Cypher does not support NULL as a property value.
+			// If we encounter one here, simply skip it.
+			if(SI_TYPE(value) == T_NULL) continue;
+			GraphEntity_AddProperty(ge, prop_indices[i], value);
 		}
-		if(type == SCHEMA_NODE) {
-			bulk_ctx->node_props[*entities_created] = props;
-		} else if(type == SCHEMA_EDGE) {
-			bulk_ctx->edge_props[*entities_created] = props;
-		} else {
-			ASSERT(false);
-		}
-		(*entities_created) ++;
 	}
 
+	// release the lock
+	Graph_ReleaseLock(gc->g);
+	rm_free(prop_indices);
 	return BULK_OK;
 }
 
-static int _BulkInsert_ProcessTokens(PendingInserts *bulk_ctx, int token_count,
-									 RedisModuleString ***argv, int *argc,
-									 Attribute_ID **prop_ids, SchemaType type) {
+static int _BulkInsert_ProcessTokens(GraphContext *gc, int token_count,
+									 RedisModuleString ***argv, int *argc, SchemaType type) {
 	uint entities_created = 0;
 	for(int i = 0; i < token_count; i ++) {
 		size_t len;
@@ -184,56 +166,11 @@ static int _BulkInsert_ProcessTokens(PendingInserts *bulk_ctx, int token_count,
 		const char *data = RedisModule_StringPtrLen(**argv, &len);
 		*argv += 1;
 		*argc -= 1;
-		int rc = _BulkInsert_ProcessFile(bulk_ctx, data, len, &prop_ids[i],
-				&entities_created, type);
+		int rc = _BulkInsert_ProcessFile(gc, data, len, type);
 		UNUSED(rc);
 		ASSERT(rc == BULK_OK);
 	}
 	return BULK_OK;
-}
-
-static void _BulkInsert_Commit(PendingInserts *bulk_ctx, uint node_count, uint edge_count) {
-	Graph *g = bulk_ctx->gc->g;
-	// number of entities already created
-	size_t initial_node_count = Graph_NodeCount(g);
-
-	// disable matrix synchronization for bulk insert operation
-	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
-
-	// allocate or extend datablocks to accommodate all incoming entities
-	Graph_AllocateNodes(g, node_count + initial_node_count);
-
-	// commit all nodes to the graph
-	for(uint i = 0; i < node_count; i ++) {
-		Node n = bulk_ctx->nodes[i];
-		Graph_CreateNode(bulk_ctx->gc->g, n.labelID, &n);
-		PendingProperties props = bulk_ctx->node_props[i];
-		for(uint j = 0; j < props.property_count; j ++) {
-			SIValue prop = props.values[j];
-			// Cypher does not support NULL as a property value.
-			// If we encounter one here, simply skip it.
-			// TODO: can this be removed on the client side?
-			if(SIValue_IsNull(prop)) continue;
-			GraphEntity_AddProperty((GraphEntity *)&n, props.attr_keys[j], props.values[j]);
-		}
-		rm_free(props.values);
-	}
-
-	// commit all edges to the graph
-	for(uint i = 0; i < edge_count; i ++) {
-		Edge e = bulk_ctx->edges[i];
-		Graph_ConnectNodes(bulk_ctx->gc->g, e.srcNodeID, e.destNodeID, e.relationID, &e);
-		PendingProperties props = bulk_ctx->edge_props[i];
-		for(uint j = 0; j < props.property_count; j ++) {
-			SIValue prop = props.values[j];
-			// Cypher does not support NULL as a property value.
-			// If we encounter one here, simply skip it.
-			// TODO: can this be removed on the client side?
-			if(SIValue_IsNull(prop)) continue;
-			GraphEntity_AddProperty((GraphEntity *)&e, props.attr_keys[j], props.values[j]);
-		}
-		rm_free(props.values);
-	}
 }
 
 int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, int argc,
@@ -243,6 +180,12 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
 		RedisModule_ReplyWithError(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
 		return BULK_FAIL;
 	}
+
+	// allocate space for new nodes and edges
+	Graph_AcquireWriteLock(gc->g);
+	DataBlock_Accommodate(gc->g->nodes, node_count);
+	DataBlock_Accommodate(gc->g->edges, edge_count);
+	Graph_ReleaseLock(gc->g);
 
 	// read the number of node tokens
 	long long node_token_count;
@@ -260,58 +203,22 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
 	}
 
 	argc -= 2;
-	PendingInserts bulk_ctx = { .gc = gc };
 
-	// stack-allocate an array to contain the attribute key IDs
-	// of each label file
-	//
-	// TODO: not sure how many node tokens to expect, but for large numbers
-	// allocating `props_per_label` on the stack will fail
-	Attribute_ID *props_per_label[node_token_count];
 	if(node_token_count > 0) {
-		bulk_ctx.nodes = rm_malloc(node_count * sizeof(Node));
-		bulk_ctx.node_props = rm_malloc(node_count * sizeof(PendingProperties));
 		// process all node files
-		int rc = _BulkInsert_ProcessTokens(&bulk_ctx, node_token_count, &argv,
-				&argc, props_per_label, SCHEMA_NODE);
+		int rc = _BulkInsert_ProcessTokens(gc, node_token_count, &argv,
+										   &argc, SCHEMA_NODE);
 		if(rc != BULK_OK) return BULK_FAIL;
 	}
 
-	// stack-allocate an array to contain the attribute key IDs
-	// of each relationship type file
-	//
-	// TODO: not sure how many node tokens to expect, but for large numbers
-	// allocating `props_per_label` on the stack will fail
-	Attribute_ID *props_per_type[relation_token_count];
 	if(relation_token_count > 0) {
-		bulk_ctx.edges = rm_malloc(edge_count * sizeof(Edge));
-		bulk_ctx.edge_props = rm_malloc(edge_count * sizeof(PendingProperties));
 		// Process all relationship files
-		int rc = _BulkInsert_ProcessTokens(&bulk_ctx, relation_token_count,
-				&argv, &argc, props_per_type, SCHEMA_EDGE);
+		int rc = _BulkInsert_ProcessTokens(gc, relation_token_count,
+										   &argv, &argc, SCHEMA_EDGE);
 		if(rc != BULK_OK) return BULK_FAIL;
 	}
 
 	ASSERT(argc == 0);
-
-	// lock the graph for writing
-	RedisModule_ThreadSafeContextLock(ctx);
-	Graph_AcquireWriteLock(gc->g);
-
-	// commit all accumulated changes
-	_BulkInsert_Commit(&bulk_ctx, node_count, edge_count);
-
-	// release the lock
-	Graph_ReleaseLock(gc->g);
-	RedisModule_ThreadSafeContextUnlock(ctx);
-
-	// free accumulated data
-	for(uint i = 0; i < node_token_count; i ++) rm_free(props_per_label[i]);
-	for(uint i = 0; i < relation_token_count; i ++) rm_free(props_per_type[i]);
-	rm_free(bulk_ctx.nodes);
-	rm_free(bulk_ctx.node_props);
-	rm_free(bulk_ctx.edges);
-	rm_free(bulk_ctx.edge_props);
 
 	return BULK_OK;
 }
