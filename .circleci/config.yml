@@ -399,7 +399,7 @@ workflows:
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
-          <<: *on-integ-branch
+          <<: *on-integ-and-version-tags
       - deploy_branch:
           requires:
             - platform_build
