@@ -22,10 +22,17 @@ typedef enum {
 	BI_ARRAY = 5,
 } TYPE;
 
-// Read the header of a data stream to parse its property keys and update schemas.
+// read the header of a data stream to parse its property keys
+// and update schemas
 static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 											const char *data, size_t *data_idx,
 											int *label_id, uint *prop_count) {
+	ASSERT(gc != NULL);
+	ASSERT(data != NULL);
+	ASSERT(data_idx != NULL);
+	ASSERT(label_id != NULL);
+	ASSERT(prop_count != NULL);
+
 	/* binary header format:
 	 * - entity name : null-terminated C string
 	 * - property count : 4-byte unsigned integer
@@ -35,6 +42,7 @@ static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 	// first sequence is entity name
 	const char *name = data + *data_idx;
 	*data_idx += strlen(name) + 1;
+
 	Schema *schema = GraphContext_GetSchema(gc, name, t);
 	if(schema == NULL) schema = GraphContext_AddSchema(gc, name, t);
 	*label_id = schema->id;
@@ -59,8 +67,7 @@ static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 }
 
 // Read an SIValue from the data stream and update the index appropriately
-static inline SIValue _BulkInsert_ReadProperty(const char *data,
-											   size_t *data_idx) {
+static SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_idx) {
 	/* Binary property format:
 	 * - property type : 1-byte integer corresponding to TYPE enum
 	 * - Nothing if type is NULL
@@ -71,41 +78,63 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data,
 	 * - 8-byte array length followed by N values if type is array
 	 */
 
+	// possible property values
+	bool       b;
+	double     d;
+	int64_t    i;
+	int64_t    len;
+	const char *s;
+
 	SIValue v = SI_NullVal();
 	TYPE t = data[*data_idx];
 	*data_idx += 1;
 
-	if(t == BI_NULL) {
-		v = SI_NullVal();
-	} else if(t == BI_BOOL) {
-		bool b = data[*data_idx];
-		*data_idx += 1;
-		v = SI_BoolVal(b);
-	} else if(t == BI_DOUBLE) {
-		double d = *(double *)&data[*data_idx];
-		*data_idx += sizeof(double);
-		v = SI_DoubleVal(d);
-	} else if(t == BI_LONG) {
-		int64_t d = *(int64_t *)&data[*data_idx];
-		*data_idx += sizeof(int64_t);
-		v = SI_LongVal(d);
-	} else if(t == BI_STRING) {
-		const char *s = data + *data_idx;
-		*data_idx += strlen(s) + 1;
-		// The string itself will be cloned when added to the GraphEntity properties.
-		v = SI_ConstStringVal((char *)s);
-	} else if(t == BI_ARRAY) {
-		// The first 8 bytes of a received array will be the array length.
-		int64_t len = *(int64_t *)&data[*data_idx];
-		*data_idx += sizeof(int64_t);
-		v = SIArray_New(len);
-		for(uint i = 0; i < len; i ++) {
-			// Convert every element and add to array.
-			SIArray_Append(&v, _BulkInsert_ReadProperty(data, data_idx));
-		}
-	} else {
-		ASSERT(false);
+	switch(t) {
+		case BI_NULL:
+			v = SI_NullVal();
+			break;
+
+		case BI_BOOL:
+			b = data[*data_idx];
+			*data_idx += 1;
+			v = SI_BoolVal(b);
+			break;
+
+		case BI_DOUBLE:
+			d = *(double *)&data[*data_idx];
+			*data_idx += sizeof(double);
+			v = SI_DoubleVal(d);
+			break;
+
+		case BI_LONG:
+			i = *(int64_t *)&data[*data_idx];
+			*data_idx += sizeof(int64_t);
+			v = SI_LongVal(i);
+			break;
+
+		case BI_STRING:
+			s = data + *data_idx;
+			*data_idx += strlen(s) + 1;
+			// The string itself will be cloned when added to the GraphEntity properties.
+			v = SI_ConstStringVal((char *)s);
+			break;
+
+		case BI_ARRAY:
+			// The first 8 bytes of a received array will be the array length.
+			len = *(int64_t *)&data[*data_idx];
+			*data_idx += sizeof(int64_t);
+			v = SIArray_New(len);
+			for(uint i = 0; i < len; i ++) {
+				// Convert every element and add to array.
+				SIArray_Append(&v, _BulkInsert_ReadProperty(data, data_idx));
+			}
+			break;
+
+		default:
+			ASSERT(false);
+			break;
 	}
+
 	return v;
 }
 
@@ -118,9 +147,9 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 
 	// read the CSV file header
 	// and commit all labels and properties it introduces
-	Graph_AcquireWriteLock(gc->g);
-	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data, &data_idx,
-														&label_id, &prop_count);
+	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data,
+			&data_idx, &label_id, &prop_count);
+
 	while(data_idx < data_len) {
 		Node n;
 		Edge e;
@@ -129,10 +158,10 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 			Graph_CreateNode(gc->g, label_id, &n);
 			ge = (GraphEntity *)&n;
 		} else if(type == SCHEMA_EDGE) {
-			// Next 8 bytes are source ID
+			// next 8 bytes are source ID
 			NodeID src = *(NodeID *)&data[data_idx];
 			data_idx += sizeof(NodeID);
-			// Next 8 bytes are destination ID
+			// next 8 bytes are destination ID
 			NodeID dest = *(NodeID *)&data[data_idx];
 			data_idx += sizeof(NodeID);
 
@@ -142,84 +171,104 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 			ASSERT(false);
 		}
 
+		// process entity attributes
 		for(uint i = 0; i < prop_count; i++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
-			// Cypher does not support NULL as a property value.
-			// If we encounter one here, simply skip it.
-			if(SI_TYPE(value) == T_NULL) continue;
+			// skip invalid attribute values
+			if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) continue;
 			GraphEntity_AddProperty(ge, prop_indices[i], value);
 		}
 	}
 
-	// release the lock
-	Graph_ReleaseLock(gc->g);
-	rm_free(prop_indices);
+	if(prop_indices) rm_free(prop_indices);
 	return BULK_OK;
 }
 
 static int _BulkInsert_ProcessTokens(GraphContext *gc, int token_count,
-									 RedisModuleString ***argv, int *argc, SchemaType type) {
+									 RedisModuleString ***argv, int *argc,
+									 SchemaType type) {
 	uint entities_created = 0;
-	for(int i = 0; i < token_count; i ++) {
+	int i = 0;
+	for(; i < token_count; i ++) {
 		size_t len;
 		// retrieve a pointer to the next binary stream and record its length
-		const char *data = RedisModule_StringPtrLen(**argv, &len);
-		*argv += 1;
-		*argc -= 1;
+		const char *data = RedisModule_StringPtrLen(*argv[i], &len);
 		int rc = _BulkInsert_ProcessFile(gc, data, len, type);
 		UNUSED(rc);
 		ASSERT(rc == BULK_OK);
 	}
+
+	*argv += i;
+	*argc -= i;
+
 	return BULK_OK;
 }
 
-int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, int argc,
-			   uint node_count, uint edge_count) {
+int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
+		int argc, uint node_count, uint edge_count) {
+
+	ASSERT(ctx != NULL);
+	ASSERT(gc != NULL);
+	ASSERT(argv != NULL);
 
 	if(argc < 2) {
-		RedisModule_ReplyWithError(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
+		RedisModule_ReplyWithError(ctx, "Bulk insert format error, \
+				failed to parse bulk insert sections.");
 		return BULK_FAIL;
 	}
 
+	Graph *g = gc->g;
+	int res = BULK_OK;
+
+	// lock graph under write lock
 	// allocate space for new nodes and edges
-	Graph_AcquireWriteLock(gc->g);
-	DataBlock_Accommodate(gc->g->nodes, node_count);
-	DataBlock_Accommodate(gc->g->edges, edge_count);
-	Graph_ReleaseLock(gc->g);
+	Graph_AcquireWriteLock(g);
+	Graph_AllocateNodes(g, node_count);
+	Graph_AllocateEdges(g, edge_count);
 
 	// read the number of node tokens
 	long long node_token_count;
 	long long relation_token_count;
 
 	if(RedisModule_StringToLongLong(*argv++, &node_token_count)  != REDISMODULE_OK) {
-		RedisModule_ReplyWithError(ctx, "Error parsing number of node descriptor tokens.");
-		return BULK_FAIL;
+		RedisModule_ReplyWithError(ctx, "Error parsing number of node \
+				descriptor tokens.");
+		res = BULK_FAIL;
+		goto cleanup;
 	}
 
 	// read the number of relation tokens
 	if(RedisModule_StringToLongLong(*argv++, &relation_token_count)  != REDISMODULE_OK) {
-		RedisModule_ReplyWithError(ctx, "Error parsing number of relation descriptor tokens.");
-		return BULK_FAIL;
+		RedisModule_ReplyWithError(ctx, "Error parsing number of relation \
+				descriptor tokens.");
+		res = BULK_FAIL;
+		goto cleanup;
 	}
 
 	argc -= 2;
 
 	if(node_token_count > 0) {
 		// process all node files
-		int rc = _BulkInsert_ProcessTokens(gc, node_token_count, &argv,
-										   &argc, SCHEMA_NODE);
-		if(rc != BULK_OK) return BULK_FAIL;
+		if(_BulkInsert_ProcessTokens(gc, node_token_count, &argv, &argc,
+				SCHEMA_NODE) != BULK_OK) {
+			res = BULK_FAIL;
+			goto cleanup;
+		}
 	}
 
 	if(relation_token_count > 0) {
 		// Process all relationship files
-		int rc = _BulkInsert_ProcessTokens(gc, relation_token_count,
-										   &argv, &argc, SCHEMA_EDGE);
-		if(rc != BULK_OK) return BULK_FAIL;
+		if(_BulkInsert_ProcessTokens(gc, relation_token_count, &argv,
+				&argc, SCHEMA_EDGE) != BULK_OK) {
+			res = BULK_FAIL;
+			goto cleanup;
+		}
 	}
 
 	ASSERT(argc == 0);
 
-	return BULK_OK;
+cleanup:
+	Graph_ReleaseLock(g);
+	return res;
 }
 
