@@ -148,7 +148,7 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 	// read the CSV file header
 	// and commit all labels and properties it introduces
 	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data,
-			&data_idx, &label_id, &prop_count);
+														&data_idx, &label_id, &prop_count);
 
 	while(data_idx < data_len) {
 		Node n;
@@ -187,25 +187,23 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 static int _BulkInsert_ProcessTokens(GraphContext *gc, int token_count,
 									 RedisModuleString ***argv, int *argc,
 									 SchemaType type) {
-	uint entities_created = 0;
 	int i = 0;
 	for(; i < token_count; i ++) {
 		size_t len;
 		// retrieve a pointer to the next binary stream and record its length
-		const char *data = RedisModule_StringPtrLen(*argv[i], &len);
+		const char *data = RedisModule_StringPtrLen(**argv, &len);
+		*argv += 1;
+		*argc -= 1;
 		int rc = _BulkInsert_ProcessFile(gc, data, len, type);
 		UNUSED(rc);
 		ASSERT(rc == BULK_OK);
 	}
 
-	*argv += i;
-	*argc -= i;
-
 	return BULK_OK;
 }
 
 int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
-		int argc, uint node_count, uint edge_count) {
+			   int argc, uint node_count, uint edge_count) {
 
 	ASSERT(ctx != NULL);
 	ASSERT(gc != NULL);
@@ -250,7 +248,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 	if(node_token_count > 0) {
 		// process all node files
 		if(_BulkInsert_ProcessTokens(gc, node_token_count, &argv, &argc,
-				SCHEMA_NODE) != BULK_OK) {
+									 SCHEMA_NODE) != BULK_OK) {
 			res = BULK_FAIL;
 			goto cleanup;
 		}
@@ -259,7 +257,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 	if(relation_token_count > 0) {
 		// Process all relationship files
 		if(_BulkInsert_ProcessTokens(gc, relation_token_count, &argv,
-				&argc, SCHEMA_EDGE) != BULK_OK) {
+									 &argc, SCHEMA_EDGE) != BULK_OK) {
 			res = BULK_FAIL;
 			goto cleanup;
 		}

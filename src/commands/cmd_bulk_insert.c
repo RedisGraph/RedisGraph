@@ -21,8 +21,8 @@ typedef struct {
 // batch, make sure graph key doesn't exists, fails if "BEGIN" token is present
 // and graph key 'graphname' already exists
 static int _MGraph_Bulk_Begin(RedisModuleCtx *ctx,
-		RedisModuleString ***argv, int *argc, RedisModuleString *rs_graph_name,
-		const char *graphname) {
+							  RedisModuleString ***argv, int *argc, RedisModuleString *rs_graph_name,
+							  const char *graphname) {
 	// do nothing if this is not the first BULK call
 	if(strcmp(RedisModule_StringPtrLen(**argv, 0), "BEGIN")) return BULK_OK;
 
@@ -74,9 +74,9 @@ static void _MGraph_BulkInsert(void *args) {
 	argc -= 2; // skip "GRAPH.BULK [GRAPHNAME]"
 
 	if(_MGraph_Bulk_Begin(ctx, &argv, &argc,
-				rs_graph_name, graphname) != BULK_OK) goto cleanup;
+						  rs_graph_name, graphname) != BULK_OK) goto cleanup;
 
-	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, false);
+	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, true);
 	ASSERT(gc != NULL);
 
 	// read the user-provided counts for nodes and edges in the current query
@@ -127,8 +127,10 @@ cleanup:
 	// free retained strings
 	for(int i = 0; i < argc; i++) RedisModule_FreeString(ctx, argv[i]);
 
+	QueryCtx_Free();
 	rm_free(bulk_ctx);
 	if(gc) GraphContext_Release(gc);
+	RedisModule_FreeThreadSafeContext(ctx);
 	RedisModule_UnblockClient(bc, NULL);
 }
 

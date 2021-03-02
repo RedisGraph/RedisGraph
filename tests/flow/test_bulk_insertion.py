@@ -7,23 +7,21 @@ import click
 import threading
 from RLTest import Env
 from click.testing import CliRunner
+from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/')
-from bulk_insert import bulk_insert
-
 redis_con = None
 port = None
 redis_graph = None
 
-def run_bulk_loader(graphname):
+def run_bulk_loader(graphname, filename):
     runner = CliRunner()
     runner.invoke(bulk_insert, ['--port', port,
-                                '--nodes', '/tmp/nodes.tmp',
+                                '--nodes', filename,
                                 graphname])
 
 class testGraphBulkInsertFlow(FlowTestsBase):
@@ -40,7 +38,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         graphname = "graph"
         runner = CliRunner()
 
-        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/resources/'
+        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
         res = runner.invoke(bulk_insert, ['--port', port,
                                           '--nodes', csv_path + 'Person.csv',
                                           '--nodes', csv_path + 'Country.csv',
@@ -239,7 +237,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         graphname = "batched_graph"
         runner = CliRunner()
 
-        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/resources/'
+        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
         res = runner.invoke(bulk_insert, ['--port', port,
                                           '--nodes', csv_path + 'Person.csv',
                                           '--nodes', csv_path + 'Country.csv',
@@ -359,13 +357,15 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         graphname = "tmpgraph5"
         prop_str = "Property value to be repeated 1 million generating a multi-megabyte CSV"
         # Write temporary files
-        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+        filename = '/tmp/nodes.tmp'
+        with open(filename, mode='w') as csv_file:
             out = csv.writer(csv_file)
+            out.writerow(["long_property_string"])
             for i in range(1_000_000):
                 out.writerow([prop_str])
 
         # Instantiate a thread to run the bulk loader
-        threading.Thread(target=run_bulk_loader, args=(graphname,)).start()
+        threading.Thread(target=run_bulk_loader, args=(graphname, filename)).start()
 
         t0 = time.time()
         redis_con.ping()
