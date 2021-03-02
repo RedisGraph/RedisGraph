@@ -822,6 +822,20 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (:Employer {name: 'Dunder Mifflin'})-[:EMPLOYS]->(p:Person) RETURN p"
 ```
 
+RedisGraph will use one index per scan operation, always trying to select the best index by checking the type of comparisons being made. In the example below the Name index will be used because the `=` comparison is likely to produce far fewer results than the `>` comparison.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) WHERE p.name = "Steven Tucker" AND p.age > 30 RETURN p"
+```
+
+If multiple scan operations are being built, multiple indexes can be used. In the example below, both the `name` and `age` indexes will be used.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (e:Employer), (p:Person) WHERE e.name = "Dunder Mifflin" AND p.age > 30 RETURN e, p"
+```
+
 An example of utilizing a geospatial index to find `Employer` nodes within 5 kilometers of Scranton is:
 
 ```sh
