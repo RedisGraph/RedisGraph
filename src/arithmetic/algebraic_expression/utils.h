@@ -118,3 +118,13 @@ void _AlgebraicExpression_PopulateOperands
 	const GraphContext *gc      // Graph context.
 );
 
+// Bind algebraic operand references in expresion with corresponding
+// relation matrices from path pattern context
+void AlgebraicExpression_PopulateReferences(
+	AlgebraicExpression *exp,
+	PathPatternCtx *pathPatternCtx
+);
+
+void AlgebraicExpression_ReplaceTransposedReferences(
+	AlgebraicExpression *ae
+);

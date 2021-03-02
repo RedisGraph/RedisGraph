@@ -54,6 +54,7 @@ static AlgebraicExpression *_AlgebraicExpression_CloneOperand
 ) {
 	AlgebraicExpression *clone = rm_malloc(sizeof(AlgebraicExpression));
 	memcpy(clone, exp, sizeof(AlgebraicExpression));
+	clone->operand.reference = AlgExpReference_Clone(&exp->operand.reference);
 	return clone;
 }
 
@@ -172,7 +173,8 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	const char *src,    // Operand row domain (src node).
 	const char *dest,   // Operand column domain (destination node).
 	const char *edge,   // Operand alias (edge).
-	const char *label   // Label attached to matrix.
+	const char *label,   // Label attached to matrix.
+	AlgExpReference ref
 ) {
 	AlgebraicExpression *node = rm_malloc(sizeof(AlgebraicExpression));
 	node->type = AL_OPERAND;
@@ -183,7 +185,49 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	node->operand.dest = dest;
 	node->operand.edge = edge;
 	node->operand.label = label;
+	node->operand.reference = ref;
 	return node;
+}
+
+//------------------------------------------------------------------------------
+// Algebraic expression reference creation functions.
+//------------------------------------------------------------------------------
+AlgExpReference AlgExpReference_NewEmpty() {
+	AlgExpReference ref = {.name = NULL, .transposed = false};
+	return ref;
+}
+
+bool AlgExpReference_IsEmpty(const AlgExpReference *ref) {
+	return ref->name == NULL;
+}
+
+bool AlgebraicExpression_OperandIsReference(const AlgebraicExpression *root) {
+	assert(root->type == AL_OPERAND);
+	return root->operand.reference.name != NULL;
+}
+
+AlgExpReference AlgExpReference_New(const char *name, bool transposed) {
+	size_t len = strlen(name);
+
+	AlgExpReference ref = AlgExpReference_NewEmpty();
+	ref.name = rm_malloc(sizeof(char) * (len + 1));
+	strcpy(ref.name, name);
+	ref.transposed = transposed;
+
+	return ref;
+}
+
+void AlgExpReference_Free(AlgExpReference ref) {
+	if (ref.name != NULL) {
+		rm_free(ref.name);
+	}
+}
+
+AlgExpReference AlgExpReference_Clone(const AlgExpReference *ref) {
+	if (AlgExpReference_IsEmpty(ref)) {
+		return AlgExpReference_NewEmpty();
+	}
+	return AlgExpReference_New(ref->name, ref->transposed);
 }
 
 // Clone algebraic expression node.
@@ -552,7 +596,8 @@ void AlgebraicExpression_MultiplyToTheLeft
 	 * from the current left most operand. */
 	AlgebraicExpression *left_most_operand = _leftMostNode(rhs);
 	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, left_most_operand->operand.src,
-															  left_most_operand->operand.dest, NULL, NULL);
+															  left_most_operand->operand.dest, NULL, NULL,
+															  AlgExpReference_NewEmpty());
 
 	*root = _AlgebraicExpression_MultiplyToTheLeft(lhs, rhs);
 }
@@ -570,7 +615,8 @@ void AlgebraicExpression_MultiplyToTheRight
 	 * from the current right most operand. */
 	AlgebraicExpression *right_most_operand = _rightMostNode(lhs);
 	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, right_most_operand->operand.src,
-															  right_most_operand->operand.dest, NULL, NULL);
+															  right_most_operand->operand.dest, NULL, NULL,
+															  AlgExpReference_NewEmpty());
 
 	*root = _AlgebraicExpression_MultiplyToTheRight(lhs, rhs);
 }
@@ -588,7 +634,8 @@ void AlgebraicExpression_AddToTheLeft
 	 * from the current left most operand. */
 	AlgebraicExpression *left_most_operand = _leftMostNode(rhs);
 	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, left_most_operand->operand.src,
-															  left_most_operand->operand.dest, left_most_operand->operand.edge, NULL);
+															  left_most_operand->operand.dest, left_most_operand->operand.edge, NULL,
+															  AlgExpReference_NewEmpty());
 
 	*root = _AlgebraicExpression_AddToTheLeft(lhs, rhs);
 }
@@ -606,7 +653,8 @@ void AlgebraicExpression_AddToTheRight
 	 * from the current right most operand. */
 	AlgebraicExpression *right_most_operand = _rightMostNode(lhs);
 	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, right_most_operand->operand.src,
-															  right_most_operand->operand.dest, right_most_operand->operand.edge, NULL);
+															  right_most_operand->operand.dest, right_most_operand->operand.edge, NULL,
+															  AlgExpReference_NewEmpty());
 
 	*root = _AlgebraicExpression_AddToTheRight(lhs, rhs);
 }

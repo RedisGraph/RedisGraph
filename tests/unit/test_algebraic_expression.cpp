@@ -323,7 +323,7 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
 	const char *label = "label";
 
 	AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, diagonal, src, dest, edge,
-																  label);
+																  label, AlgExpReference_NewEmpty());
 	ASSERT_EQ(operand->type, AL_OPERAND);
 	ASSERT_EQ(operand->operand.matrix, matrix);
 	ASSERT_EQ(operand->operand.diagonal, diagonal);
@@ -608,7 +608,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
-	AlgebraicExpression_Eval(exp, res);
+	AlgebraicExpression_Eval(exp, res, NULL);
 
 	// Using the A matrix described above,
 	// A + B = C.
@@ -650,7 +650,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
-	AlgebraicExpression_Eval(exp, res);
+	AlgebraicExpression_Eval(exp, res, NULL);
 
 	// Using the A matrix described above,
 	// A * I = A.
@@ -700,7 +700,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 4, 4);
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("V+tV", _matrices);
-	AlgebraicExpression_Eval(exp, res);
+	AlgebraicExpression_Eval(exp, res, NULL);
 
 	// Using the A matrix described above,
 	// A + Transpose(A) = B.
@@ -750,7 +750,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 
 	// Transpose(A) * A
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("V*tV", _matrices);
-	AlgebraicExpression_Eval(exp, res);
+	AlgebraicExpression_Eval(exp, res, NULL);
 
 	// Using the A matrix described above,
 	// Transpose(A) * A = B.
@@ -797,7 +797,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
 	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
 	raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("A*(B+C)", matrices);
-	AlgebraicExpression_Eval(exp, res);
+	AlgebraicExpression_Eval(exp, res, NULL);
 
 	ASSERT_TRUE(_compare_matrices(res, A));
 
@@ -870,7 +870,7 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	GrB_Matrix_new(&D, GrB_BOOL, 2, 2);
 
 	// A*B*(C+D) -> A*B*C + A*B*D
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, NULL, NULL, NULL, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, NULL, NULL, NULL, NULL, AlgExpReference_NewEmpty());
 
 	// A*B*(C+D)
 	AlgebraicExpression_AddToTheRight(&exp, D);
@@ -1431,7 +1431,7 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 
 	GrB_Matrix res;
 	GrB_Matrix_new(&res, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	AlgebraicExpression_Eval(exp, res);
+	AlgebraicExpression_Eval(exp, res, NULL);
 
 	// Validate result matrix.
 	GrB_Index ncols, nrows;
@@ -1674,8 +1674,8 @@ TEST_F(AlgebraicExpressionTest, LocateOperand) {
 	AlgebraicExpression  *p       =  NULL;
 
 	// ( T(A) * B )
-	A = AlgebraicExpression_NewOperand(mat, false, "a", "b", "e0", "E");
-	B = AlgebraicExpression_NewOperand(mat, false, "b", "c", "e1", "E");
+	A = AlgebraicExpression_NewOperand(mat, false, "a", "b", "e0", "E", AlgExpReference_NewEmpty());
+	B = AlgebraicExpression_NewOperand(mat, false, "b", "c", "e1", "E", AlgExpReference_NewEmpty());
 	AlgebraicExpression_Transpose(&A);
 	r = AlgebraicExpression_NewOperation(AL_EXP_MUL);
 	AlgebraicExpression_AddChild(r, A);

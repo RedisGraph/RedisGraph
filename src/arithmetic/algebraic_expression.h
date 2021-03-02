@@ -6,48 +6,10 @@
 
 #pragma once
 
+#include "../path_patterns/path_pattern_ctx.h"
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
-
-static GrB_Matrix IDENTITY_MATRIX = (GrB_Matrix)0x31032017;  // Identity matrix.
-
-// Matrix, vector operations.
-typedef enum {
-	AL_EXP_ADD = 1,                 // Matrix addition.
-	AL_EXP_MUL = (1 << 1),          // Matrix multiplication.
-	AL_EXP_POW = (1 << 2),          // Matrix raised to a power.
-	AL_EXP_TRANSPOSE = (1 << 3),    // Matrix transpose.
-} AL_EXP_OP;
-
-#define AL_EXP_ALL (AL_EXP_ADD | AL_EXP_MUL | AL_EXP_POW | AL_EXP_TRANSPOSE)
-
-// Type of node within an algebraic expression
-typedef enum {
-	AL_OPERAND = 1,
-	AL_OPERATION  = (1 << 1),
-} AlgebraicExpressionType;
-
-/* Forward declarations. */
-typedef struct AlgebraicExpression AlgebraicExpression;
-
-struct AlgebraicExpression {
-	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
-	union {
-		struct {
-			bool diagonal;          // Diagonal matrix.
-			bool bfree;             // If the matrix is scoped to this expression, it should be freed with it.
-			GrB_Matrix matrix;      // Matrix operand.
-			const char *src;        // Alias given to operand's rows (src node).
-			const char *dest;       // Alias given to operand's columns (destination node).
-			const char *edge;       // Alias given to operand (edge).
-			const char *label;      // Label attached to matrix.
-		} operand;
-		struct {
-			AL_EXP_OP op;                   // Operation: `*`,`+`,`transpose`
-			AlgebraicExpression **children; // Child nodes.
-		} operation;
-	};
-};
+#include "algebraic_expression_structs.h"
 
 //------------------------------------------------------------------------------
 // AlgebraicExpression construction.
@@ -57,6 +19,11 @@ struct AlgebraicExpression {
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 (
 	const QueryGraph *qg    // Query-graph to process
+);
+
+// Construct algebraic expression form ebnf expression.
+AlgebraicExpression *AlgebraicExpression_FromEbnf(
+        const EBNFBase *ebnf
 );
 
 //------------------------------------------------------------------------------
@@ -77,7 +44,8 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	const char *src,    // Operand row domain (src node).
 	const char *dest,   // Operand column domain (destination node).
 	const char *edge,   // Operand alias (edge).
-	const char *label   // Label attached to matrix.
+	const char *label,   // Label attached to matrix.
+	AlgExpReference ref
 );
 
 // Clone algebraic expression node.
@@ -149,6 +117,24 @@ bool AlgebraicExpression_DiagonalOperand
 );
 
 //------------------------------------------------------------------------------
+// Algebraic expression reference creation functions.
+//------------------------------------------------------------------------------
+AlgExpReference AlgExpReference_NewEmpty();
+
+AlgExpReference AlgExpReference_New(
+	const char *name,
+	bool transposed
+);
+
+void AlgExpReference_Free(AlgExpReference ref);
+
+AlgExpReference AlgExpReference_Clone(const AlgExpReference *ref);
+
+bool AlgebraicExpression_OperandIsReference(
+		const AlgebraicExpression *root
+);
+
+//------------------------------------------------------------------------------
 // AlgebraicExpression modification functions.
 //------------------------------------------------------------------------------
 
@@ -213,8 +199,9 @@ void AlgebraicExpression_Transpose
 // Evaluate expression tree.
 void AlgebraicExpression_Eval
 (
-	const AlgebraicExpression *exp, // Root node.
-	GrB_Matrix res                  // Result output.
+	const AlgebraicExpression *exp,
+	GrB_Matrix res,
+	PathPatternCtx *pathCtx
 );
 
 // Locates operand based on row,column domain and edge
@@ -257,6 +244,11 @@ void AlgebraicExpression_Print
 
 // Return a string representation of expression.
 char *AlgebraicExpression_ToString
+(
+	const AlgebraicExpression *exp  // Root node.
+);
+
+char *AlgebraicExpression_ToStringDebug
 (
 	const AlgebraicExpression *exp  // Root node.
 );

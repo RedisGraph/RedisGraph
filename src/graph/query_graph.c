@@ -67,7 +67,7 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 	// Each edge can only appear once in a QueryGraph.
 	ASSERT(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
+	QGEdge *edge = QGEdge_NewRelationPattern(NULL, NULL, NULL, alias);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// Add the IDs of all reltype matrixes
