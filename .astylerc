@@ -4,6 +4,7 @@
 --mode=c
 --style=google
 --indent=force-tab=4
+--indent-switches
 --convert-tabs
 --pad-oper
 --unpad-paren

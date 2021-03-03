@@ -10,8 +10,9 @@
 // create both readers and writers thread pools
 int ThreadPools_CreatePools
 (
-	uint reader_count, 
-	uint writer_count
+	uint reader_count,
+	uint writer_count,
+	uint bulk_count
 );
 
 // return number of threads in both the readers and writers pools
@@ -44,15 +45,22 @@ void ThreadPools_Resume
 // adds a read task
 int ThreadPools_AddWorkReader
 (
-	void (*function_p)(void*), 
-	void* arg_p
+	void (*function_p)(void *),
+	void *arg_p
 );
 
 // add a write task
 int ThreadPools_AddWorkWriter
 (
-	void (*function_p)(void*), 
-	void* arg_p
+	void (*function_p)(void *),
+	void *arg_p
+);
+
+// add a bulk laoder task
+int ThreadPools_AddWorkBulkLoader
+(
+	void (*function_p)(void *),
+	void *arg_p
 );
 
 // destroy all thread pools
