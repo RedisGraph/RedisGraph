@@ -20,11 +20,22 @@ typedef struct {
 // process "BEGIN" token, expected to be present only on first bulk-insert
 // batch, make sure graph key doesn't exists, fails if "BEGIN" token is present
 // and graph key 'graphname' already exists
-static int _MGraph_Bulk_Begin(RedisModuleCtx *ctx,
-							  RedisModuleString ***argv, int *argc, RedisModuleString *rs_graph_name,
-							  const char *graphname) {
+static int _MGraph_Bulk_Begin(RedisModuleCtx *ctx, RedisModuleString ***argv,
+		int *argc, RedisModuleString *rs_graph_name, const char *graphname,
+		bool *begin) {
+	ASSERT(argv != NULL);
+	ASSERT(argc != NULL);
+	ASSERT(begin != NULL);
+	ASSERT(graphname != NULL);
+	ASSERT(rs_graph_name != NULL);
+
+	*begin = false; // default to false
+
 	// do nothing if this is not the first BULK call
 	if(strcmp(RedisModule_StringPtrLen(**argv, 0), "BEGIN")) return BULK_OK;
+
+	// "BEGIN" token present
+	*begin = true;
 
 	// skip "BEGIN" token
 	(*argv) ++;
@@ -73,11 +84,17 @@ static void _MGraph_BulkInsert(void *args) {
 	const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
 	argc -= 2; // skip "GRAPH.BULK [GRAPHNAME]"
 
-	if(_MGraph_Bulk_Begin(ctx, &argv, &argc,
-						  rs_graph_name, graphname) != BULK_OK) goto cleanup;
+	bool begin = false;
+	if(_MGraph_Bulk_Begin(ctx, &argv, &argc, rs_graph_name, graphname, &begin)
+			!= BULK_OK) goto cleanup;
 
-	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, true);
-	ASSERT(gc != NULL);
+	// create key only if "BEGIN" token present
+	RedisModule_ThreadSafeContextLock(ctx);
+	{
+		gc = GraphContext_Retrieve(ctx, rs_graph_name, false, begin);
+		ASSERT(gc != NULL);
+	}
+	RedisModule_ThreadSafeContextUnlock(ctx);
 
 	// read the user-provided counts for nodes and edges in the current query
 	if(RedisModule_StringToLongLong(*argv++, &node_count) != REDISMODULE_OK) {

@@ -148,7 +148,7 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 	// read the CSV file header
 	// and commit all labels and properties it introduces
 	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data,
-														&data_idx, &label_id, &prop_count);
+			&data_idx, &label_id, &prop_count);
 
 	while(data_idx < data_len) {
 		Node n;
@@ -185,15 +185,11 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 }
 
 static int _BulkInsert_ProcessTokens(GraphContext *gc, int token_count,
-									 RedisModuleString ***argv, int *argc,
-									 SchemaType type) {
-	int i = 0;
-	for(; i < token_count; i ++) {
+		RedisModuleString **argv, SchemaType type) {
+	for(int i = 0; i < token_count; i ++) {
 		size_t len;
 		// retrieve a pointer to the next binary stream and record its length
-		const char *data = RedisModule_StringPtrLen(**argv, &len);
-		*argv += 1;
-		*argc -= 1;
+		const char *data = RedisModule_StringPtrLen(argv[i], &len);
 		int rc = _BulkInsert_ProcessFile(gc, data, len, type);
 		UNUSED(rc);
 		ASSERT(rc == BULK_OK);
@@ -246,21 +242,27 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 	argc -= 2;
 
 	if(node_token_count > 0) {
+		ASSERT(argc >= node_token_count);
 		// process all node files
-		if(_BulkInsert_ProcessTokens(gc, node_token_count, &argv, &argc,
-									 SCHEMA_NODE) != BULK_OK) {
+		if(_BulkInsert_ProcessTokens(gc, node_token_count, argv,
+					SCHEMA_NODE) != BULK_OK) {
 			res = BULK_FAIL;
 			goto cleanup;
 		}
+		argv += node_token_count;
+		argc -= node_token_count;
 	}
 
 	if(relation_token_count > 0) {
+		ASSERT(argc >= relation_token_count);
 		// Process all relationship files
-		if(_BulkInsert_ProcessTokens(gc, relation_token_count, &argv,
-									 &argc, SCHEMA_EDGE) != BULK_OK) {
+		if(_BulkInsert_ProcessTokens(gc, relation_token_count, argv,
+					SCHEMA_EDGE) != BULK_OK) {
 			res = BULK_FAIL;
 			goto cleanup;
 		}
+		argv += relation_token_count;
+		argc -= relation_token_count;
 	}
 
 	ASSERT(argc == 0);
