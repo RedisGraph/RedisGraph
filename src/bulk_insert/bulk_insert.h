@@ -25,7 +25,10 @@ int BulkInsert(
 	RedisModuleCtx *ctx,        // Redis thread-safe context.
 	GraphContext *gc,           // GraphContext hosting schemas and Graph.
 	RedisModuleString **argv,   // Arguments passed to bulk insert command.
-	int argc                    // Number of elements in argv.
+	int argc,                   // Number of elements in argv.
+	uint node_count,            // Number of nodes to be created.
+	uint edge_count             // Number of edges to be created.
 );
 
 #endif
+
