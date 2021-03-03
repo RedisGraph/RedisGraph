@@ -1,4 +1,5 @@
 redis
 redisgraph>=1.5
+redisgraph-bulk-loader
 click>=6.7
 behave>=1.2

@@ -76,9 +76,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	// Validate minimum redis-server version.
-	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR,
-									 MIN_REDIS_VERION_PATCH)) {
+	// validate minimum redis-server version
+	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR,
+									 MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH)) {
 		RedisModule_Log(ctx, "warning", "RedisGraph requires redis-server version %d.%d.%d and up",
 						MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH);
 		return REDISMODULE_ERR;
@@ -89,7 +89,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	RedisModule_Log(ctx, "notice", "Starting up RedisGraph version %d.%d.%d.",
-			               REDISGRAPH_VERSION_MAJOR, REDISGRAPH_VERSION_MINOR, REDISGRAPH_VERSION_PATCH);
+					REDISGRAPH_VERSION_MAJOR, REDISGRAPH_VERSION_MINOR, REDISGRAPH_VERSION_PATCH);
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
@@ -108,10 +108,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
 
 	int reader_thread_count;
+	int bulk_thread_count = 1;
 	int writer_thread_count = 1;
 	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
 
-	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count)) {
+	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count, bulk_thread_count)) {
 		return REDISMODULE_ERR;
 	}
 
@@ -127,7 +128,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
 	// initialize array of command contexts
-	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx*));
+	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx *));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
