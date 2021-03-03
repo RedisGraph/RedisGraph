@@ -9,7 +9,6 @@
 #include "../rmalloc.h"
 #include "cache_array.h"
 #include <pthread.h>
-#include <stdatomic.h>
 
 static CacheEntry *_CacheEvictLRU(Cache *cache) {
 	CacheEntry *entry = CacheArray_FindMinLRU(cache->arr, cache->cap);
