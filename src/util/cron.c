@@ -43,8 +43,8 @@ static int cmp_timespec(struct timespec a, struct timespec b) {
 
 // minimum heap sort function
 static int CRON_JobCmp(const void *a, const void *b, const void *udata) {
-	CRON_TASK *_a = (CRON_TASK*)a;
-	CRON_TASK *_b = (CRON_TASK*)b;
+	CRON_TASK *_a = (CRON_TASK *)a;
+	CRON_TASK *_b = (CRON_TASK *)b;
 	return cmp_timespec(_b->due, _a->due);
 }
 
@@ -55,10 +55,10 @@ static int CRON_JobCmp(const void *a, const void *b, const void *udata) {
 // compute now + ms
 static struct timespec due_in_ms(uint ms) {
 	struct timespec due;
-    clock_gettime(CLOCK_REALTIME, &due);
+	clock_gettime(CLOCK_REALTIME, &due);
 
 	due.tv_sec += ms / 1000;
-    due.tv_nsec += (ms % 1000) * 1000000;
+	due.tv_nsec += (ms % 1000) * 1000000;
 
 	return due;
 }
@@ -75,7 +75,7 @@ static bool CRON_TaskDue(const CRON_TASK *t) {
 	ASSERT(t);
 
 	struct timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
+	clock_gettime(CLOCK_REALTIME, &now);
 	return cmp_timespec(now, t->due) >= 0;
 }
 
@@ -88,7 +88,7 @@ static CRON_TASK *CRON_Peek() {
 
 static CRON_TASK *CRON_RemoveTask(void) {
 	pthread_mutex_lock(&cron->mutex);
-	CRON_TASK *task = (CRON_TASK*)Heap_poll(cron->tasks);
+	CRON_TASK *task = (CRON_TASK *)Heap_poll(cron->tasks);
 	pthread_mutex_unlock(&cron->mutex);
 	return task;
 }
@@ -108,6 +108,7 @@ static void CRON_PerformTask(CRON_TASK *t) {
 
 static void CRON_FreeTask(CRON_TASK *t) {
 	ASSERT(t);
+	rm_free(t->pdata);
 	rm_free(t);
 }
 

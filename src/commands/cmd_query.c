@@ -9,8 +9,8 @@
 #include "../errors.h"
 #include "cmd_context.h"
 #include "../ast/ast.h"
+#include "../timeout.h"
 #include "../util/arr.h"
-#include "../util/cron.h"
 #include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
@@ -82,33 +82,6 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	} else {
 		ErrorCtx_SetError("ERR Encountered unknown query execution type.");
 	}
-}
-
-//------------------------------------------------------------------------------
-// Query timeout
-//------------------------------------------------------------------------------
-
-// timeout handler
-void QueryTimedOut(void *pdata) {
-	ASSERT(pdata);
-	ExecutionPlan *plan = (ExecutionPlan *)pdata;
-	ExecutionPlan_Drain(plan);
-
-	/* Timer may have triggered after execution-plan ran to completion
-	 * in which case the original query thread had called ExecutionPlan_Free
-	 * decreasing the plan's ref count, but did not free the execution-plan
-	 * it is our responsibility to call ExecutionPlan_Free
-	 *
-	 * In case execution-plan timedout we'll call ExecutionPlan_Free
-	 * to drop plan's ref count. */
-	ExecutionPlan_Free(plan);
-}
-
-// set timeout for query execution
-void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
-	// increase execution plan ref count
-	ExecutionPlan_IncreaseRefCount(plan);
-	Cron_AddTask(timeout, QueryTimedOut, plan);
 }
 
 inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
@@ -258,16 +231,7 @@ void Graph_Query(void *args) {
 	}
 
 	// set the query timeout if one was specified
-	if(command_ctx->timeout != 0) {
-		if(!readonly) {
-			// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-			ErrorCtx_SetError("Query timeouts may only be specified on read-only queries");
-			ErrorCtx_EmitException();
-			goto cleanup;
-		}
-
-		Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
-	}
+	if(command_ctx->timeout != 0) Timeout_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 
 	// populate the container struct for invoking _ExecuteQuery.
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
@@ -283,9 +247,11 @@ void Graph_Query(void *args) {
 
 cleanup:
 	// Cleanup routine invoked after encountering errors in this function.
+	if(command_ctx->timeout != 0) Timeout_QueryCompleted();
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
+

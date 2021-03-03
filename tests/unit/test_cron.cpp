@@ -34,12 +34,12 @@ class CRONTest: public ::testing::Test {
 	}
 
 	static void add_task(void *pdata) {
-		int *Y = (int*)pdata;
+		int *Y = (int *)pdata;
 		X += *Y;
 	}
 
 	static void mul_task(void *pdata) {
-		int *Y = (int*)pdata;
+		int *Y = (int *)pdata;
 		X *= *Y;
 	}
 };
@@ -49,8 +49,10 @@ TEST_F(CRONTest, CRONTaskExec) {
 	// one adds 2 to X
 	// second multiply X by 2
 
-	int Y = 2;
-	int Z = 2;
+	int *Y = (int *)rm_malloc(sizeof(int));
+	int *Z = (int *)rm_malloc(sizeof(int));
+	*Y = 2;
+	*Z = 2;
 
 	// Introduce tasks
 	// X = 1.
@@ -60,8 +62,8 @@ TEST_F(CRONTest, CRONTaskExec) {
 	// X += Z, X = 3
 	// X *= Y, X = 6
 
-	Cron_AddTask(150, add_task, &Z);
-	Cron_AddTask(10, mul_task, &Y);
+	Cron_AddTask(150, add_task, Z);
+	Cron_AddTask(10, mul_task, Y);
 	sleep(1); // sleep for one second
 
 	// verify X = (X * 2) + 2

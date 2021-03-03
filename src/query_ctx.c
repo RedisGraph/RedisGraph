@@ -7,6 +7,7 @@
 #include "query_ctx.h"
 #include "RG.h"
 #include "errors.h"
+#include "timeout.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
@@ -160,6 +161,9 @@ bool QueryCtx_LockForCommit(void) {
 	// Acquire graph write lock.
 	Graph_AcquireWriteLock(gc->g);
 	ctx->internal_exec_ctx.locked_for_commit = true;
+
+	// Mark that changes have been committed in the timeout context.
+	Timeout_ChangesCommitted();
 
 	return true;
 
