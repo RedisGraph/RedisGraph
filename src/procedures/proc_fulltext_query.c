@@ -51,11 +51,11 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	pdata->idx = idx;
 	pdata->g = gc->g;
 	pdata->n = GE_NEW_NODE();
-	pdata->output = array_new(SIValue, 2);
+	pdata->output = array_new(SIValue, 4);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
 	pdata->output = array_append(pdata->output, SI_Node(&pdata->n));
-	// pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
-	// pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
+	pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
 
 	// Execute query
 	pdata->iter = Index_Query(pdata->idx, query, &err);
@@ -89,11 +89,15 @@ SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
 	// Depleted.
 	if(!id) return NULL;
 
+	double score = RediSearch_ResultsIteratorGetScore(pdata->iter);
+
 	// Get Node.
 	Node *n = &pdata->n;
 	Graph_GetNode(pdata->g, *id, n);
 
 	pdata->output[1] = SI_Node(n);
+	pdata->output[3] = SI_DoubleVal(score);
+
 	return pdata->output;
 }
 
@@ -111,9 +115,11 @@ ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_FulltextQueryNodeGen() {
 	void *privateData = NULL;
-	ProcedureOutput *output = array_new(ProcedureOutput, 1);
-	ProcedureOutput out_node = {.name = "node", .type = T_NODE};
+	ProcedureOutput *output   = array_new(ProcedureOutput, 1);
+	ProcedureOutput out_node  = {.name = "node", .type = T_NODE};
+	ProcedureOutput out_score = {.name = "score", .type = T_DOUBLE};
 	output = array_append(output, out_node);
+	output = array_append(output, out_score);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",
 								   2,
