@@ -363,3 +363,24 @@ class testIndexScanFlow(FlowTestsBase):
         # No index scans should be performed.
         self.env.assertEqual(plan.count("Label Scan"), 1)
         self.env.assertEqual(plan.count("Index Scan"), 0)
+
+    # Test fulltext result scoring
+    def test15_fulltext_result_scoring(self):
+        g = Graph('fulltext_scoring', self.env.getConnection())
+
+        # create full-text index over label 'L', attribute 'v'
+        g.call_procedure('db.idx.fulltext.createNodeIndex', 'L', 'v')
+
+        # introduce 2 nodes
+        g.query("create (:L {v:'hello world hello'})")
+        g.query("create (:L {v:'hello world hello world'})")
+
+        # query nodes using fulltext search
+        q = """CALL db.idx.fulltext.queryNodes('L', 'hello world') YIELD node, score
+               RETURN node.v, score
+               ORDER BY score"""
+        res = g.query(q)
+        actual = res.result_set
+        expected = [['hello world hello', 1.5], ['hello world hello world',2]]
+        self.env.assertEqual(expected, actual)
+
