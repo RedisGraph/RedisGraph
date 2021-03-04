@@ -115,7 +115,7 @@ ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_FulltextQueryNodeGen() {
 	void *privateData = NULL;
-	ProcedureOutput *output   = array_new(ProcedureOutput, 1);
+	ProcedureOutput *output   = array_new(ProcedureOutput, 2);
 	ProcedureOutput out_node  = {.name = "node", .type = T_NODE};
 	ProcedureOutput out_score = {.name = "score", .type = T_DOUBLE};
 	output = array_append(output, out_node);
