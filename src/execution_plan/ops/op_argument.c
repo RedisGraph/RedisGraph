@@ -52,7 +52,11 @@ static OpResult ArgumentReset(OpBase *opBase) {
 }
 
 void Argument_AddRecord(Argument *arg, Record r) {
-	ASSERT(!arg->r && "tried to insert into a populated Argument op");
+	/* In normal scenarios, arg->r will always be NULL at this point.
+	 * However, if the op tree has been modified by an external actor like a query timeout,
+	 * it is possible for this Record to have never been retrieved.
+	 * In this case simply free the held Record, as it won't be used. */
+	if(arg->r) Record_Free(arg->r);
 	arg->r = r;
 }
 

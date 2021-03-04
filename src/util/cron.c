@@ -1,7 +1,7 @@
 #include "cron.h"
 #include "heap.h"
+#include "RG.h"
 #include "rmalloc.h"
-#include "../RG.h"
 #include <time.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -16,7 +16,7 @@
 typedef struct {
 	struct timespec due;    // absolute time for when task should run
 	CronTaskCB cb;          // callback to call when task is due
-	void *pdata;            // [optional] private data passed to callback
+	void *pdata;            // [optional] private data passed to callback, owned by this task
 } CRON_TASK;
 
 // CRON object
@@ -63,7 +63,7 @@ static struct timespec due_in_ms(uint ms) {
 	return due;
 }
 
-static void CRON_WakeUp(void) {
+static void _CRON_WakeUp(void) {
 	// Set conditional variable to wake up CRON thread
 	pthread_mutex_lock(&cron->condv_mutex);
 	pthread_cond_signal(&cron->condv);
@@ -93,29 +93,29 @@ static CRON_TASK *CRON_RemoveTask(void) {
 	return task;
 }
 
-static void CRON_InsertTask(CRON_TASK *t) {
+static void _CRON_InsertTask(CRON_TASK *t) {
 	pthread_mutex_lock(&cron->mutex);
 	Heap_offer(&cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
 
-	CRON_WakeUp();
+	_CRON_WakeUp();
 }
 
-static void CRON_PerformTask(CRON_TASK *t) {
+static void _CRON_PerformTask(CRON_TASK *t) {
 	ASSERT(t);
 	t->cb(t->pdata);
 }
 
-static void CRON_FreeTask(CRON_TASK *t) {
+static void _CRON_FreeTask(CRON_TASK *t) {
 	ASSERT(t);
-	rm_free(t->pdata);
+	if(t->pdata) rm_free(t->pdata);
 	rm_free(t);
 }
 
 static void clear_tasks() {
 	CRON_TASK *task = NULL;
 	while((task = CRON_RemoveTask())) {
-		CRON_FreeTask(task);
+		_CRON_FreeTask(task);
 	}
 }
 
@@ -129,8 +129,8 @@ static void *Cron_Run(void *arg) {
 		CRON_TASK *task = NULL;
 		while((task = CRON_Peek()) && CRON_TaskDue(task)) {
 			task = CRON_RemoveTask();
-			CRON_PerformTask(task);
-			CRON_FreeTask(task);
+			_CRON_PerformTask(task);
+			_CRON_FreeTask(task);
 		}
 
 		struct timespec timeout = (task) ? task->due : due_in_ms(1000);
@@ -163,7 +163,7 @@ void Cron_Stop(void) {
 
 	// Stop cron main loop
 	cron->alive = false;
-	CRON_WakeUp();
+	_CRON_WakeUp();
 
 	// Wait for thread to terminate
 	pthread_join(cron->thread, NULL);
@@ -178,7 +178,7 @@ void Cron_Stop(void) {
 	cron = NULL;
 }
 
-void Cron_AddTask(uint when, CronTaskCB cb, void *pdata) {
+CronTask Cron_AddTask(uint when, CronTaskCB cb, void *pdata) {
 	ASSERT(cron != NULL);
 	ASSERT(cb != NULL);
 
@@ -186,7 +186,19 @@ void Cron_AddTask(uint when, CronTaskCB cb, void *pdata) {
 	task->cb     =  cb;
 	task->pdata  =  pdata;
 	task->due    =  due_in_ms(when);
+	_CRON_InsertTask(task);
 
-	CRON_InsertTask(task);
+	return task;
+}
+
+void Cron_RemoveTask(CronTask task) {
+	ASSERT(cron != NULL);
+	ASSERT(task != NULL);
+	pthread_mutex_lock(&cron->mutex);
+	// Try to remove the task from the heap
+	task = Heap_remove_item(cron->tasks, task);
+	// If removal was successful, free the task
+	if(task) _CRON_FreeTask(task);
+	pthread_mutex_unlock(&cron->mutex);
 }
 

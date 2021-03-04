@@ -231,7 +231,7 @@ void Graph_Query(void *args) {
 	}
 
 	// set the query timeout if one was specified
-	if(command_ctx->timeout != 0) Timeout_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
+	if(command_ctx->timeout != 0) Timeout_SetTimeout(command_ctx->timeout, exec_ctx->plan);
 
 	// populate the container struct for invoking _ExecuteQuery.
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
@@ -247,7 +247,7 @@ void Graph_Query(void *args) {
 
 cleanup:
 	// Cleanup routine invoked after encountering errors in this function.
-	if(command_ctx->timeout != 0) Timeout_QueryCompleted();
+	if(command_ctx->timeout != 0) Timeout_ClearTimeout();
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);

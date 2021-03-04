@@ -15,6 +15,9 @@
  * a callback to call when it is time to execute the task
  * and an optional private data passed to the callback */
 
+// Cron task typedef
+typedef void *CronTask;
+
 // task callback function
 typedef void (*CronTaskCB)(void *pdata);
 
@@ -24,11 +27,17 @@ void Cron_Start(void);
 // Stop CRON
 void Cron_Stop(void);
 
-// Create a new CRON task
-void Cron_AddTask
+// Create a new CRON task and return it
+CronTask Cron_AddTask
 (
-	uint when,      // number of miliseconds until task invocation
+	uint when,      // number of milliseconds until task invocation
 	CronTaskCB cb,  // callback to call when task is due
-	void *pdata     // private data to pass to callback
+	void *pdata     // private data to pass to callback, owned by task
+);
+
+// Attempt to remove the given task from the CRON queue
+void Cron_RemoveTask
+(
+	CronTask task   // task to be removed
 );
 

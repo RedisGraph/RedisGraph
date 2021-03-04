@@ -7,6 +7,7 @@
 #pragma once
 
 #include "ast/ast.h"
+#include "util/cron.h"
 #include "redismodule.h"
 #include "util/rmalloc.h"
 #include "graph/graphcontext.h"
@@ -29,6 +30,7 @@ typedef struct {
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
 	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
+	CronTask timeout;           // The timeout job associated with this query.
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
@@ -70,6 +72,8 @@ void QueryCtx_SetGraphCtx(GraphContext *gc);
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the last writer which needs to commit */
 void QueryCtx_SetLastWriter(OpBase *op);
+/* Set the query's associated timeout job. */
+void QueryCtx_SetTimeoutJob(CronTask task);
 
 /* Getters */
 /* Retrieve the AST. */
@@ -78,6 +82,8 @@ AST *QueryCtx_GetAST(void);
 rax *QueryCtx_GetParams(void);
 /* Retrieve the Graph object. */
 Graph *QueryCtx_GetGraph(void);
+/* Retrieve the associated timeout job. */
+CronTask QueryCtx_GetTimeoutJob(void);
 /* Retrieve the GraphCtx. */
 GraphContext *QueryCtx_GetGraphCtx(void);
 /* Retrieve the Redis module context. */

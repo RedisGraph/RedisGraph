@@ -82,6 +82,11 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 	ctx->internal_exec_ctx.last_writer = last_writer;
 }
 
+void QueryCtx_SetTimeoutJob(CronTask task) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->internal_exec_ctx.timeout = task;
+}
+
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->query_data.ast;
@@ -102,6 +107,11 @@ GraphContext *QueryCtx_GetGraphCtx(void) {
 Graph *QueryCtx_GetGraph(void) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	return gc->g;
+}
+
+CronTask QueryCtx_GetTimeoutJob(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->internal_exec_ctx.timeout;
 }
 
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
@@ -162,8 +172,8 @@ bool QueryCtx_LockForCommit(void) {
 	Graph_AcquireWriteLock(gc->g);
 	ctx->internal_exec_ctx.locked_for_commit = true;
 
-	// Mark that changes have been committed in the timeout context.
-	Timeout_ChangesCommitted();
+	// Changes are being committed, clear the timeout job.
+	Timeout_ClearTimeout();
 
 	return true;
 

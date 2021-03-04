@@ -7,19 +7,7 @@
 #include "RG.h"
 #include "timeout.h"
 #include "util/cron.h"
-
-pthread_key_t _tlsTimeoutCtx; // Timeout context held in thread-local storage.
-
-//------------------------------------------------------------------------------
-// Timeout context initialization
-//------------------------------------------------------------------------------
-
-bool TimeoutCtx_Init(void) {
-	int res = pthread_key_create(&_tlsTimeoutCtx, NULL);
-	ASSERT(res == 0);
-
-	return (res == 0);
-}
+#include "query_ctx.h"
 
 //------------------------------------------------------------------------------
 // Query timeout
@@ -47,28 +35,20 @@ void QueryTimedOut(void *pdata) {
 }
 
 // set timeout for query execution
-void Timeout_SetTimeOut(uint timeout, ExecutionPlan *plan) {
+void Timeout_SetTimeout(uint timeout, ExecutionPlan *plan) {
 	// increase execution plan ref count
 	ExecutionPlan_IncreaseRefCount(plan);
 	TimeoutCtx *timeout_ctx = rm_calloc(1, sizeof(TimeoutCtx));
 	timeout_ctx->plan = plan;
-	// add timeout context to TLS
-	pthread_setspecific(_tlsTimeoutCtx, timeout_ctx);
 	// add timeout context and callback to cron thread
-	Cron_AddTask(timeout, QueryTimedOut, timeout_ctx);
+	CronTask task = Cron_AddTask(timeout, QueryTimedOut, timeout_ctx);
+	QueryCtx_SetTimeoutJob(task);
 }
 
-void Timeout_QueryCompleted() {
-	TimeoutCtx *ctx = pthread_getspecific(_tlsTimeoutCtx);
-	ASSERT(ctx);
-
-	ctx->query_completed = true;
-	// Null-set the context key in TLS
-	pthread_setspecific(_tlsTimeoutCtx, NULL);
-}
-
-void Timeout_ChangesCommitted() {
-	TimeoutCtx *ctx = pthread_getspecific(_tlsTimeoutCtx);
-	if(ctx != NULL) ctx->changes_committed = true;
+void Timeout_ClearTimeout() {
+	CronTask task = QueryCtx_GetTimeoutJob();
+	if(task == NULL) return;
+	Cron_RemoveTask(task);
+	QueryCtx_SetTimeoutJob(NULL);
 }
 

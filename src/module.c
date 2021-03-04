@@ -11,7 +11,6 @@
 #include "errors.h"
 #include "config.h"
 #include "version.h"
-#include "timeout.h"
 #include "util/arr.h"
 #include "util/cron.h"
 #include "query_ctx.h"
@@ -104,10 +103,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
-	// Create thread local storage keys for query, error, and timeout contexts.
+	// Create thread local storage keys for query and error contexts.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
-	if(!TimeoutCtx_Init()) return REDISMODULE_ERR;
 
 	int reader_thread_count;
 	int bulk_thread_count = 1;

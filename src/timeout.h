@@ -18,11 +18,8 @@ typedef struct {
 bool TimeoutCtx_Init(void);
 
 // set timeout for query execution
-void Timeout_SetTimeOut(uint timeout, ExecutionPlan *plan);
+void Timeout_SetTimeout(uint timeout, ExecutionPlan *plan);
 
-// mark the query as having completed
-void Timeout_QueryCompleted(void);
-
-// mark the query as having committed changes
-void Timeout_ChangesCommitted(void);
+// clear timeout job
+void Timeout_ClearTimeout(void);
 

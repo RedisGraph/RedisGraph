@@ -231,7 +231,8 @@ void *Heap_remove_item(heap_t * h, const void *item)
     h->count -= 1;
 
     /* ensure heap property */
-    __pushup(h, idx);
+    if (idx < h->count)
+        __pushup(h, idx);
 
     return ret_item;
 }

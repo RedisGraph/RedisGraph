@@ -58,8 +58,13 @@ class testQueryTimeout(FlowTestsBase):
             assert(False)
 
     def test03_configured_timeout(self):
+        # Verify that the module-level timeout is set to the default of 0
+        response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
+        self.env.assertEquals(response[1], 0)
         # Set a default timeout of 1 millisecond
         redis_con.execute_command("GRAPH.CONFIG SET timeout 1")
+        response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
+        self.env.assertEquals(response[1], 1)
 
         # Validate that a read query times out
         query = "UNWIND range(0,100000) AS x WITH x AS x WHERE x = 10000 RETURN x"
@@ -76,3 +81,21 @@ class testQueryTimeout(FlowTestsBase):
             assert(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
+
+    def test04_timeout_during_commit_stage(self):
+        query = "CREATE (a:M) WITH a UNWIND range(1,10000) AS ctr SET a.v = ctr"
+        try:
+            # The query should complete successfully
+            actual_result = redis_graph.query(query, timeout=1)
+            # The query should have taken longer than the timeout value
+            self.env.assertGreater(actual_result.run_time_ms, 1)
+            # The query should have updated properties 10,000 times
+            self.env.assertEquals(actual_result.properties_set, 10000)
+        except ResponseError:
+            assert(False)
+
+        # Validate that the node retains its final updated value
+        query = "MATCH (a:M) RETURN a.v"
+        actual_result = redis_graph.query(query)
+        expected_result = [[10000]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
