@@ -16,14 +16,29 @@
 // Configuration parameters
 //-----------------------------------------------------------------------------
 
-#define TIMEOUT "TIMEOUT"  // Config param, the timeout for each query in milliseconds.
-#define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
-#define ASYNC_DELETE "ASYNC_DELETE" // whether graphs should be deleted asynchronously
-#define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
-#define RESULTSET_SIZE "RESULTSET_SIZE" // resultset size limit
-#define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
-#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
-#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
+// config param, the timeout for each query in milliseconds
+#define TIMEOUT "TIMEOUT"
+
+// config param, the size of each thread cache size, per graph
+#define CACHE_SIZE "CACHE_SIZE"
+
+// whether graphs should be deleted asynchronously
+#define ASYNC_DELETE "ASYNC_DELETE"
+
+// config param, number of threads in thread pool
+#define THREAD_COUNT "THREAD_COUNT"
+
+// resultset size limit
+#define RESULTSET_SIZE "RESULTSET_SIZE"
+
+// config param, max number of OpenMP threads
+#define OMP_THREAD_COUNT "OMP_THREAD_COUNT"
+
+// config param, max number of entities in each virtual key
+#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT"
+
+// whether the module should maintain transposed relationship matrices
+#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
 
 //------------------------------------------------------------------------------
 // Configuration defaults
@@ -280,8 +295,8 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	// no limit on result-set size
 	config.resultset_size = RESULTSET_SIZE_UNLIMITED;
 
-	// No query timeout by default.
-	config.timeout = 0;
+	// no query timeout by default
+	config.timeout = CONFIG_TIMEOUT_NO_TIMEOUT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {

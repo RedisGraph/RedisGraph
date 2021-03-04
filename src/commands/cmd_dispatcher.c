@@ -23,9 +23,9 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 	ASSERT(timeout);
 
 	// set defaults
-	*timeout = 0;      // no timeout
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
+	Config_Option_get(Config_TIMEOUT, timeout);
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -163,9 +163,6 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// the API reference dictates that registered functions should always return OK
 		return REDISMODULE_OK;
 	}
-
-	// If the command did not provide an explicit timeout, use the configuration value.
-	if(timeout == 0) Config_Option_get(Config_TIMEOUT, &timeout);
 
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
 	// if GraphContext is null, key access failed and an error been emitted

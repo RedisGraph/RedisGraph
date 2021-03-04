@@ -9,7 +9,8 @@
 #include <stdbool.h>
 #include "redismodule.h"
 
-#define RESULTSET_SIZE_UNLIMITED UINT64_MAX
+#define RESULTSET_SIZE_UNLIMITED    UINT64_MAX
+#define CONFIG_TIMEOUT_NO_TIMEOUT   0
 #define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
 typedef enum {

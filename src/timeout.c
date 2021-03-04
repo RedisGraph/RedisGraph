@@ -44,7 +44,6 @@ void QueryTimedOut(void *pdata) {
 	 * In case execution-plan timedout we'll call ExecutionPlan_Free
 	 * to drop plan's ref count. */
 	ExecutionPlan_Free(plan);
-
 }
 
 // set timeout for query execution
