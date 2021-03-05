@@ -381,6 +381,6 @@ class testIndexScanFlow(FlowTestsBase):
                ORDER BY score"""
         res = g.query(q)
         actual = res.result_set
-        expected = [['hello world hello', 1.5], ['hello world hello world',2]]
+        expected = [['hello world hello', 1.5], ['hello world hello world', 2]]
         self.env.assertEqual(expected, actual)
 
