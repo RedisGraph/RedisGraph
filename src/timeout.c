@@ -20,9 +20,8 @@ void QueryTimedOut(void *pdata) {
 	TimeoutCtx *ctx = pdata;
 	ExecutionPlan *plan = ctx->plan;
 
-	/* Drain the ExecutionPlan if the graph has not already
-	 * been modified and the query has not finished. */
-	if(!ctx->changes_committed && !ctx->query_completed) ExecutionPlan_Drain(plan);
+	// drain the ExecutionPlan
+	ExecutionPlan_Drain(plan);
 
 	/* Timer may have triggered after execution-plan ran to completion
 	 * in which case the original query thread had called ExecutionPlan_Free
@@ -38,17 +37,18 @@ void QueryTimedOut(void *pdata) {
 void Timeout_SetTimeout(uint timeout, ExecutionPlan *plan) {
 	// increase execution plan ref count
 	ExecutionPlan_IncreaseRefCount(plan);
-	TimeoutCtx *timeout_ctx = rm_calloc(1, sizeof(TimeoutCtx));
+	TimeoutCtx *timeout_ctx = rm_malloc(sizeof(TimeoutCtx));
 	timeout_ctx->plan = plan;
 	// add timeout context and callback to cron thread
 	CronTask task = Cron_AddTask(timeout, QueryTimedOut, timeout_ctx);
 	QueryCtx_SetTimeoutJob(task);
 }
 
-void Timeout_ClearTimeout() {
+bool Timeout_ClearTimeout() {
 	CronTask task = QueryCtx_GetTimeoutJob();
-	if(task == NULL) return;
-	Cron_RemoveTask(task);
+	if(task == NULL) return true; // this query had no timeout, return true
+	bool removed = Cron_RemoveTask(task);
 	QueryCtx_SetTimeoutJob(NULL);
+	return removed;
 }
 

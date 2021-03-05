@@ -7,6 +7,7 @@
 #pragma once
 
 #include "heap.h"
+#include <stdbool.h>
 #include <sys/types.h>
 
 /* CRON is a task scheduler
@@ -35,8 +36,9 @@ CronTask Cron_AddTask
 	void *pdata     // private data to pass to callback, owned by task
 );
 
-// Attempt to remove the given task from the CRON queue
-void Cron_RemoveTask
+/* Attempt to remove the given task from the CRON queue,
+ * return true if successful. */
+bool Cron_RemoveTask
 (
 	CronTask task   // task to be removed
 );

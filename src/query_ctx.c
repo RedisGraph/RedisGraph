@@ -145,6 +145,11 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 bool QueryCtx_LockForCommit(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(ctx->internal_exec_ctx.locked_for_commit) return true;
+
+	// Changes are being committed, clear the timeout job.
+	bool cleared = Timeout_ClearTimeout();
+	if(!cleared) ErrorCtx_RaiseRuntimeException("Failed to clear timeout job when locking for commit");
+
 	// Lock GIL.
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
@@ -171,9 +176,6 @@ bool QueryCtx_LockForCommit(void) {
 	// Acquire graph write lock.
 	Graph_AcquireWriteLock(gc->g);
 	ctx->internal_exec_ctx.locked_for_commit = true;
-
-	// Changes are being committed, clear the timeout job.
-	Timeout_ClearTimeout();
 
 	return true;
 
