@@ -773,7 +773,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 | db.indexes                      | none                                            | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                         |
 | db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
 | db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
-| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`                        | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
+| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
 | algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`               | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
 | [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`              | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
 | dbms.procedures()               | none                                            | `name`, `mode`                | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
@@ -881,6 +881,20 @@ RETURN m ORDER BY m.rating"
                5) 1) "title"
                   2) "The Jungle Book"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
+```
+
+In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redislabs.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"CALL db.idx.fulltext.queryNodes('Node', 'hello world') YIELD node, score RETURN score, node.val"
+1) 1) "score"
+   2) "node.val"
+2) 1) 1) "2"
+      2) "hello world"
+   2) 1) "1"
+      2) "hello to a different world"
+3) 1) "Cached execution: 1"
+   2) "Query internal execution time: 0.335401 milliseconds"
 ```
 
 ## GRAPH.PROFILE
