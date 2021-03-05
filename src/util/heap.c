@@ -223,17 +223,12 @@ void *Heap_remove_item(heap_t * h, const void *item)
     if (idx == -1)
         return NULL;
 
-    h->count -= 1;
-
-    void *ret_item = h->array[idx];
-
-	/* if the item was the last item on the heap, return early */
-    if (idx == h->count)
-        return ret_item;
-
     /* swap the item we found with the last item on the heap */
-    h->array[idx] = h->array[h->count];
-    h->array[h->count] = NULL;
+    void *ret_item = h->array[idx];
+    h->array[idx] = h->array[h->count - 1];
+    h->array[h->count - 1] = NULL;
+
+    h->count -= 1;
 
     /* ensure heap property */
     __pushup(h, idx);

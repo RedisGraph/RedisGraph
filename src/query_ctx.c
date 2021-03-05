@@ -7,7 +7,6 @@
 #include "query_ctx.h"
 #include "RG.h"
 #include "errors.h"
-#include "timeout.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "serializers/graphcontext_type.h"
@@ -82,11 +81,6 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 	ctx->internal_exec_ctx.last_writer = last_writer;
 }
 
-void QueryCtx_SetTimeoutJob(CronTask task) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->internal_exec_ctx.timeout = task;
-}
-
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->query_data.ast;
@@ -107,11 +101,6 @@ GraphContext *QueryCtx_GetGraphCtx(void) {
 Graph *QueryCtx_GetGraph(void) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	return gc->g;
-}
-
-CronTask QueryCtx_GetTimeoutJob(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.timeout;
 }
 
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
@@ -145,11 +134,6 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 bool QueryCtx_LockForCommit(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(ctx->internal_exec_ctx.locked_for_commit) return true;
-
-	// Changes are being committed, clear the timeout job.
-	bool cleared = Timeout_ClearTimeout();
-	if(!cleared) ErrorCtx_RaiseRuntimeException("Failed to clear timeout job when locking for commit");
-
 	// Lock GIL.
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;

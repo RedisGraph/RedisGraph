@@ -34,30 +34,7 @@ class testQueryTimeout(FlowTestsBase):
         except:
             assert(False)
 
-    def test02_write_query_timeout(self):
-        query = "UNWIND range(0,100000) AS x WITH x AS x WHERE x = 10000 CREATE (:L)"
-        try:
-            redis_graph.query(query, timeout=1)
-            assert(False)
-        except ResponseError as error:
-            self.env.assertContains("Query timed out", str(error))
-        # Validate that no data was created
-        query = "MATCH (a:L) RETURN a"
-        actual_result = redis_graph.query(query)
-        expected_result = []
-        self.env.assertEquals(actual_result.result_set, expected_result)
-
-        query = "CREATE (a:L {v: 1}) RETURN a.v"
-        try:
-            # The query is expected to succeed
-            actual_result = redis_graph.query(query, timeout=100)
-            # Validate that data was created
-            expected_result = [[1]]
-            self.env.assertEquals(actual_result.result_set, expected_result)
-        except:
-            assert(False)
-
-    def test03_configured_timeout(self):
+    def test02_configured_timeout(self):
         # Verify that the module-level timeout is set to the default of 0
         response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
         self.env.assertEquals(response[1], 0)
@@ -74,15 +51,8 @@ class testQueryTimeout(FlowTestsBase):
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
 
-        # Validate that a write query times out
-        query = "UNWIND range(0,100000) AS x WITH x AS x WHERE x = 10000 CREATE (:L)"
-        try:
-            redis_graph.query(query)
-            assert(False)
-        except ResponseError as error:
-            self.env.assertContains("Query timed out", str(error))
-
-    def test04_timeout_during_commit_stage(self):
+    def test03_write_query_ignore_timeout(self):
+        # Verify that the timeout argument is ignored by write queries
         query = "CREATE (a:M) WITH a UNWIND range(1,10000) AS ctr SET a.v = ctr"
         try:
             # The query should complete successfully
@@ -93,9 +63,3 @@ class testQueryTimeout(FlowTestsBase):
             self.env.assertEquals(actual_result.properties_set, 10000)
         except ResponseError:
             assert(False)
-
-        # Validate that the node retains its final updated value
-        query = "MATCH (a:M) RETURN a.v"
-        actual_result = redis_graph.query(query)
-        expected_result = [[10000]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
