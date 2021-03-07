@@ -74,9 +74,7 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 	}
 }
 
-// Adds an edge to the referenced entities rax if it has multiple types or any properties (inline filter).
-static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool force_mapping) {
-
+static void _AST_MapReferencedEdge_RelationPattern(AST *ast, const cypher_astnode_t *edge, bool force_mapping) {
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
 	// Disregard empty property maps.
 	if(properties && cypher_astnode_nchildren(properties) == 0) properties = NULL;
@@ -89,6 +87,18 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 		// Map any references within the properties map, such as 'b' in:
 		// ({val: ID(b)})
 		if(properties) _AST_MapExpression(ast, properties);
+	}
+}
+
+// Adds an edge to the referenced entities rax if it has multiple types or any properties (inline filter).
+static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool force_mapping) {
+	if (cypher_astnode_instanceof(edge, CYPHER_AST_REL_PATTERN)) {
+		_AST_MapReferencedEdge_RelationPattern(ast, edge, force_mapping);
+	} else if (cypher_astnode_instanceof(edge, CYPHER_AST_PATH_PATTERN)) {
+		// simpleton:
+		// now there is not aliases in path patterns
+	} else {
+		ASSERT(false);
 	}
 }
 

@@ -35,6 +35,11 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->query_graph == NULL) plan->query_graph = BuildQueryGraph(ast);
 
+	// simpleton:
+//	printf("ExecutionPlan_PopulateExecutionPlan: Printing Query Graph\n");
+//	QueryGraph_Print(plan->query_graph);
+//	fflush(stdout);
+
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		// Build the appropriate operation(s) for each clause in the query.

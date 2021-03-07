@@ -101,7 +101,7 @@ int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
         }
         case QG_PATH_PATTERN: {
             offset += snprintf(buff + offset, buff_len - offset,
-                    "/:%s $ %s/", e->alias, EBNFBase_ToStr(e->pattern));
+                    "/alias=%s, bidir=%d $ %s/", e->alias, e->bidirectional, EBNFBase_ToStr(e->pattern));
             break;
         }
     }

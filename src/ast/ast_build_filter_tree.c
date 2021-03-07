@@ -167,7 +167,9 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	if(type == GETYPE_NODE) {
 		props = cypher_ast_node_pattern_get_properties(entity);
 	} else { // relation
-		props = cypher_ast_rel_pattern_get_properties(entity);
+        if (cypher_astnode_instanceof(entity, CYPHER_AST_REL_PATTERN)) {
+			props = cypher_ast_rel_pattern_get_properties(entity);
+		}
 	}
 
 	if(!props) return NULL;
