@@ -124,20 +124,20 @@ class testPathPattern(FlowTestsBase):
         self.tree_graph = create_bintree(redis_con)
         self.parallel_pipe_graph = create_parallel_pipe(redis_con)
 
-    def test00_path_pattern_explain(self):
-        query = """
-        PATH PATTERN S = ()-/ :A [~S | ()] :B /-()
-        MATCH (a)-/ ~S /->(b)
-        RETURN a.val, b.val ORDER BY a.val, b.val"""
-        self.pipe_graph.execution_plan(query)
-
-    def test01_path_pattern_explain(self):
-        query = """
-        PATH PATTERN S1 = ()-/ :A :B /->()
-        PATH PATTERN S2 = ()-/ ~S1 :B /->()
-        MATCH (a)-/ ~S2 /->(b)
-        RETURN a, b"""
-        self.pipe_graph.execution_plan(query)
+    # def test00_path_pattern_explain(self):
+    #     query = """
+    #     PATH PATTERN S = ()-/ :A [~S | ()] :B /-()
+    #     MATCH (a)-/ ~S /->(b)
+    #     RETURN a.val, b.val ORDER BY a.val, b.val"""
+    #     self.pipe_graph.execution_plan(query)
+    #
+    # def test01_path_pattern_explain(self):
+    #     query = """
+    #     PATH PATTERN S1 = ()-/ :A :B /->()
+    #     PATH PATTERN S2 = ()-/ ~S1 :B /->()
+    #     MATCH (a)-/ ~S2 /->(b)
+    #     RETURN a, b"""
+    #     self.pipe_graph.execution_plan(query)
 
     def test00_path_pattern_execution(self):
         query = """
