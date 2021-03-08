@@ -352,3 +352,4 @@ class testBidirectionalTraversals(FlowTestsBase):
                            ['v3', 'v1'],
                            ['v3', 'v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
