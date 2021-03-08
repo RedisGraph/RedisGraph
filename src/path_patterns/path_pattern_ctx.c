@@ -6,6 +6,7 @@ PathPattern* _PathPatternCtx_FindPathPattern(PathPattern **patterns, AlgExpRefer
     for (int i = 0; i < array_len(patterns); ++i) {
         PathPattern *pattern = patterns[i];
         assert(pattern->reference.name);
+
         if (strcmp(pattern->reference.name, ref.name) == 0 && pattern->reference.transposed == ref.transposed) {
 			return pattern;
 		}
@@ -53,7 +54,7 @@ PathPattern* PathPatternCtx_GetPathPattern(PathPatternCtx *ctx, AlgExpReference 
 }
 
 PathPattern **PathPatternCtx_GetDependencies(PathPatternCtx *ctx, AlgebraicExpression *expr) {
-    PathPattern **visited = array_new(PathPattern*,1);
+	PathPattern **visited = array_new(PathPattern*,1);
     _PathPatternCtx_DFS(ctx, expr, &visited);
     return visited;
 }
@@ -88,7 +89,12 @@ void PathPatternCtx_Show(PathPatternCtx *pathPatternCtx) {
 void PathPatternCtx_ShowMatrices(PathPatternCtx *pathPatternCtx) {
 	printf("PathPatternCtx: [%d]\n", array_len(pathPatternCtx->patterns));
 	for (int i = 0; i < array_len(pathPatternCtx->patterns); ++i) {
-		printf("PATH PATTERN %s\n", pathPatternCtx->patterns[i]->reference.name);
+		printf("PATH PATTERN %s", pathPatternCtx->patterns[i]->reference.name);
+		if (pathPatternCtx->patterns[i]->reference.transposed) {
+			printf("_T");
+		}
+		printf(": %s\n", AlgebraicExpression_ToStringDebug(pathPatternCtx->patterns[i]->ae));
+
 		printf("--src:\n");
 		GxB_print(pathPatternCtx->patterns[i]->src, GxB_COMPLETE);
 		printf("--m:\n");

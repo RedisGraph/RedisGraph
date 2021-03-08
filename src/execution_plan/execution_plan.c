@@ -15,6 +15,7 @@
 #include "../ast/ast_build_filter_tree.h"
 #include "execution_plan_build/execution_plan_construct.h"
 #include "execution_plan_build/execution_plan_modify.h"
+#include "../path_patterns/path_pattern_ctx_construction.h"
 
 #include <setjmp.h>
 
@@ -30,6 +31,11 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	// Initialize the plan's record mapping if necessary.
 	// It will already be set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->record_map == NULL) plan->record_map = raxNew();
+
+	// Build and set path pattern context
+	PathPatternCtx *path_pattern_ctx = PathPatternCtx_Build(ast, Graph_RequiredMatrixDim(gc->g));
+	QueryCtx_SetPathPatternCtx(path_pattern_ctx);
+	plan->path_pattern_ctx = path_pattern_ctx;
 
 	// Build query graph
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
@@ -494,6 +500,7 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	}
 
 	QueryGraph_Free(plan->query_graph);
+	PathPatternCtx_Free(plan->path_pattern_ctx);
 	if(plan->record_map) raxFree(plan->record_map);
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
 	if(plan->ast_segment) AST_Free(plan->ast_segment);

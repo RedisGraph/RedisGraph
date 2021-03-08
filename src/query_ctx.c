@@ -81,9 +81,20 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 	ctx->internal_exec_ctx.last_writer = last_writer;
 }
 
+void QueryCtx_SetPathPatternCtx(PathPatternCtx *path_pattern_ctx) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->path_pattern_ctx = path_pattern_ctx;
+}
+
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->query_data.ast;
+}
+
+PathPatternCtx *QueryCtx_GetPathPatternCtx(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	assert(ctx->path_pattern_ctx);
+	return ctx->path_pattern_ctx;
 }
 
 rax *QueryCtx_GetParams(void) {

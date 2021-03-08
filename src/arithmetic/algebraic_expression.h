@@ -253,6 +253,10 @@ char *AlgebraicExpression_ToStringDebug
 	const AlgebraicExpression *exp  // Root node.
 );
 
+void _AlgebraicExpression_TotalShow(
+		const AlgebraicExpression *exp  // Root node.
+);
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression optimizations
 //------------------------------------------------------------------------------

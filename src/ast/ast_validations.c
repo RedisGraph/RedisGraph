@@ -1378,6 +1378,8 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *ident
 	if(cypher_astnode_type(node) == CYPHER_AST_WITH) {
 		// WITH clauses should only have their inputs collected, not their outputs.
 		_AST_GetWithReferences(node, identifiers);
+	} if (cypher_astnode_type(node) == CYPHER_AST_NAMED_PATH) {
+		//simpleton: collect inner ind
 	} else {
 		_AST_GetIdentifiers(node, identifiers);
 	}

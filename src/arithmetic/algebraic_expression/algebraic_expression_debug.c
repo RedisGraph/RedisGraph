@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "../../RG.h"
 #include "../../util/rmalloc.h"
+#include "../../util/arr.h"
 
 //------------------------------------------------------------------------------
 // AlgebraicExpression debugging utilities.
@@ -346,3 +347,23 @@ char *AlgebraicExpression_ToStringDebug
     return buff;
 }
 
+void _AlgebraicExpression_TotalShow(
+	const AlgebraicExpression *exp  // Root node.
+) {
+	printf("AE: %s\n", AlgebraicExpression_ToStringDebug(exp));
+	switch(exp->type) {
+		case AL_OPERATION:
+			for (int i = 0; i < array_len(exp->operation.children); ++i) {
+				_AlgebraicExpression_TotalShow(exp->operation.children[i]);
+			}
+			break;
+		case AL_OPERAND:
+			printf("%s (%p):\n", AlgebraicExpression_ToStringDebug(exp), exp->operand.matrix);
+			if (exp->operand.matrix == IDENTITY_MATRIX) {
+				printf("Identity\n");
+			} else {
+				GxB_Matrix_fprint(exp->operand.matrix, "some", GxB_COMPLETE, stdout);
+			}
+			break;
+	}
+}

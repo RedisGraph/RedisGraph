@@ -11,6 +11,7 @@
 #include "../resultset/resultset.h"
 #include "../filter_tree/filter_tree.h"
 #include "../util/object_pool/object_pool.h"
+#include "../path_patterns/path_pattern_ctx.h"
 
 typedef struct ExecutionPlan ExecutionPlan;
 
@@ -19,6 +20,7 @@ struct ExecutionPlan {
 	AST *ast_segment;                   // The segment which the current ExecutionPlan segment is built from.
 	rax *record_map;                    // Mapping between identifiers and record indices.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
+	PathPatternCtx *path_pattern_ctx;    // PathPatternCtx contains all named path patterns in this segment
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.

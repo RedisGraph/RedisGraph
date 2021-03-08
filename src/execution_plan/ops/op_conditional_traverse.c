@@ -36,7 +36,81 @@ static void _populate_filter_matrix(OpCondTraverse *op) {
 }
 
 static void _transitive_closure(PathPattern **deps, PathPatternCtx *pathPatternCtx, OpCondTraverse *op) {
-	// simpleton:
+#ifdef DPP
+	printf("--------------before trans closure----------------\n");
+	PathPatternCtx_Show(op->path_pattern_ctx);
+	for (int i = 0; i < array_len(deps); ++i) {
+		PathPattern *p = deps[i];
+		printf("Path Pattern %s:\n", p->reference.name);
+		AlgebraicExpression_TotalShow(p->ae);
+	}
+#endif
+	bool changed = true;
+
+	size_t deps_size = array_len(deps);
+	GrB_Index *nvals_ms = array_new(GrB_Index, deps_size);
+	GrB_Index *nvals_srcs = array_new(GrB_Index, deps_size);
+
+	GrB_Matrix *tmps = array_new(GrB_Matrix, deps_size);
+	for (int i = 0; i < deps_size; ++i) {
+		GrB_Index nrows, ncols;
+		GrB_Matrix_nrows(&nrows, deps[i]->m);
+		GrB_Matrix_ncols(&ncols, deps[i]->m);
+		GrB_Matrix_new(&tmps[i], GrB_BOOL, nrows, ncols);
+	}
+
+#ifdef DPP
+	int iter = 0;
+#endif
+	while (changed) {
+		changed = false;
+		for (int i = 0; i < deps_size; ++i) {
+			GrB_Matrix_nvals(&nvals_ms[i], deps[i]->m);
+			GrB_Matrix_nvals(&nvals_srcs[i], deps[i]->src);
+		}
+
+		for (int i = 0; i < array_len(deps); ++i) {
+			PathPattern *pattern = deps[i];
+			AlgebraicExpression_Eval(pattern->ae, tmps[i], pathPatternCtx);
+			GrB_Matrix_eWiseAdd_BinaryOp(pattern->m, NULL, NULL, GrB_LOR, pattern->m, tmps[i], NULL);
+		}
+
+#ifdef DPP
+		iter++;
+		printf("------------------iter %d---------------------:\n", iter);
+		for (int i = 0; i < array_len(deps); ++i) {
+			AlgebraicExpression_TotalShow(deps[i]->ae);
+		}
+#endif
+
+		for (int i = 0; i < deps_size; ++i) {
+			GrB_Index nvals_m_new, nvals_src_new;
+			GrB_Matrix_nvals(&nvals_m_new, deps[i]->m);
+			GrB_Matrix_nvals(&nvals_src_new, deps[i]->src);
+
+			if (nvals_ms[i] != nvals_m_new || nvals_srcs[i] != nvals_src_new) {
+				changed = true;
+			}
+		}
+	}
+
+	for (int j = 0; j < deps_size; ++j) {
+		GrB_Matrix_free(&tmps[j]);
+	}
+	array_free(tmps);
+	array_free(nvals_srcs);
+	array_free(nvals_ms);
+#ifdef DPP
+	printf("----after trans closure\n");
+	for (int i = 0; i < array_len(deps); ++i) {
+		PathPattern *p = deps[i];
+		printf("PathPattern %s:\n", p->reference.name);
+		printf("Src:\n");
+		GxB_print(p->src, GxB_COMPLETE);
+		printf("M:\n");
+		GxB_print(p->m, GxB_COMPLETE);
+	}
+#endif
 }
 
 void _traverse_path_pattern(OpCondTraverse *op) {
@@ -170,7 +244,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	op->is_path_pattern = is_path_pattern;
 	// simpleton: plan->path_pattern_ctx
-	op->path_pattern_ctx = PathPatternCtx_New(29);
+
+	op->path_pattern_ctx = plan->path_pattern_ctx;
 	// Dependencies to named path pattern initialized
 	// in first time of consume operation.
 	op->deps = NULL;
@@ -345,12 +420,6 @@ static void CondTraverseFree(OpBase *ctx) {
 		for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
-	}
-
-	// simpleton: dont delete path ptrn ctx in future
-	if (op->path_pattern_ctx) {
-		PathPatternCtx_Free(op->path_pattern_ctx);
-		op->path_pattern_ctx = NULL;
 	}
 
 	if (op->deps) {
