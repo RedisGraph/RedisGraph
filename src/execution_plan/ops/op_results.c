@@ -11,15 +11,15 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_ctx.h"
 
-/* Forward declarations. */
-static Record ResultsConsume(OpBase *opBase);
+// forward declarations
+static RecordBatch ResultsConsume(OpBase *opBase);
 static OpResult ResultsInit(OpBase *opBase);
 static OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));
 
-	// Set our Op operations
+	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", ResultsInit, ResultsConsume,
 				NULL, NULL, ResultsClone, NULL, false, plan);
 
@@ -33,23 +33,28 @@ static OpResult ResultsInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-/* Results consume operation
+/* results consume operation
  * called each time a new result record is required */
-static Record ResultsConsume(OpBase *opBase) {
-	Record r = NULL;
+static RecordBatch ResultsConsume(OpBase *opBase) {
 	Results *op = (Results *)opBase;
 
-	// enforce result-set size limit
-	if(op->result_set_size_limit == 0) return NULL;
-	op->result_set_size_limit--;
+	OpBase       *child      =  op->op.children[0];
+	RecordBatch  batch       =  OpBase_Consume(child);
+	uint         batch_size  =  RecordBatch_Len(batch);
 
-	OpBase *child = op->op.children[0];
-	r = OpBase_Consume(child);
-	if(!r) return NULL;
+	if(op->result_set_size_limit >= batch_size) {
+		op->result_set_size_limit -= batch_size;
+	} else {
+		batch_size = op->result_set_size_limit;
+		op->result_set_size_limit = 0;
+	}
 
-	// append to final result set
-	ResultSet_AddRecord(op->result_set, r);
-	return r;
+	for(uint i = 0; i < batch_size; i++) {
+		Record r = batch[i];
+		ResultSet_AddRecord(op->result_set, r); // append to final result set
+	}
+
+	return batch;
 }
 
 static inline OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase) {

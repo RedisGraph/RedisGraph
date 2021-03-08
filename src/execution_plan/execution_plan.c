@@ -386,9 +386,20 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	ExecutionPlan_Init(plan);
 
-	Record r = NULL;
-	// Execute the root operation and free the processed Record until the data stream is depleted.
-	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
+	RecordBatch batch;
+	// execute the root operation
+	// free the processed batch until the stream is depleted
+	while(true) {
+		batch = OpBase_Consume(plan->root);
+		uint count = RecordBatch_Len(batch);
+		if(count == 0) break; // depleted
+		for(uint i = 0; i < count; i++) {
+			Record r = batch[i];
+			ExecutionPlan_ReturnRecord(r->owner, r);
+		}
+	}
+
+	// while((batch = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
 
 	return QueryCtx_GetResultSet();
 }

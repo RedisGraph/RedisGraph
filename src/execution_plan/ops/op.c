@@ -18,30 +18,31 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 				 fpReset reset, fpToString toString, fpClone clone, fpFree free, bool writer,
 				 const struct ExecutionPlan *plan) {
 
-	op->type = type;
-	op->name = name;
-	op->plan = plan;
-	op->stats = NULL;
-	op->parent = NULL;
-	op->childCount = 0;
-	op->children = NULL;
-	op->parent = NULL;
-	op->stats = NULL;
-	op->op_initialized = false;
-	op->modifies = NULL;
-	op->writer = writer;
+	op->type            =  type;
+	op->name            =  name;
+	op->plan            =  plan;
+	op->stats           =  NULL;
+	op->parent          =  NULL;
+	op->childCount      =  0;
+	op->children        =  NULL;
+	op->parent          =  NULL;
+	op->stats           =  NULL;
+	op->op_initialized  =  false;
+	op->modifies        =  NULL;
+	op->writer          =  writer;
+	op->batch           =  RecordBatch_New(EXEC_PLAN_BATCH_SIZE);
 
-	// Function pointers.
-	op->init = init;
-	op->consume = consume;
-	op->reset = reset;
-	op->toString = toString;
-	op->clone = clone;
-	op->free = free;
-	op->profile = NULL;
+	// function pointers
+	op->init      =  init;
+	op->consume   =  consume;
+	op->reset     =  reset;
+	op->toString  =  toString;
+	op->clone     =  clone;
+	op->free      =  free;
+	op->profile   =  NULL;
 }
 
-inline Record OpBase_Consume(OpBase *op) {
+inline RecordBatch OpBase_Consume(OpBase *op) {
 	return op->consume(op);
 }
 
@@ -160,11 +161,12 @@ OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op) {
 }
 
 void OpBase_Free(OpBase *op) {
-	// Free internal operation
+	// free internal operation
 	if(op->free) op->free(op);
 	if(op->children) rm_free(op->children);
 	if(op->modifies) array_free(op->modifies);
 	if(op->stats) rm_free(op->stats);
+	RecordBatch_Free(op->batch);
 	rm_free(op);
 }
 

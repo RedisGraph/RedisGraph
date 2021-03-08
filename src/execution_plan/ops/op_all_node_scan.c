@@ -10,8 +10,8 @@
 
 /* Forward declarations. */
 static OpResult AllNodeScanInit(OpBase *opBase);
-static Record AllNodeScanConsume(OpBase *opBase);
-static Record AllNodeScanConsumeFromChild(OpBase *opBase);
+static RecordBatch AllNodeScanConsume(OpBase *opBase);
+static RecordBatch AllNodeScanConsumeFromChild(OpBase *opBase);
 static OpResult AllNodeScanReset(OpBase *opBase);
 static OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void AllNodeScanFree(OpBase *opBase);
@@ -41,7 +41,7 @@ static OpResult AllNodeScanInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
+static RecordBatch AllNodeScanConsumeFromChild(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
 	if(op->child_record == NULL) {
@@ -76,17 +76,24 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	return r;
 }
 
-static Record AllNodeScanConsume(OpBase *opBase) {
+static RecordBatch AllNodeScanConsume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
-	Node n = GE_NEW_NODE();
-	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
-	if(n.entity == NULL) return NULL;
+	OP_BATCH_CLEAR();
 
-	Record r = OpBase_CreateRecord((OpBase *)op);
-	Record_AddNode(r, op->nodeRecIdx, n);
+	// TODO: loop from 0 to MIN(LIMIT, BATCH_SIZE)
+	for(uint i = 0; i < EXEC_PLAN_BATCH_SIZE; i++) {
+		Node n = GE_NEW_NODE();
+		n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
+		if(n.entity == NULL) break;
 
-	return r;
+		Record r = OpBase_CreateRecord((OpBase *)op);
+		Record_AddNode(r, op->nodeRecIdx, n);
+
+		OP_BATCH_ADD(r);
+	}
+
+	OP_BATCH_EMIT();
 }
 
 static OpResult AllNodeScanReset(OpBase *op) {

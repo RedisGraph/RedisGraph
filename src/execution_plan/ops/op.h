@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "../record.h"
 #include "../../util/arr.h"
+#include "../record_batch.h"
 #include "../../redismodule.h"
 #include "../../schema/schema.h"
 #include "../../graph/query_graph.h"
@@ -78,12 +78,14 @@ static const OPType FILTER_RECURSE_BLACKLIST[] = {OPType_APPLY, OPType_MERGE};
 #define EAGER_OP_COUNT 5
 static const OPType EAGER_OPERATIONS[] = {OPType_AGGREGATE, OPType_CREATE, OPType_UPDATE, OPType_DELETE, OPType_MERGE};
 
+#define EXEC_PLAN_BATCH_SIZE 16  // number of records in batch
+
 struct OpBase;
 struct ExecutionPlan;
 
 typedef void (*fpFree)(struct OpBase *);
 typedef OpResult(*fpInit)(struct OpBase *);
-typedef Record(*fpConsume)(struct OpBase *);
+typedef RecordBatch(*fpConsume)(struct OpBase *);
 typedef OpResult(*fpReset)(struct OpBase *);
 typedef int (*fpToString)(const struct OpBase *, char *, uint);
 typedef struct OpBase *(*fpClone)(const struct ExecutionPlan *, const struct OpBase *);
@@ -110,8 +112,9 @@ struct OpBase {
 	const char **modifies;      // List of entities this op modifies.
 	OpStats *stats;             // Profiling statistics.
 	struct OpBase *parent;      // Parent operations.
+	bool writer;                // Indicates this is a writer operation.
+	RecordBatch batch;          // Record buffer populated by operation.
 	const struct ExecutionPlan *plan; // ExecutionPlan this operation is part of.
-	bool writer;             // Indicates this is a writer operation.
 };
 typedef struct OpBase OpBase;
 
@@ -120,7 +123,7 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 				 fpReset reset, fpToString toString, fpClone, fpFree free, bool writer,
 				 const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
-Record OpBase_Consume(OpBase *op);  // Consume op.
+RecordBatch OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
@@ -154,6 +157,17 @@ Record OpBase_CreateRecord(const OpBase *op);
 // Clones given record.
 Record OpBase_CloneRecord(Record r);
 
-// Release record.
+//------------------------------------------------------------------------------
+// Batch utilities
+//------------------------------------------------------------------------------
+
+#define OP_BATCH_LEN() RecordBatch_Len(opBase->batch)
+#define OP_BATCH_ADD(r) opBase->batch = RecordBatch_Add(&opBase->batch, r)
+#define OP_BATCH_EMIT() return opBase->batch;
+#define OP_BATCH_CLEAR() RecordBatch_Clear(opBase->batch)
+#define OP_BATCH_EMPTY() RecordBatch_Empty(opBase->batch)
+#define OP_BATCH_HAS_ROOM() EXEC_PLAN_BATCH_SIZE > OP_BATCH_LEN()
+
+// release record
 void OpBase_DeleteRecord(Record r);
 

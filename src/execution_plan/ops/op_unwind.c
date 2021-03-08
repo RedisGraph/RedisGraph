@@ -13,9 +13,9 @@
 
 #define INDEX_NOT_SET UINT_MAX
 
-/* Forward declarations. */
+// forward declarations
 static OpResult UnwindInit(OpBase *opBase);
-static Record UnwindConsume(OpBase *opBase);
+static RecordBatch UnwindConsume(OpBase *opBase);
 static OpResult UnwindReset(OpBase *opBase);
 static OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UnwindFree(OpBase *opBase);
@@ -23,10 +23,11 @@ static void UnwindFree(OpBase *opBase);
 OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
-	op->exp = exp;
-	op->list = SI_NullVal();
-	op->currentRecord = NULL;
-	op->listIdx = INDEX_NOT_SET;
+	op->exp            =  exp;
+	op->list           =  SI_NullVal();
+	op->listIdx        =  INDEX_NOT_SET;
+	op->in_batch       =  NULL;
+	op->batchIdx       =  0;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
@@ -36,83 +37,108 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	return (OpBase *)op;
 }
 
-/* Evaluate list expression, raise runtime exception
- * if expression did not returned a list type value. */
+/* evaluate list expression, raise runtime exception
+ * if expression did not returned a list type value */
 static void _initList(OpUnwind *op) {
-	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
-	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
+	// Null-set the list value to avoid memory errors if evaluation fails
+	op->list = SI_NullVal(); 
+	Record r = op->in_batch[op->batchIdx];
+	SIValue new_list = AR_EXP_Evaluate(op->exp, r);
 	if(SI_TYPE(new_list) != T_ARRAY) {
 		Error_SITypeMismatch(new_list, T_ARRAY);
 		SIValue_Free(new_list);
 		ErrorCtx_RaiseRuntimeException(NULL);
 	}
-	// Update the list value.
+
+	// update the list value
+	op->listIdx = 0;
 	op->list = new_list;
 }
 
 static OpResult UnwindInit(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *) opBase;
-	op->currentRecord = OpBase_CreateRecord((OpBase *)op);
 
 	if(op->op.childCount == 0) {
-		// No child operation, list must be static.
-		op->listIdx = 0;
-		_initList(op);
-	} else {
-		// List might depend on data provided by child operation.
-		op->list = SI_EmptyArray();
-		op->listIdx = INDEX_NOT_SET;
+		// create fake input record batch
+		Record r = OpBase_CreateRecord(opBase);
+		RecordBatch batch = RecordBatch_New(1);
+		RecordBatch_Add(&batch, r);
+		op->in_batch = batch;
 	}
 
 	return OP_OK;
 }
 
-/* Try to generate a new value to return
- * NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
- * or in case where the current list is fully consumed. */
-Record _handoff(OpUnwind *op) {
-	// If there is a new value ready, return it.
-	if(op->listIdx < SIArray_Length(op->list)) {
-		Record r = OpBase_CloneRecord(op->currentRecord);
-		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
-		op->listIdx++;
-		return r;
+/* try to generate a new value to return NULL will be returned
+ * if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
+ * or in case where the current list is fully consumed */
+void _populateBatch(OpUnwind *op) {
+	OpBase       *opBase     =  (OpBase *)op;
+	RecordBatch  batch       =  op->in_batch;
+	uint         batch_size  =  RecordBatch_Len(batch);
+
+	// for each record in input batch
+	for(; op->batchIdx < batch_size && OP_BATCH_HAS_ROOM(); op->batchIdx++) {
+
+		// evaluate list expression if needed
+		if(SI_TYPE(op->list) & T_NULL) _initList(op);
+
+		// determine number of items to extract from list
+		uint  start          =  op->listIdx;
+		uint  remaining      =  SIArray_Length(op->list) - op->listIdx;
+		uint  room_in_batch  =  EXEC_PLAN_BATCH_SIZE - OP_BATCH_LEN();
+		uint  item_count     =  MIN(room_in_batch, remaining);
+		uint  end            =  start + item_count;
+
+		// extract count elements from list to out batch
+		for(uint i = start; i < end; i++) {
+			Record r = OpBase_CloneRecord(batch[op->batchIdx]);
+			Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, i));
+			OP_BATCH_ADD(r);
+		}
+
+		op->listIdx += item_count; // update list index position
+
+		// free list if fully consumed
+		if(SIArray_Length(op->list) == op->listIdx) {
+			op->listIdx = 0;
+			SIValue_Free(op->list);
+			op->list = SI_NullVal();
+			//OpBase_DeleteRecord(op->batch[op->batchIdx]);
+			//op->batch[op->batchIdx] = NULL;
+		}
 	}
-	return NULL;
 }
 
-static Record UnwindConsume(OpBase *opBase) {
+static RecordBatch UnwindConsume(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
-	// Try to produce data.
-	Record r = _handoff(op);
-	if(r) return r;
+	OP_BATCH_CLEAR();
 
-	// No child operation to pull data from, we're done.
-	if(op->op.childCount == 0) return NULL;
+	// try to produce data
+	_populateBatch(op);
+	if(!OP_BATCH_EMPTY()) goto emit;
+
+	// no child operation to pull data from, we're done
+	if(op->op.childCount == 0) goto emit;
 
 	OpBase *child = op->op.children[0];
-	// Did we managed to get new data?
-	if((r = OpBase_Consume(child))) {
-		// Free current record to accommodate new record.
-		OpBase_DeleteRecord(op->currentRecord);
-		op->currentRecord = r;
-		// Free old list.
-		SIValue_Free(op->list);
+	// as long as child isn't depleted and there's room in output batch
+	do {
+		op->batchIdx = 0;
+		op->in_batch = OpBase_Consume(child);
+		_populateBatch(op);
+	} while(!RecordBatch_Empty(op->in_batch) && OP_BATCH_HAS_ROOM());
 
-		// Reset index and set list.
-		op->listIdx = 0;
-		_initList(op);
-	}
-
-	return _handoff(op);
+emit:
+	OP_BATCH_EMIT();
 }
 
 static OpResult UnwindReset(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	// Static should reset index to 0.
+	// static should reset index to 0
 	if(op->op.childCount == 0) op->listIdx = 0;
-	// Dynamic should set index to UINT_MAX, to force refetching of data.
+	// dynamic should set index to UINT_MAX, to force refetching of data
 	else op->listIdx = INDEX_NOT_SET;
 	return OP_OK;
 }
@@ -133,9 +159,14 @@ static void UnwindFree(OpBase *ctx) {
 		op->exp = NULL;
 	}
 
-	if(op->currentRecord) {
-		OpBase_DeleteRecord(op->currentRecord);
-		op->currentRecord = NULL;
-	}
+	//if(op->batch) {
+	//	uint batch_size = RecordBatch_Len(op->batch);
+	//	for(uint i = 0; i < batch_size; i++) {
+	//		Record r = op->batch[i];
+	//		if(r != NULL) OpBase_DeleteRecord(op->batch[i]);
+	//	}
+	//	RecordBatch_Free(op->batch);
+	//	op->batch = NULL;
+	//}
 }
 

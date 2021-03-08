@@ -10,15 +10,15 @@
 #include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-/* OP Unwind */
-
+// OP Unwind
 typedef struct {
 	OpBase op;
-	SIValue list;         // List which the unwind operation is performed on.
-	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
-	uint listIdx;         // Current list index.
-	int unwindRecIdx;     // Update record at this index.
-	Record currentRecord; // record to clone and add a value extracted from the list.
+	SIValue list;          // list which the unwind operation is performed on
+	AR_ExpNode *exp;       // arithmetic expression (evaluated as an SIArray)
+	uint listIdx;          // current list index
+	uint batchIdx;         // index into input batch
+	RecordBatch in_batch;  // input batch
+	int unwindRecIdx;      // update record at this index
 } OpUnwind;
 
 /* Creates a new Unwind operation */
