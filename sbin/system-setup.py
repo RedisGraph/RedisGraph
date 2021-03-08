@@ -25,10 +25,7 @@ class RedisGraphSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("locales")
-        if self.dist == 'ubuntu' and int(self.ver.split('.')[0]) < 18: 
-            self.run("%s/bin/getgcc --modern" % READIES)
-        else:
-            self.run("%s/bin/getgcc" % READIES)
+        self.run("%s/bin/getgcc" % READIES)
         self.install("peg")
 
     def redhat_compat(self):
