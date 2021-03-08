@@ -376,7 +376,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             redis_con.ping()
             t1 = time.time() - t0
             # Verify that pinging the server takes less than 1 second during bulk insertion
-            self.env.assertLess(t1, 1)
+            self.env.assertLess(t1, 2)
             ping_count += 1
 
         thread.join()
