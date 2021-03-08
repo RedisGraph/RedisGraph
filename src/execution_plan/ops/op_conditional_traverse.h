@@ -30,7 +30,10 @@ typedef struct {
 	Record *records;            // Array of records.
 	Record r;                   // Currently selected record.
 
-	bool is_path_pattern; 		// simpleton:
+	// simpleton: add docs
+	bool is_path_pattern;
+	PathPatternCtx *path_pattern_ctx;
+	PathPattern **deps;
 } OpCondTraverse;
 
 /* Creates a new Traverse operation */
