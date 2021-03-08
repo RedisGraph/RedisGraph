@@ -29,8 +29,10 @@ typedef struct {
 	uint record_cap;            // Max number of records to process.
 	Record *records;            // Array of records.
 	Record r;                   // Currently selected record.
+
+	bool is_path_pattern; 		// simpleton:
 } OpCondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, bool is_path_pattern);
 

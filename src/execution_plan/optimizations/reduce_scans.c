@@ -18,7 +18,7 @@ static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 	const char *alias = op->n.alias;
 	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, alias, alias, NULL,
 															 op->n.label, AlgExpReference_NewEmpty());
-	return NewCondTraverseOp(op->op.plan, g, ae);
+	return NewCondTraverseOp(op->op.plan, g, ae, false);
 }
 
 static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {

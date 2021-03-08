@@ -33,6 +33,7 @@ def create_pipe(redis_con):
     pipe.commit()
     return pipe
 
+
 def create_parallel_pipe(redis_con):
     parallel_pipe = Graph("parallel pipe", redis_con)
     node_props = ['v1', 'v2', 'v3', 'v4']
@@ -57,6 +58,7 @@ def create_parallel_pipe(redis_con):
 
     parallel_pipe.commit()
     return parallel_pipe
+
 
 def create_bintree(redis_con):
     tree = Graph("bintree", redis_con)
@@ -88,6 +90,7 @@ def create_bintree(redis_con):
 
     tree.commit()
     return tree
+
 
 def create_reversed_pipe(redis_con):
     reversed_pipe = Graph("reversed_pipe", redis_con)
@@ -147,45 +150,45 @@ class testPathPattern(FlowTestsBase):
         expected_result = [['v1', 'v2'],
                            ['v2', 'v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)
-    
-    # def test01_path_pattern_execution(self):
-    #     query = """
-    #     MATCH (a)-/ :A | :B /->(b)
-    #     RETURN a.val, b.val ORDER BY a.val, b.val"""
-    #     actual_result = self.pipe_graph.query(query)
-    #     expected_result = [['v1', 'v2'],
-    #                        ['v2', 'v3'],
-    #                        ['v3', 'v4'],
-    #                        ['v4', 'v5']]
-    #     self.env.assertEquals(actual_result.result_set, expected_result)
-    #
-    # def test02_path_pattern_execution(self):
-    #     query = """
-    #     MATCH (a)-/ :A :B /->(b)
-    #     RETURN a.val, b.val ORDER BY a.val, b.val"""
-    #     actual_result = self.pipe_graph.query(query)
-    #     expected_result = [['v2', 'v4']]
-    #     self.env.assertEquals(actual_result.result_set, expected_result)
-    #
-    # def test03_path_pattern_execution(self):
-    #     query = """
-    #     MATCH (a)-/ [:A | :B] [:C | :D] /->(b)
-    #     RETURN a.val, b.val ORDER BY a.val, b.val"""
-    #     actual_result = self.tree_graph.query(query)
-    #     expected_result = [['v1', 'v4'],
-    #                        ['v1', 'v5'],
-    #                        ['v1', 'v6'],
-    #                        ['v1', 'v7']]
-    #     self.env.assertEquals(actual_result.result_set, expected_result)
-    #
-    # def test04_path_pattern_execution(self):
-    #     query = """
-    #     MATCH (a)-/ [:A :B] | [:C :D] /->(b)
-    #     RETURN a.val, b.val ORDER BY a.val, b.val"""
-    #     actual_result = self.parallel_pipe_graph.query(query)
-    #     expected_result = [['v1', 'v4']]
-    #     self.env.assertEquals(actual_result.result_set, expected_result)
-    #
+
+    def test01_path_pattern_execution(self):
+        query = """
+        MATCH (a)-/ :A> | :B> /->(b)
+        RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = self.pipe_graph.query(query)
+        expected_result = [['v1', 'v2'],
+                           ['v2', 'v3'],
+                           ['v3', 'v4'],
+                           ['v4', 'v5']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test02_path_pattern_execution(self):
+        query = """
+        MATCH (a)-/ :A> :B> /->(b)
+        RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = self.pipe_graph.query(query)
+        expected_result = [['v2', 'v4']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test03_path_pattern_execution(self):
+        query = """
+        MATCH (a)-/ [:A> | :B>]> [:C> | :D>]> /->(b)
+        RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = self.tree_graph.query(query)
+        expected_result = [['v1', 'v4'],
+                           ['v1', 'v5'],
+                           ['v1', 'v6'],
+                           ['v1', 'v7']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test04_path_pattern_execution(self):
+        query = """
+        MATCH (a)-/ [:A> :B>]> | [:C> :D>]> /->(b)
+        RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = self.parallel_pipe_graph.query(query)
+        expected_result = [['v1', 'v4']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
     # def test05_path_pattern_execution(self):
     #     query = """
     #     MATCH (a)-/ <:A /->(b)
@@ -202,7 +205,7 @@ class testPathPattern(FlowTestsBase):
     #     actual_result = self.pipe_graph.query(query)
     #
     #     query1 = """
-    #     MATCH (a)-/ <[:A | :B] /->(b)
+    #     MATCH (a)-/ <[:A> | :B>] /->(b)
     #     RETURN a.val, b.val ORDER BY a.val, b.val"""
     #     actual_result1 = self.pipe_graph.query(query1)
     #

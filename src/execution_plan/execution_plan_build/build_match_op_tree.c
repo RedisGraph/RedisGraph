@@ -79,13 +79,16 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				// Empty expression, already freed.
 				if(AlgebraicExpression_OperandCount(exp) == 0) continue;
 
+
 				QGEdge *edge = NULL;
 				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
 																					   AlgebraicExpression_Edge(exp));
 				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
+				} else if (edge && edge->type == QG_PATH_PATTERN) {
+					root = NewCondTraverseOp(plan, gc->g, exp, true);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp);
+					root = NewCondTraverseOp(plan, gc->g, exp, false);
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);

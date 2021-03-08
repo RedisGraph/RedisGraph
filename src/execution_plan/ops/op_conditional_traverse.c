@@ -70,7 +70,7 @@ void _traverse(OpCondTraverse *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, bool is_path_pattern) {
 	OpCondTraverse *op = rm_malloc(sizeof(OpCondTraverse));
 	op->graph = g;
 	op->ae = ae;
@@ -84,6 +84,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->dest_label = NULL;
 	op->record_cap = BATCH_SIZE;
 	op->dest_label_id = GRAPH_NO_LABEL;
+
+	op->is_path_pattern = is_path_pattern;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
@@ -102,7 +104,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->dest_label_id = dest_node->labelID;
 
 	const char *edge = AlgebraicExpression_Edge(ae);
-	if(edge) {
+	if(edge && !is_path_pattern) {
 		/* This operation will populate an edge in the Record.
 		 * Prepare all necessary information for collecting matching edges. */
 		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
@@ -216,7 +218,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	OpCondTraverse *op = (OpCondTraverse *)opBase;
-	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
+	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae), op->is_path_pattern);
 }
 
 /* Frees CondTraverse */
