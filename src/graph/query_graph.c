@@ -57,7 +57,7 @@ static void _QueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entit
 
 // Adds edge to query graph
 static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
-							   QGNode *src, QGNode *dest) {
+							   QGNode *src, QGNode *dest, TRAVERSE_MODE mode) {
 
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -67,7 +67,7 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 	// Each edge can only appear once in a QueryGraph.
 	ASSERT(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
+	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias, mode);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// Add the IDs of all reltype matrixes
@@ -153,8 +153,9 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 	 * e.g. MATCH (a), (a:L)
 	 * where each occurance might add an additional piece of information
 	 * an edge can only be mentioned once, as such there's no value in
-	 * cloning an edge. therefor we simply add it.*/
-	_QueryGraphAddEdge(graph, ast_edge, left, right);
+	 * cloning an edge. therefore we simply add it.*/
+	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
+	_QueryGraphAddEdge(graph, ast_edge, left, right, e->mode);
 }
 
 // Clones path from 'qg' into 'graph'.
@@ -215,7 +216,7 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 	qg->edges = array_append(qg->edges, e);
 }
 
-void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
+void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path, TRAVERSE_MODE mode) {
 	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Introduce nodes first. Nodes are positioned at every even offset
@@ -239,7 +240,7 @@ void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
 
 		// Retrieve the AST reference to this edge.
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraphAddEdge(qg, edge, left, right);
+		_QueryGraphAddEdge(qg, edge, left, right, mode);
 	}
 }
 
@@ -299,13 +300,28 @@ QueryGraph *BuildQueryGraph(const AST *ast) {
 
 	// Collect all path AST nodes.
 	const cypher_astnode_t **paths = AST_GetTypedNodes(ast->root, CYPHER_AST_PATTERN_PATH);
+	const cypher_astnode_t **shortest_paths = AST_GetTypedNodes(ast->root, CYPHER_AST_SHORTEST_PATH);
 	uint n = array_len(paths);
+	uint shortest_count = array_len(shortest_paths);
 	for(uint i = 0; i < n; i++) {
 		const cypher_astnode_t *path = paths[i];
-		QueryGraph_AddPath(qg, path);
+
+		// Determine whether this path is a shortest path.
+		TRAVERSE_MODE mode = TRAVERSE_STANDARD;
+		for(uint j = 0; j < shortest_count; j ++) {
+			const cypher_astnode_t *shortest_path = cypher_ast_shortest_path_get_path(shortest_paths[j]);
+			if(shortest_path == path) {
+				if(cypher_ast_shortest_path_is_single(shortest_paths[j])) mode = TRAVERSE_SINGLE_SHORTEST;
+				else mode = TRAVERSE_ALL_SHORTEST;
+				break;
+			}
+		}
+
+		QueryGraph_AddPath(qg, path, mode);
 	}
 
 	array_free(paths);
+	array_free(shortest_paths);
 	return qg;
 }
 

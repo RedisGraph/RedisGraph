@@ -304,6 +304,7 @@ static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
 		if(child_type == CYPHER_AST_PATTERN_PATH) {
 			const cypher_astnode_type_t root_type = cypher_astnode_type(root);
 			if(root_type != CYPHER_AST_PATTERN &&
+			   root_type != CYPHER_AST_SHORTEST_PATH &&
 			   root_type != CYPHER_AST_MATCH &&
 			   root_type != CYPHER_AST_MERGE &&
 			   root_type != CYPHER_AST_WITH &&
