@@ -146,6 +146,7 @@ static void _AlgebraicExpression_PrintTree
 		break;
 	case AL_OPERAND:
 		if(exp->operand.edge) alias = exp->operand.edge;
+		else if(exp->operand.label) alias = exp->operand.label;
 		else alias = exp->operand.src;
 		printf("%s\n", alias);
 	default:
@@ -259,6 +260,7 @@ void _AlgebraicExpression_ToString
 		break;
 	case AL_OPERAND:
 		if(exp->operand.edge) alias = exp->operand.edge;
+		else if(exp->operand.label) alias = exp->operand.label;
 		else alias = exp->operand.src;
 		sprintf(buff + strlen(buff), "%s", alias);
 	default:
