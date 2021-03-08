@@ -31,6 +31,7 @@
 # Folders
 CMakeFiles/
 logs/
+/bin/
 
 # Files
 CMakeCache.txt
