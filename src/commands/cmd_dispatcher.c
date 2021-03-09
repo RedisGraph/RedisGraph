@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "commands.h"
+#include "../config.h"
 #include "cmd_context.h"
 #include "../util/thpool/pools.h"
 
@@ -22,9 +23,9 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 	ASSERT(timeout);
 
 	// set defaults
-	*timeout = 0;      // no timeout
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
+	Config_Option_get(Config_TIMEOUT, timeout);
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
