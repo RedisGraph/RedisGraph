@@ -263,14 +263,14 @@ class testPathPattern(FlowTestsBase):
     #     self.env.assertEquals(actual_result.result_set, expected_result)
     #     self.env.assertEquals(actual_result.result_set, actual_result1.result_set)
     #
-    # def test10_path_pattern_execution(self):
-    #     query = """
-    #     PATH PATTERN S = ()-/ [:A ~S :B] | [:A :B] /-()
-    #     MATCH (a)-/ ~S /->(b)
-    #     RETURN a.val, b.val ORDER BY a.val, b.val"""
-    #     actual_result = self.pipe_graph.query(query)
-    #     expected_result = [['v1', 'v5'], ['v2', 'v4']]
-    #     self.env.assertEquals(actual_result.result_set, expected_result)
+    def test10_path_pattern_execution(self):
+        query = """
+        PATH PATTERN S = ()-/ [:A> ~S :B>]> | [:A> :B>]> /-()
+        MATCH (a)-/ ~S /->(b)
+        RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = self.pipe_graph.query(query)
+        expected_result = [['v1', 'v5'], ['v2', 'v4']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
     #
     # def test11_path_pattern_execution(self):
     #     query = """
