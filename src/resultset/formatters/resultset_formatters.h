@@ -19,24 +19,27 @@ typedef enum {
 
 /* Retrieves result-set formatter.
  * Returns NULL for an unknown formatter type. */
-ResultSetFormatter* ResultSetFormatter_GetFormatter(ResultSetFormatterType t);
+ResultSetFormatter *ResultSetFormatter_GetFormatter(ResultSetFormatterType t);
 
 /* Reply formater which does absolutely nothing.
  * used when profiling a query */
 static ResultSetFormatter ResultSetNOP __attribute__((used)) = {
 	.EmitRow = ResultSet_EmitNOPRow,
-	.EmitHeader = ResultSet_EmitNOPHeader
+	.EmitHeader = ResultSet_EmitNOPHeader,
+	.EmitFooter = ResultSet_EmitNOPFooter
 };
 
 /* Compact reply formatter, this is the default formatter. */
 static ResultSetFormatter ResultSetFormatterCompact __attribute__((used)) = {
 	.EmitRow = ResultSet_EmitCompactRow,
-	.EmitHeader = ResultSet_ReplyWithCompactHeader
+	.EmitHeader = ResultSet_ReplyWithCompactHeader,
+	.EmitFooter = ResultSet_ReplyWithCompactFooter
 };
 
 /* Verbose reply formatter, used when querying via CLI. */
 static ResultSetFormatter ResultSetFormatterVerbose __attribute__((used)) = {
 	.EmitRow = ResultSet_EmitVerboseRow,
-	.EmitHeader = ResultSet_ReplyWithVerboseHeader
+	.EmitHeader = ResultSet_ReplyWithVerboseHeader,
+	.EmitFooter = ResultSet_ReplyWithVerboseFooter
 };
 

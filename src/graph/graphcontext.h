@@ -16,6 +16,9 @@
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
 
+typedef uint GRAPH_VERSION;
+#define GRAPH_VERSION_MISSING UINT_MAX
+
 /* GraphContext holds refrences to various elements of a graph object
  * It is the value sitting behind a Redis graph key
  *
@@ -40,7 +43,7 @@ typedef struct {
 	GraphEncodeContext *encoding_context;   // Encode context of the graph.
 	GraphDecodeContext *decoding_context;   // Decode context of the graph.
 	Cache *cache;                           // Global cache of execution plans.
-	XXH32_hash_t version;                   // Graph version.
+	GRAPH_VERSION version;                  // Graph version.
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -65,7 +68,7 @@ void GraphContext_Delete(GraphContext *gc);
 void GraphContext_Rename(GraphContext *gc, const char *name);
 
 // Get graph context version
-XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc);
+GRAPH_VERSION GraphContext_GetVersion(const GraphContext *gc);
 
 //------------------------------------------------------------------------------
 // Schema API

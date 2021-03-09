@@ -21,8 +21,8 @@ typedef struct {
 // batch, make sure graph key doesn't exists, fails if "BEGIN" token is present
 // and graph key 'graphname' already exists
 static int _MGraph_Bulk_Begin(RedisModuleCtx *ctx, RedisModuleString ***argv,
-		int *argc, RedisModuleString *rs_graph_name, const char *graphname,
-		bool *begin) {
+							  int *argc, RedisModuleString *rs_graph_name, const char *graphname,
+							  bool *begin) {
 	ASSERT(argv != NULL);
 	ASSERT(argc != NULL);
 	ASSERT(begin != NULL);
@@ -86,7 +86,7 @@ static void _MGraph_BulkInsert(void *args) {
 
 	bool begin = false;
 	if(_MGraph_Bulk_Begin(ctx, &argv, &argc, rs_graph_name, graphname, &begin)
-			!= BULK_OK) goto cleanup;
+	   != BULK_OK) goto cleanup;
 
 	// create key only if "BEGIN" token present
 	RedisModule_ThreadSafeContextLock(ctx);

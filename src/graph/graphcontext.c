@@ -187,9 +187,8 @@ void GraphContext_Rename(GraphContext *gc, const char *name) {
 	gc->graph_name = rm_strdup(name);
 }
 
-XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
+GRAPH_VERSION GraphContext_GetVersion(const GraphContext *gc) {
 	ASSERT(gc != NULL);
-
 	return gc->version;
 }
 

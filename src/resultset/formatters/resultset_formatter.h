@@ -36,13 +36,17 @@ typedef enum {
 typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns,
 							   uint *col_rec_map);
 
+// Typedef for footer formatters.
+typedef void (*EmitFooterFunc)(RedisModuleCtx *ctx, GraphContext *gc, SIValue map);
+
 // Typedef for row formatters.
 typedef void (*EmitRowFunc)(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols);
-							   
+							SIValue **row, uint numcols);
+
 typedef struct {
 	EmitRowFunc    EmitRow;
 	EmitHeaderFunc EmitHeader;
+	EmitFooterFunc EmitFooter;
 } ResultSetFormatter;
 
 /* Redis prints doubles with up to 17 digits of precision, which captures

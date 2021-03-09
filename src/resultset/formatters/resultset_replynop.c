@@ -8,10 +8,14 @@
 #include "../../util/arr.h"
 
 void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const char **columns,
-		uint *col_rec_map) {
+							 uint *col_rec_map) {
 }
 
 void ResultSet_EmitNOPRow(RedisModuleCtx *ctx, GraphContext *gc, SIValue **row,
-		uint numcols) {
+						  uint numcols) {
+}
+
+void ResultSet_EmitNOPFooter(RedisModuleCtx *ctx, GraphContext *gc, SIValue map) {
+
 }
 

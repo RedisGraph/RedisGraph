@@ -12,7 +12,8 @@
 // Forward declarations.
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
-static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc, SIValue array);
+static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
+											   SIValue array);
 static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path);
 static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc, SIValue v);
 static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *gc, SIValue v);
@@ -276,7 +277,7 @@ static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *
 }
 
 void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -304,3 +305,8 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+
+void ResultSet_ReplyWithCompactFooter(RedisModuleCtx *ctx, GraphContext *gc, SIValue map) {
+	_ResultSet_CompactReplyWithMap(ctx, gc, map);
+}
+

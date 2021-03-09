@@ -186,13 +186,13 @@ static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point)
 	// point({latitude:56.7, longitude:12.78})
 	char buffer[256];
 	int bytes_written = sprintf(buffer, "point({latitude:%f, longitude:%f})",
-			Point_lat(point), Point_lon(point));
+								Point_lat(point), Point_lon(point));
 
 	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 }
 
 void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -204,7 +204,7 @@ void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-		uint *col_rec_map) {
+									  uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
@@ -212,3 +212,8 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+
+void ResultSet_ReplyWithVerboseFooter(RedisModuleCtx *ctx, GraphContext *gc, SIValue map) {
+	_ResultSet_VerboseReplyWithMap(ctx, map);
+}
+

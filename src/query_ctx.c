@@ -56,6 +56,7 @@ void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->gc = CommandCtx_GetGraphContext(cmd_ctx);
 	ctx->query_data.query = CommandCtx_GetQuery(cmd_ctx);
+	ctx->query_data.version = CommandCtx_GetVersion(cmd_ctx);
 	ctx->global_exec_ctx.bc = CommandCtx_GetBlockingClient(cmd_ctx);
 	ctx->global_exec_ctx.redis_ctx = CommandCtx_GetRedisCtx(cmd_ctx);
 	ctx->global_exec_ctx.command_name = CommandCtx_GetCommandName(cmd_ctx);
@@ -116,6 +117,11 @@ ResultSet *QueryCtx_GetResultSet(void) {
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return &ctx->internal_exec_ctx.result_set->stats;
+}
+
+GRAPH_VERSION QueryCtx_GetGraphVersion(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->query_data.version;
 }
 
 void QueryCtx_PrintQuery(void) {

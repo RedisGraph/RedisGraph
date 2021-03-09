@@ -90,10 +90,22 @@ void ResultSet_MapProjection(ResultSet *set, const Record r) {
 	}
 }
 
+// Returns true if this query uses specified a graph version and also modified it.
+static inline bool _ResultSet_RequiresFooter(ResultSet *set) {
+	uint graph_version = QueryCtx_GetGraphVersion();
+	return (graph_version != GRAPH_VERSION_MISSING &&
+			graph_version != GraphContext_GetVersion(set->gc));
+}
+
 static void _ResultSet_ReplyWithPreamble(ResultSet *set) {
 	if(set->column_count > 0) {
-		// prepare a response containing a header, records, and statistics
-		RedisModule_ReplyWithArray(set->ctx, 3);
+		if(_ResultSet_RequiresFooter(set)) {
+			// prepare a response containing a header, records, statistics, and a metadata footer
+			RedisModule_ReplyWithArray(set->ctx, 4);
+		} else {
+			// prepare a response containing a header, records, and statistics
+			RedisModule_ReplyWithArray(set->ctx, 3);
+		}
 		// emit the table header using the appropriate formatter
 		set->formatter->EmitHeader(set->ctx, set->columns, set->columns_record_map);
 	} else {
@@ -239,7 +251,14 @@ void ResultSet_Reply(ResultSet *set) {
 		}
 	}
 
-	_ResultSet_ReplayStats(set->ctx, set); // The last response is query statistics.
+	_ResultSet_ReplayStats(set->ctx, set); // Reply with query statistics.
+
+	// If the query required metadata, emit it now.
+	if(_ResultSet_RequiresFooter(set)) {
+		SIValue map = ResultSet_PrepareMetadata(set->gc);
+		set->formatter->EmitFooter(set->ctx, set->gc, map);
+		SIValue_Free(map);
+	}
 }
 
 /* Report execution timing. */

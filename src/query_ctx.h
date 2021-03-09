@@ -18,9 +18,10 @@
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
 typedef struct {
-	AST *ast;       // The scoped AST associated with this query.
-	rax *params;    // Query parameters.
-	const char *query;    // Query string.
+	AST *ast;               // The scoped AST associated with this query.
+	rax *params;            // Query parameters.
+	const char *query;      // Query string.
+	GRAPH_VERSION version;  // Graph version reported by the client.
 } QueryCtx_QueryData;
 
 typedef struct {
@@ -86,6 +87,8 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 ResultSet *QueryCtx_GetResultSet(void);
 /* Retrive the resultset statistics. */
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
+/* Retrieve the graph version. */
+GRAPH_VERSION QueryCtx_GetGraphVersion(void);
 
 /* Print the current query. */
 void QueryCtx_PrintQuery(void);

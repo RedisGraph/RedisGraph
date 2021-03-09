@@ -26,7 +26,8 @@ CommandCtx *CommandCtx_New
 	ExecutorThread thread,
 	bool replicated_command,
 	bool compact,
-	long long timeout
+	long long timeout,
+	GRAPH_VERSION version
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc = bc;
@@ -35,6 +36,7 @@ CommandCtx *CommandCtx_New
 	context->thread = thread;
 	context->compact = compact;
 	context->timeout = timeout;
+	context->version = version;
 	context->command_name = NULL;
 	context->graph_ctx = graph_ctx;
 	context->replicated_command = replicated_command;
@@ -108,6 +110,11 @@ const char *CommandCtx_GetCommandName(const CommandCtx *command_ctx) {
 const char *CommandCtx_GetQuery(const CommandCtx *command_ctx) {
 	ASSERT(command_ctx != NULL);
 	return command_ctx->query;
+}
+
+uint CommandCtx_GetVersion(const CommandCtx *command_ctx) {
+	ASSERT(command_ctx != NULL);
+	return command_ctx->version;
 }
 
 void CommandCtx_ThreadSafeContextLock(const CommandCtx *command_ctx) {

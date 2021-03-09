@@ -9,22 +9,21 @@
 #include "cmd_context.h"
 #include "../util/thpool/pools.h"
 
-#define GRAPH_VERSION_MISSING -1
-
 // Command handler function pointer.
 typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-					   long long *timeout, uint *graph_version, char **errmsg) {
+					   long long *timeout, GRAPH_VERSION *graph_version, char **errmsg) {
 
-	ASSERT(compact);
-	ASSERT(timeout);
+	ASSERT(compact != NULL);
+	ASSERT(timeout != NULL);
+	ASSERT(graph_version != NULL);
 
 	// set defaults
-	*timeout = 0;      // no timeout
-	*compact = false;  // verbose
-	*graph_version = GRAPH_VERSION_MISSING;
+	*timeout        =  0;                      // no timeout
+	*compact        =  false;                  // verbose
+	*graph_version  =  GRAPH_VERSION_MISSING;  // no version
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -78,13 +77,13 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 
 // Returns false if client provided a graph version
 // which mismatch the current graph version
-static bool _verifyGraphVersion(GraphContext *gc, uint version) {
+static bool _verifyGraphVersion(GraphContext *gc, GRAPH_VERSION version) {
 	// caller did not specify graph version
 	if(version == GRAPH_VERSION_MISSING) return true;
 	return (GraphContext_GetVersion(gc) == version);
 }
 
-static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, uint version) {
+static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, GRAPH_VERSION version) {
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithError(ctx, "version mismatch");
 	RedisModule_ReplyWithLongLong(ctx, version);
@@ -93,35 +92,35 @@ static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, uint version) {
 // Return true if the command has a valid number of arguments.
 static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 	switch(cmd) {
-	case CMD_QUERY:
-	case CMD_RO_QUERY:
-	case CMD_EXPLAIN:
-	case CMD_PROFILE:
-		// Expect a command, graph name, a query, and optional config flags.
-		return arity >= 3 && arity <= 8;
-	case CMD_SLOWLOG:
-		// Expect just a command and graph name.
-		return arity == 2;
-	default:
-		ASSERT("encountered unhandled query type" && false);
-		return false;
+		case CMD_QUERY:
+		case CMD_RO_QUERY:
+		case CMD_EXPLAIN:
+		case CMD_PROFILE:
+			// Expect a command, graph name, a query, and optional config flags.
+			return arity >= 3 && arity <= 8;
+		case CMD_SLOWLOG:
+			// Expect just a command and graph name.
+			return arity == 2;
+		default:
+			ASSERT("encountered unhandled query type" && false);
+			return false;
 	}
 }
 
 // Get command handler.
 static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 	switch(cmd) {
-	case CMD_QUERY:
-	case CMD_RO_QUERY:
-		return Graph_Query;
-	case CMD_EXPLAIN:
-		return Graph_Explain;
-	case CMD_PROFILE:
-		return Graph_Profile;
-	case CMD_SLOWLOG:
-		return Graph_Slowlog;
-	default:
-		ASSERT(false);
+		case CMD_QUERY:
+		case CMD_RO_QUERY:
+			return Graph_Query;
+		case CMD_EXPLAIN:
+			return Graph_Explain;
+		case CMD_PROFILE:
+			return Graph_Profile;
+		case CMD_SLOWLOG:
+			return Graph_Slowlog;
+		default:
+			ASSERT(false);
 	}
 	return NULL;
 }
@@ -142,7 +141,7 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	char *errmsg;
 	bool compact;
-	uint version;
+	GRAPH_VERSION version;
 	long long timeout;
 	CommandCtx *context = NULL;
 
@@ -189,13 +188,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout);
+								 is_replicated, compact, timeout, version);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout);
+								 is_replicated, compact, timeout, version);
 
 		ThreadPools_AddWorkReader(handler, context);
 	}
