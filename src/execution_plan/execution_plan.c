@@ -89,7 +89,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 
 	// Introduce distinct only if `ALL` isn't specified.
 	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION,
-			NULL);
+														 NULL);
 	if(!cypher_ast_union_has_all(union_clause)) {
 		OpBase *distinct_op = NewDistinctOp(plan);
 		ExecutionPlan_AddOp(results_op, distinct_op);
@@ -301,16 +301,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 	array_free(segments);
 
 	return plan;
-}
-
-// Sets an AST segment in the execution plan.
-inline void ExecutionPlan_SetAST(ExecutionPlan *plan, AST *ast) {
-	plan->ast_segment = ast;
-}
-
-// Gets the AST segment from the execution plan.
-inline AST *ExecutionPlan_GetAST(const ExecutionPlan *plan) {
-	return plan->ast_segment;
 }
 
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
