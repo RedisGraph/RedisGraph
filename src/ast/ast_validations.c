@@ -382,7 +382,6 @@ static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node, rax *e
 			int new = raxInsert(edge_aliases, (unsigned char *)alias, strlen(alias), NULL,
 								NULL);
 			if(!new) {
-				char *err = NULL;
 				ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
 				return AST_INVALID;
 			}
@@ -410,11 +409,46 @@ static AST_Validation _ValidateRelation(rax *projections, const cypher_astnode_t
 	return res;
 }
 
+static AST_Validation _ValidateShortestPath(const cypher_astnode_t *path) {
+	// The path should consist of a single node-edge-node pattern
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+	if(path_len != 3) {
+		ErrorCtx_SetError("shortestPath requires a path containing a single relationship");
+		return AST_INVALID;
+	}
+
+	// If specified, the edge's minimum hop value must be 0 or 1
+	const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, 1);
+	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(edge);
+	if(range) {
+		const cypher_astnode_t *range_start = cypher_ast_range_get_start(range);
+		if(range_start) {
+			int start = AST_ParseIntegerNode(range_start);
+			if(start > 1) {
+				ErrorCtx_SetError("shortestPath does not support a minimal length different from 0 or 1");
+				return AST_INVALID;
+			}
+		}
+	}
+
+	if(!cypher_ast_shortest_path_is_single(path)) {
+		ErrorCtx_SetError("RedisGraph does not currently support allShortestPaths");
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
 static AST_Validation _ValidatePath(const cypher_astnode_t *path, rax *projections,
 									rax *edge_aliases) {
 	AST_Validation res = AST_VALID;
-	uint path_len = cypher_ast_pattern_path_nelements(path);
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) path = cypher_ast_named_path_get_path(path);
+	if(cypher_astnode_type(path) == CYPHER_AST_SHORTEST_PATH) {
+		res = _ValidateShortestPath(path);
+		if(res != AST_VALID) return res;
+	}
 
+	uint path_len = cypher_ast_pattern_path_nelements(path);
 	// Check all relations on the path (every odd offset) and collect aliases.
 	for(uint i = 1; i < path_len; i += 2) {
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
@@ -619,7 +653,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast) {
 	AST_Validation res = AST_VALID;
 
 	const cypher_astnode_t *return_clause = AST_GetClause(ast,
-			CYPHER_AST_RETURN, NULL);
+														  CYPHER_AST_RETURN, NULL);
 	rax *projections = _AST_GetReturnProjections(return_clause);
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
@@ -660,7 +694,7 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 	// are defined and used validly.
 	// An AST segment has at most 1 WITH clause.
 	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH,
-			NULL);
+														NULL);
 	if(with_clause == NULL) return AST_VALID;
 
 	// Verify that each WITH projection either is aliased or is itself an identifier.
@@ -861,7 +895,7 @@ cleanup:
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast,
-			CYPHER_AST_DELETE, NULL);
+														  CYPHER_AST_DELETE, NULL);
 	if(!delete_clause) return AST_VALID;
 	// TODO: Validated that the deleted entities are indeed matched or projected.
 	return AST_VALID;
@@ -907,7 +941,7 @@ cleanup:
 static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast) {
 	// Handle modifiers on the RETURN clause
 	const cypher_astnode_t *return_clause = AST_GetClause(ast,
-			CYPHER_AST_RETURN, NULL);
+														  CYPHER_AST_RETURN, NULL);
 	// Skip check if the RETURN clause does not specify a limit
 	if(return_clause) {
 		// Handle LIMIT modifier
@@ -1523,7 +1557,6 @@ static AST_Validation _ValidateParamsOnly(const cypher_astnode_t *statement) {
 }
 
 static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *statement) {
-	char *err = NULL;
 	rax *param_names = raxNew();
 	uint noptions = cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
@@ -1678,7 +1711,6 @@ cleanup:
 }
 
 AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
-	char *err;
 	int index;
 	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) return AST_INVALID;
 

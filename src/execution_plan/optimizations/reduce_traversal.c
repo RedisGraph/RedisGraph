@@ -10,6 +10,7 @@
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../ops/op_expand_into.h"
+#include "../ops/op_shortest_path.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
 #include "../execution_plan_build/execution_plan_modify.h"
@@ -50,6 +51,9 @@ void reduceTraversal(ExecutionPlan *plan) {
 		} else if(op->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE) {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
 			ae = traverse->ae;
+		} else if(op->type == OPType_SHORTEST_PATH) {
+			OpShortestPath *traverse = (OpShortestPath *)op;
+			ae = traverse->ae;
 		} else {
 			ASSERT(false);
 		}
@@ -89,7 +93,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			traverse->ae = NULL;
 			ExecutionPlan_ReplaceOp(plan, (OpBase *)traverse, expand_into);
 			OpBase_Free((OpBase *)traverse);
-		} else {
+		} else if(op->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE) {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;
 			CondVarLenTraverseOp_ExpandInto(traverse);
@@ -116,6 +120,35 @@ void reduceTraversal(ExecutionPlan *plan) {
 					redundantTraversals[redundantTraversalsCount++] = (OpCondTraverse *)t;
 				}
 			}
+		} else if(op->type == OPType_SHORTEST_PATH) {
+			OpShortestPath *traverse = (OpShortestPath *)op;
+			const ExecutionPlan *traverse_plan = traverse->op.plan;
+			ShortestPathOp_ExpandInto(traverse);
+			/* Shortest path does not perform
+			 * label filtering by matrix matrix multiplication
+			 * it introduces conditional traverse operation in order
+			 * to perform label filtering, but in case a node is already
+			 * resolved this filtering is redundent and should be removed. */
+			OpBase *t;
+			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, AlgebraicExpression_Source(ae));
+			if(src->label) {
+				t = op->children[0];
+				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
+					// Queue traversal for removal.
+					redundantTraversals[redundantTraversalsCount++] = (OpCondTraverse *)t;
+				}
+			}
+			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph,
+													 AlgebraicExpression_Destination(ae));
+			if(dest->label) {
+				t = op->parent;
+				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
+					// Queue traversal for removal.
+					redundantTraversals[redundantTraversalsCount++] = (OpCondTraverse *)t;
+				}
+			}
+		} else {
+			ASSERT(false);
 		}
 		raxFree(bound_vars);
 	}

@@ -16,23 +16,23 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	Record r;
 	AlgebraicExpression *ae;
-	int srcNodeIdx;                 /* Node set by operation. */
-	int edgesIdx;                   /* Edges set by operation. */
-	int destNodeIdx;                /* Node set by operation. */
+	int srcNodeIdx;                 /* Source node of operation. */
+	int pathIdx;                    /* Path constructed by operation. */
+	int destNodeIdx;                /* Destination node of operation. */
 	bool expandInto;                /* Both src and dest already resolved. */
+	TRAVERSE_MODE mode; // TODO maybe delete
 	unsigned int minHops;           /* Maximum number of hops to perform. */
 	unsigned int maxHops;           /* Maximum number of hops to perform. */
 	int edgeRelationCount;          /* Length of edgeRelationTypes. */
 	int *edgeRelationTypes;         /* Relation(s) we're traversing. */
-	AllPathsCtx *allPathsCtx;
 	GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
-} ShortestPath;
+} OpShortestPath;
 
-OpBase *NewShortestPathOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
+OpBase *NewShortestPathOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
+						  TRAVERSE_MODE mode);
 
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */
-void ShortestPathOp_ExpandInto(ShortestPath *op);
+void ShortestPathOp_ExpandInto(OpShortestPath *op);
 
