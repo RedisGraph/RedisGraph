@@ -10,6 +10,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../graph/graphcontext.h"
+#include "../../datatypes/path/sipath_builder.h"
 #include "../../algorithms/LAGraph_bfs_pushpull.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
@@ -113,7 +114,6 @@ static Record ShortestPathConsume(OpBase *opBase) {
 	Edge *edges = NULL;
 	GrB_Info res;
 	UNUSED(res);
-	Path *p = NULL;
 	GrB_Matrix R = GrB_NULL;  // Traversed relationship matrix
 	GrB_Matrix TR = GrB_NULL; // Transpose of traversed relationship matrix
 	GrB_Vector V = GrB_NULL;  // Vector of results
@@ -212,8 +212,8 @@ static Record ShortestPathConsume(OpBase *opBase) {
 	if(op->pathIdx < 0) goto cleanup;
 
 	// Build path in reverse
-	p = Path_New(path_len);
-	Path_AppendNode(p, *destNode);
+	SIValue p = SIPathBuilder_New(path_len);
+	SIPathBuilder_AppendNode(p, SI_Node(destNode));
 
 	edges = array_new(Edge, 1);
 
@@ -233,27 +233,26 @@ static Record ShortestPathConsume(OpBase *opBase) {
 		}
 		ASSERT(array_len(edges) > 0);
 		// Append the edge to the path
-		Path_AppendEdge(p, edges[0]);
+		SIPathBuilder_AppendEdge(p, SI_Edge(&edges[0]), false);
 
 		// Append the reached node to the path.
 		id = edges[0].srcNodeID;
 		Node n = GE_NEW_NODE();
 		Graph_GetNode(gc->g, id, &n);
-		Path_AppendNode(p, n);
+		SIPathBuilder_AppendNode(p, SI_Node(&n));
 	}
 
 	// Reverse the path so it starts at the source
-	Path_Reverse(p);
+	Path_Reverse(p.ptrval);
 
 	// Add new path to Record.
-	Record_AddScalar(r, op->pathIdx, SI_Path(p));
+	Record_AddScalar(r, op->pathIdx, p);
 
 cleanup:
 	if(free_matrices) {
 		GrB_free(&R);
 		GrB_free(&TR);
 	}
-	if(p) Path_Free(p);
 	if(V) GrB_free(&V);
 	if(PI) GrB_free(&PI);
 	if(edges) array_free(edges);

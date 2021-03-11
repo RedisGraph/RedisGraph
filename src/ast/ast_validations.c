@@ -436,6 +436,16 @@ static AST_Validation _ValidateShortestPath(const cypher_astnode_t *path) {
 		return AST_INVALID;
 	}
 
+	if(cypher_ast_rel_pattern_get_direction(edge) == CYPHER_REL_BIDIRECTIONAL) {
+		ErrorCtx_SetError("RedisGraph does not currently support undirected shortestPath traversals");
+		return AST_INVALID;
+	}
+
+	if(cypher_ast_rel_pattern_get_properties(edge)) {
+		ErrorCtx_SetError("RedisGraph does not currently support filters on relationships in shortestPath");
+		return AST_INVALID;
+	}
+
 	return AST_VALID;
 }
 

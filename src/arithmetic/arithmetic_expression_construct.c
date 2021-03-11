@@ -14,6 +14,7 @@
 
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr);
+static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity);
 
 static bool __AR_EXP_ContainsNestedAgg(const AR_ExpNode *root, bool in_agg) {
 	// Is this an aggregation node?
@@ -441,6 +442,91 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+	if(path_len != 3) {
+		ErrorCtx_SetError("shortestPath requires a path containing a single relationship");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	// Retrieve the minimum and maximum number of hops, if specified.
+	int start = 1;
+	int end = EDGE_LENGTH_INF;
+	const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, 1);
+	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(edge);
+	if(range) {
+		const cypher_astnode_t *range_start = cypher_ast_range_get_start(range);
+		if(range_start) {
+			// If specified, the edge's minimum hop value must be 0 or 1
+			start = AST_ParseIntegerNode(range_start);
+			if(start > 1) {
+				ErrorCtx_SetError("shortestPath does not support a minimal length different from 0 or 1");
+				return AR_EXP_NewConstOperandNode(SI_NullVal());
+			}
+		}
+		const cypher_astnode_t *range_end = cypher_ast_range_get_end(range);
+		if(range_end) end = AST_ParseIntegerNode(range_end);
+	}
+
+	if(!cypher_ast_shortest_path_is_single(path)) {
+		ErrorCtx_SetError("RedisGraph does not currently support allShortestPaths");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(edge);
+	if(dir == CYPHER_REL_BIDIRECTIONAL) {
+		ErrorCtx_SetError("RedisGraph does not currently support undirected shortestPath traversals");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	if(cypher_ast_rel_pattern_get_properties(edge)) {
+		ErrorCtx_SetError("RedisGraph does not currently support filters on relationships in shortestPath");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	// Collect the IDs of all relationship types
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	uint reltype_count = cypher_ast_rel_pattern_nreltypes(edge);
+	int *reltypes = NULL;
+	if(reltype_count > 0) {
+		reltypes = array_new(int, reltype_count);
+		for(uint i = 0; i < reltype_count; i ++) {
+			const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(edge, i));
+			Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
+			if(!s) {
+				// Encountered unknown relationship
+				ErrorCtx_SetError("Encountered unknown relationship type '%s' in shortestPath", reltype);
+				array_free(reltypes);
+				return AR_EXP_NewConstOperandNode(SI_NullVal());
+			}
+			reltypes = array_append(reltypes, s->id);
+		}
+	}
+
+	AR_ExpNode *op = AR_EXP_NewOpNode("shortestpath", 2);
+
+	// Instantiate a context struct with traversal details.
+	ShortestPathCtx *ctx = rm_malloc(sizeof(ShortestPathCtx));
+	ctx->minHops = start;
+	ctx->maxHops = end;
+	ctx->reltypes = reltypes;
+
+	// Add the context to the function descriptor as the function's private data.
+	op->op.f = AR_SetPrivateData(op->op.f, ctx);
+
+	if(dir == CYPHER_REL_OUTBOUND) {
+		// Standard traversal
+		op->op.children[0] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 0));
+		op->op.children[1] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 2));
+	} else {
+		// Inbound traversal, swap source and dest
+		op->op.children[0] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 2));
+		op->op.children[1] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 0));
+	}
+
+	return op;
+}
+
 static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
 	AST *ast = QueryCtx_GetAST();
 	const char *alias = AST_GetEntityName(ast, entity);
@@ -562,6 +648,8 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpFromSliceExpression(expr);
 	} else if(t == CYPHER_AST_NAMED_PATH) {
 		return _AR_ExpFromNamedPath(expr);
+	} else if(t == CYPHER_AST_SHORTEST_PATH) {
+		return _AR_ExpFromShortestPath(expr);
 	} else if(t == CYPHER_AST_NODE_PATTERN || t == CYPHER_AST_REL_PATTERN) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(t == CYPHER_AST_PARAMETER) {
@@ -601,3 +689,4 @@ AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
 	return root;
 }
+

@@ -155,7 +155,13 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 	 * an edge can only be mentioned once, as such there's no value in
 	 * cloning an edge. therefore we simply add it.*/
 	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
-	_QueryGraphAddEdge(graph, ast_edge, left, right, e->mode);
+	TRAVERSE_MODE mode;
+	/* The edge may not be retrievable in a query like:
+	 * MATCH (a) WITH a WHERE (a)-[]->() RETURN a
+	 * In this case, use the standard traversal mode. */
+	if(e) mode = e->mode;
+	else mode = TRAVERSE_STANDARD;
+	_QueryGraphAddEdge(graph, ast_edge, left, right, mode);
 }
 
 // Clones path from 'qg' into 'graph'.

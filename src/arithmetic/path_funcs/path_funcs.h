@@ -7,4 +7,11 @@
 #pragma once
 #include "../../value.h"
 
+typedef struct {
+	uint minHops;           /* Minimum number of edges traversed by this path. */
+	uint maxHops;           /* Maximum number of edges traversed by this path. */
+	int *reltypes;          /* Relationship type IDs */
+} ShortestPathCtx;
+
 void Register_PathFuncs();
+
