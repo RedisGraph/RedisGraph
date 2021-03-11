@@ -9,8 +9,7 @@
 #include "../graph.h"
 #include "../../util/arr.h"
 
-QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias,
-				   TRAVERSE_MODE mode) {
+QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
 	e->alias = alias;
 	e->reltypes = array_new(const char *, 1);
@@ -19,7 +18,6 @@ QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const ch
 	e->dest = NULL;
 	e->minHops = 1;
 	e->maxHops = 1;
-	e->mode = mode;
 	e->bidirectional = false;
 
 	return e;
@@ -30,7 +28,6 @@ QGEdge *QGEdge_Clone(const QGEdge *orig) {
 	memcpy(e, orig, sizeof(QGEdge));
 	e->src = NULL;
 	e->dest = NULL;
-	e->mode = orig->mode;
 	array_clone(e->reltypes, orig->reltypes);
 	array_clone(e->reltypeIDs, orig->reltypeIDs);
 
@@ -40,11 +37,6 @@ QGEdge *QGEdge_Clone(const QGEdge *orig) {
 bool QGEdge_VariableLength(const QGEdge *e) {
 	ASSERT(e);
 	return (e->minHops != e->maxHops);
-}
-
-TRAVERSE_MODE QGEdge_TraverseMode(const QGEdge *e) {
-	ASSERT(e);
-	return e->mode;
 }
 
 void QGEdge_Reverse(QGEdge *e) {

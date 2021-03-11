@@ -27,7 +27,6 @@
 #include "op_skip.h"
 #include "op_limit.h"
 #include "op_expand_into.h"
-#include "op_shortest_path.h"
 #include "op_node_by_id_seek.h"
 #include "op_procedure_call.h"
 #include "op_value_hash_join.h"

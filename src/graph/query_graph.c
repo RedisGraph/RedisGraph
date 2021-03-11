@@ -57,7 +57,7 @@ static void _QueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entit
 
 // Adds edge to query graph
 static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
-							   QGNode *src, QGNode *dest, TRAVERSE_MODE mode) {
+							   QGNode *src, QGNode *dest) {
 
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -67,7 +67,7 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 	// Each edge can only appear once in a QueryGraph.
 	ASSERT(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias, mode);
+	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// Add the IDs of all reltype matrixes
@@ -153,15 +153,8 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 	 * e.g. MATCH (a), (a:L)
 	 * where each occurance might add an additional piece of information
 	 * an edge can only be mentioned once, as such there's no value in
-	 * cloning an edge. therefore we simply add it.*/
-	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
-	TRAVERSE_MODE mode;
-	/* The edge may not be retrievable in a query like:
-	 * MATCH (a) WITH a WHERE (a)-[]->() RETURN a
-	 * In this case, use the standard traversal mode. */
-	if(e) mode = e->mode;
-	else mode = TRAVERSE_STANDARD;
-	_QueryGraphAddEdge(graph, ast_edge, left, right, mode);
+	 * cloning an edge. therefor we simply add it.*/
+	_QueryGraphAddEdge(graph, ast_edge, left, right);
 }
 
 // Clones path from 'qg' into 'graph'.
@@ -222,7 +215,7 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 	qg->edges = array_append(qg->edges, e);
 }
 
-void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path, TRAVERSE_MODE mode) {
+void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
 	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Introduce nodes first. Nodes are positioned at every even offset
@@ -246,7 +239,7 @@ void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path, TRAVERSE_M
 
 		// Retrieve the AST reference to this edge.
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraphAddEdge(qg, edge, left, right, mode);
+		_QueryGraphAddEdge(qg, edge, left, right);
 	}
 }
 
@@ -311,23 +304,16 @@ QueryGraph *BuildQueryGraph(const AST *ast) {
 	uint shortest_count = array_len(shortest_paths);
 	for(uint i = 0; i < n; i++) {
 		const cypher_astnode_t *path = paths[i];
-
-		// Determine whether this path is a shortest path.
-		TRAVERSE_MODE mode = TRAVERSE_STANDARD;
+		// Don't add this path if it is part of a shortest path
 		for(uint j = 0; j < shortest_count; j ++) {
 			const cypher_astnode_t *shortest_path = cypher_ast_shortest_path_get_path(shortest_paths[j]);
-			if(shortest_path == path) {
-				if(cypher_ast_shortest_path_is_single(shortest_paths[j])) mode = TRAVERSE_SINGLE_SHORTEST;
-				else mode = TRAVERSE_ALL_SHORTEST;
-				break;
-			}
+			if(shortest_path == path) continue;
 		}
 
-		QueryGraph_AddPath(qg, path, mode);
+		QueryGraph_AddPath(qg, path);
 	}
 
 	array_free(paths);
-	array_free(shortest_paths);
 	return qg;
 }
 
