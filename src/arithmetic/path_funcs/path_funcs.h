@@ -10,7 +10,8 @@
 typedef struct {
 	uint minHops;           /* Minimum number of edges traversed by this path. */
 	uint maxHops;           /* Maximum number of edges traversed by this path. */
-	int *reltypes;          /* Relationship type IDs */
+	int *reltypes;          /* Relationship type IDs. */
+	bool have_transposes;   /* Whether the graph maintains transposed adjacency matrices. */
 } ShortestPathCtx;
 
 void Register_PathFuncs();

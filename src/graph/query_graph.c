@@ -314,6 +314,7 @@ QueryGraph *BuildQueryGraph(const AST *ast) {
 	}
 
 	array_free(paths);
+	array_free(shortest_paths);
 	return qg;
 }
 

@@ -6,7 +6,6 @@
 
 #include "path_funcs.h"
 #include "../func_desc.h"
-#include "../../config.h"
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
@@ -78,6 +77,7 @@ void *ShortestPath_Clone(void *orig) {
 	ShortestPathCtx *ctx_clone = rm_malloc(sizeof(ShortestPathCtx));
 	ctx_clone->minHops = ctx->minHops;
 	ctx_clone->maxHops = ctx->maxHops;
+	ctx_clone->have_transposes = ctx->have_transposes;
 	if(ctx->reltypes) array_clone(ctx_clone->reltypes, ctx->reltypes);
 	else ctx_clone->reltypes = NULL;
 
@@ -110,27 +110,25 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 
 	// Get edge matrix and transpose matrix, if available.
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	bool maintain_transpose;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 	uint reltype_count = (ctx->reltypes) ? array_len(ctx->reltypes) : 0;
 	if(reltype_count == 0) {
 		R = Graph_GetAdjacencyMatrix(gc->g);
 		TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
 	} else if(reltype_count == 1) {
 		R = Graph_GetRelationMatrix(gc->g, ctx->reltypes[0]);
-		if(maintain_transpose) TR = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[0]);
+		if(ctx->have_transposes) TR = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[0]);
 		else TR = GrB_NULL;
 	} else {
 		// We have multiple edge types, combine them into a boolean matrix.
 		free_matrices = true;
 		GrB_Index dims = Graph_RequiredMatrixDim(gc->g);
 		GrB_Matrix_new(&R, GrB_BOOL, dims, dims);
-		if(maintain_transpose) GrB_Matrix_new(&TR, GrB_BOOL, dims, dims);
+		if(ctx->have_transposes) GrB_Matrix_new(&TR, GrB_BOOL, dims, dims);
 		for(uint i = 0; i < reltype_count; i ++) {
 			GrB_Matrix adj = Graph_GetRelationMatrix(gc->g, ctx->reltypes[i]);
 			res = GrB_eWiseAdd(R, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, R, adj, GrB_NULL);
 			ASSERT(res == GrB_SUCCESS);
-			if(maintain_transpose) {
+			if(ctx->have_transposes) {
 				GrB_Matrix adj = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[i]);
 				res = GrB_eWiseAdd(TR, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, TR, adj, GrB_NULL);
 				ASSERT(res == GrB_SUCCESS);

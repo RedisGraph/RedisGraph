@@ -8,6 +8,7 @@
 #include "../RG.h"
 #include "funcs.h"
 #include "../errors.h"
+#include "../config.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_build_filter_tree.h"
@@ -510,6 +511,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	ctx->minHops = start;
 	ctx->maxHops = end;
 	ctx->reltypes = reltypes;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &ctx->have_transposes);
 
 	// Add the context to the function descriptor as the function's private data.
 	op->op.f = AR_SetPrivateData(op->op.f, ctx);
