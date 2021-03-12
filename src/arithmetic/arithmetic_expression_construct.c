@@ -455,7 +455,9 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	int end = EDGE_LENGTH_INF;
 	const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, 1);
 	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(edge);
-	if(range) {
+	if(range == NULL) {
+		end = 1; // Not a variable-length edge
+	} else {
 		const cypher_astnode_t *range_start = cypher_ast_range_get_start(range);
 		if(range_start) {
 			// If specified, the edge's minimum hop value must be 0 or 1
@@ -511,7 +513,9 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	ctx->minHops = start;
 	ctx->maxHops = end;
 	ctx->reltypes = reltypes;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &ctx->have_transposes);
+	ctx->R = GrB_NULL;
+	ctx->TR = GrB_NULL;
+	ctx->free_matrices = false;
 
 	// Add the context to the function descriptor as the function's private data.
 	op->op.f = AR_SetPrivateData(op->op.f, ctx);

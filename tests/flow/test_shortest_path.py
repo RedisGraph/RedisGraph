@@ -75,6 +75,9 @@ class testShortestPath(FlowTestsBase):
         # The shorter 2-hop traversal should be found
         expected_result = [[1], [5], [4]]
         self.env.assertEqual(actual_result.result_set, expected_result)
+        # Verify that a right-to-left traversal produces the same results
+        query = """MATCH (a {v: 1}), (b {v: 4}) WITH shortestPath((b)<-[*]-(a)) AS p UNWIND nodes(p) AS n RETURN n.v"""
+        self.env.assertEqual(actual_result.result_set, expected_result)
 
     def test03_shortest_path_multiple_results(self):
         # Traverse from all source nodes to the destination node
