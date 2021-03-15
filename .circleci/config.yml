@@ -1,3 +1,5 @@
+        MATCH (a)-/ :A> /->(b)
+        MATCH (a)-/ :A> /->(b)
 version: 2.1
 
 commands:
@@ -31,9 +33,9 @@ commands:
           - GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Load libcypher-parser from cache if possible.
-      - restore_cache:
-          keys:
-          - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
+#       - restore_cache:
+#           keys:
+#           - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
   
   save-deps-cache:
     steps:
@@ -44,10 +46,10 @@ commands:
           key: GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Save libcypher-parser to cache.
-      - save_cache:
-          paths:
-            - deps/libcypher-parser
-          key: libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
+#       - save_cache:
+#           paths:
+#             - deps/libcypher-parser
+#           key: libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
 
   setup-prerequisits:
     steps:
