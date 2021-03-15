@@ -16,13 +16,29 @@
 // Configuration parameters
 //-----------------------------------------------------------------------------
 
-#define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
-#define ASYNC_DELETE "ASYNC_DELETE" // whether graphs should be deleted asynchronously
-#define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
-#define RESULTSET_SIZE "RESULTSET_SIZE" // resultset size limit
-#define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
-#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
-#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
+// config param, the timeout for each query in milliseconds
+#define TIMEOUT "TIMEOUT"
+
+// config param, the size of each thread cache size, per graph
+#define CACHE_SIZE "CACHE_SIZE"
+
+// whether graphs should be deleted asynchronously
+#define ASYNC_DELETE "ASYNC_DELETE"
+
+// config param, number of threads in thread pool
+#define THREAD_COUNT "THREAD_COUNT"
+
+// resultset size limit
+#define RESULTSET_SIZE "RESULTSET_SIZE"
+
+// config param, max number of OpenMP threads
+#define OMP_THREAD_COUNT "OMP_THREAD_COUNT"
+
+// config param, max number of entities in each virtual key
+#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT"
+
+// whether the module should maintain transposed relationship matrices
+#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
 
 //------------------------------------------------------------------------------
 // Configuration defaults
@@ -75,6 +91,18 @@ static inline bool _Config_ParseYesNo(RedisModuleString *rm_str, bool *value) {
 //==============================================================================
 // Config access functions
 //==============================================================================
+
+//------------------------------------------------------------------------------
+// timeout
+//------------------------------------------------------------------------------
+
+void Config_timeout_set(uint64_t timeout) {
+	config.timeout = timeout;
+}
+
+uint Config_timeout_get(void) {
+	return config.timeout;
+}
 
 //------------------------------------------------------------------------------
 // thread count
@@ -168,6 +196,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 
 	if(!strcasecmp(field_str, THREAD_COUNT)) {
 		f = Config_THREAD_POOL_SIZE;
+	} else if(!strcasecmp(field_str, TIMEOUT)) {
+		f = Config_TIMEOUT;
 	} else if(!strcasecmp(field_str, OMP_THREAD_COUNT)) {
 		f = Config_OPENMP_NTHREAD;
 	} else if(!strcasecmp(field_str, VKEY_MAX_ENTITY_COUNT)) {
@@ -190,6 +220,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 	const char *name = NULL;
 	switch (field)
 	{
+		case Config_TIMEOUT:
+			name = TIMEOUT;
+			break;
+
 		case Config_CACHE_SIZE:
 			name = CACHE_SIZE;
 			break;
@@ -265,6 +299,9 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 
 	// No limit on result-set size
 	config.resultset_size = RESULTSET_SIZE_UNLIMITED;
+
+	// no query timeout by default
+	config.timeout = CONFIG_TIMEOUT_NO_TIMEOUT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -315,6 +352,18 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 
 	switch (field)
 	{
+		//----------------------------------------------------------------------
+		// timeout
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT:
+			{
+				long long timeout;
+				if(!_Config_ParsePositiveInteger(val, &timeout)) return false;
+				Config_timeout_set(timeout);
+			}
+			break;
+
 		//----------------------------------------------------------------------
 		// cache size
 		//----------------------------------------------------------------------
@@ -426,6 +475,21 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 	switch (field)
 	{
+		//----------------------------------------------------------------------
+		// timeout
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT:
+			{
+				va_start(ap, field);
+				uint64_t *timeout = va_arg(ap, uint64_t*);
+				va_end(ap);
+
+				ASSERT(timeout != NULL);
+				(*timeout) = Config_timeout_get();
+			}
+			break;
+
 		//----------------------------------------------------------------------
 		// cache size
 		//----------------------------------------------------------------------

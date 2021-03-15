@@ -82,15 +82,29 @@ If enabled, RedisGraph will maintain transposed copies of relationship matrices.
 $ redis-server --loadmodule ./redisgraph.so MAINTAIN_TRANSPOSED_MATRICES no
 ```
 
+---
+
+## TIMEOUT
+
+Timeout is a flag that specifies the maximum runtime for read queries in milliseconds. This configuration will not be respected by write queries, to avoid leaving the graph in an inconsistent state.
+
+### Default
+
+`TIMEOUT` is off by default (config value of `0`).
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
+```
+
 # Query Configurations
 
 Some configurations may be set per query in the form of additional arguments after the query string. All per-query configurations are off by default unless using a language-specific client, which may establish its own defaults.
 
 ## Query Timeout
 
-The query flag `timeout` allows the user to specify the maximum runtime allowed for a query in milliseconds. This configuration can only be set for read queries to avoid leaving the graph in an inconsistent state.
-
-`timeout` may still return partial results followed by an error message indicating the timeout.
+The query flag `timeout` allows the user to specify a timeout as described in [TIMEOUT](#TIMEOUT) for a single query.
 
 ### Example
 

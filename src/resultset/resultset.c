@@ -91,15 +91,15 @@ void ResultSet_MapProjection(ResultSet *set, const Record r) {
 }
 
 static void _ResultSet_ReplyWithPreamble(ResultSet *set) {
-	ASSERT(ResultSet_RowCount(set) == 0);
-
-	// prepare a response containing a header, records, and statistics
-	RedisModule_ReplyWithArray(set->ctx, 3);
-
-	// emit the table header using the appropriate formatter
-	set->formatter->EmitHeader(set->ctx, set->columns, set->columns_record_map);
-
-	set->header_emitted = true;
+	if(set->column_count > 0) {
+		// prepare a response containing a header, records, and statistics
+		RedisModule_ReplyWithArray(set->ctx, 3);
+		// emit the table header using the appropriate formatter
+		set->formatter->EmitHeader(set->ctx, set->columns, set->columns_record_map);
+	} else {
+		// prepare a response containing only statistics
+		RedisModule_ReplyWithArray(set->ctx, 1);
+	}
 }
 
 static void _ResultSet_SetColumns(ResultSet *set) {
@@ -130,7 +130,6 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	set->formatter = ResultSetFormatter_GetFormatter(format);
 	set->columns = NULL;
 	set->column_count = 0;
-	set->header_emitted = false;
 	set->columns_record_map = NULL;
 	set->cells = DataBlock_New(32, sizeof(SIValue), NULL);
 
@@ -176,13 +175,8 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// if result-set format is NOP, don't process record
 	if(set->format == FORMATTER_NOP) return RESULTSET_OK;
 
-	// if this is the first Record encountered
-	if(set->header_emitted == false) {
-		// map columns to record indices
-		ResultSet_MapProjection(set, r);
-		// prepare response arrays and emit the header
-		_ResultSet_ReplyWithPreamble(set);
-	}
+	// if this is the first Record encountered, map columns to record indices
+	if(DataBlock_ItemCount(set->cells) == 0) ResultSet_MapProjection(set, r);
 
 	_ResultSet_ConsumeRecord(set, r);
 
@@ -219,36 +213,33 @@ void ResultSet_CachedExecution(ResultSet *set) {
 
 void ResultSet_Reply(ResultSet *set) {
 	uint64_t row_count = ResultSet_RowCount(set);
-	if(set->header_emitted) {
-		// If we have emitted a header, set the number of elements in the preceding array.
+	/* Check to see if we've encountered a run-time error.
+	 * If so, emit it as the only response. */
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_EmitException();
+		return;
+	}
+
+	// Set up the results array and emit the header if the query requires one.
+	_ResultSet_ReplyWithPreamble(set);
+
+	// Emit the records cached in the result set.
+	if(set->column_count > 0) {
 		RedisModule_ReplyWithArray(set->ctx, row_count);
-		SIValue* row [set->column_count];
+		SIValue *row[set->column_count];
 		uint64_t cells = DataBlock_ItemCount(set->cells);
 		for(uint64_t i = 0; i < cells; i += set->column_count) {
-			for(int j = 0; j < set->column_count; j++) {
+			for(uint j = 0; j < set->column_count; j++) {
 				row[j] = DataBlock_GetItem(set->cells, i + j);
 			}
 
 			set->formatter->EmitRow(set->ctx, set->gc, row, set->column_count);
 
-			for(int j = 0; j < set->column_count; j++) {
-				SIValue_Free(*row[j]);
-			}
+			for(uint j = 0; j < set->column_count; j++) SIValue_Free(*row[j]);
 		}
-	} else if(set->header_emitted == false && set->columns != NULL) {
-		ASSERT(row_count == 0);
-		// Handle the edge case in which the query was intended to return results, but none were created.
-		_ResultSet_ReplyWithPreamble(set);
-		RedisModule_ReplyWithEmptyArray(set->ctx);
-	} else {
-		// Queries that don't emit data will only emit statistics
-		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
 
-	/* Check to see if we've encountered a run-time error.
-	 * If so, emit it as the last top-level response. */
-	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
-	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
+	_ResultSet_ReplayStats(set->ctx, set); // The last response is query statistics.
 }
 
 /* Report execution timing. */

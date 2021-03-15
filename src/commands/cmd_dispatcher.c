@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "commands.h"
+#include "../config.h"
 #include "cmd_context.h"
 #include "../util/thpool/pools.h"
 
@@ -16,15 +17,15 @@ typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-		long long *timeout, uint *graph_version, char **errmsg) {
+					   long long *timeout, uint *graph_version, char **errmsg) {
 
 	ASSERT(compact);
 	ASSERT(timeout);
 
 	// set defaults
-	*timeout = 0;      // no timeout
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
+	Config_Option_get(Config_TIMEOUT, timeout);
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -181,21 +182,21 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 
 	ExecutorThread exec_thread = (flags & (REDISMODULE_CTX_FLAGS_MULTI |
-											REDISMODULE_CTX_FLAGS_LUA  |
-											REDISMODULE_CTX_FLAGS_LOADING)) ?
-		EXEC_THREAD_MAIN : EXEC_THREAD_READER;
+										   REDISMODULE_CTX_FLAGS_LUA  |
+										   REDISMODULE_CTX_FLAGS_LOADING)) ?
+								 EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-				is_replicated, compact, timeout);
+								 is_replicated, compact, timeout);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-				is_replicated, compact, timeout);
+								 is_replicated, compact, timeout);
 
 		ThreadPools_AddWorkReader(handler, context);
 	}

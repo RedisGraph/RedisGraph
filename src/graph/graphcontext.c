@@ -378,10 +378,8 @@ int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 
 	int res = Schema_AddIndex(idx, s, field, type);
-	if(res == INDEX_OK) {
-		ResultSet *result_set = QueryCtx_GetResultSet();
-		ResultSet_IndexCreated(result_set, res);
-	}
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	ResultSet_IndexCreated(result_set, res);
 
 	return res;
 }
@@ -390,7 +388,6 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
 							 const char *field, IndexType type) {
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
-	ASSERT(field != NULL);
 
 	// Retrieve the schema for this label
 	int res = INDEX_FAIL;

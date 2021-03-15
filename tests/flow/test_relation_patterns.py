@@ -7,13 +7,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from base import FlowTestsBase
 
-redis_graph = None
-
 GRAPH_ID = "G"
+redis_con = None
+redis_graph = None
 
 class testRelationPattern(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
+        global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -286,4 +287,22 @@ class testRelationPattern(FlowTestsBase):
         for query in queries:
             actual_result = g.query(query)
             self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test10_triple_edge_type(self):
+        # Construct a simple graph:
+        # (A)-[X]->(B)
+        # (A)-[Y]->(C)
+        # (A)-[Z]->(D)
+        g = Graph("triple_edge_type", redis_con)
+        q = "CREATE(a:A), (b:B), (c:C), (d:D), (a)-[:X]->(b), (a)-[:Y]->(c), (a)-[:Z]->(d)"
+        g.query(q)
+
+        labels = ['X', 'Y', 'Z']
+        expected_result = [['B'], ['C'], ['D']]
+
+        q = "MATCH (a)-[:{L0}|:{L1}|:{L2}]->(b) RETURN labels(b) AS label ORDER BY label"
+        import itertools
+        for perm in itertools.permutations(labels):
+            res = g.query(q.format(L0=perm[0], L1=perm[1], L2=perm[2]))
+            self.env.assertEquals(res.result_set, expected_result)
 

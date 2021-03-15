@@ -62,7 +62,7 @@ run_test() {
 	cd $HERE
 
 	json_in=$(mktemp /tmp/$TEST.json.XXXX)
-	$READIES/bin/xtx -e RS_MODULE -e MODULE_VERSION -e RS_VERSION $TEST.json > $json_in
+	$READIES/bin/xtx -e RS_MODULE -e RS_MODULE_FILE_PREFIX -e MODULE_VERSION -e RS_VERSION $TEST.json > $json_in
 	(( VERBOSE >= 1 )) && cat $json_in
 
 	if [[ $NOP == 1 ]]; then

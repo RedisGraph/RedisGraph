@@ -10,8 +10,10 @@ LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3
-ifeq ($(DEBUG), 1)
+ifeq ($(DEBUG),1)
 	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
+	# Enable all assertions in debug mode
+	DEBUGFLAGS += -DRG_DEBUG
 endif
 
 # Default CFLAGS
@@ -34,7 +36,7 @@ SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
 
 # Sources
-SOURCEDIR=$(shell pwd -P)
+SOURCEDIR:=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
@@ -146,7 +148,7 @@ endif
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
 	cd ../deps/RediSearch; \
-	mkdir build; \
+	mkdir -p build; \
 	cd build; \
 	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
 	make;
@@ -169,9 +171,20 @@ parser:
 	@$(MAKE) -C $@
 .PHONY: parser
 
+define extract_symbols
+objcopy --only-keep-debug $1 $1.debug
+objcopy --strip-debug $1
+objcopy --add-gnu-debuglink $1.debug $1
+endef 
+
 # Build the module...
 redisgraph.so: $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
+ifeq ($(uname_S),Linux)
+ifneq ($(DEBUG),1)
+	$(call extract_symbols,$@)
+endif
+endif
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
@@ -186,8 +199,7 @@ endif
 	@$(MAKE) -C ../tests clean
 
 package: redisgraph.so
-	@mkdir -p ../build
-	@ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
+	@../sbin/pack.sh
 
 test: redisgraph.so
 	# check valgrind flag is not empty
@@ -205,3 +217,7 @@ memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
 memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 memcheck: redisgraph.so
 	@$(MAKE) -C ../tests memcheck
+
+
+benchmark: redisgraph.so
+	@$(MAKE) -C ../tests benchmark
