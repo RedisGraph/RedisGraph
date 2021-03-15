@@ -510,25 +510,32 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 
 	// Instantiate a context struct with traversal details.
 	ShortestPathCtx *ctx = rm_malloc(sizeof(ShortestPathCtx));
-	ctx->minHops = start;
-	ctx->maxHops = end;
-	ctx->reltypes = reltypes;
-	ctx->R = GrB_NULL;
-	ctx->TR = GrB_NULL;
-	ctx->free_matrices = false;
+	ctx->R              =  GrB_NULL;
+	ctx->TR             =  GrB_NULL;
+	ctx->minHops        =  start;
+	ctx->maxHops        =  end;
+	ctx->reltypes       =  reltypes;
+	ctx->free_matrices  =  false;
 
 	// Add the context to the function descriptor as the function's private data.
 	op->op.f = AR_SetPrivateData(op->op.f, ctx);
-
+	AR_ExpNode *src;
+	AR_ExpNode *dest;
 	if(dir == CYPHER_REL_OUTBOUND) {
 		// Standard traversal
-		op->op.children[0] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 0));
-		op->op.children[1] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 2));
+		src = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
+					path, 0));
+		dest = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
+					path, 2));
 	} else {
 		// Inbound traversal, swap source and dest
-		op->op.children[0] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 2));
-		op->op.children[1] = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(path, 0));
+		dest = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
+					path, 0));
+		src = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
+					path, 2));
 	}
+	op->op.children[0] = src;
+	op->op.children[1] = dest;
 
 	return op;
 }

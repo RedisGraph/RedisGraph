@@ -96,17 +96,17 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
 
-	Node *srcNode = argv[0].ptrval;
-	Node *destNode = argv[1].ptrval;
-	ShortestPathCtx *ctx = argv[2].ptrval;
-	GrB_Index src_id = ENTITY_GET_ID(srcNode);
-	GrB_Index dest_id = ENTITY_GET_ID(destNode);
+	Node             *srcNode   =  argv[0].ptrval;
+	Node             *destNode  =  argv[1].ptrval;
+	ShortestPathCtx  *ctx       =  argv[2].ptrval;
+	GrB_Index        src_id     =  ENTITY_GET_ID(srcNode);
+	GrB_Index        dest_id    =  ENTITY_GET_ID(destNode);
 
 	GrB_Info res;
 	UNUSED(res);
 	Edge *edges = NULL;
-	GrB_Vector V = GrB_NULL;  // Vector of results
-	GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
+	GrB_Vector V = GrB_NULL;  // vector of results
+	GrB_Vector PI = GrB_NULL; // vector backtracking results to their parents
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	uint reltype_count = (ctx->reltypes) ? array_len(ctx->reltypes) : 0;
 
@@ -147,17 +147,19 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	}
 
 	// Invoke the BFS algorithm
-	res = LAGraph_bfs_pushpull_to_dest(&V, &PI, ctx->R, ctx->TR, src_id, dest_id, max_level, true);
+	res = LAGraph_bfs_pushpull_to_dest(&V, &PI, ctx->R, ctx->TR, src_id,
+			dest_id, max_level, true);
 	ASSERT(res == GrB_SUCCESS);
 
 	SIValue p = SI_NullVal();
 
 	// The length of the path is equal to the level of the destination node
 	GrB_Index path_len;
-	res = GrB_Vector_extractElement(&path_len, V, dest_id) ;
+	res = GrB_Vector_extractElement(&path_len, V, dest_id);
 	path_len -= 1; // Convert node count to edge count
 
 	if(res == GrB_NO_VALUE) goto cleanup; // no path found
+
 	// Only emit a path with no edges if minHops is 0
 	if(path_len == 0 && ctx->minHops != 0) goto cleanup;
 
@@ -232,7 +234,7 @@ void Register_PathFuncs() {
 	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 1, VAR_ARG_LEN, types, false, false);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 2);
+	types = array_new(SIType, 3);
 	types = array_append(types, T_NULL | T_NODE);
 	types = array_append(types, T_NULL | T_NODE);
 	types = array_append(types, T_PTR);

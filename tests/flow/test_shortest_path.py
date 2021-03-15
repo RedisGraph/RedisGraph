@@ -6,9 +6,9 @@ from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
 
-GRAPH_ID = "G"
-redis_graph = None
-nodes = None
+nodes        =  []
+GRAPH_ID     =  "shortest_path"
+redis_graph  =  None
 
 class testShortestPath(FlowTestsBase):
     def __init__(self):
@@ -21,11 +21,9 @@ class testShortestPath(FlowTestsBase):
     def populate_graph(self):
         # Construct a graph with the form:
         # (v1)-[:E]->(v2)-[:E]->(v3)-[:E]->(v4), (v1)-[:E]->(v5)-[:E2]->(v4)
-        node_props = [1, 2, 3, 4, 5]
 
         global nodes
-        nodes = []
-        for idx, v in enumerate(node_props):
+        for v in range(1, 6):
             node = Node(label="L", properties={"v": v})
             nodes.append(node)
             redis_graph.add_node(node)
@@ -127,5 +125,4 @@ class testShortestPath(FlowTestsBase):
         # The longer traversal will be found
         expected_result = [[1], [2], [3], [4]]
         self.env.assertEqual(actual_result.result_set, expected_result)
-
 
