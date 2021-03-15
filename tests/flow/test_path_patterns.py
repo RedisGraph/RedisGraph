@@ -144,7 +144,7 @@ class testPathPattern(FlowTestsBase):
 
     def test00_path_pattern_execution(self):
         query = """
-        MATCH (a)-/ :A> /->(b)
+        MATCH (a)-/ :A /->(b)
         RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = self.pipe_graph.query(query)
         expected_result = [['v1', 'v2'],
@@ -153,7 +153,7 @@ class testPathPattern(FlowTestsBase):
 
     def test01_path_pattern_execution(self):
         query = """
-        MATCH (a)-/ :A> | :B> /->(b)
+        MATCH (a)-/ :A | :B /->(b)
         RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = self.pipe_graph.query(query)
         expected_result = [['v1', 'v2'],
@@ -164,7 +164,7 @@ class testPathPattern(FlowTestsBase):
 
     def test02_path_pattern_execution(self):
         query = """
-        MATCH (a)-/ :A> :B> /->(b)
+        MATCH (a)-/ :A :B /->(b)
         RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = self.pipe_graph.query(query)
         expected_result = [['v2', 'v4']]
@@ -172,7 +172,7 @@ class testPathPattern(FlowTestsBase):
 
     def test03_path_pattern_execution(self):
         query = """
-        MATCH (a)-/ [:A> | :B>]> [:C> | :D>]> /->(b)
+        MATCH (a)-/ [:A | :B] [:C | :D] /->(b)
         RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = self.tree_graph.query(query)
         expected_result = [['v1', 'v4'],
@@ -183,7 +183,7 @@ class testPathPattern(FlowTestsBase):
 
     def test04_path_pattern_execution(self):
         query = """
-        MATCH (a)-/ [:A> :B>]> | [:C> :D>]> /->(b)
+        MATCH (a)-/ [:A :B] | [:C :D] /->(b)
         RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = self.parallel_pipe_graph.query(query)
         expected_result = [['v1', 'v4']]
@@ -265,7 +265,7 @@ class testPathPattern(FlowTestsBase):
     #
     def test10_path_pattern_execution(self):
         query = """
-        PATH PATTERN S = ()-/ [:A> ~S :B>]> | [:A> :B>]> /-()
+        PATH PATTERN S = ()-/ [:A ~S :B] | [:A :B] /-()
         MATCH (a)-/ ~S /->(b)
         RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = self.pipe_graph.query(query)
