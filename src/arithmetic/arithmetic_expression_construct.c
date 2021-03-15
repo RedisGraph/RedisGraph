@@ -451,8 +451,8 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	}
 
 	// Retrieve the minimum and maximum number of hops, if specified.
-	int start = 1;
-	int end = EDGE_LENGTH_INF;
+	uint start = 1;
+	uint end = EDGE_LENGTH_INF;
 	const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, 1);
 	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(edge);
 	if(range == NULL) {
@@ -469,6 +469,11 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 		}
 		const cypher_astnode_t *range_end = cypher_ast_range_get_end(range);
 		if(range_end) end = AST_ParseIntegerNode(range_end);
+
+		if(end != EDGE_LENGTH_INF && end < start) {
+			ErrorCtx_SetError("Maximum number of hops must be greater than or equal to minimum number of hops");
+			return AR_EXP_NewConstOperandNode(SI_NullVal());
+		}
 	}
 
 	if(!cypher_ast_shortest_path_is_single(path)) {
@@ -484,6 +489,12 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 
 	if(cypher_ast_rel_pattern_get_properties(edge)) {
 		ErrorCtx_SetError("RedisGraph does not currently support filters on relationships in shortestPath");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	if(cypher_ast_node_pattern_get_properties(cypher_ast_pattern_path_get_element(path, 0)) ||
+	   cypher_ast_node_pattern_get_properties(cypher_ast_pattern_path_get_element(path, 2))) {
+		ErrorCtx_SetError("Node filters must be introduced in shortestPath");
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
@@ -521,18 +532,16 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	op->op.f = AR_SetPrivateData(op->op.f, ctx);
 	AR_ExpNode *src;
 	AR_ExpNode *dest;
+	const cypher_astnode_t *ast_src = cypher_ast_pattern_path_get_element(path, 0);
+	const cypher_astnode_t *ast_dest = cypher_ast_pattern_path_get_element(path, 2);
 	if(dir == CYPHER_REL_OUTBOUND) {
 		// Standard traversal
-		src = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
-					path, 0));
-		dest = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
-					path, 2));
+		src = _AR_ExpNodeFromGraphEntity(ast_src);
+		dest = _AR_ExpNodeFromGraphEntity(ast_dest);
 	} else {
 		// Inbound traversal, swap source and dest
-		dest = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
-					path, 0));
-		src = _AR_ExpNodeFromGraphEntity(cypher_ast_pattern_path_get_element(
-					path, 2));
+		dest = _AR_ExpNodeFromGraphEntity(ast_src);
+		src = _AR_ExpNodeFromGraphEntity(ast_dest);
 	}
 	op->op.children[0] = src;
 	op->op.children[1] = dest;

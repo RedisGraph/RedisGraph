@@ -8,6 +8,7 @@
 #include "../../value.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+// Context struct containing traversal data for shortestPath function calls
 typedef struct {
 	uint minHops;           /* Minimum number of edges traversed by this path */
 	uint maxHops;           /* Maximum number of edges traversed by this path */

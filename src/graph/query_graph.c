@@ -299,6 +299,7 @@ QueryGraph *BuildQueryGraph(const AST *ast) {
 
 	// Collect all path AST nodes.
 	const cypher_astnode_t **paths = AST_GetTypedNodes(ast->root, CYPHER_AST_PATTERN_PATH);
+	// Collect all shortestPath nodes, as the paths they contain should not be added to the QueryGraph.
 	const cypher_astnode_t **shortest_paths = AST_GetTypedNodes(ast->root, CYPHER_AST_SHORTEST_PATH);
 	uint n = array_len(paths);
 	uint shortest_count = array_len(shortest_paths);

@@ -67,6 +67,14 @@ class testShortestPath(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("shortestPath requires a path containing a single relationship", str(e))
 
+        # Try iterating over an invalid relationship type
+        query = """MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:FAKE*]->(b))"""
+        try:
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Encountered unknown relationship type", str(e))
+
     def test02_simple_shortest_path(self):
         query = """MATCH (a {v: 1}), (b {v: 4}) WITH shortestPath((a)-[*]->(b)) AS p UNWIND nodes(p) AS n RETURN n.v"""
         actual_result = redis_graph.query(query)
@@ -79,39 +87,40 @@ class testShortestPath(FlowTestsBase):
 
     def test03_shortest_path_multiple_results(self):
         # Traverse from all source nodes to the destination node
-        query = """MATCH (a), (b {v: 4}) WITH shortestPath((a)-[*]->(b)) AS p RETURN nodes(p)"""
+        query = """MATCH (a), (b {v: 4}) WITH a, shortestPath((a)-[*]->(b)) AS p RETURN a, nodes(p) ORDER BY a"""
         actual_result = redis_graph.query(query)
-        expected_result = [[[nodes[0], nodes[4], nodes[3]]],
-                           [[nodes[1], nodes[2], nodes[3]]],
-                           [[nodes[2], nodes[3]]],
-                           [None],
-                           [[nodes[4], nodes[3]]]]
+        expected_result = [[nodes[0], [nodes[0], nodes[4], nodes[3]]],
+                           [nodes[1], [nodes[1], nodes[2], nodes[3]]],
+                           [nodes[2], [nodes[2], nodes[3]]],
+                           [nodes[3], None],
+                           [nodes[4], [nodes[4], nodes[3]]]]
         self.env.assertEqual(actual_result.result_set, expected_result)
 
     def test04_max_hops(self):
         # Traverse from all source nodes to the destination node if there is a single-hop path
-        query = """MATCH (a), (b {v: 4}) WITH shortestPath((a)-[*..1]->(b)) AS p RETURN nodes(p)"""
+        query = """MATCH (a), (b {v: 4}) WITH a, shortestPath((a)-[*..1]->(b)) AS p RETURN a, nodes(p) ORDER BY a"""
         actual_result = redis_graph.query(query)
-        expected_result = [[None],
-                           [None],
-                           [[nodes[2], nodes[3]]],
-                           [None],
-                           [[nodes[4], nodes[3]]]]
+        expected_result = [[nodes[0], None],
+                           [nodes[1], None],
+                           [nodes[2], [nodes[2], nodes[3]]],
+                           [nodes[3], None],
+                           [nodes[4], [nodes[4], nodes[3]]]]
         self.env.assertEqual(actual_result.result_set, expected_result)
 
+    def test05_min_hops(self):
         # Traverse from all source nodes to the destination node with a minimum hop value of 0.
         # This will produce the same results as the above query with the exception of
         # the src == dest case, in which case that node is returned.
-        query = """MATCH (a), (b {v: 4}) WITH shortestPath((a)-[*0..]->(b)) AS p RETURN nodes(p)"""
+        query = """MATCH (a), (b {v: 4}) WITH a, shortestPath((a)-[*0..]->(b)) AS p RETURN a, nodes(p) ORDER BY a"""
         actual_result = redis_graph.query(query)
-        expected_result = [[[nodes[0], nodes[4], nodes[3]]],
-                           [[nodes[1], nodes[2], nodes[3]]],
-                           [[nodes[2], nodes[3]]],
-                           [[nodes[3]]],
-                           [[nodes[4], nodes[3]]]]
+        expected_result = [[nodes[0], [nodes[0], nodes[4], nodes[3]]],
+                           [nodes[1], [nodes[1], nodes[2], nodes[3]]],
+                           [nodes[2], [nodes[2], nodes[3]]],
+                           [nodes[3], [nodes[3]]],
+                           [nodes[4], [nodes[4], nodes[3]]]]
         self.env.assertEqual(actual_result.result_set, expected_result)
 
-    def test05_restricted_reltypes(self):
+    def test06_restricted_reltypes(self):
         # Traverse both relationship types
         query = """MATCH (a {v: 1}), (b {v: 4}) WITH shortestPath((a)-[:E|:E2*]->(b)) AS p UNWIND nodes(p) AS n RETURN n.v"""
         actual_result = redis_graph.query(query)
@@ -125,4 +134,3 @@ class testShortestPath(FlowTestsBase):
         # The longer traversal will be found
         expected_result = [[1], [2], [3], [4]]
         self.env.assertEqual(actual_result.result_set, expected_result)
-

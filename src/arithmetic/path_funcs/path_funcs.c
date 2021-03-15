@@ -95,12 +95,13 @@ void *ShortestPath_Clone(void *orig) {
 SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
+	ASSERT(SI_TYPE(argv[2]) != T_NULL);
 
 	Node             *srcNode   =  argv[0].ptrval;
 	Node             *destNode  =  argv[1].ptrval;
 	ShortestPathCtx  *ctx       =  argv[2].ptrval;
-	GrB_Index        src_id     =  ENTITY_GET_ID(srcNode);
-	GrB_Index        dest_id    =  ENTITY_GET_ID(destNode);
+	int64_t src_id              =  ENTITY_GET_ID(srcNode);
+	int64_t dest_id             =  ENTITY_GET_ID(destNode);
 
 	GrB_Info res;
 	UNUSED(res);
@@ -131,8 +132,13 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			// We have multiple edge types, combine them into a boolean matrix.
 			ctx->free_matrices = true;
 			GrB_Index dims = Graph_RequiredMatrixDim(gc->g);
-			GrB_Matrix_new(&ctx->R, GrB_BOOL, dims, dims);
-			if(maintain_transposes) GrB_Matrix_new(&ctx->TR, GrB_BOOL, dims, dims);
+			res = GrB_Matrix_new(&ctx->R, GrB_BOOL, dims, dims);
+			ASSERT(res == GrB_SUCCESS);
+			if(maintain_transposes) {
+				res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, dims, dims);
+				ASSERT(res == GrB_SUCCESS);
+			}
+
 			for(uint i = 0; i < reltype_count; i ++) {
 				GrB_Matrix adj = Graph_GetRelationMatrix(gc->g, ctx->reltypes[i]);
 				res = GrB_eWiseAdd(ctx->R, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, ctx->R, adj, GrB_NULL);
@@ -147,8 +153,8 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	}
 
 	// Invoke the BFS algorithm
-	res = LAGraph_bfs_pushpull_to_dest(&V, &PI, ctx->R, ctx->TR, src_id,
-			dest_id, max_level, true);
+	res = LAGraph_bfs_pushpull(&V, &PI, ctx->R, ctx->TR, src_id,
+							   &dest_id, max_level, true);
 	ASSERT(res == GrB_SUCCESS);
 
 	SIValue p = SI_NullVal();
@@ -156,14 +162,16 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	// The length of the path is equal to the level of the destination node
 	GrB_Index path_len;
 	res = GrB_Vector_extractElement(&path_len, V, dest_id);
-	path_len -= 1; // Convert node count to edge count
-
 	if(res == GrB_NO_VALUE) goto cleanup; // no path found
+
+	path_len -= 1; // Convert node count to edge count
 
 	// Only emit a path with no edges if minHops is 0
 	if(path_len == 0 && ctx->minHops != 0) goto cleanup;
 
-	// Build path in reverse, starting by appending the destination node
+	/* Build path in reverse, starting by appending the destination node.
+	 * The path is built in reverse because we have the destination's parent
+	 * in the PI array, and can use this to backtrack until we reach the source. */
 	p = SIPathBuilder_New(path_len);
 	SIPathBuilder_AppendNode(p, SI_Node(destNode));
 
@@ -237,7 +245,7 @@ void Register_PathFuncs() {
 	types = array_new(SIType, 3);
 	types = array_append(types, T_NULL | T_NODE);
 	types = array_append(types, T_NULL | T_NODE);
-	types = array_append(types, T_PTR);
+	types = array_append(types, T_PTR); // pointer to ShortestPathCtx struct
 	func_desc = AR_FuncDescNew("shortestpath", AR_SHORTEST_PATH, 3, 3, types, false, false);
 	AR_SetPrivateDataRoutines(func_desc, ShortestPath_Free, ShortestPath_Clone);
 	AR_RegFunc(func_desc);

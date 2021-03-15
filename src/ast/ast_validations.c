@@ -298,11 +298,11 @@ cleanup:
  * only supports them in the appropriate clauses and in path filters. */
 static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
 	uint nchildren = cypher_astnode_nchildren(root);
+	const cypher_astnode_type_t root_type = cypher_astnode_type(root);
 	for(uint i = 0; i < nchildren; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
 		const cypher_astnode_type_t child_type = cypher_astnode_type(child);
 		if(child_type == CYPHER_AST_PATTERN_PATH) {
-			const cypher_astnode_type_t root_type = cypher_astnode_type(root);
 			if(root_type != CYPHER_AST_PATTERN &&
 			   root_type != CYPHER_AST_SHORTEST_PATH &&
 			   root_type != CYPHER_AST_MATCH &&
