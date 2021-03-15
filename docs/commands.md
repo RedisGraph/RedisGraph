@@ -674,11 +674,12 @@ This section contains information on all supported functions from the Cypher que
 |outdegree() | Returns the number of node's outgoing edges. |
 
 ## Path functions
-|Function | Description|
-| ------- |:-----------|
-| nodes() | Return a new list of nodes, of a given path. |
-| relationships() | Return a new list of edges, of a given path. |
-| length() | Return the length (number of edges) of the path|
+| Function                        | Description                                               |
+| -------                         | :-----------                                              |
+| nodes()                         | Return a new list of nodes, of a given path.              |
+| relationships()                 | Return a new list of edges, of a given path.              |
+| length()                        | Return the length (number of edges) of the path.          |
+| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern. |
 
 ### List comprehensions
 List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
@@ -723,7 +724,15 @@ The key names `latitude` and `longitude` are case-sensitive.
 
 The point constructed by this function can be saved as a node/relationship property or used within the query, such as in a `distance` function call.
 
-#### JSON format
+### shortestPath
+The `shortestPath()` function is invoked with the form:
+```sh
+MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:L*]->(b))
+```
+
+The sole `shortestPath` argument is a traversal pattern. This pattern's endpoints must be resolved prior to the function call, and no property filters may be introduced in the pattern. The relationship pattern may specify any number of relationship types (including zero) to be considered. If a minimum number of hops is specified, it may only be 0 or 1, while any number may be used for the maximum number of hops. If no shortest path can b e found, NULL is returned.
+
+### JSON format
 `toJSON()` returns the input value in JSON formatting. For primitive data types and arrays, this conversion is conventional. Maps and map projections (`toJSON(node { .prop} )`) are converted to JSON objects, as are nodes and relationships.
 
 The format for a node object in JSON is:
