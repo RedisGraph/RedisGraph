@@ -121,9 +121,14 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 		bool maintain_transposes;
 		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transposes);
 		// Get edge matrix and transpose matrix, if available.
-		if(reltype_count == 0) {
+		if(ctx->reltypes == NULL) {
+			// No edge types were specified, use the overall adjacency matrix.
 			ctx->R = Graph_GetAdjacencyMatrix(gc->g);
 			ctx->TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
+		} else if(reltype_count == 0) {
+			// If edge types were specified but none were valid, use the zero matrix.
+			ctx->R = Graph_GetZeroMatrix(gc->g);
+			ctx->TR = Graph_GetZeroMatrix(gc->g);
 		} else if(reltype_count == 1) {
 			ctx->R = Graph_GetRelationMatrix(gc->g, ctx->reltypes[0]);
 			if(maintain_transposes) ctx->TR = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[0]);

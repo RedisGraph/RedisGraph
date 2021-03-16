@@ -67,13 +67,19 @@ class testShortestPath(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("shortestPath requires a path containing a single relationship", str(e))
 
-        # Try iterating over an invalid relationship type
-        query = """MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:FAKE*]->(b))"""
+        query = """MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[* {weight: 4}]->(b))"""
         try:
             redis_graph.query(query)
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("Encountered unknown relationship type", str(e))
+            self.env.assertIn("filters on relationships in shortestPath", str(e))
+
+        # Try iterating over an invalid relationship type
+        query = """MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:FAKE*]->(b))"""
+        actual_result = redis_graph.query(query)
+        # No results should be found
+        expected_result = [[None]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
 
     def test02_simple_shortest_path(self):
         query = """MATCH (a {v: 1}), (b {v: 4}) WITH shortestPath((a)-[*]->(b)) AS p UNWIND nodes(p) AS n RETURN n.v"""

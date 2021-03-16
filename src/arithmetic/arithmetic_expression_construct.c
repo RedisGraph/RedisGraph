@@ -494,7 +494,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 
 	if(cypher_ast_node_pattern_get_properties(cypher_ast_pattern_path_get_element(path, 0)) ||
 	   cypher_ast_node_pattern_get_properties(cypher_ast_pattern_path_get_element(path, 2))) {
-		ErrorCtx_SetError("Node filters must be introduced in shortestPath");
+		ErrorCtx_SetError("Node filters may not be introduced in shortestPath");
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
@@ -507,13 +507,8 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 		for(uint i = 0; i < reltype_count; i ++) {
 			const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(edge, i));
 			Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-			if(!s) {
-				// Encountered unknown relationship
-				ErrorCtx_SetError("Encountered unknown relationship type '%s' in shortestPath", reltype);
-				array_free(reltypes);
-				return AR_EXP_NewConstOperandNode(SI_NullVal());
-			}
-			reltypes = array_append(reltypes, s->id);
+			// Skip missing schemas
+			if(s) reltypes = array_append(reltypes, s->id);
 		}
 	}
 
