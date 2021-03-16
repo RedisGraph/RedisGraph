@@ -730,7 +730,7 @@ The `shortestPath()` function is invoked with the form:
 MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:L*]->(b))
 ```
 
-The sole `shortestPath` argument is a traversal pattern. This pattern's endpoints must be resolved prior to the function call, and no property filters may be introduced in the pattern. The relationship pattern may specify any number of relationship types (including zero) to be considered. If a minimum number of hops is specified, it may only be 0 or 1, while any number may be used for the maximum number of hops. If no shortest path can b e found, NULL is returned.
+The sole `shortestPath` argument is a traversal pattern. This pattern's endpoints must be resolved prior to the function call, and no property filters may be introduced in the pattern. The relationship pattern may specify any number of relationship types (including zero) to be considered. If a minimum number of hops is specified, it may only be 0 or 1, while any number may be used for the maximum number of hops. If no shortest path can be found, NULL is returned.
 
 ### JSON format
 `toJSON()` returns the input value in JSON formatting. For primitive data types and arrays, this conversion is conventional. Maps and map projections (`toJSON(node { .prop} )`) are converted to JSON objects, as are nodes and relationships.
