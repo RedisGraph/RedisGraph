@@ -10,7 +10,7 @@ LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3
-ifeq ($(DEBUG), 1)
+ifeq ($(DEBUG),1)
 	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
 	# Enable all assertions in debug mode
 	DEBUGFLAGS += -DRG_DEBUG
@@ -25,7 +25,7 @@ CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
-	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread -fopenmp
+	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
 	CFLAGS += -mmacosx-version-min=10.14
@@ -36,21 +36,22 @@ SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
 
 # Sources
-SOURCEDIR=$(shell pwd -P)
+SOURCEDIR:=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/map_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/path_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/list_funcs/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/placeholder_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/time_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/point_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/entity_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/string_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/boolean_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/numeric_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/aggregate_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/conditional_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/placeholder_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/comprehension_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/algebraic_expression/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)
@@ -150,7 +151,7 @@ endif
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
 	cd ../deps/RediSearch; \
-	mkdir build; \
+	mkdir -p build; \
 	cd build; \
 	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
 	make;
@@ -173,9 +174,20 @@ parser:
 	@$(MAKE) -C $@
 .PHONY: parser
 
+define extract_symbols
+objcopy --only-keep-debug $1 $1.debug
+objcopy --strip-debug $1
+objcopy --add-gnu-debuglink $1.debug $1
+endef 
+
 # Build the module...
 redisgraph.so: $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
+ifeq ($(uname_S),Linux)
+ifneq ($(DEBUG),1)
+	$(call extract_symbols,$@)
+endif
+endif
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
@@ -190,8 +202,7 @@ endif
 	@$(MAKE) -C ../tests clean
 
 package: redisgraph.so
-	@mkdir -p ../build
-	@ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
+	@../sbin/pack.sh
 
 test: redisgraph.so
 	# check valgrind flag is not empty

@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v8.h"
+#include "encode_v9.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -103,31 +103,24 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	uint64_t remaining_entities;
 	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &remaining_entities);
 
-	// No limit on the entities, the graph is encoded in one key.
-	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
-		for(uint state = ENCODE_STATE_NODES; state < ENCODE_STATE_FINAL; state++) {
-			payloads = array_append(payloads, _StatePayloadInfo(gc, state, 0, VKEY_ENTITY_COUNT_UNLIMITED));
-		}
-	} else {
-		// Check if this is the last key
-		bool last_key = GraphEncodeContext_GetProcessedKeyCount(gc->encoding_context) ==
-						(GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
-		if(last_key) remaining_entities = VKEY_ENTITY_COUNT_UNLIMITED;
+	// Check if this is the last key
+	bool last_key = GraphEncodeContext_GetProcessedKeyCount(gc->encoding_context) ==
+					(GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
+	if(last_key) remaining_entities = VKEY_ENTITY_COUNT_UNLIMITED;
 
-		// Get the current state encoded entities count.
-		uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
+	// Get the current state encoded entities count.
+	uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
 
-		// While there are still remaining entities to encode in this key and the state is valid.
-		while(remaining_entities > 0 && current_state < ENCODE_STATE_FINAL) {
-			// Get the current state payload info, with respect to offset.
-			PayloadInfo current_state_payload_info = _StatePayloadInfo(gc, current_state, offset,
-																	   remaining_entities);
-			payloads = array_append(payloads, current_state_payload_info);
-			if(!last_key) remaining_entities -= current_state_payload_info.entities_count;
-			if(remaining_entities > 0) {
-				offset = 0; // New state offset is 0.
-				current_state++; // Advance in the states.
-			}
+	// While there are still remaining entities to encode in this key and the state is valid.
+	while(remaining_entities > 0 && current_state < ENCODE_STATE_FINAL) {
+		// Get the current state payload info, with respect to offset.
+		PayloadInfo current_state_payload_info = _StatePayloadInfo(gc, current_state, offset,
+																   remaining_entities);
+		payloads = array_append(payloads, current_state_payload_info);
+		if(!last_key) remaining_entities -= current_state_payload_info.entities_count;
+		if(remaining_entities > 0) {
+			offset = 0; // New state offset is 0.
+			current_state++; // Advance in the states.
 		}
 	}
 
@@ -144,7 +137,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	return payloads;
 }
 
-void RdbSaveGraph_v8(RedisModuleIO *rdb, void *value) {
+void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 	/* Encoding format for graph context and graph meta key:
 	 *  Header
 	 *  Payload(s) count: N
@@ -189,19 +182,19 @@ void RdbSaveGraph_v8(RedisModuleIO *rdb, void *value) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v8(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v8(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v8(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v8(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v8(rdb, gc);
+			RdbSaveGraphSchema_v9(rdb, gc);
 			break;
 		default:
 			ASSERT(false && "Unknown encoding phase");

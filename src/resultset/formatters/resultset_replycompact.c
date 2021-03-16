@@ -7,17 +7,15 @@
 #include "resultset_formatters.h"
 #include "RG.h"
 #include "../../util/arr.h"
-#include "../../datatypes/map.h"
-#include "../../datatypes/array.h"
-#include "../../datatypes/path/sipath.h"
+#include "../../datatypes/datatypes.h"
 
 // Forward declarations.
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
-static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
-											   SIValue array);
+static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc, SIValue array);
 static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path);
 static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc, SIValue v);
+static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *gc, SIValue v);
 
 static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
@@ -41,6 +39,8 @@ static inline ValueType _mapValueType(const SIValue v) {
 		return VALUE_PATH;
 	case T_MAP:
 		return VALUE_MAP;
+	case T_POINT:
+		return VALUE_POINT;
 	default:
 		return VALUE_UNKNOWN;
 	}
@@ -86,6 +86,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_MAP:
 		_ResultSet_CompactReplyWithMap(ctx, gc, v);
+		return;
+	case T_POINT:
+		_ResultSet_CompactReplyWithPoint(ctx, gc, v);
 		return;
 	default:
 		RedisModule_Assert("Unhandled value type" && false);
@@ -264,6 +267,14 @@ static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc
 	}
 }
 
+static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *gc, SIValue v) {
+	ASSERT(SI_TYPE(v) == T_POINT);
+	RedisModule_ReplyWithArray(ctx, 2);
+
+	_ResultSet_ReplyWithRoundedDouble(ctx, Point_lat(v));
+	_ResultSet_ReplyWithRoundedDouble(ctx, Point_lon(v));
+}
+
 void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
 		SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
@@ -293,4 +304,3 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
-
