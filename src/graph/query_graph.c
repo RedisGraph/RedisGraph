@@ -105,8 +105,8 @@ static void _QueryGraphAddEdge_RelationPattern(QueryGraph *qg, const cypher_astn
 
 static void _QueryGraphAddEdge_PathPattern(QueryGraph *qg,
 											   const cypher_astnode_t *ast_entity, QGNode *src, QGNode *dest) {
-	// simpleton: merge null -> QueryCtx_GetPathPatternCtx()
-	EBNFBase *root = EBNFBase_Build(ast_entity, NULL);
+	PathPatternCtx *ctx = QueryCtx_GetPathPatternCtx();
+	EBNFBase *root = EBNFBase_Build(ast_entity, ctx);
 	QGEdge *pattern = QGEdge_NewPathPattern(NULL, NULL, root);
 
 	enum cypher_rel_direction direction = cypher_ast_path_pattern_get_direction(ast_entity);

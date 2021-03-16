@@ -324,11 +324,11 @@ void _AlgebraicExpression_ToStringDebug
             break;
         case AL_OPERAND:
             if(AlgebraicExpression_OperandIsReference(exp))
-                sprintf(buff + strlen(buff), "%s-%s:~%s%s-%s",
+                sprintf(buff + strlen(buff), "%s-%s:~%s:%d-%s",
 						exp->operand.src,
 						exp->operand.edge,
 						exp->operand.reference.name,
-						exp->operand.reference.transposed ? "_T" : "",
+						exp->operand.reference.transposed,
 						exp->operand.dest);
             else
                 sprintf(buff + strlen(buff), "%s-%s:%s-%s", exp->operand.src, exp->operand.edge, exp->operand.label, exp->operand.dest);

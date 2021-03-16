@@ -1276,7 +1276,7 @@ static AST_Validation _ValidateClauseOrder(const AST *ast) {
 
 static void _AST_GetDefinedPathPatterns(const cypher_astnode_t *node, rax *identifiers) {
     cypher_astnode_type_t type = cypher_astnode_type(node);
-    assert(type == CYPHER_AST_NAMED_PATH);
+    ASSERT(type == CYPHER_AST_NAMED_PATH);
 
     _AST_GetIdentifiers(cypher_ast_named_path_get_identifier(node), identifiers);
 }
@@ -1364,11 +1364,29 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
+	} else if (type == CYPHER_AST_NAMED_PATH) {
+		// simpleton: add documentation
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
 			_AST_GetDefinedIdentifiers(child, identifiers);
+		}
+	}
+}
+
+static void _AST_ReferredPathPatterns(const cypher_astnode_t *node, rax *references) {
+	if(!node) return;
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+
+	if (type == CYPHER_AST_PATH_PATTERN_REFERENCE) {
+		const cypher_astnode_t *ident = cypher_ast_path_pattern_reference_get_identifier(node);
+		_AST_GetIdentifiers(ident, references);
+	} else {
+		uint child_count = cypher_astnode_nchildren(node);
+		for(uint c = 0; c < child_count; c ++) {
+			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
+			_AST_ReferredPathPatterns(child, references);
 		}
 	}
 }
@@ -1379,26 +1397,10 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *ident
 		// WITH clauses should only have their inputs collected, not their outputs.
 		_AST_GetWithReferences(node, identifiers);
 	} if (cypher_astnode_type(node) == CYPHER_AST_NAMED_PATH) {
-		//simpleton: collect inner ind
+		_AST_ReferredPathPatterns(node, identifiers);
 	} else {
 		_AST_GetIdentifiers(node, identifiers);
 	}
-}
-
-static void _AST_ReferredPathPatterns(const cypher_astnode_t *node, rax *references) {
-    if(!node) return;
-    cypher_astnode_type_t type = cypher_astnode_type(node);
-
-    if (type == CYPHER_AST_PATH_PATTERN_REFERENCE) {
-        const cypher_astnode_t *ident = cypher_ast_path_pattern_reference_get_identifier(node);
-        _AST_GetIdentifiers(ident, references);
-    } else {
-        uint child_count = cypher_astnode_nchildren(node);
-        for(uint c = 0; c < child_count; c ++) {
-            const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
-            _AST_ReferredPathPatterns(child, references);
-        }
-    }
 }
 
 static AST_Validation _Validate_Aliases_DefinedInClause(const cypher_astnode_t *clause,
@@ -1440,8 +1442,27 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 	// If the query does not have a WITH clause, there is only one scope.
 	uint end_offset = cypher_ast_query_nclauses(ast->root);
 	rax *defined_aliases = raxNew();
+
+	bool is_new_scope = true;
+
 	for(uint i = 0; i < end_offset; i++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+
+		if (is_new_scope) {
+			for (int j = i; j < end_offset; j++) {
+				const cypher_astnode_t *scope_clause = cypher_ast_query_get_clause(ast->root, j);
+
+				if (cypher_astnode_type(scope_clause) == CYPHER_AST_WITH) {
+					is_new_scope = false;
+					break;
+				}
+				if (cypher_astnode_type(scope_clause) == CYPHER_AST_NAMED_PATH) {
+					_AST_GetDefinedPathPatterns(scope_clause, defined_aliases);
+				}
+			}
+			is_new_scope = false;
+		}
+
 		// For each clause, confirm that all referred aliases have been previously defined.
 		res = _Validate_Aliases_DefinedInClause(clause, defined_aliases);
 		if(res != AST_VALID) break;
@@ -1450,6 +1471,7 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 			raxFree(defined_aliases);
 			defined_aliases = raxNew();
 			_AST_GetDefinedIdentifiers(clause, defined_aliases);
+			is_new_scope = true;
 		}
 	}
 	raxFree(defined_aliases);

@@ -298,13 +298,16 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 		// If we are maintaining transposed matrices, it can be retrieved now.
 		bool maintain_transpose = false;
 		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-		if(root->operation.op == AL_EXP_TRANSPOSE && maintain_transpose) {
-			ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
-			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
-			// Fetch the transposed matrix and update the operand.
-			_AlgebraicExpression_PopulateTransposedOperand(child, gc);
-			// Replace this operation with the transposed operand.
-			_AlgebraicExpression_InplaceRepurpose(root, child);
+		if (root->operation.op == AL_EXP_TRANSPOSE && maintain_transpose) {
+			// Don't transpose references, the processing separately
+			if (!AlgebraicExpression_OperandIsReference(CHILD_AT(root, 0))) {
+				ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
+				AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
+				// Fetch the transposed matrix and update the operand.
+				_AlgebraicExpression_PopulateTransposedOperand(child, gc);
+				// Replace this operation with the transposed operand.
+				_AlgebraicExpression_InplaceRepurpose(root, child);
+			}
 			break;
 		}
 		for(uint i = 0; i < child_count; i++) {

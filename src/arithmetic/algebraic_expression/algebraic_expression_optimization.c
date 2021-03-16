@@ -506,13 +506,17 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 		case AL_EXP_TRANSPOSE:
 			ASSERT(AlgebraicExpression_ChildCount(root) == 1 &&
 				   "transpose operation had invalid number of children");
-			child = _AlgebraicExpression_OperationRemoveDest(root);
 			// Transpose operands will currently always have an operand child.
 			ASSERT(child->type == AL_OPERAND && "encountered unexpected operation as transpose child");
-			// Transpose the child operand.
-			_AlgebraicExpression_TransposeOperand(child);
-			// Replace this operation with the transposed operand.
-			_AlgebraicExpression_InplaceRepurpose(root, child);
+
+			// Don't transpose references, they processed separately in path patterns
+			if (!AlgebraicExpression_OperandIsReference(CHILD_AT(root, 0))) {
+				child = _AlgebraicExpression_OperationRemoveDest(root);
+				// Transpose the child operand.
+				_AlgebraicExpression_TransposeOperand(child);
+				// Replace this operation with the transposed operand.
+				_AlgebraicExpression_InplaceRepurpose(root, child);
+			}
 			break;
 		default:
 			ASSERT("Unknown operation" && false);
