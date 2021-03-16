@@ -499,16 +499,13 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	}
 
 	// Collect the IDs of all relationship types
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	uint reltype_count = cypher_ast_rel_pattern_nreltypes(edge);
-	int *reltypes = NULL;
+	const char **reltype_names = NULL;
 	if(reltype_count > 0) {
-		reltypes = array_new(int, reltype_count);
+		reltype_names = array_new(const char *, reltype_count);
 		for(uint i = 0; i < reltype_count; i ++) {
 			const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(edge, i));
-			Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-			// Skip missing schemas
-			if(s) reltypes = array_append(reltypes, s->id);
+			reltype_names = array_append(reltype_names, reltype);
 		}
 	}
 
@@ -520,7 +517,9 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	ctx->TR             =  GrB_NULL;
 	ctx->minHops        =  start;
 	ctx->maxHops        =  end;
-	ctx->reltypes       =  reltypes;
+	ctx->reltypes       =  NULL;
+	ctx->reltype_names  =  reltype_names;
+	ctx->reltype_count  =  array_len(reltype_names);
 	ctx->free_matrices  =  false;
 
 	// Add the context to the function descriptor as the function's private data.

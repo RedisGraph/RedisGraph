@@ -68,6 +68,7 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 void ShortestPath_Free(void *ctx_ptr) {
 	ShortestPathCtx *ctx = ctx_ptr;
 	if(ctx->reltypes) array_free(ctx->reltypes);
+	if(ctx->reltype_names) array_free(ctx->reltype_names);
 	if(ctx->free_matrices) {
 		GrB_free(&ctx->R);
 		GrB_free(&ctx->TR);
@@ -82,8 +83,13 @@ void *ShortestPath_Clone(void *orig) {
 	ShortestPathCtx *ctx_clone = rm_malloc(sizeof(ShortestPathCtx));
 	ctx_clone->minHops = ctx->minHops;
 	ctx_clone->maxHops = ctx->maxHops;
-	if(ctx->reltypes) array_clone(ctx_clone->reltypes, ctx->reltypes);
-	else ctx_clone->reltypes = NULL;
+	/* Clone reltype names but not IDs, to avoid
+	 * a scenario in which a traversed type is created after the
+	 * shortestPath query is cached. */
+	ctx_clone->reltype_count = ctx->reltype_count;
+	ctx_clone->reltypes = NULL;
+	if(ctx->reltype_names) array_clone(ctx_clone->reltype_names, ctx->reltype_names);
+	else ctx_clone->reltype_names = NULL;
 	// Do not clone matrix data
 	ctx_clone->R = GrB_NULL;
 	ctx_clone->TR = GrB_NULL;
@@ -109,7 +115,6 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	GrB_Vector V = GrB_NULL;  // vector of results
 	GrB_Vector PI = GrB_NULL; // vector backtracking results to their parents
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	uint reltype_count = (ctx->reltypes) ? array_len(ctx->reltypes) : 0;
 
 	/* The BFS algorithm uses a level of 1 to indicate the source node.
 	 * If this value is not zero (unlimited), increment it by 1
@@ -117,7 +122,21 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	int64_t max_level = (ctx->maxHops == EDGE_LENGTH_INF) ? 0 : ctx->maxHops + 1;
 
 	if(ctx->R == GrB_NULL) {
-		// First invocation, initialize the traversed matrices.
+		// First invocation, initialize unset context members.
+		if(ctx->reltype_count > 0) {
+			// Retrieve IDs of traversed relationship types.
+			ctx->reltypes = array_new(int, ctx->reltype_count);
+			for(uint i = 0; i < ctx->reltype_count; i ++) {
+				Schema *s = GraphContext_GetSchema(gc, ctx->reltype_names[i], SCHEMA_EDGE);
+				// Skip missing schemas
+				if(s) ctx->reltypes = array_append(ctx->reltypes, s->id);
+			}
+
+			// Update the reltype count, as it may have changed due to missing schemas
+			ctx->reltype_count = array_len(ctx->reltypes);
+		}
+
+		// Initialize the traversed matrices.
 		bool maintain_transposes;
 		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transposes);
 		// Get edge matrix and transpose matrix, if available.
@@ -125,11 +144,11 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			// No edge types were specified, use the overall adjacency matrix.
 			ctx->R = Graph_GetAdjacencyMatrix(gc->g);
 			ctx->TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
-		} else if(reltype_count == 0) {
+		} else if(ctx->reltype_count == 0) {
 			// If edge types were specified but none were valid, use the zero matrix.
 			ctx->R = Graph_GetZeroMatrix(gc->g);
 			ctx->TR = Graph_GetZeroMatrix(gc->g);
-		} else if(reltype_count == 1) {
+		} else if(ctx->reltype_count == 1) {
 			ctx->R = Graph_GetRelationMatrix(gc->g, ctx->reltypes[0]);
 			if(maintain_transposes) ctx->TR = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[0]);
 			else ctx->TR = GrB_NULL;
@@ -144,7 +163,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 				ASSERT(res == GrB_SUCCESS);
 			}
 
-			for(uint i = 0; i < reltype_count; i ++) {
+			for(uint i = 0; i < ctx->reltype_count; i ++) {
 				GrB_Matrix adj = Graph_GetRelationMatrix(gc->g, ctx->reltypes[i]);
 				res = GrB_eWiseAdd(ctx->R, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, ctx->R, adj, GrB_NULL);
 				ASSERT(res == GrB_SUCCESS);
@@ -192,10 +211,10 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 		parent_id --; // Decrement the parent ID by 1 to correct 1-indexing.
 
 		// Retrieve edges connecting the parent node to the current node.
-		if(reltype_count == 0) {
+		if(ctx->reltype_count == 0) {
 			Graph_GetEdgesConnectingNodes(gc->g, parent_id, id, GRAPH_NO_RELATION, &edges);
 		} else {
-			for(uint j = 0; j < reltype_count; j ++) {
+			for(uint j = 0; j < ctx->reltype_count; j ++) {
 				Graph_GetEdgesConnectingNodes(gc->g, parent_id, id, ctx->reltypes[j], &edges);
 				if(array_len(edges) > 0) break;
 			}
