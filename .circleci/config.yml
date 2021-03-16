@@ -393,7 +393,7 @@ workflows:
   build_and_package:
     jobs:
       - build:
-          <<: *not-on-integ-branch
+          <<: *on-any-branch
       - build_memcheck:
           <<: *on-any-branch
           requires:
