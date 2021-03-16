@@ -38,7 +38,7 @@ commands:
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
-          - GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
+          - GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Load libcypher-parser from cache if possible.
       - restore_cache:
@@ -51,7 +51,7 @@ commands:
       - save_cache:
           paths:
             - deps/GraphBLAS
-          key: GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
+          key: GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Save libcypher-parser to cache.
       - save_cache:
@@ -395,20 +395,34 @@ workflows:
           <<: *not-on-integ-branch
       - build_memcheck:
           <<: *on-any-branch
+      - build_macos:
+          # <<: *on-any-branch
+          <<: *on-integ-and-version-tags
       - platform_build:
+          <<: *on-integ-and-version-tags
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
-          <<: *on-integ-and-version-tags
       - deploy_branch:
+          <<: *on-integ-branch
           requires:
             - platform_build
-          <<: *on-integ-branch
+            - build_macos
       - release_automation:
+          <<: *on-version-tags
           requires:
             - deploy_release
       - deploy_release:
           <<: *on-version-tags
+          requires:
+            - platform_build
+            - build_macos
+      - performance_ci_automation_not_integ:
+          <<: *not-on-integ-branch
+          requires:
+            - build
+      - performance_ci_automation:
+          <<: *on-integ-and-version-tags
           requires:
             - platform_build
 
