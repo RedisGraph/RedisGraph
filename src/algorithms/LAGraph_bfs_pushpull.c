@@ -389,6 +389,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 	GrB_Matrix A,           // input graph, treated as if boolean in semiring
 	GrB_Matrix AT,          // transpose of A (optional; push-only if NULL)
 	int64_t source,         // starting node of the BFS
+	int64_t *dest,          // optional destination node of the BFS
 	int64_t max_level,      // optional limit of # levels to search
 	bool vsparse            // if true, v is expected to be very sparse
 ) {
@@ -457,6 +458,9 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 		GrB_assign(v, NULL, NULL, 0, GrB_ALL, n, NULL) ;
 	}
 
+	// create a scalar to hold the destination value
+	GrB_Index dest_val ;
+
 	GrB_Semiring first_semiring, second_semiring ;
 	if(compute_tree) {
 		// create an integer vector q, and set q(source) to source+1
@@ -516,6 +520,15 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 
 		nvisited += nq ;
 		if(nq == 0 || nvisited == n || level >= max_level) break ;
+
+		//----------------------------------------------------------------------
+		// check if destination has been reached, if one is provided
+		//----------------------------------------------------------------------
+
+		if(dest) {
+			GrB_Info res = GrB_Vector_extractElement(&dest_val, v, *dest) ;
+			if(res != GrB_NO_VALUE) break ;
+		}
 
 		//----------------------------------------------------------------------
 		// check if v should be converted to dense
