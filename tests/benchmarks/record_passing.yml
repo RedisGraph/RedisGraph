@@ -1,0 +1,20 @@
+name: "EXECUTION_PLAN_RECORDS_PASSING"
+remote:
+  - setup: redisgraph-r5
+  - type: oss-standalone
+dbconfig:
+  - dataset: "datasets/empty_graph.rdb"
+clientconfig:
+  - tool: redisgraph-benchmark-go
+  - parameters:
+    - graph: "g"
+    - rps: 0
+    - clients: 32
+    - threads: 4
+    - connections: 32
+    - requests: 100000
+    - queries:
+      - { q: 'UNWIND range(0, 100000) AS x RETURN x', ratio: 1 }
+kpis:
+  - le: { $.OverallClientLatencies.Total.q50: 40.0 }
+  - ge: { $.OverallQueryRates.Total: 18000 }
