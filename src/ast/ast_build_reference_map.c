@@ -21,6 +21,9 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// In case of pattern filter.
 		_AST_MapReferencedEntitiesInPath(ast, exp);
+	} else if(type == CYPHER_AST_SHORTEST_PATH) {
+		// Reference all entity names in a shortest path.
+		_AST_MapReferencedEntitiesInPath(ast, exp);
 	} else {
 		// Recurse over children.
 		uint child_count = cypher_astnode_nchildren(exp);
@@ -95,8 +98,10 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 // Maps entities in a given path.
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
-	// Check if the path is a named path. If so, map all entities, else map only referenced entities.
-	bool force_mapping = cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH;
+	// Check if the path is a named path or shortest path.
+	// If so, map all entities, else map only referenced entities.
+	const cypher_astnode_type_t type = cypher_astnode_type(path);
+	bool force_mapping = (type == CYPHER_AST_NAMED_PATH || type == CYPHER_AST_SHORTEST_PATH);
 	// Node are in even positions.
 	for(uint i = 0; i < path_len; i += 2)
 		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i), force_mapping);
