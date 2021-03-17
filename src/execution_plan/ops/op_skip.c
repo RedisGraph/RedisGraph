@@ -51,24 +51,55 @@ OpBase *NewSkipOp(const ExecutionPlan *plan, AR_ExpNode *skip_exp) {
 	return (OpBase *)op;
 }
 
-static Record SkipConsume(OpBase *opBase) {
-	OpSkip *skip = (OpSkip *)opBase;
-	OpBase *child = skip->op.children[0];
+static void _skip(OpBase *opBase) {
+	OpSkip *op = (OpSkip *)opBase;
+	RecordBatch batch = NULL;
+	OpBase *child = op->op.children[0];
 
-	// As long as we're required to skip
-	while(skip->skipped < skip->skip) {
-		Record discard = OpBase_Consume(child);
+	// determine how many batchs are going to be skipped
+	uint batches_to_skip = op->skip / EXEC_PLAN_BATCH_SIZE;
 
-		// Depleted.
-		if(!discard) return NULL;
+	// skip entire batches
+	for(uint i = 0; i < batches_to_skip; i++) {
+		batch = OpBase_Consume(child);
+		if(RecordBatch_Empty(batch)) return;
 
-		// Discard.
-		OpBase_DeleteRecord(discard);
-
-		// Advance.
-		skip->skipped++;
+		// discard records
+		uint batch_size = RecordBatch_Len(batch);
+		for(uint i = 0; i < batch_size; i++) OpBase_DeleteRecord(batch[i]);
 	}
 
+	op->skipped = batches_to_skip * EXEC_PLAN_BATCH_SIZE;
+
+	// skip half batch
+	if(op->skipped < op->skip) {
+		batch = OpBase_Consume(child);
+		if(RecordBatch_Empty(batch)) return;
+
+		uint i = 0;
+		for(; op->skipped < op->skip; op->skipped++, i++) {
+			OpBase_DeleteRecord(batch[i]);
+		}
+
+		ASSERT(op->skipped == op->skip);
+
+		// add remaining records
+		uint remaining_record_count = RecordBatch_Len(batch);
+		for(; i < remaining_record_count; i++) OP_BATCH_ADD(batch[i]);
+	}
+}
+
+static Record SkipConsume(OpBase *opBase) {
+	OpSkip *op = (OpSkip *)opBase;
+	OpBase *child = op->op.children[0];
+
+	if(op->skipped < op->skip) {
+		OP_BATCH_CLEAR();
+		_skip(opBase);
+		if(!OP_BATCH_EMPTY()) OP_BATCH_EMIT();
+	}
+
+	// done skipping, return child batch
 	return OpBase_Consume(child);
 }
 

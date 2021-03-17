@@ -29,17 +29,25 @@ static Record FilterConsume(OpBase *opBase) {
 	Record r = NULL;
 	OpFilter *filter = (OpFilter *)opBase;
 	OpBase *child = filter->op.children[0];
+	FT_FilterNode *filterTree = filter->filterTree;
 
-	while(true) {
-		r = OpBase_Consume(child);
-		if(!r) break;
+	OP_BATCH_CLEAR();
 
-		/* Pass graph through filter tree */
-		if(FilterTree_applyFilters(filter->filterTree, r) == FILTER_PASS) break;
-		else OpBase_DeleteRecord(r);
+	while(OP_BATCH_HAS_ROOM()) {
+		RecordBatch batch = OpBase_Consume(child);
+		uint record_count = RecordBatch_Len(batch);
+		if(record_count == 0) break; // depleted
+
+		for(uint i = 0; i < record_count; i++) {
+			Record r = batch[i];
+			// pass graph through filter tree
+			bool pass = (FilterTree_applyFilters(filterTree, r) == FILTER_PASS); 
+			if(pass) OP_BATCH_ADD(r);
+			else OpBase_DeleteRecord(r);
+		}
 	}
 
-	return r;
+	OP_BATCH_EMIT();
 }
 
 static inline OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase) {

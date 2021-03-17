@@ -70,7 +70,7 @@ static RecordBatch ProjectConsume(OpBase *opBase) {
 		for(uint j = 0; j < op->exp_count; j++) {
 			AR_ExpNode *exp = op->exps[j];
 			SIValue v = AR_EXP_Evaluate(exp, in_r);
-			int rec_idx = op->record_offsets[i];
+			int rec_idx = op->record_offsets[j];
 			/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
 			 * Graph entities don't need to be persisted here as Record_Add will copy them internally.
 			 * The RETURN projection here requires persistence:
