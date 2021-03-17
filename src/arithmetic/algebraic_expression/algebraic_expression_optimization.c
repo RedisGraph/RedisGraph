@@ -112,48 +112,45 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 		else if((_AlgebraicExpression_IsAdditionNode(l) && !_AlgebraicExpression_IsAdditionNode(r)) ||
 				(_AlgebraicExpression_IsAdditionNode(r) && !_AlgebraicExpression_IsAdditionNode(l))) {
 
-			// Disconnect left and right children from root.
+			// disconnect left and right children from root
 			r = _AlgebraicExpression_OperationRemoveDest((*root));
 			l = _AlgebraicExpression_OperationRemoveDest((*root));
 			ASSERT(AlgebraicExpression_ChildCount(*root) == 0);
 
-			AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
-			AlgebraicExpression *lMul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
-			AlgebraicExpression *rMul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
-
-			AlgebraicExpression_AddChild(add, lMul);
-			AlgebraicExpression_AddChild(add, rMul);
-
 			AlgebraicExpression *A;
 			AlgebraicExpression *B;
-			AlgebraicExpression *C;
+			AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 
 			if(_AlgebraicExpression_IsAdditionNode(l)) {
-				// Lefthand side is addition.
-				// (A + B) * C = (A * C) + (B * C)
-
-				A = _AlgebraicExpression_OperationRemoveSource(l);
-				B = _AlgebraicExpression_OperationRemoveDest(l);
-				C = r;
-
+				// lefthand side is addition
+				// (A + B + C) * D = (A * D) + (B * D) + (C * D)
+				B = r;
+				uint child_count = AlgebraicExpression_ChildCount(l);
+				for(uint i = 0; i < child_count; i++) {
+					A = _AlgebraicExpression_OperationRemoveDest(l);
+					AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+					AlgebraicExpression_AddChild(mul, A);
+					if(i == 0) AlgebraicExpression_AddChild(mul, B);
+					else AlgebraicExpression_AddChild(mul, AlgebraicExpression_Clone(B));
+					AlgebraicExpression_AddChild(add, mul);
+				}
+				ASSERT(AlgebraicExpression_ChildCount(l) == 0);
 				AlgebraicExpression_Free(l);
-				AlgebraicExpression_AddChild(lMul, A);
-				AlgebraicExpression_AddChild(lMul, C);
-				AlgebraicExpression_AddChild(rMul, B);
-				AlgebraicExpression_AddChild(rMul, AlgebraicExpression_Clone(C));
 			} else {
-				// Righthand side is addition.
-				// C * (A + B) = (C * A) + (C * B)
-
-				A = _AlgebraicExpression_OperationRemoveSource(r);
-				B = _AlgebraicExpression_OperationRemoveDest(r);
-				C = l;
-
+				// righthand side is addition
+				// D * (A + B + C) = (D * A) + (D * B) + (D * C)
+				A = l;
+				uint child_count = AlgebraicExpression_ChildCount(r);
+				for(uint i = 0; i < child_count; i++) {
+					B = _AlgebraicExpression_OperationRemoveDest(r);
+					AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+					if(i == 0) AlgebraicExpression_AddChild(mul, A);
+					else AlgebraicExpression_AddChild(mul, AlgebraicExpression_Clone(A));
+					AlgebraicExpression_AddChild(mul, B);
+					AlgebraicExpression_AddChild(add, mul);
+				}
+				ASSERT(AlgebraicExpression_ChildCount(r) == 0);
 				AlgebraicExpression_Free(r);
-				AlgebraicExpression_AddChild(lMul, C);
-				AlgebraicExpression_AddChild(lMul, A);
-				AlgebraicExpression_AddChild(rMul, AlgebraicExpression_Clone(C));
-				AlgebraicExpression_AddChild(rMul, B);
 			}
 			// Free original root and overwrite it with new addition root.
 			AlgebraicExpression_Free(*root);
@@ -163,7 +160,7 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 		}
 	}
 
-	// Recurse.
+	// recurse
 	uint child_count = AlgebraicExpression_ChildCount(*root);
 	for(uint i = 0; i < child_count; i++) {
 		if(__AlgebraicExpression_MulOverAdd((*root)->operation.children + i)) return true;
