@@ -203,14 +203,14 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 	}
 
 	if(label_count == 1) {
-		l = QGNode_Label(n, 0);
+		l = QGNode_GetLabel(n, 0);
 		exp = AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, l);
 		return exp;
 	}
 
 	exp = AlgebraicExpression_NewOperation(AL_EXP_MUL);
 	for(int i = 0; i < label_count; i++) {
-		l = QGNode_Label(n, i);
+		l = QGNode_GetLabel(n, i);
 		AlgebraicExpression *op = AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, l);
 		AlgebraicExpression_AddChild(exp, op);
 	}

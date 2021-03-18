@@ -11,69 +11,69 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Forward declaration of edge */
+// forward declaration of edge
 struct QGEdge;
 
 typedef struct {
-	int *labelsID;             // Labels ID array
-	const char **labels;       // Labels string array
-	const char *alias;         // User-provided alias associated with this node
-	bool highly_connected;     // Node degree > 2
-	struct QGEdge **outgoing_edges;   // Array of incoming edges (ME)<-(SRC)
-	struct QGEdge **incoming_edges;   // Array of outgoing edges (ME)->(DEST)
+	int *labelsID;             // labels ID array
+	const char *alias;         // user-provided alias associated with this node
+	const char **labels;       // labels string array
+	bool highly_connected;     // node degree > 2
+	struct QGEdge **outgoing_edges;   // array of incoming edges (ME)<-(SRC)
+	struct QGEdge **incoming_edges;   // array of outgoing edges (ME)->(DEST)
 } QGNode;
 
-/* Creates a new node. */
+// creates a new node
 QGNode *QGNode_New(const char *alias);
 
-/* Returns true if the node is labeled. */
+// returns true if the node is labeled
 bool QGNode_Labeled(const QGNode *n);
 
-/* Returns number of labels attached to node */
+// returns number of labels attached to node
 uint QGNode_LabelCount(const QGNode *n);
 
-/* Returns the 'idx' label ID of 'n' */
-int QGNode_LabelID(const QGNode *n, uint idx);
+// returns the 'idx' label ID of 'n'
+int QGNode_GetLabelID(const QGNode *n, uint idx);
 
-/* Returns the 'idx' label of 'n' */
-const char *QGNode_Label(const QGNode *n, uint idx);
+// returns the 'idx' label of 'n'
+const char *QGNode_GetLabel(const QGNode *n, uint idx);
 
-/* Returns true if 'n' has label 'l' */
+// returns true if 'n' has label 'l'
 bool QGNode_HasLabel(const QGNode *n, const char *l);
 
-/* Label 'n' as 'l' */
+// label 'n' as 'l'
 void QGNode_AddLabel(QGNode *n, const char *l, int l_id);
 
-/* Returns true if node is highly connected, false otherwise */
+// returns true if node is highly connected, false otherwise
 bool QGNode_HighlyConnected(const QGNode *n);
 
-/* Returns the number of both incoming and outgoing edges. */
+// returns the number of both incoming and outgoing edges
 int QGNode_Degree(const QGNode *n);
 
-/* Returns number of edges pointing into node. */
+// returns number of edges pointing into node
 int QGNode_IncomeDegree(const QGNode *n);
 
-/* Returns number of edges pointing out of node. */
+// returns number of edges pointing out of node
 int QGNode_OutgoingDegree(const QGNode *n);
 
-/* Returns to total number of edges (Incoming&Outgoing). */
+// returns to total number of edges (incoming & outgoing)
 int QGNode_EdgeCount(const QGNode *n);
 
-/* Connects source node to destination node by edge. */
+// connects source node to destination node by edge
 void QGNode_ConnectNode(QGNode *src, QGNode *dest, struct QGEdge *e);
 
-/* Removes given Incoming edge from node. */
+// removes given incoming edge from node
 void QGNode_RemoveIncomingEdge(QGNode *n, struct QGEdge *e);
 
-/* Removes given Outgoing edge from node. */
+// removes given outgoing edge from node
 void QGNode_RemoveOutgoingEdge(QGNode *n, struct QGEdge *e);
 
-/* Clones given node. */
+// clones given node
 QGNode *QGNode_Clone(const QGNode *n);
 
-/* Gets a string representation of given node. */
+// gets a string representation of given node
 int QGNode_ToString(const QGNode *n, char *buff, int buff_len);
 
-/* Frees allocated space by given node. */
+// frees allocated space by given node
 void QGNode_Free(QGNode *node);
 

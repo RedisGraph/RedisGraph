@@ -43,7 +43,8 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
 		if(QGNode_LabelCount(src) > 0) {
 			// Resolve source node by performing label scan.
-			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_Label(src, 0), QGNode_LabelID(src, 0));
+			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_GetLabel(src, 0),
+					QGNode_GetLabelID(src, 0));
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
 			// The first operand has been converted into a scan op; remove it.
 			if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {

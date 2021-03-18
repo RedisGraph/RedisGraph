@@ -565,12 +565,12 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 	// Build matrix representation of query graph.
 	for(uint i = 0; i < node_count; i++) {
 		const QGNode *n = qg_clone->nodes[i];
-		GrB_Index src = QGNode_LabelID(n, 0);
+		GrB_Index src = QGNode_GetLabelID(n, 0);
 		uint outgoing_degree = QGNode_OutgoingDegree(n);
 
 		for(uint j = 0; j < outgoing_degree; j++) {
 			const QGEdge *e = n->outgoing_edges[j];
-			GrB_Index dest = QGNode_LabelID(e->dest, 0);
+			GrB_Index dest = QGNode_GetLabelID(e->dest, 0);
 
 			// Populate `m`.
 			res = GrB_Matrix_setElement_BOOL(m, true, src, dest);
