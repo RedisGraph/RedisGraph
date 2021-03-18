@@ -1395,7 +1395,8 @@ GrB_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 	int label_count = Graph_LabelTypeCount(g);
 
 	if(pending == true || nrows != node_cap || ncols != label_count) {
-		_RG_Matrix_Lock(m);
+		// if the graph belongs to one thread, we don't need to lock the mutex
+		if(!g->_writelocked) _RG_Matrix_Lock(m);
 		{
 			// locked, recheck
 			GrB_Matrix_ncols(&ncols, l);
@@ -1414,7 +1415,7 @@ GrB_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 				ASSERT(info == GrB_SUCCESS);
 			}
 		}
-		_RG_Matrix_Unlock(m);
+		if(!g->_writelocked) _RG_Matrix_Unlock(m);
 	}
 
 	return l;
