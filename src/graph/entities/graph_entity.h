@@ -11,6 +11,7 @@
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define ATTRIBUTE_NOTFOUND USHRT_MAX
+#define ATTRIBUTE_ALL USHRT_MAX - 1
 
 #define ENTITY_ID_ISLT(a, b) ((*a) < (*b))
 #define INVALID_ENTITY_ID -1l
@@ -60,6 +61,10 @@ typedef struct {
 	Entity *entity;
 	EntityID id;
 } GraphEntity;
+
+/* Deletes all properties on the graph and returns
+ * the number of deleted properties. */
+int GraphEntity_ClearProperties(GraphEntity *e);
 
 /* Adds property to entity
  * returns - reference to newly added property. */

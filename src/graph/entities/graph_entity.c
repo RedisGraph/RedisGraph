@@ -48,6 +48,19 @@ static bool _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 	return false;
 }
 
+int GraphEntity_ClearProperties(GraphEntity *e) {
+	ASSERT(e);
+
+	int prop_count = e->entity->prop_count;
+	for(int i = 0; i < prop_count; i++) {
+		// Free all allocated properties.
+		SIValue_Free(e->entity->properties[i].value);
+	}
+	e->entity->prop_count = 0;
+
+	return prop_count;
+}
+
 /* Add a new property to entity */
 bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
@@ -175,35 +188,35 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 	// write label
 	if(format & ENTITY_LABELS_OR_RELATIONS) {
 		switch(entityType) {
-		case GETYPE_NODE: {
-			Node *n = (Node *)e;
-			if(n->label) {
-				// allocate space if needed
-				size_t labelLen = strlen(n->label);
-				if(*bufferLen - *bytesWritten < labelLen) {
-					*bufferLen += labelLen;
-					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+			case GETYPE_NODE: {
+				Node *n = (Node *)e;
+				if(n->label) {
+					// allocate space if needed
+					size_t labelLen = strlen(n->label);
+					if(*bufferLen - *bytesWritten < labelLen) {
+						*bufferLen += labelLen;
+						*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+					}
+					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", n->label);
 				}
-				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", n->label);
+				break;
 			}
-			break;
-		}
 
-		case GETYPE_EDGE: {
-			Edge *edge = (Edge *)e;
-			if(edge->relationship) {
-				size_t relationshipLen = strlen(edge->relationship);
-				if(*bufferLen - *bytesWritten < relationshipLen) {
-					*bufferLen += relationshipLen;
-					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+			case GETYPE_EDGE: {
+				Edge *edge = (Edge *)e;
+				if(edge->relationship) {
+					size_t relationshipLen = strlen(edge->relationship);
+					if(*bufferLen - *bytesWritten < relationshipLen) {
+						*bufferLen += relationshipLen;
+						*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+					}
+					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", edge->relationship);
 				}
-				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", edge->relationship);
+				break;
 			}
-			break;
-		}
 
-		default:
-			ASSERT(false);
+			default:
+				ASSERT(false);
 		}
 	}
 

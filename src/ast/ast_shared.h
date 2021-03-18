@@ -57,6 +57,25 @@ typedef struct {
 	struct AR_ExpNode *exp;     // expression to evaluate
 } EntityUpdateEvalCtx;
 
+typedef enum {
+	UPDATE_UNSET,
+	UPDATE_MERGE,
+	UPDATE_REPLACE,
+} UPDATE_MODE;
+
+// TODO replace contents of PropertyMap with this?
+typedef struct {
+	Attribute_ID id;
+	struct AR_ExpNode *value;
+} PropertySetCtx;
+
+// Context describing an update expression.
+typedef struct {
+	PropertySetCtx *properties; // properties to set
+	int record_idx;             // record offset this entity is stored at
+	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
+} EntityUpdateEvalCtx_NEW;
+
 // Context describing a node in a CREATE or MERGE clause
 typedef struct {
 	int src_idx;                // source node record index
@@ -94,4 +113,7 @@ NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);
 
 void PropertyMap_Free(PropertyMap *map);
+
+EntityUpdateEvalCtx_NEW *UpdateCtx_Clone(EntityUpdateEvalCtx_NEW *ctx);
+void UpdateCtx_Free(EntityUpdateEvalCtx_NEW *ctx);
 

@@ -30,7 +30,6 @@
 
 Feature: Set5 - Set multiple properties with a map
 
-  @crash
   Scenario: [1] Ignore null when setting properties using an appending map
     Given an empty graph
     When executing query:
@@ -44,7 +43,7 @@ Feature: Set5 - Set multiple properties with a map
       | null |
     And no side effects
 
-  @crash
+@skip
   Scenario: [2] Overwrite values when using +=
     Given an empty graph
     And having executed:
@@ -64,7 +63,6 @@ Feature: Set5 - Set multiple properties with a map
       | +properties | 1 |
       | -properties | 1 |
 
-  @crash
   Scenario: [3] Retain old values when using +=
     Given an empty graph
     And having executed:
@@ -83,7 +81,7 @@ Feature: Set5 - Set multiple properties with a map
     And the side effects should be:
       | +properties | 1 |
 
-  @crash
+@skip
   Scenario: [4] Explicit null values in a map remove old values
     Given an empty graph
     And having executed:
@@ -102,7 +100,6 @@ Feature: Set5 - Set multiple properties with a map
     And the side effects should be:
       | -properties | 1 |
 
-  @crash
   Scenario: [5] Set an empty map when using += has no effect
     Given an empty graph
     And having executed:

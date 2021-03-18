@@ -1,5 +1,6 @@
 #include "ast_shared.h"
 #include "../RG.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -119,5 +120,28 @@ EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
 	EdgeCreateCtx clone = ctx;
 	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
+}
+
+EntityUpdateEvalCtx_NEW *UpdateCtx_Clone(EntityUpdateEvalCtx_NEW *orig) {
+	EntityUpdateEvalCtx_NEW *clone = rm_malloc(sizeof(EntityUpdateEvalCtx_NEW));
+	clone->mode = orig->mode;
+	clone->record_idx = orig->record_idx;
+	uint count = array_len(orig->properties);
+	clone->properties = array_new(PropertySetCtx, count);
+	for(uint i = 0; i < count; i ++) {
+		PropertySetCtx update = {
+			.id = orig->properties[i].id,
+			.value = AR_EXP_Clone(orig->properties[i].value),
+		};
+		clone->properties = array_append(clone->properties, update);
+	}
+
+	return clone;
+}
+
+void UpdateCtx_Free(EntityUpdateEvalCtx_NEW *ctx) {
+	uint count = array_len(ctx->properties);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
+	rm_free(ctx);
 }
 

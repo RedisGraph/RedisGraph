@@ -38,6 +38,23 @@ rax *raxClone(rax *orig) {
 	return rax;
 }
 
+rax *raxCloneWithCallback(rax *orig, void *(*clone_callback)(void *)) {
+	rax *rax = raxNew();
+
+	raxIterator it;
+	raxStart(&it, orig);
+	raxSeek(&it, "^", NULL, 0);
+
+	// For each key in the original, duplicate the key and its value in the clone.
+	while(raxNext(&it)) {
+		void *data = clone_callback(it.data);
+		raxInsert(rax, it.key, it.key_len, data, NULL);
+	}
+
+	raxStop(&it);
+	return rax;
+}
+
 void **raxValues(rax *rax) {
 	// Instantiate an array to hold all of the values in the rax.
 	void **values = array_new(void *, raxSize(rax));
@@ -68,3 +85,4 @@ unsigned char **raxKeys(rax *rax) {
 	raxStop(&it);
 	return keys;
 }
+

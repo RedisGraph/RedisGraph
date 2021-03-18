@@ -37,11 +37,8 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 	return new_node;
 }
 
+// TODO delete
 static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_t *set_item) {
-	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
-	// TODO Add handling for when we're setting labels (CYPHER_AST_SET_LABELS)
-	// or all properties (CYPHER_AST_SET_ALL_PROPERTIES)
-	ASSERT(type == CYPHER_AST_SET_PROPERTY);
 
 	// The SET_ITEM contains the entity alias and property key being set - type == CYPHER_AST_PROPERTY_OPERATOR
 	const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(set_item);
@@ -49,21 +46,16 @@ static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_
 	const cypher_astnode_t *prop = cypher_ast_property_operator_get_prop_name(key_to_set);
 	// Entity alias
 	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
-	AR_ExpNode *entity = AR_EXP_FromASTNode(prop_expr);
-	// Can this ever be anything strange? Assuming it's always just an alias wrapper right now.
-	ASSERT(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC &&
-		   entity->operand.variadic.entity_alias);
+	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(prop_expr);
 
 	// Updated value - type == CYPHER_AST_SET_PROPERTY
 	const cypher_astnode_t *val_to_set = cypher_ast_set_property_get_expression(set_item);
 
 	/* Track all required information to perform an update. */
-	const char *alias = entity->operand.variadic.entity_alias;
 	const char *attribute = cypher_ast_prop_name_get_value(prop);
 	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
 	AR_ExpNode *exp = AR_EXP_FromASTNode(val_to_set);
-
-	AR_EXP_Free(entity);
 
 	EntityUpdateEvalCtx update_ctx = { .alias = alias,
 									   .attribute_id = attribute_id,
@@ -72,16 +64,150 @@ static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_
 	return update_ctx;
 }
 
-EntityUpdateEvalCtx *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
+EntityUpdateEvalCtx_NEW *_NewUpdateCtx_NEW(UPDATE_MODE mode, uint prop_count) {
+	EntityUpdateEvalCtx_NEW *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx_NEW));
+	ctx->mode = mode;
+	ctx->properties = array_new(PropertySetCtx, prop_count);
+
+	return ctx;
+}
+
+static void _UpdateCtx_AddProperty(GraphContext *gc, EntityUpdateEvalCtx_NEW *ctx,
+								   const cypher_astnode_t *set_item) {
+	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+	// Property name
+	const cypher_astnode_t *ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
+	const char *attribute = cypher_ast_prop_name_get_value(ast_key);
+	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
+
+	// Updated value - type == CYPHER_AST_SET_PROPERTY
+	const cypher_astnode_t *ast_val = cypher_ast_set_property_get_expression(set_item);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(ast_val);
+
+	PropertySetCtx update = {
+		.id = attribute_id,
+		.value = exp,
+	};
+	ctx->properties = array_append(ctx->properties, update);
+}
+
+// Set a single property
+static void _Update_SetProperty(GraphContext *gc, rax *updates, const cypher_astnode_t *set_item) {
+	// The SET_ITEM contains the entity alias and property key being set - type == CYPHER_AST_PROPERTY_OPERATOR
+	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+
+	// Entity alias
+	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(ast_prop);
+	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(prop_expr);
+
+	// Retrieve or instantiate an update context
+	EntityUpdateEvalCtx_NEW *ctx = raxFind(updates, (unsigned char *)alias, strlen(alias) + 1);
+	if(ctx == raxNotFound) {
+		ctx = _NewUpdateCtx_NEW(UPDATE_MERGE, 1);
+		raxInsert(updates, (unsigned char *)alias, strlen(alias) + 1, ctx, NULL);
+	}
+
+	// Add property to update context
+	_UpdateCtx_AddProperty(gc, ctx, set_item);
+}
+
+static void _UpdateCtx_AddPropertyMap(GraphContext *gc, EntityUpdateEvalCtx_NEW *ctx,
+									  const cypher_astnode_t *ast_map) {
+	uint count = cypher_ast_map_nentries(ast_map);
+	for(uint i = 0; i < count; i ++) {
+		// Property name
+		const cypher_astnode_t *ast_key = cypher_ast_map_get_key(ast_map, i);
+		const char *attribute = cypher_ast_prop_name_get_value(ast_key);
+		Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
+
+		// Property value
+		const cypher_astnode_t *ast_val = cypher_ast_map_get_value(ast_map, i);
+		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_val);
+
+		PropertySetCtx update = {
+			.id = attribute_id,
+			.value = exp,
+		};
+		ctx->properties = array_append(ctx->properties, update);
+	}
+}
+
+// Merge the given map with existing properties
+static void _Update_MergePropertyMap(GraphContext *gc, rax *updates,
+									 const cypher_astnode_t *set_item) {
+	// The SET_ITEM contains the entity alias and property map being appended
+
+	// Entity alias
+	const cypher_astnode_t *prop_expr = cypher_ast_merge_properties_get_identifier(set_item);
+	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(prop_expr);
+
+	// Property map
+	const cypher_astnode_t *ast_map = cypher_ast_merge_properties_get_expression(set_item);
+	ASSERT(cypher_astnode_type(ast_map) == CYPHER_AST_MAP);
+	uint count = cypher_ast_map_nentries(ast_map);
+
+	// Retrieve or instantiate an update context
+	EntityUpdateEvalCtx_NEW *ctx = raxFind(updates, (unsigned char *)alias, strlen(alias) + 1);
+	if(ctx == raxNotFound) {
+		ctx = _NewUpdateCtx_NEW(UPDATE_MERGE, count);
+		raxInsert(updates, (unsigned char *)alias, strlen(alias) + 1, ctx, NULL);
+	}
+
+	// Add all properties to update context
+	_UpdateCtx_AddPropertyMap(gc, ctx, ast_map);
+}
+
+// Replace existing properties with the given map
+static void _Update_SetPropertyMap(GraphContext *gc, rax *updates,
+								   const cypher_astnode_t *set_item) {
+	// The SET_ITEM contains the entity alias and property map being set
+
+	// Entity alias
+	const cypher_astnode_t *prop_expr = cypher_ast_set_all_properties_get_identifier(set_item);
+	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(prop_expr);
+
+	// Property map
+	const cypher_astnode_t *ast_map = cypher_ast_set_all_properties_get_expression(set_item);
+	ASSERT(cypher_astnode_type(ast_map) == CYPHER_AST_MAP);
+	uint count = cypher_ast_map_nentries(ast_map);
+
+	// Retrieve or instantiate an update context
+	EntityUpdateEvalCtx_NEW *ctx = raxFind(updates, (unsigned char *)alias, strlen(alias) + 1);
+	if(ctx == raxNotFound) {
+		ctx = _NewUpdateCtx_NEW(UPDATE_REPLACE, count);
+		raxInsert(updates, (unsigned char *)alias, strlen(alias) + 1, ctx, NULL);
+	} else {
+		// We have enqueued updates that will no longer be committed; clear them.
+		ctx->mode = UPDATE_REPLACE;
+		array_clear(ctx->properties);
+	}
+
+	// Add all properties to update context
+	_UpdateCtx_AddPropertyMap(gc, ctx, ast_map);
+}
+
+rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
+	rax *updates = raxNew();
 	uint nitems = cypher_ast_set_nitems(set_clause);
-	EntityUpdateEvalCtx *update_expressions = array_new(EntityUpdateEvalCtx, nitems);
 
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		update_expressions = array_append(update_expressions, _NewUpdateCtx(gc, set_item));
+		const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+		if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
+			_Update_SetPropertyMap(gc, updates, set_item);
+		} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
+			_Update_MergePropertyMap(gc, updates, set_item);
+		} else if(type == CYPHER_AST_SET_PROPERTY) {
+			_Update_SetProperty(gc, updates, set_item);
+		} else {
+			ASSERT(false);
+		}
 	}
 
-	return update_expressions;
+	return updates;
 }
 
 AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
