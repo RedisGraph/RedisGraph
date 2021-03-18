@@ -68,7 +68,9 @@ class testMultiLabel(FlowTestsBase):
     # Validate that the graph properly handles label counts greater than its default.
     def test03_large_label_count(self):
         # Introduce a node with enough labels to force graph resizes.
-        query = """CREATE (n:L0:L1:L2:L3:L4:L5:L6:L7:L8:L9:L10:L11:L12:L13:L14:L15:L16:L17) RETURN LABELS(n)"""
+        labels = ['L' + str(x) for x in range(0, 18)]
+        query = "CREATE (n :" + ':'.join(labels) + ") RETURN LABELS(n)"
         query_result = redis_graph.query(query)
-        expected_result = [[['L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16', 'L17']]]
+        expected_result = [[labels]]
         self.env.assertEquals(query_result.result_set, expected_result)
+

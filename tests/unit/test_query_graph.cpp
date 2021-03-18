@@ -378,7 +378,7 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	//--------------------------------------------------------------------------
 
 	const char *query =
-		"MATCH (A)-[AB]->(B), (B)-[BC]->(C) MATCH (C)-[CD]->(D) MATCH (D)-[DE]->(E)RETURN D";
+		"MATCH (A)-[AB]->(B), (B)-[BC]->(C) MATCH (C)-[CD]->(D) MATCH (D)-[DE]->(E) RETURN D";
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	AST *ast = AST_Build(parse_result);
 	ast->referenced_entities = raxNew();
