@@ -34,7 +34,12 @@ class QueryGraphTest: public ::testing::Test {
 	}
 
 	void compare_nodes(const QGNode *a, const QGNode *b) {
-		ASSERT_EQ(a->labelsID[0], b->labelsID[0]);
+		uint a_lbl_count = QGNode_LabelCount(a);
+		uint b_lbl_count = QGNode_LabelCount(b);
+		ASSERT_EQ(a_lbl_count, b_lbl_count);
+		for(uint i = 0; i < a_lbl_count; i++) {
+			ASSERT_EQ(a->labelsID[i], b->labelsID[i]);
+		}
 		ASSERT_EQ(array_len(a->incoming_edges), array_len(b->incoming_edges));
 		ASSERT_EQ(array_len(a->outgoing_edges), array_len(b->outgoing_edges));
 	}
