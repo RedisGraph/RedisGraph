@@ -65,19 +65,19 @@ typedef struct Graph Graph;
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 struct Graph {
-	DataBlock *nodes;                   // Graph nodes stored in blocks.
-	DataBlock *edges;                   // Graph edges stored in blocks.
-	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
-	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
-	RG_Matrix *labels;                  // Label matrices.
-	RG_Matrix node_labels;              // Mapping of all node IDs to all labels possessed by each node.
-	RG_Matrix *relations;               // Relation matrices.
-	RG_Matrix *t_relations;             // Transposed relation matrices.
-	RG_Matrix _zero_matrix;             // Zero matrix.
-	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
+	DataBlock *nodes;                   // Graph nodes stored in blocks
+	DataBlock *edges;                   // Graph edges stored in blocks
+	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections
+	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix
+	RG_Matrix *labels;                  // Label matrices
+	RG_Matrix node_labels;              // Mapping of all node IDs to all labels possessed by each node
+	RG_Matrix *relations;               // Relation matrices
+	RG_Matrix *t_relations;             // Transposed relation matrices
+	RG_Matrix _zero_matrix;             // Zero matrix
+	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
-	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
+	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine
 };
 
 /* Graph synchronization functions
