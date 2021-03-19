@@ -8,7 +8,7 @@
 #include "../../query_ctx.h"
 #include "shared/print_functions.h"
 
-/* Forward declarations. */
+// forward declarations
 static OpResult IndexScanInit(OpBase *opBase);
 static Record IndexScanConsume(OpBase *opBase);
 static Record IndexScanConsumeFromChild(OpBase *opBase);
@@ -20,15 +20,26 @@ static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	return ScanToString(ctx, buf, buf_len, op->n.alias, op->n.label);
 }
 
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n, RSIndex *idx,
-					   RSQNode *rs_query_node) {
+static void _FilterToRSQuery(IndexScan *op) {
+
+}
+
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
+		RSIndex *idx, const FT_FilterNode *filter) {
+	// validate inputs
+	ASSERT(g != NULL);
+	ASSERT(idx != NULL);
+	ASSERT(plan != NULL);
+	ASSERT(filter != NULL);
+
 	IndexScan *op = rm_malloc(sizeof(IndexScan));
-	op->g = g;
-	op->n = n;
-	op->idx = idx;
-	op->iter = NULL;
-	op->child_record = NULL;
-	op->rs_query_node = rs_query_node;
+	op->g              =  g;
+	op->n              =  n;
+	op->idx            =  idx;
+	op->iter           =  NULL;
+	op->filter         =  filter;
+	op->child_record   =  NULL;
+	op->rs_query_node  =  NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
