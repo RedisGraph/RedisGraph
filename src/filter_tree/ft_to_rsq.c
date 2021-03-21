@@ -1,4 +1,17 @@
+/*
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include "ft_to_rsq.h"
+#include "RG.h"
+#include "../util/arr.h"
+#include "filter_tree_utils.h"
+#include "../datatypes/point.h"
+#include "../datatypes/array.h"
+#include "../util/range/string_range.h"
+#include "../util/range/numeric_range.h"
 
 //------------------------------------------------------------------------------
 // To RediSearch query node
@@ -21,98 +34,6 @@ RSQNode *_StringRangeToQueryNode(RSIndex *idx, const char *field, const StringRa
 												   range->include_max);
 	RediSearch_QueryNodeAddChild(root, child);
 	return root;
-}
-
-static inline bool _isInFilter(const FT_FilterNode *filter) {
-	return (filter->t == FT_N_EXP &&
-			filter->exp.exp->type == AR_EXP_OP &&
-			strcasecmp(filter->exp.exp->op.func_name, "in") == 0);
-}
-
-// extracts both origin and radius from a distance filter
-// distance(n.location, origin) < radius
-static bool _extractOriginAndRadius(const FT_FilterNode *filter,
-									SIValue *origin, SIValue *radius, char **point) {
-	// distance (n.location, origin) < radius
-
-	ASSERT(filter != NULL);
-
-	if(filter->t != FT_N_PRED) return false;
-
-	char        *p             =  NULL;
-	SIValue     d              =  SI_NullVal();      // radius
-	AR_ExpNode  *lhs           =  filter->pred.lhs;
-	AR_ExpNode  *rhs           =  filter->pred.rhs;
-	AR_ExpNode  *radius_exp    =  NULL;
-	AR_ExpNode  *distance_exp  =  NULL;
-
-	// find distance expression
-	if(AR_EXP_IsOperation(lhs) &&
-	   strcasecmp(lhs->op.func_name, "distance") == 0) {
-		radius_exp = rhs;
-		distance_exp = lhs;
-	} else if(AR_EXP_IsOperation(rhs) &&
-			  strcasecmp(rhs->op.func_name, "distance") == 0) {
-		radius_exp = lhs;
-		distance_exp = rhs;
-	}
-
-	// could not find 'distance' function call
-	if(distance_exp == NULL) return false;
-
-	// make sure radius is constant
-	bool scalar = AR_EXP_ReduceToScalar(radius_exp, true, &d);
-	if(!scalar) return false;
-
-	if(!(SI_TYPE(d) & SI_NUMERIC)) {
-		SIValue_Free(d);
-		return false;
-	}
-
-	// find origin
-	// distance expression should have 2 arguments
-	lhs = distance_exp->op.children[0];
-	rhs = distance_exp->op.children[1];
-
-	SIValue  l         =  SI_NullVal();
-	SIValue  r         =  SI_NullVal();
-	bool     res       =  false;
-	bool     l_scalar  =  AR_EXP_ReduceToScalar(lhs, true, &l);
-	bool     r_scalar  =  AR_EXP_ReduceToScalar(rhs, true, &r);
-
-	if(l_scalar && !r_scalar) {
-		res = AR_EXP_IsAttribute(rhs, &p);
-		if(point) *point = p;
-		if(origin) *origin = l;
-		if(radius) *radius = d;
-	} else if(!l_scalar && r_scalar) {
-		res = AR_EXP_IsAttribute(lhs, &p);
-		if(point) *point = p;
-		if(origin) *origin = r;
-		if(radius) *radius = d;
-	} else {
-		res = false;
-		SIValue_Free(d);
-		if(l_scalar) SIValue_Free(l);
-		if(r_scalar) SIValue_Free(r);
-	}
-
-	return res;
-}
-
-// return true if filter performs distance filtering
-// distance(n.location, point({lat:1.1, lon:2.2})) < 40
-static bool _isDistanceFilter(FT_FilterNode *filter) {
-	bool res = _extractOriginAndRadius(filter, NULL, NULL, NULL);
-	if(res) {
-		_normalize_filter(&filter);
-		ASSERT(filter->t == FT_N_PRED);
-		AST_Operator op = filter->pred.op;
-		// make sure filter structure is: distance(point, origin) <= radius
-		res = (op == OP_LT || op == OP_LE);
-	}
-
-	return res;
 }
 
 RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
@@ -181,58 +102,158 @@ static RSQNode *_filterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 
 // reduce filter into a range object
 // return true if filter was reduce, false otherwise
-void _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges, rax *numeric_ranges) {
-	// Simple predicate trees are used to build up a range object.
+bool _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges,
+		rax *numeric_ranges) {
+	// simple predicate trees are used to build up a range object
 	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
 
 	char *prop;
-	bool attribute = AR_EXP_IsAttribute(tree->pred.lhs, &prop);
-	ASSERT(attribute == true);
+	if(!AR_EXP_IsAttribute(tree->pred.lhs, &prop)) return false;
 
 	int op = tree->pred.op;
 	SIValue c = tree->pred.rhs->operand.constant;
 
-	StringRange *sr = raxFind(string_ranges, (unsigned char *)prop, strlen(prop));
-	NumericRange *nr = raxFind(numeric_ranges, (unsigned char *)prop, strlen(prop));
+	uint prop_len = strlen(prop);
+	StringRange *sr = raxFind(string_ranges, (unsigned char *)prop, prop_len);
+	NumericRange *nr = raxFind(numeric_ranges, (unsigned char *)prop, prop_len);
 
-	// Get or create range object for alias.prop.
+	// get or create range object for alias.prop
 	if(SI_TYPE(c) & SI_NUMERIC || SI_TYPE(c) == T_BOOL) {
-		// Create if doesn't exists.
+		// create if doesn't exists
 		if(nr == raxNotFound) {
 			nr = NumericRange_New();
-			raxTryInsert(numeric_ranges, (unsigned char *)prop, strlen(prop), nr, NULL);
+			raxTryInsert(numeric_ranges, (unsigned char *)prop, prop_len,
+					nr, NULL);
 		}
 		NumericRange_TightenRange(nr, op, SI_GET_NUMERIC(c));
 	} else if(SI_TYPE(c) == T_STRING) {
-		// Create if doesn't exists.
+		// create if doesn't exists
 		if(sr == raxNotFound) {
 			sr = StringRange_New();
-			raxTryInsert(string_ranges, (unsigned char *)prop, strlen(prop), sr, NULL);
+			raxTryInsert(string_ranges, (unsigned char *)prop, prop_len, sr, NULL);
 		}
 		StringRange_TightenRange(sr, op, c.stringval);
 	} else {
 		ASSERT(false);
 	}
+	return true;
 }
 
-// creates a RediSearch query node out of given filter tree
-RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *idx) {
+static RSQNode *_concat_query_nodes(RSIndex *idx, RSQNode **nodes) {
+	// connect all RediSearch query nodes
+	uint count = array_len(nodes);
+
+	// no way to utilize the index
+	if(count == 0) return RediSearch_CreateEmptyNode(idx);
+
+	// just a single filter
+	if(count == 1) return array_pop(nodes);
+
+	// multiple filters, combine using AND
+	RSQNode *root = RediSearch_CreateIntersectNode(idx, false);
+	for(uint i = 0; i < count; i++) {
+		RSQNode *qnode = array_pop(nodes);
+		RediSearch_QueryNodeAddChild(root, qnode);
+	}
+
+	return root;
+}
+
+RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
+		rax *numeric_ranges) {
+	ASSERT(string_ranges != NULL);
+	ASSERT(numeric_ranges != NULL);
+	RSQNode **rsqnodes = array_new(RSQNode*, 0);
+
+	// build RediSearch query tree
+	// convert each range object to RediSearch query node
+	raxIterator it;
+	raxStart(&it, string_ranges);
+	raxSeek(&it, "^", NULL, 0);
+	char query_field_name[1024];
+	while(raxNext(&it)) {
+		char *field = (char *)it.key;
+
+		/* make sure each property is bound to either numeric or string type
+		 * but not to both, e.g. a.v = 1 AND a.v = 'a'
+		 * in which case use an empty RSQueryNode. */
+		if(raxFind(numeric_ranges, (unsigned char *)field, (int)it.key_len) != raxNotFound) {
+			goto cleanup;
+		}
+
+		StringRange *sr = raxFind(string_ranges, (unsigned char *)field, (int)it.key_len);
+		if(!StringRange_IsValid(sr)) goto cleanup;
+
+		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
+		RSQNode *rsqn = _StringRangeToQueryNode(idx, query_field_name, sr);
+		rsqnodes = array_append(rsqnodes, rsqn);
+	}
+	raxStop(&it);
+
+	raxStart(&it, numeric_ranges);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		char *field = (char *)it.key;
+		NumericRange *nr = raxFind(numeric_ranges, (unsigned char *)field, (int)it.key_len);
+
+		// return empty RSQueryNode.
+		if(!NumericRange_IsValid(nr)) goto cleanup;
+
+		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
+		RSQNode *rsqn = _NumericRangeToQueryNode(idx, query_field_name, nr);
+		rsqnodes = array_append(rsqnodes, rsqn);
+	}
+	raxStop(&it);
+
+	RSQNode *root = _concat_query_nodes(idx, rsqnodes);
+	array_free(rsqnodes);
+	return root;
+
+cleanup:
+	// encountered invalid range, free constructed query nodes
+	// return empty query node
+	for(uint i = 0; i < array_len(rsqnodes); i++) {
+		RediSearch_QueryNodeFree(rsqnodes[i]);
+	}
+	array_free(rsqnodes);
+	return RediSearch_CreateEmptyNode(idx);
+}
+
+// reduce filters into ranges
+// we differentiate between numeric filters and string filters
+void _compose_ranges(FT_FilterNode **trees, rax *string_ranges,
+		rax *numeric_ranges) {
+	uint count = array_len(trees);
+	for(uint i = 0; i < count; i++) {
+		FT_FilterNode *tree = trees[i];
+		if(tree->t == FT_N_PRED) {
+			if(_predicateTreeToRange(tree, string_ranges, numeric_ranges)) {
+				FilterTree_Free(tree);
+				array_del_fast(trees, i);
+				i--;
+				count--;
+			}
+		}
+	}
+}
+
+static RSQNode *_FilterTreeToQueryNode(FT_FilterNode *tree, RSIndex *idx) {
 	RSQNode *node   = NULL;
 	RSQNode *parent = NULL;
 
-	if(_isInFilter(filter_tree)) {
-		return _filterTreeToInQueryNode(filter, idx);
+	if(_isInFilter(tree)) {
+		return _filterTreeToInQueryNode(tree, idx);
 	}
 
-	if(_isDistanceFilter(filter_tree)) {
-		return _filterTreeToDistanceQueryNode(filter, idx);
+	if(_isDistanceFilter(tree)) {
+		return _filterTreeToDistanceQueryNode(tree, idx);
 	}
 
-	switch(filter->t) {
+	switch(tree->t) {
 		case FT_N_COND: {
 			RSQNode *left = NULL;
 			RSQNode *right = NULL;
-			switch(filter->cond.op) {
+			switch(tree->cond.op) {
 				case OP_OR:
 					node = RediSearch_CreateUnionNode(idx);
 					break;
@@ -243,8 +264,9 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 					ASSERT(false && "unexpected conditional operation");
 					break;
 			}
-			left = _filterTreeToQueryNode(filter->cond.left, idx);
-			right = _filterTreeToQueryNode(filter->cond.right, idx);
+
+			left = _FilterTreeToQueryNode(tree->cond.left, idx);
+			right = _FilterTreeToQueryNode(tree->cond.right, idx);
 			RediSearch_QueryNodeAddChild(node, left);
 			RediSearch_QueryNodeAddChild(node, right);
 			break;
@@ -252,14 +274,15 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 		case FT_N_PRED: {
 			double d;
 			char *field;
-			bool attribute = AR_EXP_IsAttribute(filter->pred.lhs, &field);
+			// expecting left hand side to be an attribute access
+			bool attribute = AR_EXP_IsAttribute(tree->pred.lhs, &field);
 			ASSERT(attribute == true);
 
-			SIValue v = filter->pred.rhs->operand.constant;
+			SIValue v = tree->pred.rhs->operand.constant;
 			switch(SI_TYPE(v)) {
 				case T_STRING:
 					parent = RediSearch_CreateTagNode(idx, field);
-					switch(filter->pred.op) {
+					switch(tree->pred.op) {
 						case OP_LT:    // <
 							node = RediSearch_CreateLexRangeNode(idx, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 0);
 							break;
@@ -291,7 +314,7 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 				case T_INT64:
 				case T_BOOL:
 					d = SI_GET_NUMERIC(v);
-					switch(filter->pred.op) {
+					switch(tree->pred.op) {
 						case OP_LT:    // <
 							node = RediSearch_CreateNumericNode(idx, field, d, RSRANGE_NEG_INF, false, false);
 							break;
@@ -323,7 +346,7 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 			break;
 		}
 		case FT_N_EXP: {
-			node = _filterTreeToInQueryNode(filter, idx);
+			node = _filterTreeToInQueryNode(tree, idx);
 			break;
 		}
 		default: {
@@ -334,106 +357,49 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 	return node;
 }
 
-void FilterTreeToSearchQuery(const FT_FilterNode *tree) {
-	RSQNode  *root            =  NULL;
-	uint     rsqnode_count    =  0;
-	RSQNode  **rsqnodes       =  NULL;
-	rax      *string_ranges   =  NULL;
-	rax      *numeric_ranges  =  NULL;
+// creates a RediSearch query node out of given filter tree
+RSQNode *FilterTreeToQueryNode(const FT_FilterNode *tree, RSIndex *idx) {
+	ASSERT(idx != NULL);
+	ASSERT(tree != NULL);
 
-	// reduce filters into ranges
-	// we differentiate between numeric filters and string filters
-	rsqnodes = array_new(RSQNode *, 1);
+	FT_FilterNode *t = FilterTree_Clone(tree);
+	RSQNode **nodes = array_new(RSQNode*, 1);
 
-	string_ranges = raxNew();
-	numeric_ranges = raxNew();
+	// break down tree to individual subtrees
+	FT_FilterNode **trees = FilterTree_SubTrees(t);
 
-	for(uint i = 0; i < filters_count; i++) {
-		RSQNode        *rsqnode      =  NULL;
-		OpFilter       *filter       =  filters[i];
-		FT_FilterNode  *filter_tree  =  filter->filterTree;
+	//--------------------------------------------------------------------------
+	// convert filters to numeric and string ranges
+	//--------------------------------------------------------------------------
 
-		switch(filter_tree->t) {
-		case FT_N_PRED:
-			_predicateTreeToRange(filter_tree, string_ranges, numeric_ranges);
-			break;
-		case FT_N_COND:
-			// OR trees are directly converted into RSQnodes.
-			rsqnode = _filterTreeToQueryNode(filter_tree, rs_idx);
-			rsqnodes = array_append(rsqnodes, rsqnode);
-			break;
-		default:
-			break;
-		}
+	rax *string_ranges  = raxNew();
+	rax *numeric_ranges = raxNew();
+	_compose_ranges(trees, string_ranges, numeric_ranges);
+	if(raxSize(string_ranges) > 0 || raxSize(numeric_ranges) > 0) {
+		RSQNode *ranges = _ranges_to_query_nodes(idx, string_ranges, numeric_ranges);
+		// TODO: check for empty node RediSearch_CreateEmptyNode
+		nodes = array_append(nodes, ranges);
 	}
 
-	// build RediSearch query tree
-	// convert each range object to RediSearch query node
-	raxIterator it;
-	raxStart(&it, string_ranges);
-	raxSeek(&it, "^", NULL, 0);
-	char query_field_name[1024];
-	while(raxNext(&it)) {
-		char *field = (char *)it.key;
+	//--------------------------------------------------------------------------
+	// convert remaining filters into RediSearch query nodes
+	//--------------------------------------------------------------------------
 
-		/* Make sure each property is bound to either numeric or string type
-		 * but not to both, e.g. a.v = 1 AND a.v = 'a'
-		 * in which case use an empty RSQueryNode. */
-		if(raxFind(numeric_ranges, (unsigned char *)field, (int)it.key_len) != raxNotFound) {
-			root = RediSearch_CreateEmptyNode(rs_idx);
-			goto cleanup;
-		}
-
-		StringRange *sr = raxFind(string_ranges, (unsigned char *)field, (int)it.key_len);
-		if(!StringRange_IsValid(sr)) {
-			root = RediSearch_CreateEmptyNode(rs_idx);
-			goto cleanup;
-		}
-
-		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
-		RSQNode *rsqn = _StringRangeToQueryNode(rs_idx, query_field_name, sr);
-		rsqnodes = array_append(rsqnodes, rsqn);
-	}
-	raxStop(&it);
-
-	raxStart(&it, numeric_ranges);
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) {
-		char *field = (char *)it.key;
-		NumericRange *nr = raxFind(numeric_ranges, (unsigned char *)field, (int)it.key_len);
-
-		// return empty RSQueryNode.
-		if(!NumericRange_IsValid(nr)) {
-			root = RediSearch_CreateEmptyNode(rs_idx);
-			goto cleanup;
-		}
-
-		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
-		RSQNode *rsqn = _NumericRangeToQueryNode(rs_idx, query_field_name, nr);
-		rsqnodes = array_append(rsqnodes, rsqn);
-	}
-	raxStop(&it);
-
-	// Connect all RediSearch query nodes.
-	rsqnode_count = array_len(rsqnodes);
-
-	// No way to utilize the index.
-	if(rsqnode_count == 0) goto cleanup;
-
-	// Just a single filter.
-	if(rsqnode_count == 1) {
-		root = array_pop(rsqnodes);
-	} else {
-		// Multiple filters, combine using AND.
-		root = RediSearch_CreateIntersectNode(rs_idx, false);
-		for(uint i = 0; i < rsqnode_count; i++) {
-			RSQNode *qnode = array_pop(rsqnodes);
-			RediSearch_QueryNodeAddChild(root, qnode);
-		}
+	uint tree_count = array_len(trees);
+	for(uint i = 0; i < tree_count; i++) {
+		FT_FilterNode *tree = trees[i];
+		nodes = array_append(nodes, _FilterTreeToQueryNode(tree, idx));
+		FilterTree_Free(tree);
 	}
 
-cleanup:
-	if(string_ranges) raxFreeWithCallback(string_ranges, (void(*)(void *))StringRange_Free);
-	if(numeric_ranges) raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
-	if(rsqnodes) array_free(rsqnodes);
+	// compose root query node by intersecting individual query nodes
+	RSQNode *root = _concat_query_nodes(idx, nodes);
+
+	array_free(nodes);
+	array_free(trees);
+	raxFreeWithCallback(string_ranges, (void(*)(void *))StringRange_Free);
+	raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
+
+	return root;
 }
+

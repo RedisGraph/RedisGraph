@@ -10,5 +10,5 @@
 #include "../../deps/RediSearch/src/redisearch_api.h"
 
 // construct a RediSearch query node from filter tree
-RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp);
+RSQNode *FilterTreeToQueryNode(const FT_FilterNode *tree, RSIndex *idx);
 

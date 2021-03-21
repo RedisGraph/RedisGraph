@@ -237,29 +237,29 @@ void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
 	if(root == NULL) return;
 
 	switch(root->t) {
-	case FT_N_COND: {
-		_FilterTree_CollectModified(root->cond.left, modified);
-		_FilterTree_CollectModified(root->cond.right, modified);
-		break;
-	}
-	case FT_N_PRED: {
-		/* Traverse left and right-hand expressions, adding all encountered modified
-		 * to the triemap.
-		 * We'll typically encounter 0 or 1 modified in each expression,
-		 * but there are multi-argument exceptions. */
-		AR_EXP_CollectEntities(root->pred.lhs, modified);
-		AR_EXP_CollectEntities(root->pred.rhs, modified);
-		break;
-	}
-	case FT_N_EXP: {
-		/* Traverse expression, adding all encountered modified to the triemap. */
-		AR_EXP_CollectEntities(root->exp.exp, modified);
-		break;
-	}
-	default: {
-		ASSERT(0);
-		break;
-	}
+		case FT_N_COND: {
+			_FilterTree_CollectModified(root->cond.left, modified);
+			_FilterTree_CollectModified(root->cond.right, modified);
+			break;
+		}
+		case FT_N_PRED: {
+			/* Traverse left and right-hand expressions, adding all encountered modified
+			 * to the triemap.
+			 * We'll typically encounter 0 or 1 modified in each expression,
+			 * but there are multi-argument exceptions. */
+			AR_EXP_CollectEntities(root->pred.lhs, modified);
+			AR_EXP_CollectEntities(root->pred.rhs, modified);
+			break;
+		}
+		case FT_N_EXP: {
+			/* Traverse expression, adding all encountered modified to the triemap. */
+			AR_EXP_CollectEntities(root->exp.exp, modified);
+			break;
+		}
+		default: {
+			ASSERT(0);
+			break;
+		}
 	}
 }
 
@@ -476,7 +476,6 @@ void FilterTree_DeMorgan(FT_FilterNode **root) {
 	_FilterTree_DeMorgan(root, 0);
 }
 
-
 // Return if this node can be used in compression - constant expression.
 static inline bool _FilterTree_Compact_Exp(FT_FilterNode *node) {
 	return AR_EXP_IsConstant(node->exp.exp) || AR_EXP_IsParameter(node->exp.exp);
@@ -596,7 +595,7 @@ static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
 
 // Compacts a predicate node if possible,
 static bool _FilterTree_Compact_Pred(FT_FilterNode *node) {
-	// Check both sides are constant expressions.
+	// check if both sides are constant expressions
 	if((AR_EXP_IsConstant(node->pred.lhs) || AR_EXP_IsParameter(node->pred.lhs)) &&
 	   (AR_EXP_IsConstant(node->pred.rhs) || AR_EXP_IsParameter(node->pred.rhs))) {
 		// Evaluate expressions.
@@ -630,13 +629,13 @@ bool FilterTree_Compact(FT_FilterNode *root) {
 }
 
 // Clone an expression node.
-static inline FT_FilterNode *_FilterTree_Clone_Exp(FT_FilterNode *node) {
+static inline FT_FilterNode *_FilterTree_Clone_Exp(const FT_FilterNode *node) {
 	AR_ExpNode *exp_clone = AR_EXP_Clone(node->exp.exp);
 	return FilterTree_CreateExpressionFilter(exp_clone);
 }
 
 // Clones a condition node.
-static inline FT_FilterNode *_FilterTree_Clone_Cond(FT_FilterNode *node) {
+static inline FT_FilterNode *_FilterTree_Clone_Cond(const FT_FilterNode *node) {
 	FT_FilterNode *clone = FilterTree_CreateConditionFilter(node->cond.op);
 	FT_FilterNode *left_child_clone = FilterTree_Clone(node->cond.left);
 	FilterTree_AppendLeftChild(clone, left_child_clone);
@@ -646,14 +645,14 @@ static inline FT_FilterNode *_FilterTree_Clone_Cond(FT_FilterNode *node) {
 }
 
 // Clones a predicate node.
-static inline FT_FilterNode *_FilterTree_Clone_Pred(FT_FilterNode *node) {
+static inline FT_FilterNode *_FilterTree_Clone_Pred(const FT_FilterNode *node) {
 	AST_Operator op = node->pred.op;
 	AR_ExpNode *lhs_exp_clone = AR_EXP_Clone(node->pred.lhs);
 	AR_ExpNode *rhs_exp_clone = AR_EXP_Clone(node->pred.rhs);
 	return FilterTree_CreatePredicateFilter(op, lhs_exp_clone, rhs_exp_clone);
 }
 
-FT_FilterNode *FilterTree_Clone(FT_FilterNode *root) {
+FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root) {
 	if(!root) return NULL;
 	switch(root->t) {
 	case FT_N_EXP:

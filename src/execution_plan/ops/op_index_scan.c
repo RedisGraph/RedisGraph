@@ -7,6 +7,7 @@
 #include "op_index_scan.h"
 #include "../../query_ctx.h"
 #include "shared/print_functions.h"
+#include "../../filter_tree/ft_to_rsq.h"
 
 // forward declarations
 static OpResult IndexScanInit(OpBase *opBase);
@@ -20,10 +21,6 @@ static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	return ScanToString(ctx, buf, buf_len, op->n.alias, op->n.label);
 }
 
-static void _FilterToRSQuery(IndexScan *op) {
-
-}
-
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 		RSIndex *idx, const FT_FilterNode *filter) {
 	// validate inputs
@@ -33,13 +30,14 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 	ASSERT(filter != NULL);
 
 	IndexScan *op = rm_malloc(sizeof(IndexScan));
-	op->g              =  g;
-	op->n              =  n;
-	op->idx            =  idx;
-	op->iter           =  NULL;
-	op->filter         =  filter;
-	op->child_record   =  NULL;
-	op->rs_query_node  =  NULL;
+	op->g                    =  g;
+	op->n                    =  n;
+	op->idx                  =  idx;
+	op->iter                 =  NULL;
+	op->filter               =  filter;
+	op->child_record         =  NULL;
+	op->rs_query_node        =  NULL;
+	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
@@ -50,9 +48,26 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 }
 
 static OpResult IndexScanInit(OpBase *opBase) {
-	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, IndexScanConsumeFromChild);
 	IndexScan *op = (IndexScan *)opBase;
-	// Resolve label ID now if it is still unknown.
+	uint child_count = opBase->childCount;
+
+	if(child_count == 0) {
+		op->rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
+	} else {
+		// find out how many different entities are refered to 
+		// within the filter tree, if number of entities equals 1
+		// (current node being scanned) there's no need to re-build the index
+		// query for every input record, construct it once now
+		rax *entities = FilterTree_CollectModified(op->filter);
+		op->rebuild_index_query = raxSize(entities) > 1; // this is us
+		raxFree(entities);
+
+		// build index query out of filter tree
+		if(!op->rebuild_index_query) op->rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
+		OpBase_UpdateConsume(opBase, IndexScanConsumeFromChild);
+	}
+
+	// resolve label ID now if it is still unknown
 	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);

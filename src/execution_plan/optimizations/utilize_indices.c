@@ -10,13 +10,12 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../ops/op_index_scan.h"
-#include "../execution_plan_build/execution_plan_modify.h"
 #include "../../ast/ast_shared.h"
-#include "../../util/range/string_range.h"
-#include "../../util/range/numeric_range.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/point.h"
 #include "../../arithmetic/arithmetic_op.h"
+#include "../../filter_tree/filter_tree_utils.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 //------------------------------------------------------------------------------
 // Filter normalization
@@ -73,7 +72,7 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 /* Tests to see if given filter tree is a simple predicate
  * e.g. n.v = 2
  * one side is variadic while the other side is constant. */
-bool _simple_predicates(FT_FilterNode *filter) {
+bool _simple_predicates(const char* filtered_entity, FT_FilterNode *filter) {
 	bool res = false;
 
 	SIValue v;
@@ -94,7 +93,26 @@ bool _simple_predicates(FT_FilterNode *filter) {
 		// filter should be in the form of variable=scalar or scalar=variable
 		// find out which part of the filter performs entity attribute access
 
-		// n.v = exp
+		// make sure filtered entity isn't mentioned on both ends of the filter
+		// n.v = n.x
+		rax *aliases = raxNew();
+		bool mentioned_on_lhs = false;
+		bool mentioned_on_rhs = false;
+
+		AR_EXP_CollectEntities(lhs_exp, aliases);
+		mentioned_on_lhs = raxFind(aliases, (unsigned char *)filtered_entity,
+				strlen(filtered_entity)) != raxNotFound;
+
+		raxRemove(aliases, (unsigned char *)filtered_entity, strlen(filtered_entity), NULL);
+
+		AR_EXP_CollectEntities(rhs_exp, aliases);
+		mentioned_on_rhs = raxFind(aliases, (unsigned char *)filtered_entity,
+				strlen(filtered_entity)) != raxNotFound;
+
+		raxFree(aliases);
+
+		if(mentioned_on_lhs == true && mentioned_on_rhs == true) break;
+
 		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;
 		// exp = n.v
 		if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp;
@@ -103,14 +121,20 @@ bool _simple_predicates(FT_FilterNode *filter) {
 
 		// make sure 'exp' represents a scalar
 		bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
-		if(scalar == false) break;
-
-		// validate constant type
-		SIType t = SI_TYPE(v);
-		res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+		if(scalar) {
+			// validate constant type
+			SIType t = SI_TYPE(v);
+			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+		} else {
+			// value type can only be determined at run-time
+			// TODO: this is an issue if value turns out to be a none indexed
+			// value type e.g. ARRAY
+			res = true;
+		}
 		break;
 	case FT_N_COND:
-		res = (_simple_predicates(filter->cond.left) && _simple_predicates(filter->cond.right));
+		res = (_simple_predicates(filtered_entity, filter->cond.left) &&
+				_simple_predicates(filtered_entity, filter->cond.right));
 		break;
 	default:
 		break;
@@ -120,7 +144,8 @@ bool _simple_predicates(FT_FilterNode *filter) {
 }
 
 // checks to see if given filter can be resolved by index
-bool _applicableFilter(Index *idx, FT_FilterNode **filter) {
+bool _applicableFilter(const char* filtered_entity, Index *idx,
+		FT_FilterNode **filter) {
 	bool           res           =  true;
 	rax            *attr         =  NULL;
 	rax            *entities     =  NULL;
@@ -133,7 +158,7 @@ bool _applicableFilter(Index *idx, FT_FilterNode **filter) {
 		goto cleanup;
 	}
 
-	if(!_simple_predicates(filter_tree)) {
+	if(!_simple_predicates(filtered_entity, filter_tree)) {
 		res = false;
 		goto cleanup;
 	}
@@ -141,7 +166,7 @@ bool _applicableFilter(Index *idx, FT_FilterNode **filter) {
 	uint idx_fields_count = Index_FieldsCount(idx);
 	const char **idx_fields = Index_GetFields(idx);
 
-	// Make sure all filtered attributes are indexed.
+	// make sure all filtered attributes are indexed
 	attr = FilterTree_CollectAttributes(filter_tree);
 	uint filter_attribute_count = raxSize(attr);
 
@@ -177,6 +202,7 @@ cleanup:
 // reduced into a single index scan operation
 OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 	OpFilter **filters = array_new(OpFilter *, 0);
+	const char* filtered_entity = scanOp->n.alias; // entity being filtered
 
 	// we begin with a LabelScan, and want to find predicate filters that modify
 	// the active entity
@@ -184,7 +210,7 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 	while(current->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
 
-		if(_applicableFilter(idx, &filter->filterTree)) {
+		if(_applicableFilter(filtered_entity, idx, &filter->filterTree)) {
 			// make sure all predicates are of type n.v = CONST.
 			filters = array_append(filters, filter);
 		}
@@ -194,6 +220,27 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 	}
 
 	return filters;
+}
+
+static FT_FilterNode *_Concat_Filters(OpFilter **filter_ops) {
+	uint count = array_len(filter_ops);
+	ASSERT(count >= 1);
+	if(count == 1) return FilterTree_Clone(filter_ops[0]->filterTree);
+
+	// concat using AND nodes
+	FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
+	FilterTree_AppendLeftChild(root, FilterTree_Clone(filter_ops[0]->filterTree));
+	FilterTree_AppendRightChild(root, FilterTree_Clone(filter_ops[1]->filterTree));
+
+	for(uint i = 2; i < count; i++) {
+		// new and root node
+		FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
+		FilterTree_AppendLeftChild(and, root);
+		root = and;
+		FilterTree_AppendRightChild(root, FilterTree_Clone(filter_ops[i]->filterTree));
+	}
+
+	return root;
 }
 
 // try to replace given Label Scan operation and a set of Filter operations with
@@ -213,8 +260,10 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	uint filters_count = array_len(filters);
 	if(filters_count == 0) goto cleanup;
 
-	// TODO: concat trees (clone individual trees)
-	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, root);
+	FT_FilterNode *root = _Concat_Filters(filters);
+	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx,
+			root);
+
 	// replace the redundant scan op with the newly-constructed Index Scan
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 	OpBase_Free((OpBase *)scan);
@@ -228,6 +277,8 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
 		OpBase_Free((OpBase *)filter);
 	}
+
+cleanup:
 	array_free(filters);
 }
 
@@ -237,7 +288,8 @@ void utilizeIndices(ExecutionPlan *plan) {
 	if(!GraphContext_HasIndices(gc)) return;
 
 	// collect all label scans
-	OpBase **scanOps = ExecutionPlan_CollectOps(plan->root, OPType_NODE_BY_LABEL_SCAN);
+	OpBase **scanOps = ExecutionPlan_CollectOps(plan->root,
+			OPType_NODE_BY_LABEL_SCAN);
 
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {
