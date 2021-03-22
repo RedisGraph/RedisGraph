@@ -324,24 +324,44 @@ QueryGraph *QueryGraph_ExtractPatterns(const QueryGraph *qg,
 	return graph;
 }
 
-// Build a query graph from MATCH clauses.
+// Build a query graph from AST
 QueryGraph *BuildQueryGraph(const AST *ast) {
 	uint node_count;
 	uint edge_count;
-	// The initial node and edge arrays will be large enough to accommodate all AST entities
-	// (which is overkill, consider reducing)
+
+	// AST clauses containing path objects
+	cypher_astnode_type_t clause_types [2] = {CYPHER_AST_MATCH, CYPHER_AST_MERGE};
+
+	// the initial node and edge arrays will be large enough to accommodate
+	// all AST entities (which is overkill, consider reducing)
 	node_count = edge_count = raxSize(ast->referenced_entities);
 	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
-	// Collect all path AST nodes.
-	const cypher_astnode_t **paths = AST_GetTypedNodes(ast->root, CYPHER_AST_PATTERN_PATH);
-	uint n = array_len(paths);
-	for(uint i = 0; i < n; i++) {
-		const cypher_astnode_t *path = paths[i];
-		QueryGraph_AddPath(qg, path);
+	// for each relevant clause type
+	for(int i = 0; i < 2; i ++) {
+		const uint8_t clause_type = clause_types[i];
+		// collect all path objects
+		const cypher_astnode_t **clauses = AST_GetTypedNodes(ast->root,
+				clause_type);
+		uint clause_count = array_len(clauses);
+
+		// for each clause of the current type
+		for(uint j = 0; j < clause_count; j ++) {
+			const cypher_astnode_t *clause = clauses[j];
+			// collect path objects
+			const cypher_astnode_t **paths = AST_GetTypedNodes(clause,
+					CYPHER_AST_PATTERN_PATH);
+
+			uint path_count = array_len(paths);
+			// introduce each path object to the query graph
+			for(uint k = 0; k < path_count; k ++) {
+				QueryGraph_AddPath(qg, paths[k]);
+			}
+			array_free(paths);
+		}
+		array_free(clauses);
 	}
 
-	array_free(paths);
 	return qg;
 }
 
