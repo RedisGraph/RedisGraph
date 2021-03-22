@@ -42,8 +42,8 @@ class DetectCycleTest: public ::testing::Test {
 		QGNode *B = QGNode_New("B");
 		QGNode *C = QGNode_New("C");
 
-		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-		QGEdge *BC = QGEdge_New(B, C, relation, "BC");
+		QGEdge *AB = QGEdge_NewRelationPattern(A, B, relation, "AB");
+		QGEdge *BC = QGEdge_NewRelationPattern(B, C, relation, "BC");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);
@@ -73,21 +73,21 @@ class DetectCycleTest: public ::testing::Test {
 		QGNode *G = QGNode_New("G");
 
 		// (A)->(B)
-		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
+		QGEdge *AB = QGEdge_NewRelationPattern(A, B, relation, "AB");
 		// (B)->(C)
-		QGEdge *BC = QGEdge_New(B, C, relation, "BC");
+		QGEdge *BC = QGEdge_NewRelationPattern(B, C, relation, "BC");
 		// (C)->(D)
-		QGEdge *CD = QGEdge_New(C, D, relation, "CD");
+		QGEdge *CD = QGEdge_NewRelationPattern(C, D, relation, "CD");
 		// (D)->(E)
-		QGEdge *DE = QGEdge_New(D, E, relation, "DE");
+		QGEdge *DE = QGEdge_NewRelationPattern(D, E, relation, "DE");
 		// (E)->(B)
-		QGEdge *EB = QGEdge_New(E, B, relation, "EB");
+		QGEdge *EB = QGEdge_NewRelationPattern(E, B, relation, "EB");
 		// (B)->(F)
-		QGEdge *BF = QGEdge_New(B, F, relation, "BF");
+		QGEdge *BF = QGEdge_NewRelationPattern(B, F, relation, "BF");
 		// (F)->(G)
-		QGEdge *FG = QGEdge_New(F, G, relation, "FG");
+		QGEdge *FG = QGEdge_NewRelationPattern(F, G, relation, "FG");
 		// (G)->(C)
-		QGEdge *GC = QGEdge_New(G, C, relation, "GC");
+		QGEdge *GC = QGEdge_NewRelationPattern(G, C, relation, "GC");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);

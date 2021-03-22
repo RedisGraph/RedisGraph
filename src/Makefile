@@ -91,6 +91,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/util/object_pool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/range/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/cache/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/path_patterns/*.c)
 
 # Convert all sources to .o files
 CC_OBJECTS = $(patsubst %.c, %.o, $(CC_SOURCES) )

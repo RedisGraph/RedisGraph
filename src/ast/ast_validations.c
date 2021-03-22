@@ -70,6 +70,10 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	 * @14  20..26  > > > > identifier         `max(z)` */
 	if(type == CYPHER_AST_PROJECTION) child_count = 1;
 
+	if(cypher_astnode_type(node) == CYPHER_AST_PATH_PATTERN_REFERENCE) {
+		return;
+	}
+
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		_AST_GetIdentifiers(child, identifiers);
@@ -409,6 +413,165 @@ static AST_Validation _ValidateRelation(rax *projections, const cypher_astnode_t
 	return res;
 }
 
+static AST_Validation _ValidatePathPatternBase(const cypher_astnode_t *path_base) {
+    AST_Validation res = AST_VALID;
+    const cypher_astnode_t *range = cypher_ast_path_pattern_base_get_varlength(path_base);
+
+    if (range) {
+        // Only closure with no parameters is currently supported
+        if (cypher_astnode_instanceof(range, CYPHER_AST_RANGE)) {
+            const cypher_astnode_t *range_start = cypher_ast_range_get_start(range);
+            const cypher_astnode_t *range_end = cypher_ast_range_get_end(range);
+            if(range_start || range_end) {
+                ErrorCtx_SetError("Can only use '*' with no borders.");
+				res = AST_INVALID;
+            }
+        }
+        /* Update libcypher submodule, there should be these types
+        else if (cypher_astnode_instanceof(range, CYPHER_AST_RANGE_PLUS)) {
+
+            ErrorCtx_SetError("'+' is not supported.");
+            res = AST_INVALID;
+        }
+
+        else if (cypher_astnode_instanceof(range, CYPHER_AST_RANGE_OPTIONAL)) {
+            ErrorCtx_SetError("'?' is not supported.");
+            res = AST_INVALID;
+        }*/
+        else {
+            ErrorCtx_SetError("'+' and '?' are not supported.");
+            res = AST_INVALID;
+        }
+    }
+
+    if (res != AST_VALID) return res;
+
+    const cypher_astnode_t *child = cypher_ast_path_pattern_base_get_child(path_base);
+
+    if(cypher_astnode_instanceof(child, CYPHER_AST_PATH_PATTERN_ANY)) {
+        ErrorCtx_SetError("Path_pattern_any is not supported.");
+        res = AST_INVALID;
+    }
+    else if(cypher_astnode_instanceof(child, CYPHER_AST_NODE_PATTERN)) {
+        const cypher_astnode_t *props = cypher_ast_node_pattern_get_properties(child);
+        if(props) {
+            ErrorCtx_SetError("Node properties are not supported within path patterns.");
+            res = AST_INVALID;
+        }
+
+        uint nlabels = cypher_ast_node_pattern_nlabels(child);
+        if(nlabels >= 2) {
+            ErrorCtx_SetError("Only node patterns with 0 or 1 labels are supported within path patterns. %d labels.", nlabels);
+            res = AST_INVALID;
+        }
+    }
+    else if(cypher_astnode_instanceof(child, CYPHER_AST_PATH_PATTERN_EXPRESSION)) {
+        const cypher_astnode_t *groupProps = cypher_ast_path_pattern_get_properties(child);
+        if(groupProps) {
+            ErrorCtx_SetError("Path pattern expression properties are not supported.");
+            res = AST_INVALID;
+        }
+    }
+
+    if (res != AST_VALID) return res;
+
+    return AST_VALID;
+}
+
+static AST_Validation _ValidatePathPatternAlternative(const cypher_astnode_t *path_alternative) {
+    AST_Validation res = AST_VALID;
+
+    uint path_alt_base_len = cypher_ast_path_pattern_alternative_get_nelements(path_alternative);
+
+    for(uint i = 0; i < path_alt_base_len; ++i) {
+        const cypher_astnode_t *base = cypher_ast_path_pattern_alternative_get_element(path_alternative, i);
+
+        res = _ValidatePathPatternBase(base);
+
+        if (res != AST_VALID) break;
+    }
+
+    return res;
+}
+
+static AST_Validation _ValidatePathPatternExpression(const cypher_astnode_t *path_expression) {
+    AST_Validation res = AST_VALID;
+
+    uint path_expr_alts_len = cypher_ast_path_pattern_expression_get_nelements(path_expression);
+
+    for(uint i = 0; i < path_expr_alts_len; ++i) {
+        const cypher_astnode_t *alt = cypher_ast_path_pattern_expression_get_element(path_expression, i);
+
+        res = _ValidatePathPatternAlternative(alt);
+
+        if (res != AST_VALID) break;
+    }
+
+    return res;
+}
+
+static AST_Validation _ValidatePathPattern(const cypher_astnode_t *path_pattern) {
+    // TODO: (simpleton) validate path patterns
+    AST_Validation res = AST_VALID;
+
+    const cypher_astnode_t *expression = cypher_ast_path_pattern_get_expression(path_pattern);
+    res = _ValidatePathPatternExpression(expression);
+
+    if (res != AST_VALID) return res;
+
+    return AST_VALID;
+}
+
+static AST_Validation _ValidatePathInNamedPathClause(const cypher_astnode_t *path) {
+	AST_Validation res = AST_VALID;
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+
+    if (path_len != 3) {
+        ErrorCtx_SetError("Patterns longer that 1 path pattern are not supported within named path predicates.");
+        return AST_INVALID;
+    }
+
+    const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, 1);
+    if (cypher_astnode_instanceof(edge, CYPHER_AST_REL_PATTERN)) {
+        ErrorCtx_SetError("Relation patterns are not supported within named path predicates.");
+        res = AST_INVALID;
+    } else if (cypher_astnode_instanceof(edge, CYPHER_AST_PATH_PATTERN)){
+        res = _ValidatePathPattern(edge);
+    } else {
+        res = AST_INVALID;
+    }
+    if(res != AST_VALID) return res;
+
+	return res;
+}
+
+static AST_Validation _Validate_PATH_PATTERN_Clauses(const AST *ast) {
+    const cypher_astnode_t **named_path_clauses = AST_GetClauses(ast, CYPHER_AST_NAMED_PATH);
+    if(named_path_clauses == NULL) return AST_VALID;
+    AST_Validation res = AST_VALID;
+
+    uint named_path_count = array_len(named_path_clauses);
+
+    for(uint i = 0; i < named_path_count; ++i) {
+        if (_ValidatePathInNamedPathClause(named_path_clauses[i]) != AST_VALID) {
+            res = AST_INVALID;
+            goto cleanup;
+        }
+
+        const cypher_astnode_t *condition = cypher_ast_named_path_get_condition(named_path_clauses[i]);
+        if (condition) {
+            ErrorCtx_SetError("Named path predicate conditions are not supported. Error in clause #%d", i);
+            res = AST_INVALID;
+            goto cleanup;
+        }
+
+    }
+
+cleanup:
+    array_free(named_path_clauses);
+    return res;
+}
+
 static AST_Validation _ValidatePath(const cypher_astnode_t *path, rax *projections,
 									rax *edge_aliases) {
 	AST_Validation res = AST_VALID;
@@ -417,7 +580,13 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path, rax *projectio
 	// Check all relations on the path (every odd offset) and collect aliases.
 	for(uint i = 1; i < path_len; i += 2) {
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		res = _ValidateRelation(projections, edge, edge_aliases);
+        if (cypher_astnode_instanceof(edge, CYPHER_AST_REL_PATTERN)) {
+            res = _ValidateRelation(projections, edge, edge_aliases);
+        } else if (cypher_astnode_instanceof(edge, CYPHER_AST_PATH_PATTERN)){
+            res = _ValidatePathPattern(edge);
+        } else {
+            res = AST_INVALID;
+        }
 		if(res != AST_VALID) return res;
 	}
 
@@ -462,8 +631,10 @@ static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *p
 	for(uint i = 1; i < path_len; i += 2) {
 		const cypher_astnode_t *ast_identifier = NULL;
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
-		if(props && (_ValidateInlinedProperties(props) != AST_VALID)) return AST_INVALID;
+        if (cypher_astnode_instanceof(edge, CYPHER_AST_REL_PATTERN)) {
+            const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
+            if(props && (_ValidateInlinedProperties(props) != AST_VALID)) return AST_INVALID;
+        }
 	}
 	return AST_VALID;
 }
@@ -751,8 +922,16 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast) {
 		for(uint j = 0; j < nelems; j ++) {
 			const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, j);
 			// Odd offsets correspond to edges, even offsets correspond to nodes.
-			res = (j % 2) ? _ValidateMergeRelation(entity, defined_aliases)
-				  : _ValidateMergeNode(entity, defined_aliases);
+			if (j % 2) {
+			    if (cypher_astnode_instanceof(entity, CYPHER_AST_REL_PATTERN)) {
+                    res = _ValidateMergeRelation(entity, defined_aliases);
+                } else {
+                    ErrorCtx_SetError("Path patterns not allowed in MERGE clause");
+                    res = AST_INVALID;
+			    }
+			} else {
+                res = _ValidateMergeNode(entity, defined_aliases);
+			}
 			if(res != AST_VALID) goto cleanup;
 		}
 
@@ -787,28 +966,34 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 		 * MATCH (a) CREATE (a)-[:E]->(:B) */
 		for(uint j = 1; j < nelems; j += 2) {
 			const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
-			const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
-			// Validate that no relation aliases are previously bound.
-			if(identifier) {
-				const char *alias = cypher_ast_identifier_get_name(identifier);
-				if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-					ErrorCtx_SetError("The bound variable %s' can't be redeclared in a CREATE clause", alias);
-					return AST_INVALID;
-				}
-			}
 
-			// Validate that each relation has exactly one type.
-			uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
-			if(reltype_count != 1) {
-				ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
-				return AST_INVALID;
-			}
+			if (cypher_astnode_instanceof(rel, CYPHER_AST_REL_PATTERN)) {
+                const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
+                // Validate that no relation aliases are previously bound.
+                if (identifier) {
+                    const char *alias = cypher_ast_identifier_get_name(identifier);
+                    if (raxFind(defined_aliases, (unsigned char *) alias, strlen(alias)) != raxNotFound) {
+                        ErrorCtx_SetError("The bound variable %s' can't be redeclared in a CREATE clause", alias);
+                        return AST_INVALID;
+                    }
+                }
 
-			// Validate that each relation being created is directed.
-			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
-				ErrorCtx_SetError("Only directed relationships are supported in CREATE");
-				return AST_INVALID;
-			}
+                // Validate that each relation has exactly one type.
+                uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
+                if (reltype_count != 1) {
+                    ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
+                    return AST_INVALID;
+                }
+
+                // Validate that each relation being created is directed.
+                if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
+                    ErrorCtx_SetError("Only directed relationships are supported in CREATE");
+                    return AST_INVALID;
+                }
+            } else if (cypher_astnode_instanceof(rel, CYPHER_AST_PATH_PATTERN)) {
+                ErrorCtx_SetError("Path patterns not allowed in CREATE");
+                return AST_INVALID;
+            }
 		}
 	}
 
@@ -1089,6 +1274,13 @@ static AST_Validation _ValidateClauseOrder(const AST *ast) {
 	return AST_VALID;
 }
 
+static void _AST_GetDefinedPathPatterns(const cypher_astnode_t *node, rax *identifiers) {
+    cypher_astnode_type_t type = cypher_astnode_type(node);
+    ASSERT(type == CYPHER_AST_NAMED_PATH);
+
+    _AST_GetIdentifiers(cypher_ast_named_path_get_identifier(node), identifiers);
+}
+
 static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
 	/* Collect the aliases of named paths, nodes, and edges.
 	 * All more deeply-nested identifiers are referenced rather than defined,
@@ -1106,9 +1298,17 @@ static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *i
 		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
 		// Retrieve the path element's alias if one is present.
 		// Odd offsets correspond to edges, even offsets correspond to nodes.
-		const cypher_astnode_t *alias_node = (j % 2) ?
-											 cypher_ast_rel_pattern_get_identifier(elem) :
-											 cypher_ast_node_pattern_get_identifier(elem);
+        const cypher_astnode_t *alias_node;
+		if (j % 2) {
+		    if (cypher_astnode_instanceof(elem, CYPHER_AST_REL_PATTERN)) {
+                alias_node = cypher_ast_rel_pattern_get_identifier(elem);
+		    } else {
+		        alias_node = NULL;
+		    }
+		} else {
+            alias_node = cypher_ast_node_pattern_get_identifier(elem);
+		}
+
 		if(!alias_node) continue; // Skip unaliased entities.
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
@@ -1164,6 +1364,8 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
+	} else if (type == CYPHER_AST_NAMED_PATH) {
+		// simpleton: add documentation
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {
@@ -1173,11 +1375,29 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 	}
 }
 
+static void _AST_ReferredPathPatterns(const cypher_astnode_t *node, rax *references) {
+	if(!node) return;
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+
+	if (type == CYPHER_AST_PATH_PATTERN_REFERENCE) {
+		const cypher_astnode_t *ident = cypher_ast_path_pattern_reference_get_identifier(node);
+		_AST_GetIdentifiers(ident, references);
+	} else {
+		uint child_count = cypher_astnode_nchildren(node);
+		for(uint c = 0; c < child_count; c ++) {
+			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
+			_AST_ReferredPathPatterns(child, references);
+		}
+	}
+}
+
 static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	if(cypher_astnode_type(node) == CYPHER_AST_WITH) {
 		// WITH clauses should only have their inputs collected, not their outputs.
 		_AST_GetWithReferences(node, identifiers);
+	} if (cypher_astnode_type(node) == CYPHER_AST_NAMED_PATH) {
+		_AST_ReferredPathPatterns(node, identifiers);
 	} else {
 		_AST_GetIdentifiers(node, identifiers);
 	}
@@ -1222,8 +1442,27 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 	// If the query does not have a WITH clause, there is only one scope.
 	uint end_offset = cypher_ast_query_nclauses(ast->root);
 	rax *defined_aliases = raxNew();
+
+	bool is_new_scope = true;
+
 	for(uint i = 0; i < end_offset; i++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+
+		if (is_new_scope) {
+			for (int j = i; j < end_offset; j++) {
+				const cypher_astnode_t *scope_clause = cypher_ast_query_get_clause(ast->root, j);
+
+				if (cypher_astnode_type(scope_clause) == CYPHER_AST_WITH) {
+					is_new_scope = false;
+					break;
+				}
+				if (cypher_astnode_type(scope_clause) == CYPHER_AST_NAMED_PATH) {
+					_AST_GetDefinedPathPatterns(scope_clause, defined_aliases);
+				}
+			}
+			is_new_scope = false;
+		}
+
 		// For each clause, confirm that all referred aliases have been previously defined.
 		res = _Validate_Aliases_DefinedInClause(clause, defined_aliases);
 		if(res != AST_VALID) break;
@@ -1232,6 +1471,7 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast) {
 			raxFree(defined_aliases);
 			defined_aliases = raxNew();
 			_AST_GetDefinedIdentifiers(clause, defined_aliases);
+			is_new_scope = true;
 		}
 	}
 	raxFree(defined_aliases);
@@ -1403,6 +1643,8 @@ static AST_Validation _ValidateClauses(const AST *ast) {
 	if(_Validate_SET_Clauses(ast) == AST_INVALID) return AST_INVALID;
 
 	if(_Validate_LIMIT_SKIP_Modifiers(ast) == AST_INVALID) return AST_INVALID;
+
+    if (_Validate_PATH_PATTERN_Clauses(ast) == AST_INVALID) return AST_INVALID;
 
 	return AST_VALID;
 }

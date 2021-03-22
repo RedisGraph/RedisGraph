@@ -11,6 +11,7 @@
 #include "../query_ctx.h"
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
+#include "../path_patterns/ebnf_construction.h"
 
 // Sets node label and label ID
 static void _QueryGraphSetNodeLabel(QGNode *n, const cypher_astnode_t *ast_entity) {
@@ -56,7 +57,7 @@ static void _QueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entit
 }
 
 // Adds edge to query graph
-static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
+static void _QueryGraphAddEdge_RelationPattern(QueryGraph *qg, const cypher_astnode_t *ast_entity,
 							   QGNode *src, QGNode *dest) {
 
 	AST *ast = QueryCtx_GetAST();
@@ -67,7 +68,7 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 	// Each edge can only appear once in a QueryGraph.
 	ASSERT(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
+	QGEdge *edge = QGEdge_NewRelationPattern(NULL, NULL, NULL, alias);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// Add the IDs of all reltype matrixes
@@ -100,6 +101,27 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 	// Swap the source and destination for left-pointing relations
 	if(dir != CYPHER_REL_INBOUND) QueryGraph_ConnectNodes(qg, src, dest, edge);
 	else QueryGraph_ConnectNodes(qg, dest, src, edge);
+}
+
+static void _QueryGraphAddEdge_PathPattern(QueryGraph *qg,
+											   const cypher_astnode_t *ast_entity, QGNode *src, QGNode *dest) {
+	PathPatternCtx *ctx = QueryCtx_GetPathPatternCtx();
+	EBNFBase *root = EBNFBase_Build(ast_entity, ctx);
+	QGEdge *pattern = QGEdge_NewPathPattern(NULL, NULL, root);
+
+	enum cypher_rel_direction direction = cypher_ast_path_pattern_get_direction(ast_entity);
+	if (direction == CYPHER_REL_INBOUND) {
+		QGNode *tmp = src;
+		src = dest;
+		dest = tmp;
+	}
+
+	pattern->bidirectional = (direction == CYPHER_REL_BIDIRECTIONAL);
+	AST *ast = QueryCtx_GetAST();
+	const char *alias = AST_GetEntityName(ast, ast_entity);
+	pattern->alias = alias;
+
+	QueryGraph_ConnectNodes(qg, src, dest, pattern);
 }
 
 // Extracts node from 'qg' and places a copy of into 'graph'
@@ -146,6 +168,9 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 									QGNode *left, QGNode *right, AST *ast, const cypher_astnode_t *ast_edge) {
 	const char *alias = AST_GetEntityName(ast, ast_edge);
 
+	// simpleton:
+	// printf("_QueryGraph_ExtractEdge: alias=%s\n", alias);
+
 	// Validate input, edge shouldn't be in graph.
 	ASSERT(left != NULL && right != NULL);
 	ASSERT(QueryGraph_GetEdgeByAlias(graph, alias) == NULL);
@@ -154,7 +179,12 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 	 * where each occurance might add an additional piece of information
 	 * an edge can only be mentioned once, as such there's no value in
 	 * cloning an edge. therefor we simply add it.*/
-	_QueryGraphAddEdge(graph, ast_edge, left, right);
+
+	if (cypher_astnode_instanceof(ast_edge, CYPHER_AST_REL_PATTERN)) {
+		_QueryGraphAddEdge_RelationPattern(graph, ast_edge, left, right);
+	} else if (cypher_astnode_instanceof(ast_edge, CYPHER_AST_PATH_PATTERN)) {
+		_QueryGraphAddEdge_PathPattern(graph, ast_edge, left, right);
+	}
 }
 
 // Clones path from 'qg' into 'graph'.
@@ -239,7 +269,13 @@ void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
 
 		// Retrieve the AST reference to this edge.
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraphAddEdge(qg, edge, left, right);
+		if (cypher_astnode_instanceof(edge, CYPHER_AST_REL_PATTERN)) {
+			_QueryGraphAddEdge_RelationPattern(qg, edge, left, right);
+		} else if (cypher_astnode_instanceof(edge, CYPHER_AST_PATH_PATTERN)) {
+			_QueryGraphAddEdge_PathPattern(qg, edge, left, right);
+		} else {
+			ASSERT(false);
+		}
 	}
 }
 
@@ -602,7 +638,15 @@ void QueryGraph_Print(const QueryGraph *qg) {
 
 	for(int i = 0; i < edge_count; i++) {
 		QGEdge *e = qg->edges[i];
-		asprintf(&buff, "%s%s -> %s;\n", buff, e->src->alias, e->dest->alias);
+
+		const int buff_edge_len = 1024;
+		char *buff_edge = calloc(buff_edge_len, sizeof(char));
+		int offset = 0;
+		offset += QGNode_ToString(qg->nodes[i], offset + buff_edge, buff_edge_len - offset);
+		offset += QGEdge_ToString(qg->edges[i], offset + buff_edge, buff_edge_len - offset);
+		offset += QGNode_ToString(qg->nodes[i+1], offset + buff_edge, buff_edge_len - offset);
+
+		asprintf(&buff, "%s%s;\n", buff, buff_edge);
 	}
 
 	printf("%s\n", buff);

@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "../../RG.h"
 #include "../../util/rmalloc.h"
+#include "../../util/arr.h"
 
 //------------------------------------------------------------------------------
 // AlgebraicExpression debugging utilities.
@@ -86,7 +87,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
 				ASSERT(m != raxNotFound && "Missing matrix");
 			}
-			root = AlgebraicExpression_NewOperand(m, false, alias, alias, NULL, NULL);
+			root = AlgebraicExpression_NewOperand(m, false, alias, alias, NULL, NULL, AlgExpReference_NewEmpty());
 
 			// Clear
 			i = 0;
@@ -276,3 +277,93 @@ char *AlgebraicExpression_ToString
 	return buff;
 }
 
+void _AlgebraicExpression_ToStringDebug
+        (
+                const AlgebraicExpression *exp, // Root node.
+                char *buff
+        ) {
+    assert(exp);
+    const char *label;
+
+    switch(exp->type) {
+        case AL_OPERATION:
+            switch(exp->operation.op) {
+                case AL_EXP_ADD:
+                    sprintf(buff + strlen(buff), "add(");
+                    // Print add first operand.
+                    _AlgebraicExpression_ToStringDebug(FIRST_CHILD(exp), buff);
+                    // Expecting at least 2 operands, concat using '+'.
+                    for(uint i = 1; i < AlgebraicExpression_ChildCount(exp); i++) {
+                        sprintf(buff + strlen(buff), ", ");
+                        _AlgebraicExpression_ToStringDebug(CHILD_AT(exp, i), buff);
+                    }
+                    sprintf(buff + strlen(buff), ")");
+                    break;
+                case AL_EXP_MUL:
+                    // Print add first operand.
+                    sprintf(buff + strlen(buff), "mul(");
+                    _AlgebraicExpression_ToStringDebug(FIRST_CHILD(exp), buff);
+                    // Expecting at least 2 operands, concat using '*'.
+                    for(uint i = 1; i < AlgebraicExpression_ChildCount(exp); i++) {
+                        sprintf(buff + strlen(buff), ", ");
+                        _AlgebraicExpression_ToStringDebug(CHILD_AT(exp, i), buff);
+                    }
+                    sprintf(buff + strlen(buff), ")");
+                    break;
+                case AL_EXP_TRANSPOSE:
+                    // Expecting a single child.
+                    assert(AlgebraicExpression_ChildCount(exp) == 1);
+                    sprintf(buff + strlen(buff), "Transpose(");
+                    _AlgebraicExpression_ToStringDebug(FIRST_CHILD(exp), buff);
+                    sprintf(buff + strlen(buff), ")");
+                    break;
+                default:
+                    assert("Unknown algebraic expression operation");
+                    break;
+            }
+            break;
+        case AL_OPERAND:
+            if(AlgebraicExpression_OperandIsReference(exp))
+                sprintf(buff + strlen(buff), "%s-%s:~%s:%d-%s",
+						exp->operand.src,
+						exp->operand.edge,
+						exp->operand.reference.name,
+						exp->operand.reference.transposed,
+						exp->operand.dest);
+            else
+                sprintf(buff + strlen(buff), "%s-%s:%s-%s", exp->operand.src, exp->operand.edge, exp->operand.label, exp->operand.dest);
+        default:
+            assert("Unknown algebraic expression node type");
+            break;
+    }
+}
+
+char *AlgebraicExpression_ToStringDebug
+(
+	const AlgebraicExpression *exp  // Root node.
+) {
+    char *buff = rm_calloc(1024, sizeof(char));
+    _AlgebraicExpression_ToStringDebug(exp, buff);
+    return buff;
+}
+
+void _AlgebraicExpression_TotalShow(
+	const AlgebraicExpression *exp  // Root node.
+) {
+	printf("AE: %s\n", AlgebraicExpression_ToStringDebug(exp));
+	switch(exp->type) {
+		case AL_OPERATION:
+			for (int i = 0; i < array_len(exp->operation.children); ++i) {
+				_AlgebraicExpression_TotalShow(exp->operation.children[i]);
+			}
+			break;
+		case AL_OPERAND:
+			printf("%s (%p):\n", AlgebraicExpression_ToStringDebug(exp), exp->operand.matrix);
+			if (exp->operand.matrix == IDENTITY_MATRIX) {
+				printf("Identity\n");
+			} else {
+				GxB_Matrix_fprint(exp->operand.matrix, "some", GxB_COMPLETE, stdout);
+			}
+			break;
+	}
+}

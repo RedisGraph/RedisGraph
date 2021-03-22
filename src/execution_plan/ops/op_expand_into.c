@@ -58,7 +58,7 @@ static void _traverse(OpExpandInto *op) {
 	_populate_filter_matrix(op);
 
 	// Evaluate expression.
-	AlgebraicExpression_Eval(op->ae, op->M);
+	AlgebraicExpression_Eval(op->ae, op->M, NULL);
 
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);

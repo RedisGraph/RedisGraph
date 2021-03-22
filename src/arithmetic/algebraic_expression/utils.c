@@ -12,6 +12,8 @@ void _InplaceRepurposeOperandToOperation
 	ASSERT(operand && operand->type == AL_OPERAND);
 	AlgebraicExpression *operation = AlgebraicExpression_NewOperation(op);
 	// turn operand into an operation.
+
+	AlgExpReference_Free(operand->operand.reference);
 	memcpy(operand, operation, sizeof(AlgebraicExpression));
 
 	// Don't free op internals!
@@ -193,6 +195,7 @@ void _AlgebraicExpression_FreeOperand
 ) {
 	ASSERT(node && node->type == AL_OPERAND);
 	if(node->operand.bfree) GrB_Matrix_free(&node->operand.matrix);
+	AlgExpReference_Free(node->operand.reference);
 }
 
 // Locate operand at position `operand_idx` counting from left to right.
@@ -295,13 +298,16 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 		// If we are maintaining transposed matrices, it can be retrieved now.
 		bool maintain_transpose = false;
 		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-		if(root->operation.op == AL_EXP_TRANSPOSE && maintain_transpose) {
-			ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
-			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
-			// Fetch the transposed matrix and update the operand.
-			_AlgebraicExpression_PopulateTransposedOperand(child, gc);
-			// Replace this operation with the transposed operand.
-			_AlgebraicExpression_InplaceRepurpose(root, child);
+		if (root->operation.op == AL_EXP_TRANSPOSE && maintain_transpose) {
+			// Don't transpose references, the processing separately
+			if (!AlgebraicExpression_OperandIsReference(CHILD_AT(root, 0))) {
+				ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
+				AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
+				// Fetch the transposed matrix and update the operand.
+				_AlgebraicExpression_PopulateTransposedOperand(child, gc);
+				// Replace this operation with the transposed operand.
+				_AlgebraicExpression_InplaceRepurpose(root, child);
+			}
 			break;
 		}
 		for(uint i = 0; i < child_count; i++) {
@@ -317,3 +323,67 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 	}
 }
 
+void AlgebraicExpression_PopulateReferences(AlgebraicExpression *exp, PathPatternCtx *pathPatternCtx) {
+	switch(exp->type) {
+		case AL_OPERATION: {
+			uint child_count = AlgebraicExpression_ChildCount(exp);
+			for (uint i = 0; i < child_count; i++) {
+				AlgebraicExpression_PopulateReferences(exp->operation.children[i], pathPatternCtx);
+			}
+			break;
+		}
+		case AL_OPERAND: {
+			if (AlgebraicExpression_OperandIsReference(exp)) {
+				PathPattern *pathPattern = PathPatternCtx_GetPathPattern(pathPatternCtx, exp->operand.reference);
+
+				if (pathPattern == NULL) {
+					fprintf(stderr, "Reference %s:%d is not found in path pattern context!",
+			 						exp->operand.reference.name,
+									exp->operand.reference.transposed);
+					ASSERT(false);
+				}
+
+				exp->operand.matrix = pathPattern->m;
+			}
+			break;
+		}
+		default:
+			ASSERT("Unknow algebraic expression node type" && false);
+			break;
+	}
+}
+
+void AlgebraicExpression_ReplaceTransposedReferences(AlgebraicExpression *ae) {
+	if (ae->type == AL_OPERATION) {
+		for (int i = 0; i < array_len(ae->operation.children); ++i) {
+			AlgebraicExpression *child = ae->operation.children[i];
+			if (child->type == AL_OPERATION) {
+				if (child->operation.op == AL_EXP_TRANSPOSE) {
+					AlgebraicExpression *grand_child = child->operation.children[0];
+					assert(grand_child->type == AL_OPERAND && "Transpose op must have operand child");
+
+					if (AlgebraicExpression_OperandIsReference(grand_child)) {
+						assert(grand_child->operand.matrix == NULL);
+
+						const char *src = grand_child->operand.dest;
+						const char *dest = grand_child->operand.src;
+						const char *label = grand_child->operand.label;
+						const char *edge = grand_child->operand.edge;
+
+						// Free transpose subtree
+						AlgebraicExpression_Free(child);
+
+						// Replace it by new reference
+						AlgExpReference algexp_ref = grand_child->operand.reference;
+						algexp_ref.transposed = true;
+						ae->operation.children[i] = AlgebraicExpression_NewOperand(
+								NULL, false, dest, src, edge, label, algexp_ref);
+					}
+				} else {
+					AlgebraicExpression_ReplaceTransposedReferences(ae->operation.children[i]);
+				}
+			}
+		}
+
+	}
+}
