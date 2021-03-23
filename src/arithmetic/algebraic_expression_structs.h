@@ -1,3 +1,6 @@
+/* This basic structs definitions corresponds to algebraic expression
+ * without unnecessary dependencies to header files */
+
 #pragma once
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -20,6 +23,8 @@ typedef enum {
 	AL_OPERATION  = (1 << 1),
 } AlgebraicExpressionType;
 
+/* Reference to named path pattern, that specifies
+ * its name and indicates whether it is reversed. */
 typedef struct {
 	char *name;
 	bool transposed;
@@ -28,6 +33,10 @@ typedef struct {
 /* Forward declarations. */
 typedef struct AlgebraicExpression AlgebraicExpression;
 
+/* Now algebraic expression can contains operand
+ * with reference to named path patterns. In that
+ * case operand matrix populated with respects to
+ * relation given by referred path pattern.  */
 struct AlgebraicExpression {
 	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 	union {
@@ -39,7 +48,8 @@ struct AlgebraicExpression {
 			const char *dest;          // Alias given to operand's columns (destination node).
 			const char *edge;          // Alias given to operand (edge).
 			const char *label;         // Label attached to matrix.
-			AlgExpReference reference; //
+			AlgExpReference reference; /* Reference to named path pattern.
+ 										* reference != NULL <=> operand is reference. */
 		} operand;
 		struct {
 			AL_EXP_OP op;                   // Operation: `*`,`+`,`transpose`

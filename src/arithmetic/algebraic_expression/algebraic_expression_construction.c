@@ -212,6 +212,8 @@ GrB_Matrix GrB_Matrix_NewIdentity(GrB_Index n) {
 	return m;
 }
 
+/* Translates the given path pattern representation to algebraic expression
+ * with respects to src and dest vertices */
 AlgebraicExpression *_AlgebraicExpression_OperandFromEbnf(const EBNFBase *root, const char *src, const char *dest, const char *path_alias) {
 	/*
 	 * [:A :B :C] | :D ->
@@ -306,6 +308,8 @@ AlgebraicExpression *_AlgebraicExpression_OperandFromEbnf(const EBNFBase *root, 
 	return alg_exp;
 }
 
+/* Translate given edge that corresponds to path path to
+ * algebraic expression */
 static AlgebraicExpression *_AlgebraicExpression_OperandFromPathPattern(QGEdge *e, bool transpose) {
 	ASSERT(e->type == QG_PATH_PATTERN && e->pattern);
 
@@ -395,12 +399,6 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	QGEdge *e,
 	bool transpose
 ) {
-#ifdef DPP
-	printf("_AlgebraicExpression_OperandFromEdge\n");
-	printf("src: %s\n", e->src->alias);
-	printf("dst: %s\n", e->dest->alias);
-	printf("transpose: %d\n", transpose);
-#endif
 	AlgebraicExpression *root = NULL;
 	AlgebraicExpression *src_filter = NULL;
 
@@ -428,10 +426,6 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	if(src_filter) {
 		root = _AlgebraicExpression_MultiplyToTheLeft(src_filter, root);
 	}
-#ifdef DPP
-	printf("Constructed AlgExp: %s\n", AlgebraicExpression_ToStringDebug(root));
-	printf("AlgExp source: %s\n", AlgebraicExpression_Source(root));
-#endif
 	return root;
 }
 
@@ -691,6 +685,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	return exps;
 }
 
+/* Translates the given path pattern representation to algebraic expression */
 AlgebraicExpression *AlgebraicExpression_FromEbnf(const EBNFBase *ebnf) {
     return _AlgebraicExpression_OperandFromEbnf(ebnf, NULL, NULL, NULL);
 }

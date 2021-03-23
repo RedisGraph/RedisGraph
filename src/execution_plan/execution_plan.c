@@ -32,7 +32,7 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	// It will already be set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->record_map == NULL) plan->record_map = raxNew();
 
-	// Build and set path pattern context
+	// Build and set path pattern context.
 	PathPatternCtx *path_pattern_ctx = PathPatternCtx_Build(ast, Graph_RequiredMatrixDim(gc->g));
 	QueryCtx_SetPathPatternCtx(path_pattern_ctx);
 	plan->path_pattern_ctx = path_pattern_ctx;
@@ -40,11 +40,6 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	// Build query graph
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->query_graph == NULL) plan->query_graph = BuildQueryGraph(ast);
-
-	// simpleton:
-//	printf("ExecutionPlan_PopulateExecutionPlan: Printing Query Graph\n");
-//	QueryGraph_Print(plan->query_graph);
-//	fflush(stdout);
 
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {

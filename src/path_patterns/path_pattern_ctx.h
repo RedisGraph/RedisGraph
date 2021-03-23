@@ -2,6 +2,8 @@
 
 #include "path_pattern.h"
 
+/* Storage of named path patterns that
+ * specifies in PATH PATTERN clause. */
 typedef struct {
     PathPattern **patterns;
 

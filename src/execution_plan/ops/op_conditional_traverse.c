@@ -35,16 +35,12 @@ static void _populate_filter_matrix(OpCondTraverse *op) {
 	}
 }
 
+/* This function performs multiple-source algorithm that
+ * solves context-free path reachability problem.
+ * The algorithm description can be found here:
+ * 		https://github.com/YaccConstructor/articles/blob/master/2021/EDBT/Multiple-source%20CFPQ/full/main.pdf
+ */
 static void _transitive_closure(PathPattern **deps, PathPatternCtx *pathPatternCtx, OpCondTraverse *op) {
-#ifdef DPP
-	printf("--------------before trans closure----------------\n");
-	PathPatternCtx_Show(op->path_pattern_ctx);
-	for (int i = 0; i < array_len(deps); ++i) {
-		PathPattern *p = deps[i];
-		printf("Path Pattern %s:\n", p->reference.name);
-		AlgebraicExpression_TotalShow(p->ae);
-	}
-#endif
 	bool changed = true;
 
 	size_t deps_size = array_len(deps);
@@ -59,9 +55,6 @@ static void _transitive_closure(PathPattern **deps, PathPatternCtx *pathPatternC
 		GrB_Matrix_new(&tmps[i], GrB_BOOL, nrows, ncols);
 	}
 
-#ifdef DPP
-	int iter = 0;
-#endif
 	while (changed) {
 		changed = false;
 		for (int i = 0; i < deps_size; ++i) {
@@ -74,14 +67,6 @@ static void _transitive_closure(PathPattern **deps, PathPatternCtx *pathPatternC
 			AlgebraicExpression_Eval(pattern->ae, tmps[i], pathPatternCtx);
 			GrB_Matrix_eWiseAdd_BinaryOp(pattern->m, NULL, NULL, GrB_LOR, pattern->m, tmps[i], NULL);
 		}
-
-#ifdef DPP
-		iter++;
-		printf("------------------iter %d---------------------:\n", iter);
-		for (int i = 0; i < array_len(deps); ++i) {
-			AlgebraicExpression_TotalShow(deps[i]->ae);
-		}
-#endif
 
 		for (int i = 0; i < deps_size; ++i) {
 			GrB_Index nvals_m_new, nvals_src_new;
@@ -100,26 +85,15 @@ static void _transitive_closure(PathPattern **deps, PathPatternCtx *pathPatternC
 	array_free(tmps);
 	array_free(nvals_srcs);
 	array_free(nvals_ms);
-#ifdef DPP
-	printf("----after trans closure\n");
-	for (int i = 0; i < array_len(deps); ++i) {
-		PathPattern *p = deps[i];
-		printf("PathPattern %s:\n", p->reference.name);
-		printf("Src:\n");
-		GxB_print(p->src, GxB_COMPLETE);
-		printf("M:\n");
-		GxB_print(p->m, GxB_COMPLETE);
-	}
-#endif
 }
 
+/* Performs traverse along path pattern.
+ * It behaves like _traverse function, but does some extra work related
+ * to processing named path patterns.
+ * */
 void _traverse_path_pattern(OpCondTraverse *op) {
 	// If op->F is null, this is the first time we are traversing.
 	if(op->F == GrB_NULL) {
-#ifdef DPP
-		printf("---------------\n");
-		printf("First traverse:\n");
-#endif
 		// Create both filter and result matrices.
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		GrB_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
@@ -133,55 +107,28 @@ void _traverse_path_pattern(OpCondTraverse *op) {
 		AlgebraicExpression_ReplaceTransposedReferences(op->ae);
 		op->deps = PathPatternCtx_GetDependencies(op->path_pattern_ctx, op->ae);
 
-#ifdef DPP
-		printf("Deps: ");
-		for (int i = 0; i < array_len(op->deps); ++i) {
-			printf("%s ", op->deps[i]->reference.name);
-		}
-		printf("\n");
-#endif
-
 		// Populate algebraic operand references with named path pattern matrices
 		AlgebraicExpression_PopulateReferences(op->ae, op->path_pattern_ctx);
 		for (int i = 0; i < array_len(op->deps); ++i) {
 			AlgebraicExpression_PopulateReferences(op->deps[i]->ae, op->path_pattern_ctx);
 		}
-
-#ifdef DPP
-		printf("AlgExp after optimize and populate: %s\n", AlgebraicExpression_ToStringDebug(op->ae));
-		printf("---------------\n");
-#endif
 	}
 
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
 
-#ifdef DPP
-	printf("Filter matrix:\n");
-	GxB_print(op->F, GxB_COMPLETE);
-#endif
-
 	// Clear named path patterns matrices
 	PathPatternCtx_ClearMatrices(op->path_pattern_ctx);
 
-	// Evaluate expression for construct sources
+	// Evaluate expression for construct sources of named path patterns
 	AlgebraicExpression_Eval(op->ae, op->M, op->path_pattern_ctx);
 
-#ifdef DPP
-	printf("Result M before trans:\n");
-	GxB_print(op->M, GxB_COMPLETE);
-#endif
-
-	// Perform transitive closure of named path patterns
+	// Perform transitive closure of named path patterns.
 	_transitive_closure(op->deps, op->path_pattern_ctx, op);
 
-	// Evaluate expression.
+	// Evaluate expression. After transitive closure all named path
+	// pattern matrices is completed and corresponds to the correct relation.
 	AlgebraicExpression_Eval(op->ae, op->M, op->path_pattern_ctx);
-
-#ifdef DPP
-	printf("Result M after trans:\n");
-	GxB_print(op->M, GxB_COMPLETE);
-#endif
 
 	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
 	else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -243,7 +190,6 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->dest_label_id = GRAPH_NO_LABEL;
 
 	op->is_path_pattern = is_path_pattern;
-	// simpleton: plan->path_pattern_ctx
 
 	op->path_pattern_ctx = plan->path_pattern_ctx;
 	// Dependencies to named path pattern initialized

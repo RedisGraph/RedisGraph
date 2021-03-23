@@ -168,9 +168,6 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 									QGNode *left, QGNode *right, AST *ast, const cypher_astnode_t *ast_edge) {
 	const char *alias = AST_GetEntityName(ast, ast_edge);
 
-	// simpleton:
-	// printf("_QueryGraph_ExtractEdge: alias=%s\n", alias);
-
 	// Validate input, edge shouldn't be in graph.
 	ASSERT(left != NULL && right != NULL);
 	ASSERT(QueryGraph_GetEdgeByAlias(graph, alias) == NULL);

@@ -1,26 +1,35 @@
+/* EBNF (Extended Backus-Naur Form) expression used to specify a more
+ * convenient intermediate representation of path pattern. */
+
 #pragma once
 #include <cypher-parser.h>
 
+/* Enum of types of ast node */
 typedef enum {
-    EBNF_SEQ, // sequence of patterns :A :B
-    EBNF_ALT, // alternative of patterns:A | :B
-    EBNF_GROUP, // direction and repetition parameters <,>,+,*,?
-    EBNF_EDGE,
-    EBNF_NODE,
-    EBNF_REF // named path pattern reference
+    EBNF_SEQ,   // sequence of patterns "p1 p2", f.e. ":A :B"
+    EBNF_ALT,   // alternative of patterns "p1 | p2", f.e ":A | :B"
+    EBNF_GROUP, // direction and repetition parameters: <,>,+,*,?
+    EBNF_EDGE,  // edge type pattern, f.e. ":A"
+    EBNF_NODE,  // node type pattern, f.e. "(:X)"
+    EBNF_REF    // named path pattern reference, f.e. "~S"
 } EBNFBase_Type;
 
 typedef enum {
     EBNF_ONE, // default
-    EBNF_AT_LEAST_ONE, // +
-    EBNF_ZERO_OR_ONE, // ?
-    EBNF_SPECIFIC // *left..right
+    EBNF_AT_LEAST_ONE, // +, don't supported
+    EBNF_ZERO_OR_ONE, // ?, don't supported
+    EBNF_SPECIFIC // *left..right, don't supported
 } EBNFNode_Repetition;
 
 typedef struct EBNFBase EBNFBase;
 typedef EBNFBase*(*fpEBNFCopy)(EBNFBase *from);
 typedef void(*fpEBNFFree)(EBNFBase *ebnf);
 
+/* This structure represents node of path pattern EBNF.
+ * These nodes form the expression tree specified by
+ * the path pattern which is a more convenient intermediate
+ * representation then cypher ast.
+ * */
 struct EBNFBase {
     EBNFBase_Type type;
     fpEBNFCopy copy;

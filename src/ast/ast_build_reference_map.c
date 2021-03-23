@@ -98,8 +98,7 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 	if (cypher_astnode_instanceof(edge, CYPHER_AST_REL_PATTERN)) {
 		_AST_MapReferencedEdge_RelationPattern(ast, edge, force_mapping);
 	} else if (cypher_astnode_instanceof(edge, CYPHER_AST_PATH_PATTERN)) {
-		// simpleton:
-		// now there is not aliases in path patterns
+		// Now there is not aliases in path patterns, we don't need to collect them
 	} else {
 		ASSERT(false);
 	}

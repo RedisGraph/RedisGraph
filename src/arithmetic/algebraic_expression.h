@@ -119,17 +119,22 @@ bool AlgebraicExpression_DiagonalOperand
 //------------------------------------------------------------------------------
 // Algebraic expression reference creation functions.
 //------------------------------------------------------------------------------
+/* Creates reference that doesn't point to anything */
 AlgExpReference AlgExpReference_NewEmpty();
 
+/* Creates references to specified named path pattern */
 AlgExpReference AlgExpReference_New(
 	const char *name,
 	bool transposed
 );
 
+/* Frees reference (but not referred named path pattern) */
 void AlgExpReference_Free(AlgExpReference ref);
 
+/* Clones reference (but not referred named path pattern)*/
 AlgExpReference AlgExpReference_Clone(const AlgExpReference *ref);
 
+/* Checks whether given operand is reference */
 bool AlgebraicExpression_OperandIsReference(
 		const AlgebraicExpression *root
 );
@@ -196,7 +201,11 @@ void AlgebraicExpression_Transpose
 	AlgebraicExpression **exp    // Expression to transpose.
 );
 
-// Evaluate expression tree.
+// Evaluate expression tree. Because of algorithm
+// that solves problem given by named path patterns,
+// we need to update some matrices corresponds to them
+// during expression evaluation. So here we use additional
+// parameter PathPatternCtx.
 void AlgebraicExpression_Eval
 (
 	const AlgebraicExpression *exp,

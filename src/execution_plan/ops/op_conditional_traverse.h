@@ -17,23 +17,25 @@ typedef struct {
 	OpBase op;
 	Graph *graph;
 	AlgebraicExpression *ae;
-	GrB_Matrix F;               // Filter matrix.
-	GrB_Matrix M;               // Algebraic expression result.
-	NodeID dest_label_id;       // ID of destination node label if known.
-	const char *dest_label;     // Label of destination node if known.
-	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
-	GxB_MatrixTupleIter *iter;  // Iterator over M.
-	int srcNodeIdx;             // Source node index into record.
-	int destNodeIdx;            // Destination node index into record.
-	uint record_count;          // Number of held records.
-	uint record_cap;            // Max number of records to process.
-	Record *records;            // Array of records.
-	Record r;                   // Currently selected record.
+	GrB_Matrix F;                       // Filter matrix.
+	GrB_Matrix M;                       // Algebraic expression result.
+	NodeID dest_label_id;               // ID of destination node label if known.
+	const char *dest_label;             // Label of destination node if known.
+	EdgeTraverseCtx *edge_ctx;          // Edge collection data if the edge needs to be set.
+	GxB_MatrixTupleIter *iter;          // Iterator over M.
+	int srcNodeIdx;                     // Source node index into record.
+	int destNodeIdx;                    // Destination node index into record.
+	uint record_count;                  // Number of held records.
+	uint record_cap;                    // Max number of records to process.
+	Record *records;                    // Array of records.
+	Record r;                           // Currently selected record.
 
-	// simpleton: add docs
-	bool is_path_pattern;
-	PathPatternCtx *path_pattern_ctx;
-	PathPattern **deps;
+	bool is_path_pattern;				/* Specifies whether algebraic expression corresponds to
+ 										 * path pattern or not. In the future, it is assumed to
+ 										 * achieve the same behavior in both cases. */
+	PathPatternCtx *path_pattern_ctx;   /* Storage of named path patterns */
+	PathPattern **deps;					/* All the named path patterns that algebraic expression
+ 										 * depends on. */
 } OpCondTraverse;
 
 /* Creates a new Traverse operation */

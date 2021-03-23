@@ -11,14 +11,8 @@
 // Forward declarations
 GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res, PathPatternCtx *pathCtx);
 
-// dest += {(j, j): (i, j) in left}
+/* dest += {(j, j): (i, j) in left} */
 static void _Add_Sources(GrB_Matrix left, GrB_Matrix dest, bool left_transposed) {
-#ifdef DPP
-	printf("_Add_Sources\n");
-	printf("left:\n");
-	GxB_print(left, GxB_COMPLETE);
-#endif
-
 	GrB_Index n;
 
 	GrB_Descriptor reduce_desc;
@@ -34,11 +28,6 @@ static void _Add_Sources(GrB_Matrix left, GrB_Matrix dest, bool left_transposed)
 	GrB_Vector sources;
 	GrB_Vector_new(&sources, GrB_BOOL, n);
 	GrB_reduce(sources, NULL, NULL, GrB_LOR, left, reduce_desc);
-
-#ifdef DPP
-	printf("reduced vector\n");
-	GxB_print(sources, GxB_COMPLETE);
-#endif
 
 	GrB_Index nvals;
 	GrB_Vector_nvals(&nvals, sources);

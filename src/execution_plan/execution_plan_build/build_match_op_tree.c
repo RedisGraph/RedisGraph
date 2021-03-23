@@ -9,9 +9,6 @@
 
 static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
 											 AST *ast) {
-	// simpleton: ProcessQueryGraph
-	// printf("ProcessQueryGraph:\n");
-
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// Build the full FilterTree for this AST so that we can order traversals properly.
@@ -71,9 +68,6 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			/* For each expression, build the appropriate traversal operation. */
 			for(int j = 0; j < expCount; j++) {
 				AlgebraicExpression *exp = exps[j];
-
-				// simpleton: AlgExp
-				// printf("%s\n", AlgebraicExpression_ToStringDebug(exp));
 
 				// Empty expression, already freed.
 				if(AlgebraicExpression_OperandCount(exp) == 0) continue;
