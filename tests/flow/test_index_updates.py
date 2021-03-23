@@ -152,3 +152,24 @@ class testIndexUpdatesFlow(FlowTestsBase):
         expected_result = [[5, unique_prop]]
         self.env.assertEquals(result.result_set, expected_result)
         self.env.assertEquals(result.properties_set, 1)
+
+    # Validate that after deleting an indexed property, that property can no longer be found in the index.
+    def test06_remove_indexed_prop(self):
+        # Create a new node with a single indexed property
+        query = """CREATE (:NEW {v: 5})"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.properties_set, 1)
+        self.env.assertEquals(result.labels_added, 1)
+        redis_graph.query("CREATE INDEX ON :NEW(v)")
+
+        # Delete the entity's property
+        query = """MATCH (a:NEW {v: 5}) SET a.v = NULL"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.properties_set, 1)
+
+        # Query the index for the entity
+        query = """MATCH (a:NEW {v: 5}) RETURN a"""
+        result = redis_graph.query(query)
+        # No entities should be returned
+        expected_result = []
+        self.env.assertEquals(result.result_set, expected_result)

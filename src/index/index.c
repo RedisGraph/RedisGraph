@@ -157,8 +157,12 @@ void Index_IndexNode(Index *idx, const Node *n) {
 		}
 	}
 
-	if(doc_field_count > 0) RediSearch_SpecAddDocument(rsIdx, doc);
-	else RediSearch_FreeDocument(doc);
+	if(doc_field_count > 0) {
+		RediSearch_SpecAddDocument(rsIdx, doc);
+	} else {
+		RediSearch_FreeDocument(doc);
+		Index_RemoveNode(idx, n);
+	}
 }
 
 void Index_RemoveNode(Index *idx, const Node *n) {
@@ -199,7 +203,7 @@ void Index_Construct(Index *idx) {
 			// introduce both text, numeric and geo fields
 			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
-					types, RSFLDOPT_NONE);
+													   types, RSFLDOPT_NONE);
 
 			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, '\0');
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
