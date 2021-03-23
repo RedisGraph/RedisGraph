@@ -72,7 +72,7 @@ void QueryCtx_SetGraphCtx(GraphContext *gc);
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the last writer which needs to commit */
 void QueryCtx_SetLastWriter(OpBase *op);
-/* simpleton: add docs*/
+/* Set the path pattern context */
 void QueryCtx_SetPathPatternCtx(PathPatternCtx *ctx);
 
 /* Getters */
@@ -90,7 +90,7 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 ResultSet *QueryCtx_GetResultSet(void);
 /* Retrive the resultset statistics. */
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
-/*simpleton: add docs*/
+/* Retrive the path pattern context*/
 PathPatternCtx *QueryCtx_GetPathPatternCtx(void);
 
 /* Print the current query. */

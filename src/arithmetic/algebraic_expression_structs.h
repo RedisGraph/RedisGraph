@@ -49,7 +49,7 @@ struct AlgebraicExpression {
 			const char *edge;          // Alias given to operand (edge).
 			const char *label;         // Label attached to matrix.
 			AlgExpReference reference; /* Reference to named path pattern.
- 										* reference != NULL <=> operand is reference. */
+ 			                            * reference != NULL <=> operand is reference. */
 		} operand;
 		struct {
 			AL_EXP_OP op;                   // Operation: `*`,`+`,`transpose`

@@ -30,12 +30,12 @@ typedef struct {
 	Record *records;                    // Array of records.
 	Record r;                           // Currently selected record.
 
-	bool is_path_pattern;				/* Specifies whether algebraic expression corresponds to
- 										 * path pattern or not. In the future, it is assumed to
- 										 * achieve the same behavior in both cases. */
+	bool is_path_pattern;               /* Specifies whether algebraic expression corresponds to
+ 	                                     * path pattern or not. In the future, it is assumed to
+ 	                                     * achieve the same behavior in both cases. */
 	PathPatternCtx *path_pattern_ctx;   /* Storage of named path patterns */
-	PathPattern **deps;					/* All the named path patterns that algebraic expression
- 										 * depends on. */
+	PathPattern **deps;                 /* All the named path patterns that algebraic expression
+	                                     * depends on. */
 } OpCondTraverse;
 
 /* Creates a new Traverse operation */

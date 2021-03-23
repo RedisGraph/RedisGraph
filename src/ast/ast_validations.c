@@ -1370,7 +1370,8 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
 	} else if (type == CYPHER_AST_NAMED_PATH) {
-		// simpleton: add documentation
+		// don't collect identifiers for path patterns here,
+		// they precessed separately.
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {

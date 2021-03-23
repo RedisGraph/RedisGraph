@@ -15,10 +15,10 @@ typedef enum {
 } EBNFBase_Type;
 
 typedef enum {
-    EBNF_ONE, // default
-    EBNF_AT_LEAST_ONE, // +, don't supported
-    EBNF_ZERO_OR_ONE, // ?, don't supported
-    EBNF_SPECIFIC // *left..right, don't supported
+    EBNF_ONE,           // default
+    EBNF_AT_LEAST_ONE,  // +, don't supported
+    EBNF_ZERO_OR_ONE,   // ?, don't supported
+    EBNF_SPECIFIC       // *left..right, don't supported
 } EBNFNode_Repetition;
 
 typedef struct EBNFBase EBNFBase;

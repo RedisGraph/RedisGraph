@@ -13,13 +13,13 @@ typedef struct {
     EBNFBase *ebnf_root; 	   // Intermediate representation of path pattern.
     AlgebraicExpression *ae;   // Algebraic expression of path pattern.
 
-    GrB_Matrix m;			   /* Matrix, that corresponds to the relation given by path pattern.
- 								* This matrix is evaluated by transitive closure during
- 								* CondTraverse operation execution. */
-    GrB_Matrix src;			   /* Diagonal matrix representing the starting vertices from which
-     						    * we are interested in finding all paths satisfying the pattern.
-     						    * This matrix participates in evaluation of algebraic expression
-     						    * and transitive closure of CondTraverse operation. */
+    GrB_Matrix m;              /* Matrix, that corresponds to the relation given by path pattern.
+                                * This matrix is evaluated by transitive closure during
+                                * CondTraverse operation execution. */
+    GrB_Matrix src;            /* Diagonal matrix representing the starting vertices from which
+                                * we are interested in finding all paths satisfying the pattern.
+                                * This matrix participates in evaluation of algebraic expression
+                                * and transitive closure of CondTraverse operation. */
 
 } PathPattern;
 

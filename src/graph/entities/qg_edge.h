@@ -39,7 +39,7 @@ struct QGEdge {
 	uint maxHops;           /* Maximum number of hops this edge represents. */
 
     /* Path pattern specific part */
-    EBNFBase *pattern;		/* Expression of path pattern, that represents
+    EBNFBase *pattern;      /* Expression of path pattern, that represents
                              * its structure (like abstract syntax tree of some expression) */
 };
 
