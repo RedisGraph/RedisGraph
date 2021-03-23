@@ -119,7 +119,12 @@ static void _Update_MergePropertyMap(GraphContext *gc, rax *updates,
 
 	// Property map
 	const cypher_astnode_t *ast_map = cypher_ast_merge_properties_get_expression(set_item);
-	ASSERT(cypher_astnode_type(ast_map) == CYPHER_AST_MAP);
+	if(cypher_astnode_type(ast_map) != CYPHER_AST_MAP) {
+		// TODO introduce support for queries like:
+		// MATCH (a {v: 1}), (b {v: 2}) SET a += b
+		ErrorCtx_SetError("RedisGraph does not currently support assigning graph entities to non-map values.");
+		return;
+	}
 	uint count = cypher_ast_map_nentries(ast_map);
 
 	// Retrieve or instantiate an update context

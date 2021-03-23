@@ -136,6 +136,7 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(EntityUpdateEvalCtx *orig) {
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
 	uint count = array_len(ctx->properties);
 	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
+	array_free(ctx->properties);
 	rm_free(ctx);
 }
 

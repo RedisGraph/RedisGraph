@@ -115,10 +115,11 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, Record r, c
 		bool update_index = false;
 		SIValue new_value = AR_EXP_Evaluate(ctx->properties[i].value, r);
 
-		// Emit an error and exit if we're trying to add an invalid type.
+		SIType accepted_properties = SI_VALID_PROPERTY_VALUE;
 		// If we're converting a SET clause, NULL is acceptable as it indicates a deletion.
-		if((allow_null && !(SI_TYPE(new_value) & (SI_VALID_PROPERTY_VALUE | T_NULL))) ||
-		   (!allow_null && !(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE))) {
+		if(allow_null) accepted_properties |= T_NULL;
+		// Emit an error and exit if we're trying to add an invalid type.
+		if(!(SI_TYPE(new_value) & accepted_properties)) {
 			Error_InvalidPropertyValue();
 			ErrorCtx_RaiseRuntimeException(NULL);
 			break;

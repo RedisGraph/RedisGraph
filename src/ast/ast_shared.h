@@ -49,13 +49,15 @@ typedef struct {
 	int property_count;
 } PropertyMap;
 
+// Enum describing how a SET directive should treat pre-existing properties
 typedef enum {
-	UPDATE_UNSET,
-	UPDATE_MERGE,
-	UPDATE_REPLACE,
+	UPDATE_UNSET,    // default, should not be encountered
+	UPDATE_MERGE,    // merge new properties into existing property map
+	UPDATE_REPLACE,  // replace existing property map with new properties
 } UPDATE_MODE;
 
-// TODO replace contents of PropertyMap with this?
+// Key-value pair of an attribute ID and the value to be associated with it
+// TODO Consider replacing contents of PropertyMap (for ops like Create) with this
 typedef struct {
 	Attribute_ID id;
 	struct AR_ExpNode *value;
