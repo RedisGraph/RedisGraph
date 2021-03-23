@@ -436,6 +436,16 @@ GRAPH.QUERY DEMO_GRAPH
 SET n.age = 33, n.name = 'Bob'"
 ```
 
+The same can be accomplished by setting the graph entity variable to a map:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n { name: 'Jim', age:32 })
+SET n = {age: 33, name: 'Bob'}"
+```
+
+Using `=` in this way replaces all of the entity's previous properties, while `+=` will only override the properties it explicitly mentions.
+
 To remove a node's property, simply set property value to NULL.
 
 ```sh
