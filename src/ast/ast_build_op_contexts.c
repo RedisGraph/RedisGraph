@@ -166,6 +166,8 @@ static void _Update_SetPropertyMap(GraphContext *gc, rax *updates,
 	} else {
 		// We have enqueued updates that will no longer be committed; clear them.
 		ctx->mode = UPDATE_REPLACE;
+		uint count = array_len(ctx->properties);
+		for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
 		array_clear(ctx->properties);
 	}
 
