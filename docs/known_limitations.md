@@ -57,3 +57,62 @@ $ redis-cli GRAPH.EXPLAIN social "MATCH (p:person) WHERE p.id < 5 RETURN p"
 2) "    Project"
 3) "        Index Scan | (p:person)"
 ```
+
+## Path patterns limitations
+
+***NamedPathPredicate.***
+
+Named path patterns can consist of exactly one path pattern.
+
+Grammar:
+```
+NamedPathPredicate = 'PATH', 'PATTERN', NamedPathName, '=', NodePattern, {(EdgePattern | PathPattern), NodePattern}, [Where]
+```
+
+Supported:
+```
+NamedPathPredicate = 'PATH', 'PATTERN', NamedPathName, '=', NodePattern, PathPattern, NodePattern
+```
+
+***PathRepetition.***
+
+Only ```*``` (zero or more repetition) is supported.
+
+Grammar:
+```
+PathRepetition = PathDirection, [('*', [RangeDetail]) | '+' | '?']
+```
+Supported:
+```
+PathRepetition = PathDirection ['*']
+```
+
+***PathAny.***
+
+Not supported.
+
+***PathNode.***
+
+Properties of nodes aren't supported.
+
+Grammar:
+```
+PathNode = '(', [NodeLabels], [Properties], ')'
+```
+Supported:
+```
+PathNode = '(', ':', LabelName, ')'
+```
+
+***PathGroup.***
+
+Restricted version of properties of several path patterns is supported.
+
+Grammar:
+```
+PathGroup = '[', PathExpression, [Properties], ']'
+```
+Supported:
+```
+PathGroup = '[', PathExpression, ']'
+```
