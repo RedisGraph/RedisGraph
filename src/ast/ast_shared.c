@@ -104,12 +104,6 @@ void PropertyMap_Free(PropertyMap *map) {
 	rm_free(map);
 }
 
-EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx) {
-	EntityUpdateEvalCtx clone = ctx;
-	clone.exp = AR_EXP_Clone(ctx.exp);
-	return clone;
-}
-
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
 	NodeCreateCtx clone = ctx;
 	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
@@ -122,8 +116,8 @@ EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
 	return clone;
 }
 
-EntityUpdateEvalCtx_NEW *UpdateCtx_Clone(EntityUpdateEvalCtx_NEW *orig) {
-	EntityUpdateEvalCtx_NEW *clone = rm_malloc(sizeof(EntityUpdateEvalCtx_NEW));
+EntityUpdateEvalCtx *UpdateCtx_Clone(EntityUpdateEvalCtx *orig) {
+	EntityUpdateEvalCtx *clone = rm_malloc(sizeof(EntityUpdateEvalCtx));
 	clone->mode = orig->mode;
 	clone->record_idx = orig->record_idx;
 	uint count = array_len(orig->properties);
@@ -139,7 +133,7 @@ EntityUpdateEvalCtx_NEW *UpdateCtx_Clone(EntityUpdateEvalCtx_NEW *orig) {
 	return clone;
 }
 
-void UpdateCtx_Free(EntityUpdateEvalCtx_NEW *ctx) {
+void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
 	uint count = array_len(ctx->properties);
 	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
 	rm_free(ctx);

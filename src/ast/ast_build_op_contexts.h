@@ -20,10 +20,10 @@ typedef struct {
 } AST_UnwindContext;
 
 typedef struct {
-	NodeCreateCtx *nodes_to_merge;
-	EdgeCreateCtx *edges_to_merge;
-	EntityUpdateEvalCtx *on_match;
-	EntityUpdateEvalCtx *on_create;
+	rax *on_match;                   // rax of updates to make for ON MATCH directives
+	rax *on_create;                  // rax of updates to make for ON CREATE directives
+	NodeCreateCtx *nodes_to_merge;   // blueprints of nodes in MERGE pattern
+	EdgeCreateCtx *edges_to_merge;   // blueprints of edges in MERGE pattern
 } AST_MergeContext;
 
 typedef struct {

@@ -178,22 +178,26 @@ static void _AST_MapMergePropertiesReferences(AST *ast, const cypher_astnode_t *
 	_AST_MapExpression(ast, set_exp);
 }
 
+static void _AST_MapSetItemReferences(AST *ast, const cypher_astnode_t *set_item) {
+	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+	if(type == CYPHER_AST_SET_PROPERTY) {
+		_AST_MapSetPropertyReferences(ast, set_item);
+	} else if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
+		_AST_MapSetAllPropertiesReferences(ast, set_item);
+	} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
+		_AST_MapMergePropertiesReferences(ast, set_item);
+	} else {
+		ASSERT(false);
+	}
+}
+
 // Maps entities in SET clause.
 static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_clause) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
 	for(uint i = 0; i < nitems; i++) {
 		// Get the SET directive at this index.
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		const cypher_astnode_type_t type = cypher_astnode_type(set_item);
-		if(type == CYPHER_AST_SET_PROPERTY) {
-			_AST_MapSetPropertyReferences(ast, set_item);
-		} else if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
-			_AST_MapSetAllPropertiesReferences(ast, set_item);
-		} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
-			_AST_MapMergePropertiesReferences(ast, set_item);
-		} else {
-			ASSERT(false);
-		}
+		_AST_MapSetItemReferences(ast, set_item);
 	}
 }
 
@@ -222,16 +226,14 @@ static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge
 			uint on_create_items = cypher_ast_on_create_nitems(action);
 			for(uint j = 0; j < on_create_items; j ++) {
 				const cypher_astnode_t *set_item = cypher_ast_on_create_get_item(action, j);
-				ASSERT(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
-				_AST_MapSetPropertyReferences(ast, set_item);
+				_AST_MapSetItemReferences(ast, set_item);
 			}
 		} else if(type == CYPHER_AST_ON_MATCH) {
 			// ON MATCH.
 			uint on_match_items = cypher_ast_on_match_nitems(action);
 			for(uint j = 0; j < on_match_items; j ++) {
 				const cypher_astnode_t *set_item = cypher_ast_on_match_get_item(action, j);
-				ASSERT(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
-				_AST_MapSetPropertyReferences(ast, set_item);
+				_AST_MapSetItemReferences(ast, set_item);
 			}
 		}
 	}

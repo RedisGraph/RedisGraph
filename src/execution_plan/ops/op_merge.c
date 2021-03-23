@@ -10,6 +10,8 @@
 #include "op_merge_create.h"
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
+#include "shared/update_functions.h"
+#include "../../util/rax_extensions.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
@@ -22,85 +24,29 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 // ON MATCH / ON CREATE logic
 //------------------------------------------------------------------------------
-// Perform necessary index updates.
-static void _UpdateIndices(GraphContext *gc, Node *n) {
-	int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-	if(label_id == GRAPH_NO_LABEL) return; // Unlabeled node, no need to update.
-
-	Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-	if(!Schema_HasIndices(s)) return; // No indices, no need to update.
-
-	Schema_AddNodeToIndices(s, n);
-}
-
-// Update the appropriate property on a graph entity.
-static int _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *update_ctx) {
-	int res = 1;
-	SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
-
-	// Emit an error and exit if we're trying to add an invalid type.
-	if(!(SI_TYPE(new_value) & SI_VALID_PROPERTY_VALUE)) {
-		res = 0;
-		Error_InvalidPropertyValue();
-		ErrorCtx_RaiseRuntimeException(NULL);
-		goto cleanup;
-	}
-
-	// Try to get current property value.
-	SIValue *old_value = GraphEntity_GetProperty(ge, update_ctx->attribute_id);
-
-	if(old_value == PROPERTY_NOTFOUND) {
-		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(new_value) == T_NULL) {
-			res = 0;
-			goto cleanup;
-		}
-		// Add new property.
-		GraphEntity_AddProperty(ge, update_ctx->attribute_id, new_value);
-	} else {
-		// Update property.
-		GraphEntity_SetProperty(ge, update_ctx->attribute_id, new_value);
-	}
-
-cleanup:
-	SIValue_Free(new_value);
-	return res;
-}
-
 // Apply a set of updates to the given records.
-static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *updates,
+static void _UpdateProperties(ResultSetStatistics *stats, rax *updates,
 							  Record *records, uint record_count) {
 	ASSERT(updates != NULL && record_count > 0);
-	uint update_count = array_len(updates);
-	uint failed_updates = 0;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Lock everything.
 	QueryCtx_LockForCommit();
 
+	PendingUpdateCtx *pending_updates = array_new(PendingUpdateCtx, raxSize(updates));
 	for(uint i = 0; i < record_count; i ++) {  // For each record to update
 		Record r = records[i];
-		for(uint j = 0; j < update_count; j ++) { // For each pending update.
-			EntityUpdateEvalCtx *update_ctx = &updates[j];
-
-			// Get the type of the entity to update. If the expected entity was not
-			// found, make no updates but do not error.
-			RecordEntryType t = Record_GetType(r, update_ctx->record_idx);
-			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-				failed_updates++;
-				continue;
-			}
-
-			GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
-
-			int res = _UpdateProperty(r, ge, update_ctx); // Update the entity.
-			if(res == 0) {
-				failed_updates++;
-				continue;
-			}
-			if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
+		// Evaluate update expressions.
+		raxIterator it;
+		raxStart(&it, updates);
+		raxSeek(&it, "^", NULL, 0);
+		while(raxNext(&it)) {
+			EvalEntityUpdates(gc, &pending_updates, r, (char *)it.key, it.data, false);
+			CommitUpdates(gc, stats, pending_updates);
+			array_clear(pending_updates); // TODO freeing required?
 		}
+		raxStop(&it);
 	}
-	if(stats) stats->properties_set += (update_count * record_count) - failed_updates;
+	array_free(pending_updates);
 }
 
 //------------------------------------------------------------------------------
@@ -110,8 +56,7 @@ static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
 }
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
-				   EntityUpdateEvalCtx *on_create) {
+OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 
 	/* Merge is an operator with two or three children. They will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin). */
@@ -125,18 +70,32 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 
 	if(op->on_match) {
 		// If we have ON MATCH directives, set the appropriate record IDs of entities to be updated.
-		uint on_match_count = array_len(op->on_match);
-		for(uint i = 0; i < on_match_count; i ++) {
-			op->on_match[i].record_idx = OpBase_Modifies((OpBase *)op, op->on_match[i].alias);
+		raxIterator it;
+		raxStart(&it, op->on_match);
+		raxSeek(&it, "^", NULL, 0);
+		// Iterate over all ON MATCH expressions
+		while(raxNext(&it)) {
+			char *alias = (char *)it.key;
+			EntityUpdateEvalCtx *ctx = it.data;
+			// Set the record index for every entity modified by this operation
+			ctx->record_idx = OpBase_Modifies((OpBase *)op, alias);
 		}
+		raxStop(&it);
 	}
 
 	if(op->on_create) {
 		// If we have ON CREATE directives, set the appropriate record IDs of entities to be updated.
-		uint on_create_count = array_len(op->on_create);
-		for(uint i = 0; i < on_create_count; i ++) {
-			op->on_create[i].record_idx = OpBase_Modifies((OpBase *)op, op->on_create[i].alias);
+		raxIterator it;
+		raxStart(&it, op->on_create);
+		raxSeek(&it, "^", NULL, 0);
+		// Iterate over all ON CREATE expressions
+		while(raxNext(&it)) {
+			char *alias = (char *)it.key;
+			EntityUpdateEvalCtx *ctx = it.data;
+			// Set the record index for every entity modified by this operation
+			ctx->record_idx = OpBase_Modifies((OpBase *)op, alias);
 		}
+		raxStop(&it);
 	}
 
 	return (OpBase *)op;
@@ -341,10 +300,11 @@ static Record MergeConsume(OpBase *opBase) {
 static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_MERGE);
 	OpMerge *op = (OpMerge *)opBase;
-	EntityUpdateEvalCtx *on_match;
-	EntityUpdateEvalCtx *on_create;
-	array_clone_with_cb(on_match, op->on_match, EntityUpdateEvalCtx_Clone);
-	array_clone_with_cb(on_create, op->on_create, EntityUpdateEvalCtx_Clone);
+	rax *on_match = NULL;
+	rax *on_create = NULL;
+	if(op->on_match) on_match = raxCloneWithCallback(op->on_match, (void *(*)(void *))UpdateCtx_Clone);
+	if(op->on_create) on_create = raxCloneWithCallback(op->on_create,
+														   (void *(*)(void *))UpdateCtx_Clone);
 	return NewMergeOp(plan, on_match, on_create);
 }
 
@@ -369,20 +329,12 @@ static void MergeFree(OpBase *opBase) {
 	}
 
 	if(op->on_match) {
-		uint on_match_count = array_len(op->on_match);
-		for(uint i = 0; i < on_match_count; i ++) {
-			AR_EXP_Free(op->on_match[i].exp);
-		}
-		array_free(op->on_match);
+		raxFreeWithCallback(op->on_match, (void(*)(void *))UpdateCtx_Free);
 		op->on_match = NULL;
 	}
 
 	if(op->on_create) {
-		uint on_create_count = array_len(op->on_create);
-		for(uint i = 0; i < on_create_count; i ++) {
-			AR_EXP_Free(op->on_create[i].exp);
-		}
-		array_free(op->on_create);
+		raxFreeWithCallback(op->on_create, (void(*)(void *))UpdateCtx_Free);
 		op->on_create = NULL;
 	}
 }

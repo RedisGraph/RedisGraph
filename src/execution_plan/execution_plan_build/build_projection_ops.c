@@ -10,6 +10,7 @@
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../execution_plan.h"
+#include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
 
 // Given a WITH/RETURN * clause, generate the array of expressions to populate.

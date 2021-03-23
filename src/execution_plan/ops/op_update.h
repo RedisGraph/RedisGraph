@@ -8,20 +8,8 @@
 
 #include "op.h"
 #include "../execution_plan.h"
-#include "../../graph/entities/node.h"
-#include "../../graph/entities/edge.h"
+#include "shared/update_functions.h"
 #include "../../resultset/resultset_statistics.h"
-#include "../../arithmetic/arithmetic_expression.h"
-#include "../../ast/ast_build_op_contexts.h"
-
-// Context representing a single update to perform on an entity.
-typedef struct {
-	GraphEntity *ge;                // Entity to be updated.
-	int label_id;                   // Label ID if the updated entity is a node.
-	bool update_index;              // Whether an index is affected by update.
-	SIValue new_value;              // Constant value to set.
-	Attribute_ID attr_id;           // ID of attribute to update.
-} PendingUpdateCtx;
 
 typedef struct {
 	OpBase op;
