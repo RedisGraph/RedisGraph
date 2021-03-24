@@ -55,38 +55,41 @@ void Record_TransferEntries(Record *to, Record from);
 // Returns number of entries record can hold.
 uint Record_length(const Record r);
 
+// Return true if records contains entry at position 'idx'
+bool Record_ContainsEntry(const Record r, uint idx);
+
 // Return alias position within the record.
-int Record_GetEntryIdx(Record r, const char *alias);
+uint Record_GetEntryIdx(Record r, const char *alias);
 
 // Get entry type.
-RecordEntryType Record_GetType(const Record r, int idx);
+RecordEntryType Record_GetType(const Record r, uint idx);
 
 // Get a node from record at position idx.
-Node *Record_GetNode(const Record r, int idx);
+Node *Record_GetNode(const Record r, uint idx);
 
 // Get an edge from record at position idx.
-Edge *Record_GetEdge(const Record r, int idx);
+Edge *Record_GetEdge(const Record r, uint idx);
 
 // Get an SIValue containing the entity at position idx.
-SIValue Record_Get(Record r, int idx);
+SIValue Record_Get(Record r, uint idx);
 
 // Remove item at position idx.
-void Record_Remove(Record r, int idx);
+void Record_Remove(Record r, uint idx);
 
 // Get a graph entity from record at position idx.
-GraphEntity *Record_GetGraphEntity(const Record r, int idx);
+GraphEntity *Record_GetGraphEntity(const Record r, uint idx);
 
 // Add a scalar, node, or edge to the record, depending on the SIValue type.
-void Record_Add(Record r, int idx, SIValue v);
+void Record_Add(Record r, uint idx, SIValue v);
 
 // Add a scalar to record at position idx and return a reference to it.
-SIValue *Record_AddScalar(Record r, int idx, SIValue v);
+SIValue *Record_AddScalar(Record r, uint idx, SIValue v);
 
 // Add a node to record at position idx and return a reference to it.
-Node *Record_AddNode(Record r, int idx, Node node);
+Node *Record_AddNode(Record r, uint idx, Node node);
 
 // Add an edge to record at position idx and return a reference to it.
-Edge *Record_AddEdge(Record r, int idx, Edge edge);
+Edge *Record_AddEdge(Record r, uint idx, Edge edge);
 
 // Ensure that all scalar values in record are access-safe.
 void Record_PersistScalars(Record r);

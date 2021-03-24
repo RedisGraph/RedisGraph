@@ -123,6 +123,9 @@ void FilterTree_DeMorgan(FT_FilterNode **root);
 /* Try to compress a given filter tree. */
 bool FilterTree_Compact(FT_FilterNode *root);
 
+/* Resolve variables to constants */
+void FilterTree_ResolveVariables(FT_FilterNode *root, const Record r);
+
 /* Clones tree. */
 FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root);
 

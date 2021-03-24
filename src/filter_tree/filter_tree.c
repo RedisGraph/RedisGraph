@@ -538,47 +538,52 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 
 // Compacts 'OR' condition node.
 static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
-	// Try to compact left and right children.
+	// try to compact left and right children
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
 	bool is_rhs_const = FilterTree_Compact(node->cond.right);
-	// If both are not compactable, this node is not compactable.
+	// if both are not compactable, this node is not compactable
 	if(!is_lhs_const && !is_rhs_const) return false;
-	// In every case from now, there will be a reduction, save the children in local placeholders for current node in-place modifications.
+
+	// in every case from now, there will be a reduction,
+	// save the children in local placeholders for current node in-place modifications
+	bool final_value = false;
 	FT_FilterNode *lhs = node->cond.left;
-	FT_FilterNode *rhs = node->cond.right ;
-	// Both children are constants. This node can be set as constant expression.
+	FT_FilterNode *rhs = node->cond.right;
+	// both children are constants. This node can be set as constant expression
 	if(is_lhs_const && is_rhs_const) {
-		// Both children are now contant expressions. We can evaluate and compact.
-		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
-		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
-		// Final value is OR operation on lhs and rhs - reducing an OR node.
-		SIValue final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) || SIValue_IsTrue(rhs_value));
-		// In place set the node to be an expression node.
-		_FilterTree_In_Place_Set_Exp(node, final_value);
+		// both children are now contant expressions, evaluate and compact
+		final_value = SIValue_IsTrue(AR_EXP_Evaluate(rhs->exp.exp, NULL));
+		if(!final_value) {
+			final_value = SIValue_IsTrue(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+		}
+
+		// final value is OR operation on lhs and rhs - reducing an OR node
+		// in place set the node to be an expression node
+		_FilterTree_In_Place_Set_Exp(node, SI_BoolVal(final_value));
 		FilterTree_Free(lhs);
 		FilterTree_Free(rhs);
 		return true;
 	} else {
-		// Only one of the nodes is constant. Find and evaluate.
+		// only one of the nodes is constant, find and evaluate
 		FT_FilterNode *const_node = is_lhs_const ? lhs : rhs;
 		FT_FilterNode *non_const_node = is_lhs_const ? rhs : lhs;
 
-		// Evaluate constant.
+		// evaluate constant
 		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
-		// If consant is true, everything is true.
+		// if consant is true, everything is true
 		if(SIValue_IsTrue(const_value)) {
 			*node = *const_node;
-			// Free const node allocation, without free the data.
+			// free const node allocation, without free the data
 			rm_free(const_node);
-			// Free non const node completely.
+			// free non const node completely
 			FilterTree_Free(non_const_node);
 			return true;
 		} else {
-			// Const value is false. Current node should be replaced with the non const node.
+			// const value is false, current node should be replaced with the non const node
 			*node = *non_const_node;
-			// Free non const node allocation, without free the data.
+			// free non const node allocation, without free the data
 			rm_free(non_const_node);
-			// Free const node completely.
+			// free const node completely
 			FilterTree_Free(const_node);
 			return false;
 		}
@@ -626,6 +631,36 @@ bool FilterTree_Compact(FT_FilterNode *root) {
 		ASSERT(false && "FilterTree_Compact: Unkown filter tree node to compect");
 		return false;
 	}
+}
+
+//------------------------------------------------------------------------------
+// Resolve unknows
+//------------------------------------------------------------------------------
+
+static void _FilterTree_ResolveVariables(FT_FilterNode *root, const Record r) {
+	ASSERT(root != NULL);
+
+	switch(root->t) {
+		case FT_N_EXP:
+			AR_EXP_ResolveVariables(root->exp.exp, r);
+			break;
+		case FT_N_COND:
+			_FilterTree_ResolveVariables(root->cond.left, r);
+			_FilterTree_ResolveVariables(root->cond.right, r);
+			break;
+		case FT_N_PRED:
+			AR_EXP_ResolveVariables(root->pred.lhs, r);
+			AR_EXP_ResolveVariables(root->pred.rhs, r);
+			break;
+		default:
+			ASSERT(false && "_FilterTree_ResolveVariables: Unkown filter tree node to compect");
+			break;
+	}
+}
+
+void FilterTree_ResolveVariables(FT_FilterNode *root, const Record r) {
+	_FilterTree_ResolveVariables(root, r);
+	FilterTree_Compact(root);
 }
 
 // Clone an expression node.

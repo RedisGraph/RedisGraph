@@ -35,11 +35,66 @@
 // Forward declarations
 //------------------------------------------------------------------------------
 
+static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r,
+		SIValue *result);
+
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r,
 									  SIValue *result);
 
+static void _AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r);
+
 // Clear an op node internals, without freeing the node allocation itself.
 static void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node);
+
+inline bool AR_EXP_IsConstant(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
+}
+
+inline bool AR_EXP_IsVariadic(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC;
+}
+
+inline bool AR_EXP_IsParameter(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
+}
+
+inline bool AR_EXP_IsOperation(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OP;
+}
+
+bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
+	ASSERT(exp != NULL);
+
+	// an arithmetic expression performs attribute extraction
+	// if it applys the "property" function, in which case the left-handside
+	// child represents the graph entity from which we access the attribute
+	// while the right-handside represents the attribute name
+
+	if(exp->type != AR_EXP_OP) return false;
+	if(RG_STRCMP(exp->op.func_name, "property") != 0) return false;
+
+	if(attr != NULL) {
+		AR_ExpNode *r = exp->op.children[1];
+		ASSERT(AR_EXP_IsConstant(r));
+		SIValue v = r->operand.constant;
+		ASSERT(SI_TYPE(v) == T_STRING);
+		*attr = v.stringval;
+	}
+
+	return true;
+}
+
+// repurpose node to a constant expression
+static void _AR_EXP_InplaceRepurposeConstant(AR_ExpNode *node, SIValue v) {
+	// free node internals
+	if(AR_EXP_IsOperation(node)) _AR_EXP_FreeOpInternals(node);
+	else if(AR_EXP_IsConstant(node)) SIValue_Free(node->operand.constant);
+
+	// repurpose as constant operand
+	node->type              =  AR_EXP_OPERAND;
+	node->operand.type      =  AR_EXP_CONSTANT;
+	node->operand.constant  =  v;
+}
 
 static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	AR_ExpNode *clone = rm_calloc(1, sizeof(AR_ExpNode));
@@ -219,6 +274,58 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
 		// Root is an aggregation function, can't reduce.
 		return false;
 	}
+}
+
+static void _AR_EXP_OpResolveVariables(AR_ExpNode *node, const Record r) {
+	ASSERT(node->type == AR_EXP_OP);
+
+	for(uint i = 0; i < node->op.child_count; i++) {
+		AR_ExpNode *child = node->op.children[i];
+		_AR_EXP_ResolveVariables(child, r);
+	}
+}
+
+void _AR_EXP_OperandResolveVariables(AR_ExpNode *node, const Record r) {
+	ASSERT(node->type == AR_EXP_OPERAND);
+
+	// return if this is not a variadic node
+	if(!AR_EXP_IsVariadic(node)) return;
+
+	// see if record contains a value for this variadic
+	const char *alias = node->operand.variadic.entity_alias;
+	uint idx = Record_GetEntryIdx(r, alias);
+	ASSERT(idx != INVALID_INDEX);
+	if(!Record_ContainsEntry(r, idx)) return;
+
+	// replace variadic with constant
+	SIValue v = Record_Get(r, idx);
+	_AR_EXP_InplaceRepurposeConstant(node, v);
+
+	// AR_EXP_Result res = _AR_EXP_EvaluateVariadic(node, r, &v);
+	// replace node with constant
+	// if(res == EVAL_OK) _AR_EXP_InplaceRepurposeConstant(node, v);
+}
+
+static void _AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r) {
+	ASSERT(r != NULL);
+
+	if(root == NULL) return;
+
+	switch(root->type) {
+		case AR_EXP_OP:
+			_AR_EXP_OpResolveVariables(root, r);
+			break;
+		case AR_EXP_OPERAND:
+			_AR_EXP_OperandResolveVariables(root, r);
+			break;
+		default:
+			ASSERT(false && "unknown arithmetic expression node type");
+	}
+}
+
+void AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r) {
+	_AR_EXP_ResolveVariables(root, r);
+	AR_EXP_ReduceToScalar(root, true, NULL);
 }
 
 static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint argc) {
@@ -544,40 +651,6 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 		}
 	}
 	return false;
-}
-
-bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {
-	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
-}
-
-bool inline AR_EXP_IsParameter(const AR_ExpNode *exp) {
-	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
-}
-
-bool inline AR_EXP_IsOperation(const AR_ExpNode *exp) {
-	return exp->type == AR_EXP_OP;
-}
-
-bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr) {
-	ASSERT(exp != NULL);
-
-	// an arithmetic expression performs attribute extraction
-	// if it applys the "property" function, in which case the left-handside
-	// child represents the graph entity from which we access the attribute
-	// while the right-handside represents the attribute name
-
-	if(exp->type != AR_EXP_OP) return false;
-	if(RG_STRCMP(exp->op.func_name, "property") != 0) return false;
-
-	if(attr != NULL) {
-		AR_ExpNode *r = exp->op.children[1];
-		ASSERT(AR_EXP_IsConstant(r));
-		SIValue v = r->operand.constant;
-		ASSERT(SI_TYPE(v) == T_STRING);
-		*attr = v.stringval;
-	}
-
-	return true;
 }
 
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp) {

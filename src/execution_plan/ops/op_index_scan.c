@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -36,7 +36,6 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 	op->iter                 =  NULL;
 	op->filter               =  filter;
 	op->child_record         =  NULL;
-	op->rs_query_node        =  NULL;
 	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
@@ -49,11 +48,8 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 
 static OpResult IndexScanInit(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
-	uint child_count = opBase->childCount;
 
-	if(child_count == 0) {
-		op->rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
-	} else {
+	if(opBase->childCount > 0) {
 		// find out how many different entities are refered to 
 		// within the filter tree, if number of entities equals 1
 		// (current node being scanned) there's no need to re-build the index
@@ -62,8 +58,6 @@ static OpResult IndexScanInit(OpBase *opBase) {
 		op->rebuild_index_query = raxSize(entities) > 1; // this is us
 		raxFree(entities);
 
-		// build index query out of filter tree
-		if(!op->rebuild_index_query) op->rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
 		OpBase_UpdateConsume(opBase, IndexScanConsumeFromChild);
 	}
 
@@ -74,6 +68,7 @@ static OpResult IndexScanInit(OpBase *opBase) {
 		ASSERT(schema != NULL);
 		op->n.label_id = schema->id;
 	}
+
 	return OP_OK;
 }
 
@@ -88,59 +83,95 @@ static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
+	const EntityID *nodeId = NULL;
 
-	if(op->iter == NULL) {
-		/* On the first execution of IndexScanConsumeFromChild, use the RediSearch query node
-		 * to populate an index iterator. This causes the index to acquire a read lock. */
-		op->iter = RediSearch_GetResultsIterator(op->rs_query_node, op->idx);
-		// The query node is now part of the iterator, explicitly NULL-set it to prevent a double free.
-		op->rs_query_node = NULL;
-	}
-
-	if(op->child_record == NULL) {
-		op->child_record = OpBase_Consume(op->op.children[0]);
-		if(op->child_record == NULL) return NULL;
-		else RediSearch_ResultsIteratorReset(op->iter);
-	}
-
-	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
-	if(!nodeId) { // Index scan depleted.
-		OpBase_DeleteRecord(op->child_record); // Free old record.
-		// Pull a new record from child.
-		op->child_record = OpBase_Consume(op->op.children[0]);
-		if(op->child_record == NULL) return NULL; // Child depleted.
-
-		// Reset iterator and evaluate again.
-		RediSearch_ResultsIteratorReset(op->iter);
+pull_index:
+	// try pulling from index
+	if(op->iter != NULL) {
 		nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
-		if(!nodeId) return NULL; // Empty iterator, return immediately.
+		if(nodeId != NULL) {
+			// clone the held Record, as it will be freed upstream
+			// populate the Record with the actual node
+			Record r = OpBase_CloneRecord(op->child_record);
+			_UpdateRecord(op, r, *nodeId);
+
+			return r;
+		}
 	}
 
-	// Clone the held Record, as it will be freed upstream.
-	Record r = OpBase_CloneRecord(op->child_record);
+	//--------------------------------------------------------------------------
+	// index depleted
+	//--------------------------------------------------------------------------
 
-	// Populate the Record with the actual node.
-	_UpdateRecord(op, r, *nodeId);
+	// free input record
+	if(op->child_record != NULL) {
+		OpBase_DeleteRecord(op->child_record);
+		op->child_record = NULL;
+	}
 
-	return r;
+	//--------------------------------------------------------------------------
+	// pull from child
+	//--------------------------------------------------------------------------
+
+	op->child_record = OpBase_Consume(op->op.children[0]);
+	if(op->child_record == NULL) return NULL; // depleted
+
+	//--------------------------------------------------------------------------
+	// reset index iterator
+	//--------------------------------------------------------------------------
+
+	if(op->rebuild_index_query) {
+		// free previous iterator
+		if(op->iter != NULL) RediSearch_ResultsIteratorFree(op->iter);
+		op->iter = NULL;
+
+		// require to rebuild index query, probably relies on runtime values
+		// resolve runtime variables within filter
+		FT_FilterNode *filter = FilterTree_Clone(op->filter);
+		FilterTree_ResolveVariables(filter, op->child_record);
+
+		// make sure there's only one unresolve entity in filter
+		#ifdef RG_DEBUG
+		{
+			rax *entities = FilterTree_CollectModified(filter);
+			ASSERT(raxSize(entities) == 1);
+			raxFree(entities);
+		}
+		#endif
+
+		RSQNode *rs_query_node = FilterTreeToQueryNode(filter, op->idx);
+		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
+		FilterTree_Free(filter);
+	} else {
+		if(op->iter == NULL) {
+			// first call to consume, create query and iterator
+			RSQNode *rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
+			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
+		} else {
+			// reset existing iterator
+			RediSearch_ResultsIteratorReset(op->iter);
+		}
+	}
+
+	// repull from index
+	goto pull_index;
 }
 
 static Record IndexScanConsume(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
+
+	// create iterator on first call
 	if(op->iter == NULL) {
-		/* On the first execution of IndexScanConsume, use the RediSearch query node
-		 * to populate an index iterator. This causes the index to acquire a read lock. */
-		op->iter = RediSearch_GetResultsIterator(op->rs_query_node, op->idx);
-		// The query node is now part of the iterator, explicitly NULL-set it to prevent a double free.
-		op->rs_query_node = NULL;
+		RSQNode *rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
+		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	}
 
-	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
+	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx,
+			NULL);
 	if(!nodeId) return NULL;
 
+	// populate the Record with the actual node
 	Record r = OpBase_CreateRecord((OpBase *)op);
-
-	// Populate the Record with the actual node.
 	_UpdateRecord(op, r, *nodeId);
 
 	return r;
@@ -148,7 +179,14 @@ static Record IndexScanConsume(OpBase *opBase) {
 
 static OpResult IndexScanReset(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
-	RediSearch_ResultsIteratorReset(op->iter);
+
+	if(op->rebuild_index_query) {
+		RediSearch_ResultsIteratorFree(op->iter);
+		op->iter = NULL;
+	} else {
+		RediSearch_ResultsIteratorReset(op->iter);
+	}
+
 	return OP_OK;
 }
 
@@ -161,11 +199,6 @@ static void IndexScanFree(OpBase *opBase) {
 	if(op->iter) {
 		RediSearch_ResultsIteratorFree(op->iter);
 		op->iter = NULL;
-	}
-
-	if(op->rs_query_node) {
-		RediSearch_QueryNodeFree(op->rs_query_node);
-		op->rs_query_node = NULL;
 	}
 
 	if(op->child_record) {

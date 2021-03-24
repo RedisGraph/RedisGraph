@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,14 +16,13 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	bool rebuild_index_query;  // should we rebuild RediSearch index query for each input record
-	RSIndex *idx;
-	NodeScanCtx n;             // label data of node being scanned
-	uint nodeRecIdx;           // index of the node being scanned in the Record
-	RSQNode *rs_query_node;    // rediSearch query node used to construct iterator
-	RSResultsIterator *iter;   // rediSearch iterator over an index with the appropriate filters
-	const FT_FilterNode *filter;
-	Record child_record;       // the Record this op acts on if it is not a tap
+	bool rebuild_index_query;    // should we rebuild RediSearch index query for each input record
+	RSIndex *idx;                // index to query
+	NodeScanCtx n;               // label data of node being scanned
+	uint nodeRecIdx;             // index of the node being scanned in the Record
+	RSResultsIterator *iter;     // rediSearch iterator over an index with the appropriate filters
+	const FT_FilterNode *filter; // filters from which to compose index query
+	Record child_record;         // the Record this op acts on if it is not a tap
 } IndexScan;
 
 // creates a new IndexScan operation
