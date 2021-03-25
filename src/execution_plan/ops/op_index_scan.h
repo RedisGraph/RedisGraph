@@ -16,16 +16,16 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	bool rebuild_index_query;    // should we rebuild RediSearch index query for each input record
-	RSIndex *idx;                // index to query
-	NodeScanCtx n;               // label data of node being scanned
-	uint nodeRecIdx;             // index of the node being scanned in the Record
-	RSResultsIterator *iter;     // rediSearch iterator over an index with the appropriate filters
-	const FT_FilterNode *filter; // filters from which to compose index query
-	Record child_record;         // the Record this op acts on if it is not a tap
+	bool rebuild_index_query;  // should we rebuild RediSearch index query for each input record
+	RSIndex *idx;              // index to query
+	NodeScanCtx n;             // label data of node being scanned
+	uint nodeRecIdx;           // index of the node being scanned in the Record
+	RSResultsIterator *iter;   // rediSearch iterator over an index with the appropriate filters
+	FT_FilterNode *filter;     // filters from which to compose index query
+	Record child_record;       // the Record this op acts on if it is not a tap
 } IndexScan;
 
 // creates a new IndexScan operation
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n, RSIndex *idx,
-					   const FT_FilterNode *filter);
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
+		RSIndex *idx, FT_FilterNode *filter);
 

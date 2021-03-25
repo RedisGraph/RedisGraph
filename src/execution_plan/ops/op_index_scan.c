@@ -22,7 +22,7 @@ static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
-		RSIndex *idx, const FT_FilterNode *filter) {
+		RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
 	ASSERT(g != NULL);
 	ASSERT(idx != NULL);
@@ -204,6 +204,11 @@ static void IndexScanFree(OpBase *opBase) {
 	if(op->child_record) {
 		OpBase_DeleteRecord(op->child_record);
 		op->child_record = NULL;
+	}
+
+	if(op->filter) {
+		FilterTree_Free(op->filter);
+		op->filter = NULL;
 	}
 }
 
