@@ -841,13 +841,13 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 	ASSERT_TRUE(leftLeft->type == AL_OPERAND && leftLeft->operand.matrix == A);
 
 	AlgebraicExpression *leftRight = rootLeftChild->operation.children[1];
-	ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand.matrix == B);
+	ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand.matrix == C);
 
 	AlgebraicExpression *rightLeft = rootRightChild->operation.children[0];
 	ASSERT_TRUE(rightLeft->type == AL_OPERAND && rightLeft->operand.matrix == A);
 
 	AlgebraicExpression *rightRight = rootRightChild->operation.children[1];
-	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == C);
+	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == B);
 
 	raxFree(matrices);
 	GrB_Matrix_free(&A);

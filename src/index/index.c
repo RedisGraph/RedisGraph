@@ -113,7 +113,7 @@ void Index_RemoveField(Index *idx, const char *field) {
 }
 
 void Index_IndexNode(Index *idx, const Node *n) {
-	double      score            = 0;     // default score
+	double      score            = 1;     // default score
 	const char  *lang            = NULL;  // default language
 	RSIndex     *rsIdx           = idx->idx;
 	NodeID      node_id          = ENTITY_GET_ID(n);
