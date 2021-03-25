@@ -387,9 +387,8 @@ RSQNode *FilterTreeToQueryNode(const FT_FilterNode *tree, RSIndex *idx) {
 
 	uint tree_count = array_len(trees);
 	for(uint i = 0; i < tree_count; i++) {
-		FT_FilterNode *tree = trees[i];
-		nodes = array_append(nodes, _FilterTreeToQueryNode(tree, idx));
-		FilterTree_Free(tree);
+		nodes = array_append(nodes, _FilterTreeToQueryNode(trees[i], idx));
+		FilterTree_Free(trees[i]);
 	}
 
 	// compose root query node by intersecting individual query nodes

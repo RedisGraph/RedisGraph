@@ -21,23 +21,34 @@
 // Filter normalization
 //------------------------------------------------------------------------------
 
-// modifies filter tree such that the right-hand side is of type constant
-void _normalize_filter(FT_FilterNode **filter) {
+// modifies filter tree such that the left hand side performs
+// attribute lookup on 'filtered_entity'
+void _normalize_filter(const char *filtered_entity, FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
+	bool swap = false;
+	rax *entities = NULL;
+
 	// normalize, left hand side should be variadic, right hand side const
 	switch(filter_tree->t) {
 	case FT_N_PRED:
-		if(filter_tree->pred.lhs->operand.type == AR_EXP_CONSTANT) {
-			// swap
+		entities = raxNew();
+		AR_ExpNode *rhs = (*filter)->pred.rhs;
+		AR_EXP_CollectEntities(rhs, entities);
+		swap = raxFind(entities, (unsigned char *)filtered_entity,
+				strlen(filtered_entity)) != raxNotFound;
+		raxFree(entities);
+
+		if(swap) {
 			AR_ExpNode *tmp = filter_tree->pred.rhs;
 			filter_tree->pred.rhs = filter_tree->pred.lhs;
 			filter_tree->pred.lhs = tmp;
 			filter_tree->pred.op = ArithmeticOp_ReverseOp(filter_tree->pred.op);
 		}
+
 		break;
 	case FT_N_COND:
-		_normalize_filter(&filter_tree->cond.left);
-		_normalize_filter(&filter_tree->cond.right);
+		_normalize_filter(filtered_entity, &filter_tree->cond.left);
+		_normalize_filter(filtered_entity, &filter_tree->cond.right);
 		break;
 	case FT_N_EXP:
 		// NOP, expression already normalized
@@ -69,13 +80,11 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	return true;
 }
 
-/* Tests to see if given filter tree is a simple predicate
- * e.g. n.v = 2
- * one side is variadic while the other side is constant. */
-bool _simple_predicates(const char* filtered_entity, FT_FilterNode *filter) {
-	bool res = false;
+// return true if filter can be resolved by an index query
+bool _applicable_predicate(const char* filtered_entity, FT_FilterNode *filter) {
 
 	SIValue v;
+	bool res              =  false;
 	AR_ExpNode  *exp      =  NULL;
 	AR_ExpNode  *lhs_exp  =  NULL;
 	AR_ExpNode  *rhs_exp  =  NULL;
@@ -90,7 +99,12 @@ bool _simple_predicates(const char* filtered_entity, FT_FilterNode *filter) {
 	case FT_N_PRED:
 		lhs_exp = filter->pred.lhs;
 		rhs_exp = filter->pred.rhs;
-		// filter should be in the form of variable=scalar or scalar=variable
+		// filter should be in the form of:
+		//
+		// attr_lookup OP exp
+		// or
+		// exp OP attr_lookup
+		//
 		// find out which part of the filter performs entity attribute access
 
 		// make sure filtered entity isn't mentioned on both ends of the filter
@@ -103,7 +117,8 @@ bool _simple_predicates(const char* filtered_entity, FT_FilterNode *filter) {
 		mentioned_on_lhs = raxFind(aliases, (unsigned char *)filtered_entity,
 				strlen(filtered_entity)) != raxNotFound;
 
-		raxRemove(aliases, (unsigned char *)filtered_entity, strlen(filtered_entity), NULL);
+		raxRemove(aliases, (unsigned char *)filtered_entity,
+				strlen(filtered_entity), NULL);
 
 		AR_EXP_CollectEntities(rhs_exp, aliases);
 		mentioned_on_rhs = raxFind(aliases, (unsigned char *)filtered_entity,
@@ -111,13 +126,18 @@ bool _simple_predicates(const char* filtered_entity, FT_FilterNode *filter) {
 
 		raxFree(aliases);
 
-		if(mentioned_on_lhs == true && mentioned_on_rhs == true) break;
+		if(mentioned_on_lhs == true && mentioned_on_rhs == true) {
+			res = false;
+			break;
+		}
 
-		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;
-		// exp = n.v
-		if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp;
+		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp; // n.v = exp
+		if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp; // exp = n.v
 		// filter is not of the form n.v = exp or exp = n.v
-		if(exp == NULL) break;
+		if(exp == NULL) {
+			res = false;
+			break;
+		}
 
 		// make sure 'exp' represents a scalar
 		bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
@@ -126,15 +146,16 @@ bool _simple_predicates(const char* filtered_entity, FT_FilterNode *filter) {
 			SIType t = SI_TYPE(v);
 			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
 		} else {
-			// value type can only be determined at run-time
+			// value type can only be determined at runtime!
 			// TODO: this is an issue if value turns out to be a none indexed
 			// value type e.g. ARRAY
 			res = true;
 		}
 		break;
 	case FT_N_COND:
-		res = (_simple_predicates(filtered_entity, filter->cond.left) &&
-				_simple_predicates(filtered_entity, filter->cond.right));
+		// require both ends of the filter to be applicable
+		res = (_applicable_predicate(filtered_entity, filter->cond.left) &&
+				_applicable_predicate(filtered_entity, filter->cond.right));
 		break;
 	default:
 		break;
@@ -158,7 +179,7 @@ bool _applicableFilter(const char* filtered_entity, Index *idx,
 		goto cleanup;
 	}
 
-	if(!_simple_predicates(filtered_entity, filter_tree)) {
+	if(!_applicable_predicate(filtered_entity, filter_tree)) {
 		res = false;
 		goto cleanup;
 	}
@@ -191,7 +212,7 @@ bool _applicableFilter(const char* filtered_entity, Index *idx,
 	}
 
 	// Filter is applicable, prepare it to use in index.
-	_normalize_filter(filter);
+	_normalize_filter(filtered_entity, filter);
 
 cleanup:
 	if(attr) raxFree(attr);
@@ -211,11 +232,10 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 		OpFilter *filter = (OpFilter *)current;
 
 		if(_applicableFilter(filtered_entity, idx, &filter->filterTree)) {
-			// make sure all predicates are of type n.v = CONST.
 			filters = array_append(filters, filter);
 		}
 
-		// Advance to the next operation.
+		// advance to the next operation
 		current = current->parent;
 	}
 
@@ -229,15 +249,18 @@ static FT_FilterNode *_Concat_Filters(OpFilter **filter_ops) {
 
 	// concat using AND nodes
 	FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
-	FilterTree_AppendLeftChild(root, FilterTree_Clone(filter_ops[0]->filterTree));
-	FilterTree_AppendRightChild(root, FilterTree_Clone(filter_ops[1]->filterTree));
+	FilterTree_AppendLeftChild(root,
+			FilterTree_Clone(filter_ops[0]->filterTree));
+	FilterTree_AppendRightChild(root,
+			FilterTree_Clone(filter_ops[1]->filterTree));
 
 	for(uint i = 2; i < count; i++) {
 		// new and root node
 		FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
 		FilterTree_AppendLeftChild(and, root);
 		root = and;
-		FilterTree_AppendRightChild(root, FilterTree_Clone(filter_ops[i]->filterTree));
+		FilterTree_AppendRightChild(root,
+				FilterTree_Clone(filter_ops[i]->filterTree));
 	}
 
 	return root;
@@ -268,7 +291,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 	OpBase_Free((OpBase *)scan);
 
-	// remove and free all now-redundant filter ops
+	// remove and free all redundant filter ops
 	// since this is a chain of single-child operations
 	// all operations are replaced in-place
 	// avoiding problems with stream-sensitive ops like SemiApply
