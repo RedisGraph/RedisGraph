@@ -22,30 +22,67 @@ typedef enum {
 	BI_ARRAY = 5,
 } TYPE;
 
-// read the header of a data stream to parse its property keys
-// and update schemas
-static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
-											const char *data, size_t *data_idx,
-											int *label_id, uint *prop_count) {
+/* binary header format:
+ * - entity name : null-terminated C string
+ * - property count : 4-byte unsigned integer
+ * [0..property_count] : null-terminated C string
+ */
+
+// read the label strings from a header, update schemas, and retrieve the label IDs
+static int *_BulkInsert_ReadHeaderLabels(GraphContext *gc, SchemaType t,
+										 const char *data, size_t *data_idx) {
 	ASSERT(gc != NULL);
 	ASSERT(data != NULL);
 	ASSERT(data_idx != NULL);
-	ASSERT(label_id != NULL);
+	// first sequence is entity label
+	const char *labels = data + *data_idx;
+	int labels_len = strlen(labels);
+	*data_idx += labels_len + 1;
+
+	// Array of all label IDs
+	int *label_ids = array_new(int, 1);
+	// Stack variable to contain a single label
+	char label[labels_len];
+
+	while(true) {
+		// Look for a colon delimiting another label
+		char *found = strchr(labels, ':');
+		if(found) {
+			ASSERT(t == SCHEMA_NODE); // Only nodes can have multiple labels
+			// This entity file describes multiple labels, copy the current one
+			size_t len = found - labels;
+			memcpy(label, labels, len);
+			label[len] = '\0';
+			// Update the labels pointer for the next seek
+			labels += len + 1;
+		} else {
+			// Reached the last (or only) label; copy it
+			size_t len = strlen(labels);
+			memcpy(label, labels, len + 1);
+		}
+
+		// Try to retrieve the label's schema
+		Schema *schema = GraphContext_GetSchema(gc, label, t);
+		// Create the schema if it does not already exist
+		if(schema == NULL) schema = GraphContext_AddSchema(gc, label, t);
+		// Store the label ID
+		label_ids = array_append(label_ids, schema->id);
+
+		// Break if we've exhausted all labels
+		if(!found) break;
+	}
+
+	return label_ids;
+}
+
+// read the property keys from a header
+static Attribute_ID *_BulkInsert_ReadHeaderProperties(GraphContext *gc, SchemaType t,
+													  const char *data, size_t *data_idx,
+													  uint *prop_count) {
+	ASSERT(gc != NULL);
+	ASSERT(data != NULL);
+	ASSERT(data_idx != NULL);
 	ASSERT(prop_count != NULL);
-
-	/* binary header format:
-	 * - entity name : null-terminated C string
-	 * - property count : 4-byte unsigned integer
-	 * [0..property_count] : null-terminated C string
-	 */
-
-	// first sequence is entity name
-	const char *name = data + *data_idx;
-	*data_idx += strlen(name) + 1;
-
-	Schema *schema = GraphContext_GetSchema(gc, name, t);
-	if(schema == NULL) schema = GraphContext_AddSchema(gc, name, t);
-	*label_id = schema->id;
 
 	// next 4 bytes are property count
 	*prop_count = *(uint *)&data[*data_idx];
@@ -141,21 +178,22 @@ static SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_idx) {
 static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 								   size_t data_len, SchemaType type) {
 
-	int label_id;
 	uint prop_count;
 	size_t data_idx = 0;
 
-	// read the CSV file header
-	// and commit all labels and properties it introduces
-	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data,
-														&data_idx, &label_id, &prop_count);
+	// read the CSV file header labels and update all schemas
+	int *label_ids = _BulkInsert_ReadHeaderLabels(gc, type, data, &data_idx);
+	uint label_count = array_len(label_ids);
+	// read the CSV header properties and collect their indices
+	Attribute_ID *prop_indices = _BulkInsert_ReadHeaderProperties(gc, type, data,
+																  &data_idx, &prop_count);
 
 	while(data_idx < data_len) {
 		Node n;
 		Edge e;
 		GraphEntity *ge;
 		if(type == SCHEMA_NODE) {
-			Graph_CreateNode(gc->g, &n, &label_id, 1);
+			Graph_CreateNode(gc->g, &n, label_ids, label_count);
 			ge = (GraphEntity *)&n;
 		} else if(type == SCHEMA_EDGE) {
 			// next 8 bytes are source ID
@@ -165,7 +203,7 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 			NodeID dest = *(NodeID *)&data[data_idx];
 			data_idx += sizeof(NodeID);
 
-			Graph_ConnectNodes(gc->g, src, dest, label_id, &e);
+			Graph_ConnectNodes(gc->g, src, dest, label_ids[0], &e);
 			ge = (GraphEntity *)&e;
 		} else {
 			ASSERT(false);
@@ -180,6 +218,7 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 		}
 	}
 
+	array_free(label_ids);
 	if(prop_indices) rm_free(prop_indices);
 	return BULK_OK;
 }

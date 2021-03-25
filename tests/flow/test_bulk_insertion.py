@@ -389,3 +389,29 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         # Verify that at least one ping was issued
         self.env.assertGreater(ping_count, 1)
 
+    # Verify that nodes with multiple labels are created correctly
+    def test10_multiple_labels(self):
+        graphname = "tmpgraph6"
+        # Write temporary files
+        with open('/tmp/L1:L2.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["id"])
+            out.writerow([0])
+            out.writerow([1])
+            out.writerow([2])
+
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/L1:L2.tmp',
+                                          graphname])
+
+        self.env.assertEquals(res.exit_code, 0)
+        self.env.assertIn('3 nodes created', res.output)
+
+        graph = Graph(graphname, redis_con)
+        query_result = graph.query('MATCH (a:L1:L2) RETURN a.id ORDER BY a.id')
+        expected_result = [[0],
+                           [1],
+                           [2]]
+
+        self.env.assertEquals(query_result.result_set, expected_result)
