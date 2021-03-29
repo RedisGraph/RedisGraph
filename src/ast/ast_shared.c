@@ -116,9 +116,20 @@ EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
 	return clone;
 }
 
-EntityUpdateEvalCtx *UpdateCtx_Clone(EntityUpdateEvalCtx *orig) {
+EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias) {
+	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
+	ctx->mode = mode;
+	ctx->alias = alias;
+	ctx->record_idx = INVALID_INDEX;
+	ctx->properties = array_new(PropertySetCtx, prop_count);
+
+	return ctx;
+}
+
+EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	EntityUpdateEvalCtx *clone = rm_malloc(sizeof(EntityUpdateEvalCtx));
 	clone->mode = orig->mode;
+	clone->alias = orig->alias;
 	clone->record_idx = orig->record_idx;
 	uint count = array_len(orig->properties);
 	clone->properties = array_new(PropertySetCtx, count);
@@ -131,6 +142,13 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(EntityUpdateEvalCtx *orig) {
 	}
 
 	return clone;
+}
+
+void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode) {
+	ctx->mode = mode; // Set the mode to the given value
+	uint count = array_len(ctx->properties);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
+	array_clear(ctx->properties);
 }
 
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {

@@ -51,9 +51,9 @@ typedef struct {
 
 // Enum describing how a SET directive should treat pre-existing properties
 typedef enum {
-	UPDATE_UNSET,    // default, should not be encountered
-	UPDATE_MERGE,    // merge new properties into existing property map
-	UPDATE_REPLACE,  // replace existing property map with new properties
+	UPDATE_UNSET   = 0,    // default, should not be encountered
+	UPDATE_MERGE   = 1,    // merge new properties into existing property map
+	UPDATE_REPLACE = 2,    // replace existing property map with new properties
 } UPDATE_MODE;
 
 // Key-value pair of an attribute ID and the value to be associated with it
@@ -68,6 +68,7 @@ typedef struct {
 	PropertySetCtx *properties; // properties to set
 	int record_idx;             // record offset this entity is stored at
 	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
+	const char *alias;          // Access-safe alias of the entity being updated
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause
@@ -108,6 +109,8 @@ EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);
 
 void PropertyMap_Free(PropertyMap *map);
 
-EntityUpdateEvalCtx *UpdateCtx_Clone(EntityUpdateEvalCtx *ctx);
+EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias);
+EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *ctx);
+void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode);
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx);
 

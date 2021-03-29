@@ -57,10 +57,11 @@ class testEntityUpdate(FlowTestsBase):
         empty_node = Node()
         result = graph.query("MATCH (n) SET n = {} RETURN n")
         expected_result = [[empty_node]]
+        # The node originally had 2 properties, 'name' and 'city_name'
         self.env.assertEqual(result.properties_set, 2)
         self.env.assertEqual(result.result_set, expected_result)
 
-    # Set the entity's properties to an empty map
+    # Update the entity's properties by setting a specific property and merging property maps
     def test07_update_property_map(self):
         node = Node(properties={"v": 1, "v2": 2})
         result = graph.query("MATCH (n) SET n.v = 1, n += {v2: 2} RETURN n")

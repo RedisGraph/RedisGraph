@@ -33,7 +33,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->records = NULL;
 	op->updates = NULL;
-	op->updates_commited = false;
+	op->updates_committed = false;
 	op->update_ctxs = update_exps;
 	op->gc = QueryCtx_GetGraphCtx();
 
@@ -41,17 +41,14 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
-	raxIterator it;
-	raxStart(&it, update_exps);
-	raxSeek(&it, "^", NULL, 0);
+	raxStart(&op->it, update_exps);
+	raxSeek(&op->it, "^", NULL, 0);
 	// Iterate over all update expressions
-	while(raxNext(&it)) {
-		char *alias = (char *)it.key;
-		EntityUpdateEvalCtx *ctx = it.data;
+	while(raxNext(&op->it)) {
+		EntityUpdateEvalCtx *ctx = op->it.data;
 		// Set the record index for every entity modified by this operation
-		ctx->record_idx = OpBase_Modifies((OpBase *)op, alias);
+		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
 	}
-	raxStop(&it);
 
 	return (OpBase *)op;
 }
@@ -70,19 +67,17 @@ static Record UpdateConsume(OpBase *opBase) {
 	Record r;
 
 	// Updates already performed.
-	if(op->updates_commited) return _handoff(op);
+	if(op->updates_committed) return _handoff(op);
 
 	while((r = OpBase_Consume(child))) {
 		Record_PersistScalars(r);
 
 		// Evaluate update expressions.
-		raxIterator it;
-		raxStart(&it, op->update_ctxs);
-		raxSeek(&it, "^", NULL, 0);
-		while(raxNext(&it)) {
-			EvalEntityUpdates(op->gc, &op->updates, r, (char *)it.key, it.data, true);
+		raxSeek(&op->it, "^", NULL, 0);
+		while(raxNext(&op->it)) {
+			EntityUpdateEvalCtx *ctx = op->it.data;
+			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true);
 		}
-		raxStop(&it);
 
 		op->records = array_append(op->records, r);
 	}
@@ -98,7 +93,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	// Release lock.
 	QueryCtx_UnlockCommit(opBase);
 
-	op->updates_commited = true;
+	op->updates_committed = true;
 	return _handoff(op);
 }
 
@@ -112,6 +107,9 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
+	array_free(op->updates);
+	op->updates = NULL;
+	op->updates_committed = false;
 	return OP_OK;
 }
 
@@ -119,7 +117,6 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->updates) {
-		// TODO adequate?
 		array_free(op->updates);
 		op->updates = NULL;
 	}
@@ -136,5 +133,7 @@ static void UpdateFree(OpBase *ctx) {
 		array_free(op->records);
 		op->records = NULL;
 	}
+
+	raxStop(&op->it);
 }
 

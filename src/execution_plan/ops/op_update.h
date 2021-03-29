@@ -17,9 +17,10 @@ typedef struct {
 	ResultSetStatistics *stats;
 
 	rax *update_ctxs;               // Entities to update and their expressions.
+	raxIterator it;                 // Iterator for traversing update contexts.
 	PendingUpdateCtx *updates;      // Enqueued updates
 	Record *records;                // Updated records, used only when query hands off records after updates.
-	bool updates_commited;          // True if we've already committed updates and are now in handoff mode.
+	bool updates_committed;          // True if we've already committed updates and are now in handoff mode.
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps);

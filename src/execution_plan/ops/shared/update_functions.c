@@ -18,9 +18,6 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 	Attribute_ID  attr_id    =  update->attr_id;
 	SIValue       new_value  =  update->new_value;
 
-	// If this entity has been deleted, perform no updates and return early.
-	if(GraphEntity_IsDeleted(ge)) goto cleanup;
-
 	// Handle the case in which we are deleting all properties.
 	if(attr_id == ATTRIBUTE_ALL) return GraphEntity_ClearProperties(ge);
 
@@ -37,7 +34,6 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 		res = GraphEntity_SetProperty(ge, attr_id, new_value);
 	}
 
-cleanup:
 	SIValue_Free(new_value);
 	return res;
 }
@@ -46,24 +42,35 @@ cleanup:
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats, PendingUpdateCtx *updates) {
 	uint update_count = array_len(updates);
 	uint properties_set = 0;
+	bool reindex = false;
+
+	// Return early if no updates are enqueued
+	if(update_count == 0) return;
+	// All pending updates refer to the same entity.
+	// If that entity has been deleted, perform no updates and return early.
+	if(GraphEntity_IsDeleted(updates[0].ge)) return;
+
 	for(uint i = 0; i < update_count; i++) {
 		PendingUpdateCtx *update = updates + i;
+
 		// Update the property on the graph entity.
 		properties_set += _UpdateEntity(update);
 
-		// Update index for node entities if indexed fields have been modified.
-		if(update->update_index) {
-			Schema *s = GraphContext_GetSchemaByID(gc, update->label_id, SCHEMA_NODE);
-			// Introduce updated entity to index.
-			Schema_AddNodeToIndices(s, (Node *)update->ge);
-		}
+		reindex |= update->update_index;
+	}
+
+	// Update index for node entities if indexed fields have been modified.
+	if(reindex) {
+		Schema *s = GraphContext_GetSchemaByID(gc, updates[0].label_id, SCHEMA_NODE);
+		// Introduce updated entity to index.
+		Schema_AddNodeToIndices(s, (Node *)updates[0].ge);
 	}
 
 	if(stats) stats->properties_set += properties_set;
 }
 
-void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, Record r, char *alias,
-					   EntityUpdateEvalCtx *ctx, bool allow_null) {
+void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Record r,
+					   const EntityUpdateEvalCtx *ctx, bool allow_null) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
 	const char *label = NULL;
@@ -77,12 +84,12 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, Record r, c
 	// Make sure we're updating either a node or an edge.
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 		ErrorCtx_RaiseRuntimeException("Update error: alias '%s' did not resolve to a graph entity",
-									   alias);
+									   ctx->alias);
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
-	if(t == REC_TYPE_NODE) node_update = true;
+	node_update = (t == REC_TYPE_NODE);
 
 	// If the entity is a node, set its label if possible.
 	if(node_update) {
@@ -113,7 +120,8 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, Record r, c
 	uint exp_count = array_len(ctx->properties);
 	for(uint i = 0; i < exp_count; i++) {
 		bool update_index = false;
-		SIValue new_value = AR_EXP_Evaluate(ctx->properties[i].value, r);
+		PropertySetCtx property = ctx->properties[i];
+		SIValue new_value = AR_EXP_Evaluate(property.value, r);
 
 		SIType accepted_properties = SI_VALID_PROPERTY_VALUE;
 		// If we're converting a SET clause, NULL is acceptable as it indicates a deletion.
@@ -125,7 +133,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, Record r, c
 			break;
 		}
 
-		Attribute_ID attr_id = ctx->properties[i].id;
+		Attribute_ID attr_id = property.id;
 		// Determine whether we must update the index for this update.
 		if(node_update && label_id != GRAPH_NO_LABEL) {
 			// If the (label:attribute) combination has an index, take note.

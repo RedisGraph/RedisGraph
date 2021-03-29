@@ -169,6 +169,8 @@ class testIndexUpdatesFlow(FlowTestsBase):
 
         # Query the index for the entity
         query = """MATCH (a:NEW {v: 5}) RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Index Scan", plan)
         result = redis_graph.query(query)
         # No entities should be returned
         expected_result = []

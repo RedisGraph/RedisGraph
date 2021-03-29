@@ -25,6 +25,8 @@ typedef struct {
 	Record *output_records;           // Records to be emitted by this operation.
 	rax *on_match;                    // Updates to be performed on a successful match.
 	rax *on_create;                   // Updates to be performed on creation.
+	raxIterator on_match_it;          // Iterator for traversing ON MATCH update contexts.
+	raxIterator on_create_it;         // Iterator for traversing ON CREATE update contexts.
 	ResultSetStatistics *stats;       // Required for tracking statistics updates in ON MATCH.
 } OpMerge;
 

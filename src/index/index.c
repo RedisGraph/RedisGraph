@@ -130,7 +130,6 @@ void Index_IndexNode(Index *idx, const Node *n) {
 
 		SIType t = SI_TYPE(*v);
 
-		doc_field_count++;
 		if(idx->type == IDX_FULLTEXT) {
 			// Value must be of type string.
 			if(t == T_STRING) {
@@ -139,6 +138,8 @@ void Index_IndexNode(Index *idx, const Node *n) {
 												  v->stringval,
 												  strlen(v->stringval),
 												  RSFLDTYPE_FULLTEXT);
+			} else {
+				continue;
 			}
 		} else {
 			if(t == T_STRING) {
@@ -155,12 +156,15 @@ void Index_IndexNode(Index *idx, const Node *n) {
 				continue;
 			}
 		}
+		doc_field_count++;
 	}
 
 	if(doc_field_count > 0) {
 		RediSearch_SpecAddDocument(rsIdx, doc);
 	} else {
 		RediSearch_FreeDocument(doc);
+		// Failed to match any indexed properties, remove the node from
+		// the index in case we've deleted an indexed property.
 		Index_RemoveNode(idx, n);
 	}
 }

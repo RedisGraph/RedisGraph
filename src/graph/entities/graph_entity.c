@@ -57,6 +57,9 @@ int GraphEntity_ClearProperties(GraphEntity *e) {
 		SIValue_Free(e->entity->properties[i].value);
 	}
 	e->entity->prop_count = 0;
+	// Free and NULL-set the properties bag.
+	rm_free(e->entity->properties);
+	e->entity->properties = NULL;
 
 	return prop_count;
 }

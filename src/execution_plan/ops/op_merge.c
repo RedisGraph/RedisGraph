@@ -25,26 +25,25 @@ static void MergeFree(OpBase *opBase);
 // ON MATCH / ON CREATE logic
 //------------------------------------------------------------------------------
 // Apply a set of updates to the given records.
-static void _UpdateProperties(ResultSetStatistics *stats, rax *updates,
+static void _UpdateProperties(ResultSetStatistics *stats, raxIterator updates,
 							  Record *records, uint record_count) {
-	ASSERT(updates != NULL && record_count > 0);
+	ASSERT(record_count > 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Lock everything.
 	QueryCtx_LockForCommit();
 
-	PendingUpdateCtx *pending_updates = array_new(PendingUpdateCtx, raxSize(updates));
+	PendingUpdateCtx *pending_updates = array_new(PendingUpdateCtx, record_count);
 	for(uint i = 0; i < record_count; i ++) {  // For each record to update
 		Record r = records[i];
 		// Evaluate update expressions.
-		raxIterator it;
-		raxStart(&it, updates);
-		raxSeek(&it, "^", NULL, 0);
-		while(raxNext(&it)) {
-			EvalEntityUpdates(gc, &pending_updates, r, (char *)it.key, it.data, false);
+		raxSeek(&updates, "^", NULL, 0);
+		while(raxNext(&updates)) {
+			EntityUpdateEvalCtx *ctx = updates.data;
+			EvalEntityUpdates(gc, &pending_updates, r, ctx, false);
+			if(array_len(pending_updates) == 0) continue;
 			CommitUpdates(gc, stats, pending_updates);
-			array_clear(pending_updates); // TODO freeing required?
+			array_clear(pending_updates);
 		}
-		raxStop(&it);
 	}
 	array_free(pending_updates);
 }
@@ -54,6 +53,19 @@ static void _UpdateProperties(ResultSetStatistics *stats, rax *updates,
 //------------------------------------------------------------------------------
 static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
+}
+
+static void _InitializeUpdates(OpMerge *op, rax *updates, raxIterator *it) {
+	// If we have ON MATCH / ON CREATE directives, set the appropriate record IDs of entities to be updated.
+	raxStart(it, updates);
+	raxSeek(it, "^", NULL, 0);
+	// Iterate over all expressions
+	while(raxNext(it)) {
+		EntityUpdateEvalCtx *ctx = it->data;
+		// Set the record index for every entity modified by this operation
+		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
+	}
+
 }
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
@@ -68,35 +80,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
 				MergeFree, true, plan);
 
-	if(op->on_match) {
-		// If we have ON MATCH directives, set the appropriate record IDs of entities to be updated.
-		raxIterator it;
-		raxStart(&it, op->on_match);
-		raxSeek(&it, "^", NULL, 0);
-		// Iterate over all ON MATCH expressions
-		while(raxNext(&it)) {
-			char *alias = (char *)it.key;
-			EntityUpdateEvalCtx *ctx = it.data;
-			// Set the record index for every entity modified by this operation
-			ctx->record_idx = OpBase_Modifies((OpBase *)op, alias);
-		}
-		raxStop(&it);
-	}
-
-	if(op->on_create) {
-		// If we have ON CREATE directives, set the appropriate record IDs of entities to be updated.
-		raxIterator it;
-		raxStart(&it, op->on_create);
-		raxSeek(&it, "^", NULL, 0);
-		// Iterate over all ON CREATE expressions
-		while(raxNext(&it)) {
-			char *alias = (char *)it.key;
-			EntityUpdateEvalCtx *ctx = it.data;
-			// Set the record index for every entity modified by this operation
-			ctx->record_idx = OpBase_Modifies((OpBase *)op, alias);
-		}
-		raxStop(&it);
-	}
+	if(op->on_match) _InitializeUpdates(op, op->on_match, &op->on_match_it);
+	if(op->on_create) _InitializeUpdates(op, op->on_create, &op->on_create_it);
 
 	return (OpBase *)op;
 }
@@ -283,14 +268,14 @@ static Record MergeConsume(OpBase *opBase) {
 			}
 			// If we are setting properties with ON CREATE, execute updates on the just-added Records.
 			if(op->on_create) {
-				_UpdateProperties(op->stats, op->on_create, op->output_records + match_count, create_count);
+				_UpdateProperties(op->stats, op->on_create_it, op->output_records + match_count, create_count);
 			}
 		}
 	}
 
 	// If we are setting properties with ON MATCH, execute all pending updates.
 	if(op->on_match && match_count > 0)
-		_UpdateProperties(op->stats, op->on_match, op->output_records, match_count);
+		_UpdateProperties(op->stats, op->on_match_it, op->output_records, match_count);
 
 	QueryCtx_UnlockCommit(&op->op); // Release the lock.
 
@@ -302,7 +287,8 @@ static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 	rax *on_match = NULL;
 	rax *on_create = NULL;
-	if(op->on_match) on_match = raxCloneWithCallback(op->on_match, (void *(*)(void *))UpdateCtx_Clone);
+	if(op->on_match) on_match = raxCloneWithCallback(op->on_match,
+														 (void *(*)(void *))UpdateCtx_Clone);
 	if(op->on_create) on_create = raxCloneWithCallback(op->on_create,
 														   (void *(*)(void *))UpdateCtx_Clone);
 	return NewMergeOp(plan, on_match, on_create);
@@ -331,11 +317,13 @@ static void MergeFree(OpBase *opBase) {
 	if(op->on_match) {
 		raxFreeWithCallback(op->on_match, (void(*)(void *))UpdateCtx_Free);
 		op->on_match = NULL;
+		raxStop(&op->on_match_it);
 	}
 
 	if(op->on_create) {
 		raxFreeWithCallback(op->on_create, (void(*)(void *))UpdateCtx_Free);
 		op->on_create = NULL;
+		raxStop(&op->on_create_it);
 	}
 }
 

@@ -38,14 +38,6 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 	return new_node;
 }
 
-EntityUpdateEvalCtx *_NewUpdateCtx(UPDATE_MODE mode, uint prop_count) {
-	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
-	ctx->mode = mode;
-	ctx->properties = array_new(PropertySetCtx, prop_count);
-
-	return ctx;
-}
-
 static void _UpdateCtx_AddProperty(GraphContext *gc, EntityUpdateEvalCtx *ctx,
 								   const cypher_astnode_t *set_item) {
 	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
@@ -74,12 +66,13 @@ static void _Update_SetProperty(GraphContext *gc, rax *updates, const cypher_ast
 	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(ast_prop);
 	ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
 	const char *alias = cypher_ast_identifier_get_name(prop_expr);
+	int len = strlen(alias);
 
 	// Retrieve or instantiate an update context
-	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, strlen(alias) + 1);
+	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
-		ctx = _NewUpdateCtx(UPDATE_MERGE, 1);
-		raxInsert(updates, (unsigned char *)alias, strlen(alias) + 1, ctx, NULL);
+		ctx = UpdateCtx_New(UPDATE_MERGE, 1, alias);
+		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	}
 
 	// Add property to update context
@@ -126,12 +119,13 @@ static void _Update_MergePropertyMap(GraphContext *gc, rax *updates,
 		return;
 	}
 	uint count = cypher_ast_map_nentries(ast_map);
+	int len = strlen(alias);
 
 	// Retrieve or instantiate an update context
-	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, strlen(alias) + 1);
+	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
-		ctx = _NewUpdateCtx(UPDATE_MERGE, count);
-		raxInsert(updates, (unsigned char *)alias, strlen(alias) + 1, ctx, NULL);
+		ctx = UpdateCtx_New(UPDATE_MERGE, count, alias);
+		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	}
 
 	// Add all properties to update context
@@ -157,18 +151,16 @@ static void _Update_SetPropertyMap(GraphContext *gc, rax *updates,
 		return;
 	}
 	uint count = cypher_ast_map_nentries(ast_map);
+	int len = strlen(alias);
 
 	// Retrieve or instantiate an update context
-	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, strlen(alias) + 1);
+	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
-		ctx = _NewUpdateCtx(UPDATE_REPLACE, count);
-		raxInsert(updates, (unsigned char *)alias, strlen(alias) + 1, ctx, NULL);
+		ctx = UpdateCtx_New(UPDATE_REPLACE, count, alias);
+		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	} else {
 		// We have enqueued updates that will no longer be committed; clear them.
-		ctx->mode = UPDATE_REPLACE;
-		uint count = array_len(ctx->properties);
-		for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
-		array_clear(ctx->properties);
+		UpdateCtx_Clear(ctx, UPDATE_REPLACE);
 	}
 
 	// Add all properties to update context
@@ -178,10 +170,13 @@ static void _Update_SetPropertyMap(GraphContext *gc, rax *updates,
 static void _ConvertSetItem(GraphContext *gc, rax *updates, const cypher_astnode_t *set_item) {
 	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
 	if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
+		// MATCH (a) SET a = {v: 5}
 		_Update_SetPropertyMap(gc, updates, set_item);
 	} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
+		// MATCH (a) SET a += {v: 5}
 		_Update_MergePropertyMap(gc, updates, set_item);
 	} else if(type == CYPHER_AST_SET_PROPERTY) {
+		// MATCH (a) SET a.v = 5
 		_Update_SetProperty(gc, updates, set_item);
 	} else {
 		ASSERT(false);

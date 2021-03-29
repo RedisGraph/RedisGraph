@@ -444,7 +444,7 @@ GRAPH.QUERY DEMO_GRAPH
 SET n = {age: 33, name: 'Bob'}"
 ```
 
-Using `=` in this way replaces all of the entity's previous properties, while `+=` will only override the properties it explicitly mentions.
+Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
 
 To remove a node's property, simply set property value to NULL.
 
