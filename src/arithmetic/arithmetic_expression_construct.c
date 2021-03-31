@@ -355,7 +355,10 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 
 	cypher_astnode_type_t t;
 	const cypher_astnode_t *identifier = cypher_ast_map_projection_get_expression(expr);
-	ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
+	if(cypher_astnode_type(identifier) != CYPHER_AST_IDENTIFIER) {
+		ErrorCtx_SetError("Encountered unhandled type when trying to read map projection identifier");
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 	const char *entity_name = cypher_ast_identifier_get_name(identifier);
 
 	const cypher_astnode_t *selector = NULL;

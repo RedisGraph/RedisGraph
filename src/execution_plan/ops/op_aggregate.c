@@ -54,7 +54,7 @@ static inline SIValue *_build_group_key(OpAggregate *op) {
 	SIValue *group_keys = rm_malloc(sizeof(SIValue) * op->key_count);
 
 	for(uint i = 0; i < op->key_count; i++) {
-		SIValue key = op->group_keys[i];
+		SIValue key = SI_TransferOwnership(&op->group_keys[i]);
 		SIValue_Persist(&key);
 		group_keys[i] = key;
 	}
@@ -100,7 +100,7 @@ static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
 /* Retrieves group under which given record belongs to,
  * creates group if one doesn't exists. */
 static Group *_GetGroup(OpAggregate *op, Record r) {
-	char *group_key_str;
+	char *group_key_str = NULL;
 	// Construct group key.
 	_ComputeGroupKey(op, r);
 
@@ -120,7 +120,7 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	}
 
 	// See if we can reuse last accessed group.
-	if(reuseLastAccessedGroup) return op->group;
+	if(reuseLastAccessedGroup) goto cleanup;
 
 	// Can't reuse last accessed group, lookup group by identifier key.
 	_ComputeGroupKeyStr(op, &group_key_str);
@@ -131,7 +131,10 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 		CacheGroupAdd(op->groups, group_key_str, op->group);
 	}
 cleanup:
-	rm_free(group_key_str);
+	for(uint i = 0; i < op->key_count; i++) {
+		SIValue_Free(op->group_keys[i]);
+	}
+	if(group_key_str) rm_free(group_key_str);
 	return op->group;
 }
 
