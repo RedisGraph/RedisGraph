@@ -61,6 +61,9 @@ void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc);
 // Mark graph as deleted, reduce graph reference count by 1.
 void GraphContext_Delete(GraphContext *gc);
 
+// Get graph name out of graph context.
+const char *GraphContext_GetName(const GraphContext *gc);
+
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);
 
