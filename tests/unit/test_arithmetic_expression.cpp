@@ -21,6 +21,7 @@ extern "C"
 #include "../../src/util/arr.h"
 #include "../../src/datatypes/array.h"
 #include <time.h>
+#include <math.h>
 
 // Declaration of function in execution_plan.h
 AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *ret_clause, AST *ast);
@@ -433,6 +434,54 @@ TEST_F(ArithmeticTest, SignTest) {
 
 	/* SIGN() */
 	query = "RETURN SIGN(NULL)";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+}
+
+TEST_F(ArithmeticTest, SqrtTest) {
+	SIValue expected;
+	const char *query;
+	AR_ExpNode *arExp;
+
+	/* SQRT(1) */
+	query = "RETURN sqrt(1)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(1);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* SQRT(0) */
+	query = "RETURN sqrt(0)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(0);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* SQRT(4) */
+	query = "RETURN sqrt(4)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(2);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* SQRT(-4) */
+	query = "RETURN sqrt(-4)";
+	arExp = _exp_from_query(query);
+	SIValue res = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_TRUE(isnan(SI_GET_NUMERIC(res)));
+	AR_EXP_Free(arExp);
+
+	/* SQRT(2.5) */
+	query = "RETURN sqrt(2.5)";
+	arExp = _exp_from_query(query);
+	res = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_NEAR(1.58, SI_GET_NUMERIC(res), 0.01);
+	AR_EXP_Free(arExp);
+
+	/* SQRT() */
+	query = "RETURN sqrt(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
 	_test_ar_func(arExp, expected);
