@@ -470,7 +470,7 @@ TEST_F(ArithmeticTest, SqrtTest) {
 	query = "RETURN sqrt(-4)";
 	arExp = _exp_from_query(query);
 	SIValue res = AR_EXP_Evaluate(arExp, NULL);
-	ASSERT_TRUE(isnan(SI_GET_NUMERIC(res)));
+	ASSERT_TRUE(std::isnan(SI_GET_NUMERIC(res)));
 	AR_EXP_Free(arExp);
 
 	/* SQRT(2.5) */
