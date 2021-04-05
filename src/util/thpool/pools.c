@@ -154,8 +154,27 @@ void ThreadPools_Destroy
 	ASSERT(_readers_thpool != NULL);
 	ASSERT(_writers_thpool != NULL);
 
+	// assuming we're running on Redis main thread
+	// meaning new commands aren't processed by the server
+	// drain thread pools
+	// waiting for worker threads to consume all pending work
+	thpool_wait(_bulk_thpool);
+	thpool_wait(_readers_thpool);
+	thpool_wait(_writers_thpool);
+
+	// validate no working threads
+	ASSERT(thpool_num_threads_working(_bulk_thpool) == 0);
+	ASSERT(thpool_num_threads_working(_readers_thpool) == 0);
+	ASSERT(thpool_num_threads_working(_writers_thpool) == 0);
+
+	// pools queues are empty
+	// it is safe to destroy the empty pools
 	thpool_destroy(_bulk_thpool);
 	thpool_destroy(_readers_thpool);
 	thpool_destroy(_writers_thpool);
+
+	_bulk_thpool = NULL;
+	_readers_thpool = NULL;
+	_writers_thpool = NULL;
 }
 
