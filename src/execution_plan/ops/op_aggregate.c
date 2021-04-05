@@ -131,6 +131,8 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 		CacheGroupAdd(op->groups, group_key_str, op->group);
 	}
 cleanup:
+	// Free the keys that have been computed during this function
+	// if they have not been used to build a new group.
 	for(uint i = 0; i < op->key_count; i++) {
 		SIValue_Free(op->group_keys[i]);
 	}

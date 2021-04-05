@@ -355,6 +355,8 @@ static AR_ExpNode *_AR_ExpFromMapProjection(const cypher_astnode_t *expr) {
 
 	cypher_astnode_type_t t;
 	const cypher_astnode_t *identifier = cypher_ast_map_projection_get_expression(expr);
+	// Return an error if the identifier is not a string literal, like 5 in:
+	// RETURN 5 {v: 'b'}
 	if(cypher_astnode_type(identifier) != CYPHER_AST_IDENTIFIER) {
 		ErrorCtx_SetError("Encountered unhandled type when trying to read map projection identifier");
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
