@@ -126,6 +126,15 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc) {
 	}
 }
 
+// returns the square root of a number
+SIValue AR_SQRT(SIValue *argv, int argc) {
+	SIValue arg = argv[0];
+	// return NULL if input is none numeric
+	if(!_validate_numeric(arg)) return SI_NullVal();
+	// return sqrt of input
+	return SI_DoubleVal(sqrt(SI_GET_NUMERIC(arg)));
+}
+
 void Register_NumericFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -187,6 +196,11 @@ void Register_NumericFuncs() {
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
 	func_desc = AR_FuncDescNew("tointeger", AR_TOINTEGER, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, (SI_NUMERIC | T_NULL));
+	func_desc = AR_FuncDescNew("sqrt", AR_SQRT, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 }
 

@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "./cmd_slowlog.h"
 #include "cmd_context.h"
 #include "../slow_log/slow_log.h"
 
