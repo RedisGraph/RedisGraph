@@ -101,6 +101,7 @@ static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
  * creates group if one doesn't exists. */
 static Group *_GetGroup(OpAggregate *op, Record r) {
 	char *group_key_str = NULL;
+	bool free_key_exps = true;
 	// Construct group key.
 	_ComputeGroupKey(op, r);
 
@@ -109,6 +110,8 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 		op->group = _CreateGroup(op, r);
 		Group_KeyStr(op->group, &group_key_str);
 		CacheGroupAdd(op->groups, group_key_str, op->group);
+		// Key expressions are owned by the new group and don't need to be freed.
+		free_key_exps = false;
 		goto cleanup;
 	}
 
@@ -129,12 +132,16 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 		// Group does not exists, create it.
 		op->group = _CreateGroup(op, r);
 		CacheGroupAdd(op->groups, group_key_str, op->group);
+		// Key expressions are owned by the new group and don't need to be freed.
+		free_key_exps = false;
 	}
 cleanup:
 	// Free the keys that have been computed during this function
 	// if they have not been used to build a new group.
-	for(uint i = 0; i < op->key_count; i++) {
-		SIValue_Free(op->group_keys[i]);
+	if(free_key_exps) {
+		for(uint i = 0; i < op->key_count; i++) {
+			SIValue_Free(op->group_keys[i]);
+		}
 	}
 	if(group_key_str) rm_free(group_key_str);
 	return op->group;
