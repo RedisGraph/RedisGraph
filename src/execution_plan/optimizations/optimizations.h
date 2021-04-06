@@ -20,6 +20,7 @@
 #include "./reduce_distinct.h"
 #include "./reduce_traversal.h"
 #include "./optimize_cartesian_product.h"
+#include "./filter_variable_length_edges.h"
 
 #endif
 

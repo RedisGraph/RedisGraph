@@ -105,3 +105,17 @@ class testVariableLengthTraversals(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['A', 'B']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test09_filtered_edges(self):
+        # Test traversals with filters on variable-length edges
+        query = """MATCH (a)-[* {connects: 'BC'}]->(b) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['B', 'C']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (a)-[e*]->(b) WHERE e.connects IN ['BC', 'CD'] RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['B', 'C'],
+                           ['B', 'D'],
+                           ['C', 'D']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -46,15 +46,15 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 		// Set the neighbor by following the edge in the correct directoin.
 		Node neighbor = GE_NEW_NODE();
 		switch(dir) {
-		case GRAPH_EDGE_DIR_OUTGOING:
-			Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
-			break;
-		case GRAPH_EDGE_DIR_INCOMING:
-			Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
-			break;
-		default:
-			ASSERT(false && "encountered unexpected traversal direction in AllPaths");
-			break;
+			case GRAPH_EDGE_DIR_OUTGOING:
+				Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
+				break;
+			case GRAPH_EDGE_DIR_INCOMING:
+				Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
+				break;
+			default:
+				ASSERT(false && "encountered unexpected traversal direction in AllPaths");
+				break;
 		}
 		// Add the node and edge to the frontier.
 		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
@@ -63,7 +63,8 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 }
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
-							 GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
+							 GRAPH_EDGE_DIR dir, uint minLen, uint maxLen,
+							 Record r, FT_FilterNode *ft, uint edge_idx) {
 	ASSERT(src != NULL);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
@@ -82,6 +83,9 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, i
 	ctx->neighbors = array_new(Edge, 32);
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 	ctx->dst = dst;
+	ctx->r = r;
+	ctx->ft = ft;
+	ctx->edge_idx = edge_idx;
 	return ctx;
 }
 
@@ -97,6 +101,18 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 			LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
 			Node frontierNode = frontierConnection.node;
 
+			/* If depth is 0 this is the source node, there is no leading edge to it.
+			 * For depth > 0 for each frontier node, there is a leading edge. */
+			if(depth > 0) {
+				if(ctx->ft) {
+					// If we are applying filters, update the Record with the current edge.
+					Record_AddEdge(ctx->r, ctx->edge_idx, frontierConnection.edge);
+					// Skip path if the edge doesn't satisfy the filter constraints.
+					if(FilterTree_applyFilters(ctx->ft, ctx->r) != FILTER_PASS) continue;
+				}
+				Path_AppendEdge(ctx->path, frontierConnection.edge);
+			}
+
 			/* See if frontier is already on path,
 			 * it is OK for a path to contain an entity twice,
 			 * such as in the case of a cycle, but in such case we
@@ -106,10 +122,6 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 
 			// Add frontier to path.
 			Path_AppendNode(ctx->path, frontierNode);
-
-			/* If depth is 0 this is the source node, there is no leading edge to it.
-			 * For depth > 0 for each frontier node, there is a leading edge. */
-			if(depth > 0) Path_AppendEdge(ctx->path, frontierConnection.edge);
 
 			// Update path depth.
 			depth++;

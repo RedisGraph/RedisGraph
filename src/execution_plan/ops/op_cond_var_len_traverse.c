@@ -78,6 +78,10 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
+inline void CondVarLenTraverseOp_Filter(CondVarLenTraverse *op, FT_FilterNode *ft) {
+	op->ft = ft;
+}
+
 OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	ASSERT(g != NULL);
 	ASSERT(ae != NULL);
@@ -86,6 +90,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->g = g;
 	op->ae = ae;
 	op->r = NULL;
+	op->ft = NULL;
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
 	op->edgeRelationTypes = NULL;
@@ -146,7 +151,8 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 		AllPathsCtx_Free(op->allPathsCtx);
 		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
-										  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
+										  op->edgeRelationCount, op->traverseDir, op->minHops,
+										  op->maxHops, op->r, op->ft, op->edgesIdx);
 
 	}
 
@@ -204,6 +210,11 @@ static void CondVarLenTraverseFree(OpBase *ctx) {
 	if(op->allPathsCtx) {
 		AllPathsCtx_Free(op->allPathsCtx);
 		op->allPathsCtx = NULL;
+	}
+
+	if(op->ft) {
+		FilterTree_Free(op->ft);
+		op->ft = NULL;
 	}
 }
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -15,12 +15,12 @@
  * array containing all nodes discovered at a specific level.
  * */
 
-#ifndef _ALL_PATHS_H_
-#define _ALL_PATHS_H_
+#pragma once
 
 #include "../datatypes/path/path.h"
 #include "../graph/graph.h"
 #include "../graph/entities/node.h"
+#include "../filter_tree/filter_tree.h"
 
 typedef struct {
 	Node node;
@@ -35,9 +35,12 @@ typedef struct {
 	int *relationIDs;           // edge type(s) to traverse.
 	int relationCount;          // length of relationIDs.
 	GRAPH_EDGE_DIR dir;         // traverse direction.
-	unsigned int minLen;        // Path minimum length.
-	unsigned int maxLen;        // Path max length.
+	uint minLen;                // Path minimum length.
+	uint maxLen;                // Path max length.
 	Node *dst;                  // Destination node, defaults to NULL in case of general all paths execution.
+	Record r;                   // Record the traversal is being performed upon, only used for edge filtering.
+	FT_FilterNode *ft;          // FilterTree of predicates to be applied to traversed edges.
+	uint edge_idx;              // Record index of the edge alias, only used for edge filtering.
 } AllPathsCtx;
 
 // Create a new All paths context object.
@@ -48,8 +51,11 @@ AllPathsCtx *AllPathsCtx_New(
 	int *relationIDs,    // Edge type(s) on which we'll traverse.
 	int relationCount,   // Length of relationIDs.
 	GRAPH_EDGE_DIR dir,  // Traversal direction.
-	unsigned int minLen, // Path length must contain be at least minLen + 1 nodes.
-	unsigned int maxLen  // Path length must not exceed maxLen + 1 nodes.
+	uint minLen,         // Path length must contain be at least minLen + 1 nodes.
+	uint maxLen,         // Path length must not exceed maxLen + 1 nodes.
+	Record r,            // Record the traversal is being performed upon.
+	FT_FilterNode *ft,   // FilterTree of predicates to be applied to traversed edges.
+	uint edge_idx        // Record index of the edge alias.
 );
 
 // Tries to produce a new path from given context
@@ -59,4 +65,3 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx);
 // Free context object.
 void AllPathsCtx_Free(AllPathsCtx *ctx);
 
-#endif
