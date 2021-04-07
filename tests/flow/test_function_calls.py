@@ -375,3 +375,10 @@ class testFunctionCallsFlow(FlowTestsBase):
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, {"type": "relationship", "id": 12, "relationship": "works_with", "properties": {}, "start": start, "end": end})
 
+    # Memory should be freed properly when the key values are heap-allocated.
+    def test18_allocated_keys(self):
+        query = """UNWIND ['str1', 'str1', 'str2', 'str1'] AS key UNWIND [1, 2, 3] as agg RETURN toUpper(key) AS key, collect(DISTINCT agg) ORDER BY key"""
+        actual_result = graph.query(query)
+        expected_result = [['STR1', [1, 2, 3]],
+                           ['STR2', [1, 2, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
