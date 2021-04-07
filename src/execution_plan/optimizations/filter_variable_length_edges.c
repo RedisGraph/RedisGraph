@@ -4,16 +4,23 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "filter_variable_length_edges.h"
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_cond_var_len_traverse.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
+/* The filterVariableLengthEdges optimization finds variable-length traversal ops
+ * in the op tree that are immediately followed by filter ops and, if the filter
+ * op(s) apply predicates directly to the traversed edge, migrates those predicates
+ * into the traversal itself.
+ *
+ * This allows us to only expand paths on which the traversed edges pass the
+ * filter predicates, rather than applying them after discovering all paths. */
+
 // Returns true if the given filter operates exclusively on the traversed edge
 // of a CondVarLenTraverse op
-static bool _filterTraversedEdge(FT_FilterNode *ft, const char *src,
-		const char *edge, const char *dest) {
+static bool _applicableFilter(FT_FilterNode *ft, const char *src,
+							  const char *edge, const char *dest) {
 	bool match = false;
 
 	// Collect all modified aliases in the FilterTree.
@@ -26,8 +33,8 @@ static bool _filterTraversedEdge(FT_FilterNode *ft, const char *src,
 		 * This avoids false positives on TOPATH expressions that collect all aliases in a path
 		 * and rejects filters between an edge property and a traversal's src/dest property,
 		 * which will not be available during traversals. */
-		match = ((raxFind(filtered, (unsigned char *)src, strlen(src)) == raxNotFound) ||
-				 (raxFind(filtered, (unsigned char *)dest, strlen(dest)) == raxNotFound));
+		match = (!(raxFind(filtered, (unsigned char *)src, strlen(src)) != raxNotFound) &&
+				 !(raxFind(filtered, (unsigned char *)dest, strlen(dest)) != raxNotFound));
 	}
 
 	raxFree(filtered);
@@ -35,7 +42,7 @@ static bool _filterTraversedEdge(FT_FilterNode *ft, const char *src,
 }
 
 static void _filterVariableLengthEdges(ExecutionPlan *plan,
-		CondVarLenTraverse *traverse_op) {
+									   CondVarLenTraverse *traverse_op) {
 	ASSERT(plan != NULL);
 	ASSERT(traverse_op != NULL);
 
@@ -44,7 +51,7 @@ static void _filterVariableLengthEdges(ExecutionPlan *plan,
 	const char *src    = AlgebraicExpression_Source(traverse_op->ae);
 	const char *edge   = AlgebraicExpression_Edge(traverse_op->ae);
 	const char *dest   = AlgebraicExpression_Destination(traverse_op->ae);
-	OpFilter **filters = array_new(OpFilter*, 0);
+	OpFilter **filters = array_new(OpFilter *, 0);
 
 	// collect applicable filters
 	while(parent && parent->type == OPType_FILTER) {
@@ -52,7 +59,7 @@ static void _filterVariableLengthEdges(ExecutionPlan *plan,
 		OpFilter *op_filter = (OpFilter *)parent;
 		FT_FilterNode *ft = op_filter->filterTree;
 		// check if the filter is applied to the traversed edge
-		if(_filterTraversedEdge(ft, src, edge, dest)) {
+		if(_applicableFilter(ft, src, edge, dest)) {
 			filters = array_append(filters, op_filter);
 		}
 
@@ -77,9 +84,9 @@ static void _filterVariableLengthEdges(ExecutionPlan *plan,
 		if(root == NULL) {
 			root = ft;
 		} else {
-			FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
-			FilterTree_AppendLeftChild(and, root);
-			FilterTree_AppendRightChild(and, ft);
+			FT_FilterNode * and = FilterTree_CreateConditionFilter(OP_AND);
+			FilterTree_AppendLeftChild( and, root);
+			FilterTree_AppendRightChild( and, ft);
 			root = and;
 		}
 
@@ -96,10 +103,11 @@ void filterVariableLengthEdges(ExecutionPlan *plan) {
 
 	// Collect all variable-length traversals
 	const OPType types[] = {OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-		OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO};
+							OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO
+						   };
 
 	var_len_traverse_ops = ExecutionPlan_CollectOpsMatchingType(plan->root,
-			types, 2);
+																types, 2);
 
 	uint count = array_len(var_len_traverse_ops);
 	for(uint i = 0; i < count; i ++) {

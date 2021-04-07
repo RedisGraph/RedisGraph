@@ -79,7 +79,7 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 }
 
 inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
-		FT_FilterNode *ft) {
+										   FT_FilterNode *ft) {
 	ASSERT(op != NULL);
 	ASSERT(ft != NULL);
 	ASSERT(op->ft == NULL);
@@ -120,11 +120,13 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 	OpBase *child = op->op.children[0];
-	bool reused_record = true;
 	Path *p = NULL;
 
+	// If we're returning a new path from a previously-used Record,
+	// free the previous path to avoid a memory leak.
+	if(op->r && op->edgesIdx >= 0) Record_FreeEntry(op->r, op->edgesIdx);
+
 	while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
-		reused_record = false;
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
@@ -164,13 +166,8 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	Node n = Path_Head(p);
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
-	if(op->edgesIdx >= 0) {
-		// If we're returning a new path from a previously-used Record,
-		// free the previous path to avoid a memory leak.
-		if(reused_record) SIValue_Free(Record_Get(op->r, op->edgesIdx));
-		// Add new path to Record.
-		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
-	}
+	// Add new path to Record.
+	if(op->edgesIdx >= 0) Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
 
 	return OpBase_CloneRecord(op->r);
 }

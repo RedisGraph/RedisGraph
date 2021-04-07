@@ -95,64 +95,64 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 
 Node *Record_GetNode(const Record r, int idx) {
 	switch(r->entries[idx].type) {
-	case REC_TYPE_NODE:
-		return &(r->entries[idx].value.n);
-	case REC_TYPE_UNKNOWN:
-		return NULL;
-	case REC_TYPE_SCALAR:
-		// Null scalar values are expected here; otherwise fall through.
-		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
-	default:
-		ASSERT("encountered unexpected type in Record; expected Node" && false);
-		return NULL;
+		case REC_TYPE_NODE:
+			return &(r->entries[idx].value.n);
+		case REC_TYPE_UNKNOWN:
+			return NULL;
+		case REC_TYPE_SCALAR:
+			// Null scalar values are expected here; otherwise fall through.
+			if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+		default:
+			ASSERT("encountered unexpected type in Record; expected Node" && false);
+			return NULL;
 	}
 }
 
 Edge *Record_GetEdge(const Record r, int idx) {
 	switch(r->entries[idx].type) {
-	case REC_TYPE_EDGE:
-		return &(r->entries[idx].value.e);
-	case REC_TYPE_UNKNOWN:
-		return NULL;
-	case REC_TYPE_SCALAR:
-		// Null scalar values are expected here; otherwise fall through.
-		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
-	default:
-		ASSERT("encountered unexpected type in Record; expected Edge" && false);
-		return NULL;
+		case REC_TYPE_EDGE:
+			return &(r->entries[idx].value.e);
+		case REC_TYPE_UNKNOWN:
+			return NULL;
+		case REC_TYPE_SCALAR:
+			// Null scalar values are expected here; otherwise fall through.
+			if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+		default:
+			ASSERT("encountered unexpected type in Record; expected Edge" && false);
+			return NULL;
 	}
 }
 
 SIValue Record_Get(Record r, int idx) {
 	Entry e = r->entries[idx];
 	switch(e.type) {
-	case REC_TYPE_NODE:
-		return SI_Node(Record_GetNode(r, idx));
-	case REC_TYPE_EDGE:
-		return SI_Edge(Record_GetEdge(r, idx));
-	case REC_TYPE_SCALAR:
-		return r->entries[idx].value.s;
-	case REC_TYPE_UNKNOWN:
-		return SI_NullVal();
-	default:
-		ASSERT(false);
-		return SI_NullVal();
+		case REC_TYPE_NODE:
+			return SI_Node(Record_GetNode(r, idx));
+		case REC_TYPE_EDGE:
+			return SI_Edge(Record_GetEdge(r, idx));
+		case REC_TYPE_SCALAR:
+			return r->entries[idx].value.s;
+		case REC_TYPE_UNKNOWN:
+			return SI_NullVal();
+		default:
+			ASSERT(false);
+			return SI_NullVal();
 	}
 }
 
 void Record_Remove(Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_UNKNOWN; 
+	r->entries[idx].type = REC_TYPE_UNKNOWN;
 }
 
 GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 	Entry e = r->entries[idx];
 	switch(e.type) {
-	case REC_TYPE_NODE:
-		return (GraphEntity *)Record_GetNode(r, idx);
-	case REC_TYPE_EDGE:
-		return (GraphEntity *)Record_GetEdge(r, idx);
-	default:
-		ASSERT(false && "encountered unexpected type when trying to retrieve graph entity");
+		case REC_TYPE_NODE:
+			return (GraphEntity *)Record_GetNode(r, idx);
+		case REC_TYPE_EDGE:
+			return (GraphEntity *)Record_GetEdge(r, idx);
+		default:
+			ASSERT(false && "encountered unexpected type when trying to retrieve graph entity");
 	}
 	return NULL;
 }
@@ -160,15 +160,15 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 void Record_Add(Record r, int idx, SIValue v) {
 	ASSERT(idx < Record_length(r));
 	switch(SI_TYPE(v)) {
-	case T_NODE:
-		Record_AddNode(r, idx, *(Node *)v.ptrval);
-		break;
-	case T_EDGE:
-		Record_AddEdge(r, idx, *(Edge *)v.ptrval);
-		break;
-	default:
-		Record_AddScalar(r, idx, v);
-		break;
+		case T_NODE:
+			Record_AddNode(r, idx, *(Node *)v.ptrval);
+			break;
+		case T_EDGE:
+			Record_AddEdge(r, idx, *(Edge *)v.ptrval);
+			break;
+		default:
+			Record_AddScalar(r, idx, v);
+			break;
 	}
 }
 
@@ -243,13 +243,16 @@ unsigned long long Record_Hash64(const Record r) {
 	return hash;
 }
 
+inline void Record_FreeEntry(Record r, int idx) {
+	if(r->entries[idx].type == REC_TYPE_SCALAR) SIValue_Free(r->entries[idx].value.s);
+	r->entries[idx].type = REC_TYPE_UNKNOWN;
+}
+
 void Record_FreeEntries(Record r) {
 	uint length = Record_length(r);
 	for(uint i = 0; i < length; i++) {
 		// Free any allocations held by this Record.
-		if(r->entries[i].type == REC_TYPE_SCALAR) {
-			SIValue_Free(r->entries[i].value.s);
-		}
+		Record_FreeEntry(r, i);
 	}
 }
 
