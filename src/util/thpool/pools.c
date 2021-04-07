@@ -145,17 +145,3 @@ int ThreadPools_AddWorkBulkLoader
 	return thpool_add_work(_bulk_thpool, function_p, arg_p);
 }
 
-// destroy all thread pools
-void ThreadPools_Destroy
-(
-	void
-) {
-	ASSERT(_bulk_thpool != NULL);
-	ASSERT(_readers_thpool != NULL);
-	ASSERT(_writers_thpool != NULL);
-
-	thpool_destroy(_bulk_thpool);
-	thpool_destroy(_readers_thpool);
-	thpool_destroy(_writers_thpool);
-}
-
