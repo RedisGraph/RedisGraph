@@ -10,12 +10,15 @@
 #include "../ops/op_cond_var_len_traverse.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
-// Returns true if the given filter operates exclusively on the traversed edge of a CondVarLenTraverse op
-static bool _filterTraversedEdge(FT_FilterNode *ft, const char *src, const char *edge,
-								 const char *dest) {
+// Returns true if the given filter operates exclusively on the traversed edge
+// of a CondVarLenTraverse op
+static bool _filterTraversedEdge(FT_FilterNode *ft, const char *src,
+		const char *edge, const char *dest) {
 	bool match = false;
+
 	// Collect all modified aliases in the FilterTree.
 	rax *filtered = FilterTree_CollectModified(ft);
+
 	// Look up the edge alias in the alias map.
 	match = (raxFind(filtered, (unsigned char *)edge, strlen(edge)) != raxNotFound);
 	if(match) {
@@ -26,47 +29,82 @@ static bool _filterTraversedEdge(FT_FilterNode *ft, const char *src, const char 
 		match = ((raxFind(filtered, (unsigned char *)src, strlen(src)) == raxNotFound) ||
 				 (raxFind(filtered, (unsigned char *)dest, strlen(dest)) == raxNotFound));
 	}
+
 	raxFree(filtered);
 	return match;
 }
 
-static void _filterVariableLengthEdges(ExecutionPlan *plan, CondVarLenTraverse *traverse_op) {
-	// Retrieve the aliases of the traversed source, destination, and edge
-	const char *src = AlgebraicExpression_Source(traverse_op->ae);
-	const char *edge = AlgebraicExpression_Edge(traverse_op->ae);
-	const char *dest = AlgebraicExpression_Destination(traverse_op->ae);
+static void _filterVariableLengthEdges(ExecutionPlan *plan,
+		CondVarLenTraverse *traverse_op) {
+	ASSERT(plan != NULL);
+	ASSERT(traverse_op != NULL);
 
-	OpBase *parent = traverse_op->op.parent;
+	// retrieve the aliases of the traversed source, destination, and edge
+	OpBase *parent     = traverse_op->op.parent;
+	const char *src    = AlgebraicExpression_Source(traverse_op->ae);
+	const char *edge   = AlgebraicExpression_Edge(traverse_op->ae);
+	const char *dest   = AlgebraicExpression_Destination(traverse_op->ae);
+	OpFilter **filters = array_new(OpFilter*, 0);
+
+	// collect applicable filters
 	while(parent && parent->type == OPType_FILTER) {
-		OpBase *grandparent = parent->parent;  // Track the next op to visit in case we free parent.
-		OpFilter *filter = (OpFilter *)parent;
-		FT_FilterNode *ft = filter->filterTree;
-
-		// Check if the filter is applied to the traversed edge.
+		// track the next op to visit in case we free parent
+		OpFilter *op_filter = (OpFilter *)parent;
+		FT_FilterNode *ft = op_filter->filterTree;
+		// check if the filter is applied to the traversed edge
 		if(_filterTraversedEdge(ft, src, edge, dest)) {
-			// Embed the filter tree in the variable-length traversal.
-			CondVarLenTraverseOp_Filter(traverse_op, ft);
-			// NULL-set the filter tree to avoid a double free.
-			filter->filterTree = NULL;
-			// Free the replaced operation.
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-			OpBase_Free((OpBase *)filter);
+			filters = array_append(filters, op_filter);
 		}
-		// Advance.
-		parent = grandparent;
+
+		// advance
+		parent = parent->parent;
 	}
+
+	uint n = array_len(filters);
+
+	// concat filters using AND condition
+	FT_FilterNode *root = NULL;
+	for(uint i = 0; i < n; i++) {
+		OpFilter *filter_op = filters[i];
+		FT_FilterNode *ft = filter_op->filterTree;
+
+		// remove filter operation from execution plan
+		ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
+		// NULL-set the filter tree to avoid a double free
+		filter_op->filterTree = NULL;
+		OpBase_Free((OpBase *)filter_op);
+
+		if(root == NULL) {
+			root = ft;
+		} else {
+			FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
+			FilterTree_AppendLeftChild(and, root);
+			FilterTree_AppendRightChild(and, ft);
+			root = and;
+		}
+
+	}
+	array_free(filters);
+
+	// embed the filter tree in the variable-length traversal
+	if(root != NULL) CondVarLenTraverseOp_SetFilter(traverse_op, root);
 }
 
 void filterVariableLengthEdges(ExecutionPlan *plan) {
 	ASSERT(plan != NULL);
+	OpBase **var_len_traverse_ops = NULL;
 
 	// Collect all variable-length traversals
-	const OPType types[] = {OPType_CONDITIONAL_VAR_LEN_TRAVERSE, OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO};
-	OpBase **var_len_traverse_ops = ExecutionPlan_CollectOpsMatchingType(plan->root, types, 2);
+	const OPType types[] = {OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
+		OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO};
+
+	var_len_traverse_ops = ExecutionPlan_CollectOpsMatchingType(plan->root,
+			types, 2);
 
 	uint count = array_len(var_len_traverse_ops);
 	for(uint i = 0; i < count; i ++) {
-		_filterVariableLengthEdges(plan, (CondVarLenTraverse *)var_len_traverse_ops[i]);
+		CondVarLenTraverse *op = (CondVarLenTraverse *)var_len_traverse_ops[i];
+		_filterVariableLengthEdges(plan, op);
 	}
 
 	array_free(var_len_traverse_ops);

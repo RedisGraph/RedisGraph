@@ -78,7 +78,12 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
-inline void CondVarLenTraverseOp_Filter(CondVarLenTraverse *op, FT_FilterNode *ft) {
+inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
+		FT_FilterNode *ft) {
+	ASSERT(op != NULL);
+	ASSERT(ft != NULL);
+	ASSERT(op->ft == NULL);
+
 	op->ft = ft;
 }
 

@@ -38,5 +38,5 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op);
 
 // Set the FilterTree pointer of a CondVarLenTraverse operation.
-void CondVarLenTraverseOp_Filter(CondVarLenTraverse *op, FT_FilterNode *ft);
+void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op, FT_FilterNode *ft);
 
