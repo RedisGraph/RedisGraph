@@ -145,32 +145,3 @@ int ThreadPools_AddWorkBulkLoader
 	return thpool_add_work(_bulk_thpool, function_p, arg_p);
 }
 
-// destroy all thread pools
-void ThreadPools_Destroy
-(
-	void
-) {
-	ASSERT(_bulk_thpool != NULL);
-	ASSERT(_readers_thpool != NULL);
-	ASSERT(_writers_thpool != NULL);
-
-	// assuming redis-server is shutting down
-	// we're currently executing on redis main thread
-	// therefor writers will be deadlocked waiting for the GIL
-	// readers can complete, but what's the use?
-	// simply pause all threads
-	thpool_pause(_bulk_thpool);
-	thpool_pause(_readers_thpool);
-	thpool_pause(_writers_thpool);
-
-	// destroy pools with paused threads
-	// memory can leak but once again the process is killed
-	thpool_destroy(_bulk_thpool);
-	thpool_destroy(_readers_thpool);
-	thpool_destroy(_writers_thpool);
-
-	_bulk_thpool = NULL;
-	_readers_thpool = NULL;
-	_writers_thpool = NULL;
-}
-
