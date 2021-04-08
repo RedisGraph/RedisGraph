@@ -113,6 +113,9 @@ void FilterTree_Print(const FT_FilterNode *root);
  * components possible following the two rules above. */
 FT_FilterNode **FilterTree_SubTrees(FT_FilterNode *root);
 
+/* Combines filters usign AND conditions */
+FT_FilterNode *FilterTree_Combine(FT_FilterNode **filters, uint count);
+
 /* Verifies tree structure
  * a condition or predicate node can't be childless. */
 bool FilterTree_Valid(const FT_FilterNode *root);

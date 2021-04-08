@@ -127,6 +127,26 @@ void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 	}
 }
 
+// combine filters into a single filter tree using AND conditions
+// filters[0] AND filters[1] AND ... filters[count]
+FT_FilterNode *FilterTree_Combine(FT_FilterNode **filters, uint count) {
+	ASSERT(filters != NULL);
+
+	FT_FilterNode *root = NULL;
+
+	if(count > 0) {
+		root = filters[0];
+		for(uint i = 1; i < count; i++) {
+			FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
+			FilterTree_AppendLeftChild(and, root);
+			FilterTree_AppendRightChild(and, filters[i]);
+			root = and;
+		}
+	}
+
+	return root;
+}
+
 FT_FilterNode **FilterTree_SubTrees(FT_FilterNode *root) {
 	FT_FilterNode **sub_trees = array_new(FT_FilterNode *, 1);
 	_FilterTree_SubTrees(root, &sub_trees);
