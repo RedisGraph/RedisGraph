@@ -21,24 +21,26 @@
 // of a CondVarLenTraverse op
 static bool _applicableFilter(FT_FilterNode *ft, const char *src,
 							  const char *edge, const char *dest) {
-	bool match = false;
+	bool applicable = false;
 
 	// Collect all modified aliases in the FilterTree.
 	rax *filtered = FilterTree_CollectModified(ft);
 
 	// Look up the edge alias in the alias map.
-	match = (raxFind(filtered, (unsigned char *)edge, strlen(edge)) != raxNotFound);
-	if(match) {
+	applicable = (raxFind(filtered, (unsigned char *)edge, strlen(edge)) != raxNotFound);
+	if(applicable) {
 		/* Reject filter trees that contain either the source or destination node.
 		 * This avoids false positives on TOPATH expressions that collect all aliases in a path
 		 * and rejects filters between an edge property and a traversal's src/dest property,
 		 * which will not be available during traversals. */
-		match = (!(raxFind(filtered, (unsigned char *)src, strlen(src)) != raxNotFound) &&
-				 !(raxFind(filtered, (unsigned char *)dest, strlen(dest)) != raxNotFound));
+		applicable =
+			(raxFind(filtered, (unsigned char *)src, strlen(src)) == raxNotFound
+			 &&
+			 raxFind(filtered, (unsigned char *)dest, strlen(dest)) == raxNotFound);
 	}
 
 	raxFree(filtered);
-	return match;
+	return applicable;
 }
 
 static void _filterVariableLengthEdges(ExecutionPlan *plan,

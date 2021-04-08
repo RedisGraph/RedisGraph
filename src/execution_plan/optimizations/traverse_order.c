@@ -4,11 +4,12 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "optimizations.h"
 #include "../../config.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
+#include "../../filter_tree/filter_tree.h"
+#include "../../arithmetic/algebraic_expression.h"
 
 #define T 1           // Transpose penalty.
 #define L 2 * T       // Label score.
