@@ -1,16 +1,19 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "compact_filters.h"
 #include "../../RG.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
 #include "../execution_plan_build/execution_plan_modify.h"
+
+/* The compact filters optimizer scans an execution plan for filters that can be
+ * compressed. In case the filter is compressed into a final constant 'true' value,
+ * the filter operation will be removed from the execution plan. */
 
 // Try to compact a filter.
 static inline bool _compactFilter(OpBase *op) {
