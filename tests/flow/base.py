@@ -1,6 +1,11 @@
 import os
 import warnings
 
+#The default warnings.warn prints itself, this function should override the default behavior
+def _warning_formater(message, category, filename, lineno, file=None, line=None):
+    return '%s: %s\n' % (category.__name__, message)
+
+warnings.formatwarning = _warning_formater
 class FlowTestsBase(object):
 
     def _assert_equalish(self, a, b, e=0.05):
@@ -63,5 +68,5 @@ class FlowTestsBase(object):
     def _assert_run_time(self, actual_result, query_info):
             if actual_result.run_time_ms > query_info.max_run_time_ms:
                 warnings.warn('Maximum runtime for query \"%s\" was: %s, but should be %s' %
-                             (query_info.description, str(actual_result.run_time_ms), str(query_info.max_run_time_ms)))
+                (query_info.description, str(actual_result.run_time_ms), str(query_info.max_run_time_ms)))
             
