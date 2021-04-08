@@ -97,6 +97,9 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 // 64-bit hash of record
 unsigned long long Record_Hash64(const Record r);
 
+// Remove and free entry at position idx.
+void Record_FreeEntry(Record r, int idx);
+
 // Free record entries.
 void Record_FreeEntries(Record r);
 

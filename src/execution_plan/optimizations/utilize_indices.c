@@ -1,16 +1,23 @@
-#include "utilize_indices.h"
-#include "RG.h"
-#include "../../value.h"
-#include "../../util/arr.h"
+/*
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#include "../ops/ops.h"
 #include "../../query_ctx.h"
-#include "../ops/op_index_scan.h"
-#include "../execution_plan_build/execution_plan_modify.h"
-#include "../../ast/ast_shared.h"
-#include "../../util/range/string_range.h"
-#include "../../util/range/numeric_range.h"
+#include "../../index/index.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/point.h"
+#include "../../util/range/string_range.h"
+#include "../../util/range/numeric_range.h"
 #include "../../arithmetic/arithmetic_op.h"
+#include "../execution_plan_build/execution_plan_modify.h"
+
+/* The utilizeIndices optimization finds Label Scan operations with Filter parents and, if
+ * any constant predicate filter matches a viable index, replaces the Label Scan and Filter
+ * with an Index Scan. This allows for the consideration of fewer candidate nodes and
+ * significantly increases the speed of the operation. */
 
 //------------------------------------------------------------------------------
 // Filter normalization
@@ -21,25 +28,25 @@ void _normalize_filter(FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
 	// normalize, left hand side should be variadic, right hand side const
 	switch(filter_tree->t) {
-	case FT_N_PRED:
-		if(filter_tree->pred.lhs->operand.type == AR_EXP_CONSTANT) {
-			// swap
-			AR_ExpNode *tmp = filter_tree->pred.rhs;
-			filter_tree->pred.rhs = filter_tree->pred.lhs;
-			filter_tree->pred.lhs = tmp;
-			filter_tree->pred.op = ArithmeticOp_ReverseOp(filter_tree->pred.op);
-		}
-		break;
-	case FT_N_COND:
-		_normalize_filter(&filter_tree->cond.left);
-		_normalize_filter(&filter_tree->cond.right);
-		break;
-	case FT_N_EXP:
-		// NOP, expression already normalized
-		break;
-	default:
-		ASSERT(false);
-		break;
+		case FT_N_PRED:
+			if(filter_tree->pred.lhs->operand.type == AR_EXP_CONSTANT) {
+				// swap
+				AR_ExpNode *tmp = filter_tree->pred.rhs;
+				filter_tree->pred.rhs = filter_tree->pred.lhs;
+				filter_tree->pred.lhs = tmp;
+				filter_tree->pred.op = ArithmeticOp_ReverseOp(filter_tree->pred.op);
+			}
+			break;
+		case FT_N_COND:
+			_normalize_filter(&filter_tree->cond.left);
+			_normalize_filter(&filter_tree->cond.right);
+			break;
+		case FT_N_EXP:
+			// NOP, expression already normalized
+			break;
+		default:
+			ASSERT(false);
+			break;
 	}
 }
 
@@ -174,32 +181,32 @@ bool _simple_predicates(FT_FilterNode *filter) {
 	if(_isDistanceFilter(filter)) return true;
 
 	switch(filter->t) {
-	case FT_N_PRED:
-		lhs_exp = filter->pred.lhs;
-		rhs_exp = filter->pred.rhs;
-		// filter should be in the form of variable=scalar or scalar=variable
-		// find out which part of the filter performs entity attribute access
+		case FT_N_PRED:
+			lhs_exp = filter->pred.lhs;
+			rhs_exp = filter->pred.rhs;
+			// filter should be in the form of variable=scalar or scalar=variable
+			// find out which part of the filter performs entity attribute access
 
-		// n.v = exp
-		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;
-		// exp = n.v
-		if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp;
-		// filter is not of the form n.v = exp or exp = n.v
-		if(exp == NULL) break;
+			// n.v = exp
+			if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;
+			// exp = n.v
+			if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp;
+			// filter is not of the form n.v = exp or exp = n.v
+			if(exp == NULL) break;
 
-		// make sure 'exp' represents a scalar
-		bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
-		if(scalar == false) break;
+			// make sure 'exp' represents a scalar
+			bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
+			if(scalar == false) break;
 
-		// validate constant type
-		SIType t = SI_TYPE(v);
-		res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
-		break;
-	case FT_N_COND:
-		res = (_simple_predicates(filter->cond.left) && _simple_predicates(filter->cond.right));
-		break;
-	default:
-		break;
+			// validate constant type
+			SIType t = SI_TYPE(v);
+			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+			break;
+		case FT_N_COND:
+			res = (_simple_predicates(filter->cond.left) && _simple_predicates(filter->cond.right));
+			break;
+		default:
+			break;
 	}
 
 	return res;
@@ -270,21 +277,21 @@ RSQNode *_filterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		double d;
 		SIValue v = SIArray_Get(list, i);
 		switch(SI_TYPE(v)) {
-		case T_STRING:
-			parent = RediSearch_CreateTagNode(sp, field);
-			node = RediSearch_CreateTokenNode(sp, field, v.stringval);
-			RediSearch_QueryNodeAddChild(parent, node);
-			node = parent;
-			break;
-		case T_DOUBLE:
-		case T_INT64:
-		case T_BOOL:
-			d = SI_GET_NUMERIC(v);
-			node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
-			break;
-		default:
-			ASSERT(false && "unexpected conditional operation");
-			break;
+			case T_STRING:
+				parent = RediSearch_CreateTagNode(sp, field);
+				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
+				RediSearch_QueryNodeAddChild(parent, node);
+				node = parent;
+				break;
+			case T_DOUBLE:
+			case T_INT64:
+			case T_BOOL:
+				d = SI_GET_NUMERIC(v);
+				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
+				break;
+			default:
+				ASSERT(false && "unexpected conditional operation");
+				break;
 		}
 		RediSearch_QueryNodeAddChild(U, node);
 	}
@@ -298,111 +305,111 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 	RSQNode *parent = NULL;
 
 	switch(filter->t) {
-	case FT_N_COND: {
-		RSQNode *left = NULL;
-		RSQNode *right = NULL;
-		switch(filter->cond.op) {
-		case OP_OR:
-			node = RediSearch_CreateUnionNode(sp);
-			left = _filterTreeToQueryNode(filter->cond.left, sp);
-			right = _filterTreeToQueryNode(filter->cond.right, sp);
-			RediSearch_QueryNodeAddChild(node, left);
-			RediSearch_QueryNodeAddChild(node, right);
-			break;
-		case OP_AND:
-			node = RediSearch_CreateIntersectNode(sp, false);
-			left = _filterTreeToQueryNode(filter->cond.left, sp);
-			right = _filterTreeToQueryNode(filter->cond.right, sp);
-			RediSearch_QueryNodeAddChild(node, left);
-			RediSearch_QueryNodeAddChild(node, right);
-			break;
-		default:
-			ASSERT(false && "unexpected conditional operation");
-			break;
-		}
-		break;
-	}
-	case FT_N_PRED: {
-		double d;
-		char *field;
-		bool attribute = AR_EXP_IsAttribute(filter->pred.lhs, &field);
-		ASSERT(attribute == true);
-
-		SIValue v = filter->pred.rhs->operand.constant;
-		switch(SI_TYPE(v)) {
-		case T_STRING:
-			parent = RediSearch_CreateTagNode(sp, field);
-			switch(filter->pred.op) {
-			case OP_LT:    // <
-				node = RediSearch_CreateLexRangeNode(sp, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 0);
-				break;
-			case OP_LE:    // <=
-				node = RediSearch_CreateLexRangeNode(sp, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 1);
-				break;
-			case OP_GT:    // >
-				node = RediSearch_CreateLexRangeNode(sp, field, v.stringval, RSLECRANGE_INF, 0, 0);
-				break;
-			case OP_GE:    // >=
-				node = RediSearch_CreateLexRangeNode(sp, field, v.stringval, RSLECRANGE_INF, 1, 0);
-				break;
-			case OP_EQUAL:  // ==
-				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
-				break;
-			case OP_NEQUAL: // !=
-				ASSERT(false && "Index can't utilize the 'not equals' operation.");
-				break;
-			default:
-				ASSERT(false && "unexpected operation");
-				break;
-			}
-
-			RediSearch_QueryNodeAddChild(parent, node);
-			node = parent;
-			break;
-
-		case T_DOUBLE:
-		case T_INT64:
-		case T_BOOL:
-			d = SI_GET_NUMERIC(v);
-			switch(filter->pred.op) {
-			case OP_LT:    // <
-				node = RediSearch_CreateNumericNode(sp, field, d, RSRANGE_NEG_INF, false, false);
-				break;
-			case OP_LE:    // <=
-				node = RediSearch_CreateNumericNode(sp, field, d, RSRANGE_NEG_INF, true, false);
-				break;
-			case OP_GT:    // >
-				node = RediSearch_CreateNumericNode(sp, field, RSRANGE_INF, d, false, false);
-				break;
-			case OP_GE:    // >=
-				node = RediSearch_CreateNumericNode(sp, field, RSRANGE_INF, d, false, true);
-				break;
-			case OP_EQUAL:  // ==
-				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
-				break;
-			case OP_NEQUAL: // !=
-				ASSERT(false && "Index can't utilize the 'not equals' operation.");
-				break;
-			default:
-				ASSERT(false && "unexpected operation");
-				break;
+		case FT_N_COND: {
+			RSQNode *left = NULL;
+			RSQNode *right = NULL;
+			switch(filter->cond.op) {
+				case OP_OR:
+					node = RediSearch_CreateUnionNode(sp);
+					left = _filterTreeToQueryNode(filter->cond.left, sp);
+					right = _filterTreeToQueryNode(filter->cond.right, sp);
+					RediSearch_QueryNodeAddChild(node, left);
+					RediSearch_QueryNodeAddChild(node, right);
+					break;
+				case OP_AND:
+					node = RediSearch_CreateIntersectNode(sp, false);
+					left = _filterTreeToQueryNode(filter->cond.left, sp);
+					right = _filterTreeToQueryNode(filter->cond.right, sp);
+					RediSearch_QueryNodeAddChild(node, left);
+					RediSearch_QueryNodeAddChild(node, right);
+					break;
+				default:
+					ASSERT(false && "unexpected conditional operation");
+					break;
 			}
 			break;
-		default:
-			ASSERT(false && "unexpected value type");
+		}
+		case FT_N_PRED: {
+			double d;
+			char *field;
+			bool attribute = AR_EXP_IsAttribute(filter->pred.lhs, &field);
+			ASSERT(attribute == true);
+
+			SIValue v = filter->pred.rhs->operand.constant;
+			switch(SI_TYPE(v)) {
+				case T_STRING:
+					parent = RediSearch_CreateTagNode(sp, field);
+					switch(filter->pred.op) {
+						case OP_LT:    // <
+							node = RediSearch_CreateLexRangeNode(sp, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 0);
+							break;
+						case OP_LE:    // <=
+							node = RediSearch_CreateLexRangeNode(sp, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 1);
+							break;
+						case OP_GT:    // >
+							node = RediSearch_CreateLexRangeNode(sp, field, v.stringval, RSLECRANGE_INF, 0, 0);
+							break;
+						case OP_GE:    // >=
+							node = RediSearch_CreateLexRangeNode(sp, field, v.stringval, RSLECRANGE_INF, 1, 0);
+							break;
+						case OP_EQUAL:  // ==
+							node = RediSearch_CreateTokenNode(sp, field, v.stringval);
+							break;
+						case OP_NEQUAL: // !=
+							ASSERT(false && "Index can't utilize the 'not equals' operation.");
+							break;
+						default:
+							ASSERT(false && "unexpected operation");
+							break;
+					}
+
+					RediSearch_QueryNodeAddChild(parent, node);
+					node = parent;
+					break;
+
+				case T_DOUBLE:
+				case T_INT64:
+				case T_BOOL:
+					d = SI_GET_NUMERIC(v);
+					switch(filter->pred.op) {
+						case OP_LT:    // <
+							node = RediSearch_CreateNumericNode(sp, field, d, RSRANGE_NEG_INF, false, false);
+							break;
+						case OP_LE:    // <=
+							node = RediSearch_CreateNumericNode(sp, field, d, RSRANGE_NEG_INF, true, false);
+							break;
+						case OP_GT:    // >
+							node = RediSearch_CreateNumericNode(sp, field, RSRANGE_INF, d, false, false);
+							break;
+						case OP_GE:    // >=
+							node = RediSearch_CreateNumericNode(sp, field, RSRANGE_INF, d, false, true);
+							break;
+						case OP_EQUAL:  // ==
+							node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
+							break;
+						case OP_NEQUAL: // !=
+							ASSERT(false && "Index can't utilize the 'not equals' operation.");
+							break;
+						default:
+							ASSERT(false && "unexpected operation");
+							break;
+					}
+					break;
+				default:
+					ASSERT(false && "unexpected value type");
+					break;
+			}
+
 			break;
 		}
-
-		break;
-	}
-	case FT_N_EXP: {
-		node = _filterTreeToInQueryNode(filter, sp);
-		break;
-	}
-	default: {
-		ASSERT("unknown filter tree node type");
-		break;
-	}
+		case FT_N_EXP: {
+			node = _filterTreeToInQueryNode(filter, sp);
+			break;
+		}
+		default: {
+			ASSERT("unknown filter tree node type");
+			break;
+		}
 	}
 	return node;
 }
@@ -569,16 +576,16 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 		}
 
 		switch(filter_tree->t) {
-		case FT_N_PRED:
-			_predicateTreeToRange(filter_tree, string_ranges, numeric_ranges);
-			break;
-		case FT_N_COND:
-			// OR trees are directly converted into RSQnodes.
-			rsqnode = _filterTreeToQueryNode(filter_tree, rs_idx);
-			rsqnodes = array_append(rsqnodes, rsqnode);
-			break;
-		default:
-			break;
+			case FT_N_PRED:
+				_predicateTreeToRange(filter_tree, string_ranges, numeric_ranges);
+				break;
+			case FT_N_COND:
+				// OR trees are directly converted into RSQnodes.
+				rsqnode = _filterTreeToQueryNode(filter_tree, rs_idx);
+				rsqnodes = array_append(rsqnodes, rsqnode);
+				break;
+			default:
+				break;
 		}
 	}
 
