@@ -63,9 +63,3 @@ int ThreadPools_AddWorkBulkLoader
 	void *arg_p
 );
 
-// destroy all thread pools
-void ThreadPools_Destroy
-(
-	void
-);
-

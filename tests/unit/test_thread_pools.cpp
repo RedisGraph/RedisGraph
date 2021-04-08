@@ -30,22 +30,16 @@ class ThreadPoolsTest: public ::testing::Test {
 		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, BULK_COUNT);
 	}
 
-	static void TearDownTestCase() {
-		ThreadPools_Destroy();
-	}
-
 	static void get_thread_friendly_id(void *arg) {
 		int *threadID = (int*)arg;
 		*threadID = ThreadPools_GetThreadID();	
 	}
 };
 
-TEST_F(ThreadPoolsTest, ThreadPools_ThreadCount) {
+TEST_F(ThreadPoolsTest, ThreadPools_ThreadID) {
 	// verify thread count equals to the number of reader and writer threads
 	ASSERT_EQ (READER_COUNT + WRITER_COUNT, ThreadPools_ThreadCount());
-}
 
-TEST_F(ThreadPoolsTest, ThreadPools_ThreadID) {
 	int thread_ids[READER_COUNT + WRITER_COUNT + 1] = {-1, -1, -1, -1, -1, -1};
 
 	// get main thread friendly id
