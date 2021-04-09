@@ -20,7 +20,7 @@ static void _procRegister(const char *procedure, ProcGenerator gen) {
 	size_t lowercase_proc_name_len = 128;
 	str_tolower(procedure, lowercase_proc_name, &lowercase_proc_name_len);
 	raxInsert(__procedures, (unsigned char *)lowercase_proc_name,
-		   lowercase_proc_name_len, gen, NULL);
+			  lowercase_proc_name_len, gen, NULL);
 }
 
 // Register procedures.
@@ -34,6 +34,7 @@ void Proc_Register() {
 
 	// Register graph algorithms.
 	_procRegister("algo.BFS", Proc_BFS_Ctx);
+	_procRegister("algo.CDLP", Proc_CDLP_Ctx);
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
 
 	// Register FullText Search generator.
@@ -69,7 +70,7 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	char proc_name_lowercase [proc_name_len];
 	str_tolower(proc_name, proc_name_lowercase, &proc_name_len);
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
-	  			proc_name_len);
+								proc_name_len);
 	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen();
 

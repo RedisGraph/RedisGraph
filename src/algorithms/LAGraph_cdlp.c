@@ -141,9 +141,7 @@
 //   label of its neighbors (connected through either an incoming or through
 //   an outgoing edge).
 
-#include "LAGraph_cdlp.h"
-#include "LAGraph_internal.h"
-#include "GB_msort_2.h"
+#include "shared/LAGraph_internal.h"
 
 #define LAGRAPH_FREE_ALL                                                       \
 {                                                                              \
@@ -200,10 +198,6 @@ GrB_Info LAGraph_cdlp
     // ensure input is binary and has no self-edges
     //--------------------------------------------------------------------------
 
-    double tic [2];
-    t [0] = 0;         // sanitize time
-    t [1] = 0;         // CDLP time
-
     // n = size of A (# of nodes in the graph)
     // nz = # of non-zero elements in the matrix
     // nnz = # of non-zero elements used in the computations
@@ -222,7 +216,6 @@ GrB_Info LAGraph_cdlp
 
     if (sanitize)
     {
-        LAGraph_tic (tic) ;
 
         AI = LAGraph_malloc(nz, sizeof(GrB_Index));
         AJ = LAGraph_malloc(nz, sizeof(GrB_Index));
@@ -232,7 +225,6 @@ GrB_Info LAGraph_cdlp
         LAGRAPH_OK (GrB_Matrix_new(&S, GrB_UINT64, n, n));
         LAGRAPH_OK (GrB_Matrix_build(S, AI, AJ, AX, nz, GrB_PLUS_UINT64))
 
-        t [0] = LAGraph_toc (tic) ;
     }
     else
     {
@@ -240,8 +232,6 @@ GrB_Info LAGraph_cdlp
         // Results are undefined if this condition does not hold.
         S = A;
     }
-
-    LAGraph_tic (tic) ;
 
     GxB_Format_Value A_format = -1, global_format = -1 ;
     LAGRAPH_OK (GxB_get(A, GxB_FORMAT, &A_format))
@@ -351,6 +341,7 @@ GrB_Info LAGraph_cdlp
         LAGRAPH_FREE (I) ;
         LAGRAPH_FREE (X) ;
 
+		GxB_print(L, GxB_COMPLETE);
 
         bool isequal;
         LAGraph_isequal(&isequal, L_prev, L, GrB_NULL);
@@ -378,8 +369,6 @@ GrB_Info LAGraph_cdlp
     (*CDLP_handle) = CDLP;
     CDLP = NULL;            // set to NULL so LAGRAPH_FREE_ALL doesn't free it
     LAGRAPH_FREE_ALL
-
-    t [1] = LAGraph_toc (tic) ;
 
     return (GrB_SUCCESS);
 }
