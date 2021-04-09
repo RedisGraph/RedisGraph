@@ -43,7 +43,7 @@ RSQNode *_StringRangeToQueryNode(RSIndex *idx, const char *field, const StringRa
 	return root;
 }
 
-RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
+RSQNode *_FilterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 	char     *field  =  NULL;         // field being filtered
 	SIValue  origin  =  SI_NullVal(); // center of circle
 	SIValue  radius  =  SI_NullVal(); // circle radius
@@ -55,7 +55,7 @@ RSQNode *_filterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 }
 
 // creates a RediSearch query node out of given IN filter
-static RSQNode *_filterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *idx) {
+static RSQNode *_FilterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 	ASSERT(_isInFilter(filter));
 
 	// n.v IN [1,2,3]
@@ -123,14 +123,15 @@ bool _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges,
 	// make sure constant is an indexable type
 	if(!(t & SI_INDEXABLE)) return false;
 
-	int op = tree->pred.op;
-	uint prop_len = strlen(prop);
-	StringRange *sr = raxFind(string_ranges, (unsigned char *)prop, prop_len);
-	NumericRange *nr = raxFind(numeric_ranges, (unsigned char *)prop, prop_len);
+	int           op        =  tree->pred.op;
+	StringRange   *sr       =  NULL;
+	NumericRange  *nr       =  NULL;
+	uint          prop_len  =  strlen(prop);
 
 	// get or create range object for alias.prop
 	// constant is either numeric or boolean
 	if(t & SI_NUMERIC || t == T_BOOL) {
+		nr = raxFind(numeric_ranges, (unsigned char *)prop, prop_len);
 		// create if doesn't exists
 		if(nr == raxNotFound) {
 			nr = NumericRange_New();
@@ -138,25 +139,23 @@ bool _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges,
 					nr, NULL);
 		}
 		NumericRange_TightenRange(nr, op, SI_GET_NUMERIC(c));
-	} else if(SI_TYPE(c) == T_STRING) {
+	} else if(t == T_STRING) {
+		sr = raxFind(string_ranges, (unsigned char *)prop, prop_len);
 		// create if doesn't exists
 		if(sr == raxNotFound) {
 			sr = StringRange_New();
 			raxTryInsert(string_ranges, (unsigned char *)prop, prop_len, sr, NULL);
 		}
 		StringRange_TightenRange(sr, op, c.stringval);
-	} else {
-		ASSERT(false);
 	}
+
 	return true;
 }
 
-static RSQNode *_concat_query_nodes(RSIndex *idx, RSQNode **nodes) {
-	// connect all RediSearch query nodes
-	uint count = array_len(nodes);
-
-	// no way to utilize the index
-	if(count == 0) return RediSearch_CreateEmptyNode(idx);
+// connect all RediSearch query nodes
+static RSQNode *_concat_query_nodes(RSIndex *idx, RSQNode **nodes, uint count) {
+	// no nodes, can not utilize the index
+	if(count == 0) return NULL;
 
 	// just a single filter
 	if(count == 1) return array_pop(nodes);
@@ -164,7 +163,7 @@ static RSQNode *_concat_query_nodes(RSIndex *idx, RSQNode **nodes) {
 	// multiple filters, combine using AND
 	RSQNode *root = RediSearch_CreateIntersectNode(idx, false);
 	for(uint i = 0; i < count; i++) {
-		RSQNode *qnode = array_pop(nodes);
+		RSQNode *qnode = nodes[i];
 		RediSearch_QueryNodeAddChild(root, qnode);
 	}
 
@@ -175,71 +174,106 @@ RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
 		rax *numeric_ranges) {
 	ASSERT(string_ranges != NULL);
 	ASSERT(numeric_ranges != NULL);
-	RSQNode **rsqnodes = array_new(RSQNode*, 0);
 
 	// build RediSearch query tree
 	// convert each range object to RediSearch query node
 	raxIterator it;
+	bool valid = true;  // false if there's a range conflict
+	char query_field_name[1024];
+
+	//--------------------------------------------------------------------------
+	// validate ranges
+	//--------------------------------------------------------------------------
+	
+	// validate string ranges
 	raxStart(&it, string_ranges);
 	raxSeek(&it, "^", NULL, 0);
-	char query_field_name[1024];
-	while(raxNext(&it)) {
-		char *field = (char *)it.key;
 
+	while(raxNext(&it)) {
 		/* make sure each property is bound to either numeric or string type
 		 * but not to both, e.g. a.v = 1 AND a.v = 'a'
 		 * in which case use an empty RSQueryNode. */
 		if(raxFind(numeric_ranges, (unsigned char *)field, (int)it.key_len) != raxNotFound) {
-			goto cleanup;
+			valid = false;
+			break;
 		}
 
-		StringRange *sr = raxFind(string_ranges, (unsigned char *)field, (int)it.key_len);
-		if(!StringRange_IsValid(sr)) goto cleanup;
+		StringRange *sr = (StringRange *) it.data;
+		if(!StringRange_IsValid(sr)) {
+			valid = false;
+			break;
+		}
+	}
+	raxStop(&it);
+	
+	if(valid == false) return RediSearch_CreateEmptyNode(idx);
 
-		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
-		RSQNode *rsqn = _StringRangeToQueryNode(idx, query_field_name, sr);
-		rsqnodes = array_append(rsqnodes, rsqn);
+	// validate numeric ranges
+	raxStart(&it, numeric_ranges);
+	raxSeek(&it, "^", NULL, 0);
+
+	while(raxNext(&it)) {
+		NumericRange *nr = (NumericRange *) it.data;
+		if(!NumericRange_IsValid(nr)) {
+			valid = false;
+			break;
+		}
 	}
 	raxStop(&it);
 
-	raxStart(&it, numeric_ranges);
+	if(valid == false) return RediSearch_CreateEmptyNode(idx);
+
+	//--------------------------------------------------------------------------
+	// construct index range queries
+	//--------------------------------------------------------------------------
+
+	// detemine number of ranges
+	uint idx = 0;
+	uint range_count = raxSize(numeric_ranges) + raxSize(string_ranges);
+	RSQNode *rsqnodes[range_count];
+
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		char *field = (char *)it.key;
-		NumericRange *nr = raxFind(numeric_ranges, (unsigned char *)field, (int)it.key_len);
-
-		// return empty RSQueryNode.
-		if(!NumericRange_IsValid(nr)) goto cleanup;
+		NumericRange *nr = (NumericRange *) it.data;
 
 		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
 		RSQNode *rsqn = _NumericRangeToQueryNode(idx, query_field_name, nr);
-		rsqnodes = array_append(rsqnodes, rsqn);
+		rsqnodes[idx++] = rsqn;
 	}
 	raxStop(&it);
 
-	RSQNode *root = _concat_query_nodes(idx, rsqnodes);
-	array_free(rsqnodes);
-	return root;
+	raxStart(&it, string_ranges);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		char *field = (char *)it.key;
+		StringRange *sr = (StringRange *) it.data;
 
-cleanup:
-	// encountered invalid range, free constructed query nodes
-	// return empty query node
-	for(uint i = 0; i < array_len(rsqnodes); i++) {
-		RediSearch_QueryNodeFree(rsqnodes[i]);
+		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
+		RSQNode *rsqn = _StringRangeToQueryNode(idx, query_field_name, sr);
+		rsqnodes[idx++] = rsqn;
 	}
-	array_free(rsqnodes);
-	return RediSearch_CreateEmptyNode(idx);
+	raxStop(&it);
+
+	RSQNode *root = _concat_query_nodes(idx, rsqnodes, range_count);
+	return root;
 }
 
 // reduce filters into ranges
 // we differentiate between numeric filters and string filters
 void _compose_ranges(FT_FilterNode **trees, rax *string_ranges,
 		rax *numeric_ranges) {
+	ASSERT(trees != NULL);
+	ASSERT(string_ranges != NULL);
+	ASSERT(numeric_ranges != NULL);
+
 	uint count = array_len(trees);
 	for(uint i = 0; i < count; i++) {
 		FT_FilterNode *tree = trees[i];
 		if(tree->t == FT_N_PRED) {
 			if(_predicateTreeToRange(tree, string_ranges, numeric_ranges)) {
+				// managed to convert tree into range
+				// discard tree and update loop index
 				FilterTree_Free(tree);
 				array_del_fast(trees, i);
 				i--;
@@ -252,52 +286,60 @@ void _compose_ranges(FT_FilterNode **trees, rax *string_ranges,
 // tries to convert filter tree to a RediSearch query
 // return true if tree was converted, false otherwise
 // a conversion might fail if tree contains a none indexable type e.g. array
-static bool _FilterTreeConditionToQueryNode(RSQNode**root, FT_FilterNode *tree,
-		RSIndex *idx) {
+static bool _FilterTreeConditionToQueryNode
+(
+	RSQNode **root,
+	FT_FilterNode *tree,
+	RSIndex *idx
+) {
 
 	ASSERT(idx != NULL);
 	ASSERT(root != NULL);
 	ASSERT(tree != NULL);
 	ASSERT(tree->t == FT_N_COND);
 
-	*root = NULL;
 
-	RSQNode       *node   =  NULL;
-	RSQNode       *left   =  NULL;
-	RSQNode       *right  =  NULL;
-	AST_Operator  op      =  tree->cond.op;
+	*root = NULL; // initialize output to NULL
+	// validate operator
+	fST_Operator op = tree->cond.op;
+	ASSERT(op == OP_OR || op == OP_AND);
 
-	if(op == OP_OR) {
-		node = RediSearch_CreateUnionNode(idx);
-	} else if(op == OP_AND) {
-		node = RediSearch_CreateIntersectNode(idx, false);
-	} else {
-		ASSERT(false && "unexpected conditional operation");
-		return false;
-	}
+	RSQNode  *node   =  NULL;
+	RSQNode  *left   =  NULL;
+	RSQNode  *right  =  NULL;
+
+	//--------------------------------------------------------------------------
+	// convert left and right hand sides
+	//--------------------------------------------------------------------------
 
 	// process left branch
-	if(!_FilterTreeToQueryNode(&left, tree->cond.left, idx)) {
-		RediSearch_QueryNodeFree(node);
-		return false;
-	}
-	RediSearch_QueryNodeAddChild(node, left);
+	if(!_FilterTreeToQueryNode(&left, tree->cond.left, idx)) return false;
 
 	// process right branch
 	if(!_FilterTreeToQueryNode(&right, tree->cond.right, idx)) {
-		RediSearch_QueryNodeFree(node);
+		RediSearch_QueryNodeFree(left);
 		return false;
 	}
+
+	if(op == OP_OR) node = RediSearch_CreateUnionNode(idx);
+	else node = RediSearch_CreateIntersectNode(idx, false);
+
+	RediSearch_QueryNodeAddChild(node, left);
 	RediSearch_QueryNodeAddChild(node, right);
 
 	*root = node;
 	return true;
 }
 
-static bool _FilterTreePredicateToQueryNode(RSQNode **root, FT_FilterNode *tree,
-		RSIndex *idx) {
+// returns true if predicate filter been converted to an index query
+static bool _FilterTreePredicateToQueryNode
+(
+	RSQNode **root,      // array of query nodes to populate
+	FT_FilterNode *tree, // filter to convert
+	RSIndex *idx         // queried index
+) {
 
-	ASSERT(idx != NULL);
+	ASSERT(idx  != NULL);
 	ASSERT(root != NULL);
 	ASSERT(tree != NULL);
 	ASSERT(tree->t == FT_N_PRED);
@@ -309,14 +351,18 @@ static bool _FilterTreePredicateToQueryNode(RSQNode **root, FT_FilterNode *tree,
 	ASSERT(attribute == true);
 
 	// validate const type
+	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
 	SIValue v = tree->pred.rhs->operand.constant;
 	SIType t = SI_TYPE(v);
 	if(!(t & SI_INDEXABLE)) return false;
 
-	// validate operation
+	// validate operation, we can handle <, <=, =, >, >=
 	AST_Operator op = tree->pred.op;
-	if(!(op == OP_LT || op == OP_LE || op == OP_GT || op == OP_GE ||
-				op == OP_EQUAL)) {
+	if(!(op == OP_LT ||
+		 op == OP_LE ||
+		 op == OP_GT ||
+		 op == OP_GE ||
+		 op == OP_EQUAL)) {
 		return false;
 	}
 
@@ -345,7 +391,7 @@ static bool _FilterTreePredicateToQueryNode(RSQNode **root, FT_FilterNode *tree,
 		RediSearch_QueryNodeAddChild(parent, node);
 		node = parent;
 	} else {
-		ASSERT(t == T_DOUBLE || t == T_INT64 || t == T_BOOL);
+		ASSERT(t & SI_NUMERIC || t == T_BOOL);
 		double d = SI_GET_NUMERIC(v);
 		switch(tree->pred.op) {
 			case OP_LT:    // <
@@ -372,23 +418,27 @@ static bool _FilterTreePredicateToQueryNode(RSQNode **root, FT_FilterNode *tree,
 	return true;
 }
 
-static bool _FilterTreeToQueryNode(RSQNode**root, FT_FilterNode *tree,
-		RSIndex *idx) {
-
+// returns true if 'tree' been converted into an index query, false otherwise
+static bool _FilterTreeToQueryNode
+(
+	RSQNode**root,       // array of query nodes to populate
+	FT_FilterNode *tree, // filter to convert into an index query
+	RSIndex *idx         // queried index
+) {
+	ASSERT(idx  != NULL);
 	ASSERT(root != NULL);
 	ASSERT(tree != NULL);
-	ASSERT(idx  != NULL);
 
 	// initialize 'root' to NULL
 	*root = NULL;
 
 	if(_isInFilter(tree)) {
-		*root = _filterTreeToInQueryNode(tree, idx);
+		*root = _FilterTreeToInQueryNode(tree, idx);
 		return true;
 	}
 
 	if(_isDistanceFilter(tree)) {
-		*root = _filterTreeToDistanceQueryNode(tree, idx);
+		*root = _FilterTreeToDistanceQueryNode(tree, idx);
 		return true;
 	}
 
@@ -405,17 +455,20 @@ static bool _FilterTreeToQueryNode(RSQNode**root, FT_FilterNode *tree,
 }
 
 // creates a RediSearch query node out of given filter tree
-RSQNode *FilterTreeToQueryNode(FT_FilterNode **none_converted_filters,
-		const FT_FilterNode *tree, RSIndex *idx) {
+RSQNode *FilterTreeToQueryNode
+(
+	FT_FilterNode **none_converted_filters, // [output] none convertable filters
+	const FT_FilterNode *tree,              // filter tree to convert
+	RSIndex *idx                            // index to query
+) {
 	ASSERT(idx != NULL);
 	ASSERT(tree != NULL);
 	ASSERT(none_converted_filters != NULL);
 
-	FT_FilterNode *t = FilterTree_Clone(tree);
-	RSQNode **nodes = array_new(RSQNode*, 1);
-
-	// break down tree to individual subtrees
-	FT_FilterNode **trees = FilterTree_SubTrees(t);
+	// clone filter tree, as it is about to be modified
+	FT_FilterNode  *t       =  FilterTree_Clone(tree);
+	RSQNode        **nodes  =  array_new(RSQNode*, 1);  // intermidate nodes
+	FT_FilterNode  **trees  =  FilterTree_SubTrees(t);  // break tree down to individual subtrees
 
 	//--------------------------------------------------------------------------
 	// convert filters to numeric and string ranges
@@ -460,6 +513,23 @@ RSQNode *FilterTreeToQueryNode(FT_FilterNode **none_converted_filters,
 
 	// compose root query node by intersecting individual query nodes
 	RSQNode *root = _concat_query_nodes(idx, nodes);
+
+	// at this point there are 3 options:
+	// 1. all filters been converted into index queries
+	// in which case 'root' is set to an index query
+	// 'none_converted_filters' is set to NULL
+	//
+	// 2. none of the filters been converted to index queries
+	// in which case 'root' is set to NULL
+	// 'none_converted_filters' is the same as the input 'tree'
+	//
+	// 3. some filters been converted into index queries
+	// in which case 'root' is set to an index query
+	// 'none_converted_filters' contains none converted filters
+
+	//--------------------------------------------------------------------------
+	// clean up
+	//--------------------------------------------------------------------------
 
 	array_free(nodes);
 	array_free(trees);
