@@ -36,6 +36,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 	op->iter                 =  NULL;
 	op->filter               =  filter;
 	op->child_record         =  NULL;
+	op->unresolved_filters   =  NULL;
 	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
@@ -77,8 +78,18 @@ static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
 	int res = Graph_GetNode(op->g, node_id, &n);
 	ASSERT(res != 0);
-	// Get a pointer to the node's allocated space within the Record.
 	Record_AddNode(r, op->nodeRecIdx, n);
+}
+
+static inline bool _PassUnresolvedFilters(const IndexScan *op, Record r) {
+	bool           res                  =  true;
+	FT_FilterNode  *unresolved_filters  =  op->unresolved_filters;
+
+	if(unresolved_filters != NULL) {
+		res = (FilterTree_applyFilters(unresolved_filters, r) == FILTER_PASS);
+	}
+
+	return res;
 }
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {
@@ -86,16 +97,20 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 	const EntityID *nodeId = NULL;
 
 pull_index:
-	// try pulling from index
+	//--------------------------------------------------------------------------
+	// pull from index
+	//--------------------------------------------------------------------------
+
 	if(op->iter != NULL) {
 		nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 		if(nodeId != NULL) {
-			// clone the held Record, as it will be freed upstream
-			// populate the Record with the actual node
-			Record r = OpBase_CloneRecord(op->child_record);
-			_UpdateRecord(op, r, *nodeId);
-
-			return r;
+			// populate record with node
+			_UpdateRecord(op, op->child_record, *nodeId);
+			// apply unresolved filters
+			if(_PassUnresolvedFilters(op, op->child_record)) {
+				// clone the held Record, as it will be freed upstream
+				return OpBase_CloneRecord(op->child_record);
+			}
 		}
 	}
 
@@ -122,10 +137,18 @@ pull_index:
 
 	if(op->rebuild_index_query) {
 		// free previous iterator
-		if(op->iter != NULL) RediSearch_ResultsIteratorFree(op->iter);
-		op->iter = NULL;
+		if(op->iter != NULL) {
+			RediSearch_ResultsIteratorFree(op->iter);
+			op->iter = NULL;
+		}
 
-		// require to rebuild index query, probably relies on runtime values
+		// free previous unresolved filters
+		if(op->unresolved_filters != NULL) {
+			FilterTree_Free(op->unresolved_filters);
+			op->unresolved_filters = NULL;
+		}
+
+		// rebuild index query, probably relies on runtime values
 		// resolve runtime variables within filter
 		FT_FilterNode *filter = FilterTree_Clone(op->filter);
 		FilterTree_ResolveVariables(filter, op->child_record);
@@ -139,13 +162,37 @@ pull_index:
 		}
 		#endif
 
-		RSQNode *rs_query_node = FilterTreeToQueryNode(filter, op->idx);
-		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
+		// FilterTreeToQueryNode will try to convert 'filter' into a RediSearch
+		// query, there are 3 different outcomes:
+		// 1. entier filter is converted
+		//    in which case rs_query_node is set and unresolved_filters is NULL
+		// 2. a part of the filter is converted
+		//    in which case both rs_query_node and unresolved_filters are set
+		// 3. index can't be utilized
+		//    in which case rs_query_node is NULL and unresolved_filters is set
+		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
+				filter, op->idx);
 		FilterTree_Free(filter);
+
+		// can not have both RediSearch query and unresolved filters set to NULL
+		ASSERT(rs_query_node != NULL || op->unresolved_filters != NULL);
+
+		// cann't utilize the index
+		if(rs_query_node == NULL) {
+			// apply unresolved filters to input record
+			if(FilterTree_applyFilters(op->unresolved_filters,
+					op->child_record) == FILTER_PASS) return op->child_record;
+		}
+
+		// create iterator only if index can be utilized
+		if(rs_query_node != NULL) {
+			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
+		}
 	} else {
 		if(op->iter == NULL) {
 			// first call to consume, create query and iterator
-			RSQNode *rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
+			RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters, op->filter, op->idx);
+			ASSERT(op->unresolved_filters == NULL);
 			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 		} else {
 			// reset existing iterator
@@ -162,7 +209,10 @@ static Record IndexScanConsume(OpBase *opBase) {
 
 	// create iterator on first call
 	if(op->iter == NULL) {
-		RSQNode *rs_query_node = FilterTreeToQueryNode(op->filter, op->idx);
+		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
+				op->filter, op->idx);
+		ASSERT(op->unresolved_filters == NULL);
+
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	}
 
@@ -209,6 +259,11 @@ static void IndexScanFree(OpBase *opBase) {
 	if(op->filter) {
 		FilterTree_Free(op->filter);
 		op->filter = NULL;
+	}
+
+	if(op->unresolved_filters) {
+		FilterTree_Free(op->unresolved_filters);
+		op->unresolved_filters = NULL;
 	}
 }
 

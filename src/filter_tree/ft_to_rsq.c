@@ -17,22 +17,37 @@
 // forward declarations
 //------------------------------------------------------------------------------
 
-static bool _FilterTreeToQueryNode(RSQNode**root, FT_FilterNode *tree,
-		RSIndex *idx);
+// returns true if 'tree' been converted into an index query, false otherwise
+static bool _FilterTreeToQueryNode
+(
+	RSQNode**root,       // array of query nodes to populate
+	FT_FilterNode *tree, // filter to convert into an index query
+	RSIndex *idx         // queried index
+);
 
 //------------------------------------------------------------------------------
 // To RediSearch query node
 //------------------------------------------------------------------------------
 
 // create a RediSearch query node out of a numeric range object
-RSQNode *_NumericRangeToQueryNode(RSIndex *idx, const char *field, const NumericRange *range) {
+RSQNode *_NumericRangeToQueryNode
+(
+	RSIndex *idx,              // queried index
+	const char *field,         // queried field
+	const NumericRange *range  // range to query
+) {
 	double max = (range->max == INFINITY) ? RSRANGE_INF : range->max;
 	double min = (range->min == -INFINITY) ? RSRANGE_NEG_INF : range->min;
 	return RediSearch_CreateNumericNode(idx, field, max, min, range->include_max, range->include_min);
 }
 
 // create a RediSearch query node out of a string range object
-RSQNode *_StringRangeToQueryNode(RSIndex *idx, const char *field, const StringRange *range) {
+RSQNode *_StringRangeToQueryNode
+(
+	RSIndex *idx,             // queried index
+	const char *field,        // queried field
+	const StringRange *range  // range to query
+) {
 	const char *max = (range->max == NULL) ? RSLECRANGE_INF : range->max;
 	const char *min = (range->min == NULL) ? RSLEXRANGE_NEG_INF : range->min;
 	RSQNode *root = RediSearch_CreateTagNode(idx, field);
@@ -43,7 +58,12 @@ RSQNode *_StringRangeToQueryNode(RSIndex *idx, const char *field, const StringRa
 	return root;
 }
 
-RSQNode *_FilterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
+// creates a RediSearch distance query from given filter
+RSQNode *_FilterTreeToDistanceQueryNode
+(
+	FT_FilterNode *filter,  // filter to convert
+	RSIndex *idx            // queried index
+) {
 	char     *field  =  NULL;         // field being filtered
 	SIValue  origin  =  SI_NullVal(); // center of circle
 	SIValue  radius  =  SI_NullVal(); // circle radius
@@ -55,7 +75,13 @@ RSQNode *_FilterTreeToDistanceQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 }
 
 // creates a RediSearch query node out of given IN filter
-static RSQNode *_FilterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *idx) {
+static RSQNode *_FilterTreeToInQueryNode
+(
+	FT_FilterNode *filter,  // filter to convert
+	RSIndex *idx            // queried index
+) {
+	ASSERT(idx    != NULL);
+	ASSERT(filter != NULL);
 	ASSERT(_isInFilter(filter));
 
 	// n.v IN [1,2,3]
@@ -109,12 +135,21 @@ static RSQNode *_FilterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *idx) {
 
 // reduce filter into a range object
 // return true if filter was reduce, false otherwise
-bool _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges,
-		rax *numeric_ranges) {
+bool _predicateTreeToRange
+(
+	const FT_FilterNode *tree,  // filter to convert
+	rax *string_ranges,         // string ranges
+	rax *numeric_ranges         // numerical ranges
+) {
+	ASSERT(tree           != NULL);
+	ASSERT(string_ranges  != NULL);
+	ASSERT(numeric_ranges != NULL);
+
 	// simple predicate trees are used to build up a range object
 	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
 
-	char *prop;
+	// handel filters of form: 'n.v op constant'
+	char *prop = NULL;
 	if(!AR_EXP_IsAttribute(tree->pred.lhs, &prop)) return false;
 
 	SIValue c = tree->pred.rhs->operand.constant;
@@ -153,12 +188,17 @@ bool _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges,
 }
 
 // connect all RediSearch query nodes
-static RSQNode *_concat_query_nodes(RSIndex *idx, RSQNode **nodes, uint count) {
+static RSQNode *_concat_query_nodes
+(
+	RSIndex *idx,     // queried index
+	RSQNode **nodes,  // query nodes to concat
+	uint count        // number of nodes
+) {
 	// no nodes, can not utilize the index
 	if(count == 0) return NULL;
 
 	// just a single filter
-	if(count == 1) return array_pop(nodes);
+	if(count == 1) return nodes[0];
 
 	// multiple filters, combine using AND
 	RSQNode *root = RediSearch_CreateIntersectNode(idx, false);
@@ -170,9 +210,14 @@ static RSQNode *_concat_query_nodes(RSIndex *idx, RSQNode **nodes, uint count) {
 	return root;
 }
 
-RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
-		rax *numeric_ranges) {
-	ASSERT(string_ranges != NULL);
+// compose index query from ranges
+RSQNode *_ranges_to_query_nodes
+(
+	RSIndex *idx,        // index to query
+	rax *string_ranges,  // string ranges
+	rax *numeric_ranges  // numerical ranges
+) {
+	ASSERT(string_ranges  != NULL);
 	ASSERT(numeric_ranges != NULL);
 
 	// build RediSearch query tree
@@ -193,6 +238,7 @@ RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
 		/* make sure each property is bound to either numeric or string type
 		 * but not to both, e.g. a.v = 1 AND a.v = 'a'
 		 * in which case use an empty RSQueryNode. */
+		char *field = (char *)it.key;
 		if(raxFind(numeric_ranges, (unsigned char *)field, (int)it.key_len) != raxNotFound) {
 			valid = false;
 			break;
@@ -228,7 +274,7 @@ RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
 	//--------------------------------------------------------------------------
 
 	// detemine number of ranges
-	uint idx = 0;
+	uint i = 0;
 	uint range_count = raxSize(numeric_ranges) + raxSize(string_ranges);
 	RSQNode *rsqnodes[range_count];
 
@@ -239,7 +285,7 @@ RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
 
 		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
 		RSQNode *rsqn = _NumericRangeToQueryNode(idx, query_field_name, nr);
-		rsqnodes[idx++] = rsqn;
+		rsqnodes[i++] = rsqn;
 	}
 	raxStop(&it);
 
@@ -251,7 +297,7 @@ RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
 
 		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
 		RSQNode *rsqn = _StringRangeToQueryNode(idx, query_field_name, sr);
-		rsqnodes[idx++] = rsqn;
+		rsqnodes[i++] = rsqn;
 	}
 	raxStop(&it);
 
@@ -260,11 +306,14 @@ RSQNode *_ranges_to_query_nodes(RSIndex *idx, rax *string_ranges,
 }
 
 // reduce filters into ranges
-// we differentiate between numeric filters and string filters
-void _compose_ranges(FT_FilterNode **trees, rax *string_ranges,
-		rax *numeric_ranges) {
-	ASSERT(trees != NULL);
-	ASSERT(string_ranges != NULL);
+void _compose_ranges
+(
+	FT_FilterNode **trees,  // filters to convert into ranges
+	rax *string_ranges,     // string ranges
+	rax *numeric_ranges     // numerical reages
+) {
+	ASSERT(trees          != NULL);
+	ASSERT(string_ranges  != NULL);
 	ASSERT(numeric_ranges != NULL);
 
 	uint count = array_len(trees);
@@ -288,9 +337,9 @@ void _compose_ranges(FT_FilterNode **trees, rax *string_ranges,
 // a conversion might fail if tree contains a none indexable type e.g. array
 static bool _FilterTreeConditionToQueryNode
 (
-	RSQNode **root,
-	FT_FilterNode *tree,
-	RSIndex *idx
+	RSQNode **root,      // array of query nodes to populate
+	FT_FilterNode *tree, // filter to convert
+	RSIndex *idx         // queried index
 ) {
 
 	ASSERT(idx != NULL);
@@ -301,7 +350,7 @@ static bool _FilterTreeConditionToQueryNode
 
 	*root = NULL; // initialize output to NULL
 	// validate operator
-	fST_Operator op = tree->cond.op;
+	AST_Operator op = tree->cond.op;
 	ASSERT(op == OP_OR || op == OP_AND);
 
 	RSQNode  *node   =  NULL;
@@ -321,6 +370,7 @@ static bool _FilterTreeConditionToQueryNode
 		return false;
 	}
 
+	// create root node
 	if(op == OP_OR) node = RediSearch_CreateUnionNode(idx);
 	else node = RediSearch_CreateIntersectNode(idx, false);
 
@@ -512,7 +562,8 @@ RSQNode *FilterTreeToQueryNode
 	*none_converted_filters = FilterTree_Combine(trees, tree_count);
 
 	// compose root query node by intersecting individual query nodes
-	RSQNode *root = _concat_query_nodes(idx, nodes);
+	uint node_count = array_len(nodes);
+	RSQNode *root = _concat_query_nodes(idx, nodes, node_count);
 
 	// at this point there are 3 options:
 	// 1. all filters been converted into index queries
