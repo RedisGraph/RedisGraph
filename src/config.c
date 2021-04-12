@@ -283,7 +283,7 @@ const char *Config_Field_name(Config_Option_Field field) {
 }
 
 // initialize every module-level configuration to its default value
-void _Config_SetToDefaults(RedisModuleCtx *ctx) {
+void _Config_SetToDefaults() {
 	// the thread pool's default size is equal to the system's number of cores
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_pool_size = (CPUCount != -1) ? CPUCount : 1;
@@ -298,11 +298,9 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	#ifdef MEMCHECK
 		// disable async delete during memcheck
 		config.async_delete = false;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
 	#else
 		// always perform async delete when no checking for memory issues
 		config.async_delete = true;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
 	#endif
 
 	config.cache_size = CACHE_SIZE_DEFAULT;
@@ -322,7 +320,7 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Initialize the configuration to its default values.
-	_Config_SetToDefaults(ctx);
+	_Config_SetToDefaults();
 
 	if(argc % 2) {
 		// emit an error if we received an odd number of arguments,
