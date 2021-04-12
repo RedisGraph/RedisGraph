@@ -198,7 +198,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout);
 
-		ThreadPools_AddWorkReader(handler, context);
+		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
+			// Report an error once our workers thread pool internal queue
+			// is full, this error usually happens when the server is
+			// under heavy load and is unable to catch up
+			RedisModule_ReplyWithError(ctx, "Max queries exceeded");
+			CommandCtx_Free(context);
+		}
 	}
 
 	return REDISMODULE_OK;

@@ -40,11 +40,15 @@
 // whether the module should maintain transposed relationship matrices
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
 
+// config param, max number of queued queries
+#define MAX_QUEUED_QUERIES "MAX_QUEUED_QUERIES"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
 
-#define CACHE_SIZE_DEFAULT 25
+#define CACHE_SIZE_DEFAULT            25
+#define QUEUED_QUERIES_UNLIMITED      UINT64_MAX
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
 extern RG_Config config; // global module configuration
@@ -91,6 +95,18 @@ static inline bool _Config_ParseYesNo(RedisModuleString *rm_str, bool *value) {
 //==============================================================================
 // Config access functions
 //==============================================================================
+
+//------------------------------------------------------------------------------
+// max queued queries
+//------------------------------------------------------------------------------
+
+void Config_max_queued_queries_set(uint64_t max_queued_queries) {
+	config.max_queued_queries = max_queued_queries;
+}
+
+uint Config_max_queued_queries_get(void) {
+	return config.max_queued_queries;
+}
 
 //------------------------------------------------------------------------------
 // timeout
@@ -208,6 +224,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
 		f = Config_RESULTSET_MAX_SIZE;
+	} else if (!(strcasecmp(field_str, MAX_QUEUED_QUERIES))) {
+		f = Config_MAX_QUEUED_QUERIES;
 	} else {
 		return false;
 	}
@@ -297,6 +315,9 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 
 	// no query timeout by default
 	config.timeout = CONFIG_TIMEOUT_NO_TIMEOUT;
+
+	// no limit on number of queued queries by default
+	config.max_queued_queries = QUEUED_QUERIES_UNLIMITED;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -347,6 +368,20 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 
 	switch (field)
 	{
+		//----------------------------------------------------------------------
+		// max queued queries
+		//----------------------------------------------------------------------
+
+		case Config_MAX_QUEUED_QUERIES:
+			{
+				long long max_queued_queries;
+				if(!_Config_ParsePositiveInteger(val, &max_queued_queries)) {
+					return false;
+				}
+				Config_max_queued_queries_set(max_queued_queries);
+			}
+			break;
+
 		//----------------------------------------------------------------------
 		// timeout
 		//----------------------------------------------------------------------
@@ -470,6 +505,17 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 	switch (field)
 	{
+		case Config_MAX_QUEUED_QUERIES:
+			{
+
+				va_start(ap, field);
+				uint64_t *max_queued_queries = va_arg(ap, uint64_t*);
+				va_end(ap);
+
+				ASSERT(max_queued_queries != NULL);
+				(*max_queued_queries) = Config_max_queued_queries_get();
+			}
+			break;
 		//----------------------------------------------------------------------
 		// timeout
 		//----------------------------------------------------------------------
