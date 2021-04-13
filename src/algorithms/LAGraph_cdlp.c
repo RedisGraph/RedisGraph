@@ -147,7 +147,12 @@
 {                                                                              \
     GrB_free (&L) ;                                                            \
     GrB_free (&L_prev) ;                                                       \
-    if (sanitize) GrB_free (&S) ;                                              \
+    if (sanitize) {                                                            \
+        LAGRAPH_FREE (AI) ;                                                    \
+        LAGRAPH_FREE (AJ) ;                                                    \
+        LAGRAPH_FREE (AX) ;                                                    \
+        GrB_Matrix_free(&S) ;                                                  \
+    }                                                                          \
     GrB_free (&AT) ;                                                           \
     GrB_free (&desc) ;                                                         \
 }
@@ -184,6 +189,8 @@ GrB_Info LAGraph_cdlp
     // Arrays holding extracted tuples during the algorithm
     GrB_Index *I = NULL;
     GrB_Index *X = NULL;
+    // Array for counting frequency of values in each row
+    int64_t *workspace = NULL;
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -202,7 +209,7 @@ GrB_Info LAGraph_cdlp
     // nz = # of non-zero elements in the matrix
     // nnz = # of non-zero elements used in the computations
     //   (twice as many for directed graphs)
-    GrB_Index n, nz, nnz;
+    GrB_Index n, nz, nnz, n_in, n_out;
     LAGRAPH_OK (GrB_Matrix_nrows(&n, A))
     LAGRAPH_OK (GrB_Matrix_nvals(&nz, A))
     if (!symmetric)
@@ -260,13 +267,14 @@ GrB_Info LAGraph_cdlp
         I[i] = i;
         X[i] = i;
     }
+    // Initialize matrix for storing current labels
     LAGRAPH_OK (GrB_Matrix_new (&L, GrB_UINT64, n, n)) ;
     LAGRAPH_OK (GrB_Matrix_build (L, I, I, X, n, GrB_PLUS_UINT64)) ;
-    LAGRAPH_FREE (I) ;
-    LAGRAPH_FREE (X) ;
-
     // Initialize matrix for storing previous labels
     LAGRAPH_OK(GrB_Matrix_new(&L_prev, GrB_UINT64, n, n))
+    LAGRAPH_OK (GrB_Matrix_build (L_prev, I, I, X, n, GrB_PLUS_UINT64)) ;
+    LAGRAPH_FREE (I) ;
+    LAGRAPH_FREE (X) ;
 
     if (!symmetric)
     {
@@ -276,17 +284,19 @@ GrB_Info LAGraph_cdlp
         LAGRAPH_OK (GrB_transpose (AT, NULL, NULL, A, NULL)) ;
     }
 
-    const int nthreads = LAGraph_get_nthreads();
+    // Initialize data structures for extraction from 'AL_in' and (for directed graphs) 'AL_out'
+    I = LAGraph_malloc(nnz, sizeof(GrB_Index));
+    X = LAGraph_malloc(nnz, sizeof(GrB_Index));
+    workspace = LAGraph_calloc(nnz, sizeof(int64_t));
     for (int iteration = 0; iteration < itermax; iteration++)
     {
-        // Initialize data structures for extraction from 'AL_in' and (for directed graphs) 'AL_out'
-        I = LAGraph_malloc(nnz, sizeof(GrB_Index));
-        X = LAGraph_malloc(nnz, sizeof(GrB_Index));
 
         // A = A min.2nd L
         // (using the "push" (saxpy) method)
         LAGRAPH_OK(GrB_mxm(S, GrB_NULL, GrB_NULL, GxB_MIN_SECOND_UINT64, S, L, desc))
         LAGRAPH_OK(GrB_Matrix_extractTuples_UINT64(I, GrB_NULL, X, &nz, S))
+        // Store the number of tuples populated by the adjacency matrix.
+        n_out = nz;
 
         if (!symmetric)
         {
@@ -295,53 +305,59 @@ GrB_Info LAGraph_cdlp
             LAGRAPH_OK(GrB_mxm(AT, GrB_NULL, GrB_NULL, GxB_MIN_SECOND_UINT64, AT, L, desc))
             LAGRAPH_OK(GrB_Matrix_extractTuples_UINT64(&I[nz], GrB_NULL, &X[nz], &nz, AT))
         }
-
-        uint64_t *workspace1 = LAGraph_malloc(nnz, sizeof(GrB_Index));
-        uint64_t *workspace2 = LAGraph_malloc(nnz, sizeof(GrB_Index));
-        GB_msort_2(I, X, workspace1, workspace2, nnz, nthreads);
-        LAGRAPH_FREE (workspace1) ;
-        LAGRAPH_FREE (workspace2) ;
+        // Store the number of tuples populated by the transposed adjacency matrix.
+        n_in = nz;
 
         // save current labels for comparison by swapping L and L_prev
         GrB_Matrix L_swap = L;
         L = L_prev;
         L_prev = L_swap;
 
-        GrB_Index mode_value = -1;
-        GrB_Index mode_length = 0;
-        GrB_Index run_length = 1;
-
-        // I[k] is the current row index
-        // X[k] is the current value
-        // we iterate in range 1..nnz and use the last index (nnz) to process the last row of the matrix
-        for (GrB_Index k = 1; k <= nnz; k++)
-        {
-            // check if we have a reason to recompute the mode value
-            if (k == nnz        // we surpassed the last element
-             || I[k-1] != I[k]  // the row index has changed
-             || X[k-1] != X[k]) // the run value has changed
+        int64_t idx1, idx2;
+        int64_t prev_idx1 = 0;
+        int64_t prev_idx2 = n_in;
+        while(true) {
+            // Count the frequency of all values in the current row's outgoing edges.
+            for(idx1 = prev_idx1; idx1 < n_out; idx1++)
             {
-                if (run_length > mode_length)
+                if(idx1 > prev_idx1 && I[idx1] != I[idx1-1]) break;
+                workspace[X[idx1]] ++;
+            }
+            // Count the frequency of all values in the current row's incoming edges.
+            for(idx2 = prev_idx2; idx2 < n_in + n_out; idx2++)
+            {
+                if(idx2 > prev_idx2 && I[idx2] != I[idx2-1]) break;
+                workspace[X[idx2]] ++;
+            }
+
+            // Find (one of) the values with the highest frequency for this row.
+            int64_t max = -1;
+            GrB_Index max_idx = 0;
+            for(int64_t k = 0; k < nnz; k ++)
+            {
+                if(workspace[k] > max)
                 {
-                    mode_value = X[k-1];
-                    mode_length = run_length;
+                    max = workspace[k];
+                    max_idx = k;
                 }
-                run_length = 0;
             }
-            run_length++;
 
-            // check if we passed a row
-            if (k == nnz        // we surpassed the last element
-             || I[k-1] != I[k]) // the row index has changed
-            {
-                GrB_Matrix_setElement(L, mode_value, I[k-1], I[k-1]);
-                mode_length = 0;
-            }
+            // Update row label within the matrix.
+			if(max >= 0)
+			{
+				GrB_Matrix_setElement(L, max_idx, I[prev_idx1], I[prev_idx1]);
+			}
+
+            // Reset the workspace.
+            memset(workspace, -1, nnz * sizeof(int64_t));
+
+            // Track the beginning of the next row.
+            prev_idx1 = idx1;
+            prev_idx2 = idx2;
+
+            // Break if we've exhausted the input.
+            if(idx1 >= n_in && idx2 >= n_out) break;
         }
-        LAGRAPH_FREE (I) ;
-        LAGRAPH_FREE (X) ;
-
-		GxB_print(L, GxB_COMPLETE);
 
         bool isequal;
         LAGraph_isequal(&isequal, L_prev, L, GrB_NULL);
@@ -349,6 +365,9 @@ GrB_Info LAGraph_cdlp
             break;
         }
     }
+    LAGRAPH_FREE (I) ;
+    LAGRAPH_FREE (X) ;
+    LAGRAPH_FREE (workspace) ;
 
     //--------------------------------------------------------------------------
     // extract final labels to the result vector

@@ -18,14 +18,14 @@
 
 // The CDLP procedure performs community detection by label propagation.
 // Its inputs are:
-// 1. the maximum number of iterations, -1 for unlimited
+// 1. the maximum number of iterations, -1 defaults to 10
 // 2. the relationship type to traverse, NULL for type-agnostic
 //
 // It outputs:
 // 1. node - a node in the graph
 // 2. community_id - the ID of the community this node belongs to
 //
-// CALL algo.cdlp(-1, 'MANAGES') YIELD node, community_id
+// CALL algo.labelPropagation(-1, 'MANAGES', NULL) YIELD node, community_id
 
 typedef struct {
 	Graph *g;                       // Graph scanned.
@@ -73,7 +73,6 @@ static void _process_yield(CDLPCtx *ctx, const char **yield) {
 	}
 }
 
-#include "../algorithms/LAGraph_internal.h" // TODO tmp, move
 static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 										const SIValue *args, const char **yield) {
 	// Validate inputs
@@ -89,13 +88,10 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 	CDLPCtx *cdlp_ctx = ctx->privateData;
 	_process_yield(cdlp_ctx, yield);
 
-	LAGraph_Complex_init() ;    // TODO tmp, move
-	LAGraph_alloc_global() ;    // TODO tmp, move
 	//--------------------------------------------------------------------------
 	// Process inputs
 	//--------------------------------------------------------------------------
 	int64_t max_iters = args[0].longval;
-	// if(max_iters == -1) max_iters = INT_MAX;
 	if(max_iters == -1) max_iters = 10;
 	if(max_iters < 0) return PROCEDURE_ERR;
 
@@ -107,7 +103,7 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 	SIValue labels = args[2];
 
 	GrB_Index dims = Graph_RequiredMatrixDim(gc->g);
-	GrB_Matrix_new(&A, GrB_UINT64, dims, dims); // TODO bool?
+	GrB_Matrix_new(&A, GrB_UINT64, dims, dims);
 
 	if(!SIValue_IsNull(reltypes)) {
 		// Add each specified adjacency matrix to A
@@ -129,7 +125,6 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 		// Add the full adjacency matrix to A
 		GrB_Matrix R = Graph_GetAdjacencyMatrix(gc->g);
 		res = GrB_eWiseAdd(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, R, GrB_NULL);
-		GxB_print(R, GxB_COMPLETE);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -167,10 +162,7 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 	ASSERT(res == GrB_SUCCESS);
 
 	GrB_Vector V = GrB_NULL;  // Vector of results
-	GxB_print(A, GxB_COMPLETE);
-	res = LAGraph_cdlp(&V, A, false, true, max_iters, NULL);
-	GxB_print(A, GxB_COMPLETE);
-	GxB_print(V, GxB_COMPLETE);
+	res = LAGraph_cdlp(&V, A, false, false, max_iters, NULL);
 	ASSERT(res == GrB_SUCCESS);
 	GrB_Matrix_free(&A);
 	if(F != GrB_NULL) {
@@ -254,7 +246,7 @@ ProcedureCtx *Proc_CDLP_Ctx() {
 	outputs = array_append(outputs, out_nodes);
 	outputs = array_append(outputs, out_community);
 
-	ProcedureCtx *ctx = ProcCtxNew("algo.CDLP",
+	ProcedureCtx *ctx = ProcCtxNew("algo.labelPropagation",
 								   3,
 								   outputs,
 								   Proc_CDLP_Step,
