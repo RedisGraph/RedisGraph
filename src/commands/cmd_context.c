@@ -129,8 +129,12 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 }
 
 void CommandCtx_Free(CommandCtx *command_ctx) {
-	if(command_ctx->bc) RedisModule_UnblockClient(command_ctx->bc, NULL);
-	if(command_ctx->ctx) RedisModule_FreeThreadSafeContext(command_ctx->ctx);
+	if(command_ctx->bc) {
+		RedisModule_UnblockClient(command_ctx->bc, NULL);
+		if(command_ctx->ctx) {
+			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
+		}
+	}
 
 	CommandCtx_UntrackCtx(command_ctx);
 
