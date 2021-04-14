@@ -56,19 +56,12 @@
 // Review E 76.3 (2007), p. 036106, https://arxiv.org/abs/0709.2938
 //
 // The key idea of the algorithm is that each vertex is assigned the label
-// that is most frequent among its neighbors. To allow reproducible
-// experiments, the algorithm is modified to guarantee deterministic behavior:
-// it always picks the smallest label in case of a tie:
-//
-// min ( argmax_{l} (#neighbors with label l) )
-//
-// In other words, we need to compute the *minimum mode value* (minmode) for
-// the labels among the neighbors.
+// that is most frequent among its neighbors.
 //
 // For directed graphs, a label on a neighbor that is connected through both
 // an outgoing and on an incoming edge counts twice:
 //
-// min ( argmax_{l} (#incoming neighbors with l + #outgoing neighbors with l) )
+// argmax_{l} (#incoming neighbors with l + #outgoing neighbors with l)
 //
 // ## Example (undirected)
 //
@@ -110,19 +103,6 @@
 //
 // AL = A min.sel2nd diag(L) = | 0 5 4 5 4 |
 //                             | 3 . . . . |
-//
-// ## Selecting the minimum mode value
-//
-// Next, we need to compute the minimum mode value for each row. As it is
-// difficult to capture this operation as a monoid, we use a sort operation
-// on each row. In the undirected case, we extract tuples <I, _, X> from the
-// matrix, then use <I, X> for sorting. In the directed case, we extract
-// tuples <I1, _, X1> and <I2, _, X2>, then use <I1+I2, X1+X2>,
-// where '+' denotes concatenation. Column indices (J) are not used.
-//
-// The resulting two-tuples are sorted using a parallel merge sort.
-// Finally, we use the sorted arrays compute the minimum mode value for each
-// row.
 //
 // ## Fixed point
 //
