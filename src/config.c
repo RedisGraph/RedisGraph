@@ -282,7 +282,7 @@ const char *Config_Field_name(Config_Option_Field field) {
 }
 
 // initialize every module-level configuration to its default value
-void _Config_SetToDefaults() {
+void _Config_SetToDefaults(void) {
 	// the thread pool's default size is equal to the system's number of cores
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_pool_size = (CPUCount != -1) ? CPUCount : 1;

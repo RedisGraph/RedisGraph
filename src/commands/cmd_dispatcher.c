@@ -202,7 +202,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			// Report an error once our workers thread pool internal queue
 			// is full, this error usually happens when the server is
 			// under heavy load and is unable to catch up
-			RedisModule_ReplyWithError(ctx, "Max queries exceeded");
+			RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
 			CommandCtx_Free(context);
 		}
 	}
