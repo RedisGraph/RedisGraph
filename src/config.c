@@ -15,7 +15,6 @@
 //-----------------------------------------------------------------------------
 // Configuration parameters
 //-----------------------------------------------------------------------------
-
 // config param, the timeout for each query in milliseconds
 #define TIMEOUT "TIMEOUT"
 
