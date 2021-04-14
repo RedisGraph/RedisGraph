@@ -18,14 +18,14 @@
 
 // The CDLP procedure performs community detection by label propagation.
 // Its inputs are:
-// 1. the maximum number of iterations, -1 defaults to 10
+// 1. the maximum number of iterations, 0 defaults to 10
 // 2. the relationship type to traverse, NULL for type-agnostic
 //
 // It outputs:
 // 1. node - a node in the graph
 // 2. community_id - the ID of the community this node belongs to
 //
-// CALL algo.labelPropagation(-1, 'MANAGES', NULL) YIELD node, community_id
+// CALL algo.labelPropagation(0, 'MANAGES', NULL) YIELD node, community_id
 
 typedef struct {
 	Graph *g;                       // Graph scanned.
@@ -80,7 +80,7 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 	ASSERT(args != NULL);
 
 	if(array_len((SIValue *)args) != 3) return PROCEDURE_ERR;
-	if(SI_TYPE(args[0]) != T_INT64               || // Maximum number of iterations, -1 for unlimited.
+	if(SI_TYPE(args[0]) != T_INT64               || // Maximum number of iterations, 0 for default of 10.
 	   !(SI_TYPE(args[1]) & (T_NULL | T_ARRAY))  || // Array of relationship types to consider if not NULL.
 	   !(SI_TYPE(args[2]) & (T_NULL | T_ARRAY)))    // Array of labels to consider if not NULL.
 		return PROCEDURE_ERR;
@@ -92,8 +92,8 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 	// Process inputs
 	//--------------------------------------------------------------------------
 	int64_t max_iters = args[0].longval;
-	if(max_iters == -1) max_iters = 10;
 	if(max_iters < 0) return PROCEDURE_ERR;
+	if(max_iters == 0) max_iters = 10;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	GrB_Info res;

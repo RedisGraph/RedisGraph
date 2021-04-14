@@ -343,10 +343,10 @@ GrB_Info LAGraph_cdlp
             }
 
             // Update row label within the matrix.
-			if(max >= 0)
-			{
-				GrB_Matrix_setElement(L, max_idx, I[prev_idx1], I[prev_idx1]);
-			}
+         if(max >= 0)
+         {
+            GrB_Matrix_setElement(L, max_idx, I[prev_idx1], I[prev_idx1]);
+         }
 
             // Reset the workspace.
             memset(workspace, -1, nnz * sizeof(int64_t));

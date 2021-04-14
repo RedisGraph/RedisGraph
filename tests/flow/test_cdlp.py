@@ -78,7 +78,7 @@ class testCDLP(FlowTestsBase):
     def test01_cdlp_unbounded(self):
         global graph
         # Nodes 1-3 are part of community 0 while nodes 4-8 are part of community 3
-        query = """CALL algo.labelPropagation(-1, NULL, NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, NULL, NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[0, 1],
                            [0, 2],
@@ -116,7 +116,7 @@ class testCDLP(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Consider nodes with labels A or B (i.e. all nodes but 8)
-        query = """CALL algo.labelPropagation(-1, NULL, ["A", "B"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, NULL, ["A", "B"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[1, 1],
                            [1, 2],
@@ -128,7 +128,7 @@ class testCDLP(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Consider nodes with all labels
-        query = """CALL algo.labelPropagation(-1, NULL, ["A", "B", "C"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, NULL, ["A", "B", "C"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[1, 1],
                            [1, 2],
@@ -144,7 +144,7 @@ class testCDLP(FlowTestsBase):
         global graph
         # Only consider edges with type E1 (i.e. the 3-node community)
         # The result should be one 3-node community and separate communities for all other nodes
-        query = """CALL algo.labelPropagation(-1, ["E1"], NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, ["E1"], NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[0, 1],
                            [0, 2],
@@ -157,7 +157,7 @@ class testCDLP(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Consider edges with type E1 or E2 (i.e. all edges except those connecting 8)
-        query = """CALL algo.labelPropagation(-1, ["E1", "E2"], NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, ["E1", "E2"], NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[0, 1],
                            [0, 2],
@@ -170,7 +170,7 @@ class testCDLP(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         #  # Consider edges with all types
-        query = """CALL algo.labelPropagation(-1, ["E1", "E2", "E3"], NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, ["E1", "E2", "E3"], NULL) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[0, 1],
                            [0, 2],
@@ -186,7 +186,7 @@ class testCDLP(FlowTestsBase):
         global graph
         # Only consider nodes with label A and edges with type E1 (i.e. the 3-node community)
         # The result should be one 3-node community
-        query = """CALL algo.labelPropagation(-1, ["E1"], ["A"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, ["E1"], ["A"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[1, 1],
                            [1, 2],
@@ -194,7 +194,7 @@ class testCDLP(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Consider edges with type E1 or E2 and nodes with label A or B (i.e. all nodes except 8 and all edges except those connecting 8)
-        query = """CALL algo.labelPropagation(-1, ["E1", "E2"], ["A", "B"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, ["E1", "E2"], ["A", "B"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[1, 1],
                            [1, 2],
@@ -206,7 +206,7 @@ class testCDLP(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Consider all labels and all types
-        query = """CALL algo.labelPropagation(-1, ["E1", "E2", "E3"], ["A", "B", "C"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
+        query = """CALL algo.labelPropagation(0, ["E1", "E2", "E3"], ["A", "B", "C"]) YIELD node, community_id RETURN community_id, node.v ORDER BY community_id, node.v"""
         actual_result = graph.query(query)
         expected_result = [[1, 1],
                            [1, 2],
