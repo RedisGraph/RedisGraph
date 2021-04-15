@@ -48,7 +48,7 @@ uint ThreadPools_ThreadCount
 	ASSERT(_readers_thpool != NULL);
 	ASSERT(_writers_thpool != NULL);
 
-	uint count = 0;
+	uint count = 1; // Account for main thread
 	count += thpool_num_threads(_readers_thpool);
 	count += thpool_num_threads(_writers_thpool);
 
