@@ -44,7 +44,8 @@ class testPendingQueryLimit():
     def stress_server(self):
         threads = []
         connections = []
-        thread_count = 60
+        threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
+        thread_count = threadpool_size * 5
 
         # init connections
         for i in range(thread_count):
