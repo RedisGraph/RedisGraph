@@ -12,6 +12,7 @@
 #include "../util/rmalloc.h"
 #include "../configuration/config.h"
 #include "../ast/ast_build_filter_tree.h"
+#include "../execution_plan/execution_plan_build/execution_plan_construct.h"
 
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr);
@@ -433,7 +434,7 @@ static AR_ExpNode *_AR_ExpFromSliceExpression(const cypher_astnode_t *expr) {
 	return op;
 }
 
-static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
+static AR_ExpNode *_AR_ExpFromPath(const cypher_astnode_t *path) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	/* The method TO_PATH accepts as its first parameter the ast node which represents the path.
 	 * The other parameters are the graph entities (node, edge, path) which the path builder implemented
@@ -634,6 +635,26 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromPatternPath(const cypher_astnode_t *expr) {
+	// Build a variable operand from this expression
+	AR_ExpNode *exp = _AR_ExpNodeFromGraphEntity(expr);
+	// The operand must have a valid identifier.
+	const char *alias = exp->operand.variadic.entity_alias;
+	ASSERT(alias != NULL);
+
+	// Build the toPath function call that will be projected by the subtree
+	AR_ExpNode *project_exp = _AR_ExpFromPath(expr);
+	project_exp->resolved_name = alias;
+
+	/* Upate the ExecutionPlan to contain a RollUpApply
+	 * operation with the current left-hand side op tree and
+	 * a right-hand traversal subtree that resolves this pattern. */
+	ExecutionPlan *plan = QueryCtx_GetExecutionPlan();
+	buildRollUpMatchStream(plan, expr, project_exp, alias);
+
+	return exp;
+}
+
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t t = cypher_astnode_type(expr);
@@ -650,7 +671,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		// entity-property pair
 	} else if(t == CYPHER_AST_PROPERTY_OPERATOR) {
 		return _AR_EXP_FromPropertyExpression(expr);
-		// sIValue constant types
+		// SIValue constant types
 	} else if(t == CYPHER_AST_INTEGER) {
 		return _AR_EXP_FromIntegerExpression(expr);
 	} else if(t == CYPHER_AST_FLOAT) {
@@ -679,7 +700,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_SLICE_OPERATOR) {
 		return _AR_ExpFromSliceExpression(expr);
 	} else if(t == CYPHER_AST_NAMED_PATH) {
-		return _AR_ExpFromNamedPath(expr);
+		return _AR_ExpFromPath(expr);
 	} else if(t == CYPHER_AST_SHORTEST_PATH) {
 		return _AR_ExpFromShortestPath(expr);
 	} else if(t == CYPHER_AST_NODE_PATTERN || t == CYPHER_AST_REL_PATTERN) {
@@ -696,6 +717,8 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpFromMapExpression(expr);
 	} else if(t == CYPHER_AST_MAP_PROJECTION) {
 		return _AR_ExpFromMapProjection(expr);
+	} else if(t == CYPHER_AST_PATTERN_PATH) {
+		return _AR_ExpFromPatternPath(expr);
 	} else {
 		/*
 		   Unhandled types:

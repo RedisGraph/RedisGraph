@@ -22,6 +22,16 @@ void buildCallOp(AST *ast, ExecutionPlan *plan, const cypher_astnode_t *call_cla
 // Convert a MATCH clause into a sequence of scan and traverse ops
 void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause);
 
+/* Build a RollUpApply subtree to handle path traversals in projections.
+ * Given a query like:
+ * MATCH (a:L) RETURN a.name, (a)-[]->()
+ * We want to build a RollUpApply op with a LabelScan as the left-hand branch,
+ * and a Project op with a traversal child as the right-hand branch.
+ * RollUpApply will concatenate all paths the right-hand branch produces into
+ * an array that is added to the Record and passed upward. */
+void buildRollUpMatchStream(ExecutionPlan *plan, const cypher_astnode_t *path,
+							AR_ExpNode *project_exp, const char *rollup_alias);
+
 // Convert a RETURN clause into a Project or Aggregate op
 void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause);
 

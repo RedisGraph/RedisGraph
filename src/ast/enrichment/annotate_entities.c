@@ -53,10 +53,13 @@ static void _annotate_entity_names(AST *ast, const cypher_astnode_t *node, uint 
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 			_annotate_entity_names(ast, child, anon_count);
 		}
-		return; // Return to avoid annotating other AST nodes.
+		/* Return to avoid annotating other AST nodes.
+		 * If this node is a pattern path, do not return, as
+		 * pattern paths must be annotated to handle path projections. */
+		if(t != CYPHER_AST_PATTERN_PATH) return;
 	}
 
-	// The AST node is a graph entity.
+	// The AST node is a graph entity or pattern path.
 	char *alias;
 	if(ast_identifier) {
 		// Graph entity has a user-defined alias, clone it for the annotation.

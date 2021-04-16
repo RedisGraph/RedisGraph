@@ -107,7 +107,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	FilterTree_Free(ft);
 }
 
-static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
+void _buildOptionalMatchOps(ExecutionPlan *plan, const cypher_astnode_t *path) {
 	const char **arguments = NULL;
 	OpBase *optional = NewOptionalOp(plan);
 	rax *bound_vars = NULL;
@@ -125,7 +125,7 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 	}
 
 	// Build the new Match stream and add it to the Optional stream.
-	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, clause);
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 	array_free(arguments);
 	ExecutionPlan_AddOp(optional, match_stream);
 
@@ -143,9 +143,38 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 	}
 }
 
+void buildRollUpMatchStream(ExecutionPlan *plan, const cypher_astnode_t *path,
+							AR_ExpNode *project_exp, const char *rollup_alias) {
+	ASSERT(plan->root != NULL);
+	// Collect the variables that are bound at this point.
+	rax *bound_vars = raxNew();
+	// Rather than cloning the record map, collect the bound variables along with their
+	// parser-generated constant strings.
+	ExecutionPlan_BoundVariables(plan->root, bound_vars);
+	// Collect the variable names from bound_vars to populate the Argument op we will build.
+	const char **arguments = (const char **)raxValues(bound_vars);
+	raxFree(bound_vars);
+
+	// Build the new Match stream
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+	array_free(arguments);
+
+	// Build a Project op to project the path expression being matched.
+	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
+	exps = array_append(exps, project_exp);
+	OpBase *project = NewProjectOp(plan, exps);
+	// Make the Project op the root of the Match stream.
+	ExecutionPlan_AddOp(project, match_stream);
+
+	// Create an Apply operator and make it the new root.
+	OpBase *apply_op = NewRollUpApplyOp(plan, rollup_alias);
+	ExecutionPlan_UpdateRoot(plan, apply_op);
+	ExecutionPlan_AddOp(apply_op, project);
+}
+
 void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
 	if(cypher_ast_match_is_optional(clause)) {
-		_buildOptionalMatchOps(plan, ast, clause);
+		_buildOptionalMatchOps(plan, clause);
 		return;
 	}
 

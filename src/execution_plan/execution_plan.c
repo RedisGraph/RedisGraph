@@ -20,7 +20,9 @@
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
-	return rm_calloc(1, sizeof(ExecutionPlan));
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
+	QueryCtx_SetExecutionPlan(plan);
+	return plan;
 }
 
 void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {

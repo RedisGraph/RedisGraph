@@ -319,33 +319,6 @@ cleanup:
 	return res;
 }
 
-/* While Cypher allows paths to appear in a number of places, RedisGraph
- * only supports them in the appropriate clauses and in path filters. */
-static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
-	uint nchildren = cypher_astnode_nchildren(root);
-	const cypher_astnode_type_t root_type = cypher_astnode_type(root);
-	for(uint i = 0; i < nchildren; i ++) {
-		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		const cypher_astnode_type_t child_type = cypher_astnode_type(child);
-		if(child_type == CYPHER_AST_PATTERN_PATH) {
-			if(root_type != CYPHER_AST_PATTERN &&
-			   root_type != CYPHER_AST_SHORTEST_PATH &&
-			   root_type != CYPHER_AST_MATCH &&
-			   root_type != CYPHER_AST_MERGE &&
-			   root_type != CYPHER_AST_WITH &&
-			   root_type != CYPHER_AST_NAMED_PATH &&
-			   root_type != CYPHER_AST_UNARY_OPERATOR &&
-			   root_type != CYPHER_AST_BINARY_OPERATOR) {
-				ErrorCtx_SetError("Encountered path traversal in unsupported location '%s'",
-								  cypher_astnode_typestr(child_type));
-				return AST_INVALID;
-			}
-		}
-		if(_Validate_Path_Locations(child) != AST_VALID) return AST_INVALID;
-	}
-	return AST_VALID;
-}
-
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
 	return raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound;
 }
@@ -469,6 +442,18 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props) 
 		return AST_INVALID;
 	}
 
+	uint prop_count = cypher_ast_map_nentries(props);
+	for(uint i = 0; i < prop_count; i++) {
+		const cypher_astnode_t *prop_val = cypher_ast_map_get_value(props, i);
+		cypher_astnode_type_t prop_type = cypher_astnode_type(prop_val);
+		if(prop_type == CYPHER_AST_PATTERN_PATH) {
+			// Encountered query of the form:
+			// MATCH (a {prop: ()-[]->()}) RETURN a
+			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
+			return AST_INVALID;
+		}
+	}
+
 	return AST_VALID;
 }
 
@@ -554,7 +539,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 
 				// make sure each yield output is mentioned only once
 				if(!raxInsert(identifiers, (unsigned char *)identifier,
-							strlen(identifier), NULL, NULL)) {
+							  strlen(identifier), NULL, NULL)) {
 					ErrorCtx_SetError("Variable `%s` already declared", identifier);
 					res = AST_INVALID;
 					goto cleanup;
@@ -563,7 +548,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 				// make sure procedure is aware of output
 				if(!Procedure_ContainsOutput(proc, identifier)) {
 					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
-							proc_name, identifier);
+									  proc_name, identifier);
 					res = AST_INVALID;
 					goto cleanup;
 				}
@@ -1745,9 +1730,6 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	AST mock_ast; // Build a fake AST with the correct AST root
 	mock_ast.root = body;
-
-	// Check for path traversals in unsupported locations.
-	if(_Validate_Path_Locations(mock_ast.root) != AST_VALID) return AST_INVALID;
 
 	// Check for invalid queries not captured by libcypher-parser
 	AST_Validation res;

@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "../RG.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/qsort.h"
@@ -46,7 +47,7 @@ static void _consume_function_call_expression(const cypher_astnode_t *node,
 	}
 
 	uint child_count = cypher_astnode_nchildren(node);
-	for(int i = 0; i < child_count; i++) {
+	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		_consume_function_call_expression(child, referred_funcs);
 	}
@@ -408,7 +409,9 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 
 const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
 	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anot_ctx_collection);
-	return cypher_astnode_get_annotation(name_ctx, entity);
+	const char *name = cypher_astnode_get_annotation(name_ctx, entity);
+	if(name == NULL) ErrorCtx_SetError("Attempted to access undefined entity");
+	return name;
 }
 
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {

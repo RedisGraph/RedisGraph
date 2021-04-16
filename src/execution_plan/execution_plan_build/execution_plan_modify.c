@@ -394,6 +394,7 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
 	OpBase *match_stream_root = match_stream_plan->root;
 	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
+	QueryCtx_SetExecutionPlan(plan);
 
 	// NULL-set variables shared between the match_stream_plan and the overall plan.
 	match_stream_plan->root = NULL;
