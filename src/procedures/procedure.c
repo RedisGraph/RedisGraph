@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "./procedure.h"
 #include "procedures.h"
+#include "./procedure.h"
 #include "rax.h"
 #include "../RG.h"
 #include "../util/arr.h"

@@ -4,11 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../util/arr.h"
+#include "RG.h"
 #include "rax.h"
-#include "../RG.h"
+#include "proc_ctx.h"
 #include "procedure.h"
-#include "proc_procedures.h"
+#include "../util/arr.h"
 
 extern rax *__procedures;
 

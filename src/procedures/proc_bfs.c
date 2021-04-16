@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "proc_bfs.h"
-#include "../RG.h"
+#include "RG.h"
+#include "proc_ctx.h"
 #include "../value.h"
 #include "../config.h"
 #include "../util/arr.h"

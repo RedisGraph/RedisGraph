@@ -1,20 +1,35 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #pragma once
 
-#include "proc_bfs.h"
-#include "proc_cdlp.h"
-#include "proc_labels.h"
-#include "proc_pagerank.h"
-#include "proc_relations.h"
-#include "proc_procedures.h"
-#include "proc_list_indexes.h"
-#include "proc_property_keys.h"
-#include "proc_fulltext_query.h"
-#include "proc_fulltext_drop_index.h"
-#include "proc_fulltext_create_index.h"
+#include "proc_ctx.h"
+
+// perform BFS from a single source node
+ProcedureCtx *Proc_BFS_Ctx();
+
+ProcedureCtx *Proc_CDLP_Ctx();
+
+ProcedureCtx *Proc_LabelsCtx();
+
+// lists all graph indices
+ProcedureCtx *Proc_IndexesCtx();
+
+ProcedureCtx *Proc_PropKeysCtx();
+
+ProcedureCtx *Proc_PagerankCtx();
+
+ProcedureCtx *Proc_RelationsCtx();
+
+// returns all the procedures in the systems
+ProcedureCtx *Proc_ProceduresCtx();
+
+ProcedureCtx *Proc_FulltextDropIdxGen();
+
+ProcedureCtx *Proc_FulltextQueryNodeGen();
+
+ProcedureCtx *Proc_FulltextCreateNodeIdxGen();
 

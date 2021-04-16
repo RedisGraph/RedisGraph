@@ -2,11 +2,10 @@ import os
 import sys
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
 
 graph = None
 
-class testCDLP(FlowTestsBase):
+class testCDLP():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
@@ -35,43 +34,24 @@ class testCDLP(FlowTestsBase):
         graph.add_node(g)
         graph.add_node(h)
 
-        ab = Edge(a, "E1", b, properties={"v": '12'})
-        ac = Edge(a, "E1", c, properties={"v": '13'})
-        ag = Edge(a, "E1", c, properties={"v": '17'})
-        ba = Edge(b, "E1", a, properties={"v": '21'})
-        bc = Edge(b, "E1", c, properties={"v": '23'})
-        ca = Edge(c, "E1", a, properties={"v": '31'})
-        cb = Edge(c, "E1", b, properties={"v": '32'})
-        de = Edge(d, "E2", e, properties={"v": '45'})
-        df = Edge(d, "E2", f, properties={"v": '46'})
-        ed = Edge(e, "E2", d, properties={"v": '54'})
-        ef = Edge(e, "E2", f, properties={"v": '56'})
-        eg = Edge(e, "E2", g, properties={"v": '57'})
-        fe = Edge(f, "E2", e, properties={"v": '65'})
-        fg = Edge(f, "E2", g, properties={"v": '67'})
-        ge = Edge(g, "E2", e, properties={"v": '75'})
-        gf = Edge(g, "E2", f, properties={"v": '76'})
-        gh = Edge(g, "E3", h, properties={"v": '78'})
-        hf = Edge(h, "E3", f, properties={"v": '86'})
-
-        graph.add_edge(ab)
-        graph.add_edge(ac)
-        graph.add_edge(ag)
-        graph.add_edge(ba)
-        graph.add_edge(bc)
-        graph.add_edge(ca)
-        graph.add_edge(cb)
-        graph.add_edge(de)
-        graph.add_edge(df)
-        graph.add_edge(ed)
-        graph.add_edge(ef)
-        graph.add_edge(eg)
-        graph.add_edge(fe)
-        graph.add_edge(fg)
-        graph.add_edge(ge)
-        graph.add_edge(gf)
-        graph.add_edge(gh)
-        graph.add_edge(hf)
+        graph.add_edge(Edge(a, "E1", b, properties={"v": '12'}))
+        graph.add_edge(Edge(a, "E1", c, properties={"v": '13'}))
+        graph.add_edge(Edge(a, "E1", c, properties={"v": '17'}))
+        graph.add_edge(Edge(b, "E1", a, properties={"v": '21'}))
+        graph.add_edge(Edge(b, "E1", c, properties={"v": '23'}))
+        graph.add_edge(Edge(c, "E1", a, properties={"v": '31'}))
+        graph.add_edge(Edge(c, "E1", b, properties={"v": '32'}))
+        graph.add_edge(Edge(d, "E2", e, properties={"v": '45'}))
+        graph.add_edge(Edge(d, "E2", f, properties={"v": '46'}))
+        graph.add_edge(Edge(e, "E2", d, properties={"v": '54'}))
+        graph.add_edge(Edge(e, "E2", f, properties={"v": '56'}))
+        graph.add_edge(Edge(e, "E2", g, properties={"v": '57'}))
+        graph.add_edge(Edge(f, "E2", e, properties={"v": '65'}))
+        graph.add_edge(Edge(f, "E2", g, properties={"v": '67'}))
+        graph.add_edge(Edge(g, "E2", e, properties={"v": '75'}))
+        graph.add_edge(Edge(g, "E2", f, properties={"v": '76'}))
+        graph.add_edge(Edge(g, "E3", h, properties={"v": '78'}))
+        graph.add_edge(Edge(h, "E3", f, properties={"v": '86'}))
 
         graph.flush()
 
@@ -217,3 +197,4 @@ class testCDLP(FlowTestsBase):
                            [3, 7],
                            [3, 8]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
