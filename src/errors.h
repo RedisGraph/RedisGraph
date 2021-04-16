@@ -48,6 +48,10 @@ void ErrorCtx_EmitException(void);
 
 bool ErrorCtx_EncounteredError(void);
 
+//------------------------------------------------------------------------------
+// common errors
+//------------------------------------------------------------------------------
+
 // Report an error in filter placement with the first unresolved entity.
 void Error_InvalidFilterPlacement(rax *entitiesRax);
 
@@ -62,3 +66,4 @@ void Error_UnsupportedASTOperator(const cypher_operator_t *op);
 
 // Report an error on trying to assign a complex type to a property.
 void Error_InvalidPropertyValue(void);
+

@@ -5,8 +5,10 @@
 */
 
 #pragma once
+
 #include "thpool.h"
 
+#define THPOOL_QUEUE_FULL -2
 // create both readers and writers thread pools
 int ThreadPools_CreatePools
 (

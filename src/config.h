@@ -22,7 +22,8 @@ typedef enum {
 	Config_RESULTSET_MAX_SIZE       = 5,  // max number of records in result-set
 	Config_MAINTAIN_TRANSPOSE       = 6,  // maintain transpose matrices
 	Config_VKEY_MAX_ENTITY_COUNT    = 7,  // max number of elements in vkey
-	Config_END_MARKER               = 8
+	Config_MAX_QUEUED_QUERIES       = 8,  // max number of queued queries
+	Config_END_MARKER               = 9
 } Config_Option_Field;
 
 // configuration object
@@ -35,11 +36,17 @@ typedef struct {
 	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
+	uint64_t max_queued_queries;       // max number of queued queries
 } RG_Config;
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 2
-static const Config_Option_Field RUNTIME_CONFIGS[] = { Config_RESULTSET_MAX_SIZE, Config_TIMEOUT };
+#define RUNTIME_CONFIG_COUNT 3
+static const Config_Option_Field RUNTIME_CONFIGS[] =
+{
+	Config_RESULTSET_MAX_SIZE,
+	Config_TIMEOUT,
+	Config_MAX_QUEUED_QUERIES
+};
 
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
