@@ -86,7 +86,7 @@ $ redis-server --loadmodule ./redisgraph.so MAINTAIN_TRANSPOSED_MATRICES no
 
 ## MAX_QUEUED_QUERIES
 
-Setting the maximum number of queued queries allows the server to reject incoming queries with the error message `Max queries exceeded`. This reduces the memory overhead of pending queries on an overloaded server and avoids congestion when the server processes its backlog of queries.
+Setting the maximum number of queued queries allows the server to reject incoming queries with the error message `Max pending queries exceeded`. This reduces the memory overhead of pending queries on an overloaded server and avoids congestion when the server processes its backlog of queries.
 
 This configuration can be set when the module loads or at runtime.
 
