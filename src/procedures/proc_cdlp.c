@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -19,13 +19,14 @@
 // The CDLP procedure performs community detection by label propagation.
 // Its inputs are:
 // 1. the maximum number of iterations, 0 defaults to 10
-// 2. the relationship type to traverse, NULL for type-agnostic
+// 2. array of relationship type to traverse, NULL for type-agnostic
+// 3. array the label type to consider, NULL for type-agnostic
 //
 // It outputs:
 // 1. node - a node in the graph
 // 2. community_id - the ID of the community this node belongs to
 //
-// CALL algo.labelPropagation(0, 'MANAGES', NULL) YIELD node, community_id
+// CALL algo.labelPropagation(0, ['MANAGES'], NULL) YIELD node, community_id
 
 typedef struct {
 	Graph *g;                       // Graph scanned.
@@ -73,17 +74,18 @@ static void _process_yield(CDLPCtx *ctx, const char **yield) {
 	}
 }
 
-static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
-										const SIValue *args, const char **yield) {
-	// Validate inputs
-	ASSERT(ctx != NULL);
+static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx, const SIValue *args,
+		const char **yield) {
+	// validate inputs
+	ASSERT(ctx  != NULL);
 	ASSERT(args != NULL);
 
 	if(array_len((SIValue *)args) != 3) return PROCEDURE_ERR;
 	if(SI_TYPE(args[0]) != T_INT64               || // Maximum number of iterations, 0 for default of 10.
 	   !(SI_TYPE(args[1]) & (T_NULL | T_ARRAY))  || // Array of relationship types to consider if not NULL.
-	   !(SI_TYPE(args[2]) & (T_NULL | T_ARRAY)))    // Array of labels to consider if not NULL.
+	   !(SI_TYPE(args[2]) & (T_NULL | T_ARRAY))) {  // Array of labels to consider if not NULL.
 		return PROCEDURE_ERR;
+	}
 
 	CDLPCtx *cdlp_ctx = ctx->privateData;
 	_process_yield(cdlp_ctx, yield);
@@ -91,69 +93,72 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 	//--------------------------------------------------------------------------
 	// Process inputs
 	//--------------------------------------------------------------------------
-	int64_t max_iters = args[0].longval;
+
+	GrB_Info res;
+	UNUSED(res);
+
+	GrB_Matrix    A          =  GrB_NULL;  // input matrix
+	GrB_Matrix    F          =  GrB_NULL;  // labels filter matrix
+	GrB_Vector    V          =  GrB_NULL;  // result vector
+	SIValue       reltypes   =  args[1];   // [optional] relationship types
+	SIValue       labels     =  args[2];   // [optional] labels
+	Graph         *g         =  cdlp_ctx->g;
+	GraphContext  *gc        =  QueryCtx_GetGraphCtx();
+	int64_t       max_iters  =  SI_GET_NUMERIC(args[0]);
+
 	if(max_iters < 0) return PROCEDURE_ERR;
 	if(max_iters == 0) max_iters = 10;
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	GrB_Info res;
-	UNUSED(res);
-	GrB_Matrix A;
-	SIValue reltypes = args[1];
-	SIValue labels = args[2];
+	//--------------------------------------------------------------------------
+	// Validate arguments
+	//--------------------------------------------------------------------------
 
-	GrB_Index dims = Graph_RequiredMatrixDim(gc->g);
+	if(!SIValue_IsNull(reltypes)) {
+		uint count = SIArray_Length(reltypes);
+		for(uint i = 0; i < count; i ++) {
+			if(SI_TYPE(SIArray_Get(reltypes, i)) != T_STRING) {
+				ErrorCtx_RaiseRuntimeException("Encountered non-string value in relationship types array");
+				return PROCEDURE_ERR;
+			}
+		}
+	}
+
+	if(!SIValue_IsNull(labels)) {
+		uint count = SIArray_Length(labels);
+		for(uint i = 0; i < count; i ++) {
+			if(SI_TYPE(SIArray_Get(labels, i)) != T_STRING) {
+				ErrorCtx_RaiseRuntimeException("Encountered non-string value in labels array");
+				return PROCEDURE_ERR;
+			}
+		}
+	}
+
+
+	//--------------------------------------------------------------------------
+	// Construct input matrix
+	//--------------------------------------------------------------------------
+
+	GrB_Index dims = Graph_RequiredMatrixDim(g);
 	GrB_Matrix_new(&A, GrB_UINT64, dims, dims);
 
 	if(!SIValue_IsNull(reltypes)) {
 		// Add each specified adjacency matrix to A
-		uint count = array_len(reltypes.array);
+		uint count = SIArray_Length(reltypes);
 		for(uint i = 0; i < count; i ++) {
-			if(SI_TYPE(reltypes.array[i]) != T_STRING) {
-				GrB_Matrix_free(&A);
-				ErrorCtx_RaiseRuntimeException("Encountered non-string value in relationship types array");
-			}
-			const char *reltype = reltypes.array[i].stringval;
-
+			const char *reltype = SIArray_Get(reltypes, i).stringval;
 			Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-			if(!s) continue; // Failed to find schema. TODO what should happen here?
-			GrB_Matrix R = Graph_GetRelationMatrix(gc->g, s->id);
-			res = GrB_eWiseAdd(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, R, GrB_NULL);
+			if(!s) continue; // Failed to find schema, skip
+
+			GrB_Matrix R = Graph_GetRelationMatrix(g, s->id);
+			res = GrB_eWiseAdd(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_UINT64, A, R, GrB_NULL);
 			ASSERT(res == GrB_SUCCESS);
 		}
 	} else {
+		// TODO: see why dup doesn't work, test fails
+		// GrB_Matrix_dup(&A, Graph_GetAdjacencyMatrix(g));
 		// Add the full adjacency matrix to A
 		GrB_Matrix R = Graph_GetAdjacencyMatrix(gc->g);
-		res = GrB_eWiseAdd(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, R, GrB_NULL);
-		ASSERT(res == GrB_SUCCESS);
-	}
-
-	GrB_Matrix F = GrB_NULL;
-	if(!SIValue_IsNull(labels)) {
-		GrB_Matrix_new(&F, GrB_BOOL, dims, dims);
-		// Multiply A on the left and right by each specified label matrix to filter
-		uint count = array_len(labels.array);
-		for(uint i = 0; i < count; i ++) {
-			if(SI_TYPE(labels.array[i]) != T_STRING) {
-				GrB_Matrix_free(&A);
-				GrB_Matrix_free(&F);
-				ErrorCtx_RaiseRuntimeException("Encountered non-string value in labels array");
-			}
-			const char *label = labels.array[i].stringval;
-
-			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-			if(!s) continue; // Failed to find schema. TODO what should happen here?
-			GrB_Matrix L = Graph_GetLabelMatrix(gc->g, s->id);
-
-			res = GrB_eWiseAdd(F, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, L, GrB_NULL);
-			ASSERT(res == GrB_SUCCESS);
-
-		}
-		// Multiply to the left
-		res = GrB_mxm(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, A, GrB_NULL);
-		ASSERT(res == GrB_SUCCESS);
-		// Multiply to the right
-		res = GrB_mxm(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, F, GrB_NULL);
+		res = GrB_Matrix_eWiseAdd_Semiring(A, GrB_NULL, GrB_NULL, GxB_ANY_SECOND_UINT64, A, R, GrB_NULL);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -161,10 +166,31 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 	res = GxB_Matrix_select(A, GrB_NULL, GrB_NULL, GxB_OFFDIAG, A, GrB_NULL, GrB_NULL);
 	ASSERT(res == GrB_SUCCESS);
 
-	GrB_Vector V = GrB_NULL;  // Vector of results
+	if(!SIValue_IsNull(labels)) {
+		GrB_Matrix_new(&F, GrB_BOOL, dims, dims);
+		// Multiply A on the left and right by each specified label matrix to filter
+		uint count = SIArray_Length(labels);
+		for(uint i = 0; i < count; i ++) {
+			const char *label = SIArray_Get(labels, i).stringval;
+			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(!s) continue; // Failed to find schema, skip
+
+			GrB_Matrix L = Graph_GetLabelMatrix(g, s->id);
+			res = GrB_eWiseAdd(F, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, L, GrB_NULL);
+			ASSERT(res == GrB_SUCCESS);
+		}
+		// Multiply to the left
+		res = GrB_mxm(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_UINT64, F, A, GrB_NULL);
+		ASSERT(res == GrB_SUCCESS);
+		// Multiply to the right
+		res = GrB_mxm(A, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_UINT64, A, F, GrB_NULL);
+		ASSERT(res == GrB_SUCCESS);
+	}
+
 	res = LAGraph_cdlp(&V, A, false, false, max_iters, NULL);
 	ASSERT(res == GrB_SUCCESS);
-	GrB_Matrix_free(&A);
+
+
 	if(F != GrB_NULL) {
 		// We are filtering by label, remove all nodes with inappropriate labels from
 		// the vector with vector-matrix multiplication
@@ -172,10 +198,12 @@ static ProcedureResult Proc_CDLP_Invoke(ProcedureCtx *ctx,
 		ASSERT(res == GrB_SUCCESS);
 		GrB_Matrix_free(&F);
 	}
+
 	cdlp_ctx->labels = V;
-	GrB_Index nvals;
-	GrB_Vector_nvals(&nvals, V);
-	cdlp_ctx->nvals = nvals;
+	GrB_Vector_nvals(&cdlp_ctx->nvals, V);
+
+	GrB_Matrix_free(&A);
+
 	return PROCEDURE_OK;
 }
 
@@ -198,22 +226,26 @@ static SIValue *Proc_CDLP_Step(ProcedureCtx *ctx) {
 	// Increment the current node ID
 	cdlp_ctx->cur++;
 
-	// Populate output.
+	//--------------------------------------------------------------------------
+	// Populate output
+	//--------------------------------------------------------------------------
+
 	if(cdlp_ctx->node_output_idx >= 0) {
 		// Emit the current node
-		cdlp_ctx->n = GE_NEW_NODE();
 		Graph_GetNode(cdlp_ctx->g, node_id, &cdlp_ctx->n);
 		cdlp_ctx->output[cdlp_ctx->node_output_idx] = SI_Node(&cdlp_ctx->n);
 	}
 
-	if(cdlp_ctx->community_output_idx >= 0)
+	if(cdlp_ctx->community_output_idx >= 0) {
 		cdlp_ctx->output[cdlp_ctx->community_output_idx] = SI_LongVal(community_id);
+	}
 
 	return cdlp_ctx->output;
 }
 
 static ProcedureResult Proc_CDLP_Free(ProcedureCtx *ctx) {
 	ASSERT(ctx != NULL);
+
 	// Free private data.
 	CDLPCtx *pdata = ctx->privateData;
 	if(pdata->output != NULL) array_free(pdata->output);
@@ -226,12 +258,16 @@ static ProcedureResult Proc_CDLP_Free(ProcedureCtx *ctx) {
 static CDLPCtx *_Build_Private_Data() {
 	// Set up the CDLP context.
 	CDLPCtx *pdata = rm_calloc(1, sizeof(CDLPCtx));
-	pdata->cur = 0;
-	pdata->labels = GrB_NULL;
-	pdata->node_output_idx = -1;
-	pdata->community_output_idx = -1;
-	pdata->g = QueryCtx_GetGraph();
-	pdata->output = array_new(SIValue, 4);
+
+	pdata->n                     =  GE_NEW_NODE();
+	pdata->nvals                 =  0;
+	pdata->cur                   =  0;
+	pdata->labels                =  GrB_NULL;
+	pdata->node_output_idx       =  -1;
+	pdata->community_output_idx  =  -1;
+	pdata->g                     =  QueryCtx_GetGraph();
+	pdata->output                =  array_new(SIValue, 4);
+
 	return pdata;
 }
 
