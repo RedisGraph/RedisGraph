@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "proc_property_keys.h"
 #include "RG.h"
+#include "proc_ctx.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"

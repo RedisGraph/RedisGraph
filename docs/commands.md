@@ -775,18 +775,19 @@ GRAPH.QUERY social "CALL db.labels() YIELD label"
 
 YIELD modifiers are only required if explicitly specified; by default the value in the 'Yields' column will be emitted automatically.
 
-| Procedure                       | Arguments                                       | Yields                        | Description                                                                                                                                                                            |
-| -------                         | :-------                                        | :-------                      | :-----------                                                                                                                                                                           |
-| db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
-| db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
-| db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
-| db.indexes                      | none                                            | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                         |
-| db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
-| db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
-| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
-| algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`               | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
-| [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`              | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
-| dbms.procedures()               | none                                            | `name`, `mode`                | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
+| Procedure                                  | Arguments                                        | Yields                        | Description                                                                                                                                                                                                     |
+| -------                                    | :-------                                         | :-------                      | :-----------                                                                                                                                                                                                    |
+| db.labels                                  | none                                             | `label`                       | Yields all node labels in the graph.                                                                                                                                                                            |
+| db.relationshipTypes                       | none                                             | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                                                     |
+| db.propertyKeys                            | none                                             | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                                          |
+| db.indexes                                 | none                                             | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                                                  |
+| db.idx.fulltext.createNodeIndex            | `label`, `property` [, `property` ...]           | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                                          |
+| db.idx.fulltext.drop                       | `label`                                          | none                          | Deletes the full-text index associated with the given label.                                                                                                                                                    |
+| db.idx.fulltext.queryNodes                 | `label`, `string`                                | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                                               |
+| algo.pageRank                              | `label`, `relationship-type`                     | `node`, `score`               | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                                                       |
+| [algo.BFS](#BFS)                           | `source-node`, `max-level`, `relationship-type`  | `nodes`, `edges`              | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed.                          |
+| [algo.labelPropagation](#labelPropagation) | `max-iters`, `relationship-types`, `node-labels` | `community_id`, `node`        | Performs label propagation to find communities of nodes. A `max-iters` of -1 defaults to 10 and non-NULL arrays for `relationship-types` or `node-labels` define the types and labels that may be considered.   |
+| dbms.procedures()                          | none                                             | `name`, `mode`                | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                                                     |
 
 ### Algorithms
 
@@ -804,6 +805,27 @@ It can yield two outputs:
 `nodes` - An array of all nodes connected to the source without violating the input constraints.
 
 `edges` - An array of all edges traversed during the search. This does not necessarily contain all edges connecting nodes in the tree, as cycles or multiple edges connecting the same source and destination do not have a bearing on the reachability this algorithm tests for. These can be used to construct the directed acyclic graph that represents the BFS tree. Emitting edges incurs a small performance penalty.
+
+#### labelPropagation
+The label propagation algorithm performs community detection by assigning a unique community ID to each node, then at each iteration re-assigning each node's community ID to the most frequent ID among its neighbors (both incoming and outgoing).
+
+The algorithm is based on that described in the paper [Near linear time algorithm to detect community structures in large-scale networks](https://arxiv.org/abs/0709.2938).
+
+Since updates to all community IDs are performed simultaneously, in very small or near-bipartite graphs, it is possible to get into a scenario in which at every iteration 2 sets of nodes swap labels without ever resolving into a single community. This issue does not affect non-trivial graphs unless they possess a near-bipartite structure.
+
+The label propagation algorithm accepts 3 arguments:
+
+`max-iters (integer)` - If greater than zero, this argument indicates how many iterations should be performed by the algorithm. A zero value applies the default of 10.
+
+`relationship-types (array)` - If this argument is NULL, all relationship types will be traversed. Otherwise, it specifies an array of relationship types to consider in community detection.
+
+`node-labels (array)` - If this argument is NULL, all node labels will be considered. Otherwise, it specifies an array of node labelsto consider in community detection.
+
+It can yield two outputs:
+
+`community_id` - The community ID of the yielded node. This number has no intrinsic significance; it is solely used for associating the node with others of the same community.
+
+`node` - Each node associated with a community.
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.

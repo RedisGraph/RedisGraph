@@ -98,8 +98,8 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Set operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall",
-	  	NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
-	  	ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
+				NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
+				ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
 
 	// Set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
@@ -111,11 +111,11 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
 	}
 
-	return (OpBase*)op;
+	return (OpBase *)op;
 }
 
 static Record ProcCallConsume(OpBase *opBase) {
-	OpProcCall *op = (OpProcCall*)opBase;
+	OpProcCall *op = (OpProcCall *)opBase;
 
 	Record yield_record = NULL;
 	while(!(yield_record = _yield(op))) {

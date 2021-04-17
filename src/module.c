@@ -26,6 +26,7 @@
 #include "serializers/graphmeta_type.h"
 #include "redisearch_api.h"
 #include "util/redis_version.h"
+#include "algorithms/shared/LAGraph_internal.h"
 
 //------------------------------------------------------------------------------
 // Minimal supported Redis version
@@ -90,6 +91,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	RedisModule_Log(ctx, "notice", "Starting up RedisGraph version %d.%d.%d.",
 					REDISGRAPH_VERSION_MAJOR, REDISGRAPH_VERSION_MINOR, REDISGRAPH_VERSION_PATCH);
+
+	// Initialize LAGraph data structures
+	LAGraph_Complex_init() ;
+	LAGraph_alloc_global() ;
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
