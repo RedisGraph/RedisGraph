@@ -10,6 +10,7 @@
 #include "redismodule.h"
 
 #define RESULTSET_SIZE_UNLIMITED    UINT64_MAX
+#define QUERY_MEM_CAPACITY_UNLIMITED UINT64_MAX
 #define CONFIG_TIMEOUT_NO_TIMEOUT   0
 #define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
@@ -23,7 +24,8 @@ typedef enum {
 	Config_MAINTAIN_TRANSPOSE       = 6,  // maintain transpose matrices
 	Config_VKEY_MAX_ENTITY_COUNT    = 7,  // max number of elements in vkey
 	Config_MAX_QUEUED_QUERIES       = 8,  // max number of queued queries
-	Config_END_MARKER               = 9
+	Config_QUERY_MEM_CAPACITY       = 9,  // Max mem(bytes) that query/thread can utilize at any given time
+	Config_END_MARKER               = 10
 } Config_Option_Field;
 
 // configuration object
@@ -37,15 +39,17 @@ typedef struct {
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
+	uint64_t query_mem_capacity;       // Max mem(bytes) that query/thread can utilize at any given time
 } RG_Config;
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 3
+#define RUNTIME_CONFIG_COUNT 4
 static const Config_Option_Field RUNTIME_CONFIGS[] =
 {
 	Config_RESULTSET_MAX_SIZE,
 	Config_TIMEOUT,
-	Config_MAX_QUEUED_QUERIES
+	Config_MAX_QUEUED_QUERIES,
+	Config_QUERY_MEM_CAPACITY
 };
 
 // Set module-level configurations to defaults or to user arguments where provided.

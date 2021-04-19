@@ -25,6 +25,12 @@ class testConfig(FlowTestsBase):
         expected_response = [config_name, 1]
         self.env.assertEqual(response, expected_response)
 
+        # Try reading 'QUERY_MEM_CAPACITY' from config
+        config_name = "QUERY_MEM_CAPACITY"
+        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
+        expected_response = [config_name, -1] # capacity=QUERY_MEM_CAPACITY_UNLIMITED  
+        self.env.assertEqual(response, expected_response)
+
     def test02_config_get_invalid_name(self):
         global redis_graph
 
@@ -44,6 +50,19 @@ class testConfig(FlowTestsBase):
 
         config_name = "RESULTSET_SIZE"
         config_value = 3
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET %s %d" % (config_name, config_value))
+        self.env.assertEqual(response, "OK")
+
+        # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
+        expected_response = [config_name, config_value]
+        self.env.assertEqual(response, expected_response)
+
+
+        config_name = "QUERY_MEM_CAPACITY"
+        config_value = 1<<30 # 1GB
 
         # Set configuration
         response = redis_con.execute_command("GRAPH.CONFIG SET %s %d" % (config_name, config_value))

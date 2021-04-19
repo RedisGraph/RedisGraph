@@ -42,6 +42,9 @@
 // config param, max number of queued queries
 #define MAX_QUEUED_QUERIES "MAX_QUEUED_QUERIES"
 
+// Max mem(bytes) that query/thread can utilize at any given time
+#define QUERY_MEM_CAPACITY "QUERY_MEM_CAPACITY"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
@@ -204,7 +207,25 @@ uint64_t Config_resultset_max_size_get(void) {
 	return config.resultset_size;
 }
 
-bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
+//------------------------------------------------------------------------------
+// query mem capacity
+//------------------------------------------------------------------------------
+
+void Config_query_mem_capacity_set(int64_t capacity)
+{
+	if (capacity < 0)
+		config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
+	else
+		config.query_mem_capacity = capacity;
+}
+
+uint64_t Config_query_mem_capacity_get(void)
+{
+	return config.query_mem_capacity;
+}
+
+bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
+{
 	ASSERT(field_str != NULL);
 
 	Config_Option_Field f;
@@ -225,6 +246,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 		f = Config_RESULTSET_MAX_SIZE;
 	} else if (!(strcasecmp(field_str, MAX_QUEUED_QUERIES))) {
 		f = Config_MAX_QUEUED_QUERIES;
+	} else if (!(strcasecmp(field_str, QUERY_MEM_CAPACITY))) {
+		f = Config_QUERY_MEM_CAPACITY;
 	} else {
 		return false;
 	}
@@ -267,6 +290,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 
 		case Config_ASYNC_DELETE:
 			name = ASYNC_DELETE;
+			break;
+
+		case Config_QUERY_MEM_CAPACITY:
+			name = QUERY_MEM_CAPACITY;
 			break;
 
         //----------------------------------------------------------------------
@@ -315,6 +342,9 @@ void _Config_SetToDefaults(void) {
 
 	// no limit on number of queued queries by default
 	config.max_queued_queries = QUEUED_QUERIES_UNLIMITED;
+
+	// no limit on query memory capacity
+	config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -481,13 +511,26 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-	    //----------------------------------------------------------------------
-	    // invalid option
-	    //----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// query mem capacity
+		//----------------------------------------------------------------------
 
-        default : 
-			return false;
-    }
+		case Config_QUERY_MEM_CAPACITY:
+			{
+				long long query_mem_capacity;
+				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
+
+				Config_query_mem_capacity_set(query_mem_capacity);
+			}
+			break;
+
+	//----------------------------------------------------------------------
+	// invalid option
+	//----------------------------------------------------------------------
+
+	default:
+		return false;
+	}
 
 	return true;
 }
@@ -630,6 +673,21 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 				ASSERT(async_delete != NULL);
 				(*async_delete) = Config_async_delete_get();
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// query mem capacity
+		//----------------------------------------------------------------------
+
+		case Config_QUERY_MEM_CAPACITY:
+			{
+				va_start(ap, field);
+				uint64_t *query_mem_capacity = va_arg(ap, uint64_t *);
+				va_end(ap);
+
+				ASSERT(query_mem_capacity != NULL);
+				(*query_mem_capacity) = Config_query_mem_capacity_get();
 			}
 			break;
 
