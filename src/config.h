@@ -67,3 +67,5 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val);
 
 bool Config_Option_get(Config_Option_Field field, ...);
 
+// Sets the callback function which should be called when a config param changes.
+void Config_Subscribe_Changes(void (*callback)(Config_Option_Field type, void *val));

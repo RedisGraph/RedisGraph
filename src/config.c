@@ -54,6 +54,8 @@
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
 extern RG_Config config; // global module configuration
+extern void (*on_config_change)(Config_Option_Field type, void *val); // callback function which called when config param changed
+#define _on_config_change(type, val) if(on_config_change) { on_config_change(type, val); }
 
 //------------------------------------------------------------------------------
 // config value parsing
@@ -406,6 +408,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 					return false;
 				}
 				Config_max_queued_queries_set(max_queued_queries);
+				_on_config_change(field, &max_queued_queries);
 			}
 			break;
 
@@ -418,6 +421,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				long long timeout;
 				if(!_Config_ParsePositiveInteger(val, &timeout)) return false;
 				Config_timeout_set(timeout);
+				_on_config_change(field, &timeout);
 			}
 			break;
 
@@ -430,6 +434,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				long long cache_size;
 				if(!_Config_ParsePositiveInteger(val, &cache_size)) return false;
 				Config_cache_size_set(cache_size);
+				_on_config_change(field, &cache_size);
 			}
 			break;
 
@@ -443,6 +448,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParsePositiveInteger(val, &omp_nthreads)) return false;
 
 				Config_OMP_thread_count_set(omp_nthreads);
+				_on_config_change(field, &omp_nthreads);
 			}
 			break;
 
@@ -456,6 +462,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParsePositiveInteger(val, &pool_nthreads)) return false;
 
 				Config_thread_pool_size_set(pool_nthreads);
+				_on_config_change(field, &pool_nthreads);
 			}
 			break;
 
@@ -469,6 +476,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParseInteger(val, &resultset_max_size)) return false;
 
 				Config_resultset_max_size_set(resultset_max_size);
+				_on_config_change(field, &resultset_max_size);
 			}
 			break;
 
@@ -482,6 +490,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
 
 				Config_maintain_transpose_set(maintain_transpose);
+				_on_config_change(field, &maintain_transpose);
 			}
 			break;
 
@@ -495,6 +504,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
 
 				Config_virtual_key_entity_count_set(vkey_max_entity_count);
+				_on_config_change(field, &vkey_max_entity_count);
 			}
 			break;
 
@@ -508,6 +518,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParseYesNo(val, &async_delete)) return false;
 
 				Config_async_delete_set(async_delete);
+				_on_config_change(field, &async_delete);
 			}
 			break;
 
@@ -521,6 +532,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
 
 				Config_query_mem_capacity_set(query_mem_capacity);
+				_on_config_change(field, &query_mem_capacity);
 			}
 			break;
 
@@ -590,115 +602,120 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 		// OpenMP thread count
 		//----------------------------------------------------------------------
 
-		case Config_OPENMP_NTHREAD:
-			{
-				va_start(ap, field);
-				uint *omp_nthreads = va_arg(ap, uint*);
-				va_end(ap);
+	case Config_OPENMP_NTHREAD:
+	{
+		va_start(ap, field);
+		uint *omp_nthreads = va_arg(ap, uint *);
+		va_end(ap);
 
-				ASSERT(omp_nthreads != NULL);
-				(*omp_nthreads) = Config_OMP_thread_count_get();
-			}
-			break;
+		ASSERT(omp_nthreads != NULL);
+		(*omp_nthreads) = Config_OMP_thread_count_get();
+	}
+	break;
 
 		//----------------------------------------------------------------------
 		// thread-pool size
 		//----------------------------------------------------------------------
 
-		case Config_THREAD_POOL_SIZE:
-			{
-				va_start(ap, field);
-				uint *pool_nthreads = va_arg(ap, uint*);
-				va_end(ap);
+	case Config_THREAD_POOL_SIZE:
+	{
+		va_start(ap, field);
+		uint *pool_nthreads = va_arg(ap, uint *);
+		va_end(ap);
 
-				ASSERT(pool_nthreads != NULL);
-				(*pool_nthreads) = Config_thread_pool_size_get();
-			}
-			break;
+		ASSERT(pool_nthreads != NULL);
+		(*pool_nthreads) = Config_thread_pool_size_get();
+	}
+	break;
 
 		//----------------------------------------------------------------------
 		// result-set size
 		//----------------------------------------------------------------------
 
-		case Config_RESULTSET_MAX_SIZE:
-			{
-				va_start(ap, field);
-				uint64_t *resultset_max_size = va_arg(ap, uint64_t*);
-				va_end(ap);
+	case Config_RESULTSET_MAX_SIZE:
+	{
+		va_start(ap, field);
+		uint64_t *resultset_max_size = va_arg(ap, uint64_t *);
+		va_end(ap);
 
-				ASSERT(resultset_max_size != NULL);
-				(*resultset_max_size) = Config_resultset_max_size_get();
-			}
-			break;
+		ASSERT(resultset_max_size != NULL);
+		(*resultset_max_size) = Config_resultset_max_size_get();
+	}
+	break;
 
 		//----------------------------------------------------------------------
 		// maintain transpose
 		//----------------------------------------------------------------------
 
-		case Config_MAINTAIN_TRANSPOSE:
-			{
-				va_start(ap, field);
-				bool *maintain_transpose = va_arg(ap, bool*);
-				va_end(ap);
+	case Config_MAINTAIN_TRANSPOSE:
+	{
+		va_start(ap, field);
+		bool *maintain_transpose = va_arg(ap, bool *);
+		va_end(ap);
 
-				ASSERT(maintain_transpose != NULL);
-				(*maintain_transpose) = Config_maintain_transpose_get();
-			}
-			break;
+		ASSERT(maintain_transpose != NULL);
+		(*maintain_transpose) = Config_maintain_transpose_get();
+	}
+	break;
 
 		//----------------------------------------------------------------------
 		// virtual key entity count
 		//----------------------------------------------------------------------
 
-		case Config_VKEY_MAX_ENTITY_COUNT:
-			{
-				va_start(ap, field);
-				uint64_t *vkey_max_entity_count = va_arg(ap, uint64_t*);
-				va_end(ap);
+	case Config_VKEY_MAX_ENTITY_COUNT:
+	{
+		va_start(ap, field);
+		uint64_t *vkey_max_entity_count = va_arg(ap, uint64_t *);
+		va_end(ap);
 
-				ASSERT(vkey_max_entity_count != NULL);
-				(*vkey_max_entity_count) = Config_virtual_key_entity_count_get();
-			}
-			break;
+		ASSERT(vkey_max_entity_count != NULL);
+		(*vkey_max_entity_count) = Config_virtual_key_entity_count_get();
+	}
+	break;
 
 		//----------------------------------------------------------------------
 		// async deleteion
 		//----------------------------------------------------------------------
 
-		case Config_ASYNC_DELETE:
-			{
-				va_start(ap, field);
-				bool *async_delete = va_arg(ap, bool*);
-				va_end(ap);
+	case Config_ASYNC_DELETE:
+	{
+		va_start(ap, field);
+		bool *async_delete = va_arg(ap, bool *);
+		va_end(ap);
 
-				ASSERT(async_delete != NULL);
-				(*async_delete) = Config_async_delete_get();
-			}
-			break;
+		ASSERT(async_delete != NULL);
+		(*async_delete) = Config_async_delete_get();
+	}
+	break;
 
 		//----------------------------------------------------------------------
 		// query mem capacity
 		//----------------------------------------------------------------------
 
-		case Config_QUERY_MEM_CAPACITY:
-			{
-				va_start(ap, field);
-				uint64_t *query_mem_capacity = va_arg(ap, uint64_t *);
-				va_end(ap);
+	case Config_QUERY_MEM_CAPACITY:
+	{
+		va_start(ap, field);
+		uint64_t *query_mem_capacity = va_arg(ap, uint64_t *);
+		va_end(ap);
 
-				ASSERT(query_mem_capacity != NULL);
-				(*query_mem_capacity) = Config_query_mem_capacity_get();
-			}
-			break;
+		ASSERT(query_mem_capacity != NULL);
+		(*query_mem_capacity) = Config_query_mem_capacity_get();
+	}
+	break;
 
-        //----------------------------------------------------------------------
-        // invalid option
-        //----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// invalid option
+		//----------------------------------------------------------------------
 
-        default : 
-			ASSERT("invalid option field" && false);
-			return false;
-    }
+	default:
+		ASSERT("invalid option field" && false);
+		return false;
+	}
 
 	return true;
+}
+
+void Config_Subscribe_Changes(void (*callback)(Config_Option_Field type, void *val))
+{
+	on_config_change = callback;
 }
