@@ -38,7 +38,6 @@
 // Module-level global variables
 //------------------------------------------------------------------------------
 RG_Config config;                   // Module global configuration.
-void (*on_config_change)(Config_Option_Field type, void *val); // callback function which called when config param changed
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
 

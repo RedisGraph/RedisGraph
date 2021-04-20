@@ -28,6 +28,8 @@ typedef enum {
 	Config_END_MARKER               = 10
 } Config_Option_Field;
 
+typedef void (*Config_on_change)(Config_Option_Field type); // callback function which being called when config param changed
+
 // configuration object
 typedef struct {
 	uint64_t timeout;                  // The timeout for each query in milliseconds.
@@ -40,6 +42,7 @@ typedef struct {
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
 	uint64_t query_mem_capacity;       // Max mem(bytes) that query/thread can utilize at any given time
+	Config_on_change cb;               // callback function which being called when config param changed
 } RG_Config;
 
 // Run-time configurable fields
@@ -68,4 +71,5 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val);
 bool Config_Option_get(Config_Option_Field field, ...);
 
 // Sets the callback function which should be called when a config param changes.
-void Config_Subscribe_Changes(void (*callback)(Config_Option_Field type, void *val));
+void Config_Subscribe_Changes(Config_on_change cb);
+

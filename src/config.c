@@ -54,8 +54,6 @@
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
 extern RG_Config config; // global module configuration
-extern void (*on_config_change)(Config_Option_Field type, void *val); // callback function which called when config param changed
-#define _on_config_change(type, val) if(on_config_change) { on_config_change(type, val); }
 
 //------------------------------------------------------------------------------
 // config value parsing
@@ -408,7 +406,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 					return false;
 				}
 				Config_max_queued_queries_set(max_queued_queries);
-				_on_config_change(field, &max_queued_queries);
 			}
 			break;
 
@@ -421,7 +418,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				long long timeout;
 				if(!_Config_ParsePositiveInteger(val, &timeout)) return false;
 				Config_timeout_set(timeout);
-				_on_config_change(field, &timeout);
 			}
 			break;
 
@@ -434,7 +430,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				long long cache_size;
 				if(!_Config_ParsePositiveInteger(val, &cache_size)) return false;
 				Config_cache_size_set(cache_size);
-				_on_config_change(field, &cache_size);
 			}
 			break;
 
@@ -448,7 +443,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParsePositiveInteger(val, &omp_nthreads)) return false;
 
 				Config_OMP_thread_count_set(omp_nthreads);
-				_on_config_change(field, &omp_nthreads);
 			}
 			break;
 
@@ -462,7 +456,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParsePositiveInteger(val, &pool_nthreads)) return false;
 
 				Config_thread_pool_size_set(pool_nthreads);
-				_on_config_change(field, &pool_nthreads);
 			}
 			break;
 
@@ -476,7 +469,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParseInteger(val, &resultset_max_size)) return false;
 
 				Config_resultset_max_size_set(resultset_max_size);
-				_on_config_change(field, &resultset_max_size);
 			}
 			break;
 
@@ -490,7 +482,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
 
 				Config_maintain_transpose_set(maintain_transpose);
-				_on_config_change(field, &maintain_transpose);
 			}
 			break;
 
@@ -504,7 +495,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
 
 				Config_virtual_key_entity_count_set(vkey_max_entity_count);
-				_on_config_change(field, &vkey_max_entity_count);
 			}
 			break;
 
@@ -518,7 +508,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if(!_Config_ParseYesNo(val, &async_delete)) return false;
 
 				Config_async_delete_set(async_delete);
-				_on_config_change(field, &async_delete);
 			}
 			break;
 
@@ -532,7 +521,6 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
 
 				Config_query_mem_capacity_set(query_mem_capacity);
-				_on_config_change(field, &query_mem_capacity);
 			}
 			break;
 
@@ -543,6 +531,9 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 	default:
 		return false;
 	}
+
+	if(config.cb)
+		config.cb(field);
 
 	return true;
 }
@@ -715,7 +706,7 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 	return true;
 }
 
-void Config_Subscribe_Changes(void (*callback)(Config_Option_Field type, void *val))
-{
-	on_config_change = callback;
+void Config_Subscribe_Changes(Config_on_change cb) {
+	config.cb = cb;
 }
+
