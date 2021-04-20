@@ -602,115 +602,115 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 		// OpenMP thread count
 		//----------------------------------------------------------------------
 
-	case Config_OPENMP_NTHREAD:
-	{
-		va_start(ap, field);
-		uint *omp_nthreads = va_arg(ap, uint *);
-		va_end(ap);
+		case Config_OPENMP_NTHREAD:
+			{
+				va_start(ap, field);
+				uint *omp_nthreads = va_arg(ap, uint*);
+				va_end(ap);
 
-		ASSERT(omp_nthreads != NULL);
-		(*omp_nthreads) = Config_OMP_thread_count_get();
-	}
-	break;
+				ASSERT(omp_nthreads != NULL);
+				(*omp_nthreads) = Config_OMP_thread_count_get();
+			}
+			break;
 
 		//----------------------------------------------------------------------
 		// thread-pool size
 		//----------------------------------------------------------------------
 
-	case Config_THREAD_POOL_SIZE:
-	{
-		va_start(ap, field);
-		uint *pool_nthreads = va_arg(ap, uint *);
-		va_end(ap);
+		case Config_THREAD_POOL_SIZE:
+			{
+				va_start(ap, field);
+				uint *pool_nthreads = va_arg(ap, uint*);
+				va_end(ap);
 
-		ASSERT(pool_nthreads != NULL);
-		(*pool_nthreads) = Config_thread_pool_size_get();
-	}
-	break;
+				ASSERT(pool_nthreads != NULL);
+				(*pool_nthreads) = Config_thread_pool_size_get();
+			}
+			break;
 
 		//----------------------------------------------------------------------
 		// result-set size
 		//----------------------------------------------------------------------
 
-	case Config_RESULTSET_MAX_SIZE:
-	{
-		va_start(ap, field);
-		uint64_t *resultset_max_size = va_arg(ap, uint64_t *);
-		va_end(ap);
+		case Config_RESULTSET_MAX_SIZE:
+			{
+				va_start(ap, field);
+				uint64_t *resultset_max_size = va_arg(ap, uint64_t*);
+				va_end(ap);
 
-		ASSERT(resultset_max_size != NULL);
-		(*resultset_max_size) = Config_resultset_max_size_get();
-	}
-	break;
+				ASSERT(resultset_max_size != NULL);
+				(*resultset_max_size) = Config_resultset_max_size_get();
+			}
+			break;
 
 		//----------------------------------------------------------------------
 		// maintain transpose
 		//----------------------------------------------------------------------
 
-	case Config_MAINTAIN_TRANSPOSE:
-	{
-		va_start(ap, field);
-		bool *maintain_transpose = va_arg(ap, bool *);
-		va_end(ap);
+		case Config_MAINTAIN_TRANSPOSE:
+			{
+				va_start(ap, field);
+				bool *maintain_transpose = va_arg(ap, bool*);
+				va_end(ap);
 
-		ASSERT(maintain_transpose != NULL);
-		(*maintain_transpose) = Config_maintain_transpose_get();
-	}
-	break;
+				ASSERT(maintain_transpose != NULL);
+				(*maintain_transpose) = Config_maintain_transpose_get();
+			}
+			break;
 
 		//----------------------------------------------------------------------
 		// virtual key entity count
 		//----------------------------------------------------------------------
 
-	case Config_VKEY_MAX_ENTITY_COUNT:
-	{
-		va_start(ap, field);
-		uint64_t *vkey_max_entity_count = va_arg(ap, uint64_t *);
-		va_end(ap);
+		case Config_VKEY_MAX_ENTITY_COUNT:
+			{
+				va_start(ap, field);
+				uint64_t *vkey_max_entity_count = va_arg(ap, uint64_t*);
+				va_end(ap);
 
-		ASSERT(vkey_max_entity_count != NULL);
-		(*vkey_max_entity_count) = Config_virtual_key_entity_count_get();
-	}
-	break;
+				ASSERT(vkey_max_entity_count != NULL);
+				(*vkey_max_entity_count) = Config_virtual_key_entity_count_get();
+			}
+			break;
 
 		//----------------------------------------------------------------------
 		// async deleteion
 		//----------------------------------------------------------------------
 
-	case Config_ASYNC_DELETE:
-	{
-		va_start(ap, field);
-		bool *async_delete = va_arg(ap, bool *);
-		va_end(ap);
+		case Config_ASYNC_DELETE:
+			{
+				va_start(ap, field);
+				bool *async_delete = va_arg(ap, bool*);
+				va_end(ap);
 
-		ASSERT(async_delete != NULL);
-		(*async_delete) = Config_async_delete_get();
-	}
-	break;
+				ASSERT(async_delete != NULL);
+				(*async_delete) = Config_async_delete_get();
+			}
+			break;
 
 		//----------------------------------------------------------------------
 		// query mem capacity
 		//----------------------------------------------------------------------
 
-	case Config_QUERY_MEM_CAPACITY:
-	{
-		va_start(ap, field);
-		uint64_t *query_mem_capacity = va_arg(ap, uint64_t *);
-		va_end(ap);
+		case Config_QUERY_MEM_CAPACITY:
+			{
+				va_start(ap, field);
+				uint64_t *query_mem_capacity = va_arg(ap, uint64_t *);
+				va_end(ap);
 
-		ASSERT(query_mem_capacity != NULL);
-		(*query_mem_capacity) = Config_query_mem_capacity_get();
-	}
-	break;
+				ASSERT(query_mem_capacity != NULL);
+				(*query_mem_capacity) = Config_query_mem_capacity_get();
+			}
+			break;
 
-		//----------------------------------------------------------------------
-		// invalid option
-		//----------------------------------------------------------------------
+        //----------------------------------------------------------------------
+        // invalid option
+        //----------------------------------------------------------------------
 
-	default:
-		ASSERT("invalid option field" && false);
-		return false;
-	}
+        default : 
+			ASSERT("invalid option field" && false);
+			return false;
+    }
 
 	return true;
 }
