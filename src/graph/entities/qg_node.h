@@ -26,6 +26,9 @@ typedef struct {
 /* Creates a new node. */
 QGNode *QGNode_New(const char *alias);
 
+// returns number of labels attached to node
+uint QGNode_LabelCount(const QGNode *n);
+
 /* Returns true if node is highly connected, false otherwise */
 bool QGNode_HighlyConnected(const QGNode *n);
 
