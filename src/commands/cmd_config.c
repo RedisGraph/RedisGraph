@@ -6,7 +6,6 @@
 
 #include "../config.h"
 #include <string.h>
-#include "redismodule.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
 	uint config_count = Config_END_MARKER;
@@ -86,8 +85,9 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	// set the value of given config
 	RedisModuleString *value = argv[3];
+	const char *val_str = RedisModule_StringPtrLen(value, NULL);
 
-	if(Config_Option_set_from_Redis_String(config_field, value)) {
+	if(Config_Option_set(config_field, val_str)) {
 		RedisModule_ReplyWithSimpleString(ctx, "OK");
 	} else {
 		RedisModule_ReplyWithError(ctx, "Failed to set config value");

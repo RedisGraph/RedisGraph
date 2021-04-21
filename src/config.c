@@ -387,6 +387,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		Config_Option_Field field;
 		RedisModuleString *val = argv[i + 1];
 		const char *field_str = RedisModule_StringPtrLen(argv[i], NULL);
+		const char *val_str = RedisModule_StringPtrLen(val, NULL);
 
 		// exit if configuration is not aware of field
 		if(!Config_Contains_field(field_str, &field)) {
@@ -396,7 +397,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		}
 
 		// exit if encountered an error when setting configuration
-		if(!Config_Option_set_from_Redis_String(field, val)) {
+		if(!Config_Option_set(field, val_str)) {
 			RedisModule_Log(ctx, "warning",
 					"Failed setting field '%s'", field_str);
 			return REDISMODULE_ERR;
@@ -404,13 +405,6 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 
 	return REDISMODULE_OK;
-}
-
-bool Config_Option_set_from_Redis_String(Config_Option_Field field, RedisModuleString *val) {
-	size_t len;
-	const char *val_cstr = RedisModule_StringPtrLen(val, &len);
-	if(!len) return false; // Return err code if string len is 0
-	return Config_Option_set(field, val_cstr);
 }
 
 bool Config_Option_set(Config_Option_Field field, const char *val) {

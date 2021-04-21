@@ -7,6 +7,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include "redismodule.h"
 
 #define RESULTSET_SIZE_UNLIMITED    UINT64_MAX
 #define QUERY_MEM_CAPACITY_UNLIMITED UINT64_MAX
@@ -39,10 +40,6 @@ static const Config_Option_Field RUNTIME_CONFIGS[] =
 	Config_QUERY_MEM_CAPACITY
 };
 
-// forward declarations
-typedef struct RedisModuleCtx RedisModuleCtx; // forward declaration
-typedef struct RedisModuleString RedisModuleString; // forward declaration
-
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
@@ -53,8 +50,6 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field);
 
 // returns field name
 const char *Config_Field_name(Config_Option_Field field);
-
-bool Config_Option_set_from_Redis_String(Config_Option_Field field, RedisModuleString *val);
 
 bool Config_Option_set(Config_Option_Field field, const char *val);
 
