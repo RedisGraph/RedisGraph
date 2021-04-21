@@ -532,8 +532,7 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 		return false;
 	}
 
-	if(config.cb)
-		config.cb(field);
+	if(config.cb) config.cb(field);
 
 	return true;
 }
@@ -707,6 +706,7 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 }
 
 void Config_Subscribe_Changes(Config_on_change cb) {
+	ASSERT(cb != NULL);
 	config.cb = cb;
 }
 
