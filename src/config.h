@@ -28,7 +28,7 @@ typedef enum {
 	Config_END_MARKER               = 10
 } Config_Option_Field;
 
-typedef void (*Config_on_change)(Config_Option_Field type); // callback function which being called when config param changed
+typedef bool (*Config_on_change)(Config_Option_Field type); // callback function which being called when config param changed
 
 // Run-time configurable fields
 #define RUNTIME_CONFIG_COUNT 4

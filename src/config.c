@@ -551,7 +551,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		return false;
 	}
 
-	if(config.cb) config.cb(field);
+	if(config.cb) return config.cb(field);
 
 	return true;
 }

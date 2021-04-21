@@ -60,6 +60,48 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 	process_is_child = false;
 }
 
+// handler function which being called when config param changed
+bool reconf_handler(Config_Option_Field type) {
+	switch (type)
+	{
+		//----------------------------------------------------------------------
+		// max queued queries
+		//----------------------------------------------------------------------
+
+		case Config_MAX_QUEUED_QUERIES:
+			{
+				uint64_t max_queued_queries;
+				if(!Config_Option_get(type, &max_queued_queries)) {
+					return false;
+				}
+				ThreadPools_Set_max_queued_queries(max_queued_queries);
+			}
+			break;
+		
+		//----------------------------------------------------------------------
+		// query mem capacity
+		//----------------------------------------------------------------------
+
+		case Config_QUERY_MEM_CAPACITY:
+			{
+				uint64_t *query_mem_capacity;
+				if(!Config_Option_get(type, &query_mem_capacity)) {
+					return false;
+				}
+				// TODO: add handler call.
+			}
+			break;
+
+        //----------------------------------------------------------------------
+        // all other options
+        //----------------------------------------------------------------------
+        default : 
+			break;
+    }
+
+	return true;
+}
+
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	/* TODO: when module unloads call GrB_finalize. */
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true);
@@ -98,6 +140,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	// Set up the module's configurable variables, using user-defined values where provided.
 	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+
+	Config_Subscribe_Changes(reconf_handler);
 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.

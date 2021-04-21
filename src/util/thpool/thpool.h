@@ -205,12 +205,20 @@ int thpool_num_threads(threadpool);
 int thpool_get_thread_id(threadpool, pthread_t);
 
 /**
- * @brief Returns number of pending jobs in queue
+ * @brief return true if thread pool internal queue is full with pending work
  *
  * @param threadpool    the threadpool of interest
- * @return integer      number of pending jobs in jobqueue
+ * @return bool         is the queue full
  */
-uint thpool_queue_size(threadpool);
+bool thpool_queue_full(threadpool);
+
+/**
+ * @brief Sets the limit on max queued queries in pool's jobqueue.
+ *
+ * @param threadpool    the threadpool of interest
+ * @param uint64_t      max queued queries
+ */
+void thpool_set_max_queued_queries(threadpool, uint64_t);
 
 #ifdef __cplusplus
 }

@@ -113,20 +113,10 @@ void ThreadPools_Resume
 	thpool_resume(_writers_thpool);
 }
 
-// return true if thread pool internal queue is full with pending work
-static bool _queue_full(threadpool thpool) {
-	ASSERT(thpool != NULL);
-
-	bool      res                 =  false;
-	uint64_t  max_queued_queries  =  0;
-
-	if(Config_Option_get(Config_MAX_QUEUED_QUERIES, &max_queued_queries)) {
-		// test if there's enough room in thread pool queue
-		uint queued_queries = thpool_queue_size(thpool);
-		res = (queued_queries >= max_queued_queries);
-	}
-
-	return res;
+void ThreadPools_Set_max_queued_queries(uint64_t val) {
+	ASSERT(_readers_thpool && _writers_thpool);
+	thpool_set_max_queued_queries(_readers_thpool, val);
+	thpool_set_max_queued_queries(_writers_thpool, val);
 }
 
 // add task for reader thread
@@ -138,7 +128,7 @@ int ThreadPools_AddWorkReader
 	ASSERT(_readers_thpool != NULL);
 
 	// make sure there's enough room in thread pool queue
-	if(_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
+	if(thpool_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_readers_thpool, function_p, arg_p);
 }
@@ -152,7 +142,7 @@ int ThreadPools_AddWorkWriter
 	ASSERT(_writers_thpool != NULL);
 
 	// make sure there's enough room in thread pool queue
-	if(_queue_full(_writers_thpool)) return THPOOL_QUEUE_FULL;
+	if(thpool_queue_full(_writers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_writers_thpool, function_p, arg_p);
 }
