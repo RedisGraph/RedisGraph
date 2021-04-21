@@ -46,8 +46,6 @@ GrB_Matrix mat_tew;
 GrB_Matrix mat_e;
 rax *_matrices;
 
-extern RG_Config config; // Global module configuration
-
 const char *query_no_intermidate_return_nodes =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e";
 const char *query_one_intermidate_return_nodes =
@@ -68,7 +66,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		Alloc_Reset();
 
 		// Set global variables
-		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
+		Config_Option_set(Config_MAINTAIN_TRANSPOSE, "yes"); // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);

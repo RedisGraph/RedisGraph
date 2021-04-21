@@ -28,8 +28,6 @@ extern "C"
 #define KRED "\x1B[31m"
 #define KNRM "\x1B[0m"
 
-extern RG_Config config; // Global module configuration
-
 // Encapsulate the essence of an edge.
 typedef struct {
 	NodeID srcId;   	// Source node ID.
@@ -44,7 +42,7 @@ class GraphTest : public ::testing::Test {
 		Alloc_Reset();
 
 		// Set global variables
-		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
+		Config_Option_set(Config_MAINTAIN_TRANSPOSE, "yes"); // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);

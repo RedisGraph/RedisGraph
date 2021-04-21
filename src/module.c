@@ -37,7 +37,6 @@
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
-extern RG_Config config;                   // Module global configuration.
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
 

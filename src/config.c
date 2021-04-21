@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+#include <errno.h>
 #include "util/redis_version.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
@@ -53,6 +54,21 @@
 #define QUEUED_QUERIES_UNLIMITED      UINT64_MAX
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
+// configuration object
+typedef struct {
+	uint64_t timeout;                  // The timeout for each query in milliseconds.
+	bool async_delete;                 // If true, graph deletion is done asynchronously.
+	uint64_t cache_size;               // The cache size for each thread, per graph.
+	uint thread_pool_size;             // Thread count for thread pool.
+	uint omp_thread_count;             // Maximum number of OpenMP threads.
+	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
+	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
+	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
+	uint64_t max_queued_queries;       // max number of queued queries
+	uint64_t query_mem_capacity;       // Max mem(bytes) that query/thread can utilize at any given time
+	Config_on_change cb;               // callback function which being called when config param changed
+} RG_Config;
+
 RG_Config config; // global module configuration
 
 //------------------------------------------------------------------------------
@@ -61,26 +77,28 @@ RG_Config config; // global module configuration
 
 // parse integer
 // return true if string represents an integer
-static inline bool _Config_ParseInteger(RedisModuleString *integer_str, long long *value) {
-	int res = RedisModule_StringToLongLong(integer_str, value);
-	// Return an error code if integer parsing fails or value is not positive.
-	return (res == REDISMODULE_OK);
+static inline bool _Config_ParseInteger(const char *integer_str, long long *value) {
+	char *endptr;
+	errno = 0;    // To distinguish success/failure after call
+	*value = strtoll(integer_str, &endptr, 10);
+		
+	// Return an error code if integer parsing fails.
+	return (errno == 0 && endptr != integer_str && *endptr == '\0');
 }
 
 // parse positive integer
 // return true if string represents a positive integer > 0
-static inline bool _Config_ParsePositiveInteger(RedisModuleString *integer_str, long long *value) {
+static inline bool _Config_ParsePositiveInteger(const char *integer_str, long long *value) {
 	bool res = _Config_ParseInteger(integer_str, value);
 	// Return an error code if integer parsing fails or value is not positive.
 	return (res == true && *value > 0);
 }
 
-// return true if 'rm_str' is either "yes" or "no" otherwise returns false
-// sets 'value' to true if 'rm_str' is "yes"
-// sets 'value to false if 'rm_str' is "no"
-static inline bool _Config_ParseYesNo(RedisModuleString *rm_str, bool *value) {
+// return true if 'str' is either "yes" or "no" otherwise returns false
+// sets 'value' to true if 'str' is "yes"
+// sets 'value to false if 'str' is "no"
+static inline bool _Config_ParseYesNo(const char *str, bool *value) {
 	bool res = false;
-	const char *str = RedisModule_StringPtrLen(rm_str, NULL);
 
 	if(!strcasecmp(str, "yes")) {
 		res = true;
@@ -378,7 +396,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		}
 
 		// exit if encountered an error when setting configuration
-		if(!Config_Option_set(field, val)) {
+		if(!Config_Option_set_from_Redis_String(field, val)) {
 			RedisModule_Log(ctx, "warning",
 					"Failed setting field '%s'", field_str);
 			return REDISMODULE_ERR;
@@ -388,7 +406,14 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	return REDISMODULE_OK;
 }
 
-bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
+bool Config_Option_set_from_Redis_String(Config_Option_Field field, RedisModuleString *val) {
+	size_t len;
+	const char *val_cstr = RedisModule_StringPtrLen(val, &len);
+	if(!len) return false; // Return err code if string len is 0
+	return Config_Option_set(field, val_cstr);
+}
+
+bool Config_Option_set(Config_Option_Field field, const char *val) {
 	//--------------------------------------------------------------------------
 	// set the option
 	//--------------------------------------------------------------------------
