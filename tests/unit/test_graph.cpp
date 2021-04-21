@@ -28,7 +28,7 @@ extern "C"
 #define KRED "\x1B[31m"
 #define KNRM "\x1B[0m"
 
-RG_Config config; // Global module configuration
+extern RG_Config config; // Global module configuration
 
 // Encapsulate the essence of an edge.
 typedef struct {

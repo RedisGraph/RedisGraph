@@ -19,7 +19,7 @@ extern "C"
 }
 #endif
 
-RG_Config config; // Global module configuration
+extern RG_Config config; // Global module configuration
 
 class AllPathsTest : public ::testing::Test {
   protected:

@@ -53,7 +53,7 @@
 #define QUEUED_QUERIES_UNLIMITED      UINT64_MAX
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
-extern RG_Config config; // global module configuration
+RG_Config config; // global module configuration
 
 //------------------------------------------------------------------------------
 // config value parsing
