@@ -1,3 +1,4 @@
+import re
 import os
 import sys
 from RLTest import Env
@@ -285,3 +286,28 @@ class testPathFilter(FlowTestsBase):
         expected_result = [['a'],
                            ['b']]
         self.env.assertEquals(result_set.result_set, expected_result)
+
+    def test14_path_and_predicate_filters(self):
+        # Build a graph with 2 nodes connected by 1 edge.
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_edge(edge01)
+        redis_graph.flush()
+
+        # Write a WHERE clause that evaluates a predicate on a node and a path filter.
+        query = "MATCH (a:L) WHERE (a)-[]->() AND a.x = 'a' return a.x"
+        plan_1 = redis_graph.execution_plan(query)
+        # The predicate filter should be evaluated between the Apply and Scan ops.
+        self.env.assertTrue(re.search('Semi Apply\s+Filter\s+Node By Label Scan', plan_1))
+        result_set = redis_graph.query(query)
+        expected_result = [['a']]
+        self.env.assertEquals(result_set.result_set, expected_result)
+
+        # Swap the order of the WHERE clause filters.
+        query = "MATCH (a:L) WHERE a.x = 'a' AND (a)-[]->() return a.x"
+        plan_2 = redis_graph.execution_plan(query)
+        # The plan should be identical to the one constructed previously.
+        self.env.assertEqual(plan_1, plan_2)
