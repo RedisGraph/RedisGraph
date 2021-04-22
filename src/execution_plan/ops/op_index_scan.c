@@ -102,8 +102,8 @@ pull_index:
 	//--------------------------------------------------------------------------
 
 	if(op->iter != NULL) {
-		nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
-		if(nodeId != NULL) {
+		while((nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
+				!= NULL) {
 			// populate record with node
 			_UpdateRecord(op, op->child_record, *nodeId);
 			// apply unresolved filters
@@ -162,36 +162,21 @@ pull_index:
 		}
 		#endif
 
-		// FilterTreeToQueryNode will try to convert 'filter' into a RediSearch
-		// query, there are 3 different outcomes:
-		// 1. entier filter is converted
-		//    in which case rs_query_node is set and unresolved_filters is NULL
-		// 2. a part of the filter is converted
-		//    in which case both rs_query_node and unresolved_filters are set
-		// 3. index can't be utilized
-		//    in which case rs_query_node is NULL and unresolved_filters is set
+		// convert filter into a RediSearch query
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
 				filter, op->idx);
 		FilterTree_Free(filter);
 
-		// can not have both RediSearch query and unresolved filters set to NULL
-		ASSERT(rs_query_node != NULL || op->unresolved_filters != NULL);
-
-		// cann't utilize the index
-		if(rs_query_node == NULL) {
-			// apply unresolved filters to input record
-			if(FilterTree_applyFilters(op->unresolved_filters,
-					op->child_record) == FILTER_PASS) return op->child_record;
-		}
-
-		// create iterator only if index can be utilized
-		if(rs_query_node != NULL) {
-			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
-		}
+		// create iterator
+		ASSERT(rs_query_node != NULL);
+		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	} else {
+		// build index query only once (first call)
+		// reset it if already initialized
 		if(op->iter == NULL) {
 			// first call to consume, create query and iterator
 			RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters, op->filter, op->idx);
+			ASSERT(rs_query_node != NULL);
 			ASSERT(op->unresolved_filters == NULL);
 			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 		} else {

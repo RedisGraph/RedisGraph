@@ -48,13 +48,25 @@ RSQNode *_StringRangeToQueryNode
 	const char *field,        // queried field
 	const StringRange *range  // range to query
 ) {
-	const char *max = (range->max == NULL) ? RSLECRANGE_INF : range->max;
-	const char *min = (range->min == NULL) ? RSLEXRANGE_NEG_INF : range->min;
 	RSQNode *root = RediSearch_CreateTagNode(idx, field);
-	RSQNode *child = RediSearch_CreateLexRangeNode(idx, field, min, max,
-												   range->include_min,
-												   range->include_max);
+	RSQNode *child = NULL;
+	const char *max = range->max;
+	const char *min = range->min;
+
+	if(max != NULL && min != NULL && strcmp(max, min) == 0) {
+		// exact match
+		child = RediSearch_CreateTokenNode(idx, field, max);
+	} else {
+		// range search
+		max = (max == NULL) ? RSLECRANGE_INF     : max;
+		min = (min == NULL) ? RSLEXRANGE_NEG_INF : min;
+
+		child = RediSearch_CreateLexRangeNode(idx, field, min, max,
+				range->include_min, range->include_max);
+	}
+
 	RediSearch_QueryNodeAddChild(root, child);
+
 	return root;
 }
 
@@ -347,8 +359,8 @@ static bool _FilterTreeConditionToQueryNode
 	ASSERT(tree != NULL);
 	ASSERT(tree->t == FT_N_COND);
 
-
 	*root = NULL; // initialize output to NULL
+
 	// validate operator
 	AST_Operator op = tree->cond.op;
 	ASSERT(op == OP_OR || op == OP_AND);
@@ -357,28 +369,24 @@ static bool _FilterTreeConditionToQueryNode
 	RSQNode  *left   =  NULL;
 	RSQNode  *right  =  NULL;
 
+	// create root node
+	if(op == OP_OR) node = RediSearch_CreateUnionNode(idx);
+	else node = RediSearch_CreateIntersectNode(idx, false);
+
 	//--------------------------------------------------------------------------
 	// convert left and right hand sides
 	//--------------------------------------------------------------------------
 
 	// process left branch
-	if(!_FilterTreeToQueryNode(&left, tree->cond.left, idx)) return false;
-
+	bool res = _FilterTreeToQueryNode(&left, tree->cond.left, idx);
 	// process right branch
-	if(!_FilterTreeToQueryNode(&right, tree->cond.right, idx)) {
-		RediSearch_QueryNodeFree(left);
-		return false;
-	}
-
-	// create root node
-	if(op == OP_OR) node = RediSearch_CreateUnionNode(idx);
-	else node = RediSearch_CreateIntersectNode(idx, false);
+	res &= _FilterTreeToQueryNode(&right, tree->cond.right, idx);
 
 	RediSearch_QueryNodeAddChild(node, left);
 	RediSearch_QueryNodeAddChild(node, right);
 
 	*root = node;
-	return true;
+	return res;
 }
 
 // returns true if predicate filter been converted to an index query
@@ -394,6 +402,9 @@ static bool _FilterTreePredicateToQueryNode
 	ASSERT(tree != NULL);
 	ASSERT(tree->t == FT_N_PRED);
 
+	// initialize root to NULL
+	*root = NULL;
+
 	// expecting left hand side to be an attribute access
 	RSQNode  *node      =  NULL;
 	char     *field     =  NULL;
@@ -404,17 +415,24 @@ static bool _FilterTreePredicateToQueryNode
 	ASSERT(AR_EXP_IsConstant(tree->pred.rhs));
 	SIValue v = tree->pred.rhs->operand.constant;
 	SIType t = SI_TYPE(v);
-	if(!(t & SI_INDEXABLE)) return false;
+	if(!(t & SI_INDEXABLE)) {
+		// none indexable type, consult with none indexed field
+		node = RediSearch_CreateTagNode(idx, INDEX_FIELD_NONE_INDEXED);
+		RSQNode *child = RediSearch_CreateTokenNode(idx,
+				INDEX_FIELD_NONE_INDEXED, field);
+
+		RediSearch_QueryNodeAddChild(node, child);
+		*root = node;
+		return false;
+	}
 
 	// validate operation, we can handle <, <=, =, >, >=
 	AST_Operator op = tree->pred.op;
-	if(!(op == OP_LT ||
-		 op == OP_LE ||
-		 op == OP_GT ||
-		 op == OP_GE ||
-		 op == OP_EQUAL)) {
-		return false;
-	}
+	ASSERT(op == OP_LT ||
+		   op == OP_LE ||
+		   op == OP_GT ||
+		   op == OP_GE ||
+		   op == OP_EQUAL);
 
 	if(t == T_STRING) {
 		switch(tree->pred.op) {
@@ -471,7 +489,7 @@ static bool _FilterTreePredicateToQueryNode
 // returns true if 'tree' been converted into an index query, false otherwise
 static bool _FilterTreeToQueryNode
 (
-	RSQNode**root,       // array of query nodes to populate
+	RSQNode **root,      // array of query nodes to populate
 	FT_FilterNode *tree, // filter to convert into an index query
 	RSIndex *idx         // queried index
 ) {
@@ -517,8 +535,8 @@ RSQNode *FilterTreeToQueryNode
 
 	// clone filter tree, as it is about to be modified
 	FT_FilterNode  *t       =  FilterTree_Clone(tree);
-	RSQNode        **nodes  =  array_new(RSQNode*, 1);  // intermidate nodes
-	FT_FilterNode  **trees  =  FilterTree_SubTrees(t);  // break tree down to individual subtrees
+	RSQNode        **nodes  =  array_new(RSQNode*, 0);  // intermidate nodes
+	FT_FilterNode  **trees  =  FilterTree_SubTrees(t);  // individual subtrees
 
 	//--------------------------------------------------------------------------
 	// convert filters to numeric and string ranges
@@ -540,10 +558,11 @@ RSQNode *FilterTreeToQueryNode
 	uint tree_count = array_len(trees);
 	for(uint i = 0; i < tree_count; i++) {
 		RSQNode *node = NULL;
-		if(_FilterTreeToQueryNode(&node, trees[i], idx)) {
-			nodes = array_append(nodes, node);
+		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
+		ASSERT(node != NULL);
+		nodes = array_append(nodes, node);
+		if(resolved_filter) {
 			FilterTree_Free(trees[i]);
-
 			// remove converted filter from filters array
 			array_del_fast(trees, i);
 			i--;
@@ -561,9 +580,11 @@ RSQNode *FilterTreeToQueryNode
 	// none indexable type e.g. array
 	*none_converted_filters = FilterTree_Combine(trees, tree_count);
 
+	RSQNode  *root       =  NULL;
+	uint     node_count  =  array_len(nodes);
+
 	// compose root query node by intersecting individual query nodes
-	uint node_count = array_len(nodes);
-	RSQNode *root = _concat_query_nodes(idx, nodes, node_count);
+	root = _concat_query_nodes(idx, nodes, node_count);
 
 	// at this point there are 3 options:
 	// 1. all filters been converted into index queries

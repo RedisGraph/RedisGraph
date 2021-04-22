@@ -14,9 +14,6 @@
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
 
-#define IDX_SEPERATOR '\0'
-#define IDX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
-
 static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
 							 double *doubleVal) {
 	Node n = GE_NEW_NODE();
@@ -191,11 +188,10 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			// concat
 			len = sprintf(s, "%s", none_indexable_fields[0]);
 			for(uint i = 1; i < none_indexable_fields_count; i++) {
-				len += sprintf(s + len, "%d%s", IDX_SEPERATOR,
-						none_indexable_fields[i]);
+				len += sprintf(s + len, ",%s", none_indexable_fields[i]);
 			}
 
-			RediSearch_DocumentAddFieldString(doc, IDX_FIELD_NONE_INDEXED,
+			RediSearch_DocumentAddFieldString(doc, INDEX_FIELD_NONE_INDEXED,
 						s, len, RSFLDTYPE_TAG);
 
 			// free if heap based
@@ -247,7 +243,7 @@ void Index_Construct(Index *idx) {
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
 					types, RSFLDOPT_NONE);
 
-			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, IDX_SEPERATOR);
+			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPERATOR);
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 		}
 
@@ -255,9 +251,9 @@ void Index_Construct(Index *idx) {
 		// "none_indexable_fields" which will hold a list of attribute names
 		// that were not indexed
 		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
-				IDX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
+				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
 
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, IDX_SEPERATOR);
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, ',');
 		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 	}
 
