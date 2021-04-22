@@ -289,13 +289,7 @@ class testPathFilter(FlowTestsBase):
 
     def test14_path_and_predicate_filters(self):
         # Build a graph with 2 nodes connected by 1 edge.
-        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
-        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
-        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
-        redis_graph.add_node(node0)
-        redis_graph.add_node(node1)
-        redis_graph.add_edge(edge01)
-        redis_graph.flush()
+        redis_graph.query("CREATE (:L {x:'a'})-[:R]->(:L {x:'b'})")
 
         # Write a WHERE clause that evaluates a predicate on a node and a path filter.
         query = "MATCH (a:L) WHERE (a)-[]->() AND a.x = 'a' return a.x"
@@ -311,3 +305,4 @@ class testPathFilter(FlowTestsBase):
         plan_2 = redis_graph.execution_plan(query)
         # The plan should be identical to the one constructed previously.
         self.env.assertEqual(plan_1, plan_2)
+
