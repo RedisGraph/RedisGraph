@@ -113,10 +113,9 @@ void ThreadPools_Resume
 	thpool_resume(_writers_thpool);
 }
 
-void ThreadPools_Set_max_queued_queries(uint64_t val) {
-	ASSERT(_readers_thpool && _writers_thpool);
-	thpool_set_max_queued_queries(_readers_thpool, val);
-	thpool_set_max_queued_queries(_writers_thpool, val);
+void ThreadPools_Set_max_pending_work(uint64_t val) {
+	thpool_set_jobqueue_cap(_readers_thpool, val);
+	thpool_set_jobqueue_cap(_writers_thpool, val);
 }
 
 // add task for reader thread

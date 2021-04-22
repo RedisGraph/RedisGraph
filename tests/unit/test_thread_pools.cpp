@@ -14,7 +14,6 @@ extern "C" {
 #include "../../src/config.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/thpool/pools.h"
-bool reconf_handler(Config_Option_Field type);
 
 #ifdef __cplusplus
 }
@@ -30,7 +29,6 @@ class ThreadPoolsTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		Alloc_Reset();
 		Config_Init(NULL, NULL, 0);
-		Config_Subscribe_Changes(&reconf_handler);
 		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, BULK_COUNT);
 	}
 

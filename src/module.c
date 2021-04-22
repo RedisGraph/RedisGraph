@@ -26,6 +26,7 @@
 #include "serializers/graphmeta_type.h"
 #include "redisearch_api.h"
 #include "util/redis_version.h"
+#include "reconf_handler.h"
 
 //------------------------------------------------------------------------------
 // Minimal supported Redis version
@@ -58,48 +59,6 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	graphs_in_keyspace = array_new(GraphContext *, 1);
 	process_is_child = false;
-}
-
-// handler function which being called when config param changed
-bool reconf_handler(Config_Option_Field type) {
-	switch (type)
-	{
-		//----------------------------------------------------------------------
-		// max queued queries
-		//----------------------------------------------------------------------
-
-		case Config_MAX_QUEUED_QUERIES:
-			{
-				uint64_t max_queued_queries;
-				if(!Config_Option_get(type, &max_queued_queries)) {
-					return false;
-				}
-				ThreadPools_Set_max_queued_queries(max_queued_queries);
-			}
-			break;
-		
-		//----------------------------------------------------------------------
-		// query mem capacity
-		//----------------------------------------------------------------------
-
-		case Config_QUERY_MEM_CAPACITY:
-			{
-				uint64_t *query_mem_capacity;
-				if(!Config_Option_get(type, &query_mem_capacity)) {
-					return false;
-				}
-				// TODO: add handler call.
-			}
-			break;
-
-        //----------------------------------------------------------------------
-        // all other options
-        //----------------------------------------------------------------------
-        default : 
-			break;
-    }
-
-	return true;
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {

@@ -9,7 +9,6 @@
    ********************************/
 
 //#define _POSIX_C_SOURCE 200809L
-#include "../../config.h"
 #include "RG.h"
 #include <unistd.h>
 #include <signal.h>
@@ -63,7 +62,7 @@ typedef struct jobqueue {
 	job *rear;               		/* pointer to rear  of queue */
 	bsem *has_jobs;          		/* flag as binary semaphore  */
 	int len;                 		/* number of jobs in queue   */
-	uint64_t max_queued_queries;		/* limit on number of queries */
+	uint64_t cap;		               /* capacity of the queue     */
 } jobqueue;
 
 /* Thread */
@@ -280,11 +279,12 @@ bool thpool_queue_full(thpool_* thpool_p) {
 	ASSERT(thpool_p != NULL);
 
 	// test if there's enough room in thread pool queue
-	return (thpool_p->jobqueue.len >= thpool_p->jobqueue.max_queued_queries);
+	return (thpool_p->jobqueue.len >= thpool_p->jobqueue.cap);
 }
 
-void thpool_set_max_queued_queries(thpool_* thpool_p, uint64_t val) {
-	thpool_p->jobqueue.max_queued_queries = val;
+void thpool_set_jobqueue_cap(thpool_* thpool_p, uint64_t val) {
+	ASSERT(thpool_p);
+	thpool_p->jobqueue.cap = val;
 }
 
 /* ============================ THREAD ============================== */
@@ -417,9 +417,7 @@ static int jobqueue_init(jobqueue *jobqueue_p) {
 	pthread_mutex_init(&(jobqueue_p->rwmutex), NULL);
 	bsem_init(jobqueue_p->has_jobs, 0);
 
-	if(!Config_Option_get(Config_MAX_QUEUED_QUERIES, &jobqueue_p->max_queued_queries)) {
-		return -1;
-	}
+	jobqueue_p->cap = UINT64_MAX; // unlimited queue size
 
 	return 0;
 }

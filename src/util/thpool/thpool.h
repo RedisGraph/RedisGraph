@@ -213,12 +213,12 @@ int thpool_get_thread_id(threadpool, pthread_t);
 bool thpool_queue_full(threadpool);
 
 /**
- * @brief Sets the limit on max queued queries in pool's jobqueue.
+ * @brief Sets jobqueue capacity.
  *
  * @param threadpool    the threadpool of interest
  * @param uint64_t      max queued queries
  */
-void thpool_set_max_queued_queries(threadpool, uint64_t);
+void thpool_set_jobqueue_cap(threadpool, uint64_t);
 
 #ifdef __cplusplus
 }
