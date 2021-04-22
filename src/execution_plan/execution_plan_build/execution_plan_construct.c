@@ -10,27 +10,34 @@
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
 
+static inline void _PushDownPathFilters(ExecutionPlan *plan,
+										OpBase *path_filter_op) {
+	OpBase *relocate_to = path_filter_op;
+	// Find the earliest filter op in the path filter op's chain of parents.
+	while(relocate_to->parent && relocate_to->parent->type == OPType_FILTER) {
+		relocate_to = relocate_to->parent;
+	}
+	/* If the filter op is part of a chain of filter ops, migrate it
+	 * to be the topmost. This ensures that cheaper filters will be
+	 * applied first. */
+	if(relocate_to != path_filter_op) {
+		ExecutionPlan_RemoveOp(plan, path_filter_op);
+		ExecutionPlan_PushBelow(relocate_to, path_filter_op);
+	}
+}
+
 static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	OpBase **filter_ops = ExecutionPlan_CollectOps(plan->root, OPType_FILTER);
 	uint filter_ops_count = array_len(filter_ops);
 	for(uint i = 0; i < filter_ops_count; i++) {
-		OpBase *op = filter_ops[i];
-		OpBase *relocate_to = filter_ops[i];
+		OpFilter *op = (OpFilter *)filter_ops[i];
 		FT_FilterNode *node;
-		if(FilterTree_ContainsFunc(((OpFilter *)op)->filterTree, "path_filter", &node)) {
-			// Filter op applies a path filter, find the first filter op in its direct parents.
-			while(relocate_to->parent && relocate_to->parent->type == OPType_FILTER) {
-				relocate_to = relocate_to->parent;
-			}
-			/* If the filter op is part of a chain of filter ops, migrate it
-			 * to be the topmost. This ensures that cheaper filters will be
-			 * applied first. */
-			if(relocate_to != op) {
-				ExecutionPlan_RemoveOp(plan, op);
-				ExecutionPlan_PushBelow(relocate_to, op);
-			}
+		if(FilterTree_ContainsFunc(op->filterTree, "path_filter", &node)) {
+			// If the path filter op has other filter ops above it,
+			// migrate it to be the topmost.
+			_PushDownPathFilters(plan, filter_ops[i]);
 			// Convert the filter op to an Apply operation
-			ExecutionPlan_ReduceFilterToApply(plan, (OpFilter *)op);
+			ExecutionPlan_ReduceFilterToApply(plan, op);
 		}
 	}
 	array_free(filter_ops);
