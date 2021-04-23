@@ -35,7 +35,7 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 		if(FilterTree_ContainsFunc(op->filterTree, "path_filter", &node)) {
 			// If the path filter op has other filter ops above it,
 			// migrate it to be the topmost.
-			_PushDownPathFilters(plan, filter_ops[i]);
+			_PushDownPathFilters(plan, op);
 			// Convert the filter op to an Apply operation
 			ExecutionPlan_ReduceFilterToApply(plan, op);
 		}
