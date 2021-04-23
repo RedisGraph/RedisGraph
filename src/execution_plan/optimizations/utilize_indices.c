@@ -322,4 +322,3 @@ void utilizeIndices(ExecutionPlan *plan) {
 	// cleanup
 	array_free(scanOps);
 }
-

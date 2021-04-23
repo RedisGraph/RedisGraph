@@ -346,12 +346,6 @@ static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_
 	bool multihop = (start > 1) || (start != end);
 	if(!multihop) return AST_VALID;
 
-	// Multi-hop traversals cannot (currently) be filtered on
-	if(cypher_ast_rel_pattern_get_properties(edge) != NULL) {
-		ErrorCtx_SetError("RedisGraph does not currently support filters on variable-length paths.");
-		return AST_INVALID;
-	}
-
 	// Multi-hop traversals cannot be referenced
 	if(!projections) return AST_VALID;
 

@@ -29,5 +29,5 @@ void BulkInsertContext_Free
 	BulkInsertContext *ctx
 );
 
-int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 

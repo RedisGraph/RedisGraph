@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+#include <sys/types.h>
+
 /* =================================== API ======================================= */
 
 
@@ -63,7 +66,7 @@ threadpool thpool_init(int num_threads, const char *name);
  * @param  threadpool    threadpool to which the work will be added
  * @param  function_p    pointer to function to add as work
  * @param  arg_p         pointer to an argument
- * @return 0 on successs, -1 otherwise.
+ * @return 0 on successs -1 otherwise
  */
 int thpool_add_work(threadpool, void (*function_p)(void*), void* arg_p);
 
@@ -200,6 +203,14 @@ int thpool_num_threads(threadpool);
  * @return integer      friendly thread id
  */
 int thpool_get_thread_id(threadpool, pthread_t);
+
+/**
+ * @brief Returns number of pending jobs in queue
+ *
+ * @param threadpool    the threadpool of interest
+ * @return integer      number of pending jobs in jobqueue
+ */
+uint thpool_queue_size(threadpool);
 
 #ifdef __cplusplus
 }
