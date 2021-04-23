@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "utilize_indices.h"
 #include "RG.h"
 #include "../../value.h"
 #include "../../util/arr.h"
