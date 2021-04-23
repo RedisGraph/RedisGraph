@@ -300,10 +300,6 @@ void _AR_EXP_OperandResolveVariables(AR_ExpNode *node, const Record r) {
 	// replace variadic with constant
 	SIValue v = SI_CloneValue(Record_Get(r, idx));
 	_AR_EXP_InplaceRepurposeConstant(node, v);
-
-	// AR_EXP_Result res = _AR_EXP_EvaluateVariadic(node, r, &v);
-	// replace node with constant
-	// if(res == EVAL_OK) _AR_EXP_InplaceRepurposeConstant(node, v);
 }
 
 static void _AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r) {

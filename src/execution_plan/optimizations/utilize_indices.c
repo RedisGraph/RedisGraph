@@ -147,8 +147,6 @@ bool _applicable_predicate(const char* filtered_entity, FT_FilterNode *filter) {
 			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
 		} else {
 			// value type can only be determined at runtime!
-			// TODO: this is an issue if value turns out to be a none indexed
-			// value type e.g. ARRAY
 			res = true;
 		}
 		break;

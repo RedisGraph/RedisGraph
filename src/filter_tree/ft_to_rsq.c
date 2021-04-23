@@ -162,6 +162,7 @@ bool _predicateTreeToRange
 
 	// handel filters of form: 'n.v op constant'
 	char *prop = NULL;
+	// TODO: we might not need this check
 	if(!AR_EXP_IsAttribute(tree->pred.lhs, &prop)) return false;
 
 	SIValue c = tree->pred.rhs->operand.constant;
@@ -349,7 +350,7 @@ void _compose_ranges
 // a conversion might fail if tree contains a none indexable type e.g. array
 static bool _FilterTreeConditionToQueryNode
 (
-	RSQNode **root,      // array of query nodes to populate
+	RSQNode **root,      // [output] query node
 	FT_FilterNode *tree, // filter to convert
 	RSIndex *idx         // queried index
 ) {
@@ -392,7 +393,7 @@ static bool _FilterTreeConditionToQueryNode
 // returns true if predicate filter been converted to an index query
 static bool _FilterTreePredicateToQueryNode
 (
-	RSQNode **root,      // array of query nodes to populate
+	RSQNode **root,      // [output] query node
 	FT_FilterNode *tree, // filter to convert
 	RSIndex *idx         // queried index
 ) {
@@ -416,7 +417,7 @@ static bool _FilterTreePredicateToQueryNode
 	SIValue v = tree->pred.rhs->operand.constant;
 	SIType t = SI_TYPE(v);
 	if(!(t & SI_INDEXABLE)) {
-		// none indexable type, consult with none indexed field
+		// none indexable type, consult with the none indexed field
 		node = RediSearch_CreateTagNode(idx, INDEX_FIELD_NONE_INDEXED);
 		RSQNode *child = RediSearch_CreateTokenNode(idx,
 				INDEX_FIELD_NONE_INDEXED, field);
@@ -489,7 +490,7 @@ static bool _FilterTreePredicateToQueryNode
 // returns true if 'tree' been converted into an index query, false otherwise
 static bool _FilterTreeToQueryNode
 (
-	RSQNode **root,      // array of query nodes to populate
+	RSQNode **root,      // [output] query node
 	FT_FilterNode *tree, // filter to convert into an index query
 	RSIndex *idx         // queried index
 ) {
@@ -535,7 +536,7 @@ RSQNode *FilterTreeToQueryNode
 
 	// clone filter tree, as it is about to be modified
 	FT_FilterNode  *t       =  FilterTree_Clone(tree);
-	RSQNode        **nodes  =  array_new(RSQNode*, 0);  // intermidate nodes
+	RSQNode        **nodes  =  array_new(RSQNode*, 1);  // intermidate nodes
 	FT_FilterNode  **trees  =  FilterTree_SubTrees(t);  // individual subtrees
 
 	//--------------------------------------------------------------------------
@@ -585,19 +586,6 @@ RSQNode *FilterTreeToQueryNode
 
 	// compose root query node by intersecting individual query nodes
 	root = _concat_query_nodes(idx, nodes, node_count);
-
-	// at this point there are 3 options:
-	// 1. all filters been converted into index queries
-	// in which case 'root' is set to an index query
-	// 'none_converted_filters' is set to NULL
-	//
-	// 2. none of the filters been converted to index queries
-	// in which case 'root' is set to NULL
-	// 'none_converted_filters' is the same as the input 'tree'
-	//
-	// 3. some filters been converted into index queries
-	// in which case 'root' is set to an index query
-	// 'none_converted_filters' contains none converted filters
 
 	//--------------------------------------------------------------------------
 	// clean up

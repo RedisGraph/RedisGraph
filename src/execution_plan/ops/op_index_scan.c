@@ -24,9 +24,9 @@ static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 		RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
-	ASSERT(g != NULL);
-	ASSERT(idx != NULL);
-	ASSERT(plan != NULL);
+	ASSERT(g      != NULL);
+	ASSERT(idx    != NULL);
+	ASSERT(plan   != NULL);
 	ASSERT(filter != NULL);
 
 	IndexScan *op = rm_malloc(sizeof(IndexScan));
@@ -54,7 +54,7 @@ static OpResult IndexScanInit(OpBase *opBase) {
 		// find out how many different entities are refered to 
 		// within the filter tree, if number of entities equals 1
 		// (current node being scanned) there's no need to re-build the index
-		// query for every input record, construct it once now
+		// query for every input record
 		rax *entities = FilterTree_CollectModified(op->filter);
 		op->rebuild_index_query = raxSize(entities) > 1; // this is us
 		raxFree(entities);
