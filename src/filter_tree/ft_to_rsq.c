@@ -30,7 +30,7 @@ static bool _FilterTreeToQueryNode
 //------------------------------------------------------------------------------
 
 // create a RediSearch query node out of a numeric range object
-RSQNode *_NumericRangeToQueryNode
+static RSQNode *_NumericRangeToQueryNode
 (
 	RSIndex *idx,              // queried index
 	const char *field,         // queried field
@@ -42,7 +42,7 @@ RSQNode *_NumericRangeToQueryNode
 }
 
 // create a RediSearch query node out of a string range object
-RSQNode *_StringRangeToQueryNode
+static RSQNode *_StringRangeToQueryNode
 (
 	RSIndex *idx,             // queried index
 	const char *field,        // queried field
@@ -71,7 +71,7 @@ RSQNode *_StringRangeToQueryNode
 }
 
 // creates a RediSearch distance query from given filter
-RSQNode *_FilterTreeToDistanceQueryNode
+static RSQNode *_FilterTreeToDistanceQueryNode
 (
 	FT_FilterNode *filter,  // filter to convert
 	RSIndex *idx            // queried index
@@ -80,7 +80,7 @@ RSQNode *_FilterTreeToDistanceQueryNode
 	SIValue  origin  =  SI_NullVal(); // center of circle
 	SIValue  radius  =  SI_NullVal(); // circle radius
 
-	_extractOriginAndRadius(filter, &origin, &radius, &field);
+	extractOriginAndRadius(filter, &origin, &radius, &field);
 
 	return RediSearch_CreateGeoNode(idx, field, Point_lat(origin),
 									Point_lon(origin), SI_GET_NUMERIC(radius), RS_GEO_DISTANCE_M);
@@ -94,7 +94,7 @@ static RSQNode *_FilterTreeToInQueryNode
 ) {
 	ASSERT(idx    != NULL);
 	ASSERT(filter != NULL);
-	ASSERT(_isInFilter(filter));
+	ASSERT(isInFilter(filter));
 
 	// n.v IN [1,2,3]
 	// a single union node should hold a number of token/numeric nodes
@@ -147,7 +147,7 @@ static RSQNode *_FilterTreeToInQueryNode
 
 // reduce filter into a range object
 // return true if filter was reduce, false otherwise
-bool _predicateTreeToRange
+static bool _predicateTreeToRange
 (
 	const FT_FilterNode *tree,  // filter to convert
 	rax *string_ranges,         // string ranges
@@ -224,7 +224,7 @@ static RSQNode *_concat_query_nodes
 }
 
 // compose index query from ranges
-RSQNode *_ranges_to_query_nodes
+static RSQNode *_ranges_to_query_nodes
 (
 	RSIndex *idx,        // index to query
 	rax *string_ranges,  // string ranges
@@ -237,7 +237,6 @@ RSQNode *_ranges_to_query_nodes
 	// convert each range object to RediSearch query node
 	raxIterator it;
 	bool valid = true;  // false if there's a range conflict
-	char query_field_name[1024];
 
 	//--------------------------------------------------------------------------
 	// validate ranges
@@ -288,15 +287,17 @@ RSQNode *_ranges_to_query_nodes
 
 	// detemine number of ranges
 	uint i = 0;
+	char query_field_name[1024];
 	uint range_count = raxSize(numeric_ranges) + raxSize(string_ranges);
 	RSQNode *rsqnodes[range_count];
 
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		char *field = (char *)it.key;
+		ASSERT(it.key_len < sizeof(query_field_name));
 		NumericRange *nr = (NumericRange *) it.data;
 
-		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
+		snprintf(query_field_name, 1024, "%.*s", (int)it.key_len, field);
 		RSQNode *rsqn = _NumericRangeToQueryNode(idx, query_field_name, nr);
 		rsqnodes[i++] = rsqn;
 	}
@@ -306,9 +307,10 @@ RSQNode *_ranges_to_query_nodes
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		char *field = (char *)it.key;
+		ASSERT(it.key_len < sizeof(query_field_name));
 		StringRange *sr = (StringRange *) it.data;
 
-		sprintf(query_field_name, "%.*s", (int)it.key_len, field);
+		snprintf(query_field_name, 1024, "%.*s", (int)it.key_len, field);
 		RSQNode *rsqn = _StringRangeToQueryNode(idx, query_field_name, sr);
 		rsqnodes[i++] = rsqn;
 	}
@@ -319,7 +321,7 @@ RSQNode *_ranges_to_query_nodes
 }
 
 // reduce filters into ranges
-void _compose_ranges
+static void _compose_ranges
 (
 	FT_FilterNode **trees,  // filters to convert into ranges
 	rax *string_ranges,     // string ranges
@@ -501,12 +503,12 @@ static bool _FilterTreeToQueryNode
 	// initialize 'root' to NULL
 	*root = NULL;
 
-	if(_isInFilter(tree)) {
+	if(isInFilter(tree)) {
 		*root = _FilterTreeToInQueryNode(tree, idx);
 		return true;
 	}
 
-	if(_isDistanceFilter(tree)) {
+	if(isDistanceFilter(tree)) {
 		*root = _FilterTreeToDistanceQueryNode(tree, idx);
 		return true;
 	}

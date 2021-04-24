@@ -12,7 +12,7 @@
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
-#define INDEX_SEPERATOR '\0'
+#define INDEX_SEPARATOR '\0'
 #define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
 
 typedef enum {

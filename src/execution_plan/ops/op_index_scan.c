@@ -82,14 +82,9 @@ static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 }
 
 static inline bool _PassUnresolvedFilters(const IndexScan *op, Record r) {
-	bool           res                  =  true;
-	FT_FilterNode  *unresolved_filters  =  op->unresolved_filters;
-
-	if(unresolved_filters != NULL) {
-		res = (FilterTree_applyFilters(unresolved_filters, r) == FILTER_PASS);
-	}
-
-	return res;
+	FT_FilterNode *unresolved_filters = op->unresolved_filters;
+	if(unresolved_filters == NULL) return true; // no filters
+	return FilterTree_applyFilters(unresolved_filters, r) == FILTER_PASS;
 }
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {

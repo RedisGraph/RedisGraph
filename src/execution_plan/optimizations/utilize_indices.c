@@ -24,7 +24,8 @@
 
 // modifies filter tree such that the left hand side performs
 // attribute lookup on 'filtered_entity'
-void _normalize_filter(const char *filtered_entity, FT_FilterNode **filter) {
+static void _normalize_filter(const char *filtered_entity,
+		FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
 	bool swap = false;
 	rax *entities = NULL;
@@ -82,7 +83,8 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 }
 
 // return true if filter can be resolved by an index query
-bool _applicable_predicate(const char* filtered_entity, FT_FilterNode *filter) {
+static bool _applicable_predicate(const char* filtered_entity,
+		FT_FilterNode *filter) {
 
 	SIValue v;
 	bool res              =  false;
@@ -90,11 +92,11 @@ bool _applicable_predicate(const char* filtered_entity, FT_FilterNode *filter) {
 	AR_ExpNode  *lhs_exp  =  NULL;
 	AR_ExpNode  *rhs_exp  =  NULL;
 
-	if(_isInFilter(filter)) {
+	if(isInFilter(filter)) {
 		return _validateInExpression(filter->exp.exp);
 	}
 
-	if(_isDistanceFilter(filter)) return true;
+	if(isDistanceFilter(filter)) return true;
 
 	switch(filter->t) {
 	case FT_N_PRED:
@@ -132,15 +134,15 @@ bool _applicable_predicate(const char* filtered_entity, FT_FilterNode *filter) {
 			break;
 		}
 
-		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp; // n.v = exp
-		if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp; // exp = n.v
+		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;      // n.v = exp
+		else if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp; // exp = n.v
 		// filter is not of the form n.v = exp or exp = n.v
 		if(exp == NULL) {
 			res = false;
 			break;
 		}
 
-		// make sure 'exp' represents a scalar
+		// determine whether 'exp' represents a scalar
 		bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
 		if(scalar) {
 			// validate constant type

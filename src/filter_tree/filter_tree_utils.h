@@ -8,10 +8,10 @@
 
 #include "filter_tree.h"
 
-bool _isInFilter(const FT_FilterNode *filter);
+bool isInFilter(const FT_FilterNode *filter);
 
-bool _extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
+bool extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 		SIValue *radius, char **point);
 
-bool _isDistanceFilter(FT_FilterNode *filter);
+bool isDistanceFilter(FT_FilterNode *filter);
 

@@ -168,7 +168,7 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			} else {
 				// none indexable field
 				none_indexable_fields[none_indexable_fields_count++] =
-					idx->fields[i];
+					field_name;
 			}
 		}
 
@@ -243,7 +243,7 @@ void Index_Construct(Index *idx) {
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
 					types, RSFLDOPT_NONE);
 
-			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPERATOR);
+			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 		}
 

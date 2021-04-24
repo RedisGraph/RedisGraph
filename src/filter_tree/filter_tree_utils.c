@@ -7,7 +7,7 @@
 #include "filter_tree_utils.h"
 #include "RG.h"
 
-bool _isInFilter(const FT_FilterNode *filter) {
+bool isInFilter(const FT_FilterNode *filter) {
 	return (filter->t == FT_N_EXP &&
 			filter->exp.exp->type == AR_EXP_OP &&
 			strcasecmp(filter->exp.exp->op.func_name, "in") == 0);
@@ -15,7 +15,7 @@ bool _isInFilter(const FT_FilterNode *filter) {
 
 // extracts both origin and radius from a distance filter
 // distance(n.location, origin) < radius
-bool _extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
+bool extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 		SIValue *radius, char **point) {
 	// distance (n.location, origin) < radius
 
@@ -86,8 +86,8 @@ bool _extractOriginAndRadius(const FT_FilterNode *filter, SIValue *origin,
 
 // return true if filter performs distance filtering
 // distance(n.location, point({lat:1.1, lon:2.2})) < 40
-bool _isDistanceFilter(FT_FilterNode *filter) {
-	bool res = _extractOriginAndRadius(filter, NULL, NULL, NULL);
+bool isDistanceFilter(FT_FilterNode *filter) {
+	bool res = extractOriginAndRadius(filter, NULL, NULL, NULL);
 	if(res) {
 		ASSERT(filter->t == FT_N_PRED);
 		AST_Operator op = filter->pred.op;
