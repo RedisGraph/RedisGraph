@@ -188,7 +188,7 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			// concat
 			len = sprintf(s, "%s", none_indexable_fields[0]);
 			for(uint i = 1; i < none_indexable_fields_count; i++) {
-				len += sprintf(s + len, ",%s", none_indexable_fields[i]);
+				len += sprintf(s + len, "%c%s", INDEX_SEPARATOR, none_indexable_fields[i]);
 			}
 
 			RediSearch_DocumentAddFieldString(doc, INDEX_FIELD_NONE_INDEXED,
@@ -253,7 +253,7 @@ void Index_Construct(Index *idx) {
 		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
 				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
 
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, ',');
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 	}
 
