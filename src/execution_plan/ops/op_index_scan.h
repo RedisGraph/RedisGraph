@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,15 +16,17 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	RSIndex *idx;
-	NodeScanCtx n;           /* Label data of node being scanned. */
-	uint nodeRecIdx;            /* Index of the node being scanned in the Record. */
-	RSQNode *rs_query_node;     /* RediSearch query node used to construct iterator. */
-	RSResultsIterator *iter;    /* RediSearch iterator over an index with the appropriate filters. */
-	Record child_record;        /* The Record this op acts on if it is not a tap. */
+	bool rebuild_index_query;           // should we rebuild RediSearch index query for each input record
+	RSIndex *idx;                       // index to query
+	NodeScanCtx n;                      // label data of node being scanned
+	uint nodeRecIdx;                    // index of the node being scanned in the Record
+	RSResultsIterator *iter;            // rediSearch iterator over an index with the appropriate filters
+	FT_FilterNode *filter;              // filter from which to compose index query
+	FT_FilterNode *unresolved_filters;  // subset of filter, contains filters that couldn't be resolved by index
+	Record child_record;                // the Record this op acts on if it is not a tap
 } IndexScan;
 
-/* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n, RSIndex *idx,
-					   RSQNode *rs_query_node);
+// creates a new IndexScan operation
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
+		RSIndex *idx, FT_FilterNode *filter);
 
