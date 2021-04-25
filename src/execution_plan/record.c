@@ -38,8 +38,13 @@ uint Record_length(const Record r) {
 	return raxSize(r->mapping);
 }
 
+bool Record_ContainsEntry(const Record r, uint idx) {
+	ASSERT(idx < Record_length(r));
+	return r->entries[idx].type != REC_TYPE_UNKNOWN;
+}
+
 // Retrieve the offset into the Record of the given alias.
-int Record_GetEntryIdx(Record r, const char *alias) {
+uint Record_GetEntryIdx(Record r, const char *alias) {
 	ASSERT(r && alias);
 
 	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
@@ -89,11 +94,11 @@ void Record_TransferEntries(Record *to, Record from) {
 	}
 }
 
-RecordEntryType Record_GetType(const Record r, int idx) {
+RecordEntryType Record_GetType(const Record r, uint idx) {
 	return r->entries[idx].type;
 }
 
-Node *Record_GetNode(const Record r, int idx) {
+Node *Record_GetNode(const Record r, uint idx) {
 	switch(r->entries[idx].type) {
 		case REC_TYPE_NODE:
 			return &(r->entries[idx].value.n);
@@ -108,7 +113,7 @@ Node *Record_GetNode(const Record r, int idx) {
 	}
 }
 
-Edge *Record_GetEdge(const Record r, int idx) {
+Edge *Record_GetEdge(const Record r, uint idx) {
 	switch(r->entries[idx].type) {
 		case REC_TYPE_EDGE:
 			return &(r->entries[idx].value.e);
@@ -123,7 +128,7 @@ Edge *Record_GetEdge(const Record r, int idx) {
 	}
 }
 
-SIValue Record_Get(Record r, int idx) {
+SIValue Record_Get(Record r, uint idx) {
 	Entry e = r->entries[idx];
 	switch(e.type) {
 		case REC_TYPE_NODE:
@@ -140,11 +145,11 @@ SIValue Record_Get(Record r, int idx) {
 	}
 }
 
-void Record_Remove(Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_UNKNOWN;
+void Record_Remove(Record r, uint idx) {
+	r->entries[idx].type = REC_TYPE_UNKNOWN; 
 }
 
-GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
+GraphEntity *Record_GetGraphEntity(const Record r, uint idx) {
 	Entry e = r->entries[idx];
 	switch(e.type) {
 		case REC_TYPE_NODE:
@@ -157,7 +162,7 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 	return NULL;
 }
 
-void Record_Add(Record r, int idx, SIValue v) {
+void Record_Add(Record r, uint idx, SIValue v) {
 	ASSERT(idx < Record_length(r));
 	switch(SI_TYPE(v)) {
 		case T_NODE:
@@ -172,19 +177,19 @@ void Record_Add(Record r, int idx, SIValue v) {
 	}
 }
 
-SIValue *Record_AddScalar(Record r, int idx, SIValue v) {
+SIValue *Record_AddScalar(Record r, uint idx, SIValue v) {
 	r->entries[idx].value.s = v;
 	r->entries[idx].type = REC_TYPE_SCALAR;
 	return &(r->entries[idx].value.s);
 }
 
-Node *Record_AddNode(Record r, int idx, Node node) {
+Node *Record_AddNode(Record r, uint idx, Node node) {
 	r->entries[idx].value.n = node;
 	r->entries[idx].type = REC_TYPE_NODE;
 	return &(r->entries[idx].value.n);
 }
 
-Edge *Record_AddEdge(Record r, int idx, Edge edge) {
+Edge *Record_AddEdge(Record r, uint idx, Edge edge) {
 	r->entries[idx].value.e = edge;
 	r->entries[idx].type = REC_TYPE_EDGE;
 	return &(r->entries[idx].value.e);
