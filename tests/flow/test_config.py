@@ -28,7 +28,7 @@ class testConfig(FlowTestsBase):
         # Try reading 'QUERY_MEM_CAPACITY' from config
         config_name = "QUERY_MEM_CAPACITY"
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
-        expected_response = [config_name, -1] # capacity=QUERY_MEM_CAPACITY_UNLIMITED  
+        expected_response = [config_name, 1<<63-1] # capacity=QUERY_MEM_CAPACITY_UNLIMITED  
         self.env.assertEqual(response, expected_response)
 
     def test02_config_get_invalid_name(self):

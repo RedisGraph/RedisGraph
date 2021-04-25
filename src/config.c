@@ -65,7 +65,7 @@ typedef struct {
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
-	uint64_t query_mem_capacity;       // Max mem(bytes) that query/thread can utilize at any given time
+	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
 	Config_on_change cb;               // callback function which being called when config param changed
 } RG_Config;
 
@@ -231,7 +231,7 @@ uint64_t Config_resultset_max_size_get(void) {
 
 void Config_query_mem_capacity_set(int64_t capacity)
 {
-	if (capacity < 0)
+	if (capacity <= 0)
 		config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
 	else
 		config.query_mem_capacity = capacity;
@@ -704,7 +704,7 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 		case Config_QUERY_MEM_CAPACITY:
 			{
 				va_start(ap, field);
-				uint64_t *query_mem_capacity = va_arg(ap, uint64_t *);
+				int64_t *query_mem_capacity = va_arg(ap, int64_t *);
 				va_end(ap);
 
 				ASSERT(query_mem_capacity != NULL);

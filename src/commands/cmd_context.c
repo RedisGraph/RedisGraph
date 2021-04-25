@@ -66,6 +66,9 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	// set ctx at the current thread entry
 	// CommandCtx_Free will remove it eventually
 	command_ctxs[tid] = ctx;
+
+	// Resets the n_alloc in the beginning of CMD  
+	rm_reset_n_alloced();
 }
 
 void CommandCtx_UntrackCtx(CommandCtx *ctx) {

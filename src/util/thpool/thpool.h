@@ -216,7 +216,7 @@ bool thpool_queue_full(threadpool);
  * @brief Sets jobqueue capacity.
  *
  * @param threadpool    the threadpool of interest
- * @param uint64_t      max queued queries
+ * @param uint64_t      capacity of the queue
  */
 void thpool_set_jobqueue_cap(threadpool, uint64_t);
 
