@@ -62,6 +62,11 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
+						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
 	/* TODO: when module unloads call GrB_finalize. */
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc, RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free, true);
 	if(res != GrB_SUCCESS) {
@@ -70,11 +75,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-
-	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
-						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
-		return REDISMODULE_ERR;
-	}
 
 	// validate minimum redis-server version
 	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR,
