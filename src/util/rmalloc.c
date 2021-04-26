@@ -12,7 +12,7 @@
 
 /* the following are signed becasue malloc_usable_size might be greater than what being requested */
 /* in RedisModule_Alloc for more see malloc_usable_size documentation                             */
-__thread int64_t n_alloced;        // amount of mem allocated for thread
+__thread int64_t rm_n_alloced;        // amount of mem allocated for thread
 static int64_t mem_capacity;       // limit on maximal allocated mem for thread
  
 // func pointers which stores original addresses of RedisModule functions
@@ -23,15 +23,15 @@ static void * (*RedisModule_Calloc_Orig)(size_t nmemb, size_t size);
 static char * (*RedisModule_Strdup_Orig)(const char *str);
 
 /* n_bytes: number of bytes to alloc or dealloc (might be negative) */
-#define __alloc(n_bytes, fn, ...) do {                                             \
-	n_alloced += (int64_t)(n_bytes);                                               \
-	if(unlikely(n_alloced + (int64_t)(n_bytes) <= mem_capacity)) {                 \
-		/* we set n_alloced to MIN casue we won't to avoid more mem exceptions */  \
-		n_alloced = INT64_MIN;                                                     \
-    	ErrorCtx_SetError("Query execution needs more memory allocation(%llu) than \
-		allowed(%llu)", n_alloced + (int64_t)(n_bytes), mem_capacity);             \
-	}                                                                              \
-	return (fn)(__VA_ARGS__);                                                      \
+#define __alloc(n_bytes, fn, ...) do {                                              \
+	rm_n_alloced += (int64_t)(n_bytes);                                               \
+	if(unlikely(rm_n_alloced + (int64_t)(n_bytes) <= mem_capacity)) {                 \
+		/* we set rm_n_alloced to MIN casue we won't to avoid more mem exceptions */    \
+		rm_n_alloced = INT64_MIN;                                                       \
+    	ErrorCtx_SetError("Query execution needs more memory allocation(%llu) than    \
+		allowed(%llu)", rm_n_alloced + (int64_t)(n_bytes), mem_capacity);               \
+	}                                                                                 \
+	return (fn)(__VA_ARGS__);                                                         \
 } while(0)
 
 void *rm_alloc_with_capacity(size_t bytes) {
@@ -44,7 +44,7 @@ void *rm_realloc_with_capacity(void *ptr, size_t bytes) {
 }
 
 void rm_free_with_capacity(void *ptr) {
-	n_alloced -= (int64_t)malloc_usable_size(ptr);
+	rm_n_alloced -= (int64_t)malloc_usable_size(ptr);
 	RedisModule_Free(ptr);
 }
 
@@ -60,7 +60,7 @@ char *rm_strdup_with_capacity(const char *str) {
 void rm_set_mem_capacity(int64_t cap) {
 	bool before_limit = (mem_capacity > 0);
 	bool now_limit = (cap > 0);
-	n_alloced = 0;
+	rm_n_alloced = 0;
 	mem_capacity = cap;
 	asm volatile("" ::: "memory"); // mem barrier cause mem_capacity should be updated before the function pointers
 	if(now_limit && !before_limit) {

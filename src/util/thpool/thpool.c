@@ -62,7 +62,7 @@ typedef struct jobqueue {
 	job *rear;               		/* pointer to rear  of queue */
 	bsem *has_jobs;          		/* flag as binary semaphore  */
 	int len;                 		/* number of jobs in queue   */
-	uint64_t cap;		            /* capacity of the queue     */
+	uint64_t cap;                   /* capacity of the queue     */
 } jobqueue;
 
 /* Thread */

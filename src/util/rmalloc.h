@@ -20,9 +20,9 @@ char *rm_strdup_with_capacity(const char *str);
 // called when mem_capacity changed
 void rm_set_mem_capacity(int64_t cap);
 
-extern __thread int64_t n_alloced;
+extern __thread int64_t rm_n_alloced;
 static inline void rm_reset_n_alloced() {
-	n_alloced = 0;
+	rm_n_alloced = 0;
 }
 
 static inline void *rm_malloc(size_t n) {
