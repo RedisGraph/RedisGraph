@@ -87,3 +87,25 @@ $ redis-cli GRAPH.QUERY G "MATCH (n) RETURN n {.name, .age} AS projection"
 1) 1) "projection"
 2) 1) 1) "{name: Jeff, age: 32}"
 ```
+
+#### Function calls in map values
+
+The values in maps and map projections are flexible, and can generally refer either to constants or computed values:
+
+```sh
+$ redis-cli GRAPH.QUERY G "RETURN {key1: 'constant', key2: rand(), key3: toLower('GENERATED') + '_string'} AS map"
+1) 1) "map"
+2) 1) 1) "{key1: constant, key2: 0.889656, key3: generated_string}"
+```
+
+The exception to this is aggregation functions, which must be computed in a preceding `WITH` clause instead of being invoked within the map. This restriction is intentional, as it helps to clearly disambiguate the aggregate function calls and the key values they are grouped by:
+
+```sh
+$ redis-cli GRAPH.QUERY G "
+MATCH (follower:User)-[:FOLLOWS]->(u:User)
+WITH u, COUNT(follower) AS count
+RETURN u {.name, follower_count: count} AS user"
+1) 1) "user"
+2) 1) 1) "{name: Jeff, follower_count: 12}"
+   2) 1) "{name: Roi, follower_count: 18}"
+```
