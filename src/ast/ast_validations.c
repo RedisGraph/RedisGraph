@@ -235,17 +235,16 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool i
 // validate that a map doesn't contains a nested aggregation function
 // e.g. {key: count(v)}
 static AST_Validation _ValidateMapExp(const cypher_astnode_t *node) {
-	cypher_astnode_type_t type = cypher_astnode_type(node);
-	ASSERT(type == CYPHER_AST_MAP);
-	AST_Validation res = AST_VALID;
+	ASSERT(cypher_astnode_type(node) == CYPHER_AST_MAP);
 
 	if(AST_ClauseContainsAggregation(node)) {
-		// TODO: provide a more instructive instruction to user
-		ErrorCtx_SetError("map can not contain calls to aggregation functions");
-		res = AST_INVALID;
+		ErrorCtx_SetError("RedisGraph does not allow aggregate function calls \
+to be nested within maps. Aggregate functions should instead be called in a \
+preceding WITH clause and have their aliased values referenced in the map.");
+		return AST_INVALID;
 	}
 
-	return res;
+	return AST_VALID;
 }
 
 // Recursively collect function names and perform validations on functions with STAR arguments.
