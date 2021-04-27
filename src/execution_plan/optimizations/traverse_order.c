@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "RG.h"
 #include "./traverse_order.h"
@@ -15,13 +15,19 @@
 // having chosen which algebraic expression will be evaluated first
 // determine whether it is worthwhile to transpose it
 // thus swap the source and destination
-static bool _should_transpose_entry_point(const QueryGraph *qg,
-		AlgebraicExpression *ae, rax *filtered_entities, rax *bound_vars) {
+static bool _should_transpose_entry_point
+(
+	const QueryGraph *qg,
+	AlgebraicExpression *ae,
+	rax *filtered_entities,
+	rax *bound_vars
+) {
 	// validate inputs
-	ASSERT(qg                    !=  NULL);
-	ASSERT(ae                    !=  NULL);
-	ASSERT(filtered_entities     !=  NULL);
-	ASSERT(bound_vars            !=  NULL);
+	ASSERT(qg                 !=  NULL);
+	ASSERT(ae                 !=  NULL);
+	ASSERT(filtered_entities  !=  NULL);
+	ASSERT(bound_vars         !=  NULL);
+
 
 	// consider src and dest as stand-alone expressions
 	const char *src  = AlgebraicExpression_Source(ae);
@@ -60,8 +66,11 @@ static bool _should_transpose_entry_point(const QueryGraph *qg,
 
 // transpose out-of-order expressions such that each expresson's source
 // is resolved in the winning arrangment
-static void _resolve_winning_sequence(AlgebraicExpression **exps,
-		uint exp_count) {
+static void _resolve_winning_sequence
+(
+	AlgebraicExpression **exps,
+	uint exp_count
+) {
 	// skip opening expression
 	for(uint i = 1; i < exp_count; i ++) {
 		bool src_resolved = false;
@@ -167,7 +176,7 @@ bool _arrangment_set_expression
 
 		// compose a list of valid expressions for next position
 		follows = _valid_expressions(exps, nexp, arrangment, i + 1);
-		
+
 		// position i set, recursively advance to next position
 		position_set = _arrangment_set_expression(arrangment, exps, nexp,
 				follows, i + 1);
@@ -195,8 +204,14 @@ void _order_expressions
  * we pick the order in which the expressions will be evaluated
  * taking into account filters and transposes.
  * 'exps' will be reordered. */
-void orderExpressions(const QueryGraph *qg, AlgebraicExpression **exps,
-		uint exp_count, const FT_FilterNode *ft, rax *bound_vars) {
+void orderExpressions
+(
+	const QueryGraph *qg,
+	AlgebraicExpression **exps,
+	uint exp_count,
+	const FT_FilterNode *ft,
+	rax *bound_vars
+) {
 	// Validate inputs
 	ASSERT(qg   != NULL);
 	ASSERT(exps != NULL && exp_count > 0);
@@ -205,9 +220,9 @@ void orderExpressions(const QueryGraph *qg, AlgebraicExpression **exps,
 	AlgebraicExpression *arrangment[exp_count];
 
 	// collect all filtered aliases
-	rax  *filtered_entities     =  NULL;
+	rax *filtered_entities = NULL;
 	if(ft) {
-		filtered_entities    = FilterTree_CollectModified(ft);
+		filtered_entities = FilterTree_CollectModified(ft);
 		// enrich filtered_entities with independent filtered entities frequency
 		FilterTree_CollectIndependentEntities(ft, filtered_entities);
 	}
@@ -218,7 +233,7 @@ void orderExpressions(const QueryGraph *qg, AlgebraicExpression **exps,
 
 	// associate each expression with a score
 	TraverseOrder_ScoreExpressions(scored_exps, exps, exp_count, bound_vars,
-					   filtered_entities, qg);
+			filtered_entities, qg);
 
 	// Sort scored_exps on score in descending order.
 	// Compare macro used to sort scored expressions.
