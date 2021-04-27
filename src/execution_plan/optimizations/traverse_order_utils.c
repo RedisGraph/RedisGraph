@@ -17,7 +17,7 @@
 // score = src label count + dest label count
 int TraverseOrder_LabelsScore(AlgebraicExpression *exp, const QueryGraph *qg) {
 	ASSERT(exp != NULL);
-	ASSERT(gq  != NULL);
+	ASSERT(qg  != NULL);
 
 	int         score       =  0;
 	const char  *src        =  AlgebraicExpression_Source(exp);
@@ -33,7 +33,7 @@ int TraverseOrder_LabelsScore(AlgebraicExpression *exp, const QueryGraph *qg) {
 // score expression based on the existence of filters applied to entities
 // in the expression, adding additional score for independent filtered entities
 int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
-											 rax *filtered_entities) {
+									   rax *filtered_entities) {
 	ASSERT(exp != NULL);
 
 	if(!filtered_entities) return 0;
@@ -58,7 +58,7 @@ int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
 
 	if(edge) {
 		if(raxFind(filtered_entities, (unsigned char *)edge, strlen(edge))
-				!= raxNotFound) {
+		   != raxNotFound) {
 			score += 1;
 		}
 	}
@@ -68,7 +68,7 @@ int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
 
 // score expression based on bounded nodes
 int TraverseOrder_BoundVariableScore(AlgebraicExpression *exp,
-		rax *bound_vars) {
+									 rax *bound_vars) {
 	ASSERT(exp != NULL);
 
 	if(!bound_vars) return 0;
@@ -78,10 +78,10 @@ int TraverseOrder_BoundVariableScore(AlgebraicExpression *exp,
 	const char *dest  =  AlgebraicExpression_Destination(exp);
 
 	bool src_bound = raxFind(bound_vars, (unsigned char *)src,
-			strlen(src)) != raxNotFound;
+							 strlen(src)) != raxNotFound;
 
 	bool dest_bound = raxFind(bound_vars, (unsigned char *)dest,
-			strlen(dest)) != raxNotFound;
+							  strlen(dest)) != raxNotFound;
 
 	if(src_bound)  score += 1;
 	if(dest_bound) score += 1;
@@ -89,11 +89,11 @@ int TraverseOrder_BoundVariableScore(AlgebraicExpression *exp,
 	return score;
 }
 
- // collect independent entities
- // and the number of their independent occurrences from a filter tree
- // an indpendent entity is an entity that is the single entity in a predicate
- // 'root' - filter tree root
- // returns rax holding independent entities and their frequency
+// collect independent entities
+// and the number of their independent occurrences from a filter tree
+// an indpendent entity is an entity that is the single entity in a predicate
+// 'root' - filter tree root
+// returns rax holding independent entities and their frequency
 void FilterTree_CollectIndependentEntities(const FT_FilterNode *root, rax *entities) {
 	ASSERT(root != NULL);
 	ASSERT(entities != NULL);
@@ -111,11 +111,11 @@ void FilterTree_CollectIndependentEntities(const FT_FilterNode *root, rax *entit
 			raxStart(&it, modified);
 			raxSeek(&it, "^", NULL, 0);
 			raxNext(&it);
-			
+
 			// set entity frequency
 			void *freq = raxFind(entities, it.key, it.key_len);
 			ASSERT(freq != raxNotFound);
-			freq = (freq == NULL) ? (void*)1 : (void*)(freq + 1);
+			freq = (freq == NULL) ? (void *)1 : (void *)(freq + 1);
 			raxInsert(entities, it.key, it.key_len, freq, NULL);
 
 			raxStop(&it);

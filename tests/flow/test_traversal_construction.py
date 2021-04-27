@@ -8,15 +8,15 @@ class testTraversalConstruction():
     def __init__(self):
         global graph
 
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
         graph = Graph("TraversalConstruction", redis_con)
 
     # make sure traversal begins with labeled entity
     def test_start_with_label(self):
         queries = ["MATCH (A:L)-->(B)-->(C) RETURN 1",
-                # "MATCH (A)-->(B:L)-->(C) RETURN 1", # improve on this case
-                "MATCH (A)-->(B)-->(C:L) RETURN 1"]
+                   # "MATCH (A)-->(B:L)-->(C) RETURN 1", # improve on this case
+                   "MATCH (A)-->(B)-->(C:L) RETURN 1"]
 
         for q in queries:
             plan = graph.execution_plan(q)

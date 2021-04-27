@@ -5,7 +5,6 @@
  */
 
 #include "RG.h"
-#include "./traverse_order.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/strcmp.h"
@@ -25,7 +24,6 @@ static bool _should_transpose_entry_point
 	// validate inputs
 	ASSERT(qg                 !=  NULL);
 	ASSERT(ae                 !=  NULL);
-	ASSERT(filtered_entities  !=  NULL);
 	ASSERT(bound_vars         !=  NULL);
 
 
@@ -36,13 +34,13 @@ static bool _should_transpose_entry_point
 	ScoredExp scored_exp[2];
 	AlgebraicExpression *exps[2];
 	exps[0] = AlgebraicExpression_NewOperand(GrB_NULL, false, src, src, NULL,
-			NULL);
+											 NULL);
 	exps[1] = AlgebraicExpression_NewOperand(GrB_NULL, false, dest, dest, NULL,
-			NULL);
+											 NULL);
 
 	// compute src score
 	TraverseOrder_ScoreExpressions(scored_exp, exps, 2, bound_vars,
-			filtered_entities, qg);
+								   filtered_entities, qg);
 	int src_score = scored_exp[0].score;
 
 	// transpose
@@ -52,7 +50,7 @@ static bool _should_transpose_entry_point
 
 	// compute dest score
 	TraverseOrder_ScoreExpressions(scored_exp, exps, 2, bound_vars,
-			filtered_entities, qg);
+								   filtered_entities, qg);
 	int dest_score = scored_exp[0].score;
 
 	// transpose if top scored expression is 'dest_exp'
@@ -129,10 +127,10 @@ AlgebraicExpression **_valid_expressions
 			const char *used_src = AlgebraicExpression_Source(used);
 			const char *used_dest  = AlgebraicExpression_Destination(used);
 
-			if( RG_STRCMP(src, used_src)   == 0  ||
-				RG_STRCMP(src, used_dest)  == 0  ||
-				RG_STRCMP(dest, used_src)  == 0  ||
-				RG_STRCMP(dest, used_dest) == 0) {
+			if(RG_STRCMP(src, used_src)   == 0  ||
+			   RG_STRCMP(src, used_dest)  == 0  ||
+			   RG_STRCMP(dest, used_src)  == 0  ||
+			   RG_STRCMP(dest, used_dest) == 0) {
 				valid = true;
 				break;
 			}
@@ -147,9 +145,9 @@ AlgebraicExpression **_valid_expressions
 bool _arrangment_set_expression
 (
 	AlgebraicExpression **arrangment,   // arrangment of expressions
-	const ScoredExp *exps,				// input list of expressions
+	const ScoredExp *exps,              // input list of expressions
 	uint nexp,                          // number of expressions
-	AlgebraicExpression **options,	    // posible expressions for position i
+	AlgebraicExpression **options,      // posible expressions for position i
 	uint i                              // index in arrangment to resolve
 ) {
 	// Done.
@@ -179,7 +177,7 @@ bool _arrangment_set_expression
 
 		// position i set, recursively advance to next position
 		position_set = _arrangment_set_expression(arrangment, exps, nexp,
-				follows, i + 1);
+												  follows, i + 1);
 	}
 
 	array_free(options);
@@ -189,7 +187,7 @@ bool _arrangment_set_expression
 void _order_expressions
 (
 	AlgebraicExpression **arrangment,   // arrangment of expressions
-	const ScoredExp *exps,				// input list of expressions
+	const ScoredExp *exps,              // input list of expressions
 	uint nexp                           // number of expressions
 ) {
 	// collect all possible expression for first position in arrangment
@@ -233,11 +231,11 @@ void orderExpressions
 
 	// associate each expression with a score
 	TraverseOrder_ScoreExpressions(scored_exps, exps, exp_count, bound_vars,
-			filtered_entities, qg);
+								   filtered_entities, qg);
 
 	// Sort scored_exps on score in descending order.
 	// Compare macro used to sort scored expressions.
-	#define score_cmp(a,b) ((*a).score > (*b).score)
+#define score_cmp(a,b) ((*a).score > (*b).score)
 	QSORT(ScoredExp, scored_exps, exp_count, score_cmp);
 
 	//--------------------------------------------------------------------------
@@ -256,7 +254,7 @@ void orderExpressions
 	// transpose the winning expression if the destination node is a more
 	// efficient starting point
 	if(_should_transpose_entry_point(qg, exps[0], filtered_entities,
-				bound_vars)) {
+									 bound_vars)) {
 		AlgebraicExpression_Transpose(exps);
 	}
 
