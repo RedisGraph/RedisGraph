@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -63,7 +63,7 @@ static bool _should_transpose_entry_point
 }
 
 // transpose out-of-order expressions such that each expresson's source
-// is resolved in the winning arrangment
+// is resolved in the winning arrangement
 static void _resolve_winning_sequence
 (
 	AlgebraicExpression **exps,
@@ -91,7 +91,7 @@ static void _resolve_winning_sequence
 }
 
 // construct a sorted list of valid expressions to consider, given a subset of
-// expression already in use 'arrangment' these will not show up in the
+// expression already in use 'arrangement' these will not show up in the
 // returned list.
 // the elements are sorted by their score
 AlgebraicExpression **_valid_expressions
@@ -142,13 +142,13 @@ AlgebraicExpression **_valid_expressions
 	return options;
 }
 
-bool _arrangment_set_expression
+bool _arrangement_set_expression
 (
-	AlgebraicExpression **arrangment,   // arrangment of expressions
+	AlgebraicExpression **arrangement,   // arrangement of expressions
 	const ScoredExp *exps,              // input list of expressions
 	uint nexp,                          // number of expressions
 	AlgebraicExpression **options,      // posible expressions for position i
-	uint i                              // index in arrangment to resolve
+	uint i                              // index in arrangement to resolve
 ) {
 	// Done.
 	if(i == nexp) {
@@ -160,7 +160,7 @@ bool _arrangment_set_expression
 	AlgebraicExpression **follows = NULL;
 
 	//--------------------------------------------------------------------------
-	// Find the best posible expression to place at position i
+	// Find the best possible expression to place at position i
 	//--------------------------------------------------------------------------
 
 	// as long as we didn't find an expression for position i
@@ -169,15 +169,15 @@ bool _arrangment_set_expression
 		// options are sorted by score
 		AlgebraicExpression *exp = array_pop(options);
 
-		// set current expression in arrangment
-		arrangment[i] = exp;
+		// set current expression in arrangement
+		arrangement[i] = exp;
 
 		// compose a list of valid expressions for next position
-		follows = _valid_expressions(exps, nexp, arrangment, i + 1);
+		follows = _valid_expressions(exps, nexp, arrangement, i + 1);
 
 		// position i set, recursively advance to next position
-		position_set = _arrangment_set_expression(arrangment, exps, nexp,
-												  follows, i + 1);
+		position_set = _arrangement_set_expression(arrangement, exps, nexp,
+												   follows, i + 1);
 	}
 
 	array_free(options);
@@ -186,15 +186,15 @@ bool _arrangment_set_expression
 
 void _order_expressions
 (
-	AlgebraicExpression **arrangment,   // arrangment of expressions
+	AlgebraicExpression **arrangement,   // arrangement of expressions
 	const ScoredExp *exps,              // input list of expressions
 	uint nexp                           // number of expressions
 ) {
-	// collect all possible expression for first position in arrangment
+	// collect all possible expression for first position in arrangement
 	AlgebraicExpression **options = _valid_expressions(exps, nexp, NULL, 0);
 
-	// construct arrangment
-	bool res = _arrangment_set_expression(arrangment, exps, nexp, options, 0);
+	// construct arrangement
+	bool res = _arrangement_set_expression(arrangement, exps, nexp, options, 0);
 	ASSERT(res == true);
 }
 
@@ -215,7 +215,7 @@ void orderExpressions
 	ASSERT(exps != NULL && exp_count > 0);
 
 	ScoredExp scored_exps[exp_count];
-	AlgebraicExpression *arrangment[exp_count];
+	AlgebraicExpression *arrangement[exp_count];
 
 	// collect all filtered aliases
 	rax *filtered_entities = NULL;
@@ -239,13 +239,13 @@ void orderExpressions
 	QSORT(ScoredExp, scored_exps, exp_count, score_cmp);
 
 	//--------------------------------------------------------------------------
-	// Find the highest score valid arrangment
+	// Find the highest-scoring valid arrangement
 	//--------------------------------------------------------------------------
 
-	_order_expressions(arrangment, scored_exps, exp_count);
+	_order_expressions(arrangement, scored_exps, exp_count);
 
 	// overwrite the original expressions array with the optimal arrangement
-	memcpy(exps, arrangment, exp_count * sizeof(AlgebraicExpression *));
+	memcpy(exps, arrangement, exp_count * sizeof(AlgebraicExpression *));
 
 	// transpose expressions as necessary so that the traversals will work in
 	// the selected order

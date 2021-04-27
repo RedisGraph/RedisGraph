@@ -138,18 +138,20 @@ void TraverseOrder_ScoreExpressions
 	rax *filtered_entities,      // map of filtered entities
 	const QueryGraph *qg         // query graph
 ) {
-	// scoreing of algebraic expression is done according to 3 criterias
-	// ordered by to strongest weakest:
+	// scoring of algebraic expression is done according to 3 criterias
+	// ordered by strongest to weakest:
 	// 1. The source or destination are bound
 	// 2. Existence of filters on either source or destinaion
 	// 3. Label(s) on the expression source or destination
 	//
 	// the expressions will be evaluated in 3 phases, one for each criteria
-	// the score given for the for each criteria is:
+	// (from weakest to strongest)
+	//
+	// the score given for each criteria is:
 	// (the maximum score given in the previous criteria) + (criteria scoring function)
 	// where the first criteria starts with (criteria scoring function)
 	//
-	// phase 1 - check for labels on either source or destinaion
+	// phase 1 - check for labels on either source or destination
 	// expression scoring = _expression_labels_score
 	//
 	// phase 2 - check for existence of filters on either source or destinaion
