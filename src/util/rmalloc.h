@@ -7,23 +7,14 @@
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
-void *rm_alloc_with_capacity(size_t bytes);
-
-void *rm_realloc_with_capacity(void *ptr, size_t bytes);
-
-void rm_free_with_capacity(void *ptr);
-
-void *rm_calloc_with_capacity(size_t nmemb, size_t size);
-
-char *rm_strdup_with_capacity(const char *str);
-
-// called when mem_capacity changed
+/* Called when mem_capacity changed.                                           */
+/* Note that this function might be called in the middle of command execution. */
+/* Depending on capacity value and it's previous value                         */
+/* Change the allocation function pointers to the correct functions            */
 void rm_set_mem_capacity(int64_t cap);
 
-extern __thread int64_t rm_n_alloced;
-static inline void rm_reset_n_alloced() {
-	rm_n_alloced = 0;
-}
+/* Zeroize n_alloced */
+void rm_reset_n_alloced();
 
 static inline void *rm_malloc(size_t n) {
 	return RedisModule_Alloc(n);

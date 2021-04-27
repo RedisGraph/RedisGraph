@@ -68,6 +68,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	/* TODO: when module unloads call GrB_finalize. */
+	/* Passing RedisModule_ function pointers and not pointers rm_ cause we would like that the allocation of               */
+	/* GraphBlas will not be capped cause query execution in graphBlas might run on multi threads so it's hard to track it. */
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc, RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free, true);
 	if(res != GrB_SUCCESS) {
 		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS");

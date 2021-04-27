@@ -1,4 +1,5 @@
 #include "rmalloc.h"
+#include "branch_pred.h" 
 
 #if defined(__APPLE__)  // MacOS has different header
   #include <malloc/malloc.h>
@@ -6,64 +7,85 @@
 #else
 	#include <malloc.h>
 #endif
+
 #include "../errors.h"
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
-/* the following are signed becasue malloc_usable_size might be greater than what being requested */
-/* in RedisModule_Alloc for more see malloc_usable_size documentation                             */
-__thread int64_t rm_n_alloced;        // amount of mem allocated for thread
-static int64_t mem_capacity;       // limit on maximal allocated mem for thread
+/* the following are signed becasue malloc_usable_size might be greater than what being requested        */
+/* in RedisModule_Alloc so we might end up with memory_count<0 or even a query might allocate a bit more */
+/* memory than the limit and there will be no exception, so we only ensure that the allocation will      */
+/* not exceed the limit by large amount.                                                                 */
+/* For instance a query calls rm_alloc_with_capacity to allocate 1 byte                                  */
+/* and RedisModule_Alloc might allocate 4 bytes so on free,  malloc_usable_size will return 4.           */
+/* thus at the end of the free func n_alloced will be -3 (1-4), we tolerate this skew in the counter     */
+/* because it's better performance wise, the alternative would be to call malloc_usable_size on alloc    */
+/* and to inc by it's result n_alloced.                                                                  */
+static __thread int64_t n_alloced; // amount of memory allocated for currently executed query (thread_local counter)
+static int64_t mem_capacity;       // maximum memory consumption for thread
  
-// func pointers which stores original addresses of RedisModule functions
-static void * (*RedisModule_Alloc_Orig)(size_t bytes);
-static void * (*RedisModule_Realloc_Orig)(void *ptr, size_t bytes);
+// function pointers which hold the original address of RedisModule_Alloc* functions
 static void (*RedisModule_Free_Orig)(void *ptr);
-static void * (*RedisModule_Calloc_Orig)(size_t nmemb, size_t size);
+static void * (*RedisModule_Alloc_Orig)(size_t bytes);
 static char * (*RedisModule_Strdup_Orig)(const char *str);
+static void * (*RedisModule_Realloc_Orig)(void *ptr, size_t bytes);
+static void * (*RedisModule_Calloc_Orig)(size_t nmemb, size_t size);
+
+void rm_reset_n_alloced() {
+	n_alloced = 0;
+}
 
 /* n_bytes: number of bytes to alloc or dealloc (might be negative) */
-#define __alloc(n_bytes, fn, ...) do {                                              \
-	rm_n_alloced += (int64_t)(n_bytes);                                               \
-	if(unlikely(rm_n_alloced + (int64_t)(n_bytes) <= mem_capacity)) {                 \
-		/* we set rm_n_alloced to MIN casue we won't to avoid more mem exceptions */    \
-		rm_n_alloced = INT64_MIN;                                                       \
-    	ErrorCtx_SetError("Query execution needs more memory allocation(%llu) than    \
-		allowed(%llu)", rm_n_alloced + (int64_t)(n_bytes), mem_capacity);               \
-	}                                                                                 \
-	return (fn)(__VA_ARGS__);                                                         \
-} while(0)
+static inline void _throw_on_memory_limit_exceeded(int64_t n_bytes) {
+	n_alloced += n_bytes;
+	if(unlikely(n_alloced > mem_capacity)) { // Check if capacity exceeded
+		// set n_alloced to MIN casue we would like to avoid more mem exceptions
+		n_alloced = INT64_MIN;
+		
+		// throw exception cause memory limit exceeded
+    	ErrorCtx_SetError("Querie's mem consumption exceeded capacity");
+	}
+	return;     
+}
 
 void *rm_alloc_with_capacity(size_t bytes) {
-	__alloc(bytes, RedisModule_Alloc, bytes);
+	_throw_on_memory_limit_exceeded(bytes);
+	return RedisModule_Alloc_Orig(bytes);
 }
 
 void *rm_realloc_with_capacity(void *ptr, size_t bytes) {
-	int64_t diff = (int64_t)bytes - malloc_usable_size(ptr);
-	__alloc(diff, RedisModule_Realloc, ptr, bytes);
+	int64_t diff = (int64_t)bytes - (int64_t)malloc_usable_size(ptr);
+	_throw_on_memory_limit_exceeded(diff);
+	return RedisModule_Realloc_Orig(ptr, bytes);
 }
 
 void rm_free_with_capacity(void *ptr) {
-	rm_n_alloced -= (int64_t)malloc_usable_size(ptr);
-	RedisModule_Free(ptr);
+	n_alloced -= (int64_t)malloc_usable_size(ptr);
+	return RedisModule_Free_Orig(ptr);
 }
 
 void *rm_calloc_with_capacity(size_t nmemb, size_t size) {
-	__alloc(nmemb*size, RedisModule_Calloc, nmemb, size);
+	_throw_on_memory_limit_exceeded((int64_t)nmemb*size);
+	return RedisModule_Calloc_Orig(nmemb, size);
 }
 
 char *rm_strdup_with_capacity(const char *str) {
-	__alloc((int64_t)malloc_usable_size(str), RedisModule_Strdup, str);
+	char *str_copy = RedisModule_Strdup_Orig(str);
+	// It's ok to call _throw_on_memory_limit_exceeded after the allocation because query is single threaded.
+	_throw_on_memory_limit_exceeded((int64_t)malloc_usable_size(str_copy));
+	return str_copy;
 }
 
-// called when mem_capacity changed
 void rm_set_mem_capacity(int64_t cap) {
-	bool before_limit = (mem_capacity > 0);
-	bool now_limit = (cap > 0);
-	rm_n_alloced = 0;
-	mem_capacity = cap;
-	asm volatile("" ::: "memory"); // mem barrier cause mem_capacity should be updated before the function pointers
-	if(now_limit && !before_limit) {
+	bool is_capped = (mem_capacity > 0); // current allocator enforces memory capacity
+	bool should_cap = (cap > 0); // should we use a memory capped allocator
+	
+	/* The local capacity be setted before changing the function pointers  */
+	/* for instance if we switched to capped function we like the cap      */
+	/* to be valid when they will be called.                               */
+	mem_capacity = cap; 
+	if(should_cap && !is_capped) {
+		// store the function pointer's original values and change them to the capped version
 		RedisModule_Alloc_Orig = RedisModule_Alloc;
 		RedisModule_Alloc = rm_alloc_with_capacity;
 		RedisModule_Realloc_Orig = RedisModule_Realloc;
@@ -74,8 +96,8 @@ void rm_set_mem_capacity(int64_t cap) {
 		RedisModule_Calloc = rm_calloc_with_capacity;
 		RedisModule_Strdup_Orig = RedisModule_Strdup;
 		RedisModule_Strdup = rm_strdup_with_capacity;
-	} else if(!now_limit && before_limit) {
-		// return all pointers to original functions
+	} else if(!should_cap && is_capped) {
+		// restore all function pointers to their original values
 		RedisModule_Alloc = RedisModule_Alloc_Orig;
 		RedisModule_Realloc = RedisModule_Realloc_Orig;
 		RedisModule_Free = RedisModule_Free_Orig;

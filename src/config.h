@@ -9,10 +9,10 @@
 #include <stdbool.h>
 #include "redismodule.h"
 
-#define RESULTSET_SIZE_UNLIMITED    UINT64_MAX
-#define QUERY_MEM_CAPACITY_UNLIMITED INT64_MIN
-#define CONFIG_TIMEOUT_NO_TIMEOUT   0
-#define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
+#define RESULTSET_SIZE_UNLIMITED     UINT64_MAX
+#define QUERY_MEM_CAPACITY_UNLIMITED 0
+#define CONFIG_TIMEOUT_NO_TIMEOUT    0
+#define VKEY_ENTITY_COUNT_UNLIMITED  UINT64_MAX
 
 typedef enum {
 	Config_TIMEOUT                  = 0,  // timeout value for queries
