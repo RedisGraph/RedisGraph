@@ -162,6 +162,7 @@ Feature: Return4 - Column renaming
       | 11         |
     And no side effects
 
+  @skip
   Scenario: [9] Handle subexpression in aggregation also occurring as standalone expression with nested aggregation in a literal map
     Given an empty graph
     And having executed:
