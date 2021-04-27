@@ -4,62 +4,64 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "./traverse_order.h"
-#include "../../RG.h"
 #include "../../util/arr.h"
+#include "../../util/qsort.h"
 #include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
 #include "traverse_order_utils.h"
-
-
-// Print arrangement.
-static inline void _Arrangement_Print(AlgebraicExpression **arrangement, uint size) {
-	printf("Arrangement_Print\n");
-	for(uint i = 0; i < size; i++) {
-		AlgebraicExpression *exp = arrangement[i];
-		printf("%d, src: %s, dest: %s\n", i, AlgebraicExpression_Source(exp),
-			   AlgebraicExpression_Destination(exp));
-	}
-}
 
 // having chosen which algebraic expression will be evaluated first
 // determine whether it is worthwhile to transpose it
 // thus swap the source and destination
 static bool _should_transpose_entry_point(const QueryGraph *qg,
-		AlgebraicExpression *ae, rax *filtered_entities,
-		rax *independent_entities, rax *bound_vars) {
+		AlgebraicExpression *ae, rax *filtered_entities, rax *bound_vars) {
 	// validate inputs
 	ASSERT(qg                    !=  NULL);
 	ASSERT(ae                    !=  NULL);
 	ASSERT(filtered_entities     !=  NULL);
-	ASSERT(independent_entities  !=  NULL);
 	ASSERT(bound_vars            !=  NULL);
 
 	// consider src and dest as stand-alone expressions
 	const char *src  = AlgebraicExpression_Source(ae);
 	const char *dest = AlgebraicExpression_Destination(ae);
 
-	AlgebraicExpression *src_exp = AlgebraicExpression_NewOperand(GrB_NULL,
-			false, src, src, NULL, NULL);
-	AlgebraicExpression *dest_exp = AlgebraicExpression_NewOperand(GrB_NULL,
-			false, dest, dest, NULL, NULL);
+	ScoredExp scored_exp[2];
+	AlgebraicExpression *exps[2];
+	exps[0] = AlgebraicExpression_NewOperand(GrB_NULL, false, src, src, NULL,
+			NULL);
+	exps[1] = AlgebraicExpression_NewOperand(GrB_NULL, false, dest, dest, NULL,
+			NULL);
+
+	// compute src score
+	TraverseOrder_ScoreExpressions(scored_exp, exps, 2, bound_vars,
+			filtered_entities, qg);
+	int src_score = scored_exp[0].score;
+
+	// transpose
+	AlgebraicExpression *tmp = exps[0];
+	exps[0] = exps[1];
+	exps[1] = tmp;
+
+	// compute dest score
+	TraverseOrder_ScoreExpressions(scored_exp, exps, 2, bound_vars,
+			filtered_entities, qg);
+	int dest_score = scored_exp[0].score;
 
 	// transpose if top scored expression is 'dest_exp'
-	int src_score = score_expression(src_exp, qg, bound_vars,
-			filtered_entities, independent_entities);
-	int dest_score = score_expression(dest_exp, qg, bound_vars,
-			filtered_entities, independent_entities);
 	bool transpose = dest_score > src_score;
 
-	AlgebraicExpression_Free(src_exp);
-	AlgebraicExpression_Free(dest_exp);
+	AlgebraicExpression_Free(exps[0]);
+	AlgebraicExpression_Free(exps[1]);
 
 	return transpose;
 }
 
 // transpose out-of-order expressions such that each expresson's source
 // is resolved in the winning arrangment
-static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count) {
+static void _resolve_winning_sequence(AlgebraicExpression **exps,
+		uint exp_count) {
 	// skip opening expression
 	for(uint i = 1; i < exp_count; i ++) {
 		bool src_resolved = false;
@@ -166,13 +168,6 @@ bool _arrangment_set_expression
 		// compose a list of valid expressions for next position
 		follows = _valid_expressions(exps, nexp, arrangment, i + 1);
 		
-		// if follows doesn't contains enough options we're destined to fail
-		// try the next expression for the current position
-		if(array_len(follows) != nexp - (i + 1)) {
-			array_free(follows);
-			continue;
-		}
-
 		// position i set, recursively advance to next position
 		position_set = _arrangment_set_expression(arrangment, exps, nexp,
 				follows, i + 1);
@@ -211,10 +206,10 @@ void orderExpressions(const QueryGraph *qg, AlgebraicExpression **exps,
 
 	// collect all filtered aliases
 	rax  *filtered_entities     =  NULL;
-	rax  *independent_entities  =  NULL;
 	if(ft) {
 		filtered_entities    = FilterTree_CollectModified(ft);
-		independent_entities = FilterTree_CollectIndependentEntities(ft);
+		// enrich filtered_entities with independent filtered entities frequency
+		FilterTree_CollectIndependentEntities(ft, filtered_entities);
 	}
 
 	//--------------------------------------------------------------------------
@@ -222,8 +217,13 @@ void orderExpressions(const QueryGraph *qg, AlgebraicExpression **exps,
 	//--------------------------------------------------------------------------
 
 	// associate each expression with a score
-	TraverseOrder_Rank_Expressions(scored_exps, exps, exp_count, bound_vars,
-					   filtered_entities, independent_entities, qg);
+	TraverseOrder_ScoreExpressions(scored_exps, exps, exp_count, bound_vars,
+					   filtered_entities, qg);
+
+	// Sort scored_exps on score in descending order.
+	// Compare macro used to sort scored expressions.
+	#define score_cmp(a,b) ((*a).score > (*b).score)
+	QSORT(ScoredExp, scored_exps, exp_count, score_cmp);
 
 	//--------------------------------------------------------------------------
 	// Find the highest score valid arrangment
@@ -241,13 +241,12 @@ void orderExpressions(const QueryGraph *qg, AlgebraicExpression **exps,
 	// transpose the winning expression if the destination node is a more
 	// efficient starting point
 	if(_should_transpose_entry_point(qg, exps[0], filtered_entities,
-				independent_entities, bound_vars)) {
+				bound_vars)) {
 		AlgebraicExpression_Transpose(exps);
 	}
 
 	if(ft) {
 		raxFree(filtered_entities);
-		raxFree(independent_entities);
 	}
 }
 
