@@ -96,6 +96,9 @@ AR_ExpNode *AR_EXP_NewRecordNode(void);
  * The val pointer is out-by-ref returned computation. */
 bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val);
 
+/* Resolve variables to constants */
+void AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r);
+
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 
@@ -132,6 +135,9 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
 
 /* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);
+
+/* Returns true if an arithmetic expression node is variadic. */
+bool AR_EXP_IsVariadic(const AR_ExpNode *exp);
 
 /* Returns true if an arithmetic expression node is a parameter. */
 bool AR_EXP_IsParameter(const AR_ExpNode *exp);

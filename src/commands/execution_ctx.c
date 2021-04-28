@@ -19,7 +19,7 @@ static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 }
 
 static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan,
-  		ExecutionType exec_type) {
+									   ExecutionType exec_type) {
 	ExecutionCtx *exec_ctx = rm_malloc(sizeof(ExecutionCtx));
 
 	exec_ctx->ast       = ast;
@@ -66,16 +66,15 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	ExecutionCtx *ret;
 	const char *query_string;
 
-	// Have an invalid ctx for errors.
-	ExecutionCtx *invalid_ctx = _ExecutionCtx_New(NULL, NULL,
-			EXECUTION_TYPE_INVALID);
-
 	// Parse and validate parameters only. Extract query string.
 	// Return invalid execution context if there isn't a parser result.
 	cypher_parse_result_t *params_parse_result = parse_params(query,
-			&query_string);
+															  &query_string);
 
-	if(params_parse_result == NULL) return invalid_ctx;
+	if(params_parse_result == NULL) {
+		// Parameter parsing failed, return an invalid context.
+		return _ExecutionCtx_New(NULL, NULL, EXECUTION_TYPE_INVALID);
+	}
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);
@@ -83,7 +82,6 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	// Check the cache to see if we already have a cached context for this query.
 	ret = Cache_GetValue(cache, query_string);
 	if(ret) {
-		ExecutionCtx_Free(invalid_ctx);
 		// Set parameters parse result in the execution ast.
 		AST_SetParamsParseResult(ret->ast, params_parse_result);
 		ret->cached = true;
@@ -92,18 +90,17 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 	// No cached execution plan, try to parse the query.
 	AST *ast = _ExecutionCtx_ParseAST(query_string, params_parse_result);
-	// Invalid query, return invalid execution context.
-	if(!ast) return invalid_ctx;
+	// If query parsing failed, return an invalid context.
+	if(!ast) return _ExecutionCtx_New(NULL, NULL, EXECUTION_TYPE_INVALID);
 
-	ExecutionCtx_Free(invalid_ctx);
 	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
 	// In case of valid query, create execution plan, and cache it and the AST.
 	if(exec_type == EXECUTION_TYPE_QUERY) {
 		ExecutionPlan *plan = NewExecutionPlan();
 		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan,
-		  exec_type);
+															exec_type);
 		ExecutionCtx *exec_ctx_from_cache = Cache_SetGetValue(cache,
-		  query_string, exec_ctx_to_cache);
+															  query_string, exec_ctx_to_cache);
 		return exec_ctx_from_cache;
 	} else {
 		return _ExecutionCtx_New(ast, NULL, exec_type);

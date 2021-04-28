@@ -5,8 +5,10 @@
 */
 
 #pragma once
+
 #include "thpool.h"
 
+#define THPOOL_QUEUE_FULL -2
 // create both readers and writers thread pools
 int ThreadPools_CreatePools
 (
@@ -61,11 +63,5 @@ int ThreadPools_AddWorkBulkLoader
 (
 	void (*function_p)(void *),
 	void *arg_p
-);
-
-// destroy all thread pools
-void ThreadPools_Destroy
-(
-	void
 );
 
