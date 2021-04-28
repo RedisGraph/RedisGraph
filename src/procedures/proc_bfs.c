@@ -7,7 +7,7 @@
 #include "proc_bfs.h"
 #include "../RG.h"
 #include "../value.h"
-#include "../config.h"
+#include "../configuration/config.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"

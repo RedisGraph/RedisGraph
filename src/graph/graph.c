@@ -6,7 +6,7 @@
 
 #include "graph.h"
 #include "RG.h"
-#include "config.h"
+#include "configuration/config.h"
 #include "../util/arr.h"
 #include "../util/qsort.h"
 #include "../GraphBLASExt/GxB_Delete.h"

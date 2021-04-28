@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "../../config.h"
+#include "../../configuration/config.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 

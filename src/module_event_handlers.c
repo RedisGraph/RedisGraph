@@ -11,7 +11,7 @@
 #include "graph/graphcontext.h"
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
-#include "config.h"
+#include "configuration/config.h"
 #include "util/redis_version.h"
 #include "util/thpool/pools.h"
 #include "util/uuid.h"

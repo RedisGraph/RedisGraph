@@ -6,7 +6,7 @@
 
 #include "path_funcs.h"
 #include "../func_desc.h"
-#include "../../config.h"
+#include "../../configuration/config.h"
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"

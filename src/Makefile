@@ -38,6 +38,7 @@ export CFLAGS
 # Sources
 SOURCEDIR:=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
+CC-SOURCES += $(wildcard $(SOURCEDIR)/configuration/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/map_funcs/*.c)

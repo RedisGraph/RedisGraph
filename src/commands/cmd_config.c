@@ -4,7 +4,7 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "../config.h"
+#include "../configuration/config.h"
 #include <string.h>
 
 void _Config_get_all(RedisModuleCtx *ctx) {

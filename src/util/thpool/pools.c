@@ -6,7 +6,7 @@
 
 #include "RG.h"
 #include "pools.h"
-#include "../../config.h"
+#include "../../configuration/config.h"
 #include <pthread.h>
 
 //------------------------------------------------------------------------------

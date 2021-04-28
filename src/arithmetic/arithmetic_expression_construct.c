@@ -8,7 +8,7 @@
 #include "../RG.h"
 #include "funcs.h"
 #include "../errors.h"
-#include "../config.h"
+#include "../configuration/config.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_build_filter_tree.h"

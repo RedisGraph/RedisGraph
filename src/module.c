@@ -9,7 +9,7 @@
 #include "redismodule.h"
 #include "debug.h"
 #include "errors.h"
-#include "config.h"
+#include "configuration/config.h"
 #include "version.h"
 #include "util/arr.h"
 #include "util/cron.h"
@@ -26,7 +26,7 @@
 #include "serializers/graphmeta_type.h"
 #include "redisearch_api.h"
 #include "util/redis_version.h"
-#include "reconf_handler.h"
+#include "configuration/reconf_handler.h"
 
 //------------------------------------------------------------------------------
 // Minimal supported Redis version

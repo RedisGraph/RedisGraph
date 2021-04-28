@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../../config.h"
+#include "../../configuration/config.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
