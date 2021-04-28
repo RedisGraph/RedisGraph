@@ -202,8 +202,8 @@ void thpool_destroy(thpool_* thpool_p) {
 	/* End each thread 's infinite loop */
 	threads_keepalive = 0;
 
-	/* Give one second to kill idle threads */
-	double TIMEOUT = 1.0;
+	/* Give 0.1 second to kill idle threads */
+	double TIMEOUT = 0.1;
 	time_t start, end;
 	double tpassed = 0.0;
 	time(&start);
@@ -214,6 +214,7 @@ void thpool_destroy(thpool_* thpool_p) {
 	}
 
 	/* Poll remaining threads */
+	// do not wait forever for threads to complete their work
 	//while(thpool_p->num_threads_alive) {
 	//	bsem_post_all(thpool_p->jobqueue.has_jobs);
 	//	sleep(1);
@@ -269,6 +270,10 @@ int thpool_get_thread_id(thpool_* thpool_p, pthread_t pthread) {
 
 	// Could not locate thread.
 	return -1;
+}
+
+uint thpool_queue_size(thpool_* thpool_p) {
+	return thpool_p->jobqueue.len;
 }
 
 /* ============================ THREAD ============================== */
@@ -389,9 +394,9 @@ static void thread_destroy(thread *thread_p) {
 
 /* Initialize queue */
 static int jobqueue_init(jobqueue *jobqueue_p) {
-	jobqueue_p->len = 0;
-	jobqueue_p->front = NULL;
-	jobqueue_p->rear = NULL;
+	jobqueue_p->len         =  0;
+	jobqueue_p->front       =  NULL;
+	jobqueue_p->rear        =  NULL;
 
 	jobqueue_p->has_jobs = (struct bsem *)malloc(sizeof(struct bsem));
 	if(jobqueue_p->has_jobs == NULL) {
@@ -417,27 +422,25 @@ static void jobqueue_clear(jobqueue *jobqueue_p) {
 	jobqueue_p->len = 0;
 }
 
-/* Add (allocated) job to queue
- */
+/* Add (allocated) job to queue */
 static void jobqueue_push(jobqueue *jobqueue_p, struct job *newjob) {
-
-	pthread_mutex_lock(&jobqueue_p->rwmutex);
 	newjob->prev = NULL;
 
+	pthread_mutex_lock(&jobqueue_p->rwmutex);
+
 	switch(jobqueue_p->len) {
-
-	case 0: /* if no jobs in queue */
-		jobqueue_p->front = newjob;
-		jobqueue_p->rear = newjob;
-		break;
-
-	default: /* if jobs in queue */
-		jobqueue_p->rear->prev = newjob;
-		jobqueue_p->rear = newjob;
+		case 0: /* no jobs in queue */
+			jobqueue_p->front = newjob;
+			jobqueue_p->rear = newjob;
+			break;
+		default: /* jobs in queue */
+			jobqueue_p->rear->prev = newjob;
+			jobqueue_p->rear = newjob;
 	}
-	jobqueue_p->len++;
 
+	jobqueue_p->len++;
 	bsem_post(jobqueue_p->has_jobs);
+
 	pthread_mutex_unlock(&jobqueue_p->rwmutex);
 }
 

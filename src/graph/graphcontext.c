@@ -182,6 +182,11 @@ void GraphContext_Delete(GraphContext *gc) {
 	_GraphContext_DecreaseRefCount(gc);
 }
 
+const char *GraphContext_GetName(const GraphContext *gc) {
+	ASSERT(gc != NULL);
+	return gc->graph_name;
+}
+
 void GraphContext_Rename(GraphContext *gc, const char *name) {
 	rm_free(gc->graph_name);
 	gc->graph_name = rm_strdup(name);

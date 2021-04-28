@@ -1,6 +1,13 @@
 import os
 import warnings
 
+# The default warnings.warn prints itself, this function should override the default behavior
+# Output example: "UserWarning: Maximum runtime for query "My friends?" was: 0.378, but should be 0.2"
+def _warning_formater(message, category, filename, lineno, file=None, line=None):
+    return '%s: %s\n' % (category.__name__, message)
+
+warnings.formatwarning = _warning_formater
+
 class FlowTestsBase(object):
 
     def _assert_equalish(self, a, b, e=0.05):

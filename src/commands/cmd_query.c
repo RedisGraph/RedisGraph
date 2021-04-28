@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "cmd_query.h"
 #include "RG.h"
 #include "../errors.h"
 #include "cmd_context.h"

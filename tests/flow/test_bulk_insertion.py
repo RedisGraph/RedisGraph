@@ -3,7 +3,7 @@ import os
 import sys
 import csv
 import time
-import click
+import redis
 import threading
 from RLTest import Env
 from click.testing import CliRunner
@@ -30,7 +30,6 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
-        port = self.env.envRunner.port
         redis_graph = Graph("graph", redis_con)
 
     # Run bulk loader script and validate terminal output
@@ -315,6 +314,13 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         self.env.assertIn('fakeidentifier', str(res.exception))
         os.remove('/tmp/nodes.tmp')
         os.remove('/tmp/relations.tmp')
+
+        # Test passing invalid arguments directly to the GRAPH.BULK endpoint
+        try:
+            redis_con.execute_command("GRAPH.BULK", "a", "a", "a")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Invalid graph operation on empty key", str(e))
 
     # Verify that numeric, boolean, and null types are properly handled
     def test08_property_types(self):

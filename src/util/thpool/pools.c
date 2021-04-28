@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "pools.h"
+#include "../../config.h"
 #include <pthread.h>
 
 //------------------------------------------------------------------------------
@@ -112,6 +113,22 @@ void ThreadPools_Resume
 	thpool_resume(_writers_thpool);
 }
 
+// return true if thread pool internal queue is full with pending work
+static bool _queue_full(threadpool thpool) {
+	ASSERT(thpool != NULL);
+
+	bool      res                 =  false;
+	uint64_t  max_queued_queries  =  0;
+
+	if(Config_Option_get(Config_MAX_QUEUED_QUERIES, &max_queued_queries)) {
+		// test if there's enough room in thread pool queue
+		uint queued_queries = thpool_queue_size(thpool);
+		res = (queued_queries >= max_queued_queries);
+	}
+
+	return res;
+}
+
 // add task for reader thread
 int ThreadPools_AddWorkReader
 (
@@ -119,6 +136,9 @@ int ThreadPools_AddWorkReader
 	void *arg_p
 ) {
 	ASSERT(_readers_thpool != NULL);
+
+	// make sure there's enough room in thread pool queue
+	if(_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_readers_thpool, function_p, arg_p);
 }
@@ -130,6 +150,9 @@ int ThreadPools_AddWorkWriter
 	void *arg_p
 ) {
 	ASSERT(_writers_thpool != NULL);
+
+	// make sure there's enough room in thread pool queue
+	if(_queue_full(_writers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_writers_thpool, function_p, arg_p);
 }
@@ -143,19 +166,5 @@ int ThreadPools_AddWorkBulkLoader
 	ASSERT(_bulk_thpool != NULL);
 
 	return thpool_add_work(_bulk_thpool, function_p, arg_p);
-}
-
-// destroy all thread pools
-void ThreadPools_Destroy
-(
-	void
-) {
-	ASSERT(_bulk_thpool != NULL);
-	ASSERT(_readers_thpool != NULL);
-	ASSERT(_writers_thpool != NULL);
-
-	thpool_destroy(_bulk_thpool);
-	thpool_destroy(_readers_thpool);
-	thpool_destroy(_writers_thpool);
 }
 
