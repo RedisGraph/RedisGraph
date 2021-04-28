@@ -9,7 +9,7 @@
 #include "reconf_handler.h"
 #include "util/thpool/pools.h"
 
-// handler function which being called when config param changed
+// handler function invoked when config changes
 void reconf_handler(Config_Option_Field type) {
 	switch (type)
 	{
@@ -46,3 +46,4 @@ void reconf_handler(Config_Option_Field type) {
 			return;
     }
 }
+

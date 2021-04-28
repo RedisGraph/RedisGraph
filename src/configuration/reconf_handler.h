@@ -4,12 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-
 #pragma once
 
 #include "config.h"
 
-// handler function which being called when config param changed
-// and executes the appropriate logic needed by the change.
-// might be called at any time after config_init finished
+// handler function invoked when configuration changes
+// might be called at any time after config_init
 void reconf_handler(Config_Option_Field type);
+

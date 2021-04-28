@@ -67,7 +67,7 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	// CommandCtx_Free will remove it eventually
 	command_ctxs[tid] = ctx;
 
-	// Resets the n_alloc in the beginning of CMD  
+	// reset thread memory consumption to 0 (no memory consumed)
 	rm_reset_n_alloced();
 }
 

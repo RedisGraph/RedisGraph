@@ -67,10 +67,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	/* TODO: when module unloads call GrB_finalize. */
-	/* Passing RedisModule_ function pointers and not pointers rm_ cause we would like that the allocation of               */
-	/* GraphBlas will not be capped cause query execution in graphBlas might run on multi threads so it's hard to track it. */
-	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc, RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free, true);
+	// GraphBLAS should use Redis allocator
+	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc,
+			RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free, true);
 	if(res != GrB_SUCCESS) {
 		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS");
 		return REDISMODULE_ERR;
@@ -99,9 +98,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);
 
-	// Set up the module's configurable variables, using user-defined values where provided.
+	// set up the module's configurable variables,
+	// using user-defined values where provided
 	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
-
+	// register for config updates
 	Config_Subscribe_Changes(reconf_handler);
 
 	RegisterEventHandlers(ctx);

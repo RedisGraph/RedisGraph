@@ -28,7 +28,9 @@ typedef enum {
 	Config_END_MARKER               = 10
 } Config_Option_Field;
 
-typedef void (*Config_on_change)(Config_Option_Field type); // callback function which being called when config param changed
+// callback function, invoked once configuration changes as a result of
+// successfully executing GRAPH.CONFIG SET
+typedef void (*Config_on_change)(Config_Option_Field type);
 
 // Run-time configurable fields
 #define RUNTIME_CONFIG_COUNT 4
@@ -55,6 +57,6 @@ bool Config_Option_set(Config_Option_Field field, const char *val);
 
 bool Config_Option_get(Config_Option_Field field, ...);
 
-// Sets the callback function which will be called when a config param changes.
+// sets config update callback function
 void Config_Subscribe_Changes(Config_on_change cb);
 
