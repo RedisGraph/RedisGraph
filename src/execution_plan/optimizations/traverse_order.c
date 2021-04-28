@@ -94,7 +94,7 @@ static void _resolve_winning_sequence
 // expression already in use 'arrangement' these will not show up in the
 // returned list.
 // the elements are sorted by their score
-AlgebraicExpression **_valid_expressions
+static AlgebraicExpression **_valid_expressions
 (
 	const ScoredExp *exps,             // input list of expressions
 	uint nexp,                         // number of expressions
@@ -142,7 +142,7 @@ AlgebraicExpression **_valid_expressions
 	return options;
 }
 
-bool _arrangement_set_expression
+static bool _arrangement_set_expression
 (
 	AlgebraicExpression **arrangement,   // arrangement of expressions
 	const ScoredExp *exps,              // input list of expressions
@@ -184,7 +184,7 @@ bool _arrangement_set_expression
 	return position_set;
 }
 
-void _order_expressions
+static void _order_expressions
 (
 	AlgebraicExpression **arrangement,   // arrangement of expressions
 	const ScoredExp *exps,              // input list of expressions
@@ -258,7 +258,7 @@ void orderExpressions
 		AlgebraicExpression_Transpose(exps);
 	}
 
-	if(ft) {
+	if(filtered_entities) {
 		raxFree(filtered_entities);
 	}
 }

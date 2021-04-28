@@ -56,6 +56,9 @@ int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
 		score += (int64_t)frequency * 2;
 	}
 
+	// a filtered edge will increase the expression score
+	// but not as much as a filtered node, as filtering an edge requires
+	// the expression to be traversed, unlike filters applied to nodes
 	if(edge) {
 		if(raxFind(filtered_entities, (unsigned char *)edge, strlen(edge))
 		   != raxNotFound) {
@@ -92,22 +95,34 @@ int TraverseOrder_BoundVariableScore(AlgebraicExpression *exp,
 // collect independent entities
 // and the number of their independent occurrences from a filter tree
 // an indpendent entity is an entity that is the single entity in a predicate
-// 'root' - filter tree root
-// returns rax holding independent entities and their frequency
-void FilterTree_CollectIndependentEntities(const FT_FilterNode *root, rax *entities) {
+// for example: 'n.v = 1', `n` is independent
+// unlike 'n.v = m.v' in which `n` and `m` depend on one another
+void FilterTree_CollectIndependentEntities
+(
+	const FT_FilterNode *root, // filter tree root
+	rax *entities              // [output] populated with independent frequency
+) {
 	ASSERT(root != NULL);
 	ASSERT(entities != NULL);
 
+	// clone input filter-tree as we're about to modify it
+	// breaking it down to sub-trees
 	FT_FilterNode  *tree           =  FilterTree_Clone(root);
 	FT_FilterNode  **sub_trees     =  FilterTree_SubTrees(tree);
 	uint           sub_tree_count  =  array_len(sub_trees);
 
+	// for each sub tree of 'root'
 	for(uint i = 0; i < sub_tree_count; i++) {
+		// 'n' number of different entities mentioned in 't'
+		// if 'n' is 1, 't' relies on just a single graph entity 'e' which makes
+		// 'e' independent
+		uint n = 0;
 		raxIterator it;
 		FT_FilterNode *t = sub_trees[i];
 		rax *modified = FilterTree_CollectModified(t);
 
-		if(raxSize(modified) == 1) {
+		n = raxSize(modified);
+		if(n == 1) {
 			raxStart(&it, modified);
 			raxSeek(&it, "^", NULL, 0);
 			raxNext(&it);
