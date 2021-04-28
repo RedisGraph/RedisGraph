@@ -4,10 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../../configuration/config.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
+#include "../../configuration/config.h"
 #include "../../filter_tree/filter_tree.h"
 #include "../../arithmetic/algebraic_expression.h"
 

@@ -4,8 +4,8 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "../configuration/config.h"
 #include <string.h>
+#include "../configuration/config.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
 	uint config_count = Config_END_MARKER;

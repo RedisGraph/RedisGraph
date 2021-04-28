@@ -7,12 +7,12 @@
 #include "proc_bfs.h"
 #include "../RG.h"
 #include "../value.h"
-#include "../configuration/config.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../datatypes/array.h"
 #include "../graph/graphcontext.h"
+#include "../configuration/config.h"
 #include "../algorithms/LAGraph_bfs_pushpull.h"
 
 // The BFS procedure performs a single source BFS scan

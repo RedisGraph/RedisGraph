@@ -5,9 +5,9 @@
 */
 
 #include "RG.h"
+#include <pthread.h>
 #include "pools.h"
 #include "../../configuration/config.h"
-#include <pthread.h>
 
 //------------------------------------------------------------------------------
 // Thread pools

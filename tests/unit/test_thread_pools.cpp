@@ -11,9 +11,9 @@ extern "C" {
 #endif
 
 #include "assert.h"
-#include "../../src/config.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/thpool/pools.h"
+#include "../../src/configuration/config.h"
 
 #ifdef __cplusplus
 }

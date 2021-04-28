@@ -1,7 +1,7 @@
 #include "utils.h"
-#include "../../configuration/config.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
+#include "../../configuration/config.h"
 
 /* Performs inplace re-purposing of an operand into an operation. */
 void _InplaceRepurposeOperandToOperation

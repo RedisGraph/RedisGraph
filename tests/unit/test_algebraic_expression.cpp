@@ -11,7 +11,6 @@ extern "C" {
 #endif
 
 #include "assert.h"
-#include "../../src/config.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
@@ -20,6 +19,7 @@ extern "C" {
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
+#include "../../src/configuration/config.h"
 #include "../../src/execution_plan/execution_plan.h"
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../src/arithmetic/algebraic_expression/utils.h"
