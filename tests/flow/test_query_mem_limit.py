@@ -28,7 +28,7 @@ def issue_query(conn, q):
     try:
         g.query(q)
     except Exception as e:
-        assert "Querie's mem consumption exceeded capacity" in str(e)
+        assert "Query's mem consumption exceeded capacity" in str(e)
         error_encountered = True
 
 class testQueryMemoryLimit():
