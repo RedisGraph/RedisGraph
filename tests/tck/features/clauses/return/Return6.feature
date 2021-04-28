@@ -114,6 +114,7 @@ Feature: Return6 - Implicit grouping with aggregates
       | 11               |
     And no side effects
 
+  @skip
   Scenario: [6] Handle aggregates inside non-aggregate expressions
     Given an empty graph
     When executing query:

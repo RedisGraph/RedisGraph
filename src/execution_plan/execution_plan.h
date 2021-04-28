@@ -28,12 +28,6 @@ struct ExecutionPlan {
 /* Creates a new execution plan from AST */
 ExecutionPlan *NewExecutionPlan(void);
 
-// Sets an AST segment in the execution plan.
-void ExecutionPlan_SetAST(ExecutionPlan *plan, AST *ast);
-
-// Gets the AST segment from the execution plan.
-AST *ExecutionPlan_GetAST(const ExecutionPlan *plan);
-
 /* Prepare an execution plan for execution: optimize, initialize result set schema. */
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan);
 

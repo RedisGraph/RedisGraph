@@ -11,6 +11,9 @@ ARG OS=debian:buster-slim
 # ARCH=x64|arm64v8|arm32v7
 ARG ARCH=x64
 
+ARG PACK=0
+ARG TEST=0
+
 #----------------------------------------------------------------------------------------------
 FROM redisfab/redis:${REDIS_VER}-${ARCH}-${OSNICK} AS redis
 # Build based on ${OS} (i.e., 'builder'), redis files are copies from 'redis'
@@ -31,11 +34,6 @@ COPY --from=redis /usr/local/ /usr/local/
 ADD ./ /build
 
 # Set up a build environment
-RUN if [ ! -d ./deps/readies ]; then \
-        mkdir -p deps ;\
-        cd deps ;\
-        git clone https://github.com/RedisLabsModules/readies.git ;\
-    fi
 RUN ./deps/readies/bin/getpy3
 RUN ./sbin/system-setup.py
 
@@ -50,13 +48,14 @@ ENV LC_ALL=en_US.UTF-8
 
 RUN bash -l -c make -j`nproc`
 
-ARG TEST=0
-ARG PACK=0
+ARG PACK
+ARG TEST
 
 RUN set -ex ;\
-	if [ "$TEST" = "1" ]; then bash -l -c "TEST= make test"; fi
+    if [ "$TEST" = "1" ]; then bash -l -c "TEST= make test"; fi
 RUN set -ex ;\
-	if [ "$PACK" = "1" ]; then bash -l -c "make package"; fi
+    mkdir -p bin/artifacts ;\
+    if [ "$PACK" = "1" ]; then bash -l -c "make package"; fi
 
 #---------------------------------------------------------------------------------------------- 
 FROM redisfab/redis:${REDIS_VER}-${ARCH}-${OSNICK}

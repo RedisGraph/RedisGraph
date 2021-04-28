@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "cmd_query.h"
 #include "RG.h"
 #include "../errors.h"
 #include "cmd_context.h"
@@ -259,14 +258,8 @@ void Graph_Query(void *args) {
 
 	// set the query timeout if one was specified
 	if(command_ctx->timeout != 0) {
-		if(!readonly) {
-			// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-			ErrorCtx_SetError("Query timeouts may only be specified on read-only queries");
-			ErrorCtx_EmitException();
-			goto cleanup;
-		}
-
-		Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
+		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
+		if(readonly) Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.

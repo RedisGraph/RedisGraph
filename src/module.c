@@ -78,7 +78,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	// validate minimum redis-server version
 	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR,
-				MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH)) {
+									 MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH)) {
 		RedisModule_Log(ctx, "warning", "RedisGraph requires redis-server version %d.%d.%d and up",
 						MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH);
 		return REDISMODULE_ERR;
@@ -89,7 +89,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	RedisModule_Log(ctx, "notice", "Starting up RedisGraph version %d.%d.%d.",
-			               REDISGRAPH_VERSION_MAJOR, REDISGRAPH_VERSION_MINOR, REDISGRAPH_VERSION_PATCH);
+					REDISGRAPH_VERSION_MAJOR, REDISGRAPH_VERSION_MINOR, REDISGRAPH_VERSION_PATCH);
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
@@ -108,10 +108,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
 
 	int reader_thread_count;
+	int bulk_thread_count = 1;
 	int writer_thread_count = 1;
 	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
 
-	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count)) {
+	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count, bulk_thread_count)) {
 		return REDISMODULE_ERR;
 	}
 
@@ -127,7 +128,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
 	// initialize array of command contexts
-	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx*));
+	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx *));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
@@ -141,7 +142,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -156,7 +157,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert, "write deny-oom", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.BULK", Graph_BulkInsert, "write deny-oom", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -166,8 +167,13 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", MGraph_Config, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	if(RedisModule_CreateCommand(ctx, "graph.LIST", Graph_List, "readonly", 0, 0,
+								 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 

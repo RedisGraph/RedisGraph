@@ -16,23 +16,23 @@ static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	 * Value */
 	SIType t = RedisModule_LoadUnsigned(rdb);
 	switch(t) {
-	case T_INT64:
-		return SI_LongVal(RedisModule_LoadSigned(rdb));
-	case T_DOUBLE:
-		return SI_DoubleVal(RedisModule_LoadDouble(rdb));
-	case T_STRING:
-		// Transfer ownership of the heap-allocated string to the
-		// newly-created SIValue
-		return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
-	case T_BOOL:
-		return SI_BoolVal(RedisModule_LoadSigned(rdb));
-	case T_ARRAY:
-		return _RdbLoadSIArray(rdb);
-	case T_POINT:
-		return _RdbLoadPoint(rdb);
-	case T_NULL:
-	default: // currently impossible
-		return SI_NullVal();
+		case T_INT64:
+			return SI_LongVal(RedisModule_LoadSigned(rdb));
+		case T_DOUBLE:
+			return SI_DoubleVal(RedisModule_LoadDouble(rdb));
+		case T_STRING:
+			// Transfer ownership of the heap-allocated string to the
+			// newly-created SIValue
+			return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
+		case T_BOOL:
+			return SI_BoolVal(RedisModule_LoadSigned(rdb));
+		case T_ARRAY:
+			return _RdbLoadSIArray(rdb);
+		case T_POINT:
+			return _RdbLoadPoint(rdb);
+		case T_NULL:
+		default: // currently impossible
+			return SI_NullVal();
 	}
 }
 
@@ -54,7 +54,9 @@ static SIValue _RdbLoadSIArray(RedisModuleIO *rdb) {
 	uint arrayLen = RedisModule_LoadUnsigned(rdb);
 	SIValue list = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		SIArray_Append(&list, _RdbLoadSIValue(rdb));
+		SIValue elem = _RdbLoadSIValue(rdb);
+		SIArray_Append(&list, elem);
+		SIValue_Free(elem);
 	}
 	return list;
 }

@@ -43,7 +43,8 @@ typedef struct {
  * If the Node is unlabeled, the return value will be GRAPH_NO_LABEL. */
 #define NODE_GET_LABEL_ID(n, g)                                                                   \
 ({                                                                                                \
-    if ((n)->labelID == GRAPH_NO_LABEL) (n)->labelID = Graph_GetNodeLabel((g), ENTITY_GET_ID(n)); \
+    if ((n)->labelID == GRAPH_NO_LABEL || (n)->labelID == GRAPH_UNKNOWN_LABEL)                    \
+         (n)->labelID = Graph_GetNodeLabel((g), ENTITY_GET_ID(n));                                \
     (n)->labelID;                                                                                 \
 })
 

@@ -2,9 +2,9 @@
 #include "execution_plan_modify.h"
 #include "../execution_plan.h"
 #include "../ops/ops.h"
-#include "../optimizations/traverse_order.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
+#include "../optimizations/optimizations.h"
 #include "../../ast/ast_build_filter_tree.h"
 
 static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,

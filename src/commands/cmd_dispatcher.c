@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "commands.h"
+#include "../config.h"
 #include "cmd_context.h"
 #include "../util/thpool/pools.h"
 
@@ -16,15 +17,15 @@ typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-		long long *timeout, uint *graph_version, char **errmsg) {
+					   long long *timeout, uint *graph_version, char **errmsg) {
 
 	ASSERT(compact);
 	ASSERT(timeout);
 
 	// set defaults
-	*timeout = 0;      // no timeout
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
+	Config_Option_get(Config_TIMEOUT, timeout);
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -93,35 +94,35 @@ static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, uint version) {
 // Return true if the command has a valid number of arguments.
 static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
 	switch(cmd) {
-	case CMD_QUERY:
-	case CMD_RO_QUERY:
-	case CMD_EXPLAIN:
-	case CMD_PROFILE:
-		// Expect a command, graph name, a query, and optional config flags.
-		return arity >= 3 && arity <= 8;
-	case CMD_SLOWLOG:
-		// Expect just a command and graph name.
-		return arity == 2;
-	default:
-		ASSERT("encountered unhandled query type" && false);
-		return false;
+		case CMD_QUERY:
+		case CMD_RO_QUERY:
+		case CMD_EXPLAIN:
+		case CMD_PROFILE:
+			// Expect a command, graph name, a query, and optional config flags.
+			return arity >= 3 && arity <= 8;
+		case CMD_SLOWLOG:
+			// Expect just a command and graph name.
+			return arity == 2;
+		default:
+			ASSERT("encountered unhandled query type" && false);
+			return false;
 	}
 }
 
 // Get command handler.
 static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 	switch(cmd) {
-	case CMD_QUERY:
-	case CMD_RO_QUERY:
-		return Graph_Query;
-	case CMD_EXPLAIN:
-		return Graph_Explain;
-	case CMD_PROFILE:
-		return Graph_Profile;
-	case CMD_SLOWLOG:
-		return Graph_Slowlog;
-	default:
-		ASSERT(false);
+		case CMD_QUERY:
+		case CMD_RO_QUERY:
+			return Graph_Query;
+		case CMD_EXPLAIN:
+			return Graph_Explain;
+		case CMD_PROFILE:
+			return Graph_Profile;
+		case CMD_SLOWLOG:
+			return Graph_Slowlog;
+		default:
+			ASSERT(false);
 	}
 	return NULL;
 }
@@ -170,6 +171,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// return incase caller provided a mismatched graph version
 	if(!_verifyGraphVersion(gc, version)) {
 		_rejectOnVersionMismatch(ctx, GraphContext_GetVersion(gc));
+		// Release the GraphContext, as we increased its reference count
+		// when retrieving it.
 		GraphContext_Release(gc);
 		return REDISMODULE_OK;
 	}
@@ -181,23 +184,32 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 
 	ExecutorThread exec_thread = (flags & (REDISMODULE_CTX_FLAGS_MULTI |
-											REDISMODULE_CTX_FLAGS_LUA  |
-											REDISMODULE_CTX_FLAGS_LOADING)) ?
-		EXEC_THREAD_MAIN : EXEC_THREAD_READER;
+										   REDISMODULE_CTX_FLAGS_LUA  |
+										   REDISMODULE_CTX_FLAGS_LOADING)) ?
+								 EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-				is_replicated, compact, timeout);
+								 is_replicated, compact, timeout);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-				is_replicated, compact, timeout);
+								 is_replicated, compact, timeout);
 
-		ThreadPools_AddWorkReader(handler, context);
+		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
+			// Report an error once our workers thread pool internal queue
+			// is full, this error usually happens when the server is
+			// under heavy load and is unable to catch up
+			RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
+			// Release the GraphContext, as we increased its reference count
+			// when retrieving it.
+			GraphContext_Release(gc);
+			CommandCtx_Free(context);
+		}
 	}
 
 	return REDISMODULE_OK;

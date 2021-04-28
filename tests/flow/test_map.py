@@ -137,3 +137,12 @@ class testMap(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("Type mismatch", str(e))
 
+    # Validate that map projections with invalid identifiers error gracefully.
+    def test07_map_invalid_identifier(self):
+        try:
+            query = """RETURN 5 {v: 'b'}"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Encountered unhandled type", str(e))
+

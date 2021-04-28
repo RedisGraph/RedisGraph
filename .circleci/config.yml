@@ -30,7 +30,7 @@ commands:
       - run:
           name: Setup automation
           command: |
-            (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+            git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
   
   load-cached-deps:
@@ -65,14 +65,11 @@ commands:
           name: Fetch submodules
           command: |
             git submodule update --init --recursive
-
       - setup-automation
-
       - run:
           name: Install prerequisites
           command: |
             ./sbin/system-setup.py
-
       - run:
           name: Setup locale
           command: |
@@ -400,18 +397,19 @@ workflows:
           <<: *on-any-branch
       - build_macos:
           # <<: *on-any-branch
-          <<: *on-integ-branch
+          <<: *on-integ-and-version-tags
       - platform_build:
+          <<: *on-integ-and-version-tags
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
-          <<: *on-integ-branch
       - deploy_branch:
+          <<: *on-integ-branch
           requires:
             - platform_build
             - build_macos
-          <<: *on-integ-branch
       - release_automation:
+          <<: *on-version-tags
           requires:
             - deploy_release
       - deploy_release:
@@ -424,6 +422,7 @@ workflows:
           requires:
             - build
       - performance_ci_automation:
+          <<: *on-integ-and-version-tags
           requires:
             - platform_build
 
