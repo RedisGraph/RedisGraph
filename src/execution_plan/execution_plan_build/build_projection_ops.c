@@ -159,15 +159,15 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 static inline void _buildProjectionOps(ExecutionPlan *plan,
 									   const cypher_astnode_t *clause) {
 
-	OpBase *op;
-	bool distinct = false;
-	bool aggregate = false;
-	int *sort_directions = NULL;
-	AR_ExpNode **order_exps = NULL;
-	AR_ExpNode **projections = NULL;
-	const cypher_astnode_t *skip_clause = NULL;
-	const cypher_astnode_t *limit_clause = NULL;
-	const cypher_astnode_t *order_clause = NULL;
+	OpBase                  *op               =  NULL  ;
+	bool                    distinct          =  false ;
+	bool                    aggregate         =  false ;
+	int                     *sort_directions  =  NULL  ;
+	AR_ExpNode              **order_exps      =  NULL  ;
+	AR_ExpNode              **projections     =  NULL  ;
+	const cypher_astnode_t  *skip_clause      =  NULL  ;
+	const cypher_astnode_t  *limit_clause     =  NULL  ;
+	const cypher_astnode_t  *order_clause     =  NULL  ;
 
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	ASSERT(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN);
@@ -176,15 +176,15 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	projections = _BuildProjectionExpressions(clause);
 
 	if(t == CYPHER_AST_WITH) {
-		distinct = cypher_ast_with_is_distinct(clause);
-		skip_clause = cypher_ast_with_get_skip(clause);
-		limit_clause = cypher_ast_with_get_limit(clause);
-		order_clause = cypher_ast_with_get_order_by(clause);
+		distinct      =  cypher_ast_with_is_distinct(clause);
+		skip_clause   =  cypher_ast_with_get_skip(clause);
+		limit_clause  =  cypher_ast_with_get_limit(clause);
+		order_clause  =  cypher_ast_with_get_order_by(clause);
 	} else {
-		distinct = cypher_ast_return_is_distinct(clause);
-		skip_clause = cypher_ast_return_get_skip(clause);
-		limit_clause = cypher_ast_return_get_limit(clause);
-		order_clause = cypher_ast_return_get_order_by(clause);
+		distinct      =  cypher_ast_return_is_distinct(clause);
+		skip_clause   =  cypher_ast_return_get_skip(clause);
+		limit_clause  =  cypher_ast_return_get_limit(clause);
+		order_clause  =  cypher_ast_return_get_order_by(clause);
 	}
 
 	if(order_clause) {

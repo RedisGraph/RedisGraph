@@ -45,7 +45,7 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 }
 
 void _binary_op_free_edge(void *z, const void *x, const void *y) {
-	const Graph *g = (const Graph *) *((uint64_t *)x);
+	const Graph *g = (const Graph *) * ((uint64_t *)x);
 	const EdgeID *id = (const EdgeID *)y;
 
 	if((SINGLE_EDGE(*id))) {
@@ -283,22 +283,22 @@ void _MatrixNOP(const Graph *g, RG_Matrix matrix) {
 /* Define the current behavior for matrix creations and retrievals on this graph. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 	switch(policy) {
-	case SYNC_AND_MINIMIZE_SPACE:
-		// Default behavior; forces execution of pending GraphBLAS operations
-		// when appropriate and sizes matrices to the current node count.
-		g->SynchronizeMatrix = _MatrixSynchronize;
-		break;
-	case RESIZE_TO_CAPACITY:
-		// Bulk insertion and creation behavior; does not force pending operations
-		// and resizes matrices to the graph's current node capacity.
-		g->SynchronizeMatrix = _MatrixResizeToCapacity;
-		break;
-	case DISABLED:
-		// Used when deleting or freeing a graph; forces no matrix updates or resizes.
-		g->SynchronizeMatrix = _MatrixNOP;
-		break;
-	default:
-		ASSERT(false);
+		case SYNC_AND_MINIMIZE_SPACE:
+			// Default behavior; forces execution of pending GraphBLAS operations
+			// when appropriate and sizes matrices to the current node count.
+			g->SynchronizeMatrix = _MatrixSynchronize;
+			break;
+		case RESIZE_TO_CAPACITY:
+			// Bulk insertion and creation behavior; does not force pending operations
+			// and resizes matrices to the graph's current node capacity.
+			g->SynchronizeMatrix = _MatrixResizeToCapacity;
+			break;
+		case DISABLED:
+			// Used when deleting or freeing a graph; forces no matrix updates or resizes.
+			g->SynchronizeMatrix = _MatrixNOP;
+			break;
+		default:
+			ASSERT(false);
 	}
 }
 
@@ -832,7 +832,7 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 		GrB_Info res;
 		UNUSED(res);
 		res = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
-				GrB_UINT64, GrB_UINT64, GrB_UINT64);
+							   GrB_UINT64, GrB_UINT64, GrB_UINT64);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -851,7 +851,7 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 		GrB_Matrix C = M->grb_matrix;
 
 		GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
-				_binary_op_delete_edges, thunk, C, GrB_NULL);
+									 _binary_op_delete_edges, thunk, C, GrB_NULL);
 
 		// free the matrix itself
 		RG_Matrix_Free(M);
@@ -862,7 +862,7 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 			C = TM->grb_matrix;
 
 			GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
-					_binary_op_delete_edges, thunk, C, GrB_NULL);
+										 _binary_op_delete_edges, thunk, C, GrB_NULL);
 
 			// free the matrix itself
 			RG_Matrix_Free(TM);
@@ -880,7 +880,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		GrB_Info res;
 		UNUSED(res);
 		res = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
-				GrB_UINT64, GrB_UINT64, GrB_UINT64);
+							   GrB_UINT64, GrB_UINT64, GrB_UINT64);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -976,7 +976,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 		// free each multi edge array entry in A
 		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
-				_binary_op_delete_edges, thunk, A, GrB_NULL);
+									 _binary_op_delete_edges, thunk, A, GrB_NULL);
 
 		// clear the relation matrix
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
@@ -1016,7 +1016,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 			// free each multi edge array entry in A
 			GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
-					_binary_op_delete_edges, thunk, A, GrB_NULL);
+										 _binary_op_delete_edges, thunk, A, GrB_NULL);
 
 			// clear the relation matrix
 			GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
@@ -1165,7 +1165,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 
 			// Collect remaining edges. remaining_mask = remaining_mask + R.
 			GrB_eWiseAdd(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
-										 R, GrB_NULL);
+						 R, GrB_NULL);
 		}
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
