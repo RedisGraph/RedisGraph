@@ -19,18 +19,14 @@
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
-// the following is signed becasue malloc_usable_size might be greater than what
-// being requested in RedisModule_Alloc so we might end up with memory_count < 0
-// or even a query might allocate a bit more memory than the limit and there
-// will be no exception, so we only ensure that the allocation will
-// not exceed the limit by large amount
-// for instance a query calls rm_alloc_with_capacity to allocate 1 byte
-// and RedisModule_Alloc might allocate 4 bytes so on free,  malloc_usable_size will return 4.
-// thus at the end of the free func n_alloced will be -3 (1-4), we tolerate this skew in the counter
-// because it's better performance wise, the alternative would be to call malloc_usable_size on alloc
-// and to inc by it's result n_alloced.
-
 // amount of memory allocated for currently executed query thread_local counter
+// it is possible to get into a situation where 'n_alloced' is negative
+// this is because we're wrongly assuming that the number of bytes requested for
+// an allocation is the actual number of bytes allocated
+// it is likely that the allocator allocated more space then required
+// in which case when the allocation is freed we will deduct
+// actual allocated size from 'n_alloced' which can lead to negative values if
+// bytes requested < bytes allocated
 static __thread int64_t n_alloced; 
 static int64_t mem_capacity;  // maximum memory consumption for thread
  
@@ -45,47 +41,56 @@ void rm_reset_n_alloced() {
 	n_alloced = 0;
 }
 
-// n_bytes: number of bytes to alloc or dealloc (might be negative)
-static inline void _enforce_memory_limit(int64_t n_bytes) {
+// removes n_bytes from thread memory consumption
+static inline void _nmalloc_decrement(int64_t n_bytes) {
+	n_alloced -= n_bytes;
+}
+
+// adds nbytes to thread memory consumption
+static inline void _nmalloc_increment(int64_t n_bytes) {
 	n_alloced += n_bytes;
+	// check if capacity exceeded
 	if(unlikely(n_alloced > mem_capacity)) {
-		// check if capacity exceeded
-		// set n_alloced to MIN casue we would like to avoid more mem exceptions
+		// set n_alloced to MIN to avoid further out of memory exceptions
+		// TODO: consider switching to double -inf
 		n_alloced = INT64_MIN;
 		
 		// throw exception cause memory limit exceeded
     	ErrorCtx_SetError("Querie's mem consumption exceeded capacity");
 	}
-	return;     
 }
 
-void *rm_alloc_with_capacity(size_t bytes) {
-	_enforce_memory_limit(bytes);
-	return RedisModule_Alloc_Orig(bytes);
+void *rm_alloc_with_capacity(size_t n_bytes) {
+	void *p = RedisModule_Alloc_Orig(n_bytes);
+	_nmalloc_increment(n_bytes);
+	return p;
 }
 
-void *rm_realloc_with_capacity(void *ptr, size_t bytes) {
-	int64_t diff = (int64_t)bytes - (int64_t)malloc_usable_size(ptr);
-	_enforce_memory_limit(diff);
-	return RedisModule_Realloc_Orig(ptr, bytes);
+void *rm_realloc_with_capacity(void *ptr, size_t n_bytes) {
+	// remove bytes of original allocation
+	_nmalloc_decrement((int64_t)malloc_usable_size(ptr));
+	// track new allocation size
+	_nmalloc_increment(n_bytes);
+	return RedisModule_Realloc_Orig(ptr, n_bytes);
 }
 
-void *rm_calloc_with_capacity(size_t nmemb, size_t size) {
-	_enforce_memory_limit((int64_t)nmemb*size);
-	return RedisModule_Calloc_Orig(nmemb, size);
+void *rm_calloc_with_capacity(size_t n_elem, size_t size) {
+	void *p = RedisModule_Calloc_Orig(n_elem, size);
+	_nmalloc_increment(n_elem * size);
+	return p;
 }
 
 char *rm_strdup_with_capacity(const char *str) {
 	char *str_copy = RedisModule_Strdup_Orig(str);
-	// it's ok to call _enforce_memory_limit after the allocation because query is single threaded.
-	_enforce_memory_limit((int64_t)malloc_usable_size(str_copy));
+	// use 'malloc_usable_size' instead of strlen as it should be faster
+	// in determining allocation size
+	_nmalloc_increment(malloc_usable_size(str_copy));
 	return str_copy;
 }
 
 void rm_free_with_capacity(void *ptr) {
-	// get number of bytes allocated by 'ptr'
-	n_alloced -= (int64_t)malloc_usable_size(ptr);
-	return RedisModule_Free_Orig(ptr);
+	_nmalloc_decrement(malloc_usable_size(ptr));
+	RedisModule_Free_Orig(ptr);
 }
 
 void rm_set_mem_capacity(int64_t cap) {
