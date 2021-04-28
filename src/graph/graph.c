@@ -308,22 +308,22 @@ void _MatrixNOP(const Graph *g, RG_Matrix matrix) {
 /* Define the current behavior for matrix creations and retrievals on this graph. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 	switch(policy) {
-	case SYNC_AND_MINIMIZE_SPACE:
-		// Default behavior; forces execution of pending GraphBLAS operations
-		// when appropriate and sizes matrices to the current node count.
-		g->SynchronizeMatrix = _MatrixSynchronize;
-		break;
-	case RESIZE_TO_CAPACITY:
-		// Bulk insertion and creation behavior; does not force pending operations
-		// and resizes matrices to the graph's current node capacity.
-		g->SynchronizeMatrix = _MatrixResizeToCapacity;
-		break;
-	case DISABLED:
-		// Used when deleting or freeing a graph; forces no matrix updates or resizes.
-		g->SynchronizeMatrix = _MatrixNOP;
-		break;
-	default:
-		ASSERT(false);
+		case SYNC_AND_MINIMIZE_SPACE:
+			// Default behavior; forces execution of pending GraphBLAS operations
+			// when appropriate and sizes matrices to the current node count.
+			g->SynchronizeMatrix = _MatrixSynchronize;
+			break;
+		case RESIZE_TO_CAPACITY:
+			// Bulk insertion and creation behavior; does not force pending operations
+			// and resizes matrices to the graph's current node capacity.
+			g->SynchronizeMatrix = _MatrixResizeToCapacity;
+			break;
+		case DISABLED:
+			// Used when deleting or freeing a graph; forces no matrix updates or resizes.
+			g->SynchronizeMatrix = _MatrixNOP;
+			break;
+		default:
+			ASSERT(false);
 	}
 }
 

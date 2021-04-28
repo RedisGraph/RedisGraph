@@ -232,6 +232,21 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool i
 	return res;
 }
 
+// validate that a map doesn't contains a nested aggregation function
+// e.g. {key: count(v)}
+static AST_Validation _ValidateMapExp(const cypher_astnode_t *node) {
+	ASSERT(cypher_astnode_type(node) == CYPHER_AST_MAP);
+
+	if(AST_ClauseContainsAggregation(node)) {
+		ErrorCtx_SetError("RedisGraph does not allow aggregate function calls \
+to be nested within maps. Aggregate functions should instead be called in a \
+preceding WITH clause and have their aliased values referenced in the map.");
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
 // Recursively collect function names and perform validations on functions with STAR arguments.
 static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_names) {
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -267,6 +282,12 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
 	}
 
+	if(type == CYPHER_AST_MAP) {
+		// validate map expression
+		AST_Validation res = _ValidateMapExp(node);
+		if(res != AST_VALID) return res;
+	}
+
 	uint child_count = cypher_astnode_nchildren(node);
 	for(uint i = 0; i < child_count; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
@@ -298,12 +319,13 @@ cleanup:
  * only supports them in the appropriate clauses and in path filters. */
 static AST_Validation _Validate_Path_Locations(const cypher_astnode_t *root) {
 	uint nchildren = cypher_astnode_nchildren(root);
+	const cypher_astnode_type_t root_type = cypher_astnode_type(root);
 	for(uint i = 0; i < nchildren; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
 		const cypher_astnode_type_t child_type = cypher_astnode_type(child);
 		if(child_type == CYPHER_AST_PATTERN_PATH) {
-			const cypher_astnode_type_t root_type = cypher_astnode_type(root);
 			if(root_type != CYPHER_AST_PATTERN &&
+			   root_type != CYPHER_AST_SHORTEST_PATH &&
 			   root_type != CYPHER_AST_MATCH &&
 			   root_type != CYPHER_AST_MERGE &&
 			   root_type != CYPHER_AST_WITH &&
@@ -345,12 +367,6 @@ static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_
 	bool multihop = (start > 1) || (start != end);
 	if(!multihop) return AST_VALID;
 
-	// Multi-hop traversals cannot (currently) be filtered on
-	if(cypher_ast_rel_pattern_get_properties(edge) != NULL) {
-		ErrorCtx_SetError("RedisGraph does not currently support filters on variable-length paths.");
-		return AST_INVALID;
-	}
-
 	// Multi-hop traversals cannot be referenced
 	if(!projections) return AST_VALID;
 
@@ -381,7 +397,6 @@ static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node, rax *e
 			int new = raxInsert(edge_aliases, (unsigned char *)alias, strlen(alias), NULL,
 								NULL);
 			if(!new) {
-				char *err = NULL;
 				ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
 				return AST_INVALID;
 			}
@@ -412,6 +427,11 @@ static AST_Validation _ValidateRelation(rax *projections, const cypher_astnode_t
 static AST_Validation _ValidatePath(const cypher_astnode_t *path, rax *projections,
 									rax *edge_aliases) {
 	AST_Validation res = AST_VALID;
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) path = cypher_ast_named_path_get_path(path);
+	if(cypher_astnode_type(path) == CYPHER_AST_SHORTEST_PATH) {
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+		return AST_INVALID;
+	}
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 
 	// Check all relations on the path (every odd offset) and collect aliases.
@@ -618,7 +638,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast) {
 	AST_Validation res = AST_VALID;
 
 	const cypher_astnode_t *return_clause = AST_GetClause(ast,
-			CYPHER_AST_RETURN, NULL);
+														  CYPHER_AST_RETURN, NULL);
 	rax *projections = _AST_GetReturnProjections(return_clause);
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
@@ -659,7 +679,7 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast) {
 	// are defined and used validly.
 	// An AST segment has at most 1 WITH clause.
 	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH,
-			NULL);
+														NULL);
 	if(with_clause == NULL) return AST_VALID;
 
 	// Verify that each WITH projection either is aliased or is itself an identifier.
@@ -860,7 +880,7 @@ cleanup:
 
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast) {
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast,
-			CYPHER_AST_DELETE, NULL);
+														  CYPHER_AST_DELETE, NULL);
 	if(!delete_clause) return AST_VALID;
 	// TODO: Validated that the deleted entities are indeed matched or projected.
 	return AST_VALID;
@@ -906,7 +926,7 @@ cleanup:
 static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast) {
 	// Handle modifiers on the RETURN clause
 	const cypher_astnode_t *return_clause = AST_GetClause(ast,
-			CYPHER_AST_RETURN, NULL);
+														  CYPHER_AST_RETURN, NULL);
 	// Skip check if the RETURN clause does not specify a limit
 	if(return_clause) {
 		// Handle LIMIT modifier
@@ -1522,7 +1542,6 @@ static AST_Validation _ValidateParamsOnly(const cypher_astnode_t *statement) {
 }
 
 static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *statement) {
-	char *err = NULL;
 	rax *param_names = raxNew();
 	uint noptions = cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
@@ -1677,7 +1696,6 @@ cleanup:
 }
 
 AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
-	char *err;
 	int index;
 	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) return AST_INVALID;
 
@@ -1700,7 +1718,8 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
-	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+	// Verify that the query does not contain any expressions not in the
+	// RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
 
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);

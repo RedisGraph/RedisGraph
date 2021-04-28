@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 #include "assert.h"
+#include "../../src/config.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/thpool/pools.h"
 
@@ -27,11 +28,8 @@ class ThreadPoolsTest: public ::testing::Test {
 	// Use the malloc family for allocations
 	static void SetUpTestCase() {
 		Alloc_Reset();
+		Config_Init(NULL, NULL, 0);
 		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, BULK_COUNT);
-	}
-
-	static void TearDownTestCase() {
-		ThreadPools_Destroy();
 	}
 
 	static void get_thread_friendly_id(void *arg) {
@@ -40,12 +38,10 @@ class ThreadPoolsTest: public ::testing::Test {
 	}
 };
 
-TEST_F(ThreadPoolsTest, ThreadPools_ThreadCount) {
+TEST_F(ThreadPoolsTest, ThreadPools_ThreadID) {
 	// verify thread count equals to the number of reader and writer threads
 	ASSERT_EQ (READER_COUNT + WRITER_COUNT, ThreadPools_ThreadCount());
-}
 
-TEST_F(ThreadPoolsTest, ThreadPools_ThreadID) {
 	int thread_ids[READER_COUNT + WRITER_COUNT + 1] = {-1, -1, -1, -1, -1, -1};
 
 	// get main thread friendly id

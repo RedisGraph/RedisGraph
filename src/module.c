@@ -142,7 +142,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -157,7 +157,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert, "write deny-oom", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.BULK", Graph_BulkInsert, "write deny-oom", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -167,8 +167,13 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", MGraph_Config, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	if(RedisModule_CreateCommand(ctx, "graph.LIST", Graph_List, "readonly", 0, 0,
+								 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
