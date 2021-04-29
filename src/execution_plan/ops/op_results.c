@@ -8,7 +8,7 @@
 #include "RG.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include "configuration/config.h"
+#include "../../configuration/config.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */

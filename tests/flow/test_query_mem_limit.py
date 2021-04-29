@@ -1,7 +1,7 @@
+import random
 import threading
 from RLTest import Env
 from redisgraph import Graph
-import random
 
 # 1. test reading and setting query memory limit configuration
 
@@ -14,8 +14,8 @@ import random
 # 4. test querying the server when there's a tight memory limit
 #    expecting an out of memory error
 
-error_encountered = False
 n_failed = 0
+error_encountered = False
 
 g = None
 GRAPH_NAME = "max_query_mem"
@@ -31,8 +31,8 @@ def issue_query(conn, q):
     try:
         g.query(q)
     except Exception as e:
-        n_failed += 1
         assert "Query's mem consumption exceeded capacity" in str(e)
+        n_failed += 1
         error_encountered = True
 
 class testQueryMemoryLimit():
@@ -119,11 +119,12 @@ class testQueryMemoryLimit():
         self.env.assertTrue(error_encountered)
 
     def test_05_test_mixed_queries(self):
-        global error_encountered
         global n_failed
-        error_encountered = False
+        global error_encountered
         n_failed = 0
-        n_men_hog_cmds = 10
+        total_query_count = 100
+        error_encountered = False
+        expected_error_count = 10
         MEM_THRIFTY_QUERY = """UNWIND range(0, 10) AS x
                         WITH x
                         WHERE (x / 2) = 50
@@ -135,13 +136,15 @@ class testQueryMemoryLimit():
         limit = 1024*1024
         self.conn.execute_command("GRAPH.CONFIG", "SET", "QUERY_MEM_CAPACITY", limit)
 
-        for i in range(n_men_hog_cmds):
-            n_successfull_queries = random.randint(1, 10)
-            for j in range(n_successfull_queries):
-                self.stress_server(MEM_THRIFTY_QUERY)
-            self.stress_server(MEM_HOG_QUERY)
+        for i in range(total_query_count):
+            r = random.randint(0, 100)
+            q = MEM_THRIFTY_QUERY
+            if r <= total_query_count * 0.1: # 10%
+                q = MEM_HOG_QUERY
+                expected_error_count += 1
+            self.stress_server(q)
 
         # expecting out of memory error
         self.env.assertTrue(error_encountered)
-        self.env.assertTrue(n_failed == n_men_hog_cmds*threadpool_size)
+        self.env.assertTrue(n_failed == expected_error_count*threadpool_size)
 

@@ -9,7 +9,7 @@
 #include "../util/arr.h"
 #include "../util/qsort.h"
 #include "../util/rmalloc.h"
-#include "configuration/config.h"
+#include "../configuration/config.h"
 #include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/datablock/oo_datablock.h"
 

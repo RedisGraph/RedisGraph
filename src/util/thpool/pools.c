@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "RG.h"
 #include <pthread.h>
+#include "RG.h"
 #include "pools.h"
 #include "../../configuration/config.h"
 

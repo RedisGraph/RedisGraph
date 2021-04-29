@@ -4,14 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../RG.h"
+#include "arithmetic_expression_construct.h"
+#include "RG.h"
 #include "funcs.h"
 #include "../errors.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../configuration/config.h"
 #include "../ast/ast_build_filter_tree.h"
-#include "arithmetic_expression_construct.h"
 
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr);
