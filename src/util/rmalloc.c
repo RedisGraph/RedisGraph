@@ -5,17 +5,8 @@
 */
 
 #include "rmalloc.h"
-#include "branch_pred.h" 
-
-// set malloc_usable_size
-#if defined(__APPLE__)
-  #include <malloc/malloc.h>
-	#define malloc_usable_size malloc_size
-#else
-	#include <malloc.h>
-#endif
-
 #include "../errors.h"
+#include "branch_pred.h"
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
@@ -68,7 +59,7 @@ void *rm_alloc_with_capacity(size_t n_bytes) {
 
 void *rm_realloc_with_capacity(void *ptr, size_t n_bytes) {
 	// remove bytes of original allocation
-	_nmalloc_decrement((int64_t)malloc_usable_size(ptr));
+	_nmalloc_decrement(RedisModule_MallocSize(ptr));
 	// track new allocation size
 	_nmalloc_increment(n_bytes);
 	return RedisModule_Realloc_Orig(ptr, n_bytes);
@@ -82,14 +73,14 @@ void *rm_calloc_with_capacity(size_t n_elem, size_t size) {
 
 char *rm_strdup_with_capacity(const char *str) {
 	char *str_copy = RedisModule_Strdup_Orig(str);
-	// use 'malloc_usable_size' instead of strlen as it should be faster
+	// use 'RedisModule_MallocSize' instead of strlen as it should be faster
 	// in determining allocation size
-	_nmalloc_increment(malloc_usable_size(str_copy));
+	_nmalloc_increment(RedisModule_MallocSize(str_copy));
 	return str_copy;
 }
 
 void rm_free_with_capacity(void *ptr) {
-	_nmalloc_decrement(malloc_usable_size(ptr));
+	_nmalloc_decrement(RedisModule_MallocSize(ptr));
 	RedisModule_Free_Orig(ptr);
 }
 
