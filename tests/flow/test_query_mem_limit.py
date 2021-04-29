@@ -1,5 +1,6 @@
 import random
 import threading
+from itertools import cycle
 from RLTest import Env
 from redisgraph import Graph
 
@@ -23,6 +24,10 @@ MEM_HOG_QUERY = """UNWIND range(0, 100000) AS x
                    WITH x
                    WHERE (x / 2) = 50
                    RETURN x, count(x)"""
+MEM_THRIFTY_QUERY = """UNWIND range(0, 10) AS x
+                    WITH x
+                    WHERE (x / 2) = 50
+                    RETURN x, count(x)"""
 
 def issue_query(conn, q):
     global error_encountered
@@ -57,7 +62,7 @@ class testQueryMemoryLimit():
         query_mem_capacity = result[1]
         self.env.assertEquals(query_mem_capacity, MB)
 
-    def stress_server(self, query):
+    def stress_server(self, queries):
         threads = []
         connections = []
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
@@ -66,10 +71,13 @@ class testQueryMemoryLimit():
         for t in range(threadpool_size):
             connections.append(self.env.getConnection())
 
+        # init circular iterator
+        connections_pool = cycle(connections)
+
         # invoke queries
-        while len(connections) > 0:
-            con = connections.pop()
-            t = threading.Thread(target=issue_query, args=(con, query))
+        for q in queries:
+            con = next(connections_pool)
+            t = threading.Thread(target=issue_query, args=(con, q))
             t.setDaemon(True)
             threads.append(t)
             t.start()
@@ -83,11 +91,14 @@ class testQueryMemoryLimit():
         global error_encountered
         error_encountered = False
 
+        # execute query on each one of the threads
+        n_queries_to_execute = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
+
         # set query memory limit as UNLIMITED
         limit = 0
         self.conn.execute_command("GRAPH.CONFIG", "SET", "QUERY_MEM_CAPACITY", limit) 
 
-        self.stress_server(MEM_HOG_QUERY)
+        self.stress_server([MEM_HOG_QUERY]*n_queries_to_execute)
 
         # expecting no errors
         self.env.assertFalse(error_encountered)
@@ -96,11 +107,14 @@ class testQueryMemoryLimit():
         global error_encountered
         error_encountered = False
 
+        # execute query on each one of the threads
+        n_queries_to_execute = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
+
         # set query memory limit to 1GB
         limit = 1024*1024*1024
         self.conn.execute_command("GRAPH.CONFIG", "SET", "QUERY_MEM_CAPACITY", limit) 
 
-        self.stress_server(MEM_HOG_QUERY)
+        self.stress_server([MEM_HOG_QUERY]*n_queries_to_execute)
 
         # expecting no errors
         self.env.assertFalse(error_encountered)
@@ -109,11 +123,14 @@ class testQueryMemoryLimit():
         global error_encountered
         error_encountered = False
 
+        # execute query on each one of the threads
+        n_queries_to_execute = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
+
         # set query memory limit to 1MB
         limit = 1024*1024
         self.conn.execute_command("GRAPH.CONFIG", "SET", "QUERY_MEM_CAPACITY", limit)
 
-        self.stress_server(MEM_HOG_QUERY)
+        self.stress_server([MEM_HOG_QUERY]*n_queries_to_execute)
 
         # expecting out of memory error
         self.env.assertTrue(error_encountered)
@@ -121,14 +138,12 @@ class testQueryMemoryLimit():
     def test_05_test_mixed_queries(self):
         global n_failed
         global error_encountered
+        queries = []
         n_failed = 0
         total_query_count = 100
         expected_error_count = 0
         error_encountered = False
-        MEM_THRIFTY_QUERY = """UNWIND range(0, 10) AS x
-                        WITH x
-                        WHERE (x / 2) = 50
-                        RETURN x, count(x)"""
+
         # Query the threadpool_size
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
 
@@ -142,9 +157,11 @@ class testQueryMemoryLimit():
             if r <= total_query_count * 0.1: # 10%
                 q = MEM_HOG_QUERY
                 expected_error_count += 1
-            self.stress_server(q)
+            queries.insert(len(queries),q)
+
+        self.stress_server(queries)
 
         # expecting out of memory error
         self.env.assertTrue(error_encountered)
-        self.env.assertTrue(n_failed == expected_error_count*threadpool_size)
+        self.env.assertTrue(n_failed == expected_error_count)
 
