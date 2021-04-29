@@ -123,8 +123,8 @@ class testQueryMemoryLimit():
         global error_encountered
         n_failed = 0
         total_query_count = 100
+        expected_error_count = 0
         error_encountered = False
-        expected_error_count = 10
         MEM_THRIFTY_QUERY = """UNWIND range(0, 10) AS x
                         WITH x
                         WHERE (x / 2) = 50

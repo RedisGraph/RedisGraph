@@ -28,7 +28,6 @@ class ThreadPoolsTest: public ::testing::Test {
 	// Use the malloc family for allocations
 	static void SetUpTestCase() {
 		Alloc_Reset();
-		Config_Init(NULL, NULL, 0);
 		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, BULK_COUNT);
 	}
 
