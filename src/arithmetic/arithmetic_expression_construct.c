@@ -5,12 +5,12 @@
 */
 
 #include "arithmetic_expression_construct.h"
-#include "../RG.h"
+#include "RG.h"
 #include "funcs.h"
 #include "../errors.h"
-#include "../config.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../configuration/config.h"
 #include "../ast/ast_build_filter_tree.h"
 
 // Forward declaration
