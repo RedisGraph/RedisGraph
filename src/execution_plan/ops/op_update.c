@@ -31,22 +31,22 @@ static Record _handoff(OpUpdate *op) {
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
-	op->records = NULL;
-	op->updates = NULL;
-	op->updates_committed = false;
-	op->update_ctxs = update_exps;
-	op->gc = QueryCtx_GetGraphCtx();
+	op->records            =  NULL;
+	op->updates            =  NULL;
+	op->updates_committed  =  false;
+	op->update_ctxs        =  update_exps;
+	op->gc                 =  QueryCtx_GetGraphCtx();
 
-	// Set our Op operations.
+	// set our op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
+	// iterate over all update expressions
+	// set the record index for every entity modified by this operation
 	raxStart(&op->it, update_exps);
 	raxSeek(&op->it, "^", NULL, 0);
-	// Iterate over all update expressions
 	while(raxNext(&op->it)) {
 		EntityUpdateEvalCtx *ctx = op->it.data;
-		// Set the record index for every entity modified by this operation
 		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
 	}
 
@@ -54,10 +54,12 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 }
 
 static OpResult UpdateInit(OpBase *opBase) {
-	OpUpdate *op = (OpUpdate *)opBase;
-	op->stats = QueryCtx_GetResultSetStatistics();
-	op->records = array_new(Record, 64);
-	op->updates = array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+	OpUpdate *op = (OpUpdate*)opBase;
+
+	op->stats    =    QueryCtx_GetResultSetStatistics();
+	op->records  =    array_new(Record, 64);
+	op->updates  =    array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+
 	return OP_OK;
 }
 
@@ -66,13 +68,13 @@ static Record UpdateConsume(OpBase *opBase) {
 	OpBase *child = op->op.children[0];
 	Record r;
 
-	// Updates already performed.
+	// updates already performed
 	if(op->updates_committed) return _handoff(op);
 
 	while((r = OpBase_Consume(child))) {
 		Record_PersistScalars(r);
 
-		// Evaluate update expressions.
+		// evaluate update expressions
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
@@ -82,18 +84,21 @@ static Record UpdateConsume(OpBase *opBase) {
 		op->records = array_append(op->records, r);
 	}
 
-	/* Done reading; we're not going to call Consume any longer.
-	 * There might be operations like Index Scan that need to free the
-	 * index R/W lock - as such, free all ExecutionPlan operations up the chain. */
+	// done reading; we're not going to call Consume any longer
+	// there might be operations like "Index Scan" that need to free the
+	// index R/W lock - as such, free all ExecutionPlan operations up the chain.
 	OpBase_PropagateFree(child);
 
-	// Lock everything.
+	// lock everything
 	QueryCtx_LockForCommit();
-	CommitUpdates(op->gc, op->stats, op->updates);
-	// Release lock.
+	{
+		CommitUpdates(op->gc, op->stats, op->updates);
+	}
+	// release lock
 	QueryCtx_UnlockCommit(opBase);
 
 	op->updates_committed = true;
+
 	return _handoff(op);
 }
 

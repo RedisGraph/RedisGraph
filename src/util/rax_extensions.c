@@ -23,7 +23,7 @@ bool raxIsSubset(rax *a, rax *b) {
 }
 
 rax *raxClone(rax *orig) {
-	rax *rax = raxNew();
+	rax *clone = raxNew();
 
 	raxIterator it;
 	raxStart(&it, orig);
@@ -31,15 +31,15 @@ rax *raxClone(rax *orig) {
 
 	// For each key in the original, duplicate the key and its value in the clone.
 	while(raxNext(&it)) {
-		raxInsert(rax, it.key, it.key_len, it.data, NULL);
+		raxInsert(clone, it.key, it.key_len, it.data, NULL);
 	}
 
 	raxStop(&it);
-	return rax;
+	return clone;
 }
 
 rax *raxCloneWithCallback(rax *orig, void *(*clone_callback)(void *)) {
-	rax *rax = raxNew();
+	rax *clone = raxNew();
 
 	raxIterator it;
 	raxStart(&it, orig);
@@ -48,11 +48,11 @@ rax *raxCloneWithCallback(rax *orig, void *(*clone_callback)(void *)) {
 	// For each key in the original, duplicate the key and its value in the clone.
 	while(raxNext(&it)) {
 		void *data = clone_callback(it.data);
-		raxInsert(rax, it.key, it.key_len, data, NULL);
+		raxInsert(clone, it.key, it.key_len, data, NULL);
 	}
 
 	raxStop(&it);
-	return rax;
+	return clone;
 }
 
 void **raxValues(rax *rax) {

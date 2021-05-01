@@ -13,14 +13,13 @@
 
 typedef struct {
 	OpBase op;
+	raxIterator it;                 // Iterator for traversing update contexts
+	Record *records;                // Updated records
 	GraphContext *gc;
-	ResultSetStatistics *stats;
-
-	rax *update_ctxs;               // Entities to update and their expressions.
-	raxIterator it;                 // Iterator for traversing update contexts.
+	rax *update_ctxs;               // Entities to update and their expressions
+	bool updates_committed;         // True if we've already committed updates and are now in handoff mode.
 	PendingUpdateCtx *updates;      // Enqueued updates
-	Record *records;                // Updated records, used only when query hands off records after updates.
-	bool updates_committed;          // True if we've already committed updates and are now in handoff mode.
+	ResultSetStatistics *stats;
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps);

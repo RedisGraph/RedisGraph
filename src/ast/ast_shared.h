@@ -60,7 +60,7 @@ typedef enum {
 // TODO Consider replacing contents of PropertyMap (for ops like Create) with this
 typedef struct {
 	Attribute_ID id;
-	struct AR_ExpNode *value;
+	struct AR_ExpNode *exp;
 } PropertySetCtx;
 
 // Context describing an update expression.
@@ -111,6 +111,7 @@ void PropertyMap_Free(PropertyMap *map);
 
 EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias);
 EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *ctx);
-void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode);
+void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode);
+void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx);
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx);
 

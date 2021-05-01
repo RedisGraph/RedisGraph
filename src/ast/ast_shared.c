@@ -136,7 +136,7 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	for(uint i = 0; i < count; i ++) {
 		PropertySetCtx update = {
 			.id = orig->properties[i].id,
-			.value = AR_EXP_Clone(orig->properties[i].value),
+			.exp = AR_EXP_Clone(orig->properties[i].exp),
 		};
 		clone->properties = array_append(clone->properties, update);
 	}
@@ -144,16 +144,20 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	return clone;
 }
 
-void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode) {
-	ctx->mode = mode; // Set the mode to the given value
+void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode) {
+	ASSERT(ctx != NULL);
+	ctx->mode = mode;
+}
+
+void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx) {
 	uint count = array_len(ctx->properties);
-	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
 	array_clear(ctx->properties);
 }
 
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
 	uint count = array_len(ctx->properties);
-	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].value);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
 	array_free(ctx->properties);
 	rm_free(ctx);
 }

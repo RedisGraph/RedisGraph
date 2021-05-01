@@ -53,11 +53,12 @@ int GraphEntity_ClearProperties(GraphEntity *e) {
 
 	int prop_count = e->entity->prop_count;
 	for(int i = 0; i < prop_count; i++) {
-		// Free all allocated properties.
+		// free all allocated properties
 		SIValue_Free(e->entity->properties[i].value);
 	}
 	e->entity->prop_count = 0;
-	// Free and NULL-set the properties bag.
+
+	// free and NULL-set the properties bag.
 	rm_free(e->entity->properties);
 	e->entity->properties = NULL;
 
@@ -67,7 +68,7 @@ int GraphEntity_ClearProperties(GraphEntity *e) {
 /* Add a new property to entity */
 bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
-	if(SIValue_IsNull(value)) return false;
+	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) return false;
 
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
