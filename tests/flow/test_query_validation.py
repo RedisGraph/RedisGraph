@@ -459,6 +459,10 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert("Encountered path traversal" in str(e))
 
     def test31_set_invalid_property_type(self):
+        # Skip this test if running under Valgrind, as it causes a memory leak.
+        if Env().envRunner.debugger is not None:
+            Env().skip()
+
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
                    """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a""",
                    """MERGE (a) ON MATCH SET a.age = a"""]
