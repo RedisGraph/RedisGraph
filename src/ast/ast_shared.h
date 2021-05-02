@@ -49,12 +49,26 @@ typedef struct {
 	int property_count;
 } PropertyMap;
 
+// Enum describing how a SET directive should treat pre-existing properties
+typedef enum {
+	UPDATE_UNSET   = 0,    // default, should not be encountered
+	UPDATE_MERGE   = 1,    // merge new properties into existing property map
+	UPDATE_REPLACE = 2,    // replace existing property map with new properties
+} UPDATE_MODE;
+
+// Key-value pair of an attribute ID and the value to be associated with it
+// TODO Consider replacing contents of PropertyMap (for ops like Create) with this
+typedef struct {
+	Attribute_ID id;
+	struct AR_ExpNode *exp;
+} PropertySetCtx;
+
 // Context describing an update expression.
 typedef struct {
-	const char *alias;          // alias of entity being updated
-	Attribute_ID attribute_id;  // id of attribute to update
+	PropertySetCtx *properties; // properties to set
 	int record_idx;             // record offset this entity is stored at
-	struct AR_ExpNode *exp;     // expression to evaluate
+	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
+	const char *alias;          // Access-safe alias of the entity being updated
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause
@@ -94,4 +108,10 @@ NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);
 
 void PropertyMap_Free(PropertyMap *map);
+
+EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias);
+EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *ctx);
+void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode);
+void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx);
+void UpdateCtx_Free(EntityUpdateEvalCtx *ctx);
 
