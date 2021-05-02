@@ -80,10 +80,10 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		if(GraphEntity_IsDeleted(updates[i].ge)) continue;
 
 		// update the property on the graph entity
-		bool updated = _UpdateEntity(update);
-		properties_set += (int)updated;
+		int updated = _UpdateEntity(update);
+		properties_set += updated;
 		// reindex only if update performed
-		reindex |= update->update_index & updated;
+		reindex |= update->update_index & (bool)updated;
 	}
 
 	// handle last updated entity

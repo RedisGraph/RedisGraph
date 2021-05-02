@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_ENTITY_H_
-#define GRAPH_ENTITY_H_
+#pragma once
 
 #include "../../value.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -24,10 +23,10 @@
 // Defined in graph_entity.c
 extern SIValue *PROPERTY_NOTFOUND;
 
-typedef unsigned short Attribute_ID;
-typedef GrB_Index EntityID;
-typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
+typedef GrB_Index NodeID;
+typedef GrB_Index EntityID;
+typedef unsigned short Attribute_ID;
 
 /*  Format a graph entity string according to the enum.
     One can sum the enum values in order to print multiple value:
@@ -89,6 +88,4 @@ bool GraphEntity_IsDeleted(const GraphEntity *e);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);
-
-#endif
 
