@@ -199,8 +199,14 @@ void Index_IndexNode(Index *idx, const Node *n) {
 		}
 	}
 
-	if(doc_field_count > 0) RediSearch_SpecAddDocument(rsIdx, doc);
-	else RediSearch_FreeDocument(doc);
+	if(doc_field_count > 0) {
+		RediSearch_SpecAddDocument(rsIdx, doc);
+	} else {
+		// node doesn't poses any attributes which are indexed
+		// remove node from index and delete document
+		Index_RemoveNode(idx, n);
+		RediSearch_FreeDocument(doc);
+	}
 }
 
 void Index_RemoveNode(Index *idx, const Node *n) {

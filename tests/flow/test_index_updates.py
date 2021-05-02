@@ -175,3 +175,4 @@ class testIndexUpdatesFlow(FlowTestsBase):
         # No entities should be returned
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
+
