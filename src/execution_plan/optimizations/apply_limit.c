@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -9,6 +9,12 @@
 #include "../ops/op_limit.h"
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"
+
+/* applyLimit will traverse the given execution plan looking for Limit operations.
+ * Once one is found, all relevant child operations (e.g. Sort) will be
+ * notified about the current limit value.
+ * This is beneficial as a number of different optimizations can be applied
+ * once a limit is known. */
 
 static void notify_limit(OpBase *op, uint limit) {
 	OPType t = op->type;
@@ -22,21 +28,21 @@ static void notify_limit(OpBase *op, uint limit) {
 		case OPType_AGGREGATE:
 			limit = UNLIMITED;
 			break;
-	case OPType_LIMIT:
-		// update limit
-		limit = ((OpLimit *)op)->limit;
-		break;
-	case OPType_SORT:
-		((OpSort *)op)->limit = limit;
-		break;
-	case OPType_EXPAND_INTO:
-		((OpExpandInto *)op)->record_cap = limit;
-		break;
-	case OPType_CONDITIONAL_TRAVERSE:
-		((OpCondTraverse *)op)->record_cap = limit;
-		break;
-	default:
-		break;
+		case OPType_LIMIT:
+			// update limit
+			limit = ((OpLimit *)op)->limit;
+			break;
+		case OPType_SORT:
+			((OpSort *)op)->limit = limit;
+			break;
+		case OPType_EXPAND_INTO:
+			((OpExpandInto *)op)->record_cap = limit;
+			break;
+		case OPType_CONDITIONAL_TRAVERSE:
+			((OpCondTraverse *)op)->record_cap = limit;
+			break;
+		default:
+			break;
 	}
 
 	for(uint i = 0; i < op->childCount; i++) {

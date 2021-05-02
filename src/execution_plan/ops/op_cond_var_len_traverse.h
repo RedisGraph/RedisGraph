@@ -17,7 +17,8 @@ typedef struct {
 	OpBase op;
 	Graph *g;
 	Record r;
-	AlgebraicExpression *ae;
+	FT_FilterNode *ft;              /* If not NULL, FilterTree applied to the traversed edge. */
+	AlgebraicExpression *ae;        /* ArithmeticExpression describing the op's traversal pattern. */
 	int srcNodeIdx;                 /* Node set by operation. */
 	int edgesIdx;                   /* Edges set by operation. */
 	int destNodeIdx;                /* Node set by operation. */
@@ -35,4 +36,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op);
+
+// Set the FilterTree pointer of a CondVarLenTraverse operation.
+void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op, FT_FilterNode *ft);
 

@@ -644,14 +644,15 @@ This section contains information on all supported functions from the Cypher que
 
 ## Mathematical functions
 
-|Function | Description|
-| ------- |:-----------|
-|abs() | Returns the absolute value of a number|
-|ceil() | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-|floor() | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
-|rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
-|round() | Returns the value of a number rounded to the nearest integer |
-|sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|Function    | Description|
+| ---------- |:-----------|
+|abs()		 | Returns the absolute value of a number|
+|ceil()		 | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+|floor()	 | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
+|rand()		 | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
+|round()     | Returns the value of a number rounded to the nearest integer |
+|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|sqrt()      | Returns the square root of a number|
 |toInteger() | Converts a floating point or string value to an integer value. |
 
 ## String functions

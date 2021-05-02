@@ -1,13 +1,18 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "reduce_filters.h"
 #include "../ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
 #include "../../ast/ast_build_filter_tree.h"
+
+/* The reduce filters optimizer scans an execution plans for
+ * consecutive filter operations, these can be reduced down into
+ * a single filter operation by ANDing their filter trees
+ * Reducing the overall number of operations is expected to produce
+ * faster execution time. */
 
 void _reduceFilter(OpBase *op) {
 	OpBase *parent = op;
@@ -68,3 +73,4 @@ void _reduceFilters(OpBase *op) {
 void reduceFilters(ExecutionPlan *plan) {
 	return _reduceFilters(plan->root);
 }
+

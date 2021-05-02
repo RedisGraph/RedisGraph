@@ -232,6 +232,21 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool i
 	return res;
 }
 
+// validate that a map doesn't contains a nested aggregation function
+// e.g. {key: count(v)}
+static AST_Validation _ValidateMapExp(const cypher_astnode_t *node) {
+	ASSERT(cypher_astnode_type(node) == CYPHER_AST_MAP);
+
+	if(AST_ClauseContainsAggregation(node)) {
+		ErrorCtx_SetError("RedisGraph does not allow aggregate function calls \
+to be nested within maps. Aggregate functions should instead be called in a \
+preceding WITH clause and have their aliased values referenced in the map.");
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
 // Recursively collect function names and perform validations on functions with STAR arguments.
 static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_names) {
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -265,6 +280,12 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 		const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(node);
 		const char *func_name = cypher_ast_function_name_get_value(func);
 		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+	}
+
+	if(type == CYPHER_AST_MAP) {
+		// validate map expression
+		AST_Validation res = _ValidateMapExp(node);
+		if(res != AST_VALID) return res;
 	}
 
 	uint child_count = cypher_astnode_nchildren(node);
@@ -345,12 +366,6 @@ static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_
 
 	bool multihop = (start > 1) || (start != end);
 	if(!multihop) return AST_VALID;
-
-	// Multi-hop traversals cannot (currently) be filtered on
-	if(cypher_ast_rel_pattern_get_properties(edge) != NULL) {
-		ErrorCtx_SetError("RedisGraph does not currently support filters on variable-length paths.");
-		return AST_INVALID;
-	}
 
 	// Multi-hop traversals cannot be referenced
 	if(!projections) return AST_VALID;
@@ -1703,7 +1718,8 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
-	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+	// Verify that the query does not contain any expressions not in the
+	// RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
 
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);

@@ -19,6 +19,7 @@ Primary features:
   * Cypher queries translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
+To read the docs, visit [redisgraph.io](http://redisgraph.io).
 
 ## Quickstart
 

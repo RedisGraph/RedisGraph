@@ -12,6 +12,8 @@
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
+#define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
+#define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
 
 typedef enum {
 	IDX_ANY = 0,

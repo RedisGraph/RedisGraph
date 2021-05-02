@@ -9,13 +9,13 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+#include <errno.h>
 #include "util/redis_version.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
 //-----------------------------------------------------------------------------
 // Configuration parameters
 //-----------------------------------------------------------------------------
-
 // config param, the timeout for each query in milliseconds
 #define TIMEOUT "TIMEOUT"
 
@@ -40,14 +40,36 @@
 // whether the module should maintain transposed relationship matrices
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
 
+// config param, max number of queued queries
+#define MAX_QUEUED_QUERIES "MAX_QUEUED_QUERIES"
+
+// Max mem(bytes) that query/thread can utilize at any given time
+#define QUERY_MEM_CAPACITY "QUERY_MEM_CAPACITY"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
 
-#define CACHE_SIZE_DEFAULT 25
+#define CACHE_SIZE_DEFAULT            25
+#define QUEUED_QUERIES_UNLIMITED      UINT64_MAX
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
-extern RG_Config config; // global module configuration
+// configuration object
+typedef struct {
+	uint64_t timeout;                  // The timeout for each query in milliseconds.
+	bool async_delete;                 // If true, graph deletion is done asynchronously.
+	uint64_t cache_size;               // The cache size for each thread, per graph.
+	uint thread_pool_size;             // Thread count for thread pool.
+	uint omp_thread_count;             // Maximum number of OpenMP threads.
+	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
+	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
+	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
+	uint64_t max_queued_queries;       // max number of queued queries
+	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
+	Config_on_change cb;               // callback function which being called when config param changed
+} RG_Config;
+
+RG_Config config; // global module configuration
 
 //------------------------------------------------------------------------------
 // config value parsing
@@ -55,26 +77,28 @@ extern RG_Config config; // global module configuration
 
 // parse integer
 // return true if string represents an integer
-static inline bool _Config_ParseInteger(RedisModuleString *integer_str, long long *value) {
-	int res = RedisModule_StringToLongLong(integer_str, value);
-	// Return an error code if integer parsing fails or value is not positive.
-	return (res == REDISMODULE_OK);
+static inline bool _Config_ParseInteger(const char *integer_str, long long *value) {
+	char *endptr;
+	errno = 0;    // To distinguish success/failure after call
+	*value = strtoll(integer_str, &endptr, 10);
+		
+	// Return an error code if integer parsing fails.
+	return (errno == 0 && endptr != integer_str && *endptr == '\0');
 }
 
 // parse positive integer
 // return true if string represents a positive integer > 0
-static inline bool _Config_ParsePositiveInteger(RedisModuleString *integer_str, long long *value) {
+static inline bool _Config_ParsePositiveInteger(const char *integer_str, long long *value) {
 	bool res = _Config_ParseInteger(integer_str, value);
 	// Return an error code if integer parsing fails or value is not positive.
 	return (res == true && *value > 0);
 }
 
-// return true if 'rm_str' is either "yes" or "no" otherwise returns false
-// sets 'value' to true if 'rm_str' is "yes"
-// sets 'value to false if 'rm_str' is "no"
-static inline bool _Config_ParseYesNo(RedisModuleString *rm_str, bool *value) {
+// return true if 'str' is either "yes" or "no" otherwise returns false
+// sets 'value' to true if 'str' is "yes"
+// sets 'value to false if 'str' is "no"
+static inline bool _Config_ParseYesNo(const char *str, bool *value) {
 	bool res = false;
-	const char *str = RedisModule_StringPtrLen(rm_str, NULL);
 
 	if(!strcasecmp(str, "yes")) {
 		res = true;
@@ -91,6 +115,18 @@ static inline bool _Config_ParseYesNo(RedisModuleString *rm_str, bool *value) {
 //==============================================================================
 // Config access functions
 //==============================================================================
+
+//------------------------------------------------------------------------------
+// max queued queries
+//------------------------------------------------------------------------------
+
+void Config_max_queued_queries_set(uint64_t max_queued_queries) {
+	config.max_queued_queries = max_queued_queries;
+}
+
+uint Config_max_queued_queries_get(void) {
+	return config.max_queued_queries;
+}
 
 //------------------------------------------------------------------------------
 // timeout
@@ -189,7 +225,25 @@ uint64_t Config_resultset_max_size_get(void) {
 	return config.resultset_size;
 }
 
-bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
+//------------------------------------------------------------------------------
+// query mem capacity
+//------------------------------------------------------------------------------
+
+void Config_query_mem_capacity_set(int64_t capacity)
+{
+	if (capacity <= 0)
+		config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
+	else
+		config.query_mem_capacity = capacity;
+}
+
+uint64_t Config_query_mem_capacity_get(void)
+{
+	return config.query_mem_capacity;
+}
+
+bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
+{
 	ASSERT(field_str != NULL);
 
 	Config_Option_Field f;
@@ -208,6 +262,10 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field) {
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
 		f = Config_RESULTSET_MAX_SIZE;
+	} else if (!(strcasecmp(field_str, MAX_QUEUED_QUERIES))) {
+		f = Config_MAX_QUEUED_QUERIES;
+	} else if (!(strcasecmp(field_str, QUERY_MEM_CAPACITY))) {
+		f = Config_QUERY_MEM_CAPACITY;
 	} else {
 		return false;
 	}
@@ -252,6 +310,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 			name = ASYNC_DELETE;
 			break;
 
+		case Config_QUERY_MEM_CAPACITY:
+			name = QUERY_MEM_CAPACITY;
+			break;
+
         //----------------------------------------------------------------------
         // invalid option
         //----------------------------------------------------------------------
@@ -265,7 +327,7 @@ const char *Config_Field_name(Config_Option_Field field) {
 }
 
 // initialize every module-level configuration to its default value
-void _Config_SetToDefaults(RedisModuleCtx *ctx) {
+void _Config_SetToDefaults(void) {
 	// the thread pool's default size is equal to the system's number of cores
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_pool_size = (CPUCount != -1) ? CPUCount : 1;
@@ -280,11 +342,9 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	#ifdef MEMCHECK
 		// disable async delete during memcheck
 		config.async_delete = false;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
 	#else
 		// always perform async delete when no checking for memory issues
 		config.async_delete = true;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
 	#endif
 
 	config.cache_size = CACHE_SIZE_DEFAULT;
@@ -297,11 +357,17 @@ void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 
 	// no query timeout by default
 	config.timeout = CONFIG_TIMEOUT_NO_TIMEOUT;
+
+	// no limit on number of queued queries by default
+	config.max_queued_queries = QUEUED_QUERIES_UNLIMITED;
+
+	// no limit on query memory capacity
+	config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Initialize the configuration to its default values.
-	_Config_SetToDefaults(ctx);
+	_Config_SetToDefaults();
 
 	if(argc % 2) {
 		// emit an error if we received an odd number of arguments,
@@ -321,6 +387,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		Config_Option_Field field;
 		RedisModuleString *val = argv[i + 1];
 		const char *field_str = RedisModule_StringPtrLen(argv[i], NULL);
+		const char *val_str = RedisModule_StringPtrLen(val, NULL);
 
 		// exit if configuration is not aware of field
 		if(!Config_Contains_field(field_str, &field)) {
@@ -330,7 +397,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		}
 
 		// exit if encountered an error when setting configuration
-		if(!Config_Option_set(field, val)) {
+		if(!Config_Option_set(field, val_str)) {
 			RedisModule_Log(ctx, "warning",
 					"Failed setting field '%s'", field_str);
 			return REDISMODULE_ERR;
@@ -340,13 +407,27 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	return REDISMODULE_OK;
 }
 
-bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
+bool Config_Option_set(Config_Option_Field field, const char *val) {
 	//--------------------------------------------------------------------------
 	// set the option
 	//--------------------------------------------------------------------------
 
 	switch (field)
 	{
+		//----------------------------------------------------------------------
+		// max queued queries
+		//----------------------------------------------------------------------
+
+		case Config_MAX_QUEUED_QUERIES:
+			{
+				long long max_queued_queries;
+				if(!_Config_ParsePositiveInteger(val, &max_queued_queries)) {
+					return false;
+				}
+				Config_max_queued_queries_set(max_queued_queries);
+			}
+			break;
+
 		//----------------------------------------------------------------------
 		// timeout
 		//----------------------------------------------------------------------
@@ -449,13 +530,28 @@ bool Config_Option_set(Config_Option_Field field, RedisModuleString *val) {
 			}
 			break;
 
-	    //----------------------------------------------------------------------
-	    // invalid option
-	    //----------------------------------------------------------------------
+		//----------------------------------------------------------------------
+		// query mem capacity
+		//----------------------------------------------------------------------
 
-        default : 
-			return false;
-    }
+		case Config_QUERY_MEM_CAPACITY:
+			{
+				long long query_mem_capacity;
+				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
+
+				Config_query_mem_capacity_set(query_mem_capacity);
+			}
+			break;
+
+	//----------------------------------------------------------------------
+	// invalid option
+	//----------------------------------------------------------------------
+
+	default:
+		return false;
+	}
+
+	if(config.cb) config.cb(field);
 
 	return true;
 }
@@ -470,6 +566,17 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 	switch (field)
 	{
+		case Config_MAX_QUEUED_QUERIES:
+			{
+
+				va_start(ap, field);
+				uint64_t *max_queued_queries = va_arg(ap, uint64_t*);
+				va_end(ap);
+
+				ASSERT(max_queued_queries != NULL);
+				(*max_queued_queries) = Config_max_queued_queries_get();
+			}
+			break;
 		//----------------------------------------------------------------------
 		// timeout
 		//----------------------------------------------------------------------
@@ -590,6 +697,21 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 			}
 			break;
 
+		//----------------------------------------------------------------------
+		// query mem capacity
+		//----------------------------------------------------------------------
+
+		case Config_QUERY_MEM_CAPACITY:
+			{
+				va_start(ap, field);
+				int64_t *query_mem_capacity = va_arg(ap, int64_t *);
+				va_end(ap);
+
+				ASSERT(query_mem_capacity != NULL);
+				(*query_mem_capacity) = Config_query_mem_capacity_get();
+			}
+			break;
+
         //----------------------------------------------------------------------
         // invalid option
         //----------------------------------------------------------------------
@@ -601,3 +723,9 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 	return true;
 }
+
+void Config_Subscribe_Changes(Config_on_change cb) {
+	ASSERT(cb != NULL);
+	config.cb = cb;
+}
+

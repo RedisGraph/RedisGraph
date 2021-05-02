@@ -9,6 +9,7 @@
    ********************************/
 
 //#define _POSIX_C_SOURCE 200809L
+#include "RG.h"
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -56,11 +57,12 @@ typedef struct job {
 
 /* Job queue */
 typedef struct jobqueue {
-	pthread_mutex_t rwmutex; /* used for queue r/w access */
-	job *front;              /* pointer to front of queue */
-	job *rear;               /* pointer to rear  of queue */
-	bsem *has_jobs;          /* flag as binary semaphore  */
-	int len;                 /* number of jobs in queue   */
+	pthread_mutex_t rwmutex; 		/* used for queue r/w access */
+	job *front;              		/* pointer to front of queue */
+	job *rear;               		/* pointer to rear  of queue */
+	bsem *has_jobs;          		/* flag as binary semaphore  */
+	int len;                 		/* number of jobs in queue   */
+	uint64_t cap;                   /* capacity of the queue     */
 } jobqueue;
 
 /* Thread */
@@ -202,8 +204,8 @@ void thpool_destroy(thpool_* thpool_p) {
 	/* End each thread 's infinite loop */
 	threads_keepalive = 0;
 
-	/* Give one second to kill idle threads */
-	double TIMEOUT = 1.0;
+	/* Give 0.1 second to kill idle threads */
+	double TIMEOUT = 0.1;
 	time_t start, end;
 	double tpassed = 0.0;
 	time(&start);
@@ -214,6 +216,7 @@ void thpool_destroy(thpool_* thpool_p) {
 	}
 
 	/* Poll remaining threads */
+	// do not wait forever for threads to complete their work
 	//while(thpool_p->num_threads_alive) {
 	//	bsem_post_all(thpool_p->jobqueue.has_jobs);
 	//	sleep(1);
@@ -269,6 +272,19 @@ int thpool_get_thread_id(thpool_* thpool_p, pthread_t pthread) {
 
 	// Could not locate thread.
 	return -1;
+}
+
+// return true if thread pool internal queue is full with pending work
+bool thpool_queue_full(thpool_* thpool_p) {
+	ASSERT(thpool_p != NULL);
+
+	// test if there's enough room in thread pool queue
+	return (thpool_p->jobqueue.len >= thpool_p->jobqueue.cap);
+}
+
+void thpool_set_jobqueue_cap(thpool_* thpool_p, uint64_t val) {
+	ASSERT(thpool_p);
+	thpool_p->jobqueue.cap = val;
 }
 
 /* ============================ THREAD ============================== */
@@ -389,9 +405,9 @@ static void thread_destroy(thread *thread_p) {
 
 /* Initialize queue */
 static int jobqueue_init(jobqueue *jobqueue_p) {
-	jobqueue_p->len = 0;
-	jobqueue_p->front = NULL;
-	jobqueue_p->rear = NULL;
+	jobqueue_p->len         =  0;
+	jobqueue_p->front       =  NULL;
+	jobqueue_p->rear        =  NULL;
 
 	jobqueue_p->has_jobs = (struct bsem *)malloc(sizeof(struct bsem));
 	if(jobqueue_p->has_jobs == NULL) {
@@ -400,6 +416,8 @@ static int jobqueue_init(jobqueue *jobqueue_p) {
 
 	pthread_mutex_init(&(jobqueue_p->rwmutex), NULL);
 	bsem_init(jobqueue_p->has_jobs, 0);
+
+	jobqueue_p->cap = UINT64_MAX; // unlimited queue size
 
 	return 0;
 }
@@ -417,27 +435,25 @@ static void jobqueue_clear(jobqueue *jobqueue_p) {
 	jobqueue_p->len = 0;
 }
 
-/* Add (allocated) job to queue
- */
+/* Add (allocated) job to queue */
 static void jobqueue_push(jobqueue *jobqueue_p, struct job *newjob) {
-
-	pthread_mutex_lock(&jobqueue_p->rwmutex);
 	newjob->prev = NULL;
 
+	pthread_mutex_lock(&jobqueue_p->rwmutex);
+
 	switch(jobqueue_p->len) {
-
-	case 0: /* if no jobs in queue */
-		jobqueue_p->front = newjob;
-		jobqueue_p->rear = newjob;
-		break;
-
-	default: /* if jobs in queue */
-		jobqueue_p->rear->prev = newjob;
-		jobqueue_p->rear = newjob;
+		case 0: /* no jobs in queue */
+			jobqueue_p->front = newjob;
+			jobqueue_p->rear = newjob;
+			break;
+		default: /* jobs in queue */
+			jobqueue_p->rear->prev = newjob;
+			jobqueue_p->rear = newjob;
 	}
-	jobqueue_p->len++;
 
+	jobqueue_p->len++;
 	bsem_post(jobqueue_p->has_jobs);
+
 	pthread_mutex_unlock(&jobqueue_p->rwmutex);
 }
 

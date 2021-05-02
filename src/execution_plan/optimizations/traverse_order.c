@@ -1,14 +1,15 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "./traverse_order.h"
-#include "../../config.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
+#include "../../configuration/config.h"
+#include "../../filter_tree/filter_tree.h"
+#include "../../arithmetic/algebraic_expression.h"
 
 #define T 1           // Transpose penalty.
 #define L 2 * T       // Label score.
@@ -187,7 +188,7 @@ static int _penalty_arrangement(Arrangement arrangement, uint exp_count) {
 }
 
 static int _reward_expression(AlgebraicExpression *exp, QueryGraph *qg,
-		rax *filtered_entities, rax *bound_vars, uint reward_factor) {
+							  rax *filtered_entities, rax *bound_vars, uint reward_factor) {
 
 	// A bit naive at the moment.
 	void *res                = NULL;
@@ -230,7 +231,7 @@ static int _reward_arrangement(Arrangement arrangement, uint exp_count, QueryGra
 		uint reward_factor = exp_count - i;
 		AlgebraicExpression *exp = arrangement[i];
 		reward += _reward_expression(exp, qg, filtered_entities, bound_vars,
-				reward_factor);
+									 reward_factor);
 	}
 
 	return reward;

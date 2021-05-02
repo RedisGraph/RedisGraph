@@ -361,7 +361,7 @@
 // http://gap.cs.berkeley.edu/
 
 #include "LAGraph_bfs_pushpull.h"
-#include "../config.h"
+#include "../configuration/config.h"
 
 #define LAGRAPH_FREE_ALL    \
 {                           \

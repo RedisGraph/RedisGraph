@@ -6,11 +6,11 @@
 
 #include "path_funcs.h"
 #include "../func_desc.h"
-#include "../../config.h"
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
+#include "../../configuration/config.h"
 #include "../../datatypes/path/sipath_builder.h"
 #include "../../algorithms/LAGraph_bfs_pushpull.h"
 

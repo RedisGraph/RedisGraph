@@ -115,59 +115,92 @@ void Index_RemoveField(Index *idx, const char *field) {
 void Index_IndexNode(Index *idx, const Node *n) {
 	double      score            = 1;     // default score
 	const char  *lang            = NULL;  // default language
+	const char  *field_name      = NULL;  // name of current indexed field
+	SIValue     *v               = NULL;  // current indexed value
 	RSIndex     *rsIdx           = idx->idx;
 	NodeID      node_id          = ENTITY_GET_ID(n);
 	uint        doc_field_count  = 0;
+
+	// list of none indexable fields
+	uint none_indexable_fields_count = 0; // number of none indexed fields
+	const char *none_indexable_fields[idx->fields_count]; // none indexed fields
 
 	// create a document out of node
 	RSDoc *doc = RediSearch_CreateDocument(&node_id, sizeof(EntityID), score, lang);
 
 	// add document field for each indexed property
-	for(uint i = 0; i < idx->fields_count; i++) {
-		const char *field_name = idx->fields[i];
-		SIValue *v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
-		if(v == PROPERTY_NOTFOUND) continue;
+	if(idx->type == IDX_FULLTEXT) {
+		for(uint i = 0; i < idx->fields_count; i++) {
+			field_name = idx->fields[i];
+			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
+			if(v == PROPERTY_NOTFOUND) continue;
 
-		SIType t = SI_TYPE(*v);
+			SIType t = SI_TYPE(*v);
 
-		if(idx->type == IDX_FULLTEXT) {
-			// Value must be of type string.
+			// value must be of type string
 			if(t == T_STRING) {
-				RediSearch_DocumentAddFieldString(doc,
-												  idx->fields[i],
-												  v->stringval,
-												  strlen(v->stringval),
-												  RSFLDTYPE_FULLTEXT);
-			} else {
-				continue;
+				doc_field_count++;
+				RediSearch_DocumentAddFieldString(doc, idx->fields[i], 
+						v->stringval, strlen(v->stringval), RSFLDTYPE_FULLTEXT);
 			}
-		} else {
+		}
+	} else {
+		for(uint i = 0; i < idx->fields_count; i++) {
+			field_name = idx->fields[i];
+			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
+			if(v == PROPERTY_NOTFOUND) continue;
+
+			SIType t = SI_TYPE(*v);
+
+			doc_field_count++;
 			if(t == T_STRING) {
-				RediSearch_DocumentAddFieldString(doc, idx->fields[i], v->stringval, strlen(v->stringval),
-												  RSFLDTYPE_TAG);
+				RediSearch_DocumentAddFieldString(doc, idx->fields[i],
+						v->stringval, strlen(v->stringval), RSFLDTYPE_TAG);
 			} else if(t & (SI_NUMERIC | T_BOOL)) {
 				double d = SI_GET_NUMERIC(*v);
-				RediSearch_DocumentAddFieldNumber(doc, field_name, d, RSFLDTYPE_NUMERIC);
+				RediSearch_DocumentAddFieldNumber(doc, field_name, d,
+						RSFLDTYPE_NUMERIC);
 			} else if(t == T_POINT) {
 				double lat = (double)Point_lat(*v);
 				double lon = (double)Point_lon(*v);
-				RediSearch_DocumentAddFieldGeo(doc, field_name, lat, lon, RSFLDTYPE_GEO);
+				RediSearch_DocumentAddFieldGeo(doc, field_name, lat, lon,
+						RSFLDTYPE_GEO);
 			} else {
-				continue;
+				// none indexable field
+				none_indexable_fields[none_indexable_fields_count++] =
+					field_name;
 			}
 		}
-		doc_field_count++;
+
+		// index name of none index fields
+		if(none_indexable_fields_count > 0) {
+			// concat all none indexable field names
+			size_t len = none_indexable_fields_count - 1; // seperators
+			for(uint i = 0; i < none_indexable_fields_count; i++) {
+				len += strlen(none_indexable_fields[i]);
+			}
+
+			char *s = NULL;
+			char stack_fields[len];
+			if(len < 512) s = stack_fields; // stack base
+			else s = rm_malloc(sizeof(char) * len); // heap base
+
+			// concat
+			len = sprintf(s, "%s", none_indexable_fields[0]);
+			for(uint i = 1; i < none_indexable_fields_count; i++) {
+				len += sprintf(s + len, "%c%s", INDEX_SEPARATOR, none_indexable_fields[i]);
+			}
+
+			RediSearch_DocumentAddFieldString(doc, INDEX_FIELD_NONE_INDEXED,
+						s, len, RSFLDTYPE_TAG);
+
+			// free if heap based
+			if(s != stack_fields) rm_free(s);
+		}
 	}
 
-	if(doc_field_count > 0) {
-		RediSearch_SpecAddDocument(rsIdx, doc);
-	} else {
-		RediSearch_FreeDocument(doc);
-		// failed to match any indexed properties,
-		// remove the node from the index
-		// in case we've deleted an indexed property
-		Index_RemoveNode(idx, n);
-	}
+	if(doc_field_count > 0) RediSearch_SpecAddDocument(rsIdx, doc);
+	else RediSearch_FreeDocument(doc);
 }
 
 void Index_RemoveNode(Index *idx, const Node *n) {
@@ -210,9 +243,18 @@ void Index_Construct(Index *idx) {
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
 					types, RSFLDOPT_NONE);
 
-			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, '\0');
+			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 		}
+
+		// for none indexable types e.g. Array introduce an additional field
+		// "none_indexable_fields" which will hold a list of attribute names
+		// that were not indexed
+		RSFieldID fieldID = RediSearch_CreateField(rsIdx,
+				INDEX_FIELD_NONE_INDEXED, RSFLDTYPE_TAG, RSFLDOPT_NONE);
+
+		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 	}
 
 	idx->idx = rsIdx;
@@ -269,4 +311,3 @@ void Index_Free(Index *idx) {
 
 	rm_free(idx);
 }
-
