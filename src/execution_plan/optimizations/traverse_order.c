@@ -262,4 +262,3 @@ void orderExpressions
 		raxFree(filtered_entities);
 	}
 }
-

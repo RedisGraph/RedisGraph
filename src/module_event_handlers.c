@@ -8,13 +8,13 @@
 #include "RG.h"
 #include <pthread.h>
 #include <stdbool.h>
-#include "graph/graphcontext.h"
-#include "serializers/graphcontext_type.h"
-#include "serializers/graphmeta_type.h"
-#include "config.h"
-#include "util/redis_version.h"
-#include "util/thpool/pools.h"
 #include "util/uuid.h"
+#include "util/thpool/pools.h"
+#include "util/redis_version.h"
+#include "graph/graphcontext.h"
+#include "configuration/config.h"
+#include "serializers/graphmeta_type.h"
+#include "serializers/graphcontext_type.h"
 
 // Global array tracking all extant GraphContexts.
 extern GraphContext **graphs_in_keyspace;

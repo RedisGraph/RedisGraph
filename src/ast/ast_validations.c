@@ -507,12 +507,14 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
 	if(call_clauses == NULL) return AST_VALID;
 
-	AST_Validation res = AST_VALID;
-	ProcedureCtx *proc = NULL;
-	rax *identifiers = raxNew();
+
+	ProcedureCtx    *proc         =  NULL;
+	rax             *identifiers  =  NULL;
+	AST_Validation  res           =  AST_VALID;
 
 	uint call_count = array_len(call_clauses);
 	for(uint i = 0; i < call_count; i ++) {
+		identifiers = raxNew();
 		const cypher_astnode_t *call_clause = call_clauses[i];
 
 		// Make sure procedure exists.
@@ -536,49 +538,33 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			}
 		}
 
-		// Validate projections.
+		// validate projections
 		uint proj_count = cypher_ast_call_nprojections(call_clause);
 		if(proj_count > 0) {
-			// Collect call projections.
+			// collect call projections
 			for(uint j = 0; j < proj_count; j++) {
 				const cypher_astnode_t *proj = cypher_ast_call_get_projection(call_clause, j);
 				const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(proj);
 				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				const char *identifier = cypher_ast_identifier_get_name(ast_exp);
-				// Make sure each yield output is mentioned only once.
-				if(!raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL,
-							  NULL)) {
+
+				// make sure each yield output is mentioned only once
+				if(!raxInsert(identifiers, (unsigned char *)identifier,
+							strlen(identifier), NULL, NULL)) {
 					ErrorCtx_SetError("Variable `%s` already declared", identifier);
 					res = AST_INVALID;
 					goto cleanup;
 				}
-			}
 
-			// Make sure procedure is aware of each output.
-			char output[256];
-			raxIterator it;
-			_prepareIterateAll(identifiers, &it);
-
-			while(raxNext(&it)) {
-				size_t len = it.key_len;
-				unsigned char *identifier = it.key;
-				if(len >= 256) {
-					ErrorCtx_SetError("Output name `%s` too long", identifier);
-					res = AST_INVALID;
-					goto cleanup;
-				}
-
-				memcpy(output, identifier, len);
-				output[len] = 0;
-				if(!Procedure_ContainsOutput(proc, output)) {
-					raxStop(&it);
-					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`", proc_name, output);
+				// make sure procedure is aware of output
+				if(!Procedure_ContainsOutput(proc, identifier)) {
+					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
+							proc_name, identifier);
 					res = AST_INVALID;
 					goto cleanup;
 				}
 			}
 
-			raxStop(&it);
 			raxFree(identifiers);
 			identifiers = NULL;
 		}
@@ -589,8 +575,8 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 
 cleanup:
 	if(proc) Proc_Free(proc);
-	array_free(call_clauses);
 	if(identifiers) raxFree(identifiers);
+	array_free(call_clauses);
 	return res;
 }
 
