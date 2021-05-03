@@ -6,11 +6,11 @@
 
 #include "graph.h"
 #include "RG.h"
-#include "config.h"
 #include "../util/arr.h"
 #include "../util/qsort.h"
-#include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/rmalloc.h"
+#include "../configuration/config.h"
+#include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/datablock/oo_datablock.h"
 
 static GrB_BinaryOp _graph_edge_accum = NULL;

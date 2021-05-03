@@ -11,15 +11,13 @@ extern "C"
 {
 #endif
 
-#include "../../src/config.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/configuration/config.h"
 #include "../../src/algorithms/algorithms.h"
 
 #ifdef __cplusplus
 }
 #endif
-
-RG_Config config; // Global module configuration
 
 class AllPathsTest : public ::testing::Test {
   protected:
@@ -28,7 +26,7 @@ class AllPathsTest : public ::testing::Test {
 		Alloc_Reset();
 
 		// Set global variables
-		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
+		Config_Option_set(Config_MAINTAIN_TRANSPOSE, "yes"); // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);

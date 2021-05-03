@@ -100,15 +100,23 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *str);
 //------------------------------------------------------------------------------
 
 bool GraphContext_HasIndices(GraphContext *gc);
+
+// Attempt to retrieve an index on the given label and attribute IDs
+Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
+		Attribute_ID *attribute_id, IndexType type);
+
 // Attempt to retrieve an index on the given label and attribute
 Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribute_ID *attribute_id,
 							 IndexType type);
+
 // Create an index for the given label and attribute
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
 						  IndexType type);
+
 // Remove and free an index
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field,
 							 IndexType type);
+
 // Remove a single node from all indices that refer to it
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 
