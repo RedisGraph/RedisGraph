@@ -1,5 +1,6 @@
 #include "ast_shared.h"
 #include "../RG.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
@@ -103,12 +104,6 @@ void PropertyMap_Free(PropertyMap *map) {
 	rm_free(map);
 }
 
-EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx) {
-	EntityUpdateEvalCtx clone = ctx;
-	clone.exp = AR_EXP_Clone(ctx.exp);
-	return clone;
-}
-
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
 	NodeCreateCtx clone = ctx;
 	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
@@ -119,5 +114,51 @@ EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
 	EdgeCreateCtx clone = ctx;
 	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
+}
+
+EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias) {
+	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
+	ctx->mode = mode;
+	ctx->alias = alias;
+	ctx->record_idx = INVALID_INDEX;
+	ctx->properties = array_new(PropertySetCtx, prop_count);
+
+	return ctx;
+}
+
+EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
+	EntityUpdateEvalCtx *clone = rm_malloc(sizeof(EntityUpdateEvalCtx));
+	clone->mode = orig->mode;
+	clone->alias = orig->alias;
+	clone->record_idx = orig->record_idx;
+	uint count = array_len(orig->properties);
+	clone->properties = array_new(PropertySetCtx, count);
+	for(uint i = 0; i < count; i ++) {
+		PropertySetCtx update = {
+			.id = orig->properties[i].id,
+			.exp = AR_EXP_Clone(orig->properties[i].exp),
+		};
+		clone->properties = array_append(clone->properties, update);
+	}
+
+	return clone;
+}
+
+void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode) {
+	ASSERT(ctx != NULL);
+	ctx->mode = mode;
+}
+
+void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx) {
+	uint count = array_len(ctx->properties);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
+	array_clear(ctx->properties);
+}
+
+void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
+	uint count = array_len(ctx->properties);
+	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
+	array_free(ctx->properties);
+	rm_free(ctx);
 }
 

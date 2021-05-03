@@ -10,6 +10,7 @@
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
+#include "../../ast/ast_build_op_contexts.h"
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
 									const char **arguments) {

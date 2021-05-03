@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef _ALGORITHMS_H_
-#define _ALGORITHMS_H_
+#pragma once
 
 #include "./bfs.h"
 #include "./dfs.h"
@@ -13,4 +12,3 @@
 #include "./detect_cycle.h"
 #include "./longest_path.h"
 
-#endif

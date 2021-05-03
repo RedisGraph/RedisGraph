@@ -7,7 +7,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../algebraic_expression.h"
-#include "../../config.h"
+#include "../../configuration/config.h"
 
 static inline bool _AlgebraicExpression_IsMultiplicationNode(const AlgebraicExpression *node) {
 	return (node->type == AL_OPERATION && node->operation.op == AL_EXP_MUL);

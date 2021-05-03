@@ -25,7 +25,7 @@
 // Graph extentions.
 #include "graph_extensions.h"
 // Module configuration
-#include "../config.h"
+#include "../configuration/config.h"
 
 // This struct is used to describe the payload content of a key.
 // It contains the type and the number of entities that were encoded.

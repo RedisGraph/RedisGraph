@@ -30,7 +30,6 @@
 
 Feature: Set4 - Set all properties with a map
 
-  @skip
   Scenario: [1] Set multiple properties with a property map
     Given an empty graph
     And having executed:
@@ -108,7 +107,6 @@ Feature: Set4 - Set all properties with a map
     And the side effects should be:
       | -properties | 2 |
 
-  @skip
   Scenario: [5] Ignore null when setting properties using an overriding map
     Given an empty graph
     When executing query:

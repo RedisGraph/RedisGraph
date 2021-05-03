@@ -343,7 +343,7 @@ class testGraphMergeFlow(FlowTestsBase):
         # Verify the results
         self.env.assertEquals(result.labels_added, 1)
         self.env.assertEquals(result.nodes_created, 1)
-        self.env.assertEquals(result.properties_set, 3)
+        self.env.assertEquals(result.properties_set, 2)
         self.env.assertEquals(result.result_set, expected)
 
     def test18_merge_unique_creations(self):

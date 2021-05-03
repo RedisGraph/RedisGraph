@@ -51,3 +51,34 @@ class testEntityUpdate(FlowTestsBase):
         expected_result = [[1, 'Calgary']]
         self.env.assertEqual(result.properties_set, 1)
         self.env.assertEqual(result.result_set, expected_result)
+
+    # Set the entity's properties to an empty map
+    def test06_replace_property_map(self):
+        empty_node = Node()
+        result = graph.query("MATCH (n) SET n = {} RETURN n")
+        expected_result = [[empty_node]]
+        # The node originally had 2 properties, 'name' and 'city_name'
+        self.env.assertEqual(result.properties_set, 2)
+        self.env.assertEqual(result.result_set, expected_result)
+
+    # Update the entity's properties by setting a specific property and merging property maps
+    def test07_update_property_map(self):
+        node = Node(properties={"v": 1, "v2": 2})
+        result = graph.query("MATCH (n) SET n.v = 1, n += {v2: 2} RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.properties_set, 2)
+        self.env.assertEqual(result.result_set, expected_result)
+
+    # Replacement maps overwrite existing properties and previous SETs but do not modify subsequent non-replacement SETs
+    def test08_multiple_updates_to_property_map(self):
+        node = Node(properties={"v": 1, "v2": 2, "v4": 4})
+        result = graph.query("MATCH (n) SET n.v3 = 3, n = {v: 1}, n += {v2: 2}, n.v4 = 4 RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)
+
+    # MERGE updates should support the same operations as SET updates
+    def test09_merge_update_map(self):
+        node = Node(properties={"v": 5})
+        result = graph.query("MERGE (n {v: 1}) ON MATCH SET n = {}, n.v = 5 RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)

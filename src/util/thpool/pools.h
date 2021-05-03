@@ -65,3 +65,6 @@ int ThreadPools_AddWorkBulkLoader
 	void *arg_p
 );
 
+// Sets the limit on max queued queries in each thread pool.
+void ThreadPools_Set_max_pending_work(uint64_t val);
+
