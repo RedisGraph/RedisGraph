@@ -12,6 +12,39 @@ class testTraversalConstruction():
         redis_con = self.env.getConnection()
         graph = Graph("TraversalConstruction", redis_con)
 
+    # Test differing starting points for the same search pattern
+    def test_starting_point(self):
+        # Neither the source nor the destination are labeled
+        # perform an AllNodeScan from the source node.
+        query = """MATCH (a)-[]->(b) RETURN a, b"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("All Node Scan | (a)", plan)
+
+        # Destination is labeled, perform a LabelScan from the destination node.
+        query = """MATCH (a)-[]->(b:B) RETURN a, b"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (b:B)", plan)
+
+        # Destination is filtered, perform an AllNodeScan from the destination node.
+        query = """MATCH (a)-[]->(b) WHERE b.v = 2 RETURN a, b"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("All Node Scan | (b)", plan)
+
+        # Destination is labeled but source is filtered, perform an AllNodeScan from the source node.
+        query = """MATCH (a)-[]->(b:B) WHERE a.v = 1 OR a.v = 3 RETURN a, b"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("All Node Scan | (a)", plan)
+
+        # Both are labeled and source is filtered, perform a LabelScan from the source node.
+        query = """MATCH (a:A)-[]->(b:B) WHERE a.v = 3 RETURN a, b"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (a:A)", plan)
+
+        # Both are labeled and dest is filtered, perform a LabelScan from the dest node.
+        query = """MATCH (a:A)-[]->(b:B) WHERE b.v = 2 RETURN a, b"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (b:B)", plan)
+
     # make sure traversal begins with labeled entity
     def test_start_with_label(self):
         queries = ["MATCH (A:L)-->(B)-->(C) RETURN 1",
@@ -72,4 +105,24 @@ class testTraversalConstruction():
         self.env.assertTrue("Conditional Traverse" in ops[2]) # traverse from A to D or from D to A
         self.env.assertTrue("Conditional Traverse" in ops[3]) # traverse from A to D or from D to A
         self.env.assertTrue("Filter" in ops[4]) # filter either A or D
+
+    def test_start_with_index_filter(self):
+        # TODO: enable this test, once we'll score higher filters that
+        # have the potential turn into index scan
+        return
+
+        q = """CREATE INDEX ON :L(v)"""
+        graph.query(q)
+
+        q = """MATCH (a:L {v:1})-[]-(b:L {x:1}) RETURN a, b"""
+        plan = graph.execution_plan(q)
+        ops = plan.split(os.linesep)
+        ops.reverse()
+        self.env.assertTrue("Index Scan" in ops[0]) # start with index scan
+
+        q = """MATCH (a:L {x:1})-[]-(b:L {v:1}) RETURN a, b"""
+        plan = graph.execution_plan(q)
+        ops = plan.split(os.linesep)
+        ops.reverse()
+        self.env.assertTrue("Index Scan" in ops[0]) # start with index scan
 

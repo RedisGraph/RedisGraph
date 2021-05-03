@@ -39,7 +39,7 @@ int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
 	if(!filtered_entities) return 0;
 
 	int          score          =  0;
-	void         *frequency     =  NULL;
+	void         *frequency     =  NULL;  // independent occurrences
 	const  char  *src           =  AlgebraicExpression_Source(exp);
 	const  char  *dest          =  AlgebraicExpression_Destination(exp);
 	const  char  *edge          =  AlgebraicExpression_Edge(exp);
@@ -50,10 +50,13 @@ int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
 		score += (int64_t)frequency * 2;
 	}
 
-	frequency = raxFind(filtered_entities, (unsigned char *)dest, strlen(dest));
-	if(frequency != raxNotFound) {
-		score += 2;
-		score += (int64_t)frequency * 2;
+	// consider 'dest' only if different than 'src'
+	if(RG_STRCMP(src, dest) != 0) {
+		frequency = raxFind(filtered_entities, (unsigned char *)dest, strlen(dest));
+		if(frequency != raxNotFound) {
+			score += 2;
+			score += (int64_t)frequency * 2;
+		}
 	}
 
 	// a filtered edge will increase the expression score
