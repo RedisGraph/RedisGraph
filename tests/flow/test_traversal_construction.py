@@ -106,6 +106,12 @@ class testTraversalConstruction():
         self.env.assertTrue("Conditional Traverse" in ops[3]) # traverse from A to D or from D to A
         self.env.assertTrue("Filter" in ops[4]) # filter either A or D
 
+    def test_long_pattern(self):
+        q = """match (a)--(b)--(c)--(d)--(e)--(f)--(g)--(h)--(i)--(j)--(k)--(l) return *"""
+        plan = graph.execution_plan(q)
+        ops = plan.split(os.linesep)
+        self.env.assertEqual(len(ops), 14)
+
     def test_start_with_index_filter(self):
         # TODO: enable this test, once we'll score higher filters that
         # have the potential turn into index scan
