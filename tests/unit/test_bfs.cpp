@@ -52,9 +52,9 @@ class BFSTest: public ::testing::Test {
 		C = QGNode_New("C");
 		D = QGNode_New("D");
 
-		AB = QGEdge_New(A, B, relation, "AB");
-		BC = QGEdge_New(B, C, relation, "BC");
-		BD = QGEdge_New(B, D, relation, "BD");
+		AB = QGEdge_New(relation, "AB");
+		BC = QGEdge_New(relation, "BC");
+		BD = QGEdge_New(relation, "BD");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);
