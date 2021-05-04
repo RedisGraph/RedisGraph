@@ -11,15 +11,13 @@ extern "C"
 {
 #endif
 
-#include "../../src/config.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/configuration/config.h"
 #include "../../src/algorithms/algorithms.h"
 
 #ifdef __cplusplus
 }
 #endif
-
-RG_Config config; // Global module configuration
 
 class AllPathsTest : public ::testing::Test {
   protected:
@@ -28,7 +26,7 @@ class AllPathsTest : public ::testing::Test {
 		Alloc_Reset();
 
 		// Set global variables
-		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
+		Config_Option_set(Config_MAINTAIN_TRANSPOSE, "yes"); // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
@@ -110,7 +108,7 @@ TEST_F(AllPathsTest, NoPaths) {
 
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen);
+									   maxLen, NULL, NULL, 0);
 	Path *p = AllPathsCtx_NextPath(ctx);
 
 	ASSERT_TRUE(p == NULL);
@@ -130,7 +128,7 @@ TEST_F(AllPathsTest, LongestPaths) {
 	unsigned int maxLen = UINT_MAX - 2;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen);
+									   maxLen, NULL, NULL, 0);
 	Path *path;
 
 	unsigned int longestPath = 0;
@@ -159,7 +157,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 	uint pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen);
+									   maxLen, NULL, NULL, 0);
 
 	/* Connections:
 	 * 0 -> 1
@@ -235,7 +233,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen);
+									   maxLen, NULL, NULL, 0);
 	/* Connections:
 	 * 0 -> 1
 	 * 0 -> 2
@@ -298,7 +296,7 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
 	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING,
-									   minLen, maxLen);
+									   minLen, maxLen, NULL, NULL, 0);
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
 		ASSERT_LT(pathsCount, 5);

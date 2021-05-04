@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 // forward declaration of edge
 struct QGEdge;

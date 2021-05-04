@@ -8,8 +8,6 @@
 
 #include "op.h"
 #include "../execution_plan.h"
-#include "../../redismodule.h"
-#include "../../graph/query_graph.h"
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
 

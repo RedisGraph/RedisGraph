@@ -9,23 +9,24 @@
 #include "redismodule.h"
 #include "debug.h"
 #include "errors.h"
-#include "config.h"
 #include "version.h"
 #include "util/arr.h"
 #include "util/cron.h"
 #include "query_ctx.h"
+#include "redisearch_api.h"
 #include "arithmetic/funcs.h"
 #include "commands/commands.h"
 #include "util/thpool/pools.h"
 #include "graph/graphcontext.h"
+#include "util/redis_version.h"
+#include "configuration/config.h"
 #include "ast/cypher_whitelist.h"
 #include "procedures/procedure.h"
-#include "arithmetic/arithmetic_expression.h"
 #include "module_event_handlers.h"
-#include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
-#include "redisearch_api.h"
-#include "util/redis_version.h"
+#include "configuration/reconf_handler.h"
+#include "serializers/graphcontext_type.h"
+#include "arithmetic/arithmetic_expression.h"
 
 //------------------------------------------------------------------------------
 // Minimal supported Redis version
@@ -37,7 +38,6 @@
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
-RG_Config config;                   // Module global configuration.
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
 
@@ -62,19 +62,20 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	/* TODO: when module unloads call GrB_finalize. */
-	GrB_Info res = GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true);
+	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
+						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	// GraphBLAS should use Redis allocator
+	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc,
+			RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free, true);
 	if(res != GrB_SUCCESS) {
 		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS");
 		return REDISMODULE_ERR;
 	}
 
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-
-	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
-						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
-		return REDISMODULE_ERR;
-	}
 
 	// validate minimum redis-server version
 	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR,
@@ -97,8 +98,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);
 
-	// Set up the module's configurable variables, using user-defined values where provided.
+	// set up the module's configurable variables,
+	// using user-defined values where provided
 	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+	// register for config updates
+	Config_Subscribe_Changes(reconf_handler);
 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
@@ -142,7 +146,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.DELETE", Graph_Delete, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -157,7 +161,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert, "write deny-oom", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.BULK", Graph_BulkInsert, "write deny-oom", 1, 1,
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
@@ -167,8 +171,13 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", MGraph_Config, "write", 1, 1,
+	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "write", 1, 1,
 								 1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	if(RedisModule_CreateCommand(ctx, "graph.LIST", Graph_List, "readonly", 0, 0,
+								 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 

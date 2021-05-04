@@ -4,6 +4,7 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
+#include "RG.h"
 #include "qg_node.h"
 #include "qg_edge.h"
 #include "RG.h"

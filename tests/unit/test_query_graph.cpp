@@ -100,9 +100,9 @@ class QueryGraphTest: public ::testing::Test {
 		QGNode *B = QGNode_New("B");
 		QGNode *C = QGNode_New("C");
 
-		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-		QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-		QGEdge *CA = QGEdge_New(C, A, relation, "CA");
+		QGEdge *AB = QGEdge_New(relation, "AB");
+		QGEdge *BC = QGEdge_New(relation, "BC");
+		QGEdge *CA = QGEdge_New(relation, "CA");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);
@@ -129,7 +129,7 @@ class QueryGraphTest: public ::testing::Test {
 		QGNode *B = QGNode_New("B");
 		QGNode *C = QGNode_New("C");
 
-		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
+		QGEdge *AB = QGEdge_New(relation, "AB");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);
@@ -151,7 +151,7 @@ class QueryGraphTest: public ::testing::Test {
 		const char *relation = "R";
 
 		QGNode *A = QGNode_New("A");
-		QGEdge *AA = QGEdge_New(A, A, relation, "AA");
+		QGEdge *AA = QGEdge_New(relation, "AA");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);
@@ -175,9 +175,9 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
 	QGNode *B = QGNode_New("B");
 	QGNode *C = QGNode_New("C");
 
-	QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-	QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-	QGEdge *CA = QGEdge_New(C, A, relation, "CA");
+	QGEdge *AB = QGEdge_New(relation, "AB");
+	QGEdge *BC = QGEdge_New(relation, "BC");
+	QGEdge *CA = QGEdge_New(relation, "CA");
 
 	QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 	QueryGraph_AddNode(g, A);
@@ -227,9 +227,9 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
 	QGNode *B = QGNode_New("B");
 	QGNode *C = QGNode_New("C");
 
-	QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-	QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-	QGEdge *CA = QGEdge_New(C, A, relation, "CA");
+	QGEdge *AB = QGEdge_New(relation, "AB");
+	QGEdge *BC = QGEdge_New(relation, "BC");
+	QGEdge *CA = QGEdge_New(relation, "CA");
 
 	QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 	QueryGraph_AddNode(g, A);
@@ -362,9 +362,9 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	QGNode *C = QGNode_New("C");
 	QGNode *D = QGNode_New("D");
 
-	QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-	QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-	QGEdge *CD = QGEdge_New(C, D, relation, "CD");
+	QGEdge *AB = QGEdge_New(relation, "AB");
+	QGEdge *BC = QGEdge_New(relation, "BC");
+	QGEdge *CD = QGEdge_New(relation, "CD");
 
 	uint node_cap = 4;
 	uint edge_cap = 3;

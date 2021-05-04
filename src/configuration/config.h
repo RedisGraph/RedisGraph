@@ -9,9 +9,10 @@
 #include <stdbool.h>
 #include "redismodule.h"
 
-#define RESULTSET_SIZE_UNLIMITED    UINT64_MAX
-#define CONFIG_TIMEOUT_NO_TIMEOUT   0
-#define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
+#define RESULTSET_SIZE_UNLIMITED     UINT64_MAX
+#define QUERY_MEM_CAPACITY_UNLIMITED 0
+#define CONFIG_TIMEOUT_NO_TIMEOUT    0
+#define VKEY_ENTITY_COUNT_UNLIMITED  UINT64_MAX
 
 typedef enum {
 	Config_TIMEOUT                  = 0,  // timeout value for queries
@@ -22,24 +23,24 @@ typedef enum {
 	Config_RESULTSET_MAX_SIZE       = 5,  // max number of records in result-set
 	Config_MAINTAIN_TRANSPOSE       = 6,  // maintain transpose matrices
 	Config_VKEY_MAX_ENTITY_COUNT    = 7,  // max number of elements in vkey
-	Config_END_MARKER               = 8
+	Config_MAX_QUEUED_QUERIES       = 8,  // max number of queued queries
+	Config_QUERY_MEM_CAPACITY       = 9,  // Max mem(bytes) that query/thread can utilize at any given time
+	Config_END_MARKER               = 10
 } Config_Option_Field;
 
-// configuration object
-typedef struct {
-	uint64_t timeout;                  // The timeout for each query in milliseconds.
-	bool async_delete;                 // If true, graph deletion is done asynchronously.
-	uint64_t cache_size;               // The cache size for each thread, per graph.
-	uint thread_pool_size;             // Thread count for thread pool.
-	uint omp_thread_count;             // Maximum number of OpenMP threads.
-	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
-	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
-	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
-} RG_Config;
+// callback function, invoked once configuration changes as a result of
+// successfully executing GRAPH.CONFIG SET
+typedef void (*Config_on_change)(Config_Option_Field type);
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 2
-static const Config_Option_Field RUNTIME_CONFIGS[] = { Config_RESULTSET_MAX_SIZE, Config_TIMEOUT };
+#define RUNTIME_CONFIG_COUNT 4
+static const Config_Option_Field RUNTIME_CONFIGS[] =
+{
+	Config_RESULTSET_MAX_SIZE,
+	Config_TIMEOUT,
+	Config_MAX_QUEUED_QUERIES,
+	Config_QUERY_MEM_CAPACITY
+};
 
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
@@ -52,7 +53,10 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field);
 // returns field name
 const char *Config_Field_name(Config_Option_Field field);
 
-bool Config_Option_set(Config_Option_Field field, RedisModuleString *val);
+bool Config_Option_set(Config_Option_Field field, const char *val);
 
 bool Config_Option_get(Config_Option_Field field, ...);
+
+// sets config update callback function
+void Config_Subscribe_Changes(Config_on_change cb);
 

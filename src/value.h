@@ -52,6 +52,7 @@ typedef enum {
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
 #define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR)
 #define SI_VALID_PROPERTY_VALUE (T_POINT | T_ARRAY | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE)
+#define SI_INDEXABLE (SI_NUMERIC | T_BOOL | T_STRING)
 
 
 /* Any values (except durations) are comparable with other values of the same type.
@@ -111,8 +112,10 @@ SIValue SI_Point(float latitude, float longitude);
 
 // Duplicate and ultimately free the input string.
 SIValue SI_DuplicateStringVal(const char *s);
+
 // Neither duplicate nor assume ownership of input string.
 SIValue SI_ConstStringVal(const char *s);
+
 // Don't duplicate input string, but assume ownership.
 SIValue SI_TransferStringVal(char *s);
 

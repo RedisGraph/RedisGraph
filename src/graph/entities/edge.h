@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef EDGE_H_
-#define EDGE_H_
+#pragma once
 
 #include "node.h"
 #include "../../value.h"
@@ -66,6 +65,4 @@ void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *byte
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);
-
-#endif
 

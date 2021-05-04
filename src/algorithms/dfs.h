@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include "../graph/entities/node.h"
-#include "../graph/entities/edge.h"
-
+#include "../graph/entities/qg_node.h"
 #include <limits.h>
 
 /* Perform DFS scan from node S,
@@ -18,3 +16,4 @@ QGEdge **DFS(
 	int level,          // Stop scanning once reached level.
     bool close_cycle    // Allow DFS scan to close a cycle.
 );
+

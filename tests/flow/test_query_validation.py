@@ -459,6 +459,10 @@ class testQueryValidationFlow(FlowTestsBase):
                 assert("Encountered path traversal" in str(e))
 
     def test31_set_invalid_property_type(self):
+        # Skip this test if running under Valgrind, as it causes a memory leak.
+        if Env().envRunner.debugger is not None:
+            Env().skip()
+
         queries = ["""MATCH (a) CREATE (:L {v: a})""",
                    """MATCH (a), (b) WHERE b.age IS NOT NULL SET b.age = a""",
                    """MERGE (a) ON MATCH SET a.age = a"""]
@@ -532,3 +536,13 @@ class testQueryValidationFlow(FlowTestsBase):
         query = "RETURN " + "\"" + retval + "\""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], retval)
+
+    def test36_multiple_proc_calls(self):
+        query = """MATCH (a)
+                   CALL algo.BFS(a, 3, NULL) YIELD nodes as ns1
+                   MATCH (b)
+                   CALL algo.BFS(b, 3, NULL) YIELD nodes as ns2
+                   RETURN ns1"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(plan.count("ProcedureCall") == 2)
+

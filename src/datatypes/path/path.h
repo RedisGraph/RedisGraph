@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef _PATH_H_
-#define _PATH_H_
+#pragma once
 
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
@@ -133,4 +132,3 @@ void Path_Reverse(Path *p);
  */
 void Path_Free(Path *p);
 
-#endif

@@ -1,10 +1,8 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
-
-#include "reduce_traversal.h"
 
 #include "RG.h"
 #include "../../util/arr.h"
@@ -13,6 +11,21 @@
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
 #include "../execution_plan_build/execution_plan_modify.h"
+
+/* Reduce traversal searches for traversal operations where
+ * both the src and destination nodes in the traversal are already
+ * resolved by former operation, in which case we need to make sure
+ * src is connected to dest via the current expression.
+ *
+ * Consider the following query, execution plan:
+ * MATCH (A)-[X]->(B)-[Y]->(A) RETURN A,B
+ * SCAN (A)
+ * TRAVERSE-1 (A)-[X]->(B)
+ * TRAVERSE-2 (B)-[Y]->(A)
+ * TRAVERSE-2 tries to see if B is connected to A via Y
+ * but A and B are known, we just need to make sure there's an edge
+ * of type Y connecting B to A
+ * this is done by the EXPAND-INTO operation. */
 
 static inline bool _isInSubExecutionPlan(OpBase *op) {
 	return ExecutionPlan_LocateOp(op, OPType_ARGUMENT) != NULL;

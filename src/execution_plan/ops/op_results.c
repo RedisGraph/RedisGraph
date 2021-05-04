@@ -6,10 +6,10 @@
 
 #include "op_results.h"
 #include "RG.h"
-#include "config.h"
 #include "../../util/arr.h"
-#include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_ctx.h"
+#include "../../configuration/config.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);

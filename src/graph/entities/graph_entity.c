@@ -48,10 +48,27 @@ static bool _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 	return false;
 }
 
+int GraphEntity_ClearProperties(GraphEntity *e) {
+	ASSERT(e);
+
+	int prop_count = e->entity->prop_count;
+	for(int i = 0; i < prop_count; i++) {
+		// free all allocated properties
+		SIValue_Free(e->entity->properties[i].value);
+	}
+	e->entity->prop_count = 0;
+
+	// free and NULL-set the properties bag.
+	rm_free(e->entity->properties);
+	e->entity->properties = NULL;
+
+	return prop_count;
+}
+
 /* Add a new property to entity */
 bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	ASSERT(e);
-	if(SIValue_IsNull(value)) return false;
+	if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) return false;
 
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
@@ -175,41 +192,35 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 	// write label
 	if(format & ENTITY_LABELS_OR_RELATIONS) {
 		switch(entityType) {
-		case GETYPE_NODE: {
-			Node *n = (Node *)e;
-			GraphContext *gc = QueryCtx_GetGraphCtx();
-
-			// Retrieve node labels
-			uint label_count;
-			NODE_GET_LABELS(gc->g, n, labels, label_count);
-			for(uint i = 0; i < label_count; i ++) {
-				const char *name = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE)->name;
-				// allocate space if needed
-				size_t labelLen = strlen(name);
-				if(*bufferLen - *bytesWritten < labelLen) {
-					*bufferLen += labelLen;
-					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+			case GETYPE_NODE: {
+				Node *n = (Node *)e;
+				if(n->label) {
+					// allocate space if needed
+					size_t labelLen = strlen(n->label);
+					if(*bufferLen - *bytesWritten < labelLen) {
+						*bufferLen += labelLen;
+						*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+					}
+					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", n->label);
 				}
-				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", name);
+				break;
 			}
-			break;
-		}
 
-		case GETYPE_EDGE: {
-			Edge *edge = (Edge *)e;
-			if(edge->relationship) {
-				size_t relationshipLen = strlen(edge->relationship);
-				if(*bufferLen - *bytesWritten < relationshipLen) {
-					*bufferLen += relationshipLen;
-					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+			case GETYPE_EDGE: {
+				Edge *edge = (Edge *)e;
+				if(edge->relationship) {
+					size_t relationshipLen = strlen(edge->relationship);
+					if(*bufferLen - *bytesWritten < relationshipLen) {
+						*bufferLen += relationshipLen;
+						*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+					}
+					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", edge->relationship);
 				}
-				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", edge->relationship);
+				break;
 			}
-			break;
-		}
 
-		default:
-			ASSERT(false);
+			default:
+				ASSERT(false);
 		}
 	}
 

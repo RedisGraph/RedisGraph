@@ -34,7 +34,7 @@ static Record FilterConsume(OpBase *opBase) {
 		r = OpBase_Consume(child);
 		if(!r) break;
 
-		/* Pass graph through filter tree */
+		/* Pass record through filter tree */
 		if(FilterTree_applyFilters(filter->filterTree, r) == FILTER_PASS) break;
 		else OpBase_DeleteRecord(r);
 	}

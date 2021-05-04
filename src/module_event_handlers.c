@@ -8,13 +8,13 @@
 #include "RG.h"
 #include <pthread.h>
 #include <stdbool.h>
-#include "graph/graphcontext.h"
-#include "serializers/graphcontext_type.h"
-#include "serializers/graphmeta_type.h"
-#include "config.h"
-#include "util/redis_version.h"
-#include "util/thpool/pools.h"
 #include "util/uuid.h"
+#include "util/thpool/pools.h"
+#include "util/redis_version.h"
+#include "graph/graphcontext.h"
+#include "configuration/config.h"
+#include "serializers/graphmeta_type.h"
+#include "serializers/graphcontext_type.h"
 
 // Global array tracking all extant GraphContexts.
 extern GraphContext **graphs_in_keyspace;
@@ -204,21 +204,22 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, 
 // Perform clean-up upon server shutdown.
 static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 		void *data) {
-	// Wait for all wokrer threads to exit.
-	// `thpool_destroy` will block for one second (at most)
-	// giving all worker threads a chance to exit.
-	// after which it will simply call `thread_destroy` and continue.
-	ThreadPools_Destroy();
-
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
-	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Shutdown, _ShutdownEventHandler);
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB,
+			_FlushDBHandler);
+
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Shutdown,
+			_ShutdownEventHandler);
+
+	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC,
+			_RenameGraphHandler);
+
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence,
+			_PersistenceEventHandler);
 }
 
 static void RG_AfterForkChild() {

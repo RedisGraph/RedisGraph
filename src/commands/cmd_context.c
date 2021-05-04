@@ -66,6 +66,9 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	// set ctx at the current thread entry
 	// CommandCtx_Free will remove it eventually
 	command_ctxs[tid] = ctx;
+
+	// reset thread memory consumption to 0 (no memory consumed)
+	rm_reset_n_alloced();
 }
 
 void CommandCtx_UntrackCtx(CommandCtx *ctx) {
@@ -73,6 +76,8 @@ void CommandCtx_UntrackCtx(CommandCtx *ctx) {
 	ASSERT(command_ctxs != NULL);
 
 	int tid = ThreadPools_GetThreadID();
+	if(command_ctxs[tid] == NULL) return; // nothing to clean
+
 	ASSERT(command_ctxs[tid] == ctx);
 
 	// set ctx at the current thread entry
@@ -129,7 +134,9 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 void CommandCtx_Free(CommandCtx *command_ctx) {
 	if(command_ctx->bc) {
 		RedisModule_UnblockClient(command_ctx->bc, NULL);
-		RedisModule_FreeThreadSafeContext(command_ctx->ctx);
+		if(command_ctx->ctx) {
+			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
+		}
 	}
 
 	CommandCtx_UntrackCtx(command_ctx);
@@ -138,3 +145,4 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 	rm_free(command_ctx->command_name);
 	rm_free(command_ctx);
 }
+

@@ -4,15 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_H
-#define GRAPH_H
+#pragma once
 
 #include <pthread.h>
 
+#include "rax.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
-#include "rax.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -349,6 +348,4 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
 void Graph_Free(
 	Graph *g
 );
-
-#endif
 

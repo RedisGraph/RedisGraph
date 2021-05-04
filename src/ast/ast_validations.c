@@ -232,6 +232,21 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, bool i
 	return res;
 }
 
+// validate that a map doesn't contains a nested aggregation function
+// e.g. {key: count(v)}
+static AST_Validation _ValidateMapExp(const cypher_astnode_t *node) {
+	ASSERT(cypher_astnode_type(node) == CYPHER_AST_MAP);
+
+	if(AST_ClauseContainsAggregation(node)) {
+		ErrorCtx_SetError("RedisGraph does not allow aggregate function calls \
+to be nested within maps. Aggregate functions should instead be called in a \
+preceding WITH clause and have their aliased values referenced in the map.");
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
 // Recursively collect function names and perform validations on functions with STAR arguments.
 static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_names) {
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -265,6 +280,12 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 		const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(node);
 		const char *func_name = cypher_ast_function_name_get_value(func);
 		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+	}
+
+	if(type == CYPHER_AST_MAP) {
+		// validate map expression
+		AST_Validation res = _ValidateMapExp(node);
+		if(res != AST_VALID) return res;
 	}
 
 	uint child_count = cypher_astnode_nchildren(node);
@@ -345,12 +366,6 @@ static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_
 
 	bool multihop = (start > 1) || (start != end);
 	if(!multihop) return AST_VALID;
-
-	// Multi-hop traversals cannot (currently) be filtered on
-	if(cypher_ast_rel_pattern_get_properties(edge) != NULL) {
-		ErrorCtx_SetError("RedisGraph does not currently support filters on variable-length paths.");
-		return AST_INVALID;
-	}
 
 	// Multi-hop traversals cannot be referenced
 	if(!projections) return AST_VALID;
@@ -492,12 +507,14 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
 	if(call_clauses == NULL) return AST_VALID;
 
-	AST_Validation res = AST_VALID;
-	ProcedureCtx *proc = NULL;
-	rax *identifiers = raxNew();
+
+	ProcedureCtx    *proc         =  NULL;
+	rax             *identifiers  =  NULL;
+	AST_Validation  res           =  AST_VALID;
 
 	uint call_count = array_len(call_clauses);
 	for(uint i = 0; i < call_count; i ++) {
+		identifiers = raxNew();
 		const cypher_astnode_t *call_clause = call_clauses[i];
 
 		// Make sure procedure exists.
@@ -521,49 +538,33 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			}
 		}
 
-		// Validate projections.
+		// validate projections
 		uint proj_count = cypher_ast_call_nprojections(call_clause);
 		if(proj_count > 0) {
-			// Collect call projections.
+			// collect call projections
 			for(uint j = 0; j < proj_count; j++) {
 				const cypher_astnode_t *proj = cypher_ast_call_get_projection(call_clause, j);
 				const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(proj);
 				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				const char *identifier = cypher_ast_identifier_get_name(ast_exp);
-				// Make sure each yield output is mentioned only once.
-				if(!raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL,
-							  NULL)) {
+
+				// make sure each yield output is mentioned only once
+				if(!raxInsert(identifiers, (unsigned char *)identifier,
+							strlen(identifier), NULL, NULL)) {
 					ErrorCtx_SetError("Variable `%s` already declared", identifier);
 					res = AST_INVALID;
 					goto cleanup;
 				}
-			}
 
-			// Make sure procedure is aware of each output.
-			char output[256];
-			raxIterator it;
-			_prepareIterateAll(identifiers, &it);
-
-			while(raxNext(&it)) {
-				size_t len = it.key_len;
-				unsigned char *identifier = it.key;
-				if(len >= 256) {
-					ErrorCtx_SetError("Output name `%s` too long", identifier);
-					res = AST_INVALID;
-					goto cleanup;
-				}
-
-				memcpy(output, identifier, len);
-				output[len] = 0;
-				if(!Procedure_ContainsOutput(proc, output)) {
-					raxStop(&it);
-					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`", proc_name, output);
+				// make sure procedure is aware of output
+				if(!Procedure_ContainsOutput(proc, identifier)) {
+					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
+							proc_name, identifier);
 					res = AST_INVALID;
 					goto cleanup;
 				}
 			}
 
-			raxStop(&it);
 			raxFree(identifiers);
 			identifiers = NULL;
 		}
@@ -574,8 +575,8 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 
 cleanup:
 	if(proc) Proc_Free(proc);
-	array_free(call_clauses);
 	if(identifiers) raxFree(identifiers);
+	array_free(call_clauses);
 	return res;
 }
 
@@ -1703,7 +1704,8 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
-	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+	// Verify that the query does not contain any expressions not in the
+	// RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
 
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
