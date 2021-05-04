@@ -82,7 +82,7 @@ static void _QueryGraphAddEdge
 	// each edge can only appear once in a QueryGraph
 	ASSERT(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
+	QGEdge *edge = QGEdge_New(NULL, alias);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// add the IDs of all reltype matrixes
