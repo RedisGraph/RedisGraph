@@ -8,6 +8,13 @@
 #include "attribute_set.h"
 #include "../../util/rmalloc.h"
 
+SIValue *ATTRIBUTE_NOTFOUND = &(SIValue)
+{
+	.longval     =  0,
+	.type        =  T_NULL,
+	.allocation  =  M_NONE
+};
+
 // an attribute is a pair of attribute-identifier and a value
 typedef struct {
 	SIValue value;         // attribute value

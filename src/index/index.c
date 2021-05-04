@@ -14,14 +14,14 @@
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
 
-static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
-							 double *doubleVal) {
-	Node n = GE_NEW_NODE();
-	NodeID nId = *(NodeID *)id;
-	GraphContext *gc = (GraphContext *)ctx;
-	Graph *g = gc->g;
+static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id,
+		char **strVal, double *doubleVal) {
+	Node          n           =  GE_NEW_NODE();
+	NodeID        nId         =  *(NodeID *)id;
+	GraphContext  *gc         =  (GraphContext *)ctx;
+	Graph         *g          =  gc->g;
+	int           node_found  =  Graph_GetNode(g, nId, &n);
 
-	int node_found = Graph_GetNode(g, nId, &n);
 	UNUSED(node_found);
 	ASSERT(node_found != 0);
 

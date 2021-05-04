@@ -9,9 +9,9 @@
 #include <limits.h>
 #include "../../value.h"
 
-#define ATTRIBUTE_UNKNOWN USHRT_MAX
-static SIValue *ATTRIBUTE_NOTFOUND = &(SIValue) { .longval = 0, .type = T_NULL };
+extern SIValue *ATTRIBUTE_NOTFOUND; // defined in attribute_set.c
 
+#define ATTRIBUTE_UNKNOWN USHRT_MAX
 typedef uint Version;
 typedef unsigned short Attribute_ID;
 typedef struct AttributeSet_opaque *AttributeSet;
