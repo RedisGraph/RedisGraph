@@ -26,7 +26,12 @@ int TraverseOrder_LabelsScore(AlgebraicExpression *exp, const QueryGraph *qg) {
 	QGNode      *dest_node  =  QueryGraph_GetNodeByAlias(qg, dest);
 
 	score += QGNode_LabelCount(src_node);
-	score += QGNode_LabelCount(dest_node);
+
+	// consider 'dest' only if different than 'src'
+	if(RG_STRCMP(src, dest) != 0) {
+		score += QGNode_LabelCount(dest_node);
+	}
+
 	return score;
 }
 
@@ -79,15 +84,20 @@ int TraverseOrder_BoundVariableScore(AlgebraicExpression *exp,
 
 	if(!bound_vars) return 0;
 
-	int        score  =  0;
-	const char *src   =  AlgebraicExpression_Source(exp);
-	const char *dest  =  AlgebraicExpression_Destination(exp);
+	int         score       =  0;
+	bool        src_bound   =  false;
+	bool        dest_bound  =  false;
+	const char* src         =  AlgebraicExpression_Source(exp);
+	const char* dest        =  AlgebraicExpression_Destination(exp);
 
-	bool src_bound = raxFind(bound_vars, (unsigned char *)src,
-							 strlen(src)) != raxNotFound;
+	src_bound = raxFind(bound_vars, (unsigned char *)src,
+			strlen(src)) != raxNotFound;
 
-	bool dest_bound = raxFind(bound_vars, (unsigned char *)dest,
-							  strlen(dest)) != raxNotFound;
+	// consider 'dest' only if different than 'src'
+	if(RG_STRCMP(src, dest) != 0) {
+		dest_bound = raxFind(bound_vars, (unsigned char *)dest,
+				strlen(dest)) != raxNotFound;
+	}
 
 	if(src_bound)  score += 1;
 	if(dest_bound) score += 1;
