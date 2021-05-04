@@ -194,14 +194,20 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 		switch(entityType) {
 			case GETYPE_NODE: {
 				Node *n = (Node *)e;
-				if(n->label) {
+				GraphContext *gc = QueryCtx_GetGraphCtx();
+
+				// Retrieve node labels
+				uint label_count;
+				NODE_GET_LABELS(gc->g, n, labels, label_count);
+				for(uint i = 0; i < label_count; i ++) {
+					const char *name = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE)->name;
 					// allocate space if needed
-					size_t labelLen = strlen(n->label);
+					size_t labelLen = strlen(name);
 					if(*bufferLen - *bytesWritten < labelLen) {
 						*bufferLen += labelLen;
 						*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
 					}
-					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", n->label);
+					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", name);
 				}
 				break;
 			}

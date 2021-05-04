@@ -41,7 +41,7 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 
 // commits delayed updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-		PendingUpdateCtx *updates) {
+				   PendingUpdateCtx *updates) {
 	ASSERT(gc != NULL);
 	ASSERT(stats != NULL);
 	ASSERT(updates != NULL);
@@ -64,11 +64,17 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		// index previous entity if we're required to
 		if(ge != updates[i].ge) {
 			if(reindex) {
-				s = GraphContext_GetSchemaByID(gc, updates[i-1].label_id,
-						SCHEMA_NODE);
-				ASSERT(s != NULL);
-				// introduce updated entity to index
-				Schema_AddNodeToIndices(s, (Node *)ge);
+				Node *n = (Node *)updates[i - 1].ge;
+				// Retrieve node labels
+				uint label_count;
+				NODE_GET_LABELS(gc->g, n, labels, label_count);
+				for(uint i = 0; i < label_count; i ++) {
+					Schema *s = GraphContext_GetSchemaByID(gc, labels[i],
+														   SCHEMA_NODE);
+					ASSERT(s != NULL);
+					// introduce updated entity to index
+					Schema_AddNodeToIndices(s, n);
+				}
 			}
 
 			// update state
@@ -88,10 +94,16 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 
 	// handle last updated entity
 	if(reindex) {
-		s = GraphContext_GetSchemaByID(gc, updates[i-1].label_id, SCHEMA_NODE);
-		ASSERT(s != NULL);
-		// introduce updated entity to index
-		Schema_AddNodeToIndices(s, (Node *)ge);
+		Node *n = (Node *)updates[i - 1].ge;
+		// Retrieve node labels
+		uint label_count;
+		NODE_GET_LABELS(gc->g, n, labels, label_count);
+		for(uint i = 0; i < label_count; i ++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+			ASSERT(s != NULL);
+			// introduce updated entity to index
+			Schema_AddNodeToIndices(s, n);
+		}
 	}
 
 	if(stats) stats->properties_set += properties_set;
@@ -99,9 +111,9 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 
 void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Record r,
 					   const EntityUpdateEvalCtx *ctx, bool allow_null) {
-	Schema *s         = NULL;
-	int label_id      = GRAPH_NO_LABEL;
-	bool node_update  = false;
+	Schema *s             = NULL;
+	bool node_update      = false;
+	bool node_is_labeled  = false;
 
 	//--------------------------------------------------------------------------
 	// validate entity type
@@ -115,8 +127,8 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	// make sure we're updating either a node or an edge
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 		ErrorCtx_RaiseRuntimeException(
-				"Update error: alias '%s' did not resolve to a graph entity",
-				ctx->alias);
+			"Update error: alias '%s' did not resolve to a graph entity",
+			ctx->alias);
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -125,8 +137,9 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	// if the entity is a node
 	if(node_update) {
 		Node *n = (Node *)entity;
-		// retrieve the node's Label ID from a local member or the graph
-		label_id = NODE_GET_LABEL_ID(n, gc->g);
+		uint label_count;
+		NODE_GET_LABELS(gc->g, n, labels, label_count);
+		node_is_labeled = (label_count > 0);
 	}
 
 	// if this update replaces all existing properties
@@ -134,8 +147,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	if(ctx->mode == UPDATE_REPLACE) {
 		PendingUpdateCtx update = {
 			.ge            =  entity,
-			.label_id      =  label_id,
-			.update_index  =  (label_id != GRAPH_NO_LABEL),
+			.update_index  = node_is_labeled,
 			.attr_id       =  ATTRIBUTE_ALL,
 		};
 		*updates = array_append(*updates, update);
@@ -165,16 +177,20 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 		}
 
 		// determine whether we must update the index for this update
-		if(node_update && label_id != GRAPH_NO_LABEL) {
-			// if the (label:attribute) combination has an index, take note
-			update_index = GraphContext_GetIndexByID(gc, label_id, &attr_id,
-					IDX_ANY) != NULL;
+		if(node_update && node_is_labeled) {
+			// if any (label:attribute) combination has an index, take note
+			uint label_count;
+			NODE_GET_LABELS(gc->g, (Node *)entity, labels, label_count);
+			for(uint i = 0; i < label_count; i ++) {
+				update_index = GraphContext_GetIndexByID(gc, labels[i], &attr_id,
+														 IDX_ANY) != NULL;
+				if(update_index) break;
+			}
 		}
 
 		PendingUpdateCtx update = {
 			.ge            =  entity,
 			.attr_id       =  attr_id,
-			.label_id      =  label_id,
 			.new_value     =  new_value,
 			.update_index  =  update_index,
 		};
