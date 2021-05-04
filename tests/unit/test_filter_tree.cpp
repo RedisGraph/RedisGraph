@@ -219,6 +219,7 @@ TEST_F(FilterTreeTest, SubTrees) {
 	FT_FilterNode *sub_tree = sub_trees[0];
 	compareFilterTrees(tree, sub_tree);
 
+
 	FilterTree_Free(tree);
 	array_free(sub_trees);
 
@@ -248,7 +249,6 @@ TEST_F(FilterTreeTest, SubTrees) {
 	compareFilterTrees(original_tree->cond.right, sub_tree);
 
 	array_free(sub_trees);
-	// FilterTree_Free(tree);
 	FilterTree_Free(original_tree);
 
 	//------------------------------------------------------------------------------
