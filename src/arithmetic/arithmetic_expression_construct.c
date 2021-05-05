@@ -441,11 +441,18 @@ static AR_ExpNode *_AR_ExpFromPath(const cypher_astnode_t *path) {
 	 * in TO_PATH requires in order to build a complete path. The order of the evaluated graph entities
 	 * is the same order in which they apeare in the AST.*/
 	AR_ExpNode *op = AR_EXP_NewOpNode("topath", 1 + path_len);
+
 	// Set path AST as first paramerter.
 	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
-	for(uint i = 0; i < path_len; i ++)
+	AST *ast = QueryCtx_GetAST();
+	for(uint i = 0; i < path_len; i ++) {
 		// Set graph entities as parameters, ordered according to the path AST.
-		op->op.children[i + 1] = _AR_EXP_FromASTNode(cypher_ast_pattern_path_get_element(path, i));
+		const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
+		const char *alias = AST_GetEntityName(ast, entity);
+		// TODO: skip anonymous entities
+		op->op.children[i + 1] = _AR_EXP_FromASTNode(entity);
+	}
+
 	return op;
 }
 
@@ -635,26 +642,6 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	return op;
 }
 
-static AR_ExpNode *_AR_ExpFromPatternPath(const cypher_astnode_t *expr) {
-	// Build a variable operand from this expression
-	AR_ExpNode *exp = _AR_ExpNodeFromGraphEntity(expr);
-	// The operand must have a valid identifier.
-	const char *alias = exp->operand.variadic.entity_alias;
-	ASSERT(alias != NULL);
-
-	// Build the toPath function call that will be projected by the subtree
-	AR_ExpNode *project_exp = _AR_ExpFromPath(expr);
-	project_exp->resolved_name = alias;
-
-	/* Upate the ExecutionPlan to contain a RollUpApply
-	 * operation with the current left-hand side op tree and
-	 * a right-hand traversal subtree that resolves this pattern. */
-	ExecutionPlan *plan = QueryCtx_GetExecutionPlan();
-	buildRollUpMatchStream(plan, expr, project_exp, alias);
-
-	return exp;
-}
-
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t t = cypher_astnode_type(expr);
@@ -718,7 +705,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_MAP_PROJECTION) {
 		return _AR_ExpFromMapProjection(expr);
 	} else if(t == CYPHER_AST_PATTERN_PATH) {
-		return _AR_ExpFromPatternPath(expr);
+		return _AR_ExpFromPath(expr);
 	} else {
 		/*
 		   Unhandled types:

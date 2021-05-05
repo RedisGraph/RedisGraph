@@ -143,35 +143,6 @@ void _buildOptionalMatchOps(ExecutionPlan *plan, const cypher_astnode_t *path) {
 	}
 }
 
-void buildRollUpMatchStream(ExecutionPlan *plan, const cypher_astnode_t *path,
-							AR_ExpNode *project_exp, const char *rollup_alias) {
-	ASSERT(plan->root != NULL);
-	// Collect the variables that are bound at this point.
-	rax *bound_vars = raxNew();
-	// Rather than cloning the record map, collect the bound variables along with their
-	// parser-generated constant strings.
-	ExecutionPlan_BoundVariables(plan->root, bound_vars);
-	// Collect the variable names from bound_vars to populate the Argument op we will build.
-	const char **arguments = (const char **)raxValues(bound_vars);
-	raxFree(bound_vars);
-
-	// Build the new Match stream
-	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
-	array_free(arguments);
-
-	// Build a Project op to project the path expression being matched.
-	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
-	exps = array_append(exps, project_exp);
-	OpBase *project = NewProjectOp(plan, exps);
-	// Make the Project op the root of the Match stream.
-	ExecutionPlan_AddOp(project, match_stream);
-
-	// Create an Apply operator and make it the new root.
-	OpBase *apply_op = NewRollUpApplyOp(plan, rollup_alias);
-	ExecutionPlan_UpdateRoot(plan, apply_op);
-	ExecutionPlan_AddOp(apply_op, project);
-}
-
 void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
 	if(cypher_ast_match_is_optional(clause)) {
 		_buildOptionalMatchOps(plan, clause);
@@ -208,7 +179,8 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 
-	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
+	// Build the FilterTree to model any WHERE predicates on these clauses
+	// and place ops appropriately
 	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches,
 														   mandatory_match_count);
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);

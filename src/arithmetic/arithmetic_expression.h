@@ -153,8 +153,7 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr);
  * a boolean value and false otherwise. */
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
 
-/* Generate a heap-allocated name for an arithmetic expression.
- * This routine is only used to name ORDER BY expressions. */
+/* Generate a heap-allocated name for an arithmetic expression. */
 char *AR_EXP_BuildResolvedName(AR_ExpNode *root);
 
 /* Clones given expression. */
