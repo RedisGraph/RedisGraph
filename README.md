@@ -23,10 +23,15 @@ To read the docs, visit [redisgraph.io](http://redisgraph.io).
 
 ## Quickstart
 
-1. [Docker](#docker)
-2. [Build](#building)
-3. [Start](#loading-redisgraph-into-redis)
-4. [Use from any client](#using-redisgraph)
+1. [Trying RedisGraph](#trying-redisgraph)
+2. [Docker](#docker)
+3. [Build](#building)
+4. [Start](#loading-redisgraph-into-redis)
+5. [Use from any client](#using-redisgraph)
+
+## Trying RedisGraph
+
+To try RedisGraph, either use the RedisGraph Docker image, or [create a free Redis Cloud Essentials account](https://redislabs.com/try-free/) to get a RedisGraph instance in the cloud.
 
 ## Docker
 
