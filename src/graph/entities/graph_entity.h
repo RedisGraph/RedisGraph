@@ -4,13 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_ENTITY_H_
-#define GRAPH_ENTITY_H_
+#pragma once
 
 #include "../../value.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define ATTRIBUTE_NOTFOUND USHRT_MAX
+// ATTRIBUTE_ALL indicates all properties for SET clauses that replace a property map
+#define ATTRIBUTE_ALL USHRT_MAX - 1
 
 #define ENTITY_ID_ISLT(a, b) ((*a) < (*b))
 #define INVALID_ENTITY_ID -1l
@@ -22,10 +23,10 @@
 // Defined in graph_entity.c
 extern SIValue *PROPERTY_NOTFOUND;
 
-typedef unsigned short Attribute_ID;
-typedef GrB_Index EntityID;
-typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
+typedef GrB_Index NodeID;
+typedef GrB_Index EntityID;
+typedef unsigned short Attribute_ID;
 
 /*  Format a graph entity string according to the enum.
     One can sum the enum values in order to print multiple value:
@@ -61,6 +62,10 @@ typedef struct {
 	EntityID id;
 } GraphEntity;
 
+/* Deletes all properties on the GraphEntity and returns
+ * the number of deleted properties. */
+int GraphEntity_ClearProperties(GraphEntity *e);
+
 /* Adds property to entity
  * returns - reference to newly added property. */
 bool GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value);
@@ -83,6 +88,4 @@ bool GraphEntity_IsDeleted(const GraphEntity *e);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);
-
-#endif
 

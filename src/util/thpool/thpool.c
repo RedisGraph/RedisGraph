@@ -9,6 +9,7 @@
    ********************************/
 
 //#define _POSIX_C_SOURCE 200809L
+#include "RG.h"
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
@@ -56,11 +57,12 @@ typedef struct job {
 
 /* Job queue */
 typedef struct jobqueue {
-	pthread_mutex_t rwmutex; /* used for queue r/w access */
-	job *front;              /* pointer to front of queue */
-	job *rear;               /* pointer to rear  of queue */
-	bsem *has_jobs;          /* flag as binary semaphore  */
-	int len;                 /* number of jobs in queue   */
+	pthread_mutex_t rwmutex; 		/* used for queue r/w access */
+	job *front;              		/* pointer to front of queue */
+	job *rear;               		/* pointer to rear  of queue */
+	bsem *has_jobs;          		/* flag as binary semaphore  */
+	int len;                 		/* number of jobs in queue   */
+	uint64_t cap;                   /* capacity of the queue     */
 } jobqueue;
 
 /* Thread */
@@ -272,8 +274,17 @@ int thpool_get_thread_id(thpool_* thpool_p, pthread_t pthread) {
 	return -1;
 }
 
-uint thpool_queue_size(thpool_* thpool_p) {
-	return thpool_p->jobqueue.len;
+// return true if thread pool internal queue is full with pending work
+bool thpool_queue_full(thpool_* thpool_p) {
+	ASSERT(thpool_p != NULL);
+
+	// test if there's enough room in thread pool queue
+	return (thpool_p->jobqueue.len >= thpool_p->jobqueue.cap);
+}
+
+void thpool_set_jobqueue_cap(thpool_* thpool_p, uint64_t val) {
+	ASSERT(thpool_p);
+	thpool_p->jobqueue.cap = val;
 }
 
 /* ============================ THREAD ============================== */
@@ -405,6 +416,8 @@ static int jobqueue_init(jobqueue *jobqueue_p) {
 
 	pthread_mutex_init(&(jobqueue_p->rwmutex), NULL);
 	bsem_init(jobqueue_p->has_jobs, 0);
+
+	jobqueue_p->cap = UINT64_MAX; // unlimited queue size
 
 	return 0;
 }

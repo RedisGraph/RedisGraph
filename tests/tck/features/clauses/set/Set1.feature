@@ -193,7 +193,6 @@ Feature: Set1 - Set a Property
       """
     Then a TypeError should be raised at runtime: InvalidPropertyType
 
-  @skip
   Scenario: [11] Set multiple node properties
     Given an empty graph
     And having executed:

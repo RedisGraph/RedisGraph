@@ -118,6 +118,28 @@ Timeout is a flag that specifies the maximum runtime for read queries in millise
 $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
 ```
 
+---
+
+## QUERY_MEM_CAPACITY
+
+Setting the memory capacity of a query allows the server to kill queries that are consuming too much memory and return with the error message `Query's mem consumption exceeded capacity`. This helps to avoid scenarios when the server becomes unresponsive due to an unbounded query exhausting system resources.
+
+The configuration argument is the maximum number of bytes that can be allocated by any single query.
+
+This configuration can be set when the module loads or at runtime.
+
+### Default
+
+`QUERY_MEM_CAPACITY` is unlimited by default; this default can be restored by setting `QUERY_MEM_CAPACITY` to zero or a negative value.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 megabyte limit
+
+$ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
+```
+
 # Query Configurations
 
 Some configurations may be set per query in the form of additional arguments after the query string. All per-query configurations are off by default unless using a language-specific client, which may establish its own defaults.

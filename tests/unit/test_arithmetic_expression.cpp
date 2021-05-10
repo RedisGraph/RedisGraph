@@ -73,7 +73,7 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	ast->referenced_entities = raxNew();
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN,
-			NULL);
+													   NULL);
 	return _BuildProjectionExpressions(ret_clause, ast)[0];
 }
 

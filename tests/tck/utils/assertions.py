@@ -39,8 +39,8 @@ def nodeToString(value):
     if value.label:
         res += ':' + value.label
     if value.properties:
-        props = ','.join(key+': '+str(val)
-                         for key, val in value.properties.items())
+        props = ', '.join(key+': '+str(val)
+                          for key, val in value.properties.items())
         if value.label:
             res += " "
         res += '{' + props + '}'
@@ -54,8 +54,8 @@ def edgeToString(value):
     if value.relation:
         res += ":" + value.relation
     if value.properties:
-        props = ','.join(key+': '+str(val)
-                         for key, val in value.properties.items())
+        props = ', '.join(key+': '+str(val)
+                          for key, val in value.properties.items())
         if value.relation:
             res += " "
         res += '{' + props + '}'

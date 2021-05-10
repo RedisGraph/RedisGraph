@@ -358,6 +358,17 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	}
 	return false;
 }
+Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
+		Attribute_ID *attribute_id, IndexType type) {
+
+	ASSERT(gc     !=  NULL);
+
+	// Retrieve the schema for given id
+	Schema *s= GraphContext_GetSchemaByID(gc, id, SCHEMA_NODE);
+	if(s == NULL) return NULL;
+
+	return Schema_GetIndex(s, attribute_id, type);
+}
 
 Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 							 Attribute_ID *attribute_id, IndexType type) {
@@ -366,10 +377,10 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 	ASSERT(label != NULL);
 
 	// Retrieve the schema for this label
-	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(schema == NULL) return NULL;
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	if(s == NULL) return NULL;
 
-	return Schema_GetIndex(schema, attribute_id, type);
+	return Schema_GetIndex(s, attribute_id, type);
 }
 
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,

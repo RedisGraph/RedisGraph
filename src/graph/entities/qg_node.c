@@ -4,6 +4,7 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
+#include "RG.h"
 #include "qg_node.h"
 #include "qg_edge.h"
 #include "../graph.h"
@@ -29,6 +30,11 @@ QGNode *QGNode_New(const char *alias) {
 	n->incoming_edges = array_new(QGEdge *, 0);
 	n->outgoing_edges = array_new(QGEdge *, 0);
 	return n;
+}
+
+uint QGNode_LabelCount(const QGNode *n) {
+	ASSERT(n != NULL);
+	return (n->label != NULL) ? 1 : 0;
 }
 
 bool QGNode_HighlyConnected(const QGNode *n) {
