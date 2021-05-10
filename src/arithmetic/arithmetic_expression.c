@@ -36,7 +36,7 @@
 //------------------------------------------------------------------------------
 
 static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r,
-		SIValue *result);
+											  SIValue *result);
 
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r,
 									  SIValue *result);
@@ -100,25 +100,25 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	AR_ExpNode *clone = rm_calloc(1, sizeof(AR_ExpNode));
 	clone->type = AR_EXP_OPERAND;
 	switch(exp->operand.type) {
-	case AR_EXP_CONSTANT:
-		clone->operand.type = AR_EXP_CONSTANT;
-		clone->operand.constant = SI_ShallowCloneValue(exp->operand.constant);
-		break;
-	case AR_EXP_VARIADIC:
-		clone->operand.type = exp->operand.type;
-		clone->operand.variadic.entity_alias = exp->operand.variadic.entity_alias;
-		clone->operand.variadic.entity_alias_idx = exp->operand.variadic.entity_alias_idx;
-		break;
-	case AR_EXP_PARAM:
-		clone->operand.type = AR_EXP_PARAM;
-		clone->operand.param_name = exp->operand.param_name;
-		break;
-	case AR_EXP_BORROW_RECORD:
-		clone->operand.type = AR_EXP_BORROW_RECORD;
-		break;
-	default:
-		ASSERT(false);
-		break;
+		case AR_EXP_CONSTANT:
+			clone->operand.type = AR_EXP_CONSTANT;
+			clone->operand.constant = SI_ShallowCloneValue(exp->operand.constant);
+			break;
+		case AR_EXP_VARIADIC:
+			clone->operand.type = exp->operand.type;
+			clone->operand.variadic.entity_alias = exp->operand.variadic.entity_alias;
+			clone->operand.variadic.entity_alias_idx = exp->operand.variadic.entity_alias_idx;
+			break;
+		case AR_EXP_PARAM:
+			clone->operand.type = AR_EXP_PARAM;
+			clone->operand.param_name = exp->operand.param_name;
+			break;
+		case AR_EXP_BORROW_RECORD:
+			clone->operand.type = AR_EXP_BORROW_RECORD;
+			break;
+		default:
+			ASSERT(false);
+			break;
 	}
 	return clone;
 }
@@ -156,6 +156,12 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	ASSERT(func != NULL);
 	node->op.f = func;
 
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewPlaceholderOpNode(const char *func_name, uint child_count) {
+	AR_ExpNode *node = _AR_EXP_NewOpNode(func_name, child_count);
+	node->op.f = AR_GetPlaceholderFunc();
 	return node;
 }
 
@@ -497,25 +503,25 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r,
 									  SIValue *result) {
 	AR_EXP_Result res = EVAL_OK;
 	switch(root->type) {
-	case AR_EXP_OP:
-		return _AR_EXP_EvaluateFunctionCall(root, r, result);
-	case AR_EXP_OPERAND:
-		switch(root->operand.type) {
-		case AR_EXP_CONSTANT:
-			// The value is constant or has been computed elsewhere, and is shared with the caller.
-			*result = SI_ShareValue(root->operand.constant);
-			return res;
-		case AR_EXP_VARIADIC:
-			return _AR_EXP_EvaluateVariadic(root, r, result);
-		case AR_EXP_PARAM:
-			return _AR_EXP_EvaluateParam(root, result);
-		case AR_EXP_BORROW_RECORD:
-			return _AR_EXP_EvaluateBorrowRecord(root, r, result);
+		case AR_EXP_OP:
+			return _AR_EXP_EvaluateFunctionCall(root, r, result);
+		case AR_EXP_OPERAND:
+			switch(root->operand.type) {
+				case AR_EXP_CONSTANT:
+					// The value is constant or has been computed elsewhere, and is shared with the caller.
+					*result = SI_ShareValue(root->operand.constant);
+					return res;
+				case AR_EXP_VARIADIC:
+					return _AR_EXP_EvaluateVariadic(root, r, result);
+				case AR_EXP_PARAM:
+					return _AR_EXP_EvaluateParam(root, result);
+				case AR_EXP_BORROW_RECORD:
+					return _AR_EXP_EvaluateBorrowRecord(root, r, result);
+				default:
+					ASSERT(false && "Invalid expression type");
+			}
 		default:
-			ASSERT(false && "Invalid expression type");
-		}
-	default:
-		ASSERT(false && "Unknown expression type");
+			ASSERT(false && "Unknown expression type");
 	}
 
 	return res;
@@ -638,15 +644,31 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
 	return false;
 }
 
-bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
-	if(root == NULL) return false;
+AR_ExpNode *AR_EXP_ContainsFunc(AR_ExpNode *root, const char *func) {
+	if(root == NULL) return NULL;
 	if(AR_EXP_IsOperation(root)) {
-		if(strcasecmp(root->op.func_name, func) == 0) return true;
+		if(strcasecmp(root->op.func_name, func) == 0) return root;
 		for(int i = 0; i < root->op.child_count; i++) {
-			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
+			AR_ExpNode *ret = AR_EXP_ContainsFunc(root->op.children[i], func);
+			if(ret) return ret;
 		}
 	}
-	return false;
+	return NULL;
+}
+
+void AR_EXP_ReplaceFunc(AR_ExpNode **root, const char *func,
+						AR_ExpNode *replacement) {
+	AR_ExpNode *exp = *root;
+	if(exp == NULL) return;
+	if(AR_EXP_IsOperation(exp)) {
+		if(strcasecmp(exp->op.func_name, func) == 0) {
+			*root = replacement;
+			return;
+		}
+		for(uint i = 0; i < exp->op.child_count; i++) {
+			AR_EXP_ReplaceFunc(&exp->op.children[i], func, replacement);
+		}
+	}
 }
 
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp) {
@@ -749,15 +771,15 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 	AR_ExpNode *clone = NULL;
 
 	switch(exp->type) {
-	case AR_EXP_OPERAND:
-		clone = _AR_EXP_CloneOperand(exp);
-		break;
-	case AR_EXP_OP:
-		clone = _AR_EXP_CloneOp(exp);
-		break;
-	default:
-		ASSERT(false);
-		break;
+		case AR_EXP_OPERAND:
+			clone = _AR_EXP_CloneOperand(exp);
+			break;
+		case AR_EXP_OP:
+			clone = _AR_EXP_CloneOp(exp);
+			break;
+		default:
+			ASSERT(false);
+			break;
 	}
 
 	clone->resolved_name = exp->resolved_name;

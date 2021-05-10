@@ -75,6 +75,9 @@ typedef struct AR_ExpNode {
 /* Creates a new Arithmetic expression operation node */
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
+/* Creates a new arithmetic expression operation node without associating a function. */
+AR_ExpNode *AR_EXP_NewPlaceholderOpNode(const char *func_name, uint child_count);
+
 /* Creates a new Arithmetic expression variable operand node */
 AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias);
 
@@ -131,7 +134,12 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 /* Checks to see if expression contains given function.
  * root - expression root to traverse.
  * func - function name to lookup. */
-bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
+AR_ExpNode *AR_EXP_ContainsFunc(AR_ExpNode *root, const char *func);
+
+/* Find a function node in an expression tree and replace it
+ * with the given expression node. */
+void AR_EXP_ReplaceFunc(AR_ExpNode **root, const char *func,
+						AR_ExpNode *replacement);
 
 /* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);

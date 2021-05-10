@@ -14,6 +14,8 @@
 // Arithmetic function repository
 rax *__aeRegisteredFuncs = NULL;
 
+AR_FuncDesc placeholderFunc = { 0 };
+
 AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint max_argc,
 							SIType *types, bool reducible, bool aggregate) {
 	AR_FuncDesc *desc = rm_malloc(sizeof(AR_FuncDesc));
@@ -51,6 +53,10 @@ AR_FuncDesc *AR_GetFunc(const char *func_name) {
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
 
 	return (f != raxNotFound) ? f : NULL;
+}
+
+AR_FuncDesc *AR_GetPlaceholderFunc() {
+	return &placeholderFunc;
 }
 
 bool AR_FuncExists(const char *func_name) {

@@ -45,6 +45,9 @@ void AR_RegFunc(AR_FuncDesc *func);
 /* Retrieves an arithmetic function by its name. */
 AR_FuncDesc *AR_GetFunc(const char *func_name);
 
+/* Retrieve the placeholder function. */
+AR_FuncDesc *AR_GetPlaceholderFunc(void);
+
 /* Check to see if function exists.
  * TODO: move this function to more appropriate place. */
 bool AR_FuncExists(const char *func_name);

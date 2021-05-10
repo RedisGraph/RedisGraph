@@ -315,6 +315,9 @@ ExecutionPlan *NewExecutionPlan(void) {
 	// or CALL clause
 	_implicit_result(plan);
 
+	// perform necessary transformations on constructed ExecutionPlan
+	ExecutionPlan_PostBuild(plan);
+
 	// clean up
 	array_free(segments);
 
@@ -325,7 +328,6 @@ void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
 	// Plan should be prepared only once.
 	ASSERT(!plan->prepared);
 
-	ExecutionPlan_PostBuild(plan);
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
 	plan->prepared = true;

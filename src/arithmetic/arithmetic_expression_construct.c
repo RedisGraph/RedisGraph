@@ -20,7 +20,8 @@ static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity);
 
 static bool __AR_EXP_ContainsNestedAgg(const AR_ExpNode *root, bool in_agg) {
 	// Is this an aggregation node?
-	bool agg_node = (root->type == AR_EXP_OP && root->op.f->aggregate == true);
+	bool agg_node = (root->type == AR_EXP_OP && root->op.f &&
+					 root->op.f->aggregate == true);
 	// Aggregation node nested within another aggregation node.
 	if(agg_node && in_agg) return true;
 
@@ -642,6 +643,13 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromPatternPath(const cypher_astnode_t *expr) {
+	// Build a placeholder operation node to contain the toPath call.
+	AR_ExpNode *op = AR_EXP_NewPlaceholderOpNode("pattern_path", 1);
+	op->op.children[0] = _AR_ExpFromPath(expr);
+	return op;
+}
+
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t t = cypher_astnode_type(expr);
@@ -705,7 +713,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_MAP_PROJECTION) {
 		return _AR_ExpFromMapProjection(expr);
 	} else if(t == CYPHER_AST_PATTERN_PATH) {
-		return _AR_ExpFromPath(expr);
+		return _AR_ExpFromPatternPath(expr);
 	} else {
 		/*
 		   Unhandled types:

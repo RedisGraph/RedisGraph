@@ -21,7 +21,7 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
 	 * Edge count
 	 * Label matrix count
 	 * Relation matrix count - N
-	 * Does relationship Ri holds mutiple edges under a single entry X N 
+	 * Does relationship Ri holds mutiple edges under a single entry X N
 	 * Number of graph keys (graph context key + meta keys)
 	 */
 
@@ -59,24 +59,24 @@ static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 									 uint64_t offset, uint64_t entities_to_encode) {
 	uint64_t required_entities_count = 0;
 	switch(state) {
-	case ENCODE_STATE_NODES:
-		required_entities_count = Graph_NodeCount(gc->g);
-		break;
-	case ENCODE_STATE_DELETED_NODES:
-		required_entities_count = Graph_DeletedNodeCount(gc->g);
-		break;
-	case ENCODE_STATE_EDGES:
-		required_entities_count = Graph_EdgeCount(gc->g);
-		break;
-	case ENCODE_STATE_DELETED_EDGES:
-		required_entities_count = Graph_DeletedEdgeCount(gc->g);
-		break;
-	case ENCODE_STATE_GRAPH_SCHEMA:
-		required_entities_count = 1;
-		break;
-	default:
-		ASSERT(false && "Unknown encoding state in _CurrentStatePayloadInfo");
-		break;
+		case ENCODE_STATE_NODES:
+			required_entities_count = Graph_NodeCount(gc->g);
+			break;
+		case ENCODE_STATE_DELETED_NODES:
+			required_entities_count = Graph_DeletedNodeCount(gc->g);
+			break;
+		case ENCODE_STATE_EDGES:
+			required_entities_count = Graph_EdgeCount(gc->g);
+			break;
+		case ENCODE_STATE_DELETED_EDGES:
+			required_entities_count = Graph_DeletedEdgeCount(gc->g);
+			break;
+		case ENCODE_STATE_GRAPH_SCHEMA:
+			required_entities_count = 1;
+			break;
+		default:
+			ASSERT(false && "Unknown encoding state in _CurrentStatePayloadInfo");
+			break;
 	}
 
 	PayloadInfo payload_info;
@@ -187,24 +187,24 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 		if(i > 0) GraphEncodeContext_SetProcessedEntitiesOffset(gc->encoding_context, 0);
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
-		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v9(rdb, gc);
-			break;
-		default:
-			ASSERT(false && "Unknown encoding phase");
-			break;
+			case ENCODE_STATE_NODES:
+				RdbSaveNodes_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_NODES:
+				RdbSaveDeletedNodes_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_EDGES:
+				RdbSaveEdges_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_EDGES:
+				RdbSaveDeletedEdges_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_GRAPH_SCHEMA:
+				RdbSaveGraphSchema_v9(rdb, gc);
+				break;
+			default:
+				ASSERT(false && "Unknown encoding phase");
+				break;
 		}
 
 		// Save the current state and the number of encoded entities.
