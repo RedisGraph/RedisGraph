@@ -24,6 +24,7 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 <a href="https://www.fiverr.com"><img src="images/logo-fiverr.jpg" alt="Fiverr" height="100"/></a>
 <a href="https://redislabs.com/case-studies/thinkdata-works/"><img src="images/logo-thinkdata.jpg" alt="thinkdata" height="100"/></a> 
 <a href="https://sidy.fr/"><img src="images/logo-sidy.jpg" alt="sidy" height="100"/></a>
+
 <a href="https://www.youtube.com/watch?v=6FYYn-9fPXE"><img src="images/logo-mdmetrix.jpg" alt="mdmetrix" height="100"/></a> 
 <a href="https://linkirous.us/"><img src="images/logo-linkurious.jpg" alt="linkirous" height="100"/></a>
 <a href="https://medium.com/@tomzeppenfeldt/graphileon-and-redis-labs-become-partners-35bafe6790fa"><img src="images/logo-graphileon.jpg" alt="graphileon" height="100"/></a>
