@@ -20,3 +20,4 @@ QGNode **BFS(
 	QGNode *s,  // Node from which BFS scan begins.
 	int *level  // Stop scanning at level.
 );
+

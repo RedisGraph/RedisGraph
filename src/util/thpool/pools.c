@@ -4,9 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include <pthread.h>
 #include "RG.h"
 #include "pools.h"
-#include <pthread.h>
+#include "../../configuration/config.h"
 
 //------------------------------------------------------------------------------
 // Thread pools
@@ -112,6 +113,11 @@ void ThreadPools_Resume
 	thpool_resume(_writers_thpool);
 }
 
+void ThreadPools_Set_max_pending_work(uint64_t val) {
+	thpool_set_jobqueue_cap(_readers_thpool, val);
+	thpool_set_jobqueue_cap(_writers_thpool, val);
+}
+
 // add task for reader thread
 int ThreadPools_AddWorkReader
 (
@@ -119,6 +125,9 @@ int ThreadPools_AddWorkReader
 	void *arg_p
 ) {
 	ASSERT(_readers_thpool != NULL);
+
+	// make sure there's enough room in thread pool queue
+	if(thpool_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_readers_thpool, function_p, arg_p);
 }
@@ -130,6 +139,9 @@ int ThreadPools_AddWorkWriter
 	void *arg_p
 ) {
 	ASSERT(_writers_thpool != NULL);
+
+	// make sure there's enough room in thread pool queue
+	if(thpool_queue_full(_writers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_writers_thpool, function_p, arg_p);
 }
@@ -143,19 +155,5 @@ int ThreadPools_AddWorkBulkLoader
 	ASSERT(_bulk_thpool != NULL);
 
 	return thpool_add_work(_bulk_thpool, function_p, arg_p);
-}
-
-// destroy all thread pools
-void ThreadPools_Destroy
-(
-	void
-) {
-	ASSERT(_bulk_thpool != NULL);
-	ASSERT(_readers_thpool != NULL);
-	ASSERT(_writers_thpool != NULL);
-
-	thpool_destroy(_bulk_thpool);
-	thpool_destroy(_readers_thpool);
-	thpool_destroy(_writers_thpool);
 }
 

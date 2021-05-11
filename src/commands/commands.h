@@ -6,13 +6,6 @@
 
 #pragma once
 
-#include "cmd_query.h"
-#include "cmd_delete.h"
-#include "cmd_config.h"
-#include "cmd_explain.h"
-#include "cmd_profile.h"
-#include "cmd_slowlog.h"
-#include "cmd_dispatcher.h"
 #include "cmd_bulk_insert.h"
 
 //------------------------------------------------------------------------------
@@ -28,6 +21,20 @@ typedef enum {
 	CMD_EXPLAIN        = 5,
 	CMD_PROFILE        = 6,
 	CMD_BULK_INSERT    = 7,
-	CMD_SLOWLOG        = 8
+	CMD_SLOWLOG        = 8,
+	CMD_LIST           = 9
 } GRAPH_Commands;
+
+//------------------------------------------------------------------------------
+// graph commands
+//------------------------------------------------------------------------------
+
+void Graph_Query(void *args);
+void Graph_Slowlog(void *args);
+void Graph_Profile(void *args);
+void Graph_Explain(void *args);
+int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 

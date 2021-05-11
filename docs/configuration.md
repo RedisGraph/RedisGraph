@@ -84,6 +84,26 @@ $ redis-server --loadmodule ./redisgraph.so MAINTAIN_TRANSPOSED_MATRICES no
 
 ---
 
+## MAX_QUEUED_QUERIES
+
+Setting the maximum number of queued queries allows the server to reject incoming queries with the error message `Max pending queries exceeded`. This reduces the memory overhead of pending queries on an overloaded server and avoids congestion when the server processes its backlog of queries.
+
+This configuration can be set when the module loads or at runtime.
+
+### Default
+
+`MAX_QUEUED_QUERIES` is effectively unlimited by default (config value of `UINT64_MAX`).
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so MAX_QUEUED_QUERIES 500
+
+$ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
+```
+
+---
+
 ## TIMEOUT
 
 Timeout is a flag that specifies the maximum runtime for read queries in milliseconds. This configuration will not be respected by write queries, to avoid leaving the graph in an inconsistent state.
@@ -96,6 +116,28 @@ Timeout is a flag that specifies the maximum runtime for read queries in millise
 
 ```
 $ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
+```
+
+---
+
+## QUERY_MEM_CAPACITY
+
+Setting the memory capacity of a query allows the server to kill queries that are consuming too much memory and return with the error message `Query's mem consumption exceeded capacity`. This helps to avoid scenarios when the server becomes unresponsive due to an unbounded query exhausting system resources.
+
+The configuration argument is the maximum number of bytes that can be allocated by any single query.
+
+This configuration can be set when the module loads or at runtime.
+
+### Default
+
+`QUERY_MEM_CAPACITY` is unlimited by default; this default can be restored by setting `QUERY_MEM_CAPACITY` to zero or a negative value.
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 megabyte limit
+
+$ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 ```
 
 # Query Configurations

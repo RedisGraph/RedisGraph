@@ -436,6 +436,16 @@ GRAPH.QUERY DEMO_GRAPH
 SET n.age = 33, n.name = 'Bob'"
 ```
 
+The same can be accomplished by setting the graph entity variable to a map:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n { name: 'Jim', age:32 })
+SET n = {age: 33, name: 'Bob'}"
+```
+
+Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
+
 To remove a node's property, simply set property value to NULL.
 
 ```sh
@@ -634,14 +644,15 @@ This section contains information on all supported functions from the Cypher que
 
 ## Mathematical functions
 
-|Function | Description|
-| ------- |:-----------|
-|abs() | Returns the absolute value of a number|
-|ceil() | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-|floor() | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
-|rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
-|round() | Returns the value of a number rounded to the nearest integer |
-|sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|Function    | Description|
+| ---------- |:-----------|
+|abs()		 | Returns the absolute value of a number|
+|ceil()		 | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+|floor()	 | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
+|rand()		 | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
+|round()     | Returns the value of a number rounded to the nearest integer |
+|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|sqrt()      | Returns the square root of a number|
 |toInteger() | Converts a floating point or string value to an integer value. |
 
 ## String functions
@@ -999,3 +1010,12 @@ OK
 1) "RESULTSET_SIZE"
 2) (integer) 1000
 ```
+
+## GRAPH.LIST
+Lists all graph keys in the keyspace.
+```sh
+127.0.0.1:6379> GRAPH.LIST
+2) G
+3) resources
+4) players
+

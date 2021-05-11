@@ -4,9 +4,8 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "cmd_config.h"
-#include "../config.h"
 #include <string.h>
+#include "../configuration/config.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
 	uint config_count = Config_END_MARKER;
@@ -86,15 +85,16 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	// set the value of given config
 	RedisModuleString *value = argv[3];
+	const char *val_str = RedisModule_StringPtrLen(value, NULL);
 
-	if(Config_Option_set(config_field, value)) {
+	if(Config_Option_set(config_field, val_str)) {
 		RedisModule_ReplyWithSimpleString(ctx, "OK");
 	} else {
 		RedisModule_ReplyWithError(ctx, "Failed to set config value");
 	}
 }
 
-int MGraph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// CONFIG <GET|SET> <NAME> [value]
 	if(argc < 3) return RedisModule_WrongArity(ctx);
 

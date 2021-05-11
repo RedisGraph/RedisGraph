@@ -5,8 +5,10 @@
 */
 
 #pragma once
+
 #include "thpool.h"
 
+#define THPOOL_QUEUE_FULL -2
 // create both readers and writers thread pools
 int ThreadPools_CreatePools
 (
@@ -63,9 +65,6 @@ int ThreadPools_AddWorkBulkLoader
 	void *arg_p
 );
 
-// destroy all thread pools
-void ThreadPools_Destroy
-(
-	void
-);
+// Sets the limit on max queued queries in each thread pool.
+void ThreadPools_Set_max_pending_work(uint64_t val);
 

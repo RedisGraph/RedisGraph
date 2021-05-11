@@ -148,6 +148,7 @@ static void _AlgebraicExpression_PrintTree
 		if(exp->operand.edge) alias = exp->operand.edge;
 		else alias = exp->operand.src;
 		printf("%s\n", alias);
+		break;
 	default:
 		ASSERT("Unknown algebraic expression node type");
 		break;

@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 /* Forward declaration of edge */
 struct QGEdge;
@@ -25,6 +25,9 @@ typedef struct {
 
 /* Creates a new node. */
 QGNode *QGNode_New(const char *alias);
+
+// returns number of labels attached to node
+uint QGNode_LabelCount(const QGNode *n);
 
 /* Returns true if node is highly connected, false otherwise */
 bool QGNode_HighlyConnected(const QGNode *n);
