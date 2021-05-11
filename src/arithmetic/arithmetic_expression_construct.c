@@ -487,10 +487,6 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	}
 
 	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(edge);
-	if(dir == CYPHER_REL_BIDIRECTIONAL) {
-		ErrorCtx_SetError("RedisGraph does not currently support undirected shortestPath traversals");
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
-	}
 
 	if(cypher_ast_rel_pattern_get_properties(edge)) {
 		ErrorCtx_SetError("RedisGraph does not currently support filters on relationships in shortestPath");
@@ -523,6 +519,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	ctx->minHops        =  start;
 	ctx->maxHops        =  end;
 	ctx->reltypes       =  NULL;
+	ctx->bidirectional  =  dir == CYPHER_REL_BIDIRECTIONAL;
 	ctx->reltype_names  =  reltype_names;
 	ctx->reltype_count  =  array_len(reltype_names);
 	ctx->free_matrices  =  false;
@@ -533,7 +530,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 	AR_ExpNode *dest;
 	const cypher_astnode_t *ast_src = cypher_ast_pattern_path_get_element(path, 0);
 	const cypher_astnode_t *ast_dest = cypher_ast_pattern_path_get_element(path, 2);
-	if(dir == CYPHER_REL_OUTBOUND) {
+	if(dir == CYPHER_REL_OUTBOUND || dir == CYPHER_REL_BIDIRECTIONAL) {
 		// Standard traversal
 		src = _AR_ExpNodeFromGraphEntity(ast_src);
 		dest = _AR_ExpNodeFromGraphEntity(ast_dest);
