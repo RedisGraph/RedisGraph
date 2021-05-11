@@ -662,6 +662,7 @@ void AR_EXP_ReplaceFunc(AR_ExpNode **root, const char *func,
 	if(exp == NULL) return;
 	if(AR_EXP_IsOperation(exp)) {
 		if(strcasecmp(exp->op.func_name, func) == 0) {
+			AR_EXP_Free(*root);
 			*root = replacement;
 			return;
 		}

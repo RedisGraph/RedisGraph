@@ -100,3 +100,13 @@ class testPathProjections(FlowTestsBase):
         traversal = [nodes[2], nodes[3]]
         expected_result = [[nodes[1], traversal]]
         self.env.assertEqual(actual_result.result_set, expected_result)
+
+    def test06_nested_traversal(self):
+        query = """MATCH (a {v: 1}) WITH a, [({v: 2})-[]->({v: 3})] AS path_arr
+                   UNWIND path_arr as paths
+                   UNWIND paths AS path
+                   RETURN a, nodes(path) AS nodes ORDER BY nodes"""
+        actual_result = redis_graph.query(query)
+        traversal = [nodes[2], nodes[3]]
+        expected_result = [[nodes[1], traversal]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
