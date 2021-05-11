@@ -112,7 +112,7 @@ commands:
                 --github_branch $CIRCLE_BRANCH \
                 --upload_results_s3 \
                 --triggering_env circleci \
-                --required-module RedisGraph \
+                --required-module graph \
                 --push_results_redistimeseries
 
   platform-build-steps:
