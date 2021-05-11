@@ -6,8 +6,7 @@ from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
 
-nodes        =  []
-edges        =  []
+nodes        =  {}
 GRAPH_ID     =  "path_projections"
 redis_graph  =  None
 
@@ -21,45 +20,83 @@ class testPathProjections(FlowTestsBase):
 
     def populate_graph(self):
         # Construct a graph with the form:
-        # (v1)-[:E]->(v2)-[:E]->(v3)-[:E]->(v4), (v1)-[:E]->(v5)-[:E2]->(v4)
+        # (v0)-[:E]->(v1)-[:E]->(v2)-[:E]->(v3), (v0)-[:E]->(v4)
 
         global nodes
-        global edges
-        for v in range(1, 6):
+        for v in range(0, 5):
             node = Node(label="L", properties={"v": v})
-            nodes.append(node)
+            nodes[v] = node
             redis_graph.add_node(node)
 
-        edge = Edge(nodes[0], "E", nodes[1], properties={"connects": "12"})
+        connects = "01"
+        edge = Edge(nodes[0], "E", nodes[1], properties={"connects": connects})
         redis_graph.add_edge(edge)
-        edges.append(edge)
 
-        edge = Edge(nodes[1], "E", nodes[2], properties={"connects": "23"})
+        connects = "12"
+        edge = Edge(nodes[1], "E", nodes[2], properties={"connects": connects})
         redis_graph.add_edge(edge)
-        edges.append(edge)
 
-        edge = Edge(nodes[2], "E", nodes[3], properties={"connects": "34"})
+        connects = "23"
+        edge = Edge(nodes[2], "E", nodes[3], properties={"connects": connects})
         redis_graph.add_edge(edge)
-        edges.append(edge)
 
-        edge = Edge(nodes[0], "E", nodes[4], properties={"connects": "15"})
+        connects = "04"
+        edge = Edge(nodes[0], "E", nodes[4], properties={"connects": connects})
         redis_graph.add_edge(edge)
-        edges.append(edge)
-
-        edge = Edge(nodes[4], "E2", nodes[3], properties={"connects": "54"})
-        redis_graph.add_edge(edge)
-        edges.append(edge)
 
         redis_graph.commit()
 
     def test01_single_source_projection(self):
-        query = """MATCH (a {v: 1}) RETURN a, (a)-[]->() AS path"""
-        #  query = """MATCH (a {v: 1}) WITH a, (a)-[]->() AS path RETURN a, nodes(path), relationships(path)"""
+        query = """MATCH (a {v: 0}) WITH (a)-[]->() AS paths
+                   UNWIND paths as path
+                   RETURN nodes(path) AS nodes ORDER BY nodes"""
         actual_result = redis_graph.query(query)
-        # Node 1 should be returned with an array of its two outgoing edges
-        #  expected_result = [nodes[0], [edges[0], edges[3]]]
-        #  self.env.assertEqual(actual_result.result_set, expected_result)
+        # The nodes on Node 0's two outgoing paths should be returned
+        traversal01 = [nodes[0], nodes[1]]
+        traversal04 = [nodes[0], nodes[4]]
+        expected_result = [[traversal01],
+                           [traversal04]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
 
-    #  def test02_multi_source_projection(self):
+    def test02_multi_source_projection(self):
+        query = """MATCH (a) WITH (a)-[]->() AS paths WHERE a.v < 2
+                   UNWIND paths as path
+                   RETURN nodes(path) AS nodes ORDER BY nodes"""
+        actual_result = redis_graph.query(query)
+        traversal01 = [nodes[0], nodes[1]]
+        traversal04 = [nodes[0], nodes[4]]
+        traversal12 = [nodes[1], nodes[2]]
+        expected_result = [[traversal01],
+                           [traversal04],
+                           [traversal12]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
 
-    #  def test03_multiple_projections(self):
+    def test03_multiple_projections(self):
+        query = """MATCH (a {v: 1}) WITH (a)-[]->() AS p1, (a)<-[]-() AS p2
+                   UNWIND p1 AS n1 UNWIND p2 AS n2
+                   RETURN nodes(n1) AS nodes, nodes(n2) ORDER BY nodes"""
+        actual_result = redis_graph.query(query)
+        traversal = [[nodes[1], nodes[2]], [nodes[1], nodes[0]]]
+        expected_result = [traversal]
+        self.env.assertEqual(actual_result.result_set, expected_result)
+
+        plan = redis_graph.execution_plan(query)
+        self.env.assertEquals(2, plan.count("RollUpApply"))
+
+    def test04_variable_length_projection(self):
+        query = """MATCH (a {v: 1}) WITH (a)-[*]->({v: 3}) AS paths
+                   UNWIND paths as path
+                   RETURN nodes(path) AS nodes ORDER BY nodes"""
+        actual_result = redis_graph.query(query)
+        traversal = [nodes[1], nodes[2], nodes[3]]
+        expected_result = [[traversal]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
+
+    def test05_no_bound_variables_projection(self):
+        query = """MATCH (a {v: 1}) WITH a, ({v: 2})-[]->({v: 3}) AS paths
+                   UNWIND paths as path
+                   RETURN a, nodes(path) AS nodes ORDER BY nodes"""
+        actual_result = redis_graph.query(query)
+        traversal = [nodes[2], nodes[3]]
+        expected_result = [[nodes[1], traversal]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
