@@ -68,6 +68,11 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 		arguments = (const char **)raxValues(bound_vars);
 	}
 
+	// Build the Match stream that models this traversal.
+	// This step should be performed first to avoid prematurely updating the Record map.
+	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+
 	// Convert all AST data required to populate our operations tree.
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, gc, plan->query_graph, bound_vars);
 
@@ -78,9 +83,6 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	ExecutionPlan_UpdateRoot(plan, merge_op);
 
-	// Build the Match stream as a Merge child.
-	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 	ExecutionPlan_AddOp(plan->root, match_stream); // Add Match stream to Merge op.
 
 	// Build the Create stream as a Merge child.

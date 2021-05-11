@@ -214,20 +214,25 @@ static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
 		// find the firstmost non-argument operation in this segment
 		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
-		ASSERT(array_len(taps) > 0);
-		connecting_op = taps[0];
-		array_free(taps);
+		uint tap_count = array_len(taps);
+		ASSERT(tap_count > 0);
 
 		// tie the current segment's tap to the previous segment's root op
 		if(prev_segment != NULL) {
-			// Validate the connecting operation.
-			// The connecting operation may already have children
-			// if it's been attached to a previous scope.
-			ASSERT(connecting_op->type == OPType_PROJECT ||
-				   connecting_op->type == OPType_AGGREGATE);
-
+			// Find the connecting project/aggregate operation.
+			for(uint j = 0; j < tap_count; j ++) {
+				if(taps[j]->type == OPType_PROJECT ||
+				   taps[j]->type == OPType_AGGREGATE) {
+					connecting_op = taps[j];
+					break;
+				}
+			}
+			ASSERT(connecting_op != NULL);
 			ExecutionPlan_AddOp(connecting_op, prev_segment->root);
+		} else {
+			connecting_op = taps[0];
 		}
+		array_free(taps);
 
 		prev_segment = segment;
 

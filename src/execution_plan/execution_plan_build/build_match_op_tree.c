@@ -18,13 +18,15 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	plan->connected_components = connectedComponents;
 	// If we have already constructed any ops, the plan's record map contains all variables bound at this time.
 	rax *bound_vars = plan->record_map;
-
+	OpBase *old_root = plan->root;
+	plan->root = NULL;
 	/* If we have multiple graph components, the root operation is a Cartesian Product.
 	 * Each chain of traversals will be a child of this op. */
 	OpBase *cartesianProduct = NULL;
 	if(connectedComponentsCount > 1) {
 		cartesianProduct = NewCartesianProductOp(plan);
-		ExecutionPlan_UpdateRoot(plan, cartesianProduct);
+		if(old_root) plan->root = NULL;
+		// ExecutionPlan_UpdateRoot(plan, cartesianProduct);
 	}
 
 	// Keep track after all traversal operations along a pattern.
@@ -37,6 +39,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		if(edge_count == 0) {
 			/* If there are no edges in the component, we only need a node scan. */
 			QGNode *n = cc->nodes[0];
+			// Do not build a scan op if the node is already resolved.
+			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
+			   != raxNotFound) continue;
+
 			if(n->labelID != GRAPH_NO_LABEL) {
 				NodeScanCtx ctx = NODE_CTX_NEW(n->alias, n->label, n->labelID);
 				root = NewNodeByLabelScanOp(plan, ctx);
@@ -53,17 +59,27 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
 			QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
-			if(src->label) {
-				/* Resolve source node by performing label scan,
-				 * in which case if the first algebraic expression operand
-				 * is a label matrix (diagonal) remove it. */
-				if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
-					AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
+			// Do not build a scan op if the node is already resolved.
+			bool src_is_bound = (raxFind(bound_vars, (unsigned char *)src->alias,
+										 strlen(src->alias)) != raxNotFound);
+			if(!src_is_bound) {
+				if(src->label) {
+					/* Resolve source node by performing label scan,
+					 * in which case if the first algebraic expression operand
+					 * is a label matrix (diagonal) remove it. */
+					if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
+						AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
+					}
+					NodeScanCtx ctx = NODE_CTX_NEW(src->alias, src->label, src->labelID);
+					root = tail = NewNodeByLabelScanOp(plan, ctx);
+				} else {
+					root = tail = NewAllNodeScanOp(plan, src->alias);
 				}
-				NodeScanCtx ctx = NODE_CTX_NEW(src->alias, src->label, src->labelID);
-				root = tail = NewNodeByLabelScanOp(plan, ctx);
+				if(old_root) ExecutionPlan_AddOp(root, old_root);
+				old_root = NULL;
 			} else {
-				root = tail = NewAllNodeScanOp(plan, src->alias);
+				tail = old_root;
+				old_root = NULL;
 			}
 
 			/* For each expression, build the appropriate traversal operation. */
@@ -81,7 +97,11 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 					root = NewCondTraverseOp(plan, gc->g, exp);
 				}
 				// Insert the new traversal op at the root of the chain.
-				ExecutionPlan_AddOp(root, tail);
+				if(tail) {
+					ExecutionPlan_AddOp(root, tail);
+					if(tail == plan->root) plan->root = NULL;
+					old_root = NULL;
+				}
 				tail = root;
 			}
 
@@ -97,6 +117,11 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			// We've built the only necessary traversal chain, update the ExecutionPlan root.
 			ExecutionPlan_UpdateRoot(plan, root);
 		}
+	}
+	if(cartesianProduct) ExecutionPlan_UpdateRoot(plan, cartesianProduct);
+	if(old_root) {
+		if(plan->root) ExecutionPlan_AddOp(plan->root, old_root);
+		else ExecutionPlan_UpdateRoot(plan, old_root);
 	}
 	FilterTree_Free(ft);
 }
