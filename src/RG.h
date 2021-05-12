@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "redismodule.h"
+#include "util/branch_pred.h"
 
 //------------------------------------------------------------------------------
 // code development settings
@@ -29,7 +30,7 @@
 	// assert X is true
 	#define ASSERT(X)                                               \
 	{                                                               \
-		if (!(X))                                                   \
+		if (unlikely(!(X)))                                                   \
 		{                                                           \
 			if(RedisModule__Assert != NULL) {                       \
 				RedisModule_Assert(X);				                \

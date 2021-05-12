@@ -13,6 +13,7 @@
 #include "commands/cmd_context.h"
 #include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
+#include "execution_plan/ops/shared/undo_log.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -42,6 +43,7 @@ typedef struct {
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
+	UndoLogCtx undo_log_ctx;                    // Undo log for updates, used in the case of timeout.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */
@@ -49,6 +51,9 @@ bool QueryCtx_Init(void);
 
 /* Retrieve this thread's QueryCtx. */
 QueryCtx *QueryCtx_GetQueryCtx();
+
+/* Retrieve this thread's UndoLogCtx. */
+UndoLogCtx *QueryCtx_GetUndoLog();
 
 /* Set the provided QueryCtx in this thread's storage key. */
 void QueryCtx_SetTLS(QueryCtx *query_ctx);

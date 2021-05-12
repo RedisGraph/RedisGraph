@@ -67,6 +67,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	OpBase *child = op->op.children[0];
 	Record r;
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 
 	// updates already performed
 	if(op->updates_committed) return _handoff(op);
@@ -78,7 +79,7 @@ static Record UpdateConsume(OpBase *opBase) {
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true);
+			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true, &query_ctx->undo_log_ctx);
 		}
 
 		op->records = array_append(op->records, r);
@@ -92,7 +93,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	// lock everything
 	QueryCtx_LockForCommit();
 	{
-		CommitUpdates(op->gc, op->stats, op->updates);
+		CommitUpdates(op->gc, op->stats, op->updates, false, &query_ctx->undo_log_ctx);
 	}
 	// release lock
 	QueryCtx_UnlockCommit(opBase);

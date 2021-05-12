@@ -28,7 +28,9 @@ static void MergeFree(OpBase *opBase);
 static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStatistics *stats, raxIterator updates,
 							  Record *records, uint record_count) {
 	ASSERT(record_count > 0);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	GraphContext *gc = query_ctx->gc;
+	ASSERT(gc);
 
 	for(uint i = 0; i < record_count; i ++) {  // for each record to update
 		Record r = records[i];
@@ -36,7 +38,7 @@ static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStati
 		raxSeek(&updates, "^", NULL, 0);
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
-			EvalEntityUpdates(gc, pending_updates, r, ctx, false);
+			EvalEntityUpdates(gc, pending_updates, r, ctx, false, &query_ctx->undo_log_ctx);
 		}
 	}
 }
@@ -276,10 +278,12 @@ static Record MergeConsume(OpBase *opBase) {
 
 	// lock everything
 	if(array_len(op->pending_updates) > 0) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		GraphContext *gc = query_ctx->gc;
+		ASSERT(gc);
 		QueryCtx_LockForCommit();
 		{
-			CommitUpdates(gc, op->stats, op->pending_updates);
+			CommitUpdates(gc, op->stats, op->pending_updates, false, &query_ctx->undo_log_ctx);
 		}
 		QueryCtx_UnlockCommit(&op->op); // Release the lock.
 

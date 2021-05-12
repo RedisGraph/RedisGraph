@@ -5,7 +5,9 @@
  */
 
 #include "update_functions.h"
+#include "undo_log.h"
 #include "../../../errors.h"
+#include "../../../query_ctx.h"
 
 /* set a property on a graph entity
  * for non-NULL values, the property will be added or updated
@@ -41,7 +43,7 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 
 // commits delayed updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-		PendingUpdateCtx *updates) {
+		PendingUpdateCtx *updates, bool is_rollback, UndoLogCtx *undo_log_ctx) {
 	ASSERT(gc != NULL);
 	ASSERT(stats != NULL);
 	ASSERT(updates != NULL);
@@ -59,6 +61,11 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 
 	for(; i < update_count; i++) {
 		PendingUpdateCtx *update = updates + i;
+
+		if(likely(!is_rollback)) {
+			// Inc the update counter in the undo_log
+			UndoLog_Inc_N_Updates_Commited(undo_log_ctx);
+		}
 
 		// following updates apply to a new graph entity
 		// index previous entity if we're required to
@@ -94,11 +101,17 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		Schema_AddNodeToIndices(s, (Node *)ge);
 	}
 
-	if(stats) stats->properties_set += properties_set;
+	if(stats) {
+		if(unlikely(is_rollback)) { // On rollback need to rollback the stats changes also
+			stats->properties_set -= properties_set;
+		} else {
+			stats->properties_set += properties_set;
+		}
+	}
 }
 
 void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Record r,
-					   const EntityUpdateEvalCtx *ctx, bool allow_null) {
+					   const EntityUpdateEvalCtx *ctx, bool allow_null, UndoLogCtx *undo_log_ctx) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
 	bool node_update  = false;
@@ -181,6 +194,10 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 
 		// enqueue the current update
 		*updates = array_append(*updates, update);
+
+		// enqueue the current update's undo
+		SIValue *orig_val = GraphEntity_GetProperty(entity, attr_id);
+		UndoLog_Update(undo_log_ctx, &update, orig_val);
 	}
 }
 

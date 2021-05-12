@@ -9,6 +9,7 @@
 #include "errors.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
+#include "execution_plan/ops/shared/undo_log.h"
 #include "serializers/graphcontext_type.h"
 
 // GraphContext type as it is registered at Redis.
@@ -24,6 +25,14 @@ static inline QueryCtx *_QueryCtx_GetCtx(void) {
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
+}
+
+UndoLogCtx *QueryCtx_GetUndoLog() {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	if(ctx->undo_log_ctx.undo_log == NULL) {
+		ctx->undo_log_ctx = UndoLog_New();
+	}
+	return &ctx->undo_log_ctx;
 }
 
 /* rax callback routine for freeing computed parameter values. */
@@ -228,6 +237,9 @@ double QueryCtx_GetExecutionTime(void) {
 
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	if(ctx->undo_log_ctx.undo_log != NULL) {
+		UndoLog_Free(&ctx->undo_log_ctx);
+	}
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);
