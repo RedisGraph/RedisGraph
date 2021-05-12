@@ -294,6 +294,7 @@ jobs:
     steps:
       - early_return_for_forked_pull_requests
       - checkout
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - benchmark-automation
@@ -304,12 +305,12 @@ jobs:
     steps:
       - early_return_for_forked_pull_requests
       - checkout
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - run:
           name: Unzip module artifact
           command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
-
       - benchmark-automation
 
   nightly_performance_automation:
