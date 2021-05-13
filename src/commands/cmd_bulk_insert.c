@@ -29,15 +29,13 @@ static int _Graph_Bulk_Begin(RedisModuleCtx *ctx, RedisModuleString ***argv,
 	ASSERT(graphname != NULL);
 	ASSERT(rs_graph_name != NULL);
 
-	*begin = false; // default to false
+	const char *token = RedisModule_StringPtrLen(**argv, NULL);
+	*begin = strcmp(token, "BEGIN") == 0;
 
 	// do nothing if this is not the first BULK call
-	if(strcmp(RedisModule_StringPtrLen(**argv, 0), "BEGIN")) return BULK_OK;
+	if(*begin == false) return BULK_OK;
 
-	// "BEGIN" token present
-	*begin = true;
-
-	// skip "BEGIN" token
+	// "BEGIN" token present, skip "BEGIN" token
 	(*argv) ++;
 	(*argc) --;
 
@@ -53,7 +51,7 @@ static int _Graph_Bulk_Begin(RedisModuleCtx *ctx, RedisModuleString ***argv,
 	if(key) {
 		char *err;
 		asprintf(&err, "Graph with name '%s' cannot be created, \
-				as Redis key '%s' already exists.", graphname, graphname);
+				as key '%s' already exists.", graphname, graphname);
 		RedisModule_ReplyWithError(ctx, err);
 		free(err);
 		return BULK_FAIL;
@@ -92,13 +90,11 @@ static void _Graph_BulkInsert(void *args) {
 	RedisModule_ThreadSafeContextLock(ctx);
 	{
 		gc = GraphContext_Retrieve(ctx, rs_graph_name, false, begin);
-		if(gc == NULL) {
-			// Failed to retrieve GraphContext; an error has been emitted.
-			RedisModule_ThreadSafeContextUnlock(ctx);
-			goto cleanup;
-		}
 	}
 	RedisModule_ThreadSafeContextUnlock(ctx);
+
+	// failed to retrieve GraphContext; an error has been emitted
+	if(gc == NULL) goto cleanup;
 
 	// read the user-provided counts for nodes and edges in the current query
 	if(RedisModule_StringToLongLong(*argv++, &node_count) != REDISMODULE_OK) {
@@ -117,6 +113,7 @@ static void _Graph_BulkInsert(void *args) {
 
 	if(rc == BULK_FAIL) {
 		// if insertion failed, clean up keyspace and free added entities
+		GraphContext_Release(gc);
 		RedisModuleKey *key = NULL;
 
 		RedisModule_ThreadSafeContextLock(ctx);
