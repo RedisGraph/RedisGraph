@@ -97,9 +97,6 @@ void Record_PersistScalars(Record r);
 // String representation of record.
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 
-// 64-bit hash of record
-unsigned long long Record_Hash64(const Record r);
-
 // retrieves mapping associated with record
 rax *Record_GetMappings(const Record r);
 

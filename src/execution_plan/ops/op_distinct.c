@@ -49,15 +49,13 @@ static void _updateOffsets(OpDistinct *op, Record r) {
 		ASSERT(offset != INVALID_INDEX);
 		op->offsets[i] = offset;
 	}
-
-	// update operation mapping to records mapping
-	op->mapping = Record_GetMappings(r);
 }
 
 // collect expression aliases on which distinct will be performed
 static void LocateDistinctExpressions(OpDistinct *op) {
 	// search for projection op
 	uint        exp_count  =  0;
+	const char  *alias     =  NULL;
 	OPType      types[2]   =  {OPType_PROJECT, OPType_AGGREGATE};
 	OpBase      *project   =  ExecutionPlan_LocateOpMatchingType((OpBase*)op, types, 2);
 	ASSERT(project != NULL);
@@ -71,8 +69,9 @@ static void LocateDistinctExpressions(OpDistinct *op) {
 		op->aliases = rm_malloc(sizeof(char*) * exp_count);
 
 		for(uint i = 0; i < exp_count; i++) {
-			//op->aliases[i] = AR_EXP_BuildResolvedName(exps[i]);
-			op->aliases[i] = exps[i]->resolved_name;
+			alias = exps[i]->resolved_name;
+			ASSERT(alias != NULL);
+			op->aliases[i] = alias;
 		}
 	} else {
 		// collect expression aliases from aggregate operation
@@ -82,14 +81,16 @@ static void LocateDistinctExpressions(OpDistinct *op) {
 
 		AR_ExpNode **exps = proj->key_exps;
 		for(uint i = 0; i < proj->key_count; i++) {
-			//op->aliases[i] = AR_EXP_BuildResolvedName(exps[i]);
-			op->aliases[i] = exps[i]->resolved_name;
+			alias = exps[i]->resolved_name;
+			ASSERT(alias != NULL);
+			op->aliases[i] = alias;
 		}
 
 		exps = proj->aggregate_exps;
-		for(uint i = proj->key_count; i < proj->aggregate_count; i++) {
-			//op->aliases[i] = AR_EXP_BuildResolvedName(exps[i]);
-			op->aliases[i] = exps[i]->resolved_name;
+		for(uint i = 0; i < proj->aggregate_count; i++) {
+			alias = exps[i]->resolved_name;
+			ASSERT(alias != NULL);
+			op->aliases[i + proj->key_count] = alias;
 		}
 	}
 
@@ -115,6 +116,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan) {
 static OpResult DistinctInit(OpBase *opBase) {
 	OpDistinct *op = (OpDistinct*)opBase;
 	LocateDistinctExpressions(op);
+	return OP_OK;
 }
 
 static Record DistinctConsume(OpBase *opBase) {
@@ -134,6 +136,8 @@ static Record DistinctConsume(OpBase *opBase) {
 		if(Record_GetMappings(r) != op->mapping) {
 			// record mapping changed, update offsets
 			_updateOffsets(op, r);
+			// update operation mapping to records mapping
+			op->mapping = Record_GetMappings(r);
 		}
 
 		unsigned long long const hash = _compute_hash(op, r);

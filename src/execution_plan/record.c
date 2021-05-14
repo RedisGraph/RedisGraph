@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "xxhash.h"
-#include "../RG.h"
+#include "RG.h"
 #include "./record.h"
 #include "../util/rmalloc.h"
 
@@ -223,29 +222,6 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 	size_t bytesWritten = 0;
 	SIValue_StringJoin(values, rLen, ",", buf, buf_cap, &bytesWritten);
 	return bytesWritten;
-}
-
-unsigned long long Record_Hash64(const Record r) {
-	// Initialize the hash state.
-	XXH64_state_t state;
-	XXH_errorcode res = XXH64_reset(&state, 0);
-	ASSERT(res != XXH_ERROR);
-
-	uint rec_len = Record_length(r);
-	for(uint idx = 0; idx < rec_len; idx++) {
-		/* Retrieve the entry at 'idx' as an SIValue.
-		 * If this entry is of type REC_TYPE_UNKNOWN, it will be returned as an SI_NullVal.
-		 * As such, this hashing logic will not differentiate between implicit and explicit
-		 * NULL values, but this is an acceptable design choice as the Cypher specification
-		 * does not prescribe behavior for this scenario. */
-		SIValue v = Record_Get(r, idx);
-		// Update the hash state with the current value.
-		SIValue_HashUpdate(v, &state);
-	}
-
-	// Finalize the hash.
-	unsigned long long const hash = XXH64_digest(&state);
-	return hash;
 }
 
 inline rax *Record_GetMappings(const Record r) {
