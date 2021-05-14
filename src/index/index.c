@@ -15,10 +15,10 @@
 #include "../graph/entities/node.h"
 
 static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id,
-		char **strVal, double *doubleVal) {
+							 char **strVal, double *doubleVal) {
 	Node          n           =  GE_NEW_NODE();
 	NodeID        nId         =  *(NodeID *)id;
-	GraphContext  *gc         =  (GraphContext *)ctx;
+	GraphContext  *gc         = (GraphContext *)ctx;
 	Graph         *g          =  gc->g;
 	int           node_found  =  Graph_GetNode(g, nId, &n);
 
@@ -148,7 +148,7 @@ void Index_IndexNode(Index *idx, const Node *n) {
 		for(uint i = 0; i < idx->fields_count; i++) {
 			field_name = idx->fields[i];
 			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
-			if(v == PROPERTY_NOTFOUND) continue;
+			if(v == ATTRIBUTE_NOTFOUND) continue;
 
 			SIType t = SI_TYPE(*v);
 

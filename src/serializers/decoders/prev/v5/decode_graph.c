@@ -20,20 +20,20 @@ typedef enum {
 
 static SIType _ConvertSIType(PrevSIType prev_type) {
 	switch(prev_type) {
-	case V5_T_INT64:
-		return T_INT64;
-	case V5_T_DOUBLE:
-		return T_DOUBLE;
-	case V5_T_STRING:
-	case V5_T_CONSTSTRING:
-		return T_STRING;
-	case V5_T_BOOL:
-		return T_BOOL;
-	case V5_T_NULL:
-		return T_NULL;
-	default: // should not occur
-		ASSERT(false);
-		return T_NULL;
+		case V5_T_INT64:
+			return T_INT64;
+		case V5_T_DOUBLE:
+			return T_DOUBLE;
+		case V5_T_STRING:
+		case V5_T_CONSTSTRING:
+			return T_STRING;
+		case V5_T_BOOL:
+			return T_BOOL;
+		case V5_T_NULL:
+			return T_NULL;
+		default: // should not occur
+			ASSERT(false);
+			return T_NULL;
 	}
 }
 
@@ -45,19 +45,19 @@ static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	SIType t = _ConvertSIType(prev_type); // Convert SIType to latest enum value
 
 	switch(t) {
-	case T_INT64:
-		return SI_LongVal(RedisModule_LoadSigned(rdb));
-	case T_DOUBLE:
-		return SI_DoubleVal(RedisModule_LoadDouble(rdb));
-	case T_STRING:
-		// Transfer ownership of the heap-allocated string to the
-		// newly-created SIValue
-		return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
-	case T_BOOL:
-		return SI_BoolVal(RedisModule_LoadSigned(rdb));
-	case T_NULL:
-	default: // currently impossible
-		return SI_NullVal();
+		case T_INT64:
+			return SI_LongVal(RedisModule_LoadSigned(rdb));
+		case T_DOUBLE:
+			return SI_DoubleVal(RedisModule_LoadDouble(rdb));
+		case T_STRING:
+			// Transfer ownership of the heap-allocated string to the
+			// newly-created SIValue
+			return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
+		case T_BOOL:
+			return SI_BoolVal(RedisModule_LoadSigned(rdb));
+		case T_NULL:
+		default: // currently impossible
+			return SI_NullVal();
 	}
 }
 
@@ -73,7 +73,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 		char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		SIValue attr_value = _RdbLoadSIValue(rdb);
 		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
-		ASSERT(attr_id != ATTRIBUTE_NOTFOUND);
+		ASSERT(attr_id != ATTRIBUTE_UNKNOWN);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		RedisModule_Free(attr_name);
 	}

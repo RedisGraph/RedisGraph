@@ -25,10 +25,11 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 	// try to get current property value
 	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 
-	if(old_value == PROPERTY_NOTFOUND) {
+	if(old_value == ATTRIBUTE_NOTFOUND) {
 		// adding a new property; do nothing if its value is NULL
 		if(SI_TYPE(new_value) != T_NULL) {
-			res = GraphEntity_AddProperty(ge, attr_id, new_value);
+			GraphEntity_AddProperty(ge, attr_id, new_value);
+			res = true;
 		}
 	} else {
 		// update property
@@ -41,7 +42,7 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 
 // commits delayed updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-		PendingUpdateCtx *updates) {
+				   PendingUpdateCtx *updates) {
 	ASSERT(gc != NULL);
 	ASSERT(stats != NULL);
 	ASSERT(updates != NULL);
@@ -64,8 +65,8 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		// index previous entity if we're required to
 		if(ge != updates[i].ge) {
 			if(reindex) {
-				s = GraphContext_GetSchemaByID(gc, updates[i-1].label_id,
-						SCHEMA_NODE);
+				s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id,
+											   SCHEMA_NODE);
 				ASSERT(s != NULL);
 				// introduce updated entity to index
 				Schema_AddNodeToIndices(s, (Node *)ge);
@@ -88,7 +89,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 
 	// handle last updated entity
 	if(reindex) {
-		s = GraphContext_GetSchemaByID(gc, updates[i-1].label_id, SCHEMA_NODE);
+		s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id, SCHEMA_NODE);
 		ASSERT(s != NULL);
 		// introduce updated entity to index
 		Schema_AddNodeToIndices(s, (Node *)ge);
@@ -115,8 +116,8 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	// make sure we're updating either a node or an edge
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 		ErrorCtx_RaiseRuntimeException(
-				"Update error: alias '%s' did not resolve to a graph entity",
-				ctx->alias);
+			"Update error: alias '%s' did not resolve to a graph entity",
+			ctx->alias);
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -135,7 +136,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 		PendingUpdateCtx update = {
 			.ge            =  entity,
 			.label_id      =  label_id,
-			.update_index  =  (label_id != GRAPH_NO_LABEL),
+			.update_index  = (label_id != GRAPH_NO_LABEL),
 			.attr_id       =  ATTRIBUTE_ALL,
 		};
 		*updates = array_append(*updates, update);
@@ -168,7 +169,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 		if(node_update && label_id != GRAPH_NO_LABEL) {
 			// if the (label:attribute) combination has an index, take note
 			update_index = GraphContext_GetIndexByID(gc, label_id, &attr_id,
-					IDX_ANY) != NULL;
+													 IDX_ANY) != NULL;
 		}
 
 		PendingUpdateCtx update = {

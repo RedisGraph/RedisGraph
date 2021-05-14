@@ -42,7 +42,7 @@ Version AttributeSet_GetVersion
 	const AttributeSet set
 );
 
-// returns true if 'id' is in 'set', if 'idx' isn't NULL sets 'idx' 
+// returns true if 'id' is in 'set', if 'idx' isn't NULL sets 'idx'
 // to attribute position
 bool AttributeSet_Contains
 (
@@ -60,7 +60,7 @@ SIValue *AttributeSet_GetAttr
 );
 
 // return attribute at position 'idx'
-// setting both 'value' and 'id' if provided 
+// setting both 'value' and 'id' if provided
 void AttributeSet_GetAttrIdx
 (
 	const AttributeSet set,  // set to retrieve attribute from
@@ -82,7 +82,14 @@ AttributeSet AttributeSet_RemoveAttr
 (
 	AttributeSet *set,  // set to remove attribute from
 	Attribute_ID id,    // attribute to remove
-	bool *removed       // [optinal] set to true if attribute was removed
+	bool *removed       // [optional] set to true if attribute was removed
+);
+
+// remove all attributes in the given set
+AttributeSet AttributeSet_Clear
+(
+	AttributeSet *set,  // set to remove all attributes from
+	uint *removed       // [optional] number of attributes removed
 );
 
 // free attribute set, each stored attribute is freed

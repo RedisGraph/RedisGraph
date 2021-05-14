@@ -15,21 +15,21 @@ static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	 * Value */
 	SIType t = RedisModule_LoadUnsigned(rdb);
 	switch(t) {
-	case T_INT64:
-		return SI_LongVal(RedisModule_LoadSigned(rdb));
-	case T_DOUBLE:
-		return SI_DoubleVal(RedisModule_LoadDouble(rdb));
-	case T_STRING:
-		// Transfer ownership of the heap-allocated string to the
-		// newly-created SIValue
-		return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
-	case T_BOOL:
-		return SI_BoolVal(RedisModule_LoadSigned(rdb));
-	case T_ARRAY:
-		return _RdbLoadSIArray(rdb);
-	case T_NULL:
-	default: // currently impossible
-		return SI_NullVal();
+		case T_INT64:
+			return SI_LongVal(RedisModule_LoadSigned(rdb));
+		case T_DOUBLE:
+			return SI_DoubleVal(RedisModule_LoadDouble(rdb));
+		case T_STRING:
+			// Transfer ownership of the heap-allocated string to the
+			// newly-created SIValue
+			return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
+		case T_BOOL:
+			return SI_BoolVal(RedisModule_LoadSigned(rdb));
+		case T_ARRAY:
+			return _RdbLoadSIArray(rdb);
+		case T_NULL:
+		default: // currently impossible
+			return SI_NullVal();
 	}
 }
 
@@ -62,7 +62,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 		char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		SIValue attr_value = _RdbLoadSIValue(rdb);
 		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
-		ASSERT(attr_id != ATTRIBUTE_NOTFOUND);
+		ASSERT(attr_id != ATTRIBUTE_UNKNOWN);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		SIValue_Free(attr_value);
 		RedisModule_Free(attr_name);

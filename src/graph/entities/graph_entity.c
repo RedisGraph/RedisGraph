@@ -54,18 +54,13 @@ static bool _GraphEntity_RemoveProperty
 int GraphEntity_ClearProperties(GraphEntity *e) {
 	ASSERT(e);
 
-	int prop_count = e->entity->prop_count;
-	for(int i = 0; i < prop_count; i++) {
-		// free all allocated properties
-		SIValue_Free(e->entity->properties[i].value);
-	}
-	e->entity->prop_count = 0;
+	AttributeSet *s = _GraphEntity_GetAttrSet(e);
+	ASSERT(s != NULL);
 
-	// free and NULL-set the properties bag.
-	rm_free(e->entity->properties);
-	e->entity->properties = NULL;
+	uint removed_count;
+	AttributeSet_Clear(s, &removed_count);
 
-	return prop_count;
+	return removed_count;
 }
 
 AttributeSet GraphEntity_GetAttributeSet
@@ -186,7 +181,7 @@ size_t GraphEntity_PropertiesToString
 		AttributeSet_GetAttrIdx(*s, i, &val, &id);
 
 		ASSERT(!SIValue_IsNull(val));
-		ASSERT(id != ATTRIBUTE_NOTFOUND);
+		ASSERT(id != ATTRIBUTE_UNKNOWN);
 
 		// print key
 		const char *key = GraphContext_GetAttributeString(gc, id);

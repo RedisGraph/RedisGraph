@@ -10,7 +10,6 @@
 #include "../../value.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define ATTRIBUTE_NOTFOUND USHRT_MAX
 // ATTRIBUTE_ALL indicates all properties for SET clauses that replace a property map
 #define ATTRIBUTE_ALL USHRT_MAX - 1
 

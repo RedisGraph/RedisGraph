@@ -8,8 +8,7 @@
 #include "attribute_set.h"
 #include "../../util/rmalloc.h"
 
-SIValue *ATTRIBUTE_NOTFOUND = &(SIValue)
-{
+SIValue *ATTRIBUTE_NOTFOUND = &(SIValue) {
 	.longval     =  0,
 	.type        =  T_NULL,
 	.allocation  =  M_NONE
@@ -42,7 +41,7 @@ AttributeSet AttributeSet_New
 ) {
 	AttributeSet set = rm_malloc(sizeof(*set));
 
-	// initilize set
+	// initialize set
 	set->v                =  v;
 	set->attribute_count  =  0;
 
@@ -64,11 +63,12 @@ AttributeSet AttributeSet_Clone
 
 	AttributeSet clone = rm_malloc(size);
 	clone->v = v;
-	
+	clone->attribute_count = attr_count;
+
 	// clone attributes
-	for(int i = 0; i < attr_count; i++) {
+	for(uint i = 0; i < attr_count; i++) {
 		clone->attributes[i].id = set->attributes[i].id;
-	   	clone->attributes[i].value = SI_CloneValue(set->attributes[i].value);
+		clone->attributes[i].value = SI_CloneValue(set->attributes[i].value);
 	}
 
 	return clone;
@@ -97,9 +97,11 @@ bool AttributeSet_Contains
 	uint *idx                // [optional] attribute position within set
 ) {
 	ASSERT(set != NULL);
-	
+
+	if(idx != NULL) *idx = ATTRIBUTE_UNKNOWN;
+
 	uint attr_count = AttributeSet_AttributeCount(set);
-	
+
 	// search for attribute with specified id in set
 	for(uint i = 0; i < attr_count; i++) {
 		if(set->attributes[i].id == id) {
@@ -124,7 +126,7 @@ SIValue *AttributeSet_GetAttr
 }
 
 // return attribute at position 'idx'
-// setting both 'value' and 'id' if provided 
+// setting both 'value' and 'id' if provided
 void AttributeSet_GetAttrIdx
 (
 	const AttributeSet set,  // set to retrieve attribute from
@@ -134,7 +136,7 @@ void AttributeSet_GetAttrIdx
 ) {
 	ASSERT(set != NULL);
 
-	SIValue _v = SI_NullVal();
+	SIValue _v = *ATTRIBUTE_NOTFOUND;
 	Attribute_ID _id = ATTRIBUTE_UNKNOWN;
 
 	if(idx < AttributeSet_AttributeCount(set)) {
@@ -161,7 +163,7 @@ AttributeSet AttributeSet_SetAttr
 	if(AttributeSet_Contains(s, id, &idx)) {
 		// attribute in set, overwrite it
 		SIValue_Free(s->attributes[idx].value);
-		s->attributes[idx].value = SI_CloneValue(v); 
+		s->attributes[idx].value = SI_CloneValue(v);
 	} else {
 		// attribute missing from set, add it
 		// make room for new attribute
@@ -169,8 +171,8 @@ AttributeSet AttributeSet_SetAttr
 		size_t size = _AttributeSet_ComputeSize(attr_count);
 		s = rm_realloc(s, size);
 		s->attribute_count = attr_count;
-		s->attributes[attr_count-1].id = id;
-		s->attributes[attr_count-1].value = SI_CloneValue(v);
+		s->attributes[attr_count - 1].id = id;
+		s->attributes[attr_count - 1].value = SI_CloneValue(v);
 		*set = s;
 	}
 
@@ -181,10 +183,10 @@ AttributeSet AttributeSet_RemoveAttr
 (
 	AttributeSet *set,  // set to remove attribute from
 	Attribute_ID id,    // attribute to remove
-	bool *removed       // [optinal] set to true if attribute was removed
+	bool *removed       // [optional] set to true if attribute was removed
 ) {
 	ASSERT(set != NULL);
-	ASSERT(id != ATTRIBUTE_NOTFOUND);
+	ASSERT(id != ATTRIBUTE_UNKNOWN);
 
 	uint idx;
 	AttributeSet s = *set;
@@ -198,12 +200,13 @@ AttributeSet AttributeSet_RemoveAttr
 		uint attr_count = AttributeSet_AttributeCount(s);
 
 		// overwrite removed attribute with last attribute in set
-		s->attributes[idx] = s->attributes[attr_count-1];
+		s->attributes[idx] = s->attributes[attr_count - 1];
 
 		// reallocate attribute set
 		attr_count -= 1;
 		size_t size = _AttributeSet_ComputeSize(attr_count);
 		*set = rm_realloc(s, size);
+		s = *set;
 
 		// update set attribute count
 		s->attribute_count = attr_count;
@@ -214,6 +217,31 @@ AttributeSet AttributeSet_RemoveAttr
 	return s;
 }
 
+AttributeSet AttributeSet_Clear
+(
+	AttributeSet *set,  // set to remove all attributes from
+	uint *removed      // [optional] number of attributes removed
+) {
+	ASSERT(set != NULL);
+
+	AttributeSet s = *set;
+
+	uint attr_count = s->attribute_count;
+
+	for(uint i = 0; i < attr_count; i ++) {
+		SIValue_Free(s->attributes[i].value);
+	}
+
+	// reallocate attribute set
+	s->attribute_count = 0;
+	size_t size = _AttributeSet_ComputeSize(s->attribute_count);
+	*set = rm_realloc(s, size);
+
+	if(removed) *removed = attr_count;
+
+	return *set;
+}
+
 void AttributeSet_Free
 (
 	AttributeSet set  // set to free
@@ -222,7 +250,7 @@ void AttributeSet_Free
 
 	// free each attribute in set
 	uint attr_count = AttributeSet_AttributeCount(set);
-	for(int i = 0; i < attr_count; i++) {
+	for(uint i = 0; i < attr_count; i++) {
 		SIValue attr = set->attributes[i].value;
 		SIValue_Free(attr);
 	}
