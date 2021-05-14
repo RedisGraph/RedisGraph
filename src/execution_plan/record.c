@@ -248,6 +248,11 @@ unsigned long long Record_Hash64(const Record r) {
 	return hash;
 }
 
+inline rax *Record_GetMappings(const Record r) {
+	ASSERT(r != NULL);
+	return r->mapping;
+}
+
 inline void Record_FreeEntry(Record r, int idx) {
 	if(r->entries[idx].type == REC_TYPE_SCALAR) SIValue_Free(r->entries[idx].value.s);
 	r->entries[idx].type = REC_TYPE_UNKNOWN;
