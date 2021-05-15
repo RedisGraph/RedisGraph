@@ -133,11 +133,12 @@ static Record DistinctConsume(OpBase *opBase) {
 		// different sub execution plans, such as in the case of UNION
 		// in which case the distinct values might be located at different offsets
 		// within the record and we should adjust accordingly
-		if(Record_GetMappings(r) != op->mapping) {
+		rax *record_mapping = Record_GetMappings(r);
+		if(record_mapping != op->mapping) {
 			// record mapping changed, update offsets
 			_updateOffsets(op, r);
 			// update operation mapping to records mapping
-			op->mapping = Record_GetMappings(r);
+			op->mapping = record_mapping;
 		}
 
 		unsigned long long const hash = _compute_hash(op, r);
