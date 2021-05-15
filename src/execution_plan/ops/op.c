@@ -150,6 +150,11 @@ Record OpBase_CloneRecord(Record r) {
 	return clone;
 }
 
+inline OPType OpBase_Type(const OpBase *op) {
+	ASSERT(op != NULL);
+	return op->type;
+}
+
 inline void OpBase_DeleteRecord(Record r) {
 	ExecutionPlan_ReturnRecord(r->owner, r);
 }
