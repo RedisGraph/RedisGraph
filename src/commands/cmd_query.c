@@ -263,8 +263,7 @@ void Graph_Query(void *args) {
 
 	// set the query timeout if one was specified
 	if(command_ctx->timeout != 0) {
-		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-		if(readonly) Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
+		Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.

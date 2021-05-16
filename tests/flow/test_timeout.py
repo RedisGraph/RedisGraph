@@ -50,16 +50,19 @@ class testQueryTimeout(FlowTestsBase):
             assert(False)
         except ResponseError as error:
             self.env.assertContains("Query timed out", str(error))
-
-    def test03_write_query_ignore_timeout(self):
-        # Verify that the timeout argument is ignored by write queries
+''' For now this test is commented out since rollback for create query isn't implemented yet.
+    def test03_write_query_timeout(self):
         query = "CREATE (a:M) WITH a UNWIND range(1,10000) AS ctr SET a.v = ctr"
         try:
-            # The query should complete successfully
-            actual_result = redis_graph.query(query, timeout=1)
-            # The query should have taken longer than the timeout value
-            self.env.assertGreater(actual_result.run_time_ms, 1)
-            # The query should have updated properties 10,000 times
-            self.env.assertEquals(actual_result.properties_set, 10000)
-        except ResponseError:
+            # The query is expected to time out
+            redis_graph.query(query, timeout=1)
             assert(False)
+        except ResponseError as error:
+            self.env.assertContains("Query timed out", str(error))
+
+        try:
+            # The query is expected to succeed
+            redis_graph.query(query, timeout=10000)
+        except:
+            assert(False)
+'''
