@@ -160,7 +160,13 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 	GraphContext *gc = value;
 
 	// Acquire a read lock if we're not in a thread-safe context.
-	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
+	if(_shouldAcquireLocks()) {
+		Graph_AcquireReadLock(gc->g);
+	} else {
+		// disable matrix sync,
+		// avoid locking matrices as we're in a single thread context
+		Graph_SetMatrixPolicy(gc->g, DISABLED); 
+	}
 
 	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
 
