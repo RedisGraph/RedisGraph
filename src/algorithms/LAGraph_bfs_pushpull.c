@@ -523,7 +523,8 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 
 		if(dest) {
 			GrB_Info res = GrB_Vector_extractElement(&dest_val, v, *dest) ;
-			if(res != GrB_NO_VALUE) break ;
+			// break if the destination node's value equals the current level
+			if(res != GrB_NO_VALUE && dest_val == level) break ;
 		}
 
 		//----------------------------------------------------------------------
