@@ -34,6 +34,14 @@ def query_create_nodes(graph, n_iterations, n_nodes):
         except:
             return
 
+# Run n_iterations and update all nodes each iteration
+def query_update_nodes(graph, n_iterations):
+    for i in range(0, n_iterations):
+        try:
+            graph.query("MATCH (n:Node {v}) SET n.v = %d" % (i))
+        except:
+            return
+
 # Run n_iterations and execute a read query each iteration
 def query_read_nodes(graph, n_iterations):
     for i in range(0, n_iterations):
@@ -43,15 +51,22 @@ def query_read_nodes(graph, n_iterations):
                 return
 
 # Calls BGSAVE every 0.2 second
-def query_bgsave_loop(conn, n_iterations):
+def query_bgsave_loop(env, conn, n_iterations):
+    results = conn.execute_command("INFO", "persistence")
+    cur_bgsave_time = prev_bgsave_time = results['rdb_last_save_time']
     for i in range(0, n_iterations):
         try:
             conn.execute_command("BGSAVE")
         except:
             return
 
-        # sleep for 0.2 second, allowing threads to kick in
-        sleep(0.2)
+        while(cur_bgsave_time == prev_bgsave_time):
+            results = conn.execute_command("INFO", "persistence")
+            cur_bgsave_time = results['rdb_last_save_time']
+            sleep(1) # sleep for 1 second, allowing threads to kick in
+
+        prev_bgsave_time = cur_bgsave_time
+        env.assertEqual(results['rdb_last_bgsave_status'], "ok")
 
 class testStressFlow(FlowTestsBase):
     def __init__(self):
@@ -87,21 +102,25 @@ class testStressFlow(FlowTestsBase):
         graph = graphs[0]
         n_nodes = 20
         n_iterations = 10
+        graph.query("CREATE INDEX ON :Node(v)")
         t1 = threading.Thread(target=query_create_nodes, args=(graph, n_iterations, n_nodes))
         t1.setDaemon(True)
         t2 = threading.Thread(target=query_read_nodes, args=(graph, n_iterations))
         t2.setDaemon(True)
-        t3 = threading.Thread(target=query_bgsave_loop, args=(conn, n_iterations))
+        t3 = threading.Thread(target=query_bgsave_loop, args=(self.env, conn, 3))
         t3.setDaemon(True)
+        t4 = threading.Thread(target=query_update_nodes(graph, n_iterations))
 
         t1.start()
         t2.start()
         t3.start()
+        t4.start()
 
         # Wait for threads to return.
         t1.join()
         t2.join()
         t3.join()
+        t4.join()
 
         # Make sure we did not crashed.
         conn.ping()
