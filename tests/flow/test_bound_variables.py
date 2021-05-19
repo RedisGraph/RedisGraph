@@ -78,3 +78,16 @@ class testBoundVariables(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['v2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test04_projected_scanned_entity(self):
+        query = """MATCH (a:L {val: 'v1'}) WITH a MATCH (a), (b {val: 'v2'}) RETURN a.val, b.val"""
+        actual_result = redis_graph.query(query)
+
+        # Verify that this query generates exactly 2 scan ops.
+        execution_plan = redis_graph.execution_plan(query)
+        self.env.assertEquals(2, execution_plan.count('Scan'))
+
+        # Verify results.
+        expected_result = [['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
