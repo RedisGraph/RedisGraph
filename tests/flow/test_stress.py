@@ -1,6 +1,7 @@
 import os
 import sys
 import threading
+from time import sleep
 from RLTest import Env
 from redisgraph import Graph
 from base import FlowTestsBase

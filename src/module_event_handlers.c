@@ -224,6 +224,34 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	}
 }
 
+static void RG_ForkPrepare() {
+	/* At this point, a fork call has been issued. (We assume that this is because BGSave was called.)
+	 * Acquire the read-write lock of each graph to ensure that no graph is being modified, or else
+	 * the child process will deadlock when attempting to acquire that lock.
+	 * Note that synchronisation of a graph's matrix which can be initiated by a reader also modifies the graph
+	 * which in this case might leave the child process with inconsistent matrix 
+	 * for this reason we need to exclude reader too.
+	 * 1. If a writer/reader thread is active, we'll wait until they finish and releas the lock.
+	 * 2. Otherwise, no write/read in progress. Acquire the lock and release it immediately after forking. */
+
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i++) {
+		// Acquire each read-write lock as a writer to guarantee that no graph is being modified.
+		Graph_AcquireWriteLock(graphs_in_keyspace[i]->g);
+	}
+}
+
+static void RG_AfterForkParent() {
+	/* The process has forked, and the parent process is continuing.
+	 * Release all locks. */
+
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i++) {
+		// Release each read-write lock.
+		Graph_ReleaseLock(graphs_in_keyspace[i]->g);
+	}
+}
+
 static void RG_AfterForkChild() {
 	/* Restrict GraphBLAS to use a single thread this is done for 2 reasons:
 	 * 1. save resources.
@@ -236,9 +264,8 @@ static void RG_AfterForkChild() {
 }
 
 static void _RegisterForkHooks() {
-	/* Register handlers to control the behavior of fork calls.
-	 * Only the child process requires a handler, to prevent the acquisition of locks it doesn't own. */
-	int res = pthread_atfork(NULL, NULL, RG_AfterForkChild);
+	/* Register handlers to control the behavior of fork calls. */
+	int res = pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild);
 	ASSERT(res == 0);
 }
 
