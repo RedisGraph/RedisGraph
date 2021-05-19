@@ -26,6 +26,33 @@ def query_crud(graph, threadID):
         except:
             return
 
+# Run n_iterations and create n_nodes each iteration
+def query_create_nodes(graph, n_iterations, n_nodes):
+    for i in range(0, n_iterations):
+        try:
+            graph.query("UNWIND range(%d,%d) as j CREATE (:Node {val:j})" % (i*n_nodes, i*n_nodes + n_nodes))
+        except:
+            return
+
+# Run n_iterations and execute a read query each iteration
+def query_read_nodes(graph, n_iterations):
+    for i in range(0, n_iterations):
+            try:
+                graph.query("MATCH (n:Node {v}) return n")
+            except:
+                return
+
+# Calls BGSAVE every 0.2 second
+def query_bgsave_loop(conn, n_iterations):
+    for i in range(0, n_iterations):
+        try:
+            conn.execute_command("BGSAVE")
+        except:
+            return
+
+        # sleep for 0.2 second, allowing threads to kick in
+        sleep(0.2)
+
 class testStressFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
@@ -56,7 +83,30 @@ class testStressFlow(FlowTestsBase):
         # Make sure we did not crashed.
         conn.ping()
 
-    def test01_clean_shutdown(self):
+    def test01_bgsave_stress(self):
+        graph = graphs[0]
+        n_nodes = 20
+        n_iterations = 10
+        t1 = threading.Thread(target=query_create_nodes, args=(graph, n_iterations, n_nodes))
+        t1.setDaemon(True)
+        t2 = threading.Thread(target=query_read_nodes, args=(graph, n_iterations))
+        t2.setDaemon(True)
+        t3 = threading.Thread(target=query_bgsave_loop, args=(conn, n_iterations))
+        t3.setDaemon(True)
+
+        t1.start()
+        t2.start()
+        t3.start()
+
+        # Wait for threads to return.
+        t1.join()
+        t2.join()
+        t3.join()
+
+        # Make sure we did not crashed.
+        conn.ping()
+
+    def test02_clean_shutdown(self):
         # TODO: enable
         return
         # issue SHUTDOWN while traffic is generated
