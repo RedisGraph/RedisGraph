@@ -81,3 +81,21 @@ class testStressFlow(FlowTestsBase):
         # TODO: exit code doesn't seems to work
         # self.env.assertTrue(self.env.checkExitCode())
 
+    def test02_bgsave(self):
+        results = conn.execute_command("INFO", "persistence")
+        cur_bgsave_time = prev_bgsave_time = results['rdb_last_save_time']
+        try:
+            conn.execute_command("BGSAVE")
+        except:
+            return
+
+        while(cur_bgsave_time == prev_bgsave_time):
+            results = conn.execute_command("INFO", "persistence")
+            cur_bgsave_time = results['rdb_last_save_time']
+            sleep(1) # sleep for 1 second, allowing threads to kick in
+
+        prev_bgsave_time = cur_bgsave_time
+        self.env.assertEqual(results['rdb_last_bgsave_status'], "ok")
+        
+        # Make sure we did not crashed.
+        conn.ping()
