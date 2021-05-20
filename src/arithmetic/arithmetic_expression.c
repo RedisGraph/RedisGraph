@@ -766,13 +766,22 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 }
 
 static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
-	if(op_node->op.f->bfree) {
-		op_node->op.f->bfree(op_node->op.f->privdata); // Free the function's private data.
-		rm_free(op_node->op.f); // The function descriptor itself is an allocation in this case.
+	void *pdata = op_node->op.f->privdata;
+	AR_Func_Free free_func = op_node->op.f->bfree;
+
+	// free function private data if there's a custom free function
+	// and private data exists
+	if(free_func && pdata) {
+		// free the function's private data
+		free_func(pdata);
+		// the function descriptor itself is an allocation in this case
+		rm_free(op_node->op.f);
 	}
+
 	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
 		AR_EXP_Free(op_node->op.children[child_idx]);
 	}
+
 	rm_free(op_node->op.children);
 }
 
