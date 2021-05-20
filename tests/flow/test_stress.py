@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import threading
 from time import sleep
 from RLTest import Env
@@ -52,6 +53,7 @@ def query_read_nodes(graph, n_iterations):
 
 # Calls BGSAVE every 0.2 second
 def query_bgsave_loop(env, conn, n_iterations):
+    start = time.time()
     results = conn.execute_command("INFO", "persistence")
     cur_bgsave_time = prev_bgsave_time = results['rdb_last_save_time']
     for i in range(0, n_iterations):
@@ -61,6 +63,10 @@ def query_bgsave_loop(env, conn, n_iterations):
             return
 
         while(cur_bgsave_time == prev_bgsave_time):
+            # Assert and return if the timeout of 15 seconds took place
+            if(time.time() - start > 15):
+                env.assertTrue(False)
+                return
             results = conn.execute_command("INFO", "persistence")
             cur_bgsave_time = results['rdb_last_save_time']
             sleep(1) # sleep for 1 second, allowing threads to kick in

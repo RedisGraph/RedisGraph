@@ -226,14 +226,17 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 }
 
 static void RG_ForkPrepare() {
-	/* At this point, a fork call has been issued. (We assume that this is because BGSave was called.)
-	 * Acquire the read-write lock of each graph to ensure that no graph is being modified, or else
-	 * the child process will deadlock when attempting to acquire that lock.
+	/* At this point, a fork call has been issued. (We assume that this is because BGSave or RedisSearch GC was called.)
+	 * On BGSAVE acquire the read lock of each graph to ensure that no graph is being modified, or else
+	 * the child might get an matrix in inconsistent state.
 	 * Note that synchronisation of a graph's matrix which can be initiated by a reader also modifies the graph
-	 * which in this case might leave the child process with inconsistent matrix 
-	 * for this reason we need to exclude reader too.
-	 * 1. If a writer/reader thread is active, we'll wait until they finish and release the lock.
-	 * 2. Otherwise, no write/read in progress. Acquire the lock and release it immediately after forking.
+	 * and in order to avoid this we synchronize it before we fork.
+	 * On BGSAVE case:
+	 * 1. If a writer thread is active, we'll wait until they finish and release the lock.
+	 * 2. Otherwise, no write in progress. Acquire the lock synchronize the matrix and release
+	 * it immediately after forking.
+	 * Note that the child proccess might get a forever locked synchronization lock and it's ok
+	 * cause the child synchronization policy is nope.
 	 * In the case the fork is called by RedisSearch for GC purposes, no need to take a lock since GC doesn't
 	 * uses the graph nor it's matrices. */
 
@@ -242,8 +245,11 @@ static void RG_ForkPrepare() {
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Acquire each read-write lock as a writer to guarantee that no graph is being modified.
-		Graph_AcquireWriteLock(graphs_in_keyspace[i]->g);
+		// Acquire each read lock as a reader to guarantee that no graph is being modified.
+		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
+
+		// Synchronize the matrices making sure they will not synchronize in the middle of the fork
+		Graph_ApplyAllPending(graphs_in_keyspace[i]->g);
 	}
 }
 
@@ -256,7 +262,7 @@ static void RG_AfterForkParent() {
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Release each read-write lock.
+		// Release each read lock.
 		Graph_ReleaseLock(graphs_in_keyspace[i]->g);
 	}
 }
@@ -266,6 +272,13 @@ static void RG_AfterForkChild() {
 	 * 1. save resources.
 	 * 2. avoid a bug in GNU OpenMP which hangs when performing parallel loop in forked process. */
 	GxB_set(GxB_NTHREADS, 1);
+
+	// In order to avoid taking the synchronization lock which might be locked forever
+	// disable the synchronization.
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i++) {
+		Graph_SetMatrixPolicy(graphs_in_keyspace[i]->g, DISABLED);
+	}
 
 	/* Mark that the child is a forked process so that it doesn't attempt invalid
 	 * accesses of POSIX primitives it doesn't own. */
