@@ -105,6 +105,9 @@ class testStressFlow(FlowTestsBase):
         conn.ping()
 
     def test01_bgsave_stress(self):
+        # skip test if we're running under Valgrind
+        if Env().envRunner.debugger is not None:
+            Env().skip() # Fork doesn't free memory, so valgrind will complain.
         graph = graphs[0]
         n_nodes = 20
         n_iterations = 10
