@@ -32,6 +32,18 @@ int ThreadPools_GetThreadID
 	void
 );
 
+// returns true if caller thread is a READER thread, false otherwise
+bool ThreadPools_AmReader
+(
+	void
+);
+
+// returns true if caller thread is a WRITER thread, false otherwise
+bool ThreadPools_AmWriter
+(
+	void
+);
+
 // pause all thread pools
 void ThreadPools_Pause
 (

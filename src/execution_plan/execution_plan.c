@@ -384,20 +384,12 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 }
 
 //------------------------------------------------------------------------------
-// Execution plan draining
+// Execution plan abort
 //------------------------------------------------------------------------------
 
 // NOP operation consume routine for immediately terminating execution.
 static Record deplete_consume(struct OpBase *op) {
 	return NULL;
-}
-
-// return true if execution plan been drained
-// false otherwise
-bool ExecutionPlan_Drained(ExecutionPlan *plan) {
-	ASSERT(plan != NULL);
-	ASSERT(plan->root != NULL);
-	return (plan->root->consume == deplete_consume);
 }
 
 static void _ExecutionPlan_Drain(OpBase *root) {
@@ -407,10 +399,29 @@ static void _ExecutionPlan_Drain(OpBase *root) {
 	}
 }
 
-// Resets each operation consume function to simply return NULL
+// return true if execution plan been drained, set's reason to abort reason
+bool ExecutionPlan_Aborted(const ExecutionPlan *plan,
+		ExecutionPlan_AbortReason *reason) {
+	ASSERT(plan != NULL);
+	ASSERT(reason != NULL);
+
+	*reason = plan->abort_reason;
+	return plan->abort_reason != EXEC_PLAN_ABORT_NONE;
+}
+
+// resets each operation consume function to simply return NULL
 // this will cause the execution-plan to quickly deplete
-void ExecutionPlan_Drain(ExecutionPlan *plan) {
+void ExecutionPlan_Abort(ExecutionPlan *plan, ExecutionPlan_AbortReason reason) {
 	ASSERT(plan && plan->root);
+
+	plan->abort_reason = reason;
+
+	// in case this is an intermidate execution plan segment
+	// search for last segment, indicated by a NULL root parent
+	while(plan->root->parent != NULL) {
+		plan = (ExecutionPlan*) plan->root->parent->plan;
+	}
+
 	_ExecutionPlan_Drain(plan->root);
 }
 

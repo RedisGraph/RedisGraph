@@ -72,8 +72,8 @@ void Graph_Profile(void *args) {
 	lockAcquired = true;
 
 	result_set = NewResultSet(ctx, FORMATTER_NOP);
-	// Indicate a cached execution.
-	if(cached) ResultSet_CachedExecution(result_set);
+	// indicate a cached execution
+	ResultSet_CachedExecution(result_set, cached);
 	QueryCtx_SetResultSet(result_set);
 
 	ExecutionPlan_PreparePlan(plan);

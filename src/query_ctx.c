@@ -48,8 +48,8 @@ inline void QueryCtx_RemoveFromTLS() {
 }
 
 void QueryCtx_BeginTimer(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
-	simple_tic(ctx->internal_exec_ctx.timer); // Start the execution timer.
+	QueryCtx *ctx = _QueryCtx_GetCtx(); // attempt to retrieve the QueryCtx
+	simple_tic(ctx->internal_exec_ctx.timer); // start the execution timer
 }
 
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {

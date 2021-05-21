@@ -32,4 +32,5 @@ void reduceDistinct(ExecutionPlan *plan);
 void reduceCount(ExecutionPlan *plan);
 void applyLimit(ExecutionPlan *plan);
 void applySkip(ExecutionPlan *plan);
+void shortcircuitMerge(ExecutionPlan *plan);
 

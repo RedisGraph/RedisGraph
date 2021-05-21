@@ -28,11 +28,11 @@ extern RedisModuleType *GraphContextRedisModuleType;
 static void _GraphContext_Free(void *arg);
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
 
-static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
+inline void GraphContext_IncreaseRefCount(GraphContext *gc) {
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
 }
 
-static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
+inline void GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
 		bool async_delete;
@@ -144,14 +144,14 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 
 	RedisModule_CloseKey(key);
 
-	if(gc) _GraphContext_IncreaseRefCount(gc);
+	if(gc) GraphContext_IncreaseRefCount(gc);
 
 	return gc;
 }
 
 void GraphContext_Release(GraphContext *gc) {
 	ASSERT(gc);
-	_GraphContext_DecreaseRefCount(gc);
+	GraphContext_DecreaseRefCount(gc);
 }
 
 void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc) {
@@ -179,7 +179,7 @@ void GraphContext_Delete(GraphContext *gc) {
 
 	// Unregister graph object from global list.
 	GraphContext_RemoveFromRegistry(gc);
-	_GraphContext_DecreaseRefCount(gc);
+	GraphContext_DecreaseRefCount(gc);
 }
 
 const char *GraphContext_GetName(const GraphContext *gc) {

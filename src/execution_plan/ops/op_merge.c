@@ -4,12 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "op_merge.h"
-#include "../../RG.h"
 #include "../../errors.h"
 #include "op_merge_create.h"
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
+#include "../../util/thpool/pools.h"
 #include "../../util/rax_extensions.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../execution_plan_build/execution_plan_modify.h"
@@ -70,6 +71,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	op->stats            =  NULL;
 	op->on_match         =  on_match;
 	op->on_create        =  on_create;
+	op->optimistic       =  false;
 	op->pending_updates  =  NULL;
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
@@ -98,6 +100,7 @@ static OpResult MergeInit(OpBase *opBase) {
 	 * - The last creates the pattern */
 	ASSERT(opBase->childCount == 2 || opBase->childCount == 3);
 	OpMerge *op = (OpMerge *)opBase;
+	op->optimistic = ThreadPools_AmReader();
 	op->stats = QueryCtx_GetResultSetStatistics();
 	if(opBase->childCount == 2) {
 		// if we only have 2 streams, we simply need to determine which has a MergeCreate op
@@ -225,6 +228,14 @@ static Record MergeConsume(OpBase *opBase) {
 		}
 
 		if(should_create_pattern) {
+			if(op->optimistic) {
+				// merge resulted in write, but we're executing under READER thread
+				// delegate query to a WRITER thread
+				ExecutionPlan_Abort((ExecutionPlan*) opBase->plan,
+						EXEC_PLAN_ABORT_OPTIMISTIC_READ);
+				return NULL;
+			}
+
 			/* transfer the LHS record to the Create stream to build once we finish reading
 			 * we don't need to clone the record, as it won't be accessed again outside that stream,
 			 * but we must make sure its elements are access-safe, as the input stream will be freed
