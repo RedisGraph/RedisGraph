@@ -546,3 +546,21 @@ class testQueryValidationFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertTrue(plan.count("ProcedureCall") == 2)
 
+    def test37_list_comprehension_missuse(self):
+        # all expect list comprehension,
+        # unfortunately this isn't enforced by the parser
+        # as such it is possible for a user miss-use this function
+        # and our current arithmetic expression construction logic will
+        # construct a malformed function call
+
+        # make sure we're reciving an exception for each miss-use query
+        queries = ["WITH 1 AS x RETURN all(x > 2)",
+                "WITH 1 AS x RETURN all([1],2,3)"]
+
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                pass
+
