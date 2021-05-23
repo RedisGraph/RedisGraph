@@ -228,9 +228,6 @@ static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
 
 static inline void _Graph_SetAdjacencyMatrixDirty(const Graph *g) {
 	RG_Matrix_SetDirty(g->adjacency_matrix);
-}
-
-static inline void _Graph_SetTransposedAdjacencyMatrixDirty(const Graph *g) {
 	RG_Matrix_SetDirty(g->_t_adjacency_matrix);
 }
 
@@ -241,14 +238,14 @@ static inline void _Graph_SetLabelMatrixDirty(const Graph *g, int label_idx) {
 
 static inline void _Graph_SetRelationMatrixDirty(const Graph *g, int relation_idx) {
 	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
-	if(relation_idx == GRAPH_NO_RELATION) _Graph_SetAdjacencyMatrixDirty(g);
-	else RG_Matrix_SetDirty(g->relations[relation_idx]);
-}
-
-static inline void _Graph_SetTransposedRelationMatrixDirty(const Graph *g, int relation_idx) {
-	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
-	if(relation_idx == GRAPH_NO_RELATION) _Graph_SetTransposedAdjacencyMatrixDirty(g);
-	else RG_Matrix_SetDirty(g->t_relations[relation_idx]);
+	if(relation_idx == GRAPH_NO_RELATION) {
+		_Graph_SetAdjacencyMatrixDirty(g);
+	} else {
+		RG_Matrix_SetDirty(g->relations[relation_idx]);
+		bool maintain_transpose;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+		if(maintain_transpose) RG_Matrix_SetDirty(g->t_relations[relation_idx]);
+	}
 }
 
 /* Resize given matrix, such that its number of row and columns
@@ -282,27 +279,23 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 		// Recheck
 		GrB_Matrix_nrows(&n_rows, m);
 		GrB_Matrix_ncols(&n_cols, m);
+		dims = Graph_RequiredMatrixDim(g);
 		if(n_rows == dims && n_cols == dims && !RG_Matrix_IsDirty(rg_matrix)) {
 			goto cleanup;
 		}
 
 		bool pending;
 		GxB_Matrix_Pending(m, &pending);
-		// If the matrix has pending operations or requires
-		// a resize, enter critical section.
+		// If the matrix has pending operations or requires a resize
 		if(pending || (n_rows != dims) || (n_cols != dims)) {
-			// Double-check if resize is necessary.
-			GrB_Matrix_nrows(&n_rows, m);
-			GrB_Matrix_ncols(&n_cols, m);
-			dims = Graph_RequiredMatrixDim(g);
 			if((n_rows != dims) || (n_cols != dims)) {
 				GrB_Info res = GxB_Matrix_resize(m, dims, dims);
 				ASSERT(res == GrB_SUCCESS);
 			}
 			// Flush changes to matrix.
 			_Graph_ApplyPending(m);
-			RG_Matrix_SetUnDirty(rg_matrix);
 		}
+		RG_Matrix_SetUnDirty(rg_matrix);
 
 cleanup:
 		// Unlock matrix mutex.
@@ -591,7 +584,7 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 			res = GrB_Matrix_setElement_BOOL(m, true, id, id);
 			ASSERT(res == GrB_SUCCESS);
 		}
-		RG_Matrix_SetDirty(matrix);
+		_Graph_SetLabelMatrixDirty(g, label);
 	}
 }
 
@@ -608,7 +601,6 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 	if(maintain_transpose) {
 		t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
-		_Graph_SetTransposedRelationMatrixDirty(g, r);
 	}
 
 	// Rows represent source nodes, columns represent destination nodes.
@@ -617,9 +609,8 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
 
 	// set matrices as dirty
-	RG_Matrix_SetDirty(M);
+	_Graph_SetRelationMatrixDirty(g, r);
 	_Graph_SetAdjacencyMatrixDirty(g);
-	_Graph_SetTransposedAdjacencyMatrixDirty(g);
 
 	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
 	if(_RG_Matrix_MultiEdgeEnabled(M)) {
@@ -856,9 +847,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	}
 
 	_Graph_SetAdjacencyMatrixDirty(g);
-	_Graph_SetTransposedAdjacencyMatrixDirty(g);
 	_Graph_SetRelationMatrixDirty(g, r);
-	if(maintain_transpose) _Graph_SetTransposedRelationMatrixDirty(g, r);
 
 	// Free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
@@ -975,7 +964,6 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 	// mark matrices as dirty
 	_Graph_SetAdjacencyMatrixDirty(g);
-	_Graph_SetTransposedAdjacencyMatrixDirty(g);
 
 	/* For user-defined select operators,
 	 * If Thunk is not NULL, it must be a valid GxB_Scalar. If it has no entry,
@@ -1092,7 +1080,6 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 			// remove every entry of TR marked by Mask
 			GrB_Matrix_apply(TR, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
-			_Graph_SetTransposedRelationMatrixDirty(g, i);
 		}
 	}
 
@@ -1218,8 +1205,8 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		for(int r = 0; r < relationCount; r++) {
 			GrB_Matrix mask = masks[r];
 			GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
-			_Graph_SetRelationMatrixDirty(g, r);
 			if(mask) {
+				_Graph_SetRelationMatrixDirty(g, r);
 				// Remove every entry of R marked by Mask.
 				// Desc: GrB_MASK = GrB_COMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
@@ -1230,7 +1217,6 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 					GrB_transpose(mask, GrB_NULL, GrB_NULL, mask, GrB_NULL);
 					// tM = tM & !mask.
 					GrB_Matrix_apply(tM, mask, GrB_NULL, GrB_IDENTITY_UINT64, tM, desc);
-					_Graph_SetTransposedRelationMatrixDirty(g, r);
 				}
 				GrB_free(&mask);
 			}
@@ -1243,7 +1229,6 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
 		GrB_Matrix t_adj_matrix = Graph_GetTransposedAdjacencyMatrix(g);
 		_Graph_SetAdjacencyMatrixDirty(g);
-		_Graph_SetTransposedAdjacencyMatrixDirty(g);
 
 		// To calculate edges to delete, remove all the remaining edges from "The" adjency matrix.
 		// Set descriptor mask to default.
