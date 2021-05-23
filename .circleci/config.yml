@@ -106,7 +106,8 @@ commands:
     steps:
       - run:
           name: Install remote benchmark tool dependencies
-          command: TF_EXE_FILE_NAME=/workspace/terraform ./tests/benchmarks/remote/install_deps.sh
+          command: |
+            VERSION=0.14.8 ./deps/readies/bin/getterraform
       - run:
           name: Install remote benchmark python dependencies
           command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
@@ -120,7 +121,6 @@ commands:
               export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
 
               redisbench-admin run-remote \
-                --terraform_bin_path /workspace/terraform \
                 --module_path << parameters.module_path >> \
                 --github_actor << parameters.github_actor >> \
                 --github_repo $CIRCLE_PROJECT_REPONAME \
@@ -129,6 +129,7 @@ commands:
                 --github_branch $CIRCLE_BRANCH \
                 --upload_results_s3 \
                 --triggering_env circleci \
+                --required-module graph \
                 --push_results_redistimeseries
 
   platform-build-steps:
@@ -314,6 +315,7 @@ jobs:
     steps:
       - early_returns
       - checkout
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - benchmark-automation
@@ -324,12 +326,12 @@ jobs:
     steps:
       - early_returns
       - checkout
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - run:
           name: Unzip module artifact
           command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
-
       - benchmark-automation
 
   nightly_performance_automation:
