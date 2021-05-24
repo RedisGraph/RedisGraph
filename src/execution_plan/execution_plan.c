@@ -428,10 +428,10 @@ void ExecutionPlan_Abort(OpBase *root, ExecutionPlan_AbortReason reason) {
 	// search for execution plan root operation
 	while(root->parent != NULL) root = root->parent;
 
-	_ExecutionPlan_Drain(root);
-
 	ExecutionPlan *plan = (ExecutionPlan*)root->plan;
 	plan->abort_reason = reason;
+
+	_ExecutionPlan_Drain(root);
 }
 
 //------------------------------------------------------------------------------
