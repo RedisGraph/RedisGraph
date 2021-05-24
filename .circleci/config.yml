@@ -1,16 +1,33 @@
 version: 2.1
 
 commands:
+
+  # If this build is from a fork, stop executing the current job and return success.
+  # This is useful to avoid steps that will fail due to missing credentials.
   early_return_for_forked_pull_requests:
-    description: >-
-      If this build is from a fork, stop executing the current job and return success.
-      This is useful to avoid steps that will fail due to missing credentials.
     steps:
       - run:
           name: Early return if this build is from a forked PR
           command: |
             if [ -n "$CIRCLE_PR_NUMBER" ]; then
-              echo "Nothing to do for forked PRs, so marking this step successful"
+              echo "Nothing to do for forked PRs, so marking this step successful."
+              circleci step halt
+            fi
+
+  early_returns:
+    steps:
+      - run:
+          name: Early return if this is a docs build
+          command: |
+            if [[ $CIRCLE_BRANCH == *docs ]]; then
+              echo "Identifies as documents PR, no testing required."
+              circleci step halt
+            fi
+      - run:
+          name: Early return if this branch should ignore CI
+          command: |
+            if [[ $CIRCLE_BRANCH == *noci ]]; then
+              echo "Identifies as actively ignoring CI, no testing required."
               circleci step halt
             fi
 
@@ -32,7 +49,7 @@ commands:
           command: |
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
-  
+
   load-cached-deps:
     steps:
       # Load GraphBLAS from cache if possible.
@@ -44,7 +61,7 @@ commands:
       - restore_cache:
           keys:
           - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
-  
+
   save-deps-cache:
     steps:
       # Save GraphBLAS to cache.
@@ -89,7 +106,8 @@ commands:
     steps:
       - run:
           name: Install remote benchmark tool dependencies
-          command: TF_EXE_FILE_NAME=/workspace/terraform ./tests/benchmarks/remote/install_deps.sh
+          command: |
+            VERSION=0.14.8 ./deps/readies/bin/getterraform
       - run:
           name: Install remote benchmark python dependencies
           command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
@@ -103,7 +121,6 @@ commands:
               export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
 
               redisbench-admin run-remote \
-                --terraform_bin_path /workspace/terraform \
                 --module_path << parameters.module_path >> \
                 --github_actor << parameters.github_actor >> \
                 --github_repo $CIRCLE_PROJECT_REPONAME \
@@ -112,6 +129,7 @@ commands:
                 --github_branch $CIRCLE_BRANCH \
                 --upload_results_s3 \
                 --triggering_env circleci \
+                --required-module graph \
                 --push_results_redistimeseries
 
   platform-build-steps:
@@ -119,6 +137,7 @@ commands:
       platform:
         type: string
     steps:
+      - early_returns
       - setup-executor
       - checkout
       - run:
@@ -155,6 +174,7 @@ jobs:
           LANGUAGE: en_US.UTF-8
           LC_ALL: en_US.UTF-8
     steps:
+      - early_returns
       - checkout
       - setup-prerequisits
       - load-cached-deps
@@ -167,7 +187,7 @@ jobs:
       - run:
           name: Test
           command: make test
-
+      - early_return_for_forked_pull_requests
       - run:
           name: Persist Artifact for CI benchmarks
           command: |
@@ -184,10 +204,11 @@ jobs:
     docker:
       - image: redisfab/rmbuilder:6.0.9-x64-bionic
         environment:
-            LANG: en_US.UTF-8  
+            LANG: en_US.UTF-8
             LANGUAGE: en_US.UTF-8
             LC_ALL: en_US.UTF-8
     steps:
+      - early_returns
       - checkout
       - setup-prerequisits
       - load-cached-deps
@@ -211,6 +232,7 @@ jobs:
       LANGUAGE: en_US.UTF-8
       LC_ALL: en_US.UTF-8
     steps:
+      - early_returns
       - checkout
       - setup-prerequisits
       - run:
@@ -291,8 +313,9 @@ jobs:
     docker:
       - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
     steps:
-      - early_return_for_forked_pull_requests
+      - early_returns
       - checkout
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - benchmark-automation
@@ -301,21 +324,21 @@ jobs:
     docker:
       - image: redisfab/rmbuilder:6.0.9-x64-bionic
     steps:
-      - early_return_for_forked_pull_requests
+      - early_returns
       - checkout
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - run:
           name: Unzip module artifact
           command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
-
       - benchmark-automation
 
   nightly_performance_automation:
     docker:
       - image: redisfab/rmbuilder:6.0.9-x64-bionic
     steps:
-      - early_return_for_forked_pull_requests
+      - early_returns
       - checkout
       - setup-prerequisits
       - attach_workspace:

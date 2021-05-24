@@ -16,7 +16,8 @@ else
 	BENCHMARK_ARGS = redisbench-admin run-local 
 endif
 
-BENCHMARK_ARGS += --module_path $(shell pwd)/../src/redisgraph.so
+BENCHMARK_ARGS += --module_path $(shell pwd)/../src/redisgraph.so \
+	--required-module graph
 ifneq ($(BENCHMARK),)
 	BENCHMARK_ARGS += --test $(BENCHMARK)
 endif
