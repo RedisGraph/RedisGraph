@@ -226,63 +226,58 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 }
 
 static void RG_ForkPrepare() {
-	/* At this point, a fork call has been issued. (We assume that this is because BGSave or RedisSearch GC was called.)
-	 * On BGSAVE acquire the read lock of each graph to ensure that no graph is being modified, or else
-	 * the child might get an matrix in inconsistent state.
-	 * Note that synchronisation of a graph's matrix which can be initiated by a reader also modifies the graph
-	 * and in order to avoid this we synchronize it before we fork.
-	 * On BGSAVE case:
-	 * 1. If a writer thread is active, we'll wait until they finish and release the lock.
-	 * 2. Otherwise, no write in progress. Acquire the lock synchronize the matrix and release
-	 * it immediately after forking.
-	 * Note that the child proccess might get a forever locked synchronization lock and it's ok
-	 * cause the child synchronization policy is nope.
-	 * In the case the fork is called by RedisSearch for GC purposes, no need to take a lock since GC doesn't
-	 * uses the graph nor it's matrices. */
+	// at this point, fork been issued, we assume that this is due to BGSAVE
+	// or RedisSearch GC
+	//
+	// on BGSAVE acquire read lock for each graph to ensure no graph is being
+	// modified, otherwise the child process might inherit a malformed matrix
+	//
+	// on BGSAVE: acquire read lock and synchronize all matrices
+	// release immediately once forked
+	// as a precocious set child process synchronization policy to NOP
+	//
+	// in the case of RediSearch GC fork quickly return
 
-	// We are in BGSAVE flow iff we are on the redis main thread context.
+	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Acquire each read lock as a reader to guarantee that no graph is being modified.
+		// acquire read lock, guarantee graph isn't modified
 		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
 
-		// Synchronize the matrices making sure they will not synchronize in the middle of the fork
+		// synchronize all matrices, make sure they're in a consistent state
 		Graph_ApplyAllPending(graphs_in_keyspace[i]->g);
 	}
 }
 
 static void RG_AfterForkParent() {
-	/* The process has forked, and the parent process is continuing.
-	 * Release all locks. */
-
-	// We are in BGSAVE flow iff we are on the redis main thread context.
+	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
 
+	// the child process forked, release all acquired locks
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Release each read lock.
 		Graph_ReleaseLock(graphs_in_keyspace[i]->g);
 	}
 }
 
 static void RG_AfterForkChild() {
-	/* Restrict GraphBLAS to use a single thread this is done for 2 reasons:
-	 * 1. save resources.
-	 * 2. avoid a bug in GNU OpenMP which hangs when performing parallel loop in forked process. */
+	// mark that the child is a forked process so that it doesn't
+	// attempt invalid accesses of POSIX primitives it doesn't own
+	process_is_child = true;
+
+	// restrict GraphBLAS to use a single thread this is done for 2 reasons:
+	// 1. save resources
+	// 2. avoid a bug in GNU OpenMP which hangs when performing parallel loop
+	// in forked process
 	GxB_set(GxB_NTHREADS, 1);
 
-	// In order to avoid taking the synchronization lock which might be locked forever
-	// disable the synchronization.
+	// all matrices should be synced, set synchronization policy to NOP
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		Graph_SetMatrixPolicy(graphs_in_keyspace[i]->g, DISABLED);
 	}
-
-	/* Mark that the child is a forked process so that it doesn't attempt invalid
-	 * accesses of POSIX primitives it doesn't own. */
-	process_is_child = true;
 }
 
 static void _RegisterForkHooks() {
