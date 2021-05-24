@@ -71,7 +71,7 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 bool ExecutionPlan_Aborted(const ExecutionPlan *plan, ExecutionPlan_AbortReason *reason);
 
 /* Abort execution, drains all operations */
-void ExecutionPlan_Abort(ExecutionPlan *plan, ExecutionPlan_AbortReason reason);
+void ExecutionPlan_Abort(OpBase *root, ExecutionPlan_AbortReason reason);
 
 /* Profile executes plan */
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);

@@ -231,8 +231,7 @@ static Record MergeConsume(OpBase *opBase) {
 			if(op->optimistic) {
 				// merge resulted in write, but we're executing under READER thread
 				// delegate query to a WRITER thread
-				ExecutionPlan_Abort((ExecutionPlan*) opBase->plan,
-						EXEC_PLAN_ABORT_OPTIMISTIC_READ);
+				ExecutionPlan_Abort(opBase, EXEC_PLAN_ABORT_OPTIMISTIC_READ);
 				return NULL;
 			}
 

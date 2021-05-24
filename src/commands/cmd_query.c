@@ -72,7 +72,11 @@ static void _RestartQueryAsWriter(GraphQueryCtx *gq_ctx) {
 // for example: MERGE ({v:1})
 //              MATCH (n) WHERE n.x > 2 MERGE (n)-[:R]->({v:1})
 //              MERGE (n:L {x:2}) ON CREATE n.v = 1
-static bool _optimistic_merge_query(AST *ast) {
+static bool _optimistic_merge_query(ExecutionCtx *exec_ctx) {
+	// quick return if this is an index create/delete query
+	if(exec_ctx->exec_type != EXECUTION_TYPE_QUERY) return false;
+
+	AST *ast = exec_ctx->ast;
 	// forbiden clauses
 	// return false if query contains one of the following clauses
 	cypher_astnode_type_t t[3] = {
@@ -155,7 +159,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 void QueryTimedOut(void *pdata) {
 	ASSERT(pdata);
 	ExecutionPlan *plan = (ExecutionPlan *)pdata;
-	ExecutionPlan_Abort(plan, EXEC_PLAN_ABORT_TIMEOUT);
+	ExecutionPlan_Abort(plan->root, EXEC_PLAN_ABORT_TIMEOUT);
 
 	/* Timer may have triggered after execution-plan ran to completion
 	 * in which case the original query thread had called ExecutionPlan_Free
@@ -228,55 +232,62 @@ static void _ExecuteQuery(void *args) {
 		Graph_WriterEnter(gc->g);  // single writer
 	}
 
-	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
-		// set policy after lock acquisition,
-		// avoid resetting policies between readers and writers
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	switch(exec_type) {
+		case EXECUTION_TYPE_QUERY:  // query operation
+			// set policy after lock acquisition,
+			// avoid resetting policies between readers and writers
+			Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
-		ExecutionPlan_PreparePlan(plan);
-		result_set = ExecutionPlan_Execute(plan);
+			ExecutionPlan_PreparePlan(plan);
+			result_set = ExecutionPlan_Execute(plan);
 
-		// see if execution was aborted
-		// 1. timeout reached
-		// 2. optimistic read wants to write
-		ExecutionPlan_AbortReason abort_reason;
-		execution_aborted = ExecutionPlan_Aborted(plan, &abort_reason);
+			// see if execution was aborted
+			// 1. timeout reached
+			// 2. optimistic read wants to write
+			ExecutionPlan_AbortReason abort_reason;
+			execution_aborted = ExecutionPlan_Aborted(plan, &abort_reason);
 
-		ExecutionPlan_Free(plan);
-		exec_ctx->plan = NULL;
+			ExecutionPlan_Free(plan);
+			exec_ctx->plan = NULL;
 
-		QueryCtx_ForceUnlockCommit();
-
-		if(readonly) Graph_ReleaseLock(gc->g); // release read lock
-		else Graph_WriterLeave(gc->g);
-
-		// handle execution plan abort
-		if(execution_aborted) {
-			switch(abort_reason) {
-				case EXEC_PLAN_ABORT_TIMEOUT:
-					// emit error if query timed out
-					ErrorCtx_SetError("Query timed out");
-					break;
-				case EXEC_PLAN_ABORT_OPTIMISTIC_READ:
-					_RestartQueryAsWriter(gq_ctx);
-					command_ctx = NULL;
-					goto cleanup;
-					break;
-				case EXEC_PLAN_ABORT_NONE:
-					ASSERT("Unexpected abort reason");
-					break;
-				default:
-					ASSERT("Unexpected abort reason");
-					break;
+			// handle execution plan abort
+			if(execution_aborted) {
+				switch(abort_reason) {
+					case EXEC_PLAN_ABORT_TIMEOUT:
+						// emit error if query timed out
+						ErrorCtx_SetError("Query timed out");
+						break;
+					case EXEC_PLAN_ABORT_OPTIMISTIC_READ:
+						ASSERT(readonly);
+						Graph_ReleaseLock(gc->g);
+						_RestartQueryAsWriter(gq_ctx);
+						command_ctx = NULL;
+						goto cleanup;
+						break;
+					case EXEC_PLAN_ABORT_NONE:
+						ASSERT("Unexpected abort reason");
+						break;
+					default:
+						ASSERT("Unexpected abort reason");
+						break;
+				}
 			}
-		}
 
-	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
-		_index_operation(rm_ctx, gc, ast, exec_type);
-	} else {
-		ASSERT("Unhandled query type" && false);
+			break;
+
+		case EXECUTION_TYPE_INDEX_CREATE:
+		case EXECUTION_TYPE_INDEX_DROP:
+			_index_operation(rm_ctx, gc, ast, exec_type);
+			break;
+		default:
+			ASSERT("Unhandled query type" && false);
+			break;
 	}
+
+	QueryCtx_ForceUnlockCommit();
+
+	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
+	else Graph_WriterLeave(gc->g);
 
 	// send result-set back to client
 	ResultSet_Reply(result_set);
@@ -339,16 +350,17 @@ void Graph_Query(void *args) {
 		// already on a writer thread
 		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, false);
 		_ExecuteQuery(gq_ctx);
-	} else if(readonly                            ||
-		  command_ctx->thread == EXEC_THREAD_MAIN ||
-		  _optimistic_merge_query(ast)) // optimistic merge
-	{
-		// if 'thread' is redis main thread, continue running
-		// if readonly is true we're executing on a worker thread from
-		// the read-only threadpool
+	} else if(command_ctx->thread == EXEC_THREAD_MAIN) {
+		// execute on Redis main thread
+		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, readonly);
+		_ExecuteQuery(gq_ctx);
+	} else if(readonly || _optimistic_merge_query(exec_ctx)) {
+		// optimistic merge
+		// if readonly is true we're executing on a reader worker thread
 		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, true);
 		_ExecuteQuery(gq_ctx);
 	} else {
+		// writer query on reader thread, delegate to a writer thread
 		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, false);
 		_DelegateWriter(gq_ctx);
 	}

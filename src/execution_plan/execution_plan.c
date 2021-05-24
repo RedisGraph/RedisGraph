@@ -411,18 +411,16 @@ bool ExecutionPlan_Aborted(const ExecutionPlan *plan,
 
 // resets each operation consume function to simply return NULL
 // this will cause the execution-plan to quickly deplete
-void ExecutionPlan_Abort(ExecutionPlan *plan, ExecutionPlan_AbortReason reason) {
-	ASSERT(plan && plan->root);
+void ExecutionPlan_Abort(OpBase *root, ExecutionPlan_AbortReason reason) {
+	ASSERT(root);
 
+	ExecutionPlan *plan = (ExecutionPlan*)root->plan;
+
+	// search for execution plan root operation
+	while(root->parent != NULL) root = root->parent;
+
+	_ExecutionPlan_Drain(root);
 	plan->abort_reason = reason;
-
-	// in case this is an intermidate execution plan segment
-	// search for last segment, indicated by a NULL root parent
-	while(plan->root->parent != NULL) {
-		plan = (ExecutionPlan*) plan->root->parent->plan;
-	}
-
-	_ExecutionPlan_Drain(plan->root);
 }
 
 //------------------------------------------------------------------------------
