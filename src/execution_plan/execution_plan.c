@@ -393,10 +393,21 @@ static Record deplete_consume(struct OpBase *op) {
 }
 
 static void _ExecutionPlan_Drain(OpBase *root) {
-	root->consume = deplete_consume;
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_Drain(root->children[i]);
+	ASSERT(root->parent == NULL);
+
+	OpBase **ops = array_new(OpBase*, 1);
+	ops = array_append(ops, root);
+
+	while(array_len(ops) != 0) {
+		OpBase *op = array_pop(ops);
+		op->consume = deplete_consume;
+
+		for(int i = 0; i < op->childCount; i++) {
+			ops = array_append(ops, op->children[i]);
+		}
 	}
+
+	array_free(ops);
 }
 
 // return true if execution plan been drained, set's reason to abort reason
@@ -414,12 +425,12 @@ bool ExecutionPlan_Aborted(const ExecutionPlan *plan,
 void ExecutionPlan_Abort(OpBase *root, ExecutionPlan_AbortReason reason) {
 	ASSERT(root);
 
-	ExecutionPlan *plan = (ExecutionPlan*)root->plan;
-
 	// search for execution plan root operation
 	while(root->parent != NULL) root = root->parent;
 
 	_ExecutionPlan_Drain(root);
+
+	ExecutionPlan *plan = (ExecutionPlan*)root->plan;
 	plan->abort_reason = reason;
 }
 
