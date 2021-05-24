@@ -38,6 +38,9 @@ uint aux_field_counter = 0 ;
  * This field is used to represent when the module is replicating its graphs. */
 uint currently_decoding_graphs = 0;
 
+/* Holds the id of the Redis Main thread in order to figure out the context the fork is running on */
+static pthread_t redis_main_thread_id;
+
 /* This callback invokes once rename for a graph is done. Since the key value is a graph context
  * which saves the name of the graph for later key accesses, this data must be consistent with the key name,
  * otherwise, the graph context will remain with the previous graph name, and a key access to this name might
@@ -223,45 +226,63 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 }
 
 static void RG_ForkPrepare() {
-	/* At this point, a fork call has been issued. (We assume that this is because BGSave was called.)
-	 * Acquire the read-write lock of each graph to ensure that no graph is being modified, or else
-	 * the child process will deadlock when attempting to acquire that lock.
-	 * Note that synchronisation of a graph's matrix which can be initiated by a reader also modifies the graph
-	 * which in this case might leave the child process with inconsistent matrix 
-	 * for this reason we need to exclude reader too.
-	 * 1. If a writer/reader thread is active, we'll wait until they finish and releas the lock.
-	 * 2. Otherwise, no write/read in progress. Acquire the lock and release it immediately after forking. */
+	// at this point, fork been issued, we assume that this is due to BGSAVE
+	// or RedisSearch GC
+	//
+	// on BGSAVE acquire read lock for each graph to ensure no graph is being
+	// modified, otherwise the child process might inherit a malformed matrix
+	//
+	// on BGSAVE: acquire read lock and synchronize all matrices
+	// release immediately once forked
+	// as a precocious set child process synchronization policy to NOP
+	//
+	// in the case of RediSearch GC fork quickly return
+
+	// BGSAVE is invoked from Redis main thread
+	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Acquire each read-write lock as a writer to guarantee that no graph is being modified.
-		Graph_AcquireWriteLock(graphs_in_keyspace[i]->g);
+		// acquire read lock, guarantee graph isn't modified
+		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
+
+		// synchronize all matrices, make sure they're in a consistent state
+		Graph_ApplyAllPending(graphs_in_keyspace[i]->g);
 	}
 }
 
 static void RG_AfterForkParent() {
-	/* The process has forked, and the parent process is continuing.
-	 * Release all locks. */
+	// BGSAVE is invoked from Redis main thread
+	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
 
+	// the child process forked, release all acquired locks
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Release each read-write lock.
 		Graph_ReleaseLock(graphs_in_keyspace[i]->g);
 	}
 }
 
 static void RG_AfterForkChild() {
-	/* Restrict GraphBLAS to use a single thread this is done for 2 reasons:
-	 * 1. save resources.
-	 * 2. avoid a bug in GNU OpenMP which hangs when performing parallel loop in forked process. */
+	// mark that the child is a forked process so that it doesn't
+	// attempt invalid accesses of POSIX primitives it doesn't own
+	process_is_child = true;
+
+	// restrict GraphBLAS to use a single thread this is done for 2 reasons:
+	// 1. save resources
+	// 2. avoid a bug in GNU OpenMP which hangs when performing parallel loop
+	// in forked process
 	GxB_set(GxB_NTHREADS, 1);
 
-	/* Mark that the child is a forked process so that it doesn't attempt invalid
-	 * accesses of POSIX primitives it doesn't own. */
-	process_is_child = true;
+	// all matrices should be synced, set synchronization policy to NOP
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i++) {
+		Graph_SetMatrixPolicy(graphs_in_keyspace[i]->g, DISABLED);
+	}
 }
 
 static void _RegisterForkHooks() {
+	redis_main_thread_id = pthread_self();  // This function is being called on the main thread context.
+
 	/* Register handlers to control the behavior of fork calls. */
 	int res = pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild);
 	ASSERT(res == 0);
