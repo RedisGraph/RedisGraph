@@ -8,23 +8,48 @@
 
 #include <stdint.h>
 #include "../../src/value.h"
+#include "update_functions.h"
 
-struct PendingUpdateCtx;
-typedef struct PendingUpdateCtx PendingUpdateCtx;
+typedef enum {
+    UL_UPDATE = 0,
+    UL_CREATE_NODE,
+    UL_CREATE_EDGE,
+    UL_DELETE_NODE,
+    UL_DELETE_EDGE
+} UndoLog_OpType;
 
-typedef struct {
-    PendingUpdateCtx *undo_log;          // Undo log for updates, used in the case of timeout.
-    uint64_t n_updates_commited;         // Number of commits which needs rollback.
+typedef struct Undo_Op {
+    UndoLog_OpType type;
+    union {
+        Node n;
+        Edge e;
+        PendingUpdateCtx update;
+    };
+} Undo_Op;
+
+typedef struct UndoLogCtx {
+    bool is_valid;                    // Are the fields allocated and need to be freed.
+    Undo_Op *undo_log;                // Undo log (Array), used in the case of timeout or any other situation rollback is needed.
+    uint64_t n_ops_commited;          // Number of commits which needs rollback.
 } UndoLogCtx;
 
+// Allocate and init the UndoLogCtx structure.
 UndoLogCtx UndoLog_New();
 
+// Deallocates the UndoLogCtx structure.
 void UndoLog_Free(UndoLogCtx *undo_log_ctx);
 
-static inline void UndoLog_Inc_N_Updates_Commited(UndoLogCtx *undo_log_ctx) {
-    undo_log_ctx->n_updates_commited++;
+// Increments the counter which counts the number of commited updates.
+static inline void UndoLog_Inc_N_Ops_Commited(UndoLogCtx *undo_log_ctx, uint64_t n_ops) {
+    undo_log_ctx->n_ops_commited += n_ops;
 }
 
-void UndoLog_Update(UndoLogCtx *undo_log_ctx, const PendingUpdateCtx *pending_update, const SIValue *orig_value);
+// Append updates to the undo log.
+void UndoLog_Add_Update(UndoLogCtx *undo_log_ctx, const PendingUpdateCtx *pending_update, const SIValue *orig_value);
 
-void UndoLog_Rollback_Updates(void);
+// Append arrays of newly created nodes and edges to the undo log.
+void UndoLog_Add_Create(UndoLogCtx *undo_log_ctx, Node **created_nodes, Edge **created_edges);
+
+// Rollback all modifications made by the query execution to the graph or index.
+// This function is being called when timeout or other exception took place and the execution plan already drained
+void UndoLog_Rollback(void);

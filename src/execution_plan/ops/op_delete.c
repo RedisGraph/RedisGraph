@@ -16,7 +16,7 @@ static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
-void _DeleteEntities(OpDelete *op) {
+void DeleteEntities(OpDelete *op, bool is_rollback) {
 	Graph *g = op->gc->g;
 	uint node_deleted = 0;
 	uint relationships_deleted = 0;
@@ -40,8 +40,13 @@ void _DeleteEntities(OpDelete *op) {
 					 edge_count, &node_deleted, &relationships_deleted);
 
 	if(op->stats) {
-		op->stats->nodes_deleted += node_deleted;
-		op->stats->relationships_deleted += relationships_deleted;
+		if(unlikely(is_rollback)) { // On rollback need to rollback the stats changes also
+			op->stats->nodes_deleted -= node_deleted;
+			op->stats->relationships_deleted -= relationships_deleted;
+		} else {
+			op->stats->nodes_deleted += node_deleted;
+			op->stats->relationships_deleted += relationships_deleted;
+		}
 	}
 
 cleanup:
@@ -108,6 +113,13 @@ static Record DeleteConsume(OpBase *opBase) {
 		}
 	}
 
+	// Add created entities to undo log for the case a rollback is needed
+	// Currently we can't exit Create Op in the middle of commit proccess. 
+	// Therefore on rollback all the create ops will be already commited.
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	UndoLog_Inc_N_Ops_Commited(&query_ctx->undo_log_ctx, array_len(op->pending.deleted_nodes) + array_len(op->pending.deleted_edges));
+	UndoLog_Add_Create(&query_ctx->undo_log_ctx, op->pending.created_nodes, op->pending.created_edges);
+
 	return r;
 }
 
@@ -122,7 +134,7 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static void DeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	_DeleteEntities(op);
+	DeleteEntities(op, false);
 
 	if(op->deleted_nodes) {
 		array_free(op->deleted_nodes);

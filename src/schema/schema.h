@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <limits.h>
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "rax.h"
@@ -16,6 +17,8 @@ typedef enum {
 	SCHEMA_NODE,
 	SCHEMA_EDGE,
 } SchemaType;
+
+#define INVALID_SCHEMA_ID INT_MAX
 
 /* Schema represents the structure of a typed graph entity (Node/Edge).
  * similar to a relational table structure, our schemas are a collection

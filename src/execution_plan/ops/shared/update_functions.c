@@ -43,7 +43,7 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 
 // commits delayed updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-		PendingUpdateCtx *updates, bool is_rollback, UndoLogCtx *undo_log_ctx) {
+		PendingUpdateCtx *updates, bool is_rollback, struct UndoLogCtx *undo_log_ctx) {
 	ASSERT(gc != NULL);
 	ASSERT(stats != NULL);
 	ASSERT(updates != NULL);
@@ -64,7 +64,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 
 		if(likely(!is_rollback)) {
 			// Inc the update counter in the undo_log
-			UndoLog_Inc_N_Updates_Commited(undo_log_ctx);
+			UndoLog_Inc_N_Ops_Commited(undo_log_ctx, 1);
 		}
 
 		// following updates apply to a new graph entity
@@ -111,7 +111,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 }
 
 void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Record r,
-					   const EntityUpdateEvalCtx *ctx, bool allow_null, UndoLogCtx *undo_log_ctx) {
+					   const EntityUpdateEvalCtx *ctx, bool allow_null, struct UndoLogCtx *undo_log_ctx) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
 	bool node_update  = false;
@@ -197,7 +197,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 
 		// enqueue the current update's undo
 		SIValue *orig_val = GraphEntity_GetProperty(entity, attr_id);
-		UndoLog_Update(undo_log_ctx, &update, orig_val);
+		UndoLog_Add_Update(undo_log_ctx, &update, orig_val);
 	}
 }
 

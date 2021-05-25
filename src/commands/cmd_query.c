@@ -173,7 +173,7 @@ static void _ExecuteQuery(void *args) {
 
 		// Emit error if query timed out.
 		if(ExecutionPlan_Drained(plan)) {
-			UndoLog_Rollback_Updates();
+			UndoLog_Rollback();
 			ErrorCtx_SetError("Query timed out");
 		}
 

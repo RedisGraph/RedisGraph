@@ -237,7 +237,7 @@ double QueryCtx_GetExecutionTime(void) {
 
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(ctx->undo_log_ctx.undo_log != NULL) {
+	if(ctx->undo_log_ctx.is_valid) {
 		UndoLog_Free(&ctx->undo_log_ctx);
 	}
 
