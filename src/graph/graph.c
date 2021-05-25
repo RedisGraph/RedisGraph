@@ -174,7 +174,8 @@ size_t _Graph_EdgeCap(const Graph *g) {
 }
 
 static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
-	bool build_with_overhead = Config_GetNodeCreationBuffer();
+	bool build_with_overhead;
+   	Config_Option_get(Config_NODE_CREATION_BUFFER, &build_with_overhead);
 	if(build_with_overhead) node_count += MAX(node_count * 0.001, MIN_MATRIX_BUFFER);
 	g->matrix_dims = node_count;
 }
@@ -268,7 +269,8 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	GrB_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
 
-	bool allow_empty_space = Config_GetNodeCreationBuffer();
+	bool allow_empty_space;
+   	Config_Option_get(Config_NODE_CREATION_BUFFER, &allow_empty_space);
 	/* The matrix must be resized if its dimensions are smaller than the required
 	 * or if we don't allow empty space and the matrix dimensions do not match the required precisely. */
 	bool require_resize = ((n_rows < dims || n_cols < dims) ||
