@@ -6,7 +6,8 @@ This contributor agreement ("Agreement") documents the rights granted by
 contributors to the SuiteSparse:GraphBLAS authors ("We" and "Us"). To make this
 document effective, please sign it and send it to Us by electronic submission.
 This is a legally binding document, so please read it carefully before agreeing
-to it.  The Agreement may cover more than one software project managed by Us.
+to it.  This Agreement is specific to SuiteSparse:GraphBLAS and does not
+cover any other software project managed by Us.
 
 1. Definitions
 
@@ -72,8 +73,13 @@ to it.  The Agreement may cover more than one software project managed by Us.
 
         Based on the grant of rights in Sections 2.1 and 2.2, if We include
         Your Contribution in a Material, We may license the Contribution under
-        any license, including copyleft, permissive, commercial, or proprietary
-        licenses.
+        any kind of permissive, commercial, or proprietary licenses, but
+        excluding any kind of copyleft license.  Neither the Contribution, nor
+        SuiteSparse:GraphBLAS itself, will be licensed under a copyleft license
+        (including but not limited to GNU GPL, GNU LGPL, GNU AGPL, or
+        CC-BY_SA).  Note that this restriction of copyleft licensing applies to
+        just SuiteSparse:GraphBLAS, not to any other packages in SuiteSparse,
+        many of which are already licensed under the GNU GPL or GNU LGPL.
 
     2.4 Moral Rights.
 

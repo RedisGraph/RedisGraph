@@ -2,8 +2,8 @@
 // GB_reduce_to_scalar: reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -13,11 +13,27 @@
 // This function does not need to know if A is hypersparse or not, and its
 // result is the same if A is in CSR or CSC format.
 
+// This function is the only place in all of GraphBLAS where the identity value
+// of a monoid is required, but only in one special case: it is required to be
+// the return value of c when A has no entries.  The identity value is also
+// used internally, in the parallel methods below, to initialize a scalar value
+// in each task.  The methods could be rewritten to avoid the use of the
+// identity value.  Since this function requires it anyway, for the special
+// case when nvals(A) is zero, the existence of the identity value makes the
+// code a little simpler.
+
 #include "GB_reduce.h"
+#include "GB_binop.h"
 #include "GB_atomics.h"
 #ifndef GBCOMPACT
 #include "GB_red__include.h"
 #endif
+
+#define GB_FREE_ALL                 \
+{                                   \
+    GB_FREE (W) ;                   \
+    GB_FREE (F) ;                   \
+}
 
 GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
 (
@@ -34,9 +50,12 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     // check inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     GB_RETURN_IF_NULL_OR_FAULTY (reduce) ;
-    GB_RETURN_IF_FAULTY (accum) ;
+    GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
     GB_RETURN_IF_NULL (c) ;
+    GB_void *GB_RESTRICT W = NULL ;
+    bool    *GB_RESTRICT F = NULL ;
 
     ASSERT_TYPE_OK (ctype, "type of scalar c", GB0) ;
     ASSERT_MONOID_OK (reduce, "reduce for reduce_to_scalar", GB0) ;
@@ -45,28 +64,24 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
 
     // check domains and dimensions for c = accum (c,s)
     GrB_Type ztype = reduce->op->ztype ;
-    GrB_Info info = GB_compatible (ctype, NULL, NULL, accum, ztype, Context) ;
-    if (info != GrB_SUCCESS)
-    { 
-        return (info) ;
-    }
+    GB_OK (GB_compatible (ctype, NULL, NULL, accum, ztype, Context)) ;
 
     // s = reduce (s,A) must be compatible
     if (!GB_Type_compatible (A->type, ztype))
     { 
-        return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
-            "incompatible type for reduction operator z=%s(x,y):\n"
-            "input of type [%s]\n"
-            "cannot be typecast to reduction operator of type [%s]",
-            reduce->op->name, A->type->name, reduce->op->ztype->name))) ;
+        return (GrB_DOMAIN_MISMATCH) ;
     }
 
     //--------------------------------------------------------------------------
-    // delete any lingering zombies and assemble any pending tuples
+    // assemble any pending tuples; zombies are OK
     //--------------------------------------------------------------------------
 
-    GB_WAIT (A) ;
-    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    GB_MATRIX_WAIT_IF_PENDING (A) ;
+    GB_BURBLE_DENSE (A, "(A %s) ") ;
+
+    ASSERT (GB_ZOMBIES_OK (A)) ;
+    ASSERT (GB_JUMBLED_OK (A)) ;
+    ASSERT (!GB_PENDING (A)) ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -74,224 +89,190 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
 
     int64_t asize = A->type->size ;
     int64_t zsize = ztype->size ;
-    int64_t anz = GB_NNZ (A) ;
-
-    //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
-
-    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
-    int nthreads = GB_nthreads (anz, chunk, nthreads_max) ;
-    int ntasks = (nthreads == 1) ? 1 : (64 * nthreads) ;
-    ntasks = GB_IMIN (ntasks, anz) ;
-    ntasks = GB_IMAX (ntasks, 1) ;
-
-    //--------------------------------------------------------------------------
-    // allocate workspace
-    //--------------------------------------------------------------------------
-
-    GB_void *GB_RESTRICT W = NULL ;
-    GB_MALLOC_MEMORY (W, ntasks, zsize) ;
-    if (W == NULL)
-    { 
-        // out of memory
-        return (GB_OUT_OF_MEMORY) ;
-    }
-
-    //--------------------------------------------------------------------------
-    // s = reduce_to_scalar (A)
-    //--------------------------------------------------------------------------
+    int64_t anz = GB_NNZ_HELD (A) ;
 
     // s = identity
     GB_void s [GB_VLA(zsize)] ;
-    memcpy (s, reduce->identity, zsize) ;
+    memcpy (s, reduce->identity, zsize) ;   // required, if nnz(A) is zero
 
-    // get terminal value, if any
-    GB_void *GB_RESTRICT terminal = reduce->terminal ;
+    //--------------------------------------------------------------------------
+    // s = reduce_to_scalar (A) on the GPU(s) or CPU
+    //--------------------------------------------------------------------------
 
-    if (anz == 0)
-    { 
-
-        //----------------------------------------------------------------------
-        // nothing to do
-        //----------------------------------------------------------------------
-
-        ;
-
-    }
-    else if (A->type == ztype)
+    #if defined ( GBCUDA )
+    if (GB_reduce_to_scalar_cuda_branch (reduce, A, Context))
     {
 
         //----------------------------------------------------------------------
-        // sum up the entries; no typecasting needed
+        // use the GPU(s)
         //----------------------------------------------------------------------
 
-        // There are 44 common cases of this function for built-in types and
-        // operators.  Four associative operators: MIN, MAX, PLUS, and TIMES
-        // with 10 types (int*, uint*, float, and double), and four logical
-        // operators (OR, AND, XOR, EQ) with a boolean type of C.  All 44 are
-        // hard-coded below via a switch factory.  If the case is not handled
-        // by the switch factory, 'done' remains false.  The hard-coded workers
-        // do no typecasting at all.
-
-        bool done = false ;
-
-        // define the worker for the switch factory
-
-        #define GB_red(opname,aname) GB_red_scalar_ ## opname ## aname
-
-        #define GB_RED_WORKER(opname,aname,atype)                       \
-        {                                                               \
-            info = GB_red (opname, aname) ((atype *) s, A, W,           \
-                ntasks, nthreads) ;                                     \
-            done = (info != GrB_NO_VALUE) ;                             \
-        }                                                               \
-        break ;
-
-        //----------------------------------------------------------------------
-        // launch the switch factory
-        //----------------------------------------------------------------------
-
-        #ifndef GBCOMPACT
-
-            // controlled by opcode and typecode
-            GB_Opcode opcode = reduce->op->opcode ;
-            GB_Type_code typecode = A->type->code ;
-            ASSERT (typecode <= GB_UDT_code) ;
-
-            #include "GB_red_factory.c"
-
-        #endif
-
-        //----------------------------------------------------------------------
-        // generic worker: sum up the entries, no typecasting
-        //----------------------------------------------------------------------
-
-        if (!done)
-        { 
-            GB_BURBLE_MATRIX (A, "generic ") ;
-
-            // the switch factory didn't handle this case
-            GxB_binary_function freduce = reduce->op->function ;
-
-            #define GB_ATYPE GB_void
-
-            // no panel used
-            #define GB_PANEL 1
-
-            // ztype t = identity
-            #define GB_SCALAR_IDENTITY(t)                           \
-                GB_void t [GB_VLA(zsize)] ;                         \
-                memcpy (t, reduce->identity, zsize) ;
-
-            // t = W [tid], no typecast
-            #define GB_COPY_ARRAY_TO_SCALAR(t, W, tid)              \
-                memcpy (t, W +(tid*zsize), zsize)
-
-            // W [tid] = t, no typecast
-            #define GB_COPY_SCALAR_TO_ARRAY(W, tid, t)              \
-                memcpy (W +(tid*zsize), t, zsize)
-
-            // s += W [k], no typecast
-            #define GB_ADD_ARRAY_TO_SCALAR(s,W,k)                   \
-                freduce (s, s, W +((k)*zsize))
-
-            // break if terminal value reached
-            #define GB_BREAK_IF_TERMINAL(s)                         \
-                if (terminal != NULL)                               \
-                {                                                   \
-                    if (memcmp (s, terminal, zsize) == 0) break ;   \
-                }
-
-
-            #if GB_MICROSOFT
-
-                // skip the work for this task if early exit is reached
-                #define GB_IF_NOT_EARLY_EXIT                            \
-                    bool my_exit ;                                      \
-                    GB_PRAGMA (omp critical (GB_reduce_to_scalar))      \
-                    my_exit = early_exit ;                              \
-                    if (!my_exit)
-
-                // break if terminal value reached, inside parallel task
-                #define GB_PARALLEL_BREAK_IF_TERMINAL(s)                \
-                    if (terminal != NULL)                               \
-                    {                                                   \
-                        if (memcmp (s, terminal, zsize) == 0)           \
-                        {                                               \
-                            /* tell the other tasks to exit early */    \
-                            GB_PRAGMA (omp critical (GB_reduce_to_scalar))  \
-                            early_exit = true ;                         \
-                            break ;                                     \
-                        }                                               \
-                    }
-
-            #else
-
-                // skip the work for this task if early exit is reached
-                #define GB_IF_NOT_EARLY_EXIT                            \
-                    bool my_exit ;                                      \
-                    GB_ATOMIC_READ                                      \
-                    my_exit = early_exit ;                              \
-                    if (!my_exit)
-
-                // break if terminal value reached, inside parallel task
-                #define GB_PARALLEL_BREAK_IF_TERMINAL(s)                \
-                    if (terminal != NULL)                               \
-                    {                                                   \
-                        if (memcmp (s, terminal, zsize) == 0)           \
-                        {                                               \
-                            /* tell the other tasks to exit early */    \
-                            GB_ATOMIC_WRITE                             \
-                            early_exit = true ;                         \
-                            break ;                                     \
-                        }                                               \
-                    }
-
-            #endif
-
-            // ztype t ;
-            #define GB_SCALAR(t)                                    \
-                GB_void t [GB_VLA(zsize)]
-
-            // t = (ztype) Ax [p], but no typecasting needed
-            #define GB_CAST_ARRAY_TO_SCALAR(t,Ax,p)                 \
-                memcpy (t, Ax +((p)*zsize), zsize)
-
-            // t += (ztype) Ax [p], but no typecasting needed
-            #define GB_ADD_CAST_ARRAY_TO_SCALAR(t,Ax,p)             \
-                freduce (t, t, Ax +((p)*zsize))
-
-            #include "GB_reduce_to_scalar_template.c"
-        }
+        GB_OK (GB_reduce_to_scalar_cuda (s, reduce, A, Context)) ;
 
     }
     else
-    { 
+    #endif
+    {
 
         //----------------------------------------------------------------------
-        // generic worker: sum up the entries, with typecasting
+        // use OpenMP on the CPU threads
         //----------------------------------------------------------------------
 
-        GB_BURBLE_MATRIX (A, "generic ") ;
+        int nthreads = 0, ntasks = 0 ;
+        GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+        nthreads = GB_nthreads (anz, chunk, nthreads_max) ;
+        ntasks = (nthreads == 1) ? 1 : (64 * nthreads) ;
+        ntasks = GB_IMIN (ntasks, anz) ;
+        ntasks = GB_IMAX (ntasks, 1) ;
 
-        GxB_binary_function freduce = reduce->op->function ;
-        GB_cast_function
-            cast_A_to_Z = GB_cast_factory (ztype->code, A->type->code) ;
+        //----------------------------------------------------------------------
+        // allocate workspace
+        //----------------------------------------------------------------------
 
-            // t = (ztype) Ax [p], with typecast
-            #undef  GB_CAST_ARRAY_TO_SCALAR
-            #define GB_CAST_ARRAY_TO_SCALAR(t,Ax,p)                 \
-                cast_A_to_Z (t, Ax +((p)*asize), asize)
+        W = GB_MALLOC (ntasks * zsize, GB_void) ;
+        F = GB_MALLOC (ntasks, bool) ;
+        if (W == NULL || F == NULL)
+        { 
+            // out of memory
+            GB_FREE_ALL ;
+            return (GrB_OUT_OF_MEMORY) ;
+        }
 
-            // t += (ztype) Ax [p], with typecast
-            #undef  GB_ADD_CAST_ARRAY_TO_SCALAR
-            #define GB_ADD_CAST_ARRAY_TO_SCALAR(t,Ax,p)             \
-                GB_void awork [GB_VLA(zsize)] ;                     \
-                cast_A_to_Z (awork, Ax +((p)*asize), asize) ;       \
-                freduce (t, t, awork)
+        //----------------------------------------------------------------------
+        // s = reduce_to_scalar (A)
+        //----------------------------------------------------------------------
 
-          #include "GB_reduce_to_scalar_template.c"
+        // get terminal value, if any
+        GB_void *GB_RESTRICT terminal = (GB_void *) reduce->terminal ;
+
+        if (anz == 0)
+        { 
+
+            //------------------------------------------------------------------
+            // nothing to do
+            //------------------------------------------------------------------
+
+            ;
+
+        }
+        else if (A->type == ztype)
+        {
+
+            //------------------------------------------------------------------
+            // reduce to scalar via built-in operator
+            //------------------------------------------------------------------
+
+            bool done = false ;
+
+            #ifndef GBCOMPACT
+
+                //--------------------------------------------------------------
+                // define the worker for the switch factory
+                //--------------------------------------------------------------
+
+                #define GB_red(opname,aname) GB_red_scalar_ ## opname ## aname
+
+                #define GB_RED_WORKER(opname,aname,atype)                   \
+                {                                                           \
+                    info = GB_red (opname, aname) ((atype *) s, A, W, F,    \
+                        ntasks, nthreads) ;                                 \
+                    done = (info != GrB_NO_VALUE) ;                         \
+                }                                                           \
+                break ;
+
+                //--------------------------------------------------------------
+                // launch the switch factory
+                //--------------------------------------------------------------
+
+                // controlled by opcode and typecode
+                GB_Opcode opcode = reduce->op->opcode ;
+                GB_Type_code typecode = A->type->code ;
+                ASSERT (typecode <= GB_UDT_code) ;
+
+                #include "GB_red_factory.c"
+
+            #endif
+
+            //------------------------------------------------------------------
+            // generic worker: sum up the entries, no typecasting
+            //------------------------------------------------------------------
+
+            if (!done)
+            { 
+                GB_BURBLE_MATRIX (A, "(generic reduce to scalar: %s) ",
+                    reduce->op->name) ;
+
+                // the switch factory didn't handle this case
+                GxB_binary_function freduce = reduce->op->function ;
+
+                #define GB_ATYPE GB_void
+
+                // no panel used
+                #define GB_PANEL 1
+                #define GB_NO_PANEL_CASE
+
+                // ztype t = identity
+                #define GB_SCALAR_IDENTITY(t)                           \
+                    GB_void t [GB_VLA(zsize)] ;                         \
+                    memcpy (t, reduce->identity, zsize) ;
+
+                // t = W [tid], no typecast
+                #define GB_COPY_ARRAY_TO_SCALAR(t, W, tid)              \
+                    memcpy (t, W +(tid*zsize), zsize)
+
+                // W [tid] = t, no typecast
+                #define GB_COPY_SCALAR_TO_ARRAY(W, tid, t)              \
+                    memcpy (W +(tid*zsize), t, zsize)
+
+                // s += W [k], no typecast
+                #define GB_ADD_ARRAY_TO_SCALAR(s,W,k)                   \
+                    freduce (s, s, W +((k)*zsize))
+
+                // break if terminal value reached
+                #define GB_HAS_TERMINAL 1
+                #define GB_IS_TERMINAL(s) \
+                    (terminal != NULL && memcmp (s, terminal, zsize) == 0)
+
+                // t = (ztype) Ax [p], but no typecasting needed
+                #define GB_CAST_ARRAY_TO_SCALAR(t,Ax,p)                 \
+                    memcpy (t, Ax +((p)*zsize), zsize)
+
+                // t += (ztype) Ax [p], but no typecasting needed
+                #define GB_ADD_CAST_ARRAY_TO_SCALAR(t,Ax,p)             \
+                    freduce (t, t, Ax +((p)*zsize))
+
+                #include "GB_reduce_to_scalar_template.c"
+            }
+
+        }
+        else
+        { 
+
+            //------------------------------------------------------------------
+            // generic worker: sum up the entries, with typecasting
+            //------------------------------------------------------------------
+
+            GB_BURBLE_MATRIX (A, "(generic reduce to scalar, with typecast:"
+                " %s) ", reduce->op->name) ;
+
+            GxB_binary_function freduce = reduce->op->function ;
+            GB_cast_function
+                cast_A_to_Z = GB_cast_factory (ztype->code, A->type->code) ;
+
+                // t = (ztype) Ax [p], with typecast
+                #undef  GB_CAST_ARRAY_TO_SCALAR
+                #define GB_CAST_ARRAY_TO_SCALAR(t,Ax,p)                 \
+                    cast_A_to_Z (t, Ax +((p)*asize), asize)
+
+                // t += (ztype) Ax [p], with typecast
+                #undef  GB_ADD_CAST_ARRAY_TO_SCALAR
+                #define GB_ADD_CAST_ARRAY_TO_SCALAR(t,Ax,p)             \
+                    GB_void awork [GB_VLA(zsize)] ;                     \
+                    cast_A_to_Z (awork, Ax +((p)*asize), asize) ;       \
+                    freduce (t, t, awork)
+
+                #include "GB_reduce_to_scalar_template.c"
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -339,7 +320,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_MEMORY (W, ntasks, zsize) ;
+    GB_FREE_ALL ;
     return (GrB_SUCCESS) ;
 }
 

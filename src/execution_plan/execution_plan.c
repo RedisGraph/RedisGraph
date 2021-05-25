@@ -7,6 +7,7 @@
 #include "execution_plan.h"
 #include "../RG.h"
 #include "./ops/ops.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
@@ -15,7 +16,6 @@
 #include "execution_plan_build/execution_plan_construct.h"
 #include "execution_plan_build/execution_plan_modify.h"
 
-#include <assert.h>
 #include <setjmp.h>
 
 // Allocate a new ExecutionPlan segment.
@@ -50,7 +50,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
 	union_indices = array_append(union_indices, clause_count);
 	int union_count = array_len(union_indices);
-	assert(union_count > 1);
+	ASSERT(union_count > 1);
 
 	/* Placeholder for each execution plan, these all will be joined
 	 * via a single UNION operation. */
@@ -88,7 +88,8 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	ExecutionPlan_UpdateRoot(plan, results_op);
 
 	// Introduce distinct only if `ALL` isn't specified.
-	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION);
+	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION,
+														 NULL);
 	if(!cypher_ast_union_has_all(union_clause)) {
 		OpBase *distinct_op = NewDistinctOp(plan);
 		ExecutionPlan_AddOp(results_op, distinct_op);
@@ -101,7 +102,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	// Join execution plans.
 	for(int i = 0; i < union_count; i++) {
 		ExecutionPlan *sub_plan = plans[i];
-		assert(sub_plan->root->type == OPType_RESULTS);
+		ASSERT(sub_plan->root->type == OPType_RESULTS);
 
 		// Remove OP_Result.
 		OpBase *op_result = sub_plan->root;
@@ -125,7 +126,7 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 }
 
 static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx,
-		uint segment_end_idx) {
+									   uint segment_end_idx) {
 	ASSERT(ast != NULL);
 	ASSERT(segment_start_idx <= segment_end_idx);
 
@@ -194,7 +195,7 @@ static ExecutionPlan **_process_segments(AST *ast) {
 }
 
 static ExecutionPlan *_tie_segments(ExecutionPlan **segments,
-		uint segment_count) {
+									uint segment_count) {
 	FT_FilterNode *ft = NULL;            // filters following WITH
 	OpBase *connecting_op = NULL;        // op connecting one segment to another
 	OpBase *prev_connecting_op = NULL;   // root of previous segment
@@ -302,19 +303,9 @@ ExecutionPlan *NewExecutionPlan(void) {
 	return plan;
 }
 
-// Sets an AST segment in the execution plan.
-inline void ExecutionPlan_SetAST(ExecutionPlan *plan, AST *ast) {
-	plan->ast_segment = ast;
-}
-
-// Gets the AST segment from the execution plan.
-inline AST *ExecutionPlan_GetAST(const ExecutionPlan *plan) {
-	return plan->ast_segment;
-}
-
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
 	// Plan should be prepared only once.
-	assert(!plan->prepared);
+	ASSERT(!plan->prepared);
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
 	plan->prepared = true;
@@ -332,7 +323,7 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	// Get a Record from the pool and set its owner and mapping.
 	Record r = ObjectPool_NewItem(plan->record_pool);
 	r->owner = plan;
-	r->mapping = plan->record_map;
+	r->mapping = mapping;
 	return r;
 }
 
@@ -374,7 +365,7 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	assert(plan->prepared);
+	ASSERT(plan->prepared)
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */

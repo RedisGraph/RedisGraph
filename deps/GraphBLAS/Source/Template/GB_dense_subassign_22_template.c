@@ -1,14 +1,11 @@
 //------------------------------------------------------------------------------
-// GB_dense_subassign_22_template: C += x where C is dense and x is a scalar
+// GB_dense_subassign_22_template: C += b where C is dense and b is a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
-
-// All entries in C+=A are computed fully in parallel, using the same kind of
-// parallelism as Template/GB_AxB_colscale.c.
 
 {
 
@@ -16,18 +13,18 @@
     // get C
     //--------------------------------------------------------------------------
 
-    GB_CTYPE *GB_RESTRICT Cx = C->x ;
+    GB_CTYPE *GB_RESTRICT Cx = (GB_CTYPE *) C->x ;
     const int64_t cnz = GB_NNZ (C) ;
 
     //--------------------------------------------------------------------------
-    // C += x where C is dense and x is a scalar
+    // C += b where C is dense and b is a scalar
     //--------------------------------------------------------------------------
 
     int64_t pC ;
     #pragma omp parallel for num_threads(nthreads) schedule(static)
     for (pC = 0 ; pC < cnz ; pC++)
     { 
-        GB_BINOP (GB_CX (pC), GB_CX (pC), ywork) ;
+        GB_BINOP (GB_CX (pC), GB_CX (pC), bwork, 0, 0) ;
     }
 }
 

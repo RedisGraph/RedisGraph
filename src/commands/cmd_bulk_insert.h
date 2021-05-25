@@ -9,8 +9,6 @@
 #include "../redismodule.h"
 #include "../util/thpool/thpool.h"
 
-extern threadpool _thpool;
-
 /* Multi threaded bulk insert context. */
 typedef struct {
 	RedisModuleBlockedClient *bc;   // Blocked client.
@@ -31,5 +29,5 @@ void BulkInsertContext_Free
 	BulkInsertContext *ctx
 );
 
-int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 

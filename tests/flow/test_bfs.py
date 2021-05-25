@@ -10,7 +10,7 @@ edges = {}
 
 class testBFS(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         redis_con = self.env.getConnection()
         graph = Graph("proc_bfs", redis_con)

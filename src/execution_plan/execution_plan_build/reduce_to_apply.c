@@ -1,4 +1,11 @@
+/*
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
+
 #include "execution_plan_construct.h"
+#include "RG.h"
 #include "execution_plan_modify.h"
 #include "../execution_plan.h"
 #include "../ops/ops.h"
@@ -10,7 +17,7 @@
 /* Swap operation on operation children. If two valid indices, a and b, are given, this operation
  * swap the child in index a with the child in index b. */
 static inline void _OpBaseSwapChildren(OpBase *op, int a, int b) {
-	assert(a >= 0 && b >= 0 && a < op->childCount && b < op->childCount);
+	ASSERT(a >= 0 && b >= 0 && a < op->childCount && b < op->childCount);
 	OpBase *tmp = op->children[a];
 	op->children[a] = op->children[b];
 	op->children[b] = tmp;
@@ -75,7 +82,7 @@ static OpBase *_ReduceFilterToOp(ExecutionPlan *plan, const char **vars,
 		if(rhs->type == OPType_FILTER) filter_root->cond.right = NULL;
 		_CreateBoundBranch(rhs, plan, vars);
 		// Check that at least one of the branches is not a filter.
-		assert(!(rhs->type == OPType_FILTER && lhs->type == OPType_FILTER));
+		ASSERT(!(rhs->type == OPType_FILTER && lhs->type == OPType_FILTER));
 		// Create multiplexer op and set the branches as its children.
 		OpBase *apply_multiplexer = NewApplyMultiplexerOp(plan, filter_root->cond.op);
 		ExecutionPlan_AddOp(apply_multiplexer, lhs);

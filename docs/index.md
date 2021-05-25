@@ -26,6 +26,8 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 <a href="https://www.youtube.com/watch?v=6FYYn-9fPXE"><img src="images/logo-mdmetrix.jpg" alt="mdmetrix" height="100"/></a> 
 <a href="https://linkirous.us/"><img src="images/logo-linkurious.jpg" alt="linkirous" height="100"/></a>
 <a href="https://medium.com/@tomzeppenfeldt/graphileon-and-redis-labs-become-partners-35bafe6790fa"><img src="images/logo-graphileon.jpg" alt="graphileon" height="100"/></a>
+<a href="https://redislabs.com/blog/graphxr-read-modify-and-write-ontologies-with-redisgraph/"><img src="images/logo-kineviz-graphxr.jpg" alt="kineviz" height="100"/></a>
+
 
 ## Quickstart
 
@@ -37,9 +39,9 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 ## Redis Cloud
 
-RedisGraph is available on all Redis Cloud managed services.  Redis Cloud Essentials offers a completely free managed database up to 30MB.
+RedisGraph is available on all Redis Cloud managed services, including a completely free managed database up to 30MB.
 
-[Get started here](https://redislabs.com/try-free/)
+[Select your plan here](https://redislabs.com/redis-enterprise-cloud/pricing/)
 
 ## Docker
 
@@ -102,7 +104,7 @@ Requirements:
 * On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
 
 * On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`.
-    * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CPP` will work if that is not an option.
+    * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CXX` will work if that is not an option.
 
 To build, run `make` in the project's directory.
 

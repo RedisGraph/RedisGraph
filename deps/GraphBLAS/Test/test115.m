@@ -1,8 +1,8 @@
 function test115
 %TEST115 test GB_assign, scalar expansion and zombies, with duplicates
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -46,6 +46,13 @@ rng ('default') ;
     end
 
     GB_spec_compare (C1, C2) ;
+
+    for C_sparsity = [2 4]
+        for M_sparsity = [2 4]
+            C1 = GB_mex_assign (C, Work, [C_sparsity M_sparsity]) ;
+            GB_spec_compare (C1, C2) ;
+        end
+    end
 
 fprintf ('\ntest115: all tests passed\n') ;
 

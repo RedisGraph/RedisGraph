@@ -5,6 +5,7 @@
  */
 
 #include "op_project.h"
+#include "RG.h"
 #include "op_sort.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
@@ -82,7 +83,7 @@ static Record ProjectConsume(OpBase *opBase) {
 }
 
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_PROJECT);
+	ASSERT(opBase->type == OPType_PROJECT);
 	OpProject *op = (OpProject *)opBase;
 	AR_ExpNode **exps;
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);

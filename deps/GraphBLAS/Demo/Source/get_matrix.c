@@ -2,21 +2,26 @@
 // GraphBLAS/Demo/Source/get_matrix.c: get matrix from file, or create random
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Creates a symmetric matrix, either from a file or by creating a random
 // matrix.  If reading from a file, the file is assumed to be 0-based.
 
-#define FREE_ALL        \
-    GrB_Matrix_free (&A) ;     \
-    GrB_Descriptor_free (&desc) ;  \
+#include "GraphBLAS.h"
+
+#define FREE_ALL                    \
+    GrB_Matrix_free (&A) ;          \
+    GrB_Descriptor_free (&desc) ;   \
     GrB_Matrix_free (&Mask) ;
 
-#include "demos.h"
+#undef GB_PUBLIC
+#define GB_LIBRARY
+#include "graphblas_demos.h"
 
+GB_PUBLIC
 GrB_Info get_matrix         // get a matrix from stdin, or create random one
 (
     GrB_Matrix *A_output,   // matrix to create

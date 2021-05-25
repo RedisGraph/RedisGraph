@@ -18,22 +18,22 @@ typedef struct {
 } Node;
 
 // Instantiate a new unpopulated node.
-#define GE_NEW_NODE()			\
-(Node) {						\
-	.entity = NULL,				\
-	.id = INVALID_ENTITY_ID,	\
-	.label = NULL,				\
-	.labelID = GRAPH_NO_LABEL	\
+#define GE_NEW_NODE()           \
+(Node) {                        \
+    .entity = NULL,             \
+    .id = INVALID_ENTITY_ID,    \
+    .label = NULL,              \
+    .labelID = GRAPH_NO_LABEL   \
 }
 
 // Instantiate a new node with label data.
-#define GE_NEW_LABELED_NODE(l_str, l_id)	\
-(Node) {									\
-	.entity = NULL,							\
-	.id = INVALID_ENTITY_ID,				\
-	.label = (l_str),						\
-	.labelID = (l_id)						\
-}											\
+#define GE_NEW_LABELED_NODE(l_str, l_id)    \
+(Node) {                                    \
+    .entity = NULL,                         \
+    .id = INVALID_ENTITY_ID,                \
+    .label = (l_str),                       \
+    .labelID = (l_id)                       \
+}                                           \
 
 /* Resolves to the label string of the given Node. */
 #define NODE_GET_LABEL(n) (n)->label
@@ -43,8 +43,9 @@ typedef struct {
  * If the Node is unlabeled, the return value will be GRAPH_NO_LABEL. */
 #define NODE_GET_LABEL_ID(n, g)                                                                   \
 ({                                                                                                \
-	if ((n)->labelID == GRAPH_NO_LABEL) (n)->labelID = Graph_GetNodeLabel((g), ENTITY_GET_ID(n)); \
-	(n)->labelID;                                                                                 \
+    if ((n)->labelID == GRAPH_NO_LABEL || (n)->labelID == GRAPH_UNKNOWN_LABEL)                    \
+         (n)->labelID = Graph_GetNodeLabel((g), ENTITY_GET_ID(n));                                \
+    (n)->labelID;                                                                                 \
 })
 
 /* Prints a string representation of the node to buffer, return the string length. */

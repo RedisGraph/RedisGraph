@@ -5,11 +5,15 @@ function [Z simple] = GB_spec_accum (accum, C, T, identity)
 %
 % Apply accum binary operator to the input C and the intermediate result T.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-% get the operator; default is class(C) if class is not present
-[opname opclass] = GB_spec_operator (accum, C.class) ;
+% get the operator; of is type(C) if type is not present in the accum op
+[opname optype ztype xtype ytype] = GB_spec_operator (accum, C.class) ;
+
+if (GB_spec_is_positional (opname))
+    error ('accum operator cannot be positional') ;
+end
 
 if (nargin < 4)
     identity = 0 ;
@@ -21,7 +25,7 @@ simple = (identity == 0) ;
 
 % initialize the matrix Z, same size and class as C
 [nrows ncols] = size (C.matrix) ;
-Z.matrix  = zeros (nrows, ncols, C.class) ;
+Z.matrix  = GB_spec_zeros ([nrows ncols], C.class) ;
 % Z.matrix (:,:) = GB_mex_cast (identity, C.class) ;
 Z.pattern = false (nrows, ncols) ;
 Z.class = C.class ;
@@ -42,12 +46,10 @@ else
     % apply the operator to entries in the intersection of C and T
     p = T.pattern & C.pattern ;
     % first cast the entries into the class of the operator
-    % note that in the spec, all three domains z=op(x,y) can be different
-    % here they are assumed to all be the same
-    c = GB_mex_cast (C.matrix (p), opclass) ;
-    t = GB_mex_cast (T.matrix (p), opclass) ;
+    c = GB_mex_cast (C.matrix (p), xtype) ;
+    t = GB_mex_cast (T.matrix (p), ytype) ;
     z = GB_spec_op (accum, c, t) ;
-    % cast the result z from opclass into the class of C
+    % cast the result z from optype into the class of C
     Z.matrix (p) = GB_mex_cast (z, C.class) ;
 
     % copy entries in C but not in T, into the result Z, no typecasting needed
@@ -62,10 +64,10 @@ else
     Z.pattern = C.pattern | T.pattern ;
 
     simple = simple && ( ...
-        isequal (C.class, opclass) && ...
+        isequal (C.class, optype) && ...
         isfield (T, 'class') && ...
-        isequal (T.class, opclass) && ...
-        isequal (class (z), C.class) && ...
+        isequal (T.class, optype) && ...
+        isequal (GB_spec_type (z), C.class) && ...
         isequal (T.class, C.class)) ;
 end
 

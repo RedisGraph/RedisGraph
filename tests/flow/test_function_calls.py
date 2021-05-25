@@ -1,6 +1,7 @@
 import redis
 import os
 import sys
+import json
 from RLTest import Env
 from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
@@ -12,7 +13,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -51,15 +52,15 @@ class testFunctionCallsFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertIn("Type mismatch", e.message)
-    
+            self.env.assertIn("Type mismatch", str(e))
+
     def expect_error(self, query, expected_err_msg):
         try:
             graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
-            self.env.assertIn(expected_err_msg, e.message)
+            self.env.assertIn(expected_err_msg, str(e))
 
     # Validate capturing of errors prior to query execution.
     def test01_compile_time_errors(self):
@@ -298,4 +299,86 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """WITH 'A' AS a WITH CASE WHEN true THEN toString(a) END AS key RETURN toLower(key)"""
         actual_result = graph.query(query)
         expected_result = [['a']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test15_aggregate_error_handling(self):
+        functions = ["avg",
+                     "collect",
+                     "count",
+                     "max",
+                     "min",
+                     "sum",
+                     "percentileDisc",
+                     "percentileCont",
+                     "stDev"]
+        # Test all functions for invalid argument counts.
+        for function in functions:
+            query = """UNWIND range(0, 10) AS val RETURN %s(val, val, val)""" % (function)
+            self.expect_error(query, "Received 3 arguments")
+
+        # Test numeric functions for invalid input types.
+        numeric_functions = ["avg",
+                             "sum",
+                             "stDev"]
+        for function in numeric_functions:
+            query = """UNWIND ['a', 'b', 'c'] AS val RETURN %s(val)""" % (function)
+            self.expect_type_error(query)
+
+        # Test invalid numeric input for percentile function.
+        query = """UNWIND range(0, 10) AS val RETURN percentileDisc(val, -1)"""
+        self.expect_error(query, "must be a number in the range 0.0 to 1.0")
+
+    # startNode and endNode calls should return the appropriate nodes.
+    def test16_edge_endpoints(self):
+        query = """MATCH (a)-[e]->(b) RETURN a.name, startNode(e).name, b.name, endNode(e).name"""
+        actual_result = graph.query(query)
+        for row in actual_result.result_set:
+            self.env.assertEquals(row[0], row[1])
+            self.env.assertEquals(row[2], row[3])
+
+    def test17_to_json(self):
+        # Test JSON literal values in an array.
+        query = """RETURN toJSON([1, 'str', true, NULL])"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, [1, "str", True, None])
+
+        # Test JSON an empty array value.
+        query = """WITH [] AS arr RETURN toJSON(arr)"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, [])
+
+        # Test JSON an empty map value.
+        query = """WITH {} AS map RETURN toJSON(map)"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {})
+
+        # Test converting a map projection.
+        query = """MATCH (n {val: 1}) RETURN toJSON(n {.val, .name})"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"name": "Alon", "val": 1})
+
+        # Test converting a full node.
+        query = """MATCH (n {val: 1}) RETURN toJSON(n)"""
+        actual_result = graph.query(query)
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"type": "node", "id": 1, "labels": ["person"], "properties": {"name": "Alon", "val": 1}})
+
+        # Test converting a full edge.
+        query = """MATCH ({val: 0})-[e:works_with]->({val: 1}) RETURN toJSON(e)"""
+        actual_result = graph.query(query)
+        start = {"id": 0, "labels": ["person"], "properties": {"name": "Roi", "val": 0}}
+        end = {"id": 1, "labels": ["person"], "properties": {"name": "Alon", "val": 1}}
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, {"type": "relationship", "id": 12, "relationship": "works_with", "properties": {}, "start": start, "end": end})
+
+    # Memory should be freed properly when the key values are heap-allocated.
+    def test18_allocated_keys(self):
+        query = """UNWIND ['str1', 'str1', 'str2', 'str1'] AS key UNWIND [1, 2, 3] as agg RETURN toUpper(key) AS key, collect(DISTINCT agg) ORDER BY key"""
+        actual_result = graph.query(query)
+        expected_result = [['STR1', [1, 2, 3]],
+                           ['STR2', [1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)

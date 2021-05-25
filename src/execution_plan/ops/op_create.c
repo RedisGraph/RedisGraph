@@ -5,9 +5,10 @@
 */
 
 #include "op_create.h"
+#include "RG.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include <assert.h>
 
 /* Forward declarations. */
 static Record CreateConsume(OpBase *opBase);
@@ -33,8 +34,12 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateC
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
 		EdgeCreateCtx *e = edges + i;
 		e->edge_idx = OpBase_Modifies((OpBase *)op, e->alias);
-		assert(OpBase_Aware((OpBase *)op, e->src, &e->src_idx));
-		assert(OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx));
+		bool aware;
+		UNUSED(aware);
+		aware = OpBase_Aware((OpBase *)op, e->src, &e->src_idx);
+		ASSERT(aware == true);
+		aware = OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx);
+		ASSERT(aware == true);
 	}
 
 	return (OpBase *)op;
@@ -56,7 +61,7 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		// convert query-level properties
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map, false);
 
 		// save node for later insertion
 		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);
@@ -78,8 +83,7 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		Node *dest_node = Record_GetNode(r, e->dest_idx);
 		// verify that the endpoints of the new edge resolved properly; fail otherwise
 		if(!src_node || !dest_node) {
-			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
-			QueryCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("Failed to create relationship; endpoint was not found.");
 		}
 
 		// create the actual edge
@@ -92,7 +96,7 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		// convert query-level properties
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map, false);
 
 		// save edge for later insertion
 		op->pending.created_edges = array_append(op->pending.created_edges, edge_ref);
@@ -133,11 +137,15 @@ static Record CreateConsume(OpBase *opBase) {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
 		while((r = OpBase_Consume(child))) {
-			/* Create entities. */
+			/* Persist scalars from previous ops before storing the record,
+			 * as those ops will be freed before the records are handed off. */
+			Record_PersistScalars(r);
+
+			// create entities
 			_CreateNodes(op, r);
 			_CreateEdges(op, r);
 
-			// Save record for later use.
+			// save record for later use
 			op->records = array_append(op->records, r);
 		}
 	}
@@ -155,7 +163,7 @@ static Record CreateConsume(OpBase *opBase) {
 }
 
 static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CREATE);
+	ASSERT(opBase->type == OPType_CREATE);
 	OpCreate *op = (OpCreate *)opBase;
 	NodeCreateCtx *nodes;
 	EdgeCreateCtx *edges;

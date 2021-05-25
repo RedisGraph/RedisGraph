@@ -4,12 +4,12 @@ test:
 # if host is linux
 ifeq ($(OS), Linux)
 	# regular tests on linux
-	@python -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
+	@python3 -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
 else
 # mac
 ifeq ($(VALGRIND),)
 	# no valgrind
-	@python -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
+	@python3 -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
 else
 	# valgrind in docker
 	@echo running docker to run valgrind tck test on MacOS

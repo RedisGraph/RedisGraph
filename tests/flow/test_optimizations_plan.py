@@ -12,7 +12,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testOptimizationsPlan(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -404,3 +404,30 @@ class testOptimizationsPlan(FlowTestsBase):
         query = """MATCH (a) WHERE true RETURN a"""
         executionPlan = graph.execution_plan(query)
         self.env.assertNotIn("Filter", executionPlan)
+
+    # Cartesian product filter placement should not recurse into earlier scopes.
+    def test25_optimize_cartesian_product_scoping(self):
+        query = """MATCH (a {name: 'Ailon'})-[]->(b {name: 'Roi'}) WITH 'const' AS c MATCH (a), (b) WHERE a.val = 3 OR b.val = 3 RETURN a.val, b.val ORDER BY a.val, b.val LIMIT 3"""
+        resultset = graph.query(query).result_set
+        expected = [[0, 3],
+                    [0, 3],
+                    [0, 3]]
+        self.env.assertEqual(resultset, expected)
+
+    # Constant filters should not break Cartesian Product placement.
+    def test26_optimize_cartesian_product_constant_filters(self):
+        query = """MATCH (a) WHERE 2 > rand() MATCH (a), (b) RETURN a.val, b.val ORDER BY a.val, b.val DESC LIMIT 3"""
+        resultset = graph.query(query).result_set
+        expected = [[0, 3],
+                    [0, 3],
+                    [0, 3]]
+        self.env.assertEqual(resultset, expected)
+
+    # Filters on single Cartesian Product branches should be placed properly.
+    def test27_optimize_cartesian_product_complex_filter_trees(self):
+        query = """MATCH (a), (b), (c) WHERE a.val = 0 OR 'lit' > 3 AND b.val <> b.fake RETURN a.val, b.val ORDER BY a.val, b.val DESC LIMIT 3"""
+        resultset = graph.query(query).result_set
+        expected = [[0, 3],
+                    [0, 3],
+                    [0, 3]]
+        self.env.assertEqual(resultset, expected)

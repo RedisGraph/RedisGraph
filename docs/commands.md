@@ -436,6 +436,16 @@ GRAPH.QUERY DEMO_GRAPH
 SET n.age = 33, n.name = 'Bob'"
 ```
 
+The same can be accomplished by setting the graph entity variable to a map:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n { name: 'Jim', age:32 })
+SET n = {age: 33, name: 'Bob'}"
+```
+
+Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
+
 To remove a node's property, simply set property value to NULL.
 
 ```sh
@@ -588,7 +598,9 @@ This section contains information on all supported functions from the Cypher que
 * [List functions](#list-functions)
 * [Mathematical functions](#mathematical-functions)
 * [String functions](#string-functions)
+* [Point functions](#point-functions)
 * [Node functions](#node-functions)
+* [Path functions](#path-functions)
 
 ## Predicate functions
 
@@ -632,30 +644,39 @@ This section contains information on all supported functions from the Cypher que
 
 ## Mathematical functions
 
-|Function | Description|
-| ------- |:-----------|
-|abs() | Returns the absolute value of a number|
-|ceil() | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-|floor() | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
-|rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
-|round() | Returns the value of a number rounded to the nearest integer |
-|sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|Function    | Description|
+| ---------- |:-----------|
+|abs()		 | Returns the absolute value of a number|
+|ceil()		 | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+|floor()	 | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
+|rand()		 | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
+|round()     | Returns the value of a number rounded to the nearest integer |
+|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|sqrt()      | Returns the square root of a number|
 |toInteger() | Converts a floating point or string value to an integer value. |
 
 ## String functions
 
-|Function | Description|
-| ------- |:-----------|
-|left() | Returns a string containing the specified number of leftmost characters of the original string |
-|lTrim() | Returns the original string with leading whitespace removed |
-|reverse() | Returns a string in which the order of all characters in the original string are reversed |
-|right() | Returns a string containing the specified number of rightmost characters of the original string |
-|rTrim() | Returns the original string with trailing whitespace removed |
-|substring() | Returns a substring of the original string, beginning with a 0-based index start and length |
-|toLower() | Returns the original string in lowercase |
-|toString() | Converts an integer, float or boolean value to a string |
-|toUpper() | Returns the original string in uppercase |
-|trim() | Returns the original string with leading and trailing whitespace removed |
+| Function    | Description                                                                                     |
+| -------     | :-----------                                                                                    |
+| left()      | Returns a string containing the specified number of leftmost characters of the original string  |
+| lTrim()     | Returns the original string with leading whitespace removed                                     |
+| reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
+| right()     | Returns a string containing the specified number of rightmost characters of the original string |
+| rTrim()     | Returns the original string with trailing whitespace removed                                    |
+| substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
+| toLower()   | Returns the original string in lowercase                                                        |
+| toString()  | Returns a string representation of a value                                                      |
+| toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
+| toUpper()   | Returns the original string in uppercase                                                        |
+| trim()      | Returns the original string with leading and trailing whitespace removed                        |
+
+## Point functions
+
+| Function          | Description                                                     |
+| -------           | :-----------                                                    |
+| [point()](#point) | Returns a Point type representing the given lat/lon coordinates |
+| distance()        | Returns the distance in meters between the two given points     |
 
 ## Node functions
 |Function | Description|
@@ -664,11 +685,12 @@ This section contains information on all supported functions from the Cypher que
 |outdegree() | Returns the number of node's outgoing edges. |
 
 ## Path functions
-|Function | Description|
-| ------- |:-----------|
-| nodes() | Return a new list of nodes, of a given path. |
-| relationships() | Return a new list of edges, of a given path. |
-| length() | Return the length (number of edges) of the path|
+| Function                        | Description                                               |
+| -------                         | :-----------                                              |
+| nodes()                         | Return a new list of nodes, of a given path.              |
+| relationships()                 | Return a new list of edges, of a given path.              |
+| length()                        | Return the length (number of edges) of the path.          |
+| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern. |
 
 ### List comprehensions
 List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
@@ -703,6 +725,53 @@ They can operate on any form of input array, but are particularly useful for pat
 MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
 ```
 
+### Point
+The `point()` function expects one map argument of the form:
+```sh
+RETURN point({latitude: lat_value, longitude: lon_val})
+```
+
+The key names `latitude` and `longitude` are case-sensitive.
+
+The point constructed by this function can be saved as a node/relationship property or used within the query, such as in a `distance` function call.
+
+### shortestPath
+The `shortestPath()` function is invoked with the form:
+```sh
+MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:L*]->(b))
+```
+
+The sole `shortestPath` argument is a traversal pattern. This pattern's endpoints must be resolved prior to the function call, and no property filters may be introduced in the pattern. The relationship pattern may specify any number of relationship types (including zero) to be considered. If a minimum number of hops is specified, it may only be 0 or 1, while any number may be used for the maximum number of hops. If no shortest path can be found, NULL is returned.
+
+### JSON format
+`toJSON()` returns the input value in JSON formatting. For primitive data types and arrays, this conversion is conventional. Maps and map projections (`toJSON(node { .prop} )`) are converted to JSON objects, as are nodes and relationships.
+
+The format for a node object in JSON is:
+```sh
+{
+  "type": "node",
+  "id": id(int),
+  "labels": [label(string) X N],
+  "properties": {
+    property_key(string): property_value X N
+  }
+}
+```
+
+The format for a relationship object in JSON is:
+```sh
+{
+  "type": "relationship",
+  "id": id(int),
+  "label": label(string),
+  "properties": {
+    property_key(string): property_value X N
+  }
+  "start": src_node(node),
+  "end": dest_node(node)
+}
+```
+
 ## Procedures
 Procedures are invoked using the syntax:
 ```sh
@@ -716,16 +785,18 @@ GRAPH.QUERY social "CALL db.labels() YIELD label"
 
 YIELD modifiers are only required if explicitly specified; by default the value in the 'Yields' column will be emitted automatically.
 
-| Procedure                       | Arguments                                       | Yields             | Description                                                                                                                                                                            |
-| -------                         | :-------                                        | :-------           | :-----------                                                                                                                                                                           |
-| db.labels                       | none                                            | `label`            | Yields all node labels in the graph.                                                                                                                                                   |
-| db.relationshipTypes            | none                                            | `relationshipType` | Yields all relationship types in the graph.                                                                                                                                            |
-| db.propertyKeys                 | none                                            | `propertyKey`      | Yields all property keys in the graph.                                                                                                                                                 |
-| db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none               | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
-| db.idx.fulltext.drop            | `label`                                         | none               | Deletes the full-text index associated with the given label.                                                                                                                           |
-| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`             | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
-| algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`    | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
-| [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`   | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
+| Procedure                       | Arguments                                       | Yields                        | Description                                                                                                                                                                            |
+| -------                         | :-------                                        | :-------                      | :-----------                                                                                                                                                                           |
+| db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
+| db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
+| db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
+| db.indexes                      | none                                            | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                         |
+| db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
+| db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
+| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
+| algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`               | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
+| [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`              | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
+| dbms.procedures()               | none                                            | `name`, `mode`                | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
 
 ### Algorithms
 
@@ -746,6 +817,9 @@ It can yield two outputs:
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
+
+String, numeric, and geospatial data types can be indexed.
+
 The creation syntax is:
 
 ```sh
@@ -768,12 +842,14 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (:Employer {name: 'Dunder Mifflin'})-[:EMPLOYS]->(p:Person) RETURN p"
 ```
 
-RedisGraph can use multiple indexes as ad-hoc composite indexes at query time. For example, if `age` and `years_employed` are both indexed, then both indexes will be utilized in the query:
+An example of utilizing a geospatial index to find `Employer` nodes within 5 kilometers of Scranton is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (p:Person) WHERE p.age < 30 OR p.years_employed < 3 RETURN p"
+"WITH point({latitude:41.4045886, longitude:-75.6969532}) AS scranton MATCH (e:Employer) WHERE distance(e.location, scranton) < 5000 RETURN e"
 ```
+
+Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
 
 Individual indexes can be deleted using the matching syntax:
 
@@ -825,6 +901,20 @@ RETURN m ORDER BY m.rating"
                5) 1) "title"
                   2) "The Jungle Book"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
+```
+
+In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redislabs.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"CALL db.idx.fulltext.queryNodes('Node', 'hello world') YIELD node, score RETURN score, node.val"
+1) 1) "score"
+   2) "node.val"
+2) 1) 1) "2"
+      2) "hello world"
+   2) 1) "1"
+      2) "hello to a different world"
+3) 1) "Cached execution: 1"
+   2) "Query internal execution time: 0.335401 milliseconds"
 ```
 
 ## GRAPH.PROFILE
@@ -907,3 +997,25 @@ GRAPH.SLOWLOG graph_id
     3) "MATCH (me:Person)-[:FRIEND]->(:Person)-[:FRIEND]->(fof:Person) RETURN fof.name"
     4) "0.288"
 ```
+
+## GRAPH.CONFIG
+Retrieves or updates a RedisGraph configuration.
+Arguments: `GET/SET, <config name> [value]`
+`value` should only be specified in `SET` contexts, while `*` may be substituted for an explict `config name` if all configurations should be returned.
+Only run-time configurations may be `SET`, though all configurations may be retrieved.
+```sh
+127.0.0.1:6379> GRAPH.CONFIG SET RESULTSET_SIZE 1000
+OK
+127.0.0.1:6379> GRAPH.CONFIG GET RESULTSET_SIZE
+1) "RESULTSET_SIZE"
+2) (integer) 1000
+```
+
+## GRAPH.LIST
+Lists all graph keys in the keyspace.
+```sh
+127.0.0.1:6379> GRAPH.LIST
+2) G
+3) resources
+4) players
+

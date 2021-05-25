@@ -2,8 +2,8 @@
 // gb_matlab.h: definitions for MATLAB interface for SuiteSparse:GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -47,14 +47,15 @@ void gbcov_put (void) ;
 
 #define CHECK_ERROR(error,message) if (error) ERROR (message) ;
 
-#define OK(method) CHECK_ERROR ((method) != GrB_SUCCESS, GrB_error ( )) ;
+#define OK(method) CHECK_ERROR ((method) != GrB_SUCCESS, "GrB:error") ;
 
-#define OK2(method)                                         \
+#define OK1(C,method)                                       \
 {                                                           \
-    GrB_Info info = method ;                                \
-    if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))    \
+    if ((method) != GrB_SUCCESS)                            \
     {                                                       \
-        ERROR (GrB_error ( )) ;                             \
+        char *message ;                                     \
+        GrB_Matrix_error (&message, C) ;                    \
+        ERROR (message) ;                                   \
     }                                                       \
 }
 
@@ -78,7 +79,9 @@ typedef enum            // output of GrB.methods
 {
     KIND_GRB = 0,       // return a MATLAB struct containing a GrB_Matrix
     KIND_SPARSE = 1,    // return a MATLAB sparse matrix
-    KIND_FULL = 2       // return a MATLAB dense matrix
+    KIND_FULL = 2,      // return a MATLAB full matrix
+    KIND_MATLAB = 3     // return a MATLAB sparse or full matrix (full if all
+                        // entries present, sparse otherwise)
 }
 kind_enum_t ;
 
@@ -165,12 +168,26 @@ GrB_Type gb_type_to_mxstring    // return the MATLAB string from a GrB_Type
     const GrB_Type type
 ) ;
 
-GrB_Matrix gb_typecast      // A = (type) S, where A is deep
+GrB_Matrix gb_typecast          // C = (type) A, where C is deep
 (
+    GrB_Matrix A,               // may be shallow
     GrB_Type type,              // if NULL, copy but do not typecast
-    GxB_Format_Value fmt,       // also convert to the requested format
-    GrB_Matrix S                // may be shallow
+    GxB_Format_Value fmt,       // format of C
+    int sparsity                // sparsity control for C, if 0 use A
 ) ;
+
+GrB_Matrix gb_new               // create and empty matrix C
+(
+    GrB_Type type,              // type of C
+    GrB_Index nrows,            // # of rows
+    GrB_Index ncols,            // # of rows
+    GxB_Format_Value fmt,       // requested format
+    int sparsity                // sparsity control for C, 0 for default
+) ;
+
+void gb_abort ( void ) ;    // failure
+
+int gb_flush ( void ) ;     // flush mexPrintf output to MATLAB Command Window
 
 void gb_usage       // check usage and make sure GxB_init has been called
 (
@@ -204,38 +221,43 @@ GrB_UnaryOp gb_string_to_unop           // return unary operator from a string
 GrB_UnaryOp gb_string_and_type_to_unop  // return op from string and type
 (
     const char *op_name,        // name of the operator, as a string
-    const GrB_Type type         // type of the x,y inputs to the operator
+    const GrB_Type type,        // type of the x,y inputs to the operator
+    const bool type_not_given   // true if no type present in the string
 ) ;
 
 GrB_BinaryOp gb_mxstring_to_binop       // return binary operator from a string
 (
     const mxArray *mxstring,            // MATLAB string
-    const GrB_Type default_type         // default type if not in the string
+    const GrB_Type atype,               // type of A
+    const GrB_Type btype                // type of B
 ) ;
 
 GrB_BinaryOp gb_string_to_binop         // return binary operator from a string
 (
     char *opstring,                     // string defining the operator
-    const GrB_Type default_type         // default type if not in the string
+    const GrB_Type atype,               // type of A
+    const GrB_Type btype                // type of B
 ) ;
 
 GrB_BinaryOp gb_string_and_type_to_binop    // return op from string and type
 (
     const char *op_name,        // name of the operator, as a string
-    const GrB_Type type         // type of the x,y inputs to the operator
+    const GrB_Type type,        // type of the x,y inputs to the operator
+    const bool type_not_given   // true if no type present in the string
 ) ;
 
 GrB_Semiring gb_mxstring_to_semiring    // return semiring from a string
 (
     const mxArray *mxstring,            // MATLAB string
-    const GrB_Type default_type         // default type if not in the string
+    const GrB_Type atype,               // type of A
+    const GrB_Type btype                // type of B
 ) ;
 
 GrB_Semiring gb_string_to_semiring      // return a semiring from a string
 (
     char *semiring_string,              // string defining the semiring
-    const GrB_Type default_type         // default type if not in the string:
-                                        // type of x,y inputs to mult operator
+    const GrB_Type atype,               // type of A
+    const GrB_Type btype                // type of B
 ) ;
 
 GrB_Semiring gb_semiring            // built-in semiring, or NULL if error
@@ -244,12 +266,21 @@ GrB_Semiring gb_semiring            // built-in semiring, or NULL if error
     const GrB_BinaryOp mult         // multiply operator
 ) ;
 
-GrB_Descriptor gb_mxarray_to_descriptor     // return a new descriptor
+GrB_Descriptor gb_mxarray_to_descriptor // new descriptor, or NULL if none
 (
-    const mxArray *D_matlab,    // MATLAB struct
+    const mxArray *desc_matlab, // MATLAB struct with possible descriptor
     kind_enum_t *kind,          // GrB, sparse, or full
     GxB_Format_Value *fmt,      // by row or by col
+    int *sparsity,              // hypersparse/sparse/bitmap/full
     base_enum_t *base           // 0-based int, 1-based int, or 1-based double
+) ;
+
+GrB_Matrix gb_expand_to_full    // C = full (A), and typecast
+(
+    const GrB_Matrix A,         // input matrix to expand to full
+    GrB_Type type,              // type of C, if NULL use the type of A
+    GxB_Format_Value fmt,       // format of C
+    GrB_Matrix id               // identity value, use zero if NULL
 ) ;
 
 mxArray *gb_export_to_mxstruct  // return exported MATLAB struct G
@@ -262,7 +293,7 @@ mxArray *gb_export_to_mxsparse  // return exported MATLAB sparse matrix S
     GrB_Matrix *A_handle        // matrix to export; freed on output
 ) ;
 
-mxArray *gb_export_to_mxfull    // return exported MATLAB dense matrix F
+mxArray *gb_export_to_mxfull    // return exported MATLAB full matrix F
 (
     void **X_handle,            // pointer to array to export
     const GrB_Index nrows,      // dimensions of F
@@ -284,11 +315,6 @@ GxB_SelectOp gb_string_to_selectop      // return select operator from a string
 GxB_SelectOp gb_mxstring_to_selectop    // return select operator from a string
 (
     const mxArray *mxstring             // MATLAB string
-) ;
-
-bool gb_is_shallow              // true if any component of A is shallow
-(
-    GrB_Matrix A                // GrB_Matrix to query
 ) ;
 
 bool gb_mxarray_is_scalar   // true if MATLAB array is a scalar
@@ -337,18 +363,22 @@ GrB_Monoid gb_binop_to_monoid           // return monoid from a binary op
 GrB_Monoid gb_string_to_monoid          // return monoid from a string
 (
     char *opstring,                     // string defining the operator
-    const GrB_Type default_type         // default type if not in the string
+    const GrB_Type type                 // default type if not in the string
 ) ;
 
 GrB_Monoid gb_mxstring_to_monoid        // return monoid from a string
 (
     const mxArray *mxstring,            // MATLAB string
-    const GrB_Type default_type         // default type if not in the string
+    const GrB_Type type                 // default type if not in the string
 ) ;
 
-GxB_Format_Value gb_mxstring_to_format  // GxB_BY_ROW or GxB_BY_COL
+bool gb_mxstring_to_format      // true if a valid format is found
 (
-    const mxArray *mxformat             // MATLAB string, 'by row' or 'by col'
+    // input
+    const mxArray *mxformat,    // MATLAB string, 'by row' or 'by col'
+    // output
+    GxB_Format_Value *fmt,
+    int *sparsity
 ) ;
 
 void gb_matrix_assign_scalar
@@ -369,7 +399,7 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
 (
     int nargout,                // # output arguments for mexFunction
     mxArray *pargout [ ],       // output arguments for mexFunction
-    int nargin,                 // # inpu arguments for mexFunction
+    int nargin,                 // # input arguments for mexFunction
     const mxArray *pargin [ ],  // input arguments for mexFunction
     bool do_subassign,          // true: do subassign, false: do assign
     const char *usage           // usage string to print if error
@@ -401,6 +431,13 @@ GxB_Format_Value gb_get_format          // GxB_BY_ROW or GxB_BY_COL
     GxB_Format_Value fmt_descriptor     // may be GxB_NO_FORMAT
 ) ;
 
+GxB_Format_Value gb_get_sparsity        // 1 to 15
+(
+    GrB_Matrix A,                       // may be NULL
+    GrB_Matrix B,                       // may be NULL
+    int sparsity_default                // may be 0
+) ;
+
 bool gb_is_equal            // true if A == B, false if A ~= B
 (
     GrB_Matrix A,
@@ -414,17 +451,14 @@ bool gb_is_all              // true if op (A,B) is all true, false otherwise
     GrB_BinaryOp op
 ) ;
 
-bool gb_isnan32 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b) ;
-
-bool gb_isnan64 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b) ;
-
-bool gb_isnotnan32 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b) ;
-
-bool gb_isnotnan64 (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-    const void *x, const void *b) ;
+bool gb_isnan32      (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+bool gb_isnan64      (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+bool gb_isnotnan32   (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+bool gb_isnotnan64   (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+bool gb_isnanfc32    (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+bool gb_isnanfc64    (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+bool gb_isnotnanfc32 (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+bool gb_isnotnanfc64 (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
 
 void gb_get_mxargs
 (
@@ -432,7 +466,6 @@ void gb_get_mxargs
     int nargin,                 // # input arguments for mexFunction
     const mxArray *pargin [ ],  // input arguments for mexFunction
     const char *usage,          // usage to print, if too many args appear
-
     // output:
     const mxArray *Matrix [4],  // matrix arguments
     int *nmatrices,             // # of matrix arguments
@@ -443,7 +476,8 @@ void gb_get_mxargs
     GrB_Descriptor *desc,       // last argument is always the descriptor
     base_enum_t *base,          // desc.base
     kind_enum_t *kind,          // desc.kind
-    GxB_Format_Value *fmt       // desc.format
+    GxB_Format_Value *fmt,      // desc.format : by row or by col
+    int *sparsity               // desc.format : hypersparse/sparse/bitmap/full
 ) ;
 
 int64_t gb_norm_kind (const mxArray *arg) ;
@@ -453,6 +487,20 @@ double gb_norm              // compute norm (A,kind)
     GrB_Matrix A,
     int64_t norm_kind       // 0, 1, 2, INT64_MAX, or INT64_MIN
 ) ;
+
+GrB_Type gb_default_type        // return the default type to use
+(
+    const GrB_Type atype,       // type of the A matrix
+    const GrB_Type btype        // type of the B matrix
+) ;
+
+bool gb_is_integer (const GrB_Type type) ;
+
+bool gb_is_float (const GrB_Type type) ;
+
+GrB_BinaryOp gb_round_binop (const GrB_Type type) ;
+
+mxArray *gb_mxclass_to_mxstring (mxClassID class, bool is_complex) ;
 
 #endif
 

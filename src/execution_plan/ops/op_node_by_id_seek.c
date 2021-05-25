@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_id_seek.h"
+#include "RG.h"
 #include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
@@ -53,7 +54,7 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, Unsigned
 }
 
 static OpResult NodeByIdSeekInit(OpBase *opBase) {
-	assert(opBase->type == OPType_NODE_BY_ID_SEEK);
+	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 	// The largest possible entity ID is the number of nodes - deleted and real - in the DataBlock.
 	size_t node_count = Graph_UncompactedNodeCount(op->g);
@@ -132,7 +133,7 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 }
 
 static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_NODE_BY_ID_SEEK);
+	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 	UnsignedRange range;
 	range.min = op->minId;

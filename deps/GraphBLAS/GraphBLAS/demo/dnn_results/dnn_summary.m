@@ -1,4 +1,8 @@
 % MATLAB dnn_gb.m
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 % threads:   1 time:      23.53 sec speedup:     1.00 rate:      10.03 billion
 % threads:   1 time:      67.52 sec speedup:     1.00 rate:      13.98 billion
 % threads:   1 time:     242.19 sec speedup:     1.00 rate:      15.59 billion
@@ -11,9 +15,6 @@
 % threads:   1 time:    3777.13 sec speedup:     1.00 rate:       4.00 billion
 % threads:   1 time:   13816.56 sec speedup:     1.00 rate:       4.37 billion
 % threads:   1 time:   54701.46 sec speedup:     1.00 rate:       4.42 billion
-
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 TM1 =  [
       23.53

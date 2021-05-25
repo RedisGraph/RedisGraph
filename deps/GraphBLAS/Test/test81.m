@@ -1,8 +1,8 @@
 function test81
 %TEST81 test GrB_Matrix_extract with index range, stride, & backwards
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test81:  GrB_Matrix_extract with index range, stride, backwards\n') ;
 

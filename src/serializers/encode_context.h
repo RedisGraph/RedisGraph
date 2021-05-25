@@ -9,35 +9,48 @@
 #include "stdlib.h"
 #include "stdint.h"
 #include "stdbool.h"
+#include "../graph/graph.h"
 #include "../util/datablock/datablock.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../graph/entities/graph_entity.h"
 #include "rax.h"
 
-// Represent a graph encoding state.
+// Encoding states
 typedef enum {
-	ENCODE_STATE_INIT,
-	ENCODE_STATE_NODES,
-	ENCODE_STATE_DELETED_NODES,
-	ENCODE_STATE_EDGES,
-	ENCODE_STATE_DELETED_EDGES,
-	ENCODE_STATE_GRAPH_SCHEMA,
-	ENCODE_STATE_FINAL
+	ENCODE_STATE_INIT,          // encoding initial state
+	ENCODE_STATE_NODES,         // encoding nodes
+	ENCODE_STATE_DELETED_NODES, // encoding deleted nodes
+	ENCODE_STATE_EDGES,         // encoding edges
+	ENCODE_STATE_DELETED_EDGES, // encoding deleted edges
+	ENCODE_STATE_GRAPH_SCHEMA,  // encoding graph schemas
+	ENCODE_STATE_FINAL          // encoding final state
 } EncodeState;
 
-// A struct that maintains the state of a graph encoding to RDB or encode from RDB.
+// Header information encoded for every payload
 typedef struct {
-	uint64_t keys_processed;                    // Count the number of procssed graph keys.
+	bool *multi_edge;                // true if R[i] contain a multi edge entry
+	uint64_t key_count;              // number of virtual keys + primary key
+	uint64_t node_count;             // number of nodes
+	uint64_t edge_count;             // number of edges
+	const char *graph_name;          // name of graph
+	uint label_matrix_count;         // number of label matrices
+	uint relationship_matrix_count;  // number of relation matrices
+} GraphEncodeHeader;
+
+// GraphEncodeContext maintains the state of a graph being encoded or decoded
+typedef struct {
 	rax *meta_keys;                             // The holds the names of meta keys representing the graph.
-	EncodeState state;                          // Represents the current encoding state.
 	uint64_t offset;                            // Number of encoded entities in the current state.
-	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
-	uint current_relation_matrix_id;            // Current encoded relationship matrix.
-	GxB_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
-	EdgeID *multiple_edges_array;               // Multiple edges array, save in the context.
-	uint multiple_edges_current_index;          // The current index of the encoded edges array.
+	EncodeState state;                          // Represents the current encoding state.
+	uint64_t keys_processed;                    // Count the number of procssed graph keys.
+	GraphEncodeHeader header;                   // Header replied for each vkey
 	NodeID multiple_edges_src_id;               // The current edges array sourc node id.
 	NodeID multiple_edges_dest_id;              // The current edges array destination node id.
+	EdgeID *multiple_edges_array;               // Multiple edges array, save in the context.
+	uint current_relation_matrix_id;            // Current encoded relationship matrix.
+	uint multiple_edges_current_index;          // The current index of the encoded edges array.
+	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
+	GxB_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
 } GraphEncodeContext;
 
 // Creates a new graph encoding context.
@@ -45,6 +58,9 @@ GraphEncodeContext *GraphEncodeContext_New();
 
 // Reset a graph encoding context.
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx);
+
+// Populates graph encode context header.
+void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g);
 
 // Retrieve the graph current encoding phase.
 EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx);
@@ -116,3 +132,4 @@ void GraphEncodeContext_IncreaseProcessedKeyCount(GraphEncodeContext *ctx);
 
 // Free graph encoding context.
 void GraphEncodeContext_Free(GraphEncodeContext *ctx);
+

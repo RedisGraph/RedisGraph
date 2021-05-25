@@ -21,7 +21,7 @@ struct heap_s
     void * array[];
 };
 
-size_t heap_sizeof(unsigned int size)
+size_t Heap_sizeof(unsigned int size)
 {
     return sizeof(heap_t) + size * sizeof(void *);
 }
@@ -41,7 +41,7 @@ static int __parent(const int idx)
     return (idx - 1) / 2;
 }
 
-void heap_init(heap_t* h,
+void Heap_init(heap_t* h,
                int (*cmp) (const void *,
                            const void *,
                            const void *udata),
@@ -55,22 +55,22 @@ void heap_init(heap_t* h,
     h->count = 0;
 }
 
-heap_t *heap_new(int (*cmp) (const void *,
+heap_t *Heap_new(int (*cmp) (const void *,
                              const void *,
                              const void *udata),
                  const void *udata)
 {
-    heap_t *h = malloc(heap_sizeof(DEFAULT_CAPACITY));
+    heap_t *h = malloc(Heap_sizeof(DEFAULT_CAPACITY));
 
     if (!h)
         return NULL;
 
-    heap_init(h, cmp, udata, DEFAULT_CAPACITY);
+    Heap_init(h, cmp, udata, DEFAULT_CAPACITY);
 
     return h;
 }
 
-void heap_free(heap_t * h)
+void Heap_free(heap_t * h)
 {
     free(h);
 }
@@ -84,7 +84,7 @@ static heap_t* __ensurecapacity(heap_t * h)
 
     h->size *= 2;
 
-    return realloc(h, heap_sizeof(h->size));
+    return realloc(h, Heap_sizeof(h->size));
 }
 
 static void __swap(heap_t * h, const int i1, const int i2)
@@ -149,7 +149,7 @@ static void __pushdown(heap_t * h, unsigned int idx)
     }
 }
 
-static void __heap_offerx(heap_t * h, void *item)
+static void __Heap_offerx(heap_t * h, void *item)
 {
     h->array[h->count] = item;
 
@@ -157,26 +157,26 @@ static void __heap_offerx(heap_t * h, void *item)
     __pushup(h, h->count++);
 }
 
-int heap_offerx(heap_t * h, void *item)
+int Heap_offerx(heap_t * h, void *item)
 {
     if (h->count == h->size)
         return -1;
-    __heap_offerx(h, item);
+    __Heap_offerx(h, item);
     return 0;
 }
 
-int heap_offer(heap_t ** h, void *item)
+int Heap_offer(heap_t ** h, void *item)
 {
     if (NULL == (*h = __ensurecapacity(*h)))
         return -1;
 
-    __heap_offerx(*h, item);
+    __Heap_offerx(*h, item);
     return 0;
 }
 
-void *heap_poll(heap_t * h)
+void *Heap_poll(heap_t * h)
 {
-    if (0 == heap_count(h))
+    if (0 == Heap_count(h))
         return NULL;
 
     void *item = h->array[0];
@@ -190,15 +190,15 @@ void *heap_poll(heap_t * h)
     return item;
 }
 
-void *heap_peek(const heap_t * h)
+void *Heap_peek(const heap_t * h)
 {
-    if (0 == heap_count(h))
+    if (0 == Heap_count(h))
         return NULL;
 
     return h->array[0];
 }
 
-void heap_clear(heap_t * h)
+void Heap_clear(heap_t * h)
 {
     h->count = 0;
 }
@@ -216,7 +216,7 @@ static int __item_get_idx(const heap_t * h, const void *item)
     return -1;
 }
 
-void *heap_remove_item(heap_t * h, const void *item)
+void *Heap_remove_item(heap_t * h, const void *item)
 {
     int idx = __item_get_idx(h, item);
 
@@ -236,17 +236,17 @@ void *heap_remove_item(heap_t * h, const void *item)
     return ret_item;
 }
 
-int heap_contains_item(const heap_t * h, const void *item)
+int Heap_contains_item(const heap_t * h, const void *item)
 {
     return __item_get_idx(h, item) != -1;
 }
 
-int heap_count(const heap_t * h)
+int Heap_count(const heap_t * h)
 {
     return h->count;
 }
 
-int heap_size(const heap_t * h)
+int Heap_size(const heap_t * h)
 {
     return h->size;
 }

@@ -72,8 +72,8 @@ ProcedureCtx *Proc_ProceduresCtx() {
 	void *privateData = NULL;
 
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
-	ProcedureOutput out_name = {name: "name", type: T_STRING};
-	ProcedureOutput out_mode = {name: "mode", type: T_STRING};
+	ProcedureOutput out_name = {.name = "name", .type = T_STRING};
+	ProcedureOutput out_mode = {.name = "mode", .type = T_STRING};
 	outputs = array_append(outputs, out_name);
 	outputs = array_append(outputs, out_mode);
 

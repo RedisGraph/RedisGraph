@@ -2,8 +2,8 @@
 // GxB_Scalar_dup: make a deep copy of a sparse GxB_Scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -22,7 +22,7 @@ GrB_Info GxB_Scalar_dup     // make an exact copy of a GxB_Scalar
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GxB_Scalar_dup (&s, t)") ;
+    GB_WHERE1 ("GxB_Scalar_dup (&s, t)") ;
     GB_RETURN_IF_NULL (s) ;
     GB_RETURN_IF_NULL_OR_FAULTY (t) ;
     ASSERT (GB_SCALAR_OK (t)) ;

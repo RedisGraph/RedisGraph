@@ -2,8 +2,8 @@
 // GraphBLAS/Demo/Source/bfs5m_check.c: BFS with vxm and assign/reduce
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -19,11 +19,6 @@
 // instead of GrB_mxv.  It now more closely matches the BFS example in the
 // GraphBLAS C API Specification.
 
-// This version uses a predefined semiring (GxB_LOR_LAND_BOOL) and a predefined
-// monoid (GxB_LOR_BOOL_MONOID), in GraphBLAS.h.  It also checks the status of
-// each call to GraphBLAS functions.  These two changes are unrelated.  Both
-// change are made here to illustrate two different things.
-
 // "OK(x)" macro calls a GraphBLAS method, and if it fails, prints the error,
 // frees workspace, and returns to the caller.  It uses the FREE_ALL macro
 // to free the workspace
@@ -35,12 +30,16 @@
 // simple illustration.  Use the LAGraph_bfs_pushpull for benchmarking and
 // production use.
 
-#define FREE_ALL            \
-    GrB_Vector_free (&v) ;         \
-    GrB_Vector_free (&q) ;         \
+#include "GraphBLAS.h"
+
+#define FREE_ALL                    \
+    GrB_Vector_free (&v) ;          \
+    GrB_Vector_free (&q) ;          \
     GrB_Descriptor_free (&desc) ;
 
-#include "demos.h"
+#undef GB_PUBLIC
+#define GB_LIBRARY
+#include "graphblas_demos.h"
 
 //------------------------------------------------------------------------------
 // bfs5m: breadth first search using a Boolean semiring
@@ -52,6 +51,7 @@
 // v should be empty on input.)  The graph A need not be Boolean on input;
 // if it isn't Boolean, the semiring will properly typecast it to Boolean.
 
+GB_PUBLIC
 GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
 (
     GrB_Vector *v_output,   // v [i] is the BFS level of node i in the graph
@@ -96,10 +96,10 @@ GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
 
         // q<!v> = q ||.&& A ; finds all the unvisited
         // successors from current q, using !v as the mask
-        OK (GrB_vxm (q, v, NULL, GxB_LOR_LAND_BOOL, q, A, desc)) ;
+        OK (GrB_vxm (q, v, NULL, GrB_LOR_LAND_SEMIRING_BOOL, q, A, desc)) ;
 
         // successor = ||(q)
-        OK (GrB_Vector_reduce_BOOL (&successor, NULL, GxB_LOR_BOOL_MONOID,
+        OK (GrB_Vector_reduce_BOOL (&successor, NULL, GrB_LOR_MONOID_BOOL,
             q, NULL)) ;
     }
 

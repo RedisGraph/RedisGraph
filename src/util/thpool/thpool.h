@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+#include <sys/types.h>
+
 /* =================================== API ======================================= */
 
 
@@ -31,10 +34,11 @@ typedef struct thpool_* threadpool;
  *    ..
  *
  * @param  num_threads   number of threads to be created in the threadpool
+ * @param  name          name associated with pool
  * @return threadpool    created threadpool on success,
  *                       NULL on error
  */
-threadpool thpool_init(int num_threads);
+threadpool thpool_init(int num_threads, const char *name);
 
 
 /**
@@ -62,7 +66,7 @@ threadpool thpool_init(int num_threads);
  * @param  threadpool    threadpool to which the work will be added
  * @param  function_p    pointer to function to add as work
  * @param  arg_p         pointer to an argument
- * @return 0 on successs, -1 otherwise.
+ * @return 0 on successs -1 otherwise
  */
 int thpool_add_work(threadpool, void (*function_p)(void*), void* arg_p);
 
@@ -199,6 +203,22 @@ int thpool_num_threads(threadpool);
  * @return integer      friendly thread id
  */
 int thpool_get_thread_id(threadpool, pthread_t);
+
+/**
+ * @brief return true if thread pool internal queue is full with pending work
+ *
+ * @param threadpool    the threadpool of interest
+ * @return bool         is the queue full
+ */
+bool thpool_queue_full(threadpool);
+
+/**
+ * @brief Sets jobqueue capacity.
+ *
+ * @param threadpool    the threadpool of interest
+ * @param uint64_t      capacity of the queue
+ */
+void thpool_set_jobqueue_cap(threadpool, uint64_t);
 
 #ifdef __cplusplus
 }

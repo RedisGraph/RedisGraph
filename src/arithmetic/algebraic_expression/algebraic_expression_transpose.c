@@ -15,8 +15,9 @@ void AlgebraicExpression_Transpose
 (
 	AlgebraicExpression **exp    // Expression to transpose.
 ) {
-	assert(exp);
+	ASSERT(exp);
 	AlgebraicExpression *root = AlgebraicExpression_NewOperation(AL_EXP_TRANSPOSE);
 	AlgebraicExpression_AddChild(root, *exp);
 	*exp = root;
 }
+

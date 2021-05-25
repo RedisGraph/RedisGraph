@@ -5,12 +5,12 @@
 */
 
 #include "op_aggregate.h"
+#include "RG.h"
 #include "op_sort.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 #include "../../grouping/group.h"
-#include "../../arithmetic/aggregate.h"
 
 /* Forward declarations. */
 static Record AggregateConsume(OpBase *opBase);
@@ -54,7 +54,7 @@ static inline SIValue *_build_group_key(OpAggregate *op) {
 	SIValue *group_keys = rm_malloc(sizeof(SIValue) * op->key_count);
 
 	for(uint i = 0; i < op->key_count; i++) {
-		SIValue key = op->group_keys[i];
+		SIValue key = SI_TransferOwnership(&op->group_keys[i]);
 		SIValue_Persist(&key);
 		group_keys[i] = key;
 	}
@@ -100,7 +100,8 @@ static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
 /* Retrieves group under which given record belongs to,
  * creates group if one doesn't exists. */
 static Group *_GetGroup(OpAggregate *op, Record r) {
-	char *group_key_str;
+	char *group_key_str = NULL;
+	bool free_key_exps = true;
 	// Construct group key.
 	_ComputeGroupKey(op, r);
 
@@ -109,6 +110,8 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 		op->group = _CreateGroup(op, r);
 		Group_KeyStr(op->group, &group_key_str);
 		CacheGroupAdd(op->groups, group_key_str, op->group);
+		// Key expressions are owned by the new group and don't need to be freed.
+		free_key_exps = false;
 		goto cleanup;
 	}
 
@@ -120,7 +123,7 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	}
 
 	// See if we can reuse last accessed group.
-	if(reuseLastAccessedGroup) return op->group;
+	if(reuseLastAccessedGroup) goto cleanup;
 
 	// Can't reuse last accessed group, lookup group by identifier key.
 	_ComputeGroupKeyStr(op, &group_key_str);
@@ -129,16 +132,25 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 		// Group does not exists, create it.
 		op->group = _CreateGroup(op, r);
 		CacheGroupAdd(op->groups, group_key_str, op->group);
+		// Key expressions are owned by the new group and don't need to be freed.
+		free_key_exps = false;
 	}
 cleanup:
-	rm_free(group_key_str);
+	// Free the keys that have been computed during this function
+	// if they have not been used to build a new group.
+	if(free_key_exps) {
+		for(uint i = 0; i < op->key_count; i++) {
+			SIValue_Free(op->group_keys[i]);
+		}
+	}
+	if(group_key_str) rm_free(group_key_str);
 	return op->group;
 }
 
 static void _aggregateRecord(OpAggregate *op, Record r) {
 	/* Get group */
 	Group *group = _GetGroup(op, r);
-	assert(group);
+	ASSERT(group != NULL);
 
 	// Aggregate group exps.
 	for(uint i = 0; i < op->aggregate_count; i++) {
@@ -172,8 +184,8 @@ static Record _handoff(OpAggregate *op) {
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		int rec_idx = op->record_offsets[i + op->key_count];
 		AR_ExpNode *exp = group->aggregationFunctions[i];
-		AR_EXP_Reduce(exp);
-		SIValue res = AR_EXP_Evaluate(exp, r);
+
+		SIValue res = AR_EXP_Finalize(exp, r);
 		Record_AddScalar(r, rec_idx, res);
 	}
 
@@ -251,7 +263,7 @@ static OpResult AggregateReset(OpBase *opBase) {
 }
 
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_AGGREGATE);
+	ASSERT(opBase->type == OPType_AGGREGATE);
 	OpAggregate *op = (OpAggregate *)opBase;
 	uint key_count = op->key_count;
 	uint aggregate_count = op->aggregate_count;

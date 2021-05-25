@@ -89,10 +89,11 @@ QGNode *LongestPathTree(const QueryGraph *g, int *level) {
 	l = BFS_LOWEST_LEVEL;
 	leafs = BFS(leaf, &l);
 
-	assert(array_len(leafs) > 0 && l >= 0);
+	ASSERT(array_len(leafs) > 0 && l >= 0);
 	QGNode *n = leafs[0];
 	array_free(leafs);
 
 	*level = l;
 	return n;
 }
+

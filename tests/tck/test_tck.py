@@ -11,11 +11,13 @@ from behave.__main__ import main as behave_main
 
 
 def test_tck():
-    env = Env()
-    cmd = ["./features/", '--tags=-skip']
+    env = Env(decodeResponses=True)
+    cmd = ["./features/", '--tags=-crash', '--tags=-skip']
     #  cmd = ["./features/", '--tags=-crash'] # Run all tests except crashing tests
     if not env.verbose:
         cmd.append('--format=progress')
+    if env.getEnvKwargs()['debugger']:
+        cmd.append('--tags=-leak')
     res = behave_main(cmd)
     res = 'pass' if res == 0 else 'fail'
     env.assertEquals(res, 'pass')

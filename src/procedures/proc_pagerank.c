@@ -194,8 +194,8 @@ ProcedureResult Proc_PagerankFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_PagerankCtx() {
 	void *privateData = NULL;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
-	ProcedureOutput output_node = {name: "node", type: T_NODE};
-	ProcedureOutput output_score = {name: "score", type: T_DOUBLE};
+	ProcedureOutput output_node = {.name = "node", .type = T_NODE};
+	ProcedureOutput output_score = {.name = "score", .type = T_DOUBLE};
 	outputs = array_append(outputs, output_node);
 	outputs = array_append(outputs, output_score);
 

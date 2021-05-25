@@ -5,14 +5,14 @@
 */
 
 #include "datablock_iterator.h"
+#include "RG.h"
 #include "datablock.h"
 #include "../rmalloc.h"
 #include <stdio.h>
-#include <assert.h>
 #include <stdbool.h>
 
 DataBlockIterator *DataBlockIterator_New(Block *block, uint64_t start_pos, uint64_t end_pos, uint step) {
-	assert(block && end_pos >= start_pos && step >= 1);
+	ASSERT(block && end_pos >= start_pos && step >= 1);
 
 	DataBlockIterator *iter = rm_malloc(sizeof(DataBlockIterator));
 	iter->_start_block = block;
@@ -30,7 +30,7 @@ DataBlockIterator *DataBlockIterator_Clone(const DataBlockIterator *it) {
 }
 
 void *DataBlockIterator_Next(DataBlockIterator *iter, uint64_t *id) {
-	assert(iter);
+	ASSERT(iter != NULL);
 
 	// Set default.
 	void *item = NULL;
@@ -63,14 +63,14 @@ void *DataBlockIterator_Next(DataBlockIterator *iter, uint64_t *id) {
 }
 
 void DataBlockIterator_Reset(DataBlockIterator *iter) {
-	assert(iter);
+	ASSERT(iter != NULL);
 	iter->_block_pos = iter->_start_pos % DATABLOCK_BLOCK_CAP;
 	iter->_current_block = iter->_start_block;
 	iter->_current_pos = iter->_start_pos;
 }
 
 void DataBlockIterator_Free(DataBlockIterator *iter) {
-	assert(iter);
+	ASSERT(iter != NULL);
 	rm_free(iter);
 }
 

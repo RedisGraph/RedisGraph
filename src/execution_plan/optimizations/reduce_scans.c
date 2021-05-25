@@ -1,17 +1,21 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "./reduce_scans.h"
+#include "RG.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../execution_plan_build/execution_plan_modify.h"
-#include <assert.h>
+
+/* The reduce scans optimizer searches the execution plans for
+ * SCAN operations which set node N, in-case there's an earlier
+ * operation within the execution plan e.g. PROCEDURE-CALL which sets N
+ * then omit SCAN. */
 
 static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 	Graph *g = QueryCtx_GetGraph();
@@ -26,7 +30,7 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	if(scan->childCount == 0) return;
 
 	// The scan operation should be operating on a single alias.
-	assert(array_len(scan->modifies) == 1);
+	ASSERT(array_len(scan->modifies) == 1);
 	const char *scanned_alias = scan->modifies[0];
 
 	// Collect variables bound before this operation.

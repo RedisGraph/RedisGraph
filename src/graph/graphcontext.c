@@ -13,11 +13,10 @@
 #include "../query_ctx.h"
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
-#include "../util/thpool/thpool.h"
+#include "../util/thpool/pools.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-extern threadpool _thpool; // Declared in module.c
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
@@ -36,9 +35,12 @@ static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
-		if(Config_GetAsyncDelete()) {
+		bool async_delete;
+		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
+
+		if(async_delete) {
 			// Async delete
-			thpool_add_work(_thpool, _GraphContext_Free, gc);
+			ThreadPools_AddWorkWriter(_GraphContext_Free, gc);
 		} else {
 			// Sync delete
 			_GraphContext_Free(gc);
@@ -54,36 +56,31 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	gc->ref_count = 0;      // No refences.
-	gc->index_count = 0;    // No indicies.
-	gc->version = 0;        // Initial graph version.
-
-	// Initialize the graph's matrices and datablock storage
-	gc->g = Graph_New(node_cap, edge_cap);
-	gc->graph_name = rm_strdup(graph_name);
-	// Allocate the default space for schemas and indices
-	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
-	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-
-	gc->string_mapping = array_new(char *, 64);
-	gc->attributes = raxNew();
-	gc->slowlog = SlowLog_New();
+	gc->version          = 0;  // initial graph version
+	gc->slowlog          = SlowLog_New();
+	gc->ref_count        = 0;  // no refences
+	gc->attributes       = raxNew();
+	gc->index_count      = 0;  // no indicies
+	gc->string_mapping   = array_new(char *, 64);
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
 
-	// Initialize the read-write lock to protect access to the attributes rax.
+	// initialize the graph's matrices and datablock storage
+	gc->g = Graph_New(node_cap, edge_cap);
+	gc->graph_name = rm_strdup(graph_name);
+
+	// allocate the default space for schemas and indices
+	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
+	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+
+	// initialize the read-write lock to protect access to the attributes rax
 	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
 
-	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
-	 * Each thread is getting its cache by its thread id. */
-	uint64_t thread_count = Config_GetThreadCount() + 1; // Add 1 for redis main thread.
-	uint64_t cache_size = Config_GetCacheSize();
-	gc->cache_pool = array_new(Cache *, thread_count);
-
-	for(uint i = 0; i < thread_count; i++) {
-		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size,
-																(CacheItemFreeFunc)ExecutionCtx_Free));
-	}
+	// build the execution plans cache
+	uint64_t cache_size;
+	Config_Option_get(Config_CACHE_SIZE, &cache_size);
+	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
+						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -153,7 +150,7 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 }
 
 void GraphContext_Release(GraphContext *gc) {
-	assert(gc);
+	ASSERT(gc);
 	_GraphContext_DecreaseRefCount(gc);
 }
 
@@ -183,6 +180,11 @@ void GraphContext_Delete(GraphContext *gc) {
 	// Unregister graph object from global list.
 	GraphContext_RemoveFromRegistry(gc);
 	_GraphContext_DecreaseRefCount(gc);
+}
+
+const char *GraphContext_GetName(const GraphContext *gc) {
+	ASSERT(gc != NULL);
+	return gc->graph_name;
 }
 
 void GraphContext_Rename(GraphContext *gc, const char *name) {
@@ -232,7 +234,7 @@ int _GraphContext_GetLabelID(const GraphContext *gc, const char *label, SchemaTy
 }
 
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
-	assert(gc);
+	ASSERT(gc);
 	if(t == SCHEMA_NODE) return array_len(gc->node_schemas);
 	else return array_len(gc->relation_schemas);
 }
@@ -276,7 +278,7 @@ const char *GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
 
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
-	assert(reltype_id != GRAPH_NO_RELATION);
+	ASSERT(reltype_id != GRAPH_NO_RELATION);
 	return gc->relation_schemas[reltype_id]->name;
 }
 
@@ -325,7 +327,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 
 const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-	assert(id < array_len(gc->string_mapping));
+	ASSERT(id < array_len(gc->string_mapping));
 	const char *name = gc->string_mapping[id];
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return name;
@@ -348,43 +350,73 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute
 // Index API
 //------------------------------------------------------------------------------
 bool GraphContext_HasIndices(GraphContext *gc) {
+	ASSERT(gc != NULL);
+
 	uint schema_count = array_len(gc->node_schemas);
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->node_schemas[i])) return true;
 	}
 	return false;
 }
+Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
+		Attribute_ID *attribute_id, IndexType type) {
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribute_ID *attribute_id,
-							 IndexType type) {
-	// Retrieve the schema for this label
-	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(schema == NULL) return NULL;
+	ASSERT(gc     !=  NULL);
 
-	return Schema_GetIndex(schema, attribute_id, type);
+	// Retrieve the schema for given id
+	Schema *s= GraphContext_GetSchemaByID(gc, id, SCHEMA_NODE);
+	if(s == NULL) return NULL;
+
+	return Schema_GetIndex(s, attribute_id, type);
 }
 
-int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
-						  IndexType type) {
-	assert(idx && gc && label && field);
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
+							 Attribute_ID *attribute_id, IndexType type) {
+
+	ASSERT(gc != NULL);
+	ASSERT(label != NULL);
+
+	// Retrieve the schema for this label
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	if(s == NULL) return NULL;
+
+	return Schema_GetIndex(s, attribute_id, type);
+}
+
+int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
+						  const char *field, IndexType type) {
+
+	ASSERT(idx && gc && label && field);
 
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+
 	int res = Schema_AddIndex(idx, s, field, type);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
+
 	return res;
 }
 
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field,
-							 IndexType type) {
+int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
+							 const char *field, IndexType type) {
+	ASSERT(gc != NULL);
+	ASSERT(label != NULL);
+
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	int res = INDEX_FAIL;
-	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexDeleted(result_set, res);
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+
+	if(s != NULL) {
+		res = Schema_RemoveIndex(s, field, type);
+		if(res != INDEX_FAIL) {
+			// update resultset statistics
+			ResultSet *result_set = QueryCtx_GetResultSet();
+			ResultSet_IndexDeleted(result_set, res);
+		}
+	}
+
 	return res;
 }
 
@@ -454,7 +486,7 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 
 // Return slowlog associated with graph context.
 SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
-	assert(gc);
+	ASSERT(gc);
 	return gc->slowlog;
 }
 
@@ -464,12 +496,8 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 
 // Return cache associated with graph context and current thread id.
 Cache *GraphContext_GetCache(const GraphContext *gc) {
-	assert(gc);
-	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
-	* most likely Redis main thread */
-	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
-	thread_id += 1; // +1 to compensate for Redis main thread.
-	return gc->cache_pool[thread_id];
+	ASSERT(gc != NULL);
+	return gc->cache;
 }
 
 //------------------------------------------------------------------------------
@@ -485,7 +513,10 @@ static void _GraphContext_Free(void *arg) {
 	Graph_SetMatrixPolicy(gc->g, DISABLED);
 	Graph_Free(gc->g);
 
-	// Free all node schemas
+	//--------------------------------------------------------------------------
+	// Free node schemas
+	//--------------------------------------------------------------------------
+
 	if(gc->node_schemas) {
 		len = array_len(gc->node_schemas);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -494,7 +525,10 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->node_schemas);
 	}
 
-	// Free all relation schemas
+	//--------------------------------------------------------------------------
+	// Free relation schemas
+	//--------------------------------------------------------------------------
+
 	if(gc->relation_schemas) {
 		len = array_len(gc->relation_schemas);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -503,8 +537,12 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->relation_schemas);
 	}
 
+	//--------------------------------------------------------------------------
 	// Free attribute mappings
+	//--------------------------------------------------------------------------
+
 	if(gc->attributes) raxFree(gc->attributes);
+
 	if(gc->string_mapping) {
 		len = array_len(gc->string_mapping);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -512,16 +550,17 @@ static void _GraphContext_Free(void *arg) {
 		}
 		array_free(gc->string_mapping);
 	}
-	assert(pthread_rwlock_destroy(&gc->_attribute_rwlock) == 0);
+
+	int res = pthread_rwlock_destroy(&gc->_attribute_rwlock);
+	ASSERT(res == 0);
 
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
+	//--------------------------------------------------------------------------
 	// Clear cache
-	if(gc->cache_pool) {
-		len = array_len(gc->cache_pool);
-		for(uint i = 0; i < len; i++) Cache_Free(gc->cache_pool[i]);
-		array_free(gc->cache_pool);
-	}
+	//--------------------------------------------------------------------------
+
+	if(gc->cache) Cache_Free(gc->cache);
 
 	GraphEncodeContext_Free(gc->encoding_context);
 	GraphDecodeContext_Free(gc->decoding_context);

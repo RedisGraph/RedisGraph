@@ -14,30 +14,33 @@
 
 struct AR_ExpNode;
 
+/* Updates to this enum require parallel updates to the
+ * OpName array in arithmetic_expression_construct.c */
 typedef enum {
-	OP_NULL = 0,
-	OP_OR = 1,
-	OP_XOR = 2,
-	OP_AND = 3,
-	OP_NOT = 4,
-	OP_EQUAL = 5,
-	OP_NEQUAL = 6,
-	OP_LT = 7,
-	OP_GT = 8,
-	OP_LE = 9,
-	OP_GE = 10,
-	OP_PLUS = 11,
-	OP_MINUS = 12,
-	OP_MULT = 13,
-	OP_DIV = 14,
-	OP_MOD = 15,
-	OP_POW = 16,
-	OP_CONTAINS = 17,
-	OP_STARTSWITH = 18,
-	OP_ENDSWITH = 19,
-	OP_IN = 20,
-	OP_IS_NULL = 21,
-	OP_IS_NOT_NULL = 22
+	OP_UNKNOWN = 0,
+	OP_NULL = 1,
+	OP_OR = 2,
+	OP_XOR = 3,
+	OP_AND = 4,
+	OP_NOT = 5,
+	OP_EQUAL = 6,
+	OP_NEQUAL = 7,
+	OP_LT = 8,
+	OP_GT = 9,
+	OP_LE = 10,
+	OP_GE = 11,
+	OP_PLUS = 12,
+	OP_MINUS = 13,
+	OP_MULT = 14,
+	OP_DIV = 15,
+	OP_MOD = 16,
+	OP_POW = 17,
+	OP_CONTAINS = 18,
+	OP_STARTSWITH = 19,
+	OP_ENDSWITH = 20,
+	OP_IN = 21,
+	OP_IS_NULL = 22,
+	OP_IS_NOT_NULL = 23
 } AST_Operator;
 
 typedef struct {
@@ -46,12 +49,26 @@ typedef struct {
 	int property_count;
 } PropertyMap;
 
+// Enum describing how a SET directive should treat pre-existing properties
+typedef enum {
+	UPDATE_UNSET   = 0,    // default, should not be encountered
+	UPDATE_MERGE   = 1,    // merge new properties into existing property map
+	UPDATE_REPLACE = 2,    // replace existing property map with new properties
+} UPDATE_MODE;
+
+// Key-value pair of an attribute ID and the value to be associated with it
+// TODO Consider replacing contents of PropertyMap (for ops like Create) with this
+typedef struct {
+	Attribute_ID id;
+	struct AR_ExpNode *exp;
+} PropertySetCtx;
+
 // Context describing an update expression.
 typedef struct {
-	const char *alias;          // alias of entity being updated
-	Attribute_ID attribute_id;  // id of attribute to update
+	PropertySetCtx *properties; // properties to set
 	int record_idx;             // record offset this entity is stored at
-	struct AR_ExpNode *exp;     // expression to evaluate
+	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
+	const char *alias;          // Access-safe alias of the entity being updated
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause
@@ -91,4 +108,10 @@ NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);
 
 void PropertyMap_Free(PropertyMap *map);
+
+EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char *alias);
+EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *ctx);
+void UpdateCtx_SetMode(EntityUpdateEvalCtx *ctx, UPDATE_MODE mode);
+void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx);
+void UpdateCtx_Free(EntityUpdateEvalCtx *ctx);
 

@@ -1,3 +1,9 @@
+/*
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include "array.h"
 #include "../util/arr.h"
 #include <limits.h>
@@ -49,8 +55,14 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 	for(uint i = 0; i < arrayLen; i ++) {
 		// write the next value
 		SIValue_ToString(SIArray_Get(list, i), buf, bufferLen, bytesWritten);
-		// if it is the last element, add ", "
-		if(i != arrayLen - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
+		// if it is not the last element, add ", "
+		if(i != arrayLen - 1) {
+			if(*bufferLen - *bytesWritten < 64) {
+				*bufferLen += 64;
+				*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+			}
+			*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
+		}
 	}
 	if(*bufferLen - *bytesWritten < 2) {
 		*bufferLen += 2;
@@ -81,3 +93,4 @@ void SIArray_Free(SIValue siarray) {
 	}
 	array_free(siarray.array);
 }
+

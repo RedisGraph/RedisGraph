@@ -10,6 +10,7 @@
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
+#include "../../ast/ast_build_op_contexts.h"
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
 									const char **arguments) {
@@ -70,17 +71,16 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 	// Convert all AST data required to populate our operations tree.
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, gc, plan->query_graph, bound_vars);
 
-	// Create a Merge operation. It will store no information at this time except for any graph updates
-	// it should make due to ON MATCH and ON CREATE SET directives in the query.
-	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, merge_ctx.on_create);
-
-	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
-	ExecutionPlan_UpdateRoot(plan, merge_op);
-
 	// Build the Match stream as a Merge child.
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
-	ExecutionPlan_AddOp(plan->root, match_stream); // Add Match stream to Merge op.
+
+	// Create a Merge operation. It will store no information at this time except for any graph updates
+	// it should make due to ON MATCH and ON CREATE SET directives in the query.
+	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, merge_ctx.on_create);
+	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
+	ExecutionPlan_UpdateRoot(plan, merge_op);
+	ExecutionPlan_AddOp(merge_op, match_stream); // Add Match stream to Merge op.
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, arguments);

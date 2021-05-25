@@ -5,8 +5,8 @@
 */
 
 #include "graph_extensions.h"
+#include "../RG.h"
 #include "../util/datablock/oo_datablock.h"
-#include <assert.h>
 
 // Functions declerations - implemented in graph.c
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r);
@@ -20,7 +20,7 @@ inline void Serializer_Graph_MarkNodeDeleted(Graph *g, NodeID id) {
 }
 
 void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
-	assert(g);
+	ASSERT(g);
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
 	en->prop_count = 0;
@@ -59,3 +59,4 @@ uint64_t *Serializer_Graph_GetDeletedNodesList(Graph *g) {
 uint64_t *Serializer_Graph_GetDeletedEdgesList(Graph *g) {
 	return g->edges->deletedIdx;
 }
+

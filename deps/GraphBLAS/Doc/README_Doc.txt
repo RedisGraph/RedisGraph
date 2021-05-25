@@ -6,7 +6,7 @@ This folder contains the following files:
 
     CONTRIBUTOR-LICENSE.txt     how to contribute to GraphBLAS
     ChangeLog                   changes in GraphBLAS
-    GraphBLAS_API_C.pdf         the GraphBLAS C API Specification
+    GraphBLAS_API_C_v13.pdf     the GraphBLAS C API Specification
     GraphBLAS_API_version.tex   the version of the C API that this version
                                 of SuiteSparse:GraphBLAS conforms to.
     GraphBLAS_UserGuide.pdf     the SuiteSparse:GraphBLAS User Guide 
@@ -16,7 +16,7 @@ This folder contains the following files:
     Makefile                    to create the User Gude
 
     GraphBLAS_version.tex       this version of SuiteSparse:GraphBLAS
-    License.txt                 the license: Apache 2.0
+    License.txt                 SPDX-License-Identifier: Apache-2.0
     README_Doc.txt              this file
 
 Papers on SuiteSparse:GraphBLAS.  See the User Guide for the full citations.
@@ -27,16 +27,15 @@ Papers on SuiteSparse:GraphBLAS.  See the User Guide for the full citations.
     Davis_HPEC18.pdf            "Graph algorithms via SuiteSparse:GraphBLAS..."
     lagraph-grapl19.pdf         "LAGraph: a community effort to collect graph
                                  algorithms built on top of the GraphBLAS"
+    HPEC20_Python_and_MATLAB.pdf    "GraphBLAS programmability", by Mattson
+                                    Pelletier, and Davis.  submitted to HPEC'20
 
 Additional installation notes are below.
 
 --------------------------------------------------------------------------------
 
-SuiteSparse:GraphBLAS requires OpenMP for its internal parallelism.  It also
-needs either POSIX pthreads or OpenMP to be thread-safe, for multithreaded user
-applications.  The Mac has POSIX pthreads built-in, which works fine for
-user-thread safety, but will not be enough to get internal parallelism in
-GraphBLAS.  To install OpenMP on the Mac, try these instructions.
+SuiteSparse:GraphBLAS requires OpenMP for its internal parallelism.
+To install OpenMP on the Mac, try these instructions.
 
 To use OpenMP in GraphBLAS on the Mac:
 

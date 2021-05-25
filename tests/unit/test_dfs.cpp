@@ -51,9 +51,9 @@ class DFSTest: public ::testing::Test {
 		C = QGNode_New("C");
 		D = QGNode_New("D");
 
-		AB = QGEdge_New(A, B, relation, "AB");
-		BC = QGEdge_New(B, C, relation, "BC");
-		CD = QGEdge_New(C, D, relation, "CD");
+		AB = QGEdge_New(relation, "AB");
+		BC = QGEdge_New(relation, "BC");
+		CD = QGEdge_New(relation, "CD");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);

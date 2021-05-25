@@ -4,8 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
-
 #include "op_cond_var_len_traverse.h"
 #include "shared/print_functions.h"
 #include "../../util/arr.h"
@@ -23,7 +21,7 @@ static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph, AlgebraicExpression_Edge(op->ae));
-	assert(e->minHops <= e->maxHops);
+	ASSERT(e->minHops <= e->maxHops);
 	op->minHops = e->minHops;
 	op->maxHops = e->maxHops;
 
@@ -56,15 +54,19 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
 static inline void _setTraverseDirection(CondVarLenTraverse *op, const QGEdge *e) {
 	if(e->bidirectional) {
 		op->traverseDir = GRAPH_EDGE_DIR_BOTH;
-	} else if(AlgebraicExpression_Transposed(op->ae)) {
-		// If the sole operand in the AlgebraicExpression is transposed, we are traversing right-to-left.
-		op->traverseDir = GRAPH_EDGE_DIR_INCOMING;
 	} else {
-		op->traverseDir = GRAPH_EDGE_DIR_OUTGOING;
+		if(AlgebraicExpression_Transposed(op->ae)) {
+			// traverse in the opposite direction, (dest)->(src) incoming edges
+			op->traverseDir = GRAPH_EDGE_DIR_INCOMING;
+		} else {
+			op->traverseDir = GRAPH_EDGE_DIR_OUTGOING;
+		}
 	}
 }
 
 static inline int CondVarLenTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+	// TODO: tmp, improve TraversalToString
+	AlgebraicExpression_Optimize(&((CondVarLenTraverse *)ctx)->ae);
 	return TraversalToString(ctx, buf, buf_len, ((const CondVarLenTraverse *)ctx)->ae);
 }
 
@@ -76,13 +78,24 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
+inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
+										   FT_FilterNode *ft) {
+	ASSERT(op != NULL);
+	ASSERT(ft != NULL);
+	ASSERT(op->ft == NULL);
+
+	op->ft = ft;
+}
+
 OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	assert(ae && g);
+	ASSERT(g != NULL);
+	ASSERT(ae != NULL);
 
 	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
 	op->g = g;
 	op->ae = ae;
 	op->r = NULL;
+	op->ft = NULL;
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
 	op->edgeRelationTypes = NULL;
@@ -91,10 +104,11 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
 				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
 
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	ASSERT(aware);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
-	// Populate edge value in record only if it is referenced.
+	// populate edge value in record only if it is referenced
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
@@ -104,13 +118,11 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 }
 
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
-	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
-	OpBase *child = op->op.children[0];
-	bool reused_record = true;
-	Path *p = NULL;
+	CondVarLenTraverse  *op     =  (CondVarLenTraverse *)opBase;
+	Path                *p      =  NULL;
+	OpBase              *child  =  op->op.children[0];
 
 	while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
-		reused_record = false;
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
@@ -122,6 +134,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 			/* The child Record may not contain the source node in scenarios like
 			 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
 			OpBase_DeleteRecord(op->r);
+			op->r = NULL;
 			continue;
 		}
 
@@ -141,22 +154,25 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 		AllPathsCtx_Free(op->allPathsCtx);
 		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
-										  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
+										  op->edgeRelationCount, op->traverseDir, op->minHops,
+										  op->maxHops, op->r, op->ft, op->edgesIdx);
 
 	}
 
-	Node n = Path_Head(p);
 
-	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
-	if(op->edgesIdx >= 0) {
-		// If we're returning a new path from a previously-used Record,
-		// free the previous path to avoid a memory leak.
-		if(reused_record) SIValue_Free(Record_Get(op->r, op->edgesIdx));
-		// Add new path to Record.
-		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
-	}
+	//--------------------------------------------------------------------------
+	// populate output record
+	//--------------------------------------------------------------------------
 
-	return OpBase_CloneRecord(op->r);
+	Record r = OpBase_CloneRecord(op->r);
+
+	// add destination node to record
+	if(!op->expandInto) Record_AddNode(r, op->destNodeIdx, Path_Head(p));
+
+	// add new path to record
+	if(op->edgesIdx >= 0) Record_AddScalar(r, op->edgesIdx, SI_Path(p));
+
+	return r;
 }
 
 static OpResult CondVarLenTraverseReset(OpBase *ctx) {
@@ -171,7 +187,7 @@ static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 }
 
 static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
+	ASSERT(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
 	CondVarLenTraverse *op = (CondVarLenTraverse *) opBase;
 	OpBase *op_clone = NewCondVarLenTraverseOp(plan, QueryCtx_GetGraph(),
 											   AlgebraicExpression_Clone(op->ae));
@@ -199,6 +215,11 @@ static void CondVarLenTraverseFree(OpBase *ctx) {
 	if(op->allPathsCtx) {
 		AllPathsCtx_Free(op->allPathsCtx);
 		op->allPathsCtx = NULL;
+	}
+
+	if(op->ft) {
+		FilterTree_Free(op->ft);
+		op->ft = NULL;
 	}
 }
 

@@ -10,7 +10,6 @@
 #include "../arr.h"
 #include "../rmalloc.h"
 #include <math.h>
-#include <assert.h>
 #include <stdbool.h>
 
 // Computes the number of blocks required to accommodate n items.
@@ -30,7 +29,7 @@
     dataBlock->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx)]
 
 static void _DataBlock_AddBlocks(DataBlock *dataBlock, uint blockCount) {
-	assert(dataBlock && blockCount > 0);
+	ASSERT(dataBlock && blockCount > 0);
 
 	uint prevBlockCount = dataBlock->blockCount;
 	dataBlock->blockCount += blockCount;
@@ -64,7 +63,9 @@ static inline DataBlockItemHeader *DataBlock_GetItemHeader(const DataBlock *data
 	return (DataBlockItemHeader *)block->data + (idx * block->itemSize);
 }
 
-/* --------- DataBlock API implementation --------*/
+//------------------------------------------------------------------------------
+// DataBlock API implementation
+//------------------------------------------------------------------------------
 
 DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
@@ -74,13 +75,19 @@ DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
 	dataBlock->blocks = NULL;
 	dataBlock->deletedIdx = array_new(uint64_t, 128);
 	dataBlock->destructor = fp;
-	assert(pthread_mutex_init(&dataBlock->mutex, NULL) == 0);
+	int res = pthread_mutex_init(&dataBlock->mutex, NULL);
+	UNUSED(res);
+	ASSERT(res == 0);
 	_DataBlock_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
 	return dataBlock;
 }
 
+uint64_t DataBlock_ItemCount(const DataBlock *dataBlock) {
+	return dataBlock->itemCount;
+}
+
 DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
-	assert(dataBlock);
+	ASSERT(dataBlock != NULL);
 	Block *startBlock = dataBlock->blocks[0];
 
 	// Deleted items are skipped, we're about to perform
@@ -102,7 +109,7 @@ void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k) {
 }
 
 void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
-	assert(dataBlock);
+	ASSERT(dataBlock != NULL);
 
 	ASSERT(!_DataBlock_IndexOutOfBounds(dataBlock, idx));
 
@@ -140,7 +147,7 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 }
 
 void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
-	assert(dataBlock);
+	ASSERT(dataBlock != NULL);
 	ASSERT(!_DataBlock_IndexOutOfBounds(dataBlock, idx));
 
 	// Return if item already deleted.
@@ -173,11 +180,19 @@ uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock) {
 	return array_len(dataBlock->deletedIdx);
 }
 
+inline bool DataBlock_ItemIsDeleted(void *item) {
+	DataBlockItemHeader *header = GET_ITEM_HEADER(item);
+	return IS_ITEM_DELETED(header);
+}
+
 void DataBlock_Free(DataBlock *dataBlock) {
 	for(uint i = 0; i < dataBlock->blockCount; i++) Block_Free(dataBlock->blocks[i]);
 
 	rm_free(dataBlock->blocks);
 	array_free(dataBlock->deletedIdx);
-	assert(pthread_mutex_destroy(&dataBlock->mutex) == 0);
+	int res = pthread_mutex_destroy(&dataBlock->mutex);
+	UNUSED(res);
+	ASSERT(res == 0);
 	rm_free(dataBlock);
 }
+

@@ -1,6 +1,6 @@
 #include "execution_plan_modify.h"
-#include "../execution_plan.h"
 #include "../../RG.h"
+#include "../execution_plan.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../ast/ast_mock.h"
@@ -23,7 +23,7 @@ static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
  * with the new child without reordering elements. */
 static void _ExecutionPlan_ParentReplaceChild(OpBase *parent, OpBase *old_child,
 											  OpBase *new_child) {
-	assert(parent->childCount > 0);
+	ASSERT(parent->childCount > 0);
 
 	for(int i = 0; i < parent->childCount; i ++) {
 		/* Scan the children array to find the op being replaced. */
@@ -34,7 +34,7 @@ static void _ExecutionPlan_ParentReplaceChild(OpBase *parent, OpBase *old_child,
 		return;
 	}
 
-	assert(false && "failed to locate the operation to be replaced");
+	ASSERT(false && "failed to locate the operation to be replaced");
 }
 
 /* Removes node b from a and update child parent lists
@@ -46,7 +46,7 @@ static void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 		if(parent->children[i] == child) break;
 	}
 
-	assert(i != parent->childCount);
+	ASSERT(i != parent->childCount);
 
 	// Update child count.
 	parent->childCount--;
@@ -121,7 +121,7 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	if(op->parent == NULL) {
 		// Removing execution plan root.
-		assert(op->childCount == 1);
+		ASSERT(op->childCount == 1);
 		// Assign child as new root.
 		plan->root = op->children[0];
 		// Remove new root's parent pointer.
@@ -321,7 +321,7 @@ OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type) {
 
 // Collect all aliases that have been resolved by the given tree of operations.
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
-	assert(op && modifiers);
+	ASSERT(op != NULL && modifiers != NULL);
 	if(op->modifies) {
 		uint modifies_count = array_len(op->modifies);
 		for(uint i = 0; i < modifies_count; i++) {

@@ -27,6 +27,7 @@ static void _procRegister(const char *procedure, ProcGenerator gen) {
 void Proc_Register() {
 	__procedures = raxNew();
 	_procRegister("db.labels", Proc_LabelsCtx);
+	_procRegister("db.indexes", Proc_IndexesCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
 	_procRegister("dbms.procedures", Proc_ProceduresCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
@@ -84,7 +85,11 @@ ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char 
 		proc->state = PROCEDURE_ERROR;
 		return PROCEDURE_ERR;
 	}
-	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *)args));
+
+	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) {
+		uint argc = array_len((SIValue *)args);
+		ASSERT(proc->argc == argc);
+	}
 
 	ProcedureResult res = proc->Invoke(proc, args, yield);
 	// Set state to initialized.

@@ -4,6 +4,7 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
+#include "RG.h"
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
 #include "../../procedures/procedure.h"
@@ -51,7 +52,7 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 			identifier = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// This expression did not have an alias, so it must be an identifier
-			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+			ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
@@ -64,7 +65,7 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 	if(yield_count == 0) {
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 		ProcedureCtx *proc = Proc_Get(proc_name);
-		assert(proc);
+		ASSERT(proc != NULL);
 
 		unsigned int output_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < output_count; i++) {

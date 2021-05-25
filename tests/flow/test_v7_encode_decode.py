@@ -8,7 +8,7 @@ redis_con = None
 
 class test_v7_encode_decode(FlowTestsBase):
     def __init__(self):
-        self.env = Env(moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
+        self.env = Env(decodeResponses=True, moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
         global redis_con
         redis_con = self.env.getConnection()
 

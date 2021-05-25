@@ -2,23 +2,23 @@
 // GB_mex_dpagerank: compute pagerank with a real semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // This is for testing only.
 
 #include "GB_mex.h"
-#include "demos.h"
+#include "graphblas_demos.h"
 
 #define USAGE "[r,irank,iters] = GB_mex_dpagerank (A, method)"
 
 #define FREE_ALL                        \
 {                                       \
     if (P != NULL) mxFree (P) ;         \
-    GB_MATRIX_FREE (&A) ;               \
-    GB_mx_put_global (true, 0) ;        \
+    GrB_Matrix_free_(&A) ;               \
+    GB_mx_put_global (true) ;           \
 }
 
 void mexFunction
@@ -35,8 +35,6 @@ void mexFunction
     PageRank *P = NULL ;
     GrB_Index n = 0 ;
     bool malloc_debug = GB_mx_get_global (true) ;
-
-    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 3 || nargin < 1 || nargin > 2)
@@ -74,7 +72,6 @@ void mexFunction
     if (info != GrB_SUCCESS)
     {
         FREE_ALL ;
-        printf ("%s\n", GrB_error ( )) ;
         mexErrMsgTxt ("failed") ;
     }
 

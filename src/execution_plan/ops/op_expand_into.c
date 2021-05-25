@@ -81,8 +81,12 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx));
+	bool aware;
+	UNUSED(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	ASSERT(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
+	ASSERT(aware);
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
@@ -125,8 +129,11 @@ static Record _handoff(OpExpandInto *op) {
 		NodeID destId = ENTITY_GET_ID(destNode);
 		bool x;
 		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
-		// Src is not connected to dest.
-		if(res != GrB_SUCCESS) continue;
+		// Src is not connected to dest, free the current record and continue.
+		if(res != GrB_SUCCESS) {
+			OpBase_DeleteRecord(op->r);
+			continue;
+		}
 
 		// If we're here, src is connected to dest. Update the edge if necessary.
 		if(op->edge_ctx) {
@@ -205,7 +212,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 }
 
 static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_EXPAND_INTO);
+	ASSERT(opBase->type == OPType_EXPAND_INTO);
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }

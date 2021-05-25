@@ -14,7 +14,7 @@ graph_with_cycle = None
 
 class testBidirectionalTraversals(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
         self.populate_acyclic_graph()
@@ -352,3 +352,4 @@ class testBidirectionalTraversals(FlowTestsBase):
                            ['v3', 'v1'],
                            ['v3', 'v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+

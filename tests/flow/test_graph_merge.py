@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import redis
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -10,7 +11,7 @@ graph_2 = None
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         global graph_2
         redis_con = self.env.getConnection()
@@ -138,7 +139,7 @@ class testGraphMergeFlow(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
-        self.env.assertEquals(result.properties_set, 2)
+        self.env.assertEquals(result.properties_set, 1)
         self.env.assertEquals(result.relationships_created, 0)
 
         query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
@@ -342,7 +343,7 @@ class testGraphMergeFlow(FlowTestsBase):
         # Verify the results
         self.env.assertEquals(result.labels_added, 1)
         self.env.assertEquals(result.nodes_created, 1)
-        self.env.assertEquals(result.properties_set, 3)
+        self.env.assertEquals(result.properties_set, 2)
         self.env.assertEquals(result.result_set, expected)
 
     def test18_merge_unique_creations(self):
@@ -534,3 +535,43 @@ class testGraphMergeFlow(FlowTestsBase):
         # Verify that no data was modified and no results were returned.
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
+
+    def test26_merge_set_invalid_property(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("M", redis_con)
+
+        query = """MATCH p=() MERGE () ON MATCH SET p.prop4 = 5"""
+        result = graph.query(query)
+        self.env.assertEquals(result.properties_set, 0)
+
+    def test27_merge_create_invalid_entity(self):
+        # Skip this test if running under Valgrind, as it causes a memory leak.
+        if Env().envRunner.debugger is not None:
+            Env().skip()
+
+        redis_con = self.env.getConnection()
+        graph = Graph("N", redis_con) # Instantiate a new graph.
+
+        try:
+            # Try to create a node with an invalid NULL property.
+            query = """MERGE (n {v: NULL})"""
+            graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Cannot merge node using null property value" in str(e))
+            pass
+
+        # Verify that no entities were created.
+        query = """MATCH (a) RETURN a"""
+        result = graph.query(query)
+        self.env.assertEquals(result.result_set, [])
+
+        try:
+            # Try to merge a node with a self-referential property.
+            query = """MERGE (a:L {v: a.v})"""
+            graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertIn("undefined property", str(e))

@@ -18,7 +18,7 @@ node_ctr = 0
 
 class testIndexUpdatesFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -31,7 +31,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
                                   'group': random.choice(groups),
                                   'doubleval': round(random.uniform(-1, 1), 2),
                                   'intval': random.randint(1, 10000),
-                                  'stringval': ''.join(random.choice(string.lowercase) for x in range(6))})
+                                  'stringval': ''.join(random.choice(string.ascii_lowercase) for x in range(6))})
 
     def populate_graph(self):
         global node_ctr
@@ -139,3 +139,40 @@ class testIndexUpdatesFlow(FlowTestsBase):
         result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group A' DELETE a")
         self.env.assertGreater(result.nodes_deleted, 0)
         self.validate_state()
+
+    def test05_unindexed_property_update(self):
+        # Add an unindexed property to all nodes.
+        redis_graph.query("MATCH (a) SET a.unindexed = 'unindexed'")
+
+        # Retrieve a single node
+        result = redis_graph.query("MATCH (a) RETURN a.unique LIMIT 1")
+        unique_prop = result.result_set[0][0]
+        query = """MATCH (a {unique: %s }) SET a.unindexed = 5, a.unique = %s RETURN a.unindexed, a.unique""" % (unique_prop, unique_prop)
+        result = redis_graph.query(query)
+        expected_result = [[5, unique_prop]]
+        self.env.assertEquals(result.result_set, expected_result)
+        self.env.assertEquals(result.properties_set, 1)
+
+    # Validate that after deleting an indexed property, that property can no longer be found in the index.
+    def test06_remove_indexed_prop(self):
+        # Create a new node with a single indexed property
+        query = """CREATE (:NEW {v: 5})"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.properties_set, 1)
+        self.env.assertEquals(result.labels_added, 1)
+        redis_graph.query("CREATE INDEX ON :NEW(v)")
+
+        # Delete the entity's property
+        query = """MATCH (a:NEW {v: 5}) SET a.v = NULL"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.properties_set, 1)
+
+        # Query the index for the entity
+        query = """MATCH (a:NEW {v: 5}) RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Index Scan", plan)
+        result = redis_graph.query(query)
+        # No entities should be returned
+        expected_result = []
+        self.env.assertEquals(result.result_set, expected_result)
+

@@ -1,8 +1,8 @@
 #include "ast_build_filter_tree.h"
 #include "ast_shared.h"
 #include "../RG.h"
+#include "../errors.h"
 #include "../util/arr.h"
-#include "../query_ctx.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
 
 // Forward declaration
@@ -14,7 +14,7 @@ FT_FilterNode *_CreatePredicateFilterNode(AST_Operator op, const cypher_astnode_
 }
 
 void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
-	assert(child);
+	ASSERT(child);
 
 	FT_FilterNode *root = *root_ptr;
 	// If the tree is uninitialized, its root is the child
@@ -97,7 +97,7 @@ static FT_FilterNode *_convertBinaryOperator(const cypher_astnode_t *op_node) {
 		rhs = cypher_ast_binary_operator_get_argument2(op_node);
 		return _CreateFilterSubtree(op, lhs, rhs);
 	case OP_NOT:
-		QueryCtx_SetError("Invalid usage of 'NOT' filter with expressions on left and right sides.");
+		ErrorCtx_SetError("Invalid usage of 'NOT' filter with expressions on left and right sides.");
 		return NULL;
 	default:
 		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
@@ -217,7 +217,7 @@ static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
 }
 
 FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
-	assert(expr);
+	ASSERT(expr);
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	if(type == CYPHER_AST_COMPARISON) {

@@ -6,8 +6,10 @@
 
 #include "entity_funcs.h"
 #include "../func_desc.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../datatypes/map.h"
 #include "../../graph/graphcontext.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
@@ -41,6 +43,38 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
 	int id = Graph_GetEdgeRelation(gc->g, e);
 	if(id != GRAPH_NO_RELATION) type = gc->relation_schemas[id]->name;
 	return SI_ConstStringVal(type);
+}
+
+/* returns the start node of a relationship. */
+SIValue AR_STARTNODE(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+	Edge *e = argv[0].ptrval;
+	NodeID start_id = Edge_GetSrcNodeID(e);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Node *src = rm_malloc(sizeof(Node));
+	*src = GE_NEW_NODE();
+	// Retrieve the node from the graph.
+	Graph_GetNode(gc->g, start_id, src);
+	SIValue si_node = SI_Node(src);
+	// Mark this value as a heap allocation so that it gets freed properly.
+	SIValue_SetAllocationType(&si_node, M_SELF);
+	return si_node;
+}
+
+/* returns the end node of a relationship. */
+SIValue AR_ENDNODE(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+	Edge *e = argv[0].ptrval;
+	NodeID end_id = Edge_GetDestNodeID(e);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Node *dest = rm_malloc(sizeof(Node));
+	*dest = GE_NEW_NODE();
+	// Retrieve the node from the graph.
+	Graph_GetNode(gc->g, end_id, dest);
+	SIValue si_node = SI_Node(dest);
+	// Mark this value as a heap allocation so that it gets freed properly.
+	SIValue_SetAllocationType(&si_node, M_SELF);
+	return si_node;
 }
 
 /* returns true if the specified property exists in the node, or relationship. */
@@ -97,8 +131,17 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 	// return NULL for missing graph entity
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
+	// AR_PROPERTY may be invoked from AR_SUBSCRIPT in a case like:
+	// WITH {val: 5} AS map RETURN map["val"]
+	// As such, we need to validate the argument's type independently of the invocation validation.
+	if(SI_TYPE(argv[1]) != T_STRING) {
+		// String indexes are only permitted on maps, not arrays.
+		Error_SITypeMismatch(argv[1], T_STRING);
+		return SI_NullVal();
+	}
+
 	// inputs:
-	// argv[0] - node/edge
+	// argv[0] - node/edge/map
 	// argv[1] - property string
 	// argv[2] - property index
 
@@ -106,19 +149,32 @@ SIValue AR_PROPERTY(SIValue *argv, int argc) {
 	// Process inputs
 	//--------------------------------------------------------------------------
 
-	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
-	const char *prop_name = argv[1].stringval;
-	Attribute_ID prop_idx = argv[2].longval;
+	SIValue obj = argv[0];
 
-	// We have the property string, attempt to look up the index now.
-	if(prop_idx == ATTRIBUTE_NOTFOUND) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		prop_idx = GraphContext_GetAttributeID(gc, argv[1].stringval);
+	if(SI_TYPE(obj) & SI_GRAPHENTITY) {
+		// retrieve entity property
+		GraphEntity *graph_entity = (GraphEntity *)obj.ptrval;
+		const char *prop_name     = argv[1].stringval;
+		Attribute_ID prop_idx     = argv[2].longval;
+
+		// We have the property string, attempt to look up the index now.
+		if(prop_idx == ATTRIBUTE_NOTFOUND) {
+			GraphContext *gc = QueryCtx_GetGraphCtx();
+			prop_idx = GraphContext_GetAttributeID(gc, prop_name);
+		}
+
+		// Retrieve the property.
+		SIValue *value = GraphEntity_GetProperty(graph_entity, prop_idx);
+		return SI_ConstValue(*value);
+	} else {
+		// retrieve map key
+		SIValue key = argv[1];
+		SIValue value;
+
+		Map_Get(obj, key, &value);
+		// Return a volatile copy of the value, as it may be heap-allocated.
+		return SI_ShareValue(value);
 	}
-
-	// Retrieve the property.
-	SIValue *property = GraphEntity_GetProperty(graph_entity, prop_idx);
-	return SI_ConstValue(*property);
 }
 
 void Register_EntityFuncs() {
@@ -127,41 +183,51 @@ void Register_EntityFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NULL | T_NODE | T_EDGE);
-	func_desc = AR_FuncDescNew("id", AR_ID, 1, 1, types, false);
+	func_desc = AR_FuncDescNew("id", AR_ID, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NULL | T_NODE);
-	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, false);
+	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NULL | T_EDGE);
-	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, 1, types, false);
+	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_NULL | T_EDGE);
+	func_desc = AR_FuncDescNew("startNode", AR_STARTNODE, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_NULL | T_EDGE);
+	func_desc = AR_FuncDescNew("endNode", AR_ENDNODE, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NULL | SI_ALL);
-	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, 1, types, false);
+	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NULL | T_NODE);
 	types = array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, false);
+	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NULL | T_NODE);
 	types = array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, false);
+	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
-	types = array_append(types, T_NULL | T_NODE | T_EDGE);
+	types = array_append(types, T_NULL | T_NODE | T_EDGE | T_MAP);
 	types = array_append(types, T_STRING);
 	types = array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, false);
+	func_desc = AR_FuncDescNew("property", AR_PROPERTY, 3, 3, types, true, false);
 	AR_RegFunc(func_desc);
 }
 

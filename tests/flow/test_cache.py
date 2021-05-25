@@ -11,7 +11,7 @@ class testCache(FlowTestsBase):
 
     def __init__(self):
         # Have only one thread handling queries
-        self.env = Env(moduleArgs='THREAD_COUNT 1 CACHE_SIZE {CACHE_SIZE}'.format(CACHE_SIZE = CACHE_SIZE))
+        self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE {CACHE_SIZE}'.format(CACHE_SIZE = CACHE_SIZE))
         global redis_con
         redis_con = self.env.getConnection()
 
@@ -202,7 +202,29 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(1, len(result.result_set))
         self.env.assertEqual("Label", result.result_set[0][0].label)
 
-    def test11_test_skip_limit(self):
+    def test11_test_index_scan_update(self):
+        # In this scenario a label scan and Update op are made for non-existent label,
+        # then the label is created and an index are subsequently created.
+        # When the cached query is reused, it should rely on valid label data.
+        graph = Graph('Cache_test_index_scan_update', redis_con)
+        params = {'v': 1}
+        query = "MERGE (n:Label {v: 1}) SET n.v = $v"
+        result = graph.query(query, params)
+        self.env.assertEqual(0, len(result.result_set))
+        self.env.assertEqual(1, result.nodes_created)
+        self.env.assertEqual(1, result.labels_added)
+
+        query = "CREATE INDEX ON :Label(v)"
+        result = graph.query(query)
+        self.env.assertEqual(1, result.indices_created)
+
+        params = {'v': 5}
+        query = "MERGE (n:Label {v: 1}) SET n.v = $v"
+        result = graph.query(query, params)
+        self.env.assertEqual(0, result.nodes_created)
+        self.env.assertEqual(1, result.properties_set)
+
+    def test12_test_skip_limit(self):
         # Test using parameters for skip and limit values,
         # ensuring cached executions always use the parameterized values.
         graph = Graph('Cache_Empty_Key', redis_con)

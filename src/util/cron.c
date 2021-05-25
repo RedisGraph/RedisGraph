@@ -81,21 +81,21 @@ static bool CRON_TaskDue(const CRON_TASK *t) {
 
 static CRON_TASK *CRON_Peek() {
 	pthread_mutex_lock(&cron->mutex);
-	CRON_TASK *task = heap_peek(cron->tasks);
+	CRON_TASK *task = Heap_peek(cron->tasks);
 	pthread_mutex_unlock(&cron->mutex);
 	return task;
 }
 
 static CRON_TASK *CRON_RemoveTask(void) {
 	pthread_mutex_lock(&cron->mutex);
-	CRON_TASK *task = (CRON_TASK*)heap_poll(cron->tasks);
+	CRON_TASK *task = (CRON_TASK*)Heap_poll(cron->tasks);
 	pthread_mutex_unlock(&cron->mutex);
 	return task;
 }
 
 static void CRON_InsertTask(CRON_TASK *t) {
 	pthread_mutex_lock(&cron->mutex);
-	heap_offer(&cron->tasks, t);
+	Heap_offer(&cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
 
 	CRON_WakeUp();
@@ -150,7 +150,7 @@ void Cron_Start(void) {
 
 	cron = rm_malloc(sizeof(CRON));
 	cron->alive = true;
-	cron->tasks = heap_new(CRON_JobCmp, NULL);
+	cron->tasks = Heap_new(CRON_JobCmp, NULL);
 	pthread_cond_init(&cron->condv, NULL);
 	pthread_mutex_init(&cron->mutex, NULL);
 	pthread_mutex_init(&cron->condv_mutex, NULL);
@@ -169,7 +169,7 @@ void Cron_Stop(void) {
 
 	clear_tasks();
 
-	heap_free(cron->tasks);
+	Heap_free(cron->tasks);
 	pthread_mutex_destroy(&cron->mutex);
 	pthread_mutex_destroy(&cron->condv_mutex);
 	pthread_cond_destroy(&cron->condv);

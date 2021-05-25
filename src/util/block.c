@@ -5,18 +5,18 @@
  */
 
 #include "block.h"
+#include "RG.h"
 #include "rmalloc.h"
-#include <assert.h>
 
 Block *Block_New(uint itemSize, uint capacity) {
-	assert(itemSize > 0);
+	ASSERT(itemSize > 0);
 	Block *block = rm_calloc(1, sizeof(Block) + (capacity * itemSize));
 	block->itemSize = itemSize;
 	return block;
 }
 
 void Block_Free(Block *block) {
-	assert(block);
+	ASSERT(block != NULL);
 	rm_free(block);
 }
 

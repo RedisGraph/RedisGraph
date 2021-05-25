@@ -4,15 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_H
-#define GRAPH_H
+#pragma once
 
 #include <pthread.h>
 
+#include "rax.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
-#include "rax.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -53,6 +52,8 @@ typedef enum {
 
 // Forward declaration of RG_Matrix type. Internal to graph.
 typedef struct {
+	bool dirty;                         // Indicates if matrix requires sync
+	bool allow_multi_edge;              // Entry i,j can contain multiple edges
 	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix.
 	pthread_mutex_t mutex;              // Lock.
 } _RG_Matrix;
@@ -159,6 +160,11 @@ void Graph_DeleteNode(
 int Graph_DeleteEdge(
 	Graph *g,
 	Edge *e
+);
+
+// Returns true if the given entity has been deleted.
+bool Graph_EntityIsDeleted(
+	Entity *e
 );
 
 // Removes both nodes and edges from graph.
@@ -333,6 +339,4 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
 void Graph_Free(
 	Graph *g
 );
-
-#endif
 

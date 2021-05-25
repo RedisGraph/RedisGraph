@@ -8,9 +8,8 @@
 #include "qg_node.h"
 #include "../graph.h"
 #include "../../util/arr.h"
-#include <assert.h>
 
-QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias) {
+QGEdge *QGEdge_New(const char *relationship, const char *alias) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
 	e->alias = alias;
 	e->reltypes = array_new(const char *, 1);
@@ -36,7 +35,7 @@ QGEdge *QGEdge_Clone(const QGEdge *orig) {
 }
 
 bool QGEdge_VariableLength(const QGEdge *e) {
-	assert(e);
+	ASSERT(e);
 	return (e->minHops != e->maxHops);
 }
 
@@ -55,7 +54,7 @@ void QGEdge_Reverse(QGEdge *e) {
 }
 
 int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
-	assert(e && buff);
+	ASSERT(e && buff);
 
 	int offset = 0;
 	offset += snprintf(buff + offset, buff_len - offset, "[");
@@ -86,3 +85,4 @@ void QGEdge_Free(QGEdge *e) {
 
 	rm_free(e);
 }
+

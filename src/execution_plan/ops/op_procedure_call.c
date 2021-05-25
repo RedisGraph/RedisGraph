@@ -32,7 +32,9 @@ static void _construct_output_mappings(OpProcCall *op, SIValue *outputs) {
 			char *key = (outputs + j)->stringval;
 			if(strcmp(output, key) == 0) {
 				int idx;
-				assert(OpBase_Aware((OpBase *)op, key, &idx));
+				bool aware = OpBase_Aware((OpBase *)op, key, &idx);
+				UNUSED(aware);
+				ASSERT(aware == true);
 				op->yield_map[i].proc_out_idx = j + 1;
 				op->yield_map[i].rec_idx = idx;
 				break;
@@ -140,7 +142,24 @@ static Record ProcCallConsume(OpBase *opBase) {
 		 * TODO: replace with Proc_Reset */
 		Proc_Free(op->procedure);
 		op->procedure = Proc_Get(op->proc_name);
+
+		// at the moment the only two procedures that can modify the graph are:
+		// proc_fulltext_create_index
+		// proc_fulltext_drop_index
+		// both perform the modification once invoked without returning any
+		// additional data (consume/step) function
+		// this is why acquiring the write lock as we do below works
+		// we will have to revisit this logic once new "write" procedures are
+		// introduced
+
+		// lock if procedure can modify the graph
+		if(!Procedure_IsReadOnly(op->procedure)) QueryCtx_LockForCommit();
+
 		ProcedureResult res = Proc_Invoke(op->procedure, op->args, op->output);
+
+		// unlock if procedure can modify the graph
+		if(!Procedure_IsReadOnly(op->procedure)) QueryCtx_UnlockCommit(opBase);
+
 		/* TODO: should rise run-time exception?
 		 * op->r will be freed in ProcCallFree. */
 		if(res != PROCEDURE_OK) return NULL;
@@ -156,7 +175,7 @@ static OpResult ProcCallReset(OpBase *ctx) {
 }
 
 static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_PROC_CALL);
+	ASSERT(opBase->type == OPType_PROC_CALL);
 	OpProcCall *op = (OpProcCall *)opBase;
 	AR_ExpNode **args_exp;
 	AR_ExpNode **yield_exps;

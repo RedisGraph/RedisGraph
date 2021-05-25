@@ -1,15 +1,16 @@
 //------------------------------------------------------------------------------
-// GrB_Vector_assign:    w<M>(Rows) = accum (w(Rows),u)
+// GrB_Vector_assign: w<M>(Rows) = accum (w(Rows),u)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Compare with GxB_Vector_subassign, which uses M and C_replace differently
 
 #include "GB_assign.h"
+#include "GB_bitmap_assign.h"
 
 GrB_Info GrB_Vector_assign          // w<M>(Rows) = accum (w(Rows),u)
 (
@@ -27,7 +28,7 @@ GrB_Info GrB_Vector_assign          // w<M>(Rows) = accum (w(Rows),u)
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GrB_Vector_assign (w, M, accum, u, Rows, nRows, desc)") ;
+    GB_WHERE (w, "GrB_Vector_assign (w, M, accum, u, Rows, nRows, desc)") ;
     GB_BURBLE_START ("GrB_assign") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_FAULTY (M) ;
@@ -38,7 +39,7 @@ GrB_Info GrB_Vector_assign          // w<M>(Rows) = accum (w(Rows),u)
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
-        xx1, xx2, xx3) ;
+        xx1, xx2, xx3, xx7) ;
 
     //--------------------------------------------------------------------------
     // w(Rows)<M> = accum (w(Rows), u) and variations
@@ -53,7 +54,7 @@ GrB_Info GrB_Vector_assign          // w<M>(Rows) = accum (w(Rows),u)
         Rows, nRows,                    // row indices
         GrB_ALL, 1,                     // all column indices
         false, NULL, GB_ignore_code,    // no scalar expansion
-        false, false,                   // not GrB_Col_assign nor GrB_Row_assign
+        GB_ASSIGN,
         Context) ;
 
     GB_BURBLE_END ;

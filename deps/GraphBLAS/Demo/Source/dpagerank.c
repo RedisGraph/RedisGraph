@@ -2,8 +2,8 @@
 // SuiteSparse/GraphBLAS/Demo/Source/dpagerank: pagerank using a real semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -18,17 +18,19 @@
 // See dpagerank.m for the equivalent computation in MATLAB (except the random
 // number generator differs).
 
+#include "GraphBLAS.h"
+
 //------------------------------------------------------------------------------
 // helper macros
 //------------------------------------------------------------------------------
 
 // free all workspace
-#define FREEWORK                \
-{                               \
-    GrB_Matrix_free (&C) ;      \
-    GrB_Matrix_free (&r) ;             \
-    if (I != NULL) free (I) ;   \
-    if (X != NULL) free (X) ;   \
+#define FREEWORK                        \
+{                                       \
+    GrB_Matrix_free (&C) ;              \
+    GrB_Vector_free (&r) ;              \
+    if (I != NULL) free (I) ;           \
+    if (X != NULL) free (X) ;           \
     GrB_UnaryOp_free (&op_scale) ;      \
     GrB_UnaryOp_free (&op_div) ;        \
 }
@@ -40,7 +42,9 @@
     FREEWORK ;                  \
 }
 
-#include "demos.h"
+#undef GB_PUBLIC
+#define GB_LIBRARY
+#include "graphblas_demos.h"
 
 //------------------------------------------------------------------------------
 // scalar operators
@@ -80,6 +84,7 @@ int compar (const void *x, const void *y)
 // dpagerank: compute the PageRank of all nodes in a graph
 //------------------------------------------------------------------------------
 
+GB_PUBLIC
 GrB_Info dpagerank          // GrB_SUCCESS or error condition
 (
     PageRank **Phandle,     // output: pointer to array of PageRank structs
@@ -130,8 +135,10 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
     OK (drowscale (&C, A)) ;    // C = scale A by out-degree
 
     // create unary operators
-    OK (GrB_UnaryOp_new (&op_scale, fscale, GrB_FP64, GrB_FP64)) ;
-    OK (GrB_UnaryOp_new (&op_div  , fdiv,   GrB_FP64, GrB_FP64)) ;
+    OK (GrB_UnaryOp_new (&op_scale,
+        (GxB_unary_function) fscale, GrB_FP64, GrB_FP64)) ;
+    OK (GrB_UnaryOp_new (&op_div  ,
+        (GxB_unary_function) fdiv,   GrB_FP64, GrB_FP64)) ;
 
     //--------------------------------------------------------------------------
     // iterate to compute the pagerank of each node
@@ -142,7 +149,7 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
         // r = ((c*r) * C) + (a * sum (r)) ;
 
         // s = a * sum (r) ;
-        OK (GrB_Vector_reduce_FP64 (&s, NULL, GxB_PLUS_FP64_MONOID, r, NULL)) ;
+        OK (GrB_Vector_reduce_FP64 (&s, NULL, GrB_PLUS_MONOID_FP64, r, NULL)) ;
         s *= a ;
 
         // r = c * r
@@ -161,7 +168,7 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
     //--------------------------------------------------------------------------
 
     // s = sum (r)
-    OK (GrB_Vector_reduce_FP64 (&s, NULL, GxB_PLUS_FP64_MONOID, r, NULL)) ;
+    OK (GrB_Vector_reduce_FP64 (&s, NULL, GrB_PLUS_MONOID_FP64, r, NULL)) ;
 
     // r = r / s
     OK (GrB_Vector_apply (r, NULL, NULL, op_div, r, NULL)) ;
@@ -173,20 +180,20 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
     // [r,irank] = sort (r, 'descend') ;
 
     // [I,X] = find (r) ;
-    X = malloc (n * sizeof (double)) ;
-    I = malloc (n * sizeof (GrB_Index)) ;
+    X = (double *) malloc (n * sizeof (double)) ;
+    I = (GrB_Index *) malloc (n * sizeof (GrB_Index)) ;
     CHECK (I != NULL && X != NULL, GrB_OUT_OF_MEMORY) ;
     GrB_Index nvals = n ;
     OK (GrB_Vector_extractTuples_FP64 (I, X, &nvals, r)) ;
 
     // this will always be true since r is dense, but double-check anyway:
-    CHECK (nvals == n, GrB_PANIC) ;
+    CHECK (nvals == n, GrB_INVALID_VALUE) ;
 
     // r no longer needed
     GrB_Vector_free (&r) ;
 
     // P = struct (X,I)
-    P = malloc (n * sizeof (PageRank)) ;
+    P = (PageRank *) malloc (n * sizeof (PageRank)) ;
     CHECK (P != NULL, GrB_OUT_OF_MEMORY) ;
     for (int64_t k = 0 ; k < nvals ; k++)
     {

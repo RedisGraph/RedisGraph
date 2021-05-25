@@ -2,14 +2,14 @@
 // gbextractvalues: extract all entries from a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Usage:
 
-// X = GrB.extractvalues (A)
+// X = gbextractvalues (A)
 
 #include "gb_matlab.h"
 
@@ -97,6 +97,7 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_UINT64 (NULL, NULL, X, &nvals, A)) ;
         pargout [0] = gb_export_to_mxfull (&X, nvals, 1, GrB_UINT64) ;
     }
+
     else if (xtype == GrB_FP32)
     { 
         float *X = mxMalloc (s * sizeof (float)) ;
@@ -109,14 +110,18 @@ void mexFunction
         OK (GrB_Matrix_extractTuples_FP64 (NULL, NULL, X, &nvals, A)) ;
         pargout [0] = gb_export_to_mxfull (&X, nvals, 1, GrB_FP64) ;
     }
-    #ifdef GB_COMPLEX_TYPE
-    else if (xtype == gb_complex_type)
-    {
-        double *X = mxMalloc (s * sizeof (double complex)) ;
-        OK (GrB_Matrix_extractTuples_UDT (NULL, NULL, X, &nvals, A)) ;
-        pargout [0] = gb_export_to_mxfull (&X, nvals, 1, gb_complex_type) ;
+    else if (xtype == GxB_FC32)
+    { 
+        GxB_FC32_t *X = mxMalloc (s * sizeof (GxB_FC32_t)) ;
+        OK (GxB_Matrix_extractTuples_FC32 (NULL, NULL, X, &nvals, A)) ;
+        pargout [0] = gb_export_to_mxfull (&X, nvals, 1, GxB_FC32) ;
     }
-    #endif
+    else if (xtype == GxB_FC64)
+    { 
+        GxB_FC64_t *X = mxMalloc (s * sizeof (GxB_FC64_t)) ;
+        OK (GxB_Matrix_extractTuples_FC64 (NULL, NULL, X, &nvals, A)) ;
+        pargout [0] = gb_export_to_mxfull (&X, nvals, 1, GxB_FC64) ;
+    }
     else
     {
         ERROR ("unsupported type") ;

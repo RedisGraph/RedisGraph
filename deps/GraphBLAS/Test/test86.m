@@ -1,8 +1,8 @@
 function test86
 %TEST86 performance test of of GrB_Matrix_extract
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test86: performance test of of GrB_Matrix_extract\n') ;
 
@@ -87,7 +87,7 @@ for inc = [1:10 16 64 128 256 1024 100000 1e6 2e6]
         % C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, I) ;
           C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, J) ;
         t2 = grbresults ;
-        spok (C2.matrix) ;
+        GB_spok (C2.matrix) ;
         assert (isequal (C, C2.matrix)) ;
         fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
     end

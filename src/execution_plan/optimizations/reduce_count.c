@@ -1,16 +1,22 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "reduce_count.h"
 #include "../ops/ops.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../arithmetic/aggregate_funcs/agg_funcs.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 static GrB_UnaryOp countMultipleEdges = NULL;
+
+/* The reduceCount optimization will look for execution plan
+ * performing solely node counting: total number of nodes in the graph,
+ * total number of nodes with a specific label.
+ * In which case we can avoid performing both SCAN* and AGGREGATE
+ * operations by simply returning Graph_NodeCount or Graph_LabeledNodeCount. */
 
 static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 										  OpAggregate **opAggregate) {
@@ -32,9 +38,9 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 
 	// Make sure aggregation performs counting.
 	if(exp->type != AR_EXP_OP ||
-	   exp->op.type != AR_OP_AGGREGATE ||
-	   AR_EXP_PerformDistinct(exp) ||
-	   strcasecmp(exp->op.func_name, "count")) return 0;
+	   exp->op.f->aggregate != true ||
+	   strcasecmp(exp->op.func_name, "count") ||
+	   Aggregate_PerformsDistinct(exp->op.f->privdata)) return 0;
 
 	// Make sure Count acts on an alias.
 	if(exp->op.child_count != 1) return 0;
@@ -121,7 +127,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 
 /* Checks if execution plan solely performs edge count */
 static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
-									 OpBase **opTraverse, OpBase **opScan) {
+									  OpBase **opTraverse, OpBase **opScan) {
 	// Reset.
 	*opScan = NULL;
 	*opTraverse = NULL;
@@ -219,15 +225,15 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	for(uint i = 0; i < edgeRelationCount; i++) {
 		int relType = condTraverse->edge_ctx->edgeRelationTypes[i];
 		switch(relType) {
-		case GRAPH_NO_RELATION:
-			// Should be the only relationship type mentioned, -[]->
-			edges = Graph_EdgeCount(g);
-			break;
-		case GRAPH_UNKNOWN_RELATION:
-			// No change to current count, -[:none_existing]->
-			break;
-		default:
-			edges += _countRelationshipEdges(Graph_GetRelationMatrix(g, relType));
+			case GRAPH_NO_RELATION:
+				// Should be the only relationship type mentioned, -[]->
+				edges = Graph_EdgeCount(g);
+				break;
+			case GRAPH_UNKNOWN_RELATION:
+				// No change to current count, -[:none_existing]->
+				break;
+			default:
+				edges += _countRelationshipEdges(Graph_GetRelationMatrix(g, relType));
 		}
 	}
 	edgeCount = SI_LongVal(edges);

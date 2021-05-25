@@ -1,6 +1,9 @@
 function test149
 %TEST149 test fine hash method for C<!M>=A*B
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 fprintf ('test149: --------- fine hash method for C<!M>=A*B\n') ;
 
 rng ('default') ;
@@ -24,11 +27,9 @@ semiring.add = 'plus' ;
 semiring.multiply = 'times' ;
 semiring.class = 'double' ;
 
-GrB.burble (1) ;
 tic
 C1 = GB_mex_mxm (C, M, [ ], semiring, A, B, desc) ;
 toc
-GrB.burble (0) ;
 tic
 C2 = (A*B) .* double (~M) ;
 toc

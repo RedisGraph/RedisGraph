@@ -1,6 +1,9 @@
 function gbtest30
 %GBTEST30 test colon notation
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 rng ('default') ;
 n = 1e9 %#ok<*NOPRT>
 A = sparse (n, 1) ;

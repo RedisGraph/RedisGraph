@@ -2,8 +2,8 @@
 // GB_mex_cumsum: cumulative using GB_cumsum
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ void mexFunction
     int GET_SCALAR (2, int, nmalloc, 2) ;
 
     // make a copy of the input array (as a row vector)
-    pargout [0] = mxCreateNumericMatrix (1, n+1, mxINT64_CLASS, mxREAL) ;
+    pargout [0] = GB_mx_create_full (1, n+1, GrB_INT64) ;
     int64_t *p = mxGetData (pargout [0]) ;
     memcpy (p, c, n * sizeof (int64_t)) ;
     p [n] = 0 ;
@@ -49,7 +49,7 @@ void mexFunction
     int64_t *kresult = NULL ;
     if (nargout > 1)
     {
-        pargout [1] = mxCreateNumericMatrix (1, 1, mxINT64_CLASS, mxREAL) ;
+        pargout [1] = GB_mx_create_full (1, 1, GrB_INT64) ;
         kresult = mxGetData (pargout [1]) ;
     }
 
@@ -61,7 +61,7 @@ void mexFunction
     else
     {
         // test with malloc failures
-        printf ("test cumsum with nmalloc: %d\n", nmalloc) ;
+        // printf ("test cumsum with nmalloc: %d\n", nmalloc) ;
         GB_Global_malloc_debug_set (true) ;
         GB_Global_malloc_debug_count_set (nmalloc) ;
         GB_cumsum (p, n, kresult, nthreads) ;
@@ -69,6 +69,6 @@ void mexFunction
     }
 
     // log the test coverage
-    GB_mx_put_global (true, 0) ;
+    GB_mx_put_global (true) ;   
 }
 

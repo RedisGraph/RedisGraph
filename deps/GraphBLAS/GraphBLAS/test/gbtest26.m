@@ -1,6 +1,9 @@
 function gbtest26
 %GBTEST26 test typecasting
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
+
 types = gbtest_types ;
 
 rng ('default') ;
@@ -8,9 +11,9 @@ for k1 = 1:length (types)
 
     atype = types {k1} ;
     fprintf ('\n================================================ %s\n', atype) ;
-    A = cast (100 * rand (3), atype) %#ok<*NOPRT>
+    A = gbtest_cast (100 * rand (3), atype) %#ok<*NOPRT>
     H = GrB (A) ;
-    B = cast (H, atype) ;
+    B = GrB (H, atype) ;
     assert (gbtest_eq (A, B)) ;
 
     for k2 = 1:length (types)
@@ -19,7 +22,6 @@ for k1 = 1:length (types)
         fprintf ('\n------------ %s:\n', gtype) ;
         G = GrB (H, gtype)
         K = GrB (G, atype) %#ok<*NASGU>
-        C = cast (G, atype)
     end
 end
 

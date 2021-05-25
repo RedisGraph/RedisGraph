@@ -1,15 +1,16 @@
 function X = nonzeros (G)
-%NONZEROS extract entries from a GraphBLAS matrix.
-% X = nonzeros (G) extracts the entries from a GraphBLAS matrix G.  X has
-% the same type as G ('double', 'single', 'int8', ...).  If G contains
-% explicit entries with a value of zero, these are dropped from X.  Use
-% [I,J,X] = find (G) or [I,J,X] = GrB.extracttuples (G) to return those
-% entries.  This function returns the X of [I,J,X] = find (GrB.prune(G)).
+%NONZEROS extract entries from a matrix.
+% X = nonzeros (G) extracts the entries from G.  X has the same type as G
+% ('double', 'single', 'int8', ...).  If G contains explicit entries with a
+% value of zero, these are dropped from X.  To return those entries, use
+% [I,J,X] = GrB.extracttuples (G).  This function returns the X of
+% [I,J,X] = find (G), which also drops explicit zeros.
 %
-% See also GrB.extracttuples, GrB.entries, GrB.nonz, find.
+% See also GrB.extracttuples, GrB.entries, GrB.nonz, GrB/find.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-X = gbextractvalues (gbselect ('nonzero', G.opaque, struct ('kind', 'GrB'))) ;
+G = G.opaque ;
+X = gbextractvalues (gbselect ('nonzero', G)) ;
 

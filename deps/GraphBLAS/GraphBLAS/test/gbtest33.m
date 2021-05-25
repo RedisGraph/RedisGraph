@@ -1,7 +1,10 @@
 function gbtest33
-%GBTEST33 test spones, numel, nzmax, size, length, isempty, issparse, ...
-% ismatrix, isvector, isscalar, isnumeric, isfloat, isreal, isinteger,
-% islogical, isa
+%GBTEST33 test spones, numel, nzmax, size, length, is*, ...
+% isempty, issparse, ...  ismatrix, isvector, isscalar, isnumeric,
+% isfloat, isreal, isinteger, islogical, isa.
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -57,10 +60,9 @@ for k1 = 1:length(types)
                 assert (isvector (G) == (m == 1 | n == 1)) ;
                 assert (isscalar (G) == (m == 1 & n == 1)) ;
 
-                isfl = isequal (type, 'double') | isequal (type, 'single') | ...
-                       isequal (type, 'complex') ;
+                isfl = contains (type, 'double') | contains (type, 'single') ;
                 assert (isfloat (G) == isfl) ;
-                assert (isreal (G) == (~isequal (type, 'complex'))) ;
+                assert (isreal (G) == (~contains (type, 'complex'))) ;
                 isint = isequal (type (1:3), 'int') | ...
                         isequal (type (2:4), 'int') ;
                 assert (isinteger (G) == isint) ;
@@ -78,7 +80,5 @@ for k1 = 1:length(types)
     end
 end
 
-s = RandStream.getGlobalStream ;
-fprintf ('\nrandom stream has type: [%s]\n', GrB.type (s)) ;
-fprintf ('gbtest33: all tests passed\n') ;
+fprintf ('\ngbtest33: all tests passed\n') ;
 

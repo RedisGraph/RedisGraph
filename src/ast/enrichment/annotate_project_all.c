@@ -55,7 +55,7 @@ static void _collect_with_projections(const cypher_astnode_t *with_clause, const
 		if(identifier == NULL) {
 			// The projection was not aliased, so the projection itself must be an identifier.
 			identifier = cypher_ast_projection_get_expression(projection);
-			assert(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
+			ASSERT(cypher_astnode_type(identifier) == CYPHER_AST_IDENTIFIER);
 		}
 		alias = cypher_ast_identifier_get_name(identifier);
 
@@ -85,7 +85,7 @@ static void _collect_call_projections(const cypher_astnode_t *call_clause, const
 		// If the procedure call is missing its yield part, include procedure outputs.
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 		ProcedureCtx *proc = Proc_Get(proc_name);
-		assert(proc);
+		ASSERT(proc);
 
 		uint output_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < output_count; i++) {
@@ -109,7 +109,7 @@ static void _collect_call_projections(const cypher_astnode_t *call_clause, const
 }
 
 static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint scope_end) {
-	assert(scope_start != scope_end);
+	ASSERT(scope_start != scope_end);
 	const char **aliases = array_new(const char *, 1);
 
 	for(uint i = scope_start; i < scope_end; i ++) {

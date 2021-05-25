@@ -4,10 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "xxhash.h"
+#include "RG.h"
 #include "./record.h"
 #include "../util/rmalloc.h"
-#include <assert.h>
 
 /* Migrate the entry at the given index in the source Record at the same index in the destination.
  * The source retains access to but not ownership of the entry if it is a heap allocation. */
@@ -20,7 +19,7 @@ static void _RecordPropagateEntry(Record dest, Record src, uint idx) {
 
 // This function is currently unused.
 Record Record_New(rax *mapping) {
-	assert(mapping);
+	ASSERT(mapping);
 	// Determine record size.
 	uint entries_count = raxSize(mapping);
 	uint rec_size = sizeof(_Record);
@@ -34,13 +33,18 @@ Record Record_New(rax *mapping) {
 
 // Returns the number of entries held by record.
 uint Record_length(const Record r) {
-	assert(r);
+	ASSERT(r);
 	return raxSize(r->mapping);
 }
 
+bool Record_ContainsEntry(const Record r, uint idx) {
+	ASSERT(idx < Record_length(r));
+	return r->entries[idx].type != REC_TYPE_UNKNOWN;
+}
+
 // Retrieve the offset into the Record of the given alias.
-int Record_GetEntryIdx(Record r, const char *alias) {
-	assert(r && alias);
+uint Record_GetEntryIdx(Record r, const char *alias) {
+	ASSERT(r && alias);
 
 	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
 
@@ -67,7 +71,7 @@ void Record_Clone(const Record r, Record clone) {
 }
 
 void Record_Merge(Record a, const Record b) {
-	assert(a->owner == b->owner);
+	ASSERT(a->owner == b->owner);
 	uint len = Record_length(a);
 
 	for(uint i = 0; i < len; i++) {
@@ -89,95 +93,102 @@ void Record_TransferEntries(Record *to, Record from) {
 	}
 }
 
-RecordEntryType Record_GetType(const Record r, int idx) {
+RecordEntryType Record_GetType(const Record r, uint idx) {
 	return r->entries[idx].type;
 }
 
-Node *Record_GetNode(const Record r, int idx) {
+Node *Record_GetNode(const Record r, uint idx) {
 	switch(r->entries[idx].type) {
-	case REC_TYPE_NODE:
-		return &(r->entries[idx].value.n);
-	case REC_TYPE_UNKNOWN:
-		return NULL;
-	case REC_TYPE_SCALAR:
-		// Null scalar values are expected here; otherwise fall through.
-		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
-	default:
-		assert("encountered unexpected type in Record; expected Node" && false);
+		case REC_TYPE_NODE:
+			return &(r->entries[idx].value.n);
+		case REC_TYPE_UNKNOWN:
+			return NULL;
+		case REC_TYPE_SCALAR:
+			// Null scalar values are expected here; otherwise fall through.
+			if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+		default:
+			ASSERT("encountered unexpected type in Record; expected Node" && false);
+			return NULL;
 	}
 }
 
-Edge *Record_GetEdge(const Record r, int idx) {
+Edge *Record_GetEdge(const Record r, uint idx) {
 	switch(r->entries[idx].type) {
-	case REC_TYPE_EDGE:
-		return &(r->entries[idx].value.e);
-	case REC_TYPE_UNKNOWN:
-		return NULL;
-	case REC_TYPE_SCALAR:
-		// Null scalar values are expected here; otherwise fall through.
-		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
-	default:
-		assert("encountered unexpected type in Record; expected Edge" && false);
+		case REC_TYPE_EDGE:
+			return &(r->entries[idx].value.e);
+		case REC_TYPE_UNKNOWN:
+			return NULL;
+		case REC_TYPE_SCALAR:
+			// Null scalar values are expected here; otherwise fall through.
+			if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+		default:
+			ASSERT("encountered unexpected type in Record; expected Edge" && false);
+			return NULL;
 	}
 }
 
-SIValue Record_Get(Record r, int idx) {
+SIValue Record_Get(Record r, uint idx) {
 	Entry e = r->entries[idx];
 	switch(e.type) {
-	case REC_TYPE_NODE:
-		return SI_Node(Record_GetNode(r, idx));
-	case REC_TYPE_EDGE:
-		return SI_Edge(Record_GetEdge(r, idx));
-	case REC_TYPE_SCALAR:
-		return r->entries[idx].value.s;
-	case REC_TYPE_UNKNOWN:
-		return SI_NullVal();
-	default:
-		assert(false);
+		case REC_TYPE_NODE:
+			return SI_Node(Record_GetNode(r, idx));
+		case REC_TYPE_EDGE:
+			return SI_Edge(Record_GetEdge(r, idx));
+		case REC_TYPE_SCALAR:
+			return r->entries[idx].value.s;
+		case REC_TYPE_UNKNOWN:
+			return SI_NullVal();
+		default:
+			ASSERT(false);
+			return SI_NullVal();
 	}
 }
 
-GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
+void Record_Remove(Record r, uint idx) {
+	r->entries[idx].type = REC_TYPE_UNKNOWN; 
+}
+
+GraphEntity *Record_GetGraphEntity(const Record r, uint idx) {
 	Entry e = r->entries[idx];
 	switch(e.type) {
-	case REC_TYPE_NODE:
-		return (GraphEntity *)Record_GetNode(r, idx);
-	case REC_TYPE_EDGE:
-		return (GraphEntity *)Record_GetEdge(r, idx);
-	default:
-		assert(false && "encountered unexpected type when trying to retrieve graph entity");
+		case REC_TYPE_NODE:
+			return (GraphEntity *)Record_GetNode(r, idx);
+		case REC_TYPE_EDGE:
+			return (GraphEntity *)Record_GetEdge(r, idx);
+		default:
+			ASSERT(false && "encountered unexpected type when trying to retrieve graph entity");
 	}
 	return NULL;
 }
 
-void Record_Add(Record r, int idx, SIValue v) {
-	assert(idx < Record_length(r));
+void Record_Add(Record r, uint idx, SIValue v) {
+	ASSERT(idx < Record_length(r));
 	switch(SI_TYPE(v)) {
-	case T_NODE:
-		Record_AddNode(r, idx, *(Node *)v.ptrval);
-		break;
-	case T_EDGE:
-		Record_AddEdge(r, idx, *(Edge *)v.ptrval);
-		break;
-	default:
-		Record_AddScalar(r, idx, v);
-		break;
+		case T_NODE:
+			Record_AddNode(r, idx, *(Node *)v.ptrval);
+			break;
+		case T_EDGE:
+			Record_AddEdge(r, idx, *(Edge *)v.ptrval);
+			break;
+		default:
+			Record_AddScalar(r, idx, v);
+			break;
 	}
 }
 
-SIValue *Record_AddScalar(Record r, int idx, SIValue v) {
+SIValue *Record_AddScalar(Record r, uint idx, SIValue v) {
 	r->entries[idx].value.s = v;
 	r->entries[idx].type = REC_TYPE_SCALAR;
 	return &(r->entries[idx].value.s);
 }
 
-Node *Record_AddNode(Record r, int idx, Node node) {
+Node *Record_AddNode(Record r, uint idx, Node node) {
 	r->entries[idx].value.n = node;
 	r->entries[idx].type = REC_TYPE_NODE;
 	return &(r->entries[idx].value.n);
 }
 
-Edge *Record_AddEdge(Record r, int idx, Edge edge) {
+Edge *Record_AddEdge(Record r, uint idx, Edge edge) {
 	r->entries[idx].value.e = edge;
 	r->entries[idx].type = REC_TYPE_EDGE;
 	return &(r->entries[idx].value.e);
@@ -213,36 +224,21 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 	return bytesWritten;
 }
 
-unsigned long long Record_Hash64(const Record r) {
-	// Initialize the hash state.
-	XXH64_state_t state;
-	XXH_errorcode res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
+inline rax *Record_GetMappings(const Record r) {
+	ASSERT(r != NULL);
+	return r->mapping;
+}
 
-	uint rec_len = Record_length(r);
-	for(uint idx = 0; idx < rec_len; idx++) {
-		/* Retrieve the entry at 'idx' as an SIValue.
-		 * If this entry is of type REC_TYPE_UNKNOWN, it will be returned as an SI_NullVal.
-		 * As such, this hashing logic will not differentiate between implicit and explicit
-		 * NULL values, but this is an acceptable design choice as the Cypher specification
-		 * does not prescribe behavior for this scenario. */
-		SIValue v = Record_Get(r, idx);
-		// Update the hash state with the current value.
-		SIValue_HashUpdate(v, &state);
-	}
-
-	// Finalize the hash.
-	unsigned long long const hash = XXH64_digest(&state);
-	return hash;
+inline void Record_FreeEntry(Record r, int idx) {
+	if(r->entries[idx].type == REC_TYPE_SCALAR) SIValue_Free(r->entries[idx].value.s);
+	r->entries[idx].type = REC_TYPE_UNKNOWN;
 }
 
 void Record_FreeEntries(Record r) {
 	uint length = Record_length(r);
 	for(uint i = 0; i < length; i++) {
 		// Free any allocations held by this Record.
-		if(r->entries[i].type == REC_TYPE_SCALAR) {
-			SIValue_Free(r->entries[i].value.s);
-		}
+		Record_FreeEntry(r, i);
 	}
 }
 

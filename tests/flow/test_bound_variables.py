@@ -11,7 +11,7 @@ redis_graph = None
 
 class testBoundVariables(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
@@ -65,8 +65,7 @@ class testBoundVariables(FlowTestsBase):
         redis_graph.call_procedure("db.idx.fulltext.createNodeIndex", 'L', 'val')
 
         # Project the result of scanning this index into a MATCH pattern.
-        query = """CALL db.idx.fulltext.queryNodes('L', 'v1') YIELD node MATCH (node)-[]->(b) RETURN b.val
-"""
+        query = """CALL db.idx.fulltext.queryNodes('L', 'v1') YIELD node MATCH (node)-[]->(b) RETURN b.val"""
         # Verify that execution begins at the procedure call and proceeds into the traversals.
         execution_plan = redis_graph.execution_plan(query)
         # For the moment, we'll just verify that ProcedureCall appears later in the plan than
@@ -79,3 +78,16 @@ class testBoundVariables(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['v2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test04_projected_scanned_entity(self):
+        query = """MATCH (a:L {val: 'v1'}) WITH a MATCH (a), (b {val: 'v2'}) RETURN a.val, b.val"""
+        actual_result = redis_graph.query(query)
+
+        # Verify that this query generates exactly 2 scan ops.
+        execution_plan = redis_graph.execution_plan(query)
+        self.env.assertEquals(2, execution_plan.count('Scan'))
+
+        # Verify results.
+        expected_result = [['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+

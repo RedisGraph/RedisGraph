@@ -16,7 +16,6 @@ extern "C" {
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/arithmetic/funcs.h"
-#include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/procedures/procedure.h"
 #include "../../src/execution_plan/execution_plan_clone.h"
 
@@ -34,10 +33,9 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-		GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+		GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
 		Proc_Register();         // Register procedures.
 		AR_RegisterFuncs();      // Register arithmetic functions.
-		Agg_RegisterFuncs();     // Register aggregation functions.
 
 		// Create a graphcontext
 		_fake_graph_context();

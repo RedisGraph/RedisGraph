@@ -29,7 +29,7 @@ OpBase *NewApplyOp(const ExecutionPlan *plan) {
 }
 
 static OpResult ApplyInit(OpBase *opBase) {
-	assert(opBase->childCount == 2);
+	ASSERT(opBase->childCount == 2);
 
 	Apply *op = (Apply *)opBase;
 	/* The op's bound branch and optional match branch have already been built as
@@ -39,7 +39,7 @@ static OpResult ApplyInit(OpBase *opBase) {
 
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->rhs_branch, OPType_ARGUMENT);
-	assert(op->op_arg);
+	ASSERT(op->op_arg);
 
 	return OP_OK;
 }
@@ -73,6 +73,8 @@ static Record ApplyConsume(OpBase *opBase) {
 		// Clone the bound Record and merge the RHS Record into it.
 		Record r = OpBase_CloneRecord(op->r);
 		Record_Merge(r, rhs_record);
+		// Delete the RHS record, as it has been merged into r.
+		OpBase_DeleteRecord(rhs_record);
 
 		return r;
 	}

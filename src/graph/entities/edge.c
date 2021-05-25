@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -14,32 +13,32 @@
 #include "../../query_ctx.h"
 
 NodeID Edge_GetSrcNodeID(const Edge *edge) {
-	assert(edge);
+	ASSERT(edge);
 	return edge->srcNodeID;
 }
 
 NodeID Edge_GetDestNodeID(const Edge *edge) {
-	assert(edge);
+	ASSERT(edge);
 	return edge->destNodeID;
 }
 
 int Edge_GetRelationID(const Edge *edge) {
-	assert(edge);
+	ASSERT(edge);
 	return edge->relationID;
 }
 
 Node *Edge_GetSrcNode(Edge *e) {
-	assert(e);
+	ASSERT(e);
 	return e->src;
 }
 
 Node *Edge_GetDestNode(Edge *e) {
-	assert(e);
+	ASSERT(e);
 	return e->dest;
 }
 
 GrB_Matrix Edge_GetMatrix(Edge *e) {
-	assert(e);
+	ASSERT(e);
 
 	// Retrieve matrix from graph if edge matrix isn't set.
 	if(!e->mat) {
@@ -57,26 +56,25 @@ GrB_Matrix Edge_GetMatrix(Edge *e) {
 }
 
 void Edge_SetSrcNode(Edge *e, Node *src) {
-	assert(e && src);
+	ASSERT(e && src);
 	e->src = src;
 	e->srcNodeID = ENTITY_GET_ID(src);
 }
 
 void Edge_SetDestNode(Edge *e, Node *dest) {
-	assert(e && dest);
+	ASSERT(e && dest);
 	e->dest = dest;
 	e->destNodeID = ENTITY_GET_ID(dest);
 }
 
 void Edge_SetRelationID(Edge *e, int relationID) {
-	assert(e);
+	ASSERT(e);
 	e->relationID = relationID;
 }
 
 void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
 				   GraphEntityStringFromat format) {
-	GraphEntity_ToString((const GraphEntity *)e, buffer, bufferLen, bytesWritten, format,
-						 GETYPE_EDGE);
+	GraphEntity_ToString((const GraphEntity *)e, buffer, bufferLen, bytesWritten, format, GETYPE_EDGE);
 }
 
 void Edge_Free(Edge *edge) {

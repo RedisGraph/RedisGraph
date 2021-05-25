@@ -26,7 +26,7 @@ typedef struct {
 	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
 	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
-	uint ref_count;                                     // Reference counter for deletion.
+	uint *ref_count;                                    // A pointer to reference counter (for deletion).
 	cypher_parse_result_t *parse_result;                // Query parsing output.
 	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
 } AST;
@@ -53,7 +53,14 @@ bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t cl
 void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs);
 
 // Returns specified clause or NULL.
-const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
+// if 'clause_idx' is specified and requested clause type is found
+// 'clause_idx' is set to the index of the returned clause
+// otherwise 'clause_idx' isn't modified.
+const cypher_astnode_t *AST_GetClause(const AST *ast,
+		cypher_astnode_type_t clause_type, uint *clause_idx);
+
+// Return clause at position 'i'
+const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i);
 
 // Returns the indexes into the AST of all instances of the given clause.
 uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);

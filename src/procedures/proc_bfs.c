@@ -7,12 +7,12 @@
 #include "proc_bfs.h"
 #include "../RG.h"
 #include "../value.h"
-#include "../config.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../datatypes/array.h"
 #include "../graph/graphcontext.h"
+#include "../configuration/config.h"
 #include "../algorithms/LAGraph_bfs_pushpull.h"
 
 // The BFS procedure performs a single source BFS scan
@@ -80,7 +80,7 @@ static void _process_yield(BFSCtx *ctx, const char **yield) {
 }
 
 static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
-		const SIValue *args, const char **yield) {
+									   const SIValue *args, const char **yield) {
 	// Validate inputs
 	ASSERT(ctx != NULL);
 	ASSERT(args != NULL);
@@ -120,7 +120,9 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 		if(!s) return PROCEDURE_OK; // Failed to find schema, first step will return NULL.
 		bfs_ctx->reltype_id = s->id;
 		R = Graph_GetRelationMatrix(gc->g, s->id);
-		if(Config_MaintainTranspose()) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
+		bool maintain_transpose;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+		if(maintain_transpose) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
 		else TR = GrB_NULL;
 	}
 
@@ -130,7 +132,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
 	GrB_Vector *pPI = &PI;
 	if(!bfs_ctx->yield_edges) pPI = NULL;
-	GrB_Info res = LAGraph_bfs_pushpull(&V, pPI, R, TR, src_id, max_level, true);
+	GrB_Info res = LAGraph_bfs_pushpull(&V, pPI, R, TR, src_id, NULL, max_level, true);
 	ASSERT(res == GrB_SUCCESS);
 
 	/* Remove all values with a level less than or equal to 1.
@@ -253,8 +255,8 @@ ProcedureCtx *Proc_BFS_Ctx() {
 
 	// Declare possible outputs.
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
-	ProcedureOutput out_nodes = {name: "nodes", type: T_ARRAY};
-	ProcedureOutput out_edges = {name: "edges", type: T_ARRAY};
+	ProcedureOutput out_nodes = {.name = "nodes", .type = T_ARRAY};
+	ProcedureOutput out_edges = {.name = "edges", .type = T_ARRAY};
 	outputs = array_append(outputs, out_nodes);
 	outputs = array_append(outputs, out_edges);
 

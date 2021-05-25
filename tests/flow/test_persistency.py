@@ -11,7 +11,7 @@ redis_con = None
 
 class testGraphPersistency(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
 
@@ -142,12 +142,12 @@ class testGraphPersistency(FlowTestsBase):
             self.env.assertEquals(first_result.result_set,
                                 second_result.result_set)
 
-    # Strings, numerics, booleans, arrays and NULL properties should be properly serialized and reloaded
+    # Strings, numerics, booleans, array, and point properties should be properly serialized and reloaded
     def test03_restore_properties(self):
         graph_names = ("simple_props", "{tag}_simple_props")
         for graph_name in graph_names:
             graph = Graph(graph_name, redis_con)
-            query = """CREATE (:p {strval: 'str', numval: 5.5, nullval: NULL, boolval: true, array: [1,2,3]})"""
+            query = """CREATE (:p {strval: 'str', numval: 5.5, boolval: true, array: [1,2,3], pointval: point({latitude: 5.5, longitude: 6})})"""
             actual_result = graph.query(query)
             # Verify that node was created correctly
             self.env.assertEquals(actual_result.nodes_created, 1)
@@ -156,11 +156,11 @@ class testGraphPersistency(FlowTestsBase):
             # Save RDB & Load from RDB
             redis_con.execute_command("DEBUG", "RELOAD")
 
-            query = """MATCH (p) RETURN p.boolval, p.nullval, p.numval, p.strval, p.array"""
+            query = """MATCH (p) RETURN p.boolval, p.numval, p.strval, p.array, p.pointval"""
             actual_result = graph.query(query)
 
             # Verify that the properties are loaded correctly.
-            expected_result = [[True, None, 5.5, 'str', [1, 2, 3]]]
+            expected_result = [[True, 5.5, 'str', [1, 2, 3], {"latitude": 5.5, "longitude": 6.0}]]
             self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Verify multiple edges of the same relation between nodes A and B
@@ -194,3 +194,4 @@ class testGraphPersistency(FlowTestsBase):
             # Verify that the latest edge was properly saved and loaded
             actual_result = g.query(q)
             self.env.assertEquals(actual_result.result_set, expected_result)
+

@@ -1,8 +1,8 @@
 function testc2(quick)
 %TESTC2 test complex A*B, A'*B, A*B', A'*B', A+B
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -50,7 +50,7 @@ semiring.add = 'plus' ;
 semiring.class = 'complex' ;
 dtn.inp0 = 'tran' ;
 
-anum = [0 1001 1002 1003] ;
+anum = [0 1001 1003 1004] ;
 algos = {'auto', 'gustavson', 'dot', 'hash'} ;
 
 seed = 1 ;

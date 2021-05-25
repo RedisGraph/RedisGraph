@@ -7,10 +7,56 @@ from base import FlowTestsBase
 redis_graph = None
 GRAPH_ID = "G"
 
+# tests the GRAPH.LIST command
+class testGraphList(FlowTestsBase):
+    def __init__(self):
+        self.env = Env(decodeResponses=True)
 
+    def create_graph(self, graph_name, con):
+        con.execute_command("GRAPH.EXPLAIN", graph_name, "RETURN 1")
+
+    def test_graph_list(self):
+        # no graphs, expecting an empty array
+        con = self.env.getConnection()
+        graphs = con.execute_command("GRAPH.LIST")
+        self.env.assertEquals(graphs, [])
+
+        # create graph key "G"
+        self.create_graph("G", con)
+        graphs = con.execute_command("GRAPH.LIST")
+        self.env.assertEquals(graphs, ["G"])
+
+        # create a second graph key "X"
+        self.create_graph("X", con)
+        graphs = con.execute_command("GRAPH.LIST")
+        graphs.sort()
+        self.env.assertEquals(graphs, ["G", "X"])
+
+        # create a string key "str", graph list shouldn't be effected
+        con.set("str", "some string")
+        graphs = con.execute_command("GRAPH.LIST")
+        graphs.sort()
+        self.env.assertEquals(graphs, ["G", "X"])
+
+        # delete graph key "G"
+        con.delete("G")
+        graphs = con.execute_command("GRAPH.LIST")
+        self.env.assertEquals(graphs, ["X"])
+
+        # rename graph key X to Z
+        con.rename("X", "Z")
+        graphs = con.execute_command("GRAPH.LIST")
+        self.env.assertEquals(graphs, ["Z"])
+
+        # delete graph key "Z", no graph keys in the keyspace
+        con.execute_command("GRAPH.DELETE", "Z")
+        graphs = con.execute_command("GRAPH.LIST")
+        self.env.assertEquals(graphs, [])
+
+# tests the list datatype
 class testList(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -99,3 +145,4 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[False]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+

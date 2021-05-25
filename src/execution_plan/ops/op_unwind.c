@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
 #include "op_unwind.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
@@ -45,7 +44,7 @@ static void _initList(OpUnwind *op) {
 	if(SI_TYPE(new_list) != T_ARRAY) {
 		Error_SITypeMismatch(new_list, T_ARRAY);
 		SIValue_Free(new_list);
-		QueryCtx_RaiseRuntimeException();
+		ErrorCtx_RaiseRuntimeException(NULL);
 	}
 	// Update the list value.
 	op->list = new_list;
@@ -119,7 +118,7 @@ static OpResult UnwindReset(OpBase *ctx) {
 }
 
 static inline OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_UNWIND);
+	ASSERT(opBase->type == OPType_UNWIND);
 	OpUnwind *op = (OpUnwind *)opBase;
 	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
 }

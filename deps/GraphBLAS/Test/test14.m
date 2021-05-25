@@ -1,12 +1,13 @@
 function test14
 %TEST14 test GrB_reduce
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest14: reduce to column and scalar\n') ;
 
-[~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
+[~, ~, add_ops, types, ~, ~] = GB_spec_opsall ;
+types = types.all ;
 
 rng ('default') ;
 
@@ -14,22 +15,22 @@ m = 8 ;
 n = 4 ;
 dt = struct ('inp0', 'tran') ;
 
-for k1 = 1:length(classes)
-    aclass = classes {k1} ;
+for k1 = 1:length(types)
+    atype = types {k1} ;
     fprintf ('.') ;
-    A = GB_spec_random (m, n, 0.3, 100, aclass) ;
-    B = GB_spec_random (n, m, 0.3, 100, aclass) ;
-    w = GB_spec_random (m, 1, 0.3, 100, aclass) ;
-    cin = cast (0, aclass) ;
+    A = GB_spec_random (m, n, 0.3, 100, atype) ;
+    B = GB_spec_random (n, m, 0.3, 100, atype) ;
+    w = GB_spec_random (m, 1, 0.3, 100, atype) ;
+    cin = GB_mex_cast (0, atype) ;
     mask = GB_random_mask (m, 1, 0.5, true, false) ;
 
-    if (isequal (aclass, 'logical'))
+    if (isequal (atype, 'logical'))
         ops = {'or', 'and', 'xor', 'eq', 'any'} ;
     else
         ops = {'min', 'max', 'plus', 'times', 'any'} ;
     end
 
-    if (isequal (aclass, 'double'))
+    if (isequal (atype, 'double'))
         hrange = [0 1] ;
         crange = [0 1] ;
     else
@@ -37,7 +38,7 @@ for k1 = 1:length(classes)
         crange = 1 ;
     end
 
-    is_float = isequal (aclass, 'single') || isequal (aclass, 'double') ;
+    is_float = contains (atype, 'single') || contains (atype, 'double') ;
 
     for A_is_hyper = 0:1
     for A_is_csc   = 0:1
@@ -45,17 +46,25 @@ for k1 = 1:length(classes)
     A.is_csc    = A_is_csc ; A.is_hyper    = A_is_hyper ;
     B.is_csc    = A_is_csc ; B.is_hyper    = A_is_hyper ;
 
-    for k2 = 1:length(ops)
-        op = ops {k2} ;
+    for k2 = 1:length(add_ops)
+        op = add_ops {k2} ;
 
         if (isequal (op, 'any'))
             tol = [ ] ;
-        elseif (is_float)
-            tol = 64 * eps (aclass) ;
+        elseif (contains (atype, 'single'))
+            tol = 1e-5 ;
+        elseif (contains (atype, 'double'))
+            tol = 1e-12 ;
         else
             tol = 0 ;
         end
-        identity = GB_spec_identity (op, aclass) ;
+
+        try
+            GB_spec_operator (op, atype) ;
+            identity = GB_spec_identity (op, atype) ;
+        catch
+            continue
+        end
 
         % no mask
         w1 = GB_spec_reduce_to_vector (w, [], [], op, A, []) ;
@@ -105,7 +114,7 @@ for k1 = 1:length(classes)
 
         A_flip = A ;
         if (~A.is_csc && is_float)
-            A_flip.matrix = A_flip.matrix' ;
+            A_flip.matrix = A_flip.matrix.' ;
             A_flip.pattern = A_flip.pattern' ;
             A_flip.is_csc = true ;
         end
@@ -121,7 +130,7 @@ for k1 = 1:length(classes)
         else
             c1 = GB_spec_reduce_to_scalar (cin, [ ], op, A_flip) ;
             if (is_float)
-                assert (abs (c1-c2) < 4 * eps (A.class) *  (abs(c1) + 1))
+                assert (abs (c1-c2) < tol *  (abs(c1) + 1))
             else
                 assert (isequal (c1, c2)) ;
             end
@@ -132,7 +141,7 @@ for k1 = 1:length(classes)
         if (~isequal (op, 'any'))
             c1 = GB_spec_reduce_to_scalar (cin, 'plus', op, A_flip) ;
             if (is_float)
-                assert (abs (c1-c2) < 4 * eps (A.class) *  (abs(c1) + 1))
+                assert (abs (c1-c2) < tol *  (abs(c1) + 1))
             else
                 assert (isequal (c1, c2)) ;
             end

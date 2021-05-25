@@ -2,8 +2,8 @@
 // GB_mx_put_time: put the time back to the global MATLAB workspace
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -11,21 +11,17 @@
 
 double grbtime = 0, tic [2] = {0,0} ;
 
-void GB_mx_put_time
-(
-    GrB_Desc_Value AxB_method_used
-)
+void GB_mx_put_time (void)
 {
 
     // create a MATLAB array with the right size
-    mxArray * grbresults_matlab = mxCreateNumericMatrix (1, 2,
-            mxDOUBLE_CLASS, mxREAL) ;
+    mxArray * grbresults_matlab = GB_mx_create_full (1, 2, GrB_FP64) ;
 
     // copy the time into the MATLAB array
     double *t = (double *) mxGetData (grbresults_matlab) ;
 
     t [0] = grbtime ;
-    t [1] = AxB_method_used ;
+    t [1] = 0 ;
 
     grbtime = 0 ;
 

@@ -6,8 +6,8 @@ function w = GB_spec_reduce_to_vector (w, mask, accum, reduce, A, descriptor)
 %
 % Reduces a matrix to a vector
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 %-------------------------------------------------------------------------------
 % get inputs
@@ -22,14 +22,18 @@ end
 if (isstruct (A))
     aclass = A.class ;
 else
-    aclass = class (A) ;
+    aclass = GB_spec_type (A) ;
 end
 
-% get the reduce operator. default class is the class of A
+% get the reduce operator. default type is the type of A
 if (isempty (reduce))
     reduce = 'plus'
 end
 [reduce_op reduce_class] = GB_spec_operator (reduce, aclass) ;
+
+if (GB_spec_is_positional (reduce_op))
+    error ('reduce op must not be positional') ;
+end
 
 % get the identity
 identity = GB_spec_identity (reduce_op, reduce_class) ;
@@ -54,13 +58,13 @@ mask = GB_spec_getmask (mask, Mask_struct) ;
 
 % apply the descriptor to A
 if (Atrans)
-    A.matrix = A.matrix' ;
+    A.matrix = A.matrix.' ;
     A.pattern = A.pattern' ;
 end
 
 tclass = reduce_class ;
 [m n] = size (A.matrix) ;
-T.matrix = zeros (m, 1, tclass) ;
+T.matrix = GB_spec_zeros ([m 1], tclass) ;
 T.pattern = zeros (m, 1, 'logical') ;
 T.matrix (:,:) = identity ;
 T.class = tclass ;

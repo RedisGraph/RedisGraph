@@ -28,6 +28,13 @@ void _AlgebraicExpression_InplaceRepurpose
 	AlgebraicExpression *replacement    // Replacement expression taking over `exp`.
 );
 
+// Remove 'child' from 'parent'
+void _AlgebraicExpression_OperationRemoveChild
+(
+	AlgebraicExpression *parent,      // parent to remove child from
+	const AlgebraicExpression *child  // child to remove
+);
+
 // Removes the rightmost direct child node of root.
 AlgebraicExpression *_AlgebraicExpression_OperationRemoveDest
 (

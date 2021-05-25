@@ -1,10 +1,11 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "all_paths.h"
+#include "RG.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
@@ -39,20 +40,41 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 
 	// Add unvisited neighbors to next level.
 	uint32_t neighborsCount = array_len(ctx->neighbors);
+
+	//--------------------------------------------------------------------------
+	// apply filter to edge
+	//--------------------------------------------------------------------------
+	if(ctx->ft) {
+		for(uint32_t i = 0; i < neighborsCount; i++) {
+			Edge e = ctx->neighbors[i];
+
+			// update the record with the current edge
+			Record_AddEdge(ctx->r, ctx->edge_idx, e);
+
+			// drop edge if it doesn't passes filter
+			if(FilterTree_applyFilters(ctx->ft, ctx->r) != FILTER_PASS) {
+				array_del_fast(ctx->neighbors, i);
+				i--;
+				neighborsCount--;
+			}
+		}
+	}
+
 	for(uint32_t i = 0; i < neighborsCount; i++) {
 		// Don't follow the frontier edge again.
 		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
 		// Set the neighbor by following the edge in the correct directoin.
 		Node neighbor = GE_NEW_NODE();
 		switch(dir) {
-		case GRAPH_EDGE_DIR_OUTGOING:
-			Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
-			break;
-		case GRAPH_EDGE_DIR_INCOMING:
-			Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
-			break;
-		default:
-			assert(false && "encountered unexpected traversal direction in AllPaths");
+			case GRAPH_EDGE_DIR_OUTGOING:
+				Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
+				break;
+			case GRAPH_EDGE_DIR_INCOMING:
+				Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
+				break;
+			default:
+				ASSERT(false && "encountered unexpected traversal direction in AllPaths");
+				break;
 		}
 		// Add the node and edge to the frontier.
 		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
@@ -61,30 +83,37 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 }
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
-							 GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
-	assert(src);
+							 GRAPH_EDGE_DIR dir, uint minLen, uint maxLen,
+							 Record r, FT_FilterNode *ft, uint edge_idx) {
+	ASSERT(src != NULL);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
-	ctx->g = g;
-	ctx->dir = dir;
+	ctx->g         =  g;
+	ctx->r         =  r;
+	ctx->ft        =  ft;
+	ctx->dir       =  dir;
+	ctx->edge_idx  =  edge_idx;
+
 	// Cypher variable path "[:*min..max]"" specifies edge count
 	// While the path constructed here contains only nodes.
 	// As such a path which require min..max edges
 	// should contain min+1..max+1 nodes.
-	ctx->minLen = minLen + 1;
-	ctx->maxLen = maxLen + 1;
-	ctx->relationIDs = relationIDs;
-	ctx->relationCount = relationCount;
-	ctx->levels = array_new(LevelConnection *, 1);
-	ctx->path = Path_New(1);
-	ctx->neighbors = array_new(Edge, 32);
+	ctx->minLen         =  minLen + 1;
+	ctx->maxLen         =  maxLen + 1;
+	ctx->relationIDs    =  relationIDs;
+	ctx->relationCount  =  relationCount;
+	ctx->levels         =  array_new(LevelConnection*, 1);
+	ctx->path           =  Path_New(1);
+	ctx->neighbors      =  array_new(Edge, 32);
+	ctx->dst            =  dst;
+
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
-	ctx->dst = dst;
 	return ctx;
 }
 
 Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 	if(!ctx) return NULL;
+
 	// As long as path is not empty OR there are neighbors to traverse.
 	while(Path_NodeCount(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
 		uint32_t depth = Path_NodeCount(ctx->path);

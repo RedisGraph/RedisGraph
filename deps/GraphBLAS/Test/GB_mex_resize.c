@@ -2,8 +2,8 @@
 // GB_mex_resize: resize a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -13,8 +13,8 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_free (&C) ;                     \
-    GB_mx_put_global (true, 0) ;        \
+    GrB_Matrix_free_(&C) ;              \
+    GB_mx_put_global (true) ;           \
 }
 
 void mexFunction
@@ -30,7 +30,6 @@ void mexFunction
     GrB_Matrix C = NULL ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 3)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -38,7 +37,7 @@ void mexFunction
 
     #define GET_DEEP_COPY \
     C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
-    #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
+    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
 
     GET_DEEP_COPY ;
     if (C == NULL)
@@ -46,7 +45,6 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
-    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get vlen_new
     int64_t GET_SCALAR (1, int64_t, vlen_new, C->vlen) ;
@@ -55,15 +53,33 @@ void mexFunction
     int64_t GET_SCALAR (2, int64_t, vdim_new, C->vdim) ;
 
     // resize the matrix
-    if (GB_VECTOR_OK (C) && vdim_new == 1)
+    if (vlen_new % 5 == 0)
     {
-        // resize C as a vector
-        METHOD (GxB_resize ((GrB_Vector) C, vlen_new)) ;
+        // test the old GxB functions
+        if (GB_VECTOR_OK (C) && vdim_new == 1)
+        {
+            // resize C as a vector
+            METHOD (GxB_Vector_resize ((GrB_Vector) C, vlen_new)) ;
+        }
+        else
+        {
+            // resize C as a matrix
+            METHOD (GxB_Matrix_resize (C, vlen_new, vdim_new)) ;
+        }
     }
     else
     {
-        // resize C as a matrix
-        METHOD (GxB_resize (C, vlen_new, vdim_new)) ;
+        // test the new GrB functions
+        if (GB_VECTOR_OK (C) && vdim_new == 1)
+        {
+            // resize C as a vector
+            METHOD (GrB_Vector_resize_((GrB_Vector) C, vlen_new)) ;
+        }
+        else
+        {
+            // resize C as a matrix
+            METHOD (GrB_Matrix_resize_(C, vlen_new, vdim_new)) ;
+        }
     }
 
     // return C to MATLAB as a struct and free the GraphBLAS C

@@ -5,10 +5,10 @@
 */
 
 #include "./op_delete.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include <assert.h>
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
@@ -103,8 +103,7 @@ static Record DeleteConsume(OpBase *opBase) {
 			// If evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 
-			QueryCtx_SetError("Delete type mismatch, expecting either Node or Relationship.");
-			QueryCtx_RaiseRuntimeException();
+			ErrorCtx_RaiseRuntimeException("Delete type mismatch, expecting either Node or Relationship.");
 			break;
 		}
 	}
@@ -113,7 +112,7 @@ static Record DeleteConsume(OpBase *opBase) {
 }
 
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_DELETE);
+	ASSERT(opBase->type == OPType_DELETE);
 	OpDelete *op = (OpDelete *)opBase;
 	AR_ExpNode **exps;
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);

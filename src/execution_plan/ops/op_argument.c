@@ -5,6 +5,7 @@
  */
 
 #include "op_argument.h"
+#include "RG.h"
 
 // Forward declarations
 static Record ArgumentConsume(OpBase *opBase);
@@ -51,12 +52,12 @@ static OpResult ArgumentReset(OpBase *opBase) {
 }
 
 void Argument_AddRecord(Argument *arg, Record r) {
-	assert(!arg->r && "tried to insert into a populated Argument op");
+	ASSERT(!arg->r && "tried to insert into a populated Argument op");
 	arg->r = r;
 }
 
 static inline OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_ARGUMENT);
+	ASSERT(opBase->type == OPType_ARGUMENT);
 	return NewArgumentOp(plan, opBase->modifies);
 }
 

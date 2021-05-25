@@ -4,8 +4,8 @@ function C = GB_spec_select (C, Mask, accum, opname, A, thunk, descriptor)
 % Usage:
 % C = GB_spec_select (C, Mask, accum, opname, A, thunk, descriptor)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 %-------------------------------------------------------------------------------
 % get inputs
@@ -27,14 +27,25 @@ Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 % select the descriptor to A
 if (Atrans)
-    A.matrix = A.matrix' ;
+    A.matrix = A.matrix.' ;
     A.pattern = A.pattern' ;
 end
 
-[m n] = size (A.matrix) ;
-T.matrix = zeros (m, n, A.class) ;
+atype = A.class ;
+T.matrix = GB_spec_zeros (size (A.matrix), atype) ;
 thunk = full (thunk) ;
-xthunk = GB_mex_cast (thunk, A.class) ;
+xthunk = GB_mex_cast (thunk, atype) ;
+
+is_complex = contains (atype, 'complex') ;
+if (is_complex)
+    switch (opname)
+        case { 'gt_zero', 'ge_zero', 'lt_zero', 'le_zero', ...
+               'gt_thunk', 'ge_thunk', 'lt_thunk', 'le_thunk' }
+            error ('op %s not defined for complex types', opname) ;
+        otherwise
+            % op is OK
+    end
+end
 
 switch (opname)
     case 'tril'
@@ -69,6 +80,8 @@ switch (opname)
         p = A.pattern & (A.matrix < xthunk) ;
     case 'le_thunk'
         p = A.pattern & (A.matrix <= xthunk) ;
+    case 'isnan'
+        p = A.pattern & isnan (A.matrix) ;
     otherwise
         error ('invalid op') ;
 end

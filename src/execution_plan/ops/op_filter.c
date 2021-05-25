@@ -5,6 +5,7 @@
 */
 
 #include "op_filter.h"
+#include "RG.h"
 
 /* Forward declarations. */
 static Record FilterConsume(OpBase *opBase);
@@ -25,7 +26,7 @@ OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 /* FilterConsume next operation
  * returns OP_OK when graph passes filter tree. */
 static Record FilterConsume(OpBase *opBase) {
-	Record r;
+	Record r = NULL;
 	OpFilter *filter = (OpFilter *)opBase;
 	OpBase *child = filter->op.children[0];
 
@@ -33,7 +34,7 @@ static Record FilterConsume(OpBase *opBase) {
 		r = OpBase_Consume(child);
 		if(!r) break;
 
-		/* Pass graph through filter tree */
+		/* Pass record through filter tree */
 		if(FilterTree_applyFilters(filter->filterTree, r) == FILTER_PASS) break;
 		else OpBase_DeleteRecord(r);
 	}
@@ -42,7 +43,7 @@ static Record FilterConsume(OpBase *opBase) {
 }
 
 static inline OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_FILTER);
+	ASSERT(opBase->type == OPType_FILTER);
 	OpFilter *op = (OpFilter *)opBase;
 	return NewFilterOp(plan, FilterTree_Clone(op->filterTree));
 }

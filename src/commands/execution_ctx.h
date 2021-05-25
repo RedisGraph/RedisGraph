@@ -23,10 +23,10 @@ typedef enum {
  * @brief  A struct for saving execution objects in cache.
  */
 typedef struct {
-	AST *ast;                   // AST relevant for the current execution context.
-	bool cached;                // Indicate if this struct was returned from cache.
-	ExecutionPlan *plan;        // Execution plan relevant for the current execution context.
-	ExecutionType exec_type;
+	AST *ast;                   // AST
+	bool cached;                // cache hit/miss
+	ExecutionPlan *plan;        // execution plan
+	ExecutionType exec_type;    // execution type: query, index create/delete
 } ExecutionCtx;
 
 /**
@@ -35,10 +35,16 @@ typedef struct {
  * @param  *query: String representing the query.
  * @retval ExecutionCtx populated with the current execution relevant objects.
  */
-ExecutionCtx ExecutionCtx_FromQuery(const char *query);
+ExecutionCtx *ExecutionCtx_FromQuery(const char *query);
 
 /**
- * @brief  Free an ExecutionCTX struct
+ * @brief  Clone the execution ctx and return it (shallow copy for the ast, deep copy for the execution plan).
+ * @param  *ctx: A pointer to ExecutionCTX struct
+ */
+ExecutionCtx *ExecutionCtx_Clone(ExecutionCtx *ctx);
+
+/**
+ * @brief  Free an ExecutionCTX struct and its inner fields.
  * @param  *ctx: ExecutionCTX struct
  */
 void ExecutionCtx_Free(ExecutionCtx *ctx);

@@ -7,7 +7,6 @@
 #include "cypher_whitelist.h"
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "rax.h"
-#include <assert.h>
 #include "../errors.h"
 #include "../query_ctx.h"
 
@@ -69,7 +68,7 @@ static void _buildTypesWhitelist(void) {
 		CYPHER_AST_SET,
 		CYPHER_AST_SET_ITEM,
 		CYPHER_AST_SET_PROPERTY,
-		// CYPHER_AST_SET_ALL_PROPERTIES,
+		CYPHER_AST_SET_ALL_PROPERTIES,
 		CYPHER_AST_MERGE_PROPERTIES,
 		// CYPHER_AST_SET_LABELS,
 		CYPHER_AST_DELETE,
@@ -125,7 +124,7 @@ static void _buildTypesWhitelist(void) {
 		CYPHER_AST_PROC_NAME,
 		CYPHER_AST_PATTERN,
 		CYPHER_AST_NAMED_PATH,
-		// CYPHER_AST_SHORTEST_PATH,
+		CYPHER_AST_SHORTEST_PATH,
 		CYPHER_AST_PATTERN_PATH,
 		CYPHER_AST_NODE_PATTERN,
 		CYPHER_AST_REL_PATTERN,
@@ -135,11 +134,11 @@ static void _buildTypesWhitelist(void) {
 		CYPHER_AST_LINE_COMMENT,
 		CYPHER_AST_BLOCK_COMMENT,
 		CYPHER_AST_ERROR,
-		// CYPHER_AST_MAP_PROJECTION,
-		// CYPHER_AST_MAP_PROJECTION_SELECTOR,
-		// CYPHER_AST_MAP_PROJECTION_LITERAL,
-		// CYPHER_AST_MAP_PROJECTION_PROPERTY,
-		// CYPHER_AST_MAP_PROJECTION_IDENTIFIER,
+		CYPHER_AST_MAP_PROJECTION,
+		CYPHER_AST_MAP_PROJECTION_SELECTOR,
+		CYPHER_AST_MAP_PROJECTION_LITERAL,
+		CYPHER_AST_MAP_PROJECTION_PROPERTY,
+		CYPHER_AST_MAP_PROJECTION_IDENTIFIER,
 		// CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES,
 		end_of_list
 	};
@@ -243,8 +242,8 @@ AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root) {
 }
 
 void CypherWhitelist_Build() {
-	assert(_astnode_type_whitelist == NULL && _operator_whitelist == NULL &&
-		   "Attempted to build query whitelist twice - was the module correctly?");
+	ASSERT(_astnode_type_whitelist == NULL && _operator_whitelist == NULL &&
+		   "Attempted to build query whitelist twice - was the module correctly loaded?");
 
 	_buildTypesWhitelist();
 	_buildOperatorsWhitelist();

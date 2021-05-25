@@ -28,7 +28,7 @@ class IndexTest: public ::testing::Test {
 		Alloc_Reset();
 		ASSERT_EQ(GrB_init(GrB_NONBLOCKING), GrB_SUCCESS);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-		GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+		GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
 
 		_fake_graph_context();
 	}

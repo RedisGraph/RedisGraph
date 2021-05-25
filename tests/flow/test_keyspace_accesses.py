@@ -18,7 +18,7 @@ NEW_GRAPH_ID = "G2"
 
 class testKeyspaceAccesses(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -33,7 +33,7 @@ class testKeyspaceAccesses(FlowTestsBase):
 
         graph = Graph(NEW_GRAPH_ID, redis_con)
 
-        node1 = Node(node_id=0, label="L", properties={'name':'x', 'age':1})
+        node1 = Node(node_id=1, label="L", properties={'name':'x', 'age':1})
         graph.add_node(node1)
         graph.flush()
 
@@ -52,7 +52,7 @@ class testKeyspaceAccesses(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("WRONGTYPE" in e.message)
+            assert("WRONGTYPE" in str(e))
             pass
 
     # Fail gracefully on attempting a graph deletion of an empty key.
@@ -63,5 +63,5 @@ class testKeyspaceAccesses(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("empty key" in e.message)
+            assert("empty key" in str(e))
             pass

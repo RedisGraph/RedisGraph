@@ -1,8 +1,8 @@
 function gbtest67
 %GBTEST67 test digraph
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -36,7 +36,7 @@ types = gbtest_types ;
 for k = 1:length (types)
     type = types {k} ;
 
-    A = cast (rand (4), type) ;
+    A = gbtest_cast (rand (4), type) ;
     G = GrB (A) ;
 
     if (isequal (type, 'double') || isequal (type, 'single') || ...

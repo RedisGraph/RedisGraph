@@ -5,6 +5,7 @@
 */
 
 #include "op_conditional_traverse.h"
+#include "RG.h"
 #include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
@@ -42,10 +43,12 @@ static void _populate_filter_matrix(OpCondTraverse *op) {
 void _traverse(OpCondTraverse *op) {
 	// If op->F is null, this is the first time we are traversing.
 	if(op->F == GrB_NULL) {
-		// Create both filter and result matrices.
+		/* Create both filter and result matrices.
+		 * make sure M's format is SPARSE, required by the matrix iterator */
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		GrB_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
 		GrB_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
+		GxB_set(op->M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
@@ -87,7 +90,10 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	UNUSED(aware);
+	ASSERT(aware == true);
+
 	const char *dest = AlgebraicExpression_Destination(ae);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
 	// Check the QueryGraph node and retrieve label data if possible.
@@ -208,7 +214,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 }
 
 static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CONDITIONAL_TRAVERSE);
+	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	OpCondTraverse *op = (OpCondTraverse *)opBase;
 	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }

@@ -10,6 +10,22 @@
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
 
+static inline void _PushDownPathFilters(ExecutionPlan *plan,
+										OpBase *path_filter_op) {
+	OpBase *relocate_to = path_filter_op;
+	// Find the earliest filter op in the path filter op's chain of parents.
+	while(relocate_to->parent && relocate_to->parent->type == OPType_FILTER) {
+		relocate_to = relocate_to->parent;
+	}
+	/* If the filter op is part of a chain of filter ops, migrate it
+	 * to be the topmost. This ensures that cheaper filters will be
+	 * applied first. */
+	if(relocate_to != path_filter_op) {
+		ExecutionPlan_RemoveOp(plan, path_filter_op);
+		ExecutionPlan_PushBelow(relocate_to, path_filter_op);
+	}
+}
+
 static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	OpBase **filter_ops = ExecutionPlan_CollectOps(plan->root, OPType_FILTER);
 	uint filter_ops_count = array_len(filter_ops);
@@ -17,6 +33,10 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 		OpFilter *op = (OpFilter *)filter_ops[i];
 		FT_FilterNode *node;
 		if(FilterTree_ContainsFunc(op->filterTree, "path_filter", &node)) {
+			// If the path filter op has other filter ops above it,
+			// migrate it to be the topmost.
+			_PushDownPathFilters(plan, (OpBase *)op);
+			// Convert the filter op to an Apply operation
 			ExecutionPlan_ReduceFilterToApply(plan, op);
 		}
 	}
@@ -134,9 +154,8 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 
 static inline void _buildUpdateOp(GraphContext *gc, ExecutionPlan *plan,
 								  const cypher_astnode_t *clause) {
-	EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(gc, clause);
+	rax *update_exps = AST_PrepareUpdateOp(gc, clause);
 	OpBase *op = NewUpdateOp(plan, update_exps);
-	array_free(update_exps);
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
