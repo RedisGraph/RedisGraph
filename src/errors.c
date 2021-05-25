@@ -152,6 +152,6 @@ void Error_UnsupportedASTOperator(const cypher_operator_t *op) {
 }
 
 inline void Error_InvalidPropertyValue(void) {
-	ErrorCtx_SetError("Property values can only be of primitive types or arrays thereof");
+	ErrorCtx_SetError("Property values can only be of primitive types or arrays of primitive types");
 }
 

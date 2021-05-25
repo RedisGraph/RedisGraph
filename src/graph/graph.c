@@ -91,6 +91,7 @@ bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index n
 static RG_Matrix RG_Matrix_New(GrB_Type data_type, GrB_Index nrows, GrB_Index ncols) {
 	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
 
+	matrix->dirty = true;
 	matrix->allow_multi_edge = true;
 
 	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, nrows, ncols);
@@ -105,6 +106,18 @@ static RG_Matrix RG_Matrix_New(GrB_Type data_type, GrB_Index nrows, GrB_Index nc
 // Returns underlying GraphBLAS matrix.
 static inline GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix) {
 	return matrix->grb_matrix;
+}
+
+static inline bool RG_Matrix_IsDirty(RG_Matrix matrix) {
+	return matrix->dirty;
+}
+
+static inline void RG_Matrix_SetDirty(RG_Matrix matrix) {
+	matrix->dirty = true;
+}
+
+static inline void RG_Matrix_SetUnDirty(RG_Matrix matrix) {
+	matrix->dirty = false;
 }
 
 // Locks the matrix.
@@ -239,6 +252,28 @@ static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
 
 /* ============= Matrix synchronization and resizing functions =============== */
 
+static inline void _Graph_SetAdjacencyMatrixDirty(const Graph *g) {
+	RG_Matrix_SetDirty(g->adjacency_matrix);
+	RG_Matrix_SetDirty(g->_t_adjacency_matrix);
+}
+
+static inline void _Graph_SetLabelMatrixDirty(const Graph *g, int label_idx) {
+	ASSERT(g && label_idx < array_len(g->labels));
+	RG_Matrix_SetDirty(g->labels[label_idx]);
+}
+
+static inline void _Graph_SetRelationMatrixDirty(const Graph *g, int relation_idx) {
+	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
+	if(relation_idx == GRAPH_NO_RELATION) {
+		_Graph_SetAdjacencyMatrixDirty(g);
+	} else {
+		RG_Matrix_SetDirty(g->relations[relation_idx]);
+		bool maintain_transpose;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+		if(maintain_transpose) RG_Matrix_SetDirty(g->t_relations[relation_idx]);
+	}
+}
+
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
@@ -260,28 +295,38 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 		// Writer under write lock, no need to flush pending changes.
 		return;
 	}
-	// Lock the matrix.
-	RG_Matrix_Lock(rg_matrix);
 
-	bool pending = false;
-	GxB_Matrix_Pending(m, &pending);
+	// Sync only if matrix is not of required size
+	// or matrix has pending changes
+	if(n_rows != dims || n_cols != dims || RG_Matrix_IsDirty(rg_matrix)) {
+		// Lock the matrix.
+		RG_Matrix_Lock(rg_matrix);
 
-	// If the matrix has pending operations or requires
-	// a resize, enter critical section.
-	if(pending || (n_rows != dims) || (n_cols != dims)) {
-		// Double-check if resize is necessary.
+		// Recheck
 		GrB_Matrix_nrows(&n_rows, m);
 		GrB_Matrix_ncols(&n_cols, m);
 		dims = Graph_RequiredMatrixDim(g);
-		if((n_rows != dims) || (n_cols != dims)) {
-			GrB_Info res = GxB_Matrix_resize(m, dims, dims);
-			ASSERT(res == GrB_SUCCESS);
+		if(n_rows == dims && n_cols == dims && !RG_Matrix_IsDirty(rg_matrix)) {
+			goto cleanup;
 		}
-		// Flush changes to matrix.
-		_Graph_ApplyPending(m);
+
+		bool pending;
+		GxB_Matrix_Pending(m, &pending);
+		// If the matrix has pending operations or requires a resize
+		if(pending || (n_rows != dims) || (n_cols != dims)) {
+			if((n_rows != dims) || (n_cols != dims)) {
+				GrB_Info res = GxB_Matrix_resize(m, dims, dims);
+				ASSERT(res == GrB_SUCCESS);
+			}
+			// Flush changes to matrix.
+			_Graph_ApplyPending(m);
+		}
+		RG_Matrix_SetUnDirty(rg_matrix);
+
+cleanup:
+		// Unlock matrix mutex.
+		_RG_Matrix_Unlock(rg_matrix);
 	}
-	// Unlock matrix mutex.
-	_RG_Matrix_Unlock(rg_matrix);
 }
 
 /* Resize matrix to node capacity. */
@@ -565,6 +610,7 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 			res = GrB_Matrix_setElement_BOOL(m, true, id, id);
 			ASSERT(res == GrB_SUCCESS);
 		}
+		_Graph_SetLabelMatrixDirty(g, label);
 	}
 }
 
@@ -587,6 +633,10 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 	edge_id = SET_MSB(edge_id);
 	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
 	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
+
+	// set matrices as dirty
+	_Graph_SetRelationMatrixDirty(g, r);
+	_Graph_SetAdjacencyMatrixDirty(g);
 
 	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
 	if(_RG_Matrix_MultiEdgeEnabled(M)) {
@@ -822,6 +872,9 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		}
 	}
 
+	_Graph_SetAdjacencyMatrixDirty(g);
+	_Graph_SetRelationMatrixDirty(g, r);
+
 	// Free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
 	return 1;
@@ -918,6 +971,9 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Matrix_new(&Mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	GrB_Matrix_new(&Nodes, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
+	// mark matrices as dirty
+	_Graph_SetAdjacencyMatrixDirty(g);
+
 	/* For user-defined select operators,
 	 * If Thunk is not NULL, it must be a valid GxB_Scalar. If it has no entry,
 	 * it is treated as if it had a single entry equal to zero, for built-in types (not
@@ -988,6 +1044,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 		// Remove every entry of R marked by Mask.
 		GrB_Matrix_apply(R, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
+		_Graph_SetRelationMatrixDirty(g, i);
 	}
 
 	/* Descriptor:
@@ -1035,6 +1092,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	for(int i = 0; i < node_type_count; i++) {
 		GrB_Matrix L = Graph_GetLabelMatrix(g, i);
 		GrB_Matrix_apply(L, Nodes, GrB_NULL, GrB_IDENTITY_BOOL, L, desc);
+		_Graph_SetLabelMatrixDirty(g, i);
 	}
 
 	for(uint i = 0; i < node_count; i++) {
@@ -1150,6 +1208,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 			GrB_Matrix mask = masks[r];
 			GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 			if(mask) {
+				_Graph_SetRelationMatrixDirty(g, r);
 				// Remove every entry of R marked by Mask.
 				// Desc: GrB_MASK = GrB_COMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
@@ -1171,6 +1230,8 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
 		GrB_Matrix t_adj_matrix = Graph_GetTransposedAdjacencyMatrix(g);
+		_Graph_SetAdjacencyMatrixDirty(g);
+
 		// To calculate edges to delete, remove all the remaining edges from "The" adjency matrix.
 		// Set descriptor mask to default.
 		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);

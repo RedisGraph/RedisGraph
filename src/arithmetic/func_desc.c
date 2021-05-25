@@ -77,11 +77,11 @@ void AR_Finalize(AR_FuncDesc *func_desc) {
 }
 
 AR_FuncDesc *AR_SetPrivateData(const AR_FuncDesc *orig, void *privdata) {
-	// Create a new function descriptor.
+	// create a new function descriptor
 	AR_FuncDesc *func = rm_malloc(sizeof(AR_FuncDesc));
 	memcpy(func, orig, sizeof(AR_FuncDesc));
 
-	// Set the private data pointer.
+	// set the private data pointer
 	func->privdata = privdata;
 
 	return func;
