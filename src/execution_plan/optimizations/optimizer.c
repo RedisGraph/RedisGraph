@@ -48,7 +48,7 @@ void optimizePlan(ExecutionPlan *plan) {
 	reduceCount(plan);
 
 	// return as early as possible from merge matching stream
-	//shortcircuitMerge(plan);
+	shortcircuitMerge(plan);
 
 	// Let operations know about specified limit(s)
 	applyLimit(plan);

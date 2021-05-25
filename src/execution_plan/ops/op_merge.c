@@ -209,6 +209,8 @@ static Record MergeConsume(OpBase *opBase) {
 
 			// pull a new input record
 			lhs_record = array_pop(op->input_records);
+			// reset match stream
+			OpBase_PropagateReset(op->match_stream);
 			// propagate record to the top of the Match stream
 			// (must clone the Record, as it will be freed in the Match stream)
 			Argument_AddRecord(op->match_argument_tap, OpBase_CloneRecord(lhs_record));

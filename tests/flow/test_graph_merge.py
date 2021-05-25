@@ -575,3 +575,28 @@ class testGraphMergeFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             self.env.assertIn("undefined property", str(e))
+
+    def test_28_half_match_half_create(self):
+        # starting with an empty graph
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        graph = Graph("g", redis_con)
+
+        for i in range(2):
+            # create 3 nodes: (:L {v:1}), (:L {v:3}), (:L {v:5})
+            q = """UNWIND [1, 3, 5] AS x CREATE (:L {v:x})"""
+            result = graph.query(q)
+
+            # merge 5 nodes (:L {v:1}), (:L {v:2}), (:L {v:3}), (:L {v:4}), (:L {v:5})
+            # 3 already exists, expecting 2 to be created
+            q = """UNWIND [1, 2, 3, 4, 5] AS x MERGE (:L {v:x})"""
+            result = graph.query(q)
+            self.env.assertEquals(result.nodes_created, 2)
+            self.env.assertEquals(result.properties_set, 2)
+
+            # clear keyspace
+            self.env.flush()
+
+            # create index over :L(v) and repeat test
+            graph.query("CREATE INDEX ON :L(v)")
+
