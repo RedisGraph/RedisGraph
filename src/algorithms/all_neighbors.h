@@ -12,9 +12,9 @@
 typedef struct {
 	EntityID src;                  // traverse begin here
 	GrB_Matrix M;                  // topology
-	int minLen;                    // minimum required depth
-	int maxLen;                    // maximum allowed depth
-	int current_level;             // cuurent depth
+	uint minLen;                   // minimum required depth
+	uint maxLen;                   // maximum allowed depth
+	uint current_level;            // cuurent depth
 	EntityID *visited;             // visited nodes
 	GxB_MatrixTupleIter **levels;  // array of neighbors iterator
 } AllNeighborsCtx;
