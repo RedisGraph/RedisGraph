@@ -111,16 +111,16 @@ static sds _JsonEncoder_Path(SIValue p, sds s) {
 	for(size_t i = 0; i < nodeCount - 1; i ++) {
 		// write the next value
 		SIValue node = SIPath_GetNode(p, i);
-		s = _JsonEncoder_GraphEntity((GraphEntity *)&node, s, GETYPE_NODE);
+		s = _JsonEncoder_GraphEntity((GraphEntity *)node.ptrval, s, GETYPE_NODE);
 		s = sdscat(s, ", ");
 		SIValue edge = SIPath_GetRelationship(p, i);
-		s = _JsonEncoder_GraphEntity((GraphEntity *)&edge, s, GETYPE_EDGE);
+		s = _JsonEncoder_GraphEntity((GraphEntity *)edge.ptrval, s, GETYPE_EDGE);
 		s = sdscat(s, ", ");
 	}
 	// Handle last node.
 	if(nodeCount > 0) {
 		SIValue node = SIPath_GetNode(p, nodeCount - 1);
-		s = _JsonEncoder_GraphEntity((GraphEntity *)&node, s, GETYPE_NODE);
+		s = _JsonEncoder_GraphEntity((GraphEntity *)node.ptrval, s, GETYPE_NODE);
 	}
 
 	// close array with "]"
