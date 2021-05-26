@@ -117,6 +117,72 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	return (OpBase *)op;
 }
 
+static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
+	CondVarLenTraverse  *op     =  (CondVarLenTraverse  *)opBase;
+	OpBase              *child  =  op->op.children[0];
+	Node                dest    =  GE_NEW_NODE();
+
+	// assumption
+	ASSERT(op->edgesIdx == -1);
+	ASSERT(op->traverseDir != GRAPH_EDGE_DIR_BOTH);
+
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
+			AlgebraicExpression_Edge(op->ae));
+	uint reltype_count = array_len(e->reltypeIDs);
+	ASSERT(reltype_count <= 1); // either ADJ,T(ADJ), REL, T(REL)
+
+	// TODO: user all_neighbors algo
+	while(!(dest = AllPathsCtx_NextDest(op->allPathsCtx))) {
+		Record childRecord = OpBase_Consume(child);
+		if(!childRecord) return NULL;
+
+		if(op->r) OpBase_DeleteRecord(op->r);
+		op->r = childRecord;
+
+		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
+		if(srcNode == NULL) {
+			/* The child Record may not contain the source node in scenarios like
+			 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+			OpBase_DeleteRecord(op->r);
+			op->r = NULL;
+			continue;
+		}
+
+		// Create edge relation type array on first call to consume.
+		if(!op->edgeRelationTypes) {
+			_setupTraversedRelations(op);
+			/* Incase we don't have any relations to traverse and minimal traversal is at least one hop
+			 * we can return quickly.
+			 * Consider: MATCH (S)-[:L*]->(M) RETURN M
+			 * where label L does not exists. */
+			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
+		}
+
+		Node *destNode = NULL;
+		// The destination node is known in advance if we're performing an ExpandInto.
+		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
+
+		AllPathsCtx_Free(op->allPathsCtx);
+		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
+										  op->edgeRelationCount, op->traverseDir, op->minHops,
+										  op->maxHops, op->r, op->ft, op->edgesIdx);
+
+	}
+
+
+	//--------------------------------------------------------------------------
+	// populate output record
+	//--------------------------------------------------------------------------
+
+	Record r = OpBase_CloneRecord(op->r);
+
+	// add destination node to record
+	if(!op->expandInto) Record_AddNode(r, op->destNodeIdx, dest);
+
+	return r;
+}
+
+
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse  *op     =  (CondVarLenTraverse *)opBase;
 	Path                *p      =  NULL;
