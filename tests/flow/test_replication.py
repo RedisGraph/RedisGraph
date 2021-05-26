@@ -111,3 +111,32 @@ class testReplication(FlowTestsBase):
         replica_result = replica.query(q).result_set
         self.env.assertEquals(replica_result, result)
 
+    def test_config_replication(self):
+        env = self.env
+        source_con = env.getConnection()
+        replica_con = env.getSlaveConnection()
+        self.env.assertNotEqual(source_con, replica_con)
+
+        # enable write commands on slave, required as all RedisGraph
+        # commands are registered as write commands
+        replica_con.config_set("slave-read-only", "no")
+
+        # read config from both source and replica
+        src_timeout = source_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT")
+        rep_timeout = replica_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT")
+
+        # make sure timeout config is the same on both source and replica
+        self.env.assertEquals(src_timeout, rep_timeout)
+
+        # reconfig on source
+        timeout = 40
+        source_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT", timeout)
+
+        # read config from both source and replica
+        src_timeout = source_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT")[1]
+        rep_timeout = replica_con.execute_command("GRAPH.CONFIG", "GET", "TIMEOUT")[1]
+
+        # make sure timeout config is the same on both source and replica
+        self.env.assertEquals(src_timeout, timeout)
+        self.env.assertEquals(rep_timeout, timeout)
+
