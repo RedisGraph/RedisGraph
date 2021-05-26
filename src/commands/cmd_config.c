@@ -88,8 +88,6 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	const char *val_str = RedisModule_StringPtrLen(value, NULL);
 
 	if(Config_Option_set(config_field, val_str)) {
-		// replicate command and reply to caller
-		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, "OK");
 	} else {
 		RedisModule_ReplyWithError(ctx, "Failed to set config value");
