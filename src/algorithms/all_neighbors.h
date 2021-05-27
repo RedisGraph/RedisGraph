@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "GraphBLAS.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../graph/entities/node.h"
 
 typedef struct {
@@ -14,7 +14,8 @@ typedef struct {
 	GrB_Matrix M;                  // topology
 	uint minLen;                   // minimum required depth
 	uint maxLen;                   // maximum allowed depth
-	uint current_level;            // cuurent depth
+	int current_level;             // cuurent depth
+	bool first_pull;               // first call to Next
 	EntityID *visited;             // visited nodes
 	GxB_MatrixTupleIter **levels;  // array of neighbors iterator
 } AllNeighborsCtx;

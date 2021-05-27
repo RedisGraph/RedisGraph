@@ -92,19 +92,35 @@ inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
 
 static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
-	if(op->edgesIdx == -1 &&
-	   op->traverseDir != GRAPH_EDGE_DIR_BOTH &&
-	   op->ft == NULL &&
-	   op->expandInto == false) {
 
-		QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
-											  AlgebraicExpression_Edge(op->ae));
-		uint reltype_count = array_len(e->reltypeIDs);
-		ASSERT(reltype_count <= 1); // either ADJ,T(ADJ), REL, T(REL)
+	// check if variable length traversal doesn't require path construction
+	// in which case we only care for reachable destination nodes
+	// which is alot cheaper to compute
+	//
+	// consider:
+	// MATCH (a)-[:L*2..4]->(b) RETURN b
+	// we only care for destination nodes, the actual path is not of interest
+	//
+	// for this we require:
+	// 1. no filters to be applied to pattern
+	// 2. traversed edge isn't referenced
+	// 3. traversal of a single relationship: R, RT, ADJ, ADJT
+	// 4. traversal must be directed
+	//
+	// in which case we can use a faster consume function
 
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
+			AlgebraicExpression_Edge(op->ae));
+	uint reltype_count = array_len(e->reltypeIDs);
+
+	if(op->ft          == NULL                && // no filter on path
+	   op->edgesIdx    == -1                  && // edge isn't required
+	   op->expandInto  == false               && // destination unknown
+	   reltype_count   <= 1                   && // at most one relationship
+	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
+	) {
 		AlgebraicExpression_Optimize(&op->ae);
 		ASSERT(op->ae->type == AL_OPERAND);
-		op->M = op->ae->operand.matrix;
 		op->collect_paths = false;
 		OpBase_UpdateConsume(opBase, CondVarLenTraverseSimpleConsume);
 	}
@@ -151,25 +167,6 @@ static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
 	Node                dest    =  GE_NEW_NODE();
 	EntityID            dest_id =  INVALID_ENTITY_ID;
 
-	// assumption
-	ASSERT(op->edgesIdx == -1);
-	ASSERT(op->traverseDir != GRAPH_EDGE_DIR_BOTH);
-
-	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
-										  AlgebraicExpression_Edge(op->ae));
-	uint reltype_count = array_len(e->reltypeIDs);
-	ASSERT(reltype_count <= 1); // either ADJ,T(ADJ), REL, T(REL)
-
-	// Create edge relation type array on first call to consume.
-	if(!op->edgeRelationTypes) {
-		_setupTraversedRelations(op);
-		/* Incase we don't have any relations to traverse and minimal traversal is at least one hop
-		 * we can return quickly.
-		 * Consider: MATCH (S)-[:L*]->(M) RETURN M
-		 * where label L does not exists. */
-		if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
-	}
-
 	while((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) == INVALID_ENTITY_ID) {
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
@@ -186,6 +183,17 @@ static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
 			continue;
 		}
 
+		// create edge relation type array on first call to consume.
+		if(!op->edgeRelationTypes) {
+			_setupTraversedRelations(op);
+			/* Incase we don't have any relations to traverse and minimal traversal is at least one hop
+			 * we can return quickly.
+			 * Consider: MATCH (S)-[:L*]->(M) RETURN M
+			 * where label L does not exists. */
+			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
+
+			op->M = op->ae->operand.matrix;
+		}
 
 		AllNeighborsCtx_Free(op->allNeighborsCtx);
 		op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id,
@@ -198,7 +206,6 @@ static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
 
 	ASSERT(Graph_GetNode(op->g, dest_id, &dest) == true);
 
-
 	//--------------------------------------------------------------------------
 	// populate output record
 	//--------------------------------------------------------------------------
@@ -210,7 +217,6 @@ static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
 
 	return r;
 }
-
 
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse  *op     = (CondVarLenTraverse *)opBase;
