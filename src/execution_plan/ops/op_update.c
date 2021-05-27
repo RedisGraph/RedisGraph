@@ -79,7 +79,7 @@ static Record UpdateConsume(OpBase *opBase) {
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true, &query_ctx->undo_log_ctx);
+			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true, &query_ctx->undo_log);
 		}
 
 		op->records = array_append(op->records, r);
@@ -93,7 +93,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	// lock everything
 	QueryCtx_LockForCommit();
 	{
-		CommitUpdates(op->gc, op->stats, op->updates, false, &query_ctx->undo_log_ctx);
+		CommitUpdates(op->gc, op->stats, op->updates, false, &query_ctx->undo_log);
 	}
 	// release lock
 	QueryCtx_UnlockCommit(opBase);

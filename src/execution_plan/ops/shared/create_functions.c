@@ -52,7 +52,8 @@ static void _CommitNodes(PendingCreations *pending) {
 		Schema *s = NULL;
 
 		// Get label ID.
-		int labelID = GRAPH_NO_LABEL;
+		int labelID = (n->labelID == GRAPH_UNKNOWN_LABEL) ? GRAPH_NO_LABEL : n->labelID;
+		ASSERT(n->labelID >= 0 && n->label == NULL);
 		if(n->label != NULL) {
 			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 			ASSERT(s != NULL);

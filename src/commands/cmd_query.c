@@ -16,7 +16,7 @@
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
 #include "../execution_plan/execution_plan.h"
-#include "../execution_plan/ops/shared/undo_log.h"
+#include "../undo_log/undo_log.h"
 #include "execution_ctx.h"
 
 // GraphQueryCtx stores the allocations required to execute a query.
@@ -173,7 +173,7 @@ static void _ExecuteQuery(void *args) {
 
 		// Emit error if query timed out.
 		if(ExecutionPlan_Drained(plan)) {
-			UndoLog_Rollback();
+			UndoLog_Rollback(&query_ctx->undo_log);
 			ErrorCtx_SetError("Query timed out");
 		}
 

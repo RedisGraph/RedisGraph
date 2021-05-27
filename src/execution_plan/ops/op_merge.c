@@ -38,7 +38,7 @@ static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStati
 		raxSeek(&updates, "^", NULL, 0);
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
-			EvalEntityUpdates(gc, pending_updates, r, ctx, false, &query_ctx->undo_log_ctx);
+			EvalEntityUpdates(gc, pending_updates, r, ctx, false, &query_ctx->undo_log);
 		}
 	}
 }
@@ -283,7 +283,7 @@ static Record MergeConsume(OpBase *opBase) {
 		ASSERT(gc);
 		QueryCtx_LockForCommit();
 		{
-			CommitUpdates(gc, op->stats, op->pending_updates, false, &query_ctx->undo_log_ctx);
+			CommitUpdates(gc, op->stats, op->pending_updates, false, &query_ctx->undo_log);
 		}
 		QueryCtx_UnlockCommit(&op->op); // Release the lock.
 

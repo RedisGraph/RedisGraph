@@ -8,6 +8,7 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../undo_log/undo_log.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
@@ -117,8 +118,8 @@ static Record DeleteConsume(OpBase *opBase) {
 	// Currently we can't exit Create Op in the middle of commit proccess. 
 	// Therefore on rollback all the create ops will be already commited.
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_Inc_N_Ops_Commited(&query_ctx->undo_log_ctx, array_len(op->pending.deleted_nodes) + array_len(op->pending.deleted_edges));
-	UndoLog_Add_Create(&query_ctx->undo_log_ctx, op->pending.created_nodes, op->pending.created_edges);
+	UndoLog_UpdateCommitted(&query_ctx->undo_log, array_len(op->deleted_nodes) + array_len(op->deleted_edges));
+	UndoLog_AddDelete(&query_ctx->undo_log, op->deleted_nodes, op->deleted_edges);
 
 	return r;
 }
