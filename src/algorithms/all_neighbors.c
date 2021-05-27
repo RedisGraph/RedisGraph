@@ -14,6 +14,7 @@ static void _AllNeighborsCtx_CollectNeighbors
 	AllNeighborsCtx *ctx,
 	EntityID id
 ) {
+	ctx->current_level++;
 	GxB_MatrixTupleIter *iter;
 	if(ctx->current_level == array_len(ctx->levels)) {
 		GxB_MatrixTupleIter_new(&iter, ctx->M);
@@ -46,8 +47,8 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth
 ) {
-	ASSERT(src != INVALID_ENTITY_ID);
 	ASSERT(M != NULL);
+	ASSERT(src != INVALID_ENTITY_ID);
 
 	AllNeighborsCtx *ctx = rm_malloc(sizeof(AllNeighborsCtx));
 
@@ -57,10 +58,11 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	ctx->maxLen         =  maxLen;
 	ctx->levels         =  array_new(GxB_MatrixTupleIter *, 1);
 	ctx->visited        =  array_new(EntityID, 1);
+	ctx->first_pull     =  true;
 	ctx->current_level  =  0;
 
-	ctx->visited = array_append(ctx->visited, src);
-	_AllNeighborsCtx_CollectNeighbors(ctx, src);
+	// Null iterator at level 0
+	ctx->levels = array_append(ctx->levels, NULL);
 
 	return ctx;
 }
@@ -71,7 +73,26 @@ EntityID AllNeighborsCtx_NextNeighbor
 ) {
 	if(!ctx) return INVALID_ENTITY_ID;
 
-	while(ctx->current_level != UINT_MAX) {
+	if(ctx->first_pull) {
+		ASSERT(ctx->current_level == 0);
+		ctx->first_pull = false;
+
+		// update visited path, replace frontier with current node
+		ctx->visited = array_append(ctx->visited, ctx->src);
+
+		// current_level >= ctx->minLen
+		// see if we should expand further?
+		if(ctx->current_level < ctx->maxLen) {
+			// we can expand further
+			_AllNeighborsCtx_CollectNeighbors(ctx, ctx->src);
+		}
+
+		if(ctx->minLen == 0) {
+			return ctx->src;
+		}
+	}
+
+	while(ctx->current_level > 0) {
 		ASSERT(ctx->current_level < array_len(ctx->levels));
 		GxB_MatrixTupleIter *it = ctx->levels[ctx->current_level];
 
@@ -80,20 +101,14 @@ EntityID AllNeighborsCtx_NextNeighbor
 		GxB_MatrixTupleIter_next(it, NULL, &dest_id, &depleted);
 
 		if(depleted) {
-			// rollback
+			// backtrack
 			ctx->current_level--;
 			array_pop(ctx->visited);
 			continue;
 		}
 
 		// update visited path, replace frontier with current node
-		ctx->visited = array_append(ctx->visited, dest_id);
-
-		// TODO: not sure we need to increase level here
-		// ctx->current_level++;
-
-		if(ctx->current_level + 1 < ctx->minLen) {
-			ctx->current_level++;
+		if(ctx->current_level < ctx->minLen) {
 			// continue traversing
 			_AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
 			continue;
@@ -103,11 +118,11 @@ EntityID AllNeighborsCtx_NextNeighbor
 		// see if we should expand further?
 		if(ctx->current_level < ctx->maxLen &&
 		   !_AllNeighborsCtx_Visited(ctx, dest_id)) {
-			ctx->current_level++;
 			// we can expand further
 			_AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
 		}
 
+		ctx->visited = array_append(ctx->visited, dest_id);
 		return dest_id;
 	}
 
