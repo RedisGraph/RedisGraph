@@ -282,8 +282,19 @@ static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
-	AllPathsCtx_Free(op->allPathsCtx);
-	op->allPathsCtx = NULL;
+
+	if(op->collect_paths) {
+		if(op->allPathsCtx) {
+			AllPathsCtx_Free(op->allPathsCtx);
+			op->allPathsCtx = NULL;
+		}
+	} else {
+		if(op->allNeighborsCtx) {
+			AllNeighborsCtx_Free(op->allNeighborsCtx);
+			op->allNeighborsCtx = NULL;
+		}
+	}
+
 	return OP_OK;
 }
 
