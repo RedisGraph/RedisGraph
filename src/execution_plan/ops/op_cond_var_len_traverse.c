@@ -11,11 +11,14 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"
+#include "../../algorithms/all_neighbors.h"
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
-static Record CondVarLenTraverseConsume(OpBase *opBase);
+static OpResult CondVarLenTraverseInit(OpBase *opBase);
 static OpResult CondVarLenTraverseReset(OpBase *opBase);
+static Record CondVarLenTraverseConsume(OpBase *opBase);
+static Record CondVarLenTraverseSimpleConsume(OpBase *opBase);
 static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
 
@@ -87,6 +90,44 @@ inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
 	op->ft = ft;
 }
 
+static OpResult CondVarLenTraverseInit(OpBase *opBase) {
+	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
+
+	// check if variable length traversal doesn't require path construction
+	// in which case we only care for reachable destination nodes
+	// which is alot cheaper to compute
+	//
+	// consider:
+	// MATCH (a)-[:L*2..4]->(b) RETURN b
+	// we only care for destination nodes, the actual path is not of interest
+	//
+	// for this we require:
+	// 1. no filters to be applied to pattern
+	// 2. traversed edge isn't referenced
+	// 3. traversal of a single relationship: R, RT, ADJ, ADJT
+	// 4. traversal must be directed
+	//
+	// in which case we can use a faster consume function
+
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
+			AlgebraicExpression_Edge(op->ae));
+	uint reltype_count = array_len(e->reltypeIDs);
+
+	if(op->ft          == NULL                && // no filter on path
+	   op->edgesIdx    == -1                  && // edge isn't required
+	   op->expandInto  == false               && // destination unknown
+	   reltype_count   <= 1                   && // at most one relationship
+	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
+	) {
+		AlgebraicExpression_Optimize(&op->ae);
+		ASSERT(op->ae->type == AL_OPERAND);
+		op->collect_paths = false;
+		OpBase_UpdateConsume(opBase, CondVarLenTraverseSimpleConsume);
+	}
+
+	return OP_OK;
+}
+
 OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	ASSERT(g != NULL);
 	ASSERT(ae != NULL);
@@ -96,12 +137,15 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->ae = ae;
 	op->r = NULL;
 	op->ft = NULL;
+	op->M = GrB_NULL;
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
+	op->collect_paths = true;
 	op->edgeRelationTypes = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
+				"Conditional Variable Length Traverse", CondVarLenTraverseInit, CondVarLenTraverseConsume,
+				CondVarLenTraverseReset,
 				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
 
 	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
@@ -117,8 +161,65 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	return (OpBase *)op;
 }
 
+static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
+	CondVarLenTraverse  *op     = (CondVarLenTraverse *)opBase;
+	OpBase              *child  =  op->op.children[0];
+	Node                dest    =  GE_NEW_NODE();
+	EntityID            dest_id =  INVALID_ENTITY_ID;
+
+	while((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) == INVALID_ENTITY_ID) {
+		Record childRecord = OpBase_Consume(child);
+		if(!childRecord) return NULL;
+
+		if(op->r) OpBase_DeleteRecord(op->r);
+		op->r = childRecord;
+
+		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
+		if(srcNode == NULL) {
+			/* The child Record may not contain the source node in scenarios like
+			 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+			OpBase_DeleteRecord(op->r);
+			op->r = NULL;
+			continue;
+		}
+
+		// create edge relation type array on first call to consume.
+		if(!op->edgeRelationTypes) {
+			_setupTraversedRelations(op);
+			/* Incase we don't have any relations to traverse and minimal traversal is at least one hop
+			 * we can return quickly.
+			 * Consider: MATCH (S)-[:L*]->(M) RETURN M
+			 * where label L does not exists. */
+			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
+
+			op->M = op->ae->operand.matrix;
+		}
+
+		AllNeighborsCtx_Free(op->allNeighborsCtx);
+		op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id,
+												  op->M,
+												  op->minHops,
+												  op->maxHops);
+	}
+
+	if(dest_id == INVALID_ENTITY_ID) return NULL;
+
+	ASSERT(Graph_GetNode(op->g, dest_id, &dest) == true);
+
+	//--------------------------------------------------------------------------
+	// populate output record
+	//--------------------------------------------------------------------------
+
+	Record r = OpBase_CloneRecord(op->r);
+
+	// add destination node to record
+	Record_AddNode(r, op->destNodeIdx, dest);
+
+	return r;
+}
+
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
-	CondVarLenTraverse  *op     =  (CondVarLenTraverse *)opBase;
+	CondVarLenTraverse  *op     = (CondVarLenTraverse *)opBase;
 	Path                *p      =  NULL;
 	OpBase              *child  =  op->op.children[0];
 
@@ -181,8 +282,19 @@ static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
-	AllPathsCtx_Free(op->allPathsCtx);
-	op->allPathsCtx = NULL;
+
+	if(op->collect_paths) {
+		if(op->allPathsCtx) {
+			AllPathsCtx_Free(op->allPathsCtx);
+			op->allPathsCtx = NULL;
+		}
+	} else {
+		if(op->allNeighborsCtx) {
+			AllNeighborsCtx_Free(op->allNeighborsCtx);
+			op->allNeighborsCtx = NULL;
+		}
+	}
+
 	return OP_OK;
 }
 
@@ -212,9 +324,16 @@ static void CondVarLenTraverseFree(OpBase *ctx) {
 		op->r = NULL;
 	}
 
-	if(op->allPathsCtx) {
-		AllPathsCtx_Free(op->allPathsCtx);
-		op->allPathsCtx = NULL;
+	if(op->collect_paths) {
+		if(op->allPathsCtx) {
+			AllPathsCtx_Free(op->allPathsCtx);
+			op->allPathsCtx = NULL;
+		}
+	} else {
+		if(op->allNeighborsCtx) {
+			AllNeighborsCtx_Free(op->allNeighborsCtx);
+			op->allNeighborsCtx = NULL;
+		}
 	}
 
 	if(op->ft) {
