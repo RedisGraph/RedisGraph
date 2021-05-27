@@ -107,6 +107,8 @@ EntityID AllNeighborsCtx_NextNeighbor
 			continue;
 		}
 
+		ctx->visited = array_append(ctx->visited, dest_id);
+
 		// update visited path, replace frontier with current node
 		if(ctx->current_level < ctx->minLen) {
 			// continue traversing
@@ -122,7 +124,6 @@ EntityID AllNeighborsCtx_NextNeighbor
 			_AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
 		}
 
-		ctx->visited = array_append(ctx->visited, dest_id);
 		return dest_id;
 	}
 
