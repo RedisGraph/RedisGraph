@@ -24,8 +24,9 @@ typedef enum {
 	Config_MAINTAIN_TRANSPOSE       = 6,  // maintain transpose matrices
 	Config_VKEY_MAX_ENTITY_COUNT    = 7,  // max number of elements in vkey
 	Config_MAX_QUEUED_QUERIES       = 8,  // max number of queued queries
-	Config_QUERY_MEM_CAPACITY       = 9,  // Max mem(bytes) that query/thread can utilize at any given time
-	Config_END_MARKER               = 10
+	Config_QUERY_MEM_CAPACITY       = 9,  // max mem(bytes) that query/thread can utilize at any given time
+	Config_NODE_CREATION_BUFFER     = 10, // whether we should reserve space for future node creations
+	Config_END_MARKER               = 11
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of

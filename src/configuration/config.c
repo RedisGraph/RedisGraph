@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -40,6 +40,9 @@
 // whether the module should maintain transposed relationship matrices
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
 
+// config param, true if we save space for future nodes
+#define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER"
+
 // config param, max number of queued queries
 #define MAX_QUEUED_QUERIES "MAX_QUEUED_QUERIES"
 
@@ -63,6 +66,7 @@ typedef struct {
 	uint omp_thread_count;             // Maximum number of OpenMP threads.
 	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
+	bool node_creation_buffer;         // If true, size matrices to accommodate future node creations.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
@@ -81,7 +85,7 @@ static inline bool _Config_ParseInteger(const char *integer_str, long long *valu
 	char *endptr;
 	errno = 0;    // To distinguish success/failure after call
 	*value = strtoll(integer_str, &endptr, 10);
-		
+
 	// Return an error code if integer parsing fails.
 	return (errno == 0 && endptr != integer_str && *endptr == '\0');
 }
@@ -189,6 +193,18 @@ bool Config_maintain_transpose_get(void) {
 }
 
 //------------------------------------------------------------------------------
+// node creation buffer
+//------------------------------------------------------------------------------
+
+void Config_node_creation_buffer_set(bool buffer) {
+	config.node_creation_buffer = buffer;
+}
+
+bool Config_node_creation_buffer_get(void) {
+	return config.node_creation_buffer;
+}
+
+//------------------------------------------------------------------------------
 // cache size
 //------------------------------------------------------------------------------
 
@@ -258,6 +274,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 		f = Config_VKEY_MAX_ENTITY_COUNT;
 	} else if(!strcasecmp(field_str, MAINTAIN_TRANSPOSED_MATRICES)) {
 		f = Config_MAINTAIN_TRANSPOSE;
+	} else if(!strcasecmp(field_str, NODE_CREATION_BUFFER)) {
+		f = Config_NODE_CREATION_BUFFER;
 	} else if(!(strcasecmp(field_str, CACHE_SIZE))) {
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
@@ -300,6 +318,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 
 		case Config_MAINTAIN_TRANSPOSE:
 			name = MAINTAIN_TRANSPOSED_MATRICES;
+			break;
+
+		case Config_NODE_CREATION_BUFFER:
+			name = NODE_CREATION_BUFFER;
 			break;
 
 		case Config_VKEY_MAX_ENTITY_COUNT:
@@ -352,6 +374,9 @@ void _Config_SetToDefaults(void) {
 	#endif
 
 	config.cache_size = CACHE_SIZE_DEFAULT;
+
+	// always maintain a node creation buffer by default
+	config.node_creation_buffer = true;
 
 	// always build transposed matrices by default
 	config.maintain_transposed_matrices = true;
@@ -505,6 +530,19 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
 
 				Config_maintain_transpose_set(maintain_transpose);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// node creation buffer
+		//----------------------------------------------------------------------
+
+		case Config_NODE_CREATION_BUFFER:
+			{
+				bool node_creation_buffer;
+				if(!_Config_ParseYesNo(val, &node_creation_buffer)) return false;
+
+				Config_node_creation_buffer_set(node_creation_buffer);
 			}
 			break;
 
@@ -672,6 +710,21 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 			break;
 
 		//----------------------------------------------------------------------
+		// node creation buffer
+		//----------------------------------------------------------------------
+
+		case Config_NODE_CREATION_BUFFER:
+			{
+				va_start(ap, field);
+				bool *node_creation_buffer = va_arg(ap, bool*);
+				va_end(ap);
+
+				ASSERT(node_creation_buffer != NULL);
+				(*node_creation_buffer) = Config_node_creation_buffer_get();
+			}
+			break;
+
+		//----------------------------------------------------------------------
 		// virtual key entity count
 		//----------------------------------------------------------------------
 
@@ -720,7 +773,7 @@ bool Config_Option_get(Config_Option_Field field, ...) {
         // invalid option
         //----------------------------------------------------------------------
 
-        default : 
+        default :
 			ASSERT("invalid option field" && false);
 			return false;
     }
