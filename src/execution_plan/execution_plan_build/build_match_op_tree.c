@@ -35,8 +35,14 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		OpBase *tail = NULL;
 
 		if(edge_count == 0) {
-			/* If there are no edges in the component, we only need a node scan. */
+			// if there are no edges in the component, we only need a node scan
 			QGNode *n = cc->nodes[0];
+
+			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
+					!= raxNotFound) {
+				continue;
+			}
+
 			if(n->labelID != GRAPH_NO_LABEL) {
 				NodeScanCtx ctx = NODE_CTX_NEW(n->alias, n->label, n->labelID);
 				root = NewNodeByLabelScanOp(plan, ctx);
