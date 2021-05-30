@@ -73,8 +73,8 @@ struct Graph {
 	RG_Matrix *relations;               // Relation matrices.
 	RG_Matrix *t_relations;             // Transposed relation matrices.
 	RG_Matrix _zero_matrix;             // Zero matrix.
-	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
+	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	size_t matrix_dims;                 // The dimensions all matrices should be sized to NxN.
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
@@ -206,7 +206,7 @@ uint Graph_DeletedNodeCount(
 	const Graph *g
 );
 
-// Returns number of real and deleted nodes in the graph.
+// Returns number of existing and deleted nodes in the graph.
 size_t Graph_UncompactedNodeCount(
 	const Graph *g
 );

@@ -13,9 +13,6 @@
 #include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/datablock/oo_datablock.h"
 
-// Minimimum buffer size for matrices if enabled.
-#define MIN_MATRIX_BUFFER 100
-
 static GrB_BinaryOp _graph_edge_accum = NULL;
 // GraphBLAS binary operator for freeing edges
 static GrB_BinaryOp _binary_op_delete_edges = NULL;
@@ -176,7 +173,13 @@ size_t _Graph_EdgeCap(const Graph *g) {
 static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
 	bool build_with_overhead;
    	Config_Option_get(Config_NODE_CREATION_BUFFER, &build_with_overhead);
-	if(build_with_overhead) node_count += MAX(node_count * 0.001, MIN_MATRIX_BUFFER);
+
+	if(build_with_overhead) {
+		// Minimimum buffer size for matrices if enabled.
+		int min_node_count = 100;
+		node_count += MAX(node_count * 0.001, min_node_count);
+	}
+
 	g->matrix_dims = node_count;
 }
 
@@ -262,64 +265,67 @@ static inline void _Graph_SetRelationMatrixDirty(const Graph *g, int relation_id
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
 void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
+	bool dirty = RG_Matrix_IsDirty(rg_matrix);
 	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(rg_matrix);
 	GrB_Index n_rows;
 	GrB_Index n_cols;
 	GrB_Matrix_nrows(&n_rows, m);
 	GrB_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
+	bool require_resize = (n_rows != dims);
 
-	bool allow_empty_space;
-   	Config_Option_get(Config_NODE_CREATION_BUFFER, &allow_empty_space);
-	/* The matrix must be resized if its dimensions are smaller than the required
-	 * or if we don't allow empty space and the matrix dimensions do not match the required precisely. */
-	bool require_resize = ((n_rows < dims || n_cols < dims) ||
-						   (!allow_empty_space && (n_rows != dims || n_cols != dims)));
+	// matrix must be resized if its dimensions missmatch required dimensions
+	ASSERT(n_rows == n_cols);
 
-	// If the graph belongs to one thread, we don't need to lock the mutex.
+	// matrix fully synced, nothing to do
+	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) return;
+
+	//--------------------------------------------------------------------------
+	// sync under WRITE
+	//--------------------------------------------------------------------------
+
+	// if the graph belongs to one thread, we don't need to lock the mutex
 	if(g->_writelocked) {
 		if(require_resize) {
 			GrB_Info res = GxB_Matrix_resize(m, dims, dims);
 			ASSERT(res == GrB_SUCCESS);
 		}
 
-		// Writer under write lock, no need to flush pending changes.
+		// writer under write lock, no need to flush pending changes
 		return;
 	}
 
-	// Sync only if matrix is not of required size
-	// or matrix has pending changes
-	if(n_rows != dims || n_cols != dims || RG_Matrix_IsDirty(rg_matrix)) {
-		// Lock the matrix.
-		RG_Matrix_Lock(rg_matrix);
+	//--------------------------------------------------------------------------
+	// sync under READ
+	//--------------------------------------------------------------------------
 
-		// Recheck
-		GrB_Matrix_nrows(&n_rows, m);
-		GrB_Matrix_ncols(&n_cols, m);
-		dims = Graph_RequiredMatrixDim(g);
-		require_resize = ((n_rows < dims || n_cols < dims) ||
-						  (!allow_empty_space && (n_rows != dims || n_cols != dims)));
-		if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) {
-			goto cleanup;
-		}
+	// lock the matrix
+	RG_Matrix_Lock(rg_matrix);
 
-		bool pending;
-		GxB_Matrix_Pending(m, &pending);
-		// If the matrix has pending operations or requires a resize
-		if(pending || require_resize) {
-			if((n_rows != dims) || (n_cols != dims)) {
-				GrB_Info res = GxB_Matrix_resize(m, dims, dims);
-				ASSERT(res == GrB_SUCCESS);
-			}
-			// Flush changes to matrix.
-			_Graph_ApplyPending(m);
-		}
-		RG_Matrix_SetUnDirty(rg_matrix);
+	// recheck
+	GrB_Matrix_nrows(&n_rows, m);
+	GrB_Matrix_ncols(&n_cols, m);
+	dims = Graph_RequiredMatrixDim(g);
+	require_resize = (n_rows != dims);
+	ASSERT(n_rows == n_cols);
+
+	// some other thread performed sync
+	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) goto cleanup;
+
+	// resize if required
+	if(require_resize) {
+		GrB_Info res = GxB_Matrix_resize(m, dims, dims);
+		ASSERT(res == GrB_SUCCESS);
+	}
+
+	// flush pending changes if dirty
+	if(RG_Matrix_IsDirty(rg_matrix)) _Graph_ApplyPending(m);
+
+	RG_Matrix_SetUnDirty(rg_matrix);
 
 cleanup:
-		// Unlock matrix mutex.
-		_RG_Matrix_Unlock(rg_matrix);
-	}
+	// Unlock matrix mutex.
+	_RG_Matrix_Unlock(rg_matrix);
 }
 
 /* Resize matrix to node capacity. */
@@ -484,11 +490,13 @@ int Graph_LabelTypeCount(const Graph *g) {
 void Graph_AllocateNodes(Graph *g, size_t n) {
 	ASSERT(g);
 	DataBlock_Accommodate(g->nodes, n);
-	// Updated the required matrix size if this creation will trigger a resize.
-	uint deleted_node_count = Graph_DeletedNodeCount(g);
-	size_t new_count = Graph_NodeCount(g) + deleted_node_count;
-	if((int64_t)(n - deleted_node_count) > 0)  new_count += n - deleted_node_count;
-	if(new_count > Graph_RequiredMatrixDim(g)) _Graph_UpdateMatrixDimensions(g, new_count);
+
+	// updated the required matrix dimensions
+	// if this creation will trigger a resize
+	// computation below takes into account deleted ndoes
+	size_t new_count = Graph_NodeCount(g) + n;
+	bool resize = new_count > Graph_RequiredMatrixDim(g);
+	if(resize) _Graph_UpdateMatrixDimensions(g, new_count);
 }
 
 void Graph_AllocateEdges(Graph *g, size_t n) {
