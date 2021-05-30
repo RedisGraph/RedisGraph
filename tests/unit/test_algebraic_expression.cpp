@@ -687,7 +687,13 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	 * 1 1 0 0
 	 * 1 0 0 0
 	 */
-	GrB_Matrix_new(&B, GrB_BOOL, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_NODE_CAP);
+
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = gc->g;
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+
+	GrB_Matrix_new(&B, GrB_BOOL, n, n);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 2);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 3);
 	GrB_Matrix_setElement_BOOL(B, true, 1, 2);
@@ -696,7 +702,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	GrB_Matrix_setElement_BOOL(B, true, 3, 0);
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_NODE_CAP);
+	GrB_Matrix_new(&res, GrB_BOOL, n, n);
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("V+tV", _matrices);
 	AlgebraicExpression_Eval(exp, res);
 
@@ -736,7 +742,11 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 	 * 1 0 0 0
 	 * 1 0 0 0
 	 */
-	GrB_Matrix_new(&B, GrB_BOOL, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_NODE_CAP);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = gc->g;
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+
+	GrB_Matrix_new(&B, GrB_BOOL, n, n);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
 	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
@@ -744,7 +754,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_NODE_CAP);
+	GrB_Matrix_new(&res, GrB_BOOL, n, n);
 
 	// Transpose(A) * A
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("V*tV", _matrices);

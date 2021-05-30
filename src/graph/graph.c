@@ -161,26 +161,13 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
 /* ========================= Graph utility functions ========================= */
 
 // Return number of nodes graph can contain.
-size_t _Graph_NodeCap(const Graph *g) {
+static inline size_t _Graph_NodeCap(const Graph *g) {
 	return g->nodes->itemCap;
 }
 
 // Return number of nodes graph can contain.
-size_t _Graph_EdgeCap(const Graph *g) {
+static inline size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
-}
-
-static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
-	bool build_with_overhead;
-   	Config_Option_get(Config_NODE_CREATION_BUFFER, &build_with_overhead);
-
-	if(build_with_overhead) {
-		// Minimimum buffer size for matrices if enabled.
-		int min_node_count = 100;
-		node_count += MAX(node_count * 0.001, min_node_count);
-	}
-
-	g->matrix_dims = node_count;
 }
 
 // Locates edges connecting src to destination.
@@ -415,7 +402,6 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 	g->t_relations = maintain_transpose ?
 					 array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP) : NULL;
-	g->matrix_dims = node_cap;
 
 	// Initialize a read-write lock scoped to the individual graph
 	int res;
@@ -443,9 +429,15 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 }
 
 // All graph matrices are required to be squared NXN
-// where N is Graph_RequiredMatrixDim.
+// where N = Graph_RequiredMatrixDim.
 inline size_t Graph_RequiredMatrixDim(const Graph *g) {
-	return g->matrix_dims;
+	bool build_with_overhead;
+	Config_Option_get(Config_NODE_CREATION_BUFFER, &build_with_overhead);
+	if(build_with_overhead) {
+		return _Graph_NodeCap(g);
+	} else {
+		return Graph_NodeCount(g) + Graph_DeletedNodeCount(g);
+	}
 }
 
 size_t Graph_NodeCount(const Graph *g) {
@@ -490,13 +482,6 @@ int Graph_LabelTypeCount(const Graph *g) {
 void Graph_AllocateNodes(Graph *g, size_t n) {
 	ASSERT(g);
 	DataBlock_Accommodate(g->nodes, n);
-
-	// updated the required matrix dimensions
-	// if this creation will trigger a resize
-	// computation below takes into account deleted ndoes
-	size_t new_count = Graph_NodeCount(g) + n;
-	bool resize = new_count > Graph_RequiredMatrixDim(g);
-	if(resize) _Graph_UpdateMatrixDimensions(g, new_count);
 }
 
 void Graph_AllocateEdges(Graph *g, size_t n) {
