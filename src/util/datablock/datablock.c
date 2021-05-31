@@ -136,16 +136,15 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 }
 
 void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
-	// Make sure we've got room for items.
+	// make sure we've got room for items
 	if(dataBlock->itemCount >= dataBlock->itemCap) {
-		// Allocate twice as much items then we currently hold.
-		uint newCap = dataBlock->itemCount * 2;
-		uint requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
-		_DataBlock_AddBlocks(dataBlock, requiredAdditionalBlocks);
+		// allocate an additional block
+		_DataBlock_AddBlocks(dataBlock, 1);
 	}
+	ASSERT(dataBlock->itemCap > dataBlock->itemCount);
 
-	// Get index into which to store item,
-	// prefer reusing free indicies.
+	// get index into which to store item,
+	// prefer reusing free indicies
 	uint pos = dataBlock->itemCount;
 	if(array_len(dataBlock->deletedIdx) > 0) {
 		pos = array_pop(dataBlock->deletedIdx);
