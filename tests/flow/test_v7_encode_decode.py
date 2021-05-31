@@ -28,21 +28,25 @@ class test_v7_encode_decode(FlowTestsBase):
     def test02_no_compaction_on_nodes_delete(self):
         graph_name = "no_compaction_on_nodes_delete"
         redis_graph = Graph(graph_name, redis_con)
-        # Create 3 nodes meta keys
-        redis_graph.query("UNWIND range(0,20) as i CREATE (:Node)")
+        # Create 20 nodes meta keys
+        redis_graph.query("UNWIND range(0, 20) as i CREATE (:Node)")
         # Return all the nodes, before and after saving & loading the RDB, and check equality
         query = "MATCH (n:Node) WITH n ORDER by id(n) return COLLECT(id(n))"
         expected_full_graph_nodes_id = redis_graph.query(query)
+
         # Delete 3 nodes.
-        redis_graph.query("MATCH (n:Node) WHERE id(n) IN [7,14,20] DELETE n")
+        redis_graph.query("MATCH (n:Node) WHERE id(n) IN [7, 14, 20] DELETE n")
         expected_nodes_id_after_delete = redis_graph.query(query)
+
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
+
         actual = redis_graph.query(query)
         # Validate no compaction, all IDs are the same
         self.env.assertEquals(expected_nodes_id_after_delete.result_set, actual.result_set)
+
         # Validate reuse of node ids - create 3 nodes.
-        redis_graph.query("UNWIND range (0,2) as i CREATE (:Node)")
+        redis_graph.query("UNWIND range (0, 2) as i CREATE (:Node)")
         actual = redis_graph.query(query)
         self.env.assertEquals(expected_full_graph_nodes_id.result_set, actual.result_set)
 

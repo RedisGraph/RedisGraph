@@ -108,6 +108,20 @@ void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k) {
 	}
 }
 
+void DataBlock_Ensure(DataBlock *dataBlock, uint64_t idx) {
+	ASSERT(dataBlock != NULL);
+
+	// datablock[idx] exists
+	if(dataBlock->itemCap > idx) return;
+
+	// make sure datablock cap > 'idx'
+	int64_t additionalItems = (1 + idx) - dataBlock->itemCap;
+	int64_t additionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(additionalItems);
+	_DataBlock_AddBlocks(dataBlock, additionalBlocks);
+
+	ASSERT(dataBlock->itemCap > idx);
+}
+
 void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	ASSERT(dataBlock != NULL);
 
