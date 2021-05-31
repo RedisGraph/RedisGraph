@@ -17,14 +17,6 @@
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-/*
-* Copyright 2018-2021 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
-
-#pragma once
-
 #define GRAPH_DEFAULT_NODE_CAP 16384            // Default number of nodes a graph can hold before resizing.
 #define GRAPH_DEFAULT_EDGE_CAP 16384            // Default number of edges a graph can hold before resizing.
 #define GRAPH_DEFAULT_RELATION_TYPE_CAP 16      // Default number of different relationship types a graph can hold before resizing.
@@ -327,6 +319,9 @@ GrB_Matrix Graph_GetRelationMatrix(
 	int relation        // Relation described by matrix.
 );
 
+// Returns wether the matrix contains multi edge.
+bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r);
+
 // Retrieves a transposed typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetTransposedRelationMatrix(
@@ -338,9 +333,6 @@ GrB_Matrix Graph_GetTransposedRelationMatrix(
 // The function will resize it to match all other
 // internal matrices, caller mustn't modify it in any way.
 GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
-
-// Returns wether the matrix contains multi edge.
-bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r);
 
 // Free graph.
 void Graph_Free(

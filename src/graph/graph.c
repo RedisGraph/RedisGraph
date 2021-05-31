@@ -771,7 +771,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 	if(info != GrB_SUCCESS) return 0;
 
-	// An edge of type r has just been created, update statistics.
+	// An edge of type r has just been deleted, update statistics.
 	GraphStatistics_DecEdgeCounter(&g->stats, r, 1);
 
 	if(SINGLE_EDGE(edge_id)) {
@@ -1036,9 +1036,6 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		 * A will contain all implicitly deleted edges from R */
 		GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 
-		// Decrement number of edges by the number of setted bits in A
-		GrB_Matrix_nvals(&nvals, A);
-
 		uint64_t edges_before_deletion = DataBlock_ItemCount(g->edges);
 		// free each multi edge array entry in A
 		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
@@ -1048,7 +1045,6 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		uint64_t n_deleted_edges = edges_before_deletion - DataBlock_ItemCount(g->edges);
 		// Multiple edges of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCounter(&g->stats, i, n_deleted_edges);
-
 
 		// clear the relation matrix
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
@@ -1404,6 +1400,17 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
 	}
 }
 
+// Returns wether the matrix contains multi edge.
+bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
+	ASSERT(array_len(g->stats.edge_count) > r
+	&& array_len(g->relations) > r);
+	GrB_Index nvals;
+	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[r]));
+
+	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
+	return g->stats.edge_count[r] > nvals;
+}
+
 GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
 	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
 
@@ -1428,17 +1435,6 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
 	GrB_Matrix_nvals(&nvals, grb_z);
 	assert(nvals == 0);
 	return grb_z;
-}
-
-// Returns wether the matrix contains multi edge.
-bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
-	ASSERT(array_len(g->stats.edge_count) > r
-	&& array_len(g->relations) > r);
-	GrB_Index nvals;
-	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[r]));
-
-	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
-	return g->stats.edge_count[r] > nvals;
 }
 
 void Graph_Free(Graph *g) {

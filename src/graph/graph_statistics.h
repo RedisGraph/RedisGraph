@@ -33,5 +33,8 @@ static inline void GraphStatistics_DecEdgeCounter(GraphStatistics *stats, int re
     stats->edge_count[relation_idx] -= amount;
 }
 
+// edge_count getter
+uint64_t GraphStatistics_EdgeCount(GraphStatistics *stats, int relation_idx);
+
 // Free the internal structures.
 void GraphStatistics_FreeInternals(GraphStatistics *stats);
