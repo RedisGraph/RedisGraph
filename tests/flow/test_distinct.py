@@ -190,3 +190,41 @@ class testDistinct(FlowTestsBase):
         actual_result = graph3.query(query)
         expected_result = [[None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test_distinct_union(self):
+        # UNION performs implicit distinct, following query has 2 branches coming into a JOIN op
+        # followed by an implicit distinct operation, once the left branch will be depleted
+        # records coming in from the right branch will have different length mapping
+        # then the previous records, yet distinct should only check for uniques of projected values
+        # and ignore intermidate values such as 'n' and 'z'
+
+        # no aggregations
+        query = "MATCH (n) WITH n AS n RETURN 1 UNION MATCH (n), (z) WHERE ID(n) = ID(z) RETURN 1"
+        actual_result = graph3.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # left hand side performs aggregations
+        query = "MATCH (n) WITH n AS n RETURN max(1) AS one UNION MATCH (n), (z) WHERE ID(n) = ID(z) RETURN 1 AS one"
+        actual_result = graph3.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # right hand side performs aggregations
+        query = "MATCH (n) WITH n AS n RETURN 1 AS one UNION MATCH (n), (z) WHERE ID(n) = ID(z) RETURN max(1) AS one"
+        actual_result = graph3.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # both ends perform aggregations
+        query = "MATCH (n) WITH n AS n RETURN max(1) AS one UNION MATCH (n), (z) WHERE ID(n) = ID(z) RETURN min(1) AS one"
+        actual_result = graph3.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # aggregation with explicit group key
+        query = "MATCH (n) WITH n AS n RETURN 2 as key, max(1) AS one UNION MATCH (n), (z) WHERE ID(n) = ID(z) RETURN 2 as key, min(1) AS one"
+        actual_result = graph3.query(query)
+        expected_result = [[2, 1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+

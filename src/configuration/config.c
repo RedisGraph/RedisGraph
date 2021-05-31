@@ -310,6 +310,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 			name = ASYNC_DELETE;
 			break;
 
+		case Config_MAX_QUEUED_QUERIES:
+			name = MAX_QUEUED_QUERIES;
+			break;
+
 		case Config_QUERY_MEM_CAPACITY:
 			name = QUERY_MEM_CAPACITY;
 			break;

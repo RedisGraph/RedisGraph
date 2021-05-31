@@ -127,6 +127,9 @@ int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
 
 OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op);
 
+// returns operation type
+OPType OpBase_Type(const OpBase *op);
+
 /* Mark alias as being modified by operation.
  * Returns the ID associated with alias. */
 int OpBase_Modifies(OpBase *op, const char *alias);

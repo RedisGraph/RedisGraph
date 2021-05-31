@@ -25,8 +25,8 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 
 // apply a set of updates to the given records
-static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStatistics *stats, raxIterator updates,
-							  Record *records, uint record_count) {
+static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStatistics *stats,
+							  raxIterator updates, Record *records, uint record_count) {
 	ASSERT(record_count > 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
@@ -179,10 +179,17 @@ static Record _handoff(OpMerge *op) {
 static Record MergeConsume(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 
+	//--------------------------------------------------------------------------
+	// handoff
+	//--------------------------------------------------------------------------
+
 	// return mode, all data was consumed
 	if(op->output_records) return _handoff(op);
 
-	// consume mode
+	//--------------------------------------------------------------------------
+	// consume bound stream
+	//--------------------------------------------------------------------------
+
 	op->output_records = array_new(Record, 32);
 	// if we have a bound variable stream, pull from it and store records until depleted
 	if(op->bound_variable_stream) {
@@ -192,11 +199,15 @@ static Record MergeConsume(OpBase *opBase) {
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// match pattern
+	//--------------------------------------------------------------------------
+
 	uint  match_count          =  0;
 	bool  reading_matches      =  true;
 	bool  must_create_records  =  false;
-	// match mode: attempt to resolve the pattern for every record from the bound variable
-	// stream, or once if we have no bound variables
+	// match mode: attempt to resolve the pattern for every record from
+	// the bound variable stream, or once if we have no bound variables
 	while(reading_matches) {
 		Record lhs_record = NULL;
 		if(op->input_records) {
@@ -244,48 +255,62 @@ static Record MergeConsume(OpBase *opBase) {
 		if(lhs_record) OpBase_DeleteRecord(lhs_record);
 	}
 
+	//--------------------------------------------------------------------------
+	// compute updates and create
+	//--------------------------------------------------------------------------
+
 	// explicitly free the read streams in case either holds an index read lock
 	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
 	OpBase_PropagateFree(op->match_stream);
 
 	op->pending_updates = array_new(PendingUpdateCtx, 0);
 
+	// if we are setting properties with ON MATCH, compute all pending updates
+	if(op->on_match && match_count > 0)
+		_UpdateProperties(&op->pending_updates, op->stats, op->on_match_it,
+						  op->output_records, match_count);
+
 	if(must_create_records) {
 		// commit all pending changes on the Create stream
+		// 'MergeCreate_Commit' acquire write lock!
+		// write lock is released further down
 		MergeCreate_Commit(op->create_stream);
-		// we only need to pull the created records if we're returning results or performing updates on creation
+		// we only need to pull the created records if we're returning results
+		// or performing updates on creation
 		if(op->stats || op->on_create) {
-			// Pull all records from the Create stream.
-			if(!op->output_records) op->output_records = array_new(Record, 32);
+			// pull all records from the Create stream
 			uint create_count = 0;
 			Record created_record;
 			while((created_record = _pullFromStream(op->create_stream))) {
-				op->output_records = array_append(op->output_records, created_record);
+				op->output_records = array_append(op->output_records,
+						created_record);
 				create_count ++;
 			}
-			// if we are setting properties with ON CREATE, execute updates on the just-added Records
+			// if we are setting properties with ON CREATE
+			// compute all pending updates
 			if(op->on_create) {
-				_UpdateProperties(&op->pending_updates, op->stats, op->on_create_it, op->output_records + match_count, create_count);
+				_UpdateProperties(&op->pending_updates, op->stats,
+						op->on_create_it, op->output_records + match_count,
+						create_count);
 			}
 		}
 	}
 
-	// If we are setting properties with ON MATCH, execute all pending updates.
-	if(op->on_match && match_count > 0)
-		_UpdateProperties(&op->pending_updates, op->stats, op->on_match_it, op->output_records, match_count);
+	//--------------------------------------------------------------------------
+	// update
+	//--------------------------------------------------------------------------
 
-	// lock everything
 	if(array_len(op->pending_updates) > 0) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
+		// lock everything
 		QueryCtx_LockForCommit();
-		{
-			CommitUpdates(gc, op->stats, op->pending_updates);
-		}
-		QueryCtx_UnlockCommit(&op->op); // Release the lock.
-
-		array_free(op->pending_updates);
-		op->pending_updates = NULL;
+		CommitUpdates(gc, op->stats, op->pending_updates);
 	}
+
+	// release the lock
+	QueryCtx_UnlockCommit(&op->op);
+	array_free(op->pending_updates);
+	op->pending_updates = NULL;
 
 	return _handoff(op);
 }
