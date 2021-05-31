@@ -83,6 +83,18 @@ static inline GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix) {
 	return matrix->grb_matrix;
 }
 
+// Returns wether the matrix contains multi edge.
+static inline bool RG_Matrix_ContainsMultiEdge(const Graph *g, int relation_index) {
+	ASSERT(array_len(g->stats.edge_count) > relation_index
+	&& array_len(g->relations) > relation_index);
+	GrB_Index nvals;
+	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[relation_index]));
+
+	// If the number of relation in the matrix is greater than the number of entries in the matrix
+	// then by pigeonhole principle there must be a multi edge.
+	return g->stats.edge_count[relation_index] > nvals;
+}
+
 static inline bool RG_Matrix_IsDirty(RG_Matrix matrix) {
 	return matrix->dirty;
 }
@@ -105,7 +117,7 @@ static inline void _RG_Matrix_Unlock(RG_Matrix matrix) {
 	pthread_mutex_unlock(&matrix->mutex);
 }
 
-static inline bool _RG_Matrix_MultiEdgeEnabled(RG_Matrix matrix) {
+static inline bool _RG_Matrix_MultiEdgeEnabled(const RG_Matrix matrix) {
 	return matrix->allow_multi_edge;
 }
 
@@ -384,6 +396,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
 	g->_t_adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
 	g->_zero_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
+	GraphStatistics_init(&g->stats);
 
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
 	bool maintain_transpose;
@@ -612,6 +625,9 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 	_Graph_SetRelationMatrixDirty(g, r);
 	_Graph_SetAdjacencyMatrixDirty(g);
 
+	// Increment edge counter cause of creation of one edge.
+	GraphStatistics_IncEdgeCounter(&g->stats, r, 1);
+
 	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
 	if(_RG_Matrix_MultiEdgeEnabled(M)) {
 		GrB_Index I = src;
@@ -766,6 +782,9 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	// Test to see if edge exists.
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 	if(info != GrB_SUCCESS) return 0;
+
+	// Decrement edge counter cause of deletion of one edge.
+	GraphStatistics_DecEdgeCounter(&g->stats, r, 1);
 
 	if(SINGLE_EDGE(edge_id)) {
 		// Single edge of type R connecting src to dest, delete entry.
@@ -1029,6 +1048,10 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		 * A will contain all implicitly deleted edges from R */
 		GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 
+		// Decrement number of edges by the number of setted bits in A
+		GrB_Matrix_nvals(&nvals, A);
+		GraphStatistics_DecEdgeCounter(&g->stats, i, nvals);
+
 		// free each multi edge array entry in A
 		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
 									 _binary_op_delete_edges, thunk, A, GrB_NULL);
@@ -1128,6 +1151,9 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 		GrB_Matrix TR = maintain_transpose ? Graph_GetTransposedRelationMatrix(g, r) : NULL;
 		GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
+
+		// Decrement edge counter cause of deletion of one edge.
+		GraphStatistics_DecEdgeCounter(&g->stats, r, 1);
 
 		if(SINGLE_EDGE(edge_id)) {
 			update_adj_matrices = true;
@@ -1337,6 +1363,8 @@ int Graph_AddRelationType(Graph *g) {
 	size_t dims = Graph_RequiredMatrixDim(g);
 	RG_Matrix m = RG_Matrix_New(GrB_UINT64, dims, dims);
 	g->relations = array_append(g->relations, m);
+	ASSERT(g->stats.edge_count);
+	g->stats.edge_count = array_append(g->stats.edge_count, 0);
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 
@@ -1421,6 +1449,7 @@ void Graph_Free(Graph *g) {
 	_Graph_FreeRelationMatrices(g);
 	array_free(g->relations);
 	array_free(g->t_relations);
+	GraphStatistics_free(&g->stats);
 
 	uint32_t labelCount = array_len(g->labels);
 	for(int i = 0; i < labelCount; i++) {
