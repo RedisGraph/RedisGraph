@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -7,19 +7,19 @@
 #pragma once
 
 #include <stdint.h>
-#include "graph_defs.h"
 #include "../util/arr.h"
 
 /* Graph related statistics */
 
 typedef struct {
-	uint64_t *edge_count; // Array of relationship matrice's edges counters.
+	uint64_t *edge_count; // Array of edge count per relationship matrix
 } GraphStatistics;
 
 // Initialize the edge_count array
-static inline void GraphStatistics_init(GraphStatistics *stats) {
-    stats->edge_count = array_new(uint64_t, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-}
+void GraphStatistics_init(GraphStatistics *stats);
+
+// New relationship is added, resize the edge_count array.
+void GraphStatistics_IntroduceRelationship(GraphStatistics *stats);
 
 // Increment the edge counter by amount
 static inline void GraphStatistics_IncEdgeCounter(GraphStatistics *stats, int relation_idx, uint64_t amount) {
@@ -33,7 +33,5 @@ static inline void GraphStatistics_DecEdgeCounter(GraphStatistics *stats, int re
     stats->edge_count[relation_idx] -= amount;
 }
 
-static inline void GraphStatistics_free(GraphStatistics *stats) {
-    if(stats->edge_count) array_free(stats->edge_count);
-    stats->edge_count = NULL;
-}
+// Free the internal structures.
+void GraphStatistics_FreeInternals(GraphStatistics *stats);

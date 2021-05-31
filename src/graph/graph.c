@@ -83,18 +83,6 @@ static inline GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix) {
 	return matrix->grb_matrix;
 }
 
-// Returns wether the matrix contains multi edge.
-static inline bool RG_Matrix_ContainsMultiEdge(const Graph *g, int relation_index) {
-	ASSERT(array_len(g->stats.edge_count) > relation_index
-	&& array_len(g->relations) > relation_index);
-	GrB_Index nvals;
-	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[relation_index]));
-
-	// If the number of relation in the matrix is greater than the number of entries in the matrix
-	// then by pigeonhole principle there must be a multi edge.
-	return g->stats.edge_count[relation_index] > nvals;
-}
-
 static inline bool RG_Matrix_IsDirty(RG_Matrix matrix) {
 	return matrix->dirty;
 }
@@ -625,7 +613,7 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 	_Graph_SetRelationMatrixDirty(g, r);
 	_Graph_SetAdjacencyMatrixDirty(g);
 
-	// Increment edge counter cause of creation of one edge.
+	// An edge of type r has just been created, update statistics.
 	GraphStatistics_IncEdgeCounter(&g->stats, r, 1);
 
 	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
@@ -783,7 +771,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 	if(info != GrB_SUCCESS) return 0;
 
-	// Decrement edge counter cause of deletion of one edge.
+	// An edge of type r has just been created, update statistics.
 	GraphStatistics_DecEdgeCounter(&g->stats, r, 1);
 
 	if(SINGLE_EDGE(edge_id)) {
@@ -1050,11 +1038,17 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 		// Decrement number of edges by the number of setted bits in A
 		GrB_Matrix_nvals(&nvals, A);
-		GraphStatistics_DecEdgeCounter(&g->stats, i, nvals);
 
+		uint64_t edges_before_deletion = DataBlock_ItemCount(g->edges);
 		// free each multi edge array entry in A
 		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
 									 _binary_op_delete_edges, thunk, A, GrB_NULL);
+
+		// The number of deleted edges is equals the diff in the number of items in the DataBlock
+		uint64_t n_deleted_edges = edges_before_deletion - DataBlock_ItemCount(g->edges);
+		// Multiple edges of type r has just been deleted, update statistics
+		GraphStatistics_DecEdgeCounter(&g->stats, i, n_deleted_edges);
+
 
 		// clear the relation matrix
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
@@ -1363,8 +1357,7 @@ int Graph_AddRelationType(Graph *g) {
 	size_t dims = Graph_RequiredMatrixDim(g);
 	RG_Matrix m = RG_Matrix_New(GrB_UINT64, dims, dims);
 	g->relations = array_append(g->relations, m);
-	ASSERT(g->stats.edge_count);
-	g->stats.edge_count = array_append(g->stats.edge_count, 0);
+	GraphStatistics_IntroduceRelationship(&g->stats);
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 
@@ -1437,6 +1430,17 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
 	return grb_z;
 }
 
+// Returns wether the matrix contains multi edge.
+bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
+	ASSERT(array_len(g->stats.edge_count) > r
+	&& array_len(g->relations) > r);
+	GrB_Index nvals;
+	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[r]));
+
+	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
+	return g->stats.edge_count[r] > nvals;
+}
+
 void Graph_Free(Graph *g) {
 	ASSERT(g);
 	// Free matrices.
@@ -1449,7 +1453,7 @@ void Graph_Free(Graph *g) {
 	_Graph_FreeRelationMatrices(g);
 	array_free(g->relations);
 	array_free(g->t_relations);
-	GraphStatistics_free(&g->stats);
+	GraphStatistics_FreeInternals(&g->stats);
 
 	uint32_t labelCount = array_len(g->labels);
 	for(int i = 0; i < labelCount; i++) {
