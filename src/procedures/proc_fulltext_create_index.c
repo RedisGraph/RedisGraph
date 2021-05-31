@@ -32,6 +32,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	int res               = INDEX_FAIL;
 	Index *idx            = NULL;
 	GraphContext *gc      = QueryCtx_GetGraphCtx();
+	Graph *g              = gc->g;
 	uint fields_count     = arg_count - 1;
 	const char *label     = args[0].stringval;
 	const SIValue *fields = args + 1; // skip index name
@@ -45,7 +46,10 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	}
 
 	// build index
-	if(res == INDEX_OK) Index_Construct(idx);
+	if(res == INDEX_OK) {
+		Index_Construct(idx);
+		Index_Populate(idx, g);
+	}
 
 	return PROCEDURE_OK;
 }

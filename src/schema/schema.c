@@ -74,7 +74,7 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
 	} else {
 		// Index doesn't exist, create it.
-		_idx = Index_New(s->name, type);
+		_idx = Index_New(s->name, s->id, type);
 		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
 		else s->index = _idx;
 	}

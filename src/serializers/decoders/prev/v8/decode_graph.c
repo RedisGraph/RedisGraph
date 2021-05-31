@@ -124,6 +124,7 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	 * */
 
 	GraphContext *gc = _DecodeHeader(rdb);
+	Graph *g = gc->g;
 	// Load the key schema.
 	PayloadInfo *key_schema = _RdbLoadKeySchema(rdb);
 
@@ -173,20 +174,26 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		// Revert to default synchronization behavior
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-		Graph_ApplyAllPending(gc->g);
+		Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+		Graph_ApplyAllPending(g);
 		// Set the thread-local GraphContext, as it will be accessed when creating indexes.
 		QueryCtx_SetGraphCtx(gc);
 		// Index the nodes when decoding ends.
 		uint node_schemas_count = array_len(gc->node_schemas);
 		for(uint i = 0; i < node_schemas_count; i++) {
 			Schema *s = gc->node_schemas[i];
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+			if(s->index) {
+				Index_Construct(s->index);
+				Index_Populate(s->index, g);
+			}
+			if(s->fulltextIdx) {
+				Index_Construct(s->fulltextIdx);
+				Index_Populate(s->fulltextIdx, g);
+			}
 		}
 
 		// Enable support for multi edge on all relationship matrices.
-		_EnableMultiEdgeSupport(gc->g);
+		_EnableMultiEdgeSupport(g);
 
 		QueryCtx_Free(); // Release thread-local variables.
 		GraphDecodeContext_Reset(gc->decoding_context);

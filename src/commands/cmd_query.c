@@ -55,24 +55,38 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 							 ExecutionType exec_type) {
-	Index *idx = NULL;
-	const cypher_astnode_t *index_op = ast->root;
+	Index  *idx                         =  NULL;
+	int    res                          =  INDEX_OK;
+	const  cypher_astnode_t  *index_op  =  ast->root;
+	const  char              *prop      =  NULL;
+	const  char              *label     =  NULL;
+
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		// Retrieve strings from AST node
-		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
-														  index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
-															  index_op, 0));
+		label = cypher_ast_label_get_name(
+				cypher_ast_create_node_props_index_get_label(index_op));
+		prop = cypher_ast_prop_name_get_value(
+				cypher_ast_create_node_props_index_get_prop_name(index_op, 0));
+
 		QueryCtx_LockForCommit();
-		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) Index_Construct(idx);
+		{
+			res = GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH);
+			if(res == INDEX_OK) {
+				Index_Construct(idx);
+				Index_Populate(idx, gc->g);
+			}
+		}
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// Retrieve strings from AST node
-		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_props_index_get_prop_name(
-															  index_op, 0));
+		label = cypher_ast_label_get_name(
+				cypher_ast_drop_node_props_index_get_label(index_op));
+		prop = cypher_ast_prop_name_get_value(
+				cypher_ast_drop_node_props_index_get_prop_name(index_op, 0));
 		QueryCtx_LockForCommit();
-		int res = GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH);
+		{
+			res = GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH);
+		}
 		QueryCtx_UnlockCommit(NULL);
 
 		if(res != INDEX_OK) {

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../graph/graph.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/graph_entity.h"
 #include "redisearch_api.h"
@@ -22,7 +23,8 @@ typedef enum {
 } IndexType;
 
 typedef struct {
-	char *label;                // Indexed label.
+	char *label;                // Index label.
+	int label_id;               // Indexed label id.
 	char **fields;              // Indexed fields.
 	Attribute_ID *fields_ids;   // Indexed field IDs.
 	uint fields_count;          // Number of fields.
@@ -32,11 +34,11 @@ typedef struct {
 
 /**
  * @brief  Create a new index.
- * @param  *label: Indexed label
+ * @param  label_id: Indexed label
  * @param  type: Index type - exact match or full text.
  * @retval New constructed index for the label.
  */
-Index *Index_New(const char *label, IndexType type);
+Index *Index_New(const char *label, int label_id, IndexType type);
 
 /**
  * @brief  Adds field to index.
@@ -71,6 +73,13 @@ void Index_RemoveNode(Index *idx, const Node *n);
  * @param  *idx:
  */
 void Index_Construct(Index *idx);
+
+/**
+ * @brief Populate index.
+ * @param idx: index to populate
+ * @param g: graph indexed
+ */
+void Index_Populate(Index *idx, const Graph *g);
 
 /**
  * @brief  Query an index.
