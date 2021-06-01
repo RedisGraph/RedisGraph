@@ -39,6 +39,11 @@ bool QGEdge_VariableLength(const QGEdge *e) {
 	return (e->minHops != e->maxHops);
 }
 
+int QGEdge_RelationCount(const QGEdge *e) {
+	ASSERT(e);
+	return array_len(e->reltypes);
+}
+
 void QGEdge_Reverse(QGEdge *e) {
 	QGNode *src = e->src;
 	QGNode *dest = e->dest;
@@ -60,7 +65,7 @@ int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
 	offset += snprintf(buff + offset, buff_len - offset, "[");
 
 	if(e->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
-	uint reltype_count = array_len(e->reltypes);
+	uint reltype_count = QGEdge_RelationCount(e);
 	for(uint i = 0; i < reltype_count; i ++) {
 		// Multiple relationship types are printed separated by pipe characters
 		if(i > 0) offset += snprintf(buff + offset, buff_len - offset, "|");

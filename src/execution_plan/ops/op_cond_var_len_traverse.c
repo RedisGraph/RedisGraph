@@ -18,7 +18,7 @@
 static OpResult CondVarLenTraverseInit(OpBase *opBase);
 static OpResult CondVarLenTraverseReset(OpBase *opBase);
 static Record CondVarLenTraverseConsume(OpBase *opBase);
-static Record CondVarLenTraverseSimpleConsume(OpBase *opBase);
+static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase);
 static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
 
@@ -28,7 +28,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
 	op->minHops = e->minHops;
 	op->maxHops = e->maxHops;
 
-	uint reltype_count = array_len(e->reltypeIDs);
+	uint reltype_count = QGEdge_RelationCount(e);
 	if(reltype_count == 0) {
 		op->edgeRelationCount = 1;
 		op->edgeRelationTypes = array_new(int, 1);
@@ -90,6 +90,40 @@ inline void CondVarLenTraverseOp_SetFilter(CondVarLenTraverse *op,
 	op->ft = ft;
 }
 
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+	ASSERT(g != NULL);
+	ASSERT(ae != NULL);
+
+	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
+	op->g = g;
+	op->ae = ae;
+	op->r = NULL;
+	op->ft = NULL;
+	op->M = GrB_NULL;
+	op->expandInto = false;
+	op->allPathsCtx = NULL;
+	op->collect_paths = true;
+	op->edgeRelationTypes = NULL;
+
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
+				"Conditional Variable Length Traverse", CondVarLenTraverseInit,
+				CondVarLenTraverseConsume, CondVarLenTraverseReset,
+				CondVarLenTraverseToString, CondVarLenTraverseClone,
+				CondVarLenTraverseFree, false, plan);
+
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	ASSERT(aware);
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
+
+	// populate edge value in record only if it is referenced
+	AST *ast = QueryCtx_GetAST();
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
+	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
+	_setTraverseDirection(op, e);
+
+	return (OpBase *)op;
+}
+
 static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 
@@ -111,7 +145,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
 			AlgebraicExpression_Edge(op->ae));
-	uint reltype_count = array_len(e->reltypeIDs);
+	uint reltype_count = QGEdge_RelationCount(e);
 
 	if(op->ft          == NULL                && // no filter on path
 	   op->edgesIdx    == -1                  && // edge isn't required
@@ -122,52 +156,20 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 		AlgebraicExpression_Optimize(&op->ae);
 		ASSERT(op->ae->type == AL_OPERAND);
 		op->collect_paths = false;
-		OpBase_UpdateConsume(opBase, CondVarLenTraverseSimpleConsume);
+		OpBase_UpdateConsume(opBase, CondVarLenTraverseOptimizedConsume);
 	}
 
 	return OP_OK;
 }
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	ASSERT(g != NULL);
-	ASSERT(ae != NULL);
-
-	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
-	op->g = g;
-	op->ae = ae;
-	op->r = NULL;
-	op->ft = NULL;
-	op->M = GrB_NULL;
-	op->expandInto = false;
-	op->allPathsCtx = NULL;
-	op->collect_paths = true;
-	op->edgeRelationTypes = NULL;
-
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-				"Conditional Variable Length Traverse", CondVarLenTraverseInit, CondVarLenTraverseConsume,
-				CondVarLenTraverseReset,
-				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
-
-	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
-	ASSERT(aware);
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
-
-	// populate edge value in record only if it is referenced
-	AST *ast = QueryCtx_GetAST();
-	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
-	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
-	_setTraverseDirection(op, e);
-
-	return (OpBase *)op;
-}
-
-static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
+static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 	CondVarLenTraverse  *op     = (CondVarLenTraverse *)opBase;
 	OpBase              *child  =  op->op.children[0];
 	Node                dest    =  GE_NEW_NODE();
 	EntityID            dest_id =  INVALID_ENTITY_ID;
 
-	while((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) == INVALID_ENTITY_ID) {
+	while ((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) ==
+			INVALID_ENTITY_ID) {
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
@@ -176,20 +178,22 @@ static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
 
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		if(srcNode == NULL) {
-			/* The child Record may not contain the source node in scenarios like
-			 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+			// the child Record may not contain the source node
+			// in scenarios like a failed OPTIONAL MATCH
+			// in this case, delete the Record and try again
 			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
 			continue;
 		}
 
-		// create edge relation type array on first call to consume.
+		// create edge relation type array on first call to consume
 		if(!op->edgeRelationTypes) {
 			_setupTraversedRelations(op);
-			/* Incase we don't have any relations to traverse and minimal traversal is at least one hop
-			 * we can return quickly.
-			 * Consider: MATCH (S)-[:L*]->(M) RETURN M
-			 * where label L does not exists. */
+			// incase we don't have any relations to traverse
+			// and minimal traversal is at least one hop
+			// we can return quickly
+			// consider: MATCH (S)-[:L*]->(M) RETURN M
+			// where label L does not exists */
 			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
 
 			op->M = op->ae->operand.matrix;
@@ -202,6 +206,7 @@ static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
 												  op->maxHops);
 	}
 
+	// could not produce destination node, return
 	if(dest_id == INVALID_ENTITY_ID) return NULL;
 
 	ASSERT(Graph_GetNode(op->g, dest_id, &dest) == true);
@@ -210,9 +215,8 @@ static Record CondVarLenTraverseSimpleConsume(OpBase *opBase) {
 	// populate output record
 	//--------------------------------------------------------------------------
 
-	Record r = OpBase_CloneRecord(op->r);
-
 	// add destination node to record
+	Record r = OpBase_CloneRecord(op->r);
 	Record_AddNode(r, op->destNodeIdx, dest);
 
 	return r;

@@ -33,6 +33,9 @@ QGEdge *QGEdge_Clone(const QGEdge *orig);
 /* Determine whether this is a variable length edge. */
 bool QGEdge_VariableLength(const QGEdge *e);
 
+/* Number of relationships associated with edge. */
+int QGEdge_RelationCount(const QGEdge *e);
+
 /* Reverse edge direction. */
 void QGEdge_Reverse(QGEdge *e);
 

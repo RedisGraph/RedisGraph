@@ -18,16 +18,16 @@ typedef struct {
 	Graph *g;
 	Record r;
 	GrB_Matrix M;                          /* Traversed matrix if using the SimpleConsume routine. */
-	FT_FilterNode *ft;                     /* If not NULL, FilterTree applied to traversed edge. */
-	AlgebraicExpression *ae;               /* ArithmeticExpression describing op's traversal pattern. */
-	int srcNodeIdx;                        /* Node set by operation. */
 	int edgesIdx;                          /* Edges set by operation. */
+	int srcNodeIdx;                        /* Node set by operation. */
 	int destNodeIdx;                       /* Node set by operation. */
 	bool expandInto;                       /* Both src and dest already resolved. */
+	FT_FilterNode *ft;                     /* If not NULL, FilterTree applied to traversed edge. */
 	unsigned int minHops;                  /* Maximum number of hops to perform. */
 	unsigned int maxHops;                  /* Maximum number of hops to perform. */
 	int edgeRelationCount;                 /* Length of edgeRelationTypes. */
 	int *edgeRelationTypes;                /* Relation(s) we're traversing. */
+	AlgebraicExpression *ae;               /* ArithmeticExpression describing op's traversal pattern. */
 	union {
 		AllPathsCtx *allPathsCtx;          /* Context for collecting all paths. */
 		AllNeighborsCtx *allNeighborsCtx;  /* Context for collecting all neighbors . */
