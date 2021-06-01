@@ -325,8 +325,10 @@ TEST_F(GraphTest, NewGraph) {
 	ASSERT_TRUE(g->labels != NULL);
 	ASSERT_TRUE(g->adjacency_matrix != NULL);
 	ASSERT_EQ(Graph_NodeCount(g), 0);
-	ASSERT_EQ(nrows, GRAPH_DEFAULT_NODE_CAP);
-	ASSERT_EQ(ncols, GRAPH_DEFAULT_NODE_CAP);
+
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+	ASSERT_EQ(nrows, n);
+	ASSERT_EQ(ncols, n);
 	ASSERT_EQ(nvals, 0);
 
 	Graph_ReleaseLock(g);
