@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -81,7 +81,7 @@ static inline bool _Config_ParseInteger(const char *integer_str, long long *valu
 	char *endptr;
 	errno = 0;    // To distinguish success/failure after call
 	*value = strtoll(integer_str, &endptr, 10);
-		
+
 	// Return an error code if integer parsing fails.
 	return (errno == 0 && endptr != integer_str && *endptr == '\0');
 }
@@ -720,7 +720,7 @@ bool Config_Option_get(Config_Option_Field field, ...) {
         // invalid option
         //----------------------------------------------------------------------
 
-        default : 
+        default :
 			ASSERT("invalid option field" && false);
 			return false;
     }

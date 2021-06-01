@@ -32,8 +32,8 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
  * of data blocks and matrices since they are all in the appropriate size. */
 static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge_count,
 									uint64_t label_count,  uint64_t relation_count) {
-	DataBlock_Accommodate(g->nodes, node_count);
-	DataBlock_Accommodate(g->edges, edge_count);
+	Graph_AllocateNodes(g, node_count);
+	Graph_AllocateEdges(g, edge_count);
 	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 }
@@ -73,7 +73,8 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
 	Graph *g = gc->g;
-	// If it is the first key of this graph, allocate all the data structures, with the appropriate dimensions.
+	// If it is the first key of this graph, allocate all the data structures,
+	// with the appropriate dimensions
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
 
