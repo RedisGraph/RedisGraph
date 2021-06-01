@@ -103,11 +103,13 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 		gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
+		Graph_AcquireWriteLock(gc->g);
 		GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
 		GraphContext_AddSchema(gc, "City", SCHEMA_NODE);
 		GraphContext_AddSchema(gc, "friend", SCHEMA_EDGE);
 		GraphContext_AddSchema(gc, "visit", SCHEMA_EDGE);
 		GraphContext_AddSchema(gc, "war", SCHEMA_EDGE);
+		Graph_ReleaseLock(gc->g);
 
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);

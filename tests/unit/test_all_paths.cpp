@@ -43,6 +43,7 @@ class AllPathsTest : public ::testing::Test {
 		Node n;
 		size_t nodeCount = 4;
 		Graph *g = Graph_New(nodeCount, nodeCount);
+		Graph_AcquireWriteLock(g);
 		int relation = Graph_AddRelationType(g);
 		for(int i = 0; i < 4; i++)
 			Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
@@ -71,6 +72,7 @@ class AllPathsTest : public ::testing::Test {
 		Graph_ConnectNodes(g, 2, 3, relation, &e);
 		// 3 -> 0
 		Graph_ConnectNodes(g, 3, 0, relation, &e);
+		Graph_ReleaseLock(g);
 		return g;
 	}
 

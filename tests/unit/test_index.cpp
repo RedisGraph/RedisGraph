@@ -49,7 +49,9 @@ class IndexTest: public ::testing::Test {
 		gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 		gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
+		Graph_AcquireWriteLock(gc->g);
 		GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
+		Graph_ReleaseLock(gc->g);
 
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
