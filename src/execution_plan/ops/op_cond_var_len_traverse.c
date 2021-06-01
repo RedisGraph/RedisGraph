@@ -138,7 +138,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	// for this we require:
 	// 1. no filters to be applied to pattern
 	// 2. traversed edge isn't referenced
-	// 3. traversal of a single relationship: R, RT, ADJ, ADJT
+	// 3. traversal of a single relationship: R, RT
 	// 4. traversal must be directed
 	//
 	// in which case we can use a faster consume function
@@ -147,10 +147,19 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 			AlgebraicExpression_Edge(op->ae));
 	uint reltype_count = QGEdge_RelationCount(e);
 
+	bool multi_edge = true;
+	if(reltype_count == 1) {
+		int rel_id = QGEdge_RelationID(e, 0);
+		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
+			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id);
+		}
+	}
+
 	if(op->ft          == NULL                && // no filter on path
 	   op->edgesIdx    == -1                  && // edge isn't required
 	   op->expandInto  == false               && // destination unknown
-	   reltype_count   <= 1                   && // at most one relationship
+	   reltype_count   == 1                   && // single relationship
+	   multi_edge      == false               && // no multi edge entries
 	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
 	) {
 		AlgebraicExpression_Optimize(&op->ae);
@@ -209,7 +218,9 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 	// could not produce destination node, return
 	if(dest_id == INVALID_ENTITY_ID) return NULL;
 
-	ASSERT(Graph_GetNode(op->g, dest_id, &dest) == true);
+	int res = Graph_GetNode(op->g, dest_id, &dest);
+	UNUSED(res);
+	ASSERT(res == true);
 
 	//--------------------------------------------------------------------------
 	// populate output record

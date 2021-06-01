@@ -36,6 +36,9 @@ bool QGEdge_VariableLength(const QGEdge *e);
 /* Number of relationships associated with edge. */
 int QGEdge_RelationCount(const QGEdge *e);
 
+// Return relationship id for relation at position 'idx'
+int QGEdge_RelationID(const QGEdge *e, int idx);
+
 /* Reverse edge direction. */
 void QGEdge_Reverse(QGEdge *e);
 

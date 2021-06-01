@@ -1418,7 +1418,8 @@ bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	ASSERT(Graph_RelationTypeCount(g) > r);
 	GrB_Index nvals;
 	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
-	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[r]));
+	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
+	GrB_Matrix_nvals(&nvals, R);
 
 	return (GraphStatistics_EdgeCount(&g->stats, r) > nvals);
 }

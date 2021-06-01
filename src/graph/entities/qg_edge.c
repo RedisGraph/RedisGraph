@@ -44,6 +44,11 @@ int QGEdge_RelationCount(const QGEdge *e) {
 	return array_len(e->reltypes);
 }
 
+int QGEdge_RelationID(const QGEdge *e, int idx) {
+	ASSERT(e != NULL && idx < QGEdge_RelationCount(e));
+	return e->reltypeIDs[idx];
+}
+
 void QGEdge_Reverse(QGEdge *e) {
 	QGNode *src = e->src;
 	QGNode *dest = e->dest;
