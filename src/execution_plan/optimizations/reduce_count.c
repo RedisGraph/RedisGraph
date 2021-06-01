@@ -233,7 +233,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 				// No change to current count, -[:none_existing]->
 				break;
 			default:
-				edges += _countRelationshipEdges(Graph_GetRelationMatrix(g, relType));
+				edges += GraphStatistics_EdgeCount(&g->stats, relType);
 		}
 	}
 	edgeCount = SI_LongVal(edges);
