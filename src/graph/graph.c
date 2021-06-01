@@ -394,8 +394,8 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->_t_adjacency_matrix  =  RG_Matrix_New(g, GrB_BOOL);
 	g->_zero_matrix         =  RG_Matrix_New(g, GrB_BOOL);
 
-  // init graph statistics
-  GraphStatistics_init(&g->stats);
+	// init graph statistics
+	GraphStatistics_init(&g->stats);
 
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
 	bool maintain_transpose;
@@ -1356,7 +1356,7 @@ int Graph_AddLabel(Graph *g) {
 	UNUSED(info);
 	ASSERT(info == GrB_SUCCESS);
 
-	array_append(g->labels, m);
+	g->labels = array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
