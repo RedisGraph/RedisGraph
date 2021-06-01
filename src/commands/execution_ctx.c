@@ -6,6 +6,7 @@
 
 #include "execution_ctx.h"
 #include "RG.h"
+#include "../errors.h"
 #include "../query_ctx.h"
 #include "../execution_plan/execution_plan_clone.h"
 
@@ -71,10 +72,8 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	cypher_parse_result_t *params_parse_result = parse_params(query,
 															  &query_string);
 
-	if(params_parse_result == NULL) {
-		// Parameter parsing failed, return an invalid context.
-		return _ExecutionCtx_New(NULL, NULL, EXECUTION_TYPE_INVALID);
-	}
+	// Parameter parsing failed, return NULL.
+	if(params_parse_result == NULL) return NULL;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);
@@ -90,13 +89,20 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 	// No cached execution plan, try to parse the query.
 	AST *ast = _ExecutionCtx_ParseAST(query_string, params_parse_result);
-	// If query parsing failed, return an invalid context.
-	if(!ast) return _ExecutionCtx_New(NULL, NULL, EXECUTION_TYPE_INVALID);
+	// If query parsing failed, return NULL.
+	if(!ast) return NULL;
 
 	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
 	// In case of valid query, create execution plan, and cache it and the AST.
 	if(exec_type == EXECUTION_TYPE_QUERY) {
 		ExecutionPlan *plan = NewExecutionPlan();
+		if(ErrorCtx_EncounteredError()) {
+			// Encountered an error in ExecutionPlan construction,
+			// clean up and return NULL.
+			AST_Free(ast);
+			ExecutionPlan_Free(plan);
+			return NULL;
+		}
 		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan,
 															exec_type);
 		ExecutionCtx *exec_ctx_from_cache = Cache_SetGetValue(cache,

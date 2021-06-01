@@ -42,7 +42,7 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 // 'map' must have enough space to contain all of set-expressions
 // defined in 'ast_map'
 static void _ConstructPropertyMap(PropertySetCtx *map, uint map_size,
-		GraphContext *gc, const cypher_astnode_t *ast_map) {
+								  GraphContext *gc, const cypher_astnode_t *ast_map) {
 	AR_ExpNode *exp;
 	const char *attribute;
 	Attribute_ID attribute_id;
@@ -61,15 +61,25 @@ static void _ConstructPropertyMap(PropertySetCtx *map, uint map_size,
 		// property value
 		ast_val  = cypher_ast_map_get_value(ast_map, i);
 		exp      = AR_EXP_FromASTNode(ast_val);
-		map[i]   = (PropertySetCtx) { .id = attribute_id, .exp = exp };
+		map[i]   = (PropertySetCtx) {
+			.id = attribute_id,
+			.exp = exp
+		};
 	}
 }
 
 static void _UpdateCtx_AddPropertyMap(GraphContext *gc, EntityUpdateEvalCtx *ctx,
-		const cypher_astnode_t *ast_map) {
+									  const cypher_astnode_t *ast_map, MAP_TYPE type,
+									  const char *identifier) {
 	ASSERT(gc       !=  NULL);
 	ASSERT(ctx      !=  NULL);
 	ASSERT(ast_map  !=  NULL);
+
+	ctx->type = type;
+	if(type != MAP_LITERAL) {
+		ctx->identifier = identifier;
+		return;
+	}
 
 	// find out number of entries in map
 	uint count = cypher_ast_map_nentries(ast_map);
@@ -78,6 +88,7 @@ static void _UpdateCtx_AddPropertyMap(GraphContext *gc, EntityUpdateEvalCtx *ctx
 	_ConstructPropertyMap(map, count, gc, ast_map);
 
 	// merge map into entity update eval context
+	if(ctx->properties == NULL) ctx->properties = array_new(PropertySetCtx, count);
 	for(uint i = 0; i < count; i ++) {
 		ctx->properties = array_append(ctx->properties, map[i]);
 	}
@@ -98,7 +109,12 @@ static void _Update_MergePropertyMap(GraphContext *gc, rax *updates,
 
 	// Property map
 	const cypher_astnode_t *ast_map = cypher_ast_merge_properties_get_expression(set_item);
-	if(cypher_astnode_type(ast_map) != CYPHER_AST_MAP) {
+	const cypher_astnode_type_t type = cypher_astnode_type(ast_map);
+	MAP_TYPE map_type = MAP_UNKNOWN;
+	if(type == CYPHER_AST_MAP) map_type = MAP_LITERAL;
+	else if(type == CYPHER_AST_IDENTIFIER) map_type = MAP_ALIAS;
+	else if(type == CYPHER_AST_PARAMETER) map_type = MAP_PARAMETER;
+	if(map_type == MAP_UNKNOWN) {
 		// TODO introduce support for queries like:
 		// MATCH (a {v: 1}), (b {v: 2}) SET a += b
 		ErrorCtx_SetError("RedisGraph does not currently support assigning graph entities to non-map values.");
@@ -109,13 +125,20 @@ static void _Update_MergePropertyMap(GraphContext *gc, rax *updates,
 	int len = strlen(alias);
 	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
-		uint count = cypher_ast_map_nentries(ast_map);
+		uint count = (map_type != MAP_LITERAL) ? 0 : cypher_ast_map_nentries(ast_map);
 		ctx = UpdateCtx_New(UPDATE_MERGE, count, alias);
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	}
 
+	const char *rhs_identifier = NULL;
+	if(map_type == MAP_ALIAS) {
+		rhs_identifier = cypher_ast_identifier_get_name(ast_map);
+	} else if(map_type == MAP_PARAMETER) {
+		rhs_identifier = cypher_ast_parameter_get_name(ast_map);
+	}
+
 	// add all properties to update context
-	_UpdateCtx_AddPropertyMap(gc, ctx, ast_map);
+	_UpdateCtx_AddPropertyMap(gc, ctx, ast_map, map_type, rhs_identifier);
 }
 
 // Replace existing properties with the given map
@@ -133,7 +156,12 @@ static void _Update_SetPropertyMap(GraphContext *gc, rax *updates,
 	// Property map
 	const cypher_astnode_t *ast_map =
 		cypher_ast_set_all_properties_get_expression(set_item);
-	if(cypher_astnode_type(ast_map) != CYPHER_AST_MAP) {
+	const cypher_astnode_type_t type = cypher_astnode_type(ast_map);
+	MAP_TYPE map_type = MAP_UNKNOWN;
+	if(type == CYPHER_AST_MAP) map_type = MAP_LITERAL;
+	else if(type == CYPHER_AST_IDENTIFIER) map_type = MAP_ALIAS;
+	else if(type == CYPHER_AST_PARAMETER) map_type = MAP_PARAMETER;
+	if(map_type == MAP_UNKNOWN) {
 		// TODO introduce support for queries like:
 		// MATCH (a {v: 1}), (b {v: 2}) SET a = b
 		ErrorCtx_SetError("RedisGraph does not currently support assigning graph entities to non-map values.");
@@ -144,7 +172,7 @@ static void _Update_SetPropertyMap(GraphContext *gc, rax *updates,
 	int len = strlen(alias);
 	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
 	if(ctx == raxNotFound) {
-		uint count = cypher_ast_map_nentries(ast_map);
+		uint count = (map_type != MAP_LITERAL) ? 0 : cypher_ast_map_nentries(ast_map);
 		ctx = UpdateCtx_New(UPDATE_REPLACE, count, alias);
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
 	} else {
@@ -153,12 +181,19 @@ static void _Update_SetPropertyMap(GraphContext *gc, rax *updates,
 		UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
 	}
 
+	const char *rhs_identifier = NULL;
+	if(map_type == MAP_ALIAS) {
+		rhs_identifier = cypher_ast_identifier_get_name(ast_map);
+	} else if(map_type == MAP_PARAMETER) {
+		rhs_identifier = cypher_ast_parameter_get_name(ast_map);
+	}
+
 	// add all properties to update context
-	_UpdateCtx_AddPropertyMap(gc, ctx, ast_map);
+	_UpdateCtx_AddPropertyMap(gc, ctx, ast_map, map_type, rhs_identifier);
 }
 
 static void _UpdateCtx_AddProperty(GraphContext *gc, EntityUpdateEvalCtx *ctx,
-		const cypher_astnode_t *set_item) {
+								   const cypher_astnode_t *set_item) {
 	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
 
 	// Property name
@@ -171,12 +206,13 @@ static void _UpdateCtx_AddProperty(GraphContext *gc, EntityUpdateEvalCtx *ctx,
 	AR_ExpNode *exp = AR_EXP_FromASTNode(ast_val);
 
 	PropertySetCtx update = { .id  = attribute_id, .exp = exp };
+	if(ctx->properties == NULL) ctx->properties = array_new(PropertySetCtx, 1);
 	ctx->properties = array_append(ctx->properties, update);
 }
 
 // Set a single property
 static void _Update_SetProperty(GraphContext *gc, rax *updates,
-		const cypher_astnode_t *set_item) {
+								const cypher_astnode_t *set_item) {
 	// The SET_ITEM contains the entity alias and property key being set
 	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
 
@@ -359,7 +395,7 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 //------------------------------------------------------------------------------
 
 rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
-	rax *updates = raxNew(); // entity alias -> EntityUpdateEvalCtx 
+	rax *updates = raxNew(); // entity alias -> EntityUpdateEvalCtx
 	uint nitems = cypher_ast_set_nitems(set_clause);
 
 	for(uint i = 0; i < nitems; i++) {

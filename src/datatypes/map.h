@@ -82,6 +82,17 @@ SIValue *Map_Keys
 	SIValue map  // map to extract keys from
 );
 
+// populate the key and value pointers with
+// the map contents at the indicated index,
+// returning true if the index was not out of bounds.
+bool Map_GetIdx
+(
+	const SIValue map,
+	uint idx,
+	SIValue *key,
+	SIValue *value
+);
+
 // compare two maps
 // if map lengths are not equal, the map with the greater length is
 // considered greater
@@ -125,3 +136,4 @@ void Map_Free
 (
 	SIValue map  // map to free
 );
+

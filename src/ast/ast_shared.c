@@ -120,8 +120,9 @@ EntityUpdateEvalCtx *UpdateCtx_New(UPDATE_MODE mode, uint prop_count, const char
 	EntityUpdateEvalCtx *ctx = rm_malloc(sizeof(EntityUpdateEvalCtx));
 	ctx->mode = mode;
 	ctx->alias = alias;
+	ctx->type = MAP_LITERAL;
 	ctx->record_idx = INVALID_INDEX;
-	ctx->properties = array_new(PropertySetCtx, prop_count);
+	ctx->properties = (prop_count == 0) ? NULL : array_new(PropertySetCtx, prop_count);
 
 	return ctx;
 }
@@ -131,14 +132,19 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 	clone->mode = orig->mode;
 	clone->alias = orig->alias;
 	clone->record_idx = orig->record_idx;
-	uint count = array_len(orig->properties);
-	clone->properties = array_new(PropertySetCtx, count);
-	for(uint i = 0; i < count; i ++) {
-		PropertySetCtx update = {
-			.id = orig->properties[i].id,
-			.exp = AR_EXP_Clone(orig->properties[i].exp),
-		};
-		clone->properties = array_append(clone->properties, update);
+	clone->type = orig->type;
+	if(clone->type == MAP_ALIAS || clone->type == MAP_PARAMETER) {
+		clone->identifier = orig->identifier;
+	} else {
+		uint count = array_len(orig->properties);
+		clone->properties = array_new(PropertySetCtx, count);
+		for(uint i = 0; i < count; i ++) {
+			PropertySetCtx update = {
+				.id = orig->properties[i].id,
+				.exp = AR_EXP_Clone(orig->properties[i].exp),
+			};
+			clone->properties = array_append(clone->properties, update);
+		}
 	}
 
 	return clone;
@@ -156,9 +162,11 @@ void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx) {
 }
 
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx) {
-	uint count = array_len(ctx->properties);
-	for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
-	array_free(ctx->properties);
+	if(ctx->type == MAP_LITERAL && ctx->properties) {
+		uint count = array_len(ctx->properties);
+		for(uint i = 0; i < count; i ++) AR_EXP_Free(ctx->properties[i].exp);
+		array_free(ctx->properties);
+	}
 	rm_free(ctx);
 }
 
