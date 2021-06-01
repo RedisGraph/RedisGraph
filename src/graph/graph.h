@@ -12,6 +12,7 @@
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
+#include "graph_statistics.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -77,6 +78,7 @@ struct Graph {
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
+	GraphStatistics stats;              // Graph related statistics.
 };
 
 /* Graph synchronization functions
@@ -321,6 +323,9 @@ GrB_Matrix Graph_GetRelationMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
 	int relation        // Relation described by matrix.
 );
+
+// Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise.
+bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r);
 
 // Retrieves a transposed typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
