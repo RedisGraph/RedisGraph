@@ -134,7 +134,7 @@ static inline void _RG_Matrix_Unlock(RG_Matrix matrix) {
 	pthread_mutex_unlock(&matrix->mutex);
 }
 
-static inline bool _RG_Matrix_MultiEdgeEnabled(RG_Matrix matrix) {
+static inline bool _RG_Matrix_MultiEdgeEnabled(const RG_Matrix matrix) {
 	return matrix->allow_multi_edge;
 }
 
@@ -429,6 +429,9 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->_t_adjacency_matrix  =  RG_Matrix_New(g, GrB_BOOL);
 	g->_zero_matrix         =  RG_Matrix_New(g, GrB_BOOL);
 
+  // init graph statistics
+  GraphStatistics_init(&g->stats);
+
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
@@ -658,6 +661,9 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 	_Graph_SetRelationMatrixDirty(g, r);
 	_Graph_SetAdjacencyMatrixDirty(g);
 
+	// An edge of type r has just been created, update statistics.
+	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
+
 	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
 	if(_RG_Matrix_MultiEdgeEnabled(M)) {
 		GrB_Index I = src;
@@ -812,6 +818,9 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	// Test to see if edge exists.
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 	if(info != GrB_SUCCESS) return 0;
+
+	// An edge of type r has just been deleted, update statistics.
+	GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
 	if(SINGLE_EDGE(edge_id)) {
 		// Single edge of type R connecting src to dest, delete entry.
@@ -1055,11 +1064,18 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		 * A will contain all implicitly deleted edges from R. */
 		GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 
+		// Clear the relation matrix.
+		uint64_t edges_before_deletion = Graph_EdgeCount(g);
 		/* Free each multi edge array entry in A
 		 * Call _select_op_free_edge on each entry of A. */
 		GxB_select(A, GrB_NULL, GrB_NULL, _select_delete_edges, A, thunk, GrB_NULL);
 
-		// Clear the relation matrix.
+		// The number of deleted edges is equals the diff in the number of items in the DataBlock
+		uint64_t n_deleted_edges = edges_before_deletion - Graph_EdgeCount(g);
+		// Multiple edges of type r has just been deleted, update statistics
+		GraphStatistics_DecEdgeCount(&g->stats, i, n_deleted_edges);
+
+		// clear the relation matrix
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
 
 		// Remove every entry of R marked by Mask.
@@ -1152,6 +1168,9 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 		GrB_Matrix TR = maintain_transpose ? Graph_GetTransposedRelationMatrix(g, r) : NULL;
 		GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
+
+		// An edge of type r has just been deleted, update statistics.
+		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
 		if(SINGLE_EDGE(edge_id)) {
 			update_adj_matrices = true;
@@ -1345,6 +1364,8 @@ int Graph_AddRelationType(Graph *g) {
 
 	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
 	g->relations = array_append(g->relations, m);
+	// Adding a new relationship type, update the stats structures to support it.
+	GraphStatistics_IntroduceRelationship(&g->stats);
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 
@@ -1391,6 +1412,16 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
 	}
 }
 
+// Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise
+bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
+	ASSERT(Graph_RelationTypeCount(g) > r);
+	GrB_Index nvals;
+	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
+	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[r]));
+
+	return (GraphStatistics_EdgeCount(&g->stats, r) > nvals);
+}
+
 GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
 	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
 
@@ -1429,6 +1460,7 @@ void Graph_Free(Graph *g) {
 	_Graph_FreeRelationMatrices(g);
 	array_free(g->relations);
 	array_free(g->t_relations);
+	GraphStatistics_FreeInternals(&g->stats);
 
 	uint32_t labelCount = array_len(g->labels);
 	for(int i = 0; i < labelCount; i++) {
