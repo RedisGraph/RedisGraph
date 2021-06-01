@@ -1,6 +1,6 @@
 # BUILD redisfab/redisgraph:${VERSION}-${ARCH}-${OSNICK}
 
-ARG REDIS_VER=6.0.9
+ARG REDIS_VER=6.2.3
 
 # OSNICK=bionic|stretch|buster
 ARG OSNICK=buster
