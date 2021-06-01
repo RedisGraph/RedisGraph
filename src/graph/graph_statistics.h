@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include "../util/arr.h"
 
-/* Graph related statistics */
+// Graph related statistics
 
 typedef struct {
 	uint64_t *edge_count; // Array of edge count per relationship matrix
@@ -22,19 +22,19 @@ void GraphStatistics_init(GraphStatistics *stats);
 void GraphStatistics_IntroduceRelationship(GraphStatistics *stats);
 
 // Increment the edge counter by amount
-static inline void GraphStatistics_IncEdgeCounter(GraphStatistics *stats, int relation_idx, uint64_t amount) {
+static inline void GraphStatistics_IncEdgeCount(GraphStatistics *stats, int relation_idx, uint64_t amount) {
     ASSERT(relation_idx < array_len(stats->edge_count));
     stats->edge_count[relation_idx] += amount;
 }
 
 // Decrement the edge counter by amount
-static inline void GraphStatistics_DecEdgeCounter(GraphStatistics *stats, int relation_idx, uint64_t amount) {
+static inline void GraphStatistics_DecEdgeCount(GraphStatistics *stats, int relation_idx, uint64_t amount) {
     ASSERT(relation_idx < array_len(stats->edge_count) && stats->edge_count[relation_idx] >= amount);
     stats->edge_count[relation_idx] -= amount;
 }
 
-// edge_count getter
-uint64_t GraphStatistics_EdgeCount(GraphStatistics *stats, int relation_idx);
+// Retrieves edge count for given relationship type
+uint64_t GraphStatistics_EdgeCount(const GraphStatistics *stats, int relation_idx);
 
 // Free the internal structures.
 void GraphStatistics_FreeInternals(GraphStatistics *stats);

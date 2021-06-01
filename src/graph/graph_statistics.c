@@ -17,12 +17,12 @@ void GraphStatistics_IntroduceRelationship(GraphStatistics *stats) {
     stats->edge_count = array_append(stats->edge_count, 0);
 }
 
+uint64_t GraphStatistics_EdgeCount(const GraphStatistics *stats, int relation_idx) {
+    ASSERT(relation_idx < array_len(stats->edge_count));
+    return stats->edge_count[relation_idx];
+}
+
 void GraphStatistics_FreeInternals(GraphStatistics *stats) {
     ASSERT(stats);
     if(stats->edge_count) array_free(stats->edge_count);
-}
-
-uint64_t GraphStatistics_EdgeCount(GraphStatistics *stats, int relation_idx) {
-    ASSERT(relation_idx < array_len(stats->edge_count));
-    return stats->edge_count[relation_idx];
 }
