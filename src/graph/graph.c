@@ -215,15 +215,6 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 	}
 }
 
-// Tests if there's an edge of type r between src and dest nodes.
-bool Graph_EdgeExists(const Graph *g, NodeID srcID, NodeID destID, int r) {
-	ASSERT(g);
-	EdgeID edgeId;
-	GrB_Matrix M = Graph_GetRelationMatrix(g, r);
-	GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, M, destID, srcID);
-	return res == GrB_SUCCESS;
-}
-
 static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
 	return DataBlock_GetItem(entities, id);
 }
@@ -403,8 +394,8 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->_t_adjacency_matrix  =  RG_Matrix_New(g, GrB_BOOL);
 	g->_zero_matrix         =  RG_Matrix_New(g, GrB_BOOL);
 
-  // init graph statistics
-  GraphStatistics_init(&g->stats);
+	// init graph statistics
+	GraphStatistics_init(&g->stats);
 
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
 	bool maintain_transpose;
@@ -1365,7 +1356,7 @@ int Graph_AddLabel(Graph *g) {
 	UNUSED(info);
 	ASSERT(info == GrB_SUCCESS);
 
-	array_append(g->labels, m);
+	g->labels = array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
@@ -1427,7 +1418,8 @@ bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	ASSERT(Graph_RelationTypeCount(g) > r);
 	GrB_Index nvals;
 	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
-	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[r]));
+	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
+	GrB_Matrix_nvals(&nvals, R);
 
 	return (GraphStatistics_EdgeCount(&g->stats, r) > nvals);
 }
