@@ -420,6 +420,9 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->_t_adjacency_matrix  =  RG_Matrix_New(g, GrB_BOOL);
 	g->_zero_matrix         =  RG_Matrix_New(g, GrB_BOOL);
 
+  // init graph statistics
+  GraphStatistics_init(&g->stats);
+
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
@@ -1405,8 +1408,7 @@ bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	ASSERT(Graph_RelationTypeCount(g) > r);
 	GrB_Index nvals;
 	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
-	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix_nvals(&nvals, R);
+	GrB_Matrix_nvals(&nvals, RG_Matrix_Get_GrB_Matrix(g->relations[r]));
 
 	return (GraphStatistics_EdgeCount(&g->stats, r) > nvals);
 }
