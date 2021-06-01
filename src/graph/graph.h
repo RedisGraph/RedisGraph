@@ -279,16 +279,6 @@ void Graph_GetEdgesConnectingNodes(
 	Edge **edges        // array_t of edges connecting src to dest of type r.
 );
 
-// Checks if src is connected to dest via edge of type r
-// set r to GRAPH_NO_RELATION if you do not care
-// about edge type.
-bool Graph_EdgeExists(
-	const Graph *g,     // Graph to get edges from.
-	NodeID srcID,       // Source node of edge
-	NodeID destID,      // Destination node of edge
-	int r               // Edge type.
-);
-
 // Get node edges.
 void Graph_GetNodeEdges(
 	const Graph *g,         // Graph to get edges from.

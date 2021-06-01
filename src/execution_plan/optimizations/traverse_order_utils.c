@@ -26,11 +26,13 @@ int TraverseOrder_LabelsScore(AlgebraicExpression *exp, const QueryGraph *qg) {
 	QGNode      *dest_node  =  QueryGraph_GetNodeByAlias(qg, dest);
 
 	score += QGNode_LabelCount(src_node);
+	score += QGNode_LabelCount(dest_node);
 
+	// TODO: re-enable, see https://github.com/RedisGraph/RedisGraph/issues/1742
 	// consider 'dest' only if different than 'src'
-	if(RG_STRCMP(src, dest) != 0) {
-		score += QGNode_LabelCount(dest_node);
-	}
+	//if(RG_STRCMP(src, dest) != 0) {
+	//	score += QGNode_LabelCount(dest_node);
+	//}
 
 	return score;
 }
