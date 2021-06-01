@@ -420,9 +420,6 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->_t_adjacency_matrix  =  RG_Matrix_New(g, GrB_BOOL);
 	g->_zero_matrix         =  RG_Matrix_New(g, GrB_BOOL);
 
-	// init graph statistics
-	GraphStatistics_init(&g->stats);
-
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
@@ -1346,7 +1343,7 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 int Graph_AddLabel(Graph *g) {
 	ASSERT(g);
 	RG_Matrix m = RG_Matrix_New(g, GrB_BOOL);
-	g->labels = array_append(g->labels, m);
+	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
