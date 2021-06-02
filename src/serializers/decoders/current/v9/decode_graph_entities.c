@@ -106,6 +106,7 @@ void RdbLoadNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) 
 void RdbLoadDeletedNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_node_count) {
 	/* Format:
 	 * node id X N */
+	Graph_AllocateNodes(gc->g, deleted_node_count);
 	for(uint64_t i = 0; i < deleted_node_count; i++) {
 		NodeID id = RedisModule_LoadUnsigned(rdb);
 		Serializer_Graph_MarkNodeDeleted(gc->g, id);
@@ -123,7 +124,6 @@ void RdbLoadEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count) 
 	 * edge properties X N */
 
 	// Construct connections.
-	Graph_AllocateEdges(gc->g, edge_count);
 	for(uint64_t i = 0; i < edge_count; i++) {
 		Edge e;
 		EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
