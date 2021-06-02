@@ -1,6 +1,6 @@
 # BUILD redisfab/redisgraph:${VERSION}-${ARCH}-${OSNICK}
 
-ARG REDIS_VER=6.0.9
+ARG REDIS_VER=6.2.3
 
 # OSNICK=bionic|stretch|buster
 ARG OSNICK=buster
@@ -36,6 +36,16 @@ ADD ./ /build
 # Set up a build environment
 RUN ./deps/readies/bin/getpy3
 RUN ./sbin/system-setup.py
+RUN set -ex ;\
+    if [ -e /usr/bin/apt-get ]; then \
+        apt-get update -qq; \
+        apt-get upgrade -yqq; \
+        rm -rf /var/cache/apt; \
+    fi
+RUN if [ -e /usr/bin/yum ]; then \
+        yum update -y; \
+        rm -rf /var/cache/yum; \
+    fi
 
 RUN if [ ! -z $(command -v apt-get) ]; then \
         locale-gen --purge en_US.UTF-8 ;\
@@ -44,7 +54,7 @@ RUN if [ ! -z $(command -v apt-get) ]; then \
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8  
+ENV LC_ALL=en_US.UTF-8
 
 RUN bash -l -c make -j`nproc`
 
@@ -57,7 +67,7 @@ RUN set -ex ;\
     mkdir -p bin/artifacts ;\
     if [ "$PACK" = "1" ]; then bash -l -c "make package"; fi
 
-#---------------------------------------------------------------------------------------------- 
+#----------------------------------------------------------------------------------------------
 FROM redisfab/redis:${REDIS_VER}-${ARCH}-${OSNICK}
 
 ARG OSNICK
@@ -76,7 +86,7 @@ COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts
 COPY --from=builder /build/src/redisgraph.so $LIBDIR
 
 RUN if [ ! -z $(command -v apt-get) ]; then apt-get -qq update; apt-get -q install -y libgomp1; fi
-RUN if [ ! -z $(command -v yum) ]; then yum install -y libgomp; fi 
+RUN if [ ! -z $(command -v yum) ]; then yum install -y libgomp; fi
 
 EXPOSE 6379
 CMD ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisgraph.so"]

@@ -69,6 +69,9 @@ uint64_t DataBlock_ItemCount(const DataBlock *dataBlock);
 // Make sure datablock can accommodate at least k items.
 void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k);
 
+// ensure datablock capacity >= 'idx'
+void DataBlock_Ensure(DataBlock *dataBlock, uint64_t idx);
+
 // Returns an iterator which scans entire datablock.
 DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock);
 
