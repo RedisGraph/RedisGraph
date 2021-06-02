@@ -455,6 +455,10 @@ size_t Graph_LabeledNodeCount(const Graph *g, int label) {
 	return nvals;
 }
 
+uint64_t Graph_StatisticsEdgeCount(const Graph *g, int relation_idx) {
+	return GraphStatistics_EdgeCount(&g->stats, relation_idx);
+}
+
 size_t Graph_EdgeCount(const Graph *g) {
 	ASSERT(g);
 	return g->edges->itemCount;
@@ -1421,7 +1425,7 @@ bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
 	GrB_Matrix_nvals(&nvals, R);
 
-	return (GraphStatistics_EdgeCount(&g->stats, r) > nvals);
+	return (Graph_StatisticsEdgeCount(g, r) > nvals);
 }
 
 GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {

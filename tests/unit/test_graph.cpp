@@ -900,8 +900,8 @@ TEST_F(GraphTest, GraphStatistics) {
 	int r0 = Graph_AddRelationType(g);
 	int r1 = Graph_AddRelationType(g);
 
-	ASSERT_EQ(GraphStatistics_EdgeCount(&g->stats, r0), 0);
-	ASSERT_EQ(GraphStatistics_EdgeCount(&g->stats, r1), 0);
+	ASSERT_EQ(Graph_StatisticsEdgeCount(g, r0), 0);
+	ASSERT_EQ(Graph_StatisticsEdgeCount(g, r1), 0);
 
 	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, l, &n[i]);
 
@@ -992,8 +992,8 @@ TEST_F(GraphTest, GraphStatistics) {
 
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
-	ASSERT_EQ(GraphStatistics_EdgeCount(&g->stats, r0), 1);
-	ASSERT_EQ(GraphStatistics_EdgeCount(&g->stats, r1), 2);
+	ASSERT_EQ(Graph_StatisticsEdgeCount(g, r0), 1);
+	ASSERT_EQ(Graph_StatisticsEdgeCount(g, r1), 2);
 	ASSERT_EQ(node_deleted, 1);
 	ASSERT_EQ(edge_deleted, 2);
 

@@ -10,8 +10,6 @@
 #include "../../arithmetic/aggregate_funcs/agg_funcs.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
-static GrB_UnaryOp countMultipleEdges = NULL;
-
 /* The reduceCount optimization will look for execution plan
  * performing solely node counting: total number of nodes in the graph,
  * total number of nodes with a specific label.
@@ -160,42 +158,6 @@ void _countEdges(void *z, const void *x) {
 	}
 }
 
-uint64_t _countRelationshipEdges(GrB_Matrix M) {
-	// Create Unary operation only once.
-	if(!countMultipleEdges) {
-		GrB_UnaryOp_new(&countMultipleEdges, _countEdges, GrB_UINT64, GrB_UINT64);
-	}
-
-	/* TODO: to avoid this entire process keep track if
-	 * M contains multiple edges between two given nodes
-	 * if there are no multiple edges,
-	 * i.e. `a` is connected to `b` with multiple edges of type R
-	 * then all we need to do is return M's nnz.
-	 * Otherwise create a new matrix A, where A[i,j] = x
-	 * where x is the number of edges in M[i,j]
-	 * then reduce A using the plus (sum) monoid. */
-
-	GrB_Index nrows;
-	GrB_Index ncols;
-	GrB_Matrix_nrows(&nrows, M);
-	GrB_Matrix_ncols(&ncols, M);
-
-	GrB_Matrix A;
-	GrB_Matrix_new(&A, GrB_UINT64, nrows, ncols);
-
-	// A[i,j] = # of edges in M[i,j].
-	GrB_Matrix_apply(A, GrB_NULL, GrB_NULL,
-					 countMultipleEdges, M, GrB_NULL);
-
-	uint64_t edges = 0;
-	// Sum(A)
-	GrB_Matrix_reduce_UINT64(&edges, GrB_NULL,
-							 GxB_PLUS_UINT64_MONOID, A, GrB_NULL);
-
-	GrB_free(&A);
-	return edges;
-}
-
 void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* We'll only modify execution plan if it is structured as follows:
 	 * "Full Scan -> Conditional Traverse -> Aggregate -> Results" */
@@ -233,7 +195,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 				// No change to current count, -[:none_existing]->
 				break;
 			default:
-				edges += GraphStatistics_EdgeCount(&g->stats, relType);
+				edges += Graph_StatisticsEdgeCount(g, relType);
 		}
 	}
 	edgeCount = SI_LongVal(edges);
