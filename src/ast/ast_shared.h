@@ -56,13 +56,6 @@ typedef enum {
 	UPDATE_REPLACE = 2,    // replace existing property map with new properties
 } UPDATE_MODE;
 
-typedef enum {
-	MAP_UNKNOWN    = 0,    // default, should not be encountered
-	MAP_LITERAL    = 1,    // map literal
-	MAP_ALIAS      = 2,    // alias to a map variable
-	MAP_PARAMETER  = 3,    // name of a map parameter
-} MAP_TYPE;
-
 // Key-value pair of an attribute ID and the value to be associated with it
 // TODO Consider replacing contents of PropertyMap (for ops like Create) with this
 typedef struct {
@@ -72,11 +65,7 @@ typedef struct {
 
 // Context describing an update expression.
 typedef struct {
-	union {
-		PropertySetCtx *properties; // properties to set
-		const char *identifier;
-	};
-	MAP_TYPE type;              // type of the property map
+	PropertySetCtx *properties; // properties to set
 	int record_idx;             // record offset this entity is stored at
 	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
 	const char *alias;          // Access-safe alias of the entity being updated

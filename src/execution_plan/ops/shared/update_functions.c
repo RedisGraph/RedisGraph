@@ -179,9 +179,31 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	SIType accepted_properties = SI_VALID_PROPERTY_VALUE;
 	if(allow_null) accepted_properties |= T_NULL;
 
-	SIValue map;
-	if(ctx->type == MAP_LITERAL) {
-		uint exp_count = array_len(ctx->properties);
+	uint exp_count = array_len(ctx->properties);
+
+	if(exp_count == 1 && ctx->properties[0].id == ATTRIBUTE_ALL) {
+		// If the update map can only be resolved at runtime, do so now.
+		SIValue map = AR_EXP_Evaluate(ctx->properties[0].exp, r);
+		if(SI_TYPE(map) != T_MAP) {
+			ErrorCtx_RaiseRuntimeException(
+				"RedisGraph does not currently support assigning graph entities to non-map values.");
+		}
+
+		// Iterate over all map elements to build updates.
+		uint map_size = Map_KeyCount(map);
+		for(uint i = 0; i < map_size; i ++) {
+			SIValue attr_key;
+			SIValue new_value;
+			Map_GetIdx(map, i, &attr_key, &new_value);
+			Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attr_key.stringval);
+
+			PendingUpdateCtx update = _PreparePendingUpdate(gc, accepted_properties,
+															label_id, entity, attr_id, new_value);
+			// enqueue the current update
+			*updates = array_append(*updates, update);
+		}
+	} else {
+		// The update map has already been converted; prepare updates.
 		for(uint i = 0; i < exp_count; i++) {
 			PropertySetCtx  property             = ctx->properties[i];
 			Attribute_ID    attr_id              = property.id;
@@ -192,41 +214,6 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 			// enqueue the current update
 			*updates = array_append(*updates, update);
 		}
-		return;
-	} else if(ctx->type == MAP_ALIAS) {
-		uint record_idx = Record_GetEntryIdx(r, ctx->identifier);
-		if(record_idx == INVALID_INDEX) {
-			ErrorCtx_RaiseRuntimeException(
-				"Encountered non-existent variable %s", ctx->identifier);
-		}
-		map = Record_Get(r, record_idx);
-	} else if(ctx->type == MAP_PARAMETER) {
-		rax *params = QueryCtx_GetParams();
-		AR_ExpNode *param = raxFind(params, (unsigned char *)ctx->identifier,
-									strlen(ctx->identifier));
-		if(param == raxNotFound) {
-			ErrorCtx_RaiseRuntimeException(
-				"Encountered non-existent parameter %s", ctx->identifier);
-		}
-		map = AR_EXP_Evaluate(param, r);
-	}
-
-	if(SI_TYPE(map) != T_MAP) {
-		ErrorCtx_RaiseRuntimeException(
-			"RedisGraph does not currently support assigning graph entities to non-map values.");
-	}
-
-	uint map_size = Map_KeyCount(map);
-	for(uint i = 0; i < map_size; i ++) {
-		SIValue attr_key;
-		SIValue new_value;
-		Map_GetIdx(map, i, &attr_key, &new_value);
-		Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attr_key.stringval);
-
-		PendingUpdateCtx update = _PreparePendingUpdate(gc, accepted_properties,
-														label_id, entity, attr_id, new_value);
-		// enqueue the current update
-		*updates = array_append(*updates, update);
 	}
 }
 
