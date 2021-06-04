@@ -245,7 +245,8 @@ void Graph_Query(void *args) {
 		ErrorCtx_EmitException();
 		goto cleanup;
 	}
-	if(exec_ctx->exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
+
+	ASSERT(exec_ctx != NULL);
 
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
 
@@ -282,3 +283,4 @@ cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
+

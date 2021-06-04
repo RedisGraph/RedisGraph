@@ -96,6 +96,11 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	// In case of valid query, create execution plan, and cache it and the AST.
 	if(exec_type == EXECUTION_TYPE_QUERY) {
 		ExecutionPlan *plan = NewExecutionPlan();
+
+		// TODO: there must be a better way to understand if the execution-plan
+		// was constructed correctly,
+		// maybe free the plan within NewExecutionPlan, if error was encountered
+		// and return NULL ?
 		if(ErrorCtx_EncounteredError()) {
 			// Encountered an error in ExecutionPlan construction,
 			// clean up and return NULL.

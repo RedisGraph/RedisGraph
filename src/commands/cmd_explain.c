@@ -42,7 +42,7 @@ void Graph_Explain(void *args) {
 		ErrorCtx_EmitException();
 		goto cleanup;
 	}
-	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
+	ASSERT(exec_ctx != NULL);
 
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		RedisModule_ReplyWithSimpleString(ctx, "Create Index");

@@ -179,7 +179,7 @@ SIValue *Map_Keys
 	return keys;
 }
 
-bool Map_GetIdx
+void Map_GetIdx
 (
 	const SIValue map,
 	uint idx,
@@ -187,16 +187,14 @@ bool Map_GetIdx
 	SIValue *value
 ) {
 	ASSERT(SI_TYPE(map) & T_MAP);
-
-	uint key_count = Map_KeyCount(map);
-	if(idx >= key_count) return false;
+	ASSERT(idx < Map_KeyCount(map));
+	ASSERT(key != NULL);
+	ASSERT(value != NULL);
 
 	Pair p = map.map[idx];
 
-	if(key) *key = p.key;
-	if(value) *value = p.val;
-
-	return true;
+	*key = p.key;
+	*value = p.val;
 }
 
 #define KEY_ISLT(a,b) (strcmp(a->key.stringval, b->key.stringval) < 0)

@@ -45,7 +45,7 @@ void Graph_Profile(void *args) {
 		goto cleanup;
 	}
 
-	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
+	ASSERT(exec_ctx != NULL);
 
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
 	   exec_type == EXECUTION_TYPE_INDEX_DROP) {

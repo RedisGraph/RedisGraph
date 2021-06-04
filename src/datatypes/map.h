@@ -82,10 +82,9 @@ SIValue *Map_Keys
 	SIValue map  // map to extract keys from
 );
 
-// populate the key and value pointers with
-// the map contents at the indicated index,
-// returning true if the index was not out of bounds.
-bool Map_GetIdx
+// populate 'key' and 'value' pointers with
+// the map contents at the indicated index
+void Map_GetIdx
 (
 	const SIValue map,
 	uint idx,

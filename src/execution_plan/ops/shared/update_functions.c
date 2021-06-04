@@ -130,8 +130,8 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 	if(stats) stats->properties_set += properties_set;
 }
 
-void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Record r,
-					   const EntityUpdateEvalCtx *ctx, bool allow_null) {
+void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
+		const Record r, const EntityUpdateEvalCtx *ctx, bool allow_null) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
 	bool node_update  = false;
@@ -181,39 +181,34 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 
 	uint exp_count = array_len(ctx->properties);
 
-	if(exp_count == 1 && ctx->properties[0].id == ATTRIBUTE_ALL) {
-		// If the update map can only be resolved at runtime, do so now.
-		SIValue map = AR_EXP_Evaluate(ctx->properties[0].exp, r);
-		if(SI_TYPE(map) != T_MAP) {
-			ErrorCtx_RaiseRuntimeException(
-				"RedisGraph does not currently support assigning graph entities to non-map values.");
+	for(uint i = 0; i < exp_count; i++) {
+		PropertySetCtx  property             = ctx->properties[i];
+		Attribute_ID    attr_id              = property.id;
+		SIValue         new_value            = AR_EXP_Evaluate(property.exp, r);
+
+		if(SI_TYPE(new_value) == T_MAP) {
+			ASSERT(attr_id == ATTRIBUTE_ALL);
+			// iterate over all map elements to build updates
+			uint map_size = Map_KeyCount(new_value);
+			for(uint j = 0; j < map_size; j ++) {
+				SIValue key;
+				SIValue value;
+				Map_GetIdx(new_value, j, &key, &value);
+				Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc,
+						key.stringval);
+
+				PendingUpdateCtx update = _PreparePendingUpdate(gc,
+						accepted_properties, label_id, entity, attr_id, value);
+				// enqueue the current update
+				*updates = array_append(*updates, update);
+			}
+			continue;
 		}
 
-		// Iterate over all map elements to build updates.
-		uint map_size = Map_KeyCount(map);
-		for(uint i = 0; i < map_size; i ++) {
-			SIValue attr_key;
-			SIValue new_value;
-			Map_GetIdx(map, i, &attr_key, &new_value);
-			Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attr_key.stringval);
-
-			PendingUpdateCtx update = _PreparePendingUpdate(gc, accepted_properties,
-															label_id, entity, attr_id, new_value);
-			// enqueue the current update
-			*updates = array_append(*updates, update);
-		}
-	} else {
-		// The update map has already been converted; prepare updates.
-		for(uint i = 0; i < exp_count; i++) {
-			PropertySetCtx  property             = ctx->properties[i];
-			Attribute_ID    attr_id              = property.id;
-			SIValue         new_value            = AR_EXP_Evaluate(property.exp, r);
-
-			PendingUpdateCtx update = _PreparePendingUpdate(gc, accepted_properties,
-															label_id, entity, attr_id, new_value);
-			// enqueue the current update
-			*updates = array_append(*updates, update);
-		}
+		PendingUpdateCtx update = _PreparePendingUpdate(gc, accepted_properties,
+				label_id, entity, attr_id, new_value);
+		// enqueue the current update
+		*updates = array_append(*updates, update);
 	}
 }
 
