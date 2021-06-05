@@ -13,7 +13,6 @@
  * @brief  Execution type derived from a query
  */
 typedef enum {
-	EXECUTION_TYPE_INVALID,         // Execution is not valid due to invalid query.
 	EXECUTION_TYPE_QUERY,           // Normal query execution.
 	EXECUTION_TYPE_INDEX_CREATE,    // Create index execution.
 	EXECUTION_TYPE_INDEX_DROP       // Drop index execution.
