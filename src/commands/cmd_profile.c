@@ -31,21 +31,14 @@ void Graph_Profile(void *args) {
 	* 2. Execution plan
 	* 3. Whether these items were cached or not */
 	AST *ast               = NULL;
-	ExecutionPlan *plan    = NULL;
 	bool cached            = false;
+	ExecutionPlan *plan    = NULL;
 	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	if(exec_ctx == NULL) goto cleanup;
 
 	ast = exec_ctx->ast;
 	plan = exec_ctx->plan;
 	ExecutionType exec_type = exec_ctx->exec_type;
-
-	// See if there were any query compile time errors
-	if(ErrorCtx_EncounteredError()) {
-		ErrorCtx_EmitException();
-		goto cleanup;
-	}
-
-	ASSERT(exec_ctx != NULL);
 
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
 	   exec_type == EXECUTION_TYPE_INDEX_DROP) {
@@ -82,6 +75,8 @@ void Graph_Profile(void *args) {
 	ExecutionPlan_Print(plan, ctx);
 
 cleanup:
+	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
+
 	// Release the read-write lock
 	if(lockAcquired) {
 		if(readonly) Graph_ReleaseLock(gc->g);

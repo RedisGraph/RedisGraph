@@ -30,19 +30,13 @@ void Graph_Explain(void *args) {
 	/* Retrieve the required execution items and information:
 	 * 1. Execution plan
 	 * 2. Whether these items were cached or not */
-	bool cached = false;
-	ExecutionPlan *plan = NULL;
-	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	bool           cached     =  false;
+	ExecutionPlan  *plan      =  NULL;
+	ExecutionCtx   *exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
+	if(exec_ctx == NULL) goto cleanup;
 
 	plan = exec_ctx->plan;
 	ExecutionType exec_type = exec_ctx->exec_type;
-
-	// See if there were any query compile time errors
-	if(ErrorCtx_EncounteredError()) {
-		ErrorCtx_EmitException();
-		goto cleanup;
-	}
-	ASSERT(exec_ctx != NULL);
 
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		RedisModule_ReplyWithSimpleString(ctx, "Create Index");
@@ -60,6 +54,7 @@ void Graph_Explain(void *args) {
 	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
+	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
