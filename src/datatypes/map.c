@@ -179,6 +179,24 @@ SIValue *Map_Keys
 	return keys;
 }
 
+void Map_GetIdx
+(
+	const SIValue map,
+	uint idx,
+	SIValue *key,
+	SIValue *value
+) {
+	ASSERT(SI_TYPE(map) & T_MAP);
+	ASSERT(idx < Map_KeyCount(map));
+	ASSERT(key != NULL);
+	ASSERT(value != NULL);
+
+	Pair p = map.map[idx];
+
+	*key = p.key;
+	*value = p.val;
+}
+
 #define KEY_ISLT(a,b) (strcmp(a->key.stringval, b->key.stringval) < 0)
 int Map_Compare
 (
@@ -307,3 +325,4 @@ void Map_Free
 
 	array_free(map.map);
 }
+
