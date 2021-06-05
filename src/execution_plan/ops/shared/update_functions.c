@@ -44,9 +44,9 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, SIType accepted_properties,
 											  int label_id, GraphEntity *entity,
 											  Attribute_ID attr_id, SIValue new_value) {
-	//----------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// validate value type
-	//----------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	// emit an error and exit if we're trying to add an invalid type
 	if(!(SI_TYPE(new_value) & accepted_properties)) {
@@ -181,32 +181,39 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 
 	uint exp_count = array_len(ctx->properties);
 
-	for(uint i = 0; i < exp_count; i++) {
-		PropertySetCtx  property             = ctx->properties[i];
-		Attribute_ID    attr_id              = property.id;
-		SIValue         new_value            = AR_EXP_Evaluate(property.exp, r);
+	//--------------------------------------------------------------------------
+	// enqueue update
+	//--------------------------------------------------------------------------
 
+	for(uint i = 0; i < exp_count; i++) {
+		PendingUpdateCtx  update;
+		PropertySetCtx    property   =  ctx->properties[i];
+		Attribute_ID      attr_id    =  property.id;
+		SIValue           new_value  =  AR_EXP_Evaluate(property.exp,  r);
+
+		// value is of type map e.g. n.v = {a:1, b:2}
 		if(SI_TYPE(new_value) == T_MAP) {
+			SIValue m = new_value;
 			ASSERT(attr_id == ATTRIBUTE_ALL);
 			// iterate over all map elements to build updates
-			uint map_size = Map_KeyCount(new_value);
+			uint map_size = Map_KeyCount(m);
 			for(uint j = 0; j < map_size; j ++) {
 				SIValue key;
 				SIValue value;
-				Map_GetIdx(new_value, j, &key, &value);
+				Map_GetIdx(m, j, &key, &value);
 				Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc,
 						key.stringval);
 
-				PendingUpdateCtx update = _PreparePendingUpdate(gc,
-						accepted_properties, label_id, entity, attr_id, value);
+				update = _PreparePendingUpdate(gc, accepted_properties,
+						label_id, entity, attr_id, value);
 				// enqueue the current update
 				*updates = array_append(*updates, update);
 			}
 			continue;
 		}
 
-		PendingUpdateCtx update = _PreparePendingUpdate(gc, accepted_properties,
-				label_id, entity, attr_id, new_value);
+		update = _PreparePendingUpdate(gc, accepted_properties, label_id,
+				entity, attr_id, new_value);
 		// enqueue the current update
 		*updates = array_append(*updates, update);
 	}
