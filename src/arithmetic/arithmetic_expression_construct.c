@@ -650,6 +650,69 @@ static AR_ExpNode *_AR_ExpFromPatternPath(const cypher_astnode_t *expr) {
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromPatternComprehension(const cypher_astnode_t *comp_exp) {
+	/* Using the sample query:
+	 * WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
+	 */
+
+	/* The comprehension's local variable, WHERE expression, and eval routine
+	 * do not change for each invocation, so are bundled together in the function's context. */
+	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
+	ctx->ft            =  NULL;
+	ctx->eval_exp      =  NULL;
+	ctx->local_record  =  NULL;
+	ctx->variable_str  =  NULL;
+	ctx->variable_idx  =  INVALID_INDEX;
+
+	/* Retrieve the variable name introduced in this context to iterate over pattern elements.
+	 * In the above query, this is 'val'. */
+	const cypher_astnode_t *variable_node = cypher_ast_pattern_comprehension_get_identifier(comp_exp);
+	ASSERT(variable_node == NULL);
+	/*
+	if(variable_node) {
+	    ASSERT(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
+
+	    // retrieve the variable string for the local variable
+	    ctx->variable_str = cypher_ast_identifier_get_name(variable_node);
+	}
+	*/
+
+	// the predicate node is the set of WHERE conditions in the comprehension
+	// if any
+	const cypher_astnode_t *predicate_node =
+		cypher_ast_pattern_comprehension_get_predicate(comp_exp);
+
+	// build a FilterTree to represent this predicate
+	if(predicate_node) AST_ConvertFilters(&ctx->ft, predicate_node);
+
+	// construct the operator node that will generate updated values,
+	// if one is provided
+	//
+	// in the above query, this will be an operation node representing "val * 2"
+	// this will always be NULL for comprehensions like any() and all()
+	const cypher_astnode_t *eval_node = cypher_ast_pattern_comprehension_get_eval(comp_exp);
+	if(eval_node) ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
+	ASSERT(eval_node != NULL); // TODO
+
+	// build an operation node to represent the pattern comprehension
+	AR_ExpNode *op = AR_EXP_NewOpNode("PATTERN_COMPREHENSION", 2);
+
+	// add the context to the function descriptor as the function's private data
+	op->op.f = AR_SetPrivateData(op->op.f, ctx);
+
+	// 'arr' is the pattern expression
+	const cypher_astnode_t *pattern_node = cypher_ast_pattern_comprehension_get_pattern(comp_exp);
+	AR_ExpNode *pattern = _AR_EXP_FromASTNode(pattern_node);
+
+	// the pattern expression is the function's first child
+	op->op.children[0] = pattern;
+
+	// the second child will be a pointer to the Record being evaluated
+	op->op.children[1] = AR_EXP_NewRecordNode();
+
+	return op;
+}
+
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t t = cypher_astnode_type(expr);
@@ -714,6 +777,8 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpFromMapProjection(expr);
 	} else if(t == CYPHER_AST_PATTERN_PATH) {
 		return _AR_ExpFromPatternPath(expr);
+	} else if(t == CYPHER_AST_PATTERN_COMPREHENSION) {
+		return _AR_ExpFromPatternComprehension(expr);
 	} else {
 		/*
 		   Unhandled types:

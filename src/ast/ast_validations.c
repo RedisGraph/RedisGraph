@@ -39,14 +39,12 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	if(!node) return;
 	ASSERT(identifiers != NULL);
 
-	if(cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(node);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 		return;
 	}
-
-	uint child_count = cypher_astnode_nchildren(node);
-	cypher_astnode_type_t type = cypher_astnode_type(node);
 
 	/* In case current node is of type CALL
 	 * Process procedure call arguments, those should be defined prior
@@ -61,6 +59,10 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		return;
 	}
 
+	// Don't visit the children of pattern comprehensions, as these will be aliased later.
+	if(type == CYPHER_AST_PATTERN_COMPREHENSION) return;
+
+	uint child_count = cypher_astnode_nchildren(node);
 	/* In case current node is of type projection
 	 * inspect first child only,
 	 * @10  20..26  > > > projection           expression=@11, alias=@14

@@ -16,28 +16,64 @@ OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp) {
 	ASSERT(exp != NULL);
 
 	// extract pattern path
-	ASSERT(AR_EXP_IsConstant(exp->op.children[0]));
-	SIValue val = AR_EXP_Evaluate(exp->op.children[0], NULL);
+	AR_ExpNode *path_exp = AR_EXP_ContainsFunc(exp, "pattern_path");
+	// ASSERT(AR_EXP_IsConstant(path_exp->op.children[0]));
+	// TODO think about placeholder
+	SIValue val = AR_EXP_Evaluate(path_exp->op.children[0]->op.children[0], NULL);
 	ASSERT(SI_TYPE(val) & T_PTR);
 	const cypher_astnode_t *path = (const cypher_astnode_t *)val.ptrval;
 
+	// Retrieve or build the identifier for this path projection
+	/*
+	const char *identifier = path_exp->resolved_name;
+	if(identifier == NULL) {
+	    // Build an identifier for the path expression
+	    identifier = AR_EXP_BuildResolvedName(path_exp);
+	    path_exp->resolved_name = identifier;
+	    // Ensure the new alias will be freed
+	    AST *ast = QueryCtx_GetAST();
+	    raxInsert(ast->canonical_entity_names, (unsigned char *)identifier,
+	              strlen(identifier), (char *)identifier, NULL);
+	}
+	*/
+	// TODO tmp
+	if(exp->op.child_count > 1) {
+		ASSERT(exp->op.child_count == 2);
+		exp->op.children[0] = exp->op.children[1];
+		exp->op.child_count = 1;
+	}
+
 	// collect the variables that are bound at this point
+	const char **arguments = NULL;
+	if(plan->root) {
+		// Collect the variables that are bound at this point.
+		rax *bound_vars = raxNew();
+		// Rather than cloning the record map, collect the bound variables along with their
+		// parser-generated constant strings.
+		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		// Collect the variable names from bound_vars to populate the Argument op we will build.
+		arguments = (const char **)raxValues(bound_vars);
+		raxFree(bound_vars);
+	}
+	/*
 	const char **arguments = array_new(const char *, 1);
 	for(uint i = 1; i < exp->op.child_count; i ++) {
-		AR_ExpNode *child = exp->op.children[i];
-		ASSERT(child->type == AR_EXP_OPERAND);
-		ASSERT(child->operand.type == AR_EXP_VARIADIC);
-		const char *entity_alias = child->operand.variadic.entity_alias;
-		if(strncmp(entity_alias, "anon", 4)) {
-			arguments = array_append(arguments, entity_alias);
-		}
+	    AR_ExpNode *child = exp->op.children[i];
+	    ASSERT(child->type == AR_EXP_OPERAND);
+	    ASSERT(child->operand.type == AR_EXP_VARIADIC);
+	    const char *entity_alias = child->operand.variadic.entity_alias;
+	    if(strncmp(entity_alias, "anon", 4)) {
+	        arguments = array_append(arguments, entity_alias);
+	    }
 	}
+	*/
 
 	// build the new Match stream
 	QueryCtx_SetAST(plan->ast_segment);
 	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
 
 	// Build a Project op to project the path expression being matched.
+	uint arg_count = array_len(arguments);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 	OpBase *project = NewProjectOp(plan, exps);
@@ -75,17 +111,18 @@ void ExecutionPlan_PostBuild(ExecutionPlan *plan) {
 			AR_ExpNode *path_exp = AR_EXP_ContainsFunc(exp, "pattern_path");
 			if(path_exp == NULL) continue;
 			ASSERT(path_exp->op.child_count == 1);
+			/*
 
 			// Retrieve or build the identifier for this path projection
 			const char *identifier = path_exp->resolved_name;
 			if(identifier == NULL) {
-				// Build an identifier for the path expression
-				identifier = AR_EXP_BuildResolvedName(path_exp);
-				path_exp->resolved_name = identifier;
-				// Ensure the new alias will be freed
-				AST *ast = QueryCtx_GetAST();
-				raxInsert(ast->canonical_entity_names, (unsigned char *)identifier,
-						  strlen(identifier), (char *)identifier, NULL);
+			    // Build an identifier for the path expression
+			    identifier = AR_EXP_BuildResolvedName(path_exp);
+			    path_exp->resolved_name = identifier;
+			    // Ensure the new alias will be freed
+			    AST *ast = QueryCtx_GetAST();
+			    raxInsert(ast->canonical_entity_names, (unsigned char *)identifier,
+			              strlen(identifier), (char *)identifier, NULL);
 			}
 
 			// Replace the placeholder node with its child
@@ -94,6 +131,7 @@ void ExecutionPlan_PostBuild(ExecutionPlan *plan) {
 			path_exp = tmp_exp;
 			path_exp->resolved_name = identifier;
 
+			*/
 			// convert topath call into a RollUp_Apply operation
 			ASSERT(project->op.childCount > 0);
 			OpBase *child_op = project->op.children[0];
@@ -101,7 +139,9 @@ void ExecutionPlan_PostBuild(ExecutionPlan *plan) {
 			ExecutionPlan *child_plan = (ExecutionPlan *)child_op->plan;
 			ASSERT(child_plan != NULL);
 
-			OpBase *rollup = buildRollUpMatchStream(child_plan, AR_EXP_Clone(path_exp));
+			// OpBase *rollup = buildRollUpMatchStream(child_plan, AR_EXP_Clone(path_exp));
+			const char *alias = exp->resolved_name;
+			OpBase *rollup = buildRollUpMatchStream(child_plan, exp);
 			// connect rollup operation as the only child of project
 			ExecutionPlan_PushBelow(child_op, rollup);
 
@@ -111,11 +151,14 @@ void ExecutionPlan_PostBuild(ExecutionPlan *plan) {
 			rollup->children[1] = tmp;
 
 			// replace path expression with variable lookup in the current projection
-			AR_ExpNode *replacement = AR_EXP_NewVariableOperandNode(path_exp->resolved_name);
-			replacement->resolved_name = identifier;
+			AR_ExpNode *replacement = AR_EXP_NewVariableOperandNode(alias);
+			replacement->resolved_name = alias;
+			project->exps[j] = replacement;
+			// AR_ExpNode *replacement = AR_EXP_NewVariableOperandNode(resolved_name);
+			// replacement->resolved_name = identifier;
 			// AR_ExpNode *clone = AR_EXP_Clone(exp);
-			AR_EXP_ReplaceFunc(&exp, "topath", replacement);
-			project->exps[j] = exp;
+			// AR_EXP_ReplaceFunc(&exp, "topath", replacement);
+			// project->exps[j] = exp;
 		}
 	}
 
