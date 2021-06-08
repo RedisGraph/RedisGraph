@@ -11,18 +11,21 @@
 #include "../util/rax_extensions.h"
 #include "execution_plan_build/execution_plan_modify.h"
 
-OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp) {
+OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp,
+							   AR_ExpNode *path_exp) {
 	ASSERT(plan != NULL);
 	ASSERT(exp != NULL);
+	ASSERT(path_exp != NULL);
 
 	// extract pattern path
-	AR_ExpNode *path_exp = AR_EXP_ContainsFunc(exp, "pattern_path");
-	// ASSERT(AR_EXP_IsConstant(path_exp->op.children[0]));
-	// TODO think about placeholder
-	SIValue val = AR_EXP_Evaluate(path_exp->op.children[0]->op.children[0], NULL);
+	SIValue val = AR_EXP_Evaluate(path_exp->op.children[0], NULL);
 	ASSERT(SI_TYPE(val) & T_PTR);
 	const cypher_astnode_t *path = (const cypher_astnode_t *)val.ptrval;
 
+	AR_ExpNode *comprehension_exp = AR_EXP_ContainsFunc(exp, "pattern_comprehension");
+	if(comprehension_exp) {
+		AR_EXP_RemoveChild(comprehension_exp, 0);
+	}
 	// Retrieve or build the identifier for this path projection
 	/*
 	const char *identifier = path_exp->resolved_name;
@@ -36,12 +39,6 @@ OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp) {
 	              strlen(identifier), (char *)identifier, NULL);
 	}
 	*/
-	// TODO tmp
-	if(exp->op.child_count > 1) {
-		ASSERT(exp->op.child_count == 2);
-		exp->op.children[0] = exp->op.children[1];
-		exp->op.child_count = 1;
-	}
 
 	// collect the variables that are bound at this point
 	const char **arguments = NULL;
@@ -75,7 +72,7 @@ OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp) {
 	// Build a Project op to project the path expression being matched.
 	uint arg_count = array_len(arguments);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
-	exps = array_append(exps, exp);
+	array_append(exps, exp);
 	OpBase *project = NewProjectOp(plan, exps);
 	// Make the Project op the root of the Match stream.
 	ExecutionPlan_AddOp(project, match_stream);
@@ -107,10 +104,13 @@ void ExecutionPlan_PostBuild(ExecutionPlan *plan) {
 
 		// see if project op contains a 'topath' call
 		for(uint j = 0; j < project->exp_count; j++) {
-			AR_ExpNode *exp = project->exps[j];
-			AR_ExpNode *path_exp = AR_EXP_ContainsFunc(exp, "pattern_path");
+			AR_ExpNode *path_exp = AR_EXP_ContainsFunc(project->exps[j],
+													   "pattern_path");
 			if(path_exp == NULL) continue;
 			ASSERT(path_exp->op.child_count == 1);
+			path_exp = path_exp->op.children[0];
+			AR_EXP_RemovePlaceholderFuncs(NULL, &project->exps[j]);
+			AR_ExpNode *exp = project->exps[j];
 			/*
 
 			// Retrieve or build the identifier for this path projection
@@ -141,7 +141,7 @@ void ExecutionPlan_PostBuild(ExecutionPlan *plan) {
 
 			// OpBase *rollup = buildRollUpMatchStream(child_plan, AR_EXP_Clone(path_exp));
 			const char *alias = exp->resolved_name;
-			OpBase *rollup = buildRollUpMatchStream(child_plan, exp);
+			OpBase *rollup = buildRollUpMatchStream(child_plan, exp, path_exp);
 			// connect rollup operation as the only child of project
 			ExecutionPlan_PushBelow(child_op, rollup);
 

@@ -330,8 +330,8 @@ void Register_ComprehensionFuncs() {
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 3);
-	// types = array_append(types, T_ARRAY | T_NULL);
+	types = array_new(SIType, 2);
+	// array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("pattern_comprehension", AR_PATTERN_COMPREHENSION,

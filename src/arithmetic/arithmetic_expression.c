@@ -672,6 +672,56 @@ void AR_EXP_ReplaceFunc(AR_ExpNode **root, const char *func,
 	}
 }
 
+void AR_EXP_RemovePlaceholderFuncs(AR_ExpNode *parent, AR_ExpNode **root) {
+	AR_ExpNode *exp = *root;
+	ASSERT(exp != NULL);
+	if(!AR_EXP_IsOperation(exp)) return;
+	if(exp->op.f == AR_GetPlaceholderFunc()) {
+		ASSERT(exp->op.child_count == 1);
+		const char *alias = exp->resolved_name;
+		// Replace the placeholder with its child.
+		AR_ExpNode *replacement = exp->op.children[0];
+		// Detach the placeholder from its parent if it was not the root.
+		/*
+		if(parent) {
+		    for(uint i = 0; i < parent->op.child_count - 1; i ++) {
+		        if(parent->op.children[i] == exp) {
+		            memmove(&parent->op.children[i], &parent->op.children[i + 1],
+		                    (parent->op.child_count - i - 1) * sizeof(AR_ExpNode *));
+		        }
+		    }
+		}
+		*/
+		// Detach the placeholder from its child.
+		exp->op.children[0] = NULL;
+		exp->op.child_count = 0;
+		// Free the detached placeholder.
+		AR_EXP_Free(exp);
+		// Restore the resolved name if one had been set.
+		replacement->resolved_name = alias;
+		*root = replacement;
+		exp = replacement;
+
+	}
+
+	// Recursively visit all children.
+	for(uint i = 0; i < exp->op.child_count; i++) {
+		AR_EXP_RemovePlaceholderFuncs(exp, &exp->op.children[i]);
+	}
+}
+
+void AR_EXP_RemoveChild(AR_ExpNode *root, uint child_idx) {
+	ASSERT(root != NULL && AR_EXP_IsOperation(root) &&
+		   child_idx < root->op.child_count - 1);
+
+	if(child_idx < root->op.child_count - 1) {
+		memmove(&root->op.children[child_idx], &root->op.children[child_idx + 1],
+				(root->op.child_count - child_idx - 1) * sizeof(AR_ExpNode *));
+	}
+
+	root->op.child_count--;
+}
+
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp) {
 	ASSERT(exp != NULL && exp->type != AR_EXP_UNKNOWN);
 

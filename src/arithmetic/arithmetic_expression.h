@@ -141,6 +141,12 @@ AR_ExpNode *AR_EXP_ContainsFunc(AR_ExpNode *root, const char *func);
 void AR_EXP_ReplaceFunc(AR_ExpNode **root, const char *func,
 						AR_ExpNode *replacement);
 
+// Remove all placeholder functions in the tree.
+void AR_EXP_RemovePlaceholderFuncs(AR_ExpNode *parent, AR_ExpNode **root);
+
+// Remove the child at the given index.
+void AR_EXP_RemoveChild(AR_ExpNode *root, uint child_idx);
+
 /* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);
 

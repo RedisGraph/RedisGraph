@@ -55,7 +55,7 @@ AR_FuncDesc *AR_GetFunc(const char *func_name) {
 	return (f != raxNotFound) ? f : NULL;
 }
 
-AR_FuncDesc *AR_GetPlaceholderFunc() {
+inline AR_FuncDesc *AR_GetPlaceholderFunc() {
 	return &placeholderFunc;
 }
 
