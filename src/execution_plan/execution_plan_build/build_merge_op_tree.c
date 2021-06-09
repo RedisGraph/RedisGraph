@@ -80,7 +80,8 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, merge_ctx.on_create);
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	ExecutionPlan_UpdateRoot(plan, merge_op);
-	ExecutionPlan_AddOp(merge_op, match_stream); // Add Match stream to Merge op.
+
+	ExecutionPlan_AddOp(plan->root, match_stream); // Add Match stream to Merge op.
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, arguments);
