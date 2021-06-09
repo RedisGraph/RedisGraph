@@ -146,17 +146,17 @@ commands:
             git submodule update --init --recursive
       - setup-automation
       - run:
-          name: Build for platform
+          name: docker build
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> ARTIFACTS=1 TEST=1 SHOW=1
+            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
+            make build OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
       - early_return_for_forked_pull_requests
       - run:
           name: Build for platform (publish)
           command: |
-            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
-            make publish OSNICK=<<parameters.platform>> OFFICIAL=0 SHOW=1 VERBOSE=1
+            make build OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1 PUBLISH=1 DOCKERWRAPPER_EXTRA_VARS="DOCKER_PUSH_ONLY=1"
       - persist_to_workspace:
           root: bin/artifacts
           paths:
