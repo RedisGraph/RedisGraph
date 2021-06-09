@@ -19,7 +19,6 @@ extern "C" {
 }
 #endif
 
-#define BULK_COUNT   1
 #define READER_COUNT 4
 #define WRITER_COUNT 1
 
@@ -28,7 +27,7 @@ class ThreadPoolsTest: public ::testing::Test {
 	// Use the malloc family for allocations
 	static void SetUpTestCase() {
 		Alloc_Reset();
-		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, BULK_COUNT);
+		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT);
 	}
 
 	static void get_thread_friendly_id(void *arg) {

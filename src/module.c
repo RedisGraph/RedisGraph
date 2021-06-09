@@ -112,11 +112,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
 
 	int reader_thread_count;
-	int bulk_thread_count = 1;
 	int writer_thread_count = 1;
 	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
 
-	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count, bulk_thread_count)) {
+	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count)) {
 		return REDISMODULE_ERR;
 	}
 

@@ -13,7 +13,6 @@
 // Thread pools
 //------------------------------------------------------------------------------
 
-static threadpool _bulk_thpool = NULL;     // bulk loader workers
 static threadpool _readers_thpool = NULL;  // readers
 static threadpool _writers_thpool = NULL;  // writers
 
@@ -22,8 +21,7 @@ static threadpool _writers_thpool = NULL;  // writers
 int ThreadPools_CreatePools
 (
 	uint reader_count,
-	uint writer_count,
-	uint bulk_count
+	uint writer_count
 ) {
 	ASSERT(_readers_thpool == NULL);
 	ASSERT(_writers_thpool == NULL);
@@ -33,9 +31,6 @@ int ThreadPools_CreatePools
 
 	_writers_thpool = thpool_init(writer_count, "writer");
 	if(_writers_thpool == NULL) return 0;
-
-	_bulk_thpool = thpool_init(bulk_count, "bulk_loader");
-	if(_bulk_thpool == NULL) return 0;
 
 	return 1;
 }
@@ -90,11 +85,9 @@ void ThreadPools_Pause
 (
 	void
 ) {
-	ASSERT(_bulk_thpool != NULL);
 	ASSERT(_readers_thpool != NULL);
 	ASSERT(_writers_thpool != NULL);
 
-	thpool_pause(_bulk_thpool);
 	thpool_pause(_readers_thpool);
 	thpool_pause(_writers_thpool);
 }
@@ -104,11 +97,9 @@ void ThreadPools_Resume
 	void
 ) {
 
-	ASSERT(_bulk_thpool != NULL);
 	ASSERT(_readers_thpool != NULL);
 	ASSERT(_writers_thpool != NULL);
 
-	thpool_resume(_bulk_thpool);
 	thpool_resume(_readers_thpool);
 	thpool_resume(_writers_thpool);
 }
@@ -144,16 +135,5 @@ int ThreadPools_AddWorkWriter
 	if(thpool_queue_full(_writers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_writers_thpool, function_p, arg_p);
-}
-
-// add task for bulk loader thread
-int ThreadPools_AddWorkBulkLoader
-(
-	void (*function_p)(void *),
-	void *arg_p
-) {
-	ASSERT(_bulk_thpool != NULL);
-
-	return thpool_add_work(_bulk_thpool, function_p, arg_p);
 }
 
