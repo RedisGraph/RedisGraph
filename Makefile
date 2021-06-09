@@ -16,13 +16,8 @@ package: all
 	@$(MAKE) -C ./src package
 
 docker:
+	@$(MAKE) -C ./build/docker
 	@docker build . -t redislabs/redisgraph
-
-docker_alpine:
-	@docker build . -f Dockerfile.alpine -t redislabs/redisgraph:alpine
-
-docker_push: docker
-	@docker push redislabs/redisgraph:latest
 
 builddocs:
 	@mkdocs build
