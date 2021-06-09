@@ -1,7 +1,7 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: test unit flow tck memcheck benchmark clean
+.PHONY: test unit flow tck memcheck benchmark fuzz clean
 
 TEST_ARGS+=--clear-logs
 
@@ -67,6 +67,9 @@ memcheck:
 
 benchmark:
 	cd benchmarks; $(BENCHMARK_ARGS) ; cd ..
+
+fuzz:
+	@$(MAKE) -C fuzz FUZZ_TIMEOUT="$(FUZZ_TIMEOUT)"
 
 clean:
 	@find . -name '*.[oad]' -type f -delete

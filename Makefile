@@ -1,10 +1,9 @@
-.PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind help
+.PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind fuzz help
 
 define HELP
 make all              # Build everything
   DEBUG=1               # Build for debugging
   COV=1                 # Build for coverage analysis (implies DEBUG=1)
-make parser           # Build parser
 make clean            # Clean build artifacts
 
 make test             # Run tests
@@ -14,6 +13,7 @@ make test             # Run tests
   TCK=1                  # Run TCK framework tests
 make memcheck         # Run tests with Valgrind
 make benchmark        # Run benchmarks
+make fuzz             # Run fuzz tester
 
 make package          # Build RAMP packages
 make cov-upload       # Upload coverage data to codecov.io
@@ -24,9 +24,6 @@ endef
 
 all:
 	@$(MAKE) -C ./src all
-
-parser:
-	@$(MAKE) -C ./src parser
 
 clean:
 	@$(MAKE) -C ./src $@
@@ -69,6 +66,9 @@ memcheck:
 
 cov-upload:
 	@$(MAKE) -C ./src cov-upload
+
+fuzz:
+	@$(MAKE) -C ./src fuzz
 
 format:
 	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h,*.cpp"

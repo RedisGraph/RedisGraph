@@ -239,12 +239,6 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 
-# Compile query parse.
-# This is not included in the usual make target!
-parser:
-	@$(MAKE) -C $@
-.PHONY: parser
-
 #----------------------------------------------------------------------------------------------
 
 define extract_symbols
@@ -323,3 +317,10 @@ cov-upload:
 	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
 .PHONY: cov-upload
 endif # COV
+
+#----------------------------------------------------------------------------------------------
+
+fuzz: redisgraph.so
+	@$(MAKE) -C $(ROOT)/tests fuzz
+
+.PHONY: fuzz
