@@ -40,7 +40,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			QGNode *n = cc->nodes[0];
 			// Do not build a scan op if the node is already resolved.
 			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
-			   != raxNotFound) continue;
+			   != raxNotFound) {
+				continue;
+			}
 
 			if(n->labelID != GRAPH_NO_LABEL) {
 				NodeScanCtx ctx = NODE_CTX_NEW(n->alias, n->label, n->labelID);

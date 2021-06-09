@@ -77,7 +77,6 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 				   PendingUpdateCtx *updates) {
 	ASSERT(gc != NULL);
 	ASSERT(stats != NULL);
-	ASSERT(updates != NULL);
 
 	uint    properties_set  =  0;
 	Schema  *s              =  NULL;
@@ -131,7 +130,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 }
 
 void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
-		const Record r, const EntityUpdateEvalCtx *ctx, bool allow_null) {
+					   const Record r, const EntityUpdateEvalCtx *ctx, bool allow_null) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
 	bool node_update  = false;
@@ -202,10 +201,10 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 				SIValue value;
 				Map_GetIdx(m, j, &key, &value);
 				Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc,
-						key.stringval);
+																	   key.stringval);
 
 				update = _PreparePendingUpdate(gc, accepted_properties,
-						label_id, entity, attr_id, value);
+											   label_id, entity, attr_id, value);
 				// enqueue the current update
 				*updates = array_append(*updates, update);
 			}
@@ -213,7 +212,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 		}
 
 		update = _PreparePendingUpdate(gc, accepted_properties, label_id,
-				entity, attr_id, new_value);
+									   entity, attr_id, new_value);
 		// enqueue the current update
 		*updates = array_append(*updates, update);
 	}
