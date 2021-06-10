@@ -67,16 +67,32 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
 
-        config_name = "QUERY_MEM_CAPACITY"
-        config_value = 1<<30 # 1GB
+        config_name2 = "QUERY_MEM_CAPACITY"
+        config_value2 = 1<<20 # 1NB
 
         # Set configuration
-        response = redis_con.execute_command("GRAPH.CONFIG SET %s %d" % (config_name, config_value))
+        response = redis_con.execute_command("GRAPH.CONFIG SET %s %d" % (config_name2, config_value2))
         self.env.assertEqual(response, "OK")
 
         # Make sure config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name2)
+        expected_response = [config_name2, config_value2]
+        self.env.assertEqual(response, expected_response)
+
+        # Set multiple configurations
+        config_value = 5
+        config_value2 = 1<<30 # 1GB
+        response = redis_con.execute_command("GRAPH.CONFIG SET %s %d %s %d" % (config_name, config_value, config_name2, config_value2))
+        self.env.assertEqual(response, "OK")
+
+        # Make sure 1st config been updated.
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
         expected_response = [config_name, config_value]
+        self.env.assertEqual(response, expected_response)
+
+        # Make sure 2nd config been updated.
+        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name2)
+        expected_response = [config_name2, config_value2]
         self.env.assertEqual(response, expected_response)
 
     def test04_config_set_invalid_name(self):
