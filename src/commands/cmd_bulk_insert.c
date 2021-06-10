@@ -10,6 +10,8 @@
 #include "../util/thpool/pools.h"
 #include "../bulk_insert/bulk_insert.h"
 
+#define BATCH_SIZE_LIMIT 1000000 // 1M
+
 // process "BEGIN" token, expected to be present only on first bulk-insert
 // batch, make sure graph key doesn't exists, fails if "BEGIN" token is present
 // and graph key 'graphname' already exists
@@ -60,6 +62,10 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	long long     node_count  =  0;  //  number of declared nodes
 	long long     edge_count  =  0;  //  number of declared edges
 
+	if(node_count + edge_count > BATCH_SIZE_LIMIT) {
+		RedisModule_ReplyWithError(ctx, "Error batch too large to process");
+		goto cleanup;
+	}
 	// unpack arguments
 
 	// get graph name
