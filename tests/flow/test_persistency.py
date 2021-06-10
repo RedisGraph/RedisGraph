@@ -27,21 +27,27 @@ class testGraphPersistency(FlowTestsBase):
             countryNodes = {}
             # Create entities
 
+            count = 0
             for p in people:
-                person = Node(label="person", properties={"name": p})
+                count += 1
+                person = Node(label="person", properties={"name": p, "height": count})
                 redis_graph.add_node(person)
                 personNodes[p] = person
 
+            count = 0
             for p in countries:
-                country = Node(label="country", properties={"name": p})
+                count += 1
+                country = Node(label="country", properties={"name": p, "size": count})
                 redis_graph.add_node(country)
                 countryNodes[p] = country
 
+            count = 0
             for v in visits:
+                count += 1
                 person = v[0]
                 country = v[1]
                 edge = Edge(personNodes[person], 'visit', countryNodes[country], properties={
-                            'purpose': 'pleasure'})
+                            'purpose': 'pleasure', "citizens": count})
                 redis_graph.add_edge(edge)
 
             redis_graph.commit()
@@ -57,7 +63,11 @@ class testGraphPersistency(FlowTestsBase):
             actual_result = redis_con.execute_command(
                 "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name)")
             actual_result = redis_con.execute_command(
+                "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(height)")
+            actual_result = redis_con.execute_command(
                 "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name)")
+            actual_result = redis_con.execute_command(
+                "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(size)")
         return redis_graph
 
     def populate_dense_graph(self, dense_graph_name):
