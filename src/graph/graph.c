@@ -460,6 +460,10 @@ size_t Graph_EdgeCount(const Graph *g) {
 	return g->edges->itemCount;
 }
 
+uint64_t Graph_RelationEdgeCount(const Graph *g, int relation_idx) {
+	return GraphStatistics_EdgeCount(&g->stats, relation_idx);
+}
+
 uint Graph_DeletedEdgeCount(const Graph *g) {
 	ASSERT(g);
 	return DataBlock_DeletedItemsCount(g->edges);
@@ -1421,7 +1425,7 @@ bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
 	GrB_Matrix_nvals(&nvals, R);
 
-	return (GraphStatistics_EdgeCount(&g->stats, r) > nvals);
+	return (Graph_RelationEdgeCount(g, r) > nvals);
 }
 
 GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
