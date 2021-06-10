@@ -218,12 +218,15 @@ size_t Graph_LabeledNodeCount(
 	int label
 );
 
-// Returns number of edges of a specific relation type.
-uint64_t Graph_StatisticsEdgeCount(const Graph *g, int relation_idx);
-
 // Returns number of edges in the graph.
 size_t Graph_EdgeCount(
 	const Graph *g
+);
+
+// Returns number of edges of a specific relation type.
+uint64_t Graph_RelationEdgeCount(
+	const Graph *g,
+	int relation_idx
 );
 
 // Returns number of deleted edges in the graph.
