@@ -10,13 +10,11 @@
 #include "../../arithmetic/aggregate_funcs/agg_funcs.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
-static GrB_UnaryOp countMultipleEdges = NULL;
-
 /* The reduceCount optimization will look for execution plan
- * performing solely node counting: total number of nodes in the graph,
- * total number of nodes with a specific label.
+ * performing solely node/edge counting: total number of nodes/edges
+ * in the graph, total number of nodes/edges with a specific label/relation.
  * In which case we can avoid performing both SCAN* and AGGREGATE
- * operations by simply returning Graph_NodeCount or Graph_LabeledNodeCount. */
+ * operations by simply returning a precomputed count */
 
 static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 										  OpAggregate **opAggregate) {
@@ -126,129 +124,90 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 }
 
 /* Checks if execution plan solely performs edge count */
-static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
-									  OpBase **opTraverse, OpBase **opScan) {
-	// Reset.
+static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult,
+		OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
+
+	// reset
 	*opScan = NULL;
 	*opTraverse = NULL;
 	*opResult = NULL;
 	*opAggregate = NULL;
 
-	if(!_identifyResultAndAggregateOps(root, opResult, opAggregate)) return false;
+	if(!_identifyResultAndAggregateOps(root, opResult, opAggregate)) {
+		return false;
+	}
+
 	OpBase *op = ((OpBase *)*opAggregate)->children[0];
 
-	if(op->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) return false;
+	if(op->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) {
+		return false;
+	}
+
 	*opTraverse = op;
 	op = op->children[0];
 
-	// Only a full node scan can be converted, as a labeled source acts as a filter
-	// that may invalidate some of the edges.
+	// only a full node scan can be converted, as a labeled source acts as a
+	// filter that may invalidate some of the edges
 	if(op->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return false;
 	*opScan = op;
 
 	return true;
 }
 
-void _countEdges(void *z, const void *x) {
-	uint64_t *entry = (uint64_t *) x;
-	if(SINGLE_EDGE(*entry)) {
-		*(uint64_t *)z = 1;
-	} else {
-		// Multiple edges
-		EdgeID *ids = (EdgeID *)(*entry);
-		*(uint64_t *)z = array_len(ids);
-	}
-}
-
-uint64_t _countRelationshipEdges(GrB_Matrix M) {
-	// Create Unary operation only once.
-	if(!countMultipleEdges) {
-		GrB_UnaryOp_new(&countMultipleEdges, _countEdges, GrB_UINT64, GrB_UINT64);
-	}
-
-	/* TODO: to avoid this entire process keep track if
-	 * M contains multiple edges between two given nodes
-	 * if there are no multiple edges,
-	 * i.e. `a` is connected to `b` with multiple edges of type R
-	 * then all we need to do is return M's nnz.
-	 * Otherwise create a new matrix A, where A[i,j] = x
-	 * where x is the number of edges in M[i,j]
-	 * then reduce A using the plus (sum) monoid. */
-
-	GrB_Index nrows;
-	GrB_Index ncols;
-	GrB_Matrix_nrows(&nrows, M);
-	GrB_Matrix_ncols(&ncols, M);
-
-	GrB_Matrix A;
-	GrB_Matrix_new(&A, GrB_UINT64, nrows, ncols);
-
-	// A[i,j] = # of edges in M[i,j].
-	GrB_Matrix_apply(A, GrB_NULL, GrB_NULL,
-					 countMultipleEdges, M, GrB_NULL);
-
-	uint64_t edges = 0;
-	// Sum(A)
-	GrB_Matrix_reduce_UINT64(&edges, GrB_NULL,
-							 GxB_PLUS_UINT64_MONOID, A, GrB_NULL);
-
-	GrB_free(&A);
-	return edges;
-}
-
 void _reduceEdgeCount(ExecutionPlan *plan) {
-	/* We'll only modify execution plan if it is structured as follows:
-	 * "Full Scan -> Conditional Traverse -> Aggregate -> Results" */
+	// we'll only modify execution plan if it is structured as follows:
+	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
 	OpBase *opScan;
 	OpBase *opTraverse;
 	OpResult *opResult;
 	OpAggregate *opAggregate;
 
-	/* See if execution-plan matches the pattern:
-	 * "Full Scan -> Conditional Traverse -> Aggregate -> Results".
-	 * if that's not the case, simply return without making any modifications. */
-	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan)) return;
+	// see if execution-plan matches the pattern:
+	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
+	// if that's not the case, simply return without making any modifications
+	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate,
+				&opTraverse, &opScan)) return;
 
-	/* User is trying to count edges (either in total or of specific types) in the graph.
-	 * Optimize by skipping Scan, Traverse and Aggregate. */
-	SIValue edgeCount = SI_LongVal(0);
+	// user is trying to count edges (either in total or of specific types)
+	// in the graph. optimize by skipping Scan, Traverse and Aggregate
 	Graph *g = QueryCtx_GetGraph();
+	SIValue edgeCount = SI_LongVal(0);
 
-	// If type is specified, count only labeled entities.
+	// if type is specified, count only labeled entities
 	OpCondTraverse *condTraverse = (OpCondTraverse *)opTraverse;
-	// The traversal op doesn't contain information about the traversed edge, cannot apply optimization.
+	// the traversal op doesn't contain information about the traversed edge,
+	// cannot apply optimization
 	if(!condTraverse->edge_ctx) return;
 
-	uint edgeRelationCount = array_len(condTraverse->edge_ctx->edgeRelationTypes);
+	uint relationCount = array_len(condTraverse->edge_ctx->edgeRelationTypes);
 
 	uint64_t edges = 0;
-	for(uint i = 0; i < edgeRelationCount; i++) {
+	for(uint i = 0; i < relationCount; i++) {
 		int relType = condTraverse->edge_ctx->edgeRelationTypes[i];
 		switch(relType) {
 			case GRAPH_NO_RELATION:
-				// Should be the only relationship type mentioned, -[]->
+				// should be the only relationship type mentioned, -[]->
 				edges = Graph_EdgeCount(g);
 				break;
 			case GRAPH_UNKNOWN_RELATION:
-				// No change to current count, -[:none_existing]->
+				// no change to current count, -[:none_existing]->
 				break;
 			default:
-				edges += _countRelationshipEdges(Graph_GetRelationMatrix(g, relType));
+				edges += Graph_RelationEdgeCount(g, relType);
 		}
 	}
 	edgeCount = SI_LongVal(edges);
 
-	/* Construct a constant expression, used by a new
-	 * projection operation. */
+	// construct a constant expression, used by a new projection operation
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-	// The new expression must be aliased to populate the Record.
+	// the new expression must be aliased to populate the Record
 	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
-	// New execution plan: "Project -> Results"
+	// new execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, opScan);
 	OpBase_Free(opScan);
 
@@ -262,11 +221,8 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 }
 
 void reduceCount(ExecutionPlan *plan) {
-	/* both _reduceNodeCount and _reduceEdgeCount should count nodes or edges, respectively,
-	 * out of the same execution plan.
-	 * If node count optimization was unable to execute,
-	 * meaning that the execution plan does not hold any node count pattern,
-	 * then edge count will be tried to be executed upon the same execution plan */
+	// start by trying to identify node count pattern
+	// if unsuccessful try edge count pattern
 	if(!_reduceNodeCount(plan)) _reduceEdgeCount(plan);
 }
 
