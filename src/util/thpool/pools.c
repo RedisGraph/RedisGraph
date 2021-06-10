@@ -17,13 +17,23 @@ static threadpool _bulk_thpool = NULL;     // bulk loader workers
 static threadpool _readers_thpool = NULL;  // readers
 static threadpool _writers_thpool = NULL;  // writers
 
+void ThreadPools_Set_max_pending_work(uint64_t val) {
+	// On load time configuration the setter might be called before pools initialization.
+	// In this case the init function will get the values as arguments.
+	if(_readers_thpool)
+		thpool_set_jobqueue_cap(_readers_thpool, val);
+	if(_writers_thpool)
+		thpool_set_jobqueue_cap(_writers_thpool, val);
+}
+
 // set up thread pools  (readers and writers)
 // returns 1 if thread pools initialized, 0 otherwise
 int ThreadPools_CreatePools
 (
 	uint reader_count,
 	uint writer_count,
-	uint bulk_count
+	uint bulk_count,
+	uint64_t max_queued_queries
 ) {
 	ASSERT(_readers_thpool == NULL);
 	ASSERT(_writers_thpool == NULL);
@@ -36,6 +46,8 @@ int ThreadPools_CreatePools
 
 	_bulk_thpool = thpool_init(bulk_count, "bulk_loader");
 	if(_bulk_thpool == NULL) return 0;
+
+	ThreadPools_Set_max_pending_work(max_queued_queries);
 
 	return 1;
 }
@@ -111,11 +123,6 @@ void ThreadPools_Resume
 	thpool_resume(_bulk_thpool);
 	thpool_resume(_readers_thpool);
 	thpool_resume(_writers_thpool);
-}
-
-void ThreadPools_Set_max_pending_work(uint64_t val) {
-	thpool_set_jobqueue_cap(_readers_thpool, val);
-	thpool_set_jobqueue_cap(_writers_thpool, val);
 }
 
 // add task for reader thread
