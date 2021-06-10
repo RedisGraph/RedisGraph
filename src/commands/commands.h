@@ -22,7 +22,8 @@ typedef enum {
 	CMD_PROFILE        = 6,
 	CMD_BULK_INSERT    = 7,
 	CMD_SLOWLOG        = 8,
-	CMD_LIST           = 9
+	CMD_LIST           = 9,
+	CMD_INFO		   = 10
 } GRAPH_Commands;
 
 //------------------------------------------------------------------------------
@@ -37,4 +38,5 @@ int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_Info(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 
