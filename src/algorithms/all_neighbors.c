@@ -43,6 +43,7 @@ static bool _AllNeighborsCtx_Visited
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
+	EntityID dest, // [optional (INVALID_ENTITY_ID)] destination node to reach
 	GrB_Matrix M,  // matrix describing connections
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth
@@ -54,6 +55,7 @@ AllNeighborsCtx *AllNeighborsCtx_New
 
 	ctx->M              =  M;
 	ctx->src            =  src;
+	ctx->dest           =  dest;
 	ctx->minLen         =  minLen;
 	ctx->maxLen         =  maxLen;
 	ctx->levels         =  array_new(GxB_MatrixTupleIter *, 1);
@@ -88,7 +90,13 @@ EntityID AllNeighborsCtx_NextNeighbor
 		}
 
 		if(ctx->minLen == 0) {
-			return ctx->src;
+			if(ctx->dest != INVALID_ENTITY_ID) {
+				if(ctx->dest == ctx->src) {
+					return ctx->src;
+				}
+			} else {
+				return ctx->src;
+			}
 		}
 	}
 
@@ -124,7 +132,13 @@ EntityID AllNeighborsCtx_NextNeighbor
 			_AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
 		}
 
-		return dest_id;
+		if(ctx->dest != INVALID_ENTITY_ID) {
+			if(ctx->dest == dest_id) {
+				return dest_id;
+			}
+		} else {
+			return dest_id;
+		}
 	}
 
 	// couldn't find a neighbor

@@ -1420,17 +1420,36 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
 // Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise
 bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	ASSERT(Graph_RelationTypeCount(g) > r);
-	GrB_Index nvals;
-	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
-	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix_nvals(&nvals, R);
 
-	return (Graph_RelationEdgeCount(g, r) > nvals);
+	GrB_Matrix R;
+	GrB_Index nvals;
+	bool multi_edge = false;
+
+	// unknown relationship type, return false
+	if(r == GRAPH_UNKNOWN_RELATION) return false;
+
+	if(r == GRAPH_NO_RELATION) {
+		// when r == GRAPH_NO_RELATION caller is interested to find out if the
+		// graph contains multiple edges regardless of the relationship type
+		int relation_count = Graph_RelationTypeCount(g);
+		for(int i = 0; i < relation_count; i++) {
+			R = Graph_GetRelationMatrix(g, i);
+			GrB_Matrix_nvals(&nvals, R);
+			multi_edge = (Graph_RelationEdgeCount(g, i) > nvals);
+			if(multi_edge) break;
+		}
+	} else {
+		// A relationship matrix contains multi-edge if nvals < number of edges with type r.
+		R = Graph_GetRelationMatrix(g, r);
+		GrB_Matrix_nvals(&nvals, R);
+		multi_edge = (Graph_RelationEdgeCount(g, r) > nvals);
+	}
+
+	return multi_edge;
 }
 
 GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
 	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
-
 	if(relation_idx == GRAPH_NO_RELATION) {
 		return Graph_GetTransposedAdjacencyMatrix(g);
 	} else {

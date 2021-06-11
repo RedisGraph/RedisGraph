@@ -20,6 +20,7 @@
 
 typedef struct {
 	EntityID src;                  // traverse begin here
+	EntityID dest;                 // [optional (INVALID_ENTITY_ID)] dest node
 	GrB_Matrix M;                  // adjacency matrix
 	uint minLen;                   // minimum required depth
 	uint maxLen;                   // maximum allowed depth
@@ -32,6 +33,7 @@ typedef struct {
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
+	EntityID dest, // [optional (INVALID_ENTITY_ID)] destination node to reach
 	GrB_Matrix M,  // matrix describing connections
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth

@@ -139,6 +139,8 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	// 1. no filters to be applied to pattern
 	// 2. traversed edge isn't referenced
 	// 3. traversal of a single relationship: R, RT
+	//    if edge type isn't specified and graph doesn't contains "multi-edge"
+	//    this optimization can still be applied
 	// 4. traversal must be directed
 	//
 	// in which case we can use a faster consume function
@@ -146,19 +148,18 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
 			AlgebraicExpression_Edge(op->ae));
 	uint reltype_count = QGEdge_RelationCount(e);
+	if(reltype_count > 1) return OP_OK;
 
 	bool multi_edge = true;
-	if(reltype_count == 1) {
-		int rel_id = QGEdge_RelationID(e, 0);
-		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
-			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id);
-		}
-	}
+	int rel_id = GRAPH_NO_RELATION;
+	if(reltype_count == 1) rel_id = QGEdge_RelationID(e, 0);
+	if(rel_id == GRAPH_UNKNOWN_RELATION) return OP_OK;
+
+	multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id);
 
 	if(op->ft          == NULL                && // no filter on path
 	   op->edgesIdx    == -1                  && // edge isn't required
-	   op->expandInto  == false               && // destination unknown
-	   reltype_count   == 1                   && // single relationship
+	   reltype_count   <= 1                   && // single relationship
 	   multi_edge      == false               && // no multi edge entries
 	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
 	) {
@@ -175,6 +176,7 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 	CondVarLenTraverse  *op     = (CondVarLenTraverse *)opBase;
 	OpBase              *child  =  op->op.children[0];
 	Node                dest    =  GE_NEW_NODE();
+	EntityID            src_id  =  INVALID_ENTITY_ID;
 	EntityID            dest_id =  INVALID_ENTITY_ID;
 
 	while ((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) ==
@@ -209,26 +211,39 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 		}
 
 		AllNeighborsCtx_Free(op->allNeighborsCtx);
-		op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id,
-												  op->M,
-												  op->minHops,
-												  op->maxHops);
+
+		// dest node is known in advance if we're performing an ExpandInto
+		Node *destNode = NULL;
+		if(op->expandInto) {
+			// TODO: test for null, if so continue
+			destNode = Record_GetNode(op->r, op->destNodeIdx);
+			dest_id = ENTITY_GET_ID(destNode);
+		} else {
+			dest_id = INVALID_ENTITY_ID;
+		}
+
+		src_id = ENTITY_GET_ID(srcNode);
+		op->allNeighborsCtx = AllNeighborsCtx_New(src_id, dest_id, op->M,
+				op->minHops, op->maxHops);
 	}
 
 	// could not produce destination node, return
 	if(dest_id == INVALID_ENTITY_ID) return NULL;
 
-	int res = Graph_GetNode(op->g, dest_id, &dest);
-	UNUSED(res);
-	ASSERT(res == true);
-
 	//--------------------------------------------------------------------------
 	// populate output record
 	//--------------------------------------------------------------------------
 
-	// add destination node to record
 	Record r = OpBase_CloneRecord(op->r);
-	Record_AddNode(r, op->destNodeIdx, dest);
+
+	// if 'expandInto' is true, destination is already part of the record
+	// otherwise add dest to record
+	if(!op->expandInto) {
+		int res = Graph_GetNode(op->g, dest_id, &dest);
+		UNUSED(res);
+		ASSERT(res == true);
+		Record_AddNode(r, op->destNodeIdx, dest);
+	}
 
 	return r;
 }

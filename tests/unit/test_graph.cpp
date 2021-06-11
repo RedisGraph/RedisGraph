@@ -943,37 +943,52 @@ TEST_F(GraphTest, GraphStatistics) {
 	* 8. Verify r1 multi edge (True)
 	* 9. Verify r0 multi edge (True) */
 
-	// 1. Verify r0 multi edge (False)
+	// 0. Empty graph, no multi edges
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
+
+	// 1. Connect 0 to 1 via edge of type r0
 	// (0)-[r0]->(1)
+	// Verify r0 multi edge (False)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
 	ASSERT_EQ(g->stats.edge_count[r0], 1);
-	// 2. Verify r0 multi edge (False)
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
+
+	// 2. Connect 0 to 1 once again with edge of type r0
 	// (0)-[r0]->(1)
+	// Verify r0 multi edge (True)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
-	// 3. Verify r0 multi edge (True)
 	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0));
-	// 4. Verify r1 no multi edge
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
+
+	// 3. Connect 0 to 1 via edge of type r1
 	// (0)-[r1]->(1)
+	// Verify r1 multi edge (False)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
-	// 5. Verify r1 multi edge (False)
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
+
+	// 4. Connect 1 to 0 via edge of type r1
 	// (1)-[r1]->(0)
+	// Verify r1 multi edge (False)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[3]);
-	// 6. Verify r1 multi edge (False)
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
+
+	// 5. connect 2 to 1 via edge of type r1
 	// (2)-[r1]->(1)
+	// Verify r1 multi edge (False)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[4]);
-	// 7. Verify r1 multi edge (False)
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
+
+	// 6. Connect 2 to 1 once again with edge of type r1
 	// (2)-[r1]->(1)
+	// Verify r1 multi edge (True)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[5]);
-	// 8. Verify r1 multi edge (True)
 	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r1));
-	// 9. Verify r0 multi edge (True)
-	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
 
 	Graph_ReleaseLock(g);
 	/* Delete edges:
@@ -992,6 +1007,7 @@ TEST_F(GraphTest, GraphStatistics) {
 
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
 	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, GRAPH_NO_RELATION));
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 1);
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 2);
 	ASSERT_EQ(node_deleted, 1);
@@ -1000,3 +1016,4 @@ TEST_F(GraphTest, GraphStatistics) {
 	// Clean up.
 	Graph_Free(g);
 }
+
