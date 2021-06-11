@@ -187,6 +187,10 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 		if(op->r) OpBase_DeleteRecord(op->r);
 		op->r = childRecord;
 
+		//----------------------------------------------------------------------
+		// get source node
+		//----------------------------------------------------------------------
+
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		if(srcNode == NULL) {
 			// the child Record may not contain the source node
@@ -195,6 +199,27 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
 			continue;
+		}
+		src_id = ENTITY_GET_ID(srcNode);
+
+		//----------------------------------------------------------------------
+		// get destination node
+		//----------------------------------------------------------------------
+
+		Node *destNode = NULL;
+		dest_id = INVALID_ENTITY_ID;
+
+		if(op->expandInto) {
+			destNode = Record_GetNode(op->r, op->destNodeIdx);
+			if(destNode == NULL) {
+				// the child Record may not contain the destination node
+				// in scenarios like a failed OPTIONAL MATCH
+				// in this case, delete the Record and try again
+				OpBase_DeleteRecord(op->r);
+				op->r = NULL;
+				continue;
+			}
+			dest_id = ENTITY_GET_ID(destNode);
 		}
 
 		// create edge relation type array on first call to consume
@@ -212,17 +237,6 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 
 		AllNeighborsCtx_Free(op->allNeighborsCtx);
 
-		// dest node is known in advance if we're performing an ExpandInto
-		Node *destNode = NULL;
-		if(op->expandInto) {
-			// TODO: test for null, if so continue
-			destNode = Record_GetNode(op->r, op->destNodeIdx);
-			dest_id = ENTITY_GET_ID(destNode);
-		} else {
-			dest_id = INVALID_ENTITY_ID;
-		}
-
-		src_id = ENTITY_GET_ID(srcNode);
 		op->allNeighborsCtx = AllNeighborsCtx_New(src_id, dest_id, op->M,
 				op->minHops, op->maxHops);
 	}
@@ -260,6 +274,10 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		if(op->r) OpBase_DeleteRecord(op->r);
 		op->r = childRecord;
 
+		//----------------------------------------------------------------------
+		// get source node
+		//----------------------------------------------------------------------
+
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		if(srcNode == NULL) {
 			/* The child Record may not contain the source node in scenarios like
@@ -267,6 +285,24 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
 			continue;
+		}
+
+		//----------------------------------------------------------------------
+		// get destination node
+		//----------------------------------------------------------------------
+
+		Node *destNode = NULL;
+		// The destination node is known in advance if we're performing an ExpandInto.
+		if(op->expandInto) {
+			destNode = Record_GetNode(op->r, op->destNodeIdx);
+			if(destNode == NULL) {
+				/* The child Record may not contain the destination node in
+				 * scenarios like a failed OPTIONAL MATCH.
+				 * In this case, delete the Record and try again. */
+				OpBase_DeleteRecord(op->r);
+				op->r = NULL;
+				continue;
+			}
 		}
 
 		// Create edge relation type array on first call to consume.
@@ -278,10 +314,6 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 			 * where label L does not exists. */
 			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
 		}
-
-		Node *destNode = NULL;
-		// The destination node is known in advance if we're performing an ExpandInto.
-		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
 		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
