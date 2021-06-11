@@ -1,0 +1,22 @@
+name: "graph500_scale21-1hop"
+description: "graph500 scale 21 dataset contains 2396019 nodes and and 67108864 edges"
+remote:
+  - setup: redisgraph-r5
+  - type: oss-standalone
+dbconfig:
+  - dataset: "https://s3.amazonaws.com/benchmarks.redislabs/redisgraph/datasets/graph500_scale21/graph500_scale21_v2.2.16_dump.rdb"
+  - dataset_load_timeout_secs: 1200
+clientconfig:
+  - tool: redisgraph-benchmark-go
+  - parameters:
+    - graph: "graph500_21"
+    - rps: 0
+    - clients: 32
+    - threads: 4
+    - connections: 32
+    - requests: 1000000
+    - queries:
+      - { q: "match (n)-[:IS_CONNECTED*1]->(z) where ID(n) = __rand_int__ return ID(n), count(z)", ratio: 1.0 }
+kpis:
+  - le: { $.OverallClientLatencies.Total.q50: 4.0 }
+  - ge: { $.OverallQueryRates.Total: 18000 }
