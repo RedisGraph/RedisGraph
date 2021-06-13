@@ -23,6 +23,8 @@ static void _AllNeighborsCtx_CollectNeighbors
 		iter = ctx->levels[ctx->current_level];
 	}
 
+	// update visited path, replace frontier with current node
+	ctx->visited = array_append(ctx->visited, id);
 	GxB_MatrixTupleIter_iterate_row(iter, id);
 }
 
@@ -43,6 +45,7 @@ static bool _AllNeighborsCtx_Visited
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
+	EntityID dest, // [optional (INVALID_ENTITY_ID)] destination node to reach
 	GrB_Matrix M,  // matrix describing connections
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth
@@ -54,6 +57,7 @@ AllNeighborsCtx *AllNeighborsCtx_New
 
 	ctx->M              =  M;
 	ctx->src            =  src;
+	ctx->dest           =  dest;
 	ctx->minLen         =  minLen;
 	ctx->maxLen         =  maxLen;
 	ctx->levels         =  array_new(GxB_MatrixTupleIter *, 1);
@@ -77,9 +81,6 @@ EntityID AllNeighborsCtx_NextNeighbor
 		ASSERT(ctx->current_level == 0);
 		ctx->first_pull = false;
 
-		// update visited path, replace frontier with current node
-		ctx->visited = array_append(ctx->visited, ctx->src);
-
 		// current_level >= ctx->minLen
 		// see if we should expand further?
 		if(ctx->current_level < ctx->maxLen) {
@@ -88,7 +89,13 @@ EntityID AllNeighborsCtx_NextNeighbor
 		}
 
 		if(ctx->minLen == 0) {
-			return ctx->src;
+			if(ctx->dest != INVALID_ENTITY_ID) {
+				if(ctx->dest == ctx->src) {
+					return ctx->src;
+				}
+			} else {
+				return ctx->src;
+			}
 		}
 	}
 
@@ -107,24 +114,28 @@ EntityID AllNeighborsCtx_NextNeighbor
 			continue;
 		}
 
-		// update visited path, replace frontier with current node
-		ctx->visited = array_append(ctx->visited, dest_id);
+		bool visited = _AllNeighborsCtx_Visited(ctx, dest_id);
 
 		if(ctx->current_level < ctx->minLen) {
 			// continue traversing
-			_AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
+			if(!visited) _AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
 			continue;
 		}
 
 		// current_level >= ctx->minLen
 		// see if we should expand further?
-		if(ctx->current_level < ctx->maxLen &&
-		   !_AllNeighborsCtx_Visited(ctx, dest_id)) {
+		if(ctx->current_level < ctx->maxLen) {
 			// we can expand further
-			_AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
+			if(!visited) _AllNeighborsCtx_CollectNeighbors(ctx, dest_id);
 		}
 
-		return dest_id;
+		if(ctx->dest != INVALID_ENTITY_ID) {
+			if(ctx->dest == dest_id) {
+				return dest_id;
+			}
+		} else {
+			return dest_id;
+		}
 	}
 
 	// couldn't find a neighbor
