@@ -42,6 +42,12 @@ static const Config_Option_Field RUNTIME_CONFIGS[] =
 	Config_QUERY_MEM_CAPACITY
 };
 
+// Creates temporary copy for global module configuration for ensuring atomic run time comfiguration.
+void Config_Clone(void);
+
+// Restore global module configuration from temporary copy for ensuring atomic run time comfiguration.
+void Config_RestoreFromClone(void);
+
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);

@@ -72,6 +72,21 @@ typedef struct {
 RG_Config config; // global module configuration
 
 //------------------------------------------------------------------------------
+// config clone
+//------------------------------------------------------------------------------
+
+// Temporary copy for global module configuration for ensuring atomic run time comfiguration.
+RG_Config config_clone; 
+
+void Config_Clone(void) {
+	config_clone = config;
+}
+
+void Config_RestoreFromClone(void) {
+	config = config_clone;
+}
+
+//------------------------------------------------------------------------------
 // config value parsing
 //------------------------------------------------------------------------------
 
