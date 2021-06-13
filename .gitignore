@@ -57,3 +57,6 @@ deps/GraphBLAS/Config/GraphBLAS.h.tmp
 
 # local/remote benchmark result files
 tests/benchmarks/*.json
+
+**/*.gcno
+*.info

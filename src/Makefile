@@ -33,6 +33,11 @@ else
 	export OS = Mac
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
+
+ifeq ($(COV),1)
+CFLAGS += -fprofile-arcs -ftest-coverage
+DEBUG = 1
+endif
 export CFLAGS
 
 # Sources
@@ -179,7 +184,7 @@ define extract_symbols
 objcopy --only-keep-debug $1 $1.debug
 objcopy --strip-debug $1
 objcopy --add-gnu-debuglink $1.debug $1
-endef 
+endef
 
 # Build the module...
 redisgraph.so: $(MODULE)
