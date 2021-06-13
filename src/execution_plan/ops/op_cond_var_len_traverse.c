@@ -139,8 +139,6 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	// 1. no filters to be applied to pattern
 	// 2. traversed edge isn't referenced
 	// 3. traversal of a single relationship: R, RT
-	//    if edge type isn't specified and graph doesn't contains "multi-edge"
-	//    this optimization can still be applied
 	// 4. traversal must be directed
 	//
 	// in which case we can use a faster consume function
@@ -148,18 +146,17 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
 			AlgebraicExpression_Edge(op->ae));
 	uint reltype_count = QGEdge_RelationCount(e);
-	if(reltype_count > 1) return OP_OK;
+	if(reltype_count != 1) return OP_OK;
 
 	bool multi_edge = true;
-	int rel_id = GRAPH_NO_RELATION;
-	if(reltype_count == 1) rel_id = QGEdge_RelationID(e, 0);
+	int rel_id = QGEdge_RelationID(e, 0);
 	if(rel_id == GRAPH_UNKNOWN_RELATION) return OP_OK;
 
 	multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id);
 
 	if(op->ft          == NULL                && // no filter on path
 	   op->edgesIdx    == -1                  && // edge isn't required
-	   reltype_count   <= 1                   && // single relationship
+	   reltype_count   == 1                   && // single relationship
 	   multi_edge      == false               && // no multi edge entries
 	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
 	) {
