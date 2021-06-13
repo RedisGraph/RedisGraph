@@ -14,7 +14,8 @@ int ThreadPools_CreatePools
 (
 	uint reader_count,
 	uint writer_count,
-	uint bulk_count
+	uint bulk_count,
+	uint64_t max_queued_queries
 );
 
 // return number of threads in both the readers and writers pools

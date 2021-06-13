@@ -24,7 +24,6 @@
 #include "procedures/procedure.h"
 #include "module_event_handlers.h"
 #include "serializers/graphmeta_type.h"
-#include "configuration/reconf_handler.h"
 #include "serializers/graphcontext_type.h"
 #include "arithmetic/arithmetic_expression.h"
 
@@ -101,8 +100,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	// set up the module's configurable variables,
 	// using user-defined values where provided
 	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
-	// register for config updates
-	Config_Subscribe_Changes(reconf_handler);
 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
@@ -114,9 +111,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	int reader_thread_count;
 	int bulk_thread_count = 1;
 	int writer_thread_count = 1;
+	uint64_t max_queued_queries = UINT64_MAX;
 	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
+	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
+	Config_Option_get(Config_MAX_QUEUED_QUERIES, &max_queued_queries);
 
-	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count, bulk_thread_count)) {
+	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count, bulk_thread_count, max_queued_queries)) {
 		return REDISMODULE_ERR;
 	}
 

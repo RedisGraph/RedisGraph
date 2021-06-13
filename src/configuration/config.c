@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <errno.h>
 #include "util/redis_version.h"
+#include "configuration/reconf_handler.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
 //-----------------------------------------------------------------------------
@@ -369,12 +370,10 @@ void _Config_SetToDefaults(void) {
 	config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
 }
 
-int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	// Initialize the configuration to its default values.
-	_Config_SetToDefaults();
-
+// Sets the configuration parameters from the args array.
+static inline int config_array_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc % 2) {
-		// emit an error if we received an odd number of arguments,
+		// emit an error if we received an odd number of arguments or there are less than 3 arguments,
 		// as this indicates an invalid configuration.
 		RedisModule_Log(ctx, "warning",
 						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
@@ -409,6 +408,18 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 
 	return REDISMODULE_OK;
+}
+
+int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	// Initialize the configuration to its default values.
+	_Config_SetToDefaults();
+
+	// register for configuration updates for the case of load time configuration.
+	// Note that some of the subscribes might not be ready to accept the updates yet,
+	// Thus they must get configuration on init.
+	Config_Subscribe_Changes(reconf_handler);
+
+	return config_array_set(ctx, argv, argc);
 }
 
 bool Config_Option_set(Config_Option_Field field, const char *val) {
