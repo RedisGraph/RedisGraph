@@ -11,7 +11,6 @@
 #include <limits.h>
 #include <errno.h>
 #include "util/redis_version.h"
-#include "configuration/reconf_handler.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
 //-----------------------------------------------------------------------------
@@ -370,18 +369,23 @@ void _Config_SetToDefaults(void) {
 	config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
 }
 
-// Sets the configuration parameters from the args array.
-static inline int config_array_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	// make sure reconfiguration callback is already registered
+	ASSERT(config.cb != NULL);
+
+	// initialize the configuration to its default values
+	_Config_SetToDefaults();
+
 	if(argc % 2) {
-		// emit an error if we received an odd number of arguments or there are less than 3 arguments,
-		// as this indicates an invalid configuration.
+		// emit an error if we received an odd number of arguments,
+		// as this indicates an invalid configuration
 		RedisModule_Log(ctx, "warning",
-						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
+				"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
 		return REDISMODULE_ERR;
 	}
 
 	for(int i = 0; i < argc; i += 2) {
-		// Each configuration is a key-value pair. (K, V)
+		// each configuration is a key-value pair. (K, V)
 
 		//----------------------------------------------------------------------
 		// get field
@@ -408,18 +412,6 @@ static inline int config_array_set(RedisModuleCtx *ctx, RedisModuleString **argv
 	}
 
 	return REDISMODULE_OK;
-}
-
-int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	// Initialize the configuration to its default values.
-	_Config_SetToDefaults();
-
-	// register for configuration updates for the case of load time configuration.
-	// Note that some of the subscribes might not be ready to accept the updates yet,
-	// Thus they must get configuration on init.
-	Config_Subscribe_Changes(reconf_handler);
-
-	return config_array_set(ctx, argv, argc);
 }
 
 bool Config_Option_set(Config_Option_Field field, const char *val) {

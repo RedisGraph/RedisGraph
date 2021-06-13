@@ -9,13 +9,14 @@
 #include "thpool.h"
 
 #define THPOOL_QUEUE_FULL -2
+
 // create both readers and writers thread pools
 int ThreadPools_CreatePools
 (
 	uint reader_count,
 	uint writer_count,
 	uint bulk_count,
-	uint64_t max_queued_queries
+	uint64_t max_pending_work
 );
 
 // return number of threads in both the readers and writers pools
@@ -66,6 +67,9 @@ int ThreadPools_AddWorkBulkLoader
 	void *arg_p
 );
 
-// Sets the limit on max queued queries in each thread pool.
-void ThreadPools_Set_max_pending_work(uint64_t val);
+// sets the limit on max queued queries in each thread pool
+void ThreadPools_SetMaxPendingWork
+(
+	uint64_t val
+);
 
