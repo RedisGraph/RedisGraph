@@ -171,6 +171,9 @@ jobs:
       - run:
           name: Test
           command: bash -l -c "make test"
+      - run:
+          name: Run 30-second fuzz test
+          command: bash -l -c "make fuzz"
       - early_return_for_forked_pull_requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -219,28 +222,6 @@ jobs:
             # Re-run the test suite, failing if definite memory leaks have been introduced
             bash -l -c "make memcheck"
           # Allow RediSearch global destructors
-          environment:
-            RS_GLOBAL_DTORS: 1
-
-  build_fuzz:
-    docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
-        environment:
-            LANG: en_US.UTF-8
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8
-    steps:
-      - early_returns
-      - checkout
-      - setup-prerequisits
-      - load-cached-deps
-      - attach_workspace:
-          at: /workspace
-      - run:
-          name: Run 30-second fuzz test
-          command: |
-              make fuzz # Run the fuzz tester
-          # Allow RediSearch global destructors.
           environment:
             RS_GLOBAL_DTORS: 1
 
@@ -438,9 +419,6 @@ workflows:
           <<: *context
           <<: *on-any-branch
       - build_memcheck:
-          <<: *context
-          <<: *on-any-branch
-      - build_fuzz:
           <<: *context
           <<: *on-any-branch
       - build_macos:

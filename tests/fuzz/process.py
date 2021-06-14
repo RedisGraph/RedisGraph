@@ -14,14 +14,19 @@ def make_connection():
 
 
 def issue_queries(graph, timeout):
-    working_dir = os.path.dirname(os.path.abspath(__file__))
+    working_dir = os.path.abspath(os.path.dirname(__file__))
     env = dict(os.environ, PYTHONPATH=os.pathsep.join([os.environ.get('PYTHONPATH', ''), working_dir + "/generator"]))
     cmd = ["grammarinator-generate CustomCypherGenerator.CustomCypherGenerator --sys-path generator/ --jobs 1 -r oC_Query --stdout -d 30"]
 
     start = time()
     while time() - start < timeout:
         # Capture generated queries
-        query = subprocess.check_output(cmd, env=env, shell=True, encoding="utf8")
+        try:
+            query = subprocess.check_output(cmd, env=env, shell=True, encoding="utf8")
+        except subprocess.CalledProcessError as e:
+            # Subprocess failed, emit the thrown exception and retry.
+            print(str(e))
+            continue
 
         # Log query to console
         print(query)

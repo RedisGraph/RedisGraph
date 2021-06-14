@@ -3,4 +3,4 @@ redisgraph>=1.5
 redisgraph-bulk-loader
 click>=6.7
 behave>=1.2
-git+https://github.com/jeffreylovitz/grammarinator.git@master
+git+https://github.com/jeffreylovitz/grammarinator.git@d40d76715f14888b6b6bed9d84c562acaf8a7b7a
