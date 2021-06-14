@@ -471,4 +471,5 @@ workflows:
               only: master
     jobs:
       - nightly_automation
-      - nightly_performance_automation
+      - nightly_performance_automation:
+          <<: *context
