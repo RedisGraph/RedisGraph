@@ -751,3 +751,6 @@ void Config_Subscribe_Changes(Config_on_change cb) {
 	config.cb = cb;
 }
 
+void Config_Unsubscribe_Changes(void) {
+	config.cb = NULL;
+}

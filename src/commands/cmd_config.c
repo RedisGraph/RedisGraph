@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include "../deps/GraphBLAS/Source/GB_assert.h"
 #include "../configuration/config.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
@@ -97,6 +98,28 @@ bool _Config_set(RedisModuleCtx *ctx, RedisModuleString *key,
 	return false;
 }
 
+int _Config_array_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, bool dryrun) {
+	// To ensure atomicity we check if configuration can be setted.
+	if(dryrun) {
+		Config_Clone();                 // Clone the config for the case of error.
+		Config_Unsubscribe_Changes();   // Unsubscribe from configuration changes to avoid propagating the changes.
+	}
+
+	// set configuration for each requested one
+	for(int i = 2; i < argc; i += 2) {
+		RedisModuleString *key = argv[i];
+		RedisModuleString *val = argv[i+1];
+		if(_Config_set(ctx, key, val)) {
+			// On error quit the operation.
+			ASSERT(dryrun);
+			return -1;
+		}
+	}
+
+	if(dryrun) Config_RestoreFromClone();
+	return 0;
+}
+
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// GRAPH.CONFIG <GET|SET> <NAME> [value]
 	if(argc < 3) return RedisModule_WrongArity(ctx);
@@ -113,18 +136,9 @@ int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// as this indicates an invalid configuration
 		if(argc < 4 || (argc % 2) == 1) return RedisModule_WrongArity(ctx);
 
-		Config_Clone(); // Clone the config for the case of error.
-
-		// set configuration for each requested one
-		for(int i = 2; i < argc; i += 2) {
-			RedisModuleString *key = argv[i];
-			RedisModuleString *val = argv[i+1];
-			if(_Config_set(ctx, key, val)) {
-				// On error restore the original config values and quit the operation.
-				Config_RestoreFromClone();
-				break;
-			}
-		}
+		// To ensure atomicity first check if configuration can be setted and dryrun the configuration.
+		if(_Config_array_set(ctx, argv, argc, true)) return REDISMODULE_OK;
+		if(_Config_array_set(ctx, argv, argc, false)) ASSERT(false);
 	} else {
 		RedisModule_ReplyWithError(ctx, "Unknown subcommand for GRAPH.CONFIG");
 	}

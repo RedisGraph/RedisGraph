@@ -66,3 +66,5 @@ bool Config_Option_get(Config_Option_Field field, ...);
 // sets config update callback function
 void Config_Subscribe_Changes(Config_on_change cb);
 
+// Unset the config update callback function
+void Config_Unsubscribe_Changes(void);
