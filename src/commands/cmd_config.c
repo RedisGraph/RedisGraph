@@ -56,44 +56,70 @@ void _Config_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 }
 
-bool _Config_set_dryrun(RedisModuleCtx *ctx, RedisModuleString *key,
-		RedisModuleString *val) {
+void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	//--------------------------------------------------------------------------
-	// retrieve and validate config field
+	// validate configuration
 	//--------------------------------------------------------------------------
 
-	Config_Option_Field config_field;
-	const char *config_name = RedisModule_StringPtrLen(key, NULL);
+	// dryrun configuration, make sure all configurations are valid
+	for(int i = 0; i < argc; i += 2) {
+		RedisModuleString *key = argv[i];
+		RedisModuleString *val = argv[i+1];
 
-	if(!Config_Contains_field(config_name, &config_field)) {
-		RedisModule_ReplyWithError(ctx, "Unknown configuration field");
-		return false;
-	}
+		//----------------------------------------------------------------------
+		// retrieve and validate config field
+		//----------------------------------------------------------------------
 
-	// ensure field is whitelisted
-	bool configurable_field = false;
-	for(int i = 0; i < RUNTIME_CONFIG_COUNT; i++) {
-		if(RUNTIME_CONFIGS[i] == config_field) {
-			configurable_field = true;
-			break;
+		Config_Option_Field config_field;
+		const char *config_name = RedisModule_StringPtrLen(key, NULL);
+
+		if(!Config_Contains_field(config_name, &config_field)) {
+			RedisModule_ReplyWithError(ctx, "Unknown configuration field");
+			return;
+		}
+
+		// ensure field is a runtime configuration
+		bool configurable_field = false;
+		for(int i = 0; i < RUNTIME_CONFIG_COUNT; i++) {
+			if(RUNTIME_CONFIGS[i] == config_field) {
+				configurable_field = true;
+				break;
+			}
+		}
+	
+		// field is not allowed to be reconfigured
+		if(!configurable_field) {
+			RedisModule_ReplyWithError(ctx, "Field can not be re-configured");
+			return;
+		}
+
+		// make sure value is valid
+		const char *val_str = RedisModule_StringPtrLen(val, NULL);
+		if(!Config_Option_dryrun(config_field, val_str)) {
+			RedisModule_ReplyWithError(ctx, "Failed to set config value");
+			return;
 		}
 	}
-	
-	// field is not allowed to be reconfigured
-	if(!configurable_field) {
-		RedisModule_ReplyWithError(ctx, "Field can not be re-configured");
-		return false;
+
+	// if we're here configuration passed all validations
+	// apply configuration
+	for(int i = 0; i < argc; i += 2) {
+		RedisModuleString *key = argv[i];
+		RedisModuleString *val = argv[i+1];
+
+		Config_Option_Field config_field;
+		const char *config_name = RedisModule_StringPtrLen(key, NULL);
+		Config_Contains_field(config_name, &config_field);
+
+		// set configuration
+		const char *val_str = RedisModule_StringPtrLen(val, NULL);
+		if(Config_Option_set(config_field, val_str)) {
+			// expecting set to succeed
+			ASSERT(false);
+		}
 	}
 
-	// set the value of given config
-	const char *val_str = RedisModule_StringPtrLen(val, NULL);
-
-	if(!Config_Option_set_dryrun(config_field, val_str)) {
-		RedisModule_ReplyWithError(ctx, "Failed to set config value");
-		return false;
-	}
-
-	return true;
+	RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -111,33 +137,7 @@ int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// emit an error if we received an odd number of arguments,
 		// as this indicates an invalid configuration
 		if(argc < 4 || (argc % 2) == 1) return RedisModule_WrongArity(ctx);
-
-		// To ensure atomicity first check if configuration can be setted and dryrun the configuration.
-		for(int i = 2; i < argc; i += 2) {
-			RedisModuleString *key = argv[i];
-			RedisModuleString *val = argv[i+1];
-			if(!_Config_set_dryrun(ctx, key, val)) {
-				// On error quit the operation.
-				return REDISMODULE_OK;
-			}
-		}
-
-		// set configuration for each requested one
-		for(int i = 2; i < argc; i += 2) {
-			RedisModuleString *key = argv[i];
-			RedisModuleString *val = argv[i+1];
-			Config_Option_Field config_field;
-			const char *config_name = RedisModule_StringPtrLen(key, NULL);
-			Config_Contains_field(config_name, &config_field);
-			// set the value of given config
-			const char *val_str = RedisModule_StringPtrLen(val, NULL);
-			if(Config_Option_set(config_field, val_str)) {
-				// On error quit the operation.
-				ASSERT(false);
-			}
-		}
-
-		RedisModule_ReplyWithSimpleString(ctx, "OK");
+		_Config_set(ctx, argv+2, argc-2);
 	} else {
 		RedisModule_ReplyWithError(ctx, "Unknown subcommand for GRAPH.CONFIG");
 	}

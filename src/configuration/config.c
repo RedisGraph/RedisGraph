@@ -732,12 +732,19 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 }
 
 // To ensure atomicity first check if configuration can be setted and dryrun the configuration.
-bool Config_Option_set_dryrun(Config_Option_Field field, const char *val) {
-	// Temporary copy for global module configuration for ensuring atomic run time comfiguration.
+bool Config_Option_dryrun(Config_Option_Field field, const char *val) {
+	// temporary clone configuration
 	RG_Config config_clone = config;
-	bool rv = Config_Option_set(field, val);
-	config = config_clone;  // Dry run so restore the configuration.
-	return rv;
+
+	// disable configuration notification
+	config.cb = NULL;
+
+	bool valid = Config_Option_set(field, val);
+
+	// restore original configuration
+	config = config_clone;
+
+	return valid;
 }
 
 void Config_Subscribe_Changes(Config_on_change cb) {

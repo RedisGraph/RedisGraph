@@ -57,8 +57,8 @@ bool Config_Option_set(Config_Option_Field field, const char *val);
 
 bool Config_Option_get(Config_Option_Field field, ...);
 
-// To ensure atomicity first check if configuration can be setted and dryrun the configuration.
-bool Config_Option_set_dryrun(Config_Option_Field field, const char *val);
+// dryrun configuration
+bool Config_Option_dryrun(Config_Option_Field field, const char *val);
 
 // sets config update callback function
 void Config_Subscribe_Changes(Config_on_change cb);
