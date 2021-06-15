@@ -79,7 +79,6 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
     def test04_config_set_multi(self):
-        global redis_graph
         # Set multiple configuration values
         response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 3 QUERY_MEM_CAPACITY 100")
         self.env.assertEqual(response, "OK")
@@ -92,8 +91,29 @@ class testConfig(FlowTestsBase):
             expected_response = [name, val]
             self.env.assertEqual(response, expected_response)
 
-    def test05_config_set_invalid_name(self):
-        global redis_graph
+    def test05_config_set_invalid_multi(self):
+        # Set multiple configuration values
+        response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 100")
+        self.env.assertEqual(response, "OK")
+        response = redis_con.execute_command("GRAPH.CONFIG GET VKEY_MAX_ENTITY_COUNT")
+        prev_val = response[1]
+
+        try:
+            # Set multiple configuration values
+            response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 VKEY_MAX_ENTITY_COUNT 40")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Field can not be re-configured" in str(e))
+            # Make sure both values haven't been updated
+            names = ["QUERY_MEM_CAPACITY", "VKEY_MAX_ENTITY_COUNT"]
+            values = [100, prev_val]
+            for name, val in zip(names, values):
+                response = redis_con.execute_command("GRAPH.CONFIG GET %s" % name)
+                expected_response = [name, val]
+                self.env.assertEqual(response, expected_response)
+
+    def test06_config_set_invalid_name(self):
 
         # Ensure that getter fails on invalid parameters appropriately
         fake_config_name = "FAKE_CONFIG_NAME"
@@ -106,8 +126,7 @@ class testConfig(FlowTestsBase):
             assert("Unknown configuration field" in str(e))
             pass
 
-    def test06_config_invalid_subcommand(self):
-        global redis_graph
+    def test07_config_invalid_subcommand(self):
 
         # Ensure failure on invalid sub-command, e.g. GRAPH.CONFIG DREP...
         config_name = "RESULTSET_SIZE"

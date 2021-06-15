@@ -72,21 +72,6 @@ typedef struct {
 RG_Config config; // global module configuration
 
 //------------------------------------------------------------------------------
-// config clone
-//------------------------------------------------------------------------------
-
-// Temporary copy for global module configuration for ensuring atomic run time comfiguration.
-RG_Config config_clone; 
-
-void Config_Clone(void) {
-	config_clone = config;
-}
-
-void Config_RestoreFromClone(void) {
-	config = config_clone;
-}
-
-//------------------------------------------------------------------------------
 // config value parsing
 //------------------------------------------------------------------------------
 
@@ -744,6 +729,15 @@ bool Config_Option_get(Config_Option_Field field, ...) {
     }
 
 	return true;
+}
+
+// To ensure atomicity first check if configuration can be setted and dryrun the configuration.
+bool Config_Option_set_dryrun(Config_Option_Field field, const char *val) {
+	// Temporary copy for global module configuration for ensuring atomic run time comfiguration.
+	RG_Config config_clone = config;
+	bool rv = Config_Option_set(field, val);
+	config = config_clone;  // Dry run so restore the configuration.
+	return rv;
 }
 
 void Config_Subscribe_Changes(Config_on_change cb) {
