@@ -92,26 +92,21 @@ class testConfig(FlowTestsBase):
             self.env.assertEqual(response, expected_response)
 
     def test05_config_set_invalid_multi(self):
-        # Set multiple configuration values
-        response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 100")
-        self.env.assertEqual(response, "OK")
-        response = redis_con.execute_command("GRAPH.CONFIG GET VKEY_MAX_ENTITY_COUNT")
-        prev_val = response[1]
+        # Get current configuration
+        prev_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
 
         try:
-            # Set multiple configuration values
+            # Set multiple configuration values, VKEY_MAX_ENTITY_COUNT is NOT
+            # a runtime configuration, expecting this command to fail
             response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 VKEY_MAX_ENTITY_COUNT 40")
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Field can not be re-configured" in str(e))
-            # Make sure both values haven't been updated
-            names = ["QUERY_MEM_CAPACITY", "VKEY_MAX_ENTITY_COUNT"]
-            values = [100, prev_val]
-            for name, val in zip(names, values):
-                response = redis_con.execute_command("GRAPH.CONFIG GET %s" % name)
-                expected_response = [name, val]
-                self.env.assertEqual(response, expected_response)
+
+            # make sure configuration wasn't modified
+            current_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
+            self.env.assertEqual(prev_conf, current_conf)
 
     def test06_config_set_invalid_name(self):
 
