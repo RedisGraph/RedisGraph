@@ -251,7 +251,7 @@ define extract_symbols
 objcopy --only-keep-debug $1 $1.debug
 objcopy --strip-debug $1
 objcopy --add-gnu-debuglink $1.debug $1
-endef 
+endef
 
 # Build the module...
 redisgraph.so: $(MODULE)
@@ -279,6 +279,7 @@ endif
 
 package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
+	@VARIANT=rce $(ROOT)/sbin/pack.sh
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------
