@@ -1,7 +1,6 @@
 version: 2.1
 
 commands:
-
   # If this build is from a fork, stop executing the current job and return success.
   # This is useful to avoid steps that will fail due to missing credentials.
   early_return_for_forked_pull_requests:
@@ -88,15 +87,7 @@ commands:
       - setup-automation
       - run:
           name: Install prerequisites
-          command: |
-            ./sbin/system-setup.py
-      - run:
-          name: Setup locale
-          command: |
-              if command -v apt-get &> /dev/null; then
-                locale-gen --purge en_US.UTF-8
-                dpkg-reconfigure -f noninteractive locales
-              fi
+          command: ./sbin/system-setup.py
 
   benchmark-automation:
     parameters:
@@ -168,10 +159,6 @@ jobs:
   build:
     docker:
       - image: redisfab/rmbuilder:6.2.3-x64-bionic
-        environment:
-          LANG: en_US.UTF-8
-          LANGUAGE: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
     steps:
       - early_returns
       - checkout-all
@@ -179,13 +166,11 @@ jobs:
       - load-cached-deps
       - run:
           name: Build
-          command: |
-            make
-            make package
+          command: bash -l -c "make all package"
       - save-deps-cache
       - run:
           name: Test
-          command: make test
+          command: bash -l -c "make test"
       - early_return_for_forked_pull_requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -208,21 +193,17 @@ jobs:
       - load-cached-deps
       - run:
           name: Build for coverage
-          command: make COV=1
+          command: bash -l -c "make COV=1"
       - run:
           name: Test with coverage
           command: |
-            make test COV=1
-            make cov-upload
+            bash -l -c "make test COV=1"
+            bash -l -c "make cov-upload"
           no_output_timeout: 30m
 
   build_memcheck:
     docker:
       - image: redisfab/rmbuilder:6.2.3-x64-bionic
-        environment:
-            LANG: en_US.UTF-8
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8
     steps:
       - early_returns
       - checkout-all
@@ -233,20 +214,17 @@ jobs:
       - run:
           name: Test for memory leaks
           command: |
-              # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
-              python3 ./deps/readies/bin/getredis --force --valgrind
-              make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
-          # Allow RediSearch global destructors.
+            # Replace the default Redis server with one linked to libc malloc rather than jemalloc
+            python3 ./deps/readies/bin/getredis --force --valgrind
+            # Re-run the test suite, failing if definite memory leaks have been introduced
+            bash -l -c "make memcheck"
+          # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
 
   build_macos:
     macos:
       xcode: 12.4.0
-    environment:
-      LANG: en_US.UTF-8
-      LANGUAGE: en_US.UTF-8
-      LC_ALL: en_US.UTF-8
     steps:
       - early_returns
       - checkout-all
@@ -254,11 +232,10 @@ jobs:
       - run:
           name: Build
           command: |
-            make
-            make package
+            bash -l -c "make all package"
       - run:
           name: Test
-          command: make test
+          command: bash -l -c "make test"
       - persist_to_workspace:
           root: bin/artifacts
           paths:
@@ -327,7 +304,7 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: 'redisfab/rmbuilder:6.2.3-x64-bionic'
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
       - checkout
@@ -360,11 +337,9 @@ jobs:
       - attach_workspace:
           at: /workspace
       - load-cached-deps
-
       - run:
           name: Build artifact
-          command: make
-
+          command: bash -l -c make
       - benchmark-automation:
           github_actor: "ci.nightly"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
@@ -489,6 +464,5 @@ workflows:
             branches:
               only: master
     jobs:
-      - nightly_automation
       - nightly_performance_automation:
           <<: *context
