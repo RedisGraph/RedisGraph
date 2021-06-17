@@ -204,7 +204,7 @@ static void _ExecuteQuery(void *args) {
 	GraphQueryCtx_Free(gq_ctx);
 }
 
-static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
+static int _DelegateWriter(RedisModuleCtx *ctx, GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx != NULL);
 
 	//---------------------------------------------------------------------------
@@ -224,7 +224,12 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 
 	// dispatch work to the writer thread
 	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx);
-	ASSERT(res == 0);
+	if(res == THPOOL_QUEUE_FULL) {
+		// writers thread pool is full, this error usually happens when
+		// the server is under heavy load and is unable to catch up
+		RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
+	}
+	return res == 0;
 }
 
 void Graph_Query(void *args) {
@@ -264,8 +269,9 @@ void Graph_Query(void *args) {
 	// the read-only threadpool
 	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
 		_ExecuteQuery(gq_ctx);
-	} else {
-		_DelegateWriter(gq_ctx);
+	} else if (!_DelegateWriter(ctx, gq_ctx)) {
+		// failed to delegate work
+		goto cleanup;
 	}
 
 	return;
