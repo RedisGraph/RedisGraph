@@ -319,6 +319,6 @@ benchmark: redisgraph.so
 
 ifeq ($(COV),1)
 cov-upload:
-	$(SHOW)bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)
+	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
 .PHONY: cov-upload
 endif # COV
