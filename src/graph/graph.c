@@ -846,8 +846,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		/* Remove edge from edge array
 		 * migrate last edge ID and reduce array size.
 		 * TODO: reallocate array when size/capacity is considerably small. */
-		edges[i] = edges[edge_count - 1];
-		array_pop(edges);
+		edges[i] = array_pop(edges);
 
 		/* Incase we're left with a single edge connecting src to dest
 		 * revert back from array to scalar. */
@@ -860,11 +859,11 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		if(TR) {
 			/* We must make the matching updates to the transposed matrix.
 			 * First, extract the element that is known to be an edge array. */
-			info = GrB_Matrix_extractElement(edges, TR, dest_id, src_id);
+			info = GrB_Matrix_extractElement(&edge_id, TR, dest_id, src_id);
 			ASSERT(info == GrB_SUCCESS);
+			edges = (EdgeID *)edge_id;
 			// Replace the deleted edge with the last edge in the matrix.
-			edges[i] = edges[edge_count - 1];
-			array_pop(edges);
+			edges[i] = array_pop(edges);
 			// Free and replace the array if it now has 1 element.
 			if(array_len(edges) == 1) {
 				edge_id = edges[0];
@@ -1196,8 +1195,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 			/* Remove edge from edge array
 			 * migrate last edge ID and reduce array size.
 			 * TODO: reallocate array of size / capacity ratio is high. */
-			multi_edges[i] = multi_edges[multi_edge_count - 1];
-			array_pop(multi_edges);
+			multi_edges[i] = array_pop(multi_edges);
 
 			/* Incase we're left with a single edge connecting src to dest
 			 * revert back from array to scalar. */
@@ -1212,9 +1210,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 				 * First, extract the element that is known to be an edge array. */
 				GrB_Matrix_extractElement(&edge_id, TR, dest_id, src_id);
 				multi_edges = (EdgeID *)edge_id;
-				int multi_edge_count = array_len(multi_edges);
-				multi_edges[i] = multi_edges[multi_edge_count - 1];
-				array_pop(multi_edges);
+				multi_edges[i] = array_pop(multi_edges);
 				// Free and replace the array if it now has 1 element.
 				if(array_len(multi_edges) == 1) {
 					edge_id = multi_edges[0];
