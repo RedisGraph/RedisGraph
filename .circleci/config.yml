@@ -437,6 +437,9 @@ workflows:
       - build:
           <<: *context
           <<: *not-on-integ-branch
+      - coverage:
+          <<: *context
+          <<: *on-any-branch
       - build_memcheck:
           <<: *context
           <<: *on-any-branch

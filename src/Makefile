@@ -54,8 +54,8 @@ CFLAGS += --coverage
 SHOBJ_LDFLAGS += --coverage
 BINROOT=$(SOURCEDIR)
 
-COV_INFO=$(realpath ..)/cov.info
-COV_DIR=$(realpath ..)/cov
+COV_INFO=$(ROOT)/cov/cov.info
+COV_DIR=$(ROOT)/cov
 
 COV_EXCLUDE += \
     '/Applications/*' \
