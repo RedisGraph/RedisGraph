@@ -204,7 +204,7 @@ endif
 
 package: redisgraph.so
 	@../sbin/pack.sh
-	@VARIANT=-rce ../sbin/pack.sh
+	@VARIANT=rce ../sbin/pack.sh
 
 test: redisgraph.so
 	# check valgrind flag is not empty
