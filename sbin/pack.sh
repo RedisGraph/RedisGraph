@@ -14,7 +14,7 @@ export PYTHONWARNINGS=ignore
 if [[ $1 == --help || $1 == help ]]; then
 	cat <<-END
 		[ARGVARS...] pack.sh [--help|help]
-
+		
 		Argument variables:
 		VERBOSE=1         Print commands
 		IGNERR=1          Do not abort on error
@@ -83,7 +83,7 @@ pack_ramp() {
 	local stem=${PACKAGE_NAME}.${platform}
 
 	local verspec=${SEMVER}${VARIANT}
-
+	
 	local fq_package=$stem.${verspec}.zip
 
 	[[ ! -d $BINDIR ]] && mkdir -p $BINDIR
@@ -94,7 +94,11 @@ pack_ramp() {
 	local xtx_vars=""
 	local dep_fname=${PACKAGE_NAME}.${platform}.${verspec}.tgz
 
-	local rampfile=ramp.yml
+	if [[ -z $VARIANT ]]; then
+		local rampfile=ramp.yml
+	else
+		local rampfile=ramp$VARIANT.yml
+	fi
 
 	python3 $READIES/bin/xtx \
 		$xtx_vars \
@@ -133,7 +137,7 @@ pack_deps() {
 	local fq_dep=$stem.${verspec}.tgz
 	local tar_path=$artdir/$fq_dep
 	local dep_prefix_dir=$(cat $artdir/$dep.prefix)
-
+	
 	{ cd $depdir ;\
 	  cat $artdir/$dep.files | \
 	  xargs tar -c --sort=name --owner=root:0 --group=root:0 --mtime='UTC 1970-01-01' \
@@ -156,7 +160,7 @@ pack_deps() {
 		ln -sf ../$fq_dep $snap_dep
 		ln -sf ../$fq_dep.sha256 $snap_dep.sha256
 	fi
-
+	
 	cd $ROOT
 }
 
