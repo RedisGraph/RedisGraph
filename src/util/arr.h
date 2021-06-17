@@ -133,18 +133,16 @@ static inline array_t array_ensure_len(array_t arr, size_t len) {
  * @param T type of the array (for sizeof)
  * @return the array
  */
-#define array_ensure_append(arrpp, src, n, T)      \
-  ({                                               \
-    size_t a__oldlen = 0;                          \
-    if (!arrpp) {                                  \
-      arrpp = array_newlen(T, n);                  \
-    } else {                                       \
-      a__oldlen = array_len(arrpp);                \
-      arrpp = (T *)array_grow(arrpp, n);           \
-    }                                              \
-    memcpy(arrpp + a__oldlen, src, n * sizeof(T)); \
-    arrpp;                                         \
-  })
+#define array_ensure_append(arrpp, src, n, T) do {    \
+    size_t a__oldlen = 0;                             \
+    if (!arrpp) {                                     \
+      arrpp = array_newlen(T, n);                     \
+    } else {                                          \
+      a__oldlen = array_len(arrpp);                   \
+      arrpp = (T *)array_grow(arrpp, n);              \
+    }                                                 \
+    memcpy(arrpp + a__oldlen, src, n * sizeof(T));    \
+} while(0)
 
 /**
  * Does the same thing as ensure_append, but the added elements are

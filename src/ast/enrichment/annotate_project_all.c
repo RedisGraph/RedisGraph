@@ -43,7 +43,7 @@ static void _collect_aliases_in_pattern(const cypher_astnode_t *pattern, const c
 static void _collect_with_projections(const cypher_astnode_t *with_clause, const char ***aliases) {
 	if(cypher_ast_with_has_include_existing(with_clause)) {
 		const char **prev_aliases = AST_GetProjectAll(with_clause);
-		*aliases = array_ensure_append(*aliases, prev_aliases, array_len(prev_aliases), const char *);
+		array_ensure_append(*aliases, prev_aliases, array_len(prev_aliases), const char *);
 		return;
 	}
 
