@@ -56,4 +56,9 @@ deps/GraphBLAS/Config/GraphBLAS.h.tmp
 *.d
 
 # local/remote benchmark result files
-tests/benchmarks/*.json
+/tests/benchmarks/*.json
+
+# gcov
+*.gcda
+*.gcno
+/cov/
