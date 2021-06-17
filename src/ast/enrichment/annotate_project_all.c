@@ -20,7 +20,7 @@ static void _collect_aliases_in_path(const cypher_astnode_t *path, const char **
 		const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_node);
 		if(ast_alias == NULL) continue;  // Unaliased node, do nothing.
 		// Add node alias to projection array.
-		*aliases = array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
+		array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
 	}
 
 	// Every odd offset corresponds to an edge.
@@ -29,7 +29,7 @@ static void _collect_aliases_in_path(const cypher_astnode_t *path, const char **
 		const cypher_astnode_t *ast_alias = cypher_ast_rel_pattern_get_identifier(ast_edge);
 		if(ast_alias == NULL) continue;  // Unaliased edge, do nothing.
 		// Add edge alias to projection array.
-		*aliases = array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
+		array_append(*aliases, cypher_ast_identifier_get_name(ast_alias));
 	}
 }
 
@@ -59,7 +59,7 @@ static void _collect_with_projections(const cypher_astnode_t *with_clause, const
 		}
 		alias = cypher_ast_identifier_get_name(identifier);
 
-		*aliases = array_append(*aliases, alias);
+		array_append(*aliases, alias);
 	}
 }
 
@@ -90,7 +90,7 @@ static void _collect_call_projections(const cypher_astnode_t *call_clause, const
 		uint output_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < output_count; i++) {
 			const char *name = Procedure_GetOutput(proc, i);
-			*aliases = array_append(*aliases, name);
+			array_append(*aliases, name);
 		}
 		Proc_Free(proc);
 		return;
@@ -104,7 +104,7 @@ static void _collect_call_projections(const cypher_astnode_t *call_clause, const
 		if(alias_node == NULL) alias_node = ast_exp;
 		const char *identifier = cypher_ast_identifier_get_name(alias_node);
 
-		*aliases = array_append(*aliases, identifier);
+		array_append(*aliases, identifier);
 	}
 }
 
@@ -133,7 +133,7 @@ static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint s
 		} else if(type == CYPHER_AST_UNWIND) {
 			// The UNWIND clause introduces one alias.
 			const cypher_astnode_t *unwind_alias = cypher_ast_unwind_get_alias(clause);
-			aliases = array_append(aliases, cypher_ast_identifier_get_name(unwind_alias));
+			array_append(aliases, cypher_ast_identifier_get_name(unwind_alias));
 		} else if(type == CYPHER_AST_CALL) {
 			_collect_call_projections(clause, &aliases);
 		}

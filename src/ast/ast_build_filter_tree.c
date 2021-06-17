@@ -140,7 +140,7 @@ static FT_FilterNode *_convertComparison(const cypher_astnode_t *comparison_node
 
 		AST_Operator op = AST_ConvertOperatorNode(operator);
 		FT_FilterNode *filter = _CreatePredicateFilterNode(op, lhs, rhs);
-		filters = array_append(filters, filter);
+		array_append(filters, filter);
 	}
 
 	// Reduce by anding.
@@ -152,7 +152,7 @@ static FT_FilterNode *_convertComparison(const cypher_astnode_t *comparison_node
 		FilterTree_AppendLeftChild(intersec, a);
 		FilterTree_AppendRightChild(intersec, b);
 
-		filters = array_append(filters, intersec);
+		array_append(filters, intersec);
 	}
 
 	FT_FilterNode *root = array_pop(filters);

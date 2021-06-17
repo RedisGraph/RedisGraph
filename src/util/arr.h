@@ -8,7 +8,7 @@
  *  int *arr = array_new(int, 8);
  *  // Add elements to the array
  *  for (int i = 0; i < 100; i++) {
- *   arr = array_append(arr, i);
+ *   array_append(arr, i);
  *  }
  *
  *  // read individual elements
@@ -136,13 +136,13 @@ static inline array_t array_ensure_len(array_t arr, size_t len) {
 #define array_ensure_append(arrpp, src, n, T) do {    \
     size_t a__oldlen = 0;                             \
     if (!arrpp) {                                     \
-      arrpp = array_newlen(T, n);                     \
+      (arrpp) = array_newlen(T, n);                     \
     } else {                                          \
       a__oldlen = array_len(arrpp);                   \
-      arrpp = (T *)array_grow(arrpp, n);              \
+      (arrpp) = (T *)array_grow(arrpp, n);              \
     }                                                 \
-    memcpy(arrpp + a__oldlen, src, n * sizeof(T));    \
-} while(0)
+    memcpy((arrpp) + a__oldlen, src, n * sizeof(T));    \
+  } while(0)
 
 /**
  * Does the same thing as ensure_append, but the added elements are
@@ -193,12 +193,10 @@ static inline array_t array_ensure_len(array_t arr, size_t len) {
 #define array_tail(arr) ((arr)[array_hdr(arr)->len - 1])
 
 /* Append an element to the array, returning the array which may have been reallocated */
-#define array_append(arr, x)                       \
-  ({                                               \
-    (arr) = (__typeof__(arr))array_grow((arr), 1); \
-    array_tail((arr)) = (x);                       \
-    (arr);                                         \
-  })
+#define array_append(arr, x) do {                      \
+    (arr) = (__typeof__(arr))array_grow((arr), 1);     \
+    array_tail((arr)) = (x);                           \
+  } while(0)
 
 /* Get the length of the array */
 static inline uint32_t array_len(array_t arr) {
@@ -235,7 +233,7 @@ static void array_free(array_t arr) {
 /* Repeate the code in "blk" for each element in the array, and give it the name of "as".
  * e.g:
  *  int *arr = array_new(int, 10);
- *  arr = array_append(arr, 1);
+ *  array_append(arr, 1);
  *  array_foreach(arr, i, printf("%d\n", i));
  */
 #define array_foreach(arr, as, blk)                 \
@@ -299,7 +297,7 @@ static void array_free(array_t arr) {
     uint arrayLen = array_len((arr));                   \
     dest = array_new(__typeof__(*arr), arrayLen);       \
     for(uint i = 0; i < arrayLen; i++)                  \
-        dest = array_append(dest, (clone_cb(arr[i])));  \
+        array_append(dest, (clone_cb(arr[i])));  \
 })
 
 #define array_reverse(arr)                      \

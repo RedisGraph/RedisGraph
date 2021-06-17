@@ -107,7 +107,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 		PayloadInfo payload_info;
 		payload_info.state =  RedisModule_LoadUnsigned(rdb);
 		payload_info.entities_count =  RedisModule_LoadUnsigned(rdb);
-		payloads = array_append(payloads, payload_info);
+		array_append(payloads, payload_info);
 	}
 	return payloads;
 }

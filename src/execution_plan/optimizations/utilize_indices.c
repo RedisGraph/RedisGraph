@@ -233,7 +233,7 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 		OpFilter *filter = (OpFilter *)current;
 
 		if(_applicableFilter(filtered_entity, idx, &filter->filterTree)) {
-			filters = array_append(filters, filter);
+			array_append(filters, filter);
 		}
 
 		// advance to the next operation
