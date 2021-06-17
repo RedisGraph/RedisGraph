@@ -254,10 +254,9 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	GrB_Matrix_nrows(&n_rows, m);
 	GrB_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
-	bool require_resize = (n_rows != dims);
 
 	// matrix must be resized if its dimensions missmatch required dimensions
-	ASSERT(n_rows == n_cols);
+	bool require_resize = (n_rows != dims || n_cols != dims);
 
 	// matrix fully synced, nothing to do
 	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) return;
@@ -288,8 +287,7 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	GrB_Matrix_nrows(&n_rows, m);
 	GrB_Matrix_ncols(&n_cols, m);
 	dims = Graph_RequiredMatrixDim(g);
-	require_resize = (n_rows != dims);
-	ASSERT(n_rows == n_cols);
+	require_resize = (n_rows != dims || n_cols != dims);
 
 	// some other thread performed sync
 	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) goto cleanup;
@@ -317,11 +315,10 @@ void _MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
 	GrB_Index ncols;
 	GrB_Matrix_ncols(&ncols, m);
 	GrB_Matrix_nrows(&nrows, m);
-	ASSERT(nrows == ncols);
 	GrB_Index cap = Graph_RequiredMatrixDim(g);
 
 	// This policy should only be used in a thread-safe context, so no locking is required.
-	if(nrows != cap) {
+	if(nrows != cap || ncols != cap) {
 		GrB_Info res = GxB_Matrix_resize(m, cap, cap);
 		ASSERT(res == GrB_SUCCESS);
 	}
