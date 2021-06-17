@@ -94,11 +94,7 @@ pack_ramp() {
 	local xtx_vars=""
 	local dep_fname=${PACKAGE_NAME}.${platform}.${verspec}.tgz
 
-	if [[ -z $VARIANT ]]; then
-		local rampfile=ramp.yml
-	else
-		local rampfile=ramp-$VARIANT.yml
-	fi
+	local rampfile=ramp.yml
 
 	python3 $READIES/bin/xtx \
 		$xtx_vars \
