@@ -292,6 +292,7 @@ OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan) {
 
 static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
 												  OpBase ***ops) {
+	if(root == NULL) return;
 	for(int i = 0; i < type_count; i++) {
 		// Check to see if the op's type matches any of the types we're searching for.
 		if(root->type == types[i]) {

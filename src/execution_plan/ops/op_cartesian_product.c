@@ -81,7 +81,7 @@ static Record CartesianProductConsume(OpBase *opBase) {
 		for(int i = 0; i < op->op.childCount; i++) {
 			child = op->op.children[i];
 			childRecord = OpBase_Consume(child);
-			if(!childRecord) return NULL;
+			if(!childRecord) continue;
 			Record_TransferEntries(&op->r, childRecord);
 			OpBase_DeleteRecord(childRecord);
 		}

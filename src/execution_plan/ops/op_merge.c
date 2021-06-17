@@ -17,6 +17,7 @@
 // forward declarations
 static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
+static OpResult MergeReset(OpBase *opBase);
 static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
@@ -72,8 +73,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	op->on_create        =  on_create;
 	op->pending_updates  =  NULL;
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
-				MergeFree, true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume,
+				MergeReset, NULL, MergeClone, MergeFree, true, plan);
 
 	if(op->on_match) _InitializeUpdates(op, op->on_match, &op->on_match_it);
 	if(op->on_create) _InitializeUpdates(op, op->on_create, &op->on_create_it);
@@ -283,15 +284,15 @@ static Record MergeConsume(OpBase *opBase) {
 			Record created_record;
 			while((created_record = _pullFromStream(op->create_stream))) {
 				op->output_records = array_append(op->output_records,
-						created_record);
+												  created_record);
 				create_count ++;
 			}
 			// if we are setting properties with ON CREATE
 			// compute all pending updates
 			if(op->on_create) {
 				_UpdateProperties(&op->pending_updates, op->stats,
-						op->on_create_it, op->output_records + match_count,
-						create_count);
+								  op->on_create_it, op->output_records + match_count,
+								  create_count);
 			}
 		}
 	}
@@ -313,6 +314,15 @@ static Record MergeConsume(OpBase *opBase) {
 	op->pending_updates = NULL;
 
 	return _handoff(op);
+}
+
+static OpResult MergeReset(OpBase *ctx) {
+	OpMerge *op = (OpMerge *)ctx;
+	/* Merge should not produce data after being reset,
+	 * so ensure that the output_records array exists to ensure
+	 * that future calls to Consume will default to handoff mode. */
+	if(!op->output_records) op->output_records = array_new(Record, 0);
+	return OP_OK;
 }
 
 static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
