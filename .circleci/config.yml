@@ -41,6 +41,13 @@ commands:
       - setup_remote_docker:
           docker_layer_caching: true
 
+  checkout-all:
+    steps:
+      - checkout
+      - run:
+          name: Checkout submodules
+          command: git submodule update --init --recursive
+
   setup-automation:
     steps:
       - run:
@@ -77,10 +84,6 @@ commands:
 
   setup-prerequisits:
     steps:
-      - run:
-          name: Fetch submodules
-          command: |
-            git submodule update --init --recursive
       - setup-automation
       - run:
           name: Install prerequisites
@@ -130,11 +133,7 @@ commands:
     steps:
       - early_returns
       - setup-executor
-      - checkout
-      - run:
-          name: Checkout submodules
-          command: |
-            git submodule update --init --recursive
+      - checkout-all
       - setup-automation
       - run:
           name: Build for platform
@@ -159,20 +158,19 @@ commands:
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
-      - checkout
+      - checkout-all
       - setup-prerequisits
       - load-cached-deps
       - run:
           name: Build
-          command: |
-            bash -l -c make all package
+          command: bash -l -c make all package
       - save-deps-cache
       - run:
           name: Test
-          command: make test
+          command: bash -l -c make test
       - early_return_for_forked_pull_requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -188,10 +186,10 @@ jobs:
 
   build_memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
-      - checkout
+      - checkout-all
       - setup-prerequisits
       - load-cached-deps
       - attach_workspace:
@@ -199,10 +197,11 @@ jobs:
       - run:
           name: Test for memory leaks
           command: |
-              # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
+              # Replace the default Redis server with one linked to libc malloc rather than jemalloc
               python3 ./deps/readies/bin/getredis --force --valgrind
-              bash -l -c make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
-          # Allow RediSearch global destructors.
+              # Re-run the test suite, failing if definite memory leaks have been introduced
+              bash -l -c make memcheck
+          # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
 
@@ -211,7 +210,7 @@ jobs:
       xcode: 12.4.0
     steps:
       - early_returns
-      - checkout
+      - checkout-all
       - setup-prerequisits
       - run:
           name: Build
@@ -240,7 +239,7 @@ jobs:
 
   deploy_branch:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -254,7 +253,7 @@ jobs:
 
   deploy_release:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -268,7 +267,7 @@ jobs:
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+      - image: redisfab/rmbuilder:6.2.3-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -278,7 +277,7 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+      - image: redisfab/rmbuilder:6.2.3-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -288,7 +287,7 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
       - checkout
@@ -299,7 +298,7 @@ jobs:
 
   performance_ci_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
       - checkout
@@ -313,7 +312,7 @@ jobs:
 
   nightly_performance_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
       - checkout
