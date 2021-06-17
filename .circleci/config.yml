@@ -168,8 +168,7 @@ jobs:
       - run:
           name: Build
           command: |
-            make
-            make package
+            bash -l -c make all package
       - save-deps-cache
       - run:
           name: Test
@@ -202,7 +201,7 @@ jobs:
           command: |
               # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
               python3 ./deps/readies/bin/getredis --force --valgrind
-              make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
+              bash -l -c make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
           # Allow RediSearch global destructors.
           environment:
             RS_GLOBAL_DTORS: 1
@@ -217,11 +216,10 @@ jobs:
       - run:
           name: Build
           command: |
-            make
-            make package
+            bash -l -c make all package
       - run:
           name: Test
-          command: make test
+          command: bash -l -c make test
       - persist_to_workspace:
           root: bin/artifacts
           paths:
@@ -323,11 +321,9 @@ jobs:
       - attach_workspace:
           at: /workspace
       - load-cached-deps
-
       - run:
           name: Build artifact
-          command: make
-
+          command: bash -l -c make
       - benchmark-automation:
           github_actor: "ci.nightly"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
