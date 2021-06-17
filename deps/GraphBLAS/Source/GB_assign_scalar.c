@@ -2,8 +2,8 @@
 // GB_assign_scalar:    C<M>(Rows,Cols) = accum (C(Rows,Cols),x)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -18,6 +18,7 @@
 // Compare with GB_subassign_scalar, which uses M and C_replace differently
 
 #include "GB_assign.h"
+#include "GB_bitmap_assign.h"
 
 GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
 (
@@ -46,7 +47,7 @@ GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
-        xx1, xx2, xx3) ;
+        xx1, xx2, xx3, xx7) ;
 
     //--------------------------------------------------------------------------
     // C<M>(Rows,Cols) = accum (C(Rows,Cols), scalar)
@@ -63,7 +64,7 @@ GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
         true,                       // do scalar expansion
         scalar,                     // scalar to assign, expands to become A
         scalar_code,                // type code of scalar to expand
-        false, false,               // not GrB_Col_assign nor GrB_row_assign
+        GB_ASSIGN,
         Context)) ;
 }
 

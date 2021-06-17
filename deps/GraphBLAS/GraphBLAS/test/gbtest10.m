@@ -1,8 +1,8 @@
 function gbtest10
 %GBTEST10 test GrB.assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -53,13 +53,18 @@ C2 (I,J) = B ;
 assert (gbtest_eq (C2, Cout)) ;
 
 A = rand (4) ;
-G = GrB (A, 'by row') ;
+G = GrB (A, 'by row') 
 M = logical (eye (4)) ;
 B = rand (4) ;
-H = GrB (B, 'by row') ;
-A (M) = B (M) ;
-G (M) = H (M) ;
+H = GrB (B, 'by row') 
+A (M) = B (M) 
+G (M) = H (M)
 assert (isequal (A, G)) ;
+
+A = sprand (4, 4, 0.5) %#ok<*NOPRT>
+C1 = pi * spones (A)
+C2 = GrB.expand (pi, A)
+assert (isequal (C1, C2)) ;
 
 fprintf ('gbtest10: all tests passed\n') ;
 

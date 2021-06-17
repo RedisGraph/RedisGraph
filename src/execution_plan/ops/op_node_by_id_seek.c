@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_id_seek.h"
+#include "RG.h"
 #include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
@@ -17,7 +18,7 @@ static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase
 static void NodeByIdSeekFree(OpBase *opBase);
 
 static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((const NodeByIdSeek *)ctx)->n);
+	return ScanToString(ctx, buf, buf_len, ((NodeByIdSeek *)ctx)->alias, NULL);
 }
 
 // Checks to see if operation index is within its bounds.
@@ -28,12 +29,12 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 	return false;
 }
 
-OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRange *id_range) {
+OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, UnsignedRange *id_range) {
 
 	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
 	op->g = QueryCtx_GetGraph();
-	op->n = n;
 	op->child_record = NULL;
+	op->alias = alias;
 
 	op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
 	/* The largest possible entity ID is the same as Graph_RequiredMatrixDim.
@@ -47,22 +48,23 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRa
 				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekClone, NodeByIdSeekFree,
 				false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
 
 	return (OpBase *)op;
 }
 
 static OpResult NodeByIdSeekInit(OpBase *opBase) {
-	assert(opBase->type == OPType_NODE_BY_ID_SEEK);
+	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
-	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
-	op->maxId = MIN(Graph_RequiredMatrixDim(op->g) - 1, op->maxId);
+	// The largest possible entity ID is the number of nodes - deleted and real - in the DataBlock.
+	size_t node_count = Graph_UncompactedNodeCount(op->g);
+	op->maxId = MIN(node_count - 1, op->maxId);
 	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, NodeByIdSeekConsumeFromChild);
 	return OP_OK;
 }
 
 static inline Node _SeekNextNode(NodeByIdSeek *op) {
-	Node n = { .entity = NULL };
+	Node n = GE_NEW_NODE();
 
 	/* As long as we're within range bounds
 	 * and we've yet to get a node. */
@@ -73,12 +75,6 @@ static inline Node _SeekNextNode(NodeByIdSeek *op) {
 
 	// Advance id for next consume call.
 	op->currentId++;
-
-	// Did we manage to get an entity?
-	if(!n.entity) return n;
-	// Null-set the label in case an operation (like op_delete) accesses it.
-	// TODO If we're replacing a label scan, the correct label can be populated now.
-	n.label = NULL;
 
 	return n;
 }
@@ -137,7 +133,7 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 }
 
 static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_NODE_BY_ID_SEEK);
+	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 	UnsignedRange range;
 	range.min = op->minId;
@@ -150,7 +146,7 @@ static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase
 	 * the clone will set its values to be the same as in the origin. */
 	range.include_min = true;
 	range.include_max = true;
-	return NewNodeByIdSeekOp(plan, op->n, &range);
+	return NewNodeByIdSeekOp(plan, op->alias, &range);
 }
 
 static void NodeByIdSeekFree(OpBase *opBase) {

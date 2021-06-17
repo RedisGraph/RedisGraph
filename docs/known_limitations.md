@@ -57,4 +57,3 @@ $ redis-cli GRAPH.EXPLAIN social "MATCH (p:person) WHERE p.id < 5 RETURN p"
 2) "    Project"
 3) "        Index Scan | (p:person)"
 ```
-

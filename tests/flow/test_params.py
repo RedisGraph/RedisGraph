@@ -14,7 +14,7 @@ redis_graph = None
 
 class testParams(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -23,7 +23,7 @@ class testParams(FlowTestsBase):
         self.env.flush()
     
     def test_simple_params(self):
-        params = [1, 2.3, "str", True, False, None, [0, 1, 2]]
+        params = [1, 2.3, -1, -2.3, "str", True, False, None, [0, 1, 2]]
         query = "RETURN $param"
         for param in params:    
             expected_results = [[param]]

@@ -1,10 +1,9 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "seek_by_id.h"
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_index_scan.h"
@@ -13,6 +12,12 @@
 #include "../ops/op_node_by_label_scan.h"
 #include "../../util/range/numeric_range.h"
 #include "../../arithmetic/arithmetic_op.h"
+#include "../execution_plan_build/execution_plan_modify.h"
+
+/* The seek by ID optimization searches for a SCAN operation on which
+ * a filter of the form ID(n) = X is applied in which case
+ * both the SCAN and FILTER operations can be reduced into a single
+ * NODE_BY_ID_SEEK operation. */
 
 static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *reverse) {
 	if(f->t != FT_N_PRED) return false;
@@ -88,8 +93,8 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
 			NodeByLabelScanOp_SetIDRange(label_scan, id_range);
 		} else {
-			const QGNode *node = ((AllNodeScan *)scan_op)->n;
-			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, id_range);
+			const char *alias = ((AllNodeScan *)scan_op)->alias;
+			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, alias, id_range);
 
 			// Managed to reduce!
 			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
@@ -100,7 +105,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 }
 
 void seekByID(ExecutionPlan *plan) {
-	assert(plan);
+	ASSERT(plan != NULL);
 
 	const OPType types[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN};
 	OpBase **scan_ops = ExecutionPlan_CollectOpsMatchingType(plan->root, types, 2);

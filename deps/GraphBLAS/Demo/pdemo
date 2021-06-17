@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 ../build/pagerank_demo < Matrix/eye3                > pagerank_demo.out
 ../build/pagerank_demo < Matrix/2blocks            >> pagerank_demo.out
 ../build/pagerank_demo < Matrix/t1                 >> pagerank_demo.out

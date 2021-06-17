@@ -1,89 +1,222 @@
 //------------------------------------------------------------------------------
-// GB_AxB_dot2: compute C=A'*B or C<!M>=A'*B in parallel, in place
+// GB_AxB_dot2: compute C=A'*B or C<!M>=A'*B in parallel, in-place
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// GB_AxB_dot2 does its computation in two phases.  The first phase counts the
-// number of entries in each column of C.  The second phase can then construct
-// the result C in place, and thus this method can be done in parallel, for the
-// single matrix computation C=A'*B.
+// This method always constructs C as bitmap; it then converts C to sparse or
+// hyper if A or B are hypersparse.  The C<M>=A'*B dot product when C is sparse
+// is computed by GB_AxB_dot3.  This method handles the case when C is bitmap.
 
-// Two variants are handled: C=A'*B and C<!M>=A'*B.
-// The C<M>=A'*B computation is computed by GB_AxB_dot3.
+// TODO:  this is slower than it could be if A and B are both bitmap, when
+// A->vlen is large, and likely if A and B are both either bitmap or full.
+// This is because the inner loop is a simple full/bitmap dot product, across
+// the entire input vectors.  No tiling is used, so cache performance is not
+// as good as it could be.  For large problems, C=(A')*B is faster with
+// the saxpy3 method, as compared to this method with C=A'*B.
 
 #include "GB_mxm.h"
-#include "GB_iterator.h"
+#include "GB_subref.h"
+#include "GB_binop.h"
+#include "GB_ek_slice.h"
+#include "GB_bitmap_assign_methods.h"
 #ifndef GBCOMPACT
 #include "GB_AxB__include.h"
 #endif
 
-#define GB_FREE_WORK                                                        \
-{                                                                           \
-    GB_FREE_MEMORY (B_slice, nbslice+1, sizeof (int64_t)) ;                 \
-    if (C_counts != NULL)                                                   \
-    {                                                                       \
-        for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
-        {                                                                   \
-            GB_FREE_MEMORY (C_counts [taskid], cnvec, sizeof (int64_t)) ;   \
-        }                                                                   \
-    }                                                                       \
-    GB_FREE_MEMORY (C_counts, naslice, sizeof (int64_t *)) ;                \
+#define GB_FREE_ALL                                                     \
+{                                                                       \
+    GB_Matrix_free (&M2) ;                                              \
+    GB_FREE (A_slice) ;                                                 \
+    GB_FREE (B_slice) ;                                                 \
+    GB_ek_slice_free (&pstart_Mslice, &kfirst_Mslice, &klast_Mslice) ;  \
 }
 
+GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
 GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 (
     GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // mask matrix for C<!M>=A'*B
-                                    // if present, the mask is complemented
+    const GrB_Matrix M_in,          // mask matrix for C<!M>=A'*B, may be NULL
+    const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
-    const GrB_Matrix *Aslice,       // input matrices (already sliced)
-    const GrB_Matrix B,             // input matrix
+    const GrB_Matrix A_in,          // input matrix
+    const GrB_Matrix B_in,          // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    bool *mask_applied,             // if true, mask was applied
-    int nthreads,
-    int naslice,
-    int nbslice,
     GB_Context Context
 )
 {
+// double ttt = omp_get_wtime ( ) ;
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (Aslice != NULL) ;
-    GrB_Matrix A = Aslice [0] ;     // just for type and dimensions
+
     ASSERT (Chandle != NULL) ;
     ASSERT (*Chandle == NULL) ;
-    ASSERT_MATRIX_OK_OR_NULL (M, "M for dot A'*B", GB0) ;
-    ASSERT_MATRIX_OK (A, "A for dot A'*B", GB0) ;
-    for (int taskid = 0 ; taskid < naslice ; taskid++)
-    {
-        ASSERT_MATRIX_OK (Aslice [taskid], "A slice for dot2 A'*B", GB0) ;
-        ASSERT (!GB_PENDING (Aslice [taskid])) ;
-        ASSERT (!GB_ZOMBIES (Aslice [taskid])) ;
-        ASSERT ((Aslice [taskid])->vlen == B->vlen) ;
-        ASSERT (A->vlen == (Aslice [taskid])->vlen) ;
-        ASSERT (A->vdim == (Aslice [taskid])->vdim) ;
-        ASSERT (A->type == (Aslice [taskid])->type) ;
-    }
-    ASSERT_MATRIX_OK (B, "B for dot A'*B", GB0) ;
-    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
-    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
-    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
-    ASSERT_SEMIRING_OK (semiring, "semiring for numeric A'*B", GB0) ;
-    ASSERT (A->vlen == B->vlen) ;
-    ASSERT (mask_applied != NULL) ;
+    ASSERT_MATRIX_OK_OR_NULL (M_in, "M for dot A'*B", GB0) ;
+    ASSERT_MATRIX_OK (A_in, "A for dot A'*B", GB0) ;
+    ASSERT_MATRIX_OK (B_in, "B for dot A'*B", GB0) ;
 
+    ASSERT (!GB_ZOMBIES (M_in)) ;
+    ASSERT (GB_JUMBLED_OK (M_in)) ;
+    ASSERT (!GB_PENDING (M_in)) ;
+    ASSERT (!GB_ZOMBIES (A_in)) ;
+    ASSERT (!GB_JUMBLED (A_in)) ;
+    ASSERT (!GB_PENDING (A_in)) ;
+    ASSERT (!GB_ZOMBIES (B_in)) ;
+    ASSERT (!GB_JUMBLED (B_in)) ;
+    ASSERT (!GB_PENDING (B_in)) ;
+
+    ASSERT_SEMIRING_OK (semiring, "semiring for numeric A'*B", GB0) ;
+
+    (*Chandle) = NULL ;
+    GrB_Matrix M, M2 = NULL ;
+    int64_t *GB_RESTRICT A_slice = NULL ;
     int64_t *GB_RESTRICT B_slice = NULL ;
-    int64_t **C_counts = NULL ;
+    int64_t *GB_RESTRICT pstart_Mslice = NULL ;
+    int64_t *GB_RESTRICT kfirst_Mslice = NULL ;
+    int64_t *GB_RESTRICT klast_Mslice  = NULL ;
+    ASSERT (A_in->vlen == B_in->vlen) ;
+    ASSERT (A_in->vlen > 0) ;
+
+    if (M_in == NULL)
+    {
+        GBURBLE ("(%s=%s'*%s) ",
+            GB_sparsity_char (GxB_BITMAP),
+            GB_sparsity_char_matrix (A_in),
+            GB_sparsity_char_matrix (B_in)) ;
+    }
+    else
+    {
+        GBURBLE ("(%s%s%s%s%s=%s'*%s) ",
+            GB_sparsity_char (GxB_BITMAP),
+            Mask_struct ? "{" : "<",
+            Mask_comp ? "!" : "",
+            GB_sparsity_char_matrix (M_in),
+            Mask_struct ? "}" : ">",
+            GB_sparsity_char_matrix (A_in),
+            GB_sparsity_char_matrix (B_in)) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // construct shallow copies of A and B, if hypersparse
+    //--------------------------------------------------------------------------
+
+    // If A_in is hypersparse, a new sparse matrix A is constructed with
+    // A->vdim = A_in->nvec and the same vlen as A_in, and then the packed
+    // C->vlen will equal A->vdim < cvlen_final.
+
+    // If B_in is hypersparse, a new sparse matrix B is constructed with
+    // B->vdim = B_in->nvec and the same vlen as B_in, and then the packed
+    // C->vdim will equal B->vdim < cvdim_final.
+
+    int64_t cvlen_final = A_in->vdim ;
+    int64_t cvdim_final = B_in->vdim ;
+    bool A_is_hyper = GB_IS_HYPERSPARSE (A_in) ;
+    bool B_is_hyper = GB_IS_HYPERSPARSE (B_in) ;
+    bool A_or_B_hyper = A_is_hyper || B_is_hyper ;
+    GrB_Index *GB_RESTRICT Ah = A_in->h ;
+    GrB_Index *GB_RESTRICT Bh = B_in->h ;
+    struct GB_Matrix_opaque A_header, B_header ;
+    GrB_Matrix A = (A_is_hyper) ? GB_hyper_pack (&A_header, A_in) : A_in ;
+    GrB_Matrix B = (B_is_hyper) ? GB_hyper_pack (&B_header, B_in) : B_in ;
+    ASSERT (!GB_IS_HYPERSPARSE (A)) ;
+    ASSERT (!GB_IS_HYPERSPARSE (B)) ;
+
+    //--------------------------------------------------------------------------
+    // determine the size of C
+    //--------------------------------------------------------------------------
+
     int64_t cnvec = B->nvec ;
+    int64_t cvlen = A->vdim ;
+    int64_t cvdim = B->vdim ;
+
+    int64_t cnz ;
+    if (!GB_Index_multiply ((GrB_Index *) (&cnz), cvlen, cvdim))
+    {
+        // problem too large
+        return (GrB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // extract the submask if A or B are hypersparse 
+    //--------------------------------------------------------------------------
+
+    if (A_or_B_hyper && M_in != NULL)
+    {
+        // M2 = M_in (Ah, Bh)
+        GB_OK (GB_subref (&M2, M_in->is_csc, M_in,
+            (A_is_hyper) ? Ah : GrB_ALL, cvlen,
+            (B_is_hyper) ? Bh : GrB_ALL, cvdim, false, Context)) ;
+        // TODO: if Mask_struct is true, only extract the pattern of M_in
+        M = M2 ;
+        ASSERT_MATRIX_OK_OR_NULL (M, "M submask dot A'*B", GB0) ;
+    }
+    else
+    {
+        // use the mask as-is
+        M = M_in ;
+    }
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    int64_t naslice = 0 ;
+    int64_t nbslice = 0 ;
+
+    int64_t anvec = A->nvec ;
+    int64_t anz   = GB_NNZ_HELD (A) ;
+
+    int64_t bnvec = B->nvec ;
+    int64_t bnz   = GB_NNZ_HELD (B) ;
+
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+    int nthreads = GB_nthreads (anz + bnz, chunk, nthreads_max) ;
+
+    #define GB_NTASKS_PER_THREAD 32
+
+    if (nthreads == 1)
+    { 
+        // do the entire computation with a single thread
+        naslice = 1 ;
+        nbslice = 1 ;
+    }
+    else
+    {
+        // determine number of slices for A' and B
+        if (bnvec == 1)
+        { 
+            // C and B are single vectors
+            naslice = GB_NTASKS_PER_THREAD * nthreads ;
+            nbslice = 1 ;
+        }
+        else if (anvec == 1 || bnvec == 0
+            || bnvec > GB_NTASKS_PER_THREAD * nthreads)
+        { 
+            // A is a single vector, or B is empty, or B is large: just slice B
+            naslice = 1 ;
+            nbslice = GB_NTASKS_PER_THREAD * nthreads ;
+        }
+        else
+        { 
+            // slice B into individual vectors
+            nbslice = bnvec ;
+
+            // slice A' to get a total of about 16*nthreads tasks
+            naslice = (GB_NTASKS_PER_THREAD * nthreads) / nbslice ;
+
+            // but do not slice A too finely
+            naslice = GB_IMIN (naslice, anvec/4) ;
+            naslice = GB_IMAX (naslice, nthreads) ;
+        }
+    }
 
     //--------------------------------------------------------------------------
     // get the semiring operators
@@ -92,313 +225,259 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     GrB_BinaryOp mult = semiring->multiply ;
     GrB_Monoid add = semiring->add ;
     ASSERT (mult->ztype == add->op->ztype) ;
-
-    bool op_is_first  = mult->opcode == GB_FIRST_opcode ;
-    bool op_is_second = mult->opcode == GB_SECOND_opcode ;
-    bool op_is_pair   = mult->opcode == GB_PAIR_opcode ;
-    bool A_is_pattern = false ;
-    bool B_is_pattern = false ;
-
-    if (flipxy)
-    { 
-        // z = fmult (b,a) will be computed
-        A_is_pattern = op_is_first  || op_is_pair ;
-        B_is_pattern = op_is_second || op_is_pair ;
-        ASSERT (GB_IMPLIES (!A_is_pattern,
-            GB_Type_compatible (A->type, mult->ytype))) ;
-        ASSERT (GB_IMPLIES (!B_is_pattern,
-            GB_Type_compatible (B->type, mult->xtype))) ;
-    }
-    else
-    { 
-        // z = fmult (a,b) will be computed
-        A_is_pattern = op_is_second || op_is_pair ;
-        B_is_pattern = op_is_first  || op_is_pair ;
-        ASSERT (GB_IMPLIES (!A_is_pattern,
-            GB_Type_compatible (A->type, mult->xtype))) ;
-        ASSERT (GB_IMPLIES (!B_is_pattern,
-            GB_Type_compatible (B->type, mult->ytype))) ;
-    }
-
-    (*Chandle) = NULL ;
+    bool A_is_pattern, B_is_pattern ;
+    GB_AxB_pattern (&A_is_pattern, &B_is_pattern, flipxy, mult->opcode) ;
 
     //--------------------------------------------------------------------------
-    // allocate workspace and slice B
+    // allocate workspace and slice A and B
     //--------------------------------------------------------------------------
 
-    if (!GB_pslice (&B_slice, /* B */ B->p, B->nvec, nbslice))
+    // A and B can have any sparsity: full, bitmap, sparse, or hypersparse.
+    // C is always created as bitmap
+
+    if (!GB_pslice (&A_slice, A->p, A->nvec, naslice, false) ||
+        !GB_pslice (&B_slice, B->p, B->nvec, nbslice, false))
     { 
         // out of memory
-        GB_FREE_WORK ;
+        GB_FREE_ALL ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
+// ttt = omp_get_wtime ( ) - ttt ;
+// GB_Global_timing_add (17, ttt) ;
+// ttt = omp_get_wtime ( ) ;
+
     //--------------------------------------------------------------------------
-    // compute # of entries in each vector of C
+    // allocate C
     //--------------------------------------------------------------------------
 
+    // if M is sparse/hyper, then calloc C->b; otherwise use malloc
+    bool M_is_sparse_or_hyper = (M != NULL) &&
+        (GB_IS_SPARSE (M) || GB_IS_HYPERSPARSE (M)) ;
     GrB_Type ctype = add->op->ztype ;
-    int64_t cvlen = A->vdim ;
-    int64_t cvdim = B->vdim ;
+    GB_OK (GB_new_bix (Chandle, // bitmap, new header
+        ctype, cvlen, cvdim, GB_Ap_malloc, true,
+        GxB_BITMAP, M_is_sparse_or_hyper, B->hyper_switch, cnvec, cnz, true,
+        Context)) ;
+    GrB_Matrix C = (*Chandle) ;
 
-    if (B->nvec_nonempty < 0)
+// ttt = omp_get_wtime ( ) - ttt ;
+// GB_Global_timing_add (18, ttt) ;
+// ttt = omp_get_wtime ( ) ;
+
+    //--------------------------------------------------------------------------
+    // if M is sparse/hyper, scatter it into the C bitmap
+    //--------------------------------------------------------------------------
+
+    if (M_is_sparse_or_hyper)
     { 
-        B->nvec_nonempty = GB_nvec_nonempty (B, NULL) ;
-    }
+        // FUTURE:: could just set Cb [pC] = 2 since Cb has just been calloc'd.
+        // However, in the future, this method might be able to modify C on
+        // input, in which case C->b will not be all zero.
 
-    GB_CALLOC_MEMORY (C_counts, naslice, sizeof (int64_t *)) ;
-    if (C_counts == NULL)
-    { 
-        // out of memory
-        GB_FREE_WORK ;
-        return (GrB_OUT_OF_MEMORY) ;
-    }
-
-    for (int a_taskid = 0 ; a_taskid < naslice ; a_taskid++)
-    {
-        int64_t *GB_RESTRICT C_count = NULL ;
-        GB_CALLOC_MEMORY (C_count, B->nvec, sizeof (int64_t)) ;
-        if (C_count == NULL)
+        int mthreads = GB_nthreads (GB_NNZ (M) + M->nvec, chunk, nthreads_max) ;
+        int mtasks = (mthreads == 1) ? 1 : (8 * mthreads) ;
+        if (!GB_ek_slice (&pstart_Mslice, &kfirst_Mslice, &klast_Mslice,
+            M, &mtasks))
         { 
             // out of memory
-            GB_FREE_WORK ;
+            GB_FREE_ALL ;
             return (GrB_OUT_OF_MEMORY) ;
         }
-        C_counts [a_taskid] = C_count ;
-    }
 
-    for (int a_taskid = 0 ; a_taskid < naslice ; a_taskid++)
-    {
-        if ((Aslice [a_taskid])->nvec_nonempty < 0)
-        { 
-            (Aslice [a_taskid])->nvec_nonempty =
-                GB_nvec_nonempty (Aslice [a_taskid], NULL) ;
-        }
-    }
-
-    #define GB_PHASE_1_OF_2
-    #include "GB_AxB_dot2_meta.c"
-    #undef  GB_PHASE_1_OF_2
-
-    GB_NEW (Chandle, ctype, cvlen, cvdim, GB_Ap_malloc, true,
-        GB_SAME_HYPER_AS (B->is_hyper), B->hyper_ratio, cnvec, Context) ;
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory
-        GB_FREE_WORK ;
-        return (info) ;
-    }
-
-    GrB_Matrix C = (*Chandle) ;
-    int64_t *GB_RESTRICT Cp = C->p ;
-
-    // cumulative sum of counts in each column
-    int64_t k ;
-    #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (k = 0 ; k < cnvec ; k++)
-    {
-        int64_t s = 0 ;
-        for (int taskid = 0 ; taskid < naslice ; taskid++)
-        { 
-            int64_t *GB_RESTRICT C_count = C_counts [taskid] ;
-            int64_t c = C_count [k] ;
-            C_count [k] = s ;
-            s += c ;
-        }
-        Cp [k] = s ;
-    }
-    Cp [cnvec] = 0 ;
-    C->nvec = cnvec ;
-
-    // Cp = cumulative sum of Cp
-    GB_cumsum (Cp, cnvec, &(C->nvec_nonempty), nthreads) ;
-    int64_t cnz = Cp [cnvec] ;
-
-    // C->h = B->h
-    if (B->is_hyper)
-    { 
-        GB_memcpy (C->h, B->h, cnvec * sizeof (int64_t), nthreads) ;
-    }
-
-    // free C_count for the first thread; it is no longer needed
-    GB_FREE_MEMORY (C_counts [0], cnvec, sizeof (int64_t)) ;
-    C->magic = GB_MAGIC ;
-
-    //--------------------------------------------------------------------------
-    // allocate C->x and C->i
-    //--------------------------------------------------------------------------
-
-    info = GB_ix_alloc (C, cnz, true, Context) ;
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory
-        GB_MATRIX_FREE (Chandle) ;
-        GB_FREE_WORK ;
-        return (info) ;
+        // Cb [pC] += 2 for each entry M(i,j) in the mask
+        GB_bitmap_M_scatter (C,
+            NULL, 0, GB_ALL, NULL, NULL, 0, GB_ALL, NULL,
+            M, Mask_struct, GB_ASSIGN, GB_BITMAP_M_SCATTER_PLUS_2,
+            pstart_Mslice, kfirst_Mslice, klast_Mslice,
+            mthreads, mtasks, Context) ;
+        // the bitmap of C now contains:
+        //  Cb (i,j) = 0:   cij not present, mij zero
+        //  Cb (i,j) = 1:   cij present, mij zero           (not used yet)
+        //  Cb (i,j) = 2:   cij not present, mij 1
+        //  Cb (i,j) = 3:   cij present, mij 1              (not used yet)
     }
 
     //--------------------------------------------------------------------------
-    // C = A'*B, computing each entry with a dot product, via builtin semiring
+    // C<#>=A'*B, computing each entry with a dot product, via builtin semiring
     //--------------------------------------------------------------------------
 
     bool done = false ;
 
-#ifndef GBCOMPACT
+    #ifndef GBCOMPACT
 
-    //--------------------------------------------------------------------------
-    // define the worker for the switch factory
-    //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
+        // define the worker for the switch factory
+        //----------------------------------------------------------------------
 
-    #define GB_Adot2B(add,mult,xyname) GB_Adot2B_ ## add ## mult ## xyname
+        #define GB_Adot2B(add,mult,xname) GB_Adot2B_ ## add ## mult ## xname
 
-    #define GB_AxB_WORKER(add,mult,xyname)                              \
-    {                                                                   \
-        info = GB_Adot2B (add,mult,xyname) (C, M, Mask_struct,          \
-            Aslice, A_is_pattern, B, B_is_pattern, B_slice,             \
-            C_counts, nthreads, naslice, nbslice) ;                     \
-        done = (info != GrB_NO_VALUE) ;                                 \
-    }                                                                   \
-    break ;
+        #define GB_AxB_WORKER(add,mult,xname)                                \
+        {                                                                    \
+            info = GB_Adot2B (add,mult,xname) (C, M, Mask_comp, Mask_struct, \
+                A, A_is_pattern, A_slice, B, B_is_pattern, B_slice,          \
+                nthreads, naslice, nbslice) ;                                \
+            done = (info != GrB_NO_VALUE) ;                                  \
+        }                                                                    \
+        break ;
 
-    //--------------------------------------------------------------------------
-    // launch the switch factory
-    //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
+        // launch the switch factory
+        //----------------------------------------------------------------------
 
-    GB_Opcode mult_opcode, add_opcode ;
-    GB_Type_code xycode, zcode ;
+        GB_Opcode mult_opcode, add_opcode ;
+        GB_Type_code xcode, ycode, zcode ;
 
-    if (GB_AxB_semiring_builtin (A, A_is_pattern, B, B_is_pattern, semiring,
-        flipxy, &mult_opcode, &add_opcode, &xycode, &zcode))
-    { 
-        #include "GB_AxB_factory.c"
-    }
-    ASSERT (info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
+        if (GB_AxB_semiring_builtin (A, A_is_pattern, B, B_is_pattern, semiring,
+            flipxy, &mult_opcode, &add_opcode, &xcode, &ycode, &zcode))
+        { 
+            #include "GB_AxB_factory.c"
+        }
+        ASSERT (info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
-#endif
+    #endif
 
     //--------------------------------------------------------------------------
     // C = A'*B, computing each entry with a dot product, with typecasting
     //--------------------------------------------------------------------------
 
     if (!done)
-    {
-        GB_BURBLE_MATRIX (C, "generic ") ;
-
-        //----------------------------------------------------------------------
-        // get operators, functions, workspace, contents of A, B, C, and M
-        //----------------------------------------------------------------------
-
-        GxB_binary_function fmult = mult->function ;
-        GxB_binary_function fadd  = add->op->function ;
-
-        size_t csize = C->type->size ;
-        size_t asize = A_is_pattern ? 0 : A->type->size ;
-        size_t bsize = B_is_pattern ? 0 : B->type->size ;
-
-        size_t xsize = mult->xtype->size ;
-        size_t ysize = mult->ytype->size ;
-
-        // scalar workspace: because of typecasting, the x/y types need not
-        // be the same as the size of the A and B types.
-        // flipxy false: aki = (xtype) A(k,i) and bkj = (ytype) B(k,j)
-        // flipxy true:  aki = (ytype) A(k,i) and bkj = (xtype) B(k,j)
-        size_t aki_size = flipxy ? ysize : xsize ;
-        size_t bkj_size = flipxy ? xsize : ysize ;
-
-        GB_void *GB_RESTRICT terminal = add->terminal ;
-
-        GB_cast_function cast_A, cast_B ;
-        if (flipxy)
-        { 
-            // A is typecasted to y, and B is typecasted to x
-            cast_A = A_is_pattern ? NULL : 
-                     GB_cast_factory (mult->ytype->code, A->type->code) ;
-            cast_B = B_is_pattern ? NULL : 
-                     GB_cast_factory (mult->xtype->code, B->type->code) ;
-        }
-        else
-        { 
-            // A is typecasted to x, and B is typecasted to y
-            cast_A = A_is_pattern ? NULL :
-                     GB_cast_factory (mult->xtype->code, A->type->code) ;
-            cast_B = B_is_pattern ? NULL :
-                     GB_cast_factory (mult->ytype->code, B->type->code) ;
-        }
-
-        //----------------------------------------------------------------------
-        // C = A'*B via dot products, function pointers, and typecasting
-        //----------------------------------------------------------------------
-
-        // aki = A(k,i), located in Ax [pA]
-        #define GB_GETA(aki,Ax,pA)                                          \
-            GB_void aki [GB_VLA(aki_size)] ;                                \
-            if (!A_is_pattern) cast_A (aki, Ax +((pA)*asize), asize)
-
-        // bkj = B(k,j), located in Bx [pB]
-        #define GB_GETB(bkj,Bx,pB)                                          \
-            GB_void bkj [GB_VLA(bkj_size)] ;                                \
-            if (!B_is_pattern) cast_B (bkj, Bx +((pB)*bsize), bsize)
-
-        // break if cij reaches the terminal value
-        #define GB_DOT_TERMINAL(cij)                                        \
-            if (terminal != NULL && memcmp (cij, terminal, csize) == 0)     \
-            {                                                               \
-                break ;                                                     \
-            }
-
-        // C(i,j) = A(i,k) * B(k,j)
-        #define GB_MULT(cij, aki, bkj)                                      \
-            GB_MULTIPLY (cij, aki, bkj)
-
-        // C(i,j) += A(i,k) * B(k,j)
-        #define GB_MULTADD(cij, aki, bkj)                                   \
-            GB_void zwork [GB_VLA(csize)] ;                                 \
-            GB_MULTIPLY (zwork, aki, bkj) ;                                 \
-            fadd (cij, cij, zwork)
-
-        // define cij for each task
-        #define GB_CIJ_DECLARE(cij)                                         \
-            GB_void cij [GB_VLA(csize)]
-
-        // address of Cx [p]
-        #define GB_CX(p) Cx +((p)*csize)
-
-        // save the value of C(i,j)
-        #define GB_CIJ_SAVE(cij,p)                                          \
-            memcpy (GB_CX (p), cij, csize)
-
-        #define GB_ATYPE GB_void
-        #define GB_BTYPE GB_void
-        #define GB_CTYPE GB_void
-
-        #define GB_PHASE_2_OF_2
-
-        // no vectorization
-        #define GB_PRAGMA_VECTORIZE
-        #define GB_PRAGMA_VECTORIZE_DOT
-
-        if (flipxy)
-        { 
-            #define GB_MULTIPLY(z,x,y) fmult (z,y,x)
-            #include "GB_AxB_dot2_meta.c"
-            #undef GB_MULTIPLY
-        }
-        else
-        { 
-            #define GB_MULTIPLY(z,x,y) fmult (z,x,y)
-            #include "GB_AxB_dot2_meta.c"
-            #undef GB_MULTIPLY
-        }
+    { 
+        #define GB_DOT2_GENERIC
+        GB_BURBLE_MATRIX (C, "(generic C%s=A'*B) ", (M == NULL) ? "" :
+            (Mask_comp ? "<!M>" : "<M>")) ;
+        #include "GB_AxB_dot_generic.c"
     }
 
     //--------------------------------------------------------------------------
-    // free workspace and return result
+    // free workspace
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
-    ASSERT_MATRIX_OK (C, "dot: C = A'*B output", GB0) ;
+    GB_FREE_ALL ;
+    C->magic = GB_MAGIC ;
+    ASSERT_MATRIX_OK (C, "dot2: C = A'*B output", GB0) ;
+    ASSERT (!GB_ZOMBIES (C)) ;
+
+    //--------------------------------------------------------------------------
+    // unpack C if A or B are hypersparse
+    //--------------------------------------------------------------------------
+
+    if (A_or_B_hyper)
+    {
+
+        //----------------------------------------------------------------------
+        // unpack C from bitmap to sparse/hyper
+        //----------------------------------------------------------------------
+
+        // C is currently A_in->nvec by B_in->nvec, in bitmap form.  It must be
+        // unpacked into sparse/hypersparse form, with zombies.
+
+        //----------------------------------------------------------------------
+        // allocate the sparse/hypersparse structure of the final C
+        //----------------------------------------------------------------------
+
+        int64_t *GB_RESTRICT Cp = GB_MALLOC (cvdim+1, int64_t) ;
+        int64_t *GB_RESTRICT Ch =
+            B_is_hyper ? GB_MALLOC (cvdim, int64_t) : NULL ;
+        int64_t *GB_RESTRICT Ci = GB_MALLOC (cnz, int64_t) ;
+        if (Cp == NULL || (B_is_hyper && Ch == NULL) || Ci == NULL)
+        { 
+            // out of memory
+            GB_Matrix_free (Chandle) ;
+            GB_FREE (Cp) ;
+            GB_FREE (Ch) ;
+            GB_FREE (Ci) ;
+            return (GrB_OUT_OF_MEMORY) ;
+        }
+
+        //----------------------------------------------------------------------
+        // construct the hyperlist of C, if B is hypersparse
+        //----------------------------------------------------------------------
+
+        nthreads = GB_nthreads (cvdim, chunk, nthreads_max) ;
+        if (B_is_hyper)
+        { 
+            // C becomes hypersparse
+            ASSERT (cvdim == B_in->nvec) ;
+            GB_memcpy (Ch, B_in->h, cvdim * sizeof (int64_t), nthreads) ;
+        }
+
+        //----------------------------------------------------------------------
+        // construct the vector pointers of C
+        //----------------------------------------------------------------------
+
+        int64_t pC ;
+        #pragma omp parallel for num_threads(nthreads) schedule(static)
+        for (pC = 0 ; pC < cvdim+1 ; pC++)
+        { 
+            Cp [pC] = pC * cvlen ;
+        }
+
+        //----------------------------------------------------------------------
+        // construct the pattern of C from its bitmap
+        //----------------------------------------------------------------------
+
+        // C(i,j) becomes a zombie if not present in the bitmap
+        nthreads = GB_nthreads (cnz, chunk, nthreads_max) ;
+
+        int8_t *GB_RESTRICT Cb = C->b ;
+        if (A_is_hyper)
+        { 
+            ASSERT (cvlen == A_in->nvec) ;
+            #pragma omp parallel for num_threads(nthreads) schedule(static)
+            for (pC = 0 ; pC < cnz ; pC++)
+            {
+                int64_t i = Ah [pC % cvlen] ;
+                Ci [pC] = (Cb [pC]) ? i : GB_FLIP (i) ;
+            }
+        }
+        else
+        { 
+            ASSERT (cvlen == cvlen_final && cvlen == A->vdim) ;
+            #pragma omp parallel for num_threads(nthreads) schedule(static)
+            for (pC = 0 ; pC < cnz ; pC++)
+            {
+                int64_t i = pC % cvlen ;
+                Ci [pC] = (Cb [pC]) ? i : GB_FLIP (i) ;
+            }
+        }
+
+        //----------------------------------------------------------------------
+        // transplant the new content and finalize C
+        //----------------------------------------------------------------------
+
+        C->p = Cp ; Cp = NULL ;
+        C->h = Ch ; Ch = NULL ;
+        C->i = Ci ; Ci = NULL ;
+        C->nzombies = cnz - C->nvals ;
+        C->vdim = cvdim_final ;
+        C->vlen = cvlen_final ;
+        C->nvals = -1 ;
+        C->nvec = cvdim ;
+        C->plen = cvdim ;
+        C->nvec_nonempty = (cvlen == 0) ? 0 : cvdim ;
+
+        // free the bitmap
+        GB_FREE (C->b) ;
+
+        // C is now sparse or hypersparse
+        ASSERT_MATRIX_OK (C, "dot2: unpacked C", GB0) ;
+        ASSERT (GB_ZOMBIES_OK (C)) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // return result
+    //--------------------------------------------------------------------------
+
     ASSERT (*Chandle == C) ;
-    (*mask_applied) = (M != NULL) ;
+    ASSERT (GB_ZOMBIES_OK (C)) ;
+    ASSERT (!GB_JUMBLED (C)) ;
+    ASSERT (!GB_PENDING (C)) ;
+
+// ttt = omp_get_wtime ( ) - ttt ;
+// GB_Global_timing_add (19, ttt) ;
+// ttt = omp_get_wtime ( ) ;
+
     return (GrB_SUCCESS) ;
 }
 

@@ -2,8 +2,8 @@
 // GB_mex_debug: determine GB_DEBUG status
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -22,7 +22,6 @@ void mexFunction
     bool malloc_debug = GB_mx_get_global (false) ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 4 || nargin != 0)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -77,6 +76,6 @@ void mexFunction
         printf ("-------------------------------------------------------\n\n") ;
     }
 
-    GB_mx_put_global (false, 0) ;
+    GB_mx_put_global (false) ;
 }
 

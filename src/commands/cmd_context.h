@@ -10,16 +10,24 @@
 #include "../redismodule.h"
 #include "../graph/graphcontext.h"
 
+// ExecutorThread lists the diffrent types of threads in the system
+typedef enum {
+	EXEC_THREAD_MAIN,    // redis main thread
+	EXEC_THREAD_READER,  // read only thread
+	EXEC_THREAD_WRITER,  // write only thread
+} ExecutorThread;
+
 /* Query context, used for concurent query processing. */
 typedef struct {
 	char *query;                    // Query string.
 	RedisModuleCtx *ctx;            // Redis module context.
 	char *command_name;             // Command to execute.
 	GraphContext *graph_ctx;        // Graph context.
-	RedisModuleString **argv;       // Arguments.
 	RedisModuleBlockedClient *bc;   // Blocked client.
-	int argc;                       // Argument count.
 	bool replicated_command;        // Whether this instance was spawned by a replication command.
+	bool compact;                   // Whether this query was issued with the compact flag.
+	ExecutorThread thread;          // Which thread executes this command
+	long long timeout;              // The query timeout, if specified.
 } CommandCtx;
 
 // Create a new command context.
@@ -29,11 +37,19 @@ CommandCtx *CommandCtx_New
 	RedisModuleBlockedClient *bc,   // Blocked client.
 	RedisModuleString *cmd_name,    // Command to execute.
 	RedisModuleString *query,       // Query string.
-	int argc,                       // Argument count.
-	RedisModuleString **argv,       // Arguments.
 	GraphContext *graph_ctx,        // Graph context.
-	bool replicated_command         // Whether this instance was spawned by a replication command.
+	ExecutorThread thread,          // Which thread executes this command
+	bool replicated_command,        // Whether this instance was spawned by a replication command.
+	bool compact,                   // Whether this query was issued with the compact flag.
+	long long timeout               // The query timeout, if specified.
 );
+
+// Tracks given 'ctx' such that in case of a crash we will be able to report
+// back all of the currently running commands
+void CommandCtx_TrackCtx(CommandCtx *ctx);
+
+// Remove the given CommandCtx from tracking.
+void CommandCtx_UntrackCtx(CommandCtx *ctx);
 
 // Get Redis module context
 RedisModuleCtx *CommandCtx_GetRedisCtx
@@ -81,4 +97,3 @@ void CommandCtx_Free
 (
 	CommandCtx *command_ctx
 );
-

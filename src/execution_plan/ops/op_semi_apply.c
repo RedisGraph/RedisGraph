@@ -6,6 +6,7 @@
 
 #include "op_semi_apply.h"
 #include "../execution_plan.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 // Forward declarations.
 static OpResult SemiApplyInit(OpBase *opBase);
@@ -27,7 +28,7 @@ OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti) {
 	op->match_branch = NULL;
 	// Set our Op operations
 	if(anti) {
-		OpBase_Init((OpBase *)op, OpType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
+		OpBase_Init((OpBase *)op, OPType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
 					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
 	} else {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
@@ -37,18 +38,18 @@ OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti) {
 }
 
 static OpResult SemiApplyInit(OpBase *opBase) {
-	assert(opBase->childCount == 2);
+	ASSERT(opBase->childCount == 2);
 
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	/* The op bounded branch and match branch are set to be the first and second child, respectively,
 	 * during the operation building procedure at execution_plan_reduce_to_apply.c */
 	op->bound_branch = opBase->children[0];
 	op->match_branch = opBase->children[1];
-	assert(op->bound_branch && op->match_branch);
+	ASSERT(op->bound_branch && op->match_branch);
 
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->match_branch, OPType_ARGUMENT);
-	assert(op->op_arg && op->op_arg->op.childCount == 0);
+	ASSERT(op->op_arg && op->op_arg->op.childCount == 0);
 	return OP_OK;
 }
 
@@ -122,9 +123,8 @@ static OpResult SemiApplyReset(OpBase *opBase) {
 }
 
 static inline OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_SEMI_APPLY || opBase->type == OpType_ANTI_SEMI_APPLY);
-	OpSemiApply *op = (OpSemiApply *)opBase;
-	bool anti = opBase->type == OpType_ANTI_SEMI_APPLY;
+	ASSERT(opBase->type == OPType_SEMI_APPLY || opBase->type == OPType_ANTI_SEMI_APPLY);
+	bool anti = opBase->type == OPType_ANTI_SEMI_APPLY;
 	return NewSemiApplyOp(plan, anti);
 }
 

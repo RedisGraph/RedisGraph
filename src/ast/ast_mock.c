@@ -16,8 +16,6 @@ AST *AST_MockMatchClause(AST *master_ast, cypher_astnode_t *node, bool node_is_p
 	ast->referenced_entities = master_ast->referenced_entities;
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->free_root = true;
-	ast->skip = NULL;
-	ast->limit = NULL;
 	cypher_astnode_t *pattern;
 	struct cypher_input_range range = {0};
 	const cypher_astnode_t *predicate = NULL;
@@ -32,7 +30,7 @@ AST *AST_MockMatchClause(AST *master_ast, cypher_astnode_t *node, bool node_is_p
 	} else {
 		/* OPTIONAL MATCH clauses contain a pattern node
 		 * and possibly a predicate node (containing WHERE conditions). */
-		assert(cypher_astnode_type(node) == CYPHER_AST_MATCH);
+		ASSERT(cypher_astnode_type(node) == CYPHER_AST_MATCH);
 		pattern = (cypher_astnode_t *)cypher_ast_match_get_pattern(node);
 		predicate = cypher_ast_match_get_predicate(node);
 
@@ -59,7 +57,7 @@ void AST_MockFree(AST *ast, bool free_pattern) {
 	 * or its annotations. We'll free every surrounding layer explicitly - the MATCH
 	 * pattern (if we constructed it), the MATCH clause, and finally the AST root. */
 	const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, 0);
-	assert(cypher_astnode_type(clause) == CYPHER_AST_MATCH);
+	ASSERT(cypher_astnode_type(clause) == CYPHER_AST_MATCH);
 	if(free_pattern) {
 		const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
 		cypher_astnode_free((cypher_astnode_t *)pattern);

@@ -1,13 +1,25 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: test unit flow tck memcheck clean
+.PHONY: test unit flow tck memcheck benchmark clean
 
 TEST_ARGS+=--clear-logs
 
 # check verbose flag
 ifneq ($(V),)
 	TEST_ARGS += --verbose
+endif
+
+ifneq ($(REMOTE),)
+	BENCHMARK_ARGS = redisbench-admin run-remote 
+else
+	BENCHMARK_ARGS = redisbench-admin run-local 
+endif
+
+BENCHMARK_ARGS += --module_path $(shell pwd)/../src/redisgraph.so \
+	--required-module graph
+ifneq ($(BENCHMARK),)
+	BENCHMARK_ARGS += --test $(BENCHMARK)
 endif
 
 # check environment flag
@@ -42,6 +54,9 @@ memcheck:
 	@$(MAKE) -C flow TEST_ARGS="$(MEMCHECK_ARGS)"
 	@$(MAKE) -C tck TEST_ARGS="$(MEMCHECK_ARGS)"
 	./memcheck.sh
+
+benchmark:
+	cd benchmarks; $(BENCHMARK_ARGS) ; cd ..
 
 clean:
 	@find . -name '*.[oad]' -type f -delete

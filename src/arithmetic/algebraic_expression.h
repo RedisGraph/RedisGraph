@@ -31,6 +31,7 @@ typedef enum {
 typedef struct AlgebraicExpression AlgebraicExpression;
 
 struct AlgebraicExpression {
+	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 	union {
 		struct {
 			bool diagonal;          // Diagonal matrix.
@@ -46,7 +47,6 @@ struct AlgebraicExpression {
 			AlgebraicExpression **children; // Child nodes.
 		} operation;
 	};
-	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 };
 
 //------------------------------------------------------------------------------
@@ -159,14 +159,14 @@ void AlgebraicExpression_AddChild
 	AlgebraicExpression *child  // Child node to attach.
 );
 
-// Remove leftmost child node from root.
-AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
+// Remove source of algebraic expression from root.
+AlgebraicExpression *AlgebraicExpression_RemoveSource
 (
 	AlgebraicExpression **root   // Root from which to remove a child.
 );
 
-// Remove rightmost child node from root.
-AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
+// Remove destination of algebraic expression from root.
+AlgebraicExpression *AlgebraicExpression_RemoveDest
 (
 	AlgebraicExpression **root   // Root from which to remove a child.
 );
@@ -217,6 +217,20 @@ void AlgebraicExpression_Eval
 	GrB_Matrix res                  // Result output.
 );
 
+// Locates operand based on row,column domain and edge
+// sets 'operand' to if found otherwise set it to NULL
+// sets 'parent' if requested, parent can still be set to NULL
+// if 'root' is the seeked operand
+bool AlgebraicExpression_LocateOperand
+(
+	AlgebraicExpression *root,       // Root to search
+	AlgebraicExpression **operand,   // [output] set to operand, NULL if missing
+	AlgebraicExpression **parent,    // [output] set to operand parent
+	const char *row_domain,          // operand row domain
+	const char *column_domain,       // operand column domain
+	const char *edge                 // operand edge name
+);
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression debugging utilities.
 //------------------------------------------------------------------------------
@@ -253,6 +267,12 @@ char *AlgebraicExpression_ToString
 void AlgebraicExpression_Optimize
 (
 	AlgebraicExpression **exp   // Expression to optimize.
+);
+
+// Push down transpose operations to individual operands.
+void AlgebraicExpression_PushDownTranspose
+(
+	AlgebraicExpression *root   // Expression to modify
 );
 
 //------------------------------------------------------------------------------

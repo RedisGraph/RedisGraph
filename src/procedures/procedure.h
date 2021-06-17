@@ -7,9 +7,9 @@
 #pragma once
 
 #include "proc_ctx.h"
+#include "../arithmetic/arithmetic_expression.h"
 #include <sys/types.h>
 #include <stdbool.h>
-
 
 // Registers procedures.
 void Proc_Register();
@@ -20,7 +20,7 @@ void Proc_Register();
 ProcedureCtx *Proc_Get(const char *proc_name);
 
 // Invokes procedure.
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args);
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield);
 
 /* Single step theough procedure iterator
  * Returns array of key value pairs. */
@@ -41,9 +41,11 @@ const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx);
 /* Returns true if given output can be yield by procedure */
 bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output);
 
-/* Returns true if procedure is read-only. */
-bool Proc_ReadOnly(const char *proc_name);
-
 // Free procedure context.
 void Proc_Free(ProcedureCtx *proc);
 
+// Returns true if the procedure is read-only.
+bool Procedure_IsReadOnly(const ProcedureCtx *proc);
+
+// Returns the procedure's name.
+const char *Procedure_GetName(const ProcedureCtx *proc);

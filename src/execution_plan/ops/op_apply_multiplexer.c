@@ -5,6 +5,7 @@
  */
 
 #include "op_apply_multiplexer.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 // Forward declerations.
 static OpResult OpApplyMultiplexerInit(OpBase *opBase);
@@ -34,7 +35,7 @@ OpBase *NewApplyMultiplexerOp(const ExecutionPlan *plan, AST_Operator boolean_op
 					OpApplyMultiplexerInit, AndMultiplexer_Consume, OpApplyMultiplexerReset, NULL,
 					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
 	} else {
-		assert("apply multiplexer boolean operator should be AND or OR only" && false);
+		ASSERT("apply multiplexer boolean operator should be AND or OR only" && false);
 	}
 	return (OpBase *) op;
 }
@@ -53,7 +54,6 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 			for(int j = i + 1; j < op->childCount; j++) {
 				OpBase *candidate = op->children[j];
 				if(candidate->type == OPType_FILTER) {
-					OpBase *tmp = candidate;
 					op->children[i] = candidate;
 					op->children[j] = child;
 					swapped = true;
@@ -77,14 +77,14 @@ static OpResult OpApplyMultiplexerInit(OpBase *opBase) {
 	/* Set up bounded branch. The bounded branch is set as the first child during the operation building procedure at
 	 * execution_plan_reduce_to_apply.c */
 	apply_multiplexer->bound_branch = opBase->children[0];
-	assert(apply_multiplexer->bound_branch);
+	ASSERT(apply_multiplexer->bound_branch);
 	int childCount = opBase->childCount;
 	// For every child, find its argument op for record injection.
 	apply_multiplexer->branch_arguments = array_new(Argument *, childCount - 1);
 	for(int i = 1; i < childCount; i++) {
 		OpBase *child = opBase->children[i];
 		Argument *arg = (Argument *)ExecutionPlan_LocateOp(child, OPType_ARGUMENT);
-		assert(arg);
+		ASSERT(arg);
 		apply_multiplexer->branch_arguments = array_append(apply_multiplexer->branch_arguments, arg);
 	}
 	return OP_OK;
@@ -150,7 +150,7 @@ static OpResult OpApplyMultiplexerReset(OpBase *opBase) {
 }
 
 static inline OpBase *OpApplyMultiplexerClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_OR_APPLY_MULTIPLEXER || opBase->type == OPType_AND_APPLY_MULTIPLEXER);
+	ASSERT(opBase->type == OPType_OR_APPLY_MULTIPLEXER || opBase->type == OPType_AND_APPLY_MULTIPLEXER);
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 	return NewApplyMultiplexerOp(plan, op->boolean_operator);
 }

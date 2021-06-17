@@ -9,20 +9,8 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
-#include <ctype.h>
-#include <assert.h>
-
-static inline void _toLower(const char *str, char *lower, size_t lower_len) {
-	size_t i = 0;
-	for(; i < lower_len; i++) lower[i] = tolower(str[i]);
-	lower[i] = 0;
-}
-
-static inline void _toUpper(const char *str, char *upper, size_t upper_len) {
-	size_t i = 0;
-	for(; i < upper_len; i++) upper[i] = toupper(str[i]);
-	upper[i] = 0;
-}
+#include "../../util/strutil.h"
+#include "../../util/json_encoder.h"
 
 /* returns a string containing the specified number of leftmost characters of the original string. */
 SIValue AR_LEFT(SIValue *argv, int argc) {
@@ -119,13 +107,13 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 	int64_t length;
 
 	/* Make sure start doesn't overreach. */
-	assert(start < original_len && start >= 0);
+	ASSERT(start < original_len && start >= 0);
 
 	if(argc == 2) {
 		length = original_len - start;
 	} else {
 		length = argv[2].longval;
-		assert(length >= 0);
+		ASSERT(length >= 0);
 
 		/* Make sure length does not overreach. */
 		if(start + length > original_len) {
@@ -144,9 +132,9 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	short lower_len = strlen(original);
+	size_t lower_len = strlen(original);
 	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
-	_toLower(original, lower, lower_len);
+	str_tolower(original, lower, &lower_len);
 	return SI_TransferStringVal(lower);
 }
 
@@ -156,7 +144,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
 	char *original = argv[0].stringval;
 	size_t upper_len = strlen(original);
 	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
-	_toUpper(original, upper, upper_len);
+	str_toupper(original, upper, &upper_len);
 	return SI_TransferStringVal(upper);
 }
 
@@ -168,6 +156,13 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	size_t bytesWritten = 0;
 	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
 	return SI_TransferStringVal(str);
+}
+
+/* Returns a JSON string representation of a map value. */
+SIValue AR_TOJSON(SIValue *argv, int argc) {
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
+	char *buf = JsonEncoder_SIValue(argv[0]);
+	return SI_TransferStringVal(buf);
 }
 
 /* returns the original string with leading and trailing whitespace removed. */
@@ -251,76 +246,82 @@ void Register_StringFuncs() {
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("left", AR_LEFT, 2, 2, types, true);
+	func_desc = AR_FuncDescNew("left", AR_LEFT, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("ltrim", AR_LTRIM, 1, 1, types, true);
+	func_desc = AR_FuncDescNew("ltrim", AR_LTRIM, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("right", AR_RIGHT, 2, 2, types, true);
+	func_desc = AR_FuncDescNew("right", AR_RIGHT, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("rtrim", AR_RTRIM, 1, 1, types, true);
+	func_desc = AR_FuncDescNew("rtrim", AR_RTRIM, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("reverse", AR_REVERSE, 1, 1, types, true);
+	func_desc = AR_FuncDescNew("reverse", AR_REVERSE, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, T_INT64);
 	types = array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, 2, 3, types, true);
+	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, 2, 3, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("tolower", AR_TOLOWER, 1, 1, types, true);
+	func_desc = AR_FuncDescNew("tolower", AR_TOLOWER, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("toupper", AR_TOUPPER, 1, 1, types, true);
+	func_desc = AR_FuncDescNew("toupper", AR_TOUPPER, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, 1, types, true);
+	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("tojson", AR_TOJSON, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("trim", AR_TRIM, 1, 1, types, true);
+	func_desc = AR_FuncDescNew("trim", AR_TRIM, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("contains", AR_CONTAINS, 2, 2, types, true);
+	func_desc = AR_FuncDescNew("contains", AR_CONTAINS, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("starts with", AR_STARTSWITH, 2, 2, types, true);
+	func_desc = AR_FuncDescNew("starts with", AR_STARTSWITH, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("ends with", AR_ENDSWITH, 2, 2, types, true);
+	func_desc = AR_FuncDescNew("ends with", AR_ENDSWITH, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 0);
-	func_desc = AR_FuncDescNew("randomuuid", AR_RANDOMUUID, 0, 0, types, false);
+	func_desc = AR_FuncDescNew("randomuuid", AR_RANDOMUUID, 0, 0, types, false, false);
 	AR_RegFunc(func_desc);
 }
+

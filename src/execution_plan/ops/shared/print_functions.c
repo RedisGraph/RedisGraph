@@ -7,6 +7,15 @@
 #include "print_functions.h"
 #include "../../execution_plan.h"
 
+static inline int _NodeToString(char *buf, uint buf_len, const char *alias, const char *label) {
+	// Print a representation of a node with an optional alias and optional label.
+	int offset = snprintf(buf, buf_len, "(");
+	if(alias) offset += snprintf(buf + offset, buf_len - offset, "%s", alias);
+	if(label) offset += snprintf(buf + offset, buf_len - offset, ":%s", label);
+	offset += snprintf(buf + offset, buf_len - offset, ")");
+	return offset;
+}
+
 int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae) {
 	int offset = 0;
 	if(!ae) {
@@ -17,7 +26,7 @@ int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpres
 	offset += snprintf(buf, buf_len, "%s | ", op->name);
 	// This edge should be printed right-to-left if the edge matrix is transposed.
 	const char *edge = AlgebraicExpression_Edge(ae);
-	bool transpose = (edge && AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE));
+	bool transpose = (edge && AlgebraicExpression_Transposed(ae));
 
 	// Retrieve QueryGraph entities.
 	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, AlgebraicExpression_Source(ae));
@@ -43,9 +52,11 @@ int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpres
 	return offset;
 }
 
-int ScanToString(const OpBase *op, char *buf, uint buf_len, const QGNode *n) {
+int ScanToString(const OpBase *op, char *buf, uint buf_len, const char *alias, const char *label) {
 	int offset = snprintf(buf, buf_len, "%s | ", op->name);
-	offset += QGNode_ToString(n, buf + offset, buf_len - offset);
+	buf += offset;
+	buf_len -= offset;
+	offset += _NodeToString(buf, buf_len, alias, label);
 	return offset;
 }
 

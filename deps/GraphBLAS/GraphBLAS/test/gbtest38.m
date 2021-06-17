@@ -2,8 +2,8 @@ function gbtest38
 %GBTEST38 test sqrt, eps, ceil, floor, round, fix, real, conj, ...
 % isfinite, isinf, isnan, spfun, eig
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 
@@ -57,7 +57,8 @@ for trial = 1:40
 
     A = sparse (A+A') ;
     G = GrB (A) ;
-    assert (isequal (eig (A), double (eig (G)))) ;
+    err = norm (eig (A) - double (eig (G)), 2) ;
+    assert (err < 1e-12) ;
 
     A = rand (10) ;
     B = rand (10) ;

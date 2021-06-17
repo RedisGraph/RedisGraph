@@ -1,7 +1,7 @@
 #include "utils.h"
-#include "../../config.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
+#include "../../configuration/config.h"
 
 /* Performs inplace re-purposing of an operand into an operation. */
 void _InplaceRepurposeOperandToOperation
@@ -9,7 +9,7 @@ void _InplaceRepurposeOperandToOperation
 	AlgebraicExpression *operand,
 	AL_EXP_OP op
 ) {
-	assert(operand && operand->type == AL_OPERAND);
+	ASSERT(operand && operand->type == AL_OPERAND);
 	AlgebraicExpression *operation = AlgebraicExpression_NewOperation(op);
 	// turn operand into an operation.
 	memcpy(operand, operation, sizeof(AlgebraicExpression));
@@ -24,11 +24,11 @@ void _AlgebraicExpression_InplaceRepurpose
 	AlgebraicExpression *exp,
 	AlgebraicExpression *replacement
 ) {
-	assert(exp && replacement && AlgebraicExpression_ChildCount(exp) == 0);
+	ASSERT(exp && replacement && AlgebraicExpression_ChildCount(exp) == 0);
 	// Free internals.
 	if(exp->type == AL_OPERATION) _AlgebraicExpression_FreeOperation(exp);
 	else if(exp->type == AL_OPERAND) _AlgebraicExpression_FreeOperand(exp);
-	else assert("Unknown algebraic expression type" && false);
+	else ASSERT("Unknown algebraic expression type" && false);
 
 	// Replace.
 	memcpy(exp, replacement, sizeof(AlgebraicExpression));
@@ -36,12 +36,40 @@ void _AlgebraicExpression_InplaceRepurpose
 	rm_free(replacement);
 }
 
+void _AlgebraicExpression_OperationRemoveChild
+(
+	AlgebraicExpression *parent,
+	const AlgebraicExpression *child
+) {
+	ASSERT(parent != NULL);
+	ASSERT(child != NULL);
+
+	if(parent->type != AL_OPERATION) return;
+
+	uint child_count = AlgebraicExpression_ChildCount(parent);
+	// no child nodes to remove
+	if(child_count == 0) return;
+
+	// search for child in parent
+	for(uint i = 0; i < child_count; i++) {
+		if(parent->operation.children[i] != child) continue;
+
+		// child found, remove it
+		// shift-left following children
+		for(uint j = i; j < child_count - 1; j++) {
+			parent->operation.children[j] = parent->operation.children[j+1];
+		}
+		array_pop(parent->operation.children);
+		break;
+	}
+}
+
 // Removes the rightmost direct child node of root.
-AlgebraicExpression *_AlgebraicExpression_OperationRemoveRightmostChild
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveDest
 (
 	AlgebraicExpression *root  // Root from which to remove a child.
 ) {
-	assert(root);
+	ASSERT(root);
 	if(root->type != AL_OPERATION) return NULL;
 
 	// No child nodes to remove.
@@ -53,11 +81,11 @@ AlgebraicExpression *_AlgebraicExpression_OperationRemoveRightmostChild
 }
 
 // Removes the leftmost direct child node of root.
-AlgebraicExpression *_AlgebraicExpression_OperationRemoveLeftmostChild
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveSource
 (
 	AlgebraicExpression *root   // Root from which to remove a child.
 ) {
-	assert(root);
+	ASSERT(root);
 	if(root->type != AL_OPERATION) return NULL;
 
 	uint child_count = AlgebraicExpression_ChildCount(root);
@@ -86,7 +114,7 @@ AlgebraicExpression *_AlgebraicExpression_MultiplyToTheLeft
 	AlgebraicExpression *lhs,
 	AlgebraicExpression *exp
 ) {
-	assert(lhs && exp);
+	ASSERT(lhs && exp);
 	AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
 	AlgebraicExpression_AddChild(mul, lhs);
 	AlgebraicExpression_AddChild(mul, exp);
@@ -103,7 +131,7 @@ AlgebraicExpression *_AlgebraicExpression_MultiplyToTheRight
 	AlgebraicExpression *exp,
 	AlgebraicExpression *rhs
 ) {
-	assert(exp && rhs);
+	ASSERT(exp && rhs);
 	AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
 	AlgebraicExpression_AddChild(mul, exp);
 	AlgebraicExpression_AddChild(mul, rhs);
@@ -120,7 +148,7 @@ AlgebraicExpression *_AlgebraicExpression_AddToTheLeft
 	AlgebraicExpression *lhs,
 	AlgebraicExpression *exp
 ) {
-	assert(lhs && exp);
+	ASSERT(lhs && exp);
 	AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 	AlgebraicExpression_AddChild(add, lhs);
 	AlgebraicExpression_AddChild(add, exp);
@@ -137,7 +165,7 @@ AlgebraicExpression *_AlgebraicExpression_AddToTheRight
 	AlgebraicExpression *exp,
 	AlgebraicExpression *rhs
 ) {
-	assert(exp && rhs);
+	ASSERT(exp && rhs);
 	AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 	AlgebraicExpression_AddChild(add, exp);
 	AlgebraicExpression_AddChild(add, rhs);
@@ -148,7 +176,7 @@ void _AlgebraicExpression_FreeOperation
 (
 	AlgebraicExpression *node
 ) {
-	assert(node && node->type == AL_OPERATION);
+	ASSERT(node && node->type == AL_OPERATION);
 	if(node->operation.children) {
 		uint child_count = AlgebraicExpression_ChildCount(node);
 		for(uint i = 0; i < child_count; i++) {
@@ -163,7 +191,7 @@ void _AlgebraicExpression_FreeOperand
 (
 	AlgebraicExpression *node
 ) {
-	assert(node && node->type == AL_OPERAND);
+	ASSERT(node && node->type == AL_OPERAND);
 	if(node->operand.bfree) GrB_Matrix_free(&node->operand.matrix);
 }
 
@@ -175,7 +203,7 @@ AlgebraicExpression *__AlgebraicExpression_GetOperand
 	uint *current_operand_idx
 ) {
 	// `operand_idx` must be within [0, AlgebraicExpression_OperandCount(root)).
-	assert(root);
+	ASSERT(root);
 
 	uint child_count = 0;
 	AlgebraicExpression *operand = NULL;
@@ -193,7 +221,7 @@ AlgebraicExpression *__AlgebraicExpression_GetOperand
 		}
 		break;
 	default:
-		assert("unknown algebraic expression node type" && false);
+		ASSERT("unknown algebraic expression node type" && false);
 	}
 	return NULL;
 }
@@ -235,8 +263,8 @@ static void _AlgebraicExpression_PopulateTransposedOperand(AlgebraicExpression *
 														   const GraphContext *gc) {
 	// Swap the row and column domains of the operand.
 	const char *tmp = operand->operand.dest;
-	operand->operand.src = operand->operand.dest;
-	operand->operand.dest = tmp;
+	operand->operand.dest = operand->operand.src;
+	operand->operand.src = tmp;
 
 	// Diagonal matrices do not need to be transposed.
 	if(operand->operand.diagonal == true) return;
@@ -265,9 +293,11 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 	case AL_OPERATION:
 		child_count = AlgebraicExpression_ChildCount(root);
 		// If we are maintaining transposed matrices, it can be retrieved now.
-		if(root->operation.op == AL_EXP_TRANSPOSE && Config_MaintainTranspose()) {
-			assert(child_count == 1 && "Transpose operation had invalid number of children");
-			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+		bool maintain_transpose = false;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+		if(root->operation.op == AL_EXP_TRANSPOSE && maintain_transpose) {
+			ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
+			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
 			// Fetch the transposed matrix and update the operand.
 			_AlgebraicExpression_PopulateTransposedOperand(child, gc);
 			// Replace this operation with the transposed operand.
@@ -282,7 +312,7 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 		_AlgebraicExpression_PopulateOperand(root, gc);
 		break;
 	default:
-		assert("Unknown algebraic expression node type" && false);
+		ASSERT("Unknown algebraic expression node type" && false);
 		break;
 	}
 }

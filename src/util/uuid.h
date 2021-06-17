@@ -8,3 +8,4 @@
 
 // Generates a new UUID.
 char *UUID_New();
+

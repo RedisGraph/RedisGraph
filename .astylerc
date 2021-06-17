@@ -4,9 +4,12 @@
 --mode=c
 --style=google
 --indent=force-tab=4
+--indent-switches
+--convert-tabs
 --pad-oper
 --unpad-paren
 --align-pointer=name
+--align-reference=none
 --max-code-length=100
 --max-continuation-indent=80
 --min-conditional-indent=0

@@ -12,7 +12,7 @@ max_results = 6
 
 class testVariableLengthTraversals(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
@@ -23,7 +23,7 @@ class testVariableLengthTraversals(FlowTestsBase):
         global redis_graph
 
         nodes = []
-         # Create nodes
+        # Create nodes
         for n in node_names:
             node = Node(label="node", properties={"name": n})
             redis_graph.add_node(node)
@@ -93,3 +93,74 @@ class testVariableLengthTraversals(FlowTestsBase):
         query = """MATCH (a)-[:not_knows*0..1]->(b) RETURN a"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(len(actual_result.result_set), 4)
+
+    # Test traversal with a possibly-null source.
+    def test08_optional_source(self):
+        query = """OPTIONAL MATCH (a:fake) OPTIONAL MATCH (a)-[*]->(b) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None, None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """OPTIONAL MATCH (a:node {name: 'A'}) OPTIONAL MATCH (a)-[*]->(b {name: 'B'}) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['A', 'B']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test traversals with filters on variable-length edges
+    def test09_filtered_edges(self):
+        # Test an inline equality predicate
+        query = """MATCH (a)-[* {connects: 'BC'}]->(b) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        # The filter op should have been optimized out
+        plan = redis_graph.execution_plan(query)
+        self.env.assertNotIn("Filter", plan)
+        actual_result = redis_graph.query(query)
+        expected_result = [['B', 'C']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test a WHERE clause predicate
+        query = """MATCH (a)-[e*]->(b) WHERE e.connects IN ['BC', 'CD'] RETURN a.name, b.name ORDER BY a.name, b.name"""
+        # The filter op should have been optimized out
+        plan = redis_graph.execution_plan(query)
+        self.env.assertNotIn("Filter", plan)
+        actual_result = redis_graph.query(query)
+        expected_result = [['B', 'C'],
+                           ['B', 'D'],
+                           ['C', 'D']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test a WHERE clause predicate with an OR condition
+        query = """MATCH (a)-[e*]->(b) WHERE e.connects = 'BC' OR e.connects = 'CD' RETURN a.name, b.name ORDER BY a.name, b.name"""
+        # The filter op should have been optimized out
+        plan = redis_graph.execution_plan(query)
+        self.env.assertNotIn("Filter", plan)
+        actual_result = redis_graph.query(query)
+        # Expecting the same result
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test the concatenation of multiple predicates
+        query = """MATCH (a)-[e*]->(b) WHERE e.connects IN ['AB', 'BC', 'CD'] AND e.connects <> 'CD' RETURN a.name, b.name ORDER BY a.name, b.name"""
+        # The filter op should have been optimized out
+        plan = redis_graph.execution_plan(query)
+        self.env.assertNotIn("Filter", plan)
+        actual_result = redis_graph.query(query)
+        expected_result = [['A', 'B'],
+                           ['A', 'C'],
+                           ['B', 'C']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test the concatenation of AND and OR conditions
+        query = """MATCH (a)-[e*]->(b) WHERE e.connects IN ['AB', 'BC', 'CD'] AND (e.connects = 'AB' OR e.connects = 'BC')  AND e.connects <> 'CD' RETURN a.name, b.name ORDER BY a.name, b.name"""
+        # The filter op should have been optimized out
+        plan = redis_graph.execution_plan(query)
+        self.env.assertNotIn("Filter", plan)
+        actual_result = redis_graph.query(query)
+        expected_result = [['A', 'B'],
+                           ['A', 'C'],
+                           ['B', 'C']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate that WHERE clause predicates are applied to edges lower than the minHops value
+        query = """MATCH (a)-[e*2..]->(b) WHERE e.connects <> 'AB' RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['B', 'D']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

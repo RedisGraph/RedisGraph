@@ -2,7 +2,7 @@
 
 # RedisGraph
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
-[![Gitter](https://badges.gitter.im/RedisLabs/RedisGraph.svg)](https://gitter.im/RedisLabs/RedisGraph?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
@@ -18,12 +18,32 @@ Primary features:
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
 
+## Trusted By
+
+<a href="https://www.ibm.com"><img src="images/logo-ibm.jpg" alt="IBM" height="100"/></a>
+<a href="https://www.fiverr.com"><img src="images/logo-fiverr.jpg" alt="Fiverr" height="100"/></a>
+<a href="https://redislabs.com/case-studies/thinkdata-works/"><img src="images/logo-thinkdata.jpg" alt="thinkdata" height="100"/></a> 
+<a href="https://sidy.fr/"><img src="images/logo-sidy.jpg" alt="sidy" height="100"/></a>
+
+<a href="https://www.youtube.com/watch?v=6FYYn-9fPXE"><img src="images/logo-mdmetrix.jpg" alt="mdmetrix" height="100"/></a> 
+<a href="https://linkirous.us/"><img src="images/logo-linkurious.jpg" alt="linkirous" height="100"/></a>
+<a href="https://medium.com/@tomzeppenfeldt/graphileon-and-redis-labs-become-partners-35bafe6790fa"><img src="images/logo-graphileon.jpg" alt="graphileon" height="100"/></a>
+<a href="https://redislabs.com/blog/graphxr-read-modify-and-write-ontologies-with-redisgraph/"><img src="images/logo-kineviz-graphxr.jpg" alt="kineviz" height="100"/></a>
+
+
 ## Quickstart
 
+1. [Redis Cloud](#redis-cloud)
 1. [Docker](#docker)
-2. [Build](#building)
-3. [Start](#loading-redisgraph-into-redis)
-4. [Use from any client](#using-redisgraph)
+1. [Build](#building)
+1. [Start](#loading-redisgraph-into-redis)
+1. [Use from any client](#using-redisgraph)
+
+## Redis Cloud
+
+RedisGraph is available on all Redis Cloud managed services, including a completely free managed database up to 30MB.
+
+[Select your plan here](https://redislabs.com/redis-enterprise-cloud/pricing/)
 
 ## Docker
 
@@ -38,7 +58,7 @@ docker run -p 6379:6379 -it --rm redislabs/redisgraph
 After you load RedisGraph, you can interact with it using redis-cli.
 
 Here we'll quickly create a small graph representing a subset of motorcycle riders and teams 
-taking part in the MotoGP league. Once created, we'll start querying our data.
+taking part in the MotoGP championship. Once created, we'll start querying our data.
 
 ### With `redis-cli`
 
@@ -86,7 +106,7 @@ Requirements:
 * On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
 
 * On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`.
-    * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CPP` will work if that is not an option.
+    * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CXX` will work if that is not an option.
 
 To build, run `make` in the project's directory.
 
@@ -112,7 +132,7 @@ $ redis-server --loadmodule /path/to/module/src/redisgraph.so
 
 You can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
 
-After you've successfully loaded RedisGraph, your Redis log should have lines similar to:
+After you've successfully loaded RedisGraph, your Redis log should contain entries similar to:
 
 ```
 ...
@@ -165,6 +185,12 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 Language-specific clients have been written by the community and the RedisGraph team for 6 languages.
 
 The full list and links can be found on [the Clients page](clients.md).
+
+## Data import
+
+The RedisGraph team maintains the [redisgraph-bulk-loader](https://github.com/redisgraph/redisgraph-bulk-loader) for importing new graphs from CSV files.
+
+The data format used by this tool is described in the [GRAPH.BULK implementation details](bulk_spec.md).
 
 ## Mailing List / Forum
 

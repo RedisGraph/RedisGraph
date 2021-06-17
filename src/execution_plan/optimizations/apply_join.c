@@ -1,20 +1,31 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "apply_join.h"
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
-#include "rax.h"
+#include "../../util/strcmp.h"
 #include "../ops/op_value_hash_join.h"
-#include "../ops/op_cartesian_product.h"
 #include "../../util/rax_extensions.h"
+#include "../ops/op_cartesian_product.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
+#define NOT_RESOLVED -1
+
+/* applyJoin will try to locate situations where two disjoint
+ * streams can be joined on a key attribute, in which case the
+ * runtime complaxity is reduced from O(n^2) to O(nlogn + 2n)
+ * consider MATCH (a), (b) where a.v = b.v RETURN a,b
+ * prior to this optimization a and b will be combined via a
+ * cartesian product O(n^2) because a and b are related,
+ * we require a.v = b.v, v acts as a join key in which case
+ * replacing the cartesian product by a join operation will
+ * 1. consume N additional memory
+ * 2. reduce the overall runtime by a factor of magnitude. */
 
 // To be used as a possible output of _relate_exp_to_stream.
-#define NOT_RESOLVED -1
 
 /**
  * @brief Given an expression node from a filter tree, returns the stream number
@@ -42,17 +53,7 @@ static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int str
 
 // Tests to see if given filter can act as a join condition.
 static inline bool _applicableFilter(const FT_FilterNode *f) {
-	// Can only convert filters that test equality
-	if(f->t != FT_N_PRED || f->pred.op != OP_EQUAL) return false;
-	// TODO allowing AR_ExpNodes that refer directly to graph entities currently causes memory errors.
-	// This restriction should be lifted later.
-	if((f->pred.lhs->type == AR_EXP_OPERAND &&
-		f->pred.lhs->operand.type == AR_EXP_VARIADIC &&
-		f->pred.lhs->operand.variadic.entity_prop == NULL) ||
-	   (f->pred.rhs->type == AR_EXP_OPERAND &&
-		f->pred.rhs->operand.type == AR_EXP_VARIADIC &&
-		f->pred.rhs->operand.variadic.entity_prop == NULL)) return false;
-	return true;
+	return (f->t == FT_N_PRED && f->pred.op == OP_EQUAL);
 }
 
 // Collects all consecutive filters beneath given op.
@@ -109,6 +110,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		stream_entities[j] = raxNew();
 		ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
 	}
+
 	for(uint i = 0; i < filter_count; i ++) {
 		// Try reduce the cartesian product to value hash join with the current filter.
 		OpFilter *filter_op = filter_ops[i];
@@ -201,3 +203,4 @@ void applyJoin(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
+

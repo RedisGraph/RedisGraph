@@ -1,8 +1,8 @@
 function testc6
 %TESTC6 test complex apply
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng 'default'
 
@@ -27,11 +27,12 @@ for m = [1 5 10 50 100 ]
         b = 42 ;
 
         % test unary ops with complex x,z
-        for k = 1:7
+        for k = 1:6
             op = complex_unary {k} ;
             C1 = GB_mex_op (op, a, '',1) ;
             [C2 tol] = GB_user_op (op, a) ;
             GB_complex_compare (C1, C2, tol) ;
+
             C1 = GB_mex_apply (C, [], [], op, A, dr) ;
             [i j x1] = find (C1.matrix) ;
             x1 = complex (x1) ;
@@ -42,7 +43,7 @@ for m = [1 5 10 50 100 ]
         end
 
         % test unary ops with complex x,z, array transposed
-        for k = 1:7
+        for k = 1:6
             op = complex_unary {k} ;
             C1 = GB_mex_apply (C, [], [], op, D, dtr) ;
             [i j x1] = find (C1.matrix) ;
@@ -54,57 +55,37 @@ for m = [1 5 10 50 100 ]
         end
 
         % test unary ops with complex x, real z
-        for k = 8:11
+        for k = 7:length(complex_unary)
             op = complex_unary {k} ;
             C1 = GB_mex_op (op, a, '',1) ;
             [C2 tol] = GB_user_op (op, a) ;
             GB_complex_compare (C1, C2, tol) ;
+
             C1 = GB_mex_apply (B, [], [], op, A, dr) ;
-            [i j x1] = find (C1.matrix) ;
+            % [i j x1] = find (sparse (C1.matrix)) ;
+            [i j x1] = GB_mex_extractTuples (C1.matrix) ;
             x1 = complex (x1) ;
-            [i j s] = find (A) ;
+            % [i j s] = find (sparse (A)) ;
+            [i j s] = GB_mex_extractTuples (A) ;
             x2 = GB_user_op (op, complex (s)) ;
             x2 = complex (x2) ;
             GB_complex_compare (x1, x2, tol) ;
         end
 
         % test unary ops with complex x, real z, array transposed
-        for k = 8:11
+        for k = 8:length(complex_unary)
             op = complex_unary {k} ;
             C1 = GB_mex_apply (B, [], [], op, D, dtr) ;
-            [i j x1] = find (C1.matrix) ;
+            % [i j x1] = find (C1.matrix) ;
+            [i j x1] = GB_mex_extractTuples (C1.matrix) ;
             x1 = complex (x1) ;
-            [i j s] = find (D.') ;
+            % [i j s] = find (D.') ;
+            [i j s] = GB_mex_extractTuples (D.') ;
             x2 = GB_user_op (op, complex (s)) ;
             x2 = complex (x2) ;
             GB_complex_compare (x1, x2, true) ;
         end
 
-        % test unary ops with real x, complex z
-        for k = 12:13
-            op = complex_unary {k} ;
-            C1 = GB_mex_op (op, b, '',1) ;
-            [C2 tol] = GB_user_op (op, b) ;
-            GB_complex_compare (C1, C2, tol) ;
-            C1 = GB_mex_apply (C, [], [], op, B, dr) ;
-            [i j x1] = find (C1.matrix) ;
-            x1 = complex (x1) ;
-            [i j s] = find (B) ;
-            x2 = GB_user_op (op, s) ;
-            x2 = complex (x2) ;
-            GB_complex_compare (x1, x2, tol) ;
-        end
-
-        % test unary ops with real x, complex z, array transposed
-        for k = 12:13
-            C1 = GB_mex_apply (C, [], [], op, E, dtr) ;
-            [i j x1] = find (C1.matrix) ;
-            x1 = complex (x1) ;
-            [i j s] = find (E.') ;
-            x2 = GB_user_op (op, s) ;
-            x2 = complex (x2) ;
-            GB_complex_compare (x1, x2, true) ;
-        end
     end
 end
 

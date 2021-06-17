@@ -2,61 +2,60 @@
 // GB_subref_template: C = A(I,J), or C = pattern (A(I,J))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #if defined ( GB_SYMBOLIC )
 // symbolic method must tolerate zombies
-#define GB_Ai(p) GB_UNFLIP (Ai [p])
+#define GB_Ai(p) GBI_UNFLIP (Ai, p, avlen)
 #else
 // numeric method will not see any zombies
-#define GB_Ai(p) Ai [p]
+#define GB_Ai(p) GBI (Ai, p, avlen)
 #endif
 
 // to iterate across all entries in a bucket:
 #define GB_for_each_index_in_bucket(inew,i)     \
     for (int64_t inew = Mark[i]-1 ; inew >= 0 ; inew = Inext [inew])
 
-// copy values from A(:,kA) to C(:,kC): Cx [pC:pC+len-1] = Ax [pA:pA+len-1].
+// copy values from A(:,kA) to C(:,kC): Cx [pC:pC+len-1] = ... (pA:pA+len-1).
 #if defined ( GB_SYMBOLIC )
+    // symbolic copy: Cx is int64_t; Ax is ignored
     #define GB_COPY_RANGE(pC,pA,len)            \
         for (int64_t k = 0 ; k < (len) ; k++)   \
         {                                       \
             Cx [(pC) + k] = (pA) + k ;          \
         }
 #else
+    // numeric copy: Cx and Ax are both (GB_void *), and point to the same type
     #define GB_COPY_RANGE(pC,pA,len)            \
-        memcpy (Cx + (pC)*GB_CSIZE1, Ax + (pA)*GB_CSIZE1, (len) * GB_CSIZE2) ;
+        memcpy (Cx + (pC)*asize, Ax + (pA)*asize, (len) * asize) ;
 #endif
 
-// copy a single value from A(:,kA) to C(:,kC): Cx [pC] = Ax [pA].
+// copy a single value from A(:,kA) to C(:,kC): Cx [pC] = ... (pA])
 #if defined ( GB_SYMBOLIC )
+    // symbolic copy: Cx is int64_t; Ax is ignored
     #define GB_COPY_ENTRY(pC,pA)                \
         Cx [pC] = (pA) ;
 #else
+    // numeric copy: Cx and Ax are both (GB_void *), and point to the same type
     #define GB_COPY_ENTRY(pC,pA)                \
         /* Cx [pC] = Ax [pA] */                 \
-        memcpy (Cx + (pC)*GB_CSIZE1, Ax + (pA)*GB_CSIZE1, GB_CSIZE2) ;
+        memcpy (Cx + (pC)*asize, Ax + (pA)*asize, asize) ;
 #endif
 
 // the type of Cx
 #if defined ( GB_SYMBOLIC )
+// C is an int64_t array; the type of A is ignored
 #define GB_CTYPE int64_t
 #define GB_CSIZE1 1
 #define GB_CSIZE2 (sizeof (int64_t))
 #else
+// C and A have the same type
 #define GB_CTYPE GB_void
 #define GB_CSIZE1 asize
 #define GB_CSIZE2 asize
-// FUTURE: If built-in types are used instead of generic, then GB_COPY_ENTRY
-// can become Cx [pC] = Ax [pA].  However, the generic GB_qsort_1b would also
-// need to be replaced with type-specific versions for each built-in type.  For
-// A and C of type double, the #defines would be:
-// #define GB_CTYPE double
-// #define GB_CSIZE1 1
-// #define GB_CSIZE2 (sizeof (double))
 #endif
 
 {
@@ -73,7 +72,8 @@
     #endif
 
     #if defined ( GB_PHASE_2_OF_2 ) && defined ( GB_NUMERIC )
-    const GB_CTYPE *GB_RESTRICT Ax = A->x ;
+    ASSERT (C->type = A->type) ;
+    const GB_void *GB_RESTRICT Ax = (GB_void *) A->x ;
     const int64_t asize = A->type->size ;
     #endif
 
@@ -83,7 +83,7 @@
 
     #if defined ( GB_PHASE_2_OF_2 )
     int64_t  *GB_RESTRICT Ci = C->i ;
-    GB_CTYPE *GB_RESTRICT Cx = C->x ;
+    GB_CTYPE *GB_RESTRICT Cx = (GB_CTYPE *) C->x ;
     #endif
 
     //--------------------------------------------------------------------------
@@ -323,6 +323,7 @@
                         // with zombies
                         for (int64_t k = 0 ; k < alen ; k++)
                         { 
+                            // symbolic C(:,kC) = A(:,kA) where A has zombies
                             int64_t i = GB_Ai (pA + k) ;
                             ASSERT (i == GB_ijlist (I, i, Ikind, Icolon)) ;
                             Ci [pC + k] = i ;
@@ -540,6 +541,9 @@
                         }
                     }
 
+                    // TODO: skip the sort if C is allowed to be jumbled on
+                    // output.  Flag C as jumbled instead.
+
                     #if defined ( GB_PHASE_2_OF_2 )
                     ASSERT (pC == pC_end) ;
                     if (!fine_task)
@@ -562,7 +566,7 @@
                     // Case 11 works well when I has many entries and A(:,kA)
                     // has few entries.  It requires that I be sorted on input,
                     // so that no sort is required for C(:,kC).  It is
-                    // otherwise identical to Case 9.
+                    // otherwise identical to Case 10.
 
                     ASSERT (Ikind == GB_LIST) ;
                     for (int64_t k = 0 ; k < alen ; k++)
@@ -626,7 +630,7 @@
                     break ;
 
                 //--------------------------------------------------------------
-                default:;
+                default: ;
                 //--------------------------------------------------------------
             }
 
@@ -650,6 +654,9 @@
     //--------------------------------------------------------------------------
     // phase2: post sort for any vectors handled by fine tasks with method 10
     //--------------------------------------------------------------------------
+
+    // TODO: skip the sort if C is allowed to be jumbled on output.
+    // Flag C as jumbled instead.
 
     #if defined ( GB_PHASE_2_OF_2 )
     if (post_sort)

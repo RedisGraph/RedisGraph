@@ -6,9 +6,8 @@
 
 #pragma once
 
-#include "./agg_ctx.h"
+#include <stddef.h>
 #include "rax.h"
-#include "./agg_ctx.h"
 #include "./func_desc.h"
 #include "../../deps/rax/rax.h"
 #include "../execution_plan/record.h"
@@ -22,22 +21,13 @@ typedef enum {
 	AR_EXP_OPERAND
 } AR_ExpNodeType;
 
-/* AR_OPType type of operation
- * either an aggregation function which requires a context
- * or a stateless function. */
+/* AR_OperandNodeType - Type of an expression tree's leaf node. */
 typedef enum {
-	AR_OP_UNKNOWN,
-	AR_OP_AGGREGATE,
-	AR_OP_FUNC,
-} AR_OPType;
-
-/* AR_OperandNodeType type of leaf node,
- * either a constant: 3, a variable: node.property, or a parameter: $p. */
-typedef enum {
-	AR_EXP_OP_UNKNOWN,
-	AR_EXP_CONSTANT,
-	AR_EXP_VARIADIC,
-	AR_EXP_PARAM
+	AR_EXP_OP_UNKNOWN,     // Should not occur.
+	AR_EXP_CONSTANT,       // A constant, e.g. 3
+	AR_EXP_VARIADIC,       // A variable, e.g. n
+	AR_EXP_PARAM,          // A parameter, e.g. $p.
+	AR_EXP_BORROW_RECORD   // A directive to store the current record.
 } AR_OperandNodeType;
 
 /* Success of an evaluation. */
@@ -49,27 +39,20 @@ typedef enum {
 
 /* Op represents an operation applied to child args. */
 typedef struct {
-	union {
-		AR_FuncDesc *f;
-		AggCtx *agg_func;
-	};                              /* Operation to perform on children. */
-	const char *func_name;          /* Name of function. */
-	int child_count;                /* Number of children. */
-	struct AR_ExpNode **children;   /* Child nodes. */
-	AR_OPType type;
+	AR_FuncDesc *f;                 // Operation to perform on children
+	const char *func_name;          // Name of function
+	int child_count;                // Number of children
+	struct AR_ExpNode **children;   // Child nodes
 } AR_OpNode;
 
-/* OperandNode represents either a constant numeric value,
- * a graph entity property or a parameter. */
+// OperandNode represents either constant, parameter, or graph entity
 typedef struct {
 	union {
-		const char *param_name;
 		SIValue constant;
+		const char *param_name;
 		struct {
 			const char *entity_alias;
-			const char *entity_prop;
 			int entity_alias_idx;
-			Attribute_ID entity_prop_idx;
 		} variadic;
 	};
 	AR_OperandNodeType type;
@@ -92,11 +75,11 @@ typedef struct AR_ExpNode {
 /* Creates a new Arithmetic expression operation node */
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
-/* Creates a new distinct arithmetic expression operation node */
-AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count);
-
 /* Creates a new Arithmetic expression variable operand node */
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop);
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias);
+
+/* Creates a new Arithmetic expression extracting an attribute from an entity */
+AR_ExpNode *AR_EXP_NewAttributeAccessNode(AR_ExpNode *entity, const char *attr);
 
 /* Creates a new Arithmetic expression constant operand node */
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
@@ -104,8 +87,8 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
 /* Creates a new Arithmetic expression parameter operand node. */
 AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 
-/* Returns if the operation is distinct aggregation */
-bool AR_EXP_PerformDistinct(AR_ExpNode *op);
+/* Creates a new Arithmetic expression that will resolve to the current Record. */
+AR_ExpNode *AR_EXP_NewRecordNode(void);
 
 /* Compact tree by evaluating all contained functions that can be resolved right now.
  * The function returns true if it managed to compact the expression.
@@ -113,12 +96,23 @@ bool AR_EXP_PerformDistinct(AR_ExpNode *op);
  * The val pointer is out-by-ref returned computation. */
 bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val);
 
+/* Resolve variables to constants */
+void AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r);
+
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
-void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
-void AR_EXP_Reduce(const AR_ExpNode *root);
 
-/* Utility functions */
+/* Evaluate aggregate functions in expression tree. */
+void AR_EXP_Aggregate(AR_ExpNode *root, const Record r);
+
+/* Reduce aggregation functions to their scalar values
+ * and evaluates the expression */
+SIValue AR_EXP_Finalize(AR_ExpNode *root, const Record r);
+
+//------------------------------------------------------------------------------
+// Utility functions
+//------------------------------------------------------------------------------
+
 /* Traverse an expression tree and add all entity aliases to a rax. */
 void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases);
 
@@ -142,8 +136,22 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
 /* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);
 
+/* Returns true if an arithmetic expression node is variadic. */
+bool AR_EXP_IsVariadic(const AR_ExpNode *exp);
+
 /* Returns true if an arithmetic expression node is a parameter. */
 bool AR_EXP_IsParameter(const AR_ExpNode *exp);
+
+/* Returns true if an arithmetic expression node is an operation. */
+bool AR_EXP_IsOperation(const AR_ExpNode *exp);
+
+/* Returns true if 'exp' represent attribute extraction
+ * sets 'attr' to attribute name if provided. */
+bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr);
+
+/* Returns true if the arithmetic expression returns
+ * a boolean value and false otherwise. */
+bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
 
 /* Generate a heap-allocated name for an arithmetic expression.
  * This routine is only used to name ORDER BY expressions. */
@@ -154,3 +162,4 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);
+

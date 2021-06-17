@@ -16,7 +16,8 @@ typedef struct {
 	uint *record_offsets;       // All Record offsets containing values to sort by.
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
-	uint limit;                 // Total number of records to produce, 0 no limit.
+	uint skip;                  // Total number of records to skip
+	uint limit;                 // Total number of records to produce
 	int *directions;            // Array of sort directions(ascending / desending) for each item.
 	AR_ExpNode **exps;          // Projected expressons.
 } OpSort;

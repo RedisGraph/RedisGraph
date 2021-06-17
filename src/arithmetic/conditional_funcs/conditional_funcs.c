@@ -26,9 +26,13 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 		SIValue v = argv[0];
 		for(int i = 1; i < alternatives; i += 2) {
 			SIValue a = argv[i];
-			if(SIValue_Compare(v, a, NULL) == 0) {
+			int disjointOrNull;
+			if((SIValue_Compare(v, a, &disjointOrNull) == 0) && (disjointOrNull != COMPARED_NULL)) {
 				// Return Result i.
-				return argv[i + 1];
+				// The value's ownership must be transferred to avoid a double free if it is an allocated value.
+				SIValue retval = argv[i + 1];
+				SIValue_MakeVolatile(&argv[i + 1]);
+				return retval;
 			}
 		}
 	} else {
@@ -38,17 +42,21 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 		 * arg[argc-1] - Default
 		 *
 		 * Evaluate alternatives in order, return first alternatives which
-		 * is not NULL. */
+		 * is not NULL or false. */
 		for(int i = 0; i < alternatives; i += 2) {
 			SIValue a = argv[i];
-			if(!SIValue_IsNull(a)) {
-				// Return Result i.
-				return argv[i + 1];
-			}
+			// Skip NULL and false options.
+			if(SIValue_IsNull(a) || ((SI_TYPE(a) & T_BOOL) && SIValue_IsFalse(a))) continue;
+			// The option was truthy, return the associated value.
+			// The value's ownership must be transferred to avoid a double free if it is an allocated value.
+			SIValue retval = argv[i + 1];
+			SIValue_MakeVolatile(&argv[i + 1]);
+			return retval;
 		}
 	}
 
 	//Did not match against any Option return default.
+	SIValue_MakeVolatile(&argv[argc - 1]);
 	return d;
 }
 
@@ -72,11 +80,12 @@ void Register_ConditionalFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true, false);
 	AR_RegFunc(func_desc);
 }
+

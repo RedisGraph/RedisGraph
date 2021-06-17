@@ -4,9 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "cmd_delete.h"
-
-#include <assert.h>
 #include "./cmd_context.h"
 #include "../graph/graph.h"
 #include "../graph/graphcontext.h"
@@ -15,7 +12,7 @@
 
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
-int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc != 2) return RedisModule_WrongArity(ctx);
 
 	int res = REDISMODULE_OK;
@@ -39,7 +36,7 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	double t = QueryCtx_GetExecutionTime();
 	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	
+
 	// Delete commands should always modify slaves.
 	RedisModule_ReplicateVerbatim(ctx);
 
@@ -48,3 +45,4 @@ cleanup:
 	if(strElapsed) free(strElapsed);
 	return res;
 }
+

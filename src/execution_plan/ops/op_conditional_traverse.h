@@ -19,15 +19,17 @@ typedef struct {
 	AlgebraicExpression *ae;
 	GrB_Matrix F;               // Filter matrix.
 	GrB_Matrix M;               // Algebraic expression result.
+	NodeID dest_label_id;       // ID of destination node label if known.
+	const char *dest_label;     // Label of destination node if known.
 	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
 	int srcNodeIdx;             // Source node index into record.
 	int destNodeIdx;            // Destination node index into record.
-	uint recordCount;           // Number of held records.
-	uint recordsCap;            // Max number of records to process.
+	uint record_count;          // Number of held records.
+	uint record_cap;            // Max number of records to process.
 	Record *records;            // Array of records.
 	Record r;                   // Currently selected record.
-} CondTraverse;
+} OpCondTraverse;
 
 /* Creates a new Traverse operation */
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);

@@ -104,16 +104,19 @@ TEST_F(DataBlockTest, Scan) {
 	}
 
 	// Scan through items.
-	int count = 0;
-	int *item = NULL;
+	int count = 0;		// items iterated so far
+	int *item = NULL;	// current iterated item
+	uint64_t idx = 0;	// iterated item index
+
 	DataBlockIterator *it = DataBlock_Scan(dataBlock);
-	while((item = (int *)DataBlockIterator_Next(it))) {
+	while((item = (int *)DataBlockIterator_Next(it, &idx))) {
+		ASSERT_EQ(count, idx);
 		ASSERT_EQ(*item, count);
 		count++;
 	}
 	ASSERT_EQ(count, itemCount);
 
-	item = (int *)DataBlockIterator_Next(it);
+	item = (int *)DataBlockIterator_Next(it, NULL);
 	ASSERT_TRUE(item == NULL);
 
 	DataBlockIterator_Reset(it);
@@ -121,13 +124,14 @@ TEST_F(DataBlockTest, Scan) {
 	// Re-scan through items.
 	count = 0;
 	item = NULL;
-	while((item = (int *)DataBlockIterator_Next(it))) {
+	while((item = (int *)DataBlockIterator_Next(it, &idx))) {
+		ASSERT_EQ(count, idx);
 		ASSERT_EQ(*item, count);
 		count++;
 	}
 	ASSERT_EQ(count, itemCount);
 
-	item = (int *)DataBlockIterator_Next(it);
+	item = (int *)DataBlockIterator_Next(it, NULL);
 	ASSERT_TRUE(item == NULL);
 
 	DataBlock_Free(dataBlock);
@@ -165,7 +169,7 @@ TEST_F(DataBlockTest, RemoveItem) {
 	// Iterate over datablock, deleted item should be skipped.
 	DataBlockIterator *it = DataBlock_Scan(dataBlock);
 	uint counter = 0;
-	while(DataBlockIterator_Next(it)) counter++;
+	while(DataBlockIterator_Next(it, NULL)) counter++;
 	ASSERT_EQ(counter, itemCount - 1);
 	DataBlockIterator_Free(it);
 
@@ -180,7 +184,7 @@ TEST_F(DataBlockTest, RemoveItem) {
 
 	it = DataBlock_Scan(dataBlock);
 	counter = 0;
-	while(DataBlockIterator_Next(it)) counter++;
+	while(DataBlockIterator_Next(it, NULL)) counter++;
 	ASSERT_EQ(counter, itemCount);
 	DataBlockIterator_Free(it);
 
@@ -224,10 +228,10 @@ TEST_F(DataBlockTest, OutOfOrderBuilding) {
 	// Validate
 	DataBlockIterator *it = DataBlock_Scan(dataBlock);
 	for(int i = 0; i < 8; i++) {
-		int *item = (int *)DataBlockIterator_Next(it);
+		int *item = (int *)DataBlockIterator_Next(it, NULL);
 		ASSERT_EQ(*item, expected[i]);
 	}
-	ASSERT_FALSE(DataBlockIterator_Next(it));
+	ASSERT_FALSE(DataBlockIterator_Next(it, NULL));
 
 	ASSERT_TRUE(dataBlock->deletedIdx[0] == 4 || dataBlock->deletedIdx[0] == 7);
 	ASSERT_TRUE(dataBlock->deletedIdx[1] == 4 || dataBlock->deletedIdx[1] == 7);

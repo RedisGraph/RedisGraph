@@ -2,8 +2,8 @@
 // GrB_Vector_free: free a sparse vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ GrB_Info GrB_Vector_free    // free a vector
 )
 { 
 
-    GB_VECTOR_FREE (v) ;
+    GB_Matrix_free ((GrB_Matrix *) v) ;
     return (GrB_SUCCESS) ;
 }
 

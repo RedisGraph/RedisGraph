@@ -2,8 +2,8 @@
 // GB_ix_resize:  reallocate a matrix with some slack for future growth
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -25,7 +25,18 @@ GrB_Info GB_ix_resize           // resize a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
+    // This function is only called by GB_Matrix_wait.  Full and bitmap
+    // matrices never have any pending work, so this method is needed only for
+    // sparse and hypersparse matrices.
     ASSERT_MATRIX_OK (A, "A to resize", GB0) ;
+    ASSERT (!GB_IS_FULL (A)) ;
+    ASSERT (!GB_IS_BITMAP (A)) ;
+    ASSERT (GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A)) ;
+
+    // This function tolerates pending tuples, zombies, and jumbled matrices.
+    ASSERT (GB_ZOMBIES_OK (A)) ;
+    ASSERT (GB_JUMBLED_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ;
 
     GrB_Info info ;
     int64_t anzmax_orig = A->nzmax ;
@@ -35,39 +46,16 @@ GrB_Info GB_ix_resize           // resize a matrix
     // resize the matrix
     //--------------------------------------------------------------------------
 
-    if (anz_new < anzmax_orig / 4)
-    { 
-
-        //----------------------------------------------------------------------
-        // shrink the space
-        //----------------------------------------------------------------------
-
-        // the new matrix has lots of leftover space.  Trim the size but leave
-        // 50% for future growth, if possible.  Do not increase the size beyond
-        // the existing space, however.
-
-        int64_t anzmax_new = GB_IMAX (anzmax_orig, anz_new + (anz_new/2)) ;
-
-        // since the space is shrinking, this is guaranteed not to fail
-        ASSERT (anzmax_new <= anzmax_orig) ;
-        ASSERT (anz_new <= anzmax_new) ;
-
-        info = GB_ix_realloc (A, anzmax_new, true, Context) ;
-        ASSERT (info == GrB_SUCCESS) ;
-        ASSERT_MATRIX_OK (A, "A trimmed in size", GB0) ;
-
-    }
-    else if (anz_new > anzmax_orig)
+    ASSERT (anz_new > anzmax_orig) ;
     {
 
         //----------------------------------------------------------------------
         // grow the space
         //----------------------------------------------------------------------
 
-        // original A->nzmax is not enough; give the matrix space for nnz(A)
-        // plus 50% for future growth
+        // original A->nzmax is not enough; double the matrix space for nnz(A)
 
-        int64_t anzmax_new = anz_new + (anz_new/2) ;
+        int64_t anzmax_new = 2 * anz_new ;
 
         // the space is growing so this might run out of memory
         ASSERT (anzmax_new > anzmax_orig) ;
@@ -77,23 +65,11 @@ GrB_Info GB_ix_resize           // resize a matrix
         if (info != GrB_SUCCESS)
         { 
             // out of memory
-            GB_PHIX_FREE (A) ;
+            GB_phbix_free (A) ;
             return (info) ;
         }
         ASSERT_MATRIX_OK (A, "A increased in size", GB0) ;
 
-    }
-    else
-    { 
-
-        //----------------------------------------------------------------------
-        // leave as-is
-        //----------------------------------------------------------------------
-
-        // nnz(A) has changed but the old space is enough to use as-is;
-        // do nothing
-        ASSERT (anz_new <= anzmax_orig) ;
-        ASSERT_MATRIX_OK (A, "A left as-is", GB0) ;
     }
 
     //--------------------------------------------------------------------------

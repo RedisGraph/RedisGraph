@@ -36,9 +36,9 @@ def step_impl(context):
 def set_params(context):
     global params
 
-    params = {}
+    params = "CYPHER "
     for row in context.table.rows:
-        params[row[0]]=row[1]
+        params += '='.join(row) + ' '
 
 @given(u'having executed')
 @when(u'having executed')
@@ -52,8 +52,12 @@ def step_impl(context):
 
     exception = None
     query = context.text
+
+    if params:
+        query = params + query
+
     try:
-        resultset = graphs.query(query, params)
+        resultset = graphs.query(query)
     except Exception as error:
         resultset = None
         exception = error
@@ -78,7 +82,7 @@ def step_impl(context):
 def step_impl(context):
     assertions.assert_no_modifications(resultset)
 
-@then(u'the result should be')
+@then(u'the result should be, in any order')
 def step_impl(context):
     if exception:
         raise exception
@@ -86,6 +90,7 @@ def step_impl(context):
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals(resultset, context.table)
 
+@then(u'the result should be')
 @then(u'the result should be, in order')
 def step_impl(context):
     if exception:
@@ -94,91 +99,162 @@ def step_impl(context):
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals_in_order(resultset, context.table)
 
+@then(u'a SyntaxError should be raised at compile time: NoSingleRelationshipType')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Exactly one relationship type" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: InvalidParameterUse')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Encountered unhandled type" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: VariableTypeConflict')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert ("The alias" in str(exception)) or ("return of variable-length" in str(exception))
+
+@then(u'a SyntaxError should be raised at compile time: InvalidRelationshipPattern')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Invalid input" in str(exception)
+
+@then(u'a SemanticError should be raised at runtime: MergeReadOwnWrites')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Cannot merge" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: NegativeIntegerArgument')
+@then(u'a SyntaxError should be raised at runtime: NegativeIntegerArgument')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "must be a positive integer" in str(exception)
+
 @then(u'a TypeError should be raised at runtime: PropertyAccessOnNonMap')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "expected a map" in exception.message
+    assert "Type mismatch" in str(exception)
+
+@then(u'a TypeError should be raised at runtime: MapElementAccessByNonString')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in str(exception)
+
+@then(u'a TypeError should be raised at runtime: InvalidElementAccess')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in str(exception)
 
 @then(u'a ArgumentError should be raised at runtime: NumberOutOfRange')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "ArgumentError" in exception.message
+    assert "ArgumentError" in str(exception) or "Invalid input" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: InvalidAggregation')
 def step_impl(context):
     assert exception != None
-    assert "Invalid use of aggregating function" in exception.message
+    assert "Invalid use of aggregating function" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: UndefinedVariable')
 def step_impl(context):
     assert exception != None
-    assert "not defined" in exception.message
+    assert "not defined" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: VariableAlreadyBound')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "can't be redeclared" in exception.message
+    assert "can't be redeclared" in str(exception)
 
 @then(u'a TypeError should be raised at runtime: ListElementAccessByNonInteger')
+@then(u'a TypeError should be raised at compile time: ListElementAccessByNonInteger')
+@then(u'a SyntaxError should be raised at compile time: ListElementAccessByNonInteger')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "expected Integer" in exception.message
+    assert "Type mismatch" in str(exception)
 
+@then(u'a TypeError should be raised at runtime: InvalidArgumentType')
+@then(u'a SyntaxError should be raised at runtime: InvalidArgumentType')
+@then(u'a ArgumentError should be raised at runtime: InvalidArgumentType')
 @then(u'a SyntaxError should be raised at compile time: InvalidArgumentType')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Type mismatch" in exception.message
+    assert "Type mismatch" in str(exception)
 
+@then(u'a SyntaxError should be raised at compile time: UnexpectedSyntax')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Invalid input" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: InvalidUnicodeCharacter')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Invalid input" in str(exception)
 
 @then(u'a TypeError should be raised at runtime: InvalidArgumentValue')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Type mismatch" in exception.message
+    assert "Type mismatch" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: DifferentColumnsInUnion')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "must have the same column names." in exception.message
+    assert "must have the same column names." in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: InvalidClauseComposition')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Invalid combination" in exception.message
+    assert "Invalid combination" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: NestedAggregation')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Can't use aggregate functions inside of aggregate functions" in exception.message
+    assert "Can't use aggregate functions inside of aggregate functions" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: UnknownFunction')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Unknown function" in exception.message
+    assert "Unknown function" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: NonConstantExpression')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "invalid type" in exception.message
+    assert "invalid type" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: NoExpressionAlias')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "must be aliased" in exception.message
+    assert "must be aliased" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: InvalidNumberLiteral')
 def step_impl(context):
     global exception
     assert exception != None
-    assert "Invalid numeric value" in exception.message
+    assert "Invalid numeric value" in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: RequiresDirectedRelationship')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Only directed relationships" in str(exception)

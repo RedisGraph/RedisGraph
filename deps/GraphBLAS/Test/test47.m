@@ -1,8 +1,8 @@
 function test47
 %TEST47 prformance test of GrB_vxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 rng ('default') ;
 % d = struct ('inp1', 'tran', 'inp0', 'tran') ;
@@ -42,7 +42,7 @@ for xnz = [100:100:1000 2000:1000:72000]
     tic
     c2 = GB_mex_vxm (w, [],[], semiring, x, A, d2) ;
     t2 = toc ;
-    [t2 method] = grbresults ;
+    t2 = grbresults ;
 
     tic
     c0 = x'*A ;

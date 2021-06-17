@@ -8,39 +8,19 @@
 
 #include "op.h"
 #include "../execution_plan.h"
-#include "../../graph/entities/node.h"
-#include "../../graph/entities/edge.h"
+#include "shared/update_functions.h"
 #include "../../resultset/resultset_statistics.h"
-#include "../../arithmetic/arithmetic_expression.h"
-#include "../../ast/ast_build_op_contexts.h"
-
-// Context describing a pending update to perform.
-typedef struct {
-	Attribute_ID attr_id;               /* ID of attribute to update. */
-	union {
-		Node n;                         /* Node to update if indicated by entity_type. */
-		Edge e;                         /* Edge to update if indicated by entity_type. */
-	};
-	GraphEntityType entity_type;        /* Graph entity type. */
-	SIValue new_value;                  /* Constant value to set. */
-} EntityUpdateCtx;
 
 typedef struct {
 	OpBase op;
+	raxIterator it;                 // Iterator for traversing update contexts
+	Record *records;                // Updated records
 	GraphContext *gc;
+	rax *update_ctxs;               // Entities to update and their expressions
+	bool updates_committed;         // True if we've already committed updates and are now in handoff mode.
+	PendingUpdateCtx *updates;      // Enqueued updates
 	ResultSetStatistics *stats;
-
-	uint update_expressions_count;
-	EntityUpdateEvalCtx
-	*update_expressions;    /* List of entities to update and their arithmetic expressions. */
-
-	uint pending_updates_cap;
-	uint pending_updates_count;
-	EntityUpdateCtx
-	*pending_updates;           /* List of entities to update and their actual new value. */
-	Record *records;                            /* Updated records, used only when query inspects updated entities. */
-	bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps);
+OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps);
 

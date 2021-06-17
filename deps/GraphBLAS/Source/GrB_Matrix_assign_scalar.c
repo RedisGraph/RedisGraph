@@ -2,8 +2,8 @@
 // GrB_Matrix_assign_[SCALAR]: assign a scalar to matrix, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -21,8 +21,8 @@
 
 #include "GB_assign.h"
 
-#define GB_ASSIGN(type,T,ampersand)                                            \
-GrB_Info GrB_Matrix_assign_ ## T    /* C<M>(Rows,Cols) += x                 */ \
+#define GB_ASSIGN_SCALAR(prefix,type,T,ampersand)                              \
+GrB_Info prefix ## Matrix_assign_ ## T    /* C<M>(Rows,Cols) += x           */ \
 (                                                                              \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
     const GrB_Matrix M,             /* optional mask for C                  */ \
@@ -35,7 +35,7 @@ GrB_Info GrB_Matrix_assign_ ## T    /* C<M>(Rows,Cols) += x                 */ \
     const GrB_Descriptor desc       /* descriptor for C and M               */ \
 )                                                                              \
 {                                                                              \
-    GB_WHERE ("GrB_Matrix_assign_" GB_STR(T)                                   \
+    GB_WHERE (C, GB_STR(prefix) "Matrix_assign_" GB_STR(T)                     \
         " (C, M, accum, x, Rows, nRows, Cols, nCols, desc)") ;                 \
     GB_BURBLE_START ("GrB_assign") ;                                           \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
@@ -46,16 +46,18 @@ GrB_Info GrB_Matrix_assign_ ## T    /* C<M>(Rows,Cols) += x                 */ \
     return (info) ;                                                            \
 }
 
-GB_ASSIGN (bool     , BOOL   , &)
-GB_ASSIGN (int8_t   , INT8   , &)
-GB_ASSIGN (uint8_t  , UINT8  , &)
-GB_ASSIGN (int16_t  , INT16  , &)
-GB_ASSIGN (uint16_t , UINT16 , &)
-GB_ASSIGN (int32_t  , INT32  , &)
-GB_ASSIGN (uint32_t , UINT32 , &)
-GB_ASSIGN (int64_t  , INT64  , &)
-GB_ASSIGN (uint64_t , UINT64 , &)
-GB_ASSIGN (float    , FP32   , &)
-GB_ASSIGN (double   , FP64   , &)
-GB_ASSIGN (void *   , UDT    ,  )
+GB_ASSIGN_SCALAR (GrB_, bool      , BOOL   , &)
+GB_ASSIGN_SCALAR (GrB_, int8_t    , INT8   , &)
+GB_ASSIGN_SCALAR (GrB_, uint8_t   , UINT8  , &)
+GB_ASSIGN_SCALAR (GrB_, int16_t   , INT16  , &)
+GB_ASSIGN_SCALAR (GrB_, uint16_t  , UINT16 , &)
+GB_ASSIGN_SCALAR (GrB_, int32_t   , INT32  , &)
+GB_ASSIGN_SCALAR (GrB_, uint32_t  , UINT32 , &)
+GB_ASSIGN_SCALAR (GrB_, int64_t   , INT64  , &)
+GB_ASSIGN_SCALAR (GrB_, uint64_t  , UINT64 , &)
+GB_ASSIGN_SCALAR (GrB_, float     , FP32   , &)
+GB_ASSIGN_SCALAR (GrB_, double    , FP64   , &)
+GB_ASSIGN_SCALAR (GxB_, GxB_FC32_t, FC32   , &)
+GB_ASSIGN_SCALAR (GxB_, GxB_FC64_t, FC64   , &)
+GB_ASSIGN_SCALAR (GrB_, void *    , UDT    ,  )
 

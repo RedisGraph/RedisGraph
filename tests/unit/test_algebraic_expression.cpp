@@ -11,7 +11,6 @@ extern "C" {
 #endif
 
 #include "assert.h"
-#include "../../src/config.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
@@ -20,6 +19,7 @@ extern "C" {
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
+#include "../../src/configuration/config.h"
 #include "../../src/execution_plan/execution_plan.h"
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../src/arithmetic/algebraic_expression/utils.h"
@@ -46,8 +46,6 @@ GrB_Matrix mat_tew;
 GrB_Matrix mat_e;
 rax *_matrices;
 
-RG_Config config; // Global module configuration
-
 const char *query_no_intermidate_return_nodes =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e";
 const char *query_one_intermidate_return_nodes =
@@ -68,12 +66,12 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		Alloc_Reset();
 
 		// Set global variables
-		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
+		Config_Option_set(Config_MAINTAIN_TRANSPOSE, "yes"); // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-		GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+		GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
 
 		// Create a graph
 		_fake_graph_context();
@@ -206,11 +204,10 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	}
 
 	AlgebraicExpression **build_algebraic_expression(const char *query) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *master_ast = AST_Build(parse_result);
 		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
-		QueryGraph *qg = BuildQueryGraph(gc, ast);
+		QueryGraph *qg = BuildQueryGraph(ast);
 		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg);
 
 		uint exp_count = array_len(ae);
@@ -690,7 +687,13 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	 * 1 1 0 0
 	 * 1 0 0 0
 	 */
-	GrB_Matrix_new(&B, GrB_BOOL, 4, 4);
+
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = gc->g;
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+
+	GrB_Matrix_new(&B, GrB_BOOL, n, n);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 2);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 3);
 	GrB_Matrix_setElement_BOOL(B, true, 1, 2);
@@ -699,7 +702,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	GrB_Matrix_setElement_BOOL(B, true, 3, 0);
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, 4, 4);
+	GrB_Matrix_new(&res, GrB_BOOL, n, n);
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("V+tV", _matrices);
 	AlgebraicExpression_Eval(exp, res);
 
@@ -739,7 +742,11 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 	 * 1 0 0 0
 	 * 1 0 0 0
 	 */
-	GrB_Matrix_new(&B, GrB_BOOL, 4, 4);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = gc->g;
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+
+	GrB_Matrix_new(&B, GrB_BOOL, n, n);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
 	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
@@ -747,7 +754,7 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, 4, 4);
+	GrB_Matrix_new(&res, GrB_BOOL, n, n);
 
 	// Transpose(A) * A
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("V*tV", _matrices);
@@ -842,13 +849,13 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 	ASSERT_TRUE(leftLeft->type == AL_OPERAND && leftLeft->operand.matrix == A);
 
 	AlgebraicExpression *leftRight = rootLeftChild->operation.children[1];
-	ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand.matrix == B);
+	ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand.matrix == C);
 
 	AlgebraicExpression *rightLeft = rootRightChild->operation.children[0];
 	ASSERT_TRUE(rightLeft->type == AL_OPERAND && rightLeft->operand.matrix == A);
 
 	AlgebraicExpression *rightRight = rootRightChild->operation.children[1];
-	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == C);
+	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == B);
 
 	raxFree(matrices);
 	GrB_Matrix_free(&A);
@@ -1457,5 +1464,252 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	GrB_Matrix_free(&expected);
 	free_algebraic_expressions(ae, exp_count);
 	array_free(ae);
+}
+
+TEST_F(AlgebraicExpressionTest, RemoveOperand) {
+	GrB_Matrix A                          = GrB_NULL;
+	GrB_Matrix B                          = GrB_NULL;
+	AlgebraicExpression *exp              = NULL;
+	AlgebraicExpression *expected         = NULL;
+	AlgebraicExpression *removed_operand  = NULL;
+
+	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+
+	const char *exps[13];
+	const char *removed[13];
+	const char *expectations[13];
+
+	//--------------------------------------------------------------------------
+	// Remove SOURCE operand from expression
+	//--------------------------------------------------------------------------
+
+	// Exp: A, remove A, expecting NULL
+	exps[0]         = "A";
+	removed[0]      = "A";
+	expectations[0] = NULL;
+
+	// Exp: A+B, remove A, expecting B
+	exps[1]         = "A+B";
+	removed[1]      = "A";
+	expectations[1] = "B";
+
+	// Exp: A*B, remove A, expecting B
+	exps[2]         = "A*B";
+	removed[2]      = "A";
+	expectations[2] = "B";
+
+	// Exp: T(A), remove A, expecting NULL
+	exps[3]         = "T(A)";
+	removed[3]      = "A";
+	expectations[3] = NULL;
+
+	// Exp: T(T(A)), remove A, expecting NULL
+	exps[4]         = "T(T(A))";
+	removed[4]      = "A";
+	expectations[4] = NULL;
+
+	// Exp: T(A) + B remove A, expecting B
+	exps[5]         = "T(A)+B";
+	removed[5]      = "A";
+	expectations[5] = "B";
+
+	// Exp: T(T(A)) + B remove A, expecting B
+	exps[6]         = "T(T(A))+B";
+	removed[6]      = "A";
+	expectations[6] = "B";
+
+	// Exp: T(A+B), remove A, expecting T(B)
+	exps[7]         = "T(A+B)";
+	removed[7]      = "A";
+	expectations[7] = "T(B)";
+
+	// Exp: T(T(A)+B), remove A, expecting T(B)
+	exps[8]         = "T(T(A)+B)";
+	removed[8]      = "A";
+	expectations[8] = "T(B)";
+
+	// Exp: T(A) * B remove A, expecting B
+	exps[9]         = "T(A)*B";
+	removed[9]      = "A";
+	expectations[9] = "B";
+
+	// Exp: T(T(A)) * B remove A, expecting B
+	exps[10]         = "T(T(A))*B";
+	removed[10]      = "A";
+	expectations[10] = "B";
+
+	// Exp: T(A*B), remove B, expecting T(A)
+	exps[11]         = "T(A*B)";
+	removed[11]      = "B";
+	expectations[11] = "T(A)";
+
+	// Exp: T(T(A)*B), remove B, expecting T(T(A))
+	exps[12]         = "T(T(A)*B)";
+	removed[12]      = "B";
+	expectations[12] = "T(T(A))";
+
+	for(int i = 0; i < 13; i++) {
+		exp = AlgebraicExpression_FromString(exps[i], matrices);
+		removed_operand = AlgebraicExpression_FromString(removed[i], matrices);
+
+		if(expectations[i] == NULL) expected = NULL;
+		else expected = AlgebraicExpression_FromString(expectations[i], matrices);
+
+		/* remove source operand and compare both modified expression
+		 * and removed source */
+		AlgebraicExpression *src = AlgebraicExpression_RemoveSource(&exp);
+		compare_algebraic_expression(src, removed_operand);
+
+		if(expected == NULL) ASSERT_EQ(NULL, exp);
+		else compare_algebraic_expression(exp, expected);
+
+		// clean up
+		AlgebraicExpression_Free(src);
+		AlgebraicExpression_Free(removed_operand);
+		if(expected != NULL) {
+			AlgebraicExpression_Free(exp);
+			AlgebraicExpression_Free(expected);
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// Remove DESTINATION operand from expression
+	//--------------------------------------------------------------------------
+
+	// Exp: A, remove A, expecting NULL
+	exps[0]         = "A";
+	removed[0]      = "A";
+	expectations[0] = NULL;
+
+	// Exp: A+B, remove B, expecting A
+	exps[1]         = "A+B";
+	removed[1]      = "B";
+	expectations[1] = "A";
+
+	// Exp: A*B, remove B, expecting A
+	exps[2]         = "A*B";
+	removed[2]      = "B";
+	expectations[2] = "A";
+
+	// Exp: T(A), remove A, expecting NULL
+	exps[3]         = "T(A)";
+	removed[3]      = "A";
+	expectations[3] = NULL;
+
+	// Exp: T(T(A)), remove A, expecting NULL
+	exps[4]         = "T(T(A))";
+	removed[4]      = "A";
+	expectations[4] = NULL;
+
+	// Exp: T(A) + B remove B, expecting T(A)
+	exps[5]         = "T(A)+B";
+	removed[5]      = "B";
+	expectations[5] = "T(A)";
+
+	// Exp: T(T(A)) + B remove B, expecting T(T(A))
+	exps[6]         = "T(T(A))+B";
+	removed[6]      = "B";
+	expectations[6] = "T(T(A))";
+
+	// Exp: T(A+B), remove B, expecting T(A)
+	exps[7]         = "T(A+B)";
+	removed[7]      = "B";
+	expectations[7] = "T(A)";
+
+	// Exp: T(T(A)+B), remove B, expecting T(T(A))
+	exps[8]         = "T(T(A)+B)";
+	removed[8]      = "B";
+	expectations[8] = "T(T(A))";
+
+	// Exp: T(A) * B remove B, expecting T(A)
+	exps[9]         = "T(A)*B";
+	removed[9]      = "B";
+	expectations[9] = "T(A)";
+
+	// Exp: T(T(A)) * B remove B, expecting T(T(A))
+	exps[10]         = "T(T(A))*B";
+	removed[10]      = "B";
+	expectations[10] = "T(T(A))";
+
+	// Exp: T(A*B), remove A, expecting T(B)
+	exps[11]         = "T(A*B)";
+	removed[11]      = "A";
+	expectations[11] = "T(B)";
+
+	// Exp: T(T(A)*B), remove A, expecting T(B)
+	exps[12]         = "T(T(A)*B)";
+	removed[12]      = "A";
+	expectations[12] = "T(B)";
+
+	for(int i = 0; i < 13; i++) {
+		exp = AlgebraicExpression_FromString(exps[i], matrices);
+		removed_operand = AlgebraicExpression_FromString(removed[i], matrices);
+
+		if(expectations[i] == NULL) expected = NULL;
+		else expected = AlgebraicExpression_FromString(expectations[i], matrices);
+
+		/* remove source operand and compare both modified expression
+		 * and removed source */
+		AlgebraicExpression *dest = AlgebraicExpression_RemoveDest(&exp);
+		compare_algebraic_expression(dest, removed_operand);
+
+		if(expected == NULL) ASSERT_EQ(NULL, exp);
+		else compare_algebraic_expression(exp, expected);
+
+		// clean up
+		AlgebraicExpression_Free(dest);
+		AlgebraicExpression_Free(removed_operand);
+		if(expected != NULL) {
+			AlgebraicExpression_Free(exp);
+			AlgebraicExpression_Free(expected);
+		}
+	}
+}
+
+TEST_F(AlgebraicExpressionTest, LocateOperand) {
+	// construct algebraic expression
+	bool                 located  =  false;
+	GrB_Matrix           mat      =  GrB_NULL;
+	AlgebraicExpression  *A       =  NULL;
+	AlgebraicExpression  *B       =  NULL;
+	AlgebraicExpression  *r       =  NULL;
+	AlgebraicExpression  *op      =  NULL;
+	AlgebraicExpression  *p       =  NULL;
+
+	// ( T(A) * B )
+	A = AlgebraicExpression_NewOperand(mat, false, "a", "b", "e0", "E");
+	B = AlgebraicExpression_NewOperand(mat, false, "b", "c", "e1", "E");
+	AlgebraicExpression_Transpose(&A);
+	r = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+	AlgebraicExpression_AddChild(r, A);
+	AlgebraicExpression_AddChild(r, B);
+
+	// search for A operand
+	located = AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "e0");
+
+	// validate located operand
+	ASSERT_TRUE(located);
+	ASSERT_EQ(op->type, AL_OPERAND);
+	ASSERT_STREQ(op->operand.src, "a");
+	ASSERT_STREQ(op->operand.dest, "b");
+	ASSERT_STREQ(op->operand.edge, "e0");
+
+	ASSERT_EQ(p->type, AL_OPERATION);
+	ASSERT_EQ(p->operation.op, AL_EXP_TRANSPOSE);
+
+	// search for none existing operand
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "x", "b", "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "x", "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "x"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, NULL, "b", "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", NULL, "e0"));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", NULL));
+
+	AlgebraicExpression_Free(r);
 }
 

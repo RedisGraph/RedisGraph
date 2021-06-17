@@ -1,31 +1,36 @@
 function test109
 %TEST109 terminal monoid with user-defined type
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('\ntest109: terminal monoid with user-defined type\n') ;
 
-rng ('default') ;
+for k = [false true]
+    fprintf ('builtin_complex: %d\n', k) ;
+    GB_builtin_complex_set (k) ;
 
-A = sparse (rand (4) + 1i * rand (4)) ;
+    rng ('default') ;
 
-[i j x] = find (A) ;
-s = prod (prod (x)) ;
-A
-t = GB_mex_reduce_complex (A) ;
-err = norm (s-t) ;
-assert (err < 1e-12)
+    A = sparse (rand (4) + 1i * rand (4)) ;
 
-A (3,1) = 0 ;
+    [i j x] = find (A) ;
+    s = prod (prod (x)) ;
+    A
+    t = GB_mex_reduce_complex (A) ;
+    err = norm (s-t) ;
+    assert (err < 1e-12)
 
-[i j x] = find (A) ;
-s = prod (prod (x)) ;
-t = GB_mex_reduce_complex (A) ;
-err = norm (s-t) ;
-assert (err < 1e-12)
+    A (3,1) = 0 ;
 
-t = GB_mex_reduce_complex (A, 4) ;
-assert (t == 0)
+    [i j x] = find (A) ;
+    s = prod (prod (x)) ;
+    t = GB_mex_reduce_complex (A) ;
+    err = norm (s-t) ;
+    assert (err < 1e-12)
+
+    t = GB_mex_reduce_complex (A, 4) ;
+    assert (t == 0)
+end
 
 fprintf ('\ntest109: all tests passed\n') ;

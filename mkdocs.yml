@@ -7,6 +7,9 @@ google_analytics:
   - 'UA-92003007-1'
   - 'auto'
 
+extra_javascript:
+  - gtm.js
+
 use_directory_urls: true
 
 theme:
@@ -28,9 +31,11 @@ nav:
   - 'Commands': commands.md
   - 'Clients': clients.md
   - 'Configuration': configuration.md
+  - 'Data types': datatypes.md
   - 'Design Documents':
       - 'Result Set structure': result_structure.md
       - 'Client Specification': client_spec.md
+      - 'GRAPH.BULK Implementation': bulk_spec.md
   - 'Design': design.md
   - 'Contributor agreement': contrib.md
   - 'Cypher coverage': cypher_support.md
@@ -46,5 +51,24 @@ markdown_extensions:
 
 plugins:
   - search
+  - modules-template:
+      modules:
+        - name: 'Search'
+          link: '/redisearch'
+
+        - name: 'Time Series'
+          link: '/redistimeseries'
+
+        - name: 'Bloom'
+          link: '/redisbloom'
+
+        - name: 'JSON'
+          link: '/redisjson'
+
+        - name: 'AI'
+          link: '/redisai'
+
+        - name: 'Gears'
+          link: '/redisgears'
   - versions-menu
 

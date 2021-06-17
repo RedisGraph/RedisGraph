@@ -1,6 +1,6 @@
 #include "ast.h"
+#include "RG.h"
 #include "../util/arr.h"
-#include <assert.h>
 
 // Forward declerations:
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path);
@@ -18,14 +18,11 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 	if(type == CYPHER_AST_IDENTIFIER) {
 		const char *identifier_name = cypher_ast_identifier_get_name(exp);
 		_AST_UpdateRefMap(ast, identifier_name);
-	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-		// In case of property.
-		exp = cypher_ast_property_operator_get_expression(exp);
-		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
-		const char *identifier_name = cypher_ast_identifier_get_name(exp);
-		_AST_UpdateRefMap(ast, identifier_name);
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// In case of pattern filter.
+		_AST_MapReferencedEntitiesInPath(ast, exp);
+	} else if(type == CYPHER_AST_SHORTEST_PATH) {
+		// Reference all entity names in a shortest path.
 		_AST_MapReferencedEntitiesInPath(ast, exp);
 	} else {
 		// Recurse over children.
@@ -44,7 +41,7 @@ static inline void _AST_MapProjectionAlias(AST *ast, const cypher_astnode_t *pro
 	if(ast_alias == NULL) {
 		// The projection was not aliased, so the projection itself must be an identifier.
 		ast_alias = cypher_ast_projection_get_expression(projection);
-		assert(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER);
+		ASSERT(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER);
 	}
 	// WITH and RETURN projections are always either aliased or themselves identifiers.
 	const char *alias = cypher_ast_identifier_get_name(ast_alias);
@@ -66,6 +63,8 @@ static void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *order_by
 static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool force_mapping) {
 
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
+	// Disregard empty property maps.
+	if(properties && cypher_astnode_nchildren(properties) == 0) properties = NULL;
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties || force_mapping) {
@@ -82,6 +81,8 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool force_mapping) {
 
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
+	// Disregard empty property maps.
+	if(properties && cypher_astnode_nchildren(properties) == 0) properties = NULL;
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties || force_mapping) {
@@ -97,8 +98,10 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 // Maps entities in a given path.
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
-	// Check if the path is a named path. If so, map all entities, else map only referenced entities.
-	bool force_mapping = cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH;
+	// Check if the path is a named path or shortest path.
+	// If so, map all entities, else map only referenced entities.
+	const cypher_astnode_type_t type = cypher_astnode_type(path);
+	bool force_mapping = (type == CYPHER_AST_NAMED_PATH || type == CYPHER_AST_SHORTEST_PATH);
 	// Node are in even positions.
 	for(uint i = 0; i < path_len; i += 2)
 		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i), force_mapping);
@@ -132,12 +135,12 @@ static void _AST_MapCreateClauseReferences(AST *ast, const cypher_astnode_t *cre
 	}
 }
 
-// Maps entities in SET property clause.
+// Maps entities in SET clauses that update an individual property.
 static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_item) {
 	// Retrieve the alias being modified from the property descriptor.
 	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
 	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-	assert(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
+	ASSERT(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
 
 	const char *alias = cypher_ast_identifier_get_name(ast_entity);
 	_AST_UpdateRefMap(ast, alias);
@@ -147,14 +150,54 @@ static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_
 	_AST_MapExpression(ast, set_exp);
 }
 
+// Maps entities in SET clauses that replace all properties.
+static void _AST_MapSetAllPropertiesReferences(AST *ast, const cypher_astnode_t *set_item) {
+	// Retrieve the alias being modified.
+	const cypher_astnode_t *ast_alias = cypher_ast_set_all_properties_get_identifier(set_item);
+	ASSERT(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER);
+
+	const char *alias = cypher_ast_identifier_get_name(ast_alias);
+	_AST_UpdateRefMap(ast, alias);
+
+	// Map expression right hand side, e.g. a = {v: b.v}
+	const cypher_astnode_t *set_exp = cypher_ast_set_all_properties_get_expression(set_item);
+	_AST_MapExpression(ast, set_exp);
+}
+
+// Maps entities in SET clauses that merge multiple properties.
+static void _AST_MapMergePropertiesReferences(AST *ast, const cypher_astnode_t *set_item) {
+	// Retrieve the alias being modified.
+	const cypher_astnode_t *ast_alias = cypher_ast_merge_properties_get_identifier(set_item);
+	ASSERT(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER);
+
+	const char *alias = cypher_ast_identifier_get_name(ast_alias);
+	_AST_UpdateRefMap(ast, alias);
+
+	// Map expression right hand side, e.g. a += {v: b.v}
+	const cypher_astnode_t *set_exp = cypher_ast_merge_properties_get_expression(set_item);
+	_AST_MapExpression(ast, set_exp);
+}
+
+static void _AST_MapSetItemReferences(AST *ast, const cypher_astnode_t *set_item) {
+	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+	if(type == CYPHER_AST_SET_PROPERTY) {
+		_AST_MapSetPropertyReferences(ast, set_item);
+	} else if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
+		_AST_MapSetAllPropertiesReferences(ast, set_item);
+	} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
+		_AST_MapMergePropertiesReferences(ast, set_item);
+	} else {
+		ASSERT(false);
+	}
+}
+
 // Maps entities in SET clause.
 static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_clause) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
 	for(uint i = 0; i < nitems; i++) {
 		// Get the SET directive at this index.
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
-		_AST_MapSetPropertyReferences(ast, set_item);
+		_AST_MapSetItemReferences(ast, set_item);
 	}
 }
 
@@ -183,16 +226,14 @@ static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge
 			uint on_create_items = cypher_ast_on_create_nitems(action);
 			for(uint j = 0; j < on_create_items; j ++) {
 				const cypher_astnode_t *set_item = cypher_ast_on_create_get_item(action, j);
-				assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
-				_AST_MapSetPropertyReferences(ast, set_item);
+				_AST_MapSetItemReferences(ast, set_item);
 			}
 		} else if(type == CYPHER_AST_ON_MATCH) {
 			// ON MATCH.
 			uint on_match_items = cypher_ast_on_match_nitems(action);
 			for(uint j = 0; j < on_match_items; j ++) {
 				const cypher_astnode_t *set_item = cypher_ast_on_match_get_item(action, j);
-				assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
-				_AST_MapSetPropertyReferences(ast, set_item);
+				_AST_MapSetItemReferences(ast, set_item);
 			}
 		}
 	}
@@ -279,7 +320,7 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 // Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
 static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *projection) {
 	cypher_astnode_type_t type = cypher_astnode_type(projection);
-	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
+	ASSERT(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
 
 	if(type == CYPHER_AST_WITH) {
 		// If the projection clause is WITH *, all user-defined aliases are referenced.

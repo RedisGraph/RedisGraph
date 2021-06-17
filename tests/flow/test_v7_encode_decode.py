@@ -8,7 +8,7 @@ redis_con = None
 
 class test_v7_encode_decode(FlowTestsBase):
     def __init__(self):
-        self.env = Env(moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
+        self.env = Env(decodeResponses=True, moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
         global redis_con
         redis_con = self.env.getConnection()
 
@@ -24,25 +24,29 @@ class test_v7_encode_decode(FlowTestsBase):
         redis_con.execute_command("DEBUG", "RELOAD")
         actual = redis_graph.query(query)
         self.env.assertEquals(expected.result_set, actual.result_set)
-    
+
     def test02_no_compaction_on_nodes_delete(self):
         graph_name = "no_compaction_on_nodes_delete"
         redis_graph = Graph(graph_name, redis_con)
-        # Create 3 nodes meta keys
-        redis_graph.query("UNWIND range(0,20) as i CREATE (:Node)")
+        # Create 20 nodes meta keys
+        redis_graph.query("UNWIND range(0, 20) as i CREATE (:Node)")
         # Return all the nodes, before and after saving & loading the RDB, and check equality
         query = "MATCH (n:Node) WITH n ORDER by id(n) return COLLECT(id(n))"
         expected_full_graph_nodes_id = redis_graph.query(query)
+
         # Delete 3 nodes.
-        redis_graph.query("MATCH (n:Node) WHERE id(n) IN [7,14,20] DELETE n")
+        redis_graph.query("MATCH (n:Node) WHERE id(n) IN [7, 14, 20] DELETE n")
         expected_nodes_id_after_delete = redis_graph.query(query)
+
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
+
         actual = redis_graph.query(query)
         # Validate no compaction, all IDs are the same
         self.env.assertEquals(expected_nodes_id_after_delete.result_set, actual.result_set)
+
         # Validate reuse of node ids - create 3 nodes.
-        redis_graph.query("UNWIND range (0,2) as i CREATE (:Node)")
+        redis_graph.query("UNWIND range (0, 2) as i CREATE (:Node)")
         actual = redis_graph.query(query)
         self.env.assertEquals(expected_full_graph_nodes_id.result_set, actual.result_set)
 
@@ -128,3 +132,28 @@ class test_v7_encode_decode(FlowTestsBase):
         plan = redis_graph.execution_plan(
             "MATCH (n:N {val:1}) RETURN n")
         self.env.assertIn("Index Scan", plan)
+
+    def test08_multiple_graphs_with_index(self):
+        # Create a multi-key graph.
+        graph1_name = "v7_graph_1"
+        graph1 = Graph(graph1_name, redis_con)
+        graph1.query("UNWIND range(0,21) AS i CREATE (a:L {v: i})-[:E]->(b:L2 {v: i})")
+
+        # Create a single-key graph.
+        graph2_name = "v7_graph_2"
+        graph2 = Graph(graph2_name, redis_con)
+        graph2.query("CREATE (a:L {v: 1})-[:E]->(b:L2 {v: 2})")
+
+        # Add an index to the multi-key graph.
+        graph1.query("CREATE INDEX ON :L(v)")
+
+        # Save RDB and reload from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        # The load should be successful and the index should still be built.
+        query = "MATCH (n:L {v:1}) RETURN n.v"
+        plan = graph1.execution_plan(query)
+        self.env.assertIn("Index Scan", plan)
+        expected = [[1]]
+        actual = graph1.query(query)
+        self.env.assertEquals(actual.result_set, expected)

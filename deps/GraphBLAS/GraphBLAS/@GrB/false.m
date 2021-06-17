@@ -1,21 +1,22 @@
 function C = false (varargin)
-%FALSE an all-false GraphBLAS matrix.
-% C = false (m, n, 'like', G) or C = false ([m n], 'like', G) constructs
-% a logical GraphBLAS matrix of size m-by-n with no entries.
+%FALSE a logical matrix with no entries.
 %
-% See also ones, true, zeros.
+%   C = false (n) ;      n-by-n GrB logical matrix with no entries.
+%   C = false (m,n) ;    m-by-n GrB logical matrix with no entries.
+%   C = false ([m,n]) ;  m-by-n GrB logical matrix with no entries.
+%   C = false (..., type) ;      empty logical matrix of given type.
+%   C = false (..., 'like', G) ; empty logical matrix, same type as G.
+%
+% Since function overloads the MATLAB built-in false(...), at least one
+% input must be a GraphBLAS matrix to use this version (for example,
+% C = false (GrB (n))).  Alternatively, C = GrB (n,n,'logical') can be
+% used instead.
+%
+% See also GrB/ones, GrB/true, GrB/zeros.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
-arg1 = varargin {1} ;
-if (length (arg1) == 2)
-    m = arg1 (1) ;
-    n = arg1 (2) ;
-else
-    m = arg1 ;
-    n = varargin {2} ;
-end
-
-C = GrB (m, n, 'logical') ;
+[m, n, ~] = gb_parse_args ('false', varargin {:}) ;
+C = GrB (gbnew (m, n, 'logical')) ;
 

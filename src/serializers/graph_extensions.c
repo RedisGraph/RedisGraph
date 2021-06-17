@@ -5,8 +5,8 @@
 */
 
 #include "graph_extensions.h"
+#include "../RG.h"
 #include "../util/datablock/oo_datablock.h"
-#include <assert.h>
 
 // Functions declerations - implemented in graph.c
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r);
@@ -20,12 +20,12 @@ inline void Serializer_Graph_MarkNodeDeleted(Graph *g, NodeID id) {
 }
 
 void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
-	assert(g);
+	ASSERT(g);
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
-	en->id = id;
 	en->prop_count = 0;
 	en->properties = NULL;
+	n->id = id;
 	n->entity = en;
 	if(label != GRAPH_NO_LABEL) {
 		// Set matrix at position [id, id]
@@ -39,9 +39,9 @@ void Serializer_Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest,
 	GrB_Info info;
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
-	en->id = edge_id;
 	en->prop_count = 0;
 	en->properties = NULL;
+	e->id = edge_id;
 	e->entity = en;
 	e->relationID = r;
 	e->srcNodeID = src;
@@ -59,3 +59,4 @@ uint64_t *Serializer_Graph_GetDeletedNodesList(Graph *g) {
 uint64_t *Serializer_Graph_GetDeletedEdgesList(Graph *g) {
 	return g->edges->deletedIdx;
 }
+

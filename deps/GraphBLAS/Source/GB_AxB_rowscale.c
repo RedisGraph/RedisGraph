@@ -2,12 +2,14 @@
 // GB_AxB_rowscale: C = D*B, row scale with diagonal matrix D
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 #include "GB_mxm.h"
+#include "GB_binop.h"
+#include "GB_apply.h"
 #ifndef GBCOMPACT
 #include "GB_binop__include.h"
 #endif
@@ -29,21 +31,29 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
 
     GrB_Info info ;
     ASSERT (Chandle != NULL) ;
+
     ASSERT_MATRIX_OK (D, "D for rowscale A*D", GB0) ;
+    ASSERT (!GB_ZOMBIES (D)) ;
+    ASSERT (!GB_JUMBLED (D)) ;
+    ASSERT (!GB_PENDING (D)) ;
+
     ASSERT_MATRIX_OK (B, "B for rowscale A*D", GB0) ;
-    ASSERT (!GB_PENDING (D)) ; ASSERT (!GB_ZOMBIES (D)) ;
-    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT (GB_JUMBLED_OK (B)) ;
+    ASSERT (!GB_PENDING (B)) ;
+
     ASSERT_SEMIRING_OK (semiring, "semiring for numeric D*A", GB0) ;
-    ASSERT (D->vlen == D->vdim) ;
-    ASSERT (D->vlen == B->vlen) ;
+    ASSERT (D->vdim == B->vlen) ;
     ASSERT (GB_is_diagonal (D, Context)) ;
 
-    //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
+    ASSERT (!GB_IS_BITMAP (D)) ;        // bitmap or full: not needed
+    ASSERT (!GB_IS_BITMAP (B)) ;
+    ASSERT (!GB_IS_FULL (D)) ;
 
-    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
-    int nthreads = GB_nthreads (GB_NNZ (B) + B->nvec, chunk, nthreads_max) ;
+    GBURBLE ("(%s=%s*%s) ",
+        GB_sparsity_char_matrix (B),    // C has the sparsity structure of B
+        GB_sparsity_char_matrix (D),
+        GB_sparsity_char_matrix (B)) ;
 
     //--------------------------------------------------------------------------
     // get the semiring operators
@@ -51,10 +61,110 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
 
     GrB_BinaryOp mult = semiring->multiply ;
     ASSERT (mult->ztype == semiring->add->op->ztype) ;
+    GB_Opcode opcode = mult->opcode ;
+    // GB_reduce_to_vector does not use GB_AxB_rowscale:
+    ASSERT (!(mult->function == NULL &&
+        (opcode == GB_FIRST_opcode || opcode == GB_SECOND_opcode))) ;
 
-    bool op_is_first  = mult->opcode == GB_FIRST_opcode ;
-    bool op_is_second = mult->opcode == GB_SECOND_opcode ;
-    bool op_is_pair   = mult->opcode == GB_PAIR_opcode ;
+    //--------------------------------------------------------------------------
+    // copy the pattern of B into C
+    //--------------------------------------------------------------------------
+
+    // allocate C->x but do not initialize it
+    (*Chandle) = NULL ;
+    info = GB_dup (Chandle, B, false, mult->ztype, Context) ;
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory
+        return (info) ;
+    }
+    GrB_Matrix C = (*Chandle) ;
+
+    //--------------------------------------------------------------------------
+    // apply a positional operator: convert C=D*B to C=op(B)
+    //--------------------------------------------------------------------------
+
+    if (GB_OPCODE_IS_POSITIONAL (opcode))
+    { 
+        if (flipxy)
+        { 
+            // the multiplicatve operator is fmult(y,x), so flip the opcode
+            opcode = GB_binop_flip (opcode) ;
+        }
+        // determine unary operator to compute C=D*B
+        GrB_UnaryOp op1 = NULL ;
+        if (mult->ztype == GrB_INT64)
+        {
+            switch (opcode)
+            {
+                // first_op(D,B) becomes position_i(B)
+                case GB_FIRSTI_opcode   : 
+                case GB_FIRSTJ_opcode   : op1 = GxB_POSITIONI_INT64  ; 
+                    break ;
+                case GB_FIRSTI1_opcode  : 
+                case GB_FIRSTJ1_opcode  : op1 = GxB_POSITIONI1_INT64 ; 
+                    break ;
+                // second_op(D,B) becomes position_op(B)
+                case GB_SECONDI_opcode  : op1 = GxB_POSITIONI_INT64  ; 
+                    break ;
+                case GB_SECONDJ_opcode  : op1 = GxB_POSITIONJ_INT64  ; 
+                    break ;
+                case GB_SECONDI1_opcode : op1 = GxB_POSITIONI1_INT64 ; 
+                    break ;
+                case GB_SECONDJ1_opcode : op1 = GxB_POSITIONJ1_INT64 ; 
+                    break ;
+                default:  ;
+            }
+        }
+        else
+        {
+            switch (opcode)
+            {
+                // first_op(D,B) becomes position_i(B)
+                case GB_FIRSTI_opcode   : 
+                case GB_FIRSTJ_opcode   : op1 = GxB_POSITIONI_INT32  ; 
+                    break ;
+                case GB_FIRSTI1_opcode  : 
+                case GB_FIRSTJ1_opcode  : op1 = GxB_POSITIONI1_INT32 ; 
+                    break ;
+                // second_op(D,B) becomes position_op(B)
+                case GB_SECONDI_opcode  : op1 = GxB_POSITIONI_INT32  ; 
+                    break ;
+                case GB_SECONDJ_opcode  : op1 = GxB_POSITIONJ_INT32  ; 
+                    break ;
+                case GB_SECONDI1_opcode : op1 = GxB_POSITIONI1_INT32 ; 
+                    break ;
+                case GB_SECONDJ1_opcode : op1 = GxB_POSITIONJ1_INT32 ; 
+                    break ;
+                default:  ;
+            }
+        }
+        info = GB_apply_op (C->x, op1,      // positional unary op only
+            NULL, NULL, false, B, Context) ;
+        if (info != GrB_SUCCESS)
+        { 
+            // out of memory
+            GB_Matrix_free (Chandle) ;
+            return (info) ;
+        }
+        ASSERT_MATRIX_OK (C, "rowscale positional: C = D*B output", GB0) ;
+        return (GrB_SUCCESS) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+    int nthreads = GB_nthreads (GB_NNZ_HELD (B) + B->nvec, chunk, nthreads_max);
+
+    //--------------------------------------------------------------------------
+    // determine if the values are accessed
+    //--------------------------------------------------------------------------
+
+    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
+    bool op_is_second = (opcode == GB_SECOND_opcode) ;
+    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
     bool D_is_pattern = false ;
     bool B_is_pattern = false ;
 
@@ -79,54 +189,40 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
             GB_Type_compatible (B->type, mult->ytype))) ;
     }
 
-    (*Chandle) = NULL ;
-
     //--------------------------------------------------------------------------
-    // copy the pattern of B into C
-    //--------------------------------------------------------------------------
-
-    info = GB_dup (Chandle, B, false, mult->ztype, Context) ;
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory
-        return (info) ;
-    }
-
-    GrB_Matrix C = (*Chandle) ;
-
-    //--------------------------------------------------------------------------
-    // C = D*B, row scale
+    // C = D*B, row scale, via built-in binary operators
     //--------------------------------------------------------------------------
 
     bool done = false ;
 
-    //--------------------------------------------------------------------------
-    // define the worker for the switch factory
-    //--------------------------------------------------------------------------
-
-    #define GB_DxB(mult,xyname) GB_DxB_ ## mult ## xyname
-
-    #define GB_BINOP_WORKER(mult,xyname)                                    \
-    {                                                                       \
-        info = GB_DxB(mult,xyname) (C, D, D_is_pattern, B, B_is_pattern,    \
-            nthreads) ;                                                     \
-        done = (info != GrB_NO_VALUE) ;                                     \
-    }                                                                       \
-    break ;
-
-    //--------------------------------------------------------------------------
-    // launch the switch factory
-    //--------------------------------------------------------------------------
-
     #ifndef GBCOMPACT
 
-        GB_Opcode opcode ;
-        GB_Type_code xycode, zcode ;
+        //----------------------------------------------------------------------
+        // define the worker for the switch factory
+        //----------------------------------------------------------------------
 
+        #define GB_DxB(mult,xname) GB_DxB_ ## mult ## xname
+
+        #define GB_BINOP_WORKER(mult,xname)                                  \
+        {                                                                    \
+            info = GB_DxB(mult,xname) (C, D, D_is_pattern, B, B_is_pattern,  \
+                nthreads) ;                                                  \
+            done = (info != GrB_NO_VALUE) ;                                  \
+        }                                                                    \
+        break ;
+
+        //----------------------------------------------------------------------
+        // launch the switch factory
+        //----------------------------------------------------------------------
+
+        GB_Type_code xcode, ycode, zcode ;
         if (GB_binop_builtin (D->type, D_is_pattern, B->type, B_is_pattern,
-            mult, flipxy, &opcode, &xycode, &zcode))
+            mult, flipxy, &opcode, &xcode, &ycode, &zcode))
         { 
+            // C=D*B, rowscale with built-in operator
+            #define GB_BINOP_IS_SEMIRING_MULTIPLIER
             #include "GB_binop_factory.c"
+            #undef  GB_BINOP_IS_SEMIRING_MULTIPLIER
         }
 
     #endif
@@ -137,11 +233,12 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
 
     if (!done)
     {
-        GB_BURBLE_MATRIX (C, "generic ") ;
 
         //----------------------------------------------------------------------
         // get operators, functions, workspace, contents of D, B, and C
         //----------------------------------------------------------------------
+
+        GB_BURBLE_MATRIX (C, "(generic C=D*B rowscale) ") ;
 
         GxB_binary_function fmult = mult->function ;
 
@@ -159,15 +256,15 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
         size_t dii_size = flipxy ? ysize : xsize ;
         size_t bij_size = flipxy ? xsize : ysize ;
 
-        GB_void *GB_RESTRICT Cx = C->x ;
+        GB_void *GB_RESTRICT Cx = (GB_void *) C->x ;
 
         GB_cast_function cast_D, cast_B ;
         if (flipxy)
         { 
             // D is typecasted to y, and B is typecasted to x
-            cast_D = D_is_pattern ? NULL : 
+            cast_D = D_is_pattern ? NULL :
                      GB_cast_factory (mult->ytype->code, D->type->code) ;
-            cast_B = B_is_pattern ? NULL : 
+            cast_B = B_is_pattern ? NULL :
                      GB_cast_factory (mult->xtype->code, B->type->code) ;
         }
         else
@@ -193,10 +290,6 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
             GB_void bij [GB_VLA(bij_size)] ;                                \
             if (!B_is_pattern) cast_B (bij, Bx +((pB)*bsize), bsize) ;
 
-        // C(i,j) = D(i,i) * B(i,j)
-        #define GB_BINOP(cij, dii, bij)                                     \
-            GB_BINARYOP (cij, dii, bij) ;                                   \
-
         // address of Cx [p]
         #define GB_CX(p) Cx +((p)*csize)
 
@@ -205,20 +298,19 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
         #define GB_CTYPE GB_void
 
         // no vectorization
-        #define GB_PRAGMA_VECTORIZE
-        #define GB_PRAGMA_VECTORIZE_DOT
+        #define GB_PRAGMA_SIMD_VECTORIZE ;
 
         if (flipxy)
         { 
-            #define GB_BINARYOP(z,x,y) fmult (z,y,x)
+            #define GB_BINOP(z,x,y,i,j) fmult (z,y,x)
             #include "GB_AxB_rowscale_meta.c"
-            #undef GB_BINARYOP
+            #undef GB_BINOP
         }
         else
         { 
-            #define GB_BINARYOP(z,x,y) fmult (z,x,y)
+            #define GB_BINOP(z,x,y,i,j) fmult (z,x,y)
             #include "GB_AxB_rowscale_meta.c"
-            #undef GB_BINARYOP
+            #undef GB_BINOP
         }
     }
 

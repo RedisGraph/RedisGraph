@@ -5,10 +5,10 @@
 */
 
 #include "numeric_range.h"
+#include "RG.h"
 #include "../rmalloc.h"
 #include "../../ast/ast_shared.h"
 #include <math.h>
-#include <assert.h>
 
 NumericRange *NumericRange_New(void) {
 	NumericRange *range = rm_malloc(sizeof(NumericRange));
@@ -94,7 +94,8 @@ void NumericRange_TightenRange(NumericRange *range, int op, double v) {
 		range->max = v;
 		break;
 	default:
-		assert("operation not supported");
+		ASSERT(false && "operation not supported");
+		break;
 	}
 
 	// See if range is still valid.
@@ -102,7 +103,7 @@ void NumericRange_TightenRange(NumericRange *range, int op, double v) {
 }
 
 void NumericRange_ToString(const NumericRange *range) {
-	assert(range);
+	ASSERT(range != NULL);
 	int offset = 0;
 	char buff[1024];
 
@@ -123,6 +124,7 @@ void NumericRange_ToString(const NumericRange *range) {
 }
 
 void NumericRange_Free(NumericRange *range) {
-	assert(range);
+	ASSERT(range != NULL);
 	rm_free(range);
 }
+

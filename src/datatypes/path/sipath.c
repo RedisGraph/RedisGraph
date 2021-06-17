@@ -5,6 +5,7 @@
 */
 
 #include "sipath.h"
+#include "RG.h"
 #include "../../util/rmalloc.h"
 #include "../../util/arr.h"
 #include "../array.h"
@@ -49,7 +50,7 @@ SIValue SIPath_Relationships(SIValue p) {
 }
 
 SIValue SIPath_GetRelationship(SIValue p, size_t i) {
-	assert(i < SIPath_Length(p) && i >= 0);
+	ASSERT(i < SIPath_Length(p));
 	Path *path = (Path *) p.ptrval;
 	return SI_Edge(Path_GetEdge(path, i));
 }
@@ -65,7 +66,7 @@ SIValue SIPath_Nodes(SIValue p) {
 }
 
 SIValue SIPath_GetNode(SIValue p, size_t i) {
-	assert(i < SIPath_NodeCount(p) && i >= 0);
+	ASSERT(i < SIPath_NodeCount(p));
 	Path *path = (Path *) p.ptrval;
 	return SI_Node(Path_GetNode(path, i));
 }
@@ -177,3 +178,4 @@ void SIPath_Free(SIValue p) {
 		Path_Free(path);
 	}
 }
+

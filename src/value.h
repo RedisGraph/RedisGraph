@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include "xxhash.h"
 
-/* Type defines the supported types by the indexing system. The types are powers
+/* Type defines the supported types by the system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
  *
  * The order of these values is significant, as the delta between values of
@@ -37,6 +37,7 @@ typedef enum {
 	T_DOUBLE = (1 << 14),
 	T_NULL = (1 << 15),
 	T_PTR = (1 << 16),
+	T_POINT = (1 << 17), // TODO: verify type order of point
 } SIType;
 
 typedef enum {
@@ -50,6 +51,9 @@ typedef enum {
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
 #define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR)
+#define SI_VALID_PROPERTY_VALUE (T_POINT | T_ARRAY | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE)
+#define SI_INDEXABLE (SI_NUMERIC | T_BOOL | T_STRING)
+
 
 /* Any values (except durations) are comparable with other values of the same type.
  * Integer and floating-point values are also comparable with each other. */
@@ -72,34 +76,46 @@ typedef enum {
 #define DISJOINT INT_MAX
 #define COMPARED_NULL INT_MIN
 
+struct Pair;
+
 typedef struct SIValue {
 	union {
 		int64_t longval;
 		double doubleval;
 		char *stringval;
 		void *ptrval;
+		struct Pair *map;
 		struct SIValue *array;
+		struct {
+			float latitude;   // 32 bit
+			float longitude;  // 32 bit
+		} point;
 	};
 	SIType type;
 	SIAllocation allocation;
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
-SIValue SI_LongVal(int64_t i);
-SIValue SI_DoubleVal(double d);
-SIValue SI_NullVal(void);
-SIValue SI_BoolVal(int b);
-SIValue SI_PtrVal(void *v);
+SIValue SI_EmptyMap();
+SIValue SI_EmptyArray();
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_Path(void *p);
+SIValue SI_NullVal(void);
+SIValue SI_BoolVal(int b);
+SIValue SI_PtrVal(void *v);
+SIValue SI_LongVal(int64_t i);
+SIValue SI_DoubleVal(double d);
+SIValue SI_Map(u_int64_t initialCapacity);
 SIValue SI_Array(u_int64_t initialCapacity);
-SIValue SI_EmptyArray();
+SIValue SI_Point(float latitude, float longitude);
 
 // Duplicate and ultimately free the input string.
 SIValue SI_DuplicateStringVal(const char *s);
+
 // Neither duplicate nor assume ownership of input string.
 SIValue SI_ConstStringVal(char *s);
+
 // Don't duplicate input string, but assume ownership.
 SIValue SI_TransferStringVal(char *s);
 
@@ -110,14 +126,25 @@ SIValue SI_ShareValue(const SIValue v);
 // SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
 SIValue SI_CloneValue(const SIValue v);
 
+// SI_CloneValue creates an SIValue that duplicates all of the original's self-owned or volatile allocations.
+SIValue SI_ShallowCloneValue(const SIValue v);
+
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
 SIValue SI_ConstValue(const SIValue v);
+
+// SI_TransferOwnership duplicates 'v'.
+// If 'v' owned its underlying value allocation,
+// owership is transfered to the duplicate and 'v' allocation is set to M_VOLATILE.
+SIValue SI_TransferOwnership(SIValue *v);
 
 // SIValue_MakeVolatile updates an SIValue to mark that its allocations are shared rather than self-owned.
 void SIValue_MakeVolatile(SIValue *v);
 
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);
+
+// SIValue_SetAllocationType changes the SIValue's allocation to the explicitly provided value.
+void SIValue_SetAllocationType(SIValue *v, SIAllocation allocation);
 
 bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);

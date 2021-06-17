@@ -2,8 +2,8 @@
 // GrB_mxm: matrix-matrix multiply
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -31,7 +31,7 @@ GrB_Info GrB_mxm                    // C<M> = accum (C, A*B)
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GrB_mxm (C, M, accum, semiring, A, B, desc)") ;
+    GB_WHERE (C, "GrB_mxm (C, M, accum, semiring, A, B, desc)") ;
     GB_BURBLE_START ("GrB_mxm") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_FAULTY (M) ;
@@ -40,7 +40,7 @@ GrB_Info GrB_mxm                    // C<M> = accum (C, A*B)
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
-        A_transpose, B_transpose, AxB_method) ;
+        A_transpose, B_transpose, AxB_method, do_sort) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,A*B) and variations, using the mxm kernel
@@ -55,7 +55,7 @@ GrB_Info GrB_mxm                    // C<M> = accum (C, A*B)
         A,          A_transpose,    // A matrix and its descriptor
         B,          B_transpose,    // B matrix and its descriptor
         false,                      // use fmult(x,y), flipxy false
-        AxB_method,                 // algorithm selector
+        AxB_method, do_sort,        // algorithm selector
         Context) ;
 
     GB_BURBLE_END ;

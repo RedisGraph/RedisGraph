@@ -2,8 +2,8 @@
 // GxB_Scalar_nvals: number of entries in a sparse GxB_Scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -20,7 +20,7 @@ GrB_Info GxB_Scalar_nvals   // get the number of entries in a GxB_Scalar
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GxB_Scalar_nvals (&nvals, s)") ;
+    GB_WHERE1 ("GxB_Scalar_nvals (&nvals, s)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (s) ;
     ASSERT (GB_SCALAR_OK (s)) ;
 

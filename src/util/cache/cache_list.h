@@ -18,7 +18,7 @@ typedef void (*CacheItemFreeFunc)(void *);
  */
 typedef struct CacheListNode_t {
 	void *value;                    // Node stored value.
-	uint64_t hashval;               // Key - retrived by applying hash function over the value.
+	char *key;                      // Key
 	struct CacheListNode_t *prev;   // Previous node in the linked list.
 	struct CacheListNode_t *next;   // Next node in the linked list.
 } CacheListNode;
@@ -47,8 +47,7 @@ void CacheList_Promote(CacheList *list, CacheListNode *node);
 CacheListNode *CacheList_RemoveTail(CacheList *list);
 
 // Populate a new node and add it as the head of the list.
-CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, uint64_t hashval,
-									  void *value);
+CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, char *key, void *value);
 
 /* Return the next unused space in the cache list.
  * Should only be invoked on non-full lists. */

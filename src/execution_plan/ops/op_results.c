@@ -5,9 +5,11 @@
  */
 
 #include "op_results.h"
+#include "RG.h"
 #include "../../util/arr.h"
-#include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_ctx.h"
+#include "../../configuration/config.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
@@ -24,30 +26,33 @@ OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	return (OpBase *)op;
 }
 
+static OpResult ResultsInit(OpBase *opBase) {
+	Results *op = (Results *)opBase;
+	op->result_set = QueryCtx_GetResultSet();
+	Config_Option_get(Config_RESULTSET_MAX_SIZE, &op->result_set_size_limit);
+	return OP_OK;
+}
+
 /* Results consume operation
  * called each time a new result record is required */
 static Record ResultsConsume(OpBase *opBase) {
 	Record r = NULL;
 	Results *op = (Results *)opBase;
 
-	if(op->op.childCount) {
-		OpBase *child = op->op.children[0];
-		r = OpBase_Consume(child);
-		if(!r) return NULL;
-	}
+	// enforce result-set size limit
+	if(op->result_set_size_limit == 0) return NULL;
+	op->result_set_size_limit--;
 
-	/* Append to final result set. */
+	OpBase *child = op->op.children[0];
+	r = OpBase_Consume(child);
+	if(!r) return NULL;
+
+	// append to final result set
 	ResultSet_AddRecord(op->result_set, r);
 	return r;
 }
 
-static OpResult ResultsInit(OpBase *opBase) {
-	Results *op = (Results *)opBase;
-	op->result_set = QueryCtx_GetResultSet();
-	return OP_OK;
-}
-
 static inline OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_RESULTS);
+	ASSERT(opBase->type == OPType_RESULTS);
 	return NewResultsOp(plan);
 }

@@ -27,7 +27,7 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 		SIValue aVal = Record_Get(a, op->record_offsets[i]);
 		SIValue bVal = Record_Get(b, op->record_offsets[i]);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel == 0) continue;  	// Elements are equal; try next ORDER BY element.
+		if(rel == 0) continue;      // Elements are equal; try next ORDER BY element.
 		rel *= op->directions[i];   // Flip value for descending order.
 		return rel;
 	}
@@ -50,21 +50,21 @@ static int _heap_elem_compare(const void *A, const void *B, const void *udata) {
 }
 
 static void _accumulate(OpSort *op, Record r) {
-	if(!op->limit) {
+	if(op->limit == UNLIMITED) {
 		/* Not using a heap and there's room for record. */
 		op->buffer = array_append(op->buffer, r);
 		return;
 	}
 
-	if(heap_count(op->heap) < op->limit) {
-		heap_offer(&op->heap, r);
+	if(Heap_count(op->heap) < op->limit) {
+		Heap_offer(&op->heap, r);
 	} else {
 		// No room in the heap, see if we need to replace
 		// a heap stored record with the current record.
-		if(_heap_elem_compare(heap_peek(op->heap), r, op) > 0) {
-			Record replaced = heap_poll(op->heap);
+		if(_heap_elem_compare(Heap_peek(op->heap), r, op) > 0) {
+			Record replaced = Heap_poll(op->heap);
 			OpBase_DeleteRecord(replaced);
-			heap_offer(&op->heap, r);
+			Heap_offer(&op->heap, r);
 		} else {
 			OpBase_DeleteRecord(r);
 		}
@@ -79,6 +79,8 @@ static inline Record _handoff(OpSort *op) {
 OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions) {
 	OpSort *op = rm_malloc(sizeof(OpSort));
 	op->heap = NULL;
+	op->skip = 0;
+	op->limit = UNLIMITED;
 	op->buffer = NULL;
 	op->directions = directions;
 	op->exps = exps;
@@ -91,7 +93,8 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 	op->record_offsets = array_new(uint, comparison_count);
 	for(uint i = 0; i < comparison_count; i ++) {
 		int record_idx;
-		assert(OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx));
+		bool aware = OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx);
+		ASSERT(aware);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
@@ -100,16 +103,20 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 
 static OpResult SortInit(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
-	// Initialize op without limit on the return records/
-	op->limit = 0;
-	AST *ast = ExecutionPlan_GetAST(opBase->plan);
-	// Get the limit value for the current AST segment.
-	uint64_t limit = AST_GetLimit(ast);
-	// If there is LIMIT value, l,  set in the current clause, the operation must return the top l records with respect to the sorting criteria.
-	// In order to do so, it must collect the l records, but if there is a SKIP value, s, set, it must collect l+s records, sort them and return the top l.
-	if(limit != UNLIMITED) op->limit = limit + AST_GetSkip(ast);
-	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
-	else op->buffer = array_new(Record, 32);
+	// If there is LIMIT value, l, set in the current clause,
+	// the operation must return the top l records with respect to
+	// the sorting criteria. In order to do so, it must collect the l records,
+	// but if there is a SKIP value, s, set, it must collect l+s records,
+	// sort them and return the top l.
+	if(op->limit != UNLIMITED) {
+		op->limit += op->skip;
+		// If a limit is specified, use heapsort to poll the top N.
+		op->heap = Heap_new(_heap_elem_compare, op);
+	} else {
+		// If all records are being sorted, use quicksort.
+		op->buffer = array_new(Record, 32);
+	}
+
 	return OP_OK;
 }
 
@@ -137,12 +144,12 @@ static Record SortConsume(OpBase *opBase) {
 		QSORT(Record, op->buffer, array_len(op->buffer), RECORD_SORT);
 	} else {
 		// Heap, responses need to be reversed.
-		int records_count = heap_count(op->heap);
+		int records_count = Heap_count(op->heap);
 		op->buffer = array_new(Record, records_count);
 
 		/* Pop items from heap */
 		while(records_count > 0) {
-			r = heap_poll(op->heap);
+			r = Heap_poll(op->heap);
 			op->buffer = array_append(op->buffer, r);
 			records_count--;
 		}
@@ -158,9 +165,9 @@ static OpResult SortReset(OpBase *ctx) {
 	uint recordCount;
 
 	if(op->heap) {
-		recordCount = heap_count(op->heap);
+		recordCount = Heap_count(op->heap);
 		for(uint i = 0; i < recordCount; i++) {
-			Record r = (Record)heap_poll(op->heap);
+			Record r = (Record)Heap_poll(op->heap);
 			OpBase_DeleteRecord(r);
 		}
 	}
@@ -177,7 +184,7 @@ static OpResult SortReset(OpBase *ctx) {
 }
 
 static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_SORT);
+	ASSERT(opBase->type == OPType_SORT);
 	OpSort *op = (OpSort *)opBase;
 	int *directions;
 	AR_ExpNode **exps;
@@ -191,12 +198,12 @@ static void SortFree(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
 
 	if(op->heap) {
-		uint recordCount = heap_count(op->heap);
+		uint recordCount = Heap_count(op->heap);
 		for(uint i = 0; i < recordCount; i++) {
-			Record r = (Record)heap_poll(op->heap);
+			Record r = (Record)Heap_poll(op->heap);
 			OpBase_DeleteRecord(r);
 		}
-		heap_free(op->heap);
+		Heap_free(op->heap);
 		op->heap = NULL;
 	}
 

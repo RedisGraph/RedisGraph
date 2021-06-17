@@ -16,3 +16,4 @@ bool ResultSetStat_IndicateModification(ResultSetStatistics stats) {
 			|| stats.indices_created > 0
 			|| stats.indices_deleted > 0);
 }
+

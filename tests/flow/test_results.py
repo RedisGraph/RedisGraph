@@ -15,7 +15,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testResultSetFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -116,7 +116,7 @@ class testResultSetFlow(FlowTestsBase):
         query = """MATCH (a) return max(a.missing_field)"""
         result = graph.query(query)
         self.env.assertEqual(None, result.result_set[0][0])
-        
+
         # Min default value is null.
         query = """MATCH (a) return min(a.missing_field)"""
         result = graph.query(query)
@@ -132,7 +132,7 @@ class testResultSetFlow(FlowTestsBase):
         result = graph.query(query)
         self.env.assertEqual(0, result.result_set[0][0])
 
-         # Collect default value is an empty array.
+        # Collect default value is an empty array.
         query = """MATCH (a) return collect(a.missing_field)"""
         result = graph.query(query)
         self.env.assertEqual([], result.result_set[0][0])
@@ -169,3 +169,30 @@ class testResultSetFlow(FlowTestsBase):
         query = """MATCH (a) return a.val as x, a.val as x LIMIT 1"""
         result = graph.query(query)
         self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
+
+    # Test implicit result-set size limit
+    def test09_implicit_resultset_limit(self):
+        query = "MATCH (a) RETURN a"
+
+        result = graph.query(query)
+        record_count = len(result.result_set)
+
+        # make sure limit is greater than 0
+        assert(record_count > 1)
+        limit = record_count -1
+
+        # enforce implicit limit
+        redis_con.execute_command("GRAPH.CONFIG", "SET", "RESULTSET_SIZE", limit)
+
+        result = graph.query(query)
+        limited_record_count = len(result.result_set)
+        assert(limited_record_count == limit)
+
+        # lift limit, -1 stands for unlimited
+        redis_con.execute_command("GRAPH.CONFIG", "SET", "RESULTSET_SIZE", -1)
+
+        # re-issue query
+        result = graph.query(query)
+        unlimited_record_count = len(result.result_set)
+        assert(unlimited_record_count == record_count)
+

@@ -5,8 +5,9 @@
  */
 
 #include "encode_graph.h"
-#include "v7/encode_v7.h"
+#include "v9/encode_v9.h"
 
 void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
-	return RdbSaveGraph_v7(rdb, value);
+	return RdbSaveGraph_v9(rdb, value);
 }
+

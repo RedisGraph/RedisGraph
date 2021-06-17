@@ -10,11 +10,10 @@
 #include "redismodule.h"
 #include "util/rmalloc.h"
 #include "graph/graphcontext.h"
-#include <setjmp.h>
-#include <pthread.h>
 #include "commands/cmd_context.h"
 #include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
+#include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
@@ -25,9 +24,7 @@ typedef struct {
 } QueryCtx_QueryData;
 
 typedef struct {
-	char *error;                // The error message produced by this query, if any.
 	double timer[2];            // Query execution time tracking.
-	jmp_buf *breakpoint;        // The breakpoint to return to if the query causes an exception.
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
@@ -47,34 +44,26 @@ typedef struct {
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
 } QueryCtx;
 
-/* On invocation, set an exception handler, returning 0 from this macro.
- * Upon encountering an exception, execution will resume at this point and return nonzero. */
-#define SET_EXCEPTION_HANDLER()                                         \
-   ({                                                                   \
-	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);               \
-	if(!ctx->internal_exec_ctx.breakpoint) ctx->internal_exec_ctx.breakpoint = rm_malloc(sizeof(jmp_buf));  \
-	setjmp(*ctx->internal_exec_ctx.breakpoint);                                           \
-})
-
 /* Instantiate the thread-local QueryCtx on module load. */
 bool QueryCtx_Init(void);
-/* Free the thread-local QueryCtx variable (unused). */
-void QueryCtx_Finalize(void);
+
+/* Retrieve this thread's QueryCtx. */
+QueryCtx *QueryCtx_GetQueryCtx();
+
+/* Set the provided QueryCtx in this thread's storage key. */
+void QueryCtx_SetTLS(QueryCtx *query_ctx);
+
+/* Null-set this thread's storage key. */
+void QueryCtx_RemoveFromTLS();
+
 /* Start timing query execution. */
 void QueryCtx_BeginTimer(void);
-
-/* Jump to a runtime exception breakpoint if one has been set. */
-void QueryCtx_RaiseRuntimeException(void);
-/* Reply back to the user with error. */
-void QueryCtx_EmitException(void);
 
 /* Setters */
 /* Sets the global execution context */
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx);
 /* Set the provided AST for access through the QueryCtx. */
 void QueryCtx_SetAST(AST *ast);
-/* Set the error message for this query. */
-void QueryCtx_SetError(char *err_fmt, ...);
 /* Set the provided GraphCtx for access through the QueryCtx. */
 void QueryCtx_SetGraphCtx(GraphContext *gc);
 /* Set the resultset. */
@@ -133,8 +122,7 @@ void QueryCtx_ForceUnlockCommit(void);
 
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);
-/* Returns true if this query has caused an error. */
-bool QueryCtx_EncounteredError(void);
+
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);
 

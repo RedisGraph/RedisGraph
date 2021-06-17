@@ -2,13 +2,15 @@
 // GB_reduce_panel: s=reduce(A), reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
 // Reduce a matrix to a scalar using a panel-based method for built-in
-// operators.  No typecasting is performed.
+// operators.  No typecasting is performed.  A must be sparse, hypersparse,
+// or full (it cannot be bitmap).  A cannot have any zombies.  If A has zombies
+// or is bitmap, GB_reduce_to_scalar_template is used instead.
 
 {
 
@@ -16,21 +18,16 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const GB_ATYPE *GB_RESTRICT Ax = A->x ;
+    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) A->x ;
     int64_t anz = GB_NNZ (A) ;
     ASSERT (anz > 0) ;
+    ASSERT (!GB_IS_BITMAP (A)) ;
+    ASSERT (A->nzombies == 0) ;
 
     #if GB_IS_ANY_MONOID
     // the ANY monoid can take any entry, and terminate immediately
     s = Ax [anz-1] ;
     #else
-
-    //--------------------------------------------------------------------------
-    // typecast workspace
-    //--------------------------------------------------------------------------
-
-    // ctype W [ntasks] ;
-    GB_CTYPE *GB_RESTRICT W = (GB_CTYPE *) W_space ;
 
     //--------------------------------------------------------------------------
     // reduce A to a scalar
@@ -71,7 +68,7 @@
             }
             else
             {
-                // full panel
+                // whole panel
                 for (int64_t k = 0 ; k < GB_PANEL ; k++)
                 { 
                     // Panel [k] = op (Panel [k], Ax [p+k]) ;
@@ -85,7 +82,7 @@
                     panel_count = 256 ;
                     int count = 0 ;
                     for (int64_t k = 0 ; k < GB_PANEL ; k++)
-                    {
+                    { 
                         count += (Panel [k] == GB_TERMINAL_VALUE) ;
                     }
                     if (count > 0)
@@ -149,13 +146,8 @@
             // check if another task has called for an early exit
             bool my_exit ;
 
-            #if GB_MICROSOFT
-                #pragma omp critical (GB_reduce_panel)
-                my_exit = early_exit ;
-            #else
-                GB_ATOMIC_READ
-                my_exit = early_exit ;
-            #endif
+            GB_ATOMIC_READ
+            my_exit = early_exit ;
 
             if (!my_exit)
             #endif
@@ -199,7 +191,7 @@
                     }
                     else
                     {
-                        // full panel
+                        // whole panel
                         for (int64_t k = 0 ; k < GB_PANEL ; k++)
                         { 
                             // Panel [k] = op (Panel [k], Ax [p+k]) ;
@@ -213,7 +205,7 @@
                             panel_count = 256 ;
                             int count = 0 ;
                             for (int64_t k = 0 ; k < GB_PANEL ; k++)
-                            {
+                            { 
                                 count += (Panel [k] == GB_TERMINAL_VALUE) ;
                             }
                             if (count > 0)
@@ -240,13 +232,8 @@
                 if (t == GB_TERMINAL_VALUE)
                 { 
                     // tell all other tasks to exit early
-                    #if GB_MICROSOFT
-                        #pragma omp critical (GB_reduce_panel)
-                        early_exit = true ;
-                    #else
-                        GB_ATOMIC_WRITE
-                        early_exit = true ;
-                    #endif
+                    GB_ATOMIC_WRITE
+                    early_exit = true ;
                 }
                 #endif
             }

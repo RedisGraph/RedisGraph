@@ -1,3 +1,4 @@
+import re
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -8,7 +9,7 @@ values = ["str1", "str2", False, True, 5, 10.5]
 class testWithClause(FlowTestsBase):
     
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
@@ -206,6 +207,7 @@ class testWithClause(FlowTestsBase):
         expected = [[2]]
         self.env.assertEqual(actual_result.result_set, expected)
 
+    def test10_filter_placement_validate_scopes(self):
         # Verify that filters cannot be placed in earlier scopes.
         query = """UNWIND ['scope1'] AS a WITH a AS b UNWIND ['scope2'] AS a WITH a WHERE a = 'scope1' RETURN a"""
         actual_result = redis_graph.query(query)
@@ -216,3 +218,26 @@ class testWithClause(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected = [['scope2']]
         self.env.assertEqual(actual_result.result_set, expected)
+
+        # Verify that WITH filters are properly placed in scope without violating Apply restrictions.
+        query = """MATCH (a) OPTIONAL MATCH (b) WITH a, b WHERE b.fakeprop = true RETURN a, b"""
+        actual_result = redis_graph.query(query)
+        expected = [] # No results should be returned
+        self.env.assertEqual(actual_result.result_set, expected)
+        # Verify that the Filter op appears directly above the Apply operation in the ExecutionPlan.
+        plan = redis_graph.execution_plan(query)
+        self.env.assertTrue(re.search('Filter\s+Apply', plan))
+
+        # Verify that filters on projected aliases do not get placed before the projection op.
+        query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 1 RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        actual_result = redis_graph.query(query)
+        expected = [] # No results should be returned
+        self.env.assertEqual(actual_result.result_set, expected)
+        self.env.assertTrue(re.search('Filter\s+Project', plan))
+
+        query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 'projected' RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        actual_result = redis_graph.query(query)
+        expected = [['projected']] # The projected string should be returned
+        self.env.assertTrue(re.search('Filter\s+Project', plan))

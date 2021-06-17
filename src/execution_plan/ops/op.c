@@ -5,10 +5,9 @@
 */
 
 #include "op.h"
+#include "RG.h"
 #include "../../util/rmalloc.h"
 #include "../../util/simple_timer.h"
-
-#include <assert.h>
 
 /* Forward declarations */
 Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
@@ -66,7 +65,7 @@ int OpBase_Modifies(OpBase *op, const char *alias) {
 int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
 	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
-	assert(id != raxNotFound);
+	ASSERT(id != raxNotFound);
 
 	// Make sure to not introduce the same modifier twice.
 	if(raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL)) {
@@ -89,7 +88,10 @@ void OpBase_PropagateFree(OpBase *op) {
 }
 
 void OpBase_PropagateReset(OpBase *op) {
-	if(op->reset) assert(op->reset(op) == OP_OK);
+	if(op->reset) {
+		OpResult res = op->reset(op);
+		ASSERT(res == OP_OK);
+	}
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
 }
 
@@ -131,7 +133,7 @@ bool OpBase_IsWriter(OpBase *op) {
 }
 
 void OpBase_UpdateConsume(OpBase *op, fpConsume consume) {
-	assert(op);
+	ASSERT(op != NULL);
 	/* If Operation is profiled, update profiled function.
 	 * otherwise update consume function. */
 	if(op->profile != NULL) op->profile = consume;
@@ -146,6 +148,11 @@ Record OpBase_CloneRecord(Record r) {
 	Record clone = ExecutionPlan_BorrowRecord((struct ExecutionPlan *)r->owner);
 	Record_Clone(r, clone);
 	return clone;
+}
+
+inline OPType OpBase_Type(const OpBase *op) {
+	ASSERT(op != NULL);
+	return op->type;
 }
 
 inline void OpBase_DeleteRecord(Record r) {

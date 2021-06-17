@@ -8,6 +8,9 @@
 #include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
+// default number of records to accumulate before traversing
+#define BATCH_SIZE 16
+
 /* Forward declarations. */
 static OpResult ExpandIntoInit(OpBase *opBase);
 static Record ExpandIntoConsume(OpBase *opBase);
@@ -21,7 +24,7 @@ static inline int ExpandIntoToString(const OpBase *ctx, char *buf, uint buf_len)
 }
 
 static void _populate_filter_matrix(OpExpandInto *op) {
-	for(uint i = 0; i < op->recordCount; i++) {
+	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
@@ -41,8 +44,8 @@ static void _traverse(OpExpandInto *op) {
 	if(op->F == GrB_NULL) {
 		// Create both filter and result matrices.
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+		GrB_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
+		GrB_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
@@ -69,8 +72,8 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
 	op->records = NULL;
-	op->recordsCap = 0;
-	op->recordCount = 0;
+	op->record_cap = BATCH_SIZE;
+	op->record_count = 0;
 	op->edge_ctx = NULL;
 
 	// Set our Op operations
@@ -78,8 +81,12 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx));
+	bool aware;
+	UNUSED(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	ASSERT(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
+	ASSERT(aware);
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
@@ -95,9 +102,12 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
-	AST *ast = ExecutionPlan_GetAST(opBase->plan);
-	op->recordsCap = TraverseRecordCap(ast);
-	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	// Create 'records' with this Init function as 'record_cap'
+	// might be set during optimization time (applyLimit)
+	// If cap greater than BATCH_SIZE is specified,
+	// use BATCH_SIZE as the value.
+	if(op->record_cap > BATCH_SIZE) op->record_cap = BATCH_SIZE;
+	op->records = rm_calloc(op->record_cap, sizeof(Record));
 	return OP_OK;
 }
 
@@ -110,17 +120,20 @@ static Record _handoff(OpExpandInto *op) {
 
 	/* Find a record where both record's source and destination
 	 * nodes are connected. */
-	while(op->recordCount) {
-		op->recordCount--;
-		// Current record resides at row recordCount.
-		uint rowIdx = op->recordCount;
-		op->r = op->records[op->recordCount];
+	while(op->record_count) {
+		op->record_count--;
+		// Current record resides at row record_count.
+		uint rowIdx = op->record_count;
+		op->r = op->records[op->record_count];
 		Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
 		NodeID destId = ENTITY_GET_ID(destNode);
 		bool x;
 		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
-		// Src is not connected to dest.
-		if(res != GrB_SUCCESS) continue;
+		// Src is not connected to dest, free the current record and continue.
+		if(res != GrB_SUCCESS) {
+			OpBase_DeleteRecord(op->r);
+			continue;
+		}
 
 		// If we're here, src is connected to dest. Update the edge if necessary.
 		if(op->edge_ctx) {
@@ -133,7 +146,7 @@ static Record _handoff(OpExpandInto *op) {
 		}
 
 		// Mark as NULL to avoid double free.
-		op->records[op->recordCount] = NULL;
+		op->records[op->record_count] = NULL;
 		return op->r;
 	}
 
@@ -144,7 +157,6 @@ static Record _handoff(OpExpandInto *op) {
 /* ExpandIntoConsume next operation
  * returns OP_DEPLETED when no additional updates are available */
 static Record ExpandIntoConsume(OpBase *opBase) {
-	Node *n;
 	Record r;
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	OpBase *child = op->op.children[0];
@@ -154,10 +166,10 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 		/* If we're here, we didn't manage to emit a record.
 		 * Clean up and try to get new data points. */
 		op->r = NULL;
-		for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
 
 		// Ask child operations for data.
-		for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
+		for(op->record_count = 0; op->record_count < op->record_cap; op->record_count++) {
 			Record childRecord = OpBase_Consume(child);
 			// Did not manage to get new data, break.
 			if(!childRecord) break;
@@ -166,17 +178,17 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 				/* The child Record may not contain the source node in scenarios like
 				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
 				OpBase_DeleteRecord(childRecord);
-				op->recordCount--;
+				op->record_count--;
 				continue;
 			}
 
 			// Store received record.
 			Record_PersistScalars(childRecord);
-			op->records[op->recordCount] = childRecord;
+			op->records[op->record_count] = childRecord;
 		}
 
 		// Depleted.
-		if(op->recordCount == 0) return NULL;
+		if(op->record_count == 0) return NULL;
 		_traverse(op);
 	}
 
@@ -186,10 +198,13 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	op->r = NULL;
-	for(uint i = 0; i < op->recordCount; i++) {
-		if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
+	for(uint i = 0; i < op->record_count; i++) {
+		if(op->records[i]) {
+			OpBase_DeleteRecord(op->records[i]);
+			op->records[i] = NULL;
+		}
 	}
-	op->recordCount = 0;
+	op->record_count = 0;
 
 	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
@@ -197,7 +212,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 }
 
 static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_EXPAND_INTO);
+	ASSERT(opBase->type == OPType_EXPAND_INTO);
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }
@@ -226,7 +241,7 @@ static void ExpandIntoFree(OpBase *ctx) {
 	}
 
 	if(op->records) {
-		for(uint i = 0; i < op->recordsCap; i++) {
+		for(uint i = 0; i < op->record_count; i++) {
 			if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 		}
 		rm_free(op->records);

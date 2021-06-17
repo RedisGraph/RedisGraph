@@ -5,107 +5,165 @@
  */
 
 #include "ast_build_op_contexts.h"
-#include "ast_build_ar_exp.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../util/rax_extensions.h"
-#include "../arithmetic/repository.h"
-#include "../arithmetic/arithmetic_expression.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 #include "../query_ctx.h"
-#include <assert.h>
 
-static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QueryGraph *qg,
+static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QGEdge *e,
 											  const cypher_astnode_t *edge) {
 	const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
-	AST *ast = QueryCtx_GetAST();
-	const char *alias = AST_GetEntityName(ast, edge);
 
-	// Get QueryGraph entity
-	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
-	EdgeCreateCtx new_edge = { .edge = e,
-							   .properties = PropertyMap_New(gc, props)
+	EdgeCreateCtx new_edge = {  .alias = e->alias,
+								.relation = e->reltypes[0],
+								.reltypeId = e->reltypeIDs[0],
+								.properties = PropertyMap_New(gc, props),
+								.src = e->src->alias,
+								.dest = e->dest->alias
 							 };
 	return new_edge;
 }
 
-static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QueryGraph *qg,
+static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 											  const cypher_astnode_t *ast_node) {
-	// Get QueryGraph entity
-	AST *ast = QueryCtx_GetAST();
-	const char *alias = AST_GetEntityName(ast, ast_node);
-	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
-
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
 
-	NodeCreateCtx new_node = { .node = n,
-							   .properties = PropertyMap_New(gc, ast_props)
+	NodeCreateCtx new_node = {  .alias = n->alias,
+								.label = n->label,
+								.labelId = n->labelID,
+								.properties = PropertyMap_New(gc, ast_props)
 							 };
 
 	return new_node;
 }
 
-static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_t *set_item) {
+// Set a single property
+static void _ConvertSetItem(GraphContext *gc, rax *updates,
+		const cypher_astnode_t *set_item) {
+	ASSERT(gc        !=  NULL);
+	ASSERT(updates   !=  NULL);
+	ASSERT(set_item  !=  NULL);
+
+	const  char              *alias      =  NULL;  // entity being updated
+	const  char              *attribute  =  NULL;  // attribute being set
+	const  cypher_astnode_t  *prop_expr  =  NULL;
+	const  cypher_astnode_t  *ast_prop   =  NULL;
+	const  cypher_astnode_t  *ast_key    =  NULL;  // AST node attribute set
+	const  cypher_astnode_t  *ast_value  =  NULL;  // AST node value set
+
+	UPDATE_MODE update_mode = UPDATE_MERGE;
+	Attribute_ID attribute_id = ATTRIBUTE_NOTFOUND;
 	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
-	// TODO Add handling for when we're setting labels (CYPHER_AST_SET_LABELS)
-	// or all properties (CYPHER_AST_SET_ALL_PROPERTIES)
-	assert(type == CYPHER_AST_SET_PROPERTY);
 
-	// The SET_ITEM contains the entity alias and property key being set - type == CYPHER_AST_PROPERTY_OPERATOR
-	const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(set_item);
-	// Property name - type == CYPHER_AST_PROP_NAME
-	const cypher_astnode_t *prop = cypher_ast_property_operator_get_prop_name(key_to_set);
-	// Entity alias
-	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
-	AR_ExpNode *entity = AR_EXP_FromExpression(prop_expr);
-	// Can this ever be anything strange? Assuming it's always just an alias wrapper right now.
-	assert(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC &&
-		   entity->operand.variadic.entity_alias);
+	if(type == CYPHER_AST_SET_ALL_PROPERTIES) {
+		// MATCH (a) SET a = {v: 5}
+		update_mode = UPDATE_REPLACE;
 
-	// Updated value - type == CYPHER_AST_SET_PROPERTY
-	const cypher_astnode_t *val_to_set = cypher_ast_set_property_get_expression(set_item);
+		// alias
+		prop_expr = cypher_ast_set_all_properties_get_identifier(set_item);
+		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+		alias = cypher_ast_identifier_get_name(prop_expr);
 
-	/* Track all required information to perform an update. */
-	const char *alias = entity->operand.variadic.entity_alias;
-	const char *attribute = cypher_ast_prop_name_get_value(prop);
-	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
-	AR_ExpNode *exp = AR_EXP_FromExpression(val_to_set);
+		// attribute
+		attribute_id = ATTRIBUTE_ALL;
 
-	AR_EXP_Free(entity);
+		// value
+		ast_value = cypher_ast_set_all_properties_get_expression(set_item);
+	} else if(type == CYPHER_AST_MERGE_PROPERTIES) {
+		// MATCH (a) SET a += {v: 5}
+		// alias
+		prop_expr = cypher_ast_merge_properties_get_identifier(set_item);
+		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+		alias = cypher_ast_identifier_get_name(prop_expr);
 
-	EntityUpdateEvalCtx update_ctx = { .alias = alias,
-									   .attribute_id = attribute_id,
-									   .exp = exp
-									 };
-	return update_ctx;
-}
+		// attribute
+		attribute_id = ATTRIBUTE_ALL;
 
-EntityUpdateEvalCtx *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
-	uint nitems = cypher_ast_set_nitems(set_clause);
-	EntityUpdateEvalCtx *update_expressions = array_new(EntityUpdateEvalCtx, nitems);
+		// value
+		ast_value = cypher_ast_merge_properties_get_expression(set_item);
+	} else if(type == CYPHER_AST_SET_PROPERTY) {
+		// MATCH (a) SET a.v = 5
 
-	for(uint i = 0; i < nitems; i++) {
-		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		update_expressions = array_append(update_expressions, _NewUpdateCtx(gc, set_item));
+		// alias
+		ast_prop = cypher_ast_set_property_get_property(set_item);
+		prop_expr = cypher_ast_property_operator_get_expression(ast_prop);
+		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+		alias = cypher_ast_identifier_get_name(prop_expr);
+
+		// attribute
+		ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
+		attribute = cypher_ast_prop_name_get_value(ast_key);
+		attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
+
+		// updated value
+		ast_value = cypher_ast_set_property_get_expression(set_item);
+	} else {
+		ASSERT(false);
 	}
 
-	return update_expressions;
+	int len = strlen(alias);
+
+	// create update context
+	EntityUpdateEvalCtx *ctx = raxFind(updates, (unsigned char *)alias, len);
+	if(ctx == raxNotFound) {
+		ctx = UpdateCtx_New(update_mode, 1, alias);
+		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
+	} else {
+		if(update_mode == UPDATE_REPLACE) {
+			UpdateCtx_Clear(ctx);
+			UpdateCtx_SetMode(ctx, UPDATE_REPLACE);
+		}
+	}
+
+	// updated value
+	AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
+
+	PropertySetCtx update = { .id  = attribute_id, .exp = exp };
+	ctx->properties = array_append(ctx->properties, update);
 }
 
-AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
+void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
+		rax *bound_vars, NodeCreateCtx **nodes, EdgeCreateCtx **edges) {
 	AST *ast = QueryCtx_GetAST();
-	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
-	AR_ExpNode **exps = array_new(AR_ExpNode *, delete_count);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	for(uint i = 0; i < delete_count; i ++) {
-		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
-		AR_ExpNode *exp = AR_EXP_FromExpression(ast_expr);
-		exps = array_append(exps, exp);
+	QueryGraph *g = QueryGraph_ExtractPaths(qg, &path, 1);
+	uint path_elem_count = cypher_ast_pattern_path_nelements(path);
+	for(uint i = 0; i < path_elem_count; i ++) {
+		/* See if current entity needs to be created:
+		 * 1. Current entity is NOT bound in a previous clause.
+		 * 2. We have yet to account for this entity. */
+		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
+		const char *alias = AST_GetEntityName(ast, elem);
+
+		// Skip entities defined in previous clauses or already represented in our nodes/edges arrays.
+		int rc = raxTryInsert(bound_vars, (unsigned char *)alias, strlen(alias), NULL, NULL);
+		if(rc == 0) continue;
+
+		if((i % 2) == 1) {
+			// relation
+			QGEdge *e = QueryGraph_GetEdgeByAlias(g, alias);
+			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, e, elem);
+			*edges = array_append(*edges, new_edge);
+		} else {
+			// node
+			QGNode *n = QueryGraph_GetNodeByAlias(g, alias);
+			NodeCreateCtx new_node = _NewNodeCreateCtx(gc, n, elem);
+			*nodes = array_append(*nodes, new_node);
+		}
 	}
-	return exps;
+
+	QueryGraph_Free(g);
 }
+
+//------------------------------------------------------------------------------
+// SORT operation
+//------------------------------------------------------------------------------
 
 // Get direction of each sort operation, append to an array, return the array in the form of out parameter
 void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directions) {
-	assert(order_clause && sort_directions);
+	ASSERT(order_clause && sort_directions);
 
 	unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
 	int *directions = array_new(int, nitems);
@@ -119,44 +177,38 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 	*sort_directions = directions;
 }
 
+//------------------------------------------------------------------------------
+// UNWIND operation
+//------------------------------------------------------------------------------
+
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
-	AR_ExpNode *exp = AR_EXP_FromExpression(collection);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(collection);
 	exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 
 	AST_UnwindContext ctx = { .exp = exp };
 	return ctx;
 }
 
-void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *bound_vars,
-							 NodeCreateCtx **nodes, EdgeCreateCtx **edges) {
-	AST *ast = QueryCtx_GetAST();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+//------------------------------------------------------------------------------
+// DELETE operation
+//------------------------------------------------------------------------------
 
-	// Add the path to the QueryGraph
-	QueryGraph_AddPath(qg, gc, path);
+AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
+	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
+	AR_ExpNode **exps = array_new(AR_ExpNode *, delete_count);
 
-	uint path_elem_count = cypher_ast_pattern_path_nelements(path);
-	for(uint i = 0; i < path_elem_count; i ++) {
-		/* See if current entity needs to be created:
-		 * 1. Current entity is NOT bound in a previous clause.
-		 * 2. We have yet to account for this entity. */
-		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
-		const char *alias = AST_GetEntityName(ast, elem);
-
-		// Skip entities defined in previous clauses or already represented in our nodes/edges arrays.
-		int rc = raxTryInsert(bound_vars, (unsigned char *)alias, strlen(alias), NULL, NULL);
-		if(rc == 0) continue;
-
-		if(i % 2) {  // Relation
-			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, qg, elem);
-			*edges = array_append(*edges, new_edge);
-		} else {     // Node
-			NodeCreateCtx new_node = _NewNodeCreateCtx(gc, qg, elem);
-			*nodes = array_append(*nodes, new_node);
-		}
+	for(uint i = 0; i < delete_count; i ++) {
+		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
+		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_expr);
+		exps = array_append(exps, exp);
 	}
+	return exps;
 }
+
+//------------------------------------------------------------------------------
+// MERGE operation
+//------------------------------------------------------------------------------
 
 AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphContext *gc,
 									QueryGraph *qg, rax *bound_vars) {
@@ -167,24 +219,20 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 								 };
 
 	// Prepare all create contexts for nodes and edges on Merge path.
-	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
+	rax *on_match_items = NULL;
+	rax *on_create_items = NULL;
 	NodeCreateCtx *nodes_to_merge = array_new(NodeCreateCtx, 1);
 	EdgeCreateCtx *edges_to_merge = array_new(EdgeCreateCtx, 1);
+	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
 
 	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
 	rax *bound_and_introduced_entities = (bound_vars) ? raxClone(bound_vars) : raxNew();
 	AST_PreparePathCreation(path, qg, bound_and_introduced_entities, &nodes_to_merge, &edges_to_merge);
 	raxFree(bound_and_introduced_entities);
 
-	merge_ctx.nodes_to_merge = nodes_to_merge;
-	merge_ctx.edges_to_merge = edges_to_merge;
 
 	// Convert any ON MATCH and ON CREATE directives.
 	uint directive_count = cypher_ast_merge_nactions(merge_clause);
-	if(directive_count == 0) return merge_ctx;
-
-	EntityUpdateEvalCtx *on_create_items = NULL;
-	EntityUpdateEvalCtx *on_match_items = NULL;
 
 	for(uint i = 0; i < directive_count; i ++) {
 		const cypher_astnode_t *directive = cypher_ast_merge_get_action(merge_clause, i);
@@ -192,32 +240,50 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphC
 
 		if(type == CYPHER_AST_ON_CREATE) {
 			uint create_prop_count = cypher_ast_on_create_nitems(directive);
-			if(on_create_items == NULL) on_create_items = array_new(EntityUpdateEvalCtx, create_prop_count);
+			if(on_create_items == NULL) on_create_items = raxNew();
 			for(uint j = 0; j < create_prop_count; j ++) {
 				const cypher_astnode_t *create_item = cypher_ast_on_create_get_item(directive, j);
-				on_create_items = array_append(on_create_items, _NewUpdateCtx(gc, create_item));
+				_ConvertSetItem(gc, on_create_items, create_item);
 			}
 		} else if(type == CYPHER_AST_ON_MATCH) {
 			uint match_prop_count = cypher_ast_on_match_nitems(directive);
-			if(on_match_items == NULL) on_match_items = array_new(EntityUpdateEvalCtx, match_prop_count);
+			if(on_match_items == NULL) on_match_items = raxNew();
 			for(uint j = 0; j < match_prop_count; j ++) {
 				const cypher_astnode_t *match_item = cypher_ast_on_match_get_item(directive, j);
-				on_match_items = array_append(on_match_items, _NewUpdateCtx(gc, match_item));
+				_ConvertSetItem(gc, on_match_items, match_item);
 			}
 		} else {
-			assert(false);
+			ASSERT(false);
 		}
 	}
 
 	merge_ctx.on_match = on_match_items;
 	merge_ctx.on_create = on_create_items;
-
+	merge_ctx.edges_to_merge = edges_to_merge;
+	merge_ctx.nodes_to_merge = nodes_to_merge;
 	return merge_ctx;
 }
 
 //------------------------------------------------------------------------------
-// CREATE operations
+// UPDATE operation
 //------------------------------------------------------------------------------
+
+rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
+	rax *updates = raxNew(); // entity alias -> EntityUpdateEvalCtx
+	uint nitems = cypher_ast_set_nitems(set_clause);
+
+	for(uint i = 0; i < nitems; i++) {
+		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
+		_ConvertSetItem(gc, updates, set_item);
+	}
+
+	return updates;
+}
+
+//------------------------------------------------------------------------------
+// CREATE operation
+//------------------------------------------------------------------------------
+
 AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
 	AST *ast = QueryCtx_GetAST();
 

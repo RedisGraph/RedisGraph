@@ -34,10 +34,25 @@ typedef struct {
 SlowLog *SlowLog_New();
 
 // Introduce item to slow log.
-void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query, double latency);
+void SlowLog_Add
+(
+	SlowLog *slowlog,			// slowlog to add entry to
+	const char *cmd,			// command being logged
+	const char *query,			// query being logged
+	double latency,				// command latency
+	time_t *time				// optional time command was issued
+);
 
 // Replies with slow log content.
-void SlowLog_Replay(const SlowLog *slowlog, RedisModuleCtx *ctx);
+void SlowLog_Replay
+(
+	const SlowLog *slowlog,
+	RedisModuleCtx *ctx
+);
 
 // Free slowlog.
-void SlowLog_Free(SlowLog *slowlog);
+void SlowLog_Free
+(
+	SlowLog *slowlog
+);
+

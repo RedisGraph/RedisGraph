@@ -5,6 +5,7 @@
 */
 #include "../algebraic_expression.h"
 #include "utils.h"
+#include "../../RG.h"
 #include "../../util/rmalloc.h"
 
 //------------------------------------------------------------------------------
@@ -83,7 +84,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 			m = GrB_NULL;
 			if(matrices) {
 				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
-				assert(m != raxNotFound && "Missing matrix");
+				ASSERT(m != raxNotFound && "Missing matrix");
 			}
 			root = AlgebraicExpression_NewOperand(m, false, alias, alias, NULL, NULL);
 
@@ -139,7 +140,7 @@ static void _AlgebraicExpression_PrintTree
 			}
 			break;
 		default:
-			assert("Unknown algebraic expression operation");
+			ASSERT("Unknown algebraic expression operation");
 			break;
 		}
 		break;
@@ -147,8 +148,9 @@ static void _AlgebraicExpression_PrintTree
 		if(exp->operand.edge) alias = exp->operand.edge;
 		else alias = exp->operand.src;
 		printf("%s\n", alias);
+		break;
 	default:
-		assert("Unknown algebraic expression node type");
+		ASSERT("Unknown algebraic expression node type");
 		break;
 	}
 }
@@ -164,7 +166,7 @@ void AlgebraicExpression_Print
 (
 	const AlgebraicExpression *exp  // Root node.
 ) {
-	assert(exp);
+	ASSERT(exp);
 	const char *alias;
 
 	switch(exp->type) {
@@ -192,13 +194,13 @@ void AlgebraicExpression_Print
 			break;
 		case AL_EXP_TRANSPOSE:
 			// Expecting a single child.
-			assert(AlgebraicExpression_ChildCount(exp) == 1);
+			ASSERT(AlgebraicExpression_ChildCount(exp) == 1);
 			printf("Transpose(");
 			AlgebraicExpression_Print(FIRST_CHILD(exp));
 			printf(")");
 			break;
 		default:
-			assert("Unknown algebraic expression operation");
+			ASSERT("Unknown algebraic expression operation");
 			break;
 		}
 		break;
@@ -208,7 +210,7 @@ void AlgebraicExpression_Print
 		else alias = exp->operand.src;
 		printf("%s", alias);
 	default:
-		assert("Unknown algebraic expression node type");
+		ASSERT("Unknown algebraic expression node type");
 		break;
 	}
 }
@@ -218,7 +220,7 @@ void _AlgebraicExpression_ToString
 	const AlgebraicExpression *exp, // Root node.
 	char *buff
 ) {
-	assert(exp);
+	ASSERT(exp);
 	const char *alias;
 
 	switch(exp->type) {
@@ -246,13 +248,13 @@ void _AlgebraicExpression_ToString
 			break;
 		case AL_EXP_TRANSPOSE:
 			// Expecting a single child.
-			assert(AlgebraicExpression_ChildCount(exp) == 1);
+			ASSERT(AlgebraicExpression_ChildCount(exp) == 1);
 			sprintf(buff + strlen(buff), "Transpose(");
 			_AlgebraicExpression_ToString(FIRST_CHILD(exp), buff);
 			sprintf(buff + strlen(buff), ")");
 			break;
 		default:
-			assert("Unknown algebraic expression operation");
+			ASSERT("Unknown algebraic expression operation");
 			break;
 		}
 		break;
@@ -261,7 +263,7 @@ void _AlgebraicExpression_ToString
 		else alias = exp->operand.src;
 		sprintf(buff + strlen(buff), "%s", alias);
 	default:
-		assert("Unknown algebraic expression node type");
+		ASSERT("Unknown algebraic expression node type");
 		break;
 	}
 }

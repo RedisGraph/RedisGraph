@@ -11,5 +11,5 @@
 
 int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae);
 
-int ScanToString(const OpBase *op, char *buf, uint buf_len, const QGNode *n);
+int ScanToString(const OpBase *op, char *buf, uint buf_len, const char *alias, const char *label);
 

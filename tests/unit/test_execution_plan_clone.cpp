@@ -16,7 +16,6 @@ extern "C" {
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/arithmetic/funcs.h"
-#include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/procedures/procedure.h"
 #include "../../src/execution_plan/execution_plan_clone.h"
 
@@ -34,10 +33,9 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-		GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+		GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
 		Proc_Register();         // Register procedures.
 		AR_RegisterFuncs();      // Register arithmetic functions.
-		Agg_RegisterFuncs();     // Register aggregation functions.
 
 		// Create a graphcontext
 		_fake_graph_context();
@@ -79,25 +77,6 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		}
 	}
 
-	/* Execution plan cloning clones the following:
-	 * 1. Plan segments
-	 * 2. Plan operations
-	 * 3. Plan record mapping
-	 * 4. Query graph and connected components.
-	 * As query graph cloning and rax cloning are tested and proven, this function
-	 * tests only the segments and operations cloning. */
-	static void ExecutionPlan_Equal(const ExecutionPlan *plan_a, const ExecutionPlan *plan_b) {
-
-		ASSERT_TRUE(plan_a->is_union == plan_b->is_union);
-		uint plan_a_segment_count = array_len(plan_a->segments);
-		uint plan_b_segment_count = array_len(plan_b->segments);
-		ASSERT_EQ(plan_a_segment_count, plan_b_segment_count);
-		for(uint i = 0; i < plan_a_segment_count; i++) {
-			ExecutionPlan_Equal(plan_a->segments[i], plan_b->segments[i]);
-		}
-		ExecutionPlan_OpsEqual(plan_a, plan_b, plan_a->root, plan_b->root);
-	}
-
 	static void validate_query_plans_clone(const char **queries) {
 		uint query_count = array_len(queries);
 		for(uint i = 0; i < query_count; i++) {
@@ -108,7 +87,7 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 			ASSERT_TRUE(ast);
 			ASSERT_TRUE(plan);
 			ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-			ExecutionPlan_Equal(plan, clone);
+			ExecutionPlan_OpsEqual(plan, clone, plan->root, clone->root);
 			AST_Free(ast);
 			ExecutionPlan_Free(clone);
 			ExecutionPlan_Free(plan);
@@ -155,7 +134,7 @@ TEST_F(ExecutionPlanCloneTest, TestMatchClause) {
 	queries = array_append(queries,
 						   "MATCH p = ()-[*]->() return p");    // Named path, variable length traverse.
 	queries = array_append(queries,
-						   "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2)->() RETURN n");   // Apply ops.
+						   "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2]->() RETURN n");   // Apply ops.
 
 	validate_query_plans_clone(queries);
 	array_free(queries);

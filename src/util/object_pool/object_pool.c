@@ -5,11 +5,11 @@
  */
 
 #include "object_pool.h"
+#include "RG.h"
 #include "../arr.h"
 #include "../rmalloc.h"
 #include <math.h>
 #include <string.h>
-#include <assert.h>
 
 // Computes the number of blocks required to accommodate n items.
 #define ITEM_COUNT_TO_BLOCK_COUNT(n) \
@@ -42,7 +42,7 @@ typedef uint64_t ObjectID;
 #define ITEM_FROM_HEADER(header) ((header) + sizeof(ObjectID))
 
 static void _ObjectPool_AddBlocks(ObjectPool *pool, uint blockCount) {
-	assert(pool && blockCount > 0);
+	ASSERT(pool && blockCount > 0);
 
 	uint prevBlockCount = pool->blockCount;
 	pool->blockCount += blockCount;
@@ -71,7 +71,7 @@ static void *_ObjectPool_ReuseItem(ObjectPool *pool) {
 	// Retrieve a pointer to the item's header.
 	unsigned char *item_header = block->data + (pos * block->itemSize);
 	unsigned char *item = ITEM_FROM_HEADER(item_header);
-	assert(ITEM_ID(item) == idx); // The item ID should not change on reuse.
+	ASSERT(ITEM_ID(item) == idx); // The item ID should not change on reuse.
 
 	// Zero-set the item being returned.
 	memset(item, 0, block->itemSize - HEADER_SIZE);
@@ -117,7 +117,7 @@ void *ObjectPool_NewItem(ObjectPool *pool) {
 }
 
 void ObjectPool_DeleteItem(ObjectPool *pool, void *item) {
-	assert(pool);
+	ASSERT(pool != NULL);
 	// Get item ID.
 	ObjectID idx = ITEM_ID(item);
 

@@ -5,61 +5,69 @@
 */
 
 #include "query_graph.h"
+#include "../RG.h"
 #include "../util/arr.h"
 #include "../util/strcmp.h"
 #include "../query_ctx.h"
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
-#include <assert.h>
 
-static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entity) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+// Sets node label and label ID
+static void _QueryGraphSetNodeLabel(QGNode *n, const cypher_astnode_t *ast_entity) {
+	// node label already set
+	if(n->labelID != GRAPH_NO_LABEL) return;
+
+	// Retrieve node labels from the AST entity.
+	uint nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
+	// We currently only support 0 or 1 labels per node, so if any are specified just select the first.
+	const char *label = NULL;
+	if(nlabels > 0) label = cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(ast_entity, 0));
+
+	// Set node label ID.
+	if(label) {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		uint label_id = GRAPH_UNKNOWN_LABEL;
+		// If a schema is found, the AST refers to an existing label.
+		if(s) label_id = s->id;
+		n->label = label;
+		n->labelID = label_id;
+	} else {
+		// Label isn't known to the graph.
+		n->labelID = GRAPH_NO_LABEL;
+	}
+}
+
+// Adds node to query graph
+static void _QueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entity) {
 	AST *ast = QueryCtx_GetAST();
 	const char *alias = AST_GetEntityName(ast, ast_entity);
 
 	/* Look up this alias in the QueryGraph.
 	 * This node may already exist if it appears multiple times in query patterns. */
 	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
-
 	if(n == NULL) {
 		// Node has not been mapped; create it.
-		n = QGNode_New(NULL, alias);
+		n = QGNode_New(alias);
 		QueryGraph_AddNode(qg, n);
 	}
 
-	// Retrieve node labels from the AST entity.
-	uint nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
-	// We currently only support 0 or 1 labels per node, so if any are specified just select the first.
-	const char *label = (nlabels > 0) ? cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(
-																	  ast_entity, 0)) : NULL;
-
-	// Set node label ID if one has not already been set.
-	if(n->labelID == GRAPH_NO_LABEL) {
-		if(label) {
-			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-			uint label_id = GRAPH_UNKNOWN_LABEL;
-			// If a schema is found, the AST refers to a real label.
-			if(s) label_id = s->id;
-			n->label = label;
-			n->labelID = label_id;
-		} else {
-			n->labelID = GRAPH_NO_LABEL;
-		}
-	}
+	_QueryGraphSetNodeLabel(n, ast_entity);
 }
 
-static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
-									QGNode *src, QGNode *dest) {
+// Adds edge to query graph
+static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
+							   QGNode *src, QGNode *dest) {
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	AST *ast = QueryCtx_GetAST();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const char *alias = AST_GetEntityName(ast, ast_entity);
 	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(ast_entity);
 
 	// Each edge can only appear once in a QueryGraph.
-	assert(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
+	ASSERT(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
+	QGEdge *edge = QGEdge_New(NULL, alias);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// Add the IDs of all reltype matrixes
@@ -70,7 +78,9 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 		edge->reltypes = array_append(edge->reltypes, reltype);
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		if(!s) {
+			// Unknown relationship
 			edge->reltypeIDs = array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+			qg->unknown_reltype_ids = true;
 			continue;
 		}
 		edge->reltypeIDs = array_append(edge->reltypeIDs, s->id);
@@ -92,11 +102,104 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 	else QueryGraph_ConnectNodes(qg, dest, src, edge);
 }
 
+// Extracts node from 'qg' and places a copy of into 'graph'
+static void _QueryGraph_ExtractNode(const QueryGraph *qg, QueryGraph *graph,
+									AST *ast, const cypher_astnode_t *ast_node) {
+
+	// Validate inputs.
+	ASSERT(qg != NULL && graph != NULL && ast != NULL && ast_node != NULL);
+
+	// See if node is already in 'graph'.
+	const char *alias = AST_GetEntityName(ast, ast_node);
+	QGNode *n = QueryGraph_GetNodeByAlias(graph, alias);
+
+	if(n == NULL) {
+		// Node is missing from 'graph', try getting it from 'qg'.
+		n = QueryGraph_GetNodeByAlias(qg, alias);
+		if(n == NULL) {
+			/* Node is missing from 'qg', create it.
+			 * It is possible to get into a situation where we try to extract
+			 * a path which contains entities that are missing from the
+			 * "holistic" query graph consider:
+			 * MATCH (a) WITH a WHERE (a)-[]->(:L1) in this case due to
+			 * clause scoping only node 'a' is in 'qg' the filtered pattern
+			 * which is being extracted from 'qg' has additional entities:
+			 * an anonymous edge and node. */
+			_QueryGraphAddNode(graph, ast_node);
+		} else {
+			// Add a clone of the original node.
+			n = QGNode_Clone(n);
+
+			// Clear node label information.
+			n->label = NULL;
+			n->labelID = GRAPH_NO_LABEL;
+
+			QueryGraph_AddNode(graph, n);
+			// Set node label information.
+			_QueryGraphSetNodeLabel(n, ast_node);
+		}
+	}
+}
+
+// Extracts edge from 'qg' and places a copy of into 'graph'
+static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
+									QGNode *left, QGNode *right, AST *ast, const cypher_astnode_t *ast_edge) {
+	const char *alias = AST_GetEntityName(ast, ast_edge);
+
+	// Validate input, edge shouldn't be in graph.
+	ASSERT(left != NULL && right != NULL);
+	ASSERT(QueryGraph_GetEdgeByAlias(graph, alias) == NULL);
+	/* Unlike nodes that can show up multiple times within a pattern
+	 * e.g. MATCH (a), (a:L)
+	 * where each occurance might add an additional piece of information
+	 * an edge can only be mentioned once, as such there's no value in
+	 * cloning an edge. therefor we simply add it.*/
+	_QueryGraphAddEdge(graph, ast_edge, left, right);
+}
+
+// Clones path from 'qg' into 'graph'.
+static void _QueryGraph_ExtractPath(const QueryGraph *qg, QueryGraph *graph,
+									const cypher_astnode_t *path) {
+
+	// Validate input.
+	ASSERT(qg != NULL && graph != NULL && path != NULL);
+
+	const char *alias;
+	AST *ast = QueryCtx_GetAST();
+	const cypher_astnode_t *ast_node;
+	uint nelems = cypher_ast_pattern_path_nelements(path);
+
+	/* Introduce nodes to graph
+	 * Nodes are at even indices */
+	for(uint i = 0; i < nelems; i += 2) {
+		ast_node = cypher_ast_pattern_path_get_element(path, i);
+		_QueryGraph_ExtractNode(qg, graph, ast, ast_node);
+	}
+
+	/* Introduce edges to graph
+	 * edges are at odd indices */
+	for(uint i = 1; i < nelems; i += 2) {
+		// Retrieve the QGNode corresponding to the node left of this edge.
+		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
+		const char *l_alias = AST_GetEntityName(ast, l_node);
+		QGNode *left = QueryGraph_GetNodeByAlias(graph, l_alias);
+
+		// Retrieve the QGNode corresponding to the node right of this edge.
+		const cypher_astnode_t *r_node = cypher_ast_pattern_path_get_element(path, i + 1);
+		const char *r_alias = AST_GetEntityName(ast, r_node);
+		QGNode *right = QueryGraph_GetNodeByAlias(graph, r_alias);
+
+		ast_node = cypher_ast_pattern_path_get_element(path, i);
+		_QueryGraph_ExtractEdge(qg, graph, left, right, ast, ast_node);
+	}
+}
+
 QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
 	QueryGraph *qg = rm_malloc(sizeof(QueryGraph));
 
 	qg->nodes = array_new(QGNode *, node_cap);
 	qg->edges = array_new(QGEdge *, edge_cap);
+	qg->unknown_reltype_ids = false;
 
 	return qg;
 }
@@ -112,16 +215,15 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 	qg->edges = array_append(qg->edges, e);
 }
 
-void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path) {
+void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
+	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Introduce nodes first. Nodes are positioned at every even offset
 	 * into the path (0, 2, ...) */
 	for(uint i = 0; i < nelems; i += 2) {
 		const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, i);
-		_BuildQueryGraphAddNode(qg, ast_node);
+		_QueryGraphAddNode(qg, ast_node);
 	}
-
-	AST *ast = QueryCtx_GetAST();
 
 	/* Every odd offset corresponds to an edge in a path. */
 	for(uint i = 1; i < nelems; i += 2) {
@@ -137,34 +239,91 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
 
 		// Retrieve the AST reference to this edge.
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		_BuildQueryGraphAddEdge(qg, edge, left, right);
+		_QueryGraphAddEdge(qg, edge, left, right);
 	}
 }
 
-/* Build a query graph from MATCH and MERGE clauses. */
-QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
+// Clones path from 'qg' into 'graph'
+QueryGraph *QueryGraph_ExtractPaths(const QueryGraph *qg, const cypher_astnode_t **paths, uint n) {
+	// Validate input.
+	ASSERT(qg != NULL && paths != NULL);
+
+	// Create an empty query graph.
+	uint node_count = QueryGraph_NodeCount(qg);
+	uint edge_count = QueryGraph_EdgeCount(qg);
+	QueryGraph *graph = QueryGraph_New(node_count, edge_count);
+	ASSERT(graph != NULL);
+
+	for(int i = 0; i < n; i++) {
+		const cypher_astnode_t *path = paths[i];
+		_QueryGraph_ExtractPath(qg, graph, path);
+	}
+
+	return graph;
+}
+
+// Clones patterns from 'qg' into 'graph'
+QueryGraph *QueryGraph_ExtractPatterns(const QueryGraph *qg,
+									   const cypher_astnode_t **patterns, uint n) {
+
+	// Validate inputs.
+	ASSERT(qg != NULL && patterns != NULL);
+
+	// Create an empty query graph.
+	uint node_count = QueryGraph_NodeCount(qg);
+	uint edge_count = QueryGraph_EdgeCount(qg);
+	QueryGraph *graph = QueryGraph_New(node_count, edge_count);
+	ASSERT(graph != NULL);
+
+	// extract paths described by each pattern
+	for(uint i = 0; i < n; i++) {
+		const cypher_astnode_t *pattern = patterns[i];
+		uint npaths = cypher_ast_pattern_npaths(pattern);
+		for(uint j = 0; j < npaths; j ++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			_QueryGraph_ExtractPath(qg, graph, path);
+		}
+	}
+
+	return graph;
+}
+
+// Build a query graph from AST
+QueryGraph *BuildQueryGraph(const AST *ast) {
 	uint node_count;
 	uint edge_count;
-	// The initial node and edge arrays will be large enough to accommodate all AST entities
-	// (which is overkill, consider reducing)
+
+	// AST clauses containing path objects
+	cypher_astnode_type_t clause_types [2] = {CYPHER_AST_MATCH, CYPHER_AST_MERGE};
+
+	// the initial node and edge arrays will be large enough to accommodate
+	// all AST entities (which is overkill, consider reducing)
 	node_count = edge_count = raxSize(ast->referenced_entities);
 	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
-	// We are interested in every path held in a MATCH pattern.
-	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-	if(match_clauses) {
-		uint match_count = array_len(match_clauses);
-		for(uint i = 0; i < match_count; i ++) {
-			// OPTIONAL MATCH clauses are handled separately.
-			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
-			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-			uint npaths = cypher_ast_pattern_npaths(pattern);
-			for(uint j = 0; j < npaths; j ++) {
-				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-				QueryGraph_AddPath(qg, gc, path);
+	// for each relevant clause type
+	for(int i = 0; i < 2; i ++) {
+		const uint8_t clause_type = clause_types[i];
+		// collect all path objects
+		const cypher_astnode_t **clauses = AST_GetTypedNodes(ast->root,
+				clause_type);
+		uint clause_count = array_len(clauses);
+
+		// for each clause of the current type
+		for(uint j = 0; j < clause_count; j ++) {
+			const cypher_astnode_t *clause = clauses[j];
+			// collect path objects
+			const cypher_astnode_t **paths = AST_GetTypedNodes(clause,
+					CYPHER_AST_PATTERN_PATH);
+
+			uint path_count = array_len(paths);
+			// introduce each path object to the query graph
+			for(uint k = 0; k < path_count; k ++) {
+				QueryGraph_AddPath(qg, paths[k]);
 			}
+			array_free(paths);
 		}
-		array_free(match_clauses);
+		array_free(clauses);
 	}
 
 	return qg;
@@ -222,6 +381,31 @@ EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
 	return ENTITY_UNKNOWN;
 }
 
+void QueryGraph_ResolveUnknownRelIDs(QueryGraph *qg) {
+	// No unknown relationships - no need to updated.
+	if(!qg->unknown_reltype_ids) return;
+
+	Schema *s = NULL;
+	bool unkown_relationships = false;
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	uint edge_count = QueryGraph_EdgeCount(qg);
+
+	// Update edges.
+	for(uint i = 0; i < edge_count; i++) {
+		QGEdge *edge = qg->edges[i];
+		uint rel_types_count = array_len(edge->reltypeIDs);
+		for(uint j = 0; j < rel_types_count; j++) {
+			if(edge->reltypeIDs[j] == GRAPH_UNKNOWN_RELATION) {
+				s = GraphContext_GetSchema(gc, edge->reltypes[j], SCHEMA_EDGE);
+				if(s) edge->reltypeIDs[j] = s->id;
+				else unkown_relationships = true; // Cannot update the unkown relationship.
+			}
+		}
+	}
+
+	qg->unknown_reltype_ids = unkown_relationships;
+}
+
 QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
 	uint node_count = QueryGraph_NodeCount(qg);
 	uint edge_count = QueryGraph_EdgeCount(qg);
@@ -239,7 +423,7 @@ QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
 		QGEdge *e = qg->edges[i];
 		QGNode *src = QueryGraph_GetNodeByAlias(clone, e->src->alias);
 		QGNode *dest = QueryGraph_GetNodeByAlias(clone, e->dest->alias);
-		assert(src && dest);
+		ASSERT(src != NULL && dest != NULL);
 		QGEdge *clone_edge = QGEdge_Clone(e);
 		QueryGraph_ConnectNodes(clone, src, dest, clone_edge);
 	}
@@ -248,7 +432,7 @@ QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
 }
 
 QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
-	assert(qg && n);
+	ASSERT(qg != NULL && n != NULL);
 
 	/* Remove node from query graph.
 	 * Remove and free all edges associated with node. */
@@ -280,7 +464,7 @@ QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
 }
 
 QGEdge *QueryGraph_RemoveEdge(QueryGraph *qg, QGEdge *e) {
-	assert(qg && e);
+	ASSERT(qg != NULL && e != NULL);
 
 	// Disconnect nodes connected by edge.
 	QGNode_RemoveOutgoingEdge(e->src, e);
@@ -389,7 +573,7 @@ uint QueryGraph_EdgeCount(const QueryGraph *qg) {
 }
 
 GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
-	assert(qg);
+	ASSERT(qg != NULL);
 
 	// Make a clone of the given graph as we're about to modify it.
 	QueryGraph *qg_clone = QueryGraph_Clone(qg);
@@ -400,7 +584,8 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 
 	GrB_Matrix m;   // Matrix representation of QueryGraph.
 	GrB_Info res = GrB_Matrix_new(&m, GrB_BOOL, node_count, node_count);
-	assert(res == GrB_SUCCESS);
+	UNUSED(res);
+	ASSERT(res == GrB_SUCCESS);
 
 	// Build matrix representation of query graph.
 	for(uint i = 0; i < node_count; i++) {
@@ -413,7 +598,7 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 			GrB_Index dest = e->dest->labelID;
 			// Populate `m`.
 			res = GrB_Matrix_setElement_BOOL(m, true, src, dest);
-			assert(res == GrB_SUCCESS);
+			ASSERT(res == GrB_SUCCESS);
 		}
 	}
 

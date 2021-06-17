@@ -1,68 +1,74 @@
 version: 2.1
+
 commands:
+
+  # If this build is from a fork, stop executing the current job and return success.
+  # This is useful to avoid steps that will fail due to missing credentials.
   early_return_for_forked_pull_requests:
-    description: >-
-      If this build is from a fork, stop executing the current job and return success.
-      This is useful to avoid steps that will fail due to missing credentials.
     steps:
       - run:
           name: Early return if this build is from a forked PR
           command: |
             if [ -n "$CIRCLE_PR_NUMBER" ]; then
-              echo "Nothing to do for forked PRs, so marking this step successful"
+              echo "Nothing to do for forked PRs, so marking this step successful."
               circleci step halt
             fi
 
-jobs:
-  build:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+  early_returns:
     steps:
-      - checkout
       - run:
-          name: Fetch submodules
-          command: >-
-            git submodule update --init --recursive
+          name: Early return if this is a docs build
+          command: |
+            if [[ $CIRCLE_BRANCH == *docs ]]; then
+              echo "Identifies as documents PR, no testing required."
+              circleci step halt
+            fi
+      - run:
+          name: Early return if this branch should ignore CI
+          command: |
+            if [[ $CIRCLE_BRANCH == *noci ]]; then
+              echo "Identifies as actively ignoring CI, no testing required."
+              circleci step halt
+            fi
 
+  setup-executor:
+    steps:
       - run:
-          name: Install prerequisite
+          name: Setup executor
           command: |
             apt-get -qq update
-            apt-get install -y --no-install-recommends ca-certificates wget git
-            apt-get install -y --no-install-recommends python python-pip python-psutil
-            apt-get install -y --no-install-recommends build-essential cmake m4 automake autoconf libtool peg libgomp1 valgrind astyle
-            python -m pip install wheel
-            python -m pip install setuptools --upgrade
-            # stick to strict order in the following pakcages:
-            python -m pip install git+https://github.com/Grokzen/redis-py-cluster.git@master
-            python -m pip install git+https://github.com/RedisLabsModules/RLTest.git@master
-            python -m pip install git+https://github.com/RedisLabs/RAMP@master
-            python -m pip install -r tests/requirements.txt
+            apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
+            bash <(curl -fsSL https://get.docker.com)
+      - setup_remote_docker:
+          docker_layer_caching: true
 
-      # Validate source complies with formatting
-      #- run:
-          # name: Formatting
-          # command: astyle --options=.astylerc -R "./*.c,*.h" --dry-run -Q
+  setup-automation:
+    steps:
+      - run:
+          name: Setup automation
+          command: |
+            git submodule update --init deps/readies
+            ./deps/readies/bin/getpy3
 
+  load-cached-deps:
+    steps:
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
-          - GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
+          - GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Load libcypher-parser from cache if possible.
       - restore_cache:
           keys:
-          - libcypher-parser-{{checksum "./deps/libcypher-parser/lib/src/parser.leg"}}
+          - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
 
-      - run:
-          name: Build
-          command: make
-
+  save-deps-cache:
+    steps:
       # Save GraphBLAS to cache.
       - save_cache:
           paths:
             - deps/GraphBLAS
-          key: GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
+          key: GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Save libcypher-parser to cache.
       - save_cache:
@@ -70,147 +76,400 @@ jobs:
             - deps/libcypher-parser
           key: libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
 
+  setup-prerequisits:
+    steps:
+      - run:
+          name: Fetch submodules
+          command: |
+            git submodule update --init --recursive
+      - setup-automation
+      - run:
+          name: Install prerequisites
+          command: |
+            ./sbin/system-setup.py
+      - run:
+          name: Setup locale
+          command: |
+              if command -v apt-get &> /dev/null; then
+                locale-gen --purge en_US.UTF-8
+                dpkg-reconfigure -f noninteractive locales
+              fi
+
+  benchmark-automation:
+    parameters:
+      github_actor:
+        type: string
+        default: $CIRCLE_USERNAME
+      module_path:
+        type: string
+        default: /workspace/$MODULE_ARTIFACT
+    steps:
+      - run:
+          name: Install remote benchmark tool dependencies
+          command: |
+            VERSION=0.14.8 ./deps/readies/bin/getterraform
+      - run:
+          name: Install remote benchmark python dependencies
+          command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
+      - run:
+          name: Run CI benchmarks on aws
+          command: |
+              cd ./tests/benchmarks
+              export AWS_ACCESS_KEY_ID=$PERFORMANCE_EC2_ACCESS_KEY
+              export AWS_SECRET_ACCESS_KEY=$PERFORMANCE_EC2_SECRET_KEY
+              export AWS_DEFAULT_REGION=$PERFORMANCE_EC2_REGION
+              export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
+
+              redisbench-admin run-remote \
+                --module_path << parameters.module_path >> \
+                --github_actor << parameters.github_actor >> \
+                --github_repo $CIRCLE_PROJECT_REPONAME \
+                --github_org $CIRCLE_PROJECT_USERNAME \
+                --github_sha $CIRCLE_SHA1 \
+                --github_branch $CIRCLE_BRANCH \
+                --upload_results_s3 \
+                --triggering_env circleci \
+                --required-module graph \
+                --push_results_redistimeseries
+
+  platform-build-steps:
+    parameters:
+      platform:
+        type: string
+    steps:
+      - early_returns
+      - setup-executor
+      - checkout
+      - run:
+          name: Checkout submodules
+          command: |
+            git submodule update --init --recursive
+      - setup-automation
+      - run:
+          name: Build for platform
+          command: |
+            cd build/docker
+            make build OSNICK=<<parameters.platform>> ARTIFACTS=1 TEST=1 SHOW=1
+      - early_return_for_forked_pull_requests
+      - run:
+          name: Build for platform (publish)
+          command: |
+            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
+            cd build/docker
+            make publish OSNICK=<<parameters.platform>> OFFICIAL=0 SHOW=1 VERBOSE=1
+      - persist_to_workspace:
+          root: bin/artifacts
+          paths:
+            - 'snapshots/*.zip'
+            - 'snapshots/*.tgz'
+            - '*.zip'
+            - '*.tgz'
+
+jobs:
+  build:
+    docker:
+      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+        environment:
+          LANG: en_US.UTF-8
+          LANGUAGE: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+    steps:
+      - early_returns
+      - checkout
+      - setup-prerequisits
+      - load-cached-deps
+      - run:
+          name: Build
+          command: |
+            make
+            make package
+      - save-deps-cache
       - run:
           name: Test
           command: make test
       - early_return_for_forked_pull_requests
-
       - run:
-          name: Persist Artifacts
+          name: Persist Artifact for CI benchmarks
           command: |
             strip src/$MODULE_ARTIFACT
-            mkdir -p /workspace/build && cp src/$MODULE_ARTIFACT /workspace
-            cp ramp.yml /workspace/
+            mkdir -p /workspace
+            cp src/$MODULE_ARTIFACT /workspace
 
       - persist_to_workspace:
           root: /workspace
           paths:
             - '*.so'
-            - ramp.yml
-            - build
 
+  build_memcheck:
+    docker:
+      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+        environment:
+            LANG: en_US.UTF-8
+            LANGUAGE: en_US.UTF-8
+            LC_ALL: en_US.UTF-8
+    steps:
+      - early_returns
+      - checkout
+      - setup-prerequisits
+      - load-cached-deps
+      - attach_workspace:
+          at: /workspace
       - run:
           name: Test for memory leaks
           command: |
               # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
-              git clone https://github.com/antirez/redis.git; cd redis; git checkout 6.0.1; make valgrind; make install; cd ..
-              make clean;
+              python3 ./deps/readies/bin/getredis --force --valgrind
               make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
           # Allow RediSearch global destructors.
           environment:
             RS_GLOBAL_DTORS: 1
 
-  package_branch:
-    docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+  build_macos:
+    macos:
+      xcode: 12.4.0
+    environment:
+      LANG: en_US.UTF-8
+      LANGUAGE: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
     steps:
-      - attach_workspace:
-          at: /workspace
+      - early_returns
+      - checkout
+      - setup-prerequisits
       - run:
-          name: Package
-          command: >-
-            python -m RAMP.ramp pack -m /workspace/ramp.yml -o
-            /workspace/build/$PACKAGE_NAME.{os}-{architecture}.$CIRCLE_BRANCH.zip
-            /workspace/$MODULE_ARTIFACT
+          name: Build
+          command: |
+            make
+            make package
+      - run:
+          name: Test
+          command: make test
       - persist_to_workspace:
-          root: /workspace
+          root: bin/artifacts
           paths:
-            - build
-      - store_artifacts:
-          path: /workspace/build
-  package_release:
+            - 'snapshots/*.zip'
+            - 'snapshots/*.tgz'
+            - '*.zip'
+            - '*.tgz'
+
+  platform_build:
+    parameters:
+      platform:
+        type: string
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: debian:buster
     steps:
-      - attach_workspace:
-          at: /workspace
-      - run:
-          name: Package
-          command: >-
-            python -m RAMP.ramp pack -m /workspace/ramp.yml -o
-            /workspace/build/$PACKAGE_NAME.{os}-{architecture}.{semantic_version}.zip
-            /workspace/$MODULE_ARTIFACT
-      - run:
-          name: Package
-          command: >-
-            python -m RAMP.ramp pack -m /workspace/ramp.yml -o
-            /workspace/build/$PACKAGE_NAME.{os}-{architecture}.latest.zip
-            /workspace/$MODULE_ARTIFACT
-      - persist_to_workspace:
-          root: /workspace
-          paths:
-            - build
-      - store_artifacts:
-          path: /workspace/build
+      - platform-build-steps:
+          platform: <<parameters.platform>>
+
   deploy_branch:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: redisfab/rmbuilder:6.0.9-x64-bionic
     steps:
       - attach_workspace:
-          at: /workspace
+          at: artifacts
       - run:
           name: Deploy to S3
-          command: >-
-            aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
-            public-read --recursive --exclude "*" --include "*.zip"
+          command: |
+            du -ah --apparent-size artifacts/snapshots/*
+            for f in artifacts/snapshots/*.zip artifacts/snapshots/*.tgz; do
+              aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
+            done
 
   deploy_release:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: redisfab/rmbuilder:6.0.9-x64-bionic
     steps:
+      - attach_workspace:
+          at: artifacts
+      - run:
+          name: Deploy to S3
+          command: |
+            du -ah --apparent-size artifacts/*
+            for f in artifacts/*.zip artifacts/*.tgz; do
+              aws s3 cp $f s3://redismodules/$PACKAGE_NAME/ --acl public-read
+            done
+
+  release_automation:
+    docker:
+      - image: redisfab/rmbuilder:6.0.9-x64-buster
+    steps:
+      - checkout
+      - setup-automation
+      - run:
+          name: Run QA Automation
+          command: MODULE_VERSION=$CIRCLE_TAG VERBOSE=1 TEST=release ./tests/qa/run
+
+  nightly_automation:
+    docker:
+      - image: redisfab/rmbuilder:6.0.9-x64-buster
+    steps:
+      - checkout
+      - setup-automation
+      - run:
+          name: Run QA Automation
+          command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
+
+  performance_ci_automation_not_integ:
+    docker:
+      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+    steps:
+      - early_returns
+      - checkout
+      - setup-prerequisits
+      - attach_workspace:
+          at: /workspace
+      - benchmark-automation
+
+  performance_ci_automation:
+    docker:
+      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+    steps:
+      - early_returns
+      - checkout
+      - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - run:
-          name: Deploy to S3
-          command: >-
-            aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
-            public-read --recursive --exclude "*" --include "*.zip"
-            
-  run_automation:
+          name: Unzip module artifact
+          command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
+      - benchmark-automation
+
+  nightly_performance_automation:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+      - image: redisfab/rmbuilder:6.0.9-x64-bionic
     steps:
+      - early_returns
+      - checkout
+      - setup-prerequisits
+      - attach_workspace:
+          at: /workspace
+      - load-cached-deps
+
       - run:
-          name: Run QA Automation
-          command: >-
-            apt-get update &&
-            apt-get -y install curl &&
-            curl -k -u $QA_AUTOMATION_USERNAME:$QA_AUTOMATION_PASS -X POST
-            -H "Content-Type: application/json"
-            -d '{"service_id":"single_module_test_cycle_sanity_and_extended", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.6.0", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"rhel7.5-x86_64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
-            https://qa-automation-center.redislabs.com/processes
+          name: Build artifact
+          command: make
+
+      - benchmark-automation:
+          github_actor: "ci.nightly"
+          module_path: "/root/project/src/$PACKAGE_NAME.so"
+
+
+on-any-branch: &on-any-branch
+  filters:
+    branches:
+      only: /.*/
+    tags:
+      only: /.*/
+
+never: &never
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      ignore: /.*/
+
+on-master: &on-master
+  filters:
+    branches:
+      only: master
+    tags:
+      ignore: /.*/
+
+on-integ-branch: &on-integ-branch
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
+    tags:
+      ignore: /.*/
+
+not-on-integ-branch: &not-on-integ-branch
+  filters:
+    branches:
+      ignore:
+        - master
+        - /^\d+\.\d+.*$/
+    tags:
+      ignore: /.*/
+
+on-version-tags: &on-version-tags
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      only: /^v[0-9].*/
+
+on-integ-and-version-tags: &on-integ-and-version-tags
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
+    tags:
+      only: /^v[0-9].*/
+
+context: &context
+  context:
+    - common
+
 
 workflows:
   version: 2
   build_and_package:
     jobs:
       - build:
-          filters:
-            tags:
-              only: /.*/
-      - package_branch:
+          <<: *context
+          <<: *not-on-integ-branch
+      - build_memcheck:
+          <<: *context
+          <<: *on-any-branch
+      - build_macos:
+          # <<: *on-any-branch
+          <<: *context
+          <<: *on-integ-and-version-tags
+      - platform_build:
+          <<: *context
+          <<: *on-integ-and-version-tags
+          matrix:
+            parameters:
+              platform: [bionic, xenial, centos7]
+      - deploy_branch:
+          <<: *context
+          <<: *on-integ-branch
+          requires:
+            - platform_build
+            - build_macos
+      - release_automation:
+          <<: *context
+          <<: *on-version-tags
+          requires:
+            - deploy_release
+      - deploy_release:
+          <<: *context
+          <<: *on-version-tags
+          requires:
+            - platform_build
+            - build_macos
+      - performance_ci_automation_not_integ:
+          <<: *context
+          <<: *not-on-integ-branch
           requires:
             - build
+      - performance_ci_automation:
+          <<: *context
+          <<: *on-integ-and-version-tags
+          requires:
+            - platform_build
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "07 20 * * *"
           filters:
             branches:
               only: master
-      - package_release:
-          requires:
-            - build
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: '/^v[0-9].*/'
-      - deploy_branch:
-          requires:
-            - package_branch
-      - run_automation:
-          requires:
-            - deploy_branch
-      - deploy_release:
-          filters:
-            tags:
-              only: '/^v[0-9].*/'
-          requires:
-            - package_release
+    jobs:
+      - nightly_automation
+      - nightly_performance_automation:
+          <<: *context

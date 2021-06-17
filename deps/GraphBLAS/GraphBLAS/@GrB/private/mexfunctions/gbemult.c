@@ -2,26 +2,28 @@
 // gbemult: sparse matrix element-wise multiplication
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
-// gbemult is an interface to GrB_eWiseMult_Matrix_*.
+// gbemult is an interface to GrB_Matrix_eWiseMult_BinaryOp.
+// Note that gbeadd and gbemult are nearly identical mexFunctions.
 
 // Usage:
 
-// Cout = GrB.emult (op, A, B, desc)
-// Cout = GrB.emult (Cin, accum, op, A, B, desc)
-// Cout = GrB.emult (Cin, M, op, A, B, desc)
-// Cout = GrB.emult (Cin, M, accum, op, A, B, desc)
+// C = gbemult (binop, A, B)
+// C = gbemult (binop, A, B, desc)
+// C = gbemult (Cin, accum, binop, A, B, desc)
+// C = gbemult (Cin, M, binop, A, B, desc)
+// C = gbemult (Cin, M, accum, binop, A, B, desc)
 
 // If Cin is not present then it is implicitly a matrix with no entries, of the
 // right size (which depends on A, B, and the descriptor).
 
 #include "gb_matlab.h"
 
-#define USAGE "usage: Cout = GrB.emult (Cin, M, accum, op, A, B, desc)"
+#define USAGE "usage: C = GrB.emult (Cin, M, accum, binop, A, B, desc)"
 
 void mexFunction
 (
@@ -36,8 +38,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage ((nargin == 4 || nargin == 6 || nargin == 7) && nargout <= 1,
-        USAGE) ;
+    gb_usage (nargin >= 3 && nargin <= 7 && nargout <= 2, USAGE) ;
 
     //--------------------------------------------------------------------------
     // find the arguments
@@ -47,10 +48,10 @@ void mexFunction
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;
-    int nmatrices, nstrings, ncells ;
+    int nmatrices, nstrings, ncells, sparsity ;
     GrB_Descriptor desc ;
     gb_get_mxargs (nargin, pargin, USAGE, Matrix, &nmatrices, String, &nstrings,
-        Cell, &ncells, &desc, &base, &kind, &fmt) ;
+        Cell, &ncells, &desc, &base, &kind, &fmt, &sparsity) ;
 
     CHECK_ERROR (nmatrices < 2 || nstrings < 1 || ncells > 0, USAGE) ;
 
@@ -58,7 +59,7 @@ void mexFunction
     // get the matrices
     //--------------------------------------------------------------------------
 
-    GrB_Type atype, ctype = NULL ;
+    GrB_Type atype, btype, ctype = NULL ;
     GrB_Matrix C = NULL, M = NULL, A, B ;
 
     if (nmatrices == 2)
@@ -81,6 +82,7 @@ void mexFunction
     }
 
     OK (GxB_Matrix_type (&atype, A)) ;
+    OK (GxB_Matrix_type (&btype, B)) ;
     if (C != NULL)
     { 
         OK (GxB_Matrix_type (&ctype, C)) ;
@@ -94,14 +96,14 @@ void mexFunction
 
     if (nstrings == 1)
     { 
-        op    = gb_mxstring_to_binop (String [0], atype) ;
+        op    = gb_mxstring_to_binop (String [0], atype, btype) ;
     }
     else 
     { 
         // if accum appears, then Cin must also appear
         CHECK_ERROR (C == NULL, USAGE) ;
-        accum = gb_mxstring_to_binop (String [0], ctype) ;
-        op    = gb_mxstring_to_binop (String [1], atype) ;
+        accum = gb_mxstring_to_binop (String [0], ctype, ctype) ;
+        op    = gb_mxstring_to_binop (String [1], atype, btype) ;
     }
 
     //--------------------------------------------------------------------------
@@ -130,16 +132,17 @@ void mexFunction
         // use the ztype of the op as the type of C
         OK (GxB_BinaryOp_ztype (&ctype, op)) ;
 
-        OK (GrB_Matrix_new (&C, ctype, cnrows, cncols)) ;
+        // create the matrix C and set its format and sparsity
         fmt = gb_get_format (cnrows, cncols, A, B, fmt) ;
-        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
+        sparsity = gb_get_sparsity (A, B, sparsity) ;
+        C = gb_new (ctype, cnrows, cncols, fmt, sparsity) ;
     }
 
     //--------------------------------------------------------------------------
     // compute C<M> += (A.*B)
     //--------------------------------------------------------------------------
 
-    OK (GrB_eWiseMult_Matrix_BinaryOp (C, M, accum, op, A, B, desc)) ;
+    OK1 (C, GrB_Matrix_eWiseMult_BinaryOp (C, M, accum, op, A, B, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
@@ -155,6 +158,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;
+    pargout [1] = mxCreateDoubleScalar (kind) ;
     GB_WRAPUP ;
 }
 

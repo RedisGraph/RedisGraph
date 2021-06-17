@@ -4,25 +4,27 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
-
 #include "graph.h"
-#include "../config.h"
+#include "RG.h"
 #include "../util/arr.h"
 #include "../util/qsort.h"
-#include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/rmalloc.h"
+#include "../configuration/config.h"
+#include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/datablock/oo_datablock.h"
 
 static GrB_BinaryOp _graph_edge_accum = NULL;
-// GraphBLAS Select operator to free edge arrays and delete edges.
-static GxB_SelectOp _select_delete_edges = NULL;
+// GraphBLAS binary operator for freeing edges
+static GrB_BinaryOp _binary_op_delete_edges = NULL;
 
-/* ========================= Forward declarations  ========================= */
+//------------------------------------------------------------------------------
+// Forward declarations
+//------------------------------------------------------------------------------
 void _MatrixResizeToCapacity(const Graph *g, RG_Matrix m);
 
-
-/* ========================= GraphBLAS functions ========================= */
+//------------------------------------------------------------------------------
+// GraphBLAS functions
+//------------------------------------------------------------------------------
 void _edge_accum(void *_z, const void *_x, const void *_y) {
 	EdgeID *z = (EdgeID *)_z;
 	const EdgeID *x = (const EdgeID *)_x;
@@ -45,62 +47,56 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 	}
 }
 
-/* GxB_select_function which delete edges and free edge arrays. */
-bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols, const void *x,
-						  const void *thunk) {
-	// K is a uint64_t pointer which points to the address of our graph.
-	const Graph *g = (const Graph *) * ((uint64_t *)thunk);
-	const EdgeID *id = (const EdgeID *)x;
+void _binary_op_free_edge(void *z, const void *x, const void *y) {
+	const Graph *g = (const Graph *) * ((uint64_t *)x);
+	const EdgeID *id = (const EdgeID *)y;
+
 	if((SINGLE_EDGE(*id))) {
 		DataBlock_DeleteItem(g->edges, SINGLE_EDGE_ID(*id));
 	} else {
-		/* Due to GraphBLAS V3.0+ parallelism
-		 * _select_op_free_edge will be called twice
-		 * Tim: "In my draft parallel GraphBLAS,
-		 * most of my codes take 2 passes over the data.
-		 * It's what Intel calls the Inspector / Executor model of computing.
-		 * Both passes are fully parallel.
-		 * The first pass is purely symbolic,
-		 * and it figures out where all the output data needs to go.
-		 * The 2nd pass fills in the data in the output."
-		 *
-		 * To avoid double freeing we'll place a marker on the first pass:
-		 * ids[0] = INVALID_ENTITY_ID
-		 * to be picked up by the second pass, on which the array will be freed. */
 		EdgeID *ids = (EdgeID *)(*id);
-
-		// Check for first pass marker.
-		if(ids[0] != INVALID_ENTITY_ID) {
-			uint id_count = array_len(ids);
-			for(uint i = 0; i < id_count; i++) {
-				DataBlock_DeleteItem(g->edges, ids[i]);
-			}
-			// Place first pass marker for second pass to pick up on.
-			ids[0] = INVALID_ENTITY_ID;
-		} else {
-			// Second pass, simply free the array.
-			array_free(ids);
+		uint id_count = array_len(ids);
+		for(uint i = 0; i < id_count; i++) {
+			DataBlock_DeleteItem(g->edges, ids[i]);
 		}
+		array_free(ids);
 	}
-
-	return false;
 }
 
 /* ========================= RG_Matrix functions =============================== */
 
-// Creates a new matrix;
-static RG_Matrix RG_Matrix_New(GrB_Type data_type, GrB_Index nrows, GrB_Index ncols) {
+// Creates a new matrix
+static RG_Matrix RG_Matrix_New(const Graph *g, GrB_Type data_type) {
 	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
-	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, nrows, ncols);
-	assert(matrix_res == GrB_SUCCESS);
+
+	matrix->dirty = true;
+	matrix->allow_multi_edge = true;
+
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
+	ASSERT(matrix_res == GrB_SUCCESS);
+
 	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
-	assert(mutex_res == 0);
+	ASSERT(mutex_res == 0);
+
 	return matrix;
 }
 
 // Returns underlying GraphBLAS matrix.
 static inline GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix) {
 	return matrix->grb_matrix;
+}
+
+static inline bool RG_Matrix_IsDirty(RG_Matrix matrix) {
+	return matrix->dirty;
+}
+
+static inline void RG_Matrix_SetDirty(RG_Matrix matrix) {
+	matrix->dirty = true;
+}
+
+static inline void RG_Matrix_SetUnDirty(RG_Matrix matrix) {
+	matrix->dirty = false;
 }
 
 // Locks the matrix.
@@ -111,6 +107,10 @@ static inline void RG_Matrix_Lock(RG_Matrix matrix) {
 // Unlocks the matrix.
 static inline void _RG_Matrix_Unlock(RG_Matrix matrix) {
 	pthread_mutex_unlock(&matrix->mutex);
+}
+
+static inline bool _RG_Matrix_MultiEdgeEnabled(const RG_Matrix matrix) {
+	return matrix->allow_multi_edge;
 }
 
 // Free RG_Matrix.
@@ -158,25 +158,25 @@ void Graph_WriterLeave(Graph *g) {
 
 /* Force execution of all pending operations on a matrix. */
 static inline void _Graph_ApplyPending(GrB_Matrix m) {
-	GrB_Index nvals;
-	assert(GrB_Matrix_nvals(&nvals, m) == GrB_SUCCESS);
+	GrB_Info res = GrB_wait(&m);
+	ASSERT(res == GrB_SUCCESS);
 }
 
 /* ========================= Graph utility functions ========================= */
 
 // Return number of nodes graph can contain.
-size_t _Graph_NodeCap(const Graph *g) {
+static inline size_t _Graph_NodeCap(const Graph *g) {
 	return g->nodes->itemCap;
 }
 
 // Return number of nodes graph can contain.
-size_t _Graph_EdgeCap(const Graph *g) {
+static inline size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
 }
 
 // Locates edges connecting src to destination.
 void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
-	assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
+	ASSERT(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
 		   r < Graph_RelationTypeCount(g));
 
 	Edge e;
@@ -196,7 +196,8 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 		// Discard most significate bit.
 		edgeId = SINGLE_EDGE_ID(edgeId);
 		e.entity = DataBlock_GetItem(g->edges, edgeId);
-		assert(e.entity);
+		e.id = edgeId;
+		ASSERT(e.entity);
 		*edges = array_append(*edges, e);
 	} else {
 		/* Multiple edges connecting src to dest,
@@ -207,19 +208,11 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 		for(int i = 0; i < edgeCount; i++) {
 			edgeId = edgeIds[i];
 			e.entity = DataBlock_GetItem(g->edges, edgeId);
-			assert(e.entity);
+			e.id = edgeId;
+			ASSERT(e.entity);
 			*edges = array_append(*edges, e);
 		}
 	}
-}
-
-// Tests if there's an edge of type r between src and dest nodes.
-bool Graph_EdgeExists(const Graph *g, NodeID srcID, NodeID destID, int r) {
-	assert(g);
-	EdgeID edgeId;
-	GrB_Matrix M = Graph_GetRelationMatrix(g, r);
-	GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, M, destID, srcID);
-	return res == GrB_SUCCESS;
 }
 
 static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
@@ -228,45 +221,91 @@ static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
 
 /* ============= Matrix synchronization and resizing functions =============== */
 
+static inline void _Graph_SetAdjacencyMatrixDirty(const Graph *g) {
+	RG_Matrix_SetDirty(g->adjacency_matrix);
+	RG_Matrix_SetDirty(g->_t_adjacency_matrix);
+}
+
+static inline void _Graph_SetLabelMatrixDirty(const Graph *g, int label_idx) {
+	ASSERT(g && label_idx < array_len(g->labels));
+	RG_Matrix_SetDirty(g->labels[label_idx]);
+}
+
+static inline void _Graph_SetRelationMatrixDirty(const Graph *g, int relation_idx) {
+	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
+	if(relation_idx == GRAPH_NO_RELATION) {
+		_Graph_SetAdjacencyMatrixDirty(g);
+	} else {
+		RG_Matrix_SetDirty(g->relations[relation_idx]);
+		bool maintain_transpose;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+		if(maintain_transpose) RG_Matrix_SetDirty(g->t_relations[relation_idx]);
+	}
+}
+
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
 void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
+	bool dirty = RG_Matrix_IsDirty(rg_matrix);
 	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(rg_matrix);
 	GrB_Index n_rows;
 	GrB_Index n_cols;
 	GrB_Matrix_nrows(&n_rows, m);
 	GrB_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
+	bool require_resize = (n_rows != dims);
 
-	// If the graph belongs to one thread, we don't need to lock the mutex.
+	// matrix must be resized if its dimensions missmatch required dimensions
+	ASSERT(n_rows == n_cols);
+
+	// matrix fully synced, nothing to do
+	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) return;
+
+	//--------------------------------------------------------------------------
+	// sync under WRITE
+	//--------------------------------------------------------------------------
+
+	// if the graph belongs to one thread, we don't need to lock the mutex
 	if(g->_writelocked) {
-		if((n_rows != dims) || (n_cols != dims)) {
-			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
+		if(require_resize) {
+			GrB_Info res = GxB_Matrix_resize(m, dims, dims);
+			ASSERT(res == GrB_SUCCESS);
 		}
 
-		// Writer under write lock, no need to flush pending changes.
+		// writer under write lock, no need to flush pending changes
 		return;
 	}
-	// Lock the matrix.
+
+	//--------------------------------------------------------------------------
+	// sync under READ
+	//--------------------------------------------------------------------------
+
+	// lock the matrix
 	RG_Matrix_Lock(rg_matrix);
 
-	bool pending = false;
-	GxB_Matrix_Pending(m, &pending);
+	// recheck
+	GrB_Matrix_nrows(&n_rows, m);
+	GrB_Matrix_ncols(&n_cols, m);
+	dims = Graph_RequiredMatrixDim(g);
+	require_resize = (n_rows != dims);
+	ASSERT(n_rows == n_cols);
 
-	// If the matrix has pending operations or requires
-	// a resize, enter critical section.
-	if(pending || (n_rows != dims) || (n_cols != dims)) {
-		// Double-check if resize is necessary.
-		GrB_Matrix_nrows(&n_rows, m);
-		GrB_Matrix_ncols(&n_cols, m);
-		dims = Graph_RequiredMatrixDim(g);
-		if((n_rows != dims) || (n_cols != dims)) {
-			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-		}
-		// Flush changes to matrix.
-		_Graph_ApplyPending(m);
+	// some other thread performed sync
+	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) goto cleanup;
+
+	// resize if required
+	if(require_resize) {
+		GrB_Info res = GxB_Matrix_resize(m, dims, dims);
+		ASSERT(res == GrB_SUCCESS);
 	}
+
+	// flush pending changes if dirty
+	if(RG_Matrix_IsDirty(rg_matrix)) _Graph_ApplyPending(m);
+
+	RG_Matrix_SetUnDirty(rg_matrix);
+
+cleanup:
 	// Unlock matrix mutex.
 	_RG_Matrix_Unlock(rg_matrix);
 }
@@ -278,11 +317,13 @@ void _MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
 	GrB_Index ncols;
 	GrB_Matrix_ncols(&ncols, m);
 	GrB_Matrix_nrows(&nrows, m);
-	GrB_Index cap = _Graph_NodeCap(g);
+	ASSERT(nrows == ncols);
+	GrB_Index cap = Graph_RequiredMatrixDim(g);
 
 	// This policy should only be used in a thread-safe context, so no locking is required.
-	if(ncols != cap || nrows != cap) {
-		assert(GxB_Matrix_resize(m, cap, cap) == GrB_SUCCESS);
+	if(nrows != cap) {
+		GrB_Info res = GxB_Matrix_resize(m, cap, cap);
+		ASSERT(res == GrB_SUCCESS);
 	}
 }
 
@@ -294,22 +335,22 @@ void _MatrixNOP(const Graph *g, RG_Matrix matrix) {
 /* Define the current behavior for matrix creations and retrievals on this graph. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 	switch(policy) {
-	case SYNC_AND_MINIMIZE_SPACE:
-		// Default behavior; forces execution of pending GraphBLAS operations
-		// when appropriate and sizes matrices to the current node count.
-		g->SynchronizeMatrix = _MatrixSynchronize;
-		break;
-	case RESIZE_TO_CAPACITY:
-		// Bulk insertion and creation behavior; does not force pending operations
-		// and resizes matrices to the graph's current node capacity.
-		g->SynchronizeMatrix = _MatrixResizeToCapacity;
-		break;
-	case DISABLED:
-		// Used when deleting or freeing a graph; forces no matrix updates or resizes.
-		g->SynchronizeMatrix = _MatrixNOP;
-		break;
-	default:
-		assert(false);
+		case SYNC_AND_MINIMIZE_SPACE:
+			// Default behavior; forces execution of pending GraphBLAS operations
+			// when appropriate and sizes matrices to the current node count.
+			g->SynchronizeMatrix = _MatrixSynchronize;
+			break;
+		case RESIZE_TO_CAPACITY:
+			// Bulk insertion and creation behavior; does not force pending operations
+			// and resizes matrices to the graph's current node capacity.
+			g->SynchronizeMatrix = _MatrixResizeToCapacity;
+			break;
+		case DISABLED:
+			// Used when deleting or freeing a graph; forces no matrix updates or resizes.
+			g->SynchronizeMatrix = _MatrixNOP;
+			break;
+		default:
+			ASSERT(false);
 	}
 }
 
@@ -327,7 +368,10 @@ void Graph_ApplyAllPending(Graph *g) {
 		g->SynchronizeMatrix(g, M);
 	}
 
-	if(Config_MaintainTranspose()) {
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+
+	if(maintain_transpose) {
 		for(int i = 0; i < array_len(g->t_relations); i ++) {
 			M = g->t_relations[i];
 			g->SynchronizeMatrix(g, M);
@@ -341,53 +385,67 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
 
 	Graph *g = rm_malloc(sizeof(Graph));
-	g->nodes = DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)FreeEntity);
-	g->edges = DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity);
-	g->labels = array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
-	g->relations = array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-	g->adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
-	g->_t_adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
-	g->_zero_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
+
+	g->nodes                =  DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)FreeEntity);
+	g->edges                =  DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity);
+	g->labels               =  array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
+	g->relations            =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	g->adjacency_matrix     =  RG_Matrix_New(g, GrB_BOOL);
+	g->_t_adjacency_matrix  =  RG_Matrix_New(g, GrB_BOOL);
+	g->_zero_matrix         =  RG_Matrix_New(g, GrB_BOOL);
+
+	// init graph statistics
+	GraphStatistics_init(&g->stats);
+
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
-	g->t_relations = Config_MaintainTranspose() ?
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+	g->t_relations = maintain_transpose ?
 					 array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP) : NULL;
 
 	// Initialize a read-write lock scoped to the individual graph
-	assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
+	int res;
+	UNUSED(res);
+	res = pthread_rwlock_init(&g->_rwlock, NULL);
+	ASSERT(res == 0);
 	g->_writelocked = false;
 
 	// Force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 
 	// Synchronization objects initialization.
-	assert(pthread_mutex_init(&g->_writers_mutex, NULL) == 0);
+	res = pthread_mutex_init(&g->_writers_mutex, NULL);
+	ASSERT(res == 0);
 
 	// Create edge accumulator binary function
 	if(!_graph_edge_accum) {
 		GrB_Info info;
+		UNUSED(info);
 		info = GrB_BinaryOp_new(&_graph_edge_accum, _edge_accum, GrB_UINT64, GrB_UINT64, GrB_UINT64);
-		assert(info == GrB_SUCCESS);
+		ASSERT(info == GrB_SUCCESS);
 	}
 
 	return g;
 }
 
 // All graph matrices are required to be squared NXN
-// where N is Graph_RequiredMatrixDim.
-size_t Graph_RequiredMatrixDim(const Graph *g) {
-	// Matrix dimensions should be at least:
-	// Number of nodes + number of deleted nodes.
-	return g->nodes->itemCount + array_len(g->nodes->deletedIdx);
+// where N = Graph_RequiredMatrixDim.
+inline size_t Graph_RequiredMatrixDim(const Graph *g) {
+	return _Graph_NodeCap(g);
 }
 
 size_t Graph_NodeCount(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	return g->nodes->itemCount;
 }
 
 uint Graph_DeletedNodeCount(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	return DataBlock_DeletedItemsCount(g->nodes);
+}
+
+size_t Graph_UncompactedNodeCount(const Graph *g) {
+	return Graph_NodeCount(g) + Graph_DeletedNodeCount(g);
 }
 
 size_t Graph_LabeledNodeCount(const Graph *g, int label) {
@@ -398,12 +456,16 @@ size_t Graph_LabeledNodeCount(const Graph *g, int label) {
 }
 
 size_t Graph_EdgeCount(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	return g->edges->itemCount;
 }
 
+uint64_t Graph_RelationEdgeCount(const Graph *g, int relation_idx) {
+	return GraphStatistics_EdgeCount(&g->stats, relation_idx);
+}
+
 uint Graph_DeletedEdgeCount(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	return DataBlock_DeletedItemsCount(g->edges);
 }
 
@@ -416,29 +478,31 @@ int Graph_LabelTypeCount(const Graph *g) {
 }
 
 void Graph_AllocateNodes(Graph *g, size_t n) {
-	assert(g);
+	ASSERT(g);
 	DataBlock_Accommodate(g->nodes, n);
 }
 
 void Graph_AllocateEdges(Graph *g, size_t n) {
-	assert(g);
+	ASSERT(g);
 	DataBlock_Accommodate(g->edges, n);
 }
 
 int Graph_GetNode(const Graph *g, NodeID id, Node *n) {
-	assert(g);
+	ASSERT(g);
 	n->entity = _Graph_GetEntity(g->nodes, id);
+	n->id = id;
 	return (n->entity != NULL);
 }
 
 int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
-	assert(g && id < _Graph_EdgeCap(g));
+	ASSERT(g && id < _Graph_EdgeCap(g));
 	e->entity = _Graph_GetEntity(g->edges, id);
+	e->id = id;
 	return (e->entity != NULL);
 }
 
 int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
-	assert(g);
+	ASSERT(g);
 	int label = GRAPH_NO_LABEL;
 	for(int i = 0; i < array_len(g->labels); i++) {
 		bool x = false;
@@ -454,7 +518,7 @@ int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
 }
 
 int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
-	assert(g && e);
+	ASSERT(g && e);
 	NodeID srcNodeID = Edge_GetSrcNodeID(e);
 	NodeID destNodeID = Edge_GetDestNodeID(e);
 	EdgeID id = ENTITY_GET_ID(e);
@@ -489,22 +553,22 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	}
 
 	// We must be able to find edge relation.
-	assert(false);
+	ASSERT(false);
 	return GRAPH_NO_RELATION;
 }
 
 void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, int r,
 								   Edge **edges) {
-	assert(g && r < Graph_RelationTypeCount(g) && edges);
+	ASSERT(g && r < Graph_RelationTypeCount(g) && edges);
 
 	// Invalid relation type specified; this can occur on multi-type traversals like:
 	// MATCH ()-[:real_type|fake_type]->()
 	if(r == GRAPH_UNKNOWN_RELATION) return;
 
-	Node srcNode;
-	Node destNode;
-	assert(Graph_GetNode(g, srcID, &srcNode));
-	assert(Graph_GetNode(g, destID, &destNode));
+	Node srcNode = GE_NEW_NODE();
+	Node destNode = GE_NEW_NODE();
+	ASSERT(Graph_GetNode(g, srcID, &srcNode));
+	ASSERT(Graph_GetNode(g, destID, &destNode));
 
 	if(r != GRAPH_NO_RELATION) {
 		_Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
@@ -518,14 +582,14 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 }
 
 void Graph_CreateNode(Graph *g, int label, Node *n) {
-	assert(g);
+	ASSERT(g);
 
 	NodeID id;
 	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
-	en->id = id;
+	n->id = id;
+	n->entity = en;
 	en->prop_count = 0;
 	en->properties = NULL;
-	n->entity = en;
 
 	if(label != GRAPH_NO_LABEL) {
 		// Try to set matrix at position [id, id]
@@ -535,69 +599,105 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
 		if(res != GrB_SUCCESS) {
 			_MatrixResizeToCapacity(g, matrix);
-			assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
+			res = GrB_Matrix_setElement_BOOL(m, true, id, id);
+			ASSERT(res == GrB_SUCCESS);
 		}
+		_Graph_SetLabelMatrixDirty(g, label);
 	}
 }
 
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
+	GrB_Info info;
+	UNUSED(info);
+	RG_Matrix M = g->relations[r];
+	GrB_Matrix t_relationMat = NULL;
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
 	GrB_Matrix tadj = Graph_GetTransposedAdjacencyMatrix(g);
 	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
 
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+	if(maintain_transpose) {
+		t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
+	}
+
 	// Rows represent source nodes, columns represent destination nodes.
+	edge_id = SET_MSB(edge_id);
 	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
 	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
-	GrB_Index I = src;
-	GrB_Index J = dest;
-	edge_id = SET_MSB(edge_id);
-	GrB_Info info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-					(
-						relationMat,         // input/output matrix for results
-						GrB_NULL,            // optional mask for C(I,J), unused if NULL
-						_graph_edge_accum,    // optional accum for Z=accum(C(I,J),x)
-						edge_id,             // scalar to assign to C(I,J)
-						&I,                  // row indices
-						1,                   // number of row indices
-						&J,                  // column indices
-						1,                   // number of column indices
-						GrB_NULL             // descriptor for C(I,J) and Mask
-					);
-	assert(info == GrB_SUCCESS);
 
-	// Update the transposed matrix if one is present.
-	if(Config_MaintainTranspose()) {
-		// Perform the same update to the J,I coordinates of the transposed matrix.
-		GrB_Matrix t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
-		GrB_Info info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-						(
-							t_relationMat,       // input/output matrix for results
-							GrB_NULL,            // optional mask for C(J,I), unused if NULL
-							_graph_edge_accum,   // optional accum for Z=accum(C(J,I),x)
-							edge_id,             // scalar to assign to C(J,I)
-							&J,                  // row indices
-							1,                   // number of row indices
-							&I,                  // column indices
-							1,                   // number of column indices
-							GrB_NULL             // descriptor for C(J,I) and Mask
-						);
-		assert(info == GrB_SUCCESS);
+	// set matrices as dirty
+	_Graph_SetRelationMatrixDirty(g, r);
+	_Graph_SetAdjacencyMatrixDirty(g);
+
+	// An edge of type r has just been created, update statistics.
+	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
+
+	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
+	if(_RG_Matrix_MultiEdgeEnabled(M)) {
+		GrB_Index I = src;
+		GrB_Index J = dest;
+		info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+			   (
+				   relationMat,          // input/output matrix for results
+				   GrB_NULL,             // optional mask for C(I,J), unused if NULL
+				   _graph_edge_accum,    // optional accum for Z=accum(C(I,J),x)
+				   edge_id,              // scalar to assign to C(I,J)
+				   &I,                   // row indices
+				   1,                    // number of row indices
+				   &J,                   // column indices
+				   1,                    // number of column indices
+				   GrB_NULL              // descriptor for C(I,J) and Mask
+			   );
+		ASSERT(info == GrB_SUCCESS);
+
+		// Update the transposed matrix if one is present.
+		if(t_relationMat != NULL) {
+			// Perform the same update to the J,I coordinates of the transposed matrix.
+			info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+				   (
+					   t_relationMat,       // input/output matrix for results
+					   GrB_NULL,            // optional mask for C(J,I), unused if NULL
+					   _graph_edge_accum,   // optional accum for Z=accum(C(J,I),x)
+					   edge_id,             // scalar to assign to C(J,I)
+					   &J,                  // row indices
+					   1,                   // number of row indices
+					   &I,                  // column indices
+					   1,                   // number of column indices
+					   GrB_NULL             // descriptor for C(J,I) and Mask
+				   );
+			ASSERT(info == GrB_SUCCESS);
+		}
+	} else {
+		// Multi-edge is disabled, use GrB_Matrix_setElement.
+		info = GrB_Matrix_setElement_UINT64(relationMat, edge_id, src, dest);
+		ASSERT(info == GrB_SUCCESS);
+
+		// Update the transposed matrix if one is present.
+		if(t_relationMat != NULL) {
+			info = GrB_Matrix_setElement_UINT64(t_relationMat, edge_id, dest, src);
+			ASSERT(info == GrB_SUCCESS);
+		}
 	}
 }
 
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
-	Node srcNode;
-	Node destNode;
+	Node srcNode = GE_NEW_NODE();
+	Node destNode = GE_NEW_NODE();
 
-	assert(Graph_GetNode(g, src, &srcNode));
-	assert(Graph_GetNode(g, dest, &destNode));
-	assert(g && r < Graph_RelationTypeCount(g));
+	int res;
+	UNUSED(res);
+	res = Graph_GetNode(g, src, &srcNode);
+	ASSERT(res == 1);
+	res = Graph_GetNode(g, dest, &destNode);
+	ASSERT(res == 1);
+	ASSERT(g && r < Graph_RelationTypeCount(g));
 
 	EdgeID id;
 	Entity *en = DataBlock_AllocateItem(g->edges, &id);
-	en->id = id;
 	en->prop_count = 0;
 	en->properties = NULL;
+	e->id = id;
 	e->entity = en;
 	e->relationID = r;
 	e->srcNodeID = src;
@@ -610,7 +710,7 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
  * to/from given node N, depending on given direction. */
 void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int edgeType,
 						Edge **edges) {
-	assert(g && n && edges);
+	ASSERT(g && n && edges);
 	GrB_Matrix M;
 	NodeID srcNodeID;
 	NodeID destNodeID;
@@ -684,16 +784,25 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	NodeID      dest_id  =  Edge_GetDestNodeID(e);
 
 	R = Graph_GetRelationMatrix(g, r);
-	if(Config_MaintainTranspose()) TR = Graph_GetTransposedRelationMatrix(g, r);
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+	if(maintain_transpose) TR = Graph_GetTransposedRelationMatrix(g, r);
 
 	// Test to see if edge exists.
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 	if(info != GrB_SUCCESS) return 0;
 
+	// An edge of type r has just been deleted, update statistics.
+	GraphStatistics_DecEdgeCount(&g->stats, r, 1);
+
 	if(SINGLE_EDGE(edge_id)) {
 		// Single edge of type R connecting src to dest, delete entry.
-		assert(GxB_Matrix_Delete(R, src_id, dest_id) == GrB_SUCCESS);
-		if(TR) assert(GxB_Matrix_Delete(TR, dest_id, src_id) == GrB_SUCCESS);
+		info = GxB_Matrix_Delete(R, src_id, dest_id);
+		ASSERT(info == GrB_SUCCESS);
+		if(TR) {
+			info = GxB_Matrix_Delete(TR, dest_id, src_id);
+			ASSERT(info == GrB_SUCCESS);
+		}
 
 		// See if source is connected to destination with additional edges.
 		bool connected = false;
@@ -712,10 +821,12 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		 * Remove edge from THE adjacency matrix. */
 		if(!connected) {
 			M = Graph_GetAdjacencyMatrix(g);
-			assert(GxB_Matrix_Delete(M, src_id, dest_id) == GrB_SUCCESS);
+			info = GxB_Matrix_Delete(M, src_id, dest_id);
+			ASSERT(info == GrB_SUCCESS);
 
 			M = Graph_GetTransposedAdjacencyMatrix(g);
-			assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
+			info = GxB_Matrix_Delete(M, dest_id, src_id);
+			ASSERT(info == GrB_SUCCESS);
 		}
 	} else {
 		/* Multiple edges connecting src to dest
@@ -730,7 +841,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 
 		// Locate edge within edge array.
 		for(; i < edge_count; i++) if(edges[i] == id) break;
-		assert(i < edge_count);
+		ASSERT(i < edge_count);
 
 		/* Remove edge from edge array
 		 * migrate last edge ID and reduce array size.
@@ -749,10 +860,8 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		if(TR) {
 			/* We must make the matching updates to the transposed matrix.
 			 * First, extract the element that is known to be an edge array. */
-			info = GrB_Matrix_extractElement(&edge_id, TR, dest_id, src_id);
-			assert(info == GrB_SUCCESS);
-			edges = (EdgeID *)edge_id;
-
+			info = GrB_Matrix_extractElement(edges, TR, dest_id, src_id);
+			ASSERT(info == GrB_SUCCESS);
 			// Replace the deleted edge with the last edge in the matrix.
 			edges[i] = edges[edge_count - 1];
 			array_pop(edges);
@@ -765,16 +874,23 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		}
 	}
 
+	_Graph_SetAdjacencyMatrixDirty(g);
+	_Graph_SetRelationMatrixDirty(g, r);
+
 	// Free and remove edges from datablock.
 	DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
 	return 1;
+}
+
+inline bool Graph_EntityIsDeleted(Entity *e) {
+	return DataBlock_ItemIsDeleted(e);
 }
 
 void Graph_DeleteNode(Graph *g, Node *n) {
 	/* Assumption, node is completely detected,
 	 * there are no incoming nor outgoing edges
 	 * leading to / from node. */
-	assert(g && n);
+	ASSERT(g && n);
 
 	// Clear label matrix at position node ID.
 	uint32_t label_count = array_len(g->labels);
@@ -787,71 +903,95 @@ void Graph_DeleteNode(Graph *g, Node *n) {
 }
 
 static void _Graph_FreeRelationMatrices(Graph *g) {
-	if(!_select_delete_edges) {
-		// The select operator has not yet been constructed; build it now.
+	// TODO: disable datablock deleted items array
+	// there's no need to keep track after deleted items as the graph
+	// is being removed we won't be reusing items
+
+	if(!_binary_op_delete_edges) {
+		// The binary operator has not yet been constructed; build it now.
 		GrB_Info res;
-		res = GxB_SelectOp_new(&_select_delete_edges, _select_op_free_edge, GrB_UINT64, GrB_UINT64);
-		assert(res == GrB_SUCCESS);
+		UNUSED(res);
+		res = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
+							   GrB_UINT64, GrB_UINT64, GrB_UINT64);
+		ASSERT(res == GrB_SUCCESS);
 	}
 
 	GxB_Scalar thunk;
 	GxB_Scalar_new(&thunk, GrB_UINT64);
 	GxB_Scalar_setElement_UINT64(thunk, (uint64_t)g);
 
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 	uint relationCount = Graph_RelationTypeCount(g);
-	for(uint i = 0; i < relationCount; i++) {
-		RG_Matrix M = g->relations[i];
-		// Use the edge deletion Select operator to free all edge arrays within the adjacency matrix.
-		GxB_select(M->grb_matrix, GrB_NULL, GrB_NULL, _select_delete_edges, M->grb_matrix, thunk, GrB_NULL);
+	/* use the edge deletion binary operation to free all edge arrays within
+	 * the adjacency matrix */
 
-		// Free the matrix itself.
+	for(uint i = 0; i < relationCount; i++) {
+		RG_Matrix  M = g->relations[i];
+		GrB_Matrix C = M->grb_matrix;
+
+		GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
+									 _binary_op_delete_edges, thunk, C, GrB_NULL);
+
+		// free the matrix itself
 		RG_Matrix_Free(M);
 
-		// Perform the same update to transposed matrices.
-		if(Config_MaintainTranspose()) {
+		// perform the same update to transposed matrices
+		if(maintain_transpose) {
 			RG_Matrix TM = g->t_relations[i];
-			GxB_select(TM->grb_matrix, GrB_NULL, GrB_NULL, _select_delete_edges, TM->grb_matrix, thunk,
-					   GrB_NULL);
-			// Free the matrix itself.
+			C = TM->grb_matrix;
+
+			GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
+										 _binary_op_delete_edges, thunk, C, GrB_NULL);
+
+			// free the matrix itself
 			RG_Matrix_Free(TM);
 		}
 	}
-
 	GrB_free(&thunk);
 }
 
 static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 							 uint *node_deleted, uint *edge_deleted) {
-	assert(g && g->_writelocked && nodes && node_count > 0);
+	ASSERT(g && g->_writelocked && nodes && node_count > 0);
 
-	if(!_select_delete_edges) {
-		// The select operator has not yet been constructed; build it now.
+	if(!_binary_op_delete_edges) {
+		// The binary operator has not yet been constructed; build it now.
 		GrB_Info res;
-		res = GxB_SelectOp_new(&_select_delete_edges, _select_op_free_edge, GrB_UINT64, GrB_UINT64);
-		assert(res == GrB_SUCCESS);
+		UNUSED(res);
+		res = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
+							   GrB_UINT64, GrB_UINT64, GrB_UINT64);
+		ASSERT(res == GrB_SUCCESS);
 	}
 
-	/* Create a matrix M where M[j,i] = 1 where:
+	/* Create a matrix M where M[j,i] = 1 if:
 	 * Node i is connected to node j. */
 
-	GrB_Matrix A;                       // A = R(M) masked relation matrix.
-	GrB_Index nvals;                    // Number of elements in mask.
-	GrB_Matrix Mask;                    // Mask noteing all implicitly deleted edges.
-	GrB_Matrix Nodes;                   // Mask noteing each node marked for deletion.
-	GrB_Matrix adj;                     // Adjacency matrix.
-	GrB_Matrix tadj;                    // Transposed adjacency matrix.
-	GrB_Descriptor desc;                // GraphBLAS descriptor.
-	GxB_MatrixTupleIter *adj_iter;      // iterator over the adjacency matrix.
-	GxB_MatrixTupleIter *tadj_iter;     // iterator over the transposed adjacency matrix.
+	GrB_Matrix          A;          // a = R(M) masked relation matrix
+	GrB_Matrix          adj;        // adjacency matrix
+	GrB_Matrix          tadj;       // transposed adjacency matrix
+	GrB_Index           nrows;
+	GrB_Index           ncols;
+	GrB_Index           nvals;      // number of elements in mask
+	GrB_Matrix          Mask;       // mask noteing all implicitly deleted edges
+	GrB_Matrix          Nodes;      // mask noteing each node marked for deletion
+	GrB_Descriptor      desc;       // GraphBLAS descriptor
+	GxB_MatrixTupleIter *adj_iter;  // iterator over the adjacency matrix
+	GxB_MatrixTupleIter *tadj_iter; // iterator over the transposed adjacency matrix
 
+	nrows = Graph_RequiredMatrixDim(g);
+	ncols = nrows;
 	GrB_Descriptor_new(&desc);
 	adj = Graph_GetAdjacencyMatrix(g);
 	tadj = Graph_GetTransposedAdjacencyMatrix(g);
 	GxB_MatrixTupleIter_new(&adj_iter, adj);
 	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
-	GrB_Matrix_new(&A, GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	GrB_Matrix_new(&Mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	GrB_Matrix_new(&Nodes, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+	GrB_Matrix_new(&A, GrB_UINT64, nrows, ncols);
+	GrB_Matrix_new(&Mask, GrB_BOOL, nrows, ncols);
+	GrB_Matrix_new(&Nodes, GrB_BOOL, nrows, ncols);
+
+	// mark matrices as dirty
+	_Graph_SetAdjacencyMatrixDirty(g);
 
 	/* For user-defined select operators,
 	 * If Thunk is not NULL, it must be a valid GxB_Scalar. If it has no entry,
@@ -872,7 +1012,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		bool depleted = false;
 		NodeID ID = ENTITY_GET_ID(n);
 
-		// Outgoing edges.
+		// outgoing edges
 		GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
 		while(true) {
 			GxB_MatrixTupleIter_next(adj_iter, NULL,  &dest, &depleted);
@@ -882,7 +1022,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 		depleted = false;
 
-		// Incoming edges.
+		// incoming edges
 		GxB_MatrixTupleIter_iterate_row(tadj_iter, ID);
 		while(true) {
 			GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, &depleted);
@@ -890,86 +1030,103 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 			GrB_Matrix_setElement_BOOL(Mask, true, src, ID);
 		}
 
+		// node to remove
 		GrB_Matrix_setElement_BOOL(Nodes, true, ID, ID);
 	}
 
+	// update deleted node count
 	GrB_Matrix_nvals(&nvals, Nodes);
 	*node_deleted += nvals;
 
+	// update deleted edge count
 	GrB_Matrix_nvals(&nvals, Mask);
 	*edge_deleted += nvals;
 
-	// Clear updated output matrix before assignment.
+	// clear updated output matrix before assignment
 	GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
 
-	// Free and remove implicit edges from relation matrices.
+	// free and remove implicit edges from relation matrices
 	int relation_count = Graph_RelationTypeCount(g);
 	for(int i = 0; i < relation_count; i++) {
 		GrB_Matrix R = Graph_GetRelationMatrix(g, i);
 
-		// Reset mask descriptor.
+		// reset mask descriptor
 		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
 
-		/* Isolate implicit edges.
-		 * A will contain all implicitly deleted edges from R. */
+		/* isolate implicit edges
+		 * A will contain all implicitly deleted edges from R */
 		GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 
-		/* Free each multi edge array entry in A
-		 * Call _select_op_free_edge on each entry of A. */
-		GxB_select(A, GrB_NULL, GrB_NULL, _select_delete_edges, A, thunk, GrB_NULL);
+		uint64_t edges_before_deletion = Graph_EdgeCount(g);
+		// free each multi edge array entry in A
+		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
+									 _binary_op_delete_edges, thunk, A, GrB_NULL);
 
-		// Clear the relation matrix.
+		// The number of deleted edges is equals the diff in the number of items in the DataBlock
+		uint64_t n_deleted_edges = edges_before_deletion - Graph_EdgeCount(g);
+		// Multiple edges of type r has just been deleted, update statistics
+		GraphStatistics_DecEdgeCount(&g->stats, i, n_deleted_edges);
+
+		// clear the relation matrix
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
+		GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
 
-		// Remove every entry of R marked by Mask.
+		// remove every entry of R marked by Mask
 		GrB_Matrix_apply(R, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
+		_Graph_SetRelationMatrixDirty(g, i);
 	}
 
-	/* Descriptor:
-	 * GrB_MASK, GrB_COMP */
+	// reset mask descriptor
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
-	// Update the adjacency matrix to remove deleted entries.
+	GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
+
+	// update the adjacency matrix to remove deleted entries
 	GrB_Matrix_apply(adj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, adj, desc);
 
-	// Transpose the mask so that it will match the transposed adjacency matrix.
-	GrB_transpose(Mask, GrB_NULL,  GrB_NULL, Mask, GrB_NULL);
+	// transpose the mask so that it will match the transposed adjacency matrix
+	GrB_transpose(Mask, GrB_NULL, GrB_NULL, Mask, GrB_NULL);
 
-	// Update the transposed adjacency matrix.
+	// update the transposed adjacency matrix
 	GrB_Matrix_apply(tadj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, tadj, desc);
 
-	/* If we have individual transposed matrices, repeat all the above steps
-	 * with the transposed Mask. */
-	if(Config_MaintainTranspose()) {
+	/* if we have individual transposed matrices, repeat all the above steps
+	 * with the transposed Mask */
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+	if(maintain_transpose) {
 		for(int i = 0; i < relation_count; i++) {
 			GrB_Matrix TR = Graph_GetTransposedRelationMatrix(g, i);
 
-			// Reset mask descriptor.
+			// reset mask descriptor
 			GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
 
-			/* Isolate implicit edges.
-			 * A will contain all implicitly deleted edges from TR. */
+			/* isolate implicit edges
+			 * A will contain all implicitly deleted edges from TR */
 			GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
 
-			/* Free each multi edge array entry in A
-			 * Call _select_op_free_edge on each entry of A. */
-			GxB_select(A, GrB_NULL, GrB_NULL, _select_delete_edges, A, thunk, GrB_NULL);
+			// free each multi edge array entry in A
+			GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
+										 _binary_op_delete_edges, thunk, A, GrB_NULL);
 
-			// Clear the relation matrix.
+			// clear the relation matrix
 			GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
+			GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
 
-			// Remove every entry of TR marked by Mask.
+			// remove every entry of TR marked by Mask
 			GrB_Matrix_apply(TR, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
 		}
 	}
 
-	/* Delete nodes
-	 * All nodes marked for deleteion are detected, no incoming / outgoing edges. */
+	/* delete nodes
+	 * all nodes marked for deleteion are detected, no incoming / outgoing edges. */
 	int node_type_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < node_type_count; i++) {
 		GrB_Matrix L = Graph_GetLabelMatrix(g, i);
 		GrB_Matrix_apply(L, Nodes, GrB_NULL, GrB_IDENTITY_BOOL, L, desc);
+		_Graph_SetLabelMatrixDirty(g, i);
 	}
 
+	// TODO: use the apply operator to delete datablock entries
 	for(uint i = 0; i < node_count; i++) {
 		Node *n = nodes + i;
 		DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
@@ -986,12 +1143,17 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 }
 
 static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
-	assert(g && g->_writelocked && edges && edge_count > 0);
+	ASSERT(g && g->_writelocked && edges && edge_count > 0);
 
 	int relationCount = Graph_RelationTypeCount(g);
 	GrB_Matrix masks[relationCount];
 	for(int i = 0; i < relationCount; i++) masks[i] = NULL;
 	bool update_adj_matrices = false;
+
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+
+	GrB_Index n = Graph_RequiredMatrixDim(g);
 
 	for(int i = 0; i < edge_count; i++) {
 		Edge *e = edges + i;
@@ -1000,15 +1162,18 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		NodeID dest_id = Edge_GetDestNodeID(e);
 		EdgeID edge_id;
 		GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
-		GrB_Matrix TR = Config_MaintainTranspose() ? Graph_GetTransposedRelationMatrix(g, r) : NULL;
+		GrB_Matrix TR = maintain_transpose ? Graph_GetTransposedRelationMatrix(g, r) : NULL;
 		GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
+
+		// An edge of type r has just been deleted, update statistics.
+		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
 		if(SINGLE_EDGE(edge_id)) {
 			update_adj_matrices = true;
 			GrB_Matrix mask = masks[r];    // mask noteing all deleted edges.
 			// Get mask of this relation type.
 			if(mask == NULL) {
-				GrB_Matrix_new(&mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+				GrB_Matrix_new(&mask, GrB_BOOL, n, n);
 				masks[r] = mask;
 			}
 			// Update mask.
@@ -1026,7 +1191,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 
 			// Locate edge within edge array.
 			for(; i < multi_edge_count; i++) if(multi_edges[i] == id) break;
-			assert(i < multi_edge_count);
+			ASSERT(i < multi_edge_count);
 
 			/* Remove edge from edge array
 			 * migrate last edge ID and reduce array size.
@@ -1065,7 +1230,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 
 	if(update_adj_matrices) {
 		GrB_Matrix remaining_mask;
-		GrB_Matrix_new(&remaining_mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+		GrB_Matrix_new(&remaining_mask, GrB_BOOL, n, n);
 		GrB_Descriptor desc;    // GraphBLAS descriptor.
 		GrB_Descriptor_new(&desc);
 		// Descriptor sets to clear entry according to mask.
@@ -1074,15 +1239,18 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// Clear updated output matrix before assignment.
 		GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
 
+		bool maintain_transpose;
+		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 		for(int r = 0; r < relationCount; r++) {
 			GrB_Matrix mask = masks[r];
 			GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 			if(mask) {
+				_Graph_SetRelationMatrixDirty(g, r);
 				// Remove every entry of R marked by Mask.
 				// Desc: GrB_MASK = GrB_COMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
 				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
-				if(Config_MaintainTranspose()) {
+				if(maintain_transpose) {
 					GrB_Matrix tM = Graph_GetTransposedRelationMatrix(g, r);  // Transposed relation mapping matrix.
 					// Transpose mask (this cannot be done by descriptor).
 					GrB_transpose(mask, GrB_NULL, GrB_NULL, mask, GrB_NULL);
@@ -1093,12 +1261,14 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 			}
 
 			// Collect remaining edges. remaining_mask = remaining_mask + R.
-			GrB_eWiseAdd_Matrix_Semiring(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
-										 R, GrB_NULL);
+			GrB_eWiseAdd(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
+						 R, GrB_NULL);
 		}
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
 		GrB_Matrix t_adj_matrix = Graph_GetTransposedAdjacencyMatrix(g);
+		_Graph_SetAdjacencyMatrixDirty(g);
+
 		// To calculate edges to delete, remove all the remaining edges from "The" adjency matrix.
 		// Set descriptor mask to default.
 		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
@@ -1115,9 +1285,9 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 }
 
 /* Removes both nodes and edges from graph. */
-void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges,
-		uint edge_count, uint *node_deleted, uint *edge_deleted) {
-	assert(g);
+void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint edge_count,
+					  uint *node_deleted, uint *edge_deleted) {
+	ASSERT(g);
 
 	uint _edge_deleted = 0;
 	uint _node_deleted = 0;
@@ -1147,7 +1317,7 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges,
 		}
 
 		// Removing duplicates.
-		#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 		QSORT(Edge, edges, edge_count, is_edge_lt);
 
 		size_t uniqueIdx = 0;
@@ -1170,30 +1340,47 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges,
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	return DataBlock_Scan(g->nodes);
 }
 
 DataBlockIterator *Graph_ScanEdges(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	return DataBlock_Scan(g->edges);
 }
 
 int Graph_AddLabel(Graph *g) {
-	assert(g);
-	RG_Matrix m = RG_Matrix_New(GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	array_append(g->labels, m);
+	ASSERT(g != NULL);
+
+	GrB_Info info;
+	RG_Matrix m = RG_Matrix_New(g, GrB_BOOL);
+
+	/* matrix iterator requires matrix format to be sparse
+	 * to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	 * we set matrix format at creation time, as Label matrices are iterated
+	 * within the LabelScan Execution-Plan operation. */
+
+	GrB_Matrix M = RG_Matrix_Get_GrB_Matrix(m);
+	info = GxB_set(M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	UNUSED(info);
+	ASSERT(info == GrB_SUCCESS);
+
+	g->labels = array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
 int Graph_AddRelationType(Graph *g) {
-	assert(g);
+	ASSERT(g);
 
-	size_t dims = Graph_RequiredMatrixDim(g);
-	RG_Matrix m = RG_Matrix_New(GrB_UINT64, dims, dims);
+	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
 	g->relations = array_append(g->relations, m);
-	if(Config_MaintainTranspose()) {
-		RG_Matrix tm = RG_Matrix_New(GrB_UINT64, dims, dims);
+	// Adding a new relationship type, update the stats structures to support it.
+	GraphStatistics_IntroduceRelationship(&g->stats);
+	bool maintain_transpose;
+	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+
+	if(maintain_transpose) {
+		RG_Matrix tm = RG_Matrix_New(g, GrB_UINT64);
 		g->t_relations = array_append(g->t_relations, tm);
 	}
 
@@ -1202,7 +1389,7 @@ int Graph_AddRelationType(Graph *g) {
 }
 
 GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	RG_Matrix m = g->adjacency_matrix;
 	g->SynchronizeMatrix(g, m);
 	return RG_Matrix_Get_GrB_Matrix(m);
@@ -1210,21 +1397,21 @@ GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
 
 // Get the transposed adjacency matrix.
 GrB_Matrix Graph_GetTransposedAdjacencyMatrix(const Graph *g) {
-	assert(g);
+	ASSERT(g);
 	RG_Matrix m = g->_t_adjacency_matrix;
 	g->SynchronizeMatrix(g, m);
 	return RG_Matrix_Get_GrB_Matrix(m);
 }
 
 GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
-	assert(g && label_idx < array_len(g->labels));
+	ASSERT(g && label_idx < array_len(g->labels));
 	RG_Matrix m = g->labels[label_idx];
 	g->SynchronizeMatrix(g, m);
 	return RG_Matrix_Get_GrB_Matrix(m);
 }
 
 GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
-	assert(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
+	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
 
 	if(relation_idx == GRAPH_NO_RELATION) {
 		return Graph_GetAdjacencyMatrix(g);
@@ -1235,13 +1422,24 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
 	}
 }
 
+// Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise
+bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
+	ASSERT(Graph_RelationTypeCount(g) > r);
+	GrB_Index nvals;
+	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
+	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
+	GrB_Matrix_nvals(&nvals, R);
+
+	return (Graph_RelationEdgeCount(g, r) > nvals);
+}
+
 GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
-	assert(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
+	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
 
 	if(relation_idx == GRAPH_NO_RELATION) {
 		return Graph_GetTransposedAdjacencyMatrix(g);
 	} else {
-		assert(g->t_relations && "tried to retrieve nonexistent transposed matrix.");
+		ASSERT(g->t_relations && "tried to retrieve nonexistent transposed matrix.");
 
 		RG_Matrix m = g->t_relations[relation_idx];
 		g->SynchronizeMatrix(g, m);
@@ -1262,7 +1460,7 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
 }
 
 void Graph_Free(Graph *g) {
-	assert(g);
+	ASSERT(g);
 	// Free matrices.
 	Entity *en;
 	DataBlockIterator *it;
@@ -1273,6 +1471,7 @@ void Graph_Free(Graph *g) {
 	_Graph_FreeRelationMatrices(g);
 	array_free(g->relations);
 	array_free(g->t_relations);
+	GraphStatistics_FreeInternals(&g->stats);
 
 	uint32_t labelCount = array_len(g->labels);
 	for(int i = 0; i < labelCount; i++) {
@@ -1281,13 +1480,13 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 
 	it = Graph_ScanNodes(g);
-	while((en = (Entity *)DataBlockIterator_Next(it)) != NULL)
+	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL)
 		FreeEntity(en);
 
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
-	while((en = DataBlockIterator_Next(it)) != NULL)
+	while((en = DataBlockIterator_Next(it, NULL)) != NULL)
 		FreeEntity(en);
 
 	DataBlockIterator_Free(it);
@@ -1296,10 +1495,14 @@ void Graph_Free(Graph *g) {
 	DataBlock_Free(g->nodes);
 	DataBlock_Free(g->edges);
 
-	assert(pthread_mutex_destroy(&g->_writers_mutex) == 0);
+	int res;
+	UNUSED(res);
+	res = pthread_mutex_destroy(&g->_writers_mutex);
+	ASSERT(res == 0);
 
 	if(g->_writelocked) Graph_ReleaseLock(g);
-	assert(pthread_rwlock_destroy(&g->_rwlock) == 0);
+	res = pthread_rwlock_destroy(&g->_rwlock);
+	ASSERT(res == 0);
 
 	rm_free(g);
 }

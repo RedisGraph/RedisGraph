@@ -2,8 +2,8 @@
 // GB_ij.h: definitions for I and J index lists
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -11,12 +11,6 @@
 #define GB_IJ_H
 
 #include "GB.h"
-
-// kind of index list, Ikind and Jkind:
-#define GB_ALL 0
-#define GB_RANGE 1
-#define GB_STRIDE 2
-#define GB_LIST 4
 
 GB_PUBLIC   // accessed by the MATLAB interface only
 void GB_ijlength            // get the length and kind of an index list I
@@ -96,7 +90,7 @@ static inline int64_t GB_ijlist     // get the kth item in a list of indices
 static inline bool GB_ij_is_in_list // determine if i is in the list I
 (
     const GrB_Index *I,         // list of indices for GB_LIST
-    const int64_t nI,           // length of I
+    const int64_t nI,           // length of I if Ikind is GB_LIST
     int64_t i,                  // find i = I [k] in the list
     const int Ikind,            // GB_ALL, GB_RANGE, GB_STRIDE, or GB_LIST
     const int64_t Icolon [3]    // begin:inc:end for all but GB_LIST
@@ -126,7 +120,8 @@ static inline bool GB_ij_is_in_list // determine if i is in the list I
         int64_t e   = Icolon [GxB_END] ;
         if (inc == 0)
         { 
-            // I is empty if inc is zero, so i is not in I
+            // lo:stride:hi with stride of zero.
+            // I is empty if inc is zero, so i is not in I.
             return (false) ;
         }
         else if (inc > 0)
@@ -169,7 +164,9 @@ static inline bool GB_ij_is_in_list // determine if i is in the list I
         bool found ;
         int64_t pleft = 0 ;
         int64_t pright = nI-1 ;
-        GB_BINARY_SEARCH (i, I, pleft, pright, found) ;
+        if (i < 0) return (false) ;
+        GrB_Index ui = (GrB_Index) i ;
+        GB_BINARY_SEARCH (ui, I, pleft, pright, found) ;
         return (found) ;
     }
 }

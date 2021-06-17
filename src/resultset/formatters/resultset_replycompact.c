@@ -5,16 +5,17 @@
  */
 
 #include "resultset_formatters.h"
+#include "RG.h"
 #include "../../util/arr.h"
-#include "../../datatypes/array.h"
-#include "../../datatypes/path/sipath.h"
+#include "../../datatypes/datatypes.h"
 
 // Forward declarations.
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
-static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
-											   SIValue array);
+static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc, SIValue array);
 static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path);
+static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc, SIValue v);
+static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *gc, SIValue v);
 
 static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
@@ -36,6 +37,10 @@ static inline ValueType _mapValueType(const SIValue v) {
 		return VALUE_EDGE;
 	case T_PATH:
 		return VALUE_PATH;
+	case T_MAP:
+		return VALUE_MAP;
+	case T_POINT:
+		return VALUE_POINT;
 	default:
 		return VALUE_UNKNOWN;
 	}
@@ -79,8 +84,15 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 	case T_PATH:
 		_ResultSet_CompactReplyWithPath(ctx, gc, v);
 		return;
+	case T_MAP:
+		_ResultSet_CompactReplyWithMap(ctx, gc, v);
+		return;
+	case T_POINT:
+		_ResultSet_CompactReplyWithPoint(ctx, gc, v);
+		return;
 	default:
-		assert("Unhandled value type" && false);
+		RedisModule_Assert("Unhandled value type" && false);
+		break;
 	}
 }
 
@@ -116,13 +128,12 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithLongLong(ctx, id);
 
 	// [label string index]
-	// Print label in nested array for multi-label support
-	// Retrieve label
-	int label_id = Graph_GetNodeLabel(gc->g, id);
+	int label_id = NODE_GET_LABEL_ID(n, gc->g);
 	if(label_id == GRAPH_NO_LABEL) {
-		// Emit an empty array for unlabeled nodes
+		// Emit an empty array for unlabeled nodes.
 		RedisModule_ReplyWithArray(ctx, 0);
 	} else {
+		// Print label in nested array for multi-label support.
 		RedisModule_ReplyWithArray(ctx, 1);
 		RedisModule_ReplyWithLongLong(ctx, label_id);
 	}
@@ -150,7 +161,7 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 
 	// reltype string index, retrieve reltype.
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
-	assert(reltype_id != GRAPH_NO_RELATION);
+	ASSERT(reltype_id != GRAPH_NO_RELATION);
 	RedisModule_ReplyWithLongLong(ctx, reltype_id);
 
 	// src node ID
@@ -222,21 +233,63 @@ static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *g
 	SIValue_Free(relationships);
 }
 
-void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 uint numcols, uint *col_rec_map) {
+static void _ResultSet_CompactReplyWithMap(RedisModuleCtx *ctx, GraphContext *gc, SIValue v) {
+	// map will be returned as an array of key/value pairs
+	// consider the map object: {a:1, b:'str', c: {x:1, y:2}}
+	//
+	// the reply will be structured:
+	// [
+	//     string(a), int(1),
+	//     string(b), string(str),
+	//     string(c), [
+	//                    string(x), int(1),
+	//                    string(y), int(2)
+	//                 ]
+	// ]
+
+	uint key_count = Map_KeyCount(v);
+	Map m = v.map;
+
+	// response consists of N pairs array:
+	// (string, value type, value)
+	RedisModule_ReplyWithArray(ctx, key_count * 2);
+	for(int i = 0; i < key_count; i++) {
+		Pair     p     =  m[i];
+		SIValue  val   =  p.val;
+		char     *key  =  p.key.stringval;
+
+		// emit key
+		RedisModule_ReplyWithCString(ctx, key);
+
+		// emit value
+		RedisModule_ReplyWithArray(ctx, 2);
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, val);
+	}
+}
+
+static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *gc, SIValue v) {
+	ASSERT(SI_TYPE(v) == T_POINT);
+	RedisModule_ReplyWithArray(ctx, 2);
+
+	_ResultSet_ReplyWithRoundedDouble(ctx, Point_lat(v));
+	_ResultSet_ReplyWithRoundedDouble(ctx, Point_lon(v));
+}
+
+void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
+		SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(uint i = 0; i < numcols; i++) {
-		uint idx = col_rec_map[i];
+		SIValue cell = *row[i];
 		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-		_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_Get(r, idx));
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, cell);
 	}
 }
 
 // For every column in the header, emit a 2-array containing the ColumnType enum
 // followed by the column alias.
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns, const Record r,
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 									  uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
@@ -251,4 +304,3 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
-

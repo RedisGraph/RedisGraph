@@ -1,8 +1,6 @@
 function semiringinfo (s, type)
 %GRB.SEMIRINGINFO list the details of a GraphBLAS semiring.
 %
-% Usage
-%
 %   GrB.semiringinfo
 %   GrB.semiringinfo (semiring)
 %   GrB.semiringinfo (semiring, type)
@@ -16,15 +14,12 @@ function semiringinfo (s, type)
 % provided, either in the semiring as GrB.semiringinfo ('+.*.double'), or
 % in the second argument, GrB.semiringinfo ('+.*', 'double').
 %
-% The add operator must be a valid monoid: plus, times, min, max, and the
-% boolean operators or.logical, and.logical, ne.logical, and xor.logical.
-% The binary operator z=f(x,y) of a monoid must be associative and
-% commutative, with an identity value id such that f(x,id) = f(id,x) = x.
-% Furthermore, the types of x, y, and z for the monoid operator f must
-% all be the same.  Thus, the '<.double' is not a valid monoid operator,
-% since its 'logical' output type does not match its 'double' inputs, and
-% since it is neither associative nor commutative.  Thus, <.*.double is
-% not a valid semiring.
+% The additive operator must be the binary operator of a valid monoid (see
+% 'help GrB.monoidinfo').  The multiplicative operator can be any binary
+% operator z=f(x,y) listed by 'help GrB.binopinfo', but the type of z must
+% match the operand type of the monoid.  The type in the string
+% 'add.mult.type' is the type of x for the multiply operator z=f(x,y), and
+% the type of its z output defines the type of the monoid.
 %
 % Example:
 %
@@ -38,10 +33,8 @@ function semiringinfo (s, type)
 % See also GrB.binopinfo, GrB.descriptorinfo, GrB.monoidinfo,
 % GrB.selectopinfo, GrB.unopinfo.
 
-% FUTURE: add complex semirings
-
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 if (nargin == 0)
     help GrB.semiringinfo

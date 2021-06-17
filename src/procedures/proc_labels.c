@@ -5,6 +5,7 @@
 */
 
 #include "proc_labels.h"
+#include "RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -19,7 +20,8 @@ typedef struct {
 	SIValue *output;    // Output label.
 } LabelsContext;
 
-ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, const SIValue *args) {
+ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx,
+		const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));
@@ -34,7 +36,7 @@ ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, const SIValue *args) {
 }
 
 SIValue *Proc_LabelsStep(ProcedureCtx *ctx) {
-	assert(ctx->privateData);
+	ASSERT(ctx->privateData != NULL);
 
 	LabelsContext *pdata = (LabelsContext *)ctx->privateData;
 
@@ -62,12 +64,10 @@ ProcedureResult Proc_LabelsFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_LabelsCtx() {
 	void *privateData = NULL;
-	ProcedureOutput **outputs = array_new(ProcedureOutput *, 1);
-	ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
-	output->name = "label";
-	output->type = T_STRING;
-
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
+	ProcedureOutput output = {.name = "label", .type = T_STRING};
 	outputs = array_append(outputs, output);
+
 	ProcedureCtx *ctx = ProcCtxNew("db.labels",
 								   0,
 								   outputs,

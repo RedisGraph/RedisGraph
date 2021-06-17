@@ -5,11 +5,14 @@
 */
 
 #include "op_update.h"
+#include "RG.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/arr.h"
+#include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
+#include "../../util/rax_extensions.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static OpResult UpdateInit(OpBase *opBase);
@@ -17,130 +20,6 @@ static Record UpdateConsume(OpBase *opBase);
 static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
-
-/* Delay updates until all entities are processed,
- * _QueueUpdate will queue up all information necessary to perform an update. */
-static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type,
-						 Attribute_ID attr_id, SIValue new_value) {
-	/* Make sure we've got enough room in queue. */
-	if(op->pending_updates_count == op->pending_updates_cap) {
-		op->pending_updates_cap *= 2;
-		op->pending_updates = rm_realloc(op->pending_updates,
-										 op->pending_updates_cap * sizeof(EntityUpdateCtx));
-	}
-
-	uint i = op->pending_updates_count;
-	op->pending_updates[i].new_value = new_value;
-	op->pending_updates[i].attr_id = attr_id;
-	op->pending_updates[i].entity_type = type;
-	// Copy updated entity.
-	if(type == GETYPE_NODE) {
-		op->pending_updates[i].n = *((Node *)entity);
-	} else {
-		op->pending_updates[i].e = *((Edge *)entity);
-	}
-	op->pending_updates_count++;
-}
-
-/* Introduce updated entity to index. */
-static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value,
-						 SIValue *new_value) {
-	Node *n = &ctx->n;
-	EntityID node_id = ENTITY_GET_ID(n);
-
-	// Reindex.
-	Schema_AddNodeToIndices(s, n, true);
-}
-
-/* Set a property on a node. For non-NULL values, the property
- * will be added or updated if it is already present.
- * For NULL values, the property will be deleted if present
- * and nothing will be done otherwise.
- * Relevant indexes will be updated accordingly.
- * Returns 1 if a property was set or deleted. */
-static int _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
-	/* Retrieve GraphEntity:
-	 * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
-	 * but only a pointer to an Entity object,
-	 * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
-	 * to hold our entity. */
-	Schema *s = NULL;
-	Node *node = &ctx->n;
-
-	int label_id = Graph_GetNodeLabel(op->gc->g, ENTITY_GET_ID(node));
-	if(label_id != GRAPH_NO_LABEL) {
-		s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
-	}
-
-	// Try to get current property value.
-	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node, ctx->attr_id);
-
-	if(old_value == PROPERTY_NOTFOUND) {
-		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
-		GraphEntity_AddProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
-	} else {
-		// Update property.
-		GraphEntity_SetProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
-	}
-
-	// Update index for node entities.
-	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
-	return 1;
-}
-
-/* Set a property on an edge. For non-NULL values, the property
- * will be added or updated if it is already present.
- * For NULL values, the property will be deleted if present
- * and nothing will be done otherwise.
- * Returns 1 if a property was set or deleted. */
-static int _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
-	/* Retrieve GraphEntity:
-	* Due to Record freeing we can't maintain the original pointer to GraphEntity object,
-	* but only a pointer to an Entity object,
-	* to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
-	* to hold our entity. */
-	Edge *edge = &ctx->e;
-
-	int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
-
-	// Try to get current property value.
-	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)edge, ctx->attr_id);
-
-	if(old_value == PROPERTY_NOTFOUND) {
-		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
-		GraphEntity_AddProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
-	} else {
-		// Update property.
-		GraphEntity_SetProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
-	}
-	return 1;
-}
-
-/* Executes delayed updates. */
-static void _CommitUpdates(OpUpdate *op) {
-	uint properties_set = 0;
-	for(uint i = 0; i < op->pending_updates_count; i++) {
-		EntityUpdateCtx *ctx = &op->pending_updates[i];
-		if(ctx->entity_type == GETYPE_NODE) {
-			properties_set += _UpdateNode(op, ctx);
-		} else {
-			properties_set += _UpdateEdge(op, ctx);
-		}
-		SIValue_Free(ctx->new_value);
-	}
-
-	if(op->stats) op->stats->properties_set += properties_set;
-}
-
-/* We only cache records if op_update is not the last
- * operation within the execution-plan, which means
- * others operations might inspect thoese records.
- * Example: MATCH (n) SET n.v=n.v+1 RETURN n */
-static inline bool _ShouldCacheRecord(OpUpdate *op) {
-	return (op->op.parent != NULL);
-}
 
 static Record _handoff(OpUpdate *op) {
 	/* TODO: poping a record out of op->records
@@ -150,32 +29,37 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps) {
+OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
-	op->gc = QueryCtx_GetGraphCtx();
-	op->records = NULL;
-	op->updates_commited = false;
-	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
-	op->pending_updates_count = 0;
-	op->update_expressions = update_exps;
-	op->update_expressions_count = array_len(update_exps);
-	op->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op->pending_updates_cap);
+	op->records            =  NULL;
+	op->updates            =  NULL;
+	op->updates_committed  =  false;
+	op->update_ctxs        =  update_exps;
+	op->gc                 =  QueryCtx_GetGraphCtx();
 
-	// Set our Op operations
+	// set our op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
-	for(uint i = 0; i < op->update_expressions_count; i ++) {
-		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
+	// iterate over all update expressions
+	// set the record index for every entity modified by this operation
+	raxStart(&op->it, update_exps);
+	raxSeek(&op->it, "^", NULL, 0);
+	while(raxNext(&op->it)) {
+		EntityUpdateEvalCtx *ctx = op->it.data;
+		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
 	}
 
 	return (OpBase *)op;
 }
 
 static OpResult UpdateInit(OpBase *opBase) {
-	OpUpdate *op = (OpUpdate *)opBase;
-	op->stats = QueryCtx_GetResultSetStatistics();
-	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
+	OpUpdate *op = (OpUpdate*)opBase;
+
+	op->stats    =    QueryCtx_GetResultSetStatistics();
+	op->records  =    array_new(Record, 64);
+	op->updates  =    array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+
 	return OP_OK;
 }
 
@@ -184,80 +68,68 @@ static Record UpdateConsume(OpBase *opBase) {
 	OpBase *child = op->op.children[0];
 	Record r;
 
-	// Updates already performed.
-	if(op->updates_commited) return _handoff(op);
+	// updates already performed
+	if(op->updates_committed) return _handoff(op);
 
 	while((r = OpBase_Consume(child))) {
-		/* Evaluate each update expression and store result
-		 * for later execution. */
-		EntityUpdateEvalCtx *update_expression = op->update_expressions;
-		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
-			// Get the type of the entity to update.
-			RecordEntryType t = Record_GetType(r, update_expression->record_idx);
-			// If the expected entity was not found, make no updates but do not error.
-			if(t == REC_TYPE_UNKNOWN) continue;
-			// Make sure we're updating either a node or an edge.
-			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-				QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
-								  update_expression->alias);
-				QueryCtx_RaiseRuntimeException();
-			}
-			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
-			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->record_idx);
+		Record_PersistScalars(r);
 
-			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
-			_QueueUpdate(op, entity, type, update_expression->attribute_id, new_value);
+		// evaluate update expressions
+		raxSeek(&op->it, "^", NULL, 0);
+		while(raxNext(&op->it)) {
+			EntityUpdateEvalCtx *ctx = op->it.data;
+			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true);
 		}
 
-		if(_ShouldCacheRecord(op)) {
-			op->records = array_append(op->records, r);
-		} else {
-			// Record not going to be used, discard.
-			OpBase_DeleteRecord(r);
-		}
+		op->records = array_append(op->records, r);
 	}
 
-	/* Done reading, we're not going to call consume any longer
-	 * there might be operations e.g. index scan that need to free
-	 * index R/W lock, as such free all execution plan operation up the chain. */
+	// done reading; we're not going to call Consume any longer
+	// there might be operations like "Index Scan" that need to free the
+	// index R/W lock - as such, free all ExecutionPlan operations up the chain.
 	OpBase_PropagateFree(child);
 
-	/* Lock everything. */
+	// lock everything
 	QueryCtx_LockForCommit();
-	_CommitUpdates(op);
-	// Release lock.
+	{
+		CommitUpdates(op->gc, op->stats, op->updates);
+	}
+	// release lock
 	QueryCtx_UnlockCommit(opBase);
 
-	op->updates_commited = true;
+	op->updates_committed = true;
+
 	return _handoff(op);
 }
 
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_UPDATE);
+	ASSERT(opBase->type == OPType_UPDATE);
 	OpUpdate *op = (OpUpdate *)opBase;
-	EntityUpdateEvalCtx *update_exps;
-	array_clone_with_cb(update_exps, op->update_expressions, EntityUpdateEvalCtx_Clone);
-	return NewUpdateOp(plan, update_exps);
+
+	rax *update_ctxs = raxCloneWithCallback(op->update_ctxs, (void *(*)(void *))UpdateCtx_Clone);
+	return NewUpdateOp(plan, update_ctxs);
 }
 
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
-	// Reset all pending updates.
-	op->pending_updates_count = 0;
-	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
-	op->pending_updates = rm_realloc(op->pending_updates,
-									 op->pending_updates_cap * sizeof(EntityUpdateCtx));
+	array_free(op->updates);
+	op->updates = NULL;
+	op->updates_committed = false;
 	return OP_OK;
 }
 
 static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
-	/* Free each update context. */
-	if(op->update_expressions_count) {
-		for(uint i = 0; i < op->update_expressions_count; i++) {
-			AR_EXP_Free(op->update_expressions[i].exp);
-		}
-		op->update_expressions_count = 0;
+
+	if(op->updates) {
+		array_free(op->updates);
+		op->updates = NULL;
+	}
+
+	// Free each update context.
+	if(op->update_ctxs) {
+		raxFreeWithCallback(op->update_ctxs, (void(*)(void *))UpdateCtx_Free);
+		op->update_ctxs = NULL;
 	}
 
 	if(op->records) {
@@ -267,14 +139,6 @@ static void UpdateFree(OpBase *ctx) {
 		op->records = NULL;
 	}
 
-	if(op->update_expressions) {
-		array_free(op->update_expressions);
-		op->update_expressions = NULL;
-	}
-
-	if(op->pending_updates) {
-		rm_free(op->pending_updates);
-		op->pending_updates = NULL;
-	}
+	raxStop(&op->it);
 }
 

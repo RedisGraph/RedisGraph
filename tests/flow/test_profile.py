@@ -15,7 +15,7 @@ class testProfile(FlowTestsBase):
     def __init__(self):
         global redis_con
         global redis_graph
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
 

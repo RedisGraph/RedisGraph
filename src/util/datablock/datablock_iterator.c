@@ -5,14 +5,14 @@
 */
 
 #include "datablock_iterator.h"
+#include "RG.h"
 #include "datablock.h"
 #include "../rmalloc.h"
 #include <stdio.h>
-#include <assert.h>
 #include <stdbool.h>
 
-DataBlockIterator *DataBlockIterator_New(Block *block, uint start_pos, uint end_pos, uint step) {
-	assert(block && start_pos >= 0 && end_pos >= start_pos && step >= 1);
+DataBlockIterator *DataBlockIterator_New(Block *block, uint64_t start_pos, uint64_t end_pos, uint step) {
+	ASSERT(block && end_pos >= start_pos && step >= 1);
 
 	DataBlockIterator *iter = rm_malloc(sizeof(DataBlockIterator));
 	iter->_start_block = block;
@@ -29,12 +29,13 @@ DataBlockIterator *DataBlockIterator_Clone(const DataBlockIterator *it) {
 	return DataBlockIterator_New(it->_start_block, it->_start_pos, it->_end_pos, it->_step);
 }
 
-void *DataBlockIterator_Next(DataBlockIterator *iter) {
-	assert(iter);
+void *DataBlockIterator_Next(DataBlockIterator *iter, uint64_t *id) {
+	ASSERT(iter != NULL);
 
-	if(iter->_current_pos >= iter->_end_pos || iter->_current_block == NULL) return NULL;
-
+	// Set default.
+	void *item = NULL;
 	DataBlockItemHeader *item_header = NULL;
+
 	// Have we reached the end of our iterator?
 	while(iter->_current_pos < iter->_end_pos && iter->_current_block != NULL) {
 		// Get item at current position.
@@ -52,21 +53,24 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 		}
 
 		if(!IS_ITEM_DELETED(item_header)) {
-			return ITEM_DATA(item_header);
+			item = ITEM_DATA(item_header);
+			if(id) *id = iter->_current_pos - iter->_step;
+			break;
 		}
 	}
 
-	return NULL;
+	return item;
 }
 
 void DataBlockIterator_Reset(DataBlockIterator *iter) {
-	assert(iter);
+	ASSERT(iter != NULL);
 	iter->_block_pos = iter->_start_pos % DATABLOCK_BLOCK_CAP;
 	iter->_current_block = iter->_start_block;
 	iter->_current_pos = iter->_start_pos;
 }
 
 void DataBlockIterator_Free(DataBlockIterator *iter) {
-	assert(iter);
+	ASSERT(iter != NULL);
 	rm_free(iter);
 }
+

@@ -9,7 +9,7 @@ redis_graph = None
 
 class testNullHandlingFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("null_handling", redis_con)
@@ -113,4 +113,21 @@ class testNullHandlingFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         # Expect no results.
         expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # ValueHashJoin ops should not treat null values as equal.
+    def test08_null_value_hash_join(self):
+        query = """MATCH (a), (b) WHERE a.fakeval = b.fakeval RETURN a, b"""
+        plan = redis_graph.execution_plan(query)
+        # Verify that we are performing a ValueHashJoin
+        self.env.assertIn("Value Hash Join", plan)
+        actual_result = redis_graph.query(query)
+        # Expect no results.
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Perform a sanity check on a ValueHashJoin that returns a result
+        query = """MATCH (a), (b) WHERE a.v = b.v RETURN a.v, b.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1']]
         self.env.assertEquals(actual_result.result_set, expected_result)

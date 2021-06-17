@@ -1,46 +1,17 @@
 //------------------------------------------------------------------------------
-// GB_jappend.h: definitions of GB_jstartup, GB_jappend, and GB_jwrapup
+// GB_jappend.h: definitions of GB_jappend, and GB_jwrapup
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
+
+// These methods are now only used by GB_Matrix_wait.
 
 #ifndef GB_JAPPEND_H
 #define GB_JAPPEND_H
 #include "GB.h"
-
-//------------------------------------------------------------------------------
-// GB_jstartup:  start the formation of a matrix
-//------------------------------------------------------------------------------
-
-// GB_jstartup is used with GB_jappend and GB_jwrapup to create the
-// hyperlist and vector pointers of a new matrix, one at a time.
-
-// GB_jstartup logs the start of C(:,0); it also acts as if it logs the end of
-// the sentinal vector C(:,-1).
-
-#if 0
-static inline void GB_jstartup          // no longer used in v3.2.0
-(
-    GrB_Matrix C,           // matrix to start creating
-    int64_t *jlast,         // last vector appended, set to -1
-    int64_t *cnz,           // set to zero
-    int64_t *cnz_last       // set to zero
-)
-{
-    C->p [0] = 0 ;          // log the start of C(:,0)
-    (*cnz) = 0 ;            //
-    (*cnz_last) = 0 ;
-    (*jlast) = -1 ;         // last sentinal vector is -1
-    if (C->is_hyper)
-    {
-        C->nvec = 0 ;       // clear all existing vectors from C
-    }
-    C->nvec_nonempty = 0 ;  // # of non-empty vectors will be counted
-}
-#endif
 
 //------------------------------------------------------------------------------
 // GB_jappend:  append a new vector to the end of a matrix
@@ -48,14 +19,12 @@ static inline void GB_jstartup          // no longer used in v3.2.0
 
 // Append a new vector to the end of a matrix C.
 
-// If C->is_hyper is true, C is in hypersparse form with
+// If C->h != NULL, C is in hypersparse form with
 // C->nvec <= C->plen <= C->vdim.  C->h has size C->plen.
-// If C->is_hyper is false, C is in non-hypersparse form with
+
+// If C->h == NULL, C is in non-hypersparse form with
 // C->nvec == C->plen == C->vdim.  C->h is NULL.
 // In both cases, C->p has size C->plen+1.
-
-// For both hypersparse and non-hypersparse, C->nvec_nonemty <= C->nvec
-// is the number of vectors with at least one entry.
 
 static inline GrB_Info GB_jappend
 (
@@ -76,6 +45,7 @@ static inline GrB_Info GB_jappend
     ASSERT (!C->p_shallow) ;
     ASSERT (!C->h_shallow) ;
     ASSERT (C->p != NULL) ;
+    ASSERT (!GB_IS_FULL (C)) ;
 
     if (cnz <= (*cnz_last))
     {
@@ -86,7 +56,7 @@ static inline GrB_Info GB_jappend
     // one more non-empty vector
     C->nvec_nonempty++ ;
 
-    if (C->is_hyper)
+    if (C->h != NULL)
     { 
 
         //----------------------------------------------------------------------
@@ -115,8 +85,11 @@ static inline GrB_Info GB_jappend
         ASSERT (C->plen <= C->vdim) ;
         ASSERT (C->p [C->nvec] == (*cnz_last)) ;
 
-        C->h [C->nvec] = j ;            // add j to the hyperlist
-        C->p [C->nvec+1] = cnz ;        // mark the end of C(:,j)
+        // add j to the hyperlist
+        C->h [C->nvec] = j ;
+
+        // mark the end of C(:,j)
+        C->p [C->nvec+1] = cnz ;
         C->nvec++ ;                     // one more vector in the hyperlist
 
     }
@@ -140,9 +113,11 @@ static inline GrB_Info GB_jappend
 
         for (int64_t jprior = (*jlast)+1 ; jprior < j ; jprior++)
         { 
-            Cp [jprior+1] = (*cnz_last) ;   // mark the end of C(:,jprior)
+            // mark the end of C(:,jprior)
+            Cp [jprior+1] = (*cnz_last) ;
         }
-        Cp [j+1] = cnz ;                    // mark the end of C(:,j)
+        // mark the end of C(:,j)
+        Cp [j+1] = cnz ;
     }
 
     // record the last vector added to C
@@ -167,7 +142,7 @@ static inline void GB_jwrapup
 )
 {
 
-    if (!C->is_hyper)
+    if (C->h == NULL)
     {
 
         //----------------------------------------------------------------------
@@ -182,7 +157,8 @@ static inline void GB_jwrapup
 
         for (int64_t jprior = jlast+1 ; jprior <= j ; jprior++)
         { 
-            Cp [jprior+1] = cnz ;           // mark the end of C(:,jprior)
+            // mark the end of C(:,jprior)
+            Cp [jprior+1] = cnz ;
         }
     }
 

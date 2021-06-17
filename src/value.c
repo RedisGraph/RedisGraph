@@ -5,6 +5,7 @@
 */
 
 #include "value.h"
+#include "RG.h"
 #include "graph/entities/graph_entity.h"
 #include "graph/entities/node.h"
 #include "graph/entities/edge.h"
@@ -13,8 +14,8 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/param.h>
-#include <assert.h>
 #include "util/rmalloc.h"
+#include "datatypes/map.h"
 #include "datatypes/array.h"
 #include "datatypes/path/sipath.h"
 
@@ -30,31 +31,31 @@ static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen
 
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
-		.longval = i, .type = T_INT64
+		.longval = i, .type = T_INT64, .allocation = M_NONE
 	};
 }
 
 SIValue SI_DoubleVal(double d) {
 	return (SIValue) {
-		.doubleval = d, .type = T_DOUBLE
+		.doubleval = d, .type = T_DOUBLE, .allocation = M_NONE
 	};
 }
 
 SIValue SI_NullVal(void) {
 	return (SIValue) {
-		.longval = 0, .type = T_NULL
+		.longval = 0, .type = T_NULL, .allocation = M_NONE
 	};
 }
 
 SIValue SI_BoolVal(int b) {
 	return (SIValue) {
-		.longval = b, .type = T_BOOL
+		.longval = b, .type = T_BOOL, .allocation = M_NONE
 	};
 }
 
 SIValue SI_PtrVal(void *v) {
 	return (SIValue) {
-		.ptrval = v, .type = T_PTR
+		.ptrval = v, .type = T_PTR, .allocation = M_NONE
 	};
 }
 
@@ -75,12 +76,20 @@ SIValue SI_Path(void *p) {
 	return SIPath_New(path);
 }
 
+SIValue SI_EmptyArray() {
+	return SIArray_New(0);
+}
+
 SIValue SI_Array(u_int64_t initialCapacity) {
 	return SIArray_New(initialCapacity);
 }
 
-SIValue SI_EmptyArray() {
-	return SIArray_New(0);
+SIValue SI_EmptyMap() {
+	return Map_New(0);
+}
+
+SIValue SI_Map(u_int64_t initialCapacity) {
+	return Map_New(initialCapacity);
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
@@ -98,6 +107,13 @@ SIValue SI_ConstStringVal(char *s) {
 SIValue SI_TransferStringVal(char *s) {
 	return (SIValue) {
 		.stringval = s, .type = T_STRING, .allocation = M_SELF
+	};
+}
+
+SIValue SI_Point(float latitude, float longitude) {
+	return (SIValue) {
+		.type = T_POINT, .allocation = M_NONE,
+			.point = {.latitude = latitude, .longitude = longitude}
 	};
 }
 
@@ -130,19 +146,23 @@ SIValue SI_CloneValue(const SIValue v) {
 		return SIPath_Clone(v);
 	}
 
+	if(v.type == T_MAP) {
+		return Map_Clone(v);
+	}
+
 	// Copy the memory region for Node and Edge values. This does not modify the
 	// inner Entity pointer to the value's properties.
 	SIValue clone;
 	clone.type = v.type;
 	clone.allocation = M_SELF;
 
-	size_t size;
+	size_t size = 0;
 	if(v.type == T_NODE) {
 		size = sizeof(Node);
 	} else if(v.type == T_EDGE) {
 		size = sizeof(Edge);
 	} else {
-		assert(false && "Encountered heap-allocated SIValue of unhandled type");
+		ASSERT(false && "Encountered heap-allocated SIValue of unhandled type");
 	}
 
 	clone.ptrval = rm_malloc(size);
@@ -150,11 +170,23 @@ SIValue SI_CloneValue(const SIValue v) {
 	return clone;
 }
 
+SIValue SI_ShallowCloneValue(const SIValue v) {
+	if(v.allocation == M_CONST || v.allocation == M_NONE) return v;
+	return SI_CloneValue(v);
+}
+
 /* Make an SIValue that shares the original's allocations but can safely expect those allocations
  *  to remain in scope. This is most frequently the case for GraphEntity properties. */
 SIValue SI_ConstValue(const SIValue v) {
 	SIValue dup = v;
 	if(v.allocation != M_NONE) dup.allocation = M_CONST;
+	return dup;
+}
+
+// Clone 'v' and set v's allocation to volatile if 'v' owned the memory
+SIValue SI_TransferOwnership(SIValue *v) {
+	SIValue dup = *v;
+	if(v->allocation == M_SELF) v->allocation = M_VOLATILE;
 	return dup;
 }
 
@@ -170,11 +202,14 @@ void SIValue_MakeVolatile(SIValue *v) {
  * Heap allocations that are not scoped to the input SIValue, such as strings from the AST
  * or a GraphEntity property, are not modified. */
 void SIValue_Persist(SIValue *v) {
-	// Do nothing for non-volatile values.
-	if(v->allocation != M_VOLATILE) return;
+	// do nothing for non-volatile values
+	// for volatile values, persisting uses the same logic as cloning
+	if(v->allocation == M_VOLATILE) *v = SI_CloneValue(*v);
+}
 
-	// For volatile values, persisting uses the same logic as cloning.
-	*v = SI_CloneValue(*v);
+/* Update an SIValue's allocation type to the provided value. */
+inline void SIValue_SetAllocationType(SIValue *v, SIAllocation allocation) {
+	v->allocation = allocation;
 }
 
 inline bool SIValue_IsNull(SIValue v) {
@@ -182,12 +217,12 @@ inline bool SIValue_IsNull(SIValue v) {
 }
 
 inline bool SIValue_IsFalse(SIValue v) {
-	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
+	ASSERT(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
 	return !v.longval;
 }
 
 inline bool SIValue_IsTrue(SIValue v) {
-	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
+	ASSERT(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
 	return v.longval;
 }
 
@@ -252,6 +287,9 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	case T_ARRAY:
 		SIArray_ToString(v, buf, bufferLen, bytesWritten);
 		break;
+	case T_MAP:
+		Map_ToString(v, buf, bufferLen, bytesWritten);
+		break;
 	case T_PATH:
 		SIPath_ToString(v, buf, bufferLen, bytesWritten);
 		break;
@@ -264,7 +302,8 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	default:
 		// unrecognized type
 		printf("unrecognized type: %d\n", v.type);
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 }
 
@@ -484,11 +523,14 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			return SIArray_Compare(a, b, disjointOrNull);
 		case T_PATH:
 			return SIPath_Compare(a, b);
+		case T_MAP:
+			return Map_Compare(a, b, disjointOrNull);
 		case T_NULL:
 			break;
 		default:
 			// Both inputs were of an incomparable type, like a pointer, or not implemented comparison yet.
-			assert(false);
+			ASSERT(false);
+			break;
 		}
 	}
 
@@ -517,7 +559,8 @@ XXH64_hash_t SINode_HashCode(const SIValue v) {
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
+	UNUSED(res);
+	ASSERT(res != XXH_ERROR);
 
 	Node *n = (Node *)v.ptrval;
 	int id = ENTITY_GET_ID(n);
@@ -531,11 +574,11 @@ XXH64_hash_t SINode_HashCode(const SIValue v) {
 
 /* Hashes the id and properties of the edge. */
 XXH64_hash_t SIEdge_HashCode(const SIValue v) {
-
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
+	UNUSED(res);
+	ASSERT(res != XXH_ERROR);
 
 	Edge *e = (Edge *)v.ptrval;
 	int id = ENTITY_GET_ID(e);
@@ -596,13 +639,18 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 		inner_hash = SIArray_HashCode(v);
 		XXH64_update(state, &inner_hash, sizeof(inner_hash));
 		return;
+	case T_MAP:
+		inner_hash = Map_HashCode(v);
+		XXH64_update(state, &inner_hash, sizeof(inner_hash));
+		return;
 	case T_PATH:
 		inner_hash = SIPath_HashCode(v);
 		XXH64_update(state, &inner_hash, sizeof(inner_hash));
 		return;
-	// TODO: Implement for Map and temporal types once we support them.
+	// TODO: Implement for temporal types once we support them.
 	default:
-		assert(false);
+		ASSERT(false);
+		break;
 	}
 }
 
@@ -610,7 +658,9 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 XXH64_hash_t SIValue_HashCode(SIValue v) {
 	// Initialize the hash state.
 	XXH64_state_t state;
-	assert(XXH64_reset(&state, 0) != XXH_ERROR);
+	XXH_errorcode res = XXH64_reset(&state, 0);
+	UNUSED(res);
+	ASSERT(res != XXH_ERROR);
 
 	// Update the state with the SIValue.
 	SIValue_HashUpdate(v, &state);
@@ -638,6 +688,8 @@ void SIValue_Free(SIValue v) {
 	case T_PATH:
 		SIPath_Free(v);
 		return;
+	case T_MAP:
+		Map_Free(v);
 	default:
 		return;
 	}

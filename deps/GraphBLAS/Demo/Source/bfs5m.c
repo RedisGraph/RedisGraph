@@ -2,8 +2,8 @@
 // GraphBLAS/Demo/Source/bfs5m.c: breadth first search (vxm and assign/reduce)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -26,7 +26,10 @@
 // simple illustration.  Use the LAGraph_bfs_pushpull for benchmarking and
 // production use.
 
-#include "demos.h"
+#include "GraphBLAS.h"
+#undef GB_PUBLIC
+#define GB_LIBRARY
+#include "graphblas_demos.h"
 
 //------------------------------------------------------------------------------
 // bfs5m: breadth first search using a Boolean semiring
@@ -38,6 +41,7 @@
 // v should be empty on input.)  The graph A need not be Boolean on input;
 // if it isn't Boolean, the semiring will properly typecast it to Boolean.
 
+GB_PUBLIC
 GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
 (
     GrB_Vector *v_output,   // v [i] is the BFS level of node i in the graph
@@ -53,8 +57,6 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     GrB_Index n ;                          // # of nodes in the graph
     GrB_Vector q = NULL ;                  // nodes visited at each level
     GrB_Vector v = NULL ;                  // result vector
-    GrB_Monoid Lor = NULL ;                // Logical-or monoid
-    GrB_Semiring Boolean = NULL ;          // Boolean semiring
     GrB_Descriptor desc = NULL ;           // Descriptor for vxm
 
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
@@ -65,8 +67,6 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     GrB_Vector_new (&q, GrB_BOOL, n) ;     // Vector<bool> q(n) = false
     GrB_Vector_setElement_BOOL (q, true, s) ;   // q[s] = true, false elsewhere
 
-    GrB_Monoid_new_BOOL (&Lor, GrB_LOR, (bool) false) ;
-    GrB_Semiring_new (&Boolean, Lor, GrB_LAND) ;
     GrB_Descriptor_new (&desc) ;
     GrB_Descriptor_set (desc, GrB_MASK, GrB_COMP) ;     // invert the mask
     GrB_Descriptor_set (desc, GrB_OUTP, GrB_REPLACE) ;  // clear q first
@@ -84,10 +84,10 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
 
         // q<!v> = q ||.&& A ; finds all the unvisited
         // successors from current q, using !v as the mask
-        GrB_vxm (q, v, NULL, Boolean, q, A, desc) ;
+        GrB_vxm (q, v, NULL, GrB_LOR_LAND_SEMIRING_BOOL, q, A, desc) ;
 
         // successor = ||(q)
-        GrB_Vector_reduce_BOOL (&successor, NULL, Lor, q, NULL) ;
+        GrB_Vector_reduce_BOOL (&successor, NULL, GrB_LOR_MONOID_BOOL, q, NULL) ;
     }
 
     // make v sparse
@@ -97,8 +97,6 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     *v_output = v ;         // return result
 
     GrB_Vector_free (&q) ;
-    GrB_Monoid_free (&Lor) ;
-    GrB_Semiring_free (&Boolean) ;
     GrB_Descriptor_free (&desc) ;
 
     return (GrB_SUCCESS) ;

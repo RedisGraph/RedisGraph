@@ -2,8 +2,8 @@
 // GrB_UnaryOp_free: free a unary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ GrB_Info GrB_UnaryOp_free           // free a user-created unary operator
             if (op->magic == GB_MAGIC)
             { 
                 op->magic = GB_FREED ;  // to help detect dangling pointers
-                GB_FREE_MEMORY (*unaryop, 1, sizeof (struct GB_UnaryOp_opaque));
+                GB_FREE (*unaryop) ;
             }
             (*unaryop) = NULL ;
         }

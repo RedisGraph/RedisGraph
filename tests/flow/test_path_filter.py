@@ -1,3 +1,4 @@
+import re
 import os
 import sys
 from RLTest import Env
@@ -16,7 +17,7 @@ redis_graph = None
 
 class testPathFilter(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_con
         redis_con = self.env.getConnection()
 
@@ -247,3 +248,61 @@ class testPathFilter(FlowTestsBase):
         expected_result = [['a'],
                            ['b']]
         self.env.assertEquals(result_set.result_set, expected_result)
+
+    def test12_label_introduced_in_path_filter(self):
+        # Build a graph with 2 nodes connected by 1 edge.
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_edge(edge01)
+        redis_graph.flush()
+
+        # Write a WHERE filter that introduces label data.
+        query = "MATCH (a1)-[]->(a2) WHERE (a1:L)-[]->(a2:L) return a1.x, a2.x"
+        result_set = redis_graph.query(query)
+        expected_result = [['a', 'b']]
+        self.env.assertEquals(result_set.result_set, expected_result)
+
+    def test13_path_filter_in_different_scope(self):
+        # Create a graph of the form:
+        # (c)-[]->(a)-[]->(b)
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        node2 = Node(node_id=2, label="L", properties={'x': 'c'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
+        edge12 = Edge(src_node=node1, dest_node=node2, relation="R")
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_edge(edge01)
+        redis_graph.add_edge(edge12)
+        redis_graph.flush()
+
+        # Match nodes with an outgoing edge that optionally have an incoming edge.
+        query = "MATCH (a) OPTIONAL MATCH (a)<-[]-() WITH a WHERE (a)-[]->() return a.x ORDER BY a.x"
+        result_set = redis_graph.query(query)
+        expected_result = [['a'],
+                           ['b']]
+        self.env.assertEquals(result_set.result_set, expected_result)
+
+    def test14_path_and_predicate_filters(self):
+        # Build a graph with 2 nodes connected by 1 edge.
+        redis_graph.query("CREATE (:L {x:'a'})-[:R]->(:L {x:'b'})")
+
+        # Write a WHERE clause that evaluates a predicate on a node and a path filter.
+        query = "MATCH (a:L) WHERE (a)-[]->() AND a.x = 'a' return a.x"
+        plan_1 = redis_graph.execution_plan(query)
+        # The predicate filter should be evaluated between the Apply and Scan ops.
+        self.env.assertTrue(re.search('Semi Apply\s+Filter\s+Node By Label Scan', plan_1))
+        result_set = redis_graph.query(query)
+        expected_result = [['a']]
+        self.env.assertEquals(result_set.result_set, expected_result)
+
+        # Swap the order of the WHERE clause filters.
+        query = "MATCH (a:L) WHERE a.x = 'a' AND (a)-[]->() return a.x"
+        plan_2 = redis_graph.execution_plan(query)
+        # The plan should be identical to the one constructed previously.
+        self.env.assertEqual(plan_1, plan_2)
+

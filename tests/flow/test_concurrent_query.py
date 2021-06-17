@@ -68,7 +68,7 @@ def delete_graph(graph, threadID):
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global graphs
         graphs = []
         for i in range(0, CLIENT_COUNT):
@@ -256,8 +256,10 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer.start()
         redis_con.delete(GRAPH_ID)
         writer.join()
+        possible_exceptions = ["Encountered different graph value when opened key " + GRAPH_ID,
+                               "Encountered an empty key when opened key " + GRAPH_ID]
         if exceptions[0] is not None:
-            self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+            self.env.assertContains(exceptions[0], possible_exceptions)
         else:
             self.env.assertEquals(1000000, assertions[0].nodes_created)       
     
@@ -302,10 +304,12 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer.start()
         set_result = redis_con.set(GRAPH_ID, "1")
         writer.join()
+        possible_exceptions = ["Encountered a non-graph value type when opened key " + GRAPH_ID,
+                               "WRONGTYPE Operation against a key holding the wrong kind of value"]
         if exceptions[0] is not None:
             # If the SET command attempted to execute while the CREATE query was running,
             # an exception should have been issued.
-            self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+            self.env.assertContains(exceptions[0], possible_exceptions)
         else:
             # Otherwise, both the CREATE query and the SET command should have succeeded.
             self.env.assertEquals(1000000, assertions[0].nodes_created)

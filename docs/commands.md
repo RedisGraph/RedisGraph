@@ -12,6 +12,18 @@ Returns: [Result set](result_structure.md#redisgraph-result-set-structure)
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
+## GRAPH.RO_QUERY
+
+Executes a given read only query against a specified graph.
+
+Arguments: `Graph name, Query`
+
+Returns: [Result set](result_structure.md#redisgraph-result-set-structure) for a read only query or an error if a write query was given.
+
+```sh
+GRAPH.RO_QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
+```
+
 ### Query language
 
 The syntax is based on [Cypher](http://www.opencypher.org/), and only a subset of the language currently
@@ -40,30 +52,30 @@ supported.
 
 Match describes the relationship between queried entities, using ascii art to represent pattern(s) to match against.
 
-Nodes are represented by parenthesis `()`,
+Nodes are represented by parentheses `()`,
 and Relationships are represented by brackets `[]`.
 
 Each graph entity node/relationship can contain an alias and a label/relationship type, but both can be left empty if necessary.
 
 Entity structure: `alias:label {filters}`.
 
-Alias, label/relationship type and filters are all optional.
+Alias, label/relationship type, and filters are all optional.
 
 Example:
 
 ```sh
-(a:actor)-[:act]->(m:movie {title:"straight outta compton"})
+(a:Actor)-[:ACT]->(m:Movie {title:"straight outta compton"})
 ```
 
 `a` is an alias for the source node, which we'll be able to refer to at different places within our query.
 
-`actor` is the label under which this node is marked.
+`Actor` is the label under which this node is marked.
 
-`act` is the relationship type.
+`ACT` is the relationship type.
 
 `m` is an alias for the destination node.
 
-`movie` destination node is of "type" movie.
+`Movie` destination node is of "type" movie.
 
 `{title:"straight outta compton"}` requires the node's title attribute to equal "straight outta compton".
 
@@ -73,7 +85,7 @@ In this example, we're interested in actor entities which have the relation "act
 It is possible to describe broader relationships by composing a multi-hop query such as:
 
 ```sh
-(me {name:'swilly'})-[:friends_with]->()-[:friends_with]->(foaf)
+(me {name:'swilly'})-[:FRIENDS_WITH]->()-[:FRIENDS_WITH]->(foaf)
 ```
 
 Here we're interested in finding out who my friends' friends are.
@@ -81,7 +93,7 @@ Here we're interested in finding out who my friends' friends are.
 Nodes can have more than one relationship coming in or out of them, for instance:
 
 ```sh
-(me {name:'swilly'})-[:visited]->(c:country)<-[:visited]-(friend)<-[:friends_with]-({name:'swilly'})
+(me {name:'swilly'})-[:VISITED]->(c:Country)<-[:VISITED]-(friend)<-[:FRIENDS_WITH]-(me)
 ```
 
 Here we're interested in knowing which of my friends have visited at least one country I've been to.
@@ -91,10 +103,10 @@ Here we're interested in knowing which of my friends have visited at least one c
 Nodes that are a variable number of relationship→node hops away can be found using the following syntax:
 
 ```sh
--[:type*minHops..maxHops]->
+-[:TYPE*minHops..maxHops]->
 ```
 
-`type`, `minHops` and `maxHops` are all optional and default to type agnostic, 1 and infinity, respectively.
+`TYPE`, `minHops` and `maxHops` are all optional and default to type agnostic, 1 and infinity, respectively.
 
 When no bounds are given the dots may be omitted. The dots may also be omitted when setting only one bound and this implies a fixed length pattern.
 
@@ -102,7 +114,7 @@ Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
+"MATCH (charlie:Actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:Actor)
 RETURN colleague"
 ```
 
@@ -112,7 +124,7 @@ Returns all actors related to 'Charlie Sheen' by 1 to 3 hops.
 
 If a relationship pattern does not specify a direction, it will match regardless of which node is the source and which is the destination:
 ```sh
--[:type]-
+-[:TYPE]-
 ```
 
 Example:
@@ -140,11 +152,11 @@ Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH p=(charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:actor)
+"MATCH p=(charlie:Actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:Actor)
 RETURN nodes(p) as actors"
 ```
 
-This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
+This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:Actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
 
 #### OPTIONAL MATCH
 
@@ -219,7 +231,7 @@ WHERE actor.age >= director.age AND actor.age > 32
 It is also possible to specify equality predicates within nodes using the curly braces as such:
 
 ```
-(:president {name:"Jed Bartlett"})-[:won]->(:state)
+(:President {name:"Jed Bartlett"})-[:WON]->(:State)
 ```
 
 Here we've required that the president node's name will have the value "Jed Bartlett".
@@ -229,19 +241,19 @@ There's no difference between inline predicates and predicates specified within 
 It is also possible to filter on graph patterns. The following queries, which return all presidents and the states they won in, produce the same results:
 
 ```sh
-MATCH (p:president), (s:state) WHERE (p)-[:won]->(s) RETURN p, s
+MATCH (p:President), (s:State) WHERE (p)-[:WON]->(s) RETURN p, s
 ```
 
 and
 
 ```sh
-MATCH (p:president)-[:won]->(s:state) RETURN p, s
+MATCH (p:President)-[:WON]->(s:State) RETURN p, s
 ```
 
 Pattern predicates can be also negated and combined with the logical operators AND, OR, and NOT. The following query returns all the presidents that did not win in the states where they were governors:
 
 ```sh
-MATCH (p:president), (s:state) WHERE NOT (p)-[:won]->(s) AND (p)->[:governor]->(s) RETURN p, s
+MATCH (p:President), (s:State) WHERE NOT (p)-[:WON]->(s) AND (p)->[:governor]->(s) RETURN p, s
 ```
 
 #### RETURN
@@ -325,10 +337,10 @@ The optional skip clause allows a specified number of records to be omitted from
 SKIP <number of records to skip>
 ```
 
-This can be useful when processing results in batches. A query that would examine the second 100-element batch of nodes with the label `person`, for example, would be:
+This can be useful when processing results in batches. A query that would examine the second 100-element batch of nodes with the label `Person`, for example, would be:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT 100"
+GRAPH.QUERY DEMO_GRAPH "MATCH (p:Person) RETURN p ORDER BY p.name SKIP 100 LIMIT 100"
 ```
 
 #### LIMIT
@@ -359,16 +371,16 @@ CREATE (n),(m)
 ```
 
 ```sh
-CREATE (:person {name: 'Kurt', age:27})
+CREATE (:Person {name: 'Kurt', age: 27})
 ```
 
 To add relations between nodes, in the following example we first find an existing source node. After it's found, we create a new relationship and destination node.
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH(a:person)
+"MATCH (a:Person)
 WHERE a.name = 'Kurt'
-CREATE (a)-[:member]->(:band {name:'Nirvana'})"
+CREATE (a)-[:MEMBER]->(:Band {name:'Nirvana'})"
 ```
 
 Here the source node is a bounded node, while the destination node is unbounded.
@@ -381,7 +393,7 @@ All entities within the pattern which are not bounded will be created.
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"CREATE (jim:person{name:'Jim', age:29})-[:friends]->(pam:person {name:'Pam', age:27})-[:works]->(:employer {name:'Dunder Mifflin'})"
+"CREATE (jim:Person{name:'Jim', age:29})-[:FRIENDS]->(pam:Person {name:'Pam', age:27})-[:WORKS]->(:Employer {name:'Dunder Mifflin'})"
 ```
 
 This query will create three nodes and two relationships.
@@ -395,13 +407,13 @@ Note that deleting a node also deletes all of its incoming and outgoing relation
 To delete a node and all of its relationships:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MATCH (p:person {name:'Jim'}) DELETE p"
+GRAPH.QUERY DEMO_GRAPH "MATCH (p:Person {name:'Jim'}) DELETE p"
 ```
 
 To delete relationship:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MATCH (:person {name:'Jim'})-[r:friends]->() DELETE r"
+GRAPH.QUERY DEMO_GRAPH "MATCH (:Person {name:'Jim'})-[r:FRIENDS]->() DELETE r"
 ```
 
 This query will delete all `friend` outgoing relationships from the node with the name 'Jim'.
@@ -423,6 +435,16 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (n { name: 'Jim', age:32 })
 SET n.age = 33, n.name = 'Bob'"
 ```
+
+The same can be accomplished by setting the graph entity variable to a map:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n { name: 'Jim', age:32 })
+SET n = {age: 33, name: 'Bob'}"
+```
+
+Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
 
 To remove a node's property, simply set property value to NULL.
 
@@ -576,22 +598,27 @@ This section contains information on all supported functions from the Cypher que
 * [List functions](#list-functions)
 * [Mathematical functions](#mathematical-functions)
 * [String functions](#string-functions)
+* [Point functions](#point-functions)
 * [Node functions](#node-functions)
+* [Path functions](#path-functions)
 
 ## Predicate functions
 
-|Function | Description|
-| ------- |:-----------|
-|exists() | Returns true if the specified property exists in the node or relationship. |
+| Function                                      | Description                                                                               |
+| -------                                       | :-----------                                                                              |
+| exists()                                      | Returns true if the specified property exists in the node or relationship.                |
+| [any()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for any element in the input array.  |
+| [all()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for all elements in the input array. |
 
 ## Scalar functions
 
-|Function | Description|
-| ------- |:-----------|
-|id() | Returns the internal ID of a relationship or node (which is not immutable.) |
-|labels() | Returns a string representation of the label of a node. |
-|timestamp() | Returns the the amount of milliseconds since epoch. |
-|type() | Returns a string representation of the type of a relation. |
+| Function            | Description                                                                 |
+| -------             | :-----------                                                                |
+| id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
+| labels()            | Returns a string representation of the label of a node.                     |
+| timestamp()         | Returns the the amount of milliseconds since epoch.                         |
+| type()              | Returns a string representation of the type of a relation.                  |
+| list comprehensions | [See documentation](#list-comprehensions)                                   |
 
 ## Aggregating functions
 
@@ -617,30 +644,39 @@ This section contains information on all supported functions from the Cypher que
 
 ## Mathematical functions
 
-|Function | Description|
-| ------- |:-----------|
-|abs() | Returns the absolute value of a number|
-|ceil() | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-|floor() | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
-|rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
-|round() | Returns the value of a number rounded to the nearest integer |
-|sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|Function    | Description|
+| ---------- |:-----------|
+|abs()		 | Returns the absolute value of a number|
+|ceil()		 | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+|floor()	 | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
+|rand()		 | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
+|round()     | Returns the value of a number rounded to the nearest integer |
+|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|sqrt()      | Returns the square root of a number|
 |toInteger() | Converts a floating point or string value to an integer value. |
 
 ## String functions
 
-|Function | Description|
-| ------- |:-----------|
-|left() | Returns a string containing the specified number of leftmost characters of the original string |
-|lTrim() | Returns the original string with leading whitespace removed |
-|reverse() | Returns a string in which the order of all characters in the original string are reversed |
-|right() | Returns a string containing the specified number of rightmost characters of the original string |
-|rTrim() | Returns the original string with trailing whitespace removed |
-|substring() | Returns a substring of the original string, beginning with a 0-based index start and length |
-|toLower() | Returns the original string in lowercase |
-|toString() | Converts an integer, float or boolean value to a string |
-|toUpper() | Returns the original string in uppercase |
-|trim() | Returns the original string with leading and trailing whitespace removed |
+| Function    | Description                                                                                     |
+| -------     | :-----------                                                                                    |
+| left()      | Returns a string containing the specified number of leftmost characters of the original string  |
+| lTrim()     | Returns the original string with leading whitespace removed                                     |
+| reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
+| right()     | Returns a string containing the specified number of rightmost characters of the original string |
+| rTrim()     | Returns the original string with trailing whitespace removed                                    |
+| substring() | Returns a substring of the original string, beginning with a 0-based index start and length     |
+| toLower()   | Returns the original string in lowercase                                                        |
+| toString()  | Returns a string representation of a value                                                      |
+| toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
+| toUpper()   | Returns the original string in uppercase                                                        |
+| trim()      | Returns the original string with leading and trailing whitespace removed                        |
+
+## Point functions
+
+| Function          | Description                                                     |
+| -------           | :-----------                                                    |
+| [point()](#point) | Returns a Point type representing the given lat/lon coordinates |
+| distance()        | Returns the distance in meters between the two given points     |
 
 ## Node functions
 |Function | Description|
@@ -649,11 +685,92 @@ This section contains information on all supported functions from the Cypher que
 |outdegree() | Returns the number of node's outgoing edges. |
 
 ## Path functions
-|Function | Description|
-| ------- |:-----------|
-| nodes() | Return a new list of nodes, of a given path. |
-| relationships() | Return a new list of edges, of a given path. |
-| length() | Return the length (number of edges) of the path|
+| Function                        | Description                                               |
+| -------                         | :-----------                                              |
+| nodes()                         | Return a new list of nodes, of a given path.              |
+| relationships()                 | Return a new list of edges, of a given path.              |
+| length()                        | Return the length (number of edges) of the path.          |
+| [shortestPath()](#shortestPath) | Return the shortest path that resolves the given pattern. |
+
+### List comprehensions
+List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
+
+They are a common construct in functional languages and modern high-level languages. In Cypher, they use the syntax:
+
+```sh
+[element IN array WHERE condition | output elem]
+```
+
+- `array` can be any expression that produces an array: a literal, a property reference, or a function call.
+- `WHERE condition` is an optional argument to only project elements that pass a certain criteria. If omitted, all elements in the array will be represented in the output.
+- `| output elem` is an optional argument that allows elements to be transformed in the output array. If omitted, the output elements will be the same as their corresponding inputs.
+
+
+The following query collects all paths of any length, then for each produces an array containing the `name` property of every node with a `rank` property greater than 10:
+
+```sh
+MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
+```
+
+#### Existential comprehension functions
+The functions `any()` and `all()` use a simplified form of the list comprehension syntax and return a boolean value.
+
+```sh
+any(element IN array WHERE condition)
+```
+
+They can operate on any form of input array, but are particularly useful for path filtering. The following query collects all paths of any length in which all traversed edges have a weight less than 3:
+
+```sh
+MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
+```
+
+### Point
+The `point()` function expects one map argument of the form:
+```sh
+RETURN point({latitude: lat_value, longitude: lon_val})
+```
+
+The key names `latitude` and `longitude` are case-sensitive.
+
+The point constructed by this function can be saved as a node/relationship property or used within the query, such as in a `distance` function call.
+
+### shortestPath
+The `shortestPath()` function is invoked with the form:
+```sh
+MATCH (a {v: 1}), (b {v: 4}) RETURN shortestPath((a)-[:L*]->(b))
+```
+
+The sole `shortestPath` argument is a traversal pattern. This pattern's endpoints must be resolved prior to the function call, and no property filters may be introduced in the pattern. The relationship pattern may specify any number of relationship types (including zero) to be considered. If a minimum number of hops is specified, it may only be 0 or 1, while any number may be used for the maximum number of hops. If no shortest path can be found, NULL is returned.
+
+### JSON format
+`toJSON()` returns the input value in JSON formatting. For primitive data types and arrays, this conversion is conventional. Maps and map projections (`toJSON(node { .prop} )`) are converted to JSON objects, as are nodes and relationships.
+
+The format for a node object in JSON is:
+```sh
+{
+  "type": "node",
+  "id": id(int),
+  "labels": [label(string) X N],
+  "properties": {
+    property_key(string): property_value X N
+  }
+}
+```
+
+The format for a relationship object in JSON is:
+```sh
+{
+  "type": "relationship",
+  "id": id(int),
+  "label": label(string),
+  "properties": {
+    property_key(string): property_value X N
+  }
+  "start": src_node(node),
+  "end": dest_node(node)
+}
+```
 
 ## Procedures
 Procedures are invoked using the syntax:
@@ -668,59 +785,84 @@ GRAPH.QUERY social "CALL db.labels() YIELD label"
 
 YIELD modifiers are only required if explicitly specified; by default the value in the 'Yields' column will be emitted automatically.
 
-|Procedure | Arguments | Yields | Description|
-| -------  |:-------|:-------|:-----------|
-|db.labels | none | `label` | Yields all node labels in the graph. |
-|db.relationshipTypes | none | `relationshipType` | Yields all relationship types in the graph. |
-|db.propertyKeys | none | `propertyKey` | Yields all property keys in the graph. |
-|db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...] | none | Builds a full-text searchable index on a label and the 1 or more specified properties. |
-|db.idx.fulltext.drop | `label` | none | Deletes the full-text index associated with the given label. |
-|db.idx.fulltext.queryNodes | `label`, `string` | `node` | Retrieve all nodes that contain the specified string in the full-text indexes on the given label. |
-|algo.pageRank | `label`, `relationship-type` | `node`, `score` | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type. |
+| Procedure                       | Arguments                                       | Yields                        | Description                                                                                                                                                                            |
+| -------                         | :-------                                        | :-------                      | :-----------                                                                                                                                                                           |
+| db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
+| db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
+| db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
+| db.indexes                      | none                                            | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                         |
+| db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
+| db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
+| db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
+| algo.pageRank                   | `label`, `relationship-type`                    | `node`, `score`               | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type.                                                                              |
+| [algo.BFS](#BFS)                | `source-node`, `max-level`, `relationship-type` | `nodes`, `edges`              | Performs BFS to find all nodes connected to the source. A `max level` of 0 indicates unlimited and a non-NULL `relationship-type` defines the relationship type that may be traversed. |
+| dbms.procedures()               | none                                            | `name`, `mode`                | List all procedures in the DBMS, yields for every procedure its name and mode (read/write).                                                                                            |
+
+### Algorithms
+
+#### BFS
+The breadth-first-search algorithm accepts 4 arguments:
+
+`source-node (node)` - The root of the search.
+
+`max-level (integer)` - If greater than zero, this argument indicates how many levels should be traversed by BFS. 1 would retrieve only the source's neighbors, 2 would retrieve all nodes within 2 hops, and so on.
+
+`relationship-type (string)` - If this argument is NULL, all relationship types will be traversed. Otherwise, it specifies a single relationship type to perform BFS over.
+
+It can yield two outputs:
+
+`nodes` - An array of all nodes connected to the source without violating the input constraints.
+
+`edges` - An array of all edges traversed during the search. This does not necessarily contain all edges connecting nodes in the tree, as cycles or multiple edges connecting the same source and destination do not have a bearing on the reachability this algorithm tests for. These can be used to construct the directed acyclic graph that represents the BFS tree. Emitting edges incurs a small performance penalty.
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
+
+String, numeric, and geospatial data types can be indexed.
+
 The creation syntax is:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :person(age)"
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
 
 ```sh
-GRAPH.EXPLAIN G "MATCH (p:person) WHERE p.age > 80 RETURN p"
+GRAPH.EXPLAIN G "MATCH (p:Person) WHERE p.age > 80 RETURN p"
 1) "Results"
 2) "    Project"
-3) "        Index Scan | (p:person)"
+3) "        Index Scan | (p:Person)"
 ```
 
 This can significantly improve the runtime of queries with very specific filters. An index on `:employer(name)`, for example, will dramatically benefit the query:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (:employer {name: 'Dunder Mifflin'})-[:employs]->(p:person) RETURN p"
+"MATCH (:Employer {name: 'Dunder Mifflin'})-[:EMPLOYS]->(p:Person) RETURN p"
 ```
 
-RedisGraph can use multiple indexes as ad-hoc composite indexes at query time. For example, if `age` and `years_employed` are both indexed, then both indexes will be utilized in the query:
+An example of utilizing a geospatial index to find `Employer` nodes within 5 kilometers of Scranton is:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (p:person) WHERE p.age < 30 OR p.years_employed < 3 RETURN p"
+"WITH point({latitude:41.4045886, longitude:-75.6969532}) AS scranton MATCH (e:Employer) WHERE distance(e.location, scranton) < 5000 RETURN e"
 ```
+
+Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
 
 Individual indexes can be deleted using the matching syntax:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :person(age)"
+GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 ```
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('movie', 'title')"
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
 ```
 
 (More properties can be added to this index by adding their names to the above set of arguments, or using this syntax again with the additional names.)
@@ -729,7 +871,7 @@ Now this index can be invoked to match any whole words contained within:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"CALL db.idx.fulltext.queryNodes('movie', 'Book') YIELD node RETURN node.title"
+"CALL db.idx.fulltext.queryNodes('Movie', 'Book') YIELD node RETURN node.title"
 1) 1) "node.title"
 2) 1) 1) "The Jungle Book"
    2) 1) "The Book of Life"
@@ -739,14 +881,14 @@ GRAPH.QUERY DEMO_GRAPH
 This CALL clause can be interleaved with other Cypher clauses to perform more elaborate manipulations:
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"CALL db.idx.fulltext.queryNodes('movie', 'Book') YIELD node AS m
+"CALL db.idx.fulltext.queryNodes('Movie', 'Book') YIELD node AS m
 WHERE m.genre = 'Adventure'
 RETURN m ORDER BY m.rating"
 1) 1) "m"
 2) 1) 1) 1) 1) "id"
             2) (integer) 1168
          2) 1) "labels"
-            2) 1) "movie"
+            2) 1) "Movie"
          3) 1) "properties"
             2) 1) 1) "genre"
                   2) "Adventure"
@@ -759,6 +901,45 @@ RETURN m ORDER BY m.rating"
                5) 1) "title"
                   2) "The Jungle Book"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
+```
+
+In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redislabs.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"CALL db.idx.fulltext.queryNodes('Node', 'hello world') YIELD node, score RETURN score, node.val"
+1) 1) "score"
+   2) "node.val"
+2) 1) 1) "2"
+      2) "hello world"
+   2) 1) "1"
+      2) "hello to a different world"
+3) 1) "Cached execution: 1"
+   2) "Query internal execution time: 0.335401 milliseconds"
+```
+
+## GRAPH.PROFILE
+
+Executes a query and produces an execution plan augmented with metrics for each operation's execution.
+
+Arguments: `Graph name, Query`
+
+Returns: `String representation of a query execution plan, with details on results produced by and time spent in each operation.`
+
+`GRAPH.PROFILE` is a parallel entrypoint to `GRAPH.QUERY`. It accepts and executes the same queries, but it will not emit results,
+instead returning the operation tree structure alongside the number of records produced and total runtime of each operation.
+
+It is important to note that this blends elements of [GRAPH.QUERY](#graphquery) and [GRAPH.EXPLAIN](#graphexplain).
+It is not a dry run and will perform all graph modifications expected of the query, but will not output results produced by a `RETURN` clause or query statistics.
+
+```sh
+GRAPH.PROFILE imdb
+"MATCH (actor_a:Actor)-[:ACT]->(:Movie)<-[:ACT]-(actor_b:Actor)
+WHERE actor_a <> actor_b
+CREATE (actor_a)-[:COSTARRED_WITH]->(actor_b)"
+1) "Create | Records produced: 11208, Execution time: 168.208661 ms"
+2) "    Filter | Records produced: 11208, Execution time: 1.250565 ms"
+3) "        Conditional Traverse | Records produced: 12506, Execution time: 7.705860 ms"
+4) "            Node By Label Scan | (actor_a:Actor) | Records produced: 1317, Execution time: 0.104346 ms"
 ```
 
 ## GRAPH.DELETE
@@ -776,7 +957,7 @@ GRAPH.DELETE us_government
 Note: To delete a node from the graph (not the entire graph), execute a `MATCH` query and pass the alias to the `DELETE` clause:
 
 ```
-GRAPH.QUERY DEMO_GRAPH "MATCH (x:y {propname: propvalue}) DELETE x"
+GRAPH.QUERY DEMO_GRAPH "MATCH (x:Y {propname: propvalue}) DELETE x"
 ```
 
 WARNING: When you delete a node, all of the node's incoming/outgoing relationships are also removed.
@@ -791,15 +972,16 @@ Arguments: `Graph name, Query`
 Returns: `String representation of a query execution plan`
 
 ```sh
-GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
+GRAPH.EXPLAIN us_government "MATCH (p:President)-[:BORN]->(h:State {name:'Hawaii'}) RETURN p"
 ```
 
 ## GRAPH.SLOWLOG
 
-Returns a list containing up to 10 of the slowest queries issued against given graph id.
+Returns a list containing up to 10 of the slowest queries issued against the given graph ID.
 
 Each item in the list has the following structure:
-1. A unix timestamp at which the logged was processed.
+
+1. A unix timestamp at which the log entry was processed.
 2. The issued command.
 3. The issued query.
 4. The amount of time needed for its execution, in milliseconds.
@@ -808,10 +990,32 @@ Each item in the list has the following structure:
 GRAPH.SLOWLOG graph_id
  1) 1) "1581932396"
     2) "GRAPH.QUERY"
-    3) "MATCH (a:person)-[:friend]->(e) RETURN e.name"
+    3) "MATCH (a:Person)-[:FRIEND]->(e) RETURN e.name"
     4) "0.831"
  2) 1) "1581932396"
     2) "GRAPH.QUERY"
-    3) "MATCH (ME:person)-[:friend]->(:person)-[:friend]->(fof:person) RETURN fof.name"
+    3) "MATCH (me:Person)-[:FRIEND]->(:Person)-[:FRIEND]->(fof:Person) RETURN fof.name"
     4) "0.288"
 ```
+
+## GRAPH.CONFIG
+Retrieves or updates a RedisGraph configuration.
+Arguments: `GET/SET, <config name> [value]`
+`value` should only be specified in `SET` contexts, while `*` may be substituted for an explict `config name` if all configurations should be returned.
+Only run-time configurations may be `SET`, though all configurations may be retrieved.
+```sh
+127.0.0.1:6379> GRAPH.CONFIG SET RESULTSET_SIZE 1000
+OK
+127.0.0.1:6379> GRAPH.CONFIG GET RESULTSET_SIZE
+1) "RESULTSET_SIZE"
+2) (integer) 1000
+```
+
+## GRAPH.LIST
+Lists all graph keys in the keyspace.
+```sh
+127.0.0.1:6379> GRAPH.LIST
+2) G
+3) resources
+4) players
+

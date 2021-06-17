@@ -2,8 +2,8 @@
 // gblogextract: logical extraction: C = A(M)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@
 
 // Usage:
 
-//      C = gblogextract (A, M)
+// C = gblogextract (A, M)
 
 //  This function is the C equivalent of the following m-function:
 
@@ -75,6 +75,8 @@
 // structure of the GrB_Matrix objects, and creates shallow copies.  The
 // m-file above is useful for understanding that this C mexFunction does.
 
+// C is always returned as a GrB matrix.
+
 #include "gb_matlab.h"
 #include "GB_transpose.h"
 
@@ -111,31 +113,33 @@ void mexFunction
     // get M
     //--------------------------------------------------------------------------
 
+    // M can be hypersparse, sparse, or full, but not bitmap
+    int not_bitmap = GxB_HYPERSPARSE + GxB_SPARSE + GxB_FULL ;
+
     // make M boolean, stored by column, and drop explicit zeros
     GrB_Matrix M_input = gb_get_shallow (pargin [1]) ;
-    GrB_Matrix M ;
-    OK (GrB_Matrix_new (&M, GrB_BOOL, nrows, ncols)) ;
-    OK (GxB_Matrix_Option_set (M, GxB_FORMAT, GxB_BY_COL)) ;
-    OK (GxB_Matrix_select (M, NULL, NULL, GxB_NONZERO, M_input, NULL, NULL)) ;
+    GrB_Matrix M = gb_new (GrB_BOOL, nrows, ncols, GxB_BY_COL, not_bitmap) ;
+    OK1 (M, GxB_Matrix_select (M, NULL, NULL, GxB_NONZERO, M_input,
+        NULL, NULL)) ;
     OK (GrB_Matrix_free (&M_input)) ;
 
     GrB_Index mnz ;
     OK (GrB_Matrix_nvals (&mnz, M)) ;
+    int sparsity ;
+    OK (GxB_Matrix_Option_get (M, GxB_SPARSITY_STATUS, &sparsity)) ;
+    CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 5") ;
 
     //--------------------------------------------------------------------------
     // G<M> = A
     //--------------------------------------------------------------------------
 
-    // G has the same type and size as A, but it is always stored by column
+    // G has the same type and size as A, but it is always stored by column.
+    // Also ensure the G is not bitmap.
     GrB_Type type ;
     OK (GxB_Matrix_type (&type, A)) ;
-    GrB_Matrix G ;
-    OK (GrB_Matrix_new (&G, type, nrows, ncols)) ;
-    OK (GxB_Matrix_Option_set (G, GxB_FORMAT, GxB_BY_COL)) ;
-
-    OK (GxB_Matrix_subassign (G, M, NULL,
+    GrB_Matrix G = gb_new (type, nrows, ncols, GxB_BY_COL, not_bitmap) ;
+    OK1 (G, GxB_Matrix_subassign (G, M, NULL,
         A, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
-
     OK (GrB_Matrix_free (&A_copy)) ;
     OK (GrB_Matrix_free (&A_input)) ;
 
@@ -144,7 +148,10 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index gnvals ;
+    OK1 (G, GrB_Matrix_wait (&G)) ;
     OK (GrB_Matrix_nvals (&gnvals, G)) ;
+    OK (GxB_Matrix_Option_get (G, GxB_SPARSITY_STATUS, &sparsity)) ;
+    CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 0") ;
     void *Gx = G->x ;
 
     //--------------------------------------------------------------------------
@@ -153,7 +160,6 @@ void mexFunction
 
     // This does not affect the extracted values Gx
     G->type = GrB_BOOL ;
-    G->type_size = sizeof (bool) ;
     if (G->nzmax > 0)
     { 
         G->x = mxMalloc (G->nzmax * sizeof (bool)) ;
@@ -168,6 +174,8 @@ void mexFunction
     // K is a shallow copy of M, except for its numerical values
     GrB_Matrix K ;
     OK (GB_shallow_copy (&K, GxB_BY_COL, M, Context)) ;
+    OK (GxB_Matrix_Option_get (K, GxB_SPARSITY_STATUS, &sparsity)) ;
+    CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 10") ;
 
     // Kx = uint64 (0:mnz-1)
     uint64_t *Kx = mxMalloc (MAX (mnz, 1) * sizeof (uint64_t)) ;
@@ -176,16 +184,13 @@ void mexFunction
     K->x = Kx ;
     K->x_shallow = false ;
     K->type = GrB_UINT64 ;
-    K->type_size = sizeof (uint64_t) ;
 
     //--------------------------------------------------------------------------
     // T<G> = K
     //--------------------------------------------------------------------------
 
-    GrB_Matrix T ;
-    OK (GrB_Matrix_new (&T, GrB_UINT64, nrows, ncols)) ;
-    OK (GxB_Matrix_Option_set (T, GxB_FORMAT, GxB_BY_COL)) ;
-    OK (GxB_Matrix_subassign (T, G, NULL,
+    GrB_Matrix T = gb_new (GrB_UINT64, nrows, ncols, GxB_BY_COL, not_bitmap) ;
+    OK1 (T, GxB_Matrix_subassign (T, G, NULL,
         K, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
 
     //--------------------------------------------------------------------------
@@ -193,6 +198,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index tnvals ;
+    OK1 (T, GrB_Matrix_wait (&T)) ;
     OK (GrB_Matrix_nvals (&tnvals, T)) ;
     uint64_t *Tx = T->x ;
 
@@ -205,16 +211,17 @@ void mexFunction
 
     // Vectors are always stored by column, and are never hypersparse.  This
     // step takes constant time, using a transplant of the row indices Tx from
-    // T and the values Gx from G.
+    // T and the values Gx from G.  V is sparse (not full, not hypersparse).
 
     GrB_Vector V ;
     OK (GrB_Vector_new (&V, type, mnz)) ;
+    OK1 (V, GxB_Vector_Option_set (V, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
     gb_mxfree (&V->i) ;
     gb_mxfree (&V->x) ;
-    V->i = Tx ;         // transplant the values of T as the row indices of V
+    V->i = (int64_t *) Tx ; // transplant values of T as the row indices of V
     T->x = NULL ;
-    V->x = Gx ;         // transplant the values of G as the values of V
-    V->nzmax = tnvals ;
+    V->x = Gx ;             // transplant the values of G as the values of V
+    V->nzmax = T->nzmax ;
     int64_t *Vp = V->p ;
     Vp [0] = 0 ;
     Vp [1] = tnvals ;
@@ -234,7 +241,7 @@ void mexFunction
     OK (GrB_Matrix_free (&T)) ;
 
     //--------------------------------------------------------------------------
-    // export the output matrix C back to MATLAB
+    // export the output matrix C back to MATLAB as a GraphBLAS matrix
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, KIND_GRB) ;

@@ -1,11 +1,11 @@
 function test_other
 %TEST_OTHER installs all packages needed for extensive tests
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 here = pwd ;
-fprintf ('\n------------------installing ssget:\n') ;
+fprintf ('\n------------------installing ssget\n') ;
 try
     index = ssget ;
 catch
@@ -14,10 +14,10 @@ catch
 end
 cd (here) ;
 
-fprintf ('\n------------------installing GraphBLAS/Demo/MATLAB:\n') ;
+fprintf ('\n------------------installing GraphBLAS/Demo/MATLAB\n') ;
 addpath ../Demo/MATLAB
 
-fprintf ('\n------------------installing spok:\n') ;
+fprintf ('\n------------------installing spok\n') ;
 cd spok
 addpath (pwd) ;
 try
@@ -27,7 +27,7 @@ catch
 end
 cd (here) ;
 
-fprintf ('\n------------------installing SSMULT:\n') ;
+fprintf ('\n------------------installing SSMULT\n') ;
 cd ../../SuiteSparse/MATLAB_Tools/SSMULT
 addpath (pwd) ;
 try
@@ -38,7 +38,7 @@ catch
 end
 cd (here) ;
 
-fprintf ('\n------------------installing CXSparse:\n') ;
+fprintf ('\n------------------installing CXSparse\n') ;
 cd ../../SuiteSparse/CXSparse/MATLAB/Csparse
 addpath (pwd) ;
 try
@@ -48,7 +48,7 @@ catch
 end
 cd (here) ;
 
-fprintf ('\n------------------installing CHOLMOD:\n') ;
+fprintf ('\n------------------installing CHOLMOD\n') ;
 cd ../../SuiteSparse/CHOLMOD/MATLAB
 addpath (pwd) ;
 try

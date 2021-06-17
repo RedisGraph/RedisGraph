@@ -20,10 +20,10 @@ typedef struct {
 } AST_UnwindContext;
 
 typedef struct {
-	NodeCreateCtx *nodes_to_merge;
-	EdgeCreateCtx *edges_to_merge;
-	EntityUpdateEvalCtx *on_match;
-	EntityUpdateEvalCtx *on_create;
+	rax *on_match;                   // rax of updates to make for ON MATCH directives
+	rax *on_create;                  // rax of updates to make for ON CREATE directives
+	NodeCreateCtx *nodes_to_merge;   // blueprints of nodes in MERGE pattern
+	EdgeCreateCtx *edges_to_merge;   // blueprints of edges in MERGE pattern
 } AST_MergeContext;
 
 typedef struct {
@@ -35,7 +35,7 @@ typedef struct {
 PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props);
 
 // Extract the necessary information to populate an update operation from a SET clause.
-EntityUpdateEvalCtx *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause);
+rax *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause);
 
 // Extract the necessary information to populate a delete operation from a DELETE clause.
 AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause);
@@ -46,8 +46,8 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 // Extract the necessary information to populate a unwind operation from an UNWIND clause.
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause);
 
-void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *bound_vars,
-							 NodeCreateCtx **nodes, EdgeCreateCtx **edges);
+void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
+							 rax *bound_vars, NodeCreateCtx **nodes, EdgeCreateCtx **edges);
 
 // Extract the necessary information to populate a merge operation from a MERGE clause.
 AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphContext *gc,

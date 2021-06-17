@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "shared/scan_functions.h"
 #include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/entities/node.h"
@@ -18,7 +19,7 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	const QGNode *n;            /* Node being scanned. */
+	NodeScanCtx n;           /* Label data of node being scanned. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
 	UnsignedRange *id_range;    /* ID range to iterate over. */
 	GxB_MatrixTupleIter *iter;
@@ -26,7 +27,8 @@ typedef struct {
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node);
+OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n);
 
 /* Transform a simple label scan to perform additional range query over the label  matrix. */
 void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range);
+

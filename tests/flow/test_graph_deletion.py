@@ -12,7 +12,7 @@ redis_graph = None
 
 class testGraphDeletionFlow(FlowTestsBase):
     def __init__(self):
-        self.env = Env()
+        self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -84,7 +84,7 @@ class testGraphDeletionFlow(FlowTestsBase):
 
     # Make sure there are no edges going into either Boaz or Ori.
     def test03_verify_edge_deletion(self):
-        query = """MATCH (s:person)-[e:know]->(d:person)                    
+        query = """MATCH (s:person)-[e:know]->(d:person)
                     WHERE d.name = "Boaz" AND d.name = "Ori"
                     RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
@@ -96,7 +96,7 @@ class testGraphDeletionFlow(FlowTestsBase):
     def test04_delete_typed_edge(self):
         query = """MATCH (s:person {name: "Roi"})-[e:know]->(d:person {name: "Alon"})
                    RETURN count(e)"""
-        
+
         actual_result = redis_graph.query(query)
         edge_count = actual_result.result_set[0][0]
 
@@ -120,7 +120,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(len(actual_result.result_set), 0)
 
-    # Remove both Alon and Boaz from the graph. 
+    # Remove both Alon and Boaz from the graph.
     def test06_delete_nodes(self):
         rel_count_query = """MATCH (a:person)-[e]->(b:person)
                              WHERE a.name = 'Boaz' OR a.name = 'Alon'
@@ -134,7 +134,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         query = """MATCH (s:person)
                     WHERE s.name = "Boaz" OR s.name = "Alon"
                     DELETE s"""
-        actual_result = redis_graph.query(query)        
+        actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.relationships_deleted, rel_count)
         self.env.assertEquals(actual_result.nodes_deleted, 2)
 
@@ -160,7 +160,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         result = redis_graph.query(query)
         nodeCount = result.result_set[0][0]
         self.env.assertGreater(nodeCount, 0)
-        
+
         # Delete graph.
         redis_graph.delete()
 
@@ -191,22 +191,22 @@ class testGraphDeletionFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except Exception as error:
-            self.env.assertTrue("Delete type mismatch" in error.message)
+            self.env.assertTrue("Delete type mismatch" in str(error))
 
         query = """MATCH p=(n) DELETE p"""
         try:
             redis_graph.query(query)
             self.env.assertTrue(False)
         except Exception as error:
-            self.env.assertTrue("Delete type mismatch" in error.message)
-    
+            self.env.assertTrue("Delete type mismatch" in str(error))
+
     def test12_delete_unwind_entity(self):
         redis_con = self.env.getConnection()
         redis_graph = Graph("delete_test", redis_con)
 
         # Create 10 nodes.
         for i in range(10):
-            redis_graph.add_node(Node())        
+            redis_graph.add_node(Node())
         redis_graph.flush()
 
         # Unwind path nodes.
@@ -236,9 +236,9 @@ class testGraphDeletionFlow(FlowTestsBase):
 
         redis_graph.add_node(src)
         redis_graph.add_node(dest)
-        redis_graph.add_edge(edge)        
+        redis_graph.add_edge(edge)
         redis_graph.flush()
-        
+
         # Delete projected
         # Unwind path nodes.
         query = """MATCH p = (src)-[e]->(dest) WITH nodes(p)[0] AS node, relationships(p)[0] as edge DELETE node, edge"""
@@ -281,4 +281,33 @@ class testGraphDeletionFlow(FlowTestsBase):
         query = """MATCH (n1:Src)-[*]->(n2:Dest {val: 0}) RETURN COUNT(*)"""
         actual_result = redis_graph.query(query)
         expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test15_update_deleted_entities(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("delete_test", redis_con)
+
+        src = Node()
+        dest = Node()
+        edge = Edge(src, "R", dest)
+
+        redis_graph.add_node(src)
+        redis_graph.add_node(dest)
+        redis_graph.add_edge(edge)
+        redis_graph.flush()
+
+        # Attempt to update entities after deleting them.
+        query = """MATCH (a)-[e]->(b) DELETE a, b SET a.v = 1, e.v = 2, b.v = 3"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_deleted, 2)
+        self.env.assertEquals(actual_result.relationships_deleted, 1)
+        # No properties should be set.
+        # (Note that this behavior is left unspecified by Cypher.)
+        self.env.assertEquals(actual_result.properties_set, 0)
+
+        # Validate that the graph is empty.
+        query = """MATCH (a) RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = []
         self.env.assertEquals(actual_result.result_set, expected_result)

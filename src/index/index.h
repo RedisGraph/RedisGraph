@@ -12,10 +12,13 @@
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
+#define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
+#define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
 
 typedef enum {
-	IDX_EXACT_MATCH,
-	IDX_FULLTEXT,
+	IDX_ANY = 0,
+	IDX_EXACT_MATCH = 1,
+	IDX_FULLTEXT = 2,
 } IndexType;
 
 typedef struct {
@@ -27,82 +30,89 @@ typedef struct {
 	IndexType type;             // Index type exact-match / fulltext.
 } Index;
 
-// Create a new FullText index.
-Index *Index_New
-(
-	const char *label,  // Indexed label
-	IndexType type      // Index is a fulltext index
-);
+/**
+ * @brief  Create a new index.
+ * @param  *label: Indexed label
+ * @param  type: Index type - exact match or full text.
+ * @retval New constructed index for the label.
+ */
+Index *Index_New(const char *label, IndexType type);
 
-// Adds field to index.
-void Index_AddField
-(
-	Index *idx,
-	const char *field
-);
+/**
+ * @brief  Adds field to index.
+ * @param  *idx: Index
+ * @param  *field: Field to add.
+ */
+void Index_AddField(Index *idx, const char *field);
 
-// Removes fields from index.
-void Index_RemoveField
-(
-	Index *idx,
-	const char *field
-);
+/**
+ * @brief  Removes field from index.
+ * @param  *idx: Index
+ * @param  *field: Field to remove.
+ */
+void Index_RemoveField(Index *idx, const char *field);
 
-// Index node.
-void Index_IndexNode
-(
-	Index *idx,     // Index to use
-	const Node *n   // Node to index
-);
+/**
+ * @brief  Index node.
+ * @param  *idx: Index
+ * @param  *n :Node
+ */
+void Index_IndexNode(Index *idx, const Node *n);
 
-// Remove node from index.
-void Index_RemoveNode
-(
-	Index *idx,     // Index to use
-	const Node *n   // Node to remove
-);
+/**
+ * @brief  Remove node from index.
+ * @param  *idx: Index to remove the node from.
+ * @param  *n: Node to remove.
+ */
+void Index_RemoveNode(Index *idx, const Node *n);
 
-// Constructs index.
-void Index_Construct
-(
-	Index *idx
-);
+/**
+ * @brief  Constructs index.
+ * @param  *idx:
+ */
+void Index_Construct(Index *idx);
 
-// Query index.
-RSResultsIterator *Index_Query
-(
-	const Index *idx,
-	const char *query,          // Query to execute
-	char **err                  // Optional, report back error
-);
+/**
+ * @brief  Query an index.
+ * @param  *idx: Index.
+ * @param  *query: Query to execute.
+ * @param  **err: Optional, report back error
+ * @retval RedisSearch results iterator.
+ */
+RSResultsIterator *Index_Query(const Index *idx, const char *query, char **err);
 
-// Return indexed label.
-const char *Index_GetLabel
-(
-	const Index *idx
-);
+/**
+ * @brief Return indexed label.
+ * @param  *idx: Index.
+ * @retval Index's label.
+ */
+const char *Index_GetLabel(const Index *idx);
 
-// Returns number of fields indexed.
-uint Index_FieldsCount
-(
-	const Index *idx
-);
+/**
+ * @brief  Returns number of fields indexed.
+ * @param  *idx: Index.
+ * @retval Number of indexed fields.
+ */
+uint Index_FieldsCount(const Index *idx);
 
-// Returns indexed fields.
-const char **Index_GetFields
-(
-	const Index *idx
-);
+/**
+ * @brief  Returns indexed fields.
+ * @note   Returns a shallow copy.
+ * @param  *idx: Index to extract fields from.
+ * @retval Array with the indexed fields.
+ */
+const char **Index_GetFields(const Index *idx);
 
-// Checks if given field is indexed.
-bool Index_ContainsField
-(
-	const Index *idx,
-	const char *field
-);
+/**
+ * @brief  Checks if given attribute is indexed.
+ * @param  *idx: Index to perform the check.
+ * @param  attribute_id: Attribute id to search.
+ * @retval True if the attribute is indexed.
+ */
+bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id);
 
-// Free fulltext index.
-void Index_Free
-(
-	Index *idx
-);
+/**
+ * @brief  Free fulltext index.
+ * @param  *idx: Index to drop.
+ */
+void Index_Free(Index *idx);

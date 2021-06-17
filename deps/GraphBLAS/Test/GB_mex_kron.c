@@ -2,8 +2,8 @@
 // GB_mex_kron: C<Mask> = accum(C,kron(A,B))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -13,12 +13,12 @@
 
 #define FREE_ALL                    \
 {                                   \
-    GB_MATRIX_FREE (&A) ;           \
-    GB_MATRIX_FREE (&B) ;           \
-    GB_MATRIX_FREE (&C) ;           \
-    GrB_free (&desc) ;              \
-    GB_MATRIX_FREE (&Mask) ;        \
-    GB_mx_put_global (true, 0) ;        \
+    GrB_Matrix_free_(&A) ;           \
+    GrB_Matrix_free_(&B) ;           \
+    GrB_Matrix_free_(&C) ;           \
+    GrB_Descriptor_free_(&desc) ;   \
+    GrB_Matrix_free_(&Mask) ;        \
+    GB_mx_put_global (true) ;       \
 }
 
 void mexFunction
@@ -39,7 +39,6 @@ void mexFunction
     GrB_BinaryOp mult = NULL ;
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 6 || nargin > 7)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -48,7 +47,7 @@ void mexFunction
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
         C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
-    #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
+    #define FREE_DEEP_COPY GrB_Matrix_free_(&C) ;
 
     GET_DEEP_COPY ;
     if (C == NULL)
@@ -56,8 +55,6 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("C failed") ;
     }
-
-    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get Mask (shallow copy)
     Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
@@ -84,17 +81,21 @@ void mexFunction
     }
 
     // get mult operator
+    bool user_complex = (Complex != GxB_FC64)
+        && (A->type == Complex || B->type == Complex) ;
     if (!GB_mx_mxArray_to_BinaryOp (&mult, pargin [3], "mult",
-        GB_NOP_opcode, cclass, A->type == Complex, B->type == Complex))
+        C->type, user_complex) || mult == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("mult failed") ;
     }
 
-    // get accum; default: NOP, default class is class(C)
+    // get accum, if present
+    user_complex = (Complex != GxB_FC64)
+        && (C->type == Complex || mult->ztype == Complex) ;
     GrB_BinaryOp accum ;
     if (!GB_mx_mxArray_to_BinaryOp (&accum, pargin [2], "accum",
-        GB_NOP_opcode, cclass, C->type == Complex, mult->ztype == Complex))
+        C->type, user_complex))
     {
         FREE_ALL ;
         mexErrMsgTxt ("accum failed") ;
@@ -107,8 +108,29 @@ void mexFunction
         mexErrMsgTxt ("desc failed") ;
     }
 
-    // C<Mask> = accum(C,kron(A,B))
-    METHOD (GxB_kron (C, Mask, accum, mult, A, B, desc)) ;
+    // test all 3 variants: monoid, semiring, and binary op
+    if (mult == GrB_PLUS_FP64)
+    {
+        // C<Mask> = accum(C,kron(A,B)), monoid variant
+        METHOD (GrB_Matrix_kronecker_Monoid_ (C, Mask, accum, GrB_PLUS_MONOID_FP64,
+            A, B, desc)) ;
+    }
+    else if (mult == GrB_TIMES_FP64)
+    {
+        // C<Mask> = accum(C,kron(A,B)), semiring variant
+        METHOD (GrB_Matrix_kronecker_Semiring_ (C, Mask, accum, GrB_PLUS_TIMES_SEMIRING_FP64,
+            A, B, desc)) ;
+    }
+    else if (mult == GrB_TIMES_FP32)
+    {
+        // C<Mask> = accum(C,kron(A,B)), binary op variant (old name)
+        METHOD (GxB_kron (C, Mask, accum, mult, A, B, desc)) ;
+    }
+    else
+    {
+        // C<Mask> = accum(C,kron(A,B)), binary op variant (new name)
+        METHOD (GrB_Matrix_kronecker_BinaryOp_ (C, Mask, accum, mult, A, B, desc)) ;
+    }
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;

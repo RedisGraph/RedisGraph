@@ -14,7 +14,6 @@ extern "C" {
 #include <string.h>
 #include "../../src/query_ctx.h"
 #include "../../src/util/arr.h"
-#include "../../src/util/vector.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
@@ -44,7 +43,8 @@ class FilterTreeTest: public ::testing::Test {
 		 * those inturn resides within graph context
 		 * accessible via thread local storage, as such we're creating a
 		 * fake graph context and placing it within thread local storage. */
-		GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
+		GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
+		gc->attributes = raxNew();
 		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
 
 		// No indicies.
@@ -53,7 +53,6 @@ class FilterTreeTest: public ::testing::Test {
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
 		AR_RegisterFuncs();
-
 	}
 
 	AST *_build_ast(const char *query) {
@@ -74,7 +73,7 @@ class FilterTreeTest: public ::testing::Test {
 	}
 
 	FT_FilterNode *_build_simple_varying_tree() {
-		const char *q = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
+		const char *q = "MATCH (me), (him) WHERE me.age > him.age RETURN me, him";
 		return build_tree_from_query(q);
 	}
 
@@ -214,26 +213,26 @@ class FilterTreeTest: public ::testing::Test {
 
 TEST_F(FilterTreeTest, SubTrees) {
 	FT_FilterNode *tree = _build_simple_const_tree();
-	Vector *sub_trees = FilterTree_SubTrees(tree);
-	ASSERT_EQ(Vector_Size(sub_trees), 1);
+	FT_FilterNode **sub_trees = FilterTree_SubTrees(tree);
+	ASSERT_EQ(array_len(sub_trees), 1);
 
-	FT_FilterNode *sub_tree;
-	Vector_Get(sub_trees, 0, &sub_tree);
+	FT_FilterNode *sub_tree = sub_trees[0];
 	compareFilterTrees(tree, sub_tree);
 
-	Vector_Free(sub_trees);
+
 	FilterTree_Free(tree);
+	array_free(sub_trees);
 
 	//------------------------------------------------------------------------------
 
 	tree = _build_simple_varying_tree();
 	sub_trees = FilterTree_SubTrees(tree);
-	ASSERT_EQ(Vector_Size(sub_trees), 1);
+	ASSERT_EQ(array_len(sub_trees), 1);
 
-	Vector_Get(sub_trees, 0, &sub_tree);
+	sub_tree = sub_trees[0];
 	compareFilterTrees(tree, sub_tree);
 
-	Vector_Free(sub_trees);
+	array_free(sub_trees);
 	FilterTree_Free(tree);
 
 	//------------------------------------------------------------------------------
@@ -241,28 +240,27 @@ TEST_F(FilterTreeTest, SubTrees) {
 	FT_FilterNode *original_tree = _build_AND_cond_tree();
 	tree = _build_AND_cond_tree(); // TODO memory leak
 	sub_trees = FilterTree_SubTrees(tree);
-	ASSERT_EQ(Vector_Size(sub_trees), 2);
+	ASSERT_EQ(array_len(sub_trees), 2);
 
-	Vector_Get(sub_trees, 0, &sub_tree);
+	sub_tree = sub_trees[0];
 	compareFilterTrees(original_tree->cond.left, sub_tree);
 
-	Vector_Get(sub_trees, 1, &sub_tree);
+	sub_tree = sub_trees[1];
 	compareFilterTrees(original_tree->cond.right, sub_tree);
 
-	Vector_Free(sub_trees);
-	// FilterTree_Free(tree);
+	array_free(sub_trees);
 	FilterTree_Free(original_tree);
 
 	//------------------------------------------------------------------------------
 
 	tree = _build_OR_cond_tree();
 	sub_trees = FilterTree_SubTrees(tree);
-	ASSERT_EQ(Vector_Size(sub_trees), 1);
+	ASSERT_EQ(array_len(sub_trees), 1);
 
-	Vector_Get(sub_trees, 0, &sub_tree);
+	sub_tree = sub_trees[0];
 	compareFilterTrees(tree, sub_tree);
 
-	Vector_Free(sub_trees);
+	array_free(sub_trees);
 	FilterTree_Free(tree);
 
 	//------------------------------------------------------------------------------
@@ -270,18 +268,18 @@ TEST_F(FilterTreeTest, SubTrees) {
 	original_tree = _build_deep_tree();
 	tree = _build_deep_tree(); // TODO memory leak
 	sub_trees = FilterTree_SubTrees(tree);
-	ASSERT_EQ(Vector_Size(sub_trees), 3);
+	ASSERT_EQ(array_len(sub_trees), 3);
 
-	Vector_Get(sub_trees, 0, &sub_tree);
+	sub_tree = sub_trees[0];
 	compareFilterTrees(original_tree->cond.left->cond.left, sub_tree);
 
-	Vector_Get(sub_trees, 1, &sub_tree);
+	sub_tree = sub_trees[1];
 	compareFilterTrees(original_tree->cond.left->cond.right, sub_tree);
 
-	Vector_Get(sub_trees, 2, &sub_tree);
+	sub_tree = sub_trees[2];
 	compareFilterTrees(original_tree->cond.right, sub_tree);
 
-	Vector_Free(sub_trees);
+	array_free(sub_trees);
 	FilterTree_Free(original_tree);
 }
 
@@ -336,16 +334,6 @@ TEST_F(FilterTreeTest, NOTReduction) {
 		FilterTree_Free(actual_tree);
 		FilterTree_Free(expected_tree);
 	}
-}
-
-TEST_F(FilterTreeTest, InvalidTree) {
-	/* MATCH (u) where u.v NOT NULL RETURN u
-	 * is an invalid query,
-	 * should have been:
-	 * MATCH (u) where u.v IS NOT NULL RETURN u */
-	const char *query = "MATCH (u) where u.v NOT NULL RETURN u";
-	FT_FilterNode *tree = build_tree_from_query(query);
-	ASSERT_TRUE(tree == NULL);
 }
 
 TEST_F(FilterTreeTest, ContainsFunc) {

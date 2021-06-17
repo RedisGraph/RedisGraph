@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_label_scan.h"
+#include "RG.h"
 #include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../query_ctx.h"
@@ -19,10 +20,11 @@ static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opB
 static void NodeByLabelScanFree(OpBase *opBase);
 
 static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((const NodeByLabelScan *)ctx)->n);
+	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
+	return ScanToString(ctx, buf, buf_len, op->n.alias, op->n.label);
 }
 
-OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
+OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 	NodeByLabelScan *op = rm_malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
@@ -37,7 +39,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanClone,
 				NodeByLabelScanFree, false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
 
 	return (OpBase *)op;
 }
@@ -46,7 +48,7 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 	UnsignedRange_Free(op->id_range);
 	op->id_range = UnsignedRange_Clone(id_range);
 
-	op->op.type = OpType_NODE_BY_LABEL_AND_ID_SCAN;
+	op->op.type = OPType_NODE_BY_LABEL_AND_ID_SCAN;
 	op->op.name = "Node By Label and ID Scan";
 }
 
@@ -70,12 +72,14 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 
 	// If we have no children, we can build the iterator now.
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+	Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
 	if(!schema) {
 		// Missing schema, use the NOP consume function.
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
 	}
+	// Resolve label ID at runtime.
+	op->n.label_id = schema->id;
 
 	// The iterator build may fail if the ID range does not match the matrix dimensions.
 	GrB_Info iterator_built = _ConstructIterator(op, schema);
@@ -90,9 +94,8 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 
 static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_id) {
 	// Populate the Record with the graph entity data.
-	Node n = {0};
+	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
 	Graph_GetNode(op->g, node_id, &n);
-	// Get a pointer to the node's allocated space within the Record.
 	Record_AddNode(r, op->nodeRecIdx, n);
 }
 
@@ -125,7 +128,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		if(!op->iter) {
 			// Iterator wasn't set up until now.
 			GraphContext *gc = QueryCtx_GetGraphCtx();
-			Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+			Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
 			// No label matrix, it might be created in the next iteration.
 			if(!schema) continue;
 			_ConstructIterator(op, schema); // OK to fail (invalid range) iter will be depleted.
@@ -179,7 +182,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 }
 
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_NODE_BY_LABEL_SCAN);
+	ASSERT(opBase->type == OPType_NODE_BY_LABEL_SCAN);
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 	OpBase *clone = NewNodeByLabelScanOp(plan, op->n);
 	return clone;

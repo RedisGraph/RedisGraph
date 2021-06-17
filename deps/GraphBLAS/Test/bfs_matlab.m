@@ -11,8 +11,8 @@ function v = bfs_matlab (A, s)
 % kth level, where the shortest path (in terms of # of edges) from  s to j has
 % length k+1.  The source node s defaults to 1.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 [m n] = size (A) ;
 if (m ~= n)

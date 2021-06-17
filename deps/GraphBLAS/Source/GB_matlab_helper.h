@@ -2,8 +2,8 @@
 // GB_matlab_helper.h: helper functions for MATLAB interface
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
 
@@ -28,15 +28,6 @@ void GB_matlab_helper1i             // convert zero-based indices to one-based
 (
     int64_t *GB_RESTRICT I,         // input/output array
     int64_t nvals                   // size of input/output array
-) ;
-
-GB_PUBLIC
-void GB_matlab_helper2              // fill Xp and Xi for a dense matrix
-(
-    GrB_Index *GB_RESTRICT Xp,      // size ncols+1
-    GrB_Index *GB_RESTRICT Xi,      // size nrows*ncols
-    int64_t ncols,
-    int64_t nrows
 ) ;
 
 GB_PUBLIC
@@ -70,9 +61,11 @@ void GB_matlab_helper5              // construct pattern of S
 (
     GrB_Index *GB_RESTRICT Si,         // array of size anz
     GrB_Index *GB_RESTRICT Sj,         // array of size anz
-    const GrB_Index *GB_RESTRICT Mi,   // array of size mnz
+    const GrB_Index *GB_RESTRICT Mi,   // array of size mnz, M->i
     const GrB_Index *GB_RESTRICT Mj,   // array of size mnz
-    GrB_Index *GB_RESTRICT Ai,         // array of size anz
+    const int64_t mvlen,               // M->vlen
+    GrB_Index *GB_RESTRICT Ai,         // array of size anz, A->i
+    const int64_t avlen,               // M->vlen
     const GrB_Index anz
 ) ;
 

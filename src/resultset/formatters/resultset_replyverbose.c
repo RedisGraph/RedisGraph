@@ -6,13 +6,15 @@
 
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
-#include "../../datatypes/path/sipath.h"
+#include "../../datatypes/datatypes.h"
 
 // Forward declarations.
+static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map);
+static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
+static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point);
+static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
 static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
-static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
-static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
 
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
@@ -48,8 +50,14 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 	case T_PATH:
 		_ResultSet_VerboseReplyWithPath(ctx, v);
 		return;
+	case T_MAP:
+		_ResultSet_VerboseReplyWithMap(ctx, v);
+		return;
+	case T_POINT:
+		_ResultSet_VerboseReplyWithPoint(ctx, v);
+		return;
 	default:
-		assert("Unhandled value type" && false);
+		RedisModule_Assert("Unhandled value type" && false);
 	}
 }
 
@@ -89,14 +97,15 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	// ["labels", [label (string)]]
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
-	// Print label in nested array for multi-label support
-	// Retrieve label
+	const char *label = NODE_GET_LABEL(n);
+	// Retrieve label if it is not set on the node.
 	// TODO Make a more efficient lookup for this string
-	const char *label = GraphContext_GetNodeLabel(gc, n);
+	if(label == NULL) label = GraphContext_GetNodeLabel(gc, n);
 	if(label == NULL) {
-		// Emit an empty array for unlabeled nodes
+		// Emit an empty array for unlabeled nodes.
 		RedisModule_ReplyWithArray(ctx, 0);
 	} else {
+		// Print label in nested array for multi-label support.
 		RedisModule_ReplyWithArray(ctx, 1);
 		RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
 	}
@@ -164,29 +173,38 @@ static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path) {
 	SIValue_Free(path_array);
 }
 
-void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 uint numcols, uint *col_rec_map) {
+static void _ResultSet_VerboseReplyWithMap(RedisModuleCtx *ctx, SIValue map) {
+	size_t bufferLen = 512;
+	char *str = rm_calloc(bufferLen, sizeof(char));
+	size_t bytesWrriten = 0;
+	SIValue_ToString(map, &str, &bufferLen, &bytesWrriten);
+	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
+	rm_free(str);
+}
+
+static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point) {
+	// point({latitude:56.7, longitude:12.78})
+	char buffer[256];
+	int bytes_written = sprintf(buffer, "point({latitude:%f, longitude:%f})",
+			Point_lat(point), Point_lon(point));
+
+	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
+}
+
+void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
+		SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(int i = 0; i < numcols; i++) {
-		uint idx = col_rec_map[i];
-		switch(Record_GetType(r, idx)) {
-		case REC_TYPE_NODE:
-			_ResultSet_VerboseReplyWithNode(ctx, gc, Record_GetNode(r, idx));
-			break;
-		case REC_TYPE_EDGE:
-			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, idx));
-			break;
-		default:
-			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_Get(r, idx));
-		}
+		SIValue v = *row[i];
+		_ResultSet_VerboseReplyWithSIValue(ctx, gc, v);
 	}
 }
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-									  const Record unused, uint *col_rec_map) {
+		uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
@@ -194,4 +212,3 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
-

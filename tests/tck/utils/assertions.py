@@ -7,7 +7,7 @@ from redisgraph import Node, Edge, Path
 
 def is_numeric(value):
     # check for value's type to be a number or a string
-    if not isinstance(value, (Number, basestring)):
+    if not isinstance(value, (Number, str)):
         return False
     try:
         # value is either number or string, try to convert to float
@@ -39,8 +39,8 @@ def nodeToString(value):
     if value.label:
         res += ':' + value.label
     if value.properties:
-        props = ','.join(key+': '+str(val)
-                         for key, val in value.properties.items())
+        props = ', '.join(key+': '+str(val)
+                          for key, val in value.properties.items())
         if value.label:
             res += " "
         res += '{' + props + '}'
@@ -54,8 +54,8 @@ def edgeToString(value):
     if value.relation:
         res += ":" + value.relation
     if value.properties:
-        props = ','.join(key+': '+str(val)
-                         for key, val in value.properties.items())
+        props = ', '.join(key+': '+str(val)
+                          for key, val in value.properties.items())
         if value.relation:
             res += " "
         res += '{' + props + '}'
@@ -81,18 +81,29 @@ def pathToString(pathToConvert):
         strValue += node_str + "-" + edge_str + "->" if edge.src_node == node.id else node_str + "<-" + edge_str + "-"
 
     strValue += nodeToString(pathToConvert.get_node(nodes_count - 1)) if nodes_count > 0 else ""
-    strValue +=">"
+    strValue += ">"
+    return strValue
+
+def dictToString(dictToConvert):
+    size = len(dictToConvert)
+    strValue = '{'
+    for idx, item in enumerate(dictToConvert.items()):
+        strValue += item[0] + ": "
+        strValue += toString(item[1])
+        if idx < size - 1:
+            strValue += ", "
+    strValue += '}'
     return strValue
 
 def toString(value):
     if isinstance(value, bool):
-        if value == True:
+        if value is True:
             return "true"
-        elif value == False:
+        elif value is False:
             return "false"
     elif is_numeric(value):
         return str(value)
-    elif isinstance(value, basestring):
+    elif isinstance(value, str):
         # remove qoutes if any
         return removeQuotes(value)
     # value is a node
@@ -105,6 +116,8 @@ def toString(value):
         return listToString(value)
     elif isinstance(value, Path):
         return pathToString(value)
+    elif isinstance(value, dict):
+        return dictToString(value)
     elif value == None:
         return "null"
 
@@ -117,7 +130,7 @@ def prepareActualValue(actualValue):
     if is_numeric(actualValue):
         actualValue = toNumeric(actualValue)
     # value is string
-    elif isinstance(actualValue, basestring):
+    elif isinstance(actualValue, str):
         # remove qoutes if any
         actualValue = removeQuotes(actualValue)
     # value is a node
@@ -130,6 +143,8 @@ def prepareActualValue(actualValue):
         actualValue = listToString(actualValue)
     elif isinstance(actualValue, Path):
         actualValue = pathToString(actualValue)
+    elif isinstance(actualValue, dict):
+        actualValue = dictToString(actualValue)
     else:
         # actual value is null or boolean
         assert isinstance(actualValue, (type(None), bool))
@@ -163,7 +178,7 @@ def prepare_expected_row(row):
 
 
 def assert_empty_resultset(resultset):
-    assert len(resultset.result_set) is 0
+    assert len(resultset.result_set) == 0
 
 # check value of a designated statistic
 
@@ -211,8 +226,4 @@ def assert_resultsets_equals(actual, expected):
     actualCtr = Counter(prepare_actual_row(row) for row in actual.result_set)
     expectedCtr = Counter(prepare_expected_row(row) for row in expected)
     # Validate that the constructed Counters are equal
-    print("actual")
-    print(actualCtr)
-    print("expected")
-    print(expectedCtr)
     assert actualCtr == expectedCtr

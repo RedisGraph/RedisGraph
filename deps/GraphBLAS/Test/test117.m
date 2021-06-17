@@ -3,8 +3,8 @@ function test117
 
 % test C(:,:)<M> += A
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 fprintf ('test117 ----------------------------------- C(:,:)<M> += A\n') ;
 
@@ -71,8 +71,8 @@ for dm = [1e-5 1e-4 1e-3 1e-2 1e-1 0.5]
             end
 
             % ewise
-            C2 = GB_mex_eWiseMult_Matrix (C0, [ ], 'plus', 'times', M, A) ;
-            C2 = GB_mex_eWiseMult_Matrix (C0, [ ], 'plus', 'times', M, A) ;
+            C2 = GB_mex_Matrix_eWiseMult (C0, [ ], 'plus', 'times', M, A) ;
+            C2 = GB_mex_Matrix_eWiseMult (C0, [ ], 'plus', 'times', M, A) ;
             tg3 = grbresults ;
 
             assert (isequal (C1, C2.matrix)) ;

@@ -5,16 +5,20 @@
  */
 
 #include "create_functions.h"
+#include "RG.h"
+#include "../../../errors.h"
 #include "../../../query_ctx.h"
 
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 								  PendingProperties *props) {
+	int failed_updates = 0;
 	for(int i = 0; i < props->property_count; i++) {
-		GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
+		bool updated = GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
+		if(!updated) failed_updates++;
 	}
 
-	if(stats) stats->properties_set += props->property_count;
+	if(stats) stats->properties_set += props->property_count - failed_updates;
 }
 
 /* Commit insertions. */
@@ -31,10 +35,10 @@ static void _CommitNodes(PendingCreations *pending) {
 	for(uint i = 0; i < blueprint_node_count; i++) {
 		NodeCreateCtx *node_ctx = pending->nodes_to_create + i;
 
-		const char *label = node_ctx->node->label;
+		const char *label = node_ctx->label;
 		if(label) {
 			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
-				Schema *s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 				pending->stats->labels_added++;
 			}
 		}
@@ -51,7 +55,8 @@ static void _CommitNodes(PendingCreations *pending) {
 		int labelID = GRAPH_NO_LABEL;
 		if(n->label != NULL) {
 			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
-			assert(s);
+			ASSERT(s != NULL);
+			n->labelID = s->id; // Update the label ID within the node.
 			labelID = s->id;
 		}
 
@@ -61,7 +66,7 @@ static void _CommitNodes(PendingCreations *pending) {
 		if(pending->node_properties[i]) _AddProperties(pending->stats, (GraphEntity *)n,
 														   pending->node_properties[i]);
 
-		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n, false);
+		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
 	}
 }
 
@@ -78,14 +83,10 @@ static void _CommitEdges(PendingCreations *pending) {
 	for(uint i = 0; i < blueprint_edge_count; i++) {
 		EdgeCreateCtx *edge_ctx = pending->edges_to_create + i;
 
-		const char **reltypes = edge_ctx->edge->reltypes;
-		if(reltypes) {
-			uint reltype_count = array_len(reltypes);
-			for(uint j = 0; j < reltype_count; j ++) {
-				const char *reltype = reltypes[j];
-				if(GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE) == NULL) {
-					Schema *s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
-				}
+		const char *relation = edge_ctx->relation;
+		if(relation) {
+			if(GraphContext_GetSchema(gc, relation, SCHEMA_EDGE) == NULL) {
+				GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
 			}
 		}
 	}
@@ -108,10 +109,11 @@ static void _CommitEdges(PendingCreations *pending) {
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
 		Schema *schema = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
-		if(!schema) schema = GraphContext_AddSchema(gc, e->relationship, SCHEMA_EDGE);
+		ASSERT(schema); // All schemas have been created in the edge blueprint loop or earlier.
 		int relation_id = schema->id;
 
-		assert(Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e));
+		int nodes_created = Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e);
+		ASSERT(nodes_created == 1);
 
 		if(pending->edge_properties[i]) _AddProperties(pending->stats, (GraphEntity *)e,
 														   pending->edge_properties[i]);
@@ -158,14 +160,38 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 }
 
 // Resolve the properties specified in the query into constant values.
-PendingProperties *ConvertPropertyMap(Record r, const PropertyMap *map) {
+PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_null) {
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
-	converted->property_count = map->property_count;
-	converted->attr_keys = map->keys; // This pointer can be copied directly.
 	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
 	for(int i = 0; i < map->property_count; i++) {
-		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
+		/* Note that AR_EXP_Evaluate may raise a run-time exception, in which case
+		 * the allocations in this function will be memory leaks.
+		 * For example, this occurs in the query:
+		 * CREATE (a {val: 2}), (b {val: a.val}) */
+		SIValue val = AR_EXP_Evaluate(map->values[i], r);
+		if(!(SI_TYPE(val) & SI_VALID_PROPERTY_VALUE)) {
+			// This value is of an invalid type.
+			if(!SIValue_IsNull(val)) {
+				// If the value was a complex type, emit an exception.
+				converted->property_count = i;
+				PendingPropertiesFree(converted);
+				Error_InvalidPropertyValue();
+				ErrorCtx_RaiseRuntimeException(NULL);
+			}
+			/* The value was NULL. If this was prohibited in this context, raise an exception,
+			 * otherwise skip this value. */
+			if(fail_on_null) {
+				// Emit an error and exit.
+				converted->property_count = i;
+				PendingPropertiesFree(converted);
+				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
+			}
+		}
+		// Set the converted property.
+		converted->values[i] = val;
 	}
+	converted->property_count = map->property_count;
+	converted->attr_keys = map->keys; // This pointer can be copied directly.
 
 	return converted;
 }

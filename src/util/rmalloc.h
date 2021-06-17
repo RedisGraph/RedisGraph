@@ -7,6 +7,17 @@
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
+// called when mem_capacity configuration changes
+// note that this function might be called during query execution
+//
+// depending on the current and new memory-limit value (limited vs unlimited)
+// and the currently used allocator (capped vs none capped)
+// the allocator function pointers might be updated
+void rm_set_mem_capacity(int64_t cap);
+
+// reset thread memory consumption counter to 0 (no memory consumed)
+void rm_reset_n_alloced();
+
 static inline void *rm_malloc(size_t n) {
 	return RedisModule_Alloc(n);
 }

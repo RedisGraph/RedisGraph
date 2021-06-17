@@ -36,3 +36,4 @@ uint64_t Set_Size(set *s) {
 void Set_Free(set *s) {
 	raxFree(s);
 }
+

@@ -1,8 +1,8 @@
 function test132
 %TEST132 test GrB_*_setElement and GrB_*_*build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
+% SPDX-License-Identifier: Apache-2.0
 
 % simplified from test45
 
@@ -20,7 +20,7 @@ A (2,2) = 0 ;
 A = sparse (A)  ;
 
 C = GB_mex_setElement (A, uint64(1), uint64(1), 99, true) ;
-spok (C.matrix) ;
+GB_spok (C.matrix) ;
 
 A = sprand (67, 67, 0.1) ;
 
@@ -40,7 +40,7 @@ end
 
 A2 = A ;
 A3 = GB_mex_setElement (A2, I0, J0, X, true) ;
-assert (spok (A3.matrix) == 1)
+assert (GB_spok (A3.matrix) == 1)
 
 assert (isequal (A3.matrix, A1)) ;
 
@@ -63,7 +63,7 @@ clear A2
 A2.matrix = A ;
 A2.is_hyper = true ;
 A3 = GB_mex_setElement (A2, I0, J0, X, true) ;
-assert (spok (A3.matrix) == 1)
+assert (GB_spok (A3.matrix) == 1)
 assert (isequal (A3.matrix, A1)) ;
 
 fprintf ('\ntest132: all tests passed\n') ;

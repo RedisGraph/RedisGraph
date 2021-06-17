@@ -7,10 +7,9 @@
 #include "placeholder_funcs.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
-#include <assert.h>
 
 SIValue AR_PATH_FILTER(SIValue *argv, int argc) {
-	assert(false);
+	ASSERT(false);
 	return SI_NullVal();
 }
 
@@ -19,6 +18,7 @@ void Register_PlaceholderFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 0);
-	func_desc = AR_FuncDescNew("path_filter", AR_PATH_FILTER, 0, 0, types, false);
+	func_desc = AR_FuncDescNew("path_filter", AR_PATH_FILTER, 0, 0, types, false, false);
 	AR_RegFunc(func_desc);
 }
+

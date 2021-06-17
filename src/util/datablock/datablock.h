@@ -7,6 +7,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include "../block.h"
 #include "./datablock_iterator.h"
@@ -62,8 +63,14 @@ typedef struct {
 // fp - destructor routine for freeing items.
 DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp);
 
+// returns number of items stored
+uint64_t DataBlock_ItemCount(const DataBlock *dataBlock);
+
 // Make sure datablock can accommodate at least k items.
 void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k);
+
+// ensure datablock capacity >= 'idx'
+void DataBlock_Ensure(DataBlock *dataBlock, uint64_t idx);
 
 // Returns an iterator which scans entire datablock.
 DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock);
@@ -82,5 +89,9 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 // Returns the number of deleted items.
 uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock);
 
+// Returns true if the given item has been deleted.
+bool DataBlock_ItemIsDeleted(void *item);
+
 // Free block.
 void DataBlock_Free(DataBlock *block);
+

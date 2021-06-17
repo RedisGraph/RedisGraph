@@ -5,8 +5,8 @@
  */
 
 #include "cache_list.h"
+#include "RG.h"
 #include "../rmalloc.h"
-#include <assert.h>
 
 CacheList *CacheList_New(uint size, CacheItemFreeFunc freeCB) {
 	CacheList *list = rm_malloc(sizeof(CacheList));
@@ -47,7 +47,7 @@ void CacheList_Promote(CacheList *list, CacheListNode *node) {
 
 CacheListNode *CacheList_RemoveTail(CacheList *list) {
 	// We can only get here on a filled list.
-	assert(CacheList_IsFull(list) && "CacheList_RemoveTail: list should be full");
+	ASSERT(CacheList_IsFull(list) && "CacheList_RemoveTail: list should be full");
 	CacheListNode *tail = list->tail;
 
 	// Update the tail to point to the new last element.
@@ -58,10 +58,10 @@ CacheListNode *CacheList_RemoveTail(CacheList *list) {
 	return tail;
 }
 
-CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, uint64_t hashval,
+CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, char *key,
 									  void *value) {
 	// Assign data members to the new node.
-	node->hashval = hashval;
+	node->key = key;
 	node->value = value;
 
 	if(list->head == NULL) {
@@ -79,14 +79,17 @@ CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, uint
 }
 
 CacheListNode *CacheList_GetUnused(CacheList *list) {
-	assert(list->buffer_len < list->buffer_cap);
+	ASSERT(list->buffer_len < list->buffer_cap);
 	// Return the address of the next unused element and increment the buffer length.
 	return &list->buffer[list->buffer_len++];
 }
 
 void CacheList_Free(CacheList *list) {
 	// Call the free routine for every cache member.
-	for(uint i = 0; i < list->buffer_len; i ++) list->ValueFree(list->buffer[i].value);
+	for(uint i = 0; i < list->buffer_len; i ++) {
+		rm_free(list->buffer[i].key);
+		list->ValueFree(list->buffer[i].value);
+	}
 	rm_free(list->buffer);
 	rm_free(list);
 }

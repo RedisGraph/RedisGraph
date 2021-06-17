@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
 #include "op_unwind.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/array.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -39,11 +39,15 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 /* Evaluate list expression, raise runtime exception
  * if expression did not returned a list type value. */
 static void _initList(OpUnwind *op) {
-	op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
-	if(op->list.type != T_ARRAY) {
-		QueryCtx_SetError("Type mismatch: expected List but was %s", SIType_ToString(op->list.type));
-		QueryCtx_RaiseRuntimeException();
+	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
+	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
+	if(SI_TYPE(new_list) != T_ARRAY) {
+		Error_SITypeMismatch(new_list, T_ARRAY);
+		SIValue_Free(new_list);
+		ErrorCtx_RaiseRuntimeException(NULL);
 	}
+	// Update the list value.
+	op->list = new_list;
 }
 
 static OpResult UnwindInit(OpBase *opBase) {
@@ -114,7 +118,7 @@ static OpResult UnwindReset(OpBase *ctx) {
 }
 
 static inline OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_UNWIND);
+	ASSERT(opBase->type == OPType_UNWIND);
 	OpUnwind *op = (OpUnwind *)opBase;
 	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
 }
@@ -134,3 +138,4 @@ static void UnwindFree(OpBase *ctx) {
 		op->currentRecord = NULL;
 	}
 }
+

@@ -10,7 +10,7 @@ GrB_Info GxB_Matrix_Pending     // does matrix has pending operations
 	GrB_Matrix A,           // matrix to query
 	bool *pending           // are there any pending operations
 ) {
-	GB_WHERE("GxB_Matrix_Pending (A)") ;
+	GB_WHERE(A, "GxB_Matrix_Pending (A)") ;
 	//--------------------------------------------------------------------------
 	// check inputs
 	//--------------------------------------------------------------------------
@@ -21,3 +21,4 @@ GrB_Info GxB_Matrix_Pending     // does matrix has pending operations
 
 	return (GrB_SUCCESS) ;
 }
+

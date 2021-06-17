@@ -1,31 +1,31 @@
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
-# store absolute path to RedisGraph Makefile location
-abs_path = $(shell pwd)
-
 # Paths to deps.
 RAX_DIR = ../deps/rax
 XXHASH_DIR = ../deps/xxHash
+GRAPHBLAS_DIR = ../deps/GraphBLAS
 REDISEARCH_DIR = ../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
-DEBUGFLAGS = -g -ggdb -O3 
-ifeq ($(DEBUG), 1)
+DEBUGFLAGS = -g -ggdb -O3
+ifeq ($(DEBUG),1)
 	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
+	# Enable all assertions in debug mode
+	DEBUGFLAGS += -DRG_DEBUG
 endif
 
 # Default CFLAGS
 CFLAGS = \
 	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
-	-fPIC \
+	-fPIC -fcommon -fopenmp \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
-	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread -fopenmp
+	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
 	CFLAGS += -mmacosx-version-min=10.14
@@ -36,19 +36,24 @@ SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
 
 # Sources
-SOURCEDIR=$(shell pwd -P)
+SOURCEDIR:=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/configuration/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/map_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/path_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/list_funcs/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/placeholder_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/time_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/point_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/entity_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/string_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/boolean_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/numeric_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/aggregate_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/conditional_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/placeholder_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/comprehension_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/algebraic_expression/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/commands/*.c)
@@ -58,6 +63,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/ops/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/ops/shared/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/optimizations/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/execution_plan_build/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/entities/*.c)
@@ -80,6 +86,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/slow_log/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/util/sds/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/object_pool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
@@ -120,7 +127,7 @@ endif
 # Compile C file while generating a .d file for it
 %.o: %.c
 %.o: %.c
-	$(REDISGRAPH_CC) $(CFLAGS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
 
@@ -145,7 +152,7 @@ endif
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
 	cd ../deps/RediSearch; \
-	mkdir build; \
+	mkdir -p build; \
 	cd build; \
 	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
 	make;
@@ -158,19 +165,30 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	cd ../deps/libcypher-parser; \
 	sh ./autogen.sh; \
 	./configure --disable-shared;
-	$(MAKE) CFLAGS="-fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
+	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 
-# Compile query parse. 
+# Compile query parse.
 # This is not included in the usual make target!
 parser:
 	@$(MAKE) -C $@
 .PHONY: parser
 
+define extract_symbols
+objcopy --only-keep-debug $1 $1.debug
+objcopy --strip-debug $1
+objcopy --add-gnu-debuglink $1.debug $1
+endef
+
 # Build the module...
 redisgraph.so: $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
+ifeq ($(uname_S),Linux)
+ifneq ($(DEBUG),1)
+	$(call extract_symbols,$@)
+endif
+endif
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
@@ -185,8 +203,8 @@ endif
 	@$(MAKE) -C ../tests clean
 
 package: redisgraph.so
-	@mkdir -p ../build
-	@ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
+	@../sbin/pack.sh
+	@VARIANT=rce ../sbin/pack.sh
 
 test: redisgraph.so
 	# check valgrind flag is not empty
@@ -201,5 +219,10 @@ endif
 	@$(MAKE) -C ../tests test
 
 memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
+memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 memcheck: redisgraph.so
 	@$(MAKE) -C ../tests memcheck
+
+
+benchmark: redisgraph.so
+	@$(MAKE) -C ../tests benchmark

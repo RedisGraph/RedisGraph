@@ -1,14 +1,17 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "optimize_cartesian_product.h"
+#include "RG.h"
+#include "../../errors.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_cartesian_product.h"
 #include "../../util/rax_extensions.h"
 #include "../../util/qsort.h"
+#include "../execution_plan_build/execution_plan_modify.h"
+#include "../execution_plan_build/execution_plan_construct.h"
 
 #define FilterCtx_LT(a ,b) ((raxSize((a)->entities)) < (raxSize((b)->entities)))
 
@@ -17,6 +20,25 @@ typedef struct {
 	OpFilter *filter;   // Filter operation
 	rax *entities;      // Contains the entities that the filter references.
 } FilterCtx;
+
+/* This optimization takes multiple branched cartesian product (with more than two branches),
+ * followed by filter(s) and try to apply the filter as soon possible by
+ * locating situations where a new Cartesian Product of smaller amount of streams can resolve the filter.
+ * For a filter F executing on a dual-branched cartesian product output, the runtime complexity is at most f=n^2.
+ * For a filter F' which execute on a dual-branched cartesian product output, where one of its branches is F,
+ * the overall time complexity is at most f'=f*n = n^3.
+ * In the general case, the runtime complaxity of filter that is executing over the output of a cartesian product
+ * which all of its children are nested cartesian product followed by a filter (as a result of this optimization)
+ * is at most n^x where x is the number of branchs of the original cartesian product.
+ * Consider MATCH (a), (b), (c) where a.x > b.x RETURN a, b, c
+ * Prior to this optimization a, b and c will be combined via a cartesian product O(n^3).
+ * Because we require a.v > b.v we can create a cartesian product between
+ * a and b, and re-position the filter after this new cartesian product, remove both a and b branches from
+ * the original cartesian product and place the filter operation is a new branch.
+ * Creating nested cartesian products operations and re-positioning the filter op will:
+ * 1. Potentially reduce memory consumption (storing only f records instead n^x) in each phase.
+ * 2. Reduce the overall filter runtime by potentially order(s) of magnitude. */
+
 
 // Free FilterCtx.
 static inline void _FilterCtx_Free(FilterCtx *ctx) {
@@ -46,13 +68,16 @@ static FilterCtx *_locate_filters_and_entities(OpBase *cp) {
 // Finds all the cartesian product's children which solve a specific filter entities.
 static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 	int entities_count = raxSize(entities);
+	if(entities_count == 0) return NULL; // No dependencies in filters.
 	OpBase **solving_branches = array_new(OpBase *, 1);
 	// Iterate over all the children or until all the entities are resolved.
 	for(int i = 0; i < cp->childCount && entities_count > 0; i++) {
 		OpBase *branch = cp->children[i];
+		// Don't recurse into previous scopes when trying to resolve references.
+		OpBase *recurse_limit = ExecutionPlan_LocateOpMatchingType(branch, PROJECT_OPS, PROJECT_OP_COUNT);
 		/* Locate references reduces the amount of entities upon each call
 		 * that partially solves the references. */
-		ExecutionPlan_LocateReferences(branch, NULL, entities);
+		ExecutionPlan_LocateReferences(branch, recurse_limit, entities);
 		int new_entities_count = raxSize(entities);
 		if(new_entities_count != entities_count) {
 			// Update entity count.
@@ -61,8 +86,11 @@ static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 			solving_branches = array_append(solving_branches, branch);
 		}
 	}
-	assert(entities_count == 0);
-	assert(array_len(solving_branches) > 0);
+	if(entities_count != 0) {
+		Error_InvalidFilterPlacement(entities);
+		array_free(solving_branches);
+		return NULL;
+	}
 	return solving_branches;
 }
 
@@ -75,6 +103,12 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		// Try to create a cartesian product, followed by the current filter.
 		OpFilter *filter_op = filter_ctx_arr[i].filter;
 		OpBase **solving_branches = _find_entities_solving_branches(filter_ctx_arr[i].entities, cp);
+		if(solving_branches == NULL) {
+			// Filter placement failed, return early.
+			array_free(filter_ctx_arr);
+			return;
+		}
+
 		uint solving_branch_count = array_len(solving_branches);
 		// In case this filter is solved by the entire cartesian product, it does not need to be repositioned.
 		if(solving_branch_count == cp->childCount) {
@@ -87,9 +121,8 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		// This filter is solved by a single cartesian product child and needs to be propagated up.
 		if(solving_branch_count == 1) {
 			OpBase *solving_op = solving_branches[0];
-			/* Single branch solving a filter that was after a cartesian product is a branch
-			 * that was generated by this optimization. The root of the branch is a filter. */
-			assert(solving_op->type == OPType_FILTER);
+			/* Single branch solving a filter that was after a cartesian product.
+			 * The filter may be pushed directly onto the appropriate branch. */
 			ExecutionPlan_PushBelow(solving_op, (OpBase *)filter_op);
 			array_free(solving_branches);
 			continue;
@@ -140,3 +173,4 @@ void reduceCartesianProductStreamCount(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
+

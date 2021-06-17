@@ -5,10 +5,10 @@
 */
 
 #include "unsigned_range.h"
+#include "RG.h"
 #include "../rmalloc.h"
 #include "../../ast/ast_shared.h"
 #include <math.h>
-#include <assert.h>
 
 UnsignedRange *UnsignedRange_New(void) {
 	UnsignedRange *range = rm_malloc(sizeof(UnsignedRange));
@@ -104,7 +104,8 @@ void UnsignedRange_TightenRange(UnsignedRange *range, int op, uint64_t v) {
 		range->max = v;
 		break;
 	default:
-		assert("operation not supported");
+		ASSERT(false && "operation not supported");
+		break;
 	}
 
 	// See if range is still valid.
@@ -112,19 +113,19 @@ void UnsignedRange_TightenRange(UnsignedRange *range, int op, uint64_t v) {
 }
 
 void UnsignedRange_ToString(const UnsignedRange *range) {
-	assert(range);
+	ASSERT(range != NULL);
 	int offset = 0;
 	char buff[1024];
 
 	if(range->include_min) offset += sprintf(buff + offset, "[");
 	else offset += sprintf(buff + offset, "(");
 
-	offset += sprintf(buff + offset, "%llu", range->min);
+	offset += sprintf(buff + offset, "%" PRIu64, range->min);
 
 	offset += sprintf(buff + offset, ",");
 
 	if(range->max == UINT64_MAX) offset += sprintf(buff + offset, "UINT64_MAX");
-	else offset += sprintf(buff + offset, "%llu", range->max);
+	else offset += sprintf(buff + offset, "%" PRIu64, range->max);
 
 	if(range->include_max) offset += sprintf(buff + offset, "]");
 	else offset += sprintf(buff + offset, ")");
@@ -132,6 +133,7 @@ void UnsignedRange_ToString(const UnsignedRange *range) {
 }
 
 void UnsignedRange_Free(UnsignedRange *range) {
-	assert(range);
+	ASSERT(range != NULL);
 	rm_free(range);
 }
+

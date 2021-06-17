@@ -6,23 +6,34 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <sys/types.h>
 
 /* Forward declaration of edge */
 struct QGEdge;
 
 typedef struct {
-	int labelID;               /* Label ID */
-	const char *label;         /* Label string */
-	const char *alias;         /* User-provided alias associated with this node */
-	struct QGEdge **outgoing_edges;   /* Array of incoming edges (ME)<-(SRC) */
-	struct QGEdge **incoming_edges;   /* Array of outgoing edges (ME)->(DEST) */
+	int labelID;               // Label ID
+	const char *label;         // Label string
+	const char *alias;         // User-provided alias associated with this node
+	bool highly_connected;     // Node degree > 2
+	struct QGEdge **outgoing_edges;   // Array of incoming edges (ME)<-(SRC)
+	struct QGEdge **incoming_edges;   // Array of outgoing edges (ME)->(DEST)
 } QGNode;
 
 /* Creates a new node. */
-QGNode *QGNode_New(const char *label, const char *alias);
+QGNode *QGNode_New(const char *alias);
+
+// returns number of labels attached to node
+uint QGNode_LabelCount(const QGNode *n);
+
+/* Returns true if node is highly connected, false otherwise */
+bool QGNode_HighlyConnected(const QGNode *n);
+
+/* Returns the number of both incoming and outgoing edges. */
+int QGNode_Degree(const QGNode *n);
 
 /* Returns number of edges pointing into node. */
 int QGNode_IncomeDegree(const QGNode *n);
@@ -50,3 +61,4 @@ int QGNode_ToString(const QGNode *n, char *buff, int buff_len);
 
 /* Frees allocated space by given node. */
 void QGNode_Free(QGNode *node);
+

@@ -1,0 +1,221 @@
+Script started on Wed 19 Feb 2020 04:03:44 AM CST
+Intel Suite:
+Copyright (C) 2009-2019 Intel Corporation. All rights reserved.
+Intel(R) VTune(TM) Amplifier 2019 (build 591499)
+hypersparse $ ./go
+hypersparse.cs.tamu.edu
+SuiteSparse:GraphBLAS Feb 18, 2020
+type: float
+max # of nthreads: 40
+# of problems to solve: 12
+
+# neurons: 1024 bias: -0.3
+# features: 60000 read time: 2.42641 sec
+# entries in Y0: 6.37451 million
+
+--------------------------------------neurons per layer: 1024 layers: 120
+read net time 1.26316 sec
+# edges in all layers: 3.93216 million
+
+nthreads  1: soln time        25.13 sec                  rate     9.3888 (1e9 edges/sec) 
+nthreads  2: soln time        12.67 sec speedup     1.98 rate    18.6217 (1e9 edges/sec) 
+nthreads  4: soln time         6.47 sec speedup     3.88 rate    36.4715 (1e9 edges/sec) 
+nthreads  8: soln time         3.31 sec speedup     7.60 rate    71.3507 (1e9 edges/sec) 
+nthreads 16: soln time         1.92 sec speedup    13.06 rate   122.6437 (1e9 edges/sec) 
+nthreads 20: soln time         1.71 sec speedup    14.73 rate   138.2980 (1e9 edges/sec) 
+nthreads 32: soln time         1.61 sec speedup    15.59 rate   146.3817 (1e9 edges/sec) 
+nthreads 40: soln time         1.43 sec speedup    17.56 rate   164.9021 (1e9 edges/sec) 
+
+# entries in final Y: 1.85549 million
+check time: 0.00117111 sec
+
+--------------------------------------neurons per layer: 1024 layers: 480
+read net time 3.61133 sec
+# edges in all layers: 15.7286 million
+
+nthreads  1: soln time        85.55 sec                  rate    11.0313 (1e9 edges/sec) 
+nthreads  2: soln time        43.48 sec speedup     1.97 rate    21.7030 (1e9 edges/sec) 
+nthreads  4: soln time        21.99 sec speedup     3.89 rate    42.9190 (1e9 edges/sec) 
+nthreads  8: soln time        11.27 sec speedup     7.59 rate    83.7274 (1e9 edges/sec) 
+nthreads 16: soln time         5.91 sec speedup    14.46 rate   159.5588 (1e9 edges/sec) 
+nthreads 20: soln time         5.07 sec speedup    16.87 rate   186.0758 (1e9 edges/sec) 
+nthreads 32: soln time         5.36 sec speedup    15.95 rate   175.9893 (1e9 edges/sec) 
+nthreads 40: soln time         4.75 sec speedup    17.99 rate   198.4934 (1e9 edges/sec) 
+
+# entries in final Y: 1.85549 million
+check time: 0.00116897 sec
+
+--------------------------------------neurons per layer: 1024 layers: 1920
+read net time 13.9862 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: soln time       328.73 sec                  rate    11.4831 (1e9 edges/sec) 
+nthreads  2: soln time       166.29 sec speedup     1.98 rate    22.7010 (1e9 edges/sec) 
+nthreads  4: soln time        84.37 sec speedup     3.90 rate    44.7445 (1e9 edges/sec) 
+nthreads  8: soln time        42.86 sec speedup     7.67 rate    88.0834 (1e9 edges/sec) 
+nthreads 16: soln time        22.55 sec speedup    14.58 rate   167.4269 (1e9 edges/sec) 
+nthreads 20: soln time        19.56 sec speedup    16.81 rate   192.9795 (1e9 edges/sec) 
+nthreads 32: soln time        20.53 sec speedup    16.01 rate   183.8552 (1e9 edges/sec) 
+nthreads 40: soln time        18.34 sec speedup    17.92 rate   205.7890 (1e9 edges/sec) 
+
+# entries in final Y: 1.85549 million
+check time: 0.00104904 sec
+
+# neurons: 4096 bias: -0.35
+# features: 60000 read time: 9.31665 sec
+# entries in Y0: 25.0191 million
+
+--------------------------------------neurons per layer: 4096 layers: 120
+read net time 4.82429 sec
+# edges in all layers: 15.7286 million
+
+nthreads  1: soln time       102.04 sec                  rate     9.2482 (1e9 edges/sec) 
+nthreads  2: soln time        51.11 sec speedup     2.00 rate    18.4633 (1e9 edges/sec) 
+nthreads  4: soln time        25.93 sec speedup     3.93 rate    36.3882 (1e9 edges/sec) 
+nthreads  8: soln time        13.75 sec speedup     7.42 rate    68.6397 (1e9 edges/sec) 
+nthreads 16: soln time         7.59 sec speedup    13.44 rate   124.3403 (1e9 edges/sec) 
+nthreads 20: soln time         7.46 sec speedup    13.67 rate   126.4293 (1e9 edges/sec) 
+nthreads 32: soln time         7.07 sec speedup    14.43 rate   133.4974 (1e9 edges/sec) 
+nthreads 40: soln time         6.17 sec speedup    16.53 rate   152.8356 (1e9 edges/sec) 
+
+# entries in final Y: 7.3769 million
+check time: 0.00218487 sec
+
+--------------------------------------neurons per layer: 4096 layers: 480
+read net time 14.2522 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: soln time       356.59 sec                  rate    10.5859 (1e9 edges/sec) 
+nthreads  2: soln time       181.15 sec speedup     1.97 rate    20.8381 (1e9 edges/sec) 
+nthreads  4: soln time        92.36 sec speedup     3.86 rate    40.8725 (1e9 edges/sec) 
+nthreads  8: soln time        47.99 sec speedup     7.43 rate    78.6534 (1e9 edges/sec) 
+nthreads 16: soln time        27.38 sec speedup    13.02 rate   137.8737 (1e9 edges/sec) 
+nthreads 20: soln time        22.80 sec speedup    15.64 rate   165.5629 (1e9 edges/sec) 
+nthreads 32: soln time        24.57 sec speedup    14.51 rate   153.6360 (1e9 edges/sec) 
+nthreads 40: soln time        21.68 sec speedup    16.45 rate   174.1367 (1e9 edges/sec) 
+
+# entries in final Y: 7.3769 million
+check time: 0.00219083 sec
+
+--------------------------------------neurons per layer: 4096 layers: 1920
+read net time 56.5207 sec
+# edges in all layers: 251.658 million
+
+nthreads  1: soln time      1395.85 sec                  rate    10.8174 (1e9 edges/sec) 
+nthreads  2: soln time       705.78 sec speedup     1.98 rate    21.3941 (1e9 edges/sec) 
+nthreads  4: soln time       356.05 sec speedup     3.92 rate    42.4085 (1e9 edges/sec) 
+nthreads  8: soln time       184.37 sec speedup     7.57 rate    81.8969 (1e9 edges/sec) 
+nthreads 16: soln time       103.74 sec speedup    13.45 rate   145.5484 (1e9 edges/sec) 
+nthreads 20: soln time        89.15 sec speedup    15.66 rate   169.3682 (1e9 edges/sec) 
+nthreads 32: soln time        95.10 sec speedup    14.68 rate   158.7782 (1e9 edges/sec) 
+nthreads 40: soln time        84.09 sec speedup    16.60 rate   179.5605 (1e9 edges/sec) 
+
+# entries in final Y: 7.3769 million
+check time: 0.00219488 sec
+
+# neurons: 16384 bias: -0.4
+# features: 60000 read time: 37.0141 sec
+# entries in Y0: 98.8589 million
+
+--------------------------------------neurons per layer: 16384 layers: 120
+read net time 19.783 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: soln time       722.06 sec                  rate     5.2279 (1e9 edges/sec) 
+nthreads  2: soln time       361.33 sec speedup     2.00 rate    10.4472 (1e9 edges/sec) 
+nthreads  4: soln time       180.72 sec speedup     4.00 rate    20.8884 (1e9 edges/sec) 
+nthreads  8: soln time        92.91 sec speedup     7.77 rate    40.6291 (1e9 edges/sec) 
+nthreads 16: soln time        50.91 sec speedup    14.18 rate    74.1426 (1e9 edges/sec) 
+nthreads 20: soln time        41.06 sec speedup    17.58 rate    91.9311 (1e9 edges/sec) 
+nthreads 32: soln time        41.04 sec speedup    17.59 rate    91.9752 (1e9 edges/sec) 
+nthreads 40: soln time        35.00 sec speedup    20.63 rate   107.8596 (1e9 edges/sec) 
+
+# entries in final Y: 31.4245 million
+check time: 0.0072 sec
+
+--------------------------------------neurons per layer: 16384 layers: 480
+read net time 57.6987 sec
+# edges in all layers: 251.658 million
+
+nthreads  1: soln time      2653.20 sec                  rate     5.6911 (1e9 edges/sec) 
+nthreads  2: soln time      1334.97 sec speedup     1.99 rate    11.3107 (1e9 edges/sec) 
+nthreads  4: soln time       686.63 sec speedup     3.86 rate    21.9908 (1e9 edges/sec) 
+nthreads  8: soln time       348.26 sec speedup     7.62 rate    43.3570 (1e9 edges/sec) 
+nthreads 16: soln time       182.21 sec speedup    14.56 rate    82.8667 (1e9 edges/sec) 
+nthreads 20: soln time       150.19 sec speedup    17.67 rate   100.5390 (1e9 edges/sec) 
+nthreads 32: soln time       152.59 sec speedup    17.39 rate    98.9539 (1e9 edges/sec) 
+nthreads 40: soln time       131.49 sec speedup    20.18 rate   114.8358 (1e9 edges/sec) 
+
+# entries in final Y: 31.4245 million
+check time: 0.00654197 sec
+
+--------------------------------------neurons per layer: 16384 layers: 1920
+read net time 230.495 sec
+# edges in all layers: 1006.63 million
+
+nthreads  1: soln time     10407.27 sec                  rate     5.8034 (1e9 edges/sec) 
+nthreads  2: soln time      5210.63 sec speedup     2.00 rate    11.5913 (1e9 edges/sec) 
+nthreads  4: soln time      2680.87 sec speedup     3.88 rate    22.5292 (1e9 edges/sec) 
+nthreads  8: soln time      1360.12 sec speedup     7.65 rate    44.4063 (1e9 edges/sec) 
+nthreads 16: soln time       710.76 sec speedup    14.64 rate    84.9763 (1e9 edges/sec) 
+nthreads 20: soln time       613.12 sec speedup    16.97 rate    98.5098 (1e9 edges/sec) 
+nthreads 32: soln time       591.89 sec speedup    17.58 rate   102.0430 (1e9 edges/sec) 
+nthreads 40: soln time       504.73 sec speedup    20.62 rate   119.6633 (1e9 edges/sec) 
+
+# entries in final Y: 31.4245 million
+check time: 0.00681996 sec
+
+# neurons: 65536 bias: -0.45
+# features: 60000 read time: 148.427 sec
+# entries in Y0: 392.192 million
+
+--------------------------------------neurons per layer: 65536 layers: 120
+read net time 79.887 sec
+# edges in all layers: 251.658 million
+
+nthreads  1: soln time      4001.28 sec                  rate     3.7737 (1e9 edges/sec) 
+nthreads  2: soln time      2195.57 sec speedup     1.82 rate     6.8772 (1e9 edges/sec) 
+nthreads  4: soln time      1100.77 sec speedup     3.63 rate    13.7171 (1e9 edges/sec) 
+nthreads  8: soln time       558.42 sec speedup     7.17 rate    27.0395 (1e9 edges/sec) 
+nthreads 16: soln time       297.22 sec speedup    13.46 rate    50.8016 (1e9 edges/sec) 
+nthreads 20: soln time       243.44 sec speedup    16.44 rate    62.0255 (1e9 edges/sec) 
+nthreads 32: soln time       240.18 sec speedup    16.66 rate    62.8676 (1e9 edges/sec) 
+nthreads 40: soln time       229.36 sec speedup    17.45 rate    65.8320 (1e9 edges/sec) 
+
+# entries in final Y: 130.679 million
+check time: 0.0267251 sec
+
+--------------------------------------neurons per layer: 65536 layers: 480
+read net time 240.194 sec
+# edges in all layers: 1006.63 million
+
+nthreads  1: soln time     15124.53 sec                  rate     3.9934 (1e9 edges/sec) 
+nthreads  2: soln time      8112.42 sec speedup     1.86 rate     7.4451 (1e9 edges/sec) 
+nthreads  4: soln time      4046.98 sec speedup     3.74 rate    14.9242 (1e9 edges/sec) 
+nthreads  8: soln time      1973.16 sec speedup     7.67 rate    30.6097 (1e9 edges/sec) 
+nthreads 16: soln time      1122.76 sec speedup    13.47 rate    53.7943 (1e9 edges/sec) 
+nthreads 20: soln time       927.29 sec speedup    16.31 rate    65.1341 (1e9 edges/sec) 
+nthreads 32: soln time       941.61 sec speedup    16.06 rate    64.1434 (1e9 edges/sec) 
+nthreads 40: soln time       918.87 sec speedup    16.46 rate    65.7310 (1e9 edges/sec) 
+
+# entries in final Y: 130.679 million
+check time: 0.0251191 sec
+
+--------------------------------------neurons per layer: 65536 layers: 1920
+read net time 980.087 sec
+# edges in all layers: 4026.53 million
+
+nthreads  1: soln time     59774.93 sec                  rate     4.0417 (1e9 edges/sec) 
+nthreads  2: soln time     30692.49 sec speedup     1.95 rate     7.8714 (1e9 edges/sec) 
+nthreads  4: soln time     15334.38 sec speedup     3.90 rate    15.7549 (1e9 edges/sec) 
+nthreads  8: soln time      7942.44 sec speedup     7.53 rate    30.4178 (1e9 edges/sec) 
+nthreads 16: soln time      4237.19 sec speedup    14.11 rate    57.0170 (1e9 edges/sec) 
+nthreads 20: soln time      3517.46 sec speedup    16.99 rate    68.6836 (1e9 edges/sec) 
+nthreads 32: soln time      3645.80 sec speedup    16.40 rate    66.2658 (1e9 edges/sec) 
+nthreads 40: soln time      3570.33 sec speedup    16.74 rate    67.6666 (1e9 edges/sec) 
+
+# entries in final Y: 130.679 million
+check time: 0.0250661 sec
+all tests passed
+
+Script done on Fri 21 Feb 2020 01:39:45 PM CST

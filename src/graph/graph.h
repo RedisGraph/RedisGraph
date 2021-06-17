@@ -4,15 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_H
-#define GRAPH_H
+#pragma once
 
 #include <pthread.h>
 
+#include "rax.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
-#include "rax.h"
+#include "graph_statistics.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -53,6 +53,8 @@ typedef enum {
 
 // Forward declaration of RG_Matrix type. Internal to graph.
 typedef struct {
+	bool dirty;                         // Indicates if matrix requires sync
+	bool allow_multi_edge;              // Entry i,j can contain multiple edges
 	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix.
 	pthread_mutex_t mutex;              // Lock.
 } _RG_Matrix;
@@ -72,10 +74,11 @@ struct Graph {
 	RG_Matrix *relations;               // Relation matrices.
 	RG_Matrix *t_relations;             // Transposed relation matrices.
 	RG_Matrix _zero_matrix;             // Zero matrix.
-	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
+	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
+	GraphStatistics stats;              // Graph related statistics.
 };
 
 /* Graph synchronization functions
@@ -160,6 +163,11 @@ int Graph_DeleteEdge(
 	Edge *e
 );
 
+// Returns true if the given entity has been deleted.
+bool Graph_EntityIsDeleted(
+	Entity *e
+);
+
 // Removes both nodes and edges from graph.
 void Graph_BulkDelete(
 	Graph *g,           // Graph to delete entities from.
@@ -199,6 +207,11 @@ uint Graph_DeletedNodeCount(
 	const Graph *g
 );
 
+// Returns number of existing and deleted nodes in the graph.
+size_t Graph_UncompactedNodeCount(
+	const Graph *g
+);
+
 // Returns number of nodes with given label.
 size_t Graph_LabeledNodeCount(
 	const Graph *g,
@@ -208,6 +221,12 @@ size_t Graph_LabeledNodeCount(
 // Returns number of edges in the graph.
 size_t Graph_EdgeCount(
 	const Graph *g
+);
+
+// Returns number of edges of a specific relation type.
+uint64_t Graph_RelationEdgeCount(
+	const Graph *g,
+	int relation_idx
 );
 
 // Returns number of deleted edges in the graph.
@@ -266,16 +285,6 @@ void Graph_GetEdgesConnectingNodes(
 	Edge **edges        // array_t of edges connecting src to dest of type r.
 );
 
-// Checks if src is connected to dest via edge of type r
-// set r to GRAPH_NO_RELATION if you do not care
-// about edge type.
-bool Graph_EdgeExists(
-	const Graph *g,     // Graph to get edges from.
-	NodeID srcID,       // Source node of edge
-	NodeID destID,      // Destination node of edge
-	int r               // Edge type.
-);
-
 // Get node edges.
 void Graph_GetNodeEdges(
 	const Graph *g,         // Graph to get edges from.
@@ -311,6 +320,9 @@ GrB_Matrix Graph_GetRelationMatrix(
 	int relation        // Relation described by matrix.
 );
 
+// Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise.
+bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r);
+
 // Retrieves a transposed typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetTransposedRelationMatrix(
@@ -327,6 +339,4 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
 void Graph_Free(
 	Graph *g
 );
-
-#endif
 

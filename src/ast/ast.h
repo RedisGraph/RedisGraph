@@ -9,12 +9,11 @@
 #include "../value.h"
 #include "cypher-parser.h"
 #include "../redismodule.h"
-#include "rax.h"
 #include "ast_annotations_ctx_collection.h"
 #include "../arithmetic/arithmetic_expression.h"
 
-#define IDENTIFIER_NOT_FOUND UINT_MAX
 #define UNLIMITED UINT_MAX
+#define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef enum {
 	AST_VALID,
@@ -26,10 +25,8 @@ typedef struct {
 	rax *referenced_entities;                           // Mapping of the referenced entities.
 	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
 	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
-	AR_ExpNode *limit;                                  // The number of results in this segment.
-	AR_ExpNode *skip;                                   // The number of skips in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
-	uint ref_count;                                     // Reference counter for deletion.
+	uint *ref_count;                                    // A pointer to reference counter (for deletion).
 	cypher_parse_result_t *parse_result;                // Query parsing output.
 	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
 } AST;
@@ -56,7 +53,14 @@ bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t cl
 void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs);
 
 // Returns specified clause or NULL.
-const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
+// if 'clause_idx' is specified and requested clause type is found
+// 'clause_idx' is set to the index of the returned clause
+// otherwise 'clause_idx' isn't modified.
+const cypher_astnode_t *AST_GetClause(const AST *ast,
+		cypher_astnode_type_t clause_type, uint *clause_idx);
+
+// Return clause at position 'i'
+const cypher_astnode_t *AST_GetClauseByIdx(const AST *ast, uint i);
 
 // Returns the indexes into the AST of all instances of the given clause.
 uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
@@ -96,6 +100,9 @@ void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name);
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
 
+// Returns true if the given identifier is used as an alias within this tree.
+bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier);
+
 // Convert an AST integer node (which is stored internally as a string) into an integer.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
@@ -115,10 +122,6 @@ const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);
 // Collect the aliases from a CALL clause to populate ResultSet column names.
 const char **AST_BuildCallColumnNames(const cypher_astnode_t *return_clause);
 
-// Determine the maximum number of records
-// which will be considered when evaluating an algebraic expression.
-int TraverseRecordCap(const AST *ast);
-
 // Parse a query to construct an immutable AST.
 cypher_parse_result_t *parse_query(const char *query);
 
@@ -130,14 +133,6 @@ void parse_result_free(cypher_parse_result_t *parse_result);
 
 // Returns the ast annotation context collection of the AST.
 AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast);
-
-AR_ExpNode *AST_GetLimitExpr(const AST *ast);
-
-uint64_t AST_GetLimit(const AST *ast);
-
-AR_ExpNode *AST_GetSkipExpr(const AST *ast);
-
-uint64_t AST_GetSkip(const AST *ast);
 
 void AST_Free(AST *ast);
 

@@ -25,8 +25,8 @@
 #include <sys/param.h>
 #include <stdarg.h>
 #include <stdint.h>
-#include <assert.h>
 #include <stdio.h>
+#include "../RG.h"
 #include "rmalloc.h"
 
 #ifdef __cplusplus
@@ -65,7 +65,8 @@ static inline uint32_t array_len(array_t arr);
 /* Initialize a new array with a given element size and capacity. Should not be used directly - use
  * array_new instead */
 static array_t array_new_sz(uint32_t elem_sz, uint32_t cap, uint32_t len) {
-	array_hdr_t *hdr = (array_hdr_t *)array_alloc_fn(sizeof(array_hdr_t) + cap * elem_sz);
+	unsigned long array_size = cap * elem_sz;
+	array_hdr_t *hdr = (array_hdr_t *)array_alloc_fn(sizeof(array_hdr_t) + array_size);
 	hdr->cap = cap;
 	hdr->elem_sz = elem_sz;
 	hdr->len = len;
@@ -209,9 +210,9 @@ static inline uint32_t array_len(array_t arr) {
 #define ARR_CAP_NOSHRINK ((uint32_t)-1)
 static inline void *array_trimm(array_t arr, uint32_t len, uint32_t cap) {
 	array_hdr_t *arr_hdr = array_hdr(arr);
-	assert((cap == ARR_CAP_NOSHRINK || cap > 0 || len == cap) && "trimming capacity is illegal");
-	assert((cap == ARR_CAP_NOSHRINK || cap >= len) && "trimming len is greater then capacity");
-	assert((len <= arr_hdr->len) && "trimming len is greater then current len");
+	ASSERT((cap == ARR_CAP_NOSHRINK || cap > 0 || len == cap) && "trimming capacity is illegal");
+	ASSERT((cap == ARR_CAP_NOSHRINK || cap >= len) && "trimming len is greater then capacity");
+	ASSERT((len <= arr_hdr->len) && "trimming len is greater then current len");
 	arr_hdr->len = len;
 	if(cap != ARR_CAP_NOSHRINK) {
 		arr_hdr->cap = cap;
@@ -262,14 +263,14 @@ static void array_free(array_t arr) {
 /* Pop the top element from the array, reduce the size and return it */
 #define array_pop(arr)               \
   ({                                 \
-    assert(array_hdr(arr)->len > 0); \
+    ASSERT(array_hdr(arr)->len > 0); \
     arr[--(array_hdr(arr)->len)];    \
   })
 
 /* Remove a specified element from the array */
 #define array_del(arr, ix)                                                        \
   ({                                                                              \
-    assert(array_len(arr) > ix);                                                  \
+    ASSERT(array_len(arr) > ix);                                                  \
     if (array_len(arr) - 1 > ix) {                                                \
       memcpy(arr + ix, arr + ix + 1, sizeof(*arr) * (array_len(arr) - (ix + 1))); \
     }                                                                             \
