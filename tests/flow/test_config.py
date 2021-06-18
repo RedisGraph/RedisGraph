@@ -103,40 +103,32 @@ class testConfig(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Field can not be re-configured" in str(e))
-
-            # make sure configuration wasn't modified
-            current_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
-            self.env.assertEqual(prev_conf, current_conf)
         
         try:
-            # Set multiple configuration values, FAKE_CONFIG_NAME is NOT
-            # valid configuration, expecting this command to fail
+            # Set multiple configuration values, FAKE_CONFIG_NAME is NOT a valid
+            # configuration, expecting this command to fail
             response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 FAKE_CONFIG_NAME 40")
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Unknown configuration field" in str(e))
 
-            # make sure configuration wasn't modified
-            current_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
-            self.env.assertEqual(prev_conf, current_conf)
-
         try:
-            # Set multiple configuration values, FAKE_CONFIG_NAME is NOT
-            # valid configuration, expecting this command to fail
+            # Set multiple configuration values, -1 is not a valid value for
+            # MAX_QUEUED_QUERIES, expecting this command to fail
             response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 MAX_QUEUED_QUERIES -1")
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Failed to set config value" in str(e))
 
-            # make sure configuration wasn't modified
-            current_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
-            self.env.assertEqual(prev_conf, current_conf)
+        # make sure configuration wasn't modified
+        current_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
+        self.env.assertEqual(prev_conf, current_conf)
 
     def test06_config_set_invalid_name(self):
 
-        # Ensure that getter fails on invalid parameters appropriately
+        # Ensure that setter fails on unknown configuration field
         fake_config_name = "FAKE_CONFIG_NAME"
 
         try:

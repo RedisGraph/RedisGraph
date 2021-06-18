@@ -108,22 +108,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage keys for query and error contexts.
-	if(!QueryCtx_Init()) return REDISMODULE_ERR;
-	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
+	if(!QueryCtx_Init())    return REDISMODULE_ERR;
+	if(!ErrorCtx_Init())    return REDISMODULE_ERR;
+	if(!ThreadPools_Init()) return REDISMODULE_ERR;
 
-	int reader_thread_count;
-	int bulk_thread_count = 1;
-	int writer_thread_count = 1;
-	uint64_t max_queued_queries = UINT64_MAX;
-	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
-	Config_Option_get(Config_MAX_QUEUED_QUERIES, &max_queued_queries);
-
-	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count,
-				bulk_thread_count, max_queued_queries)) {
-		return REDISMODULE_ERR;
-	}
-
-	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", reader_thread_count);
+	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.",
+			ThreadPools_ReadersCount());
 
 	int ompThreadCount;
 	Config_Option_get(Config_OPENMP_NTHREAD, &ompThreadCount);

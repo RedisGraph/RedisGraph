@@ -10,6 +10,12 @@
 
 #define THPOOL_QUEUE_FULL -2
 
+// initialize pools
+int ThreadPools_Init
+(
+	void
+);
+
 // create both readers and writers thread pools
 int ThreadPools_CreatePools
 (
@@ -21,6 +27,12 @@ int ThreadPools_CreatePools
 
 // return number of threads in both the readers and writers pools
 uint ThreadPools_ThreadCount
+(
+	void
+);
+
+// return size of READERS thread-pool
+uint ThreadPools_ReadersCount
 (
 	void
 );

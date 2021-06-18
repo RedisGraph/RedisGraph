@@ -5,7 +5,7 @@
  */
 
 #include <string.h>
-#include "../deps/GraphBLAS/Source/GB_assert.h"
+#include "RG.h"
 #include "../configuration/config.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
@@ -72,7 +72,6 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 		Config_Option_Field config_field;
 		const char *config_name = RedisModule_StringPtrLen(key, NULL);
-
 		if(!Config_Contains_field(config_name, &config_field)) {
 			RedisModule_ReplyWithError(ctx, "Unknown configuration field");
 			return;
@@ -104,19 +103,19 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// if we're here configuration passed all validations
 	// apply configuration
 	for(int i = 0; i < argc; i += 2) {
-		RedisModuleString *key = argv[i];
-		RedisModuleString *val = argv[i+1];
+		bool               res   =  false;
+		RedisModuleString  *key  =  argv[i];
+		RedisModuleString  *val  =  argv[i+1];
 
 		Config_Option_Field config_field;
 		const char *config_name = RedisModule_StringPtrLen(key, NULL);
-		Config_Contains_field(config_name, &config_field);
+		res = Config_Contains_field(config_name, &config_field);
+		ASSERT(res == true);
 
 		// set configuration
 		const char *val_str = RedisModule_StringPtrLen(val, NULL);
-		if(Config_Option_set(config_field, val_str)) {
-			// expecting set to succeed
-			ASSERT(false);
-		}
+		res = Config_Option_set(config_field, val_str);
+		ASSERT(res == true);
 	}
 
 	RedisModule_ReplyWithSimpleString(ctx, "OK");
