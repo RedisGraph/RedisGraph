@@ -22,7 +22,7 @@ void reconf_handler(Config_Option_Field type) {
 				uint64_t max_queued_queries;
 				bool res = Config_Option_get(type, &max_queued_queries);
 				ASSERT(res);
-				ThreadPools_Set_max_pending_work(max_queued_queries);
+				ThreadPools_SetMaxPendingWork(max_queued_queries);
 			}
 			break;
 		
