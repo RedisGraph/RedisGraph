@@ -183,7 +183,7 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	 * in a thread safe matter. */
 	pthread_mutex_lock(&dataBlock->mutex);
 	{
-		dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
+		array_append(dataBlock->deletedIdx, idx);
 		dataBlock->itemCount--;
 	}
 	pthread_mutex_unlock(&dataBlock->mutex);

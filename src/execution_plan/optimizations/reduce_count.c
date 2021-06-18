@@ -108,7 +108,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	// The new expression must be aliased to populate the Record.
 	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
-	exps = array_append(exps, exp);
+	array_append(exps, exp);
 
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
@@ -203,7 +203,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	// the new expression must be aliased to populate the Record
 	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
-	exps = array_append(exps, exp);
+	array_append(exps, exp);
 
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 

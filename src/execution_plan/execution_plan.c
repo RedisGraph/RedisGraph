@@ -48,7 +48,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	uint start_offset = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
-	union_indices = array_append(union_indices, clause_count);
+	array_append(union_indices, clause_count);
 	int union_count = array_len(union_indices);
 	ASSERT(union_count > 1);
 
@@ -162,7 +162,7 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
 	// last segment
-	segment_indices = array_append(segment_indices, clause_count);
+	array_append(segment_indices, clause_count);
 	nsegments = array_len(segment_indices);
 	segments = array_new(ExecutionPlan *, nsegments);
 
@@ -181,7 +181,7 @@ static ExecutionPlan **_process_segments(AST *ast) {
 
 		// create ExecutionPlan segment that represents this slice of the AST
 		segment = _process_segment(ast_segment, seg_start_idx, seg_end_idx);
-		segments = array_append(segments, segment);
+		array_append(segments, segment);
 
 		// The next segment will start where the current one ended.
 		seg_start_idx = seg_end_idx;

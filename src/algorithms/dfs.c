@@ -27,7 +27,7 @@ bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visite
 		not_seen = raxFind(visited, (unsigned char *)e->dest->alias, strlen(e->dest->alias)) == raxNotFound;
 		if(not_seen || close_cycle) {
 			if(!raxInsert(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL, NULL)) continue;
-			*path = array_append(*path, e);
+			array_append(*path, e);
 			if(_DFS(e->dest, level, close_cycle, current_level + 1, visited, used_edges, path)) return true;
 			array_pop(*path);
 			raxRemove(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL);
@@ -39,7 +39,7 @@ bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visite
 		not_seen = raxFind(visited, (unsigned char *)e->src->alias, strlen(e->src->alias)) == raxNotFound;
 		if(not_seen || close_cycle) {
 			if(!raxInsert(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL, NULL)) continue;
-			*path = array_append(*path, e);
+			array_append(*path, e);
 			if(_DFS(e->src, level, close_cycle, current_level + 1, visited, used_edges, path)) return true;
 			array_pop(*path);
 			raxRemove(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL);
