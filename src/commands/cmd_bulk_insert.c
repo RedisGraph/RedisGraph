@@ -52,13 +52,11 @@ static int _Graph_Bulk_Header(RedisModuleCtx *ctx, RedisModuleString ***argv,
 // batch, make sure graph key doesn't exists, fails if "BEGIN" token is present
 // and graph key 'graphname' already exists
 static int _Graph_Bulk_Begin(RedisModuleCtx *ctx, RedisModuleString ***argv,
-							  int *argc, RedisModuleString *rs_graph_name, const char *graphname,
-							  bool *begin) {
-	ASSERT(argv != NULL);
-	ASSERT(argc != NULL);
-	ASSERT(begin != NULL);
-	ASSERT(graphname != NULL);
-	ASSERT(rs_graph_name != NULL);
+		int *argc, RedisModuleString *rs_graph_name, bool *begin) {
+	ASSERT(argv           !=  NULL);
+	ASSERT(argc           !=  NULL);
+	ASSERT(begin          !=  NULL);
+	ASSERT(rs_graph_name  !=  NULL);
 
 	const char *token = RedisModule_StringPtrLen(**argv, NULL);
 	*begin = strcmp(token, "BEGIN") == 0;
@@ -76,6 +74,7 @@ static int _Graph_Bulk_Begin(RedisModuleCtx *ctx, RedisModuleString ***argv,
 
 	if(key) {
 		char *err;
+		const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
 		asprintf(&err, "Graph with name '%s' cannot be created, \
 				as key '%s' already exists.", graphname, graphname);
 		RedisModule_ReplyWithError(ctx, err);
@@ -94,20 +93,24 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	if(argc < 3) return RedisModule_WrongArity(ctx);
 
+	int           res         =  BULK_FAIL;
 	GraphContext  *gc         =  NULL;
-	long long     node_count  =  0;  //  number of declared nodes
-	long long     edge_count  =  0;  //  number of declared edges
+	long long     node_count  =  0;         // number of declared nodes
+	long long     edge_count  =  0;         // number of declared edges
 
 	// unpack arguments
 	// get graph name
 	argv += 1; // skip "GRAPH.BULK"
 	RedisModuleString *rs_graph_name = *argv++;
-	const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
 	argc -= 2; // skip "GRAPH.BULK [GRAPHNAME]"
 
+	//--------------------------------------------------------------------------
+	// BEGIN token
+	//--------------------------------------------------------------------------
+
 	bool begin = false;
-	if(_Graph_Bulk_Begin(ctx, &argv, &argc, rs_graph_name, graphname, &begin)
-	   != BULK_OK) goto cleanup;
+	res = _Graph_Bulk_Begin(ctx, &argv, &argc, rs_graph_name, &begin);
+	if(res != BULK_OK) goto cleanup;
 
 	// create key only if "BEGIN" token present
 	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, begin);
@@ -115,11 +118,14 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// failed to retrieve GraphContext; an error has been emitted
 	if(gc == NULL) goto cleanup;
 
-	// if begin try to process header (if exists)
+	//--------------------------------------------------------------------------
+	// process HEADER
+	//--------------------------------------------------------------------------
+
+	// if begin process header (if exists)
 	if(begin) {
-		if(!_Graph_Bulk_Header(ctx, &argv, &argc, gc->g)) {
-			goto cleanup;
-		}
+		res = _Graph_Bulk_Header(ctx, &argv, &argc, gc->g);
+		if(res != BULK_OK) goto cleanup;
 	}
 
 	// read the user-provided counts for nodes and edges in the current query
@@ -133,39 +139,41 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		goto cleanup;
 	}
 
-	argc -= 2; // already read node count and edge count
+	argc -= 2; // read node count and edge count
 
+	// validate batch size
 	if(node_count + edge_count > BATCH_SIZE_LIMIT) {
 		RedisModule_ReplyWithError(ctx, "Error batch too large to process");
 		goto cleanup;
 	}
 
-	int rc = BulkInsert(ctx, gc, argv, argc, node_count, edge_count);
-
-	if(rc == BULK_FAIL) {
-		// if insertion failed, clean up keyspace and free added entities
-		GraphContext_Release(gc);
-		RedisModuleKey *key = NULL;
-
-		key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_WRITE);
-		RedisModule_DeleteKey(key);
-		RedisModule_CloseKey(key);
-
-		gc = NULL;
-		goto cleanup;
-	}
-
-	// successful bulk commands should always modify slaves
-	RedisModule_ReplicateVerbatim(ctx);
-
-	// replay to caller
-	char reply[1024];
-	int len = snprintf(reply, 1024, "%llu nodes created, %llu edges created",
-					   node_count, edge_count);
-	RedisModule_ReplyWithStringBuffer(ctx, reply, len);
+	res = BulkInsert(ctx, gc, argv, argc, node_count, edge_count);
 
 cleanup:
-	if(gc) GraphContext_Release(gc);
+	if(res == BULK_FAIL) {
+		if(gc != NULL) {
+			// if insertion failed, clean up keyspace and free added entities
+			GraphContext_Release(gc);
+			RedisModuleKey *key = NULL;
+
+			key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_WRITE);
+			RedisModule_DeleteKey(key);
+			RedisModule_CloseKey(key);
+		}
+	} else {
+		// successful bulk commands
+		ASSERT(res == BULK_OK);
+
+		// modify slaves
+		RedisModule_ReplicateVerbatim(ctx);
+
+		// replay to caller
+		char reply[1024];
+		int len = snprintf(reply, 1024, "%llu nodes created, %llu edges created",
+				node_count, edge_count);
+		RedisModule_ReplyWithStringBuffer(ctx, reply, len);
+	}
+
 	return REDISMODULE_OK;
 }
 
