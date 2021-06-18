@@ -14,7 +14,7 @@ void GraphStatistics_init(GraphStatistics *stats) {
 
 void GraphStatistics_IntroduceRelationship(GraphStatistics *stats) {
     ASSERT(stats && stats->edge_count);
-    stats->edge_count = array_append(stats->edge_count, 0);
+    array_append(stats->edge_count, 0);
 }
 
 uint64_t GraphStatistics_EdgeCount(const GraphStatistics *stats, int relation_idx) {

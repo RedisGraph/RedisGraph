@@ -21,7 +21,7 @@ void SIArray_Append(SIValue *siarray, SIValue value) {
 	// clone and persist incase of pointer values
 	SIValue clone = SI_CloneValue(value);
 	// append
-	siarray->array = array_append(siarray->array, clone);
+	array_append(siarray->array, clone);
 
 }
 

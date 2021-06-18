@@ -52,10 +52,10 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	pdata->g = gc->g;
 	pdata->n = GE_NEW_NODE();
 	pdata->output = array_new(SIValue, 4);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
-	pdata->output = array_append(pdata->output, SI_Node(&pdata->n));
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
-	pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
+	array_append(pdata->output, SI_ConstStringVal("node"));
+	array_append(pdata->output, SI_Node(&pdata->n));
+	array_append(pdata->output, SI_ConstStringVal("score"));
+	array_append(pdata->output, SI_DoubleVal(0.0));
 
 	// Execute query
 	pdata->iter = Index_Query(pdata->idx, query, &err);
@@ -118,8 +118,8 @@ ProcedureCtx *Proc_FulltextQueryNodeGen() {
 	ProcedureOutput *output   = array_new(ProcedureOutput, 2);
 	ProcedureOutput out_node  = {.name = "node", .type = T_NODE};
 	ProcedureOutput out_score = {.name = "score", .type = T_DOUBLE};
-	output = array_append(output, out_node);
-	output = array_append(output, out_score);
+	array_append(output, out_node);
+	array_append(output, out_score);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",
 								   2,

@@ -45,7 +45,7 @@ void Register_MapFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
-	types = array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("tomap", AR_TOMAP, 0, VAR_ARG_LEN, types, true, false);
 	AR_RegFunc(func_desc);
 }

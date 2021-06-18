@@ -102,7 +102,7 @@ void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 	case FT_N_EXP:
 	case FT_N_PRED:
 		/* This is a simple predicate tree, can not traverse further. */
-		*sub_trees = array_append(*sub_trees, root);
+		array_append(*sub_trees, root);
 		break;
 	case FT_N_COND:
 		switch(root->cond.op) {
@@ -114,7 +114,7 @@ void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 			break;
 		case OP_OR:
 			/* OR tree must be return as is. */
-			*sub_trees = array_append(*sub_trees, root);
+			array_append(*sub_trees, root);
 			break;
 		default:
 			ASSERT(0);

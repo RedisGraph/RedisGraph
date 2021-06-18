@@ -1,7 +1,6 @@
 version: 2.1
 
 commands:
-
   # If this build is from a fork, stop executing the current job and return success.
   # This is useful to avoid steps that will fail due to missing credentials.
   early_return_for_forked_pull_requests:
@@ -42,6 +41,13 @@ commands:
       - setup_remote_docker:
           docker_layer_caching: true
 
+  checkout-all:
+    steps:
+      - checkout
+      - run:
+          name: Checkout submodules
+          command: git submodule update --init --recursive
+
   setup-automation:
     steps:
       - run:
@@ -78,22 +84,10 @@ commands:
 
   setup-prerequisits:
     steps:
-      - run:
-          name: Fetch submodules
-          command: |
-            git submodule update --init --recursive
       - setup-automation
       - run:
           name: Install prerequisites
-          command: |
-            ./sbin/system-setup.py
-      - run:
-          name: Setup locale
-          command: |
-              if command -v apt-get &> /dev/null; then
-                locale-gen --purge en_US.UTF-8
-                dpkg-reconfigure -f noninteractive locales
-              fi
+          command: ./sbin/system-setup.py
 
   benchmark-automation:
     parameters:
@@ -139,11 +133,7 @@ commands:
     steps:
       - early_returns
       - setup-executor
-      - checkout
-      - run:
-          name: Checkout submodules
-          command: |
-            git submodule update --init --recursive
+      - checkout-all
       - setup-automation
       - run:
           name: Build for platform
@@ -168,25 +158,19 @@ commands:
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
-        environment:
-          LANG: en_US.UTF-8
-          LANGUAGE: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
-      - checkout
+      - checkout-all
       - setup-prerequisits
       - load-cached-deps
       - run:
           name: Build
-          command: |
-            make
-            make package
+          command: bash -l -c "make all package"
       - save-deps-cache
       - run:
           name: Test
-          command: make test
+          command: bash -l -c "make test"
       - early_return_for_forked_pull_requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -194,22 +178,35 @@ jobs:
             strip src/$MODULE_ARTIFACT
             mkdir -p /workspace
             cp src/$MODULE_ARTIFACT /workspace
-
       - persist_to_workspace:
           root: /workspace
           paths:
             - '*.so'
 
-  build_memcheck:
+  coverage:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
-        environment:
-            LANG: en_US.UTF-8
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
-      - checkout
+      - checkout-all
+      - setup-prerequisits
+      - load-cached-deps
+      - run:
+          name: Build for coverage
+          command: bash -l -c "make COV=1"
+      - run:
+          name: Test with coverage
+          command: |
+            bash -l -c "make test COV=1"
+            bash -l -c "make cov-upload"
+          no_output_timeout: 30m
+
+  build_memcheck:
+    docker:
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+    steps:
+      - early_returns
+      - checkout-all
       - setup-prerequisits
       - load-cached-deps
       - attach_workspace:
@@ -217,32 +214,28 @@ jobs:
       - run:
           name: Test for memory leaks
           command: |
-              # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
-              python3 ./deps/readies/bin/getredis --force --valgrind
-              make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
-          # Allow RediSearch global destructors.
+            # Replace the default Redis server with one linked to libc malloc rather than jemalloc
+            python3 ./deps/readies/bin/getredis --force --valgrind
+            # Re-run the test suite, failing if definite memory leaks have been introduced
+            bash -l -c "make memcheck"
+          # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
 
   build_macos:
     macos:
       xcode: 12.4.0
-    environment:
-      LANG: en_US.UTF-8
-      LANGUAGE: en_US.UTF-8
-      LC_ALL: en_US.UTF-8
     steps:
       - early_returns
-      - checkout
+      - checkout-all
       - setup-prerequisits
       - run:
           name: Build
           command: |
-            make
-            make package
+            bash -l -c "make all package"
       - run:
           name: Test
-          command: make test
+          command: bash -l -c "make test"
       - persist_to_workspace:
           root: bin/artifacts
           paths:
@@ -263,7 +256,7 @@ jobs:
 
   deploy_branch:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -277,7 +270,7 @@ jobs:
 
   deploy_release:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -291,7 +284,7 @@ jobs:
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+      - image: redisfab/rmbuilder:6.2.3-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -301,7 +294,7 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+      - image: redisfab/rmbuilder:6.2.3-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -311,7 +304,7 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
       - checkout
@@ -322,7 +315,7 @@ jobs:
 
   performance_ci_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
       - checkout
@@ -336,7 +329,7 @@ jobs:
 
   nightly_performance_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
       - checkout
@@ -344,11 +337,9 @@ jobs:
       - attach_workspace:
           at: /workspace
       - load-cached-deps
-
       - run:
           name: Build artifact
-          command: make
-
+          command: bash -l -c make
       - benchmark-automation:
           github_actor: "ci.nightly"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
@@ -421,6 +412,9 @@ workflows:
       - build:
           <<: *context
           <<: *not-on-integ-branch
+      - coverage:
+          <<: *context
+          <<: *on-any-branch
       - build_memcheck:
           <<: *context
           <<: *on-any-branch
@@ -470,5 +464,5 @@ workflows:
             branches:
               only: master
     jobs:
-      - nightly_automation
-      - nightly_performance_automation
+      - nightly_performance_automation:
+          <<: *context

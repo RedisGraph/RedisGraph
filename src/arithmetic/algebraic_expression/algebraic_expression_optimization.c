@@ -25,14 +25,14 @@ static void _AlgebraicExpression_CollectOperands(AlgebraicExpression *root,
 
 	switch(root->type) {
 	case AL_OPERAND:
-		*operands = array_append(*operands, AlgebraicExpression_Clone(root));
+		array_append(*operands, AlgebraicExpression_Clone(root));
 		root->operand.bfree = false; // The caller is the new owner of this operand.
 		break;
 	case AL_OPERATION:
 		switch(root->operation.op) {
 		case AL_EXP_TRANSPOSE:
 			// Transpose is considered as an operand.
-			*operands = array_append(*operands, AlgebraicExpression_Clone(root));
+			array_append(*operands, AlgebraicExpression_Clone(root));
 			break;
 		case AL_EXP_ADD:
 		case AL_EXP_MUL:
@@ -68,10 +68,10 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 			AlgebraicExpression **right_ops = array_new(AlgebraicExpression *, right_op_count);
 
 			for(uint i = 0; i < left_op_count; i++) {
-				left_ops = array_append(left_ops, _AlgebraicExpression_OperationRemoveSource(l));
+				array_append(left_ops, _AlgebraicExpression_OperationRemoveSource(l));
 			}
 			for(uint i = 0; i < right_op_count; i++) {
-				right_ops = array_append(right_ops, _AlgebraicExpression_OperationRemoveSource(r));
+				array_append(right_ops, _AlgebraicExpression_OperationRemoveSource(r));
 			}
 
 			ASSERT(AlgebraicExpression_ChildCount(l) == 0 && AlgebraicExpression_ChildCount(r) == 0);
@@ -88,7 +88,7 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 					// Clone op as it's being reused B*C, B*D.
 					if(i > 0) r_op = AlgebraicExpression_Clone(r_op);
 					AlgebraicExpression *mul = _AlgebraicExpression_MultiplyToTheRight(l_op, r_op);
-					multiplications = array_append(multiplications, mul);
+					array_append(multiplications, mul);
 				}
 			}
 			array_free(left_ops);

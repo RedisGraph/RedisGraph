@@ -58,8 +58,8 @@ int QGNode_EdgeCount(const QGNode *n) {
 }
 
 void QGNode_ConnectNode(QGNode *src, QGNode *dest, QGEdge *e) {
-	src->outgoing_edges = array_append(src->outgoing_edges, e);
-	dest->incoming_edges = array_append(dest->incoming_edges, e);
+	array_append(src->outgoing_edges, e);
+	array_append(dest->incoming_edges, e);
 
 	// Set src node as highly connected if in-degree + out-degree > 2
 	if(src->highly_connected == false && QGNode_Degree(src) > 2) {

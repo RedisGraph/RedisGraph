@@ -18,7 +18,7 @@ static void _AllNeighborsCtx_CollectNeighbors
 	GxB_MatrixTupleIter *iter;
 	if(ctx->current_level == array_len(ctx->levels)) {
 		GxB_MatrixTupleIter_new(&iter, ctx->M);
-		ctx->levels = array_append(ctx->levels, iter);
+		array_append(ctx->levels, iter);
 	} else {
 		iter = ctx->levels[ctx->current_level];
 	}
@@ -62,7 +62,7 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	ctx->current_level  =  0;
 
 	// Null iterator at level 0
-	ctx->levels = array_append(ctx->levels, NULL);
+	array_append(ctx->levels, NULL);
 
 	return ctx;
 }
@@ -78,7 +78,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 		ctx->first_pull = false;
 
 		// update visited path, replace frontier with current node
-		ctx->visited = array_append(ctx->visited, ctx->src);
+		array_append(ctx->visited, ctx->src);
 
 		// current_level >= ctx->minLen
 		// see if we should expand further?
@@ -108,7 +108,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 		}
 
 		// update visited path, replace frontier with current node
-		ctx->visited = array_append(ctx->visited, dest_id);
+		array_append(ctx->visited, dest_id);
 
 		if(ctx->current_level < ctx->minLen) {
 			// continue traversing

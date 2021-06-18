@@ -35,14 +35,14 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 	 * switching from single edge ID to multiple IDs. */
 	if(SINGLE_EDGE(*x)) {
 		ids = array_new(EdgeID, 2);
-		ids = array_append(ids, SINGLE_EDGE_ID(*x));
-		ids = array_append(ids, SINGLE_EDGE_ID(*y));
+		array_append(ids, SINGLE_EDGE_ID(*x));
+		array_append(ids, SINGLE_EDGE_ID(*y));
 		// TODO: Make sure MSB of ids isn't on.
 		*z = (EdgeID)ids;
 	} else {
 		// Multiple edges, adding another edge.
 		ids = (EdgeID *)(*x);
-		ids = array_append(ids, SINGLE_EDGE_ID(*y));
+		array_append(ids, SINGLE_EDGE_ID(*y));
 		*z = (EdgeID)ids;
 	}
 }
@@ -198,7 +198,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 		e.entity = DataBlock_GetItem(g->edges, edgeId);
 		e.id = edgeId;
 		ASSERT(e.entity);
-		*edges = array_append(*edges, e);
+		array_append(*edges, e);
 	} else {
 		/* Multiple edges connecting src to dest,
 		 * entry is a pointer to an array of edge IDs. */
@@ -210,7 +210,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 			e.entity = DataBlock_GetItem(g->edges, edgeId);
 			e.id = edgeId;
 			ASSERT(e.entity);
-			*edges = array_append(*edges, e);
+			array_append(*edges, e);
 		}
 	}
 }
@@ -458,6 +458,10 @@ size_t Graph_LabeledNodeCount(const Graph *g, int label) {
 size_t Graph_EdgeCount(const Graph *g) {
 	ASSERT(g);
 	return g->edges->itemCount;
+}
+
+uint64_t Graph_RelationEdgeCount(const Graph *g, int relation_idx) {
+	return GraphStatistics_EdgeCount(&g->stats, relation_idx);
 }
 
 uint Graph_DeletedEdgeCount(const Graph *g) {
@@ -1356,7 +1360,7 @@ int Graph_AddLabel(Graph *g) {
 	UNUSED(info);
 	ASSERT(info == GrB_SUCCESS);
 
-	g->labels = array_append(g->labels, m);
+	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
@@ -1364,7 +1368,7 @@ int Graph_AddRelationType(Graph *g) {
 	ASSERT(g);
 
 	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
-	g->relations = array_append(g->relations, m);
+	array_append(g->relations, m);
 	// Adding a new relationship type, update the stats structures to support it.
 	GraphStatistics_IntroduceRelationship(&g->stats);
 	bool maintain_transpose;
@@ -1372,7 +1376,7 @@ int Graph_AddRelationType(Graph *g) {
 
 	if(maintain_transpose) {
 		RG_Matrix tm = RG_Matrix_New(g, GrB_UINT64);
-		g->t_relations = array_append(g->t_relations, tm);
+		array_append(g->t_relations, tm);
 	}
 
 	int relationID = Graph_RelationTypeCount(g) - 1;
@@ -1421,7 +1425,7 @@ bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
 	GrB_Matrix_nvals(&nvals, R);
 
-	return (GraphStatistics_EdgeCount(&g->stats, r) > nvals);
+	return (Graph_RelationEdgeCount(g, r) > nvals);
 }
 
 GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
