@@ -66,8 +66,8 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		RedisModule_ReplyWithError(ctx, "Error batch too large to process");
 		goto cleanup;
 	}
-	// unpack arguments
 
+	// unpack arguments
 	// get graph name
 	argv += 1; // skip "GRAPH.BULK"
 	RedisModuleString *rs_graph_name = *argv++;
