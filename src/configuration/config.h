@@ -53,9 +53,12 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field);
 // returns field name
 const char *Config_Field_name(Config_Option_Field field);
 
+bool Config_Option_get(Config_Option_Field field, ...);
+
 bool Config_Option_set(Config_Option_Field field, const char *val);
 
-bool Config_Option_get(Config_Option_Field field, ...);
+// dryrun configuration
+bool Config_Option_dryrun(Config_Option_Field field, const char *val);
 
 // sets config update callback function
 void Config_Subscribe_Changes(Config_on_change cb);
