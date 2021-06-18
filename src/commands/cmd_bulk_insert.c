@@ -12,6 +12,42 @@
 
 #define BATCH_SIZE_LIMIT 1000000 // 1M
 
+// process HEADER token if exists
+static int _Graph_Bulk_Header(RedisModuleCtx *ctx, RedisModuleString ***argv,
+		int *argc, Graph *g) {
+	const char *token = RedisModule_StringPtrLen(**argv, NULL);
+	bool header = strcmp(token, "HEADER") == 0;
+	if(header) {
+		// skip header token
+		(*argv) ++;
+		(*argc) --;
+
+		// HEADER:
+		// total node count
+		// total edge count
+
+		long long node_count = 0;  // number of nodes in graph
+		long long edge_count = 0;  // number of edges in graph
+
+		if(RedisModule_StringToLongLong(**argv++, &node_count) != REDISMODULE_OK) {
+			RedisModule_ReplyWithError(ctx, "Error parsing node count.");
+			return BULK_FAIL;
+		}
+
+		if(RedisModule_StringToLongLong(**argv++, &edge_count) != REDISMODULE_OK) {
+			RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
+			return BULK_FAIL;
+		}
+
+		(*argc) -= 2;
+
+		Graph_AllocateNodes(g, node_count);
+		Graph_AllocateEdges(g, edge_count);
+	}
+
+	return BULK_OK;
+}
+
 // process "BEGIN" token, expected to be present only on first bulk-insert
 // batch, make sure graph key doesn't exists, fails if "BEGIN" token is present
 // and graph key 'graphname' already exists
@@ -62,11 +98,6 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	long long     node_count  =  0;  //  number of declared nodes
 	long long     edge_count  =  0;  //  number of declared edges
 
-	if(node_count + edge_count > BATCH_SIZE_LIMIT) {
-		RedisModule_ReplyWithError(ctx, "Error batch too large to process");
-		goto cleanup;
-	}
-
 	// unpack arguments
 	// get graph name
 	argv += 1; // skip "GRAPH.BULK"
@@ -84,6 +115,13 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// failed to retrieve GraphContext; an error has been emitted
 	if(gc == NULL) goto cleanup;
 
+	// if begin try to process header (if exists)
+	if(begin) {
+		if(!_Graph_Bulk_Header(ctx, &argv, &argc, gc->g)) {
+			goto cleanup;
+		}
+	}
+
 	// read the user-provided counts for nodes and edges in the current query
 	if(RedisModule_StringToLongLong(*argv++, &node_count) != REDISMODULE_OK) {
 		RedisModule_ReplyWithError(ctx, "Error parsing node count.");
@@ -96,6 +134,11 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 
 	argc -= 2; // already read node count and edge count
+
+	if(node_count + edge_count > BATCH_SIZE_LIMIT) {
+		RedisModule_ReplyWithError(ctx, "Error batch too large to process");
+		goto cleanup;
+	}
 
 	int rc = BulkInsert(ctx, gc, argv, argc, node_count, edge_count);
 
