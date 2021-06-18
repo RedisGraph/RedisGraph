@@ -181,11 +181,28 @@ jobs:
             strip src/$MODULE_ARTIFACT
             mkdir -p /workspace
             cp src/$MODULE_ARTIFACT /workspace
-
       - persist_to_workspace:
           root: /workspace
           paths:
             - '*.so'
+
+  coverage:
+    docker:
+      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+    steps:
+      - early_returns
+      - checkout-all
+      - setup-prerequisits
+      - load-cached-deps
+      - run:
+          name: Build for coverage
+          command: bash -l -c "make COV=1"
+      - run:
+          name: Test with coverage
+          command: |
+            bash -l -c "make test COV=1"
+            bash -l -c "make cov-upload"
+          no_output_timeout: 30m
 
   build_memcheck:
     docker:
@@ -396,6 +413,9 @@ workflows:
     jobs:
       - build:
           <<: *not-on-integ-branch
+      - coverage:
+          <<: *context
+          <<: *on-any-branch
       - build_memcheck:
           <<: *on-any-branch
       - build_macos:

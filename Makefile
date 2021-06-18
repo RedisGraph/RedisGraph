@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 .PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind fuzz help
+=======
+.PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind help
+>>>>>>> 0d72bbac (Coverage analysis (#1777))
 
 define HELP
 make all              # Build everything
   DEBUG=1               # Build for debugging
   COV=1                 # Build for coverage analysis (implies DEBUG=1)
+<<<<<<< HEAD
+=======
+make parser           # Build parser
+>>>>>>> 0d72bbac (Coverage analysis (#1777))
 make clean            # Clean build artifacts
 
 make test             # Run tests
@@ -13,7 +21,10 @@ make test             # Run tests
   TCK=1                  # Run TCK framework tests
 make memcheck         # Run tests with Valgrind
 make benchmark        # Run benchmarks
+<<<<<<< HEAD
 make fuzz             # Run fuzz tester
+=======
+>>>>>>> 0d72bbac (Coverage analysis (#1777))
 
 make package          # Build RAMP packages
 make cov-upload       # Upload coverage data to codecov.io
@@ -24,6 +35,9 @@ endef
 
 all:
 	@$(MAKE) -C ./src all
+
+parser:
+	@$(MAKE) -C ./src parser
 
 clean:
 	@$(MAKE) -C ./src $@
@@ -67,8 +81,25 @@ memcheck:
 cov-upload:
 	@$(MAKE) -C ./src cov-upload
 
+<<<<<<< HEAD
 fuzz:
 	@$(MAKE) -C ./src fuzz
 
+=======
+>>>>>>> 0d72bbac (Coverage analysis (#1777))
 format:
 	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h,*.cpp"
+
+ifneq ($(HELP),)
+ifneq ($(filter help,$(MAKECMDGOALS)),)
+HELPFILE:=$(shell mktemp /tmp/make.help.XXXX)
+endif
+endif
+
+help:
+	$(file >$(HELPFILE),$(HELP))
+	@echo
+	@cat $(HELPFILE)
+	@echo
+	@-rm -f $(HELPFILE)
+
