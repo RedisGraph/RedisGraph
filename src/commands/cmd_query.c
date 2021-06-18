@@ -48,8 +48,13 @@ static GraphQueryCtx *GraphQueryCtx_New
 	return ctx;
 }
 
-void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
+static inline void GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	ASSERT(ctx != NULL);
+	ExecutionCtx_Free(ctx->exec_ctx);
+	GraphContext_Release(ctx->graph_ctx);
+	CommandCtx_Free(ctx->command_ctx);
+	QueryCtx_Free();
+	ErrorCtx_Clear();
 	rm_free(ctx);
 }
 
@@ -195,16 +200,11 @@ static void _ExecuteQuery(void *args) {
 				QueryCtx_GetExecutionTime(), NULL);
 
 	// clean up
-	ExecutionCtx_Free(exec_ctx);
-	GraphContext_Release(gc);
-	CommandCtx_Free(command_ctx);
-	QueryCtx_Free(); // reset the QueryCtx and free its allocations
-	ErrorCtx_Clear();
-	ResultSet_Free(result_set);
 	GraphQueryCtx_Free(gq_ctx);
+	ResultSet_Free(result_set);
 }
 
-static int _DelegateWriter(RedisModuleCtx *ctx, GraphQueryCtx *gq_ctx) {
+static bool _DelegateWriter(RedisModuleCtx *ctx, GraphQueryCtx *gq_ctx) {
 	ASSERT(gq_ctx != NULL);
 
 	//---------------------------------------------------------------------------
@@ -212,7 +212,7 @@ static int _DelegateWriter(RedisModuleCtx *ctx, GraphQueryCtx *gq_ctx) {
 	//---------------------------------------------------------------------------
 
 	// write queries will be executed on a dedicated writer thread,
-	// clear this thread data
+	// clear this thread's data
 	ErrorCtx_Clear();
 	QueryCtx_RemoveFromTLS();
 
@@ -228,6 +228,8 @@ static int _DelegateWriter(RedisModuleCtx *ctx, GraphQueryCtx *gq_ctx) {
 		// writers thread pool is full, this error usually happens when
 		// the server is under heavy load and is unable to catch up
 		RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
+		// restore the thread-local variable so that it will be freed properly
+		QueryCtx_SetTLS(gq_ctx->query_ctx);
 	}
 	return res == 0;
 }
@@ -248,6 +250,10 @@ void Graph_Query(void *args) {
 
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
 
+	// populate the container struct for invoking _ExecuteQuery.
+	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
+											  readonly);
+
 	// write query executing via GRAPH.RO_QUERY isn't allowed
 	if(!readonly && _readonly_cmd_mode(command_ctx)) {
 		ErrorCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
@@ -259,10 +265,6 @@ void Graph_Query(void *args) {
 		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
 		if(readonly) Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
 	}
-
-	// populate the container struct for invoking _ExecuteQuery.
-	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
-											  readonly);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
@@ -277,14 +279,20 @@ void Graph_Query(void *args) {
 	return;
 
 cleanup:
-	// if there were any query compile time errors, report them
+	// if there were any errors, report them
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 
-	// Cleanup routine invoked after encountering errors in this function.
-	ExecutionCtx_Free(exec_ctx);
-	GraphContext_Release(gc);
-	CommandCtx_Free(command_ctx);
-	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
-	ErrorCtx_Clear();
+	// encountered compile-time error, did not build container struct
+	if(exec_ctx == NULL) {
+		// free structs populated at this point
+		GraphContext_Release(gc);
+		CommandCtx_Free(command_ctx);
+		QueryCtx_Free();
+		ErrorCtx_Clear();
+		return;
+	}
+
+	// Cleanup routine invoked after encountering errors past compile time
+	GraphQueryCtx_Free(gq_ctx);
 }
 
