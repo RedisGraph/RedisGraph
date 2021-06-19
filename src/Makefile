@@ -174,6 +174,7 @@ endif
 parser:
 	@$(MAKE) -C $@
 .PHONY: parser
+#----------------------------------------------------------------------------------------------
 
 define extract_symbols
 objcopy --only-keep-debug $1 $1.debug
@@ -224,4 +225,21 @@ memcheck: redisgraph.so
 
 
 benchmark: redisgraph.so
-	@$(MAKE) -C ../tests benchmark
+	@$(MAKE) -C $(ROOT)/tests benchmark
+
+.PHONY: benchmark
+
+#----------------------------------------------------------------------------------------------
+
+ifeq ($(COV),1)
+cov-upload:
+	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
+.PHONY: cov-upload
+endif # COV
+
+#----------------------------------------------------------------------------------------------
+
+fuzz: redisgraph.so
+	@$(MAKE) -C $(ROOT)/tests fuzz
+
+.PHONY: fuzz

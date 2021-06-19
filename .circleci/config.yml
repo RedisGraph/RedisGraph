@@ -186,7 +186,10 @@ jobs:
       - save-deps-cache
       - run:
           name: Test
-          command: make test
+          command: bash -l -c "make test"
+      - run:
+          name: Run 30-second fuzz test
+          command: bash -l -c "make fuzz"
       - early_return_for_forked_pull_requests
       - run:
           name: Persist Artifact for CI benchmarks
