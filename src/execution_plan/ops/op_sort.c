@@ -52,7 +52,7 @@ static int _heap_elem_compare(const void *A, const void *B, const void *udata) {
 static void _accumulate(OpSort *op, Record r) {
 	if(op->limit == UNLIMITED) {
 		/* Not using a heap and there's room for record. */
-		op->buffer = array_append(op->buffer, r);
+		array_append(op->buffer, r);
 		return;
 	}
 
@@ -95,7 +95,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 		int record_idx;
 		bool aware = OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
+		array_append(op->record_offsets, record_idx);
 	}
 
 	return (OpBase *)op;
@@ -150,7 +150,7 @@ static Record SortConsume(OpBase *opBase) {
 		/* Pop items from heap */
 		while(records_count > 0) {
 			r = Heap_poll(op->heap);
-			op->buffer = array_append(op->buffer, r);
+			array_append(op->buffer, r);
 			records_count--;
 		}
 	}

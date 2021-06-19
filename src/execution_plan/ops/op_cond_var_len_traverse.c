@@ -32,7 +32,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
 	if(reltype_count == 0) {
 		op->edgeRelationCount = 1;
 		op->edgeRelationTypes = array_new(int, 1);
-		op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
+		array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
 	} else {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		op->edgeRelationCount = 0;
@@ -41,11 +41,11 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
 		for(int i = 0; i < reltype_count; i++) {
 			int rel_id = e->reltypeIDs[i];
 			if(rel_id != GRAPH_UNKNOWN_RELATION) {
-				op->edgeRelationTypes = array_append(op->edgeRelationTypes, rel_id);
+				array_append(op->edgeRelationTypes, rel_id);
 			} else {
 				const char *rel_type = e->reltypes[i];
 				Schema *s = GraphContext_GetSchema(gc, rel_type, SCHEMA_EDGE);
-				if(s) op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
+				if(s) array_append(op->edgeRelationTypes, s->id);
 			}
 		}
 

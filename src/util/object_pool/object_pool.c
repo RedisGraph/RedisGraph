@@ -125,7 +125,7 @@ void ObjectPool_DeleteItem(ObjectPool *pool, void *item) {
 	if(pool->destructor) pool->destructor(item);
 
 	// Add ID to deleted list.
-	pool->deletedIdx = array_append(pool->deletedIdx, idx);
+	array_append(pool->deletedIdx, idx);
 	pool->itemCount--;
 }
 

@@ -47,7 +47,7 @@ inline Record OpBase_Consume(OpBase *op) {
 
 int OpBase_Modifies(OpBase *op, const char *alias) {
 	if(!op->modifies) op->modifies = array_new(const char *, 1);
-	op->modifies = array_append(op->modifies, alias);
+	array_append(op->modifies, alias);
 
 	/* Make sure alias has an entry associated with it
 	 * within the record mapping. */
@@ -69,7 +69,7 @@ int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
 
 	// Make sure to not introduce the same modifier twice.
 	if(raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL)) {
-		op->modifies = array_append(op->modifies, alias);
+		array_append(op->modifies, alias);
 	}
 
 	return (intptr_t)id;

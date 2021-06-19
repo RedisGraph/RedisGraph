@@ -510,7 +510,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 		reltype_names = array_new(const char *, reltype_count);
 		for(uint i = 0; i < reltype_count; i ++) {
 			const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(edge, i));
-			reltype_names = array_append(reltype_names, reltype);
+			array_append(reltype_names, reltype);
 		}
 	}
 
