@@ -31,7 +31,7 @@ static void _Traverse_SetRelationTypes(EdgeTraverseCtx *edge_ctx, QGEdge *e) {
 		array_clone(edge_ctx->edgeRelationTypes, e->reltypeIDs);
 	} else {
 		edge_ctx->edgeRelationTypes = array_new(int, 1);
-		edge_ctx->edgeRelationTypes = array_append(edge_ctx->edgeRelationTypes, GRAPH_NO_RELATION);
+		array_append(edge_ctx->edgeRelationTypes, GRAPH_NO_RELATION);
 	}
 }
 

@@ -1,12 +1,23 @@
+
+ROOT:=$(realpath ..)
+
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
+ifneq ($(filter cov-upload,$(MAKECMDGOALS)),)
+COV=1
+endif
+
+ifeq ($(COV),1)
+export DEBUG ?= 1
+endif
+
 # Paths to deps.
-RAX_DIR = ../deps/rax
-XXHASH_DIR = ../deps/xxHash
-GRAPHBLAS_DIR = ../deps/GraphBLAS
-REDISEARCH_DIR = ../deps/RediSearch/src
-LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
+RAX_DIR = $(ROOT)/deps/rax
+XXHASH_DIR = $(ROOT)/deps/xxHash
+GRAPHBLAS_DIR = $(ROOT)/deps/GraphBLAS
+REDISEARCH_DIR = $(ROOT)/deps/RediSearch/src
+LIBCYPHER-PARSER_DIR = $(ROOT)/deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3
@@ -34,6 +45,59 @@ else
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
+
+#----------------------------------------------------------------------------------------------
+
+ifeq ($(COV),1)
+
+CFLAGS += --coverage
+SHOBJ_LDFLAGS += --coverage
+BINROOT=$(SOURCEDIR)
+
+COV_INFO=$(ROOT)/cov/cov.info
+COV_DIR=$(ROOT)/cov
+
+COV_EXCLUDE += \
+    '/Applications/*' \
+    '/usr/*' \
+	'$(ROOT)/deps/*'
+
+define COVERAGE_RESET
+$(SHOW)set -e ;\
+echo "Starting coverage analysys." ;\
+mkdir -p $(COV_DIR) ;\
+lcov --directory $(BINROOT) --base-directory $(SOURCEDIR) -z > /dev/null 2>&1
+endef
+
+define COVERAGE_COLLECT
+$(SHOW)set -e ;\
+echo "Collecting coverage data ..." ;\
+lcov --capture --directory $(BINROOT) --base-directory $(SOURCEDIR) --output-file $(COV_INFO) > /dev/null 2>&1 ;\
+lcov -o $(COV_INFO) -r $(COV_INFO) $(COV_EXCLUDE) > /dev/null 2>&1
+endef
+
+define COVERAGE_REPORT
+$(SHOW)set -e ;\
+lcov -l $(COV_INFO) ;\
+genhtml --legend -o $(COV_DIR) $(COV_INFO) > /dev/null 2>&1 ;\
+echo "Coverage info at $$(realpath $(COV_DIR))/index.html"
+endef
+
+define COVERAGE_COLLECT_REPORT
+$(COVERAGE_COLLECT)
+$(COVERAGE_REPORT)
+endef
+
+else
+
+COVERAGE_RESET=
+COVERAGE_COLLECT=
+COVERAGE_REPORT=
+COVERAGE_COLLECT_REPORT=
+
+endif # COV 
+
+#----------------------------------------------------------------------------------------------
 
 # Sources
 SOURCEDIR:=$(shell pwd -P)
@@ -101,16 +165,20 @@ export CC_OBJECTS
 # will also change the dependent .c files of it
 CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 
+#----------------------------------------------------------------------------------------------
+
 # Library dependencies
-RAX=../deps/rax/rax.o
-LIBXXHASH=../deps/xxHash/libxxhash.a
-GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
-REDISEARCH=../deps/RediSearch/build/libredisearch.a
-LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
+RAX=$(ROOT)/deps/rax/rax.o
+LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
+GRAPHBLAS=$(ROOT)/deps/GraphBLAS/build/libgraphblas.a
+REDISEARCH=$(ROOT)/deps/RediSearch/build/libredisearch.a
+LIBCYPHER-PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
 LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 MODULE= $(LIBS) $(CC_OBJECTS)
+
+#----------------------------------------------------------------------------------------------
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
@@ -134,24 +202,26 @@ all: redisgraph.so
 # Include all dependency files for C files
 -include $(CC_DEPS)
 
+#----------------------------------------------------------------------------------------------
+
 $(RAX):
-	@$(MAKE) -C ../deps/rax
+	@$(MAKE) -C $(ROOT)/deps/rax -f $(ROOT)/build/rax/Makefile
 .PHONY: $(RAX)
 
 $(LIBXXHASH):
-	@$(MAKE) -C ../deps/xxHash lib
+	@$(MAKE) -C $(ROOT)/deps/xxHash lib
 .PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only
+	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(shell $(ROOT)/deps/readies/bin/nproc)
 endif
 .PHONY: $(GRAPHBLAS)
 
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
-	cd ../deps/RediSearch; \
+	cd $(ROOT)/deps/RediSearch; \
 	mkdir -p build; \
 	cd build; \
 	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
@@ -162,18 +232,14 @@ endif
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):
 ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
-	cd ../deps/libcypher-parser; \
+	cd $(ROOT)/deps/libcypher-parser; \
 	sh ./autogen.sh; \
 	./configure --disable-shared;
-	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
+	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 
-# Compile query parse.
-# This is not included in the usual make target!
-parser:
-	@$(MAKE) -C $@
-.PHONY: parser
+#----------------------------------------------------------------------------------------------
 
 define extract_symbols
 objcopy --only-keep-debug $1 $1.debug
@@ -194,17 +260,23 @@ clean:
 	@find . -name '*.[oad]' -type f -delete
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
-	@$(MAKE) -C ../deps/rax clean
-	@$(MAKE) -C ../deps/xxHash clean
-	@$(MAKE) -C ../deps/GraphBLAS clean
-	@$(MAKE) -C ../deps/libcypher-parser clean
-	rm -rf ../deps/RediSearch/build/      # Directly delete the RediSearch build artifacts
+	@$(MAKE) -C $(ROOT)/deps/rax clean
+	@$(MAKE) -C $(ROOT)/deps/xxHash clean
+	@$(MAKE) -C $(ROOT)/deps/GraphBLAS clean
+	@$(MAKE) -C $(ROOT)/deps/libcypher-parser clean
+	rm -rf $(ROOT)/deps/RediSearch/build/      # Directly delete the RediSearch build artifacts
 endif
-	@$(MAKE) -C ../tests clean
+	@$(MAKE) -C $(ROOT)/tests clean
+.PHONY: clean
+
+#----------------------------------------------------------------------------------------------
 
 package: redisgraph.so
-	@../sbin/pack.sh
-	@VARIANT=rce ../sbin/pack.sh
+	@$(ROOT)/sbin/pack.sh
+	@VARIANT=rce $(ROOT)/sbin/pack.sh
+.PHONY: package
+
+#----------------------------------------------------------------------------------------------
 
 test: redisgraph.so
 	# check valgrind flag is not empty
@@ -212,17 +284,43 @@ ifneq ($(VALGRIND),)
 	# valgrind is requested, check that host's os is not Linux
 ifneq ($(OS),Linux)
 	@echo building docker to run valgrind on MacOS
-	@cd ../ ;\
-	docker build -f ./tests/Dockerfile -t mac_os_test_docker .;
+	@cd .. ;\
+	docker build -f tests/Dockerfile -t mac_os_test_docker .
 endif
 endif
-	@$(MAKE) -C ../tests test
+	@$(COVERAGE_RESET)
+	@$(MAKE) -C $(ROOT)/tests test
+	@$(COVERAGE_COLLECT_REPORT)
+
+.PHONY: test
+
+#----------------------------------------------------------------------------------------------
 
 memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
 memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 memcheck: redisgraph.so
-	@$(MAKE) -C ../tests memcheck
+	@$(MAKE) -C $(ROOT)/tests memcheck
 
+.PHONY: memcheck
+
+#----------------------------------------------------------------------------------------------
 
 benchmark: redisgraph.so
-	@$(MAKE) -C ../tests benchmark
+	@$(MAKE) -C $(ROOT)/tests benchmark
+
+.PHONY: benchmark
+
+#----------------------------------------------------------------------------------------------
+
+ifeq ($(COV),1)
+cov-upload:
+	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
+.PHONY: cov-upload
+endif # COV
+
+#----------------------------------------------------------------------------------------------
+
+fuzz: redisgraph.so
+	@$(MAKE) -C $(ROOT)/tests fuzz
+
+.PHONY: fuzz

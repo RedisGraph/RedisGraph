@@ -273,7 +273,7 @@ void _ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
 	if(root->childCount == 0) {
 		// Op Argument isn't considered a tap.
 		if(root->type != OPType_ARGUMENT) {
-			*taps = array_append(*taps, root);
+			array_append(*taps, root);
 		}
 	}
 
@@ -295,7 +295,7 @@ static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *ty
 	for(int i = 0; i < type_count; i++) {
 		// Check to see if the op's type matches any of the types we're searching for.
 		if(root->type == types[i]) {
-			*ops = array_append(*ops, root);
+			array_append(*ops, root);
 			break;
 		}
 	}

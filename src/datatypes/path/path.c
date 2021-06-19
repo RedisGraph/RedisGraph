@@ -16,11 +16,11 @@ Path *Path_New(size_t len) {
 }
 
 void Path_AppendNode(Path *p, Node n) {
-	p->nodes = array_append(p->nodes, n);
+	array_append(p->nodes, n);
 }
 
 void Path_AppendEdge(Path *p, Edge e) {
-	p->edges = array_append(p->edges, e);
+	array_append(p->edges, e);
 }
 
 Node *Path_GetNode(const Path *p, int index) {

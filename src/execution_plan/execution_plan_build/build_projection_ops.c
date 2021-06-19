@@ -24,7 +24,7 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 		// Build an expression for each alias.
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i]);
 		exp->resolved_name = aliases[i];
-		project_exps = array_append(project_exps, exp);
+		array_append(project_exps, exp);
 	}
 
 	return project_exps;
@@ -58,7 +58,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		exp->resolved_name = canonical_name;
 		AST_AttachName(ast, item, exp->resolved_name);
 
-		order_exps = array_append(order_exps, exp);
+		array_append(order_exps, exp);
 	}
 
 	return order_exps;
@@ -124,7 +124,7 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 		}
 
 		exp->resolved_name = identifier;
-		expressions = array_append(expressions, exp);
+		array_append(expressions, exp);
 	}
 
 	return expressions;
@@ -148,7 +148,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 		const char *name = order_exps[i]->resolved_name;
 		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
 		// If it is a new projection, add a clone to the array.
-		if(new_name) project_exps = array_append(project_exps, AR_EXP_Clone(order_exps[i]));
+		if(new_name) array_append(project_exps, AR_EXP_Clone(order_exps[i]));
 	}
 
 	raxFree(projection_names);

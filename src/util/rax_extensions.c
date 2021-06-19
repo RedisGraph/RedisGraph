@@ -64,7 +64,7 @@ void **raxValues(rax *rax) {
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		// Copy the value associated with the key into the array.
-		values = array_append(values, it.data);
+		array_append(values, it.data);
 	}
 	raxStop(&it);
 
@@ -80,7 +80,7 @@ unsigned char **raxKeys(rax *rax) {
 	raxSeek(&it, "^", NULL, 0);
 	while(raxNext(&it)) {
 		// Copy the key into the array.
-		keys = array_append(keys, (unsigned char *)rm_strndup((const char *)it.key, (int)it.key_len));
+		array_append(keys, (unsigned char *)rm_strndup((const char *)it.key, (int)it.key_len));
 	}
 	raxStop(&it);
 	return keys;

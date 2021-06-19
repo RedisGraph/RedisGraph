@@ -103,10 +103,10 @@ static Record DeleteConsume(OpBase *opBase) {
 		/* Enqueue entities for deletion. */
 		if(type & T_NODE) {
 			Node *n = (Node *)value.ptrval;
-			op->deleted_nodes = array_append(op->deleted_nodes, *n);
+			array_append(op->deleted_nodes, *n);
 		} else if(type & T_EDGE) {
 			Edge *e = (Edge *)value.ptrval;
-			op->deleted_edges = array_append(op->deleted_edges, *e);
+			array_append(op->deleted_edges, *e);
 		} else if(type & T_NULL) {
 			continue; // Ignore null values.
 		} else {

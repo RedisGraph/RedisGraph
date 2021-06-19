@@ -21,6 +21,7 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
+        self.run("%s/bin/enable-utf8" % READIES)
         self.install("git automake libtool autoconf astyle")
 
     def debian_compat(self):
