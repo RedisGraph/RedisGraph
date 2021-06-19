@@ -17,33 +17,36 @@ static int _Graph_Bulk_Header(RedisModuleCtx *ctx, RedisModuleString ***argv,
 		int *argc, Graph *g) {
 	const char *token = RedisModule_StringPtrLen(**argv, NULL);
 	bool header = strcmp(token, "HEADER") == 0;
-	if(header) {
-		// skip header token
-		(*argv) ++;
-		(*argc) --;
 
-		// HEADER:
-		// total node count
-		// total edge count
+	if(!header) return BULK_OK;
 
-		long long node_count = 0;  // number of nodes in graph
-		long long edge_count = 0;  // number of edges in graph
+	// skip header token
+	(*argv) ++;
+	(*argc) --;
 
-		if(RedisModule_StringToLongLong(**argv++, &node_count) != REDISMODULE_OK) {
-			RedisModule_ReplyWithError(ctx, "Error parsing node count.");
-			return BULK_FAIL;
-		}
+	// HEADER:
+	// total node count
+	// total edge count
 
-		if(RedisModule_StringToLongLong(**argv++, &edge_count) != REDISMODULE_OK) {
-			RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
-			return BULK_FAIL;
-		}
+	long long node_count = 0;  // number of nodes in graph
+	long long edge_count = 0;  // number of edges in graph
 
-		(*argc) -= 2;
-
-		Graph_AllocateNodes(g, node_count);
-		Graph_AllocateEdges(g, edge_count);
+	if(RedisModule_StringToLongLong(**argv, &node_count) != REDISMODULE_OK) {
+		RedisModule_ReplyWithError(ctx, "Error parsing node count.");
+		return BULK_FAIL;
 	}
+	(*argv) ++;
+
+	if(RedisModule_StringToLongLong(**argv, &edge_count) != REDISMODULE_OK) {
+		RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
+		return BULK_FAIL;
+	}
+
+	(*argv) ++;
+	(*argc) -= 2;
+
+	Graph_AllocateNodes(g, node_count);
+	Graph_AllocateEdges(g, edge_count);
 
 	return BULK_OK;
 }
