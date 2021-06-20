@@ -59,12 +59,19 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	const cypher_astnode_t *index_op = ast->root;
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		// Retrieve strings from AST node
+		bool index_added = false;
+		unsigned int nprops = cypher_ast_create_node_props_index_nprops(index_op);
 		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
-														  index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
-															  index_op, 0));
+												index_op));
+		// add index for each property
 		QueryCtx_LockForCommit();
-		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) Index_Construct(idx);
+		for(unsigned int i = 0; i < nprops; i++) {
+			const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
+																index_op, i));
+			index_added |= (GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK);
+		}
+		// populate the index only when at least one attribute was introduced
+		if(index_added) Index_Construct(idx);
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// Retrieve strings from AST node
