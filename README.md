@@ -1,6 +1,5 @@
 [![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
-[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/redislabs/redisgraph.svg)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
@@ -149,6 +148,10 @@ If the server fails to launch with output similar to:
 
 The system is missing the run-time dependency OpenMP. This can be installed on Ubuntu with `apt-get install libgomp1`, on RHEL/CentOS with `yum install libgomp`, and on OSX with `brew install libomp`.
 
+### Sample Builds Using Docker
+
+See [here](docs/dockersamples/README.md) for instructions and sample dockers, that illustrate how to build RedisGraph on a variety of operating system segments.
+
 ## Using RedisGraph
 
 You can call RedisGraph's commands from any Redis client.
@@ -182,9 +185,9 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 
 Some languages have client libraries that provide support for RedisGraph's commands:
 
-| Project                                                   | Language   | License | Author                                      | Stars                                                             | 
+| Project                                                   | Language   | License | Author                                      | Stars                                                             |
 | --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ------------------------------------------------------------------|
-| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |     
+| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |
 | [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           |
 | [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
 | [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis Labs][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                       |
