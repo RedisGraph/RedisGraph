@@ -64,7 +64,6 @@ Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType ty
 int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	ASSERT(field);
 
-	*idx = NULL;
 	Index *_idx = Schema_GetIndex(s, NULL, type);
 
 	// Index exists, make sure attribute isn't already indexed.
