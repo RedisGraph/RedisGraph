@@ -57,7 +57,7 @@ static FilterCtx *_locate_filters_and_entities(OpBase *cp) {
 		filter_ctx.filter = filter_op;
 		// Collect referenced entities.
 		filter_ctx.entities = FilterTree_CollectModified(filter_op->filterTree);
-		filter_ctx_arr = array_append(filter_ctx_arr, filter_ctx);
+		array_append(filter_ctx_arr, filter_ctx);
 		parent = parent->parent;
 	}
 	// Sort by the number of referenced entities.
@@ -83,7 +83,7 @@ static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 			// Update entity count.
 			entities_count = new_entities_count;
 			// Add partially solving branch into the array.
-			solving_branches = array_append(solving_branches, branch);
+			array_append(solving_branches, branch);
 		}
 	}
 	if(entities_count != 0) {

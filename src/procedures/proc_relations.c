@@ -27,8 +27,8 @@ ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const SIValue *args, con
 	pdata->schema_id = 0;
 	pdata->gc = QueryCtx_GetGraphCtx();
 	pdata->output = array_new(SIValue, 2);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("relationshipType"));
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("relationshipType"));
+	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -65,7 +65,7 @@ ProcedureCtx *Proc_RelationsCtx() {
 	void *privateData = NULL;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
 	ProcedureOutput output = {.name = "relationshipType", .type = T_STRING};
-	outputs = array_append(outputs, output);
+	array_append(outputs, output);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",
 								   0,

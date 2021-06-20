@@ -116,7 +116,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 		// Get the current state payload info, with respect to offset.
 		PayloadInfo current_state_payload_info = _StatePayloadInfo(gc, current_state, offset,
 																   remaining_entities);
-		payloads = array_append(payloads, current_state_payload_info);
+		array_append(payloads, current_state_payload_info);
 		if(!last_key) remaining_entities -= current_state_payload_info.entities_count;
 		if(remaining_entities > 0) {
 			offset = 0; // New state offset is 0.

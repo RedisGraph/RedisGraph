@@ -35,14 +35,14 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 	 * switching from single edge ID to multiple IDs. */
 	if(SINGLE_EDGE(*x)) {
 		ids = array_new(EdgeID, 2);
-		ids = array_append(ids, SINGLE_EDGE_ID(*x));
-		ids = array_append(ids, SINGLE_EDGE_ID(*y));
+		array_append(ids, SINGLE_EDGE_ID(*x));
+		array_append(ids, SINGLE_EDGE_ID(*y));
 		// TODO: Make sure MSB of ids isn't on.
 		*z = (EdgeID)ids;
 	} else {
 		// Multiple edges, adding another edge.
 		ids = (EdgeID *)(*x);
-		ids = array_append(ids, SINGLE_EDGE_ID(*y));
+		array_append(ids, SINGLE_EDGE_ID(*y));
 		*z = (EdgeID)ids;
 	}
 }
@@ -198,7 +198,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 		e.entity = DataBlock_GetItem(g->edges, edgeId);
 		e.id = edgeId;
 		ASSERT(e.entity);
-		*edges = array_append(*edges, e);
+		array_append(*edges, e);
 	} else {
 		/* Multiple edges connecting src to dest,
 		 * entry is a pointer to an array of edge IDs. */
@@ -210,7 +210,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 			e.entity = DataBlock_GetItem(g->edges, edgeId);
 			e.id = edgeId;
 			ASSERT(e.entity);
-			*edges = array_append(*edges, e);
+			array_append(*edges, e);
 		}
 	}
 }
@@ -254,10 +254,9 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	GrB_Matrix_nrows(&n_rows, m);
 	GrB_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
-	bool require_resize = (n_rows != dims);
 
 	// matrix must be resized if its dimensions missmatch required dimensions
-	ASSERT(n_rows == n_cols);
+	bool require_resize = (n_rows != dims || n_cols != dims);
 
 	// matrix fully synced, nothing to do
 	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) return;
@@ -288,8 +287,7 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	GrB_Matrix_nrows(&n_rows, m);
 	GrB_Matrix_ncols(&n_cols, m);
 	dims = Graph_RequiredMatrixDim(g);
-	require_resize = (n_rows != dims);
-	ASSERT(n_rows == n_cols);
+	require_resize = (n_rows != dims || n_cols != dims);
 
 	// some other thread performed sync
 	if(!require_resize && !RG_Matrix_IsDirty(rg_matrix)) goto cleanup;
@@ -317,11 +315,10 @@ void _MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
 	GrB_Index ncols;
 	GrB_Matrix_ncols(&ncols, m);
 	GrB_Matrix_nrows(&nrows, m);
-	ASSERT(nrows == ncols);
 	GrB_Index cap = Graph_RequiredMatrixDim(g);
 
 	// This policy should only be used in a thread-safe context, so no locking is required.
-	if(nrows != cap) {
+	if(nrows != cap || ncols != cap) {
 		GrB_Info res = GxB_Matrix_resize(m, cap, cap);
 		ASSERT(res == GrB_SUCCESS);
 	}
@@ -1360,7 +1357,7 @@ int Graph_AddLabel(Graph *g) {
 	UNUSED(info);
 	ASSERT(info == GrB_SUCCESS);
 
-	g->labels = array_append(g->labels, m);
+	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
@@ -1368,7 +1365,7 @@ int Graph_AddRelationType(Graph *g) {
 	ASSERT(g);
 
 	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
-	g->relations = array_append(g->relations, m);
+	array_append(g->relations, m);
 	// Adding a new relationship type, update the stats structures to support it.
 	GraphStatistics_IntroduceRelationship(&g->stats);
 	bool maintain_transpose;
@@ -1376,7 +1373,7 @@ int Graph_AddRelationType(Graph *g) {
 
 	if(maintain_transpose) {
 		RG_Matrix tm = RG_Matrix_New(g, GrB_UINT64);
-		g->t_relations = array_append(g->t_relations, tm);
+		array_append(g->t_relations, tm);
 	}
 
 	int relationID = Graph_RelationTypeCount(g) - 1;

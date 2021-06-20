@@ -98,42 +98,42 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 TEST_F(ExecutionPlanCloneTest, TestCreateClause) {
 	const char **queries = array_new(const char *, 12);
 	// Anonymous nodes create clauses.
-	queries = array_append(queries, "CREATE ()");
-	queries = array_append(queries, "CREATE (:N)");
-	queries = array_append(queries, "CREATE (:N {val:1})");
+	array_append(queries, "CREATE ()");
+	array_append(queries, "CREATE (:N)");
+	array_append(queries, "CREATE (:N {val:1})");
 	// Referenced nodes create clauses.
-	queries = array_append(queries, "CREATE (n) RETURN n");
-	queries = array_append(queries, "CREATE (n:N) RETURN n");
-	queries = array_append(queries, "CREATE (n:N {val:1}) RETURN n");
+	array_append(queries, "CREATE (n) RETURN n");
+	array_append(queries, "CREATE (n:N) RETURN n");
+	array_append(queries, "CREATE (n:N {val:1}) RETURN n");
 
 	// Anonymous edges create clauses.
-	queries = array_append(queries, "CREATE ()-[]->()");
-	queries = array_append(queries, "CREATE ()-[:E]->()");
-	queries = array_append(queries, "CREATE ()-[:E {val:1}]->()");
+	array_append(queries, "CREATE ()-[]->()");
+	array_append(queries, "CREATE ()-[:E]->()");
+	array_append(queries, "CREATE ()-[:E {val:1}]->()");
 	// Referenced edges create clauses.
-	queries = array_append(queries, "CREATE ()-[e]->() RETURN e");
-	queries = array_append(queries, "CREATE ()-[e:E]->() RETURN e");
-	queries = array_append(queries, "CREATE ()-[e:E {val:1}]->()");
+	array_append(queries, "CREATE ()-[e]->() RETURN e");
+	array_append(queries, "CREATE ()-[e:E]->() RETURN e");
+	array_append(queries, "CREATE ()-[e:E {val:1}]->()");
 	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
 TEST_F(ExecutionPlanCloneTest, TestMatchClause) {
 	const char **queries = array_new(const char *, 9);
-	queries = array_append(queries, "MATCH (n) RETURN n");  // All node scan
-	queries = array_append(queries, "MATCH (n:N) RETURN n");    // Label scan
-	queries = array_append(queries, "MATCH (n) WHERE id(n) = 0 RETURN n");  // ID Scan
-	queries = array_append(queries,
+	array_append(queries, "MATCH (n) RETURN n");  // All node scan
+	array_append(queries, "MATCH (n:N) RETURN n");    // Label scan
+	array_append(queries, "MATCH (n) WHERE id(n) = 0 RETURN n");  // ID Scan
+	array_append(queries,
 						   "MATCH (n)-[]->() RETURN n");    // Conditional traverse, referenced src node.
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n)-[e]->() RETURN n");   // Conditional traverse, referenced src node and edge.
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH p = ()-[]->() RETURN p"); // Named path, conditional traverse
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n)-[*]->() RETURN n");   // Variable length traverse.
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH p = ()-[*]->() return p");    // Named path, variable length traverse.
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2]->() RETURN n");   // Apply ops.
 
 	validate_query_plans_clone(queries);
@@ -142,8 +142,8 @@ TEST_F(ExecutionPlanCloneTest, TestMatchClause) {
 
 TEST_F(ExecutionPlanCloneTest, TestUpdateClause) {
 	const char **queries = array_new(const char *, 2);
-	queries = array_append(queries, "MATCH (n) SET n.v = 1");
-	queries = array_append(queries, "MATCH ()-[e]->() SET e.v = 1");
+	array_append(queries, "MATCH (n) SET n.v = 1");
+	array_append(queries, "MATCH ()-[e]->() SET e.v = 1");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
@@ -151,8 +151,8 @@ TEST_F(ExecutionPlanCloneTest, TestUpdateClause) {
 
 TEST_F(ExecutionPlanCloneTest, TestDeleteClause) {
 	const char **queries = array_new(const char *, 2);
-	queries = array_append(queries, "MATCH (n) DELETE n");
-	queries = array_append(queries, "MATCH ()-[e]->() DELETE e");
+	array_append(queries, "MATCH (n) DELETE n");
+	array_append(queries, "MATCH ()-[e]->() DELETE e");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
@@ -160,17 +160,17 @@ TEST_F(ExecutionPlanCloneTest, TestDeleteClause) {
 
 TEST_F(ExecutionPlanCloneTest, TestMergeClause) {
 	const char **queries = array_new(const char *, 9);
-	queries = array_append(queries, "MERGE ()");
-	queries = array_append(queries, "MERGE (:N)");
-	queries = array_append(queries, "MERGE (:N {val:1})");
+	array_append(queries, "MERGE ()");
+	array_append(queries, "MERGE (:N)");
+	array_append(queries, "MERGE (:N {val:1})");
 
-	queries = array_append(queries, "MERGE (n) ON MATCH SET n.val2 = 2");
-	queries = array_append(queries, "MERGE (n:N) ON MATCH SET n.val2 = 2");
-	queries = array_append(queries, "MERGE (n:N {val:1}) ON MATCH SET n.val2 = 2");
+	array_append(queries, "MERGE (n) ON MATCH SET n.val2 = 2");
+	array_append(queries, "MERGE (n:N) ON MATCH SET n.val2 = 2");
+	array_append(queries, "MERGE (n:N {val:1}) ON MATCH SET n.val2 = 2");
 
-	queries = array_append(queries, "MERGE (n) ON CREATE SET n.val2 = 2");
-	queries = array_append(queries, "MERGE (n:N) ON CREATE SET n.val2 = 2");
-	queries = array_append(queries, "MERGE (n:N {val:1}) ON CREATE SET n.val2 = 2");
+	array_append(queries, "MERGE (n) ON CREATE SET n.val2 = 2");
+	array_append(queries, "MERGE (n:N) ON CREATE SET n.val2 = 2");
+	array_append(queries, "MERGE (n:N {val:1}) ON CREATE SET n.val2 = 2");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
@@ -178,7 +178,7 @@ TEST_F(ExecutionPlanCloneTest, TestMergeClause) {
 
 TEST_F(ExecutionPlanCloneTest, TestCartesianProduct) {
 	const char **queries = array_new(const char *, 1);
-	queries = array_append(queries, "MATCH (a), (b) RETURN a, b");
+	array_append(queries, "MATCH (a), (b) RETURN a, b");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
@@ -186,11 +186,11 @@ TEST_F(ExecutionPlanCloneTest, TestCartesianProduct) {
 
 TEST_F(ExecutionPlanCloneTest, TestSkipLimitSort) {
 	const char **queries = array_new(const char *, 5);
-	queries = array_append(queries, "MATCH (n) RETURN n SKIP 5");
-	queries = array_append(queries, "MATCH (n) RETURN n LIMIT 5");
-	queries = array_append(queries, "MATCH (n) RETURN n SKIP 5 LIMIT 5");
-	queries = array_append(queries, "MATCH (n) RETURN n ORDER BY n.val");
-	queries = array_append(queries, "MATCH (n) RETURN n ORDER BY n.val SKIP 5 LIMIT 5");
+	array_append(queries, "MATCH (n) RETURN n SKIP 5");
+	array_append(queries, "MATCH (n) RETURN n LIMIT 5");
+	array_append(queries, "MATCH (n) RETURN n SKIP 5 LIMIT 5");
+	array_append(queries, "MATCH (n) RETURN n ORDER BY n.val");
+	array_append(queries, "MATCH (n) RETURN n ORDER BY n.val SKIP 5 LIMIT 5");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
@@ -198,9 +198,9 @@ TEST_F(ExecutionPlanCloneTest, TestSkipLimitSort) {
 
 TEST_F(ExecutionPlanCloneTest, TestOptionalMatch) {
 	const char **queries = array_new(const char *, 3);
-	queries = array_append(queries, "OPTIONAL MATCH (n) RETURN n");
-	queries = array_append(queries, "MATCH (a) OPTIONAL MATCH (b) RETURN a, b");
-	queries = array_append(queries, "MATCH (a) OPTIONAL MATCH (a)-[e]->(b) RETURN a, e, b");
+	array_append(queries, "OPTIONAL MATCH (n) RETURN n");
+	array_append(queries, "MATCH (a) OPTIONAL MATCH (b) RETURN a, b");
+	array_append(queries, "MATCH (a) OPTIONAL MATCH (a)-[e]->(b) RETURN a, e, b");
 
 	validate_query_plans_clone(queries);
 	array_free(queries);
@@ -208,7 +208,7 @@ TEST_F(ExecutionPlanCloneTest, TestOptionalMatch) {
 
 TEST_F(ExecutionPlanCloneTest, TestProcCall) {
 	const char **queries = array_new(const char *, 1);
-	queries = array_append(queries,
+	array_append(queries,
 						   "CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node RETURN node");
 
 	validate_query_plans_clone(queries);
@@ -217,7 +217,7 @@ TEST_F(ExecutionPlanCloneTest, TestProcCall) {
 
 TEST_F(ExecutionPlanCloneTest, TestUnwind) {
 	const char **queries = array_new(const char *, 1);
-	queries = array_append(queries,
+	array_append(queries,
 						   "UNWIND [1,2,3] as x RETURN x");
 
 	validate_query_plans_clone(queries);
@@ -226,17 +226,17 @@ TEST_F(ExecutionPlanCloneTest, TestUnwind) {
 
 TEST_F(ExecutionPlanCloneTest, TestWith) {
 	const char **queries = array_new(const char *, 6);
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) WITH n RETURN n");
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) WITH n AS m RETURN m");
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) WITH n AS m SKIP 5 RETURN m");
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) WITH n AS m LIMIT 5 RETURN m");
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) WITH n AS m ORDER BY n.val RETURN m");
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) WITH n AS m WHERE n.val < 5 RETURN m");
 
 	validate_query_plans_clone(queries);
@@ -245,7 +245,7 @@ TEST_F(ExecutionPlanCloneTest, TestWith) {
 
 TEST_F(ExecutionPlanCloneTest, TestUnion) {
 	const char **queries = array_new(const char *, 1);
-	queries = array_append(queries,
+	array_append(queries,
 						   "MATCH (n) RETURN n UNION MATCH (n) RETURN n");
 
 	validate_query_plans_clone(queries);

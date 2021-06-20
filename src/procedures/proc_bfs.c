@@ -67,15 +67,15 @@ static void _process_yield(BFSCtx *ctx, const char **yield) {
 	ctx->yield_edges = yield_edges;
 
 	if(yield_nodes) {
-		ctx->output = array_append(ctx->output, SI_ConstStringVal("nodes"));
+		array_append(ctx->output, SI_ConstStringVal("nodes"));
 		ctx->nodes_output_idx = array_len(ctx->output);
-		ctx->output = array_append(ctx->output, SI_NullVal()); // Place holder.
+		array_append(ctx->output, SI_NullVal()); // Place holder.
 	}
 
 	if(yield_edges) {
-		ctx->output = array_append(ctx->output, SI_ConstStringVal("edges"));
+		array_append(ctx->output, SI_ConstStringVal("edges"));
 		ctx->edges_output_idx = array_len(ctx->output);
-		ctx->output = array_append(ctx->output, SI_NullVal()); // Place holder.
+		array_append(ctx->output, SI_NullVal()); // Place holder.
 	}
 }
 
@@ -257,8 +257,8 @@ ProcedureCtx *Proc_BFS_Ctx() {
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
 	ProcedureOutput out_nodes = {.name = "nodes", .type = T_ARRAY};
 	ProcedureOutput out_edges = {.name = "edges", .type = T_ARRAY};
-	outputs = array_append(outputs, out_nodes);
-	outputs = array_append(outputs, out_edges);
+	array_append(outputs, out_nodes);
+	array_append(outputs, out_edges);
 
 	ProcedureCtx *ctx = ProcCtxNew("algo.BFS",
 								   3,

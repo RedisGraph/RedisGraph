@@ -70,7 +70,7 @@ static void _evaluate_proc_args(OpProcCall *op) {
 	array_clear(op->args);
 
 	for(uint i = 0; i < op->arg_count; i++) {
-		op->args = array_append(op->args, AR_EXP_Evaluate(op->arg_exps[i], op->r));
+		array_append(op->args, AR_EXP_Evaluate(op->arg_exps[i], op->r));
 	}
 }
 
@@ -106,7 +106,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 		const char *alias = yield_exps[i]->resolved_name;
 		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
 
-		op->output = array_append(op->output, yield);
+		array_append(op->output, yield);
 		OpBase_Modifies((OpBase *)op, yield);
 		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
 	}
