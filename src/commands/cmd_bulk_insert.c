@@ -15,10 +15,21 @@
 // process HEADER token if exists
 static int _Graph_Bulk_Header(RedisModuleCtx *ctx, RedisModuleString ***argv,
 		int *argc, Graph *g) {
+	int res = BULK_OK;
 	const char *token = RedisModule_StringPtrLen(**argv, NULL);
 	bool header = strcmp(token, "HEADER") == 0;
 
 	if(!header) return BULK_OK;
+
+	// expecting at least 6 arguments
+	// HEADER
+	// field count (2)
+	//     field name
+	//     field value
+	if(*argc < 6) {
+		RedisModule_ReplyWithError(ctx, "Error parsing header.");
+		return BULK_FAIL;
+	}
 
 	// skip header token
 	(*argv) ++;
@@ -28,27 +39,69 @@ static int _Graph_Bulk_Header(RedisModuleCtx *ctx, RedisModuleString ***argv,
 	// total node count
 	// total edge count
 
-	long long node_count = 0;  // number of nodes in graph
-	long long edge_count = 0;  // number of edges in graph
+	long long node_count   = 0;  // number of nodes in graph
+	long long edge_count   = 0;  // number of edges in graph
+	long long field_count  = 0;  // number of fields in header
 
-	if(RedisModule_StringToLongLong(**argv, &node_count) != REDISMODULE_OK) {
-		RedisModule_ReplyWithError(ctx, "Error parsing node count.");
+	// read number of fields in header
+	if(RedisModule_StringToLongLong(**argv, &field_count) != REDISMODULE_OK) {
+		RedisModule_ReplyWithError(ctx, "Error parsing header.");
 		return BULK_FAIL;
 	}
 	(*argv) ++;
+	(*argc) --;
 
-	if(RedisModule_StringToLongLong(**argv, &edge_count) != REDISMODULE_OK) {
-		RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
-		return BULK_FAIL;
+	// process header fields
+	for(int i = 0; i < field_count; i++) {
+		// read field name
+		token = RedisModule_StringPtrLen(**argv, NULL);
+		(*argv) ++;
+		(*argc) --;
+
+		//----------------------------------------------------------------------
+		// node count
+		//----------------------------------------------------------------------
+
+		if(strcmp(token, "NODE_COUNT") == 0) {
+			if(RedisModule_StringToLongLong(**argv, &node_count) != REDISMODULE_OK) {
+				RedisModule_ReplyWithError(ctx, "Error parsing node count.");
+				res = BULK_FAIL;
+				break;
+			}
+			Graph_AllocateNodes(g, node_count);
+		}
+
+		//----------------------------------------------------------------------
+		// node count
+		//----------------------------------------------------------------------
+
+		else if(strcmp(token, "EDGE_COUNT") == 0) {
+			if(RedisModule_StringToLongLong(**argv, &edge_count) != REDISMODULE_OK) {
+				RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
+				res = BULK_FAIL;
+				break;
+			}
+			Graph_AllocateEdges(g, edge_count);
+		}
+
+		//----------------------------------------------------------------------
+		// unknown field
+		//----------------------------------------------------------------------
+
+		else {
+			char *err = NULL;
+			asprintf(&err, "Error parsing header, unknown field: %s", token);
+			RedisModule_ReplyWithError(ctx, err);
+			free(err);
+			res = BULK_FAIL;
+			break;
+		}
+
+		(*argv) ++;
+		(*argc) --;
 	}
 
-	(*argv) ++;
-	(*argc) -= 2;
-
-	Graph_AllocateNodes(g, node_count);
-	Graph_AllocateEdges(g, edge_count);
-
-	return BULK_OK;
+	return res;
 }
 
 // process "BEGIN" token, expected to be present only on first bulk-insert
