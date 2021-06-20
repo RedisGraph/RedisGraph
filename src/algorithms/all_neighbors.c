@@ -40,6 +40,38 @@ static bool _AllNeighborsCtx_Visited
 	return false;
 }
 
+void AllNeighborsCtx_Init
+(
+	AllNeighborsCtx *ctx,
+	EntityID src,  // source node from which to traverse
+	GrB_Matrix M,  // matrix describing connections
+	uint minLen,   // minimum traversal depth
+	uint maxLen    // maximum traversal depth
+) {
+	ASSERT(M != NULL);
+	ASSERT(src != INVALID_ENTITY_ID);
+	ASSERT(ctx);
+
+	ctx->M              =  M;
+	ctx->src            =  src;
+	ctx->minLen         =  minLen;
+	ctx->maxLen         =  maxLen;
+	if(ctx->levels)
+		array_clear(ctx->levels);
+	else
+		ctx->levels = array_new(GxB_MatrixTupleIter *, 1);
+	if(ctx->visited)
+		array_clear(ctx->visited);
+	else
+		ctx->visited    =  array_new(EntityID, 1);
+	ctx->first_pull     =  true;
+	ctx->current_level  =  0;
+
+	// Null iterator at level 0
+	array_append(ctx->levels, NULL);
+}
+
+
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
@@ -50,19 +82,9 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	ASSERT(M != NULL);
 	ASSERT(src != INVALID_ENTITY_ID);
 
-	AllNeighborsCtx *ctx = rm_malloc(sizeof(AllNeighborsCtx));
+	AllNeighborsCtx *ctx = rm_calloc(1, sizeof(AllNeighborsCtx));
 
-	ctx->M              =  M;
-	ctx->src            =  src;
-	ctx->minLen         =  minLen;
-	ctx->maxLen         =  maxLen;
-	ctx->levels         =  array_new(GxB_MatrixTupleIter *, 1);
-	ctx->visited        =  array_new(EntityID, 1);
-	ctx->first_pull     =  true;
-	ctx->current_level  =  0;
-
-	// Null iterator at level 0
-	array_append(ctx->levels, NULL);
+	AllNeighborsCtx_Init(ctx, src, M, minLen, maxLen);
 
 	return ctx;
 }

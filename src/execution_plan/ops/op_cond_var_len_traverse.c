@@ -208,11 +208,19 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 			op->M = op->ae->operand.matrix;
 		}
 
-		AllNeighborsCtx_Free(op->allNeighborsCtx);
-		op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id,
-												  op->M,
-												  op->minHops,
-												  op->maxHops);
+		if(!op->allNeighborsCtx) {
+			op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id,
+				op->M,
+				op->minHops,
+				op->maxHops);
+		} else {
+			// in case ctx is already allocated just init
+			AllNeighborsCtx_Init(op->allNeighborsCtx,
+				srcNode->id,
+				op->M,
+				op->minHops,
+				op->maxHops);
+		}
 	}
 
 	// could not produce destination node, return
