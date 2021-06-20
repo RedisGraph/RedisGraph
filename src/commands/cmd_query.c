@@ -70,7 +70,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 																index_op, i));
 			index_added |= (GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK);
 		}
-		// Create index only if all the labels index creation went ok
+		// populate the index only when at least one attribute was introduced
 		if(index_added) Index_Construct(idx);
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
