@@ -1,0 +1,20 @@
+name: "EXPLICIT-EDGE-DELETION"
+remote:
+  - setup: redisgraph-r5
+  - type: oss-standalone
+dbconfig:
+  - init_commands:
+    - '"GRAPH.QUERY" "g" "UNWIND range(0, 1000000) AS x CREATE (:N)-[:R]->(:N)"'
+clientconfig:
+  - tool: redisgraph-benchmark-go
+  - parameters:
+    - graph: "g"
+    - rps: 0
+    - clients: 1
+    - threads: 4
+    - connections: 1
+    - requests: 1000
+    - queries:
+        - { q: "MATCH (n:N)-[e]->() DELETE e RETURN 1 LIMIT 1", ratio: 1 }
+kpis:
+  - le: { $.OverallGraphInternalLatencies.Total.q50: 40.0 }
