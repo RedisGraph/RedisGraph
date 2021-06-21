@@ -95,15 +95,16 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	ASSERT(ae != NULL);
 
 	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
-	op->g = g;
-	op->ae = ae;
-	op->r = NULL;
-	op->ft = NULL;
-	op->M = GrB_NULL;
-	op->expandInto = false;
-	op->allPathsCtx = NULL;
-	op->collect_paths = true;
-	op->edgeRelationTypes = NULL;
+	op->g                  =  g;
+	op->r                  =  NULL;
+	op->M                  =  GrB_NULL;
+	op->ae                 =  ae;
+	op->ft                 =  NULL;
+	op->expandInto         =  false;
+	op->allPathsCtx        =  NULL;
+	op->collect_paths      =  true;
+	op->allNeighborsCtx    =  NULL;
+	op->edgeRelationTypes  =  NULL;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", CondVarLenTraverseInit,
@@ -208,11 +209,14 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 			op->M = op->ae->operand.matrix;
 		}
 
-		AllNeighborsCtx_Free(op->allNeighborsCtx);
-		op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id,
-												  op->M,
-												  op->minHops,
-												  op->maxHops);
+		if(op->allNeighborsCtx == NULL) {
+			op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id, op->M,
+					op->minHops, op->maxHops);
+		} else {
+			// in case ctx already allocated simply reset it
+			AllNeighborsCtx_Reset(op->allNeighborsCtx, srcNode->id, op->M,
+					op->minHops, op->maxHops);
+		}
 	}
 
 	// could not produce destination node, return
