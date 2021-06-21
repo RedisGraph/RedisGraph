@@ -22,9 +22,6 @@ GrB_Info GxB_MatrixTupleIter_new
 	GB_WHERE(A, "GxB_MatrixTupleIter_new (A)") ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
-	// make sure matrix is not bitmap or full
-	GxB_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
-
 	GrB_Index nrows;
 	GrB_Matrix_nrows(&nrows, A) ;
 
@@ -50,9 +47,9 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	_EmptyIterator(iter) ;
 
 	if(rowIdx < 0 || rowIdx >= iter->nrows) {
-		GB_ERROR (GrB_INVALID_INDEX,
-			"Row index " GBu " out of range; must be < " GBu,
-			rowIdx, iter->nrows) ;
+		GB_ERROR(GrB_INVALID_INDEX,
+				 "Row index " GBu " out of range; must be < " GBu,
+				 rowIdx, iter->nrows) ;
 	}
 
 	iter->nvals = iter->A->p[rowIdx + 1];
@@ -74,9 +71,9 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 	_EmptyIterator(iter) ;
 
 	if(rowIdx < 0 || rowIdx >= iter->nrows) {
-		GB_ERROR (GrB_INVALID_INDEX,
-			"Row index " GBu " out of range; must be < " GBu,
-			rowIdx, iter->nrows ) ;
+		GB_ERROR(GrB_INVALID_INDEX,
+				 "Row index " GBu " out of range; must be < " GBu,
+				 rowIdx, iter->nrows) ;
 	}
 
 	GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
@@ -100,14 +97,14 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 
 	if(startRowIdx < 0 || startRowIdx >= iter->nrows) {
 		GB_ERROR(GrB_INVALID_INDEX,
-			"row index " GBu " out of range; must be < " GBu,
-			startRowIdx, iter->nrows ) ;
+				 "row index " GBu " out of range; must be < " GBu,
+				 startRowIdx, iter->nrows) ;
 	}
 
 	if(startRowIdx > endRowIdx) {
 		GB_ERROR(GrB_INVALID_INDEX,
-			"row index " GBu " must be > " GBu,
-			startRowIdx, endRowIdx ) ;
+				 "row index " GBu " must be > " GBu,
+				 startRowIdx, endRowIdx) ;
 	}
 
 	iter->nnz_idx = iter->A->p[startRowIdx] ;
