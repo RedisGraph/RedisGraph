@@ -669,6 +669,20 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 	return XXH64_digest(&state);
 }
 
+// compute the hash code of array of values
+XXH64_hash_t SIValueArray_HashCode(const SIValue *v, size_t len) {
+	// initialize the hash state
+	XXH64_state_t state;
+	XXH_errorcode res = XXH64_reset(&state, 0);
+	ASSERT(res != XXH_ERROR);
+
+	// update the hash state with the current value.
+	for(size_t i = 0; i < len; i++) SIValue_HashUpdate(v[i], &state);
+
+	// finalize the hash
+	return XXH64_digest(&state);
+}
+
 void SIValue_Free(SIValue v) {
 	// The free routine only performs work if it owns a heap allocation.
 	if(v.allocation != M_SELF) return;

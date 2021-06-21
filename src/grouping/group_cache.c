@@ -15,10 +15,22 @@ void CacheGroupAdd(CacheGroup *groups, char *key, Group *group) {
 	raxInsert(groups, (unsigned char *)key, strlen(key), group, NULL);
 }
 
+void CacheGroupAddUll(CacheGroup *groups, unsigned long long key, Group *group) {
+	raxInsert(groups, (unsigned char *)&key, sizeof(key), group, NULL);
+}
+
 // Retrives a group,
 // Sets group to NULL if key is missing.
 Group *CacheGroupGet(CacheGroup *groups, char *key) {
 	Group *g = raxFind(groups, (unsigned char *)key, strlen(key));
+	if(g == raxNotFound) return NULL;
+	return g;
+}
+
+// Retrives a group,
+// Sets group to NULL if key is missing.
+Group *CacheGroupGetUll(CacheGroup *groups, unsigned long long key) {
+	Group *g = raxFind(groups, (unsigned char *)&key, sizeof(key));
 	if(g == raxNotFound) return NULL;
 	return g;
 }

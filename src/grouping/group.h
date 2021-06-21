@@ -20,9 +20,5 @@ typedef struct {
 /* Creates a new group */
 Group *NewGroup(SIValue *keys, uint key_count, AR_ExpNode **funcs, uint func_count, Record r);
 
-/* Compute group key string representation, it is the callers
- * responsibility to free returned string. */
-void Group_KeyStr(const Group *g, char **group_key);
-
 void FreeGroup(Group *group);
 

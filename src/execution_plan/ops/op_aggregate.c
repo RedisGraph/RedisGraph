@@ -84,23 +84,11 @@ static void _ComputeGroupKey(OpAggregate *op, Record r) {
 	}
 }
 
-static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
-	if(op->key_count == 0) {
-		*key = rm_strdup("SINGLE_GROUP");
-		return;
-	}
-
-	// Determine required size for group key string representation.
-	size_t key_len = SIValue_StringJoinLen(op->group_keys, op->key_count, ",");
-	*key = rm_malloc(sizeof(char) * key_len);
-	size_t bytesWritten = 0;
-	SIValue_StringJoin(op->group_keys, op->key_count, ",", key, &key_len, &bytesWritten);
-}
-
 /* Retrieves group under which given record belongs to,
  * creates group if one doesn't exists. */
 static Group *_GetGroup(OpAggregate *op, Record r) {
 	char *group_key_str = NULL;
+	unsigned long long hash;
 	bool free_key_exps = true;
 	// Construct group key.
 	_ComputeGroupKey(op, r);
@@ -108,8 +96,8 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	// First group created.
 	if(!op->group) {
 		op->group = _CreateGroup(op, r);
-		Group_KeyStr(op->group, &group_key_str);
-		CacheGroupAdd(op->groups, group_key_str, op->group);
+		hash = SIValueArray_HashCode(op->group->keys, op->group->key_count);
+		CacheGroupAddUll(op->groups, hash, op->group);
 		// Key expressions are owned by the new group and don't need to be freed.
 		free_key_exps = false;
 		goto cleanup;
@@ -126,12 +114,12 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	if(reuseLastAccessedGroup) goto cleanup;
 
 	// Can't reuse last accessed group, lookup group by identifier key.
-	_ComputeGroupKeyStr(op, &group_key_str);
-	op->group = CacheGroupGet(op->groups, group_key_str);
+	hash = SIValueArray_HashCode(op->group_keys, op->key_count);
+	op->group = CacheGroupGetUll(op->groups, hash);
 	if(!op->group) {
 		// Group does not exists, create it.
 		op->group = _CreateGroup(op, r);
-		CacheGroupAdd(op->groups, group_key_str, op->group);
+		CacheGroupAddUll(op->groups, hash, op->group);
 		// Key expressions are owned by the new group and don't need to be freed.
 		free_key_exps = false;
 	}

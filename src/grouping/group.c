@@ -23,19 +23,6 @@ Group *NewGroup(SIValue *keys, uint key_count, AR_ExpNode **funcs, uint func_cou
 	return g;
 }
 
-void Group_KeyStr(const Group *g, char **group_key) {
-	if(g->key_count == 0) {
-		*group_key = rm_strdup("SINGLE_GROUP");
-		return;
-	}
-
-	// Determine required size for group key string representation.
-	size_t group_len_key = SIValue_StringJoinLen(g->keys, g->key_count, ",");
-	*group_key = rm_malloc(sizeof(char) * group_len_key);
-	size_t bytesWritten = 0;
-	SIValue_StringJoin(g->keys, g->key_count, ",", group_key, &group_len_key, &bytesWritten);
-}
-
 void FreeGroup(Group *g) {
 	if(g == NULL) return;
 	if(g->r) Record_FreeEntries(g->r);  // Will be freed by Record owner.

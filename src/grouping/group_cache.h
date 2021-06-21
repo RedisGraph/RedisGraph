@@ -17,9 +17,16 @@ CacheGroup *CacheGroupNew();
 
 void CacheGroupAdd(CacheGroup *groups, char *key, Group *group);
 
+// adds unsigned long long item as string representation
+void CacheGroupAddUll(CacheGroup *groups, unsigned long long key, Group *group);
+
 // Retrives a group,
 // Sets group to NULL if key is missing.
 Group *CacheGroupGet(CacheGroup *groups, char *key);
+
+// Retrives a group,
+// Sets group to NULL if key is missing.
+Group *CacheGroupGetUll(CacheGroup *groups, unsigned long long key);
 
 void FreeGroupCache(CacheGroup *groups);
 
