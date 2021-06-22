@@ -614,8 +614,10 @@ This section contains information on all supported functions from the Cypher que
 
 | Function            | Description                                                                 |
 | -------             | :-----------                                                                |
+| endNode()           | Returns the destination node of a relationship.                             |
 | id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
 | labels()            | Returns a string representation of the label of a node.                     |
+| startNode()         | Returns the source node of a relationship.                                  |
 | timestamp()         | Returns the the amount of milliseconds since epoch.                         |
 | type()              | Returns a string representation of the type of a relation.                  |
 | list comprehensions | [See documentation](#list-comprehensions)                                   |
