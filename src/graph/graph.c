@@ -76,6 +76,13 @@ static RG_Matrix RG_Matrix_New(const Graph *g, GrB_Type data_type) {
 	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
 	ASSERT(matrix_res == GrB_SUCCESS);
 
+	/* matrix iterator requires matrix format to be sparse
+	 * to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	 * we set matrix format at creation time. */
+	GrB_Info set_res = GxB_set(matrix->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	UNUSED(set_res);
+	ASSERT(set_res == GrB_SUCCESS);
+
 	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
 	ASSERT(mutex_res == 0);
 
@@ -1348,16 +1355,6 @@ int Graph_AddLabel(Graph *g) {
 
 	GrB_Info info;
 	RG_Matrix m = RG_Matrix_New(g, GrB_BOOL);
-
-	/* matrix iterator requires matrix format to be sparse
-	 * to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
-	 * we set matrix format at creation time, as Label matrices are iterated
-	 * within the LabelScan Execution-Plan operation. */
-
-	GrB_Matrix M = RG_Matrix_Get_GrB_Matrix(m);
-	info = GxB_set(M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	UNUSED(info);
-	ASSERT(info == GrB_SUCCESS);
 
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
