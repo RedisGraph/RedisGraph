@@ -555,7 +555,7 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 }
 
 void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID,
-		int r, Edge **edges) {
+								   int r, Edge **edges) {
 	ASSERT(g && r < Graph_RelationTypeCount(g) && edges);
 
 	// Invalid relation type specified; this can occur on multi-type traversals like:
@@ -1070,7 +1070,6 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 	GrB_Matrix          adj;        // adjacency matrix
 	GrB_Matrix          tadj;       // transposed adjacency matrix
-	GrB_Info            info;
 	GrB_Index           nrows;
 	GrB_Index           ncols;
 	GrB_Index           nvals;      // number of elements in mask
@@ -1154,33 +1153,31 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		Edge *edges = array_new(Edge, 1);
 
 		// export and free a hypersparse CSR matrix
-		info = GxB_Matrix_export_HyperCSR (
-			 &Mask,        // handle of matrix to export and free
-			 &type,        // type of matrix exported
-			 &nrows,       // number of rows of the matrix
-			 &ncols,       // number of columns of the matrix
-			 &Ap,          // row "pointers", Ap_size >= nvec+1
-			 &Ah,          // row indices, Ah_size >= nvec
-			 &Aj,          // column indices, Aj_size >= nvals(A)
-			 &Ax,          // values, Ax_size >= nvals(A)
-			 &Ap_size,     // size of Ap
-			 &Ah_size,     // size of Ah
-			 &Aj_size,     // size of Aj
-			 &Ax_size,     // size of Ax
-			 &nvec,        // number of rows that appear in Ah
-			 &jumbled,     // if true, indices in each row may be unsorted
-			 GrB_NULL
+		GxB_Matrix_export_HyperCSR(
+			&Mask,        // handle of matrix to export and free
+			&type,        // type of matrix exported
+			&nrows,       // number of rows of the matrix
+			&ncols,       // number of columns of the matrix
+			&Ap,          // row "pointers", Ap_size >= nvec+1
+			&Ah,          // row indices, Ah_size >= nvec
+			&Aj,          // column indices, Aj_size >= nvals(A)
+			&Ax,          // values, Ax_size >= nvals(A)
+			&Ap_size,     // size of Ap
+			&Ah_size,     // size of Ah
+			&Aj_size,     // size of Aj
+			&Ax_size,     // size of Ax
+			&nvec,        // number of rows that appear in Ah
+			&jumbled,     // if true, indices in each row may be unsorted
+			GrB_NULL
 		);
 
-		for (int64_t k = 0 ; k < nvec ; k++)
-		{
+		for(GrB_Index k = 0 ; k < nvec ; k++) {
 			src_id = Ah [k] ;
-			for (int64_t p = Ap [k] ; p < Ap [k+1] ; p++)
-			{
+			for(GrB_Index p = Ap [k] ; p < Ap [k + 1] ; p++) {
 				dest_id = Aj[p];
 				// retrieve all edges connecting this source and destination
 				Graph_GetEdgesConnectingNodes(g, src_id, dest_id,
-						GRAPH_NO_RELATION, &edges);
+											  GRAPH_NO_RELATION, &edges);
 				uint edge_count = array_len(edges);
 				for(uint i = 0; i < edge_count; i ++) {
 					Graph_DeleteEdge(g, &edges[i]);
@@ -1201,16 +1198,26 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
 	int node_type_count = Graph_LabelTypeCount(g);
-	for(int i = 0; i < node_type_count; i++) {
-		GrB_Matrix L = Graph_GetLabelMatrix(g, i);
-		GrB_Matrix_apply(L, Nodes, GrB_NULL, GrB_IDENTITY_BOOL, L, desc);
-		_Graph_SetLabelMatrixDirty(g, i);
-	}
+
+	// track all labels that contain deleted nodes
+	int deleted_labels[node_type_count];
+	memset(deleted_labels, 0, node_type_count * sizeof(int));
 
 	// TODO: use the apply operator to delete datablock entries
 	for(uint i = 0; i < node_count; i++) {
 		Node *n = nodes + i;
+		// mark label as containing deletions
+		int label_id = NODE_GET_LABEL_ID(n, g);
+		deleted_labels[label_id] = 1;
 		DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+	}
+
+	// clear deleted nodes from label matrices
+	for(int i = 0; i < node_type_count; i++) {
+		if(deleted_labels[i] == 0) continue; // label did not change
+		GrB_Matrix L = Graph_GetLabelMatrix(g, i);
+		GrB_Matrix_apply(L, Nodes, GrB_NULL, GrB_IDENTITY_BOOL, L, desc);
+		_Graph_SetLabelMatrixDirty(g, i);
 	}
 
 	// Clean up.
