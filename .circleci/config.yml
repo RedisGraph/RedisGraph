@@ -311,6 +311,9 @@ jobs:
       - run:
           name: Run QA Automation
           command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
+      - run:
+          name: Run 10-minute fuzz test
+          command: bash -l -c "FUZZ_TIMEOUT=600 make fuzz"
 
   performance_ci_automation_not_integ:
     docker:
