@@ -554,8 +554,8 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	return GRAPH_NO_RELATION;
 }
 
-void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, int r,
-								   Edge **edges) {
+void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID,
+		int r, Edge **edges) {
 	ASSERT(g && r < Graph_RelationTypeCount(g) && edges);
 
 	// Invalid relation type specified; this can occur on multi-type traversals like:
@@ -1070,6 +1070,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 	GrB_Matrix          adj;        // adjacency matrix
 	GrB_Matrix          tadj;       // transposed adjacency matrix
+	GrB_Info            info;
 	GrB_Index           nrows;
 	GrB_Index           ncols;
 	GrB_Index           nvals;      // number of elements in mask
@@ -1079,20 +1080,25 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GxB_MatrixTupleIter *adj_iter;  // iterator over the adjacency matrix
 	GxB_MatrixTupleIter *tadj_iter; // iterator over the transposed adjacency matrix
 
-	nrows = Graph_RequiredMatrixDim(g);
-	ncols = nrows;
+	adj                         =  Graph_GetAdjacencyMatrix(g);
+	tadj                        =  Graph_GetTransposedAdjacencyMatrix(g);
+	nrows                       =  Graph_RequiredMatrixDim(g);
+	ncols                       =  nrows;
 	GrB_Descriptor_new(&desc);
-	adj = Graph_GetAdjacencyMatrix(g);
-	tadj = Graph_GetTransposedAdjacencyMatrix(g);
 	GxB_MatrixTupleIter_new(&adj_iter, adj);
 	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
+
+	// implicit deleted edge, set format to hypersparse
+	// expecting a small number of implicit deleted edges
 	GrB_Matrix_new(&Mask, GrB_BOOL, nrows, ncols);
+	GxB_Matrix_Option_set(Mask, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+
 	GrB_Matrix_new(&Nodes, GrB_BOOL, nrows, ncols);
 
 	// mark matrices as dirty
 	_Graph_SetAdjacencyMatrixDirty(g);
 
-	// Populate mask with implicit edges, take note of deleted nodes.
+	// populate mask with implicit edges, take note of deleted nodes
 	for(uint i = 0; i < node_count; i++) {
 		GrB_Index src;
 		GrB_Index dest;
@@ -1103,7 +1109,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		// outgoing edges
 		GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
 		while(true) {
-			GxB_MatrixTupleIter_next(adj_iter, NULL,  &dest, &depleted);
+			GxB_MatrixTupleIter_next(adj_iter, NULL, &dest, &depleted);
 			if(depleted) break;
 			GrB_Matrix_setElement_BOOL(Mask, true, ID, dest);
 		}
@@ -1131,29 +1137,59 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	*edge_deleted += nvals;
 
 	if(nvals <= EDGE_BULK_DELETE_THRESHOLD) {
-		// small number of implicit edges to delete, iterate over Mask to delete.
-		GrB_Index src_id;
-		GrB_Index dest_id;
-		bool depleted;
+		// small number of implicit edges to delete
+		GrB_Index  src_id;
+		GrB_Index  dest_id;
+		GrB_Type   type;
+		GrB_Index  *Ap;
+		GrB_Index  *Ah;
+		GrB_Index  *Aj;
+		void       *Ax;
+		GrB_Index  Ap_size;
+		GrB_Index  Ah_size;
+		GrB_Index  Aj_size;
+		GrB_Index  Ax_size;
+		GrB_Index  nvec;
+		bool jumbled = true;
 		Edge *edges = array_new(Edge, 1);
-		// the matrix must be in sparse format for the iterator to be effective
-		GxB_set(Mask, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-		GxB_MatrixTupleIter *iter;  // iterator over the adjacency matrix
-		GxB_MatrixTupleIter_new(&iter, Mask);
-		while(true) {
-			GxB_MatrixTupleIter_next(iter, &src_id,  &dest_id, &depleted);
-			if(depleted) break;
-			// retrieve all edges connecting this source and destination
-			Graph_GetEdgesConnectingNodes(g, src_id, dest_id, GRAPH_NO_RELATION, &edges);
-			uint edge_count = array_len(edges);
-			for(uint i = 0; i < edge_count; i ++) {
-				Graph_DeleteEdge(g, &edges[i]);
+
+		// export and free a hypersparse CSR matrix
+		info = GxB_Matrix_export_HyperCSR (
+			 &Mask,        // handle of matrix to export and free
+			 &type,        // type of matrix exported
+			 &nrows,       // number of rows of the matrix
+			 &ncols,       // number of columns of the matrix
+			 &Ap,          // row "pointers", Ap_size >= nvec+1
+			 &Ah,          // row indices, Ah_size >= nvec
+			 &Aj,          // column indices, Aj_size >= nvals(A)
+			 &Ax,          // values, Ax_size >= nvals(A)
+			 &Ap_size,     // size of Ap
+			 &Ah_size,     // size of Ah
+			 &Aj_size,     // size of Aj
+			 &Ax_size,     // size of Ax
+			 &nvec,        // number of rows that appear in Ah
+			 &jumbled,     // if true, indices in each row may be unsorted
+			 GrB_NULL
+		);
+
+		for (int64_t k = 0 ; k < nvec ; k++)
+		{
+			src_id = Ah [k] ;
+			for (int64_t p = Ap [k] ; p < Ap [k+1] ; p++)
+			{
+				dest_id = Aj[p];
+				// retrieve all edges connecting this source and destination
+				Graph_GetEdgesConnectingNodes(g, src_id, dest_id,
+						GRAPH_NO_RELATION, &edges);
+				uint edge_count = array_len(edges);
+				for(uint i = 0; i < edge_count; i ++) {
+					Graph_DeleteEdge(g, &edges[i]);
+				}
+				array_clear(edges);
 			}
-			array_clear(edges);
 		}
 		// clean up
 		array_free(edges);
-		GxB_MatrixTupleIter_free(iter);
 	} else {
 		// use bulk deletion logic to remove implicit edges
 		_BulkDeleteImplicitEdges(g, Mask);
@@ -1179,7 +1215,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 	// Clean up.
 	GrB_free(&desc);
-	GrB_free(&Mask);
+	if(Mask) GrB_free(&Mask);
 	GrB_free(&Nodes);
 	GxB_MatrixTupleIter_free(adj_iter);
 	GxB_MatrixTupleIter_free(tadj_iter);
