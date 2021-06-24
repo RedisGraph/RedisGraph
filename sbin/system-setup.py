@@ -50,7 +50,7 @@ class RedisGraphSetup(paella.Setup):
         self.install("valgrind")
 
     def common_last(self):
-        self.install("astyle")
+        self.install("astyle", _try=True) # fails for centos7
         self.run("%s/bin/getcmake" % READIES)
         self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
 
