@@ -15,18 +15,14 @@ static void _AllNeighborsCtx_CollectNeighbors
 	EntityID id
 ) {
 	ctx->current_level++;
-	GxB_MatrixTupleIter *iter;
 	if(ctx->current_level == array_len(ctx->levels)) {
 		ASSERT(ctx->M);
-		ctx->levels = array_grow(ctx->levels, 1);
-		// make sure matrix is not bitmap or full
-		GxB_set(ctx->M, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
-		GxB_MatrixTupleIter_reuse(&ctx->levels[ctx->current_level], ctx->M);
+		GxB_MatrixTupleIter iter;
+		GxB_MatrixTupleIter_reuse(&iter, ctx->M);
+		array_append(ctx->levels, iter);
 	}
 
-	iter = &ctx->levels[ctx->current_level];
-
-	GxB_MatrixTupleIter_iterate_row(iter, id);
+	GxB_MatrixTupleIter_iterate_row(&ctx->levels[ctx->current_level], id);
 }
 
 static bool _AllNeighborsCtx_Visited
@@ -57,6 +53,9 @@ void AllNeighborsCtx_Reset
 	ASSERT(ctx->levels   != NULL);
 	ASSERT(ctx->visited  != NULL);
 
+	// make sure matrix is not bitmap or full
+	GxB_set(ctx->M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+
 	ctx->M              =  M;
 	ctx->src            =  src;
 	ctx->minLen         =  minLen;
@@ -80,6 +79,9 @@ AllNeighborsCtx *AllNeighborsCtx_New
 ) {
 	ASSERT(M   != NULL);
 	ASSERT(src != INVALID_ENTITY_ID);
+
+	// make sure matrix is not bitmap or full
+	GxB_set(M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 
 	AllNeighborsCtx *ctx = rm_calloc(1, sizeof(AllNeighborsCtx));
 
