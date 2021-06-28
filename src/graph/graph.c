@@ -585,6 +585,7 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
 	n->id = id;
 	n->entity = en;
+	n->labelID = label;
 	en->prop_count = 0;
 	en->properties = NULL;
 
@@ -1186,6 +1187,10 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 			}
 		}
 		// clean up
+		rm_free(Ap);
+		rm_free(Ah);
+		rm_free(Aj);
+		rm_free(Ax);
 		array_free(edges);
 	} else {
 		// use bulk deletion logic to remove implicit edges
@@ -1197,23 +1202,24 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
-	int node_type_count = Graph_LabelTypeCount(g);
+	int label_count = Graph_LabelTypeCount(g);
 
 	// track all labels that contain deleted nodes
-	int deleted_labels[node_type_count];
-	memset(deleted_labels, 0, node_type_count * sizeof(int));
+	bool deleted_labels[label_count];
+	memset(deleted_labels, 0, label_count * sizeof(bool));
 
 	// TODO: use the apply operator to delete datablock entries
 	for(uint i = 0; i < node_count; i++) {
 		Node *n = nodes + i;
 		// mark label as containing deletions
 		int label_id = NODE_GET_LABEL_ID(n, g);
-		deleted_labels[label_id] = 1;
+		if(label_id != GRAPH_NO_LABEL) deleted_labels[label_id] = true;
+
 		DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 	}
 
 	// clear deleted nodes from label matrices
-	for(int i = 0; i < node_type_count; i++) {
+	for(int i = 0; i < label_count; i++) {
 		if(deleted_labels[i] == 0) continue; // label did not change
 		GrB_Matrix L = Graph_GetLabelMatrix(g, i);
 		GrB_Matrix_apply(L, Nodes, GrB_NULL, GrB_IDENTITY_BOOL, L, desc);
