@@ -546,17 +546,15 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
 	GrB_Info info;
 	UNUSED(info);
-	RG_Matrix  M     =  g->relations[r];
-	RG_Matrix  t_M   =  NULL;
-	RG_Matrix  adj   =  g->adjacency_matrix;
-	RG_Matrix  tadj  =  g->_t_adjacency_matrix;
-
-	bool maintain_transpose;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-	if(maintain_transpose) t_M = g->t_relations[r];
+	RG_Matrix  M     =  Graph_GetRelationRGMatrix(g, r, false);
+	RG_Matrix  t_M   =  Graph_GetRelationRGMatrix(g, r, true);
+	RG_Matrix  adj   =  Graph_GetRelationRGMatrix(g, GRAPH_NO_RELATION, false);
+	RG_Matrix  tadj  =  Graph_GetRelationRGMatrix(g, GRAPH_NO_RELATION, true);
 
 	// rows represent source nodes, columns represent destination nodes.
 	edge_id = SET_MSB(edge_id);
+	// TODO: consider using the same approach as Graph_CreateNode uses
+	// this avoids going through Graph_GetRelationRGMatrix
 	RG_Matrix_setElement_BOOL(adj, true, src, dest);
 	RG_Matrix_setElement_BOOL(tadj, true, dest, src);
 
@@ -612,27 +610,27 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 }
 
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
-	Node srcNode = GE_NEW_NODE();
-	Node destNode = GE_NEW_NODE();
-
-	int res;
-	UNUSED(res);
-	res = Graph_GetNode(g, src, &srcNode);
-	ASSERT(res == 1);
-	res = Graph_GetNode(g, dest, &destNode);
-	ASSERT(res == 1);
 	ASSERT(g && r < Graph_RelationTypeCount(g));
+
+#if RG_DEBUG
+	// make sure both src and destination nodes exists
+	Node node = GE_NEW_NODE();
+	ASSERT(Graph_GetNode(g, src, &node) == 1);
+	ASSERT(Graph_GetNode(g, dest, &node) == 1);
+#endif
 
 	EdgeID id;
 	Entity *en = DataBlock_AllocateItem(g->edges, &id);
-	en->prop_count = 0;
-	en->properties = NULL;
-	e->id = id;
-	e->entity = en;
-	e->relationID = r;
-	e->srcNodeID = src;
-	e->destNodeID = dest;
+
+	en->prop_count  =  0;
+	en->properties  =  NULL;
+	e->id           =  id;
+	e->entity       =  en;
+	e->relationID   =  r;
+	e->srcNodeID    =  src;
+	e->destNodeID   =  dest;
 	Graph_FormConnection(g, src, dest, id, r);
+
 	return 1;
 }
 
@@ -1403,15 +1401,19 @@ RG_Matrix Graph_GetRelationRGMatrix
 	ASSERT((relation == GRAPH_NO_RELATION ||
 			relation < Graph_RelationTypeCount(g)));
 
-	if(transpose) {
-		// TODO: validate we're maintaining transposes
-	}
-
 	RG_Matrix m = NULL;
 
 	if(relation == GRAPH_NO_RELATION) {
 		m = (transpose) ? g->_t_adjacency_matrix : g->adjacency_matrix;
 	} else {
+		if(transpose) {
+			// if transpose version is requested
+			// make sure we're maintaining transposes, if not return NULL
+			bool maintain_transpose;
+			Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+			if(!maintain_transpose) return NULL;
+		}
+
 		m = (transpose) ? g->t_relations[relation] : g->relations[relation];
 	}
 
