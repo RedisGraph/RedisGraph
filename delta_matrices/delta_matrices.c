@@ -13,6 +13,7 @@ static void _PopulateMatrix(GrB_Matrix M, float density_ratio) {
 
 	// Calculate number of cells to set
 	GrB_Index to_set_count = (density_ratio * nrows) * ncols;
+	// printf("Number of cells: %lu\n", to_set_count);
 
 	for(GrB_Index k = 0; k < to_set_count; k ++) {
 		GrB_Index i = simple_rand_i() % nrows ;
@@ -36,7 +37,13 @@ static void _PopulateFMatrix(GrB_Matrix M, GrB_Index F_nrows) {
 }
 
 static void _DirtyMatrix(GrB_Matrix M) {
-	GrB_Matrix_setElement_BOOL(M, true, 0, 3);
+	GrB_Index ncols;
+	GrB_Matrix_ncols(&ncols, M);
+
+	GrB_Index row = ncols / 2;
+	GrB_Index col = ncols / 3;
+
+	GrB_Matrix_setElement_BOOL(M, true, row, col);
 }
 
 bool MatricesAreEqual(GrB_Matrix A, GrB_Matrix B) {
@@ -115,97 +122,84 @@ bool MatricesAreEqual(GrB_Matrix A, GrB_Matrix B) {
 	return *result;
 }
 
-GrB_Matrix delta_multiply(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
-						  GrB_Matrix M_minus, GrB_Matrix F, GrB_Matrix N) {
+void delta_multiply(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
+					GrB_Matrix M_minus, GrB_Matrix F) {
 	GrB_Info res;
-
-	GrB_Descriptor desc;
-	GrB_Descriptor_new(&desc);
 
 	// O = F * M
 	res = GrB_mxm(Output, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M, GrB_NULL);
 	ASSERT(res == GrB_SUCCESS);
 
-	// F = F * M_plus
-	res = GrB_mxm(F, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M, GrB_NULL);
+	// M_plus = F * M_plus
+	res = GrB_mxm(M_plus, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M_plus, GrB_NULL);
 	ASSERT(res == GrB_SUCCESS);
+
+	// M_minus = F * M_minus
+	res = GrB_mxm(M_minus, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M_minus, GrB_NULL);
+	ASSERT(res == GrB_SUCCESS);
+
 	// O = (O + F) < M_minus >
-	GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
-	// res = GrB_eWiseAdd(Output, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M_plus, desc);
-	res = GrB_eWiseAdd(F, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M_plus, desc);
+	res = GrB_eWiseAdd(Output, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, F, Output, GrB_DESC_C);
 	ASSERT(res == GrB_SUCCESS);
-
-	// Output = F * N
-	// res = GrB_mxm(Output, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M, GrB_NULL);
-	// ASSERT(res == GrB_SUCCESS);
-
-	GrB_Descriptor_free(&desc);
-
-	return F;
 }
 
-void standard_multiply(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix F, GrB_Matrix N) {
+void standard_multiply(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix F) {
 	GrB_Info res;
 
 	// F = F * M
-	res = GrB_mxm(F, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M, GrB_NULL);
-	ASSERT(res == GrB_SUCCESS);
-
-	// Output = F * N
 	res = GrB_mxm(Output, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M, GrB_NULL);
 	ASSERT(res == GrB_SUCCESS);
 }
 
-GrB_Matrix Multiply_Standard(GrB_Matrix M, GrB_Matrix M_plus, GrB_Matrix M_minus,
-							 GrB_Matrix F, GrB_Matrix N) {
+void Multiply_Standard(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
+					   GrB_Matrix M_minus, GrB_Matrix F) {
 	GrB_Info res;
 
 	GrB_Matrix M_dup;
 	GrB_Matrix_dup(&M_dup, M);
 
-	GrB_Matrix F_dup;
-	GrB_Matrix_dup(&F_dup, F);
-
-	GrB_Descriptor desc;
-	GrB_Descriptor_new(&desc);
-	GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
-
-	res = GrB_eWiseAdd(M_dup, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, M_dup, M_plus, desc);
+	res = GrB_eWiseAdd(M_dup, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, M_dup, M_plus, GrB_DESC_C);
 	ASSERT(res == GrB_SUCCESS);
 
 	_DirtyMatrix(M_dup);
 
-	standard_multiply(F_dup, M_dup, F_dup, N);
+	double tic[2];
+	// Start timer.
+	simple_tic(tic);
 
-	GrB_Descriptor_free(&desc);
+	standard_multiply(Output, M_dup, F);
+
+	double time = simple_toc(tic);
+	printf("Standard multiplication time: %f\n", time * 1000);
+
 	GrB_Matrix_free(&M_dup);
-
-	return F_dup;
 }
 
-GrB_Matrix Multiply_Delta(GrB_Matrix M, GrB_Matrix M_plus, GrB_Matrix M_minus,
-						  GrB_Matrix F, GrB_Matrix N) {
-	GrB_Info res;
+void Multiply_Delta(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
+					GrB_Matrix M_minus, GrB_Matrix F) {
+	double tic[2];
+	// Start timer.
+	simple_tic(tic);
 
-	GrB_Matrix delta_output = delta_multiply(Output, M, M_plus, M_minus, F, N);
-}
+	delta_multiply(Output, M, M_plus, M_minus, F);
 
-bool runner(GrB_Matrix M, GrB_Matrix M_plus, GrB_Matrix M_minus,
-			GrB_Matrix F, GrB_Matrix N) {
+	double time = simple_toc(tic);
+	printf("Delta multiplication time: %f\n", time * 1000);
 }
 
 int main(int argc, char **argv) {
 	GrB_Index F_nrows = 16;
 	GrB_Index dims = 50000000;
-	float density_ratio = 1 / dims;
+	float density_ratio = 1.0 / dims;
 	float plus_density_ratio = 0.0001 / dims;
 	float minus_density_ratio = 0.0001 / dims;
-	float multiply_against_ratio = 0.01 / dims;
 
 	// Initialize GraphBLAS
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, malloc, calloc, realloc, free, true);
 	ASSERT(res == GrB_SUCCESS);
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
+
+	// simple_rand_seed(0);
 
 	GrB_Matrix M;
 	GrB_Matrix_new(&M, GrB_BOOL, dims, dims);
@@ -223,20 +217,20 @@ int main(int argc, char **argv) {
 	GrB_Matrix_new(&F, GrB_BOOL, F_nrows, dims);
 	_PopulateFMatrix(F, F_nrows);
 
-	GrB_Matrix N = GrB_NULL;
-	GrB_Matrix_new(&N, GrB_BOOL, dims, dims);
-	_PopulateMatrix(N, multiply_against_ratio);
+	GrB_Matrix StandardOutput;
+	GrB_Matrix_new(&StandardOutput, GrB_BOOL, dims, dims);
 
-	GrB_Matrix Output;
-	GrB_Matrix_new(&Output, GrB_BOOL, dims, dims);
+	GrB_Matrix DeltaOutput;
+	GrB_Matrix_new(&DeltaOutput, GrB_BOOL, dims, dims);
 
-	GrB_Matrix compare_against = Multiply_Standard(M, M_plus, M_minus, F, N);
+	Multiply_Standard(StandardOutput, M, M_plus, M_minus, F);
 
+	// TODO plus and minus possibly should not be synchronized
 	_DirtyMatrix(M);
 	GrB_wait(&M);
-	GrB_Matrix delta_output = Multiply_Delta(Output, M, M_plus, M_minus, F, N);
+	Multiply_Delta(DeltaOutput, M, M_plus, M_minus, F);
 
-	bool matrices_are_equal = MatricesAreEqual(delta_output, compare_against);
+	bool matrices_are_equal = MatricesAreEqual(DeltaOutput, StandardOutput);
 	if(matrices_are_equal) {
 		printf("Matrices are equal\n");
 	} else {
@@ -248,8 +242,8 @@ int main(int argc, char **argv) {
 	GrB_Matrix_free(&M_plus);
 	GrB_Matrix_free(&M_minus);
 	GrB_Matrix_free(&F);
-	GrB_Matrix_free(&N);
-	GrB_Matrix_free(&Output);
+	GrB_Matrix_free(&DeltaOutput);
+	GrB_Matrix_free(&StandardOutput);
 
 	return 0;
 }
