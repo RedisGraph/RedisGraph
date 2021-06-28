@@ -242,20 +242,42 @@ static void _AlgebraicExpression_PopulateOperand(AlgebraicExpression *operand,
 	 * TODO Redesign _AlgebraicExpression_FromString to remove this condition. */
 	if(operand->operand.matrix != GrB_NULL) return;
 
-	GrB_Matrix m = GrB_NULL;
-	const char *label = operand->operand.label;
+	Graph       *g            =  gc->g;
+	RG_Matrix   rgm           =  NULL;
+	GrB_Matrix  m             =  GrB_NULL;
+	GrB_Matrix  m_delta_plus  =  GrB_NULL;
+	const char  *label        =  operand->operand.label;
+
 	if(label == NULL) {
-		m = Graph_GetAdjacencyMatrix(gc->g);
+		rgm = Graph_GetRelationRGMatrix(g, GRAPH_NO_RELATION, false);
 	} else if(operand->operand.diagonal) {
 		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-		if(!s) m = Graph_GetZeroMatrix(gc->g);
-		else m = Graph_GetLabelMatrix(gc->g, s->id);
+		if(s) rgm = Graph_GetLabelRGMatrix(g, s->id);
 	} else {
 		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-		if(!s) m = Graph_GetZeroMatrix(gc->g);
-		else m = Graph_GetRelationMatrix(gc->g, s->id);
+		if(s) rgm = Graph_GetRelationRGMatrix(g, s->id, false);
 	}
-	operand->operand.matrix = m;
+
+	if(rgm == NULL) {
+		operand->operand.matrix = Graph_GetZeroMatrix(g);
+	} else {
+		GrB_Index nvals;
+		m = RG_Matrix_Get_GrB_Matrix(rgm);
+		m_delta_plus = RG_Matrix_Get_DeltaPlus(rgm);
+		GrB_Matrix_nvals(&nvals, m_delta_plus);
+		if(nvals == 0) {
+			operand->operand.matrix = m;
+		} else {
+			AlgebraicExpression *l = AlgebraicExpression_Clone(operand);
+			AlgebraicExpression *r = AlgebraicExpression_Clone(operand);
+			l->operand.matrix = m;
+			r->operand.matrix = m_delta_plus;
+			AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+			AlgebraicExpression_AddChild(add, l);
+			AlgebraicExpression_AddChild(add, r);
+			_AlgebraicExpression_InplaceRepurpose(operand, add);
+		}
+	}
 }
 
 // Populate a transposed operand with a transposed relationship matrix and swap the row/col domains.

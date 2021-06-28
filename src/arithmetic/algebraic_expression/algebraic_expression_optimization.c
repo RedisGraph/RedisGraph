@@ -530,11 +530,11 @@ void AlgebraicExpression_Optimize
 	ASSERT(exp);
 
 	AlgebraicExpression_PushDownTranspose(*exp);
-	_AlgebraicExpression_MulOverAdd(exp);
-	_AlgebraicExpression_FlattenMultiplications(*exp);
 
 	// Retrieve all operands now that they are guaranteed to be leaves.
 	_AlgebraicExpression_PopulateOperands(*exp, QueryCtx_GetGraphCtx());
+	_AlgebraicExpression_MulOverAdd(exp);
+	_AlgebraicExpression_FlattenMultiplications(*exp);
 
 	// If we are maintaining transposed matrices, all transpose operations have already been replaced.
 	bool maintain_transpose;

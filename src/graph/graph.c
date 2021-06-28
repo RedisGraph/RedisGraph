@@ -13,7 +13,7 @@
 #include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/datablock/oo_datablock.h"
 
-static GrB_BinaryOp _graph_edge_accum = NULL;
+GrB_BinaryOp _graph_edge_accum = NULL;
 // GraphBLAS binary operator for freeing edges
 static GrB_BinaryOp _binary_op_delete_edges = NULL;
 
@@ -63,63 +63,6 @@ void _binary_op_free_edge(void *z, const void *x, const void *y) {
 	}
 }
 
-/* ========================= RG_Matrix functions =============================== */
-
-// Creates a new matrix
-static RG_Matrix RG_Matrix_New(const Graph *g, GrB_Type data_type) {
-	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
-
-	matrix->dirty = true;
-	matrix->allow_multi_edge = true;
-
-	GrB_Index n = Graph_RequiredMatrixDim(g);
-	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
-	ASSERT(matrix_res == GrB_SUCCESS);
-
-	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
-	ASSERT(mutex_res == 0);
-
-	return matrix;
-}
-
-// Returns underlying GraphBLAS matrix.
-static inline GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix) {
-	return matrix->grb_matrix;
-}
-
-static inline bool RG_Matrix_IsDirty(RG_Matrix matrix) {
-	return matrix->dirty;
-}
-
-static inline void RG_Matrix_SetDirty(RG_Matrix matrix) {
-	matrix->dirty = true;
-}
-
-static inline void RG_Matrix_SetUnDirty(RG_Matrix matrix) {
-	matrix->dirty = false;
-}
-
-// Locks the matrix.
-static inline void RG_Matrix_Lock(RG_Matrix matrix) {
-	pthread_mutex_lock(&matrix->mutex);
-}
-
-// Unlocks the matrix.
-static inline void _RG_Matrix_Unlock(RG_Matrix matrix) {
-	pthread_mutex_unlock(&matrix->mutex);
-}
-
-static inline bool _RG_Matrix_MultiEdgeEnabled(const RG_Matrix matrix) {
-	return matrix->allow_multi_edge;
-}
-
-// Free RG_Matrix.
-static void RG_Matrix_Free(RG_Matrix matrix) {
-	GrB_Matrix_free(&matrix->grb_matrix);
-	pthread_mutex_destroy(&matrix->mutex);
-	rm_free(matrix);
-}
-
 /* ========================= Synchronization functions ========================= */
 
 /* Acquire a lock that does not restrict access from additional reader threads */
@@ -154,12 +97,6 @@ void Graph_WriterEnter(Graph *g) {
 /* Writer release access to graph. */
 void Graph_WriterLeave(Graph *g) {
 	pthread_mutex_unlock(&g->_writers_mutex);
-}
-
-/* Force execution of all pending operations on a matrix. */
-static inline void _Graph_ApplyPending(GrB_Matrix m) {
-	GrB_Info res = GrB_wait(&m);
-	ASSERT(res == GrB_SUCCESS);
 }
 
 /* ========================= Graph utility functions ========================= */
@@ -249,6 +186,7 @@ static inline void _Graph_SetRelationMatrixDirty(const Graph *g, int relation_id
 void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	bool dirty = RG_Matrix_IsDirty(rg_matrix);
 	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(rg_matrix);
+	GrB_Info info;
 	GrB_Index n_rows;
 	GrB_Index n_cols;
 	GrB_Matrix_nrows(&n_rows, m);
@@ -268,8 +206,8 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	// if the graph belongs to one thread, we don't need to lock the mutex
 	if(g->_writelocked) {
 		if(require_resize) {
-			GrB_Info res = GxB_Matrix_resize(m, dims, dims);
-			ASSERT(res == GrB_SUCCESS);
+			info = RG_Matrix_resize(rg_matrix, dims, dims);
+			ASSERT(info == GrB_SUCCESS);
 		}
 
 		// writer under write lock, no need to flush pending changes
@@ -294,18 +232,19 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 
 	// resize if required
 	if(require_resize) {
-		GrB_Info res = GxB_Matrix_resize(m, dims, dims);
-		ASSERT(res == GrB_SUCCESS);
+		info = RG_Matrix_resize(rg_matrix, dims, dims);
+		ASSERT(info == GrB_SUCCESS);
 	}
 
 	// flush pending changes if dirty
-	if(RG_Matrix_IsDirty(rg_matrix)) _Graph_ApplyPending(m);
-
-	RG_Matrix_SetUnDirty(rg_matrix);
+	if(RG_Matrix_IsDirty(rg_matrix)) {
+		info = RG_Matrix_wait(rg_matrix);
+		ASSERT(info == GrB_SUCCESS);
+	}
 
 cleanup:
 	// Unlock matrix mutex.
-	_RG_Matrix_Unlock(rg_matrix);
+	RG_Matrix_Unlock(rg_matrix);
 }
 
 /* Resize matrix to node capacity. */
@@ -317,9 +256,10 @@ void _MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
 	GrB_Matrix_nrows(&nrows, m);
 	GrB_Index cap = Graph_RequiredMatrixDim(g);
 
-	// This policy should only be used in a thread-safe context, so no locking is required.
+	// this policy should only be used in a thread-safe context,
+	// so no locking is required
 	if(nrows != cap || ncols != cap) {
-		GrB_Info res = GxB_Matrix_resize(m, cap, cap);
+		GrB_Info res = RG_Matrix_resize(matrix, cap, cap);
 		ASSERT(res == GrB_SUCCESS);
 	}
 }
@@ -387,9 +327,11 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->edges                =  DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity);
 	g->labels               =  array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
 	g->relations            =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-	g->adjacency_matrix     =  RG_Matrix_New(g, GrB_BOOL);
-	g->_t_adjacency_matrix  =  RG_Matrix_New(g, GrB_BOOL);
-	g->_zero_matrix         =  RG_Matrix_New(g, GrB_BOOL);
+
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+	RG_Matrix_New(&g->adjacency_matrix, GrB_BOOL, n, n);
+	RG_Matrix_New(&g->_t_adjacency_matrix, GrB_BOOL, n, n);
+	RG_Matrix_New(&g->_zero_matrix, GrB_BOOL, n, n);
 
 	// init graph statistics
 	GraphStatistics_init(&g->stats);
@@ -583,60 +525,51 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 
 	NodeID id;
 	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
-	n->id = id;
-	n->entity = en;
-	en->prop_count = 0;
-	en->properties = NULL;
+	n->id           =  id;
+	n->entity       =  en;
+	en->prop_count  =  0;
+	en->properties  =  NULL;
 
 	if(label != GRAPH_NO_LABEL) {
-		// Try to set matrix at position [id, id]
-		// incase of a failure, scale matrix.
-		RG_Matrix matrix = g->labels[label];
-		GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
-		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		// try to set matrix at position [id, id]
+		// incase of a failure, scale matrix
+		RG_Matrix m = g->labels[label];
+		GrB_Info res = RG_Matrix_setElement_BOOL(m, true, id, id);
 		if(res != GrB_SUCCESS) {
-			_MatrixResizeToCapacity(g, matrix);
-			res = GrB_Matrix_setElement_BOOL(m, true, id, id);
+			_MatrixResizeToCapacity(g, m);
+			res = RG_Matrix_setElement_BOOL(m, true, id, id);
 			ASSERT(res == GrB_SUCCESS);
 		}
-		_Graph_SetLabelMatrixDirty(g, label);
 	}
 }
 
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
 	GrB_Info info;
 	UNUSED(info);
-	RG_Matrix M = g->relations[r];
-	GrB_Matrix t_relationMat = NULL;
-	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix tadj = Graph_GetTransposedAdjacencyMatrix(g);
-	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
+	RG_Matrix  M     =  g->relations[r];
+	RG_Matrix  t_M   =  NULL;
+	RG_Matrix  adj   =  g->adjacency_matrix;
+	RG_Matrix  tadj  =  g->_t_adjacency_matrix;
 
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-	if(maintain_transpose) {
-		t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
-	}
+	if(maintain_transpose) t_M = g->t_relations[r];
 
-	// Rows represent source nodes, columns represent destination nodes.
+	// rows represent source nodes, columns represent destination nodes.
 	edge_id = SET_MSB(edge_id);
-	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
-	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
+	RG_Matrix_setElement_BOOL(adj, true, src, dest);
+	RG_Matrix_setElement_BOOL(tadj, true, dest, src);
 
-	// set matrices as dirty
-	_Graph_SetRelationMatrixDirty(g, r);
-	_Graph_SetAdjacencyMatrixDirty(g);
-
-	// An edge of type r has just been created, update statistics.
+	// an edge of type r has just been created, update statistics
 	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
 
-	// Matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign.
-	if(_RG_Matrix_MultiEdgeEnabled(M)) {
+	// matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign
+	if(RG_Matrix_MultiEdgeEnabled(M)) {
 		GrB_Index I = src;
 		GrB_Index J = dest;
-		info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+		info = RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 			   (
-				   relationMat,          // input/output matrix for results
+				   M,                    // input/output matrix for results
 				   GrB_NULL,             // optional mask for C(I,J), unused if NULL
 				   _graph_edge_accum,    // optional accum for Z=accum(C(I,J),x)
 				   edge_id,              // scalar to assign to C(I,J)
@@ -648,12 +581,12 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 			   );
 		ASSERT(info == GrB_SUCCESS);
 
-		// Update the transposed matrix if one is present.
-		if(t_relationMat != NULL) {
-			// Perform the same update to the J,I coordinates of the transposed matrix.
-			info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+		// update the transposed matrix if one is present
+		if(t_M != NULL) {
+			// perform the same update to the J,I coordinates of the transposed matrix
+			info = RG_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
 				   (
-					   t_relationMat,       // input/output matrix for results
+					   t_M,                 // input/output matrix for results
 					   GrB_NULL,            // optional mask for C(J,I), unused if NULL
 					   _graph_edge_accum,   // optional accum for Z=accum(C(J,I),x)
 					   edge_id,             // scalar to assign to C(J,I)
@@ -666,13 +599,13 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 			ASSERT(info == GrB_SUCCESS);
 		}
 	} else {
-		// Multi-edge is disabled, use GrB_Matrix_setElement.
-		info = GrB_Matrix_setElement_UINT64(relationMat, edge_id, src, dest);
+		// multi-edge is disabled, use GrB_Matrix_setElement
+		info = RG_Matrix_setElement_UINT64(M, edge_id, src, dest);
 		ASSERT(info == GrB_SUCCESS);
 
-		// Update the transposed matrix if one is present.
-		if(t_relationMat != NULL) {
-			info = GrB_Matrix_setElement_UINT64(t_relationMat, edge_id, dest, src);
+		// update the transposed matrix if one is present
+		if(t_M != NULL) {
+			info = RG_Matrix_setElement_UINT64(t_M, edge_id, dest, src);
 			ASSERT(info == GrB_SUCCESS);
 		}
 	}
@@ -1346,18 +1279,10 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 int Graph_AddLabel(Graph *g) {
 	ASSERT(g != NULL);
 
+	RG_Matrix m;
 	GrB_Info info;
-	RG_Matrix m = RG_Matrix_New(g, GrB_BOOL);
-
-	/* matrix iterator requires matrix format to be sparse
-	 * to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
-	 * we set matrix format at creation time, as Label matrices are iterated
-	 * within the LabelScan Execution-Plan operation. */
-
-	GrB_Matrix M = RG_Matrix_Get_GrB_Matrix(m);
-	info = GxB_set(M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	UNUSED(info);
-	ASSERT(info == GrB_SUCCESS);
+	size_t n = Graph_RequiredMatrixDim(g);
+	RG_Matrix_New(&m, GrB_BOOL, n, n);
 
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
@@ -1366,15 +1291,19 @@ int Graph_AddLabel(Graph *g) {
 int Graph_AddRelationType(Graph *g) {
 	ASSERT(g);
 
-	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
+	RG_Matrix m;
+	size_t n = Graph_RequiredMatrixDim(g);
+	RG_Matrix_New(&m, GrB_UINT64, n, n);
+
 	array_append(g->relations, m);
-	// Adding a new relationship type, update the stats structures to support it.
+	// adding a new relationship type, update the stats structures to support it
 	GraphStatistics_IntroduceRelationship(&g->stats);
+
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-
 	if(maintain_transpose) {
-		RG_Matrix tm = RG_Matrix_New(g, GrB_UINT64);
+		RG_Matrix tm;
+		RG_Matrix_New(&tm, GrB_UINT64, n, n);
 		array_append(g->t_relations, tm);
 	}
 
@@ -1451,6 +1380,45 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
 	GrB_Matrix_nvals(&nvals, grb_z);
 	assert(nvals == 0);
 	return grb_z;
+}
+
+RG_Matrix Graph_GetLabelRGMatrix
+(
+	const Graph *g,
+	int label_idx
+) {
+	ASSERT(g && label_idx < array_len(g->labels));
+	RG_Matrix m = g->labels[label_idx];
+	g->SynchronizeMatrix(g, m);
+	return m;
+}
+
+RG_Matrix Graph_GetRelationRGMatrix
+(
+	const Graph *g,
+	int relation,
+	bool transpose
+) {
+	ASSERT(g != NULL);
+	ASSERT((relation == GRAPH_NO_RELATION ||
+			relation < Graph_RelationTypeCount(g)));
+
+	if(transpose) {
+		// TODO: validate we're maintaining transposes
+	}
+
+	RG_Matrix m = NULL;
+
+	if(relation == GRAPH_NO_RELATION) {
+		m = (transpose) ? g->_t_adjacency_matrix : g->adjacency_matrix;
+	} else {
+		m = (transpose) ? g->t_relations[relation] : g->relations[relation];
+	}
+
+	ASSERT(m != NULL);
+	g->SynchronizeMatrix(g, m);
+
+	return m;
 }
 
 void Graph_Free(Graph *g) {

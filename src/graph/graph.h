@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 #include "rax.h"
+#include "rg_matrix.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
@@ -50,15 +51,6 @@ typedef enum {
 	RESIZE_TO_CAPACITY,
 	DISABLED,
 } MATRIX_POLICY;
-
-// Forward declaration of RG_Matrix type. Internal to graph.
-typedef struct {
-	bool dirty;                         // Indicates if matrix requires sync
-	bool allow_multi_edge;              // Entry i,j can contain multiple edges
-	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix.
-	pthread_mutex_t mutex;              // Lock.
-} _RG_Matrix;
-typedef _RG_Matrix *RG_Matrix;
 
 // Forward declaration of Graph struct
 typedef struct Graph Graph;
@@ -333,7 +325,23 @@ GrB_Matrix Graph_GetTransposedRelationMatrix(
 // Retrieves the zero matrix.
 // The function will resize it to match all other
 // internal matrices, caller mustn't modify it in any way.
-GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
+GrB_Matrix Graph_GetZeroMatrix
+(
+	const Graph *g
+);
+
+RG_Matrix Graph_GetLabelRGMatrix
+(
+	const Graph *g,
+	int label_idx
+);
+
+RG_Matrix Graph_GetRelationRGMatrix
+(
+	const Graph *g,
+	int relation,
+	bool transpose
+);
 
 // Free graph.
 void Graph_Free(
