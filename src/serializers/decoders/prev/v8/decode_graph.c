@@ -40,7 +40,7 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 
 static void _EnableMultiEdgeSupport(Graph *g) {
 	uint n = Graph_RelationTypeCount(g);
-	for(uint i = 0; i < n; i++) g->relations[i]->allow_multi_edge = true;
+	for(uint i = 0; i < n; i++) RG_Matrix_setMultiEdge(g->relations[i], true);
 }
 
 static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
@@ -82,7 +82,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 			// Enable/Disable support for multi-edge
 			// we will enable support for multi-edge on all relationship
 			// matrices once we finish loading the graph
-			g->relations[i]->allow_multi_edge = multi_edge[i];
+			RG_Matrix_setMultiEdge(g->relations[i], multi_edge[i]);
 		}
 
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);

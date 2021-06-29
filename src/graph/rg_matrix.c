@@ -2,26 +2,27 @@
 #include "rg_matrix.h"
 #include "../util/rmalloc.h"
 
-#define DELTA_MAX_PENDING_CHANGES 100000
-#define RG_MATRIX_INTERNAL_MATRIX(rg_matrix) (rg_matrix)->grb_matrix
-#define RG_MATRIX_INTERNAL_DELTA_PLUS(rg_matrix) (rg_matrix)->delta_plus
-#define RG_MATRIX_INTERNAL_DELTA_MINUS(rg_matrix) (rg_matrix)->delta_minus
+#define DELTA_MAX_PENDING_CHANGES 1000
+#define RG_MATRIX_MATRIX(rg_matrix) (rg_matrix)->grb_matrix
+#define RG_MATRIX_DELTA_PLUS(rg_matrix) (rg_matrix)->delta_plus
+#define RG_MATRIX_DELTA_MINUS(rg_matrix) (rg_matrix)->delta_minus
 
 extern GrB_BinaryOp _graph_edge_accum;
 
 // Creates a new matrix
-GrB_Info RG_Matrix_New
+GrB_Info RG_Matrix_new
 (
 	RG_Matrix *A,
-    GrB_Type type,
-    GrB_Index nrows,
-    GrB_Index ncols
+	GrB_Type type,
+	GrB_Index nrows,
+	GrB_Index ncols,
+	bool multi_edge
 ) {
 	GrB_Info info;
 	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
 
 	matrix->dirty = true;
-	matrix->allow_multi_edge = true;
+	matrix->multi_edge = multi_edge;
 
 	info = GrB_Matrix_new(&matrix->grb_matrix, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
@@ -45,51 +46,78 @@ GrB_Info RG_Matrix_New
 // Returns underlying GraphBLAS matrix.
 GrB_Matrix RG_Matrix_Get_GrB_Matrix
 (
-	const RG_Matrix matrix
+	const RG_Matrix C
 ) {
-	ASSERT(matrix != NULL);
-	return RG_MATRIX_INTERNAL_MATRIX(matrix);
+	ASSERT(C != NULL);
+	return RG_MATRIX_MATRIX(C);
 }
 
 // returns underlying delta plus GraphBLAS matrix
 GrB_Matrix RG_Matrix_Get_DeltaPlus
 (
-	RG_Matrix matrix
+	RG_Matrix C
 ) {
-	ASSERT(matrix != NULL);
-	return RG_MATRIX_INTERNAL_DELTA_PLUS(matrix);
+	ASSERT(C != NULL);
+	return RG_MATRIX_DELTA_PLUS(C);
 }
 
-bool RG_Matrix_IsDirty(const RG_Matrix matrix) {
-	ASSERT(matrix);
-	return matrix->dirty;
+bool RG_Matrix_IsDirty
+(
+	const RG_Matrix C
+) {
+	ASSERT(C);
+	return C->dirty;
 }
 
-void RG_Matrix_SetDirty(RG_Matrix matrix) {
-	ASSERT(matrix);
-	matrix->dirty = true;
+void RG_Matrix_SetDirty
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	C->dirty = true;
 }
 
-void RG_Matrix_SetUnDirty(RG_Matrix matrix) {
-	ASSERT(matrix);
-	matrix->dirty = false;
+void RG_Matrix_SetUnDirty
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	C->dirty = false;
 }
 
-// Locks the matrix.
-void RG_Matrix_Lock(RG_Matrix matrix) {
-	ASSERT(matrix);
-	pthread_mutex_lock(&matrix->mutex);
+// locks the matrix
+void RG_Matrix_Lock
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	pthread_mutex_lock(&C->mutex);
 }
 
-// Unlocks the matrix.
-void RG_Matrix_Unlock(RG_Matrix matrix) {
-	ASSERT(matrix);
-	pthread_mutex_unlock(&matrix->mutex);
+// unlocks the matrix
+void RG_Matrix_Unlock
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	pthread_mutex_unlock(&C->mutex);
 }
 
-bool RG_Matrix_MultiEdgeEnabled(const RG_Matrix matrix) {
-	ASSERT(matrix);
-	return matrix->allow_multi_edge;
+void RG_Matrix_setMultiEdge
+(
+	RG_Matrix C,
+	bool multi_edge
+) {
+	ASSERT(C);
+	C->multi_edge = multi_edge;
+}
+
+bool RG_Matrix_getMultiEdge
+(
+	const RG_Matrix C
+) {
+	ASSERT(C);
+	return C->multi_edge;
 }
 
 GrB_Info RG_Matrix_resize       // change the size of a matrix
@@ -101,9 +129,9 @@ GrB_Info RG_Matrix_resize       // change the size of a matrix
 	ASSERT(C != NULL);
 	GrB_Info info;
 
-	GrB_Matrix  m            =  RG_MATRIX_INTERNAL_MATRIX(C);
-	GrB_Matrix  delta_plus   =  RG_MATRIX_INTERNAL_DELTA_PLUS(C);
-	GrB_Matrix  delta_minus  =  RG_MATRIX_INTERNAL_DELTA_MINUS(C);
+	GrB_Matrix  m            =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
 
 	info = GrB_Matrix_resize(m, nrows_new, ncols_new);
 	ASSERT(info == GrB_SUCCESS);
@@ -127,7 +155,7 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 	ASSERT(C != NULL);
 
 	GrB_Info info;
-	GrB_Matrix delta_plus = RG_MATRIX_INTERNAL_DELTA_PLUS(C);
+	GrB_Matrix delta_plus = RG_MATRIX_DELTA_PLUS(C);
 	info = GrB_Matrix_setElement_BOOL(delta_plus, x, i, j);
 	if(info == GrB_SUCCESS) RG_Matrix_SetDirty(C);
 	return info;
@@ -143,7 +171,7 @@ GrB_Info RG_Matrix_setElement_UINT64      // C (i,j) = x
 	ASSERT(C != NULL);
 
 	GrB_Info info;
-	GrB_Matrix delta_plus = RG_MATRIX_INTERNAL_DELTA_PLUS(C);
+	GrB_Matrix delta_plus = RG_MATRIX_DELTA_PLUS(C);
 	info = GrB_Matrix_setElement_UINT64(delta_plus, x, i, j);
 	if(info == GrB_SUCCESS) RG_Matrix_SetDirty(C);
 	return info;
@@ -164,7 +192,7 @@ GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 	ASSERT(C != NULL);
 
 	GrB_Info info;
-	GrB_Matrix delta_plus = RG_MATRIX_INTERNAL_DELTA_PLUS(C);
+	GrB_Matrix delta_plus = RG_MATRIX_DELTA_PLUS(C);
 
 	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
 		(
@@ -189,28 +217,51 @@ GrB_Info RG_Matrix_sync
 ) {
 	ASSERT(C != NULL);
 
-	GrB_Matrix      m            =  RG_MATRIX_INTERNAL_MATRIX(C);
+	GrB_Matrix      m            =  RG_MATRIX_MATRIX(C);
 	GrB_Descriptor  desc         =  GrB_NULL;
 	GrB_Matrix      mask         =  GrB_NULL;
-	GrB_Matrix      delta_plus   =  RG_MATRIX_INTERNAL_DELTA_PLUS(C);
-	GrB_Matrix      delta_minus  =  RG_MATRIX_INTERNAL_DELTA_MINUS(C);
+	GrB_Matrix      delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix      delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
 
-	GrB_Index nvals;
-	GrB_Matrix_nvals(&nvals, delta_plus);
+	GrB_Info info;
+	GrB_Semiring semiring;
+	GrB_Index delta_plus_nvals;
+	GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
 
 	// no changes
-	if(nvals == 0) return GrB_SUCCESS;
+	if(delta_plus_nvals == 0) return GrB_SUCCESS;
 
-	GrB_Matrix_nvals(&nvals, delta_minus);
-	if(nvals > 0) {
+	GrB_Index delta_minus_nvals;
+	GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
+	if(delta_minus_nvals > 0) {
 		mask = delta_minus;
 		desc = GrB_DESC_SC;
 	}
 
-	// add delta-plus to 'm' using delta-minus as a mask
-	GrB_Info info = GrB_Matrix_eWiseAdd_Semiring (m, mask, _graph_edge_accum,
-			GxB_ANY_PAIR_BOOL, m, delta_plus, desc);
-	ASSERT(info == GrB_SUCCESS);
+	GxB_print(m, GxB_COMPLETE);
+	GxB_print(delta_plus, GxB_COMPLETE);
+	GxB_print(delta_minus, GxB_COMPLETE);
+
+	GrB_Type t;
+	info = GxB_Matrix_type(&t, m);
+
+	if(t == GrB_BOOL) {
+		semiring = GxB_ANY_PAIR_BOOL;
+	} else {
+		// TODO: figure out which semiring to use
+		semiring = GxB_ANY_SECOND_UINT64;
+	}
+
+	if(C->multi_edge) {
+		// add delta-plus to 'm' using delta-minus as a mask
+		info = GrB_Matrix_eWiseAdd_Semiring(m, mask, _graph_edge_accum,
+				semiring, m, delta_plus, desc);
+		ASSERT(info == GrB_SUCCESS);
+	} else {
+		info = GrB_Matrix_eWiseAdd_Semiring(m, mask, GrB_NULL,
+				semiring, m, delta_plus, desc);
+		ASSERT(info == GrB_SUCCESS);
+	}
 
 	info = GrB_Matrix_clear(delta_plus);
 	ASSERT(info == GrB_SUCCESS);
@@ -228,9 +279,9 @@ GrB_Info RG_Matrix_wait
 	ASSERT(A != NULL);
 	
 	GrB_Info    info         =  GrB_SUCCESS;
-	GrB_Matrix  m            =  RG_MATRIX_INTERNAL_MATRIX(A);
-	GrB_Matrix  delta_plus   =  RG_MATRIX_INTERNAL_DELTA_PLUS(A);
-	GrB_Matrix  delta_minus  =  RG_MATRIX_INTERNAL_DELTA_MINUS(A);
+	GrB_Matrix  m            =  RG_MATRIX_MATRIX(A);
+	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(A);
+	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(A);
 
 	info = GrB_wait(&m);
 	ASSERT(info == GrB_SUCCESS);
@@ -257,14 +308,14 @@ GrB_Info RG_Matrix_wait
 
 void RG_Matrix_Free
 (
-	RG_Matrix matrix
+	RG_Matrix C
 ) {
-	ASSERT(matrix != NULL);
+	ASSERT(C != NULL);
 
-	if(matrix->grb_matrix  != NULL) GrB_Matrix_free(&matrix->grb_matrix);
-	if(matrix->delta_plus  != NULL) GrB_Matrix_free(&matrix->delta_plus);
-	if(matrix->delta_minus != NULL) GrB_Matrix_free(&matrix->delta_minus);
-	pthread_mutex_destroy(&matrix->mutex);
-	rm_free(matrix);
+	if(C->grb_matrix  != NULL) GrB_Matrix_free(&C->grb_matrix);
+	if(C->delta_plus  != NULL) GrB_Matrix_free(&C->delta_plus);
+	if(C->delta_minus != NULL) GrB_Matrix_free(&C->delta_minus);
+	pthread_mutex_destroy(&C->mutex);
+	rm_free(C);
 }
 

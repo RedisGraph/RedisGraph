@@ -329,9 +329,9 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->relations            =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_New(&g->adjacency_matrix, GrB_BOOL, n, n);
-	RG_Matrix_New(&g->_t_adjacency_matrix, GrB_BOOL, n, n);
-	RG_Matrix_New(&g->_zero_matrix, GrB_BOOL, n, n);
+	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n, false);
+	RG_Matrix_new(&g->_t_adjacency_matrix, GrB_BOOL, n, n, false);
+	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n, false);
 
 	// init graph statistics
 	GraphStatistics_init(&g->stats);
@@ -562,7 +562,7 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
 
 	// matrix multi-edge is enable for this matrix, use GxB_Matrix_subassign
-	if(RG_Matrix_MultiEdgeEnabled(M)) {
+	if(RG_Matrix_getMultiEdge(M)) {
 		GrB_Index I = src;
 		GrB_Index J = dest;
 		info = RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
@@ -1280,7 +1280,7 @@ int Graph_AddLabel(Graph *g) {
 	RG_Matrix m;
 	GrB_Info info;
 	size_t n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_New(&m, GrB_BOOL, n, n);
+	RG_Matrix_new(&m, GrB_BOOL, n, n, false);
 
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
@@ -1291,7 +1291,7 @@ int Graph_AddRelationType(Graph *g) {
 
 	RG_Matrix m;
 	size_t n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_New(&m, GrB_UINT64, n, n);
+	RG_Matrix_new(&m, GrB_UINT64, n, n, true);
 
 	array_append(g->relations, m);
 	// adding a new relationship type, update the stats structures to support it
@@ -1301,7 +1301,7 @@ int Graph_AddRelationType(Graph *g) {
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 	if(maintain_transpose) {
 		RG_Matrix tm;
-		RG_Matrix_New(&tm, GrB_UINT64, n, n);
+		RG_Matrix_new(&tm, GrB_UINT64, n, n, true);
 		array_append(g->t_relations, tm);
 	}
 
@@ -1373,10 +1373,14 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
 	RG_Matrix z = g->_zero_matrix;
 	g->SynchronizeMatrix(g, z);
 
-	// Make sure zero matrix is indeed empty.
 	GrB_Matrix grb_z = RG_Matrix_Get_GrB_Matrix(z);
+
+#if RG_DEBUG
+	// make sure zero matrix is indeed empty
 	GrB_Matrix_nvals(&nvals, grb_z);
-	assert(nvals == 0);
+	ASSERT(nvals == 0);
+#endif
+
 	return grb_z;
 }
 

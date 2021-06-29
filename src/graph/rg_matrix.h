@@ -12,7 +12,7 @@
 // Forward declaration of RG_Matrix type. Internal to graph.
 typedef struct {
 	bool dirty;                         // Indicates if matrix requires sync
-	bool allow_multi_edge;              // Entry i,j can contain multiple edges
+	bool multi_edge;                    // Entry i,j can contain multiple edges
 	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
@@ -20,56 +20,63 @@ typedef struct {
 } _RG_Matrix;
 typedef _RG_Matrix *RG_Matrix;
 
-GrB_Info RG_Matrix_New
+GrB_Info RG_Matrix_new
 (
     RG_Matrix *A,           // handle of matrix to create
     GrB_Type type,          // type of matrix to create
     GrB_Index nrows,        // matrix dimension is nrows-by-ncols
-    GrB_Index ncols
+    GrB_Index ncols,
+    bool multi_edge         // alow multi edge
 );
 
 // returns underlying GraphBLAS matrix
 GrB_Matrix RG_Matrix_Get_GrB_Matrix
 (
-	RG_Matrix matrix
+	RG_Matrix C
 );
 
 // returns underlying delta plus GraphBLAS matrix
 GrB_Matrix RG_Matrix_Get_DeltaPlus
 (
-	RG_Matrix matrix
+	RG_Matrix C
 );
 
 bool RG_Matrix_IsDirty
 (
-	const RG_Matrix matrix
+	const RG_Matrix C
 );
 
 void RG_Matrix_SetDirty
 (
-	RG_Matrix matrix
+	RG_Matrix C
 );
 
 void RG_Matrix_SetUnDirty
 (
-	RG_Matrix matrix
+	RG_Matrix C
 );
 
 // locks the matrix
 void RG_Matrix_Lock
 (
-	RG_Matrix matrix
+	RG_Matrix C
 );
 
 // unlocks the matrix
 void RG_Matrix_Unlock
 (
-	RG_Matrix matrix
+	RG_Matrix C
 );
 
-bool RG_Matrix_MultiEdgeEnabled
+void RG_Matrix_setMultiEdge
 (
-	const RG_Matrix matrix
+	RG_Matrix C,
+	bool multi_edge
+);
+
+bool RG_Matrix_getMultiEdge
+(
+	const RG_Matrix C
 );
 
 GrB_Info RG_Matrix_resize      // change the size of a matrix
@@ -110,11 +117,11 @@ GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 
 GrB_Info RG_Matrix_wait
 (
-	RG_Matrix A
+	RG_Matrix C
 );
 
 void RG_Matrix_Free
 (
-	RG_Matrix matrix
+	RG_Matrix C
 );
 
