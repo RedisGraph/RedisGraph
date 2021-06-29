@@ -1367,6 +1367,9 @@ int Graph_AddRelationType(Graph *g) {
 	ASSERT(g);
 
 	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
+	GrB_Info info = GxB_set(m->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	UNUSED(info);
+	ASSERT(info == GrB_SUCCESS);
 	array_append(g->relations, m);
 	// Adding a new relationship type, update the stats structures to support it.
 	GraphStatistics_IntroduceRelationship(&g->stats);
