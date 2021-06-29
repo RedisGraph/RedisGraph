@@ -16,7 +16,6 @@ static void _AllNeighborsCtx_CollectNeighbors
 ) {
 	ctx->current_level++;
 	if(ctx->current_level == array_len(ctx->levels)) {
-		ASSERT(ctx->M);
 		GxB_MatrixTupleIter iter;
 		GxB_MatrixTupleIter_reuse(&iter, ctx->M);
 		array_append(ctx->levels, iter);
@@ -53,9 +52,6 @@ void AllNeighborsCtx_Reset
 	ASSERT(ctx->levels   != NULL);
 	ASSERT(ctx->visited  != NULL);
 
-	// make sure matrix is not bitmap or full
-	GxB_set(ctx->M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-
 	ctx->M              =  M;
 	ctx->src            =  src;
 	ctx->minLen         =  minLen;
@@ -79,9 +75,6 @@ AllNeighborsCtx *AllNeighborsCtx_New
 ) {
 	ASSERT(M   != NULL);
 	ASSERT(src != INVALID_ENTITY_ID);
-
-	// make sure matrix is not bitmap or full
-	GxB_set(M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 
 	AllNeighborsCtx *ctx = rm_calloc(1, sizeof(AllNeighborsCtx));
 

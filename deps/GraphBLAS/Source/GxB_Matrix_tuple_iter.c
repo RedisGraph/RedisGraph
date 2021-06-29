@@ -194,6 +194,9 @@ GrB_Info GxB_MatrixTupleIter_reuse
 	GB_RETURN_IF_NULL(iter) ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
+	// make sure matrix is not bitmap or full
+	GxB_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+
 	GrB_Index nrows;
 	GrB_Matrix_nrows(&nrows, A) ;
 
