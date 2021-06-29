@@ -105,14 +105,14 @@ void Register_PointFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_NULL | T_MAP);
+	array_append(types, T_NULL | T_MAP);
 	func_desc = AR_FuncDescNew("point", AR_TOPOINT, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
 
 	types = array_new(SIType, 2);
-	types = array_append(types, T_NULL | T_POINT);
-	types = array_append(types, T_NULL | T_POINT);
+	array_append(types, T_NULL | T_POINT);
+	array_append(types, T_NULL | T_POINT);
 	func_desc = AR_FuncDescNew("distance", AR_DISTANCE, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 }

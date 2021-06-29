@@ -1,4 +1,4 @@
-REDIS_VERSION=6.2.3
+REDIS_VERSION=6.2.4
 PRODUCT=redisgraph
 DOCKER_ORG=redislabs
 

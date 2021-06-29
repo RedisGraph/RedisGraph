@@ -18,6 +18,11 @@ LDFLAGS += -ldl
 CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -fopenmp
 CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
 
+ifeq ($(COV),1)
+CXXFLAGS += --coverage
+LDFLAGS += --coverage
+endif
+
 REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
 
 CCCOLOR="\033[34m"

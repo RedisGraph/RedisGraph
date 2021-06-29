@@ -21,7 +21,8 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
-        self.install("git automake libtool autoconf astyle")
+        self.run("%s/bin/enable-utf8" % READIES)
+        self.install("git automake libtool autoconf")
 
     def debian_compat(self):
         self.install("locales")
@@ -30,6 +31,7 @@ class RedisGraphSetup(paella.Setup):
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
+        self.run("%s/bin/getepel" % READIES)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
         self.install_peg()
@@ -48,6 +50,7 @@ class RedisGraphSetup(paella.Setup):
         self.install("valgrind")
 
     def common_last(self):
+        self.install("astyle", _try=True) # fails for centos7
         self.run("%s/bin/getcmake" % READIES)
         self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
 

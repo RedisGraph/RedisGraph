@@ -1,7 +1,7 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: test unit flow tck memcheck benchmark clean
+.PHONY: test unit flow tck memcheck benchmark fuzz clean
 
 TEST_ARGS+=--clear-logs
 
@@ -35,7 +35,17 @@ endif
 # Set the RLTest arguments to check for memory leaks.
 MEMCHECK_ARGS = $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(shell pwd)/../src/valgrind.supp
 
-test: unit flow tck
+ifeq ($(UNIT),1)
+TESTS += unit
+else ifeq ($(FLOW),1)
+TESTS += flow
+else ifeq ($(TCK),1)
+TESTS += tck
+else
+TESTS=unit flow tck
+endif
+
+test: $(TESTS)
 
 unit:
 	### unit tests
@@ -57,6 +67,9 @@ memcheck:
 
 benchmark:
 	cd benchmarks; $(BENCHMARK_ARGS) ; cd ..
+
+fuzz:
+	@$(MAKE) -C fuzz FUZZ_TIMEOUT="$(FUZZ_TIMEOUT)"
 
 clean:
 	@find . -name '*.[oad]' -type f -delete

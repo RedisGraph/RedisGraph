@@ -90,8 +90,8 @@ void Index_AddField(Index *idx, const char *field) {
 	if(Index_ContainsAttribute(idx, fieldID)) return;
 
 	idx->fields_count++;
-	idx->fields = array_append(idx->fields, rm_strdup(field));
-	idx->fields_ids = array_append(idx->fields_ids, fieldID);
+	array_append(idx->fields, rm_strdup(field));
+	array_append(idx->fields_ids, fieldID);
 }
 
 // Removes fields from index.

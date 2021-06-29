@@ -195,7 +195,7 @@ static Record MergeConsume(OpBase *opBase) {
 	if(op->bound_variable_stream) {
 		Record input_record;
 		while((input_record = _pullFromStream(op->bound_variable_stream))) {
-			op->input_records = array_append(op->input_records, input_record);
+			array_append(op->input_records, input_record);
 		}
 	}
 
@@ -231,7 +231,7 @@ static Record MergeConsume(OpBase *opBase) {
 		while((rhs_record = _pullFromStream(op->match_stream))) {
 			// pattern was successfully matched
 			should_create_pattern = false;
-			op->output_records = array_append(op->output_records, rhs_record);
+			array_append(op->output_records, rhs_record);
 			match_count++;
 		}
 
@@ -282,7 +282,7 @@ static Record MergeConsume(OpBase *opBase) {
 			uint create_count = 0;
 			Record created_record;
 			while((created_record = _pullFromStream(op->create_stream))) {
-				op->output_records = array_append(op->output_records,
+				array_append(op->output_records,
 						created_record);
 				create_count ++;
 			}

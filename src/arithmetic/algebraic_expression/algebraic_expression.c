@@ -74,7 +74,7 @@ static AlgebraicExpression *_AlgebraicExpression_RemoveOperand
 
 	// search for operand
 	while(current->type == AL_OPERATION) {
-		stack = array_append(stack, current);
+		array_append(stack, current);
 		switch(current->operation.op) {
 		case AL_EXP_TRANSPOSE:
 			transpose = !transpose;
@@ -518,7 +518,7 @@ void AlgebraicExpression_AddChild
 	AlgebraicExpression *child  // Child node to attach.
 ) {
 	ASSERT(root && root->type == AL_OPERATION);
-	root->operation.children = array_append(root->operation.children, child);
+	array_append(root->operation.children, child);
 }
 
 // Remove leftmost child node from root.

@@ -18,7 +18,7 @@ static void _AllNeighborsCtx_CollectNeighbors
 	GxB_MatrixTupleIter *iter;
 	if(ctx->current_level == array_len(ctx->levels)) {
 		GxB_MatrixTupleIter_new(&iter, ctx->M);
-		ctx->levels = array_append(ctx->levels, iter);
+		array_append(ctx->levels, iter);
 	} else {
 		iter = ctx->levels[ctx->current_level];
 	}
@@ -40,6 +40,39 @@ static bool _AllNeighborsCtx_Visited
 	return false;
 }
 
+void AllNeighborsCtx_Reset
+(
+	AllNeighborsCtx *ctx,  // all neighbors context to reset
+	EntityID src,          // source node from which to traverse
+	GrB_Matrix M,          // matrix describing connections
+	uint minLen,           // minimum traversal depth
+	uint maxLen            // maximum traversal depth
+) {
+	ASSERT(M             != NULL);
+	ASSERT(src           != INVALID_ENTITY_ID);
+	ASSERT(ctx           != NULL);
+	ASSERT(ctx->levels   != NULL);
+	ASSERT(ctx->visited  != NULL);
+
+	ctx->M              =  M;
+	ctx->src            =  src;
+	ctx->minLen         =  minLen;
+	ctx->maxLen         =  maxLen;
+	ctx->first_pull     =  true;
+	ctx->current_level  =  0;
+
+	// free each level
+	uint levelsCount = array_len(ctx->levels);
+	for(uint i = 0; i < levelsCount; i++) {
+		GxB_MatrixTupleIter_free(ctx->levels[i]);
+	}
+	array_clear(ctx->levels);
+	array_clear(ctx->visited);
+
+	// Null iterator at level 0
+	array_append(ctx->levels, NULL);
+}
+
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
@@ -47,10 +80,10 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth
 ) {
-	ASSERT(M != NULL);
+	ASSERT(M   != NULL);
 	ASSERT(src != INVALID_ENTITY_ID);
 
-	AllNeighborsCtx *ctx = rm_malloc(sizeof(AllNeighborsCtx));
+	AllNeighborsCtx *ctx = rm_calloc(1, sizeof(AllNeighborsCtx));
 
 	ctx->M              =  M;
 	ctx->src            =  src;
@@ -62,7 +95,7 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	ctx->current_level  =  0;
 
 	// Null iterator at level 0
-	ctx->levels = array_append(ctx->levels, NULL);
+	array_append(ctx->levels, NULL);
 
 	return ctx;
 }
@@ -78,7 +111,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 		ctx->first_pull = false;
 
 		// update visited path, replace frontier with current node
-		ctx->visited = array_append(ctx->visited, ctx->src);
+		array_append(ctx->visited, ctx->src);
 
 		// current_level >= ctx->minLen
 		// see if we should expand further?
@@ -108,7 +141,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 		}
 
 		// update visited path, replace frontier with current node
-		ctx->visited = array_append(ctx->visited, dest_id);
+		array_append(ctx->visited, dest_id);
 
 		if(ctx->current_level < ctx->minLen) {
 			// continue traversing
