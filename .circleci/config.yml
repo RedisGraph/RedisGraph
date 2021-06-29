@@ -330,7 +330,8 @@ jobs:
           at: /workspace
       - run:
           name: Unzip module artifact
-          command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
+          command: |
+            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
       - benchmark-automation
 
   nightly_performance_automation:
