@@ -579,8 +579,8 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	return GRAPH_NO_RELATION;
 }
 
-void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, int r,
-								   Edge **edges) {
+void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID,
+								   int r, Edge **edges) {
 	ASSERT(g && r < Graph_RelationTypeCount(g) && edges);
 
 	// Invalid relation type specified; this can occur on multi-type traversals like:
@@ -610,6 +610,7 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
 	n->id = id;
 	n->entity = en;
+	n->labelID = label;
 	en->prop_count = 0;
 	en->properties = NULL;
 
@@ -957,42 +958,20 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 	GrB_free(&thunk);
 }
 
-static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
-							 uint *node_deleted, uint *edge_deleted) {
-	ASSERT(g && g->_writelocked && nodes && node_count > 0);
+static void _BulkDeleteImplicitEdges(Graph *g, GrB_Matrix Mask) {
+	GrB_Matrix          adj;        // adjacency matrix
+	GrB_Matrix          tadj;       // transposed adjacency matrix
+	GrB_Index           nrows;
+	GrB_Index           ncols;
+	GrB_Matrix          A;          // a = R(M) masked relation matrix
+	GrB_Descriptor      desc;       // GraphBLAS descriptor
 
-	if(!_select_delete_edges) {
-		// The select operator has not yet been constructed; build it now.
-		GrB_Info res;
-		res = GxB_SelectOp_new(&_select_delete_edges, _select_op_free_edge, GrB_UINT64, GrB_UINT64);
-		UNUSED(res);
-		ASSERT(res == GrB_SUCCESS);
-	}
-
-	/* Create a matrix M where M[j,i] = 1 where:
-	 * Node i is connected to node j. */
-
-	GrB_Matrix A;                       // A = R(M) masked relation matrix.
-	GrB_Index nvals;                    // Number of elements in mask.
-	GrB_Matrix Mask;                    // Mask noteing all implicitly deleted edges.
-	GrB_Matrix Nodes;                   // Mask noteing each node marked for deletion.
-	GrB_Matrix adj;                     // Adjacency matrix.
-	GrB_Matrix tadj;                    // Transposed adjacency matrix.
-	GrB_Descriptor desc;                // GraphBLAS descriptor.
-	GxB_MatrixTupleIter *adj_iter;      // iterator over the adjacency matrix.
-	GxB_MatrixTupleIter *tadj_iter;     // iterator over the transposed adjacency matrix.
-
+	nrows = Graph_RequiredMatrixDim(g);
+	ncols = nrows;
 	GrB_Descriptor_new(&desc);
 	adj = Graph_GetAdjacencyMatrix(g);
 	tadj = Graph_GetTransposedAdjacencyMatrix(g);
-	GxB_MatrixTupleIter_new(&adj_iter, adj);
-	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
-	GrB_Matrix_new(&A, GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	GrB_Matrix_new(&Mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	GrB_Matrix_new(&Nodes, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-
-	// mark matrices as dirty
-	_Graph_SetAdjacencyMatrixDirty(g);
+	GrB_Matrix_new(&A, GrB_UINT64, nrows, ncols);
 
 	/* For user-defined select operators,
 	 * If Thunk is not NULL, it must be a valid GxB_Scalar. If it has no entry,
@@ -1005,42 +984,6 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GxB_Scalar_new(&thunk, GrB_UINT64);
 	GxB_Scalar_setElement_UINT64(thunk, (uint64_t)g);
 
-	// Populate mask with implicit edges, take note of deleted nodes.
-	for(uint i = 0; i < node_count; i++) {
-		GrB_Index src;
-		GrB_Index dest;
-		Node *n = nodes + i;
-		bool depleted = false;
-		NodeID ID = ENTITY_GET_ID(n);
-
-		// Outgoing edges.
-		GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
-		while(true) {
-			GxB_MatrixTupleIter_next(adj_iter, NULL,  &dest, &depleted);
-			if(depleted) break;
-			GrB_Matrix_setElement_BOOL(Mask, true, ID, dest);
-		}
-
-		depleted = false;
-
-		// Incoming edges.
-		GxB_MatrixTupleIter_iterate_row(tadj_iter, ID);
-		while(true) {
-			GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, &depleted);
-			if(depleted) break;
-			GrB_Matrix_setElement_BOOL(Mask, true, src, ID);
-		}
-
-		GrB_Matrix_setElement_BOOL(Nodes, true, ID, ID);
-	}
-
-	GrB_Matrix_nvals(&nvals, Nodes);
-	*node_deleted += nvals;
-
-	GrB_Matrix_nvals(&nvals, Mask);
-	*edge_deleted += nvals;
-
-	// Clear updated output matrix before assignment.
 	GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
 
 	// Free and remove implicit edges from relation matrices.
@@ -1060,12 +1003,12 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		/* Free each multi edge array entry in A
 		 * Call _select_op_free_edge on each entry of A. */
 		GxB_select(A, GrB_NULL, GrB_NULL, _select_delete_edges, A, thunk, GrB_NULL);
-
 		// The number of deleted edges is equals the diff in the number of items in the DataBlock
 		uint64_t n_deleted_edges = edges_before_deletion - Graph_EdgeCount(g);
+
+
 		// Multiple edges of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, i, n_deleted_edges);
-
 		// clear the relation matrix
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
 
@@ -1112,26 +1055,180 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 			GrB_Matrix_apply(TR, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
 		}
 	}
+	// Clean up.
+	GrB_free(&A);
+	GrB_free(&thunk);
+	GrB_Descriptor_free(&desc);
+}
 
-	/* Delete nodes
-	 * All nodes marked for deleteion are detected, no incoming / outgoing edges. */
-	int node_type_count = Graph_LabelTypeCount(g);
-	for(int i = 0; i < node_type_count; i++) {
+static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
+							 uint *node_deleted, uint *edge_deleted) {
+	ASSERT(g && g->_writelocked && nodes && node_count > 0);
+
+	if(!_select_delete_edges) {
+		// The select operator has not yet been constructed; build it now.
+		GrB_Info res;
+		UNUSED(res);
+		res = GxB_SelectOp_new(&_select_delete_edges, _select_op_free_edge, GrB_UINT64, GrB_UINT64);
+		ASSERT(res == GrB_SUCCESS);
+	}
+
+	/* Create a matrix M where M[j,i] = 1 if:
+	 * Node i is connected to node j. */
+
+	GrB_Matrix          adj;        // adjacency matrix
+	GrB_Matrix          tadj;       // transposed adjacency matrix
+	GrB_Index           nrows;
+	GrB_Index           ncols;
+	GrB_Index           nvals;      // number of elements in mask
+	GrB_Matrix          Mask;       // mask noteing all implicitly deleted edges
+	GrB_Matrix          Nodes;      // mask noteing each node marked for deletion
+	GrB_Descriptor      desc;       // GraphBLAS descriptor
+	GxB_MatrixTupleIter *adj_iter;  // iterator over the adjacency matrix
+	GxB_MatrixTupleIter *tadj_iter; // iterator over the transposed adjacency matrix
+
+	adj                         =  Graph_GetAdjacencyMatrix(g);
+	tadj                        =  Graph_GetTransposedAdjacencyMatrix(g);
+	nrows                       =  Graph_RequiredMatrixDim(g);
+	ncols                       =  nrows;
+	GrB_Descriptor_new(&desc);
+	GxB_MatrixTupleIter_new(&adj_iter, adj);
+	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
+
+	// implicit deleted edge, set format to hypersparse
+	// expecting a small number of implicit deleted edges
+	GrB_Matrix_new(&Mask, GrB_BOOL, nrows, ncols);
+	GxB_set(Mask, GxB_HYPER, GxB_ALWAYS_HYPER);
+
+	GrB_Matrix_new(&Nodes, GrB_BOOL, nrows, ncols);
+
+	// mark matrices as dirty
+	_Graph_SetAdjacencyMatrixDirty(g);
+
+	// populate mask with implicit edges, take note of deleted nodes
+	for(uint i = 0; i < node_count; i++) {
+		GrB_Index src;
+		GrB_Index dest;
+		Node *n = nodes + i;
+		bool depleted = false;
+		NodeID ID = ENTITY_GET_ID(n);
+
+		// outgoing edges
+		GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
+		while(true) {
+			GxB_MatrixTupleIter_next(adj_iter, NULL, &dest, &depleted);
+			if(depleted) break;
+			GrB_Matrix_setElement_BOOL(Mask, true, ID, dest);
+		}
+
+		depleted = false;
+
+		// incoming edges
+		GxB_MatrixTupleIter_iterate_row(tadj_iter, ID);
+		while(true) {
+			GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, &depleted);
+			if(depleted) break;
+			GrB_Matrix_setElement_BOOL(Mask, true, src, ID);
+		}
+
+		// node to remove
+		GrB_Matrix_setElement_BOOL(Nodes, true, ID, ID);
+	}
+
+	// update deleted node count
+	GrB_Matrix_nvals(&nvals, Nodes);
+	*node_deleted += nvals;
+
+	// update deleted edge count
+	GrB_Matrix_nvals(&nvals, Mask);
+	*edge_deleted += nvals;
+
+	if(nvals <= EDGE_BULK_DELETE_THRESHOLD) {
+		// small number of implicit edges to delete
+		GrB_Index  src_id;
+		GrB_Index  dest_id;
+		GrB_Type   type;
+		GrB_Index  *Ap;
+		GrB_Index  *Ah;
+		GrB_Index  *Aj;
+		void       *Ax;
+		GrB_Index  nvec;
+		int64_t    nonempty;
+		Edge *edges = array_new(Edge, 1);
+
+		// export and free a hypersparse CSR matrix
+		GxB_Matrix_export_HyperCSR(
+			&Mask,        // handle of matrix to export and free
+			&type,        // type of matrix exported
+			&nrows,       // number of rows of the matrix
+			&ncols,       // number of columns of the matrix
+			&nvals,
+			&nonempty,
+			&nvec,        // number of rows that appear in Ah
+			&Ah,          // row indices, Ah_size >= nvec
+			&Ap,          // row "pointers", Ap_size >= nvec+1
+			&Aj,          // column indices, Aj_size >= nvals(A)
+			&Ax,          // values, Ax_size >= nvals(A)
+			GrB_NULL
+		);
+
+		for(GrB_Index k = 0 ; k < nvec ; k++) {
+			src_id = Ah [k] ;
+			for(GrB_Index p = Ap [k] ; p < Ap [k + 1] ; p++) {
+				dest_id = Aj[p];
+				// retrieve all edges connecting this source and destination
+				Graph_GetEdgesConnectingNodes(g, src_id, dest_id,
+											  GRAPH_NO_RELATION, &edges);
+				uint edge_count = array_len(edges);
+				for(uint i = 0; i < edge_count; i ++) {
+					Graph_DeleteEdge(g, &edges[i]);
+				}
+				array_clear(edges);
+			}
+		}
+		// clean up
+		rm_free(Ap);
+		rm_free(Ah);
+		rm_free(Aj);
+		rm_free(Ax);
+		array_free(edges);
+	} else {
+		// use bulk deletion logic to remove implicit edges
+		_BulkDeleteImplicitEdges(g, Mask);
+	}
+
+	/* delete nodes
+	 * all nodes marked for deletion are detected, no incoming / outgoing edges. */
+	GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
+	GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
+	GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
+	int label_count = Graph_LabelTypeCount(g);
+
+	// track all labels that contain deleted nodes
+	bool deleted_labels[label_count];
+	memset(deleted_labels, 0, label_count * sizeof(bool));
+
+	// TODO: use the apply operator to delete datablock entries
+	for(uint i = 0; i < node_count; i++) {
+		Node *n = nodes + i;
+		// mark label as containing deletions
+		int label_id = NODE_GET_LABEL_ID(n, g);
+		if(label_id != GRAPH_NO_LABEL) deleted_labels[label_id] = true;
+
+		DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+	}
+
+	// clear deleted nodes from label matrices
+	for(int i = 0; i < label_count; i++) {
+		if(deleted_labels[i] == 0) continue; // label did not change
 		GrB_Matrix L = Graph_GetLabelMatrix(g, i);
 		GrB_Matrix_apply(L, Nodes, GrB_NULL, GrB_IDENTITY_BOOL, L, desc);
 		_Graph_SetLabelMatrixDirty(g, i);
 	}
 
-	for(uint i = 0; i < node_count; i++) {
-		Node *n = nodes + i;
-		DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
-	}
-
 	// Clean up.
-	GrB_free(&A);
 	GrB_free(&desc);
-	GrB_free(&Mask);
-	GrB_free(&thunk);
+	if(Mask) GrB_free(&Mask);
 	GrB_free(&Nodes);
 	GxB_MatrixTupleIter_free(adj_iter);
 	GxB_MatrixTupleIter_free(tadj_iter);
