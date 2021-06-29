@@ -133,14 +133,26 @@ void delta_multiply(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
 	// M_plus = F * M_plus
 	res = GrB_mxm(M_plus, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M_plus, GrB_NULL);
 	ASSERT(res == GrB_SUCCESS);
+	GrB_Index plus_count;
+	GrB_Matrix_nvals(&plus_count, M_plus);
 
 	// M_minus = F * M_minus
 	res = GrB_mxm(M_minus, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, F, M_minus, GrB_NULL);
 	ASSERT(res == GrB_SUCCESS);
+	GrB_Index minus_count;
+	GrB_Matrix_nvals(&minus_count, M_minus);
+	if(minus_count == 0) M_minus = GrB_NULL;
 
 	// O = (O + F) < M_minus >
-	res = GrB_eWiseAdd(Output, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, F, Output, GrB_DESC_C);
-	ASSERT(res == GrB_SUCCESS);
+	if(plus_count > 0) {
+		// TODO what happened to M_plus?
+		res = GrB_eWiseAdd(Output, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, F, Output, GrB_DESC_SC);
+		ASSERT(res == GrB_SUCCESS);
+	} else if(minus_count > 0) {
+		// TODO correct?
+		res = GrB_Matrix_apply(Output, M_minus, GrB_NULL, GrB_IDENTITY_BOOL, Output, GrB_DESC_SC);
+		ASSERT(res == GrB_SUCCESS);
+	}
 }
 
 void standard_multiply(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix F) {
@@ -158,7 +170,7 @@ double Multiply_Standard(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
 	GrB_Matrix M_dup;
 	GrB_Matrix_dup(&M_dup, M);
 
-	res = GrB_eWiseAdd(M_dup, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, M_dup, M_plus, GrB_DESC_C);
+	res = GrB_eWiseAdd(M_dup, M_minus, GrB_NULL, GxB_ANY_PAIR_BOOL, M_dup, M_plus, GrB_DESC_SC);
 	ASSERT(res == GrB_SUCCESS);
 
 	_DirtyMatrix(M_dup);
@@ -193,8 +205,8 @@ double runner(void) {
 	GrB_Index F_nrows = 16;
 	GrB_Index dims = 50000000;
 	float density_ratio = 1.0 / dims;
-	float plus_density_ratio = 0.0001 / dims;
-	float minus_density_ratio = 0.0001 / dims;
+	float plus_density_ratio = 0.00001 / dims;
+	float minus_density_ratio = 0.00001 / dims;
 
 	// Initialize GraphBLAS
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, malloc, calloc, realloc, free, true);
@@ -206,14 +218,17 @@ double runner(void) {
 
 	GrB_Matrix M;
 	GrB_Matrix_new(&M, GrB_BOOL, dims, dims);
+	GxB_Matrix_Option_set(M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 	_PopulateMatrix(M, density_ratio);
 
 	GrB_Matrix M_plus;
 	GrB_Matrix_new(&M_plus, GrB_BOOL, dims, dims);
+	GxB_Matrix_Option_set(M_plus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
 	_PopulateMatrix(M_plus, plus_density_ratio);
 
 	GrB_Matrix M_minus;
 	GrB_Matrix_new(&M_minus, GrB_BOOL, dims, dims);
+	GxB_Matrix_Option_set(M_minus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
 	_PopulateMatrix(M_minus, minus_density_ratio);
 
 	GrB_Matrix F;
