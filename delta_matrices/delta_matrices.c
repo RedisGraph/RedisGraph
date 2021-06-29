@@ -151,8 +151,8 @@ void standard_multiply(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix F) {
 	ASSERT(res == GrB_SUCCESS);
 }
 
-void Multiply_Standard(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
-					   GrB_Matrix M_minus, GrB_Matrix F) {
+double Multiply_Standard(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
+						 GrB_Matrix M_minus, GrB_Matrix F) {
 	GrB_Info res;
 
 	GrB_Matrix M_dup;
@@ -173,10 +173,11 @@ void Multiply_Standard(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
 	printf("Standard multiplication time: %f\n", time * 1000);
 
 	GrB_Matrix_free(&M_dup);
+	return time;
 }
 
-void Multiply_Delta(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
-					GrB_Matrix M_minus, GrB_Matrix F) {
+double Multiply_Delta(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
+					  GrB_Matrix M_minus, GrB_Matrix F) {
 	double tic[2];
 	// Start timer.
 	simple_tic(tic);
@@ -185,9 +186,10 @@ void Multiply_Delta(GrB_Matrix Output, GrB_Matrix M, GrB_Matrix M_plus,
 
 	double time = simple_toc(tic);
 	printf("Delta multiplication time: %f\n", time * 1000);
+	return time;
 }
 
-int main(int argc, char **argv) {
+double runner(void) {
 	GrB_Index F_nrows = 16;
 	GrB_Index dims = 50000000;
 	float density_ratio = 1.0 / dims;
@@ -199,6 +201,7 @@ int main(int argc, char **argv) {
 	ASSERT(res == GrB_SUCCESS);
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
 
+	// Set a seed for the random number generator
 	// simple_rand_seed(0);
 
 	GrB_Matrix M;
@@ -223,17 +226,15 @@ int main(int argc, char **argv) {
 	GrB_Matrix DeltaOutput;
 	GrB_Matrix_new(&DeltaOutput, GrB_BOOL, dims, dims);
 
-	Multiply_Standard(StandardOutput, M, M_plus, M_minus, F);
+	double standard_time = Multiply_Standard(StandardOutput, M, M_plus, M_minus, F);
 
 	// TODO plus and minus possibly should not be synchronized
 	_DirtyMatrix(M);
 	GrB_wait(&M);
-	Multiply_Delta(DeltaOutput, M, M_plus, M_minus, F);
+	double delta_time = Multiply_Delta(DeltaOutput, M, M_plus, M_minus, F);
 
 	bool matrices_are_equal = MatricesAreEqual(DeltaOutput, StandardOutput);
-	if(matrices_are_equal) {
-		printf("Matrices are equal\n");
-	} else {
+	if(!matrices_are_equal) {
 		printf("Matrices are NOT equal\n");
 	}
 
@@ -244,6 +245,19 @@ int main(int argc, char **argv) {
 	GrB_Matrix_free(&F);
 	GrB_Matrix_free(&DeltaOutput);
 	GrB_Matrix_free(&StandardOutput);
+
+	double percent_change = (standard_time - delta_time) / delta_time;
+	return percent_change;
+}
+
+int main(int argc, char **argv) {
+	int run_count = 10;
+	double avg_percent_change = 0;
+	for(int i = 0; i < run_count; i ++) {
+		avg_percent_change += runner();
+	}
+	avg_percent_change /= (double)run_count;
+	printf("Average improvement of %f over %d runs\n", avg_percent_change, run_count);
 
 	return 0;
 }
