@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "graph.h"
 #include "RG.h"
@@ -801,14 +801,12 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
 // removes an edge from Graph and updates graph relevent matrices
 int Graph_DeleteEdge(Graph *g, Edge *e) {
-	ASSERT(g != NULL);
-	ASSERT(e != NULL);
-
 	uint64_t    x;
 	GrB_Matrix  R;
 	GrB_Matrix  M;
 	GrB_Info    info;
 	EdgeID      edge_id;
+
 	GrB_Matrix  TR       =  GrB_NULL;
 	int         r        =  Edge_GetRelationID(e);
 	NodeID      src_id   =  Edge_GetSrcNodeID(e);
@@ -882,7 +880,8 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		// remove edge from edge array
 		// migrate last edge ID and reduce array size
 		// TODO: reallocate array of size / capacity ratio is high
-		array_del_fast(edges, i);
+		edges[i] = edges[edge_count - 1];
+		array_pop(edges);
 
 		// incase we're left with a single edge connecting src to dest
 		// revert back from array to scalar
@@ -899,7 +898,8 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 			ASSERT(info == GrB_SUCCESS);
 			edges = (EdgeID *)edge_id;
 			// replace the deleted edge with the last edge in the matrix
-			array_del_fast(edges, i);
+			edges[i] = edges[edge_count - 1];
+			array_pop(edges);
 			// free and replace the array if it now has 1 element
 			if(array_len(edges) == 1) {
 				edge_id = edges[0];
@@ -1369,12 +1369,10 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 					  uint *node_deleted, uint *edge_deleted) {
 	ASSERT(g);
 
-	uint _edge_deleted = 0;
-	uint _node_deleted = 0;
+	*edge_deleted = 0;
+	*node_deleted = 0;
 
-	if(node_count) {
-		_BulkDeleteNodes(g, nodes, node_count, &_node_deleted, &_edge_deleted);
-	}
+	if(node_count) _BulkDeleteNodes(g, nodes, node_count, node_deleted, edge_deleted);
 
 	if(edge_count) {
 		// Filter out explicit edges which were removed by _BulkDeleteNodes.
@@ -1385,8 +1383,8 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 				NodeID dest = Edge_GetDestNodeID(e);
 
 				if(!DataBlock_GetItem(g->nodes, src) || !DataBlock_GetItem(g->nodes, dest)) {
-					// edge already removed due to node removal
-					// replace current edge with last edge
+					/* Edge already removed due to node removal.
+					* Replace current edge with last edge. */
 					edges[i] = edges[edge_count - 1];
 
 					// Update indices.
@@ -1396,7 +1394,11 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 			}
 		}
 
-		// removing duplicates
+		/* it might be that edge_count dropped to 0
+		 * due to implicit edge deletion. */
+		if(edge_count == 0) return;
+
+		// Removing duplicates.
 #define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 		QSORT(Edge, edges, edge_count, is_edge_lt);
 
@@ -1410,12 +1412,10 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 		}
 
 		edge_count = uniqueIdx;
-		if(edge_count > 0) _BulkDeleteEdges(g, edges, edge_count);
+		_BulkDeleteEdges(g, edges, edge_count);
 	}
-	_edge_deleted += edge_count;
 
-	if(node_deleted != NULL) *node_deleted = _node_deleted;
-	if(edge_deleted != NULL) *edge_deleted = _edge_deleted;
+	*edge_deleted += edge_count;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
@@ -1572,4 +1572,3 @@ void Graph_Free(Graph *g) {
 
 	rm_free(g);
 }
-
