@@ -37,7 +37,7 @@ commands:
           command: |
             apt-get -qq update
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://get.docker.com)
+            bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
           docker_layer_caching: true
 
@@ -330,7 +330,8 @@ jobs:
           at: /workspace
       - run:
           name: Unzip module artifact
-          command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
+          command: |
+            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
       - benchmark-automation
 
   nightly_performance_automation:
