@@ -37,7 +37,6 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
 static OpResult AllNodeScanInit(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, AllNodeScanConsumeFromChild);
-	else op->iter = Graph_ScanNodes(QueryCtx_GetGraph());
 	return OP_OK;
 }
 
@@ -78,6 +77,9 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 
 static Record AllNodeScanConsume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
+
+	// Create iterator on first invocation
+	if(!op->iter) op->iter = Graph_ScanNodes(QueryCtx_GetGraph());
 
 	Node n = GE_NEW_NODE();
 	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);

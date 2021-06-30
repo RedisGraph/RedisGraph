@@ -27,7 +27,7 @@ static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 
 static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	// Return early if the scan has no child operations.
-	if(scan->childCount == 0) return;
+	// if(scan->childCount == 0) return;
 
 	// The scan operation should be operating on a single alias.
 	ASSERT(array_len(scan->modifies) == 1);

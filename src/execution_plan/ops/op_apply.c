@@ -39,7 +39,6 @@ static OpResult ApplyInit(OpBase *opBase) {
 
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->rhs_branch, OPType_ARGUMENT);
-	ASSERT(op->op_arg);
 
 	return OP_OK;
 }
@@ -54,7 +53,7 @@ static Record ApplyConsume(OpBase *opBase) {
 			if(!op->r) return NULL; // Bound branch and this op are depleted.
 
 			// Successfully pulled a new Record, propagate to the top of the RHS branch.
-			Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
+			if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 		}
 
 		// Pull a Record from the RHS branch.

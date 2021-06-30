@@ -7,8 +7,10 @@
 #include "RG.h"
 #include "../../value.h"
 #include "../../util/arr.h"
+#include "../../util/rax_extensions.h"
 #include "../../query_ctx.h"
 #include "../ops/op_filter.h"
+#include "../ops/op_argument.h"
 #include "../ops/op_index_scan.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../../ast/ast_shared.h"
@@ -25,39 +27,39 @@
 // modifies filter tree such that the left hand side performs
 // attribute lookup on 'filtered_entity'
 static void _normalize_filter(const char *filtered_entity,
-		FT_FilterNode **filter) {
+							  FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
 	bool swap = false;
 	rax *entities = NULL;
 
 	// normalize, left hand side should be variadic, right hand side const
 	switch(filter_tree->t) {
-	case FT_N_PRED:
-		entities = raxNew();
-		AR_ExpNode *rhs = (*filter)->pred.rhs;
-		AR_EXP_CollectEntities(rhs, entities);
-		swap = raxFind(entities, (unsigned char *)filtered_entity,
-				strlen(filtered_entity)) != raxNotFound;
-		raxFree(entities);
+		case FT_N_PRED:
+			entities = raxNew();
+			AR_ExpNode *rhs = (*filter)->pred.rhs;
+			AR_EXP_CollectEntities(rhs, entities);
+			swap = raxFind(entities, (unsigned char *)filtered_entity,
+						   strlen(filtered_entity)) != raxNotFound;
+			raxFree(entities);
 
-		if(swap) {
-			AR_ExpNode *tmp = filter_tree->pred.rhs;
-			filter_tree->pred.rhs = filter_tree->pred.lhs;
-			filter_tree->pred.lhs = tmp;
-			filter_tree->pred.op = ArithmeticOp_ReverseOp(filter_tree->pred.op);
-		}
+			if(swap) {
+				AR_ExpNode *tmp = filter_tree->pred.rhs;
+				filter_tree->pred.rhs = filter_tree->pred.lhs;
+				filter_tree->pred.lhs = tmp;
+				filter_tree->pred.op = ArithmeticOp_ReverseOp(filter_tree->pred.op);
+			}
 
-		break;
-	case FT_N_COND:
-		_normalize_filter(filtered_entity, &filter_tree->cond.left);
-		_normalize_filter(filtered_entity, &filter_tree->cond.right);
-		break;
-	case FT_N_EXP:
-		// NOP, expression already normalized
-		break;
-	default:
-		ASSERT(false);
-		break;
+			break;
+		case FT_N_COND:
+			_normalize_filter(filtered_entity, &filter_tree->cond.left);
+			_normalize_filter(filtered_entity, &filter_tree->cond.right);
+			break;
+		case FT_N_EXP:
+			// NOP, expression already normalized
+			break;
+		default:
+			ASSERT(false);
+			break;
 	}
 }
 
@@ -83,8 +85,8 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 }
 
 // return true if filter can be resolved by an index query
-static bool _applicable_predicate(const char* filtered_entity,
-		FT_FilterNode *filter) {
+static bool _applicable_predicate(const char *filtered_entity,
+								  FT_FilterNode *filter) {
 
 	SIValue v;
 	bool res              =  false;
@@ -99,75 +101,75 @@ static bool _applicable_predicate(const char* filtered_entity,
 	if(isDistanceFilter(filter)) return true;
 
 	switch(filter->t) {
-	case FT_N_PRED:
-		lhs_exp = filter->pred.lhs;
-		rhs_exp = filter->pred.rhs;
-		// filter should be in the form of:
-		//
-		// attr_lookup OP exp
-		// or
-		// exp OP attr_lookup
-		//
-		// find out which part of the filter performs entity attribute access
+		case FT_N_PRED:
+			lhs_exp = filter->pred.lhs;
+			rhs_exp = filter->pred.rhs;
+			// filter should be in the form of:
+			//
+			// attr_lookup OP exp
+			// or
+			// exp OP attr_lookup
+			//
+			// find out which part of the filter performs entity attribute access
 
-		// make sure filtered entity isn't mentioned on both ends of the filter
-		// n.v = n.x
-		rax *aliases = raxNew();
-		bool mentioned_on_lhs = false;
-		bool mentioned_on_rhs = false;
+			// make sure filtered entity isn't mentioned on both ends of the filter
+			// n.v = n.x
+			rax *aliases = raxNew();
+			bool mentioned_on_lhs = false;
+			bool mentioned_on_rhs = false;
 
-		AR_EXP_CollectEntities(lhs_exp, aliases);
-		mentioned_on_lhs = raxFind(aliases, (unsigned char *)filtered_entity,
-				strlen(filtered_entity)) != raxNotFound;
+			AR_EXP_CollectEntities(lhs_exp, aliases);
+			mentioned_on_lhs = raxFind(aliases, (unsigned char *)filtered_entity,
+									   strlen(filtered_entity)) != raxNotFound;
 
-		raxRemove(aliases, (unsigned char *)filtered_entity,
-				strlen(filtered_entity), NULL);
+			raxRemove(aliases, (unsigned char *)filtered_entity,
+					  strlen(filtered_entity), NULL);
 
-		AR_EXP_CollectEntities(rhs_exp, aliases);
-		mentioned_on_rhs = raxFind(aliases, (unsigned char *)filtered_entity,
-				strlen(filtered_entity)) != raxNotFound;
+			AR_EXP_CollectEntities(rhs_exp, aliases);
+			mentioned_on_rhs = raxFind(aliases, (unsigned char *)filtered_entity,
+									   strlen(filtered_entity)) != raxNotFound;
 
-		raxFree(aliases);
+			raxFree(aliases);
 
-		if(mentioned_on_lhs == true && mentioned_on_rhs == true) {
-			res = false;
+			if(mentioned_on_lhs == true && mentioned_on_rhs == true) {
+				res = false;
+				break;
+			}
+
+			if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;      // n.v = exp
+			else if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp; // exp = n.v
+			// filter is not of the form n.v = exp or exp = n.v
+			if(exp == NULL) {
+				res = false;
+				break;
+			}
+
+			// determine whether 'exp' represents a scalar
+			bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
+			if(scalar) {
+				// validate constant type
+				SIType t = SI_TYPE(v);
+				res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+			} else {
+				// value type can only be determined at runtime!
+				res = true;
+			}
 			break;
-		}
-
-		if(AR_EXP_IsAttribute(lhs_exp, NULL)) exp = rhs_exp;      // n.v = exp
-		else if(AR_EXP_IsAttribute(rhs_exp, NULL)) exp = lhs_exp; // exp = n.v
-		// filter is not of the form n.v = exp or exp = n.v
-		if(exp == NULL) {
-			res = false;
+		case FT_N_COND:
+			// require both ends of the filter to be applicable
+			res = (_applicable_predicate(filtered_entity, filter->cond.left) &&
+				   _applicable_predicate(filtered_entity, filter->cond.right));
 			break;
-		}
-
-		// determine whether 'exp' represents a scalar
-		bool scalar = AR_EXP_ReduceToScalar(exp, true, &v);
-		if(scalar) {
-			// validate constant type
-			SIType t = SI_TYPE(v);
-			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
-		} else {
-			// value type can only be determined at runtime!
-			res = true;
-		}
-		break;
-	case FT_N_COND:
-		// require both ends of the filter to be applicable
-		res = (_applicable_predicate(filtered_entity, filter->cond.left) &&
-				_applicable_predicate(filtered_entity, filter->cond.right));
-		break;
-	default:
-		break;
+		default:
+			break;
 	}
 
 	return res;
 }
 
 // checks to see if given filter can be resolved by index
-bool _applicableFilter(const char* filtered_entity, Index *idx,
-		FT_FilterNode **filter) {
+bool _applicableFilter(const char *filtered_entity, Index *idx,
+					   FT_FilterNode **filter) {
 	bool           res           =  true;
 	rax            *attr         =  NULL;
 	rax            *entities     =  NULL;
@@ -224,11 +226,13 @@ cleanup:
 // reduced into a single index scan operation
 OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 	OpFilter **filters = array_new(OpFilter *, 0);
-	const char* filtered_entity = scanOp->n.alias; // entity being filtered
+	const char *filtered_entity = scanOp->n.alias; // entity being filtered
 
 	// we begin with a LabelScan, and want to find predicate filters that modify
 	// the active entity
 	OpBase *current = scanOp->op.parent;
+	// Skip all Apply operations
+	while(current->type == OPType_APPLY) current = current->parent;
 	while(current->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
 
@@ -286,7 +290,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 
 	FT_FilterNode *root = _Concat_Filters(filters);
 	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx,
-			root);
+									 root);
 
 	// replace the redundant scan op with the newly-constructed Index Scan
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
@@ -302,6 +306,21 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 		OpBase_Free((OpBase *)filter);
 	}
 
+	// if the index scan is a child of an Apply op, it should be populated
+	// by an Argument
+	if(indexOp->parent->type == OPType_APPLY) {
+		// collect all variables that are bound at this position in the op tree
+		rax *bound_vars = raxNew();
+		ExecutionPlan_BoundVariables(indexOp->parent, bound_vars);
+		// collect the variable names from bound_vars to populate
+		// the Argument ops we will build
+		const char **vars = (const char **)raxValues(bound_vars);
+		OpBase *arg = NewArgumentOp(plan, vars);
+		// add the Argument as a child of the IndexScan
+		ExecutionPlan_AddOp(indexOp, arg);
+		raxFree(bound_vars);
+	}
+
 cleanup:
 	array_free(filters);
 }
@@ -313,7 +332,7 @@ void utilizeIndices(ExecutionPlan *plan) {
 
 	// collect all label scans
 	OpBase **scanOps = ExecutionPlan_CollectOps(plan->root,
-			OPType_NODE_BY_LABEL_SCAN);
+												OPType_NODE_BY_LABEL_SCAN);
 
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {
@@ -325,3 +344,4 @@ void utilizeIndices(ExecutionPlan *plan) {
 	// cleanup
 	array_free(scanOps);
 }
+

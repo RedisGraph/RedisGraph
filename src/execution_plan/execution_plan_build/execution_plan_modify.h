@@ -30,7 +30,7 @@ void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 
 /* Introduce new_root as the parent of old_root. */
-void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
+OpBase *ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
 
 /* Update the root op of the execution plan. */
 void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root);
@@ -67,8 +67,8 @@ OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan);
 /* Find the earliest operation at which all references are resolved, if any,
  * both above the provided recurse_limit and without recursing past a blacklisted op. */
 OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
-		const OpBase *recurse_limit, const OPType *blacklisted_ops,
-		int nblacklisted_ops, rax *refs_to_resolve);
+												   const OpBase *recurse_limit, const OPType *blacklisted_ops,
+												   int nblacklisted_ops, rax *refs_to_resolve);
 
 //------------------------------------------------------------------------------
 // ExecutionPlan_Collect API:
