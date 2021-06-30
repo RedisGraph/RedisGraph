@@ -1378,7 +1378,7 @@ int Graph_AddRelationType(Graph *g) {
 
 	if(maintain_transpose) {
 		RG_Matrix tm = RG_Matrix_New(g, GrB_UINT64);
-		info = GxB_set(m->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+		info = GxB_set(tm->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 		ASSERT(info == GrB_SUCCESS);
 		array_append(g->t_relations, tm);
 	}
