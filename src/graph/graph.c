@@ -101,6 +101,9 @@ static RG_Matrix RG_Matrix_New(const Graph *g, GrB_Type data_type) {
 	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
 	ASSERT(matrix_res == GrB_SUCCESS);
 
+    info = GxB_set(matrix->grb_matrix, GxB_HYPER, GxB_NEVER_HYPER);
+	ASSERT(info == GrB_SUCCESS);
+
 	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
 	ASSERT(mutex_res == 0);
 
@@ -1354,7 +1357,8 @@ int Graph_AddRelationType(Graph *g) {
 	ASSERT(g);
 
 	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
-	g->relations = array_append(g->relations, m);
+	g->relation = array_append(g->relations, m);
+
 	// Adding a new relationship type, update the stats structures to support it.
 	GraphStatistics_IntroduceRelationship(&g->stats);
 	bool maintain_transpose;
