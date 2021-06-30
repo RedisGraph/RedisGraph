@@ -102,6 +102,21 @@ GrB_Info RG_Matrix_setElement_UINT64      // C (i,j) = x
     GrB_Index j                         // column index
 );
 
+GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
+(
+    uint64_t *x,                           // extracted scalar
+    const RG_Matrix A,                     // matrix to extract a scalar from
+    GrB_Index i,                           // row index
+    GrB_Index j                            // column index
+) ;
+
+GrB_Info RG_Matrix_removeElement
+(
+    RG_Matrix C,                    // matrix to remove entry from
+    GrB_Index i,                    // row index
+    GrB_Index j                     // column index
+);
+
 GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 (
     RG_Matrix C,                    // input/output matrix for results

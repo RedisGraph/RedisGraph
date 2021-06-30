@@ -2,10 +2,10 @@
 #include "rg_matrix.h"
 #include "../util/rmalloc.h"
 
-#define DELTA_MAX_PENDING_CHANGES 1000
-#define RG_MATRIX_MATRIX(rg_matrix) (rg_matrix)->grb_matrix
-#define RG_MATRIX_DELTA_PLUS(rg_matrix) (rg_matrix)->delta_plus
-#define RG_MATRIX_DELTA_MINUS(rg_matrix) (rg_matrix)->delta_minus
+#define DELTA_MAX_PENDING_CHANGES 2
+#define RG_MATRIX_MATRIX(C) (C)->grb_matrix
+#define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus
+#define RG_MATRIX_DELTA_MINUS(C) (C)->delta_minus
 
 extern GrB_BinaryOp _graph_edge_accum;
 
@@ -22,7 +22,8 @@ GrB_Info RG_Matrix_new
 	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
 
 	matrix->dirty = true;
-	matrix->multi_edge = multi_edge;
+	//matrix->multi_edge = multi_edge;
+	matrix->multi_edge = false;
 
 	info = GrB_Matrix_new(&matrix->grb_matrix, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
@@ -177,6 +178,101 @@ GrB_Info RG_Matrix_setElement_UINT64      // C (i,j) = x
 	return info;
 }
 
+GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
+(
+    uint64_t *x,                           // extracted scalar
+    const RG_Matrix A,                     // matrix to extract a scalar from
+    GrB_Index i,                           // row index
+    GrB_Index j                            // column index
+) {
+	ASSERT(x != NULL);
+	ASSERT(A != NULL);
+
+	GrB_Info info;
+	GrB_Matrix  m      =  RG_MATRIX_MATRIX(A);
+	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(A);
+	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(A);
+
+	// see if entry is marked for deletion
+	info = GrB_Matrix_extractElement_UINT64(x, dm, i, j);
+	if(info == GrB_SUCCESS) {
+		// entry is marked for deletion
+		return GrB_NO_VALUE;
+	}
+
+	// see if entry is in either 'm' or 'dp'
+	info = GrB_Matrix_extractElement_UINT64(x, m, i, j);
+	if(info == GrB_SUCCESS) return info;
+
+	info = GrB_Matrix_extractElement_UINT64(x, dp, i, j);
+	return info;
+}
+
+GrB_Info RG_Matrix_removeElement
+(
+    RG_Matrix C,                    // matrix to remove entry from
+    GrB_Index i,                    // row index
+    GrB_Index j                     // column index
+) {
+	ASSERT(C);
+
+	// TODO: support multi-edge
+
+	// entry should exists in either delta-plus or main
+	bool x;
+	GrB_Info info;
+
+	bool        in_m   =  false;
+	bool        in_dp  =  false;
+	GrB_Matrix  m      =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(C);
+
+#if RG_DEBUG
+	// check bounds
+	GrB_Index nrows;
+	GrB_Index ncols;
+	GrB_Matrix_nrows(&nrows, m);
+	GrB_Matrix_ncols(&ncols, m);
+	ASSERT(i < nrows);
+	ASSERT(j < ncols);
+#endif
+
+	// locate entry
+	info = GrB_Matrix_extractElement(&x, m, i, j);
+	in_m = (info == GrB_SUCCESS);
+
+	info = GrB_Matrix_extractElement(&x, dp, i, j);
+	in_dp = (info == GrB_SUCCESS);
+
+	if(!(in_m || in_dp)) {
+		// entry missing from both 'm' and 'dp'
+		return GrB_NO_VALUE;
+	}
+
+	// removed entry should be in either 'm' or in 'dp'
+	ASSERT(in_m != in_dp);
+
+	if(in_m) {
+		// entry is removed from 'm'
+		// mark deletion in delta minus
+		info = GrB_Matrix_setElement(dm, true, i, j);
+		ASSERT(info == GrB_SUCCESS);
+
+		// TODO: postpone entity deletion to sync
+	} else {
+		// entry is removed from 'dp'
+		// remove it from 'dp'
+		info = GrB_Matrix_removeElement(dp, i, j);
+		ASSERT(info == GrB_SUCCESS);
+
+		// TODO: delete entity
+	}
+
+	RG_Matrix_SetDirty(C);
+	return info;
+}
+
 GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 (
     RG_Matrix C,                    // input/output matrix for results
@@ -217,56 +313,54 @@ GrB_Info RG_Matrix_sync
 ) {
 	ASSERT(C != NULL);
 
-	GrB_Matrix      m            =  RG_MATRIX_MATRIX(C);
-	GrB_Descriptor  desc         =  GrB_NULL;
-	GrB_Matrix      mask         =  GrB_NULL;
-	GrB_Matrix      delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix      delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
+	GrB_Matrix      m     =  RG_MATRIX_MATRIX(C);
+	GrB_Descriptor  desc  =  GrB_NULL;
+	GrB_Matrix      mask  =  GrB_NULL;
+	GrB_Matrix      dp    =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix      dm    =  RG_MATRIX_DELTA_MINUS(C);
 
 	GrB_Info info;
-	GrB_Semiring semiring;
-	GrB_Index delta_plus_nvals;
-	GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
+	GrB_Index dp_nvals;
+	GrB_Index dm_nvals;
+	GrB_Matrix_nvals(&dp_nvals, dp);
+	GrB_Matrix_nvals(&dm_nvals, dm);
 
-	// no changes
-	if(delta_plus_nvals == 0) return GrB_SUCCESS;
-
-	GrB_Index delta_minus_nvals;
-	GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
-	if(delta_minus_nvals > 0) {
-		mask = delta_minus;
-		desc = GrB_DESC_SC;
-	}
-
-	GxB_print(m, GxB_COMPLETE);
-	GxB_print(delta_plus, GxB_COMPLETE);
-	GxB_print(delta_minus, GxB_COMPLETE);
-
-	GrB_Type t;
-	info = GxB_Matrix_type(&t, m);
-
-	if(t == GrB_BOOL) {
-		semiring = GxB_ANY_PAIR_BOOL;
-	} else {
-		// TODO: figure out which semiring to use
-		semiring = GxB_ANY_SECOND_UINT64;
-	}
+	bool  additions  =  dp_nvals  >  0;
+	bool  deletions  =  dm_nvals  >  0;
+	ASSERT(additions || deletions);
 
 	if(C->multi_edge) {
+		// TODO: support multi-edge
 		// add delta-plus to 'm' using delta-minus as a mask
-		info = GrB_Matrix_eWiseAdd_Semiring(m, mask, _graph_edge_accum,
-				semiring, m, delta_plus, desc);
+		// info = GrB_Matrix_eWiseAdd_BinaryOp(m, mask, _graph_edge_accum, GrB_SECOND_UINT64, m, delta_plus, desc);
+		info = GrB_Matrix_eWiseAdd_BinaryOp(m, mask, GrB_NULL,
+				GrB_SECOND_UINT64, m, dp, desc);
 		ASSERT(info == GrB_SUCCESS);
 	} else {
-		info = GrB_Matrix_eWiseAdd_Semiring(m, mask, GrB_NULL,
-				semiring, m, delta_plus, desc);
-		ASSERT(info == GrB_SUCCESS);
+		if(deletions) {
+			info = GrB_transpose(m, dm, GrB_NULL, m, GrB_DESC_RSCT0);
+			ASSERT(info == GrB_SUCCESS);
+		}
+		if(additions) {
+			GrB_Type t;
+			GrB_BinaryOp op;
+			info = GxB_Matrix_type(&t, m);
+			ASSERT(info == GrB_SUCCESS);
+
+			op = (t == GrB_BOOL) ? GrB_SECOND_BOOL : GrB_SECOND_UINT64;
+			info = GrB_Matrix_eWiseAdd_BinaryOp(m, GrB_NULL, GrB_NULL, op, m,
+					dp, GrB_NULL);
+			ASSERT(info == GrB_SUCCESS);
+		}
 	}
 
-	info = GrB_Matrix_clear(delta_plus);
+	info = GrB_Matrix_clear(dp);
 	ASSERT(info == GrB_SUCCESS);
 
-	info = GrB_Matrix_clear(delta_minus);
+	info = GrB_Matrix_clear(dm);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_wait(&m);
 	ASSERT(info == GrB_SUCCESS);
 
 	return info;
@@ -282,9 +376,6 @@ GrB_Info RG_Matrix_wait
 	GrB_Matrix  m            =  RG_MATRIX_MATRIX(A);
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(A);
 	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(A);
-
-	info = GrB_wait(&m);
-	ASSERT(info == GrB_SUCCESS);
 
 	info = GrB_wait(&delta_plus);
 	ASSERT(info == GrB_SUCCESS);
