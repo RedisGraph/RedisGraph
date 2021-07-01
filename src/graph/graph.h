@@ -61,10 +61,8 @@ struct Graph {
 	DataBlock *nodes;                   // Graph nodes stored in blocks.
 	DataBlock *edges;                   // Graph edges stored in blocks.
 	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
-	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
 	RG_Matrix *labels;                  // Label matrices.
 	RG_Matrix *relations;               // Relation matrices.
-	RG_Matrix *t_relations;             // Transposed relation matrices.
 	RG_Matrix _zero_matrix;             // Zero matrix.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -9,51 +9,53 @@
 #include "GraphBLAS.h"
 #include <pthread.h>
 
-// Forward declaration of RG_Matrix type. Internal to graph.
-typedef struct {
+// forward declaration of RG_Matrix type
+typedef struct _RG_Matrix _RG_Matrix;
+
+struct _RG_Matrix {
 	bool dirty;                         // Indicates if matrix requires sync
 	bool multi_edge;                    // Entry i,j can contain multiple edges
-	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix
+	bool maintain_transpose;            // Maintain transpose matrix
+	GrB_Matrix matrix;                  // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
+	_RG_Matrix transposed;              // Transposed matrix
 	pthread_mutex_t mutex;              // Lock
-} _RG_Matrix;
+};
+
 typedef _RG_Matrix *RG_Matrix;
 
 GrB_Info RG_Matrix_new
 (
-    RG_Matrix *A,           // handle of matrix to create
-    GrB_Type type,          // type of matrix to create
-    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    RG_Matrix *A,            // handle of matrix to create
+    GrB_Type type,           // type of matrix to create
+    GrB_Index nrows,         // matrix dimension is nrows-by-ncols
     GrB_Index ncols,
-    bool multi_edge         // alow multi edge
+    bool multi_edge,         // alow multi edge
+	bool maintain_transpose  // maintain transpose matrix
+);
+
+// returns transposed matrix of C
+RG_Matrix_new RG_Matrix_getTranspose
+(
+	const RG_Matrix C
 );
 
 // returns underlying GraphBLAS matrix
-GrB_Matrix RG_Matrix_Get_GrB_Matrix
+GrB_Matrix RG_Matrix_getGrB_Matrix
 (
 	RG_Matrix C
 );
 
 // returns underlying delta plus GraphBLAS matrix
-GrB_Matrix RG_Matrix_Get_DeltaPlus
+GrB_Matrix RG_Matrix_getDeltaPlus
 (
 	RG_Matrix C
 );
 
-bool RG_Matrix_IsDirty
+bool RG_Matrix_isDirty
 (
 	const RG_Matrix C
-);
-
-void RG_Matrix_SetDirty
-(
-	RG_Matrix C
-);
-
-void RG_Matrix_SetUnDirty
-(
-	RG_Matrix C
 );
 
 // locks the matrix
@@ -77,6 +79,12 @@ void RG_Matrix_setMultiEdge
 bool RG_Matrix_getMultiEdge
 (
 	const RG_Matrix C
+);
+
+GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
+(
+    GrB_Index *nvals,       // matrix has nvals entries
+    const RG_Matrix A       // matrix to query
 );
 
 GrB_Info RG_Matrix_resize      // change the size of a matrix
@@ -132,10 +140,11 @@ GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 
 GrB_Info RG_Matrix_wait
 (
-	RG_Matrix C
+	RG_Matrix C,
+	bool force_sync
 );
 
-void RG_Matrix_Free
+void RG_Matrix_free
 (
 	RG_Matrix C
 );

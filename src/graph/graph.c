@@ -110,34 +110,45 @@ static inline size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
 }
 
-// Locates edges connecting src to destination.
-void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
-	ASSERT(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
+// locates edges connecting src to destination
+void _Graph_GetEdgesConnectingNodes
+(
+	const Graph *g,
+	NodeID src,
+	NodeID dest,
+	int r, 
+	Edge **edges
+) {
+	ASSERT(g && 
+		   src < Graph_RequiredMatrixDim(g)  &&
+		   dest < Graph_RequiredMatrixDim(g) &&
 		   r < Graph_RelationTypeCount(g));
 
 	Edge e;
 	EdgeID edgeId;
-	e.relationID = r;
-	e.srcNodeID = src;
-	e.destNodeID = dest;
 
-	// relation map, maps (src, dest, r) to edge IDs.
-	RG_Matrix relation = Graph_GetRelationRGMatrix(g, r, false);
+	e.relationID  =  r;
+	e.srcNodeID   =  src;
+	e.destNodeID  =  dest;
+
+	// relationship matrix, maps (src, dest, r) to edge IDs
+
+	RG_Matrix relation = Graph_GetRelationMatrix(g, r);
 	GrB_Info res = RG_Matrix_extractElement_UINT64(&edgeId, relation, src, dest);
 
-	// No entry at [dest, src], src is not connected to dest with relation R.
+	// no entry at [dest, src], src is not connected to dest with relation R
 	if(res == GrB_NO_VALUE) return;
 
 	if(SINGLE_EDGE(edgeId)) {
-		// Discard most significate bit.
+		// discard most significate bit
 		edgeId = SINGLE_EDGE_ID(edgeId);
 		e.entity = DataBlock_GetItem(g->edges, edgeId);
 		e.id = edgeId;
 		ASSERT(e.entity);
 		array_append(*edges, e);
 	} else {
-		/* Multiple edges connecting src to dest,
-		 * entry is a pointer to an array of edge IDs. */
+		// multiple edges connecting src to dest,
+		// entry is a pointer to an array of edge IDs
 		EdgeID *edgeIds = (EdgeID *)edgeId;
 		int edgeCount = array_len(edgeIds);
 
@@ -155,33 +166,13 @@ static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
 	return DataBlock_GetItem(entities, id);
 }
 
-/* ============= Matrix synchronization and resizing functions =============== */
+//------------------------------------------------------------------------------
+// Matrix synchronization and resizing functions
+//------------------------------------------------------------------------------
 
-static inline void _Graph_SetAdjacencyMatrixDirty(const Graph *g) {
-	RG_Matrix_SetDirty(g->adjacency_matrix);
-	RG_Matrix_SetDirty(g->_t_adjacency_matrix);
-}
-
-static inline void _Graph_SetLabelMatrixDirty(const Graph *g, int label_idx) {
-	ASSERT(g && label_idx < array_len(g->labels));
-	RG_Matrix_SetDirty(g->labels[label_idx]);
-}
-
-static inline void _Graph_SetRelationMatrixDirty(const Graph *g, int relation_idx) {
-	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
-	if(relation_idx == GRAPH_NO_RELATION) {
-		_Graph_SetAdjacencyMatrixDirty(g);
-	} else {
-		RG_Matrix_SetDirty(g->relations[relation_idx]);
-		bool maintain_transpose;
-		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-		if(maintain_transpose) RG_Matrix_SetDirty(g->t_relations[relation_idx]);
-	}
-}
-
-/* Resize given matrix, such that its number of row and columns
- * matches the number of nodes in the graph. Also, synchronize
- * matrix to execute any pending operations. */
+// resize given matrix, such that its number of row and columns
+// matches the number of nodes in the graph. Also, synchronize
+// matrix to execute any pending operations
 void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	bool dirty = RG_Matrix_IsDirty(rg_matrix);
 	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(rg_matrix);
@@ -303,16 +294,6 @@ void Graph_ApplyAllPending(Graph *g) {
 		M = g->relations[i];
 		g->SynchronizeMatrix(g, M);
 	}
-
-	bool maintain_transpose;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-
-	if(maintain_transpose) {
-		for(int i = 0; i < array_len(g->t_relations); i ++) {
-			M = g->t_relations[i];
-			g->SynchronizeMatrix(g, M);
-		}
-	}
 }
 
 /* ================================ Graph API ================================ */
@@ -328,18 +309,11 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->relations            =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n, false);
-	RG_Matrix_new(&g->_t_adjacency_matrix, GrB_BOOL, n, n, false);
-	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n, false);
+	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n, false, true);
+	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n, false, false);
 
 	// init graph statistics
 	GraphStatistics_init(&g->stats);
-
-	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
-	bool maintain_transpose;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-	g->t_relations = maintain_transpose ?
-					 array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP) : NULL;
 
 	// Initialize a read-write lock scoped to the individual graph
 	int res;
@@ -842,33 +816,27 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 	GxB_Scalar_new(&thunk, GrB_UINT64);
 	GxB_Scalar_setElement_UINT64(thunk, (uint64_t)g);
 
-	bool maintain_transpose;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 	uint relationCount = Graph_RelationTypeCount(g);
-	/* use the edge deletion binary operation to free all edge arrays within
-	 * the adjacency matrix */
+	// use the edge deletion binary operation to free all edge arrays within
+	// the adjacency matrix
 
 	for(uint i = 0; i < relationCount; i++) {
-		RG_Matrix  M = g->relations[i];
-		GrB_Matrix C = M->grb_matrix;
+		RG_Matrix M = Graph_GetRelationRGMatrix(g, i);
+		RG_Matrix_sync(M);
+		GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(M);
 
-		GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
+		// TODO: move to RG_Matrix_Free
+		GxB_Matrix_apply_BinaryOp1st(m, GrB_NULL, GrB_NULL,
 									 _binary_op_delete_edges, thunk, C, GrB_NULL);
+
+		m = RG_Matrix_Get_T_GrB_Matrix(M);
+		if(m) {
+			GxB_Matrix_apply_BinaryOp1st(m, GrB_NULL, GrB_NULL,
+					_binary_op_delete_edges, thunk, C, GrB_NULL);
+		}
 
 		// free the matrix itself
 		RG_Matrix_Free(M);
-
-		// perform the same update to transposed matrices
-		if(maintain_transpose) {
-			RG_Matrix TM = g->t_relations[i];
-			C = TM->grb_matrix;
-
-			GxB_Matrix_apply_BinaryOp1st(C, GrB_NULL, GrB_NULL,
-										 _binary_op_delete_edges, thunk, C, GrB_NULL);
-
-			// free the matrix itself
-			RG_Matrix_Free(TM);
-		}
 	}
 	GrB_free(&thunk);
 }
@@ -1276,7 +1244,7 @@ int Graph_AddLabel(Graph *g) {
 	RG_Matrix m;
 	GrB_Info info;
 	size_t n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&m, GrB_BOOL, n, n, false);
+	RG_Matrix_new(&m, GrB_BOOL, n, n, false, false);
 
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
@@ -1287,56 +1255,48 @@ int Graph_AddRelationType(Graph *g) {
 
 	RG_Matrix m;
 	size_t n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&m, GrB_UINT64, n, n, true);
-
-	array_append(g->relations, m);
-	// adding a new relationship type, update the stats structures to support it
-	GraphStatistics_IntroduceRelationship(&g->stats);
 
 	bool maintain_transpose;
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-	if(maintain_transpose) {
-		RG_Matrix tm;
-		RG_Matrix_new(&tm, GrB_UINT64, n, n, true);
-		array_append(g->t_relations, tm);
-	}
+
+	RG_Matrix_new(&m, GrB_UINT64, n, n, true, maintain_transpose);
+
+	array_append(g->relations, m);
+
+	// adding a new relationship type, update the stats structures to support it
+	GraphStatistics_IntroduceRelationship(&g->stats);
 
 	int relationID = Graph_RelationTypeCount(g) - 1;
 	return relationID;
 }
 
-GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
+RG_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
 	ASSERT(g);
 	RG_Matrix m = g->adjacency_matrix;
 	g->SynchronizeMatrix(g, m);
-	return RG_Matrix_Get_GrB_Matrix(m);
+	return m;
 }
 
-// Get the transposed adjacency matrix.
-GrB_Matrix Graph_GetTransposedAdjacencyMatrix(const Graph *g) {
-	ASSERT(g);
-	RG_Matrix m = g->_t_adjacency_matrix;
-	g->SynchronizeMatrix(g, m);
-	return RG_Matrix_Get_GrB_Matrix(m);
-}
-
-GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
+RG_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
 	ASSERT(g && label_idx < array_len(g->labels));
 	RG_Matrix m = g->labels[label_idx];
 	g->SynchronizeMatrix(g, m);
-	return RG_Matrix_Get_GrB_Matrix(m);
+	return m;
 }
 
-GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
+RG_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
 	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
 
+	RG_Matrix m = GrB_NULL;
+
 	if(relation_idx == GRAPH_NO_RELATION) {
-		return Graph_GetAdjacencyMatrix(g);
+		m = Graph_GetAdjacencyMatrix(g);
 	} else {
-		RG_Matrix m = g->relations[relation_idx];
+		m = g->relations[relation_idx];
 		g->SynchronizeMatrix(g, m);
-		return RG_Matrix_Get_GrB_Matrix(m);
 	}
+
+	return m;
 }
 
 // Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise
@@ -1344,83 +1304,24 @@ bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
 	ASSERT(Graph_RelationTypeCount(g) > r);
 	GrB_Index nvals;
 	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
-	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix_nvals(&nvals, R);
+	RG_Matrix R = Graph_GetRelationMatrix(g, r);
+	RG_Matrix_nvals(&nvals, R);
 
 	return (Graph_RelationEdgeCount(g, r) > nvals);
 }
 
-GrB_Matrix Graph_GetTransposedRelationMatrix(const Graph *g, int relation_idx) {
-	ASSERT(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
-
-	if(relation_idx == GRAPH_NO_RELATION) {
-		return Graph_GetTransposedAdjacencyMatrix(g);
-	} else {
-		ASSERT(g->t_relations && "tried to retrieve nonexistent transposed matrix.");
-
-		RG_Matrix m = g->t_relations[relation_idx];
-		g->SynchronizeMatrix(g, m);
-		return RG_Matrix_Get_GrB_Matrix(m);
-	}
-}
-
-GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
-	GrB_Index nvals;
+RG_Matrix Graph_GetZeroMatrix(const Graph *g) {
 	RG_Matrix z = g->_zero_matrix;
-	g->SynchronizeMatrix(g, z);
-
-	GrB_Matrix grb_z = RG_Matrix_Get_GrB_Matrix(z);
+	_MatrixResizeToCapacity(g, z);
 
 #if RG_DEBUG
 	// make sure zero matrix is indeed empty
-	GrB_Matrix_nvals(&nvals, grb_z);
+	GrB_Index nvals;
+	RG_Matrix_nvals(&nvals, grb_z);
 	ASSERT(nvals == 0);
 #endif
 
-	return grb_z;
-}
-
-RG_Matrix Graph_GetLabelRGMatrix
-(
-	const Graph *g,
-	int label_idx
-) {
-	ASSERT(g && label_idx < array_len(g->labels));
-	RG_Matrix m = g->labels[label_idx];
-	g->SynchronizeMatrix(g, m);
-	return m;
-}
-
-RG_Matrix Graph_GetRelationRGMatrix
-(
-	const Graph *g,
-	int relation,
-	bool transpose
-) {
-	ASSERT(g != NULL);
-	ASSERT((relation == GRAPH_NO_RELATION ||
-			relation < Graph_RelationTypeCount(g)));
-
-	RG_Matrix m = NULL;
-
-	if(relation == GRAPH_NO_RELATION) {
-		m = (transpose) ? g->_t_adjacency_matrix : g->adjacency_matrix;
-	} else {
-		if(transpose) {
-			// if transpose version is requested
-			// make sure we're maintaining transposes, if not return NULL
-			bool maintain_transpose;
-			Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-			if(!maintain_transpose) return NULL;
-		}
-
-		m = (transpose) ? g->t_relations[relation] : g->relations[relation];
-	}
-
-	ASSERT(m != NULL);
-	g->SynchronizeMatrix(g, m);
-
-	return m;
+	return z;
 }
 
 void Graph_Free(Graph *g) {
@@ -1430,7 +1331,6 @@ void Graph_Free(Graph *g) {
 	DataBlockIterator *it;
 	RG_Matrix_Free(g->_zero_matrix);
 	RG_Matrix_Free(g->adjacency_matrix);
-	RG_Matrix_Free(g->_t_adjacency_matrix);
 
 	_Graph_FreeRelationMatrices(g);
 	array_free(g->relations);
