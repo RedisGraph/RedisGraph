@@ -82,7 +82,7 @@ GrB_Info RG_Matrix_new
 	return info;
 }
 
-RG_Matrix_new RG_Matrix_getTranspose
+RG_Matrix RG_Matrix_getTranspose
 (
 	const RG_Matrix C
 ) {
@@ -140,7 +140,7 @@ void RG_Matrix_setMultiEdge
 	bool multi_edge
 ) {
 	ASSERT(C);
-	if(c->maintain_transpose) RG_Matrix_setMultiEdge(C->transposed, multi_edge);
+	if(C->maintain_transpose) RG_Matrix_setMultiEdge(C->transposed, multi_edge);
 	C->multi_edge = multi_edge;
 }
 
@@ -179,7 +179,7 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 	ASSERT(info == GrB_SUCCESS);
 
 	dm = RG_MATRIX_DELTA_MINUS(A);
-	info = GrB_Matrix_nvals(&dp_nvals, dp);
+	info = GrB_Matrix_nvals(&dp_nvals, dm);
 	ASSERT(info == GrB_SUCCESS);
 
 	*nvals = m_nvals + dp_nvals - dm_nvals;
@@ -327,6 +327,36 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 	ASSERT(info == GrB_SUCCESS);
 	_SetDirty(C);
 
+	return info;
+}
+
+GrB_Info RG_Matrix_extractElement_BOOL     // x = A(i,j)
+(
+    bool *x,                               // extracted scalar
+    const RG_Matrix A,                     // matrix to extract a scalar from
+    GrB_Index i,                           // row index
+    GrB_Index j                            // column index
+) {
+	ASSERT(x != NULL);
+	ASSERT(A != NULL);
+
+	GrB_Info info;
+	GrB_Matrix  m      =  RG_MATRIX_MATRIX(A);
+	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(A);
+	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(A);
+
+	// see if entry is marked for deletion
+	info = GrB_Matrix_extractElement_BOOL(x, dm, i, j);
+	if(info == GrB_SUCCESS) {
+		// entry is marked for deletion
+		return GrB_NO_VALUE;
+	}
+
+	// see if entry is in either 'm' or 'dp'
+	info = GrB_Matrix_extractElement_BOOL(x, m, i, j);
+	if(info == GrB_SUCCESS) return info;
+
+	info = GrB_Matrix_extractElement_BOOL(x, dp, i, j);
 	return info;
 }
 
@@ -536,7 +566,7 @@ GrB_Info RG_Matrix_wait
 	bool force_sync
 ) {
 	ASSERT(A != NULL);
-	if(A->maintain_transpose) RG_Matrix_wait(A->transposed);
+	if(A->maintain_transpose) RG_Matrix_wait(A->transposed, force_sync);
 	
 	GrB_Info    info         =  GrB_SUCCESS;
 	GrB_Matrix  m            =  RG_MATRIX_MATRIX(A);
@@ -560,23 +590,49 @@ GrB_Info RG_Matrix_wait
 		info = RG_Matrix_sync(A);
 	}
 
-	_SetUnDirty(A);
+	_SetUndirty(A);
 
 	return info;
 }
 
 void RG_Matrix_free
 (
-	RG_Matrix C
+	RG_Matrix *C
 ) {
 	ASSERT(C != NULL);
-	if(A->maintain_transpose) RG_Matrix_free(A->transposed);
+	RG_Matrix M = *C;
 
-	GrB_Matrix_free(&C->matrix);
-	GrB_Matrix_free(&C->delta_plus);
-	GrB_Matrix_free(&C->delta_minus);
+	GrB_Info info;
 
-	pthread_mutex_destroy(&C->mutex);
-	rm_free(C);
+	// force flush both C and TC
+	info = RG_Matrix_wait(M, true);
+	ASSERT(info == GrB_SUCCESS);
+
+	if(M->maintain_transpose) RG_Matrix_free(M->transposed);
+
+	// free edges
+	if(M->multi_edge) {
+		GrB_Matrix m = RG_MATRIX_MATRIX(M);
+		// TODO: change GrB_IDENTITY_UINT64 with a custom operation which
+		// frees arrays
+		ASSERT(false);
+		info = GrB_Matrix_apply(m, GrB_NULL, GrB_NULL, GrB_IDENTITY_UINT64, m,
+				GrB_NULL);
+		ASSERT(info == GrB_SUCCESS);
+	}
+
+	info = GrB_Matrix_free(&M->matrix);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_free(&M->delta_plus);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_free(&M->delta_minus);
+	ASSERT(info == GrB_SUCCESS);
+
+	pthread_mutex_destroy(&M->mutex);
+	rm_free(M);
+
+	*C = NULL;
 }
 

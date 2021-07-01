@@ -262,8 +262,8 @@ static void _AlgebraicExpression_PopulateOperand(AlgebraicExpression *operand,
 		operand->operand.matrix = Graph_GetZeroMatrix(g);
 	} else {
 		GrB_Index nvals;
-		m = RG_Matrix_Get_GrB_Matrix(rgm);
-		m_delta_plus = RG_Matrix_Get_DeltaPlus(rgm);
+		m = RG_Matrix_getGrB_Matrix(rgm);
+		m_delta_plus = RG_Matrix_getDeltaPlus(rgm);
 		GrB_Matrix_nvals(&nvals, m_delta_plus);
 		if(nvals == 0) {
 			operand->operand.matrix = m;

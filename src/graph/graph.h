@@ -286,28 +286,24 @@ void Graph_GetNodeEdges(
 
 // Retrieves the adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetAdjacencyMatrix(
-	const Graph *g
-);
-
-// Retrieves the transposed adjacency matrix.
-// Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetTransposedAdjacencyMatrix(
-	const Graph *g
+RG_Matrix Graph_GetAdjacencyMatrix(
+	const Graph *g,
+	bool transposed
 );
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetLabelMatrix(
+RG_Matrix Graph_GetLabelMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
 	int label           // Label described by matrix.
 );
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetRelationMatrix(
+RG_Matrix Graph_GetRelationMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
-	int relation        // Relation described by matrix.
+	int relation,       // Relation described by matrix.
+	bool transposed
 );
 
 // Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise.
@@ -323,7 +319,7 @@ GrB_Matrix Graph_GetTransposedRelationMatrix(
 // Retrieves the zero matrix.
 // The function will resize it to match all other
 // internal matrices, caller mustn't modify it in any way.
-GrB_Matrix Graph_GetZeroMatrix
+RG_Matrix Graph_GetZeroMatrix
 (
 	const Graph *g
 );

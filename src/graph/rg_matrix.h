@@ -11,6 +11,7 @@
 
 // forward declaration of RG_Matrix type
 typedef struct _RG_Matrix _RG_Matrix;
+typedef _RG_Matrix *RG_Matrix;
 
 struct _RG_Matrix {
 	bool dirty;                         // Indicates if matrix requires sync
@@ -19,11 +20,10 @@ struct _RG_Matrix {
 	GrB_Matrix matrix;                  // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
-	_RG_Matrix transposed;              // Transposed matrix
+	RG_Matrix transposed;               // Transposed matrix
 	pthread_mutex_t mutex;              // Lock
 };
 
-typedef _RG_Matrix *RG_Matrix;
 
 GrB_Info RG_Matrix_new
 (
@@ -36,7 +36,7 @@ GrB_Info RG_Matrix_new
 );
 
 // returns transposed matrix of C
-RG_Matrix_new RG_Matrix_getTranspose
+RG_Matrix RG_Matrix_getTranspose
 (
 	const RG_Matrix C
 );
@@ -81,7 +81,7 @@ bool RG_Matrix_getMultiEdge
 	const RG_Matrix C
 );
 
-GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
+GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 (
     GrB_Index *nvals,       // matrix has nvals entries
     const RG_Matrix A       // matrix to query
@@ -109,6 +109,14 @@ GrB_Info RG_Matrix_setElement_UINT64      // C (i,j) = x
     GrB_Index i,                        // row index
     GrB_Index j                         // column index
 );
+
+GrB_Info RG_Matrix_extractElement_BOOL     // x = A(i,j)
+(
+    bool *x,                               // extracted scalar
+    const RG_Matrix A,                     // matrix to extract a scalar from
+    GrB_Index i,                           // row index
+    GrB_Index j                            // column index
+) ;
 
 GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
 (
@@ -146,6 +154,6 @@ GrB_Info RG_Matrix_wait
 
 void RG_Matrix_free
 (
-	RG_Matrix C
+	RG_Matrix *C
 );
 
