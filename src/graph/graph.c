@@ -879,7 +879,9 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		if(TR) {
 			/* We must make the matching updates to the transposed matrix.
 			 * First, extract the element that is known to be an edge array. */
-			info = GrB_Matrix_extractElement(edges, TR, dest_id, src_id);
+			info = GrB_Matrix_extractElement(&edge_id, TR, dest_id, src_id);
+			ASSERT(info == GrB_SUCCESS);
+			edges = (EdgeID *)edge_id;
 			ASSERT(info == GrB_SUCCESS);
 			// Replace the deleted edge with the last edge in the matrix.
 			edges[i] = edges[edge_count - 1];
@@ -1005,7 +1007,6 @@ static void _BulkDeleteImplicitEdges(Graph *g, GrB_Matrix Mask) {
 		GxB_select(A, GrB_NULL, GrB_NULL, _select_delete_edges, A, thunk, GrB_NULL);
 		// The number of deleted edges is equals the diff in the number of items in the DataBlock
 		uint64_t n_deleted_edges = edges_before_deletion - Graph_EdgeCount(g);
-
 
 		// Multiple edges of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, i, n_deleted_edges);
