@@ -54,7 +54,7 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 
 static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
+	GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id), GxB_SPARSE);
 	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
 	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1;
 	return GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);

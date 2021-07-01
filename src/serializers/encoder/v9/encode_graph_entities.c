@@ -245,7 +245,7 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 	GrB_Matrix M = Graph_GetRelationMatrix(gc->g, r);
 	// Get matrix tuple iterator from context, already set to the next entry to fetch, for previous edge encide or create new one.
 	GxB_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
-	if(!iter) GxB_MatrixTupleIter_new(&iter, M);
+	if(!iter) GxB_MatrixTupleIter_new(&iter, M, GxB_SPARSE);
 
 	// First, see if the last edges encoding stopped at multiple edges array
 	EdgeID *multiple_edges_array = GraphEncodeContext_GetMultipleEdgesArray(gc->encoding_context);
@@ -287,7 +287,7 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 			if(r == relation_count) goto finish;
 			// Get matrix and set iterator.
 			M = Graph_GetRelationMatrix(gc->g, r);
-			GxB_MatrixTupleIter_new(&iter, M);
+			GxB_MatrixTupleIter_new(&iter, M, GxB_SPARSE);
 			GxB_MatrixTupleIter_next(iter, &src, &dest, &depleted);
 		}
 

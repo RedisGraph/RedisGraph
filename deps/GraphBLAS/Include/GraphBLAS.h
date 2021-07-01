@@ -7843,18 +7843,24 @@ GrB_Info GxB_Matrix_Pending
 typedef struct
 {
 	GrB_Matrix A ;          // Matrix being iterated
+    	int sparsity_type;      // Currently hypersparse or sparse.
 	GrB_Index nvals ;       // Number of none zero values in matrix
 	GrB_Index nnz_idx ;     // Index of current none zero value
 	int64_t p ;             // Number of none zero values in current column
 	int64_t row_idx ;       // Index of current row
 	GrB_Index nrows ;       // Total number of rows in matrix
+    	struct { // Hypersparce only related fields
+        	int64_t sparse_row_idx;      // Index of current row not counting empty rows
+        	int64_t nrows_non_empty;     // Number of none empty rows in the matrix
+    	};
 } GxB_MatrixTupleIter ;
 
 // Create a new matrix iterator
 GrB_Info GxB_MatrixTupleIter_new
 (
-	GxB_MatrixTupleIter **iter, // iterator to create
-	GrB_Matrix A                // matrix being iterated
+	GxB_MatrixTupleIter **iter,     // iterator to create
+	GrB_Matrix A,                   // matrix being iterated
+    	int sparsity_type               // sparsity type of the matrix
 ) ;
 
 // Iterate over specific row
@@ -7898,7 +7904,8 @@ GrB_Info GxB_MatrixTupleIter_reset
 GrB_Info GxB_MatrixTupleIter_reuse
 (
 	GxB_MatrixTupleIter *iter,  // iterator to update
-	GrB_Matrix A				// matrix to scan
+	GrB_Matrix A,               // matrix to scan
+    	int sparsity_type           // sparsity type of the matrix
 ) ;
 
 // Release every resource consumed by iterator

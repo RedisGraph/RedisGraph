@@ -733,7 +733,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
 		/* Construct an iterator to traverse the source node's row, which contains
 		 * all outgoing edges. */
-		GxB_MatrixTupleIter_new(&tupleIter, M);
+		GxB_MatrixTupleIter_new(&tupleIter, M, GxB_SPARSE);
 		srcNodeID = ENTITY_GET_ID(n);
 		GxB_MatrixTupleIter_iterate_row(tupleIter, srcNodeID);
 		while(true) {
@@ -754,7 +754,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
 		/* Construct an iterator to traverse the node's row, which in the transposed
 		 * adjacency matrix contains all incoming edges. */
-		GxB_MatrixTupleIter_new(&tupleIter, M);
+		GxB_MatrixTupleIter_new(&tupleIter, M, GxB_SPARSE);
 		destNodeID = ENTITY_GET_ID(n);
 		GxB_MatrixTupleIter_iterate_row(tupleIter, destNodeID);
 
@@ -1093,8 +1093,8 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	nrows                       =  Graph_RequiredMatrixDim(g);
 	ncols                       =  nrows;
 	GrB_Descriptor_new(&desc);
-	GxB_MatrixTupleIter_new(&adj_iter, adj);
-	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
+	GxB_MatrixTupleIter_new(&adj_iter, adj, GxB_SPARSE);
+	GxB_MatrixTupleIter_new(&tadj_iter, tadj, GxB_SPARSE);
 
 	// implicit deleted edge, set format to hypersparse
 	// expecting a small number of implicit deleted edges

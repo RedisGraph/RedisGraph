@@ -176,7 +176,7 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 	GxB_MatrixTupleIter *iter;
 
 	UNUSED(res);
-	res = GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)bfs_ctx->nodes);
+	res = GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)bfs_ctx->nodes, GxB_SPARSE);
 	ASSERT(res == GrB_SUCCESS);
 	res = GxB_MatrixTupleIter_next(iter, NULL, &id, &depleted);
 	ASSERT(res == GrB_SUCCESS);

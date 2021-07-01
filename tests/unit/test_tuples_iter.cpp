@@ -17,18 +17,24 @@ extern "C" {
 }
 #endif
 
-class TuplesTest: public ::testing::Test {
+int sparsity_type;
+
+class TuplesTest: public ::testing::TestWithParam<int> {
   protected:
-	static void SetUpTestCase() {
+	void SetUp() override {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 
+		sparsity_type = GetParam();
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-		GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
+		if(sparsity_type == GxB_SPARSE)
+			GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
+		else
+			GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_ALWAYS_HYPER); // matrices are hypersparse
 	}
 
-	static void TearDownTestCase() {
+	void TearDown() override {
 		GrB_finalize();
 	}
 
@@ -58,7 +64,7 @@ class TuplesTest: public ::testing::Test {
 	}
 };
 
-TEST_F(TuplesTest, RandomVectorTest) {
+TEST_P(TuplesTest, RandomVectorTest) {
 	//--------------------------------------------------------------------------
 	// Build a random vector
 	//--------------------------------------------------------------------------
@@ -90,7 +96,7 @@ TEST_F(TuplesTest, RandomVectorTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A);
+	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A, GxB_SPARSE);
 	GrB_Index col;
 
 	//--------------------------------------------------------------------------
@@ -114,7 +120,7 @@ TEST_F(TuplesTest, RandomVectorTest) {
 	GrB_Vector_free(&A);
 }
 
-TEST_F(TuplesTest, VectorIteratorTest) {
+TEST_P(TuplesTest, VectorIteratorTest) {
 	//--------------------------------------------------------------------------
 	// Build a vector
 	//--------------------------------------------------------------------------
@@ -135,7 +141,7 @@ TEST_F(TuplesTest, VectorIteratorTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A);
+	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A, GxB_SPARSE);
 	GrB_Index col;
 
 	//--------------------------------------------------------------------------
@@ -170,7 +176,7 @@ TEST_F(TuplesTest, VectorIteratorTest) {
 	GrB_Vector_free(&A);
 }
 
-TEST_F(TuplesTest, RandomMatrixTest) {
+TEST_P(TuplesTest, RandomMatrixTest) {
 	//--------------------------------------------------------------------------
 	// Build a random matrix
 	//--------------------------------------------------------------------------
@@ -207,7 +213,7 @@ TEST_F(TuplesTest, RandomMatrixTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A);
+	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
 	GrB_Index row;
 	GrB_Index col;
 
@@ -236,7 +242,7 @@ TEST_F(TuplesTest, RandomMatrixTest) {
 	GrB_Matrix_free(&A);
 }
 
-TEST_F(TuplesTest, MatrixIteratorTest) {
+TEST_P(TuplesTest, MatrixIteratorTest) {
 	//--------------------------------------------------------------------------
 	// Build a 4X4 matrix
 	//--------------------------------------------------------------------------
@@ -252,7 +258,7 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A);
+	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
 	GrB_Index row;
 	GrB_Index col;
 
@@ -290,7 +296,7 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
 	GrB_Matrix_free(&A);
 }
 
-TEST_F(TuplesTest, ColumnIteratorTest) {
+TEST_P(TuplesTest, ColumnIteratorTest) {
 	//--------------------------------------------------------------------------
 	// Build a 4X4 matrix
 	//--------------------------------------------------------------------------
@@ -304,7 +310,7 @@ TEST_F(TuplesTest, ColumnIteratorTest) {
 	GrB_Index nrows = nvals;
 	GrB_Index ncols = nvals;
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A);
+	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
 
 	for(int j = 0; j < ncols; j++) {
 		GrB_Vector_new(&v, GrB_BOOL, nrows);
@@ -343,7 +349,7 @@ TEST_F(TuplesTest, ColumnIteratorTest) {
 	GrB_Matrix_free(&A);
 }
 
-TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
+TEST_P(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 	//--------------------------------------------------------------------------
 	// Build a 4X4 empty matrix
 	//--------------------------------------------------------------------------
@@ -354,7 +360,7 @@ TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 	GrB_Index col;
 	GrB_Index ncols = nvals;
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A);
+	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
 
 	for(int j = 0; j < ncols; j++) {
 
@@ -375,7 +381,7 @@ TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 	GrB_Matrix_free(&A);
 }
 
-TEST_F(TuplesTest, IteratorJumpToRowTest) {
+TEST_P(TuplesTest, IteratorJumpToRowTest) {
 
 	// Matrix is 5X5 and will be populated with the following indices.
 	GrB_Index indices[5][2] = {
@@ -402,7 +408,7 @@ TEST_F(TuplesTest, IteratorJumpToRowTest) {
 
 	// Create iterator.
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A);
+	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
 
 	// Check for invalid index exception for row jump.
 	info = GxB_MatrixTupleIter_jump_to_row(iter, -1);
@@ -441,7 +447,7 @@ TEST_F(TuplesTest, IteratorJumpToRowTest) {
 }
 
 
-TEST_F(TuplesTest, IteratorRange) {
+TEST_P(TuplesTest, IteratorRange) {
 
 	// Matrix is 6X6 and will be populated with the following indices.
 	GrB_Index indices[6][2] = {
@@ -469,7 +475,7 @@ TEST_F(TuplesTest, IteratorRange) {
 
 	// Create iterator.
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A);
+	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
 
 	// Check for invalid index exception for range iteration.
 	info = GxB_MatrixTupleIter_iterate_range(iter, -1, n - 1);
@@ -525,4 +531,7 @@ TEST_F(TuplesTest, IteratorRange) {
 	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 }
+
+INSTANTIATE_TEST_SUITE_P(TestParameters, TuplesTest,
+                         ::testing::Values(GxB_SPARSE, GxB_HYPERSPARSE));
 
