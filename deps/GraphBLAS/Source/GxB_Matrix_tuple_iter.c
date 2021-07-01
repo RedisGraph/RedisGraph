@@ -61,7 +61,7 @@ static inline bool _find_row_index_in_Ah
 	GrB_Index rowIdx,
 	GrB_Index *result
 ) {
-	if(!result || !iter) return false;
+	if(!result || !iter || !iter->nrows_non_empty) return false;
 	GrB_Index l = 0, h = iter->nrows_non_empty - 1, m;
 	// find the index using binary search
 	while(l <= h) {
@@ -102,7 +102,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	if(iter->sparsity_type == GxB_SPARSE) {
 		rowIdx_sparse = rowIdx;
 	} else {  // GxB_HYPERSPARSE - find the row_index in the sparse vector
-		if(!iter->nrows_non_empty || !_find_row_index_in_Ah(iter, rowIdx, &rowIdx_sparse)) hypersparse_and_row_is_empty = true;
+		if(!_find_row_index_in_Ah(iter, rowIdx, &rowIdx_sparse)) hypersparse_and_row_is_empty = true;
 	}
 
 	// If hypersparse and row is empty setting nvals = 0 cause iterator.next should return depleted
@@ -163,7 +163,7 @@ static inline bool _find_start_row_index_in_Ah
 	GrB_Index rowIdx,
 	GrB_Index *result
 ) {
-	if(!result || !iter) return false;
+	if(!result || !iter || !iter->nrows_non_empty) return false;
 	GrB_Index l = 0, h = iter->nrows_non_empty - 1, m;
 	// find the index using binary search
 	while(l < h) {
@@ -243,7 +243,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 
 	if(iter->sparsity_type == GxB_HYPERSPARSE) {
 		iter->nrows_non_empty = iter->A->nvec;
-		if(!iter->nrows_non_empty || !_find_start_row_index_in_Ah(iter, startRowIdx, &startRowIdx_sparse)
+		if(!_find_start_row_index_in_Ah(iter, startRowIdx, &startRowIdx_sparse)
 		|| !_find_end_row_index_in_Ah(iter, endRowIdx, &endRowIdx_sparse))
 			hypersparse_no_more_rows = true;
 		iter->sparse_row_idx = startRowIdx_sparse;
