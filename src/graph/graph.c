@@ -67,21 +67,22 @@ void _binary_op_free_edge(void *z, const void *x, const void *y) {
 
 // Creates a new matrix
 static RG_Matrix RG_Matrix_New(const Graph *g, GrB_Type data_type) {
-	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
+	GrB_Info info;
+	UNUSED(info);
 
-	matrix->dirty = true;
-	matrix->allow_multi_edge = true;
+	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
+	matrix->dirty             =  true;
+	matrix->allow_multi_edge  =  true;
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
-	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
-	ASSERT(matrix_res == GrB_SUCCESS);
+	info = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
+	ASSERT(info == GrB_SUCCESS);
 
-	/* matrix iterator requires matrix format to be sparse
-	 * to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
-	 * we set matrix format at creation time. */
-	GrB_Info set_res = GxB_set(matrix->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	UNUSED(set_res);
-	ASSERT(set_res == GrB_SUCCESS);
+	// matrix iterator requires matrix format to be sparse
+	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	// we set matrix format at creation time
+	info = GxB_set(matrix->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	ASSERT(info == GrB_SUCCESS);
 
 	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
 	ASSERT(mutex_res == 0);
@@ -1461,9 +1462,6 @@ int Graph_AddRelationType(Graph *g) {
 	ASSERT(g);
 
 	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
-	GrB_Info info = GxB_set(m->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	UNUSED(info);
-	ASSERT(info == GrB_SUCCESS);
 	array_append(g->relations, m);
 	// Adding a new relationship type, update the stats structures to support it.
 	GraphStatistics_IntroduceRelationship(&g->stats);
@@ -1472,8 +1470,6 @@ int Graph_AddRelationType(Graph *g) {
 
 	if(maintain_transpose) {
 		RG_Matrix tm = RG_Matrix_New(g, GrB_UINT64);
-		info = GxB_set(tm->grb_matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-		ASSERT(info == GrB_SUCCESS);
 		array_append(g->t_relations, tm);
 	}
 
