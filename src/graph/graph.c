@@ -882,7 +882,6 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 			info = GrB_Matrix_extractElement(&edge_id, TR, dest_id, src_id);
 			ASSERT(info == GrB_SUCCESS);
 			edges = (EdgeID *)edge_id;
-			ASSERT(info == GrB_SUCCESS);
 			// Replace the deleted edge with the last edge in the matrix.
 			edges[i] = edges[edge_count - 1];
 			array_pop(edges);
