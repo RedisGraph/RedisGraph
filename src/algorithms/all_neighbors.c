@@ -61,6 +61,11 @@ void AllNeighborsCtx_Reset
 	ctx->first_pull     =  true;
 	ctx->current_level  =  0;
 
+	// free each level
+	uint levelsCount = array_len(ctx->levels);
+	for(uint i = 0; i < levelsCount; i++) {
+		GxB_MatrixTupleIter_free(ctx->levels[i]);
+	}
 	array_clear(ctx->levels);
 	array_clear(ctx->visited);
 
@@ -84,7 +89,7 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	ctx->src            =  src;
 	ctx->minLen         =  minLen;
 	ctx->maxLen         =  maxLen;
-	ctx->levels         =  array_new(GxB_MatrixTupleIter*, 1);
+	ctx->levels         =  array_new(GxB_MatrixTupleIter *, 1);
 	ctx->visited        =  array_new(EntityID, 1);
 	ctx->first_pull     =  true;
 	ctx->current_level  =  0;

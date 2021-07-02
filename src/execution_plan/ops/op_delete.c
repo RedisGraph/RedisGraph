@@ -10,9 +10,6 @@
 #include "../../query_ctx.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-// minimum number of deletion required
-#define EDGE_BULK_DELETE_THRESHOLD 4
-
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
 static OpResult DeleteInit(OpBase *opBase);
