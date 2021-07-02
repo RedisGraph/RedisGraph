@@ -22,16 +22,21 @@ GrB_Info GxB_MatrixTupleIter_new
 	GB_WHERE(A, "GxB_MatrixTupleIter_new (A)") ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
-	GrB_Index nrows;
+	// make sure matrix is not bitmap or full
+	GxB_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
+
+	GrB_Index nrows ;
 	GrB_Matrix_nrows(&nrows, A) ;
 
 	*iter = GB_MALLOC(1, GxB_MatrixTupleIter) ;
 	GrB_Matrix_nvals(&((*iter)->nvals), A) ;
-	(*iter)->A = A ;
-	(*iter)->nnz_idx = 0 ;
-	(*iter)->row_idx = 0 ;
-	(*iter)->nrows = nrows;
-	(*iter)->p = A->p[0] ;
+
+	(*iter)->A        =  A        ;
+	(*iter)->nnz_idx  =  0        ;
+	(*iter)->row_idx  =  0        ;
+	(*iter)->nrows    =  nrows    ;
+	(*iter)->p        =  A->p[0]  ;
+
 	return (GrB_SUCCESS) ;
 }
 
@@ -52,10 +57,10 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 				 rowIdx, iter->nrows) ;
 	}
 
-	iter->nvals = iter->A->p[rowIdx + 1];
-	iter->nnz_idx = iter->A->p[rowIdx];
-	iter->row_idx = rowIdx;
-	iter->p = 0;
+	iter->p        =  0 ;
+	iter->nvals    =  iter->A->p[rowIdx + 1] ;
+	iter->nnz_idx  =  iter->A->p[rowIdx] ;
+	iter->row_idx  =  rowIdx ;
 	return (GrB_SUCCESS) ;
 }
 
@@ -77,9 +82,11 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 	}
 
 	GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
-	iter->nnz_idx = iter->A->p[rowIdx] ;
-	iter->row_idx = rowIdx ;
-	iter->p = 0 ;
+
+	iter->p        =  0                   ;
+	iter->nnz_idx  =  iter->A->p[rowIdx]  ;
+	iter->row_idx  =  rowIdx              ;
+
 	return (GrB_SUCCESS) ;
 }
 
@@ -107,11 +114,12 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 				 startRowIdx, endRowIdx) ;
 	}
 
-	iter->nnz_idx = iter->A->p[startRowIdx] ;
-	iter->row_idx = startRowIdx ;
+	iter->p        =  0                        ;
+	iter->nnz_idx  =  iter->A->p[startRowIdx]  ;
+	iter->row_idx  =  startRowIdx              ;
 	if(endRowIdx < iter->nrows) iter->nvals = iter->A->p[endRowIdx + 1] ;
 	else GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
-	iter->p = 0 ;
+
 	return (GrB_SUCCESS) ;
 }
 
@@ -140,27 +148,27 @@ GrB_Info GxB_MatrixTupleIter_next
 	//--------------------------------------------------------------------------
 
 	if(col)
-		*col = A->i[nnz_idx];
+		*col = A->i[nnz_idx] ;
 
 	//--------------------------------------------------------------------------
 	// extract the row indices
 	//--------------------------------------------------------------------------
 
-	const int64_t *Ap = A->p;
-	int64_t i = iter->row_idx;
+	const int64_t *Ap = A->p ;
+	int64_t i = iter->row_idx ;
 
 	for(; i < iter->nrows; i++) {
-		int64_t p = iter->p + Ap[i];
+		int64_t p = iter->p + Ap[i] ;
 		if(p < Ap[i + 1]) {
-			iter->p++;
+			iter->p++ ;
 			if(row)
-				*row = i;
-			break;
+				*row = i ;
+			break ;
 		}
-		iter->p = 0;
+		iter->p = 0 ;
 	}
 
-	iter->row_idx = i;
+	iter->row_idx = i ;
 
 	iter->nnz_idx++ ;
 
@@ -175,9 +183,9 @@ GrB_Info GxB_MatrixTupleIter_reset
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_reset (iter)") ;
 	GB_RETURN_IF_NULL(iter) ;
-	iter->nnz_idx = 0 ;
-	iter->row_idx = 0 ;
-	iter->p = iter->A->p[0] ;
+	iter->nnz_idx  =  0              ;
+	iter->row_idx  =  0              ;
+	iter->p        =  iter->A->p[0]  ;
 	return (GrB_SUCCESS) ;
 }
 
@@ -191,7 +199,10 @@ GrB_Info GxB_MatrixTupleIter_reuse
 	GB_RETURN_IF_NULL(iter) ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
-	GrB_Index nrows;
+	// make sure matrix is not bitmap or full
+	GxB_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
+
+	GrB_Index nrows ;
 	GrB_Matrix_nrows(&nrows, A) ;
 
 	iter->A = A ;
