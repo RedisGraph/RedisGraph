@@ -37,7 +37,7 @@ commands:
           command: |
             apt-get -qq update
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://get.docker.com)
+            bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
           docker_layer_caching: true
 
@@ -171,6 +171,9 @@ jobs:
       - run:
           name: Test
           command: bash -l -c "make test"
+      - run:
+          name: Run 30-second fuzz test
+          command: bash -l -c "make fuzz"
       - early_return_for_forked_pull_requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -301,6 +304,9 @@ jobs:
       - run:
           name: Run QA Automation
           command: MODULE_VERSION=$CIRCLE_BRANCH VERBOSE=1 TEST=nightly QUICK=1 ./tests/qa/run
+      - run:
+          name: Run 10-minute fuzz test
+          command: bash -l -c "FUZZ_TIMEOUT=600 make fuzz"
 
   performance_ci_automation_not_integ:
     docker:
@@ -324,7 +330,8 @@ jobs:
           at: /workspace
       - run:
           name: Unzip module artifact
-          command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
+          command: |
+            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
       - benchmark-automation
 
   nightly_performance_automation:
@@ -332,11 +339,10 @@ jobs:
       - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
-      - checkout
+      - checkout-all
       - setup-prerequisits
       - attach_workspace:
           at: /workspace
-      - load-cached-deps
       - run:
           name: Build artifact
           command: bash -l -c make
@@ -427,7 +433,7 @@ workflows:
           <<: *on-integ-and-version-tags
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7]
+              platform: [bionic, xenial, centos7, centos8]
       - deploy_branch:
           <<: *context
           <<: *on-integ-branch

@@ -171,7 +171,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 			.update_index  = (label_id != GRAPH_NO_LABEL),
 			.attr_id       = ATTRIBUTE_ALL,
 		};
-		*updates = array_append(*updates, update);
+		array_append(*updates, update);
 	}
 
 	// if we're converting a SET clause, NULL is acceptable
@@ -207,7 +207,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 				update = _PreparePendingUpdate(gc, accepted_properties,
 						label_id, entity, attr_id, value);
 				// enqueue the current update
-				*updates = array_append(*updates, update);
+				array_append(*updates, update);
 			}
 			continue;
 		}
@@ -215,7 +215,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 		update = _PreparePendingUpdate(gc, accepted_properties, label_id,
 				entity, attr_id, new_value);
 		// enqueue the current update
-		*updates = array_append(*updates, update);
+		array_append(*updates, update);
 	}
 }
 

@@ -215,7 +215,7 @@ $(LIBXXHASH):
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(shell $(ROOT)/deps/readies/bin/nproc)
+	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only
 endif
 .PHONY: $(GRAPHBLAS)
 
@@ -238,12 +238,6 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)
-
-# Compile query parse.
-# This is not included in the usual make target!
-parser:
-	@$(MAKE) -C $@
-.PHONY: parser
 
 #----------------------------------------------------------------------------------------------
 
@@ -323,3 +317,10 @@ cov-upload:
 	$(SHOW)bash -c "bash <(curl -s https://codecov.io/bash) -f $(COV_INFO)"
 .PHONY: cov-upload
 endif # COV
+
+#----------------------------------------------------------------------------------------------
+
+fuzz: redisgraph.so
+	@$(MAKE) -C $(ROOT)/tests fuzz
+
+.PHONY: fuzz

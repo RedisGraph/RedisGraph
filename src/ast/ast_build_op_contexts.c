@@ -120,7 +120,7 @@ static void _ConvertSetItem(GraphContext *gc, rax *updates,
 	AR_ExpNode *exp = AR_EXP_FromASTNode(ast_value);
 
 	PropertySetCtx update = { .id  = attribute_id, .exp = exp };
-	ctx->properties = array_append(ctx->properties, update);
+	array_append(ctx->properties, update);
 }
 
 void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
@@ -145,12 +145,12 @@ void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
 			// relation
 			QGEdge *e = QueryGraph_GetEdgeByAlias(g, alias);
 			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, e, elem);
-			*edges = array_append(*edges, new_edge);
+			array_append(*edges, new_edge);
 		} else {
 			// node
 			QGNode *n = QueryGraph_GetNodeByAlias(g, alias);
 			NodeCreateCtx new_node = _NewNodeCreateCtx(gc, n, elem);
-			*nodes = array_append(*nodes, new_node);
+			array_append(*nodes, new_node);
 		}
 	}
 
@@ -171,7 +171,7 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 	for(unsigned int i = 0; i < nitems; i ++) {
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		int direction = cypher_ast_sort_item_is_ascending(item) ? DIR_ASC : DIR_DESC;
-		directions = array_append(directions, direction);
+		array_append(directions, direction);
 	}
 
 	*sort_directions = directions;
@@ -201,7 +201,7 @@ AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
 	for(uint i = 0; i < delete_count; i ++) {
 		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_expr);
-		exps = array_append(exps, exp);
+		array_append(exps, exp);
 	}
 	return exps;
 }

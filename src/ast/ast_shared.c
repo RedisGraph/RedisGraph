@@ -138,7 +138,7 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *orig) {
 			.id = orig->properties[i].id,
 			.exp = AR_EXP_Clone(orig->properties[i].exp),
 		};
-		clone->properties = array_append(clone->properties, update);
+		array_append(clone->properties, update);
 	}
 
 	return clone;

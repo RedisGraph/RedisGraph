@@ -62,7 +62,7 @@ static void _filterVariableLengthEdges(ExecutionPlan *plan,
 		FT_FilterNode *ft = op_filter->filterTree;
 		// check if the filter is applied to the traversed edge
 		if(_applicableFilter(ft, src, edge, dest)) {
-			filters = array_append(filters, op_filter);
+			array_append(filters, op_filter);
 		}
 
 		// advance

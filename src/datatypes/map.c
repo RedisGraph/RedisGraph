@@ -100,7 +100,7 @@ void Map_Add
 	Pair pair = Pair_New(key, value);
 
 	// add pair to the end of map
-	map->map = array_append(map->map, pair);
+	array_append(map->map, pair);
 }
 
 // removes key from map
@@ -198,7 +198,7 @@ SIValue *Map_Keys
 
 	for(uint i = 0; i < key_count; i++) {
 		Pair p = map.map[i];
-		keys = array_append(keys, p.key);
+		array_append(keys, p.key);
 	}
 
 	return keys;

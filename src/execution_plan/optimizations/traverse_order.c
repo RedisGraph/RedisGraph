@@ -136,7 +136,7 @@ static AlgebraicExpression **_valid_expressions
 			}
 		}
 
-		if(valid) options = array_append(options, exp);
+		if(valid) array_append(options, exp);
 	}
 
 	return options;

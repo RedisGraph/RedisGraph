@@ -28,9 +28,9 @@ static void _migrate_expressions(OpAggregate *op, AR_ExpNode **exps) {
 	for(uint i = 0; i < exp_count; i++) {
 		AR_ExpNode *exp = exps[i];
 		if(!AR_EXP_ContainsAggregation(exp)) {
-			op->key_exps = array_append(op->key_exps, exp);
+			array_append(op->key_exps, exp);
 		} else {
-			op->aggregate_exps = array_append(op->aggregate_exps, exp);
+			array_append(op->aggregate_exps, exp);
 		}
 	}
 
@@ -216,12 +216,12 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	for(uint i = 0; i < op->key_count; i ++) {
 		// Store the index of each key expression.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
+		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
+		array_append(op->record_offsets, record_idx);
 	}
 
 	return (OpBase *)op;
@@ -269,9 +269,9 @@ static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	uint aggregate_count = op->aggregate_count;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, aggregate_count + key_count);
 
-	for(uint i = 0; i < key_count; i++) exps = array_append(exps, AR_EXP_Clone(op->key_exps[i]));
+	for(uint i = 0; i < key_count; i++) array_append(exps, AR_EXP_Clone(op->key_exps[i]));
 	for(uint i = 0; i < aggregate_count; i++)
-		exps = array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
+		array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
 	return NewAggregateOp(plan, exps, op->should_cache_records);
 }
 

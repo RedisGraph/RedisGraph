@@ -69,7 +69,7 @@ void _collect_projected_identifier(const cypher_astnode_t *ast_exp, rax *identif
 												   strlen(identifier));
 		// Use array in case of multiple projections for the same named path.
 		if(exp_arr == raxNotFound) exp_arr = array_new(const cypher_astnode_t *, 1);
-		exp_arr = array_append(exp_arr, ast_exp);
+		array_append(exp_arr, ast_exp);
 		raxInsert(identifier_map, (unsigned char *)identifier, strlen(identifier), (void *)exp_arr, NULL);
 	} else {
 		// Recurse over children.
