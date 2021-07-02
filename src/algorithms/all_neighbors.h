@@ -26,7 +26,7 @@ typedef struct {
 	int current_level;             // cuurent depth
 	bool first_pull;               // first call to Next
 	EntityID *visited;             // visited nodes
-	GxB_MatrixTupleIter **levels;  // array of neighbors iterator
+	GxB_MatrixTupleIter *levels;   // array of neighbors iterator
 } AllNeighborsCtx;
 
 void AllNeighborsCtx_Reset

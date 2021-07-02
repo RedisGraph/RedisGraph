@@ -22,7 +22,10 @@ GrB_Info GxB_MatrixTupleIter_new
 	GB_WHERE("GxB_MatrixTupleIter_new (A)") ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
-	GrB_Index nrows;
+	// make sure matrix is not bitmap or full
+    GxB_set(A, GxB_HYPER, GxB_NEVER_HYPER);
+
+	GrB_Index nrows ;
 	GrB_Matrix_nrows(&nrows, A) ;
 
 	*iter = NULL ;
@@ -31,7 +34,7 @@ GrB_Info GxB_MatrixTupleIter_new
 	(*iter)->A = A ;
 	(*iter)->nnz_idx = 0 ;
 	(*iter)->row_idx = 0 ;
-	(*iter)->nrows = nrows;
+	(*iter)->nrows = nrows ;
 	(*iter)->p = A->p[0] ;
 	return (GrB_SUCCESS) ;
 }
@@ -51,10 +54,10 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range"))) ;
 	}
 
-	iter->nvals = iter->A->p[rowIdx + 1];
-	iter->nnz_idx = iter->A->p[rowIdx];
-	iter->row_idx = rowIdx;
-	iter->p = 0;
+	iter->nvals = iter->A->p[rowIdx + 1] ;
+	iter->nnz_idx = iter->A->p[rowIdx] ;
+	iter->row_idx = rowIdx ;
+	iter->p = 0 ;
 	return (GrB_SUCCESS) ;
 }
 
@@ -134,27 +137,27 @@ GrB_Info GxB_MatrixTupleIter_next
 	//--------------------------------------------------------------------------
 
 	if(col)
-		*col = A->i[nnz_idx];
+		*col = A->i[nnz_idx] ;
 
 	//--------------------------------------------------------------------------
 	// extract the row indices
 	//--------------------------------------------------------------------------
 
-	const int64_t *Ap = A->p;
-	int64_t i = iter->row_idx;
+	const int64_t *Ap = A->p ;
+	int64_t i = iter->row_idx ;
 
 	for(; i < iter->nrows; i++) {
-		int64_t p = iter->p + Ap[i];
+		int64_t p = iter->p + Ap[i] ;
 		if(p < Ap[i + 1]) {
-			iter->p++;
+			iter->p++ ;
 			if(row)
-				*row = i;
-			break;
+				*row = i ;
+			break ;
 		}
-		iter->p = 0;
+		iter->p = 0 ;
 	}
 
-	iter->row_idx = i;
+	iter->row_idx = i ;
 
 	iter->nnz_idx++ ;
 
@@ -184,6 +187,9 @@ GrB_Info GxB_MatrixTupleIter_reuse
 	GB_WHERE("GxB_MatrixTupleIter_reuse (iter, A)") ;
 	GB_RETURN_IF_NULL(iter) ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
+
+	// make sure matrix is not bitmap or full
+    GxB_set(A, GxB_HYPER, GxB_NEVER_HYPER);
 
 	GrB_Index nrows;
 	GrB_Matrix_nrows(&nrows, A) ;
