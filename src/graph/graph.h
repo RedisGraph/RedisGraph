@@ -25,6 +25,7 @@
 #define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
 #define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
 #define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
+#define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
 
 // Mask with most significat bit on 10000...
 #define MSB_MASK (1UL << (sizeof(EntityID) * 8 - 1))
