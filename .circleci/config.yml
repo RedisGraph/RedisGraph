@@ -339,11 +339,10 @@ jobs:
       - image: redisfab/rmbuilder:6.2.3-x64-bionic
     steps:
       - early_returns
-      - checkout
+      - checkout-all
       - setup-prerequisits
       - attach_workspace:
           at: /workspace
-      - load-cached-deps
       - run:
           name: Build artifact
           command: bash -l -c make
