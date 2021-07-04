@@ -165,7 +165,7 @@ commands:
         type: string
     steps:
       - early-returns
-      - checkout
+      - checkout-all
       - setup-automation
       - run:
           name: Install Docker
