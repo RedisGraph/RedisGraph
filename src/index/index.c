@@ -56,7 +56,7 @@ static void _populateIndex(Index *idx) {
 	int label_id = s->id;
 	GxB_MatrixTupleIter *it;
 	const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
-	GxB_MatrixTupleIter_new(&it, label_matrix, GxB_SPARSE);
+	GxB_MatrixTupleIter_new(&it, label_matrix);
 
 	// Iterate over each labeled node.
 	while(true) {

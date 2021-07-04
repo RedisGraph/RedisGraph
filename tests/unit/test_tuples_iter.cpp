@@ -17,21 +17,15 @@ extern "C" {
 }
 #endif
 
-int sparsity_type;
-
 class TuplesTest: public ::testing::TestWithParam<int> {
   protected:
 	void SetUp() override {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 
-		sparsity_type = GetParam();
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-		if(sparsity_type == GxB_SPARSE)
-			GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-		else
-			GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_ALWAYS_HYPER); // matrices are hypersparse
+		GxB_Global_Option_set(GxB_HYPER_SWITCH, GetParam()); // Setting matrix sparsity
 	}
 
 	void TearDown() override {
@@ -96,7 +90,7 @@ TEST_P(TuplesTest, RandomVectorTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A, GxB_SPARSE);
+	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A);
 	GrB_Index col;
 
 	//--------------------------------------------------------------------------
@@ -141,7 +135,7 @@ TEST_P(TuplesTest, VectorIteratorTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A, GxB_SPARSE);
+	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A);
 	GrB_Index col;
 
 	//--------------------------------------------------------------------------
@@ -213,7 +207,7 @@ TEST_P(TuplesTest, RandomMatrixTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
+	GxB_MatrixTupleIter_new(&iter, A);
 	GrB_Index row;
 	GrB_Index col;
 
@@ -258,7 +252,7 @@ TEST_P(TuplesTest, MatrixIteratorTest) {
 	//--------------------------------------------------------------------------
 
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
+	GxB_MatrixTupleIter_new(&iter, A);
 	GrB_Index row;
 	GrB_Index col;
 
@@ -310,7 +304,7 @@ TEST_P(TuplesTest, ColumnIteratorTest) {
 	GrB_Index nrows = nvals;
 	GrB_Index ncols = nvals;
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
+	GxB_MatrixTupleIter_new(&iter, A);
 
 	for(int j = 0; j < ncols; j++) {
 		GrB_Vector_new(&v, GrB_BOOL, nrows);
@@ -360,7 +354,7 @@ TEST_P(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 	GrB_Index col;
 	GrB_Index ncols = nvals;
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
+	GxB_MatrixTupleIter_new(&iter, A);
 
 	for(int j = 0; j < ncols; j++) {
 
@@ -408,7 +402,7 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 
 	// Create iterator.
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
+	GxB_MatrixTupleIter_new(&iter, A);
 
 	// Check for invalid index exception for row jump.
 	info = GxB_MatrixTupleIter_jump_to_row(iter, -1);
@@ -475,7 +469,7 @@ TEST_P(TuplesTest, IteratorRange) {
 
 	// Create iterator.
 	GxB_MatrixTupleIter *iter;
-	GxB_MatrixTupleIter_new(&iter, A, sparsity_type);
+	GxB_MatrixTupleIter_new(&iter, A);
 
 	// Check for invalid index exception for range iteration.
 	info = GxB_MatrixTupleIter_iterate_range(iter, -1, n - 1);
@@ -533,5 +527,5 @@ TEST_P(TuplesTest, IteratorRange) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TestParameters, TuplesTest,
-                         ::testing::Values(GxB_SPARSE, GxB_HYPERSPARSE));
+                         ::testing::Values(GxB_NEVER_HYPER, GxB_ALWAYS_HYPER));
 
