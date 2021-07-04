@@ -182,7 +182,7 @@ commands:
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
-            make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=0 PUSH_GENERAL=1 SHOW=1 VERBOSE=1
+            make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=0 SHOW=1 VERBOSE=1
       - persist-artifacts
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -456,16 +456,13 @@ workflows:
     jobs:
       - build:
           <<: *context
-          #@@ <<: *not-on-integ-branch
-          <<: *never
+          <<: *not-on-integ-branch
       - coverage:
           <<: *context
-          #@@ <<: *on-any-branch
-          <<: *never
+          <<: *on-any-branch
       - build_memcheck:
           <<: *context
-          #@@ <<: *on-any-branch
-          <<: *never
+          <<: *on-any-branch
       - build_macos:
           # <<: *on-any-branch
           <<: *context
@@ -477,12 +474,11 @@ workflows:
             parameters:
               platform: [bionic, xenial, centos7, centos8]
       - build-arm-platforms:
-          #@@<<: *on-integ-and-version-tags
-          <<: *on-any-branch
+          <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
-              platform: [bionic] # focal
+              platform: [bionic]
       - deploy_branch:
           <<: *context
           <<: *on-integ-branch
@@ -502,8 +498,7 @@ workflows:
             - build_macos
       - performance_ci_automation_not_integ:
           <<: *context
-          #@@ <<: *not-on-integ-branch
-          <<: *never
+          <<: *not-on-integ-branch
           requires:
             - build
       - performance_ci_automation:
