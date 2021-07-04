@@ -456,13 +456,16 @@ workflows:
     jobs:
       - build:
           <<: *context
-          <<: *not-on-integ-branch
+          #@@ <<: *not-on-integ-branch
+          <<: *never
       - coverage:
           <<: *context
-          <<: *on-any-branch
+          #@@ <<: *on-any-branch
+          <<: *never
       - build_memcheck:
           <<: *context
-          <<: *on-any-branch
+          #@@ <<: *on-any-branch
+          <<: *never
       - build_macos:
           # <<: *on-any-branch
           <<: *context
@@ -499,7 +502,8 @@ workflows:
             - build_macos
       - performance_ci_automation_not_integ:
           <<: *context
-          <<: *not-on-integ-branch
+          #@@ <<: *not-on-integ-branch
+          <<: *never
           requires:
             - build
       - performance_ci_automation:
