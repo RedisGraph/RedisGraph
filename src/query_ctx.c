@@ -114,8 +114,10 @@ ResultSet *QueryCtx_GetResultSet(void) {
 }
 
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return &ctx->internal_exec_ctx.result_set->stats;
+	ResultSetStatistics  *stats       =  NULL;
+	ResultSet            *result_set  =  QueryCtx_GetResultSet();
+	if(result_set) stats = &result_set->stats;
+	return stats;
 }
 
 void QueryCtx_PrintQuery(void) {

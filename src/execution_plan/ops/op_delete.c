@@ -17,16 +17,17 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
-	Graph *g = op->gc->g;
-	uint node_deleted = 0;
-	uint relationships_deleted = 0;
-	uint node_count = array_len(op->deleted_nodes);
-	uint edge_count = array_len(op->deleted_edges);
+	Graph  *g                     =  op->gc->g;
+	uint   node_deleted           =  0;
+	uint   edge_deleted           =  0;
+	uint   implicit_edge_deleted  =  0;
+	uint   node_count             =  array_len(op->deleted_nodes);
+	uint   edge_count             =  array_len(op->deleted_edges);
 
-	/* Nothing to delete, quickly return. */
+	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) goto cleanup;
 
-	/* Lock everything. */
+	// lock everything
 	QueryCtx_LockForCommit();
 
 	if(GraphContext_HasIndices(op->gc)) {
@@ -36,16 +37,24 @@ void _DeleteEntities(OpDelete *op) {
 		}
 	}
 
-	Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
-					 edge_count, &node_deleted, &relationships_deleted);
+	if(edge_count <= EDGE_BULK_DELETE_THRESHOLD) {
+		for(uint i = 0; i < edge_count; i++) {
+			edge_deleted += Graph_DeleteEdge(g, op->deleted_edges + i);
+		}
+		edge_count = 0;
+	}
 
-	if(op->stats) {
-		op->stats->nodes_deleted += node_deleted;
-		op->stats->relationships_deleted += relationships_deleted;
+	Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
+					 edge_count, &node_deleted, &implicit_edge_deleted);
+
+	if(op->stats != NULL) {
+		op->stats->nodes_deleted          +=  node_deleted;
+		op->stats->relationships_deleted  +=  edge_deleted;
+		op->stats->relationships_deleted  +=  implicit_edge_deleted;
 	}
 
 cleanup:
-	/* Release lock, no harm in trying to release an unlocked lock. */
+	// release lock, no harm in trying to release an unlocked lock
 	QueryCtx_UnlockCommit(&op->op);
 }
 

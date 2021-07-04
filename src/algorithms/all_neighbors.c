@@ -15,15 +15,13 @@ static void _AllNeighborsCtx_CollectNeighbors
 	EntityID id
 ) {
 	ctx->current_level++;
-	GxB_MatrixTupleIter *iter;
 	if(ctx->current_level == array_len(ctx->levels)) {
-		GxB_MatrixTupleIter_new(&iter, ctx->M);
+		GxB_MatrixTupleIter iter;
+		GxB_MatrixTupleIter_reuse(&iter, ctx->M);
 		array_append(ctx->levels, iter);
-	} else {
-		iter = ctx->levels[ctx->current_level];
 	}
 
-	GxB_MatrixTupleIter_iterate_row(iter, id);
+	GxB_MatrixTupleIter_iterate_row(&ctx->levels[ctx->current_level], id);
 }
 
 static bool _AllNeighborsCtx_Visited
@@ -40,6 +38,34 @@ static bool _AllNeighborsCtx_Visited
 	return false;
 }
 
+void AllNeighborsCtx_Reset
+(
+	AllNeighborsCtx *ctx,  // all neighbors context to reset
+	EntityID src,          // source node from which to traverse
+	GrB_Matrix M,          // matrix describing connections
+	uint minLen,           // minimum traversal depth
+	uint maxLen            // maximum traversal depth
+) {
+	ASSERT(M             != NULL);
+	ASSERT(src           != INVALID_ENTITY_ID);
+	ASSERT(ctx           != NULL);
+	ASSERT(ctx->levels   != NULL);
+	ASSERT(ctx->visited  != NULL);
+
+	ctx->M              =  M;
+	ctx->src            =  src;
+	ctx->minLen         =  minLen;
+	ctx->maxLen         =  maxLen;
+	ctx->first_pull     =  true;
+	ctx->current_level  =  0;
+
+	array_clear(ctx->levels);
+	array_clear(ctx->visited);
+
+	// Dummy iterator at level 0
+	array_append(ctx->levels, (GxB_MatrixTupleIter){0});
+}
+
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
@@ -47,22 +73,22 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth
 ) {
-	ASSERT(M != NULL);
+	ASSERT(M   != NULL);
 	ASSERT(src != INVALID_ENTITY_ID);
 
-	AllNeighborsCtx *ctx = rm_malloc(sizeof(AllNeighborsCtx));
+	AllNeighborsCtx *ctx = rm_calloc(1, sizeof(AllNeighborsCtx));
 
 	ctx->M              =  M;
 	ctx->src            =  src;
 	ctx->minLen         =  minLen;
 	ctx->maxLen         =  maxLen;
-	ctx->levels         =  array_new(GxB_MatrixTupleIter *, 1);
+	ctx->levels         =  array_new(GxB_MatrixTupleIter, 1);
 	ctx->visited        =  array_new(EntityID, 1);
 	ctx->first_pull     =  true;
 	ctx->current_level  =  0;
 
-	// Null iterator at level 0
-	array_append(ctx->levels, NULL);
+	// Dummy iterator at level 0
+	array_append(ctx->levels, (GxB_MatrixTupleIter){0});
 
 	return ctx;
 }
@@ -94,7 +120,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 
 	while(ctx->current_level > 0) {
 		ASSERT(ctx->current_level < array_len(ctx->levels));
-		GxB_MatrixTupleIter *it = ctx->levels[ctx->current_level];
+		GxB_MatrixTupleIter *it = &ctx->levels[ctx->current_level];
 
 		bool depleted;
 		GrB_Index dest_id;
@@ -137,11 +163,6 @@ void AllNeighborsCtx_Free
 ) {
 	if(!ctx) return;
 
-	// free each level
-	uint levelsCount = array_len(ctx->levels);
-	for(uint i = 0; i < levelsCount; i++) {
-		GxB_MatrixTupleIter_free(ctx->levels[i]);
-	}
 	array_free(ctx->levels);
 	array_free(ctx->visited);
 
