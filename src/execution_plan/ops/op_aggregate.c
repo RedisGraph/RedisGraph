@@ -111,7 +111,7 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	// first group created
 	if(!op->group) {
 		op->group = _CreateGroup(op, r);
-		hash = Group_HashCode(op->group);
+		hash = _HashCode(op->group_keys, op->key_count);
 		CacheGroupAdd(op->groups, hash, op->group);
 		// key expressions are owned by the new group and don't need to be freed
 		free_key_exps = false;

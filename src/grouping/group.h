@@ -27,11 +27,6 @@ Group *NewGroup
 	Record r
 );
 
-XXH64_hash_t Group_HashCode
-(
-	const Group *group
-);
-
 void FreeGroup
 (
 	Group *group
