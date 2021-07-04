@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include "RG.h"
 #include "../configuration/config.h"
 
 void _Config_get_all(RedisModuleCtx *ctx) {
@@ -57,57 +58,85 @@ void _Config_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	//--------------------------------------------------------------------------
-	// retrieve and validate config field
+	// validate configuration
 	//--------------------------------------------------------------------------
 
-	Config_Option_Field config_field;
-	const char *config_name = RedisModule_StringPtrLen(argv[2], NULL);
+	// dryrun configuration, make sure all configurations are valid
+	for(int i = 0; i < argc; i += 2) {
+		RedisModuleString *key = argv[i];
+		RedisModuleString *val = argv[i+1];
 
-	if(!Config_Contains_field(config_name, &config_field)) {
-		RedisModule_ReplyWithError(ctx, "Unknown configuration field");
-		return;
-	}
+		//----------------------------------------------------------------------
+		// retrieve and validate config field
+		//----------------------------------------------------------------------
 
-	// ensure field is whitelisted
-	bool configurable_field = false;
-	for(int i = 0; i < RUNTIME_CONFIG_COUNT; i++) {
-		if(RUNTIME_CONFIGS[i] == config_field) {
-			configurable_field = true;
-			break;
+		Config_Option_Field config_field;
+		const char *config_name = RedisModule_StringPtrLen(key, NULL);
+		if(!Config_Contains_field(config_name, &config_field)) {
+			RedisModule_ReplyWithError(ctx, "Unknown configuration field");
+			return;
+		}
+
+		// ensure field is a runtime configuration
+		bool configurable_field = false;
+		for(int i = 0; i < RUNTIME_CONFIG_COUNT; i++) {
+			if(RUNTIME_CONFIGS[i] == config_field) {
+				configurable_field = true;
+				break;
+			}
+		}
+	
+		// field is not allowed to be reconfigured
+		if(!configurable_field) {
+			RedisModule_ReplyWithError(ctx, "Field can not be re-configured");
+			return;
+		}
+
+		// make sure value is valid
+		const char *val_str = RedisModule_StringPtrLen(val, NULL);
+		if(!Config_Option_dryrun(config_field, val_str)) {
+			RedisModule_ReplyWithError(ctx, "Failed to set config value");
+			return;
 		}
 	}
-	
-	// field is not allowed to be reconfigured
-	if(!configurable_field) {
-		RedisModule_ReplyWithError(ctx, "Field can not be re-configured");
-		return;
+
+	// if we're here configuration passed all validations
+	// apply configuration
+	for(int i = 0; i < argc; i += 2) {
+		bool               res   =  false;
+		RedisModuleString  *key  =  argv[i];
+		RedisModuleString  *val  =  argv[i+1];
+
+		Config_Option_Field config_field;
+		const char *config_name = RedisModule_StringPtrLen(key, NULL);
+		res = Config_Contains_field(config_name, &config_field);
+		ASSERT(res == true);
+
+		// set configuration
+		const char *val_str = RedisModule_StringPtrLen(val, NULL);
+		res = Config_Option_set(config_field, val_str);
+		ASSERT(res == true);
 	}
 
-	// set the value of given config
-	RedisModuleString *value = argv[3];
-	const char *val_str = RedisModule_StringPtrLen(value, NULL);
-
-	if(Config_Option_set(config_field, val_str)) {
-		RedisModule_ReplyWithSimpleString(ctx, "OK");
-	} else {
-		RedisModule_ReplyWithError(ctx, "Failed to set config value");
-	}
+	RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	// CONFIG <GET|SET> <NAME> [value]
+	// GRAPH.CONFIG <GET|SET> <NAME> [value]
 	if(argc < 3) return RedisModule_WrongArity(ctx);
 
 	const char *action = RedisModule_StringPtrLen(argv[1], NULL);
 
 	if(!strcasecmp(action, "GET")) {
-		// CONFIG GET <NAME>
+		// GRAPH.CONFIG GET <NAME>
 		if(argc != 3) return RedisModule_WrongArity(ctx);
 		_Config_get(ctx, argv, argc);
 	} else if(!strcasecmp(action, "SET")) {
-		// CONFIG SET <NAME> [value]
-		if(argc != 4) return RedisModule_WrongArity(ctx);
-		_Config_set(ctx, argv, argc);
+		// GRAPH.CONFIG SET <NAME> [value] <NAME> [value] ...
+		// emit an error if we received an odd number of arguments,
+		// as this indicates an invalid configuration
+		if(argc < 4 || (argc % 2) == 1) return RedisModule_WrongArity(ctx);
+		_Config_set(ctx, argv+2, argc-2);
 	} else {
 		RedisModule_ReplyWithError(ctx, "Unknown subcommand for GRAPH.CONFIG");
 	}

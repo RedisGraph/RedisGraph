@@ -551,7 +551,7 @@ RSQNode *FilterTreeToQueryNode
 	if(raxSize(string_ranges) > 0 || raxSize(numeric_ranges) > 0) {
 		RSQNode *ranges = _ranges_to_query_nodes(idx, string_ranges, numeric_ranges);
 		// TODO: check for empty node RediSearch_CreateEmptyNode
-		nodes = array_append(nodes, ranges);
+		array_append(nodes, ranges);
 	}
 
 	//--------------------------------------------------------------------------
@@ -563,7 +563,7 @@ RSQNode *FilterTreeToQueryNode
 		RSQNode *node = NULL;
 		bool resolved_filter = _FilterTreeToQueryNode(&node, trees[i], idx);
 		ASSERT(node != NULL);
-		nodes = array_append(nodes, node);
+		array_append(nodes, node);
 		if(resolved_filter) {
 			FilterTree_Free(trees[i]);
 			// remove converted filter from filters array

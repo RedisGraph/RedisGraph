@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -81,7 +81,7 @@ static inline bool _Config_ParseInteger(const char *integer_str, long long *valu
 	char *endptr;
 	errno = 0;    // To distinguish success/failure after call
 	*value = strtoll(integer_str, &endptr, 10);
-		
+
 	// Return an error code if integer parsing fails.
 	return (errno == 0 && endptr != integer_str && *endptr == '\0');
 }
@@ -370,19 +370,22 @@ void _Config_SetToDefaults(void) {
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	// Initialize the configuration to its default values.
+	// make sure reconfiguration callback is already registered
+	ASSERT(config.cb != NULL);
+
+	// initialize the configuration to its default values
 	_Config_SetToDefaults();
 
 	if(argc % 2) {
 		// emit an error if we received an odd number of arguments,
-		// as this indicates an invalid configuration.
+		// as this indicates an invalid configuration
 		RedisModule_Log(ctx, "warning",
-						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
+				"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
 		return REDISMODULE_ERR;
 	}
 
 	for(int i = 0; i < argc; i += 2) {
-		// Each configuration is a key-value pair. (K, V)
+		// each configuration is a key-value pair. (K, V)
 
 		//----------------------------------------------------------------------
 		// get field
@@ -409,155 +412,6 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 
 	return REDISMODULE_OK;
-}
-
-bool Config_Option_set(Config_Option_Field field, const char *val) {
-	//--------------------------------------------------------------------------
-	// set the option
-	//--------------------------------------------------------------------------
-
-	switch (field)
-	{
-		//----------------------------------------------------------------------
-		// max queued queries
-		//----------------------------------------------------------------------
-
-		case Config_MAX_QUEUED_QUERIES:
-			{
-				long long max_queued_queries;
-				if(!_Config_ParsePositiveInteger(val, &max_queued_queries)) {
-					return false;
-				}
-				Config_max_queued_queries_set(max_queued_queries);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// timeout
-		//----------------------------------------------------------------------
-
-		case Config_TIMEOUT:
-			{
-				long long timeout;
-				if(!_Config_ParsePositiveInteger(val, &timeout)) return false;
-				Config_timeout_set(timeout);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// cache size
-		//----------------------------------------------------------------------
-
-		case Config_CACHE_SIZE:
-			{
-				long long cache_size;
-				if(!_Config_ParsePositiveInteger(val, &cache_size)) return false;
-				Config_cache_size_set(cache_size);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// OpenMP thread count
-		//----------------------------------------------------------------------
-
-		case Config_OPENMP_NTHREAD:
-			{
-				long long omp_nthreads;
-				if(!_Config_ParsePositiveInteger(val, &omp_nthreads)) return false;
-
-				Config_OMP_thread_count_set(omp_nthreads);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// thread-pool size
-		//----------------------------------------------------------------------
-
-		case Config_THREAD_POOL_SIZE:
-			{
-				long long pool_nthreads;
-				if(!_Config_ParsePositiveInteger(val, &pool_nthreads)) return false;
-
-				Config_thread_pool_size_set(pool_nthreads);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// result-set size
-		//----------------------------------------------------------------------
-
-		case Config_RESULTSET_MAX_SIZE:
-			{
-				long long resultset_max_size;
-				if(!_Config_ParseInteger(val, &resultset_max_size)) return false;
-
-				Config_resultset_max_size_set(resultset_max_size);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// maintain transpose
-		//----------------------------------------------------------------------
-
-		case Config_MAINTAIN_TRANSPOSE:
-			{
-				bool maintain_transpose;
-				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
-
-				Config_maintain_transpose_set(maintain_transpose);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// virtual key entity count
-		//----------------------------------------------------------------------
-
-		case Config_VKEY_MAX_ENTITY_COUNT:
-			{
-				long long vkey_max_entity_count;
-				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
-
-				Config_virtual_key_entity_count_set(vkey_max_entity_count);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// async deleteion
-		//----------------------------------------------------------------------
-
-		case Config_ASYNC_DELETE:
-			{
-				bool async_delete;
-				if(!_Config_ParseYesNo(val, &async_delete)) return false;
-
-				Config_async_delete_set(async_delete);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// query mem capacity
-		//----------------------------------------------------------------------
-
-		case Config_QUERY_MEM_CAPACITY:
-			{
-				long long query_mem_capacity;
-				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
-
-				Config_query_mem_capacity_set(query_mem_capacity);
-			}
-			break;
-
-	//----------------------------------------------------------------------
-	// invalid option
-	//----------------------------------------------------------------------
-
-	default:
-		return false;
-	}
-
-	if(config.cb) config.cb(field);
-
-	return true;
 }
 
 bool Config_Option_get(Config_Option_Field field, ...) {
@@ -720,12 +574,179 @@ bool Config_Option_get(Config_Option_Field field, ...) {
         // invalid option
         //----------------------------------------------------------------------
 
-        default : 
+        default :
 			ASSERT("invalid option field" && false);
 			return false;
     }
 
 	return true;
+}
+
+bool Config_Option_set(Config_Option_Field field, const char *val) {
+	//--------------------------------------------------------------------------
+	// set the option
+	//--------------------------------------------------------------------------
+
+	switch (field)
+	{
+		//----------------------------------------------------------------------
+		// max queued queries
+		//----------------------------------------------------------------------
+
+		case Config_MAX_QUEUED_QUERIES:
+			{
+				long long max_queued_queries;
+				if(!_Config_ParsePositiveInteger(val, &max_queued_queries)) {
+					return false;
+				}
+				Config_max_queued_queries_set(max_queued_queries);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// timeout
+		//----------------------------------------------------------------------
+
+		case Config_TIMEOUT:
+			{
+				long long timeout;
+				if(!_Config_ParsePositiveInteger(val, &timeout)) return false;
+				Config_timeout_set(timeout);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// cache size
+		//----------------------------------------------------------------------
+
+		case Config_CACHE_SIZE:
+			{
+				long long cache_size;
+				if(!_Config_ParsePositiveInteger(val, &cache_size)) return false;
+				Config_cache_size_set(cache_size);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// OpenMP thread count
+		//----------------------------------------------------------------------
+
+		case Config_OPENMP_NTHREAD:
+			{
+				long long omp_nthreads;
+				if(!_Config_ParsePositiveInteger(val, &omp_nthreads)) return false;
+
+				Config_OMP_thread_count_set(omp_nthreads);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// thread-pool size
+		//----------------------------------------------------------------------
+
+		case Config_THREAD_POOL_SIZE:
+			{
+				long long pool_nthreads;
+				if(!_Config_ParsePositiveInteger(val, &pool_nthreads)) return false;
+
+				Config_thread_pool_size_set(pool_nthreads);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// result-set size
+		//----------------------------------------------------------------------
+
+		case Config_RESULTSET_MAX_SIZE:
+			{
+				long long resultset_max_size;
+				if(!_Config_ParseInteger(val, &resultset_max_size)) return false;
+
+				Config_resultset_max_size_set(resultset_max_size);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// maintain transpose
+		//----------------------------------------------------------------------
+
+		case Config_MAINTAIN_TRANSPOSE:
+			{
+				bool maintain_transpose;
+				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
+
+				Config_maintain_transpose_set(maintain_transpose);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// virtual key entity count
+		//----------------------------------------------------------------------
+
+		case Config_VKEY_MAX_ENTITY_COUNT:
+			{
+				long long vkey_max_entity_count;
+				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
+
+				Config_virtual_key_entity_count_set(vkey_max_entity_count);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// async deleteion
+		//----------------------------------------------------------------------
+
+		case Config_ASYNC_DELETE:
+			{
+				bool async_delete;
+				if(!_Config_ParseYesNo(val, &async_delete)) return false;
+
+				Config_async_delete_set(async_delete);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// query mem capacity
+		//----------------------------------------------------------------------
+
+		case Config_QUERY_MEM_CAPACITY:
+			{
+				long long query_mem_capacity;
+				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
+
+				Config_query_mem_capacity_set(query_mem_capacity);
+			}
+			break;
+
+	//----------------------------------------------------------------------
+	// invalid option
+	//----------------------------------------------------------------------
+
+	default:
+		return false;
+	}
+
+	if(config.cb) config.cb(field);
+
+	return true;
+}
+
+// dry run configuration change
+bool Config_Option_dryrun(Config_Option_Field field, const char *val) {
+	// clone configuration
+	RG_Config config_clone = config;
+
+	// disable configuration notification
+	config.cb = NULL;
+
+	// NOTE: for a short period of time
+	// whoever might query the configuration WILL see this modification
+	bool valid = Config_Option_set(field, val);
+
+	// restore original configuration
+	config = config_clone;
+
+	return valid;
 }
 
 void Config_Subscribe_Changes(Config_on_change cb) {

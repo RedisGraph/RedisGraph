@@ -164,7 +164,7 @@ void _cache_records(OpValueHashJoin *op) {
 		Record_AddScalar(r, op->join_value_rec_idx, v);
 
 		// Cache the record.
-		op->cached_records = array_append(op->cached_records, r);
+		array_append(op->cached_records, r);
 	} while((r = left_child->consume(left_child)));
 }
 

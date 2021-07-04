@@ -325,8 +325,10 @@ TEST_F(GraphTest, NewGraph) {
 	ASSERT_TRUE(g->labels != NULL);
 	ASSERT_TRUE(g->adjacency_matrix != NULL);
 	ASSERT_EQ(Graph_NodeCount(g), 0);
-	ASSERT_EQ(nrows, GRAPH_DEFAULT_NODE_CAP);
-	ASSERT_EQ(ncols, GRAPH_DEFAULT_NODE_CAP);
+
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+	ASSERT_EQ(nrows, n);
+	ASSERT_EQ(ncols, n);
 	ASSERT_EQ(nvals, 0);
 
 	Graph_ReleaseLock(g);
@@ -884,3 +886,117 @@ TEST_F(GraphTest, BulkDelete) {
 	Graph_Free(g);
 }
 
+TEST_F(GraphTest, GraphStatistics) {
+	// Create graph.
+	int node_count = 4;
+	int edge_count = 10;
+	Node n[node_count];
+	Edge e[edge_count];
+	Graph *g = Graph_New(16, 16);
+
+	Graph_AcquireWriteLock(g);
+
+	int l = Graph_AddLabel(g);
+	int r0 = Graph_AddRelationType(g);
+	int r1 = Graph_AddRelationType(g);
+
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 0);
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 0);
+
+	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, l, &n[i]);
+
+	/* Connect nodes:
+	*
+	* 1. Verify r0 multi edge (False)
+	*
+	* Connect nodes
+	* (0)-[r0]->(1)
+	*
+	* 2. Verify r0 multi edge (False)
+	*
+	* Connect nodes
+	* (0)-[r0]->(1)
+	*
+	* 3. Verify r0 multi edge (True)
+	*
+	* 4. Verify r1 no multi edge
+	*
+	* Connect nodes
+	* (0)-[r1]->(1)
+	*
+	* 5. Verify r1 multi edge (False)
+	*
+	* Connect nodes
+	* (1)-[r1]->(0)
+	*
+	* 6. Verify r1 multi edge (False)
+	*
+	* Connect nodes
+	* (2)-[r1]->(1)
+	*
+	* 7. Verify r1 multi edge (False)
+	*
+	*
+	* Connect nodes
+	* (2)-[r1]->(1)
+	*
+	* 8. Verify r1 multi edge (True)
+	* 9. Verify r0 multi edge (True) */
+
+	// 1. Verify r0 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
+	// (0)-[r0]->(1)
+	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
+	ASSERT_EQ(g->stats.edge_count[r0], 1);
+	// 2. Verify r0 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
+	// (0)-[r0]->(1)
+	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
+	// 3. Verify r0 multi edge (True)
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0));
+	// 4. Verify r1 no multi edge
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	// (0)-[r1]->(1)
+	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
+	// 5. Verify r1 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	// (1)-[r1]->(0)
+	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[3]);
+	// 6. Verify r1 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	// (2)-[r1]->(1)
+	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[4]);
+	// 7. Verify r1 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	// (2)-[r1]->(1)
+	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[5]);
+	// 8. Verify r1 multi edge (True)
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r1));
+	// 9. Verify r0 multi edge (True)
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0));
+
+	Graph_ReleaseLock(g);
+	/* Delete edges:
+	 * Implicit deleted edges:
+	 * 4 (2)-[r1]->(1)
+	 * 5 (2)-[r1]->(1)
+	 * Delete edges:
+	 * 0  (0)-[r0]->(1) */
+
+	uint node_deleted = 0;
+	uint edge_deleted = 0;
+
+	Graph_AcquireWriteLock(g);
+	Graph_BulkDelete(g, &n[2], 1, &e[0], 1, &node_deleted, &edge_deleted);
+	Graph_ReleaseLock(g);
+
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 1);
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 2);
+	ASSERT_EQ(node_deleted, 1);
+	ASSERT_EQ(edge_deleted, 2);
+
+	// Clean up.
+	Graph_Free(g);
+}

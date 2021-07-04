@@ -82,3 +82,31 @@ class testEntityUpdate(FlowTestsBase):
         result = graph.query("MERGE (n {v: 1}) ON MATCH SET n = {}, n.v = 5 RETURN n")
         expected_result = [[node]]
         self.env.assertEqual(result.result_set, expected_result)
+
+    # Update properties with a map retrieved by alias
+    def test10_property_map_from_identifier(self):
+        # Overwrite existing properties
+        node = Node(properties={"v2": 10})
+        result = graph.query("WITH {v2: 10} as props MATCH (n) SET n = props RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)
+
+        # Merge property maps
+        node = Node(properties={"v1": True, "v2": 10})
+        result = graph.query("WITH {v1: True} as props MATCH (n) SET n += props RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)
+
+    # Update properties with a map retrieved from a parameter
+    def test11_property_map_from_parameter(self):
+        # Overwrite existing properties
+        node = Node(properties={"v2": 10})
+        result = graph.query("CYPHER props={v2: 10} MATCH (n) SET n = $props RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)
+
+        # Merge property maps
+        node = Node(properties={"v1": True, "v2": 10})
+        result = graph.query("CYPHER props={v1: true} MATCH (n) SET n += $props RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)

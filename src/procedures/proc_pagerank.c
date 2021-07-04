@@ -29,7 +29,7 @@ typedef struct {
 } PagerankContext;
 
 ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
-		const SIValue *args, const char **yield) {
+									const SIValue *args, const char **yield) {
 	// Expecting 2 arguments.
 	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
 	// arg0 and arg1 can be either String or NULL
@@ -50,11 +50,11 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 	const int itermax = 100; // max iterations
 
 	GrB_Info info;
+	UNUSED(info);
 	GrB_Index n = 0;               // Node count
 	GrB_Index nvals;               // Number of entries in 'r'
 	GrB_Index nrows;               // Relation matrix row count
 	Schema *s = NULL;
-	bool free_r = false;           // Should 'r' be freed
 	GrB_Matrix l = NULL;           // Label matrix
 	GrB_Matrix r = NULL;           // Relation matrix
 	GrB_Index *mapping = NULL;     // Mapping, array for returning row indices of tuples
@@ -71,10 +71,10 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 	pdata->mapping = mapping;
 	pdata->ranking = ranking;
 	pdata->output = array_new(SIValue, 4);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
-	pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
-	pdata->output = array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("node"));
+	array_append(pdata->output, SI_Node(NULL)); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("score"));
+	array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
 	ctx->privateData = pdata;
 
 	// Get label matrix.
@@ -95,27 +95,15 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 		// Relation isn't specified, 'r' is the adjacency matrix.
 		r = Graph_GetAdjacencyMatrix(g);
 	}
-
-	info = GrB_Matrix_nrows(&nrows, r);
-	UNUSED(info);
-	ASSERT(info == GrB_SUCCESS);
-	n = nrows;
-
-	/* Incase label or relation is specified
-	 * if label is specified:
+	/* if label is specified:
 	 * filter 'r' to contain only rows and columns associated with
-	 * nodes of type 'l'
-	 *
-	 * if relation is specified:
-	 * cast 'r' to a boolean matrix */
-	if(label != NULL || relation != NULL) {
+	 * nodes of type 'l' */
+	if(label != NULL) {
 		//----------------------------------------------------------------------
 		// Create a NxN matrix, one row for each labeled entity
 		//----------------------------------------------------------------------
-		if(label) {
-			info = GrB_Matrix_nvals(&n, l);
-			ASSERT(info == GrB_SUCCESS);
-		}
+		info = GrB_Matrix_nvals(&n, l);
+		ASSERT(info == GrB_SUCCESS);
 
 		GrB_Matrix reduced; // Relation matrix reduced to only 'l' rows/cols
 		info = GrB_Matrix_new(&reduced, GrB_BOOL, n, n);
@@ -123,31 +111,34 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 
 		// Discard rows of 'r' associated with nodes of a different type than 'l'
 		// this will also perform casting to boolean.
-		if(n != nrows) {
-			mapping = rm_malloc(sizeof(GrB_Index) * n);
-			// Extract row indecies from 'l', coresponding to node IDs.
-			info = GrB_Matrix_extractTuples_BOOL(mapping, GrB_NULL, GrB_NULL, &n, l);
-			ASSERT(info == GrB_SUCCESS);
+		mapping = rm_malloc(sizeof(GrB_Index) * n);
+		// Extract row indecies from 'l', coresponding to node IDs.
+		info = GrB_Matrix_extractTuples_BOOL(mapping, GrB_NULL, GrB_NULL, &n, l);
+		ASSERT(info == GrB_SUCCESS);
 
-			info = GrB_Matrix_extract(reduced, GrB_NULL, GrB_NULL, r, mapping, n,
-					mapping, n, GrB_NULL);
-			ASSERT(info == GrB_SUCCESS);
-		} else {
-			/* There no need to perform extraction as either 'l' isn't specified
-			 * if if 'l' is given, 'r' dimension is NxN the same as
-			 * the number of entries in 'l' which means all connections
-			 * described in 'r' connect nodes of type 'l'
-			 * Unfortunately we still need to type cast 'r' to boolean */
-			GrB_Descriptor desc;
-			GrB_Descriptor_new(&desc);
-			GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-			info = GrB_transpose(reduced, GrB_NULL, GrB_NULL, r, desc);
-			ASSERT(info == GrB_SUCCESS);
-			GrB_free(&desc);
-		}
+		info = GrB_Matrix_extract(reduced, GrB_NULL, GrB_NULL, r, mapping, n,
+								  mapping, n, GrB_NULL);
+		ASSERT(info == GrB_SUCCESS);
 
 		r = reduced;
-		free_r = true;
+	} else {
+		//----------------------------------------------------------------------
+		// Make a copy of the relationship matrix,
+		// truncating it to remove unused rows and casting it to boolean.
+		//----------------------------------------------------------------------
+		info = GrB_Matrix_nrows(&nrows, r);
+		ASSERT(info == GrB_SUCCESS);
+
+		// Build a new boolean matrix with the same dimensions of the original
+		// with all values casted to boolean.
+		GrB_Matrix r_trimmed;
+		info = GrB_Matrix_dup(&r_trimmed, r);
+		ASSERT(info == GrB_SUCCESS);
+
+		// Resize to remove unused rows.
+		n = Graph_UncompactedNodeCount(g);
+		GxB_Matrix_resize(r_trimmed, n, n);
+		r = r_trimmed;
 	}
 
 	// Invoke Pagerank only if 'r' contains entries.
@@ -160,7 +151,7 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 	}
 
 	// Clean up.
-	if(free_r) GrB_free(&r);
+	GrB_free(&r);
 
 	// Update context.
 	pdata->n = n;
@@ -205,8 +196,8 @@ ProcedureCtx *Proc_PagerankCtx() {
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
 	ProcedureOutput output_node = {.name = "node", .type = T_NODE};
 	ProcedureOutput output_score = {.name = "score", .type = T_DOUBLE};
-	outputs = array_append(outputs, output_node);
-	outputs = array_append(outputs, output_score);
+	array_append(outputs, output_node);
+	array_append(outputs, output_score);
 
 	ProcedureCtx *ctx = ProcCtxNew("algo.pageRank",
 								   2,
