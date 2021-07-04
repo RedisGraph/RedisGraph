@@ -97,22 +97,13 @@ void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_na
 	header->key_count = GraphEncodeContext_GetKeyCount(ctx);
 	header->multi_edge = rm_malloc(sizeof(bool) * r_count);
 
-	// Denote for each relationship matrix Ri if it contains muti-edge entries
+	// denote for each relationship matrix Ri if it contains muti-edge entries
 	// this information alows for an optimization when loading the data
 	// as construction of a matrix without multiple edge entry is cheaper
-	GrB_Monoid min_monoid;
-	GrB_Info info = GrB_Monoid_new_UINT64(&min_monoid, GrB_MIN_UINT64, 0);
-	UNUSED(info);
-	ASSERT(info == GrB_SUCCESS);
-
 	for(uint i = 0; i < r_count; i++) {
-		GrB_Matrix R = Graph_GetRelationMatrix(g, i);
-		bool multi_edge = _MultiEdgeMatrix(R, min_monoid);
+		bool multi_edge = Graph_RelationshipContainsMultiEdge(g, i);
 		header->multi_edge[i] = multi_edge;
 	}
-
-	info = GrB_free(&min_monoid);
-	ASSERT(info == GrB_SUCCESS);
 }
 
 EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx) {
