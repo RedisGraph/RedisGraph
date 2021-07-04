@@ -182,7 +182,7 @@ commands:
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
-            make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=0 SHOW=1 VERBOSE=1
+            make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=0 PUSH_GENERAL=1 SHOW=1 VERBOSE=1
       - persist-artifacts
 
 #----------------------------------------------------------------------------------------------------------------------------------
