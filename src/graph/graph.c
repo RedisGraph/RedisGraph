@@ -100,6 +100,7 @@ static RG_Matrix RG_Matrix_New(const Graph *g, GrB_Type data_type) {
 	GrB_Index n = Graph_RequiredMatrixDim(g);
 	GrB_Info matrix_res = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
 	ASSERT(matrix_res == GrB_SUCCESS);
+	GxB_set(matrix->grb_matrix, GxB_HYPER, GxB_NEVER_HYPER);
 
 	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
 	ASSERT(mutex_res == 0);
