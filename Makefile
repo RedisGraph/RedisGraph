@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 .PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind fuzz help
-=======
-.PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind help
->>>>>>> 0d72bbac (Coverage analysis (#1777))
 
 define HELP
 make all              # Build everything
@@ -81,12 +77,9 @@ memcheck:
 cov-upload:
 	@$(MAKE) -C ./src cov-upload
 
-<<<<<<< HEAD
 fuzz:
 	@$(MAKE) -C ./src fuzz
 
-=======
->>>>>>> 0d72bbac (Coverage analysis (#1777))
 format:
 	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h,*.cpp"
 
