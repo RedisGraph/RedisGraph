@@ -102,7 +102,7 @@ static XXH64_hash_t _HashCode(const SIValue *v, size_t n) {
 // retrieves group under which given record belongs to,
 // creates group if one doesn't exists
 static Group *_GetGroup(OpAggregate *op, Record r) {
-	unsigned long long hash;
+	XXH64_hash_t hash;
 	bool free_key_exps = true;
 
 	// construct group key
