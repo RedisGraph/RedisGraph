@@ -23,6 +23,22 @@ Group *NewGroup(SIValue *keys, uint key_count, AR_ExpNode **funcs, uint func_cou
 	return g;
 }
 
+XXH64_hash_t Group_HashCode
+(
+	const Group *group
+) {
+
+	SIValue key = group->keys[0];
+	XXH64_hash_t hashCode = SIValue_HashCode(key);
+
+	for(uint i = 1; i < group->key_count; i++) {
+		key = group->keys[i];
+		hashCode = 31 * hashCode + SIValue_HashCode(key);
+	}
+
+	return hashCode;
+}
+
 void FreeGroup(Group *g) {
 	if(g == NULL) return;
 	if(g->r) Record_FreeEntries(g->r);  // Will be freed by Record owner.

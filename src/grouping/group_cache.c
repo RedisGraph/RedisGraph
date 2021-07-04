@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include <stddef.h>
 #include "group_cache.h"
 #include "../util/rmalloc.h"
 
@@ -11,25 +12,12 @@ CacheGroup *CacheGroupNew() {
 	return raxNew();
 }
 
-void CacheGroupAdd(CacheGroup *groups, char *key, Group *group) {
-	raxInsert(groups, (unsigned char *)key, strlen(key), group, NULL);
-}
-
-void CacheGroupAddUll(CacheGroup *groups, unsigned long long key, Group *group) {
+void CacheGroupAdd(CacheGroup *groups, XXH64_hash_t key, Group *group) {
 	raxInsert(groups, (unsigned char *)&key, sizeof(key), group, NULL);
 }
 
-// Retrives a group,
-// Sets group to NULL if key is missing.
-Group *CacheGroupGet(CacheGroup *groups, char *key) {
-	Group *g = raxFind(groups, (unsigned char *)key, strlen(key));
-	if(g == raxNotFound) return NULL;
-	return g;
-}
-
-// Retrives a group,
-// Sets group to NULL if key is missing.
-Group *CacheGroupGetUll(CacheGroup *groups, unsigned long long key) {
+// retrives a group, sets group to NULL if key is missing
+Group *CacheGroupGet(CacheGroup *groups, XXH64_hash_t key) {
 	Group *g = raxFind(groups, (unsigned char *)&key, sizeof(key));
 	if(g == raxNotFound) return NULL;
 	return g;
@@ -49,8 +37,8 @@ CacheGroupIterator *CacheGroupIter(CacheGroup *groups) {
 	return iter;
 }
 
-// Advance iterator and returns key & value in current position.
-int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group) {
+// advance iterator and returns value in current position
+int CacheGroupIterNext(CacheGroupIterator *iter, Group **group) {
 	int res = raxNext(iter);
 	if(res == 0) {
 		*group = NULL;
