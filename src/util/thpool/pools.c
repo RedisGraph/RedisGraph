@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,7 +13,6 @@
 // Thread pools
 //------------------------------------------------------------------------------
 
-static threadpool _bulk_thpool = NULL;     // bulk loader workers
 static threadpool _readers_thpool = NULL;  // readers
 static threadpool _writers_thpool = NULL;  // writers
 
@@ -22,7 +21,6 @@ int ThreadPools_Init
 ) {
 	bool      config_read     =  true;
 	int       reader_count    =  1;
-	int       bulk_count      =  1;
 	int       writer_count    =  1;
 	uint64_t  max_queue_size  =  UINT64_MAX;
 
@@ -33,8 +31,7 @@ int ThreadPools_Init
 	config_read = Config_Option_get(Config_MAX_QUEUED_QUERIES, &max_queue_size);
 	ASSERT(config_read == true);
 
-	return ThreadPools_CreatePools(reader_count, writer_count, bulk_count,
-			max_queue_size);
+	return ThreadPools_CreatePools(reader_count, writer_count, max_queue_size);
 }
 
 // set up thread pools  (readers and writers)
@@ -43,7 +40,6 @@ int ThreadPools_CreatePools
 (
 	uint reader_count,
 	uint writer_count,
-	uint bulk_count,
 	uint64_t max_pending_work
 ) {
 	ASSERT(_readers_thpool == NULL);
@@ -54,9 +50,6 @@ int ThreadPools_CreatePools
 
 	_writers_thpool = thpool_init(writer_count, "writer");
 	if(_writers_thpool == NULL) return 0;
-
-	_bulk_thpool = thpool_init(bulk_count, "bulk_loader");
-	if(_bulk_thpool == NULL) return 0;
 
 	ThreadPools_SetMaxPendingWork(max_pending_work);
 
@@ -121,11 +114,9 @@ void ThreadPools_Pause
 (
 	void
 ) {
-	ASSERT(_bulk_thpool != NULL);
 	ASSERT(_readers_thpool != NULL);
 	ASSERT(_writers_thpool != NULL);
 
-	thpool_pause(_bulk_thpool);
 	thpool_pause(_readers_thpool);
 	thpool_pause(_writers_thpool);
 }
@@ -135,11 +126,9 @@ void ThreadPools_Resume
 	void
 ) {
 
-	ASSERT(_bulk_thpool != NULL);
 	ASSERT(_readers_thpool != NULL);
 	ASSERT(_writers_thpool != NULL);
 
-	thpool_resume(_bulk_thpool);
 	thpool_resume(_readers_thpool);
 	thpool_resume(_writers_thpool);
 }
@@ -170,17 +159,6 @@ int ThreadPools_AddWorkWriter
 	if(thpool_queue_full(_writers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_writers_thpool, function_p, arg_p);
-}
-
-// add task for bulk loader thread
-int ThreadPools_AddWorkBulkLoader
-(
-	void (*function_p)(void *),
-	void *arg_p
-) {
-	ASSERT(_bulk_thpool != NULL);
-
-	return thpool_add_work(_bulk_thpool, function_p, arg_p);
 }
 
 void ThreadPools_SetMaxPendingWork(uint64_t val) {

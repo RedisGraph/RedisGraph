@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -21,7 +21,6 @@ int ThreadPools_CreatePools
 (
 	uint reader_count,
 	uint writer_count,
-	uint bulk_count,
 	uint64_t max_pending_work
 );
 
@@ -67,13 +66,6 @@ int ThreadPools_AddWorkReader
 
 // add a write task
 int ThreadPools_AddWorkWriter
-(
-	void (*function_p)(void *),
-	void *arg_p
-);
-
-// add a bulk laoder task
-int ThreadPools_AddWorkBulkLoader
 (
 	void (*function_p)(void *),
 	void *arg_p

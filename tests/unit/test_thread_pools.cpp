@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -19,7 +19,6 @@ extern "C" {
 }
 #endif
 
-#define BULK_COUNT   1
 #define READER_COUNT 4
 #define WRITER_COUNT 1
 
@@ -28,7 +27,7 @@ class ThreadPoolsTest: public ::testing::Test {
 	// Use the malloc family for allocations
 	static void SetUpTestCase() {
 		Alloc_Reset();
-		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, BULK_COUNT, UINT64_MAX);
+		ThreadPools_CreatePools(READER_COUNT, WRITER_COUNT, UINT64_MAX);
 	}
 
 	static void get_thread_friendly_id(void *arg) {
