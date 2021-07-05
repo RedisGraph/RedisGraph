@@ -7850,8 +7850,8 @@ typedef struct
 	int64_t row_idx ;       // Index of current row
 	GrB_Index nrows ;       // Total number of rows in matrix
     	struct { // Hypersparce only related fields
-            int64_t sparse_row_idx;      // Index of current row not counting empty rows
-            int64_t h_size;              // Number of none empty rows in the matrix
+            int64_t sparse_row_idx;      // index into hyper-sparse row array 'h'
+            int64_t h_size;              // Number of entries in hyper-sparse row array 'h'
     	};
 } GxB_MatrixTupleIter ;
 

@@ -25,7 +25,6 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-		GxB_Global_Option_set(GxB_HYPER_SWITCH, GetParam()); // Setting matrix sparsity
 	}
 
 	void TearDown() override {
@@ -54,6 +53,10 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 	GrB_Matrix CreateSquareNByNEmptyMatrix(GrB_Index n) {
 		GrB_Matrix A;
 		GrB_Matrix_new(&A, GrB_BOOL, n, n);
+		// matrix iterator requires matrix format to be sparse
+		// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+		// we set matrix format at creation time
+		GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, GetParam());
 		return A;
 	}
 };
@@ -67,9 +70,16 @@ TEST_P(TuplesTest, RandomVectorTest) {
 	GrB_Index nvals = 0;
 	GrB_Index nrows = 1024;
 	GrB_Index *I = (GrB_Index *)malloc(sizeof(GrB_Index) * nrows);
+	GrB_Info info;
 	bool *X = (bool *)malloc(sizeof(bool) * nrows);
 
 	GrB_Vector_new(&A, GrB_BOOL, nrows);
+
+	// matrix iterator requires matrix format to be sparse
+	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	// we set matrix format at creation time
+	info = GxB_Vector_Option_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	ASSERT_EQ(info, GrB_SUCCESS);
 
 	double mid_point = RAND_MAX / 2;
 	for(int i = 0; i < nrows; i++) {
@@ -84,6 +94,7 @@ TEST_P(TuplesTest, RandomVectorTest) {
 
 	GrB_Index I_expected[nvals];
 	GrB_Vector_extractTuples_BOOL(I_expected, NULL, &nvals, A);
+	GrB_Vector_wait(&A);
 
 	//--------------------------------------------------------------------------
 	// Get an iterator over all nonzero elements.
@@ -121,6 +132,13 @@ TEST_P(TuplesTest, VectorIteratorTest) {
 
 	GrB_Vector A;
 	GrB_Vector_new(&A, GrB_BOOL, 4);
+
+	// matrix iterator requires matrix format to be sparse
+	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	// we set matrix format at creation time
+	GrB_Info info;
+	info = GxB_Vector_Option_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	ASSERT_EQ(info, GrB_SUCCESS);
 
 	GrB_Index nvals = 2;
 	GrB_Index I[2] = {1, 3};
@@ -184,6 +202,13 @@ TEST_P(TuplesTest, RandomMatrixTest) {
 	bool *X = (bool *)malloc(sizeof(bool) * ncols * nrows);
 
 	GrB_Matrix_new(&A, GrB_BOOL, nrows, ncols);
+
+	// matrix iterator requires matrix format to be sparse
+	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	// we set matrix format at creation time
+	GrB_Info info;
+	info = GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, GetParam());
+	ASSERT_EQ(info, GrB_SUCCESS);
 
 	double mid_point = RAND_MAX / 2;
 	for(int i = 0; i < nrows; i++) {
@@ -350,6 +375,7 @@ TEST_P(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 
 	GrB_Index nvals = 4;
 	GrB_Matrix A = CreateSquareNByNEmptyMatrix(nvals);
+
 	GrB_Index row;
 	GrB_Index col;
 	GrB_Index ncols = nvals;
@@ -527,5 +553,5 @@ TEST_P(TuplesTest, IteratorRange) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TestParameters, TuplesTest,
-                         ::testing::Values(GxB_NEVER_HYPER, GxB_ALWAYS_HYPER));
+                         ::testing::Values(GxB_SPARSE, GxB_HYPERSPARSE));
 
