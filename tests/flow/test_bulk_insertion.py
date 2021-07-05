@@ -354,32 +354,35 @@ class testGraphBulkInsertFlow(FlowTestsBase):
 
     # Verify that the bulk loader does not block the server
     def test09_large_bulk_insert(self):
-        graphname = "tmpgraph5"
-        prop_str = "Property value to be repeated 1 million generating a multi-megabyte CSV"
+        # bulk loader runs on Redis main thread
+        pass
 
-        # Write temporary files
-        filename = '/tmp/nodes.tmp'
-        with open(filename, mode='w') as csv_file:
-            out = csv.writer(csv_file)
-            out.writerow(["long_property_string"])
-            for i in range(100_000):
-                out.writerow([prop_str])
+        #graphname = "tmpgraph5"
+        #prop_str = "Property value to be repeated 1 million generating a multi-megabyte CSV"
 
-        # Instantiate a thread to run the bulk loader
-        thread = threading.Thread(target=run_bulk_loader, args=(graphname, filename))
-        thread.start()
+        ## Write temporary files
+        #filename = '/tmp/nodes.tmp'
+        #with open(filename, mode='w') as csv_file:
+        #    out = csv.writer(csv_file)
+        #    out.writerow(["long_property_string"])
+        #    for i in range(100_000):
+        #        out.writerow([prop_str])
 
-        # Ping server while bulk-loader is running
-        ping_count = 0
-        while thread.is_alive():
-            t0 = time.time()
-            redis_con.ping()
-            t1 = time.time() - t0
-            # Verify that pinging the server takes less than 1 second during bulk insertion
-            self.env.assertLess(t1, 2)
-            ping_count += 1
+        ## Instantiate a thread to run the bulk loader
+        #thread = threading.Thread(target=run_bulk_loader, args=(graphname, filename))
+        #thread.start()
 
-        thread.join()
-        # Verify that at least one ping was issued
-        self.env.assertGreater(ping_count, 1)
+        ## Ping server while bulk-loader is running
+        #ping_count = 0
+        #while thread.is_alive():
+        #    t0 = time.time()
+        #    redis_con.ping()
+        #    t1 = time.time() - t0
+        #    # Verify that pinging the server takes less than 1 second during bulk insertion
+        #    self.env.assertLess(t1, 2)
+        #    ping_count += 1
+
+        #thread.join()
+        ## Verify that at least one ping was issued
+        #self.env.assertGreater(ping_count, 1)
 
