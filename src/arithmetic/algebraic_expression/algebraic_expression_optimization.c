@@ -415,22 +415,22 @@ void AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 // Replace transpose ops with transposed operands.
 //------------------------------------------------------------------------------
 
-// Transpose an operand matrix and update the expression accordingly.
+// transpose an operand matrix and update the expression accordingly
 static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) {
-	// Swap the row and column domains of the operand.
+	// swap the row and column domains of the operand
 	const char *tmp = operand->operand.dest;
 	operand->operand.src = operand->operand.dest;
 	operand->operand.dest = tmp;
 
-	// Diagonal matrices do not need to be transposed.
+	// diagonal matrices do not need to be transposed
 	if(operand->operand.diagonal == true) return;
 
 	GrB_Type type;
 	GrB_Index nrows;
 	GrB_Index ncols;
 	GrB_Matrix replacement;
-	GrB_Matrix A = operand->operand.matrix;
-	// Create a new empty matrix with the type and dimensions of the original.
+	GrB_Matrix A = operand->operand.grb_matrix;
+	// create a new empty matrix with the type and dimensions of the original
 	GrB_Matrix_nrows(&nrows, A);
 	GrB_Matrix_ncols(&ncols, A);
 	GxB_Matrix_type(&type, A);
@@ -442,7 +442,7 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 		ASSERT(false);
 	}
 
-	// Populate the replacement with the transposed contents of the original.
+	// populate the replacement with the transposed contents of the original
 	info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, A, GrB_NULL);
 	if(info != GrB_SUCCESS) {
 		const char *error_msg = NULL;
@@ -451,9 +451,10 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 		ASSERT(false);
 	}
 
-	// Update the matrix pointer.
-	operand->operand.matrix = replacement;
-	// As this matrix was constructed, it must ultimately be freed.
+	// update the matrix pointer
+	operand->operand.type = AL_GrB_MAT;
+	operand->operand.grb_matrix = replacement;
+	// as this matrix was constructed, it must ultimately be freed
 	operand->operand.bfree = true;
 }
 
@@ -530,11 +531,11 @@ void AlgebraicExpression_Optimize
 	ASSERT(exp);
 
 	AlgebraicExpression_PushDownTranspose(*exp);
+	_AlgebraicExpression_MulOverAdd(exp);
+	_AlgebraicExpression_FlattenMultiplications(*exp);
 
 	// Retrieve all operands now that they are guaranteed to be leaves.
 	_AlgebraicExpression_PopulateOperands(*exp, QueryCtx_GetGraphCtx());
-	_AlgebraicExpression_MulOverAdd(exp);
-	_AlgebraicExpression_FlattenMultiplications(*exp);
 
 	// If we are maintaining transposed matrices, all transpose operations have already been replaced.
 	bool maintain_transpose;

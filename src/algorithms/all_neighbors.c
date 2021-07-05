@@ -44,7 +44,7 @@ void AllNeighborsCtx_Reset
 (
 	AllNeighborsCtx *ctx,  // all neighbors context to reset
 	EntityID src,          // source node from which to traverse
-	GrB_Matrix M,          // matrix describing connections
+	RG_Matrix M,           // matrix describing connections
 	uint minLen,           // minimum traversal depth
 	uint maxLen            // maximum traversal depth
 ) {
@@ -76,7 +76,7 @@ void AllNeighborsCtx_Reset
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
-	GrB_Matrix M,  // matrix describing connections
+	RG_Matrix M,   // matrix describing connections
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth
 ) {

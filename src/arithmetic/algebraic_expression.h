@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "../graph/query_graph.h"
 #include "../graph/graph.h"
+#include "../graph/query_graph.h"
 
 static GrB_Matrix IDENTITY_MATRIX = (GrB_Matrix)0x31032017;  // Identity matrix.
 
@@ -27,24 +27,37 @@ typedef enum {
 	AL_OPERATION  = (1 << 1),
 } AlgebraicExpressionType;
 
+// type of matrix used as an operand
+// either a GraphBLAS matrix
+// or a RedisGraph delta matrix
+typedef enum {
+	AL_GrB_MAT = 1,         // GraphBLAS matrix
+	AL_RG_MAT = (1 << 1),   // RedisGraph delta matrix
+	AL_MISSING = (1 << 2),  // Matrix unset
+} AlgebraicExpressionMatrixType;
+
 /* Forward declarations. */
 typedef struct AlgebraicExpression AlgebraicExpression;
 
 struct AlgebraicExpression {
-	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
+	AlgebraicExpressionType type;   // type of node, either an operation or an operand
 	union {
 		struct {
-			bool diagonal;          // Diagonal matrix.
-			bool bfree;             // If the matrix is scoped to this expression, it should be freed with it.
-			GrB_Matrix matrix;      // Matrix operand.
-			const char *src;        // Alias given to operand's rows (src node).
-			const char *dest;       // Alias given to operand's columns (destination node).
-			const char *edge;       // Alias given to operand (edge).
-			const char *label;      // Label attached to matrix.
+			bool bfree;                 // should matrix be free
+			bool diagonal;              // diagonal matrix
+			const char *src;            // alias given to operand's rows
+			const char *dest;           // alias given to operand's columns
+			const char *edge;           // alias given to operand (edge)
+			const char *label;          // label attached to matrix
+			union {
+				RG_Matrix rg_matrix;    // Delta matrix
+				GrB_Matrix grb_matrix;  // GraphBLAS matrix
+			};
+			AlgebraicExpressionMatrixType type;  // type of matrix used
 		} operand;
 		struct {
-			AL_EXP_OP op;                   // Operation: `*`,`+`,`transpose`
-			AlgebraicExpression **children; // Child nodes.
+			AL_EXP_OP op;                   // operation: `*`,`+`,`transpose`
+			AlgebraicExpression **children; // child nodes
 		} operation;
 	};
 };

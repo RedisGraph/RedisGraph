@@ -8,50 +8,60 @@
 #include "../../query_ctx.h"
 #include "../algebraic_expression.h"
 
-// Forward declarations
-GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res);
+// forward declarations
+GrB_Matrix _AlgebraicExpression_Eval
+(
+	const AlgebraicExpression *exp,
+	GrB_Matrix res
+);
 
 static GrB_Matrix _Eval_Transpose
 (
 	const AlgebraicExpression *exp,
 	GrB_Matrix res
 ) {
-	// This function is currently unused.
+	// this function is currently unused
 	ASSERT(exp && AlgebraicExpression_ChildCount(exp) == 1);
 
 	AlgebraicExpression *child = FIRST_CHILD(exp);
 	ASSERT(child->type == AL_OPERAND);
-	GrB_Info info = GrB_transpose(res, GrB_NULL, GrB_NULL, child->operand.matrix, GrB_NULL);
+	ASSERT(child->operand.type == AL_GrB_MAT);
+	GrB_Info info = GrB_transpose(res, NULL, NULL, child->operand.grb_matrix, NULL);
 	ASSERT(info == GrB_SUCCESS);
 	return res;
 }
 
-static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
+static GrB_Matrix _Eval_Add
+(
+	const AlgebraicExpression *exp,
+	GrB_Matrix res
+) {
 	ASSERT(exp && AlgebraicExpression_ChildCount(exp) > 1);
 
 	GrB_Info info;
 	UNUSED(info);
-	GrB_Index nrows;                // Number of rows of operand.
-	GrB_Index ncols;                // Number of columns of operand.
-	bool res_in_use = false;        // Can we use `res` for intermediate evaluation.
-	GrB_Matrix a = GrB_NULL;        // Left operand.
-	GrB_Matrix b = GrB_NULL;        // Right operand.
-	GrB_Matrix inter = GrB_NULL;    // Intermediate matrix.
-	GrB_Descriptor desc = GrB_NULL; // Descriptor used for transposing operands (currently unused).
+	GrB_Index nrows;                // number of rows of operand
+	GrB_Index ncols;                // number of columns of operand
+	bool res_in_use = false;        // can we use `res` for intermediate evaluation
+	GrB_Matrix a = NULL;            // left operand
+	GrB_Matrix b = NULL;            // right operand
+	GrB_Matrix inter = NULL;        // intermediate matrix
+	GrB_Descriptor desc = NULL;     // descriptor used for transposing operands (currently unused)
 
-	// Get left and right operands.
+	// get left and right operands
 	AlgebraicExpression *left = CHILD_AT(exp, 0);
 	AlgebraicExpression *right = CHILD_AT(exp, 1);
 
-	/* If left operand is a matrix, simply get it.
-	 * Otherwise evaluate left hand side using `res` to store LHS value. */
+	// if left operand is a matrix, simply get it
+	// otherwise evaluate left hand side using `res` to store LHS value
 	if(left->type == AL_OPERAND) {
-		a = left->operand.matrix;
+		ASSERT(left->operand.type == AL_GrB_MAT);
+		a = left->operand.grb_matrix;
 	} else {
 		if(left->operation.op == AL_EXP_TRANSPOSE) {
 			ASSERT(AlgebraicExpression_ChildCount(left) == 1);
-			a = left->operation.children[0]->operand.matrix;
-			if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+			a = left->operation.children[0]->operand.grb_matrix;
+			if(desc == NULL) GrB_Descriptor_new(&desc);
 			GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
 		} else {
 			a = _AlgebraicExpression_Eval(left, res);
@@ -59,55 +69,58 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 		}
 	}
 
-	/* If right operand is a matrix, simply get it.
-	 * Otherwise evaluate right hand side using `res` if free or create an additional matrix to store RHS value. */
+	// if right operand is a matrix, simply get it
+	// otherwise evaluate right hand side using `res`
+	// if free or create an additional matrix to store RHS value
 	if(right->type == AL_OPERAND) {
-		b = right->operand.matrix;
+		ASSERT(right->operand.type == AL_GrB_MAT);
+		b = right->operand.grb_matrix;
 	} else {
 		if(right->operation.op == AL_EXP_TRANSPOSE) {
 			ASSERT(AlgebraicExpression_ChildCount(right) == 1);
-			b = right->operation.children[0]->operand.matrix;
-			if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+			b = right->operation.children[0]->operand.grb_matrix;
+			if(desc == NULL) GrB_Descriptor_new(&desc);
 			GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 		} else if(res_in_use) {
-			// `res` is in use, create an additional matrix.
+			// `res` is in use, create an additional matrix
 			GrB_Matrix_nrows(&nrows, a);
 			GrB_Matrix_ncols(&ncols, a);
 			info = GrB_Matrix_new(&inter, GrB_BOOL, nrows, ncols);
 			ASSERT(info == GrB_SUCCESS);
 			b = _AlgebraicExpression_Eval(right, inter);
 		} else {
-			// `res` is not used just yet, use it for RHS evaluation.
+			// `res` is not used just yet, use it for RHS evaluation
 			b = _AlgebraicExpression_Eval(right, res);
 		}
 	}
 
-	// Perform addition.
-	info = GrB_eWiseAdd(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, a, b, desc);
+	// perform addition
+	info = GrB_eWiseAdd(res, NULL, NULL, GxB_ANY_PAIR_BOOL, a, b, desc);
 	ASSERT(info == GrB_SUCCESS);
 
-	// Reset descriptor if non-null.
-	if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
+	// reset descriptor if non-null
+	if(desc != NULL) GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
 
 	uint child_count = AlgebraicExpression_ChildCount(exp);
-	// Expression has more than 2 operands, e.g. A+B+C...
+	// expression has more than 2 operands, e.g. A+B+C...
 	for(uint i = 2; i < child_count; i++) {
-		// Reset descriptor if non-null.
-		if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
+		// reset descriptor if non-null
+		if(desc != NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 		right = CHILD_AT(exp, i);
 
 		if(right->type == AL_OPERAND) {
-			b = right->operand.matrix;
+			ASSERT(right->operand.type == AL_GrB_MAT);
+			b = right->operand.grb_matrix;
 		} else {
 			if(right->operation.op == AL_EXP_TRANSPOSE) {
 				ASSERT(AlgebraicExpression_ChildCount(right) == 1);
-				b = right->operation.children[0]->operand.matrix;
-				if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+				b = right->operation.children[0]->operand.grb_matrix;
+				if(desc == NULL) GrB_Descriptor_new(&desc);
 				GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 			} else {
-				// 'right' represents either + or * operation.
-				if(inter == GrB_NULL) {
-					// Can't use `res`, use an intermidate matrix.
+				// 'right' represents either + or * operation
+				if(inter == NULL) {
+					// can't use `res`, use an intermidate matrix
 					GrB_Matrix_nrows(&nrows, res);
 					GrB_Matrix_ncols(&ncols, res);
 					info = GrB_Matrix_new(&inter, GrB_BOOL, nrows, ncols);
@@ -117,17 +130,21 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 			}
 		}
 
-		// Perform addition.
-		info = GrB_eWiseAdd(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, b, GrB_NULL);
+		// perform addition
+		info = GrB_eWiseAdd(res, NULL, NULL, GxB_ANY_PAIR_BOOL, res, b, NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	if(inter != GrB_NULL) GrB_Matrix_free(&inter);
-	if(desc != GrB_NULL) GrB_free(&desc);
+	if(inter != NULL) GrB_Matrix_free(&inter);
+	if(desc != NULL) GrB_free(&desc);
 	return res;
 }
 
-static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
+static GrB_Matrix _Eval_Mul
+(
+	const AlgebraicExpression *exp,
+	GrB_Matrix res
+) {
 	ASSERT(exp &&
 		   AlgebraicExpression_ChildCount(exp) > 1 &&
 		   AlgebraicExpression_OperationCount(exp, AL_EXP_MUL) == 1);
@@ -135,82 +152,87 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	GrB_Info info;
 	UNUSED(info);
 	GrB_Matrix A;
-	GrB_Matrix B;
+	RG_Matrix B;
 	GrB_Index nvals;
-	GrB_Descriptor desc = GrB_NULL;
+	GrB_Descriptor desc = NULL;
 	AlgebraicExpression *left = CHILD_AT(exp, 0);
 	AlgebraicExpression *right = CHILD_AT(exp, 1);
 
 	if(left->type == AL_OPERATION) {
 		ASSERT(left->operation.op == AL_EXP_TRANSPOSE);
 		ASSERT(AlgebraicExpression_ChildCount(left) == 1);
-		if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+		if(desc == NULL) GrB_Descriptor_new(&desc);
 		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
 		left = CHILD_AT(left, 0);
 	}
-	A = left->operand.matrix;
+	ASSERT(left->operand.type == AL_GrB_MAT);
+	A = left->operand.grb_matrix;
 
 	if(right->type == AL_OPERATION) {
 		ASSERT(right->operation.op == AL_EXP_TRANSPOSE);
 		ASSERT(AlgebraicExpression_ChildCount(right) == 1);
-		if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+		if(desc == NULL) GrB_Descriptor_new(&desc);
 		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 		right = CHILD_AT(right, 0);
 	}
-	B = right->operand.matrix;
 
-	if(B == IDENTITY_MATRIX) {
-		// Reset descriptor, as the identity matrix does not need to be transposed.
-		if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
-		// B is the identity matrix, Perform A * I.
-		info = GrB_Matrix_apply(res, GrB_NULL, GrB_NULL, GrB_IDENTITY_BOOL, A, desc);
+	if(right->operand.type == AL_GrB_MAT) {
+		ASSERT(right->operand.grb_matrix == IDENTITY_MATRIX);
+		// reset descriptor
+		// as the identity matrix does not need to be transposed
+		if(desc != NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
+		// B is the identity matrix, Perform A * I
+		info = GrB_Matrix_apply(res, NULL, NULL, GrB_IDENTITY_BOOL, A, desc);
 		ASSERT(info == GrB_SUCCESS);
 	} else {
-		// Perform multiplication.
-		info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, B, desc);
+		B = right->operand.rg_matrix;
+		// perform multiplication
+		info = RG_mxm(res, GxB_ANY_PAIR_BOOL, A, B);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
 	GrB_wait(&res);
 
-	// Reset descriptor if non-null.
-	if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
+	// reset descriptor if non-null
+	if(desc != NULL) GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
 
 	uint child_count = AlgebraicExpression_ChildCount(exp);
 	for(uint i = 2; i < child_count; i++) {
-		// Reset descriptor if non-null.
-		if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
+		// reset descriptor if non-null
+		if(desc != NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 
 		right = CHILD_AT(exp, i);
 		if(right->type == AL_OPERATION) {
 			ASSERT(right->operation.op == AL_EXP_TRANSPOSE);
 			ASSERT(AlgebraicExpression_ChildCount(right) == 1);
-			if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+			if(desc == NULL) GrB_Descriptor_new(&desc);
 			GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 			right = CHILD_AT(right, 0);
 		}
-		B = right->operand.matrix;
+		ASSERT(right->operand.type == AL_RG_MAT);
+		B = right->operand.rg_matrix;
 
-		if(B != IDENTITY_MATRIX) {
-			// Reset descriptor, as the identity matrix does not need to be transposed.
-			if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
-			// Perform multiplication.
-			info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, B, desc);
-			ASSERT(info == GrB_SUCCESS);
-		}
+		// perform multiplication
+		info = RG_mxm(res, GxB_ANY_PAIR_BOOL, res, B);
+		ASSERT(info == GrB_SUCCESS);
+
 		GrB_Matrix_nvals(&nvals, res);
 		if(nvals == 0) break;
 	}
 
-	if(desc != GrB_NULL) GrB_free(&desc);
+	if(desc != NULL) GrB_free(&desc);
 
 	return res;
 }
 
-GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res) {
+GrB_Matrix _AlgebraicExpression_Eval
+(
+	const AlgebraicExpression *exp,
+	GrB_Matrix res
+) {
 	ASSERT(exp);
 
-	// Perform operation.
+	// perform operation
 	switch(exp->type) {
 	case AL_OPERATION:
 		switch(exp->operation.op) {
@@ -231,7 +253,8 @@ GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix 
 		}
 		break;
 	case AL_OPERAND:
-		res = exp->operand.matrix;
+		ASSERT(exp->operand.type == AL_GrB_MAT);
+		res = exp->operand.grb_matrix;
 		break;
 	default:
 		ASSERT("Unknown algebraic expression node type" && false);
@@ -240,7 +263,11 @@ GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix 
 	return res;
 }
 
-void AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res) {
+void AlgebraicExpression_Eval
+(
+	const AlgebraicExpression *exp,
+	GrB_Matrix res
+) {
 	ASSERT(exp && exp->type == AL_OPERATION);
 	_AlgebraicExpression_Eval(exp, res);
 }

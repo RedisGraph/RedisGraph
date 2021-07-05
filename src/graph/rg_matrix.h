@@ -13,6 +13,10 @@
 typedef struct _RG_Matrix _RG_Matrix;
 typedef _RG_Matrix *RG_Matrix;
 
+#define RG_MATRIX_MATRIX(C) (C)->matrix
+#define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus
+#define RG_MATRIX_DELTA_MINUS(C) (C)->delta_minus
+
 struct _RG_Matrix {
 	bool dirty;                         // Indicates if matrix requires sync
 	bool multi_edge;                    // Entry i,j can contain multiple edges
@@ -144,6 +148,14 @@ GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
     const GrB_Index *J,             // column indices
     GrB_Index nj,                   // number of column indices
     const GrB_Descriptor desc       // descriptor for C(I,J) and Mask
+);
+
+GrB_Info RG_mxm                     // C = A * B
+(
+    GrB_Matrix C,                   // input/output matrix for results
+    const GrB_Semiring semiring,    // defines '+' and '*' for A*B
+    const GrB_Matrix A,             // first input:  matrix A
+    const RG_Matrix B               // second input: matrix B
 );
 
 GrB_Info RG_Matrix_wait

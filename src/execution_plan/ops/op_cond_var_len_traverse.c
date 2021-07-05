@@ -206,7 +206,7 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 			// where label L does not exists */
 			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
 
-			op->M = op->ae->operand.matrix;
+			op->M = op->ae->operand.rg_matrix;
 		}
 
 		if(op->allNeighborsCtx == NULL) {

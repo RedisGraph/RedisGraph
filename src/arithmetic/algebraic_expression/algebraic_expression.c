@@ -175,14 +175,17 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	const char *label   // Label attached to matrix.
 ) {
 	AlgebraicExpression *node = rm_malloc(sizeof(AlgebraicExpression));
-	node->type = AL_OPERAND;
-	node->operand.matrix = mat;
-	node->operand.diagonal = diagonal;
-	node->operand.bfree = false;
-	node->operand.src = src;
-	node->operand.dest = dest;
-	node->operand.edge = edge;
-	node->operand.label = label;
+
+	node->type                =  AL_OPERAND;
+	node->operand.src         =  src;
+	node->operand.dest        =  dest;
+	node->operand.edge        =  edge;
+	node->operand.type        =  AL_GrB_MAT;
+	node->operand.label       =  label;
+	node->operand.bfree       =  false;
+	node->operand.diagonal    =  diagonal;
+	node->operand.grb_matrix  =  mat;
+
 	return node;
 }
 

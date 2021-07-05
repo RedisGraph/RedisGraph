@@ -10,10 +10,6 @@
 
 #define DELTA_MAX_PENDING_CHANGES 2
 
-#define RG_MATRIX_MATRIX(C) (C)->matrix
-#define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus
-#define RG_MATRIX_DELTA_MINUS(C) (C)->delta_minus
-
 extern GrB_BinaryOp _graph_edge_accum;
 
 static inline void _SetDirty
