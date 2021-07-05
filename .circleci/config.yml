@@ -409,6 +409,9 @@ on-integ-and-version-tags: &on-integ-and-version-tags
     tags:
       only: /^v[0-9].*/
 
+context: &context
+  context:
+    - common
 
 workflows:
   version: 2
@@ -422,29 +425,35 @@ workflows:
           # <<: *on-any-branch
           <<: *on-integ-and-version-tags
       - platform_build:
+          <<: *context
           <<: *on-integ-and-version-tags
           matrix:
             parameters:
               platform: [bionic, xenial, centos7]
       - deploy_branch:
+          <<: *context
           <<: *on-integ-branch
           requires:
             - platform_build
             - build_macos
       - release_automation:
+          <<: *context
           <<: *on-version-tags
           requires:
             - deploy_release
       - deploy_release:
+          <<: *context
           <<: *on-version-tags
           requires:
             - platform_build
             - build_macos
       - performance_ci_automation_not_integ:
+          <<: *context
           <<: *not-on-integ-branch
           requires:
             - build
       - performance_ci_automation:
+          <<: *context
           <<: *on-integ-and-version-tags
           requires:
             - platform_build
