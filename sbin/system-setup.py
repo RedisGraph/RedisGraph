@@ -49,6 +49,7 @@ class RedisGraphSetup(paella.Setup):
 
     def common_last(self):
         self.run("%s/bin/getcmake" % READIES)
+        self.run("rm -rf /usr/local/lib/python3.6/dist-packages/redis_py_cluster*")  # circleci environment issue TODO better fix
         self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
 
         self.pip_install("-r tests/requirements.txt")
