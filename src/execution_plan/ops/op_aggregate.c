@@ -49,8 +49,9 @@ static inline AR_ExpNode **_build_aggregate_exps(OpAggregate *op) {
 	return agg_exps;
 }
 
-/* Build a new Group key of the SIValue results of non-aggregate expressions. */
+// build a new group key from the SIValue results of non-aggregate expressions
 static inline SIValue *_build_group_key(OpAggregate *op) {
+	// TODO: might be expensive incase we're generating lots of groups
 	SIValue *group_keys = rm_malloc(sizeof(SIValue) * op->key_count);
 
 	for(uint i = 0; i < op->key_count; i++) {
@@ -63,16 +64,16 @@ static inline SIValue *_build_group_key(OpAggregate *op) {
 }
 
 static Group *_CreateGroup(OpAggregate *op, Record r) {
-	/* Create a new group
-	 * Clone group keys. */
+	// create a new group, clone group keys
 	SIValue *group_keys = _build_group_key(op);
 
-	/* Get a fresh copy of aggregation functions. */
+	// get a fresh copy of aggregation functions
 	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
 
-	/* There's no need to keep a reference to record if we're not sorting groups. */
+	// There's no need to keep a reference to record if we're not sorting groups
 	Record cache_record = (op->should_cache_records) ? r : NULL;
-	op->group = NewGroup(group_keys, op->key_count, agg_exps, op->aggregate_count, cache_record);
+	op->group = NewGroup(group_keys, op->key_count, agg_exps,
+			op->aggregate_count, cache_record);
 
 	return op->group;
 }
@@ -84,89 +85,89 @@ static void _ComputeGroupKey(OpAggregate *op, Record r) {
 	}
 }
 
-static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
-	if(op->key_count == 0) {
-		*key = rm_strdup("SINGLE_GROUP");
-		return;
-	}
+// compute the hash code for list of SIValues
+static XXH64_hash_t _HashCode(const SIValue *v, size_t n) {
+	// initialize the hash state
+	XXH64_state_t state;
+	XXH_errorcode res = XXH64_reset(&state, 0);
+	ASSERT(res != XXH_ERROR);
 
-	// Determine required size for group key string representation.
-	size_t key_len = SIValue_StringJoinLen(op->group_keys, op->key_count, ",");
-	*key = rm_malloc(sizeof(char) * key_len);
-	size_t bytesWritten = 0;
-	SIValue_StringJoin(op->group_keys, op->key_count, ",", key, &key_len, &bytesWritten);
+	// update the hash state with the current value.
+	for(size_t i = 0; i < n; i++) SIValue_HashUpdate(v[i], &state);
+
+	// finalize the hash
+	return XXH64_digest(&state);
 }
 
-/* Retrieves group under which given record belongs to,
- * creates group if one doesn't exists. */
+// retrieves group under which given record belongs to,
+// creates group if one doesn't exists
 static Group *_GetGroup(OpAggregate *op, Record r) {
-	char *group_key_str = NULL;
+	XXH64_hash_t hash;
 	bool free_key_exps = true;
-	// Construct group key.
+
+	// construct group key
 	_ComputeGroupKey(op, r);
 
-	// First group created.
+	// first group created
 	if(!op->group) {
 		op->group = _CreateGroup(op, r);
-		Group_KeyStr(op->group, &group_key_str);
-		CacheGroupAdd(op->groups, group_key_str, op->group);
-		// Key expressions are owned by the new group and don't need to be freed.
+		hash = _HashCode(op->group_keys, op->key_count);
+		CacheGroupAdd(op->groups, hash, op->group);
+		// key expressions are owned by the new group and don't need to be freed
 		free_key_exps = false;
 		goto cleanup;
 	}
 
-	// Evaluate non-aggregated fields, see if they match
-	// the last accessed group.
+	// evaluate non-aggregated fields, see if they match the last accessed group
 	bool reuseLastAccessedGroup = true;
 	for(uint i = 0; reuseLastAccessedGroup && i < op->key_count; i++) {
-		reuseLastAccessedGroup = (SIValue_Compare(op->group->keys[i], op->group_keys[i], NULL) == 0);
+		reuseLastAccessedGroup =
+			(SIValue_Compare(op->group->keys[i], op->group_keys[i], NULL) == 0);
 	}
 
-	// See if we can reuse last accessed group.
+	// see if we can reuse last accessed group
 	if(reuseLastAccessedGroup) goto cleanup;
 
-	// Can't reuse last accessed group, lookup group by identifier key.
-	_ComputeGroupKeyStr(op, &group_key_str);
-	op->group = CacheGroupGet(op->groups, group_key_str);
+	// can't reuse last accessed group, lookup group by identifier key
+	hash = _HashCode(op->group_keys, op->key_count);
+	op->group = CacheGroupGet(op->groups, hash);
 	if(!op->group) {
 		// Group does not exists, create it.
 		op->group = _CreateGroup(op, r);
-		CacheGroupAdd(op->groups, group_key_str, op->group);
-		// Key expressions are owned by the new group and don't need to be freed.
+		CacheGroupAdd(op->groups, hash, op->group);
+		// key expressions are owned by the new group and don't need to be freed
 		free_key_exps = false;
 	}
+
 cleanup:
-	// Free the keys that have been computed during this function
-	// if they have not been used to build a new group.
+	// free the keys that have been computed during this function
+	// if they have not been used to build a new group
 	if(free_key_exps) {
-		for(uint i = 0; i < op->key_count; i++) {
-			SIValue_Free(op->group_keys[i]);
-		}
+		for(uint i = 0; i < op->key_count; i++) SIValue_Free(op->group_keys[i]);
 	}
-	if(group_key_str) rm_free(group_key_str);
+
 	return op->group;
 }
 
 static void _aggregateRecord(OpAggregate *op, Record r) {
-	/* Get group */
+	// get group
 	Group *group = _GetGroup(op, r);
 	ASSERT(group != NULL);
 
-	// Aggregate group exps.
+	// aggregate group exps
 	for(uint i = 0; i < op->aggregate_count; i++) {
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 		AR_EXP_Aggregate(exp, r);
 	}
 
-	// Free record.
+	// free record
 	OpBase_DeleteRecord(r);
 }
 
-/* Returns a record populated with group data. */
+// returns a record populated with group data
 static Record _handoff(OpAggregate *op) {
-	char *key;
 	Group *group;
-	if(!CacheGroupIterNext(op->group_iter, &key, &group)) return NULL;
+	if(!CacheGroupIterNext(op->group_iter, &group)) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
 

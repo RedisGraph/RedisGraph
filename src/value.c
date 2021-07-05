@@ -591,81 +591,81 @@ XXH64_hash_t SIEdge_HashCode(const SIValue v) {
 }
 
 void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
-	// Handles null value and defaults.
+	// handles null value and defaults
 	int64_t null = 0;
 	XXH64_hash_t inner_hash;
-	/* In case of identical binary representation of the value,
-	* we should hash the type as well. */
+	// in case of identical binary representation of the value,
+	// we should hash the type as well
 	SIType t = SI_TYPE(v);
 
 	switch(t) {
-	case T_NULL:
-		XXH64_update(state, &t, sizeof(t));
-		XXH64_update(state, &null, sizeof(null));
-		return;
-	case T_STRING:
-		XXH64_update(state, &t, sizeof(t));
-		XXH64_update(state, v.stringval, strlen(v.stringval));
-		return;
-	case T_INT64:
-		// Change type to numeric.
-		t = SI_NUMERIC;
-		XXH64_update(state, &t, sizeof(t));
-		XXH64_update(state, &v.longval, sizeof(v.longval));
-		return;
-	case T_BOOL:
-		XXH64_update(state, &t, sizeof(t));
-		XXH64_update(state, &v.longval, sizeof(v.longval));
-		return;
-	case T_DOUBLE: {
-		t = SI_NUMERIC;
-		XXH64_update(state, &t, sizeof(t));
-		// Check if the double value is actually an integer. If so, hash it as Long.
-		int64_t casted = (int64_t) v.doubleval;
-		double diff = v.doubleval - casted;
-		if(diff != 0) XXH64_update(state, &v.doubleval, sizeof(v.doubleval));
-		else XXH64_update(state, &casted, sizeof(casted));
-		return;
-	}
-	case T_EDGE:
-		inner_hash = SIEdge_HashCode(v);
-		XXH64_update(state, &inner_hash, sizeof(inner_hash));
-		return;
-	case T_NODE:
-		inner_hash = SINode_HashCode(v);
-		XXH64_update(state, &inner_hash, sizeof(inner_hash));
-		return;
-	case T_ARRAY:
-		inner_hash = SIArray_HashCode(v);
-		XXH64_update(state, &inner_hash, sizeof(inner_hash));
-		return;
-	case T_MAP:
-		inner_hash = Map_HashCode(v);
-		XXH64_update(state, &inner_hash, sizeof(inner_hash));
-		return;
-	case T_PATH:
-		inner_hash = SIPath_HashCode(v);
-		XXH64_update(state, &inner_hash, sizeof(inner_hash));
-		return;
-	// TODO: Implement for temporal types once we support them.
-	default:
-		ASSERT(false);
-		break;
+		case T_NULL:
+			XXH64_update(state, &t, sizeof(t));
+			XXH64_update(state, &null, sizeof(null));
+			return;
+		case T_STRING:
+			XXH64_update(state, &t, sizeof(t));
+			XXH64_update(state, v.stringval, strlen(v.stringval));
+			return;
+		case T_INT64:
+			// change type to numeric
+			t = SI_NUMERIC;
+			XXH64_update(state, &t, sizeof(t));
+			XXH64_update(state, &v.longval, sizeof(v.longval));
+			return;
+		case T_BOOL:
+			XXH64_update(state, &t, sizeof(t));
+			XXH64_update(state, &v.longval, sizeof(v.longval));
+			return;
+		case T_DOUBLE:
+			t = SI_NUMERIC;
+			XXH64_update(state, &t, sizeof(t));
+			// check if the double value is actually an integer
+			// if so, hash it as Long
+			int64_t casted = (int64_t) v.doubleval;
+			double diff = v.doubleval - casted;
+			if(diff != 0) XXH64_update(state, &v.doubleval, sizeof(v.doubleval));
+			else XXH64_update(state, &casted, sizeof(casted));
+			return;
+		case T_EDGE:
+			inner_hash = SIEdge_HashCode(v);
+			XXH64_update(state, &inner_hash, sizeof(inner_hash));
+			return;
+		case T_NODE:
+			inner_hash = SINode_HashCode(v);
+			XXH64_update(state, &inner_hash, sizeof(inner_hash));
+			return;
+		case T_ARRAY:
+			inner_hash = SIArray_HashCode(v);
+			XXH64_update(state, &inner_hash, sizeof(inner_hash));
+			return;
+		case T_MAP:
+			inner_hash = Map_HashCode(v);
+			XXH64_update(state, &inner_hash, sizeof(inner_hash));
+			return;
+		case T_PATH:
+			inner_hash = SIPath_HashCode(v);
+			XXH64_update(state, &inner_hash, sizeof(inner_hash));
+			return;
+			// TODO: Implement for temporal types once we support them.
+		default:
+			ASSERT(false);
+			break;
 	}
 }
 
-/* This method hashes a single SIValue. */
+// hash SIValue
 XXH64_hash_t SIValue_HashCode(SIValue v) {
-	// Initialize the hash state.
+	// initialize the hash state
 	XXH64_state_t state;
 	XXH_errorcode res = XXH64_reset(&state, 0);
 	UNUSED(res);
 	ASSERT(res != XXH_ERROR);
 
-	// Update the state with the SIValue.
+	// update the state with the SIValue
 	SIValue_HashUpdate(v, &state);
 
-	// Generate and return the hash.
+	// generate and return the hash
 	return XXH64_digest(&state);
 }
 

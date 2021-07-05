@@ -4,31 +4,29 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GROUP_CACHE_H_
-#define GROUP_CACHE_H_
+#pragma once
 
-#include "group.h"
 #include "rax.h"
+#include "group.h"
+#include "../../deps/xxHash/xxhash.h"
 
-typedef raxIterator CacheGroupIterator;
 typedef rax CacheGroup;
+typedef raxIterator CacheGroupIterator;
 
-CacheGroup *CacheGroupNew();
+CacheGroup *CacheGroupNew(void);
 
-void CacheGroupAdd(CacheGroup *groups, char *key, Group *group);
+void CacheGroupAdd(CacheGroup *groups, XXH64_hash_t key, Group *group);
 
-// Retrives a group,
-// Sets group to NULL if key is missing.
-Group *CacheGroupGet(CacheGroup *groups, char *key);
+// retrives a group, sets group to NULL if key is missing
+Group *CacheGroupGet(CacheGroup *groups, XXH64_hash_t key);
 
 void FreeGroupCache(CacheGroup *groups);
 
-// Populates an iterator to scan group cache
+// populates an iterator to scan group cache
 CacheGroupIterator *CacheGroupIter(CacheGroup *groups);
 
-// Advance iterator and returns key & value in current position.
-int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group);
+// advance iterator and returns value in current position
+int CacheGroupIterNext(CacheGroupIterator *iter, Group **group);
 
 void CacheGroupIterator_Free(CacheGroupIterator *iter);
 
-#endif
