@@ -65,7 +65,7 @@ class RedisGraphSetup(paella.Setup):
             tar xzf peg-0.1.18.tar.gz
             cd peg-0.1.18
             make
-            make install
+            make install MANDIR=.
             cd /tmp
             rm -rf $build_dir
             """)
