@@ -168,7 +168,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.4-x64-bionic
         environment:
           LANG: en_US.UTF-8
           LANGUAGE: en_US.UTF-8
@@ -202,7 +202,7 @@ jobs:
 
   build_memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.4-x64-bionic
         environment:
             LANG: en_US.UTF-8
             LANGUAGE: en_US.UTF-8
@@ -263,7 +263,7 @@ jobs:
 
   deploy_branch:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.4-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -277,7 +277,7 @@ jobs:
 
   deploy_release:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.4-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -291,7 +291,7 @@ jobs:
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+      - image: redisfab/rmbuilder:6.2.4-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -301,7 +301,7 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-buster
+      - image: redisfab/rmbuilder:6.2.4-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -311,7 +311,7 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: 'redisfab/rmbuilder:6.0.9-x64-bionic'
+      - image: 'redisfab/rmbuilder:6.2.4-x64-bionic'
     steps:
       - early_returns
       - checkout
@@ -322,7 +322,7 @@ jobs:
 
   performance_ci_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.4-x64-bionic
     steps:
       - early_returns
       - checkout
@@ -336,7 +336,7 @@ jobs:
 
   nightly_performance_automation:
     docker:
-      - image: redisfab/rmbuilder:6.0.9-x64-bionic
+      - image: redisfab/rmbuilder:6.2.4-x64-bionic
     steps:
       - early_returns
       - checkout
