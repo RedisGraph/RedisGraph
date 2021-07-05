@@ -738,7 +738,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 		GxB_MatrixTupleIter_iterate_row(tupleIter, srcNodeID);
 		while(true) {
 			bool depleted = false;
-			GxB_MatrixTupleIter_next(tupleIter, NULL, &destNodeID, &depleted);
+			GxB_MatrixTupleIter_next(&tupleIter, NULL, &destNodeID, &depleted);
 			if(depleted) break;
 			// Collect all edges connecting this source node to each of its destinations.
 			Graph_GetEdgesConnectingNodes(g, srcNodeID, destNodeID, edgeType, edges);
@@ -760,7 +760,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
 		while(true) {
 			bool depleted = false;
-			GxB_MatrixTupleIter_next(tupleIter, NULL, &srcNodeID, &depleted);
+			GxB_MatrixTupleIter_next(&tupleIter, NULL, &srcNodeID, &depleted);
 			if(depleted) break;
 			/* Collect all edges connecting this destination node to each of its sources.
 			 * This call will only collect edges of the appropriate relationship type,
@@ -1117,7 +1117,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		// outgoing edges
 		GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
 		while(true) {
-			GxB_MatrixTupleIter_next(adj_iter, NULL, &dest, &depleted);
+			GxB_MatrixTupleIter_next(&adj_iter, NULL, &dest, &depleted);
 			if(depleted) break;
 			GrB_Matrix_setElement_BOOL(Mask, true, ID, dest);
 		}
@@ -1127,7 +1127,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		// incoming edges
 		GxB_MatrixTupleIter_iterate_row(tadj_iter, ID);
 		while(true) {
-			GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, &depleted);
+			GxB_MatrixTupleIter_next(&tadj_iter, NULL, &src, &depleted);
 			if(depleted) break;
 			GrB_Matrix_setElement_BOOL(Mask, true, src, ID);
 		}

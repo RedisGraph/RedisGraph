@@ -7842,13 +7842,15 @@ GrB_Info GxB_Matrix_Pending
 // to iterate over a matrix
 typedef struct
 {
-	GrB_Matrix A ;          // Matrix being iterated
-    	int sparsity_type;      // Currently hypersparse or sparse.
-	GrB_Index nvals ;       // Number of none zero values in matrix
-	GrB_Index nnz_idx ;     // Index of current none zero value
-	int64_t p ;             // Number of none zero values in current column
-	int64_t row_idx ;       // Index of current row
-	GrB_Index nrows ;       // Total number of rows in matrix
+    void *next; // (GxB_MatrixTupleIter *) Iterator to excute after current deplets, null if no next iterator
+    void *head; // (GxB_MatrixTupleIter *) pointer to the iterator list head
+    GrB_Matrix A ;             // Matrix being iterated
+    int sparsity_type;         // Currently hypersparse or sparse.
+	GrB_Index nvals ;          // Number of none zero values in matrix
+	GrB_Index nnz_idx ;        // Index of current none zero value
+	int64_t p ;                // Number of none zero values in current column
+	int64_t row_idx ;          // Index of current row
+	GrB_Index nrows ;          // Total number of rows in matrix
     	struct { // Hypersparce only related fields
             int64_t sparse_row_idx;      // index into hyper-sparse row array 'h'
             int64_t h_size;              // Number of entries in hyper-sparse row array 'h'
@@ -7860,6 +7862,14 @@ GrB_Info GxB_MatrixTupleIter_new
 (
 	GxB_MatrixTupleIter **iter,     // iterator to create
 	GrB_Matrix A                    // matrix being iterated
+) ;
+
+// Create a new list of matrix iterators
+GrB_Info GxB_MatrixTupleIterList_new
+(
+	GxB_MatrixTupleIter **iter,     // list of iterators to create
+	GrB_Matrix *A_arr,              // array of matrices to iterate over
+	size_t len                      // size of the array A_arr
 ) ;
 
 // Iterate over specific row
@@ -7887,7 +7897,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 // Advance iterator to the next none zero value
 GrB_Info GxB_MatrixTupleIter_next
 (
-	GxB_MatrixTupleIter *iter,      // iterator to consume
+	GxB_MatrixTupleIter **iter,     // iterator to consume
 	GrB_Index *row,                 // optional row index of current NNZ
 	GrB_Index *col,                 // optional column index of current NNZ
 	bool *depleted                  // indicate if iterator depleted
