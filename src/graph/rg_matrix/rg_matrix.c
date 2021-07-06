@@ -6,7 +6,7 @@
 
 #include "RG.h"
 #include "rg_matrix.h"
-#include "../util/rmalloc.h"
+#include "../../util/rmalloc.h"
 
 #define DELTA_MAX_PENDING_CHANGES 2
 
@@ -325,7 +325,7 @@ GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 		 desc                  // descriptor for C(I,J) and Mask
 		);
 
-	if(info == GrB_SUCCESS) _SetDirty(C);
+	if(info == GrB_SUCCESS) RG_Matrix_setDirty(C);
 	return info;
 }
 

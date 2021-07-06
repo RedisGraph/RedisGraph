@@ -9,11 +9,11 @@
 #include <pthread.h>
 
 #include "rax.h"
-#include "rg_matrix.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
 #include "graph_statistics.h"
+#include "rg_matrix/rg_matrix.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"

@@ -6,7 +6,7 @@
 
 #include "RG.h"
 #include "rg_matrix.h"
-#include "../util/rmalloc.h"
+#include "../../util/rmalloc.h"
 
 // creates a new matrix
 GrB_Info RG_Matrix_new

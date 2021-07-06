@@ -6,9 +6,9 @@
 
 #include "RG.h"
 #include "rg_matrix.h"
-#include "../util/arr.h"
-#include "../util/rmalloc.h"
-#include "./entities/graph_entity.h"
+#include "../../util/arr.h"
+#include "../../util/rmalloc.h"
+#include "../entities/graph_entity.h"
 
 // free multi-edge arrays GraphBLAS unary operation
 static GrB_UnaryOp free_multi_edge_op = NULL;

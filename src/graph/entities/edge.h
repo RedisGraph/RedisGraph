@@ -8,8 +8,8 @@
 
 #include "node.h"
 #include "../../value.h"
-#include "../rg_matrix.h"
 #include "graph_entity.h"
+#include "../rg_matrix/rg_matrix.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define EDGE_LENGTH_INF UINT_MAX - 2
