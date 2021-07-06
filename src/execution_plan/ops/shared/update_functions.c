@@ -6,6 +6,8 @@
 
 #include "update_functions.h"
 #include "../../../errors.h"
+#include "../../../query_ctx.h"
+#include "../../../datatypes/map.h"
 
 /* set a property on a graph entity
  * for non-NULL values, the property will be added or updated
@@ -39,9 +41,40 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 	return res;
 }
 
+static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, SIType accepted_properties,
+											  int label_id, GraphEntity *entity,
+											  Attribute_ID attr_id, SIValue new_value) {
+	//--------------------------------------------------------------------------
+	// validate value type
+	//--------------------------------------------------------------------------
+
+	// emit an error and exit if we're trying to add an invalid type
+	if(!(SI_TYPE(new_value) & accepted_properties)) {
+		Error_InvalidPropertyValue();
+		ErrorCtx_RaiseRuntimeException(NULL);
+		return (PendingUpdateCtx) {};
+	}
+
+	bool update_index = false;
+	// determine whether we must update the index for this update
+	if(label_id != GRAPH_NO_LABEL) {
+		// if the (label:attribute) combination has an index, take note
+		update_index = GraphContext_GetIndexByID(gc, label_id, &attr_id,
+												 IDX_ANY) != NULL;
+	}
+
+	return (PendingUpdateCtx) {
+		.ge            =  entity,
+		.attr_id       =  attr_id,
+		.label_id      =  label_id,
+		.new_value     =  new_value,
+		.update_index  =  update_index,
+	};
+}
+
 // commits delayed updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-		PendingUpdateCtx *updates) {
+				   PendingUpdateCtx *updates) {
 	ASSERT(gc != NULL);
 	ASSERT(stats != NULL);
 	ASSERT(updates != NULL);
@@ -64,8 +97,8 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		// index previous entity if we're required to
 		if(ge != updates[i].ge) {
 			if(reindex) {
-				s = GraphContext_GetSchemaByID(gc, updates[i-1].label_id,
-						SCHEMA_NODE);
+				s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id,
+											   SCHEMA_NODE);
 				ASSERT(s != NULL);
 				// introduce updated entity to index
 				Schema_AddNodeToIndices(s, (Node *)ge);
@@ -88,7 +121,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 
 	// handle last updated entity
 	if(reindex) {
-		s = GraphContext_GetSchemaByID(gc, updates[i-1].label_id, SCHEMA_NODE);
+		s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id, SCHEMA_NODE);
 		ASSERT(s != NULL);
 		// introduce updated entity to index
 		Schema_AddNodeToIndices(s, (Node *)ge);
@@ -97,8 +130,8 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 	if(stats) stats->properties_set += properties_set;
 }
 
-void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Record r,
-					   const EntityUpdateEvalCtx *ctx, bool allow_null) {
+void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
+		const Record r, const EntityUpdateEvalCtx *ctx, bool allow_null) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
 	bool node_update  = false;
@@ -115,8 +148,8 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	// make sure we're updating either a node or an edge
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 		ErrorCtx_RaiseRuntimeException(
-				"Update error: alias '%s' did not resolve to a graph entity",
-				ctx->alias);
+			"Update error: alias '%s' did not resolve to a graph entity",
+			ctx->alias);
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
@@ -133,10 +166,10 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	// enqueue a clear update to do so
 	if(ctx->mode == UPDATE_REPLACE) {
 		PendingUpdateCtx update = {
-			.ge            =  entity,
-			.label_id      =  label_id,
-			.update_index  =  (label_id != GRAPH_NO_LABEL),
-			.attr_id       =  ATTRIBUTE_ALL,
+			.ge            = entity,
+			.label_id      = label_id,
+			.update_index  = (label_id != GRAPH_NO_LABEL),
+			.attr_id       = ATTRIBUTE_ALL,
 		};
 		*updates = array_append(*updates, update);
 	}
@@ -147,38 +180,40 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates, const Recor
 	if(allow_null) accepted_properties |= T_NULL;
 
 	uint exp_count = array_len(ctx->properties);
+
+	//--------------------------------------------------------------------------
+	// enqueue update
+	//--------------------------------------------------------------------------
+
 	for(uint i = 0; i < exp_count; i++) {
-		bool            update_index         = false;
-		PropertySetCtx  property             = ctx->properties[i];
-		Attribute_ID    attr_id              = property.id;
-		SIValue         new_value            = AR_EXP_Evaluate(property.exp, r);
+		PendingUpdateCtx  update;
+		PropertySetCtx    property   =  ctx->properties[i];
+		Attribute_ID      attr_id    =  property.id;
+		SIValue           new_value  =  AR_EXP_Evaluate(property.exp,  r);
 
-		//----------------------------------------------------------------------
-		// validate value type
-		//----------------------------------------------------------------------
+		// value is of type map e.g. n.v = {a:1, b:2}
+		if(SI_TYPE(new_value) == T_MAP) {
+			SIValue m = new_value;
+			ASSERT(attr_id == ATTRIBUTE_ALL);
+			// iterate over all map elements to build updates
+			uint map_size = Map_KeyCount(m);
+			for(uint j = 0; j < map_size; j ++) {
+				SIValue key;
+				SIValue value;
+				Map_GetIdx(m, j, &key, &value);
+				Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc,
+						key.stringval);
 
-		// emit an error and exit if we're trying to add an invalid type
-		if(!(SI_TYPE(new_value) & accepted_properties)) {
-			Error_InvalidPropertyValue();
-			ErrorCtx_RaiseRuntimeException(NULL);
-			break;
+				update = _PreparePendingUpdate(gc, accepted_properties,
+						label_id, entity, attr_id, value);
+				// enqueue the current update
+				*updates = array_append(*updates, update);
+			}
+			continue;
 		}
 
-		// determine whether we must update the index for this update
-		if(node_update && label_id != GRAPH_NO_LABEL) {
-			// if the (label:attribute) combination has an index, take note
-			update_index = GraphContext_GetIndexByID(gc, label_id, &attr_id,
-					IDX_ANY) != NULL;
-		}
-
-		PendingUpdateCtx update = {
-			.ge            =  entity,
-			.attr_id       =  attr_id,
-			.label_id      =  label_id,
-			.new_value     =  new_value,
-			.update_index  =  update_index,
-		};
-
+		update = _PreparePendingUpdate(gc, accepted_properties, label_id,
+				entity, attr_id, new_value);
 		// enqueue the current update
 		*updates = array_append(*updates, update);
 	}

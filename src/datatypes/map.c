@@ -11,19 +11,30 @@
 #include "../util/rmalloc.h"
 #include "../util/strutil.h"
 
-static inline Pair Pair_New(SIValue key, SIValue val) {
+static inline Pair Pair_New
+(
+	SIValue key,
+	SIValue val
+) {
 	ASSERT(SI_TYPE(key) & T_STRING);
 	return (Pair) {
 		.key = SI_CloneValue(key), .val = SI_CloneValue(val)
 	};
 }
 
-static void Pair_Free(Pair p) {
+static void Pair_Free
+(
+	Pair p
+) {
 	SIValue_Free(p.key);
 	SIValue_Free(p.val);
 }
 
-static int Map_KeyIdx(SIValue map, SIValue key) {
+static int Map_KeyIdx
+(
+	SIValue map,
+	SIValue key
+) {
 	ASSERT(SI_TYPE(map) & T_MAP);
 	ASSERT(SI_TYPE(key) & T_STRING);
 
@@ -111,11 +122,7 @@ void Map_Remove
 
 	// override removed key with last pair
 	Pair_Free(m[idx]);
-	uint last_idx = array_len(m) - 1;
-	m[idx] = m[last_idx];
-
-	// replace pair at 'idx' with last pair
-	array_pop(m);
+	array_del_fast(m, idx);
 }
 
 // retrieves value under key, map[key]
@@ -140,6 +147,24 @@ bool Map_Get
 		*value = SI_ShareValue(map.map[idx].val);
 		return true;
 	}
+}
+
+void Map_GetIdx
+(
+	const SIValue map,
+	uint idx,
+	SIValue *key,
+	SIValue *value
+) {
+	ASSERT(SI_TYPE(map) & T_MAP);
+	ASSERT(idx < Map_KeyCount(map));
+	ASSERT(key != NULL);
+	ASSERT(value != NULL);
+
+	Pair p = map.map[idx];
+
+	*key = SI_ShareValue(p.key);
+	*value = SI_ShareValue(p.val);
 }
 
 // checks if 'key' is in map
@@ -307,3 +332,4 @@ void Map_Free
 
 	array_free(map.map);
 }
+
