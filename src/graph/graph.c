@@ -1069,7 +1069,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		NodeID dest_id = Edge_GetDestNodeID(e);
 		EdgeID edge_id;
 		GrB_Matrix R = Graph_GetRelationMatrix(g, r, false);  // Relation matrix.
-		GrB_Matrix TR = maintain_transpose ? Graph_GetTransposedRelationMatrix(g, r) : NULL;
+		GrB_Matrix TR = maintain_transpose ? Graph_GetRelationMatrix(g, r, true) : NULL;
 		GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 
 		// An edge of type r has just been deleted, update statistics.
@@ -1152,13 +1152,13 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 			GrB_Matrix mask = masks[r];
 			GrB_Matrix R = Graph_GetRelationMatrix(g, r, false);  // Relation matrix.
 			if(mask) {
-				_Graph_SetRelationMatrixDirty(g, r);
+				// _Graph_SetRelationMatrixDirty(g, r);
 				// Remove every entry of R marked by Mask.
 				// Desc: GrB_MASK = GrB_COMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
 				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 				if(maintain_transpose) {
-					GrB_Matrix tM = Graph_GetTransposedRelationMatrix(g, r);  // Transposed relation mapping matrix.
+					GrB_Matrix tM = Graph_GetRelationMatrix(g, r, true);  // Transposed relation mapping matrix.
 					// Transpose mask (this cannot be done by descriptor).
 					GrB_transpose(mask, GrB_NULL, GrB_NULL, mask, GrB_NULL);
 					// tM = tM & !mask.
@@ -1174,7 +1174,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g, false);
 		GrB_Matrix t_adj_matrix = Graph_GetAdjacencyMatrix(g, true);
-		_Graph_SetAdjacencyMatrixDirty(g);
+		// _Graph_SetAdjacencyMatrixDirty(g);
 
 		// To calculate edges to delete, remove all the remaining edges from "The" adjency matrix.
 		// Set descriptor mask to default.

@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "GraphBLAS.h"
 #include <pthread.h>
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // forward declaration of RG_Matrix type
 typedef struct _RG_Matrix _RG_Matrix;
@@ -53,6 +53,12 @@ GrB_Matrix RG_Matrix_getGrB_Matrix
 
 // returns underlying delta plus GraphBLAS matrix
 GrB_Matrix RG_Matrix_getDeltaPlus
+(
+	RG_Matrix C
+);
+
+// mark matrix as dirty
+void RG_Matrix_setDirty
 (
 	RG_Matrix C
 );

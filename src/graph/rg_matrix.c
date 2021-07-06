@@ -10,9 +10,7 @@
 
 #define DELTA_MAX_PENDING_CHANGES 2
 
-extern GrB_BinaryOp _graph_edge_accum;
-
-static inline void _SetDirty
+void RG_Matrix_setDirty
 (
 	RG_Matrix C
 ) {
@@ -26,56 +24,6 @@ static inline void _SetUndirty
 ) {
 	ASSERT(C);
 	C->dirty = false;
-}
-
-// creates a new matrix
-GrB_Info RG_Matrix_new
-(
-	RG_Matrix *A,
-	GrB_Type type,
-	GrB_Index nrows,
-	GrB_Index ncols,
-	bool multi_edge,
-	bool maintain_transpose
-) {
-	GrB_Info info;
-	RG_Matrix matrix = rm_calloc(1, sizeof(_RG_Matrix));
-
-	matrix->dirty               =  false;
-	matrix->multi_edge          =  multi_edge;
-	matrix->maintain_transpose  =  maintain_transpose;
-
-	//----------------------------------------------------------------------------
-	// create m, delta-plus and delta-minus
-	//----------------------------------------------------------------------------
-
-	info = GrB_Matrix_new(&matrix->matrix, type, nrows, ncols);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_Matrix_new(&matrix->delta_plus, type, nrows, ncols);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_Matrix_new(&matrix->delta_minus, GrB_BOOL, nrows, ncols);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GxB_set(matrix->matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	ASSERT(info == GrB_SUCCESS);
-
-	//----------------------------------------------------------------------------
-	// create transpose matrix if required
-	//----------------------------------------------------------------------------
-
-	if(maintain_transpose) {
-		info = RG_Matrix_new(&matrix->transposed, type, nrows, ncols,
-				multi_edge, false);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
-	int mutex_res = pthread_mutex_init(&matrix->mutex, NULL);
-	ASSERT(mutex_res == 0);
-
-	*A = matrix;
-	return info;
 }
 
 RG_Matrix RG_Matrix_getTranspose
@@ -160,22 +108,22 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 	GrB_Matrix  dp;
 	GrB_Matrix  dm;
 	GrB_Info    info;
-	GrB_Index   m_nvals;
-	GrB_Index   dp_nvals;
-	GrB_Index   dm_nvals;
+
+	GrB_Index  m_nvals   =  0;
+	GrB_Index  dp_nvals  =  0;
+	GrB_Index  dm_nvals  =  0;
 
 	// nvals = nvals(M) + nvals(DP) - nvals(DM)
 
-	m = RG_MATRIX_MATRIX(A);
+	m   =  RG_MATRIX_MATRIX(A);
+	dp  =  RG_MATRIX_DELTA_PLUS(A);
+	dm  =  RG_MATRIX_DELTA_MINUS(A);
+
 	info = GrB_Matrix_nvals(&m_nvals, m);
 	ASSERT(info == GrB_SUCCESS);
-
-	dp = RG_MATRIX_DELTA_PLUS(A);
 	info = GrB_Matrix_nvals(&dp_nvals, dp);
 	ASSERT(info == GrB_SUCCESS);
-
-	dm = RG_MATRIX_DELTA_MINUS(A);
-	info = GrB_Matrix_nvals(&dp_nvals, dm);
+	info = GrB_Matrix_nvals(&dm_nvals, dm);
 	ASSERT(info == GrB_SUCCESS);
 
 	*nvals = m_nvals + dp_nvals - dm_nvals;
@@ -209,120 +157,6 @@ GrB_Info RG_Matrix_resize       // change the size of a matrix
 	info = GrB_Matrix_resize(delta_minus, nrows_new, ncols_new);
 	ASSERT(info == GrB_SUCCESS);
 	
-	return info;
-}
-
-GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
-(
-    RG_Matrix C,                        // matrix to modify
-    bool x,                             // scalar to assign to C(i,j)
-    GrB_Index i,                        // row index
-    GrB_Index j                         // column index
-) {
-	ASSERT(C != NULL);
-
-	GrB_Info info;
-
-	if(C->maintain_transpose) {
-		info = RG_Matrix_setElement_BOOL(C->transposed, x, j, i);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
-	GrB_Matrix m  = RG_MATRIX_MATRIX(C);
-	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
-
-	// check if entry is marked for deletion
-	bool v;
-	info = GrB_Matrix_extractElement(&v, dm, i, j);	
-	if(info == GrB_SUCCESS) {
-		// remove entry and issue deletion
-		info = GrB_Matrix_removeElement(dm, i, j);
-		ASSERT(info == GrB_SUCCESS);
-
-		// TODO: delete entity!
-		ASSERT(false);
-	}
-
-	// check for multi edge
-	if(C->multi_edge) {
-		info = GrB_Matrix_extractElement_BOOL(&v, m, i, j);
-		if(info == GrB_SUCCESS) {
-			// TODO: support multi edge
-			ASSERT(false);
-		}
-		info = GrB_Matrix_extractElement_BOOL(&v, dp, i, j);
-		if(info == GrB_SUCCESS) {
-			// TODO: support multi edge
-			ASSERT(false);
-		}
-
-		// TODO: force flush (cheap, no memory movement)
-		return info;
-	}
-
-	// add entry to delta-plus
-	info = GrB_Matrix_setElement_BOOL(dp, x, i, j);
-	ASSERT(info == GrB_SUCCESS);
-	_SetDirty(C);
-
-	return info;
-}
-
-GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
-(
-    RG_Matrix C,                        // matrix to modify
-    uint64_t x,                         // scalar to assign to C(i,j)
-    GrB_Index i,                        // row index
-    GrB_Index j                         // column index
-) {
-	ASSERT(C != NULL);
-
-	GrB_Info info;
-
-	if(C->maintain_transpose) {
-		info = RG_Matrix_setElement_UINT64(C->transposed, x, j, i);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
-	GrB_Matrix m  = RG_MATRIX_MATRIX(C);
-	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
-
-	// check if entry is marked for deletion
-	uint64_t v;
-	info = GrB_Matrix_extractElement(&v, dm, i, j);	
-	if(info == GrB_SUCCESS) {
-		// remove entry and issue deletion
-		info = GrB_Matrix_removeElement(dm, i, j);
-		ASSERT(info == GrB_SUCCESS);
-
-		// TODO: delete entity!
-		ASSERT(false);
-	}
-
-	// check for multi edge
-	if(C->multi_edge) {
-		info = GrB_Matrix_extractElement_UINT64(&v, m, i, j);
-		if(info == GrB_SUCCESS) {
-			// TODO: support multi edge
-			ASSERT(false);
-		}
-		info = GrB_Matrix_extractElement_UINT64(&v, dp, i, j);
-		if(info == GrB_SUCCESS) {
-			// TODO: support multi edge
-			ASSERT(false);
-		}
-
-		// TODO: force flush (cheap, no memory movement)
-		return info;
-	}
-
-	// add entry to delta-plus
-	info = GrB_Matrix_setElement_UINT64(dp, x, i, j);
-	ASSERT(info == GrB_SUCCESS);
-	_SetDirty(C);
-
 	return info;
 }
 
@@ -428,7 +262,7 @@ GrB_Info RG_Matrix_removeElement
 
 	if(!(in_m || in_dp)) {
 		// entry missing from both 'm' and 'dp'
-		return GrB_NO_VALUE;
+		return GrB_SUCCESS;
 	}
 
 	// removed entry should be in either 'm' or in 'dp'
@@ -442,14 +276,14 @@ GrB_Info RG_Matrix_removeElement
 
 		// TODO: postpone entity deletion to sync
 	} else {
-		// entry is removed from 'dp'
+		// remove entry from 'dp'
 		info = GrB_Matrix_removeElement(dp, i, j);
 		ASSERT(info == GrB_SUCCESS);
 
 		// TODO: delete entity
 	}
 
-	_SetDirty(C);
+	RG_Matrix_setDirty(C);
 	return info;
 }
 
@@ -515,20 +349,23 @@ static GrB_Info RG_Matrix_sync
 
 	bool  additions  =  dp_nvals  >  0;
 	bool  deletions  =  dm_nvals  >  0;
-	ASSERT(additions || deletions);
 
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// perform deletions
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	if(deletions) {
 		info = GrB_transpose(m, dm, GrB_NULL, m, GrB_DESC_RSCT0);
 		ASSERT(info == GrB_SUCCESS);
+
+		// clear delta minus
+		info = GrB_Matrix_clear(dm);
+		ASSERT(info == GrB_SUCCESS);
 	}
 
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// perform additions
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	if(additions) {
 		GrB_Type t;
@@ -542,13 +379,11 @@ static GrB_Info RG_Matrix_sync
 		info = GrB_Matrix_eWiseAdd_BinaryOp(m, GrB_NULL, GrB_NULL, op, m,
 				dp, GrB_NULL);
 		ASSERT(info == GrB_SUCCESS);
+
+		// clear delta plus
+		info = GrB_Matrix_clear(dp);
+		ASSERT(info == GrB_SUCCESS);
 	}
-
-	info = GrB_Matrix_clear(dp);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_Matrix_clear(dm);
-	ASSERT(info == GrB_SUCCESS);
 
 	info = GrB_wait(&m);
 	ASSERT(info == GrB_SUCCESS);
@@ -589,46 +424,5 @@ GrB_Info RG_Matrix_wait
 	_SetUndirty(A);
 
 	return info;
-}
-
-void RG_Matrix_free
-(
-	RG_Matrix *C
-) {
-	ASSERT(C != NULL);
-	RG_Matrix M = *C;
-
-	GrB_Info info;
-
-	// force flush both C and TC
-	info = RG_Matrix_wait(M, true);
-	ASSERT(info == GrB_SUCCESS);
-
-	if(M->maintain_transpose) RG_Matrix_free(M->transposed);
-
-	// free edges
-	if(M->multi_edge) {
-		GrB_Matrix m = RG_MATRIX_MATRIX(M);
-		// TODO: change GrB_IDENTITY_UINT64 with a custom operation which
-		// frees arrays
-		ASSERT(false);
-		info = GrB_Matrix_apply(m, GrB_NULL, GrB_NULL, GrB_IDENTITY_UINT64, m,
-				GrB_NULL);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
-	info = GrB_Matrix_free(&M->matrix);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_Matrix_free(&M->delta_plus);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_Matrix_free(&M->delta_minus);
-	ASSERT(info == GrB_SUCCESS);
-
-	pthread_mutex_destroy(&M->mutex);
-	rm_free(M);
-
-	*C = NULL;
 }
 
