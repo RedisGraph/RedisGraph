@@ -7,28 +7,26 @@
 // Sets iterator as depleted.
 static inline void _EmptyIterator
 (
-	GxB_MatrixTupleIter *iter   // Iterator to deplete.
+	_GxB_MatrixTupleIter *iter   // Iterator to deplete.
 ) {
 	iter->nvals = 0 ;
 	iter->nnz_idx = 0 ;
 }
 
-static GrB_Info _MatrixTupleIter_init
+GrB_Info GxB_MatrixTupleIter_init
 (
-	GxB_MatrixTupleIter *iter,      // iterator to init
+	_GxB_MatrixTupleIter *iter,      // iterator to init
 	GrB_Matrix A                    // matrix to iterate over
 ) {
-	GB_WHERE1("_MatrixTupleIter_init (iter, A)") ;
+	GB_WHERE(A, "GxB_MatrixTupleIter_init (iter, A)") ;
 	GrB_Index nrows ;
 	GrB_Matrix_nrows(&nrows, A) ;
-
 	GrB_Matrix_nvals(&iter->nvals, A) ;
 
 	GxB_Matrix_Option_get(A, GxB_SPARSITY_CONTROL, &iter->sparsity_type) ;
 	if(iter->sparsity_type != GxB_SPARSE && iter->sparsity_type != GxB_HYPERSPARSE) {
 		GB_ERROR (GrB_INVALID_VALUE,
-			"Invalid sparsity type: " GBu,
-			(long long unsigned int)iter->sparsity_type) ;
+			"Invalid sparsity type: %d", iter->sparsity_type) ;
 	}
 	iter->A = A ;
 	iter->nnz_idx = 0 ;
@@ -39,7 +37,6 @@ static GrB_Info _MatrixTupleIter_init
 		iter->sparse_row_idx = 0 ;
 		iter->h_size = A->nvec ;
 	}
-	iter->next = NULL;
 
 	return GrB_SUCCESS ;
 }
@@ -47,44 +44,23 @@ static GrB_Info _MatrixTupleIter_init
 // Create a new iterator
 GrB_Info GxB_MatrixTupleIter_new
 (
-	GxB_MatrixTupleIter **iter,     // iterator to create
-	GrB_Matrix A                    // matrix to iterate over
-) {
-	GB_WHERE(A, "GxB_MatrixTupleIter_iterate_row (A)") ;
-	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
-
-	*iter = GB_MALLOC(1, GxB_MatrixTupleIter) ;
-	_MatrixTupleIter_init(*iter, A) ;
-	return (GrB_SUCCESS) ;
-}
-
-// Create a new iterator
-GrB_Info GxB_MatrixTupleIterList_new
-(
 	GxB_MatrixTupleIter **iter,     // list of iterators to create
-	GrB_Matrix *A_arr,              // array of matrices to iterate over
-	size_t len                      // size of the array A_arr
+	const GrB_Matrix A              // matrix to iterate over
 ) {
-	if(len == 0) return GrB_INVALID_VALUE ;
-	GB_WHERE((*A_arr), "GxB_MatrixTupleIterList_new (iter, A, len)") ;
-	GB_RETURN_IF_NULL_OR_FAULTY((*A_arr)) ;
+	GB_WHERE(A, "GxB_MatrixTupleIter_new (iter, A)") ;
+	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
+	*iter = GB_MALLOC(1, GxB_MatrixTupleIter) ;
+	(*iter)->iterators_idx = 0;
+	(*iter)->iterators_size = 1;
 
-	GrB_Info rv = GrB_SUCCESS ;
-
-	rv |= GxB_MatrixTupleIter_new(iter, A_arr[0]) ;
-	GxB_MatrixTupleIter *cur_iter = *iter ;
-	for(int i = 1; i < len; ++i, cur_iter = cur_iter->next) {
-		rv |= GxB_MatrixTupleIter_new((GxB_MatrixTupleIter **)&cur_iter->next, A_arr[i]) ;
-		((GxB_MatrixTupleIter *)cur_iter->next)->head = *iter; // TODO: move this assignment to GxB_MatrixTupleIter_new
-	}
-	return rv ;
+	return GxB_MatrixTupleIter_init(&(*iter)->iterators[0], A) ;
 }
 
 // finds the row index in Ah for HYPERSPARSE matrix,
 // returns true if found else false.
 static inline bool _find_row_index_in_Ah
 (
-	GxB_MatrixTupleIter *iter,
+	_GxB_MatrixTupleIter *iter,
 	GrB_Index rowIdx,
 	GrB_Index *result
 ) {
@@ -114,36 +90,42 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_iterate_row (iter, rowIdx)") ;
 	GB_RETURN_IF_NULL(iter) ;
+	if(iter->iterators_size == 0) return GrB_INVALID_VALUE ;
 
-	// Deplete iterator, should caller ignore returned error.
-	_EmptyIterator(iter) ;
+	for(size_t i = 0; i < iter->iterators_size; i++) {
+		_GxB_MatrixTupleIter *iter_cur = &iter->iterators[i] ;
 
-	if(rowIdx < 0 || rowIdx >= iter->nrows) {
-		GB_ERROR(GrB_INVALID_INDEX,
-				 "Row index " GBu " out of range ; must be < " GBu,
-				 rowIdx, iter->nrows) ;
+		// Deplete iterator, should caller ignore returned error.
+		_EmptyIterator(iter_cur) ;
+
+		if(rowIdx < 0 || rowIdx >= iter_cur->nrows) {
+			GB_ERROR(GrB_INVALID_INDEX,
+					"Row index " GBu " out of range ; must be < " GBu,
+					rowIdx, iter_cur->nrows) ;
+		}
+
+		GrB_Index rowIdx_sparse ;
+		bool hypersparse_and_row_is_empty = false ;
+		if(iter_cur->sparsity_type == GxB_SPARSE) {
+			rowIdx_sparse = rowIdx ;
+		} else {
+			// GxB_HYPERSPARSE
+			// locate row index is 'Ah'
+			if(!_find_row_index_in_Ah(iter_cur, rowIdx, &rowIdx_sparse)) hypersparse_and_row_is_empty = true ;
+		}
+
+		// incase matrix is hyper-sparse and iterated row is empty, set 'nvals' to 0,
+		// this will cause the next call to 'next' to report depleted
+		iter_cur->nvals = hypersparse_and_row_is_empty ? 0 : iter_cur->A->p[rowIdx_sparse + 1] ;
+		iter_cur->nnz_idx = iter_cur->A->p[rowIdx_sparse] ;
+		iter_cur->row_idx = rowIdx ;
+		if(iter_cur->sparsity_type == GxB_HYPERSPARSE) {
+			iter_cur->sparse_row_idx = rowIdx_sparse ;
+			iter_cur->h_size = iter_cur->A->nvec ;
+		}
+		iter_cur->p = 0 ;
 	}
 
-	GrB_Index rowIdx_sparse ;
-	bool hypersparse_and_row_is_empty = false ;
-	if(iter->sparsity_type == GxB_SPARSE) {
-		rowIdx_sparse = rowIdx ;
-	} else {  
-		// GxB_HYPERSPARSE
-		// locate row index is 'Ah'
-		if(!_find_row_index_in_Ah(iter, rowIdx, &rowIdx_sparse)) hypersparse_and_row_is_empty = true ;
-	}
-
-	// incase matrix is hyper-sparse and iterated row is empty, set 'nvals' to 0, 
-	// this will cause the next call to 'next' to report depleted
-	iter->nvals = hypersparse_and_row_is_empty ? 0 : iter->A->p[rowIdx_sparse + 1] ;
-	iter->nnz_idx = iter->A->p[rowIdx_sparse] ;
-	iter->row_idx = rowIdx ;
-	if(iter->sparsity_type == GxB_HYPERSPARSE) {
-		iter->sparse_row_idx = rowIdx_sparse ;
-		iter->h_size = iter->A->nvec ;
-	}
-	iter->p = 0 ;
 	return (GrB_SUCCESS) ;
 }
 
@@ -154,33 +136,38 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_jump_to_row (iter, rowIdx)") ;
 	GB_RETURN_IF_NULL(iter) ;
+	if(iter->iterators_size == 0) return GrB_INVALID_VALUE ;
 
-	// Deplete iterator, should caller ignore returned error.
-	_EmptyIterator(iter) ;
+	for(size_t i = 0; i < iter->iterators_size; i++) {
+		_GxB_MatrixTupleIter *iter_cur = &iter->iterators[i] ;
 
-	if(rowIdx < 0 || rowIdx >= iter->nrows) {
-		GB_ERROR(GrB_INVALID_INDEX,
-				 "Row index " GBu " out of range ; must be < " GBu,
-				 rowIdx, iter->nrows) ;
-	}
+		// Deplete iterator, should caller ignore returned error.
+		_EmptyIterator(iter_cur) ;
 
-	GrB_Index _rowIdx = rowIdx ;
-	if(iter->sparsity_type == GxB_HYPERSPARSE) {
-		GrB_Index rowIdx_sparse ;
-		if(!_find_row_index_in_Ah(iter, rowIdx, &rowIdx_sparse)) {
-			GB_ERROR (GrB_INVALID_INDEX,
-				"Row index " GBu " doesn't exist in the hypersparse matrix, row might be empty",
-				rowIdx ) ;
+		if(rowIdx < 0 || rowIdx >= iter_cur->nrows) {
+			GB_ERROR(GrB_INVALID_INDEX,
+					"Row index " GBu " out of range ; must be < " GBu,
+					rowIdx, iter_cur->nrows) ;
 		}
-		_rowIdx = rowIdx_sparse ;
-		iter->sparse_row_idx = rowIdx_sparse ;
-		iter->h_size = iter->A->nvec ;
-	}
-	GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
 
-	iter->p        =  0                   ;
-	iter->nnz_idx  =  iter->A->p[_rowIdx]  ;
-	iter->row_idx  =  rowIdx              ;
+		GrB_Index _rowIdx = rowIdx ;
+		if(iter_cur->sparsity_type == GxB_HYPERSPARSE) {
+			GrB_Index rowIdx_sparse ;
+			if(!_find_row_index_in_Ah(iter_cur, rowIdx, &rowIdx_sparse)) {
+				GB_ERROR (GrB_INVALID_INDEX,
+					"Row index " GBu " doesn't exist in the hypersparse matrix, row might be empty",
+					rowIdx ) ;
+			}
+			_rowIdx = rowIdx_sparse ;
+			iter_cur->sparse_row_idx = rowIdx_sparse ;
+			iter_cur->h_size = iter_cur->A->nvec ;
+		}
+		GrB_Matrix_nvals(&(iter_cur->nvals), iter_cur->A) ;
+
+		iter_cur->p        =  0                   ;
+		iter_cur->nnz_idx  =  iter_cur->A->p[_rowIdx]  ;
+		iter_cur->row_idx  =  rowIdx              ;
+	}
 
 	return (GrB_SUCCESS) ;
 }
@@ -189,7 +176,7 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 // returns true if found else false.
 static inline bool _find_start_row_index_in_Ah
 (
-	GxB_MatrixTupleIter *iter,
+	_GxB_MatrixTupleIter *iter,
 	GrB_Index rowIdx,
 	GrB_Index *result
 ) {
@@ -226,7 +213,7 @@ static inline bool _find_start_row_index_in_Ah
 // returns true if found else false.
 static inline bool _find_end_row_index_in_Ah
 (
-	GxB_MatrixTupleIter *iter,
+	_GxB_MatrixTupleIter *iter,
 	GrB_Index rowIdx,
 	GrB_Index *result
 ) {
@@ -267,40 +254,45 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_iterate_range (iter, startRowIdx, endRowIdx)") ;
 	GB_RETURN_IF_NULL(iter) ;
+	if(iter->iterators_size == 0) return GrB_INVALID_VALUE ;
 
-	// Deplete iterator, should caller ignore returned error.
-	_EmptyIterator(iter) ;
+	for(size_t i = 0; i < iter->iterators_size; i++) {
+		_GxB_MatrixTupleIter *iter_cur = &iter->iterators[i] ;
 
-	if(startRowIdx < 0 || startRowIdx >= iter->nrows) {
-		GB_ERROR(GrB_INVALID_INDEX,
-				 "row index " GBu " out of range ; must be < " GBu,
-				 startRowIdx, iter->nrows) ;
+		// Deplete iterator, should caller ignore returned error.
+		_EmptyIterator(iter_cur) ;
+
+		if(startRowIdx < 0 || startRowIdx >= iter_cur->nrows) {
+			GB_ERROR(GrB_INVALID_INDEX,
+					"row index " GBu " out of range ; must be < " GBu,
+					startRowIdx, iter_cur->nrows) ;
+		}
+
+		if(startRowIdx > endRowIdx) {
+			GB_ERROR(GrB_INVALID_INDEX,
+					"row index " GBu " must be > " GBu,
+					startRowIdx, endRowIdx) ;
+		}
+
+		GrB_Index startRowIdx_sparse = startRowIdx ;
+		GrB_Index endRowIdx_sparse = endRowIdx ;
+		bool hypersparse_no_more_rows = false ;
+
+		if(iter_cur->sparsity_type == GxB_HYPERSPARSE) {
+			iter_cur->h_size = iter_cur->A->nvec ;
+			if(!_find_start_row_index_in_Ah(iter_cur, startRowIdx, &startRowIdx_sparse)
+			|| !_find_end_row_index_in_Ah(iter_cur, endRowIdx, &endRowIdx_sparse)
+			|| startRowIdx > endRowIdx) // In case Ah has no variables in the range but have variables on both sides of the range.
+				hypersparse_no_more_rows = true ;
+			iter_cur->sparse_row_idx = startRowIdx_sparse ;
+		}
+		iter_cur->p       =  0 ;
+		iter_cur->nnz_idx = iter_cur->A->p[startRowIdx_sparse] ;
+		iter_cur->row_idx = startRowIdx ;
+		if(hypersparse_no_more_rows) iter_cur->nvals = 0 ; // simulate depletion of the iterator
+		else if(endRowIdx_sparse < iter_cur->nrows) iter_cur->nvals = iter_cur->A->p[endRowIdx_sparse + 1] ;
+		else GrB_Matrix_nvals(&(iter_cur->nvals), iter_cur->A) ;
 	}
-
-	if(startRowIdx > endRowIdx) {
-		GB_ERROR(GrB_INVALID_INDEX,
-				 "row index " GBu " must be > " GBu,
-				 startRowIdx, endRowIdx) ;
-	}
-
-	GrB_Index startRowIdx_sparse = startRowIdx ;
-	GrB_Index endRowIdx_sparse = endRowIdx ;
-	bool hypersparse_no_more_rows = false ;
-
-	if(iter->sparsity_type == GxB_HYPERSPARSE) {
-		iter->h_size = iter->A->nvec ;
-		if(!_find_start_row_index_in_Ah(iter, startRowIdx, &startRowIdx_sparse)
-		|| !_find_end_row_index_in_Ah(iter, endRowIdx, &endRowIdx_sparse)
-		|| startRowIdx > endRowIdx) // In case Ah has no variables in the range but have variables on both sides of the range.
-			hypersparse_no_more_rows = true ;
-		iter->sparse_row_idx = startRowIdx_sparse ;
-	}
-	iter->p       =  0 ;
-	iter->nnz_idx = iter->A->p[startRowIdx_sparse] ;
-	iter->row_idx = startRowIdx ;
-	if(hypersparse_no_more_rows) iter->nvals = 0 ; // simulate depletion of the iterator
-	else if(endRowIdx_sparse < iter->nrows) iter->nvals = iter->A->p[endRowIdx_sparse + 1] ;
-	else GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
 
 	return (GrB_SUCCESS) ;
 }
@@ -308,27 +300,29 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 // Advance iterator
 GrB_Info GxB_MatrixTupleIter_next
 (
-	GxB_MatrixTupleIter **iter,     // list of iterators to consume
+	GxB_MatrixTupleIter *iter,      // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
 	bool *depleted                  // indicate if iterator depleted
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_next (iter, row, col, depleted)") ;
-	GB_RETURN_IF_NULL((*iter)) ;
+	GB_RETURN_IF_NULL(iter) ;
 	GB_RETURN_IF_NULL(depleted) ;
-	GrB_Index nnz_idx = (*iter)->nnz_idx ;
+	_GxB_MatrixTupleIter *iter_cur = &iter->iterators[iter->iterators_idx] ;
+	GrB_Index nnz_idx = iter_cur->nnz_idx ;
 
-	if(nnz_idx >= (*iter)->nvals) {
-		if((*iter)->next == NULL) {
+	if(nnz_idx >= iter_cur->nvals) { // current iterator depleted start consuming next iterator
+		if(iter->iterators_idx + 1 >= iter->iterators_size) {
 			*depleted = true ;
 			return (GrB_SUCCESS) ;
-		} else { // current iterator depleted start iterating next matrix
-			(*iter) = (*iter)->next;
-			nnz_idx = (*iter)->nnz_idx ;
+		} else {
+			iter->iterators_idx++ ;
+			iter_cur = &iter->iterators[iter->iterators_idx];
+			nnz_idx = iter_cur->nnz_idx ;
 		}
 	}
 
-	GrB_Matrix A = (*iter)->A ;
+	GrB_Matrix A = iter_cur->A ;
 
 	//--------------------------------------------------------------------------
 	// extract the column indices
@@ -344,33 +338,33 @@ GrB_Info GxB_MatrixTupleIter_next
 	const int64_t *Ap = A->p ;
 	int64_t i ;
 	GrB_Index nrows ;
-	if((*iter)->sparsity_type == GxB_SPARSE) {
-		i = (*iter)->row_idx ;
-		nrows = (*iter)->nrows ;
+	if(iter_cur->sparsity_type == GxB_SPARSE) {
+		i = iter_cur->row_idx ;
+		nrows = iter_cur->nrows ;
 	} else { // GxB_HYPERSPARSE
-		i = (*iter)->sparse_row_idx ;
-		nrows = (*iter)->h_size ;
+		i = iter_cur->sparse_row_idx ;
+		nrows = iter_cur->h_size ;
 	}
 
 	for( ; i < nrows ; i++) {
-		int64_t p = (*iter)->p + Ap[i] ;
+		int64_t p = iter_cur->p + Ap[i] ;
 		if(p < Ap[i + 1]) {
-			(*iter)->p++ ;
+			iter_cur->p++ ;
 			if(row)
-				*row = ((*iter)->sparsity_type == GxB_SPARSE) ? i : A->h[i] ;
+				*row = (iter_cur->sparsity_type == GxB_SPARSE) ? i : A->h[i] ;
 			break ;
 		}
-		(*iter)->p = 0 ;
+		iter_cur->p = 0 ;
 	}
 
-	if((*iter)->sparsity_type == GxB_SPARSE) {
-		(*iter)->row_idx = i ;
+	if(iter_cur->sparsity_type == GxB_SPARSE) {
+		iter_cur->row_idx = i ;
 	} else { // GxB_HYPERSPARSE
-		(*iter)->row_idx = A->h[i] ;
-		(*iter)->sparse_row_idx = i ;
+		iter_cur->row_idx = A->h[i] ;
+		iter_cur->sparse_row_idx = i ;
 	}
 
-	(*iter)->nnz_idx++ ;
+	iter_cur->nnz_idx++ ;
 
 	*depleted = false ;
 	return (GrB_SUCCESS) ;
@@ -383,8 +377,14 @@ GrB_Info GxB_MatrixTupleIter_reset
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_reset (iter)") ;
 	GB_RETURN_IF_NULL(iter) ;
-	_MatrixTupleIter_init(iter, iter->A) ;
-	return (GrB_SUCCESS) ;
+	if(iter->iterators_size == 0) return GrB_INVALID_VALUE ;
+	iter->iterators_idx = 0;
+
+	GrB_Info rv = GrB_SUCCESS ;
+	for(size_t i = 0; i < iter->iterators_size; i++)
+		rv |= GxB_MatrixTupleIter_init(&iter->iterators[i], iter->iterators[i].A) ;
+
+	return rv ;
 }
 
 // Update iterator to scan given matrix
@@ -393,15 +393,16 @@ GrB_Info GxB_MatrixTupleIter_reuse
 	GxB_MatrixTupleIter *iter,      // iterator to update
 	GrB_Matrix A                    // matrix to scan
 ) {
-	GB_WHERE(A, "GxB_MatrixTupleIter_reuse (iter, A)") ;
 	GB_RETURN_IF_NULL(iter) ;
-	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
+ 	GB_RETURN_IF_NULL(A) ;
+
+	iter->iterators_idx = 0 ;
+	iter->iterators_size = 1 ;
 
 	// make sure matrix is not bitmap or full
-	GxB_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE) ;
+	GxB_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE) ; // TODO: remove this
 
-	_MatrixTupleIter_init(iter, A) ;
-	return (GrB_SUCCESS) ;
+	return GxB_MatrixTupleIter_init(&iter->iterators[0], A) ;
 }
 
 // Release iterator

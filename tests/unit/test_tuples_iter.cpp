@@ -109,11 +109,11 @@ TEST_P(TuplesTest, RandomVectorTest) {
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(&iter, NULL, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(col, I_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(&iter, NULL, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -161,11 +161,11 @@ TEST_P(TuplesTest, VectorIteratorTest) {
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(&iter, NULL, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(col, I_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(&iter, NULL, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -174,11 +174,11 @@ TEST_P(TuplesTest, VectorIteratorTest) {
 
 	GxB_MatrixTupleIter_reset(iter);
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(&iter, NULL, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(col, I_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(&iter, NULL, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -241,12 +241,12 @@ TEST_P(TuplesTest, RandomMatrixTest) {
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(row, I_expected[i]);
 		ASSERT_EQ(col, J_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -286,12 +286,12 @@ TEST_P(TuplesTest, MatrixIteratorTest) {
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(row, I_expected[i]);
 		ASSERT_EQ(col, J_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -300,12 +300,12 @@ TEST_P(TuplesTest, MatrixIteratorTest) {
 
 	GxB_MatrixTupleIter_reset(iter);
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(row, I_expected[i]);
 		ASSERT_EQ(col, J_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -353,12 +353,12 @@ TEST_P(TuplesTest, ColumnIteratorTest) {
 			//--------------------------------------------------------------------------
 			bool depleted = false;
 			for(int i = 0; i < nvals; i++) {
-				GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+				GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 				ASSERT_FALSE(depleted);
 				ASSERT_EQ(row, I_expected[i]);
 				ASSERT_EQ(col, j);
 			}
-			GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+			GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 			ASSERT_TRUE(depleted);
 		}
 
@@ -393,7 +393,7 @@ TEST_P(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 		// Verify iterator returned values.
 		//--------------------------------------------------------------------------
 		bool depleted = false;
-		GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_TRUE(depleted);
 	}
 
@@ -442,13 +442,13 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 
 	// Check that the right indices are retrived.
 	for(int i = 1; i < 5; i++) {
-		info = GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	// Jump to start, check that iterator is depleted only when it is done iterating the matrix.
@@ -456,13 +456,13 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 	ASSERT_EQ(GrB_SUCCESS, info);
 
 	for(int i = 0; i < 5; i ++) {
-		info = GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 }
 
@@ -512,13 +512,13 @@ TEST_P(TuplesTest, IteratorRange) {
 
 	// Check that the right indices are retrived.
 	for(int i = 1; i <= 2; i++) {
-		info = GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 	// Check for legal range setting.
@@ -527,13 +527,13 @@ TEST_P(TuplesTest, IteratorRange) {
 
 	// Check that the right indices are retrived.
 	for(int i = 1; i <= 4; i++) {
-		info = GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 
 
@@ -542,13 +542,13 @@ TEST_P(TuplesTest, IteratorRange) {
 	ASSERT_EQ(GrB_SUCCESS, info);
 
 	for(int i = 0; i < 6; i ++) {
-		info = GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(&iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 }
 

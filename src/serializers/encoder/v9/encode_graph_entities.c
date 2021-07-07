@@ -274,7 +274,7 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 		EdgeID edgeID;
 		bool depleted = false;
 		// Try to get next tuple.
-		GxB_MatrixTupleIter_next(&iter, &src, &dest, &depleted);
+		GxB_MatrixTupleIter_next(iter, &src, &dest, &depleted);
 		// If iterator is depleted, get new tuple from different matrix or finish encode.
 		while(depleted && r < relation_count) {
 			// Free iterator
@@ -288,7 +288,7 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 			// Get matrix and set iterator.
 			M = Graph_GetRelationMatrix(gc->g, r);
 			GxB_MatrixTupleIter_new(&iter, M);
-			GxB_MatrixTupleIter_next(&iter, &src, &dest, &depleted);
+			GxB_MatrixTupleIter_next(iter, &src, &dest, &depleted);
 		}
 
 		e.srcNodeID = src;
