@@ -42,6 +42,8 @@ static OpResult AllNodeScanInit(OpBase *opBase) {
 
 static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
+	ASSERT(op->op.children[0]->type == OPType_ARGUMENT ||
+		   op->op.children[0]->type == OPType_PROJECT);
 
 	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);

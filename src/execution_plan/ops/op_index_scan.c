@@ -89,6 +89,8 @@ static inline bool _PassUnresolvedFilters(const IndexScan *op, Record r) {
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
+	ASSERT(op->op.children[0]->type == OPType_ARGUMENT ||
+		   op->op.children[0]->type == OPType_PROJECT);
 	const EntityID *nodeId = NULL;
 
 pull_index:

@@ -77,7 +77,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				} else {
 					root = NewAllNodeScanOp(plan, src->alias);
 				}
-				if(tail) ExecutionPlan_AddOp(root, tail);
+				if(tail) root = ExecutionPlan_NewRoot(tail, root);
 				tail = root;
 			}
 
