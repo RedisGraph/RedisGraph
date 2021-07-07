@@ -4,6 +4,8 @@ ROOT:=$(realpath ..)
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
+JOBS ?= $(shell MAX_NPROC=8 $(ROOT)/deps/readies/bin/nproc)
+
 ifneq ($(filter cov-upload,$(MAKECMDGOALS)),)
 COV=1
 endif
@@ -215,7 +217,7 @@ $(LIBXXHASH):
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(shell $(ROOT)/deps/readies/bin/nproc)
+	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(JOBS)
 endif
 .PHONY: $(GRAPHBLAS)
 
