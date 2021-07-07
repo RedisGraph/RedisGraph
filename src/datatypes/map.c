@@ -262,7 +262,7 @@ XXH64_hash_t Map_HashCode
 	uint key_count = Map_KeyCount(map);
 	QSORT(Pair, map.map, key_count, KEY_ISLT);
 
-	SIType t = SI_TYPE(map);
+	SIType t = T_MAP;
 	XXH64_hash_t hashCode = XXH64(&t, sizeof(t), 0);
 
 	for(uint i = 0; i < key_count; i++) {
