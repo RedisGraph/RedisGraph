@@ -28,10 +28,6 @@ GrB_Info RG_Matrix_new
 	// supported types: boolean and uint64
 	ASSERT(type == GrB_BOOL || type == GrB_UINT64);
 
-	// boolean matrices shouldn't allow for multi-edge
-	// boolean matrices shouldn't maintain transpose
-	ASSERT(type == GrB_BOOL && !multi_edge && !maintain_transpose);
-
 	matrix->dirty               =  false;
 	matrix->multi_edge          =  multi_edge;
 	matrix->maintain_transpose  =  maintain_transpose;
@@ -71,5 +67,4 @@ GrB_Info RG_Matrix_new
 	*A = matrix;
 	return info;
 }
-
 

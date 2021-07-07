@@ -6,6 +6,100 @@
 
 #include "RG.h"
 #include "rg_matrix.h"
+#include "../../util/arr.h"
+
+// sets A[i,j] = x
+// dealing with multi-value entries
+static GrB_Info setMultiEdgeEntry
+(
+    GrB_Matrix A,                       // matrix to modify
+    uint64_t x,                         // scalar to assign to A(i,j)
+    GrB_Index i,                        // row index
+    GrB_Index j                         // column index
+) {
+	uint64_t v;                // v = A[i,j]
+	GrB_Info info;
+	uint64_t *entries = NULL;  // array of values at A[i,j]
+
+	// check if entry already exists
+	info = GrB_Matrix_extractElement(&v, A, i, j);	
+	bool exists = (info == GrB_SUCCESS);
+
+	// new entry, simply set
+	if(!exists) {
+		// mark 'x' as a single entry
+		v = SET_MSB(x);
+		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
+	} else {
+		// entry already exists
+		if(SINGLE_EDGE(v)) {
+			// swap from single entry to multi-entry
+			entries = array_new(uint64_t, 2);
+			array_append(entries, SINGLE_EDGE_ID(v));
+			array_append(entries, SINGLE_EDGE_ID(x));
+		} else {
+			// append entry to array
+			entries = (uint64_t *)v;
+			array_append(entries, SINGLE_EDGE_ID(x));
+		}
+		v = entries;
+		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
+		// cheap sync, entry already exists
+		GrB_wait(&A);
+	}
+
+	ASSERT(info == GrB_SUCCESS);
+
+	return info;
+}
+
+static GrB_Info setDP                   // DP (i,j) = x
+(
+    RG_Matrix C,                        // matrix to modify
+    uint64_t x,                         // scalar to assign to C(i,j)
+    GrB_Index i,                        // row index
+    GrB_Index j                         // column index
+) {
+	// add entry to delta-plus
+	GrB_Info info;
+	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
+	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
+
+	if(!multi_edge) {
+		// no support for multi-edge simply set entry
+		info = GrB_Matrix_setElement_UINT64(dp, x, i, j);
+	} else {
+		info = setMultiEdgeEntry(dp, x, i, j);
+	}
+
+	if(info == GrB_SUCCESS) RG_Matrix_setDirty(C);
+
+	return info;
+}
+
+static GrB_Info setM                    // M (i,j) = x
+(
+    RG_Matrix C,                        // matrix to modify
+    uint64_t x,                         // scalar to assign to C(i,j)
+    GrB_Index i,                        // row index
+    GrB_Index j                         // column index
+) {
+	// add entry to delta-plus
+	GrB_Info info;
+	GrB_Matrix  m           =  RG_MATRIX_MATRIX(C);
+	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
+
+	if(!multi_edge) {
+		// no support for multi-edge simply set entry
+		info = GrB_Matrix_setElement_UINT64(m, x, i, j);
+	} else {
+		info = setMultiEdgeEntry(m, x, i, j);
+	}
+
+	if(info == GrB_SUCCESS) RG_Matrix_setDirty(C);
+
+	return info;
+}
 
 GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 (
@@ -27,39 +121,42 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
 
-	// check if entry is marked for deletion
 	uint64_t v;
+	bool  entry_exists     =  false;  //  M[i,j] exists
+	bool  mark_as_deleted  =  false;  //  dm[i,j] exists
+
+	//--------------------------------------------------------------------------
+	// check deleted
+	//--------------------------------------------------------------------------
+
 	info = GrB_Matrix_extractElement(&v, dm, i, j);	
-	if(info == GrB_SUCCESS) {
+	mark_as_deleted = (info == GrB_SUCCESS);
+
+	if(mark_as_deleted) {
 		// remove entry and issue deletion
 		info = GrB_Matrix_removeElement(dm, i, j);
 		ASSERT(info == GrB_SUCCESS);
 
 		// TODO: delete entity!
 		ASSERT(false);
-	}
 
-	// check for multi edge
-	if(C->multi_edge) {
+		// can't use 'M', add entry to 'delta-plus'
+		info = setDP(C, x, i, j);
+	} else {
+		// entry isn't marked for deletion
+		// see if entry already exists in 'm'
+		// we'll prefer setting entry in 'm' incase it already exists
+		// otherwise we'll set the entry in 'delta-plus'
 		info = GrB_Matrix_extractElement_UINT64(&v, m, i, j);
-		if(info == GrB_SUCCESS) {
-			// TODO: support multi edge
-			ASSERT(false);
-		}
-		info = GrB_Matrix_extractElement_UINT64(&v, dp, i, j);
-		if(info == GrB_SUCCESS) {
-			// TODO: support multi edge
-			ASSERT(false);
-		}
+		entry_exists = (info == GrB_SUCCESS);
 
-		// TODO: force flush (cheap, no memory movement)
-		return info;
+		if(entry_exists) {
+			info = setM(C, x, i, j);
+		} else {
+			// add entry to 'delta-plus'
+			info = setDP(C, x, i, j);
+		}
 	}
-
-	// add entry to delta-plus
-	info = GrB_Matrix_setElement_UINT64(dp, x, i, j);
-	ASSERT(info == GrB_SUCCESS);
-	RG_Matrix_setDirty(C);
 
 	return info;
 }

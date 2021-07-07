@@ -13,6 +13,19 @@
 typedef struct _RG_Matrix _RG_Matrix;
 typedef _RG_Matrix *RG_Matrix;
 
+// Mask with most significat bit on 10000...
+#define MSB_MASK (1UL << (sizeof(uint64_t) * 8 - 1))
+// Mask complement 01111...
+#define MSB_MASK_CMP ~MSB_MASK
+// Set X's most significat bit on.
+#define SET_MSB(x) (x) | MSB_MASK
+// Clear X's most significat bit on.
+#define CLEAR_MSB(x) (x) & MSB_MASK_CMP
+// Checks if X represents edge ID.
+#define SINGLE_EDGE(x) (x) & MSB_MASK
+// Returns edge ID.
+#define SINGLE_EDGE_ID(x) CLEAR_MSB(x)
+
 #define RG_MATRIX_MATRIX(C) (C)->matrix
 #define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus
 #define RG_MATRIX_DELTA_MINUS(C) (C)->delta_minus
@@ -141,6 +154,14 @@ GrB_Info RG_Matrix_removeElement
     RG_Matrix C,                    // matrix to remove entry from
     GrB_Index i,                    // row index
     GrB_Index j                     // column index
+);
+
+GrB_Info RG_Matrix_removeEntry
+(
+    RG_Matrix C,                    // matrix to remove entry from
+    GrB_Index i,                    // row index
+    GrB_Index j,                    // column index
+	uint64_t  v                     // value to remove
 );
 
 GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)

@@ -824,7 +824,7 @@ int Graph_DeleteEdge
 
 	if(SINGLE_EDGE(edge_id)) {
 		// single edge of type R connecting src to dest, delete entry
-		info = RG_Matrix_removeElement(R, src_id, dest_id);
+		info = RG_Matrix_removeEntry(R, src_id, dest_id, edge_id);
 		ASSERT(info == GrB_SUCCESS);
 
 		// see if source is connected to destination with additional edges
