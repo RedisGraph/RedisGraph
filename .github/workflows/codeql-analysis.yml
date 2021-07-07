@@ -47,6 +47,18 @@ jobs:
       with:
         submodules: 'recursive'
         
+    - name: Cache GraphBLAS
+      uses: actions/cache@v2
+      with:
+        path: deps/GraphBLAS
+        key: GraphBLAS-${{ hashFiles('./deps/GraphBLAS/README.md') }}
+
+    - name: Cache LibCypher Parser
+      uses: actions/cache@v2
+      with:
+        path: deps/libcypher-parser
+        key: libcypher-parser-${{ hashFiles('./deps/libcypher-parser/README.md') }}
+
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v1
