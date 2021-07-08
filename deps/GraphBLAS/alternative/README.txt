@@ -11,6 +11,19 @@ before it will work on your system.  It assumes you have the GNU compiler
 (UNAME...) section in the Makefile to customize the settings for Linux or the
 Mac.
 
+A C++ compiler works but is not recommended for use in production,
+particularly if SuiteSparse:GraphBLAS is used as -lgraphblas.
+SuiteSparse:GraphBLAS is written in C, not C++.  However, it compiles just
+fine with a C++ compiler, since it is written so that it uses the
+intersection of the two languages.  This is helpful for two cases: (1)
+SuiteSparse:GraphBLAS does a lot of typecasting, and C++ is very strict with
+this.  Using C++ allows for an extra-careful 'lint' checking.  (2) The end-
+user may wish to construct a pure C++ application, and embed a C++-compiled
+GraphBLAS inside.  CMake cannot be used to compile a *.c code with a C++
+compiler (it complains), and thus this option is only available in this
+alternative/Makefile.  The GCC C++ 5.4 compiler fails; version 7.5 is
+sufficient.
+
 Files:
 
     Makefile

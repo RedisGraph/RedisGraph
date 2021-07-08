@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -36,7 +36,7 @@
 // The 'tril', 'triu', 'diag', 'offdiag', and 2-input operators all require
 // the b scalar.  The b scalar must not appear for the '*0' operators.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 #define USAGE "usage: C = GrB.select (Cin, M, accum, op, A, b, desc)"
 
@@ -349,7 +349,7 @@ void mexFunction
     // compute C<M> += select (A, b2)
     //--------------------------------------------------------------------------
 
-    OK1 (C, GxB_Matrix_select (C, M, accum, op, A, b2, desc)) ;
+    OK1 (C, GxB_Matrix_select (C, M, accum, op, A, (GxB_Scalar) b2, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
@@ -362,7 +362,7 @@ void mexFunction
     OK (GrB_BinaryOp_free (&nan_test)) ;
 
     //--------------------------------------------------------------------------
-    // export the output matrix C back to MATLAB
+    // export the output matrix C
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;

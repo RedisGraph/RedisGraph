@@ -14,8 +14,8 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&M) ;               \
-    GrB_Matrix_free_(&C) ;               \
+    GrB_Matrix_free_(&M) ;              \
+    GrB_Matrix_free_(&C) ;              \
     GB_mx_put_global (true) ;           \
 }
 
@@ -107,7 +107,7 @@ void mexFunction
         }
     }
 
-    // return result to MATLAB
+    // return result
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C result", true) ;
     FREE_ALL ;
 }

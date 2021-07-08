@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_subref_template: C = A(I,J), or C = pattern (A(I,J))
+// GB_subref_template: C = A(I,J)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -7,88 +7,40 @@
 
 //------------------------------------------------------------------------------
 
+// GB_subref_templat extracts a submatrix, C = A(I,J).  The method is done in
+// two phases.  Phase 1 just counts the entries in C, and phase 2 constructs
+// the pattern and values of C.  There are 3 kinds of subref:
+//
+//      symbolic:  C(i,j) is the position of A(I(i),J(j)) in the matrix A
+//      iso:     C = A(I,J), extracting the pattern only, not the values
+//      numeric: C = A(I,J), extracting the pattern and values
+
 #if defined ( GB_SYMBOLIC )
-// symbolic method must tolerate zombies
-#define GB_Ai(p) GBI_UNFLIP (Ai, p, avlen)
+
+    // symbolic method must tolerate zombies
+    #define GB_Ai(p) GBI_UNFLIP (Ai, p, avlen)
+
 #else
-// numeric method will not see any zombies
-#define GB_Ai(p) GBI (Ai, p, avlen)
+
+    // iso and non-iso numeric methods will not see any zombies
+    #define GB_Ai(p) GBI (Ai, p, avlen)
+
 #endif
 
 // to iterate across all entries in a bucket:
 #define GB_for_each_index_in_bucket(inew,i)     \
-    for (int64_t inew = Mark[i]-1 ; inew >= 0 ; inew = Inext [inew])
+    for (int64_t inew = Mark [i] - 1 ; inew >= 0 ; inew = Inext [inew])
 
-// copy values from A(:,kA) to C(:,kC): Cx [pC:pC+len-1] = ... (pA:pA+len-1).
-#if defined ( GB_SYMBOLIC )
-    // symbolic copy: Cx is int64_t; Ax is ignored
-    #define GB_COPY_RANGE(pC,pA,len)            \
-        for (int64_t k = 0 ; k < (len) ; k++)   \
-        {                                       \
-            Cx [(pC) + k] = (pA) + k ;          \
-        }
-#else
-    // numeric copy: Cx and Ax are both (GB_void *), and point to the same type
-    #define GB_COPY_RANGE(pC,pA,len)            \
-        memcpy (Cx + (pC)*asize, Ax + (pA)*asize, (len) * asize) ;
-#endif
-
-// copy a single value from A(:,kA) to C(:,kC): Cx [pC] = ... (pA])
-#if defined ( GB_SYMBOLIC )
-    // symbolic copy: Cx is int64_t; Ax is ignored
-    #define GB_COPY_ENTRY(pC,pA)                \
-        Cx [pC] = (pA) ;
-#else
-    // numeric copy: Cx and Ax are both (GB_void *), and point to the same type
-    #define GB_COPY_ENTRY(pC,pA)                \
-        /* Cx [pC] = Ax [pA] */                 \
-        memcpy (Cx + (pC)*asize, Ax + (pA)*asize, asize) ;
-#endif
-
-// the type of Cx
-#if defined ( GB_SYMBOLIC )
-// C is an int64_t array; the type of A is ignored
-#define GB_CTYPE int64_t
-#define GB_CSIZE1 1
-#define GB_CSIZE2 (sizeof (int64_t))
-#else
-// C and A have the same type
-#define GB_CTYPE GB_void
-#define GB_CSIZE1 asize
-#define GB_CSIZE2 asize
-#endif
+//------------------------------------------------------------------------------
 
 {
 
     //--------------------------------------------------------------------------
-    // get A
+    // get A and I
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Ai = A->i ;
+    const int64_t *restrict Ai = A->i ;
     const int64_t avlen = A->vlen ;
-
-    #if defined ( GB_SYMBOLIC )
-    const int64_t nzombies = A->nzombies ;
-    #endif
-
-    #if defined ( GB_PHASE_2_OF_2 ) && defined ( GB_NUMERIC )
-    ASSERT (C->type = A->type) ;
-    const GB_void *GB_RESTRICT Ax = (GB_void *) A->x ;
-    const int64_t asize = A->type->size ;
-    #endif
-
-    //--------------------------------------------------------------------------
-    // get C
-    //--------------------------------------------------------------------------
-
-    #if defined ( GB_PHASE_2_OF_2 )
-    int64_t  *GB_RESTRICT Ci = C->i ;
-    GB_CTYPE *GB_RESTRICT Cx = (GB_CTYPE *) C->x ;
-    #endif
-
-    //--------------------------------------------------------------------------
-    // get I
-    //--------------------------------------------------------------------------
 
     // these values are ignored if Ikind == GB_LIST
     int64_t ibegin = Icolon [GxB_BEGIN] ;
@@ -288,7 +240,7 @@
                     // GB_RANGE with ibegin==iend, GB_STRIDE such as 0:-1:0
                     // (with length 1), or a GB_LIST with ni=1.
 
-                    // Time: 50x faster than MATLAB
+                    // Time: 50x faster
 
                     ASSERT (!fine_task) ;
                     ASSERT (alen == 1) ;
@@ -306,7 +258,7 @@
                 case 4 : // Ikind is ":", thus C(:,kC) = A (:,kA)
                 //--------------------------------------------------------------
 
-                    // Time: 1x MATLAB but low speedup on the Mac.  Why?
+                    // Time: 1x faster but low speedup on the Mac.  Why?
                     // Probably memory bound since it is just memcpy's.
 
                     ASSERT (Ikind == GB_ALL && ibegin == 0) ;
@@ -340,7 +292,7 @@
                 case 5 : // Ikind is GB_RANGE = ibegin:iend
                 //--------------------------------------------------------------
 
-                    // Time: much faster than MATLAB.  Good speedup too.
+                    // Time: much faster.  Good speedup too.
 
                     ASSERT (Ikind == GB_RANGE) ;
                     #if defined ( GB_PHASE_1_OF_2 )
@@ -421,8 +373,8 @@
                 case 7 : // I is ibegin:iinc:iend with iinc > 1
                 //--------------------------------------------------------------
 
-                    // Time: 1 thread: C=A(1:2:n,:) is 3x slower than MATLAB
-                    // but has good speedup.  About as fast as MATLAB with
+                    // Time: 1 thread: C=A(1:2:n,:) is 3x slower
+                    // but has good speedup.  About as fast with
                     // enough threads.
 
                     ASSERT (Ikind == GB_STRIDE && iinc > 1) ;
@@ -455,8 +407,8 @@
                 case 8 : // I = ibegin:(-iinc):iend, with iinc < -1
                 //----------------------------------------------------------
 
-                    // Time: 2x slower than MATLAB for iinc = -2 or -8.
-                    // Good speedup though.  Faster than MATLAB for
+                    // Time: 2x slower for iinc = -2 or -8.
+                    // Good speedup though.  Faster for
                     // large values (iinc = -128).
                 
                     ASSERT (Ikind == GB_STRIDE && iinc < -1) ;
@@ -489,7 +441,7 @@
                 case 9 : // I = ibegin:(-1):iend
                 //----------------------------------------------------------
 
-                    // Time: much faster than MATLAB.  Good speedup.
+                    // Time: much faster.  Good speedup.
 
                     ASSERT (Ikind == GB_STRIDE && iinc == -1) ;
                     #if defined ( GB_PHASE_1_OF_2 )
@@ -512,7 +464,7 @@
                 case 10 : // I unsorted, and C needs qsort, duplicates OK
                 //--------------------------------------------------------------
 
-                    // Time: with one thread: 2x slower than MATLAB, probably
+                    // Time: with one thread: 2x slower, probably
                     // because of the qsort.  Good speedup however.  This used
                     // if qsort is needed but ndupl == 0.  Try a method that
                     // needs qsort, but no duplicates?
@@ -553,8 +505,16 @@
                         // handled by multiple fine tasks must wait until all
                         // task are completed, below in the post sort.
                         pC = Cp [kC] ;
+
+                        #if defined ( GB_ISO_SUBREF )
+                        // iso numeric subref C=A(I,J)
+                        // just sort the pattern of C(:,kC)
+                        GB_qsort_1 (Ci + pC, clen) ;
+                        #else
+                        // sort the pattern of C(:,kC), and the values
                         GB_qsort_1b (Ci + pC, (GB_void *) (Cx + pC*GB_CSIZE1),
                             GB_CSIZE2, clen) ;
+                        #endif
                     }
                     #endif
                     break ;
@@ -655,31 +615,40 @@
     // phase2: post sort for any vectors handled by fine tasks with method 10
     //--------------------------------------------------------------------------
 
-    // TODO: skip the sort if C is allowed to be jumbled on output.
-    // Flag C as jumbled instead.
-
     #if defined ( GB_PHASE_2_OF_2 )
-    if (post_sort)
     {
-        int taskid ;
-        #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (taskid = 0 ; taskid < ntasks ; taskid++)
+        if (post_sort)
         {
-            int64_t kC = TaskList [taskid].kfirst ;
-            bool do_post_sort = (TaskList [taskid].len != 0) ;
-            if (do_post_sort)
-            { 
-                // This is the first fine task with method 10 for C(:,kC).  The
-                // vector C(:,kC) must be sorted, since method 10 left it with
-                // unsorted indices.
-                int64_t pC = Cp [kC] ;
-                int64_t clen = Cp [kC+1] - pC ;
-                GB_qsort_1b (Ci + pC, (GB_void *) (Cx + pC*GB_CSIZE1),
-                    GB_CSIZE2, clen) ;
+            int taskid ;
+            #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+            for (taskid = 0 ; taskid < ntasks ; taskid++)
+            {
+                int64_t kC = TaskList [taskid].kfirst ;
+                bool do_post_sort = (TaskList [taskid].len != 0) ;
+                if (do_post_sort)
+                {
+                    // This is the first fine task with method 10 for C(:,kC).
+                    // The vector C(:,kC) must be sorted, since method 10 left
+                    // it with unsorted indices.
+                    int64_t pC = Cp [kC] ;
+                    int64_t clen = Cp [kC+1] - pC ;
+                    #if defined ( GB_ISO_SUBREF )
+                    { 
+                        // iso numeric subref C=A(I,J)
+                        // just sort the pattern of C(:,kC)
+                        GB_qsort_1 (Ci + pC, clen) ;
+                    }
+                    #else
+                    { 
+                        // sort the pattern of C(:,kC), and the values
+                        GB_qsort_1b (Ci + pC, (GB_void *) (Cx + pC*GB_CSIZE1),
+                            GB_CSIZE2, clen) ;
+                    }
+                    #endif
+                }
             }
         }
     }
-
     #endif
 
 }
@@ -688,7 +657,8 @@
 #undef GB_for_each_index_in_bucket
 #undef GB_COPY_RANGE
 #undef GB_COPY_ENTRY
-#undef GB_CTYPE
 #undef GB_CSIZE1
 #undef GB_CSIZE2
+#undef GB_SYMBOLIC
+#undef GB_ISO_SUBREF
 

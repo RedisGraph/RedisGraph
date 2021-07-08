@@ -20,18 +20,16 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 )
 {
 
-    // get the string from the MATLAB field
+    // get the string from the mxArray
     #define LEN 256
     char s [LEN] ;
     mxGetString (arg, s, LEN) ;
     if (MATCH (s, arg1_name))
     {
-        // printf ("alias %s == %s\n", arg_name, arg1_name) ;
         return (arg1) ;
     }
     else if (MATCH (s, arg2_name))
     {
-        // printf ("alias %s == %s\n", arg_name, arg2_name) ;
         return (arg2) ;
     }
 

@@ -2,7 +2,7 @@ function gbtest60
 %GBTEST60 test GrB.issigned
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % 8 signed types:
 signed_types   = { 'double', 'single', ...

@@ -58,7 +58,7 @@ void mexFunction
     // clear C
     METHOD (GrB_Matrix_clear (C)) ;
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
 
     FREE_ALL ;

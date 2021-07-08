@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mx_mxArray_to_array: get a dense numerical MATLAB array
+// GB_mx_mxArray_to_array: get a dense numerical built-in array
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -9,9 +9,9 @@
 
 #include "GB_mex.h"
 
-void GB_mx_mxArray_to_array    // convert mxArray to array
+void GB_mx_mxArray_to_array     // convert mxArray to array
 (
-    const mxArray *Xmatlab,     // input MATLAB array
+    const mxArray *Xbuiltin,    // input built-in array
     // output:
     GB_void **X,                // pointer to numerical values (shallow)
     int64_t *nrows,             // number of rows of X
@@ -20,18 +20,18 @@ void GB_mx_mxArray_to_array    // convert mxArray to array
 )
 {
 
-    if (!(mxIsNumeric (Xmatlab) || mxIsLogical (Xmatlab)))
+    if (!(mxIsNumeric (Xbuiltin) || mxIsLogical (Xbuiltin)))
     {
         mexWarnMsgIdAndTxt ("GB:warn","input must be numeric or logical array");
     }
-    if (mxIsSparse (Xmatlab))
+    if (mxIsSparse (Xbuiltin))
     {
         mexWarnMsgIdAndTxt ("GB:warn","input cannot be sparse") ;
     }
 
-    (*X) = mxGetData (Xmatlab) ;
-    (*nrows) = mxGetM (Xmatlab) ;
-    (*ncols) = mxGetN (Xmatlab) ;
-    (*xtype) = GB_mx_Type (Xmatlab) ;
+    (*X) = mxGetData (Xbuiltin) ;
+    (*nrows) = mxGetM (Xbuiltin) ;
+    (*ncols) = mxGetN (Xbuiltin) ;
+    (*xtype) = GB_mx_Type (Xbuiltin) ;
 }
 

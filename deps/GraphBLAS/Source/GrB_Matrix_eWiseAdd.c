@@ -10,16 +10,19 @@
 // C<M> = accum (C,A+B) and variations.
 
 #include "GB_ewise.h"
+#include "GB_get_mask.h"
 
 #define GB_EWISE(op)                                                        \
     /* check inputs */                                                      \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                       \
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                       \
     GB_RETURN_IF_NULL_OR_FAULTY (B) ;                                       \
-    GB_RETURN_IF_FAULTY (M) ;                                               \
+    GB_RETURN_IF_FAULTY (M_in) ;                                            \
     /* get the descriptor */                                                \
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,       \
         A_tran, B_tran, xx, xx7) ;                                          \
+    /* get the mask */                                                      \
+    GrB_Matrix M = GB_get_mask (M_in, &Mask_comp, &Mask_struct) ;           \
     /* C<M> = accum (C,T) where T = A+B, A'+B, A+B', or A'+B' */            \
     info = GB_ewise (                                                       \
         C,              C_replace,  /* C and its descriptor        */       \
@@ -38,7 +41,7 @@
 GrB_Info GrB_Matrix_eWiseAdd_BinaryOp       // C<M> = accum (C, A+B)
 (
     GrB_Matrix C,                   // input/output matrix for results
-    const GrB_Matrix M,             // optional mask for C, unused if NULL
+    const GrB_Matrix M_in,          // optional mask for C, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_BinaryOp add,         // defines '+' for T=A+B
     const GrB_Matrix A,             // first input:  matrix A
@@ -73,7 +76,7 @@ GrB_Info GrB_Matrix_eWiseAdd_BinaryOp       // C<M> = accum (C, A+B)
 GrB_Info GrB_Matrix_eWiseAdd_Monoid         // C<M> = accum (C, A+B)
 (
     GrB_Matrix C,                   // input/output matrix for results
-    const GrB_Matrix M,             // optional mask for C, unused if NULL
+    const GrB_Matrix M_in,          // optional mask for C, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_Monoid monoid,        // defines '+' for T=A+B
     const GrB_Matrix A,             // first input:  matrix A
@@ -109,7 +112,7 @@ GrB_Info GrB_Matrix_eWiseAdd_Monoid         // C<M> = accum (C, A+B)
 GrB_Info GrB_Matrix_eWiseAdd_Semiring       // C<M> = accum (C, A+B)
 (
     GrB_Matrix C,                   // input/output matrix for results
-    const GrB_Matrix M,             // optional mask for C, unused if NULL
+    const GrB_Matrix M_in,          // optional mask for C, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_Semiring semiring,    // defines '+' for T=A+B
     const GrB_Matrix A,             // first input:  matrix A

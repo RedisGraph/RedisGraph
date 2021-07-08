@@ -17,6 +17,8 @@
 // C must be sparse or hypersparse.
 // M can have any sparsity structure: hypersparse, sparse, bitmap, or full
 
+// C->iso is not affected.
+
 #include "GB_assign.h"
 #include "GB_assign_zombie.h"
 #include "GB_subassign_methods.h"
@@ -54,9 +56,9 @@ void GB_assign_zombie3
     // get C (:,j)
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Ch = C->h ;
-    const int64_t *GB_RESTRICT Cp = C->p ;
-    int64_t *GB_RESTRICT Ci = C->i ;
+    const int64_t *restrict Ch = C->h ;
+    const int64_t *restrict Cp = C->p ;
+    int64_t *restrict Ci = C->i ;
     int64_t pC_start, pC_end, pleft = 0, pright = C->nvec-1 ;
     GB_lookup (C->h != NULL, Ch, Cp, C->vlen, &pleft, pright, j,
         &pC_start, &pC_end) ;
@@ -67,10 +69,10 @@ void GB_assign_zombie3
     // get M(:,0)
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Mp = M->p ;
-    const int8_t  *GB_RESTRICT Mb = M->b ;
-    const int64_t *GB_RESTRICT Mi = M->i ;
-    const GB_void *GB_RESTRICT Mx = (GB_void *) (Mask_struct ? NULL : (M->x)) ;
+    const int64_t *restrict Mp = M->p ;
+    const int8_t  *restrict Mb = M->b ;
+    const int64_t *restrict Mi = M->i ;
+    const GB_void *restrict Mx = (GB_void *) (Mask_struct ? NULL : (M->x)) ;
     const size_t msize = M->type->size ;
     const int64_t Mvlen = M->vlen ;
     int64_t pM_start = 0 ; // Mp [0]

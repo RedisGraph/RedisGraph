@@ -1,5 +1,5 @@
 function R = GB_spec_mask (C, Mask, Z, C_replace, Mask_complement, identity)
-%GB_SPEC_MASK a pure MATLAB implementation of GrB_mask
+%GB_SPEC_MASK mimic of GrB_mask
 %
 % Computes C<Mask> = Z, in GraphBLAS notation.
 %

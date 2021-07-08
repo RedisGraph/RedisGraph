@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mx_abort: terminate MATLAB
+// GB_mx_abort: terminate
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.

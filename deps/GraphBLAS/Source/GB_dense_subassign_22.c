@@ -36,7 +36,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
 
     GrB_Info info ;
     ASSERT_MATRIX_OK (C, "C for C+=b", GB0) ;
-    ASSERT (GB_is_dense (C)) ;
+    ASSERT (GB_as_if_full (C)) ;
     ASSERT (!GB_PENDING (C)) ;
     ASSERT (!GB_JUMBLED (C)) ;
     ASSERT (!GB_ZOMBIES (C)) ;
@@ -46,13 +46,13 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
     ASSERT_BINARYOP_OK (accum, "accum for C+=b", GB0) ;
     ASSERT (!GB_OP_IS_POSITIONAL (accum)) ;
 
-    GB_ENSURE_FULL (C) ;        // convert C to full
+    GB_ENSURE_FULL (C) ;    // convert C to full, if sparsity control allows it
 
     //--------------------------------------------------------------------------
     // get the operator
     //--------------------------------------------------------------------------
 
-    if (accum->opcode == GB_FIRST_opcode)
+    if (accum->opcode == GB_FIRST_opcode || C->iso)
     { 
         // nothing to do
         return (GrB_SUCCESS) ;
@@ -67,7 +67,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    int64_t cnz = GB_NNZ (C) ;
+    int64_t cnz = GB_nnz (C) ;
 
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = GB_nthreads (cnz, chunk, nthreads_max) ;
@@ -96,7 +96,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
         //----------------------------------------------------------------------
 
         #define GB_Cdense_accumb(accum,xname) \
-            GB_Cdense_accumb_ ## accum ## xname
+            GB (_Cdense_accumb_ ## accum ## xname)
 
         #define GB_BINOP_WORKER(accum,xname)                                \
         {                                                                   \

@@ -2,8 +2,9 @@ function gbtest18
 %GBTEST18 test comparators (and, or, >, ...)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
+have_octave = gb_octave ;
 tol = 1e-14 ;
 rng ('default') ;
 for trial = 1:21
@@ -77,14 +78,17 @@ for trial = 1:21
     assert (gbtest_eq (C1, C3)) ;
     assert (gbtest_eq (C1, C4)) ;
 
-    if (~islogical (MA))
-        C1 = (MA .^ MB) ;
-        C2 = (GA .^ GB) ;
-        C3 = (MA .^ GB) ;
-        C4 = (GA .^ MB) ;
-        assert (gbtest_err (C1, C2) < tol) ;
-        assert (gbtest_err (C1, C3) < tol) ;
-        assert (gbtest_err (C1, C4) < tol) ;
+    if (~have_octave)
+        % octave7: sparse(0).^sparse(1) is wrong; it gives 1 but should be 0.
+        if (~islogical (MA))
+            C1 = (MA .^ MB) ;
+            C2 = (GA .^ GB) ;
+            C3 = (MA .^ GB) ;
+            C4 = (GA .^ MB) ;
+            assert (gbtest_err (C1, C2) < tol) ;
+            assert (gbtest_err (C1, C3) < tol) ;
+            assert (gbtest_err (C1, C4) < tol) ;
+        end
     end
 
     C1 = (MA & MB) ;

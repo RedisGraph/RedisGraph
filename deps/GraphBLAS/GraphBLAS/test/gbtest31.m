@@ -2,7 +2,7 @@ function gbtest31
 %GBTEST31 test GrB and casting
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 types = gbtest_types ;
 fprintf ('gbtest31: typecasting\n') ;
@@ -49,10 +49,10 @@ for k = 1:length (types)
     for k2 = 1:length (types)
         type2 = types {k} ;
         G3 = full (G, type2, id) ;
-        G5 = full (G, type2, GrB (id)) ;
+        H5 = full (G, type2, GrB (id)) ;
         G4 = GrB (G2, type2) ;
         assert (gbtest_eq (G3, G4)) ;
-        assert (gbtest_eq (G3, G5)) ;
+        assert (gbtest_eq (G3, H5)) ;
         assert (gbtest_eq (double (G3), double (G4))) ;
         assert (gbtest_eq (single (G3), single (G4))) ;
         assert (gbtest_eq (uint16 (G3), uint16 (G4))) ;

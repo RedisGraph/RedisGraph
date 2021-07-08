@@ -61,9 +61,11 @@ GrB_Info random_matrix      // create a random double-precision matrix
         // Areal = real random matrix
         OK (random_matrix (&Areal, make_symmetric, no_self_edges, nrows,
             ncols, nedges, method, false)) ;
+        OK (GxB_Matrix_fprint (Areal, "random real part", GxB_SHORT, stderr)) ;
         // Aimag = real random matrix
         OK (random_matrix (&Aimag, make_symmetric, no_self_edges, nrows,
             ncols, nedges, method, false)) ;
+        OK (GxB_Matrix_fprint (Aimag, "random imag part", GxB_SHORT, stderr)) ;
         // A = Areal + imag(Aimag)
         OK (GrB_Matrix_new (&A, Complex, nrows, ncols)) ;
         OK (GrB_Matrix_apply (A, NULL, NULL,         Complex_complex_real,
@@ -123,6 +125,7 @@ GrB_Info random_matrix      // create a random double-precision matrix
                 OK (GrB_Matrix_setElement_FP64 (A, x, j, i)) ;
             }
         }
+
     }
     else
     {

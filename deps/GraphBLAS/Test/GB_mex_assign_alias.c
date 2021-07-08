@@ -13,7 +13,7 @@
 
 #define FREE_ALL                            \
 {                                           \
-    GrB_Matrix_free_(&C) ;                   \
+    GrB_Matrix_free_(&C) ;                  \
     GrB_Descriptor_free_(&desc) ;           \
     GB_mx_put_global (true) ;               \
 }
@@ -85,7 +85,7 @@ void mexFunction
     // C(I,J) = accum (C(I,J),C)
     METHOD (GrB_Matrix_assign_(C, NULL, accum, C, I, ni, J, nj, desc)) ;
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
 
     FREE_ALL ;

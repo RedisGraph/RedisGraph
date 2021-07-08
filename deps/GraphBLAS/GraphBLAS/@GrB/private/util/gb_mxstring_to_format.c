@@ -1,9 +1,9 @@
 //------------------------------------------------------------------------------
-// gb_mxstring_to_format: get the format from a MATLAB string
+// gb_mxstring_to_format: get the format from a built-in string
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -32,12 +32,12 @@
 
 // hypersparse can be abbreviated as 'hyper'
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 bool gb_mxstring_to_format      // true if a valid format is found
 (
     // input
-    const mxArray *mxformat,    // MATLAB string, 'by row' or 'by col'
+    const mxArray *mxformat,    // built-in string, 'by row' or 'by col'
     // output
     GxB_Format_Value *fmt,
     int *sparsity

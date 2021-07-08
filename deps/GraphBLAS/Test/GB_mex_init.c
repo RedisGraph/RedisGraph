@@ -25,11 +25,12 @@ void mexFunction
 {
     mexPrintf ("usage:\n%s\n", USAGE) ;
 
-    GxB_init (GrB_NONBLOCKING, mxMalloc, mxCalloc, mxRealloc, mxFree, false) ;
+    GxB_init (GrB_NONBLOCKING, mxMalloc, NULL    , NULL     , mxFree, false) ;
+//  GxB_init (GrB_NONBLOCKING, mxMalloc, mxCalloc, mxRealloc, mxFree, false) ;
     GB_Global_abort_function_set (GB_mx_abort) ;
     GB_Global_malloc_tracking_set (true) ;
 
-    // MATLAB default is by column
+    // built-in default is by column
     GxB_Global_Option_set_(GxB_FORMAT, GxB_BY_COL) ;
 
     int nthreads ;

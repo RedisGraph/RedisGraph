@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// These methods are now only used by GB_Matrix_wait.
+// These methods are now only used by GB_wait.
 
 #ifndef GB_JAPPEND_H
 #define GB_JAPPEND_H
@@ -100,7 +100,7 @@ static inline GrB_Info GB_jappend
         // C is non-hypersparse
         //----------------------------------------------------------------------
 
-        int64_t *GB_RESTRICT Cp = C->p ;
+        int64_t *restrict Cp = C->p ;
 
         ASSERT (C->nvec == C->plen && C->plen == C->vdim) ;
         ASSERT (C->h == NULL) ;
@@ -152,7 +152,7 @@ static inline void GB_jwrapup
         // log the end of C(:,jlast+1) to C(:,n-1), in case the last vector
         // j=n-1 has not yet been seen, or has been seen but was empty.
 
-        int64_t *GB_RESTRICT Cp = C->p ;
+        int64_t *restrict Cp = C->p ;
         int64_t j = C->vdim - 1 ;
 
         for (int64_t jprior = jlast+1 ; jprior <= j ; jprior++)

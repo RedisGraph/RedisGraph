@@ -3,7 +3,7 @@ function result = gb_entries (A, varargin)
 % Implements GrB.entries (A, ...) and GrB.nonz (A, ...).
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % get the string arguments
 dim = 'all' ;           % 'all', 'row', or 'col'
@@ -38,7 +38,7 @@ if (isequal (dim, 'all'))
 else
 
     % get the row or column degree
-    result = gbdegree (A, dim) ;
+    result = gbdegree (A, dim) ;    % dim is 'row' or 'col'
 
     switch kind
         case 'count'

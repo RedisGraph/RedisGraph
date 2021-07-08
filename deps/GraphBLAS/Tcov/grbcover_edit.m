@@ -48,6 +48,9 @@ for k = 1:nfiles
     infile  = [infiles(k).folder '/' infiles(k).name] ;
     outfile = [outdir '/' infiles(k).name] ;
     fprintf ('.') ;
+    if (mod (k, 40) == 0)
+        fprintf ('\n') ;
+    end
 
     f_input  = fopen (infile,  'r') ;
     f_output = fopen (outfile, 'w') ;

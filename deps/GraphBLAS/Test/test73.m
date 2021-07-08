@@ -8,7 +8,7 @@ fprintf ('\n----------------- C=A*B performance\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 Prob = ssget (1338)
@@ -47,14 +47,14 @@ fprintf ('mxm, no mask %g\n', t1) ;
 tic
 C2 = L*L ;
 t2 = toc ;
-fprintf ('MATLAB, no mask %g\n', t2) ;
+fprintf ('built-in, no mask %g\n', t2) ;
 
 % with mask ---------------------------------------------
 
 tic
 C2b = (L*L) .* L ;
 t2 = toc ;
-fprintf ('MATLAB, mask %g\n', t2) ;
+fprintf ('built-in, mask %g\n', t2) ;
 
 tic
 C3 = GB_mex_mxm  (Cin, L, [ ], semiring, L, L, dnn);

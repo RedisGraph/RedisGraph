@@ -2,15 +2,15 @@ function [m, n, type] = gb_parse_args (func, varargin)
 %GB_PARSE_ARGS parse arguments for true, false, ones, zeros, eye,
 % and speye.
 %
-%   C = ones ;
-%   C = ones (n) ;
-%   C = ones (m,n) ;
-%   C = ones ([m n]) ;
-%   C = ones (... , 'like', G) ;
-%   C = ones (... , 'int8') ;
+%   C = GrB.ones ;
+%   C = GrB.ones (n) ;
+%   C = GrB.ones (m,n) ;
+%   C = GrB.ones ([m n]) ;
+%   C = GrB.ones (... , 'like', G) ;
+%   C = GrB.ones (... , 'int8') ;
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % parse the type
 type = 'double' ;
@@ -20,7 +20,7 @@ for k = 1:nargs
     if (ischar (arg))
         if (isequal (arg, 'like'))
             if (nargs ~= k+1)
-                error ('usage: %s (m, n, ''like'', G)', func) ;
+                error ('usage: GrB.%s (m, n, ''like'', G)', func) ;
             end
             arg = varargin {k+1} ;
             if (isobject (arg))
@@ -29,7 +29,7 @@ for k = 1:nargs
             type = gbtype (arg) ;
         else
             if (nargs ~= k)
-                error ('usage: %s (m, n, type)', func) ;
+                error ('usage: GrB.%s (m, n, type)', func) ;
             end
             type = arg ;
         end

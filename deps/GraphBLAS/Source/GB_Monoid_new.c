@@ -15,11 +15,6 @@
 // known values are used instead.  This is to allow the use of the hard-coded
 // functions for built-in monoids.
 
-// The identity value of built-in monoids is exploited in one special case in
-// Template/GB_AxB_saxpy3_template.c, but it is used via the #define
-// GB_IDENTITY value, not monoid->identity.  This #define is also used for
-// built-in monoids in Template/GB_reduce_to_scalar_template.c.
-
 // User-defined monoids may have a NULL terminal value, which denotes that the
 // monoid does not have a terminal value.
 
@@ -91,7 +86,8 @@ GrB_Info GB_Monoid_new          // create a monoid
     //--------------------------------------------------------------------------
 
     // allocate the monoid
-    (*monoid) = GB_CALLOC (1, struct GB_Monoid_opaque) ;
+    size_t header_size ;
+    (*monoid) = GB_MALLOC (1, struct GB_Monoid_opaque, &header_size) ;
     if (*monoid == NULL)
     { 
         // out of memory
@@ -101,11 +97,13 @@ GrB_Info GB_Monoid_new          // create a monoid
     // initialize the monoid
     GrB_Monoid mon = *monoid ;
     mon->magic = GB_MAGIC ;
+    mon->header_size = header_size ;
     mon->op = op ;
-    mon->monoid_is_builtin = false ;
     size_t zsize = op->ztype->size ;
     mon->identity = NULL ;                  // defined below (if present)
     mon->terminal = NULL ;                  // defined below (if present)
+    mon->identity_size = 0 ;
+    mon->terminal_size = 0 ;
 
     //--------------------------------------------------------------------------
     // allocation of identity and terminal values
@@ -114,12 +112,12 @@ GrB_Info GB_Monoid_new          // create a monoid
     // allocate the identity value
     #define GB_ALLOC_IDENTITY                                               \
     {                                                                       \
-        mon->identity = GB_MALLOC (zsize, GB_void) ;                        \
+        mon->identity = GB_MALLOC (zsize, GB_void, &(mon->identity_size)) ; \
         if (mon->identity == NULL)                                          \
         {                                                                   \
             /* out of memory */                                             \
-            GB_FREE (mon->terminal) ;                                       \
-            GB_FREE (*monoid) ;                                             \
+            GB_FREE (&(mon->terminal), mon->terminal_size) ;                \
+            GB_FREE (monoid, header_size) ;                                 \
             return (GrB_OUT_OF_MEMORY) ;                                    \
         }                                                                   \
     }
@@ -127,12 +125,12 @@ GrB_Info GB_Monoid_new          // create a monoid
     // allocate the terminal value
     #define GB_ALLOC_TERMINAL                                               \
     {                                                                       \
-        mon->terminal = GB_MALLOC (zsize, GB_void) ;                        \
+        mon->terminal = GB_MALLOC (zsize, GB_void, &(mon->terminal_size)) ; \
         if (mon->terminal == NULL)                                          \
         {                                                                   \
             /* out of memory */                                             \
-            GB_FREE (mon->identity) ;                                       \
-            GB_FREE (*monoid) ;                                             \
+            GB_FREE (&(mon->identity), mon->identity_size) ;                \
+            GB_FREE (monoid, header_size) ;                                 \
             return (GrB_OUT_OF_MEMORY) ;                                    \
         }                                                                   \
     }

@@ -14,7 +14,7 @@ function s = tricount (A, arg2, arg3)
 % See also GrB.ktruss, GrB.entries.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % NOTE: this is a high-level algorithm that uses GrB objects.
 

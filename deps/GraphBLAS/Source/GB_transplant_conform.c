@@ -9,7 +9,8 @@
 
 // C = (type) T, then conform C to its desired sparsity structure.  T is freed.
 // All prior content of C is cleared; zombies and pending tuples are abandoned
-// in C.  C and T can have any sparsity structure on input.
+// in C.  C and T can have any sparsity structure on input.  If T is iso, then
+// so is C.
 
 #include "GB.h"
 
@@ -41,7 +42,8 @@ GrB_Info GB_transplant_conform      // transplant and conform sparsity structure
     GrB_Info info = GB_transplant (C, ctype, Thandle, Context) ;
 
     // T is always freed, even if the transplant runs out of memory
-    ASSERT (*Thandle == NULL) ;
+    ASSERT (*Thandle == NULL ||
+           (*Thandle != NULL && (*Thandle)->static_header)) ;
 
     if (info != GrB_SUCCESS)
     { 

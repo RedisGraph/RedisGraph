@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// get a GraphBLAS descriptor from a MATLAB struct.
+// get a GraphBLAS descriptor from a built-in struct.
 // D.out, D.in0, D.in0, and D.mask must all be strings.
 // Fields that are not present are left unchanged.
 
@@ -16,8 +16,8 @@
 static bool get_descriptor
 (
     GrB_Descriptor D,               // GraphBLAS descriptor to modify
-    const mxArray *D_matlab,        // MATLAB struct with D.output, etc
-    const char *fieldname,          // fieldname to extract from D_matlab
+    const mxArray *D_builtin,       // built-in struct with D.output, etc
+    const char *fieldname,          // fieldname to extract from D_builtin
     const GrB_Desc_Field field      // field to set in D
 )
 {
@@ -25,24 +25,24 @@ static bool get_descriptor
     // A NULL means the descriptor is not in the list of input parameters.
     // An empty Descriptor is OK.  Both mean the GraphBLAS descriptor is NULL,
     // which each method uses to denote default values for all parameters.
-    if (D_matlab == NULL || mxIsEmpty (D_matlab))
+    if (D_builtin == NULL || mxIsEmpty (D_builtin))
     {
         return (true) ;
     }
 
-    // if present, the MATLAB D must be a struct
-    if (!mxIsStruct (D_matlab))
+    // if present, the built-in D must be a struct
+    if (!mxIsStruct (D_builtin))
     {
         mexWarnMsgIdAndTxt ("GB:warn","descriptor must be a struct") ;
         return (false) ;
     }
 
-    // find the field in the MATLAB struct
-    int fieldnumber = mxGetFieldNumber (D_matlab, fieldname) ;
+    // find the field in the built-in struct
+    int fieldnumber = mxGetFieldNumber (D_builtin, fieldname) ;
     if (fieldnumber >= 0)
     {
         // the field is present
-        mxArray *value = mxGetFieldByNumber (D_matlab, 0, fieldnumber) ;
+        mxArray *value = mxGetFieldByNumber (D_builtin, 0, fieldnumber) ;
 
         // its value must be a string
         if (!mxIsChar (value))
@@ -51,7 +51,7 @@ static bool get_descriptor
             return (false) ;
         }
 
-        // get the string from the MATLAB field
+        // get the string from the built-in field
         #define LEN 100
         char s [LEN] ;
         mxGetString (value, s, LEN) ;
@@ -120,18 +120,18 @@ static bool get_descriptor
 bool GB_mx_mxArray_to_Descriptor   // true if successful, false otherwise
 (
     GrB_Descriptor *handle,         // descriptor to return
-    const mxArray *D_matlab,        // MATLAB struct
+    const mxArray *D_builtin,       // built-in struct
     const char *name                // name of the descriptor
 )
 {
     // a null descriptor is OK; the method will use defaults
     (*handle) = NULL ;
-    if (D_matlab == NULL || mxIsEmpty (D_matlab))
+    if (D_builtin == NULL || mxIsEmpty (D_builtin))
     {
         return (true) ;
     }
 
-    // the MATLAB desc is present and not empty, so create the GraphBLAS one
+    // the built-in desc is present and not empty, so create the GraphBLAS one
     GrB_Descriptor D = NULL ;
     GrB_Info info = GrB_Descriptor_new (&D) ;
     if (info != GrB_SUCCESS)
@@ -142,11 +142,11 @@ bool GB_mx_mxArray_to_Descriptor   // true if successful, false otherwise
     }
 
     // get each component of the descriptor struct
-    if (!get_descriptor (D, D_matlab, "outp", GrB_OUTP) ||
-        !get_descriptor (D, D_matlab, "inp0", GrB_INP0) ||
-        !get_descriptor (D, D_matlab, "inp1", GrB_INP1) ||
-        !get_descriptor (D, D_matlab, "mask", GrB_MASK) ||
-        !get_descriptor (D, D_matlab, "axb",  GxB_AxB_METHOD))
+    if (!get_descriptor (D, D_builtin, "outp", GrB_OUTP) ||
+        !get_descriptor (D, D_builtin, "inp0", GrB_INP0) ||
+        !get_descriptor (D, D_builtin, "inp1", GrB_INP1) ||
+        !get_descriptor (D, D_builtin, "mask", GrB_MASK) ||
+        !get_descriptor (D, D_builtin, "axb",  GxB_AxB_METHOD))
     {
         GrB_Matrix_free_(&D) ;
         mexWarnMsgIdAndTxt ("GB:warn", "descriptor failed") ;

@@ -15,8 +15,8 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Matrix_free_(&C) ;               \
+    GrB_Matrix_free_(&A) ;              \
+    GrB_Matrix_free_(&C) ;              \
     GB_mx_put_global (true) ;           \
 }
 
@@ -65,7 +65,7 @@ void mexFunction
     // C = nonzero (A)
     METHOD (GxB_Matrix_select_(C, NULL, NULL, GxB_NONZERO, A, NULL, NULL)) ;
 
-    // return C to MATLAB as a regular MATLAB sparse matrix
+    // return C as a regular built-in sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C nonzero", false) ;
 
     FREE_ALL ;

@@ -16,11 +16,11 @@ complex_binaryops = {
 'times',     % z = x * y
 'div',       % z = x / y
 'rdiv',      % z = y / x
-% comparison operators where x,y,z are all the same class
+% comparators where x,y,z are all the same class
 'iseq',      % z = (x == y)
 'isne',      % z = (x != y)
 %----------------------------
-% comparison operators where x,y are all the same class, z is logical
+% comparators where x,y are all the same class, z is logical
 'eq',        % z = (x == y)
 'ne',        % z = (x != y)
 %----------------------------

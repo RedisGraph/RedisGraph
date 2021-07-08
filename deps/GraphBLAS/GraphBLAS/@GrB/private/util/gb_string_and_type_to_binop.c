@@ -3,13 +3,13 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
-// op_name: a MATLAB string defining the operator name:
+// op_name: a built-in string defining the operator name:
 //  1st, 2nd, pair, min, max, +, -, rminus, *, /, \
 //  iseq, isne, isgt, islt, isge, isle,
 //  ==, ~=, >, <, >=, <=,
@@ -762,6 +762,13 @@ GrB_BinaryOp gb_string_and_type_to_binop    // return op from string and type
 
     }
 
+    //--------------------------------------------------------------------------
+    // unknown type or operator
+    //--------------------------------------------------------------------------
+
+    // the type can be NULL for positional operators, but no others
+
+    CHECK_ERROR (type == NULL, "unknown type") ;
     ERROR2 ("unknown binary operator", op_name) ;
     return (NULL) ;
 }

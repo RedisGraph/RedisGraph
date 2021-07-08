@@ -83,7 +83,7 @@ GB_PUBLIC
 void complex_min (C Z, const C X, const C Y)
 {
     // min (x,y): complex number with smallest magnitude.  If tied, select the
-    // one with the smallest phase angle (same as MATLAB definition).
+    // one with the smallest phase angle.
     // No special cases for NaNs.
     double absx = cabs (X) ;
     double absy = cabs (Y) ;
@@ -112,7 +112,7 @@ GB_PUBLIC
 void complex_max (C Z, const C X, const C Y)
 {
     // max (x,y): complex number with largest magnitude.  If tied, select the
-    // one with the largest phase angle (same as MATLAB definition).
+    // one with the largest phase angle.
     // No special cases for NaNs.
     double absx = cabs (X) ;
     double absy = cabs (Y) ;
@@ -140,8 +140,6 @@ void complex_max (C Z, const C X, const C Y)
 //------------------------------------------------------------------------------
 // 6 binary functions, z=f(x,y), where CxC -> C ; (1,0) = true, (0,0) = false
 //------------------------------------------------------------------------------
-
-// inequality operators follow the MATLAB convention
 
 #if GxB_STDC_VERSION >= 201112L
 GB_PUBLIC
@@ -204,8 +202,6 @@ void complex_xor (C Z, const C X, const C Y)
 //------------------------------------------------------------------------------
 // 6 binary functions, z=f(x,y), where CxC -> bool
 //------------------------------------------------------------------------------
-
-// inequality operators follow the MATLAB convention
 
 #if GxB_STDC_VERSION >= 201112L
 GB_PUBLIC
@@ -394,7 +390,7 @@ GrB_Info Complex_init (bool builtin_complex)
     OK (GrB_BinaryOp_new (&Complex_max    , B complex_max    , C, C, C)) ;
 
     //--------------------------------------------------------------------------
-    // create the Complex binary comparison operators, CxC -> C
+    // create the Complex binary comparators, CxC -> C
     //--------------------------------------------------------------------------
 
     if (builtin_complex)

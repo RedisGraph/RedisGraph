@@ -2,7 +2,7 @@ function gbtest76
 %GBTEST76 test trig and other functions
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 fprintf ('\ngbtest76: testing trig and special functions\n') ;
 
@@ -67,6 +67,8 @@ fprintf ('\ngbtest76: all tests passed\n') ;
 end
 
 function gbtest76b (A, B, G, H, tol)
+
+    have_octave = gb_octave ;
 
     A (1,1) = 0 ;
     G (1,1) = 0 ;
@@ -232,9 +234,9 @@ function gbtest76b (A, B, G, H, tol)
     err = norm (C1-C2, 1) ;
     assert (err < tol) ;
 
-    if (contains (GrB.type (G), 'double'))
-        % MATLAB cannot compute spfun for single;
-        % MATLAB and GraphBLAS can't do this for int*
+    if (gb_contains (GrB.type (G), 'double'))
+        % built-in methods cannot compute spfun for single;
+        % built-in methods and GraphBLAS can't do this for int*
         C1 = spfun ('cos', A) ;
         C2 = spfun ('cos', G) ;
         err = norm (C1-C2, 1) ;
@@ -316,10 +318,14 @@ function gbtest76b (A, B, G, H, tol)
     err = norm (C1-C2, 1) ;
     assert (err < tol) ;
 
-    C1 = log1p (A) ;
-    C2 = log1p (G) ;
-    err = norm (C1-C2, 1) ;
-    assert (err < tol) ;
+    if (~have_octave || isreal (A))
+        % octave7: log1p(0) is 0 which is correct, but log1p(0+0i) is
+        % (0+1.5708i), even though log(complex(1)) is 0.
+        C1 = log1p (A) ;
+        C2 = log1p (G) ;
+        err = norm (C1-C2, 1) ;
+        assert (err < tol) ;
+    end
 
     C1 = log2 (A) ;
     C2 = log2 (G) ;
@@ -389,7 +395,7 @@ function gbtest76b (A, B, G, H, tol)
     assert (err == 0) ;
 
     if (isfloat (G))
-        C1 = eps (A) ;
+        C1 = eps (abs (A)) ;
         C2 = eps (G) ;
         err = norm (C1-C2, 1) ;
         assert (err < tol) ;
@@ -408,8 +414,15 @@ function gbtest76b (A, B, G, H, tol)
     I = GrB ([1 2 3]) ;
     J = GrB ([3 1 2]) ;
 
-    C1 = A (I,J) ;
-    C2 = G (I,J) ;
+    if (have_octave)
+        % Octave does not allow indexing built-in matrices with objects.
+        C1 = A (double (I), double (J)) ;
+        C2 = G (double (I), double (J)) ;
+    else
+        % MATLAB sees the GrB/double method and does the typecasting itself.
+        C1 = A (I,J) ;
+        C2 = G (I,J) ;
+    end
     err = norm (C1-C2, 1) ;
     assert (err == 0) ;
 

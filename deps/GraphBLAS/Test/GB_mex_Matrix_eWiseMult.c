@@ -13,11 +13,11 @@
 
 #define FREE_ALL                    \
 {                                   \
-    GrB_Matrix_free_(&A) ;           \
-    GrB_Matrix_free_(&B) ;           \
-    GrB_Matrix_free_(&C) ;           \
+    GrB_Matrix_free_(&A) ;          \
+    GrB_Matrix_free_(&B) ;          \
+    GrB_Matrix_free_(&C) ;          \
     GrB_Descriptor_free_(&desc) ;   \
-    GrB_Matrix_free_(&Mask) ;        \
+    GrB_Matrix_free_(&Mask) ;       \
     GB_mx_put_global (true) ;       \
 }
 
@@ -110,7 +110,7 @@ void mexFunction
     // C<Mask> = accum(C,A.*B)
     METHOD (GrB_Matrix_eWiseMult_BinaryOp_(C, Mask, accum, mult, A, B, desc)) ;
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
 
     FREE_ALL ;

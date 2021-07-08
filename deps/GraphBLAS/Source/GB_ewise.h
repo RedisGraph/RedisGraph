@@ -29,4 +29,36 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     GB_Context Context
 ) ;
 
+void GB_ewise_generic       // generic ewise
+(
+    // input/output:
+    GrB_Matrix C,           // output matrix, static header
+    // input:
+    const GrB_BinaryOp op,  // op to perform C = op (A,B)
+    // tasks from phase1a:
+    const GB_task_struct *restrict TaskList,  // array of structs
+    const int C_ntasks,                         // # of tasks
+    const int C_nthreads,                       // # of threads to use
+    // analysis from phase0:
+    const int64_t *restrict C_to_M,
+    const int64_t *restrict C_to_A,
+    const int64_t *restrict C_to_B,
+    const int C_sparsity,
+    // from GB_emult_sparsity or GB_add_sparsity:
+    const int ewise_method,
+    // from GB_emult_03 and GB_emult_02:
+    const int64_t *restrict Cp_kfirst,
+    // to slice M, A, and/or B,
+    const int64_t *M_ek_slicing, const int M_ntasks, const int M_nthreads,
+    const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads,
+    const int64_t *B_ek_slicing, const int B_ntasks, const int B_nthreads,
+    // original input:
+    const GrB_Matrix M,             // optional mask, may be NULL
+    const bool Mask_struct,         // if true, use the only structure of M
+    const bool Mask_comp,           // if true, use !M
+    const GrB_Matrix A,
+    const GrB_Matrix B,
+    GB_Context Context
+) ;
+
 #endif

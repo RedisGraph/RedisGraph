@@ -10,7 +10,7 @@
 // Returns true if a bitmap matrix should be converted to sparse.
 // Returns false if the matrix should stay bitmap.
 
-// If A is m-by-n and A->sparsity is GxB_ANY_SPARSITY with b =
+// If A is m-by-n and A->sparsity_control is GxB_ANY_SPARSITY with b =
 // A->bitmap_switch, the matrix switches to bitmap if nnz(A)/(m*n) > b.  A
 // bitmap matrix switches to sparse if nnz(A)/(m*n) <= b/2.  A matrix whose
 // density is between b/2 and b remains in its current state.
@@ -28,7 +28,7 @@
 bool GB_convert_bitmap_to_sparse_test    // test for hyper/sparse to bitmap
 (
     float bitmap_switch,    // A->bitmap_switch
-    int64_t anz,            // # of entries in A = GB_NNZ (A)
+    int64_t anz,            // # of entries in A = GB_nnz (A)
     int64_t vlen,           // A->vlen
     int64_t vdim            // A->vdim
 )

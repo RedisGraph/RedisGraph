@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_Matrix_extractElement: MATLAB interface for x = A(i,j)
+// GB_mex_Matrix_extractElement: interface for x = A(i,j)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -19,7 +19,6 @@
 #define FREE_ALL                        \
 {                                       \
     GrB_Matrix_free_(&A) ;              \
-    GB_FREE (Xtemp) ;                   \
     GB_mx_put_global (true) ;           \
 }
 
@@ -35,7 +34,6 @@ void mexFunction
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     GB_void *Y = NULL ;
-    GB_void *Xtemp = NULL ;
     GrB_Index *I = NULL, ni = 0, I_range [3] ;
     GrB_Index *J = NULL, nj = 0, J_range [3] ;
     bool is_list ;

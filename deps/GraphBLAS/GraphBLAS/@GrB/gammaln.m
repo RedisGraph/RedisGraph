@@ -7,11 +7,11 @@ function C = gammaln (G)
 % See also GrB/gammaln.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 type = gbtype (G) ;
-if (contains (type, 'complex'))
+if (gb_contains (type, 'complex'))
     error ('input must be real') ;
 end
 if (~gb_isfloat (type))

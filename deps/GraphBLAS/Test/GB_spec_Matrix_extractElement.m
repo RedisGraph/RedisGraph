@@ -1,5 +1,5 @@
 function [x no_value] = GB_spec_Matrix_extractElement (A, i, j, xclass)
-%GB_SPEC_MATRIX_EXTRACTELEMENT a MATLAB mimic of GrB_Matrix_extractElement
+%GB_SPEC_MATRIX_EXTRACTELEMENT a mimic of GrB_Matrix_extractElement
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
@@ -16,7 +16,7 @@ j = j+1 ;
 no_value = ~(A.pattern (i,j)) ;
 
 if (no_value)
-    % The spec says x is not modified, but a MATLAB function must assign a
+    % The spec says x is not modified, but a built-in function must assign a
     % value to all its outputs.  The mexFunction interface to GraphBLAS
     % also returns zero in this case.
     x = 0 ;

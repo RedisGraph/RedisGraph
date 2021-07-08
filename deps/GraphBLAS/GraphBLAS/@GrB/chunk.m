@@ -12,13 +12,13 @@ function c = chunk (c)
 %
 % Changing the chunk via GrB.chunk(c) causes all subsequent GraphBLAS
 % operations to use that chunk size c.  The setting persists for the
-% current MATLAB session, or until 'clear all' or GrB.clear is used, at
+% current session, or until 'clear all' or GrB.clear is used, at
 % which point the setting reverts to the default.
 %
 % See also GrB.threads.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (nargin == 0)
     c = gbchunk ;

@@ -1,19 +1,19 @@
 //------------------------------------------------------------------------------
-// gb_mxclass_to_mxstring: type of a MATLAB matrix
+// gb_mxclass_to_mxstring: type of a built-in matrix
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 mxArray *gb_mxclass_to_mxstring (mxClassID class, bool is_complex)
 {
     switch (class)
     {
-        // a MATLAB sparse or full matrix, valid for G = GrB (X), or
+        // a built-in sparse or full matrix, valid for G = GrB (X), or
         // for inputs to any GrB.method.
         case mxLOGICAL_CLASS  : return (mxCreateString ("logical")) ;
         case mxINT8_CLASS     : return (mxCreateString ("int8")) ;
@@ -47,7 +47,7 @@ mxArray *gb_mxclass_to_mxstring (mxClassID class, bool is_complex)
             }
             break ;
 
-        // a MATLAB struct, cell, char, void, function, or unknown
+        // a built-in struct, cell, char, void, function, or unknown
         case mxSTRUCT_CLASS   : return (mxCreateString ("struct")) ;
         case mxCELL_CLASS     : return (mxCreateString ("cell")) ;
         case mxCHAR_CLASS     : return (mxCreateString ("char")) ;

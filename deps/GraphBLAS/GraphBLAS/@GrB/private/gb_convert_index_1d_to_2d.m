@@ -3,7 +3,7 @@ function [i, j] = gb_convert_index_1d_to_2d (k, m)
 % the indices must be zero-based.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 i = rem (k, m) ;
 j = (k - i) / m ;

@@ -1,5 +1,5 @@
 
-% run this output of this program as a script in MATLAB:
+% run this output of this program as a script:
 
 % GraphBLAS matrix A: nrows: 3 ncols 5 entries: 10
 A = sparse (3,5) ;
