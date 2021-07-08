@@ -7843,12 +7843,12 @@ GrB_Info GxB_Matrix_Pending
 typedef struct
 {
     GrB_Matrix A ;                                        // Matrix being iterated
-    int sparsity_type;                                    // Currently hypersparse or sparse.
-	GrB_Index nvals ;                                     // Number of none zero values in matrix
-	GrB_Index nnz_idx ;                                   // Index of current none zero value
-	int64_t p ;                                           // Number of none zero values in current column
-	int64_t row_idx ;                                     // Index of current row
-	GrB_Index nrows ;                                     // Total number of rows in matrix
+    int sparsity_type;                                    // Either hyper-sparse or sparse
+    GrB_Index nvals ;                                     // Number of none zero values in matrix
+    GrB_Index nnz_idx ;                                   // Index of current none zero value
+    int64_t p ;                                           // Number of none zero values in current column
+    int64_t row_idx ;                                     // Index of current row
+    GrB_Index nrows ;                                     // Total number of rows in matrix
     	struct { // Hypersparce only related fields
             int64_t sparse_row_idx;          // index into hyper-sparse row array 'h'
             int64_t h_size;                  // Number of entries in hyper-sparse row array 'h'
@@ -7859,25 +7859,18 @@ typedef struct
 
 // TuplesIter maintains information required
 // to iterate over a matrix
-// The iterator which is being passed to the callers is a dummy iterator which designated to contain the array
+// aggregates multiple iterators into one
 typedef struct
 {
-    _GxB_MatrixTupleIter iterators[GB_N_ITERATORS]; // Array of iterators to consume, null if not the first iterator in the array
-    size_t iterators_size;                          // The size of the array must be <= GB_N_ITERATORS
-    size_t iterators_idx;                           // The index of the currently active iterator
+    _GxB_MatrixTupleIter iterators[GB_N_ITERATORS]; // Array of nested iterators
+    size_t n;                                       // number of nested iterators
+    size_t idx;                                     // current consumed nested iterator
 } GxB_MatrixTupleIter ;
-
-// Initialize iterator
-GrB_Info GxB_MatrixTupleIter_init
-(
-	_GxB_MatrixTupleIter *iter,      // iterator to init
-	GrB_Matrix A                    // matrix to iterate over
-);
 
 // Create a new list of matrix iterators
 GrB_Info GxB_MatrixTupleIter_new
 (
-	GxB_MatrixTupleIter **iter,     // list of iterators to create
+	GxB_MatrixTupleIter **iter,     // iterator to create
 	const GrB_Matrix A              // matrix to iterate over
 ) ;
 
