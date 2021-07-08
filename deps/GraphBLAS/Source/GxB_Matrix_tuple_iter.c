@@ -420,8 +420,6 @@ GrB_Info GxB_MatrixTupleIter_reuse
 	iter->idx = 0 ;
 	iter->n = 1 ;
 
-	// make sure matrix is not bitmap or full
-	GxB_set(A, GxB_SPARSITY_CONTROL, GxB_SPARSE) ; // TODO: remove this
 	int sparsity_type;
 	GxB_Matrix_Option_get(A, GxB_SPARSITY_CONTROL, &sparsity_type) ;
 	if(sparsity_type != GxB_SPARSE && sparsity_type != GxB_HYPERSPARSE)
