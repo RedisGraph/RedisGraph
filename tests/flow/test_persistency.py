@@ -2,6 +2,7 @@ from base import FlowTestsBase
 import os
 import sys
 import random
+import itertools
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
@@ -203,3 +204,29 @@ class testGraphPersistency(FlowTestsBase):
             actual_result = graph.query(q)
             self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # Test decoding of graph meta keys in different sequences.
+        def test05_decoding_order(self):
+            # These keys were constructed by instantiating a server with
+            # VKEY_MAX_ENTITY_COUNT set to 5 and manually disabling clearing
+            # the keyspace of virtual keys after serialization.
+            # The commands issued were:
+            # UNWIND range(1, 4) AS x CREATE (:L {v: x})-[:E {v2: x}]->(:M {v: x})
+            # MATCH (a:L {v: 2}) DELETE a
+            # SAVE
+            # DUMP [the graph key and the two meta keys]
+            keys = []
+            keys.append("""\a\x81\x82\xb6\xa9\x86g\xadh\t\x05\x02G\x00\x02\a\x02\x03\x02\x02\x02\x01\x02\x00\x02\x03\x02\x01\x02\x01\x02\x05\x02\x00\x02\x01\x02\x00\x02\x01\x02\x00\x02`\x00\x02\x01\x02\x01\x02\x01\x02\x01\x02\x01\x02\x00\x02`\x00\x02\x01\x02\x03\x02\x01\x02\x01\x02\x01\x02\x00\x02`\x00\x02\x02\x02\x04\x02\x01\x02\x00\x02\x01\x02\x00\x02`\x00\x02\x03\x02\x05\x02\x01\x02\x01\x02\x01\x02\x00\x02`\x00\x02\x03\x00\t\x00:.\xb60\"\xd9\x8d\xd2""")
+            keys.append("""\a\x81\x82\xb6\xa9\x86g\xadh\t\x05\x02G\x00\x02\a\x02\x03\x02\x02\x02\x01\x02\x00\x02\x03\x02\x03\x02\x01\x02\x02\x02\x02\x02\x01\x02\x03\x02\x02\x02\x06\x02\x01\x02\x00\x02\x01\x02\x00\x02`\x00\x02\x04\x02\a\x02\x01\x02\x01\x02\x01\x02\x00\x02`\x00\x02\x04\x02\x02\x02\x00\x02\x00\x02\x01\x02\x00\x02\x01\x02\x01\x02`\x00\x02\x01\x02\x02\x02\x04\x02\x05\x02\x00\x02\x01\x02\x01\x02`\x00\x02\x03\x00\t\x00a\xa2\x11\xe8\x11x\xa6\x83""")
+            keys.append("""\a\x81\x82\xb6\xa9\x85\xd6\xadh\t\x05\x02G\x00\x02\a\x02\x03\x02\x02\x02\x01\x02\x00\x02\x03\x02\x03\x02\x03\x02\x01\x02\x04\x02\x01\x02\x05\x02\x01\x02\x03\x02\x06\x02\a\x02\x00\x02\x01\x02\x01\x02`\x00\x02\x04\x02\x01\x02\x02\x05\x02v\x00\x05\x03v2\x00\x02\x02\x02\x00\x05\x02L\x00\x02\x00\x02\x01\x05\x02M\x00\x02\x00\x02\x01\x02\x00\x05\x02E\x00\x02\x00\x00\t\x00\xde\xf0\xd8\x84\\@\xa0Z""")
+            query = """MATCH (a:L)-[e:E]->(b:M) RETURN a.v, e.v, b.v ORDER BY a.v"""
+            expected_result = [[1, 1, 1],
+                               [3, 3, 3],
+                               [4, 4, 4]]
+            for perm in itertools.permutations(keys):
+                redis_con.execute_command("FLUSHALL")
+                redis_con.execute_command("RESTORE", "G", 0, perm[0])
+                redis_con.execute_command("RESTORE", "G2", 0, perm[1])
+                redis_con.execute_command("RESTORE", "G3", 0, perm[2])
+
+                actual_result = graph.query(query)
+                self.env.assertEquals(actual_result.result_set, expected_result)
