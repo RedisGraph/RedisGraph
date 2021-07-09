@@ -133,13 +133,6 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 	mark_as_deleted = (info == GrB_SUCCESS);
 
 	if(mark_as_deleted) {
-		// remove entry and issue deletion
-		info = GrB_Matrix_removeElement(dm, i, j);
-		ASSERT(info == GrB_SUCCESS);
-
-		// TODO: delete entity!
-		ASSERT(false);
-
 		// can't use 'M', add entry to 'delta-plus'
 		info = setDP(C, x, i, j);
 	} else {
@@ -157,6 +150,10 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 			info = setDP(C, x, i, j);
 		}
 	}
+
+#ifdef RG_DEBUG
+	RG_Matrix_validateState(C, i, j);
+#endif
 
 	return info;
 }

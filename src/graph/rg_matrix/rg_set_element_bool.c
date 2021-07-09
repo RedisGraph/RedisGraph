@@ -46,20 +46,22 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 	// entry can't be marked for both addition and deletion
 	ASSERT(!(marked_for_addition && marked_for_deleted));
 
+	// entry can't be marked for deletion
+	// due to dely deletions and entity ID reuse
+	ASSERT(!marked_for_deleted);
+
 	// entry already exists
 	if(already_allocated || marked_for_addition) {
 		return GrB_SUCCESS;
 	}
 
-	if(marked_for_deleted) {
-		// remove entry from delta-minus
-		info = GrB_Matrix_removeElement(dm, i, j);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
 	// add entry to delta-plus
 	info = GrB_Matrix_setElement_BOOL(dp, x, i, j);
 	ASSERT(info == GrB_SUCCESS);
+
+#ifdef RG_DEBUG
+	RG_Matrix_validateState(C, i, j);
+#endif
 
 	RG_Matrix_setDirty(C);
 

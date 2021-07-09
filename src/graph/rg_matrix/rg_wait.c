@@ -25,14 +25,25 @@ static GrB_Info RG_Matrix_sync
 	ASSERT(C != NULL);
 
 	GrB_Matrix      m     =  RG_MATRIX_MATRIX(C);
-	GrB_Descriptor  desc  =  GrB_NULL;
-	GrB_Matrix      mask  =  GrB_NULL;
 	GrB_Matrix      dp    =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix      dm    =  RG_MATRIX_DELTA_MINUS(C);
+	GrB_Descriptor  desc  =  GrB_NULL;
+	GrB_Matrix      mask  =  GrB_NULL;
 
 	GrB_Info info;
 	GrB_Index dp_nvals;
 	GrB_Index dm_nvals;
+
+	//--------------------------------------------------------------------------
+	// lock matrix
+	//--------------------------------------------------------------------------
+
+	RG_Matrix_Lock(C);
+
+	//--------------------------------------------------------------------------
+	// determin change set
+	//--------------------------------------------------------------------------
+
 	GrB_Matrix_nvals(&dp_nvals, dp);
 	GrB_Matrix_nvals(&dm_nvals, dm);
 
@@ -58,15 +69,12 @@ static GrB_Info RG_Matrix_sync
 
 	if(additions) {
 		GrB_Type t;
-		GrB_BinaryOp op;
+		GrB_Semiring s;
 		info = GxB_Matrix_type(&t, m);
 		ASSERT(info == GrB_SUCCESS);
 
-		// use SECOND to overwrite entries that exists in both:
-		// 'm' and 'delta-plus' with values from 'delta-plus'
-		op = (t == GrB_BOOL) ? GrB_SECOND_BOOL : GrB_SECOND_UINT64;
-		info = GrB_Matrix_eWiseAdd_BinaryOp(m, GrB_NULL, GrB_NULL, op, m,
-				dp, GrB_NULL);
+		s = (t == GrB_BOOL) ? GxB_ANY_PAIR_BOOL : GxB_ANY_PAIR_UINT64;
+		info = GrB_Matrix_eWiseAdd_Semiring(m, NULL, NULL, s, m, dp, NULL);
 		ASSERT(info == GrB_SUCCESS);
 
 		// clear delta plus
@@ -77,6 +85,7 @@ static GrB_Info RG_Matrix_sync
 	//--------------------------------------------------------------------------
 	// validate that both delta-plus and delta-minus are cleared
 	//--------------------------------------------------------------------------
+
 	GrB_Index nvals;
 	GrB_Matrix_nvals(&nvals, dp);
 	ASSERT(nvals == 0);
@@ -85,6 +94,12 @@ static GrB_Info RG_Matrix_sync
 
 	info = GrB_wait(&m);
 	ASSERT(info == GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// unlock
+	//--------------------------------------------------------------------------
+
+	RG_Matrix_Unlock(C);
 
 	return info;
 }

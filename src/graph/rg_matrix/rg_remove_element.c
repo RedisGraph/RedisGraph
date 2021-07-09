@@ -81,6 +81,10 @@ GrB_Info RG_Matrix_removeElement
 		ASSERT(info == GrB_SUCCESS);
 	}
 
+#ifdef RG_DEBUG
+	RG_Matrix_validateState(C, i, j);
+#endif
+
 	RG_Matrix_setDirty(C);
 	return info;
 }

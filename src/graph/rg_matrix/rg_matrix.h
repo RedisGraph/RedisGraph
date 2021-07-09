@@ -30,17 +30,99 @@ typedef _RG_Matrix *RG_Matrix;
 #define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus
 #define RG_MATRIX_DELTA_MINUS(C) (C)->delta_minus
 
+//------------------------------------------------------------------------------
+//
+// possible combinations
+//
+//------------------------------------------------------------------------------
+//
+//  empty
+//
+//   A         DP        DM
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+//
+//  flushed, no pending changes
+//
+//   A         DP        DM
+//   . 1 .     . . .     . . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+//
+//  single entry added
+//
+//   A         DP        DM
+//   . . .     . 1 .     . . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+//
+//  single entry deleted
+//
+//   A         DP        DM
+//   1 . .     . . .     1 . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+//
+//  existing entry deleted and then added back
+//
+//   A         DP        DM
+//   1 . .     1 . .     1 . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+//
+//  impossible state
+//  marked none existing entry for deletion
+//
+//   A         DP        DM
+//   . . .     . . .     1 . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+//
+//  impossible state
+//  adding to an already existing entry
+//  should have turned A[0,0] to a multi-value
+//
+//   A         DP        DM
+//   1 . .     1 . .     . . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+//
+//  impossible state
+//  deletion of pending entry should have cleared it DP[0,0]
+//
+//   A         DP        DM
+//   . . .     1 . .     1 . .
+//   . . .     . . .     . . .
+//   . . .     . . .     . . .
+//
+//------------------------------------------------------------------------------
+
 struct _RG_Matrix {
 	bool dirty;                         // Indicates if matrix requires sync
 	bool multi_edge;                    // Entry i,j can contain multiple edges
 	bool maintain_transpose;            // Maintain transpose matrix
+	bool locked;                        // Rather or not mutex is acquired
 	GrB_Matrix matrix;                  // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
 	RG_Matrix transposed;               // Transposed matrix
 	pthread_mutex_t mutex;              // Lock
 };
-
 
 GrB_Info RG_Matrix_new
 (
@@ -52,6 +134,14 @@ GrB_Info RG_Matrix_new
 	bool maintain_transpose  // maintain transpose matrix
 );
 
+// validate 'C' isn't in an invalid state
+void RG_Matrix_validateState
+(
+	const RG_Matrix C,
+	GrB_Index i,
+	GrB_Index j
+);
+
 // returns transposed matrix of C
 RG_Matrix RG_Matrix_getTranspose
 (
@@ -59,7 +149,7 @@ RG_Matrix RG_Matrix_getTranspose
 );
 
 // returns underlying GraphBLAS matrix
-GrB_Matrix RG_Matrix_getGrB_Matrix
+GrB_Matrix RG_Matrix_getGrBMatrix
 (
 	RG_Matrix C
 );
@@ -67,7 +157,13 @@ GrB_Matrix RG_Matrix_getGrB_Matrix
 // returns underlying delta plus GraphBLAS matrix
 GrB_Matrix RG_Matrix_getDeltaPlus
 (
-	RG_Matrix C
+	const RG_Matrix C
+);
+
+// returns underlying delta plus GraphBLAS matrix
+GrB_Matrix RG_Matrix_getDeltaMinus
+(
+	const RG_Matrix C
 );
 
 // mark matrix as dirty
@@ -149,6 +245,7 @@ GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
     GrB_Index j                            // column index
 ) ;
 
+// remove entry at position C[i,j]
 GrB_Info RG_Matrix_removeElement
 (
     RG_Matrix C,                    // matrix to remove entry from
@@ -156,6 +253,7 @@ GrB_Info RG_Matrix_removeElement
     GrB_Index j                     // column index
 );
 
+// remove value 'v' from multi-value entry at position C[i,j]
 GrB_Info RG_Matrix_removeEntry
 (
     RG_Matrix C,                    // matrix to remove entry from

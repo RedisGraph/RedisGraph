@@ -36,10 +36,19 @@ GrB_Matrix RG_Matrix_getGrB_Matrix
 // returns underlying delta plus GraphBLAS matrix
 GrB_Matrix RG_Matrix_getDeltaPlus
 (
-	RG_Matrix C
+	const RG_Matrix C
 ) {
 	ASSERT(C != NULL);
 	return RG_MATRIX_DELTA_PLUS(C);
+}
+
+// returns underlying delta plus GraphBLAS matrix
+GrB_Matrix RG_Matrix_getDeltaMinus
+(
+	const RG_Matrix C
+) {
+	ASSERT(C != NULL);
+	return RG_MATRIX_DELTA_MINUS(C);
 }
 
 bool RG_Matrix_isDirty
@@ -120,98 +129,6 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 	return info;
 }
 
-GrB_Info RG_Matrix_resize       // change the size of a matrix
-(
-    RG_Matrix C,                // matrix to modify
-    GrB_Index nrows_new,        // new number of rows in matrix
-    GrB_Index ncols_new         // new number of columns in matrix
-) {
-	ASSERT(C != NULL);
-	GrB_Info info;
-
-	if(C->maintain_transpose) {
-		info = RG_Matrix_resize(C->transposed, nrows_new, ncols_new);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
-	GrB_Matrix  m            =  RG_MATRIX_MATRIX(C);
-	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
-
-	info = GrB_Matrix_resize(m, nrows_new, ncols_new);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_Matrix_resize(delta_plus, nrows_new, ncols_new);
-	ASSERT(info == GrB_SUCCESS);
-	
-	info = GrB_Matrix_resize(delta_minus, nrows_new, ncols_new);
-	ASSERT(info == GrB_SUCCESS);
-	
-	return info;
-}
-
-GrB_Info RG_Matrix_extractElement_BOOL     // x = A(i,j)
-(
-    bool *x,                               // extracted scalar
-    const RG_Matrix A,                     // matrix to extract a scalar from
-    GrB_Index i,                           // row index
-    GrB_Index j                            // column index
-) {
-	ASSERT(x != NULL);
-	ASSERT(A != NULL);
-
-	GrB_Info info;
-	GrB_Matrix  m      =  RG_MATRIX_MATRIX(A);
-	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(A);
-	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(A);
-
-	// if 'delta-plus' exists return dp[i,j]
-	info = GrB_Matrix_extractElement(x, dp, i, j);
-	if(info == GrB_SUCCESS) {
-		return info;
-	}
-
-	// if dm[i,j] doesn't exists, return M[i,j]
-	info = GrB_Matrix_extractElement(x, dm, i, j);
-	if(info != GrB_SUCCESS) {
-		info = GrB_Matrix_extractElement(x, m, i, j);
-		return info;
-	}
-
-	return info;
-}
-
-GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
-(
-    uint64_t *x,                           // extracted scalar
-    const RG_Matrix A,                     // matrix to extract a scalar from
-    GrB_Index i,                           // row index
-    GrB_Index j                            // column index
-) {
-	ASSERT(x != NULL);
-	ASSERT(A != NULL);
-
-	GrB_Info info;
-	GrB_Matrix  m      =  RG_MATRIX_MATRIX(A);
-	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(A);
-	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(A);
-
-	// if 'delta-plus' exists return dp[i,j]
-	info = GrB_Matrix_extractElement(x, dp, i, j);
-	if(info == GrB_SUCCESS) {
-		return info;
-	}
-
-	// if dm[i,j] doesn't exists, return M[i,j]
-	info = GrB_Matrix_extractElement(x, dm, i, j);
-	if(info != GrB_SUCCESS) {
-		info = GrB_Matrix_extractElement(x, m, i, j);
-		return info;
-	}
-
-	return info;
-}
-
 GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 (
     RG_Matrix C,                    // input/output matrix for results
@@ -253,4 +170,53 @@ GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 	if(info == GrB_SUCCESS) RG_Matrix_setDirty(C);
 	return info;
 }
+
+void RG_Matrix_validateState
+(
+	const RG_Matrix C,
+	GrB_Index i,
+	GrB_Index j
+) {
+	bool        x_m               =  false;
+	bool        x_dp              =  false;
+	bool        x_dm              =  false;
+	bool        existing_entry    =  false;
+	bool        pending_addition  =  false;
+	bool        pending_deletion  =  false;
+	GrB_Info    info_m            =  GrB_SUCCESS;
+	GrB_Info    info_dp           =  GrB_SUCCESS;
+	GrB_Info    info_dm           =  GrB_SUCCESS;
+	GrB_Matrix  m                 =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix  dp                =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix  dm                =  RG_MATRIX_DELTA_MINUS(C);
+
+	// find out which entries exists
+	info_m  = GrB_Matrix_extractElement(&x_m,  m,  i, j);
+	info_dp = GrB_Matrix_extractElement(&x_dp, dp, i, j);
+	info_dm = GrB_Matrix_extractElement(&x_dm, dm, i, j);
+
+	existing_entry    =  info_m  == GrB_SUCCESS;
+	pending_addition  =  info_dp == GrB_SUCCESS;
+	pending_deletion  =  info_dm == GrB_SUCCESS;
+
+	//--------------------------------------------------------------------------
+	// impossible states
+	//--------------------------------------------------------------------------
+
+	// deletion only
+	ASSERT(!(!existing_entry   &&
+			 !pending_addition &&
+			 pending_deletion));
+
+	// addition to already existing entry
+	ASSERT(!(existing_entry   &&
+			 pending_addition &&
+			 !pending_deletion));
+
+	// pending deletion and pending addition
+	ASSERT(!(!existing_entry   &&
+			  pending_addition &&
+			  pending_deletion));
+}
+
 

@@ -150,6 +150,10 @@ GrB_Info RG_Matrix_removeEntry
 		}
 	}
 
+#ifdef RG_DEBUG
+	RG_Matrix_validateState(C, i, j);
+#endif
+
 	return info;
 }
 
