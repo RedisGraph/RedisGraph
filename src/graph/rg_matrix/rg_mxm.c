@@ -35,7 +35,7 @@ GrB_Info RG_mxm                     // C = A * B
 	GrB_Index dp_nvals;  // number of entries in A * 'dp'
 	GrB_Index dm_nvals;  // number of entries in A * 'dm'
 
-	GrB_Matrix  M      =  RG_MATRIX_MATRIX(B);
+	GrB_Matrix  M      =  RG_MATRIX_M(B);
 	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(B);
 	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(B);
 	GrB_Matrix  mask   =  NULL;  // entities removed

@@ -86,7 +86,7 @@ static GrB_Info setM                    // M (i,j) = x
 ) {
 	// add entry to delta-plus
 	GrB_Info info;
-	GrB_Matrix  m           =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix  m           =  RG_MATRIX_M(C);
 	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
 
 	if(!multi_edge) {
@@ -117,7 +117,7 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	GrB_Matrix m  = RG_MATRIX_MATRIX(C);
+	GrB_Matrix m  = RG_MATRIX_M(C);
 	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
 

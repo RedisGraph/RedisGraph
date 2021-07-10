@@ -30,7 +30,7 @@ GrB_Matrix RG_Matrix_getGrB_Matrix
 	const RG_Matrix C
 ) {
 	ASSERT(C != NULL);
-	return RG_MATRIX_MATRIX(C);
+	return RG_MATRIX_M(C);
 }
 
 // returns underlying delta plus GraphBLAS matrix
@@ -95,6 +95,30 @@ bool RG_Matrix_getMultiEdge
 	return C->multi_edge;
 }
 
+GrB_Info RG_Matrix_nrows
+(
+	GrB_Index *nrows,
+	const RG_Matrix C
+) {
+	ASSERT(C);
+	ASSERT(nrows);
+
+	GrB_Matrix m = RG_Matrix_M();
+	return GrB_Matrix_nrows(nrows, m);
+}
+
+GrB_Info RG_Matrix_ncols
+(
+	GrB_Index *ncols,
+	const RG_Matrix C
+) {
+	ASSERT(C);
+	ASSERT(ncols);
+
+	GrB_Matrix m = RG_Matrix_M();
+	return GrB_Matrix_ncols(ncols, m);
+}
+
 GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 (
     GrB_Index *nvals,       // matrix has nvals entries
@@ -114,7 +138,7 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 
 	// nvals = nvals(M) + nvals(DP) - nvals(DM)
 
-	m   =  RG_MATRIX_MATRIX(A);
+	m   =  RG_MATRIX_M(A);
 	dp  =  RG_MATRIX_DELTA_PLUS(A);
 	dm  =  RG_MATRIX_DELTA_MINUS(A);
 
@@ -186,7 +210,7 @@ void RG_Matrix_validateState
 	GrB_Info    info_m            =  GrB_SUCCESS;
 	GrB_Info    info_dp           =  GrB_SUCCESS;
 	GrB_Info    info_dm           =  GrB_SUCCESS;
-	GrB_Matrix  m                 =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix  m                 =  RG_MATRIX_M(C);
 	GrB_Matrix  dp                =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm                =  RG_MATRIX_DELTA_MINUS(C);
 

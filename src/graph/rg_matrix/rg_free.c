@@ -55,7 +55,7 @@ void RG_Matrix_free
 			ASSERT(info == GrB_SUCCESS);
 		}
 
-		GrB_Matrix m = RG_MATRIX_MATRIX(M);
+		GrB_Matrix m = RG_MATRIX_M(M);
 		// frees multi-edge arrays
 		info = GrB_Matrix_apply(m, NULL, NULL, free_multi_edge_op, m, NULL);
 		ASSERT(info == GrB_SUCCESS);

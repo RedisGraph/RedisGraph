@@ -17,6 +17,26 @@ extern "C" {
 }
 #endif
 
+#define MATRIX_EMPTY(M)               \
+	({                                \
+		GrB_Matrix_nvals(&nvals, M);  \
+		ASSERT_EQ(nvals, 0);          \
+	}) 
+
+#define MATRIX_NOT_EMPTY(M)           \
+	({                                \
+		GrB_Matrix_nvals(&nvals, M);  \
+		ASSERT_NE(nvals, 0);          \
+	}) 
+
+#define M_EMPTY()   MATRIX_EMPTY(M)
+#define DP_EMPTY()  MATRIX_EMPTY(DP)
+#define DM_EMPTY()  MATRIX_EMPTY(DM)
+
+#define M_NOT_EMPTY()   MATRIX_NOT_EMPTY(M)
+#define DP_NOT_EMPTY()  MATRIX_NOT_EMPTY(DP)
+#define DM_NOT_EMPTY()  MATRIX_NOT_EMPTY(DM)
+
 class RGMatrixTest: public ::testing::Test {
 	protected:
 	static void SetUpTestCase() {
@@ -54,11 +74,14 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
-	M   =  RG_MATRIX_MATRIX(A);
+	M   =  RG_MATRIX_M(A);
 	DP  =  RG_MATRIX_DELTA_PLUS(A);
 	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
+	//--------------------------------------------------------------------------
 	// verify sparsity control
+	//--------------------------------------------------------------------------
+
 	GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &scontrol);
 	ASSERT_EQ(scontrol, GxB_SPARSE);
 	GxB_Matrix_Option_get(DP, GxB_SPARSITY_CONTROL, &scontrol);
@@ -66,7 +89,7 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	GxB_Matrix_Option_get(DM, GxB_SPARSITY_CONTROL, &scontrol);
 	ASSERT_EQ(scontrol, GxB_HYPERSPARSE);
 
-	// matrix isn't dirty
+	// matrix shouldn't be dirty
 	ASSERT_FALSE(RG_Matrix_isDirty(A));
 
 	// matrix multi-edge set accordingly
@@ -76,6 +99,9 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	ASSERT_EQ(A->maintain_transpose, maintain_transpose);
 
 	// matrix should be empty
+	M_EMPTY();
+	DP_EMPTY(); 
+	DM_EMPTY();
 	RG_Matrix_nvals(&nvals, A);
 	ASSERT_EQ(nvals, 0);
 
@@ -84,8 +110,10 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 }
 
 // setting an empty entry
+// M[i,j] = 1
+// M[i,j] = 1
 TEST_F(RGMatrixTest, RGMatrix_simple_set) {
-	GrB_Type    t                   =  GrB_BOOL;
+	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
 	GrB_Matrix  DP                  =  NULL;
@@ -96,28 +124,24 @@ TEST_F(RGMatrixTest, RGMatrix_simple_set) {
 	GrB_Index   ncols               =  100;
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
-	bool        x                   =  false;
+	uint64_t    x                   =  1;
 	bool        multi_edge          =  false;
 	bool        maintain_transpose  =  false;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	// make sure element at position i,j doesn't exists
-	info = RG_Matrix_extractElement_BOOL(&x, A, i, j);
-	ASSERT_EQ(info, GrB_NO_VALUE);
-
 	//--------------------------------------------------------------------------
 	// set element at position i,j
 	//--------------------------------------------------------------------------
 
-	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// make sure element at position i,j exists
-	info = RG_Matrix_extractElement_BOOL(&x, A, i, j);
+	info = RG_Matrix_extractElement_UINT64(&x, A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
-	ASSERT_EQ(x, true);
+	ASSERT_EQ(x, 1);
 	
 	// matrix should contain a single element
 	RG_Matrix_nvals(&nvals, A);
@@ -127,7 +151,7 @@ TEST_F(RGMatrixTest, RGMatrix_simple_set) {
 	ASSERT_TRUE(RG_Matrix_isDirty(A));
 
 	// get internal matrices
-	M   =  RG_MATRIX_MATRIX(A);
+	M   =  RG_MATRIX_M(A);
 	DP  =  RG_MATRIX_DELTA_PLUS(A);
 	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
@@ -136,71 +160,45 @@ TEST_F(RGMatrixTest, RGMatrix_simple_set) {
 	//--------------------------------------------------------------------------
 
 	// M should be empty
-	GrB_Matrix_nvals(&nvals, M);
-	ASSERT_EQ(nvals, 0);
+	M_EMPTY();
 
 	// DM should be empty
-	GrB_Matrix_nvals(&nvals, DM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// DP should contain a single element
-	GrB_Matrix_nvals(&nvals, DP);
-	ASSERT_EQ(nvals, 1);
+	DP_NOT_EMPTY();
 
 	//--------------------------------------------------------------------------
-	// set already set entry
+	// set already existing entry
 	//--------------------------------------------------------------------------
 
 	// flush matrix
 	RG_Matrix_wait(A, false);
 
 	// introduce existing entry
-	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	// expecting no change
-	ASSERT_FALSE(RG_Matrix_isDirty(A));
-
 	//--------------------------------------------------------------------------
-	// test transposed matrix
+	// validations
 	//--------------------------------------------------------------------------
 
-	//RG_Matrix T = RG_Matrix_getTranspose(A);
-	//ASSERT_TRUE(T != NULL);
+	// M should be empty
+	M_EMPTY();
 
-	//// make sure element at position j,i exists
-	//info = RG_Matrix_extractElement_BOOL(&x, A, j, i);
-	//ASSERT_EQ(info, GrB_SUCCESS);
-	//ASSERT_EQ(x, true);
+	// DM should be empty
+	DM_EMPTY();
 
-	//// matrix should contain a single element
-	//RG_Matrix_nvals(&nvals, T);
-	//ASSERT_EQ(nvals, 1);
-
-	//// get internal matrices
-	//M   =  RG_MATRIX_MATRIX(T);
-	//DP  =  RG_MATRIX_DELTA_PLUS(T);
-	//DM  =  RG_MATRIX_DELTA_MINUS(T);
-
-	//// M should be empty
-	//GrB_Matrix_nvals(&nvals, M);
-	//ASSERT_EQ(nvals, 0);
-
-	//// DM should be empty
-	//GrB_Matrix_nvals(&nvals, DM);
-	//ASSERT_EQ(nvals, 0);
-
-	//// DP should contain a single element
-	//GrB_Matrix_nvals(&nvals, DP);
-	//ASSERT_EQ(nvals, 1);
+	// DP should contain a multi-value entry
+	DP_NOT_EMPTY();
 
 	// clean up
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
 }
 
-// remove single entry
-TEST_F(RGMatrixTest, RGMatrix_simple_del) {
+// multiple delete scenarios
+TEST_F(RGMatrixTest, RGMatrix_del) {
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
@@ -212,6 +210,7 @@ TEST_F(RGMatrixTest, RGMatrix_simple_del) {
 	GrB_Index   ncols               =  100;
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
+	uint64_t    x                   =  1;
 	bool        multi_edge          =  false;
 	bool        maintain_transpose  =  false;
 
@@ -219,7 +218,7 @@ TEST_F(RGMatrixTest, RGMatrix_simple_del) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
-	M   =  RG_MATRIX_MATRIX(A);
+	M   =  RG_MATRIX_M(A);
 	DP  =  RG_MATRIX_DELTA_PLUS(A);
 	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
@@ -235,7 +234,7 @@ TEST_F(RGMatrixTest, RGMatrix_simple_del) {
 	//--------------------------------------------------------------------------
 
 	// set element at position i,j
-	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// remove element at position i,j
@@ -254,23 +253,20 @@ TEST_F(RGMatrixTest, RGMatrix_simple_del) {
 	ASSERT_EQ(nvals, 0);
 
 	// M should be empty
-	GrB_Matrix_nvals(&nvals, M);
-	ASSERT_EQ(nvals, 0);
+	M_EMPTY();
 
 	// DM should be empty
-	GrB_Matrix_nvals(&nvals, DM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// DP should be empty
-	GrB_Matrix_nvals(&nvals, DP);
-	ASSERT_EQ(nvals, 0);
+	DP_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// remove flushed addition
 	//--------------------------------------------------------------------------
 
 	// set element at position i,j
-	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// force sync
@@ -290,22 +286,18 @@ TEST_F(RGMatrixTest, RGMatrix_simple_del) {
 	ASSERT_EQ(nvals, 0);
 
 	// M should contain a single element
-	GrB_Matrix_nvals(&nvals, M);
-	ASSERT_EQ(nvals, 1);
+	M_NOT_EMPTY();
 
 	// DM should contain a single element
-	GrB_Matrix_nvals(&nvals, DM);
-	ASSERT_EQ(nvals, 1);
+	DM_NOT_EMPTY();
 
 	// DP should be empty
-	GrB_Matrix_nvals(&nvals, DP);
-	ASSERT_EQ(nvals, 0);
+	DP_EMPTY();
 
 	//--------------------------------------------------------------------------
-	// flush deletion
+	// flush
 	//--------------------------------------------------------------------------
 
-	// entry should be removed from both 'delta-minus' and 'M'
 	info = RG_Matrix_wait(A, true);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
@@ -313,21 +305,84 @@ TEST_F(RGMatrixTest, RGMatrix_simple_del) {
 	// validations
 	//--------------------------------------------------------------------------
 
+	// entry should be removed from both 'delta-minus' and 'M'
 	// A should be empty
 	RG_Matrix_nvals(&nvals, A);
 	ASSERT_EQ(nvals, 0);
 
 	// M should be empty
-	GrB_Matrix_nvals(&nvals, M);
-	ASSERT_EQ(nvals, 0);
+	M_EMPTY();
 
 	// DM should be empty
-	GrB_Matrix_nvals(&nvals, DM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// DP should be empty
-	GrB_Matrix_nvals(&nvals, DP);
-	ASSERT_EQ(nvals, 0);
+	DP_EMPTY();
+
+	//--------------------------------------------------------------------------
+
+	// commit an entry M[i,j] = 1
+	// delete entry del DM[i,j] = true
+	// introduce an entry DP[i,j] = 1
+	// delete entry DP[i,j] = 0
+	// commit
+	// M[i,j] = 0, DP[i,j] = 0, DM[i,j] = 0
+
+	//--------------------------------------------------------------------------
+	// commit an entry M[i,j] = 1
+	//--------------------------------------------------------------------------
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// force sync
+	info = RG_Matrix_wait(A, true);
+
+	// M should contain a single element
+	M_NOT_EMPTY();
+	DP_EMPTY();
+	DM_EMPTY();
+
+	//--------------------------------------------------------------------------
+	// delete entry del DM[i,j] = true
+	//--------------------------------------------------------------------------
+
+	// remove element at position i,j
+	info = RG_Matrix_removeElement(A, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	M_NOT_EMPTY();
+	DP_EMPTY();
+	DM_NOT_EMPTY();
+
+	//--------------------------------------------------------------------------
+	// introduce an entry DP[i,j] = 1
+	//--------------------------------------------------------------------------
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// M should contain a single element
+	M_NOT_EMPTY();
+	DP_NOT_EMPTY();
+	DM_NOT_EMPTY();
+
+	//--------------------------------------------------------------------------
+	// commit
+	//--------------------------------------------------------------------------
+
+	// force sync
+	info = RG_Matrix_wait(A, true);
+
+	//--------------------------------------------------------------------------
+	// M[i,j] = 0, DP[i,j] = 0, DM[i,j] = 0
+	//--------------------------------------------------------------------------
+
+	M_NOT_EMPTY();
+	DP_EMPTY();
+	DM_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// clean up
@@ -362,7 +417,7 @@ TEST_F(RGMatrixTest, RGMatrix_flush) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
-	M   =  RG_MATRIX_MATRIX(A);
+	M   =  RG_MATRIX_M(A);
 	DP  =  RG_MATRIX_DELTA_PLUS(A);
 	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
@@ -375,16 +430,13 @@ TEST_F(RGMatrixTest, RGMatrix_flush) {
 	RG_Matrix_wait(A, sync);
 
 	// M should be empty
-	GrB_Matrix_nvals(&nvals, M);
-	ASSERT_EQ(nvals, 0);
+	M_EMPTY();
 
 	// DM should be empty
-	GrB_Matrix_nvals(&nvals, DM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// DP should contain a single element
-	GrB_Matrix_nvals(&nvals, DP);
-	ASSERT_EQ(nvals, 1);
+	DP_NOT_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// flush matrix, sync
@@ -398,16 +450,13 @@ TEST_F(RGMatrixTest, RGMatrix_flush) {
 	ASSERT_EQ(nvals, 1);
 
 	// M should be empty
-	GrB_Matrix_nvals(&nvals, M);
-	ASSERT_EQ(nvals, 1);
+	M_NOT_EMPTY();
 
 	// DM should be empty
-	GrB_Matrix_nvals(&nvals, DM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// DP should contain a single element
-	GrB_Matrix_nvals(&nvals, DP);
-	ASSERT_EQ(nvals, 0);
+	DP_EMPTY();
 
 	// clean up
 	RG_Matrix_free(&A);
@@ -423,9 +472,9 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	GrB_Type    t                   =  GrB_UINT64;
 	RG_Matrix   A                   =  NULL;
 	RG_Matrix   T                   =  NULL;  // A transposed
-	GrB_Matrix  TM                  =  NULL;  // primary internal matrix
-	GrB_Matrix  TDP                 =  NULL;  // delta plus
-	GrB_Matrix  TDM                 =  NULL;  // delta minus
+	GrB_Matrix  M                   =  NULL;  // primary internal matrix
+	GrB_Matrix  DP                  =  NULL;  // delta plus
+	GrB_Matrix  DM                  =  NULL;  // delta minus
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
@@ -450,9 +499,9 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	ASSERT_TRUE(T != NULL);
 
 	// get internal matrices
-	TM   =  RG_MATRIX_MATRIX(T);
-	TDP  =  RG_MATRIX_DELTA_PLUS(T);
-	TDM  =  RG_MATRIX_DELTA_MINUS(T);
+	M   =  RG_MATRIX_M(T);
+	DP  =  RG_MATRIX_DELTA_PLUS(T);
+	DM  =  RG_MATRIX_DELTA_MINUS(T);
 
 	//--------------------------------------------------------------------------
 	// set element at position i,j
@@ -478,16 +527,13 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	//--------------------------------------------------------------------------
 
 	// TM should be empty
-	GrB_Matrix_nvals(&nvals, TM);
-	ASSERT_EQ(nvals, 0);
+	M_EMPTY();
 
 	// TDM should be empty
-	GrB_Matrix_nvals(&nvals, TDM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// TDP should contain a single element
-	GrB_Matrix_nvals(&nvals, TDP);
-	ASSERT_EQ(nvals, 1);
+	DP_NOT_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// flush matrix
@@ -498,16 +544,13 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	// flushing 'A' should flush 'T' aswell
 
 	// TM should contain a single element
-	GrB_Matrix_nvals(&nvals, TM);
-	ASSERT_EQ(nvals, 1);
+	M_NOT_EMPTY();
 
 	// TDM should be empty
-	GrB_Matrix_nvals(&nvals, TDM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// TDP should be empty
-	GrB_Matrix_nvals(&nvals, TDP);
-	ASSERT_EQ(nvals, 0);
+	DP_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// delete element at position i,j
@@ -524,16 +567,13 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	//--------------------------------------------------------------------------
 
 	// TM should contain a single element
-	GrB_Matrix_nvals(&nvals, TM);
-	ASSERT_EQ(nvals, 1);
+	M_NOT_EMPTY();
 
 	// TDM should contain a single element
-	GrB_Matrix_nvals(&nvals, TDM);
-	ASSERT_EQ(nvals, 1);
+	DM_NOT_EMPTY();
 
 	// TDP should be empty
-	GrB_Matrix_nvals(&nvals, TDP);
-	ASSERT_EQ(nvals, 0);
+	DP_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// flush matrix
@@ -544,16 +584,13 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	RG_Matrix_wait(A, true);
 
 	// TM should be empty
-	GrB_Matrix_nvals(&nvals, TM);
-	ASSERT_EQ(nvals, 0);
+	M_EMPTY();
 
 	// TDM should be empty
-	GrB_Matrix_nvals(&nvals, TDM);
-	ASSERT_EQ(nvals, 0);
+	DM_EMPTY();
 
 	// TDP should be empty
-	GrB_Matrix_nvals(&nvals, TDP);
-	ASSERT_EQ(nvals, 0);
+	DP_EMPTY();
 
 	// clean up
 	RG_Matrix_free(&A);

@@ -26,7 +26,7 @@ typedef _RG_Matrix *RG_Matrix;
 // Returns edge ID.
 #define SINGLE_EDGE_ID(x) CLEAR_MSB(x)
 
-#define RG_MATRIX_MATRIX(C) (C)->matrix
+#define RG_MATRIX_M(C) (C)->matrix
 #define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus
 #define RG_MATRIX_DELTA_MINUS(C) (C)->delta_minus
 
@@ -197,6 +197,18 @@ void RG_Matrix_setMultiEdge
 
 bool RG_Matrix_getMultiEdge
 (
+	const RG_Matrix C
+);
+
+GrB_Info RG_Matrix_nrows
+(
+	GrB_Index *nrows,
+	const RG_Matrix C
+);
+
+GrB_Info RG_Matrix_ncols
+(
+	GrB_Index *ncols,
 	const RG_Matrix C
 );
 

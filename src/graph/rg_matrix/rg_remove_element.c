@@ -23,7 +23,7 @@ GrB_Info RG_Matrix_removeElement
 	bool        in_dp       =  false;
 	bool        in_dm       =  false;
 	bool        multi_edge  =  false;
-	GrB_Matrix  m           =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix  m           =  RG_MATRIX_M(C);
 	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
 

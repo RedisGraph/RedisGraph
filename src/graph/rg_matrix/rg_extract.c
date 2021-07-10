@@ -18,7 +18,7 @@ GrB_Info RG_Matrix_extractElement_BOOL     // x = A(i,j)
 	ASSERT(A != NULL);
 
 	GrB_Info info;
-	GrB_Matrix  m      =  RG_MATRIX_MATRIX(A);
+	GrB_Matrix  m      =  RG_MATRIX_M(A);
 	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(A);
 	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(A);
 
@@ -49,7 +49,7 @@ GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
 	ASSERT(A != NULL);
 
 	GrB_Info info;
-	GrB_Matrix  m      =  RG_MATRIX_MATRIX(A);
+	GrB_Matrix  m      =  RG_MATRIX_M(A);
 	GrB_Matrix  dp     =  RG_MATRIX_DELTA_PLUS(A);
 	GrB_Matrix  dm     =  RG_MATRIX_DELTA_MINUS(A);
 

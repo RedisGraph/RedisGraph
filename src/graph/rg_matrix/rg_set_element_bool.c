@@ -25,7 +25,7 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	GrB_Matrix m  = RG_MATRIX_MATRIX(C);
+	GrB_Matrix m  = RG_MATRIX_M(C);
 	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
 

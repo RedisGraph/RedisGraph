@@ -24,7 +24,7 @@ static GrB_Info RG_Matrix_sync
 ) {
 	ASSERT(C != NULL);
 
-	GrB_Matrix      m     =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix      m     =  RG_MATRIX_M(C);
 	GrB_Matrix      dp    =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix      dm    =  RG_MATRIX_DELTA_MINUS(C);
 	GrB_Descriptor  desc  =  GrB_NULL;
@@ -113,7 +113,7 @@ GrB_Info RG_Matrix_wait
 	if(A->maintain_transpose) RG_Matrix_wait(A->transposed, force_sync);
 	
 	GrB_Info    info         =  GrB_SUCCESS;
-	GrB_Matrix  m            =  RG_MATRIX_MATRIX(A);
+	GrB_Matrix  m            =  RG_MATRIX_M(A);
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(A);
 	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(A);
 

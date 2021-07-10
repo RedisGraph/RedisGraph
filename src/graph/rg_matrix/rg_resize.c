@@ -21,7 +21,7 @@ GrB_Info RG_Matrix_resize       // change the size of a matrix
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	GrB_Matrix  m            =  RG_MATRIX_MATRIX(C);
+	GrB_Matrix  m            =  RG_MATRIX_M(C);
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
 
