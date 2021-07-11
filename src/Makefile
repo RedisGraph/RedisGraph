@@ -31,7 +31,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = \
-	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result -Wno-error=misleading-indentation \
+	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
 	-fPIC -fcommon -fopenmp \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
@@ -41,8 +41,7 @@ ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
-	CFLAGS += -mmacosx-version-min=11.3
-	SHOBJ_LDFLAGS ?= -mmacosx-version-min=11.3 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
+	SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 	export OS = Mac
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
