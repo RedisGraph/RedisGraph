@@ -600,12 +600,13 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 			GrB_Index *qi ;
 			bool jumbled ;
 			int64_t q_size ;
+			bool iso;
 			GrB_Index qi_size, qx_size ;
 
 			if(n > INT32_MAX) {
 				int64_t *qx ;
 				GxB_Vector_export_CSC(&q, &int_type, &n,
-						&qi, (void **) (&qx), &qi_size, &qx_size, &nq,
+						&qi, (void **) (&qx), &qi_size, &qx_size, &iso, &nq,
 						&jumbled, NULL) ;
 
 				int nth = LAGRAPH_MIN(nq / (64 * 1024), nthreads) ;
@@ -616,12 +617,12 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 				}
 
 				GxB_Vector_import_CSC(&q, int_type, n,
-						&qi, (void **) (&qx), qi_size, qx_size, nq,
+						&qi, (void **) (&qx), qi_size, qx_size, &iso, nq,
 						jumbled, NULL) ;
 			} else {
 				int32_t *qx ;
 				GxB_Vector_export_CSC(&q, &int_type, &n,
-						&qi, (void **) (&qx), &qi_size, &qx_size, &nq,
+						&qi, (void **) (&qx), &qi_size, &qx_size, &iso, &nq,
 						&jumbled, NULL) ;
 
 				int nth = LAGRAPH_MIN(nq / (64 * 1024), nthreads) ;
@@ -631,7 +632,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 					qx [k] = qi [k] + 1 ;
 				}
 				GxB_Vector_import_CSC(&q, int_type, n,
-						&qi, (void **) (&qx), qi_size, qx_size, nq,
+						&qi, (void **) (&qx), qi_size, qx_size, iso, nq,
 						jumbled, NULL) ;
 			}
 

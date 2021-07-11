@@ -28,7 +28,8 @@ GrB_Info GxB_MatrixTupleIter_new
 	GrB_Index nrows ;
 	GrB_Matrix_nrows(&nrows, A) ;
 
-	*iter = GB_MALLOC(1, GxB_MatrixTupleIter) ;
+	size_t iter_size;
+	*iter = GB_MALLOC(1, GxB_MatrixTupleIter, &iter_size) ;
 	GrB_Matrix_nvals(&((*iter)->nvals), A) ;
 
 	(*iter)->A        =  A        ;
@@ -219,7 +220,7 @@ GrB_Info GxB_MatrixTupleIter_free
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_free (iter)") ;
 	GB_RETURN_IF_NULL(iter) ;
-	GB_FREE(iter) ;
+	GB_FREE(iter, sizeof(GxB_MatrixTupleIter)) ;
 	return (GrB_SUCCESS) ;
 }
 

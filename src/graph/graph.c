@@ -1158,6 +1158,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		GrB_Index  Aj_size;
 		GrB_Index  Ax_size;
 		GrB_Index  nvec;
+		bool iso;
 		bool jumbled = true;
 		Edge *edges = array_new(Edge, 1);
 
@@ -1175,6 +1176,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 			&Ah_size,     // size of Ah
 			&Aj_size,     // size of Aj
 			&Ax_size,     // size of Ax
+			&iso,         // are all items in the matrix have the same value
 			&nvec,        // number of rows that appear in Ah
 			&jumbled,     // if true, indices in each row may be unsorted
 			GrB_NULL
