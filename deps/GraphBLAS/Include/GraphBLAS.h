@@ -7846,12 +7846,12 @@ typedef struct
     int sparsity_type;                                    // Either hyper-sparse or sparse
     GrB_Index nvals ;                                     // Number of none zero values in matrix
     GrB_Index nnz_idx ;                                   // Index of current none zero value
-    int64_t p ;                                           // Number of none zero values in current column
+    int64_t p ;                                           // number of values already been iterated in current row
     int64_t row_idx ;                                     // Index of current row
     GrB_Index nrows ;                                     // Total number of rows in matrix
     	struct { // Hypersparce only related fields
             int64_t sparse_row_idx;          // index into hyper-sparse row array 'h'
-            int64_t h_size;                  // Number of entries in hyper-sparse row array 'h'
+            int64_t h_size;                  // number of entries in hyper-sparse row array 'h'
     	};
 } _GxB_MatrixTupleIter ;
 
@@ -7905,7 +7905,7 @@ GrB_Info GxB_MatrixTupleIter_next
 	bool *depleted                  // indicate if iterator depleted
 ) ;
 
-// Reset iterator
+// Reset iterator, assumes the iterator is valid
 GrB_Info GxB_MatrixTupleIter_reset
 (
 	GxB_MatrixTupleIter *iter        // iterator to reset
