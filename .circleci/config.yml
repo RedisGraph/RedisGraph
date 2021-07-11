@@ -463,7 +463,8 @@ workflows:
           <<: *on-any-branch
       - build_memcheck:
           <<: *context
-          <<: *on-any-branch
+          #@@ <<: *on-any-branch
+          <<: *never
       - build_macos:
           <<: *context
           #@@ <<: *on-integ-and-version-tags
@@ -507,7 +508,8 @@ workflows:
             - build
       - performance_ci_automation:
           <<: *context
-          <<: *on-integ-and-version-tags
+          #@@ <<: *on-integ-and-version-tags
+          <<: *never
           requires:
             - platform_build
 
