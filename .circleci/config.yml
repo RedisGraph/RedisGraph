@@ -503,13 +503,13 @@ workflows:
             - build_macos
       - performance_ci_automation_not_integ:
           <<: *context
-          <<: *not-on-integ-branch
+          #@@ <<: *not-on-integ-branch
+          <<: *never
           requires:
             - build
       - performance_ci_automation:
           <<: *context
-          #@@ <<: *on-integ-and-version-tags
-          <<: *never
+          <<: *on-integ-and-version-tags
           requires:
             - platform_build
 

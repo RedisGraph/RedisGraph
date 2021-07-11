@@ -16,18 +16,19 @@ if [[ $1 == --help || $1 == help ]]; then
 		[ARGVARS...] pack.sh [--help|help]
 		
 		Argument variables:
-		VERBOSE=1         Print commands
-		IGNERR=1          Do not abort on error
+		VERBOSE=1           Print commands
+		IGNERR=1            Do not abort on error
 
-		RAMP=1            Build RAMP file
-		DEPS=1            Build dependencies file
+		RAMP=1              Build RAMP file
+		DEPS=1              Build dependencies file
 
-		VARIANT=name      Build variant (empty for standard packages)
-		BRANCH=name       Branch name for snapshot packages
-		GITSHA=1          Append Git SHA to shapshot package names
+		PACKAGE_NAME=name   Package stem name
+		VARIANT=name        Build variant (empty for standard packages)
+		BRANCH=name         Branch name for snapshot packages
+		GITSHA=1            Append Git SHA to shapshot package names
 
-		BINDIR=dir        Directory in which packages are created
-		INSTALL_DIR=dir   Directory in which artifacts are found
+		BINDIR=dir          Directory in which packages are created
+		INSTALL_DIR=dir     Directory in which artifacts are found
 
 	END
 	exit 0
@@ -51,12 +52,12 @@ BINDIR=$(cd $BINDIR && pwd)
 . $READIES/bin/enable-utf8
 
 export ARCH=$($READIES/bin/platform --arch)
-export OS=$($READIES/bin/platform --os)
-export OSNICK=$($READIES/bin/platform --osnick)
-
 [[ $ARCH == x64 ]] && ARCH=x86_64
+
+export OS=$($READIES/bin/platform --os)
 [[ $OS == linux ]] && OS=Linux
 
+export OSNICK=$($READIES/bin/platform --osnick)
 [[ $OSNICK == trusty ]]  && OSNICK=ubuntu14.04
 [[ $OSNICK == xenial ]]  && OSNICK=ubuntu16.04
 [[ $OSNICK == bionic ]]  && OSNICK=ubuntu18.04
@@ -92,18 +93,17 @@ pack_ramp() {
 	local xtx_vars=""
 	local dep_fname=${PACKAGE_NAME}.${platform}.${verspec}.tgz
 
-	if [[ -z $VARIANT ]]; then
-		local rampfile=ramp.yml
-	else
-		local rampfile=ramp$VARIANT.yml
+	if [[ -z $RAMP_YAML ]]; then
+		RAMP_YAML=$ROOT/ramp.yml
 	fi
 
 	python3 $READIES/bin/xtx \
 		$xtx_vars \
 		-e NUMVER -e SEMVER \
-		$ROOT/$rampfile > /tmp/ramp.yml
+		$RAMP_YAML > /tmp/ramp.yml
 	rm -f /tmp/ramp.fname $packfile
-	$RAMP_PROG pack -m /tmp/ramp.yml --packname-file /tmp/ramp.fname --verbose --debug -o $packfile $product_so >/tmp/ramp.err 2>&1 || true
+	$RAMP_PROG pack -m /tmp/ramp.yml --packname-file /tmp/ramp.fname --verbose --debug \
+		-o $packfile $product_so >/tmp/ramp.err 2>&1 || true
 	if [[ ! -e $packfile ]]; then
 		eprint "Error generating RAMP file:"
 		>&2 cat /tmp/ramp.err
