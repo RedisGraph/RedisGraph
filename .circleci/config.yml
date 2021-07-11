@@ -305,7 +305,8 @@ jobs:
           command: |
             du -ah --apparent-size artifacts/snapshots/*
             for f in artifacts/snapshots/*.zip artifacts/snapshots/*.tgz; do
-              aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
+              #@@ vvv
+              echo aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
             done
 
   deploy_release:
@@ -464,9 +465,9 @@ workflows:
           <<: *context
           <<: *on-any-branch
       - build_macos:
-          # <<: *on-any-branch
           <<: *context
-          <<: *on-integ-and-version-tags
+          #@@ <<: *on-integ-and-version-tags
+          <<: *on-any-branch
       - platform_build:
           <<: *context
           <<: *on-integ-and-version-tags
@@ -481,7 +482,8 @@ workflows:
               platform: [bionic]
       - deploy_branch:
           <<: *context
-          <<: *on-integ-branch
+          #@@ <<: *on-integ-branch
+          <<: *on-any-branch
           requires:
             - platform_build
             - build_macos
