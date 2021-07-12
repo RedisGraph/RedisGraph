@@ -61,8 +61,8 @@ class RedisGraphSetup(paella.Setup):
             cd /tmp
             build_dir=$(mktemp -d)
             cd $build_dir
-            wget https://www.piumarta.com/software/peg/peg-0.1.18.tar.gz
-            tar xzf peg-0.1.18.tar.gz
+            wget -q -O peg.tar.gz https://github.com/gpakosz/peg/archive/0.1.18.tar.gz
+            tar xzf peg.tar.gz
             cd peg-0.1.18
             make
             make install MANDIR=.

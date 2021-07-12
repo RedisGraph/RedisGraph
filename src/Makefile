@@ -274,7 +274,7 @@ endif
 
 package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
-	@VARIANT=rce $(ROOT)/sbin/pack.sh
+	@PACKAGE_NAME=redisgraph-rce RAMP_YAML=$(ROOT)/ramp-rce.yml $(ROOT)/sbin/pack.sh
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------

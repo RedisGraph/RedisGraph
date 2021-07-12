@@ -464,7 +464,6 @@ workflows:
           <<: *context
           <<: *on-any-branch
       - build_macos:
-          # <<: *on-any-branch
           <<: *context
           <<: *on-integ-and-version-tags
       - platform_build:
