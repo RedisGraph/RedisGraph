@@ -59,17 +59,22 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
 			QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
-			if(src->label) {
-				/* Resolve source node by performing label scan,
-				 * in which case if the first algebraic expression operand
-				 * is a label matrix (diagonal) remove it. */
-				if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
-					AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
+
+			// introduce a scan operation only if 'src' isn't already bound
+			if(raxFind(bound_vars, (unsigned char *)src->alias,
+						strlen(src->alias)) == raxNotFound) {
+				if(src->label) {
+					/* Resolve source node by performing label scan,
+					 * in which case if the first algebraic expression operand
+					 * is a label matrix (diagonal) remove it. */
+					if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
+						AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
+					}
+					NodeScanCtx ctx = NODE_CTX_NEW(src->alias, src->label, src->labelID);
+					root = tail = NewNodeByLabelScanOp(plan, ctx);
+				} else {
+					root = tail = NewAllNodeScanOp(plan, src->alias);
 				}
-				NodeScanCtx ctx = NODE_CTX_NEW(src->alias, src->label, src->labelID);
-				root = tail = NewNodeByLabelScanOp(plan, ctx);
-			} else {
-				root = tail = NewAllNodeScanOp(plan, src->alias);
 			}
 
 			/* For each expression, build the appropriate traversal operation. */
@@ -79,15 +84,14 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(AlgebraicExpression_OperandCount(exp) == 0) continue;
 
 				QGEdge *edge = NULL;
-				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
-																					   AlgebraicExpression_Edge(exp));
+				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg, AlgebraicExpression_Edge(exp));
 				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
 					root = NewCondTraverseOp(plan, gc->g, exp);
 				}
 				// Insert the new traversal op at the root of the chain.
-				ExecutionPlan_AddOp(root, tail);
+				if(tail != NULL) ExecutionPlan_AddOp(root, tail);
 				tail = root;
 			}
 
