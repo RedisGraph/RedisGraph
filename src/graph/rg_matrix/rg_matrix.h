@@ -304,3 +304,10 @@ void RG_Matrix_free
 	RG_Matrix *C
 );
 
+// get matrix C without writing to internal matrix
+void RG_Matrix_get
+(
+	RG_Matrix C,
+    GrB_Matrix M
+);
+

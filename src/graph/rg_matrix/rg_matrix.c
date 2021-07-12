@@ -244,3 +244,58 @@ void RG_Matrix_validateState
 }
 
 
+void RG_Matrix_get
+(
+	RG_Matrix C,
+    GrB_Matrix M
+) {
+	ASSERT(C != NULL);
+	ASSERT(A != NULL);
+
+	GrB_Info    info         =  GrB_SUCCESS;
+	GrB_Matrix  m            =  RG_MATRIX_M(C);
+	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
+
+	GrB_Matrix_dup(&M, m);
+
+	info = GrB_wait(&delta_plus);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_wait(&delta_minus);
+	ASSERT(info == GrB_SUCCESS);
+	
+	GrB_Index delta_plus_nvals;
+	GrB_Index delta_minus_nvals;
+	GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
+	GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
+
+	bool  additions  =  delta_plus_nvals  >  0;
+	bool  deletions  =  delta_minus_nvals  >  0;
+
+	//--------------------------------------------------------------------------
+	// perform deletions
+	//--------------------------------------------------------------------------
+
+	if(deletions) {
+		info = GrB_transpose(M, delta_minus, GrB_NULL, m, GrB_DESC_RSCT0);
+		ASSERT(info == GrB_SUCCESS);
+	}
+
+	//--------------------------------------------------------------------------
+	// perform additions
+	//--------------------------------------------------------------------------
+
+	if(additions) {
+		GrB_Type t;
+		GrB_Semiring s;
+		info = GxB_Matrix_type(&t, m);
+		ASSERT(info == GrB_SUCCESS);
+
+		s = (t == GrB_BOOL) ? GxB_ANY_PAIR_BOOL : GxB_ANY_PAIR_UINT64;
+		info = GrB_Matrix_eWiseAdd_Semiring(M, NULL, NULL, s, m, delta_plus, NULL);
+		ASSERT(info == GrB_SUCCESS);
+	}
+
+	return info;
+}
