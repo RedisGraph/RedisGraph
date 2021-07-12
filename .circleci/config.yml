@@ -305,8 +305,7 @@ jobs:
           command: |
             du -ah --apparent-size artifacts/snapshots/*
             for f in artifacts/snapshots/*.zip artifacts/snapshots/*.tgz; do
-              #@@ vvv
-              echo aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
+              aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
             done
 
   deploy_release:
@@ -463,20 +462,16 @@ workflows:
           <<: *on-any-branch
       - build_memcheck:
           <<: *context
-          #@@ <<: *on-any-branch
-          <<: *never
+          <<: *on-any-branch
       - build_macos:
           <<: *context
-          #@@ <<: *on-integ-and-version-tags
-          <<: *on-any-branch
+          <<: *on-integ-and-version-tags
       - platform_build:
           <<: *context
-          #@@ <<: *on-integ-and-version-tags
-          <<: *on-any-branch
+          <<: *on-integ-and-version-tags
           matrix:
             parameters:
-              #@@ platform: [bionic, xenial, centos7, centos8]
-              platform: [centos8]
+              platform: [bionic, xenial, centos7, centos8]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
@@ -485,8 +480,7 @@ workflows:
               platform: [bionic]
       - deploy_branch:
           <<: *context
-          #@@ <<: *on-integ-branch
-          <<: *on-any-branch
+          <<: *on-integ-branch
           requires:
             - platform_build
             - build_macos
@@ -503,8 +497,7 @@ workflows:
             - build_macos
       - performance_ci_automation_not_integ:
           <<: *context
-          #@@ <<: *not-on-integ-branch
-          <<: *never
+          <<: *not-on-integ-branch
           requires:
             - build
       - performance_ci_automation:
