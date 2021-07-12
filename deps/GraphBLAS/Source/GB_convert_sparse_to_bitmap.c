@@ -12,14 +12,16 @@
 #include "GB_type__include.h"
 #endif
 
-#define GB_FREE_WORK                    \
-    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice) ;
+#define GB_FREE_WORK                        \
+{                                           \
+    GB_WERK_POP (A_ek_slicing, int64_t) ;   \
+}
 
-#define GB_FREE_ALL                     \
-{                                       \
-    GB_FREE_WORK ;                      \
-    if (!in_place) GB_FREE (Ax_new) ;   \
-    GB_FREE (Ab) ;                      \
+#define GB_FREE_ALL                         \
+{                                           \
+    GB_FREE_WORK ;                          \
+    GB_FREE (&Ax_new, Ax_size) ;            \
+    GB_FREE (&Ab, Ab_size) ;                \
 }
 
 GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
@@ -33,10 +35,10 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     // check inputs
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
-    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
-    int8_t *GB_RESTRICT Ab = NULL ;
-    GB_void *GB_RESTRICT Ax_new = NULL ;
+    GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
+    int8_t  *restrict Ab     = NULL ; size_t Ab_size = 0 ;
+    GB_void *restrict Ax     = NULL ; size_t Ax_size = 0 ;
+    GB_void *restrict Ax_new = NULL ;
 
     ASSERT_MATRIX_OK (A, "A converting sparse/hypersparse to bitmap", GB0) ;
     ASSERT (!GB_IS_FULL (A)) ;
@@ -57,44 +59,27 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     // determine if the conversion can be done in-place
     //--------------------------------------------------------------------------
 
-    // if in_place is true, then A->x does not change if A is as-if-full
-    bool in_place = GB_as_if_full (A) ;
+    // A->x does not change if A is as-if-full or A is iso
+    bool A_iso = A->iso ;
+    bool A_as_is_full = GB_as_if_full (A) ;
+    bool in_place = A_as_is_full || A_iso ;
 
     //--------------------------------------------------------------------------
     // allocate A->b
     //--------------------------------------------------------------------------
 
-    const int64_t anz = GB_NNZ (A) ;
+    const int64_t anz = GB_nnz (A) ;
     const int64_t avdim = A->vdim ;
     const int64_t avlen = A->vlen ;
     const int64_t anvec = A->nvec ;
     int64_t anzmax ;
-    if (!GB_Index_multiply (&anzmax, avdim, avlen))
+    if (!GB_Index_multiply ((GrB_Index *) &anzmax, avdim, avlen))
     { 
         // problem too large
         return (GrB_OUT_OF_MEMORY) ;
     }
     anzmax = GB_IMAX (anzmax, 1) ;
-
-    if (in_place)
-    { 
-        // if done in-place, malloc is fine since all of Ab will be set below
-        Ab = GB_MALLOC (anzmax, int8_t) ;
-    }
-    else if (anz > 0)
-    { 
-        // malloc Ab and set it to 0, in parallel.  This is faster than
-        // calloc since most of Ab will be set below.
-        Ab = GB_MALLOC (anzmax, int8_t) ;
-    }
-    else
-    { 
-        // calloc Ab so all bitmap entries are zero; no need to touch them.
-        // This case occurs when setting the GxB_SPARSITY_CONTROL of a new
-        // matrix to GxB_BITMAP, with no entries.
-        Ab = GB_CALLOC (anzmax, int8_t) ;       // anz is zero
-    }
-
+    Ab = GB_MALLOC (anzmax, int8_t, &Ab_size) ;
     if (Ab == NULL)
     { 
         // out of memory
@@ -111,13 +96,13 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     if (in_place)
     { 
         // keep the existing A->x
-        Ax_new = A->x ;
-        Ax_shallow = A->x_shallow ;
+        Ax = (GB_void *) A->x ;
+        Ax_shallow = A->x_shallow ; Ax_size = A->x_size ;
     }
     else
     {
         // A->x must be modified to fit the bitmap structure
-        Ax_new = GB_MALLOC (anzmax * asize, GB_void) ;
+        Ax_new = GB_MALLOC (anzmax * asize, GB_void, &Ax_size) ;
         Ax_shallow = false ;
         if (Ax_new == NULL)
         { 
@@ -125,6 +110,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
             GB_FREE_ALL ;
             return (GrB_OUT_OF_MEMORY) ;
         }
+        Ax = Ax_new ;
     }
 
     //--------------------------------------------------------------------------
@@ -132,11 +118,11 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     //--------------------------------------------------------------------------
 
     int64_t nzombies = A->nzombies ;
-    if (in_place)
+    if (A_as_is_full)
     { 
 
         //----------------------------------------------------------------------
-        // the sparse A has all entries: convert in-place
+        // the sparse A has all entries or is iso: convert in-place
         //----------------------------------------------------------------------
 
         ASSERT (nzombies == 0) ;
@@ -144,7 +130,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         GB_memset (Ab, 1, anz, nthreads_max) ;
 
     }
-    else if (anz > 0)
+    else
     {
 
         //----------------------------------------------------------------------
@@ -157,68 +143,76 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
         // scatter the values and pattern of A into the bitmap
         //----------------------------------------------------------------------
 
-        int nthreads = GB_nthreads (anz + anvec, chunk, nthreads_max) ;
-        int ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;
-        if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A,
-            &ntasks))
-        { 
-            // out of memory
-            GB_FREE_ALL ;
-            return (GrB_OUT_OF_MEMORY) ;
-        }
+        int A_nthreads, A_ntasks ;
+        GB_SLICE_MATRIX (A, 8, chunk) ;
 
+        const int64_t *restrict Ap = A->p ;
+        const int64_t *restrict Ah = A->h ;
+        const int64_t *restrict Ai = A->i ;
         bool done = false ;
 
-        #ifndef GBCOMPACT
+        if (A_iso)
+        { 
+            // A is iso; numerical entries are not modified
+            #define GB_COPY(Axnew,pnew,Axold,p) ;
+            #include "GB_convert_sparse_to_bitmap_template.c"
+        }
+        else
+        {
 
-            //------------------------------------------------------------------
-            // define the worker for the switch factory
-            //------------------------------------------------------------------
-
-            #define GB_convert_s2b_(cname) GB_convert_s2b_ ## cname
-            #define GB_WORKER(cname)                                        \
-            {                                                               \
-                info = GB_convert_s2b_(cname) (A, Ax_new, Ab, kfirst_slice, \
-                    klast_slice, pstart_slice, ntasks, nthreads) ;          \
-                done = (info != GrB_NO_VALUE) ;                             \
-            }                                                               \
-            break ;
-
-            //------------------------------------------------------------------
-            // launch the switch factory
-            //------------------------------------------------------------------
-
-            GB_Type_code acode = A->type->code ;
-            if (acode < GB_UDT_code)
-            { 
-                switch (acode)
+            #ifndef GBCOMPACT
+            {
+                switch (asize)
                 {
-                    case GB_BOOL_code   : GB_WORKER (_bool )
-                    case GB_INT8_code   : GB_WORKER (_int8 )
-                    case GB_INT16_code  : GB_WORKER (_int16 )
-                    case GB_INT32_code  : GB_WORKER (_int32 )
-                    case GB_INT64_code  : GB_WORKER (_int64 )
-                    case GB_UINT8_code  : GB_WORKER (_uint8 )
-                    case GB_UINT16_code : GB_WORKER (_uint16)
-                    case GB_UINT32_code : GB_WORKER (_uint32)
-                    case GB_UINT64_code : GB_WORKER (_uint64)
-                    case GB_FP32_code   : GB_WORKER (_fp32  )
-                    case GB_FP64_code   : GB_WORKER (_fp64  )
-                    case GB_FC32_code   : GB_WORKER (_fc32  )
-                    case GB_FC64_code   : GB_WORKER (_fc64  )
-                    default: ;
+                    #undef  GB_COPY
+                    #define GB_COPY(Axnew,pnew,Axold,p)         \
+                        Axnew [pnew] = Axold [p] ;
+
+                    case GB_1BYTE : // uint8, int8, bool, or 1-byte user
+                        #define GB_ATYPE uint8_t
+                        #include "GB_convert_sparse_to_bitmap_template.c"
+                        break ;
+
+                    case GB_2BYTE : // uint16, int16, or 2-byte user-defined
+                        #define GB_ATYPE uint16_t
+                        #include "GB_convert_sparse_to_bitmap_template.c"
+                        break ;
+
+                    case GB_4BYTE : // uint32, int32, float, or 4-byte user
+                        #define GB_ATYPE uint32_t
+                        #include "GB_convert_sparse_to_bitmap_template.c"
+                        break ;
+
+                    case GB_8BYTE : // uint64, int64, double, float complex,
+                             // or 8-byte user defined
+                        #define GB_ATYPE uint64_t
+                        #include "GB_convert_sparse_to_bitmap_template.c"
+                        break ;
+
+                    case GB_16BYTE : // double complex or 16-byte user-defined
+                        #define GB_ATYPE GB_blob16
+//                      #define GB_ATYPE uint64_t
+//                      #undef  GB_COPY
+//                      #define GB_COPY(Axnew,pnew,Axold,p)     \
+//                          Axnew [2*pnew  ] = Axold [2*p  ] ;  \
+//                          Axnew [2*pnew+1] = Axold [2*p+1] ;
+                        #include "GB_convert_sparse_to_bitmap_template.c"
+                        break ;
+
+                    default:;
                 }
             }
+            #endif
 
-        #endif
-
-        if (!done)
-        { 
-            // Ax_new [pnew] = Ax [p]
-            #define GB_COPY_A_TO_C(Ax_new,pnew,Ax,p) \
-                memcpy (Ax_new +(pnew)*asize, Ax +(p)*asize, asize)
-            #define GB_ATYPE GB_void
-            #include "GB_convert_sparse_to_bitmap_template.c"
+            if (!done)
+            { 
+                // with user-defined types of other sizes
+                #define GB_ATYPE GB_void
+                #undef  GB_COPY
+                #define GB_COPY(Axnew,pnew,Axold,p)                         \
+                    memcpy (Axnew +(pnew)*asize, Axold +(p)*asize, asize)
+                #include "GB_convert_sparse_to_bitmap_template.c"
+            }
         }
     }
 
@@ -227,23 +221,20 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     //--------------------------------------------------------------------------
 
     if (in_place)
-    {
-        // if done in-place, remove A->x from A so it is not freed
+    { 
+        // if in-place, remove A->x from A so it is not freed
         A->x = NULL ;
         A->x_shallow = false ;
     }
 
     GB_phbix_free (A) ;
+    A->iso = A_iso ;        // OK: convert_sparse_to_bitmap, keep iso
 
-    A->b = Ab ;
-    A->b_shallow = false ;
+    A->b = Ab ; A->b_size = Ab_size ; A->b_shallow = false ;
     Ab = NULL ;
 
-    A->x = Ax_new ;
-    A->x_shallow = Ax_shallow ;
-    Ax_new = NULL ;
+    A->x = Ax ; A->x_size = Ax_size ; A->x_shallow = Ax_shallow ;
 
-    A->nzmax = anzmax ;
     A->nvals = anz - nzombies ;
     ASSERT (A->nzombies == 0) ;
 

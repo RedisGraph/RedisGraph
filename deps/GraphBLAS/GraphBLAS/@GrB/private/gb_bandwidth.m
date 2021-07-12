@@ -3,7 +3,7 @@ function [lo, hi] = gb_bandwidth (G)
 % Implements [lo, hi] = bandwidth (G).
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % compute the bandwidth
 if (gbnvals (G) == 0)

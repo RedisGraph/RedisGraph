@@ -1,13 +1,13 @@
 //------------------------------------------------------------------------------
-// gbsize: dimension and type of a GraphBLAS or MATLAB matrix
+// gbsize: dimension and type of a GraphBLAS or built-in matrix
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-// The input may be either a GraphBLAS matrix struct or a standard MATLAB
+// The input may be either a GraphBLAS matrix struct or a standard built-in
 // matrix.  Note that the output may be int64, to accomodate huge hypersparse
 // matrices.  Also returns the type of the matrix.
 
@@ -15,7 +15,9 @@
 
 // [m, n, type] = gbsize (X)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: [m n type] = gbsize (X)"
 
 void mexFunction
 (
@@ -30,10 +32,10 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin == 1 && nargout <= 4, "usage: [m n type] = gbsize (X)") ;
+    gb_usage (nargin == 1 && nargout <= 4, USAGE) ;
 
     //--------------------------------------------------------------------------
-    // get the # of rows and columns of a GraphBLAS or MATLAB matrix
+    // get the # of rows and columns of a GraphBLAS or built-in matrix
     //--------------------------------------------------------------------------
 
     GrB_Index nrows, ncols ;
@@ -47,13 +49,29 @@ void mexFunction
         //----------------------------------------------------------------------
 
         // get the type
-        mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv4") ;
-        CHECK_ERROR (mx_type == NULL, "invalid GraphBLASv4 struct") ;
+        mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+        if (mx_type == NULL)
+        {
+            // check if it is a GraphBLASv5 struct
+            mx_type = mxGetField (pargin [0], 0, "GraphBLASv5") ;
+        }
+        if (mx_type == NULL)
+        {
+            // check if it is a GraphBLASv4 struct
+            mx_type = mxGetField (pargin [0], 0, "GraphBLASv4") ;
+        }
+        if (mx_type == NULL)
+        {
+            // check if it is a GraphBLASv3 struct
+            mx_type = mxGetField (pargin [0], 0, "GraphBLAS") ;
+        }
+        CHECK_ERROR (mx_type == NULL, "invalid GraphBLAS struct") ;
 
         // get the scalar info
         mxArray *opaque = mxGetField (pargin [0], 0, "s") ;
-        CHECK_ERROR (opaque == NULL, "invalid GraphBLASv4 struct") ;
-        int64_t *s = mxGetInt64s (opaque) ;
+        CHECK_ERROR (opaque == NULL, "invalid GraphBLAS struct") ;
+        // use mxGetData (best for Octave, fine for MATLAB)
+        int64_t *s = (int64_t *) mxGetData (opaque) ;
         int64_t vlen = s [1] ;
         int64_t vdim = s [2] ;
         bool is_csc = (bool) (s [6]) ;
@@ -76,14 +94,14 @@ void mexFunction
     {
 
         //----------------------------------------------------------------------
-        // get the size of a MATLAB matrix
+        // get the size of a built-in matrix
         //----------------------------------------------------------------------
 
         nrows = (GrB_Index) mxGetM (pargin [0]) ;
         ncols = (GrB_Index) mxGetN (pargin [0]) ;
 
         //----------------------------------------------------------------------
-        // get the type of a MATLAB matrix, if requested
+        // get the type of a built-in matrix, if requested
         //----------------------------------------------------------------------
 
         if (nargout > 2)
@@ -103,10 +121,11 @@ void mexFunction
         // output is int64 to avoid flint overflow
         int64_t *p ;
         pargout [0] = mxCreateNumericMatrix (1, 1, mxINT64_CLASS, mxREAL) ;
-        p = mxGetInt64s (pargout [0]) ;
+        // use mxGetData (best for Octave, fine for MATLAB)
+        p = (int64_t *) mxGetData (pargout [0]) ;
         p [0] = (int64_t) nrows ;
         pargout [1] = mxCreateNumericMatrix (1, 1, mxINT64_CLASS, mxREAL) ;
-        p = mxGetInt64s (pargout [1]) ;
+        p = (int64_t *) mxGetData (pargout [1]) ;
         p [0] = (int64_t) ncols ;
     }
     else

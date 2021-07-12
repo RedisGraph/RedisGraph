@@ -1,6 +1,6 @@
-% SuiteSparse/GraphBLAS/GraphBLAS/test: testing GraphBLAS MATLAB interface
+% SuiteSparse/GraphBLAS/GraphBLAS/test: testing GraphBLAS interface
 %
-%  gbtest    - test GraphBLAS MATLAB interface
+%  gbtest    - test GraphBLAS interface
 %
 %  gbtest0   - test GrB.clear
 %  gbtest1   - test GrB
@@ -53,7 +53,7 @@
 %  gbtest48  - test GrB.apply
 %  gbtest49  - test GrB.prune
 %  gbtest50  - test GrB.ktruss and GrB.tricount
-%  gbtest51  - test GrB.tricount
+%  gbtest51  - test GrB.tricount and concatenate
 %  gbtest52  - test GrB.format
 %  gbtest53  - test GrB.monoidinfo
 %  gbtest54  - test GrB.compact
@@ -104,6 +104,19 @@
 %  gbtest99  - test performance of C=A'*B and C=A'
 %  gbtest00  - test GrB.bfs and plot (graph (G))
 %  gbtest100 - test GrB.ver and GrB.version
+%  gbtest101 - test loading of v3 GraphBLAS objects
+%  gbtest102 - test horzcat, vertcat, cat, cell2mat, mat2cell, num2cell
+%  gbtest103 - test iso matrices
+%  gbtest104 - test formats
+%  gbtest105 - test logical assignment with iso matrices
+%  gbtest106 - test build
+%  gbtest107 - test cell2mat error handling
+%  gbtest108 - test mat2cell
+%  gbtest109 - test num2cell
+%  gbtest110 - test argmax
+%  gbtest111 - test argmin
+%  gbtest112 - test load and save
+%  gbtest113 - test ones and eq
 %
 % Utilities and other tests:
 %
@@ -112,10 +125,11 @@
 %  gbtest_eq      - tests if A and B are equal, after dropping zeros.
 %  gbtest_perf1   - test A*x performance
 %  gbtest_perf2   - test A'*x performance
-%  gbtest_cast    - cast a MATLAB matrix to another type.
+%  gbtest_cast    - cast a built-in matrix to another type.
 %  gbtest_complex - return list of complex operators
 %  gbtest_err     - compare two matrices
+%  gb_contains    - same as contains (text, pattern)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 

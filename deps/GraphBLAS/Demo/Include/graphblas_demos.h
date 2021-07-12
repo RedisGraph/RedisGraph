@@ -55,55 +55,13 @@
 
 #include "GraphBLAS.h"
 #include "simple_rand.h"
-#include "simple_timer.h"
 #include "usercomplex.h"
 #include "prand.h"
-
-#ifdef MATLAB_MEX_FILE
-#include "mex.h"
-#include "matrix.h"
-#define malloc  mxMalloc
-#define free    mxFree
-#define calloc  mxCalloc
-#define realloc mxRealloc
-#endif
 
 #undef MIN
 #undef MAX
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
-
-GB_PUBLIC
-GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
-(
-    GrB_Vector *v_output,   // v [i] is the BFS level of node i in the graph
-    const GrB_Matrix A,     // input graph, treated as if boolean in semiring
-    GrB_Index s             // starting node of the BFS
-) ;
-
-GB_PUBLIC
-GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
-(
-    GrB_Vector *v_output,   // v [i] is the BFS level of node i in the graph
-    const GrB_Matrix A,     // input graph, treated as if boolean in semiring
-    GrB_Index s             // starting node of the BFS
-) ;
-
-GB_PUBLIC
-GrB_Info bfs6               // BFS of a graph (using apply)
-(
-    GrB_Vector *v_output,   // v [i] is the BFS level of node i in the graph
-    const GrB_Matrix A,     // input graph, treated as if boolean in semiring
-    GrB_Index s             // starting node of the BFS
-) ;
-
-GB_PUBLIC
-GrB_Info bfs6_check         // BFS of a graph (using apply)
-(
-    GrB_Vector *v_output,   // v [i] is the BFS level of node i in the graph
-    const GrB_Matrix A,     // input graph, treated as if boolean in semiring
-    GrB_Index s             // starting node of the BFS
-) ;
 
 GB_PUBLIC
 GrB_Info read_matrix        // read a double-precision matrix
@@ -159,7 +117,8 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
     int argc,               // command-line arguments
     char **argv,
     bool no_self_edges,     // if true, ensure the matrix has no self-edges
-    bool boolean            // if true, file is read as GrB_BOOL, else GrB_FP64
+    bool boolean,           // if true, file is read as GrB_BOOL, else GrB_FP64
+    bool spones             // if true, return all entries equal to 1
 ) ;
 
 GB_PUBLIC
@@ -178,18 +137,6 @@ GrB_Info triu               // C = triu (A,1)
 (
     GrB_Matrix *C_output,   // output matrix
     const GrB_Matrix A      // input matrix, boolean or double
-) ;
-
-GB_PUBLIC
-GrB_Info tricount           // count # of triangles
-(
-    int64_t *ntri,          // # of triangles in the graph
-    const int method,       // 0 to 4, see above
-    const GrB_Matrix A,     // adjacency matrix for methods 0, 1, and 2
-    const GrB_Matrix E,     // edge incidence matrix for method 0
-    const GrB_Matrix L,     // L=tril(A) for methods 2, 4, and 4
-    const GrB_Matrix U,     // U=triu(A) for methods 2, 3, and 5
-    double t [2]            // t [0]: multiply time, t [1]: reduce time
 ) ;
 
 GB_PUBLIC

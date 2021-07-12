@@ -56,7 +56,7 @@ void mexFunction
     if (!malloc_debug)
     {
         // normal usage
-        GB_cumsum (p, n, kresult, nthreads) ;
+        GB_cumsum (p, n, kresult, nthreads, NULL) ;
     }
     else
     {
@@ -64,7 +64,7 @@ void mexFunction
         // printf ("test cumsum with nmalloc: %d\n", nmalloc) ;
         GB_Global_malloc_debug_set (true) ;
         GB_Global_malloc_debug_count_set (nmalloc) ;
-        GB_cumsum (p, n, kresult, nthreads) ;
+        GB_cumsum (p, n, kresult, nthreads, NULL) ;
         GB_Global_malloc_debug_set (false) ;
     }
 

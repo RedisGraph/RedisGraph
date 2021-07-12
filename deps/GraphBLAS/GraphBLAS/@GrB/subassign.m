@@ -7,7 +7,7 @@ function C = subassign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %   The arguments are parsed according to their type.  Arguments
 %   with different types can appear in any order:
 %
-%       Cin, M, A:  2 or 3 GraphBLAS or MATLAB sparse/full matrices.
+%       Cin, M, A:  2 or 3 GraphBLAS or built-in sparse/full matrices.
 %                   The first three matrix inputs are Cin, M, and A.
 %                   If 2 matrix inputs are present, they are Cin and A.
 %       accum:      an optional string
@@ -45,7 +45,7 @@ function C = subassign (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % See also GrB.assign, GrB/subsasgn.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

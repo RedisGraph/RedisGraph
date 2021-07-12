@@ -7,7 +7,7 @@ function C = sprandsym (arg1, arg2)
 %
 % C = sprandsym (n,d) is an n-by-n symmetric random matrix with about n*n*d
 %   entries, with a normal distribution.  If d == inf, C is full.  To use
-%   this function instead of the built-in MATLAB sprandsym, use
+%   this function instead of the built-in sprandsym, use
 %   C = sprandsym (n,GrB(d)), or C = GrB.random (n,d,'symmetric','normal').
 %
 % For additional options, see GrB.random.
@@ -24,7 +24,7 @@ function C = sprandsym (arg1, arg2)
 % See also GrB/sprand, GrB/sprandn, GrB.random.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (nargin == 1)
     % C = sprandsym (G)

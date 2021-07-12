@@ -35,11 +35,12 @@ GrB_Info GrB_Matrix_resize      // change the size of a matrix
 }
 
 //------------------------------------------------------------------------------
-// GxB_Matrix_resize: deprecated
+// GxB_Matrix_resize: historical
 //------------------------------------------------------------------------------
 
 // This function now appears in the C API Specification as GrB_Matrix_resize.
-// The new name is preferred.
+// The new name is preferred.  The old name will be kept for historical
+// compatibility.
 
 GrB_Info GxB_Matrix_resize      // change the size of a matrix
 (

@@ -8,16 +8,14 @@
 //------------------------------------------------------------------------------
 
 // Not user-callable.  Implements the user-callable GrB_*_extract functions.
-
-// C<M> = accum (C, A (Rows,Cols)) or
-
-// C<M> = accum (C, AT(Rows,Cols)) where AT = A'
-
+//
+//      C<M> = accum (C, A (Rows,Cols)) or
+//      C<M> = accum (C, AT(Rows,Cols)) where AT = A'
+//
 // equivalently:
-
-// C<M> = accum (C, A(Rows,Cols) )
-
-// C<M> = accum (C, A(Cols,Rows)')
+//
+//      C<M> = accum (C, A(Rows,Cols) )
+//      C<M> = accum (C, A(Cols,Rows)')
 
 #include "GB_extract.h"
 #include "GB_subref.h"
@@ -60,7 +58,8 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     ASSERT_MATRIX_OK (A, "A input for GB_Matrix_extract", GB0) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
-    GB_OK (GB_compatible (C->type, C, M, accum, A->type, Context)) ;
+    GB_OK (GB_compatible (C->type, C, M, Mask_struct, accum, A->type,
+        Context)) ;
 
     // check the dimensions of C
     int64_t cnrows = GB_NROWS (C) ;
@@ -92,7 +91,7 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     }
 
     // quick return if an empty mask is complemented
-    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp, Mask_struct) ;
 
     // delete any lingering zombies and assemble any pending tuples
     GB_MATRIX_WAIT (M) ;        // cannot be jumbled
@@ -159,8 +158,11 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     // T = A (I,J)
     //--------------------------------------------------------------------------
 
-    GrB_Matrix T ;
-    GB_OK (GB_subref (&T, T_is_csc, A, I, ni, J, nj, false, Context)) ;
+    // TODO::: iso:  if accum is PAIR, extract T as iso
+
+    struct GB_Matrix_opaque T_header ;
+    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+    GB_OK (GB_subref (T, false, T_is_csc, A, I, ni, J, nj, false, Context)) ;
     ASSERT_MATRIX_OK (T, "T extracted", GB0) ;
     ASSERT (GB_JUMBLED_OK (T)) ;
 

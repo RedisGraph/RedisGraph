@@ -2,7 +2,7 @@ function gbtest63
 %GBTEST63 test GrB.incidence
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 rng ('default') ;
 
@@ -24,8 +24,10 @@ for trial = 1:2
         2 7 ] ;
         W = sparse (ij (:,1), ij (:,2), ones (12,1), 8, 8) ;
     else
-        load west0479 ; %#ok<*LOAD>
-        W = west0479 ;
+        % load west0479 ; %#ok<*LOAD>
+        % W = west0479 ;
+        load west0479_correct ; %#ok<*LOAD>
+        W = Problem.A ;
     end
 
     W = spones (GrB.offdiag (W)) ;

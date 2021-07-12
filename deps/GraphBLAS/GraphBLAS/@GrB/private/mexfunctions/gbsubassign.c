@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -20,7 +20,9 @@
 
 // Cin and A required.  See GrB.m for more details.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: C = GrB.subassign (Cin, M, accum, A, I, J, desc)"
 
 void mexFunction
 (
@@ -30,7 +32,6 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
-    gb_assign (nargout, pargout, nargin, pargin, true,
-        "usage: C = GrB.subassign (Cin, M, accum, A, I, J, desc)") ;
+    gb_assign (nargout, pargout, nargin, pargin, true, USAGE) ;
 }
 

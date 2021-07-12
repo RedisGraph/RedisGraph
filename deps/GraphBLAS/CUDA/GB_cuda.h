@@ -92,7 +92,8 @@ extern "C"
     #include "GB_cuda_buckets.h"
 extern "C"
 {
-    #include "GB_cuda_stringify.h"
+    #include "GB_stringify.h"
     
 }
 #endif
+

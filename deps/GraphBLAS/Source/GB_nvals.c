@@ -41,7 +41,7 @@ GrB_Info GB_nvals           // get the number of entries in a matrix
     ASSERT (GB_JUMBLED_OK (A)) ;
     ASSERT (!GB_PENDING (A)) ;
 
-    (*nvals) = GB_NNZ (A) - (A->nzombies) ;
+    (*nvals) = GB_nnz (A) - (A->nzombies) ;
     return (GrB_SUCCESS) ;
 }
 

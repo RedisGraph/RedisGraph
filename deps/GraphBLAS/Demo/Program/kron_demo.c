@@ -48,7 +48,6 @@ int main (int argc, char **argv)
     FILE *Afile = NULL, *Bfile = NULL, *Cfile = NULL ;
     double *X = NULL ;
     GrB_Info info ;
-    double tic [2], t ;
 
     OK (GrB_init (GrB_NONBLOCKING)) ;
     int nthreads ;
@@ -101,10 +100,8 @@ int main (int argc, char **argv)
 
     OK (GrB_Matrix_new (&C, GrB_FP64, anrows * bnrows, ancols * bncols)) ;
 
-    simple_tic (tic) ;
     OK (GrB_Matrix_kronecker_BinaryOp (C, NULL, NULL,
         GrB_TIMES_FP64, A, B, NULL)) ;
-    t = simple_toc (tic) ;
 
     OK (GrB_Matrix_free (&A)) ;
     OK (GrB_Matrix_free (&B)) ;
@@ -124,12 +121,10 @@ int main (int argc, char **argv)
     fprintf (stderr, "GraphBLAS GrB_kronecker:\n"
     "A: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
     "B: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
-    "C: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
-    "time: %g seconds, rate: nval(C)/t = %g million/sec\n",
+    "C: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n",
     anrows, ancols, anvals,
     bnrows, bncols, bnvals,
-    cnrows, cncols, cnvals,
-    t, 1e-6*((double) cnvals) / t) ;
+    cnrows, cncols, cnvals) ;
 
     //--------------------------------------------------------------------------
     // write C to the output file
@@ -152,7 +147,8 @@ int main (int argc, char **argv)
 
     for (int64_t k = 0 ; k < cnvals ; k++)
     {
-        fprintf (Cfile, "%" PRIu64 "\t%" PRIu64 "\t%.17g\n", 1 + I [k], 1 + J [k], X [k]) ;
+        fprintf (Cfile, "%" PRIu64 "\t%" PRIu64 "\t%.17g\n",
+            1 + I [k], 1 + J [k], X [k]) ;
     }
 
     FREE_ALL ;

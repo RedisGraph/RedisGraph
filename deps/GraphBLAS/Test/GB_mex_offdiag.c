@@ -78,7 +78,7 @@ void mexFunction
     // C = offdiag (A,k)
     METHOD (GxB_Matrix_select_(C, NULL, NULL, GxB_OFFDIAG, A, Thunk, NULL)) ;
 
-    // return C to MATLAB as a regular MATLAB sparse matrix
+    // return C as a regular built-in sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C offdiag", false) ;
 
     FREE_ALL ;

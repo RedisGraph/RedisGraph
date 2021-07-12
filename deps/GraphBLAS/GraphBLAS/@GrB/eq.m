@@ -1,15 +1,15 @@
 function C = eq (A, B)
 %A == B equal.
-% C = (A == B) is an element-by-element comparison of A and B.  One or
+% C = (A == B) compares A and B element-by-element.  One or
 % both may be scalars.  Otherwise, A and B must have the same size.
 %
-% The input matrices may be either GraphBLAS and/or MATLAB matrices, in
+% The input matrices may be either GraphBLAS and/or built-in matrices, in
 % any combination.  C is returned as a GraphBLAS matrix.
 %
 % See also GrB/lt, GrB/le, GrB/gt, GrB/ge, GrB/ne.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % The pattern of C depends on the type of inputs:
 % A scalar, B scalar:  C is scalar.

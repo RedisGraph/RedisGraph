@@ -7,8 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// This is for testing only.  See GrB_eWiseAdd instead.  Returns a plain MATLAB
-// matrix, in double.
+// This is for testing only.  See GrB_eWiseAdd instead.  Returns a plain
+// built-in matrix, in double.
 
 #include "GB_mex.h"
 
@@ -30,13 +30,12 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
-    // double tic2 [2] ;
-    // simple_tic (tic2) ;
+    struct GB_Matrix_opaque C_header ;
+    GrB_Matrix C = GB_clear_static_header (&C_header) ;
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     GrB_Matrix B = NULL ;
-    GrB_Matrix C = NULL ;
     GrB_BinaryOp op = NULL ;
 
     GB_CONTEXT (USAGE) ;
@@ -71,10 +70,10 @@ void mexFunction
 
     // C<B> = A+B using the op.  M == B alias
     bool ignore ;
-    METHOD (GB_add (&C, A->type, true, B, false, false, &ignore, A, B, op,
+    METHOD (GB_add (C, A->type, true, B, false, false, &ignore, A, B, op,
         Context)) ;
 
-    // return C to MATLAB as a plain sparse matrix
+    // return C as a plain sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C<B>=A+B result", false) ;
 
     FREE_ALL ;

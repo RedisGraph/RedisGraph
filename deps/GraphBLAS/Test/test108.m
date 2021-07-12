@@ -18,7 +18,7 @@ ops = {
 'times',     % z = x * y
 % 'div',       % z = x / y
 % 'rdiv',      % z = y / x
-% 6 comparison operators where x,y,z are all the same class
+% 6 comparators where x,y,z are all the same class
 'iseq',      % z = (x == y)
 'isne',      % z = (x != y)
 % 'isgt',      % z = (x >  y)
@@ -30,7 +30,7 @@ ops = {
 'and',       % z = x && y
 'xor'        % z = x != y
 %----------------------------
-% 6 comparison operators where x,y are all the same class, z is logical
+% 6 comparators where x,y are all the same class, z is logical
 'eq',        % z = (x == y)
 'ne',        % z = (x != y)
 % 'gt',        % z = (x >  y)
@@ -79,7 +79,7 @@ for d = 0:10
                     identity = logical (id) ;
                     result = GB_mex_reduce_bool (A, op, identity) ;
 
-                    % now compute in MATLAB
+                    % now compute with built-in methods
 
                     % known identity values
                     z = identity ;
@@ -94,7 +94,7 @@ for d = 0:10
                     if (isequal (op, 'times'))    z = true          ; end   % and
                     if (isequal (op, 'div'))      z = identity      ; end   % first
                     if (isequal (op, 'rdiv'))     z = identity      ; end   % second
-                    % 6 comparison operators where x,y,z are all the same class
+                    % 6 comparators where x,y,z are all the same class
                     if (isequal (op, 'iseq'))     z = true          ; end   % eq
                     if (isequal (op, 'isne'))     z = false         ; end   % xor
                     if (isequal (op, 'isgt'))     z = identity      ; end   % gt
@@ -106,7 +106,7 @@ for d = 0:10
                     if (isequal (op, 'and'))      z = true          ; end
                     if (isequal (op, 'xor'))      z = false         ; end
                     %----------------------------
-                    % 6 comparison operators where x,y are all the same class, z is logical
+                    % 6 comparators where x,y are all the same class, z is logical
                     if (isequal (op, 'eq'))       z = true          ; end
                     if (isequal (op, 'ne'))       z = false         ; end   % xor
                     if (isequal (op, 'gt'))       z = identity      ; end
@@ -129,7 +129,7 @@ for d = 0:10
                         if (isequal (op, 'times'))    z = x * y         ; end
                         if (isequal (op, 'div'))      z = x             ; end   % boolean division == first
                         if (isequal (op, 'rdiv'))     z = y             ; end   % boolean division == second
-                        % 6 comparison operators where x,y,z are all the same class
+                        % 6 comparators where x,y,z are all the same class
                         if (isequal (op, 'iseq'))     z = (x == y)      ; end
                         if (isequal (op, 'isne'))     z = (x ~= y)      ; end
                         if (isequal (op, 'isgt'))     z = (x >  y)      ; end
@@ -141,7 +141,7 @@ for d = 0:10
                         if (isequal (op, 'and'))      z = x && y        ; end
                         if (isequal (op, 'xor'))      z = xor(x,y)      ; end
                         %----------------------------
-                        % 6 comparison operators where x,y are all the same class, z is logical
+                        % 6 comparators where x,y are all the same class, z is logical
                         if (isequal (op, 'eq'))       z = (x == y)      ; end
                         if (isequal (op, 'ne'))       z = (x ~= y)      ; end
                         if (isequal (op, 'gt'))       z = (x >  y)      ; end

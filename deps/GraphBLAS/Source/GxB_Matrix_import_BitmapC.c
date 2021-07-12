@@ -16,10 +16,11 @@ GrB_Info GxB_Matrix_import_BitmapC  // import a bitmap matrix, held by column
     GrB_Index nrows,    // number of rows of the matrix
     GrB_Index ncols,    // number of columns of the matrix
 
-    int8_t **Ab,        // bitmap, Ab_size >= nrows*ncols
-    void **Ax,          // values, Ax_size 1, or >= nrows*ncols
-    GrB_Index Ab_size,  // size of Ab
-    GrB_Index Ax_size,  // size of Ax
+    int8_t **Ab,        // bitmap
+    void **Ax,          // values
+    GrB_Index Ab_size,  // size of Ab in bytes
+    GrB_Index Ax_size,  // size of Ax in bytes
+    bool iso,           // if true, A is iso
 
     GrB_Index nvals,    // # of entries in bitmap
     const GrB_Descriptor desc
@@ -31,7 +32,7 @@ GrB_Info GxB_Matrix_import_BitmapC  // import a bitmap matrix, held by column
     //--------------------------------------------------------------------------
 
     GB_WHERE1 ("GxB_Matrix_import_BitmapC (&A, type, nrows, ncols, "
-        "&Ab, &Ax, Ab_size, Ax_size, nvals, desc)") ;
+        "&Ab, &Ax, Ab_size, Ax_size, iso, nvals, desc)") ;
     GB_BURBLE_START ("GxB_Matrix_import_BitmapC") ;
     GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
 
@@ -39,14 +40,15 @@ GrB_Info GxB_Matrix_import_BitmapC  // import a bitmap matrix, held by column
     // import the matrix
     //--------------------------------------------------------------------------
 
-    info = GB_import (A, type, nrows, ncols,
+    info = GB_import (false, A, type, nrows, ncols, false,
         NULL, 0,        // Ap
         NULL, 0,        // Ah
         Ab,   Ab_size,  // Ab
         NULL, 0,        // Ai
         Ax,   Ax_size,  // Ax
         nvals, false, 0,                    // nvals for bitmap
-        GxB_BITMAP, true, Context) ;        // bitmap by col
+        GxB_BITMAP, true,                   // bitmap by col
+        iso, Context) ;
 
     GB_BURBLE_END ;
     return (info) ;

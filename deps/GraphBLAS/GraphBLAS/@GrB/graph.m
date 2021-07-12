@@ -1,9 +1,9 @@
 function Graph = graph (G, varargin)
-%GRAPH convert a GraphBLAS matrix into a MATLAB undirected Graph.
-% Graph = graph (G) converts a GraphBLAS matrix G into an undirected MATLAB
+%GRAPH convert a GraphBLAS matrix into a undirected Graph.
+% Graph = graph (G) converts a GraphBLAS matrix G into an undirected
 % Graph.  G is assumed to be symmetric; only tril (G) is used by default.
 % G must be square.  If G is logical, then no weights are added to the
-% Graph.  If G is single or double, these become the weights of the MATLAB
+% Graph.  If G is single or double, these become the weights of the
 % Graph.  If G is integer, the Graph is constructed with weights of type
 % double.
 %
@@ -12,7 +12,7 @@ function Graph = graph (G, varargin)
 % The default is 'lower'.
 %
 % Graph = graph (G, ..., 'omitselfloops') ignores the diagonal of G, and
-% the resulting MATLAB Graph has no self-edges.  The default is that
+% the resulting Graph has no self-edges.  The default is that
 % self-edges are created from any diagonal entries of G.
 %
 % Example:
@@ -24,7 +24,7 @@ function Graph = graph (G, varargin)
 % See also graph, digraph, GrB/digraph.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 
@@ -70,20 +70,20 @@ switch (type)
 
     case { 'single' }
 
-        % The MATLAB graph(...) function can accept x as single, but not
-        % from a MATLAB sparse matrix.  So extract the tuples of G first.
+        % The graph(...) function can accept x as single, but not
+        % from a built-in sparse matrix.  So extract the tuples of G first.
         [i, j, x] = gbextracttuples (G) ;
         Graph = graph (i, j, x, n) ;
 
     case { 'logical' }
 
-        % The MATLAB digraph(...) function allows for logical
+        % The digraph(...) function allows for logical
         % adjacency matrices (no edge weights are created).
-        Graph = graph (gbmatlab (G, 'logical'), side) ;
+        Graph = graph (gbbuiltin (G, 'logical'), side) ;
 
     otherwise
 
         % typecast to double
-        Graph = graph (gbmatlab (G, 'double'), side) ;
+        Graph = graph (gbbuiltin (G, 'double'), side) ;
 end
 

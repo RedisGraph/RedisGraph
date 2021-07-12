@@ -15,8 +15,9 @@
 
 // the macro version of this function must first be #undefined
 #undef GrB_BinaryOp_new
+#undef GrM_BinaryOp_new
 
-GrB_Info GrB_BinaryOp_new
+GrB_Info GRB (BinaryOp_new)
 (
     GrB_BinaryOp *binaryop,         // handle for the new binary operator
     GxB_binary_function function,   // pointer to the binary function

@@ -7,32 +7,34 @@
 
 //------------------------------------------------------------------------------
 
-// Free all the content of a matrix.  After GB_Matrix_free (&A), A is set to
-// NULL.
+// Free all the content of a matrix.  After GB_Matrix_free (&A), the header A
+// is freed and set to NULL if the header of A was originally dynamically
+// allocated.  Otherwise, A is not freed.
 
 #include "GB.h"
 
 void GB_Matrix_free             // free a matrix
 (
-    GrB_Matrix *matrix          // handle of matrix to free
+    GrB_Matrix *Ahandle         // handle of matrix to free
 )
 {
 
-    if (matrix != NULL)
+    if (Ahandle != NULL)
     {
-        GrB_Matrix A = *matrix ;
+        GrB_Matrix A = *Ahandle ;
         if (A != NULL && (A->magic == GB_MAGIC || A->magic == GB_MAGIC2))
-        { 
+        {
             // free all content of A
+            size_t header_size = A->header_size ;
             GB_phbix_free (A) ;
-            // #include "GB_Matrix_free_mkl_template.c
-            // free the error logger string
-            GB_FREE (A->logger) ;
-            // free the header of A itself
-            A->magic = GB_FREED ;      // to help detect dangling pointers
-            GB_FREE (*matrix) ;
+            if (!(A->static_header))
+            { 
+                // free the header of A itself, unless it is static
+                A->magic = GB_FREED ;       // to help detect dangling pointers
+                GB_FREE (Ahandle, header_size) ;
+                (*Ahandle) = NULL ;
+            }
         }
-        (*matrix) = NULL ;
     }
 }
 

@@ -82,7 +82,7 @@ for k1 = 1:length(types)
     for k2 = 1:length(select_ops)
         op = select_ops {k2} ;
 
-        if (contains (atype, 'complex'))
+        if (test_contains (atype, 'complex'))
             switch (op)
                 case { 'gt_zero', 'ge_zero', 'lt_zero', 'le_zero', ...
                        'gt_thunk', 'ge_thunk', 'lt_thunk', 'le_thunk' }

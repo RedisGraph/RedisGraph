@@ -24,8 +24,10 @@
 
 #include "GB_bitmap_assign_methods.h"
 
-#define GB_FREE_ALL \
-    GB_ek_slice_free (&pstart_Mslice, &kfirst_Mslice, &klast_Mslice) ;
+#define GB_FREE_ALL                         \
+{                                           \
+    GB_WERK_POP (M_ek_slicing, int64_t) ;   \
+}
 
 GrB_Info GB_bitmap_assign_M_accum_whole
 (
@@ -70,7 +72,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
     //--------------------------------------------------------------------------
 
     if (A == NULL)
-    { 
+    {
 
         //----------------------------------------------------------------------
         // scalar assignment: C<M, replace or !replace> += scalar
@@ -86,8 +88,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
             // Cb [pC] += 2 for each entry M(i,j) in the mask
             GB_bitmap_M_scatter_whole (C,
                 M, Mask_struct, GB_BITMAP_M_SCATTER_PLUS_2,
-                pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                M_nthreads, M_ntasks, Context) ;
+                M_ek_slicing, M_ntasks, M_nthreads, Context) ;
             // the bitmap of C now contains:
             //  Cb (i,j) = 0:   cij not present, mij zero
             //  Cb (i,j) = 1:   cij present, mij zero
@@ -151,7 +152,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
 
     }
     else
-    { 
+    {
 
         //----------------------------------------------------------------------
         // matrix assignment: C<M, replace or !replace> += A
@@ -165,7 +166,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
             //------------------------------------------------------------------
 
             if (C_replace)
-            {
+            { 
 
                 //--------------------------------------------------------------
                 // C<M, replace> += A where A is bitmap or full
@@ -174,8 +175,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
                 // Cb [pC] += 2 for each entry M(i,j) in the mask
                 GB_bitmap_M_scatter_whole (C,
                     M, Mask_struct, GB_BITMAP_M_SCATTER_PLUS_2,
-                    pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                    M_nthreads, M_ntasks, Context) ;
+                    M_ek_slicing, M_ntasks, M_nthreads, Context) ;
                 // the bitmap of C now contains:
                 //  Cb (i,j) = 0:   cij not present, mij zero
                 //  Cb (i,j) = 1:   cij present, mij zero
@@ -221,7 +221,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
 
             }
             else
-            {
+            { 
 
                 //--------------------------------------------------------------
                 // C<M> += A where A is bitmap or full
@@ -263,8 +263,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
             // Cb [pC] += 2 for each entry M(i,j) in the mask
             GB_bitmap_M_scatter_whole (C,
                 M, Mask_struct, GB_BITMAP_M_SCATTER_PLUS_2,
-                pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                M_nthreads, M_ntasks, Context) ;
+                M_ek_slicing, M_ntasks, M_nthreads, Context) ;
             // the bitmap of C now contains:
             //  Cb (i,j) = 0:   cij not present, mij zero
             //  Cb (i,j) = 1:   cij present, mij zero
@@ -312,8 +311,7 @@ GrB_Info GB_bitmap_assign_M_accum_whole
                 // Cb [pC] -= 2 for each entry M(i,j) in the mask
                 GB_bitmap_M_scatter_whole (C,
                     M, Mask_struct, GB_BITMAP_M_SCATTER_MINUS_2,
-                    pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                    M_nthreads, M_ntasks, Context) ;
+                    M_ek_slicing, M_ntasks, M_nthreads, Context) ;
             }
         }
     }

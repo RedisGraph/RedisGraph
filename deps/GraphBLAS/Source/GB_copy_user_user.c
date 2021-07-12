@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_copy_user_user.c: copy user a type
+// GB_copy_user_user.c: copy a user type
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.

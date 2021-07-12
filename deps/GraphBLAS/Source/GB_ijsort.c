@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// Sort an index array and remove duplicates.  In MATLAB notation:
+// Sort an index array and remove duplicates:
 
 /*
     [I1 I1k] = sort (I) ;
@@ -19,20 +19,20 @@
 #include "GB_ij.h"
 #include "GB_sort.h"
 
-#define GB_FREE_WORK    \
-{                       \
-    GB_FREE (Count) ;   \
-    GB_FREE (I1) ;      \
-    GB_FREE (I1k) ;     \
+#define GB_FREE_WORK                    \
+{                                       \
+    GB_FREE_WERK (&Work, Work_size) ;   \
 }
 
 GrB_Info GB_ijsort
 (
-    const GrB_Index *GB_RESTRICT I, // size ni, where ni > 1 always holds
-    int64_t *GB_RESTRICT p_ni,      // : size of I, output: # of indices in I2
-    GrB_Index *GB_RESTRICT *p_I2,   // size ni2, where I2 [0..ni2-1]
+    const GrB_Index *restrict I, // size ni, where ni > 1 always holds
+    int64_t *restrict p_ni,      // : size of I, output: # of indices in I2
+    GrB_Index *restrict *p_I2,   // size ni2, where I2 [0..ni2-1]
                         // contains the sorted indices with duplicates removed.
-    GrB_Index *GB_RESTRICT *p_I2k,  // output array of size ni2
+    size_t *I2_size_handle,
+    GrB_Index *restrict *p_I2k,  // output array of size ni2
+    size_t *I2k_size_handle,
     GB_Context Context
 )
 {
@@ -41,6 +41,7 @@ GrB_Info GB_ijsort
     // check inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     ASSERT (I != NULL) ;
     ASSERT (p_ni != NULL) ;
     ASSERT (p_I2 != NULL) ;
@@ -50,13 +51,11 @@ GrB_Info GB_ijsort
     // get inputs
     //--------------------------------------------------------------------------
 
-    GrB_Index *GB_RESTRICT I1  = NULL ;
-    GrB_Index *GB_RESTRICT I1k = NULL ;
-    GrB_Index *GB_RESTRICT I2  = NULL ;
-    GrB_Index *GB_RESTRICT I2k = NULL ;
+    GrB_Index *Work = NULL ; size_t Work_size = 0 ;
+    GrB_Index *restrict I2  = NULL ; size_t I2_size = 0 ;
+    GrB_Index *restrict I2k = NULL ; size_t I2k_size = 0 ;
     int64_t ni = *p_ni ;
     ASSERT (ni > 1) ;
-    int64_t *GB_RESTRICT Count = NULL ;        // size ntasks+1
     int ntasks = 0 ;
 
     //--------------------------------------------------------------------------
@@ -67,17 +66,27 @@ GrB_Info GB_ijsort
     int nthreads = GB_nthreads (ni, chunk, nthreads_max) ;
 
     //--------------------------------------------------------------------------
+    // determine number of tasks to create
+    //--------------------------------------------------------------------------
+
+    ntasks = (nthreads == 1) ? 1 : (32 * nthreads) ;
+    ntasks = GB_IMIN (ntasks, ni) ;
+    ntasks = GB_IMAX (ntasks, 1) ;
+
+    //--------------------------------------------------------------------------
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    I1  = GB_MALLOC (ni, GrB_Index) ;
-    I1k = GB_MALLOC (ni, GrB_Index) ;
-    if (I1 == NULL || I1k == NULL)
+    Work = GB_MALLOC_WERK (2*ni + ntasks + 1, GrB_Index, &Work_size) ;
+    if (Work == NULL)
     { 
         // out of memory
-        GB_FREE_WORK ;
         return (GrB_OUT_OF_MEMORY) ;
     }
+
+    GrB_Index *restrict I1  = Work ;                         // size ni
+    GrB_Index *restrict I1k = Work + ni ;                    // size ni
+    int64_t *restrict Count = (int64_t *) (Work + 2*ni) ;    // size ntasks+1
 
     //--------------------------------------------------------------------------
     // copy I into I1 and construct I1k
@@ -99,22 +108,8 @@ GrB_Info GB_ijsort
     // sort [I1 I1k]
     //--------------------------------------------------------------------------
 
-    GB_msort_2b ((int64_t *) I1, (int64_t *) I1k, ni, nthreads) ;
-
-    //--------------------------------------------------------------------------
-    // determine number of tasks to create
-    //--------------------------------------------------------------------------
-
-    ntasks = (nthreads == 1) ? 1 : (32 * nthreads) ;
-    ntasks = GB_IMIN (ntasks, ni) ;
-    ntasks = GB_IMAX (ntasks, 1) ;
-
-    //--------------------------------------------------------------------------
-    // allocate workspace
-    //--------------------------------------------------------------------------
-
-    Count = GB_MALLOC (ntasks+1, int64_t) ;
-    if (Count == NULL)
+    info = GB_msort_2 ((int64_t *) I1, (int64_t *) I1k, ni, nthreads) ;
+    if (info != GrB_SUCCESS)
     { 
         // out of memory
         GB_FREE_WORK ;
@@ -141,21 +136,21 @@ GrB_Info GB_ijsort
         Count [tid] = my_count ;
     }
 
-    GB_cumsum (Count, ntasks, NULL, 1) ;
+    GB_cumsum (Count, ntasks, NULL, 1, NULL) ;
     int64_t ni2 = Count [ntasks] ;
 
     //--------------------------------------------------------------------------
     // allocate the result I2
     //--------------------------------------------------------------------------
 
-    I2  = GB_MALLOC (ni2, GrB_Index) ;
-    I2k = GB_MALLOC (ni2, GrB_Index) ;
+    I2  = GB_MALLOC_WERK (ni2, GrB_Index, &I2_size) ;
+    I2k = GB_MALLOC_WERK (ni2, GrB_Index, &I2k_size) ;
     if (I2 == NULL || I2k == NULL)
     { 
         // out of memory
         GB_FREE_WORK ;
-        GB_FREE (I2) ;
-        GB_FREE (I2k) ;
+        GB_FREE_WERK (&I2, I2_size) ;
+        GB_FREE_WERK (&I2k, I2k_size) ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
@@ -217,10 +212,9 @@ GrB_Info GB_ijsort
     //--------------------------------------------------------------------------
 
     GB_FREE_WORK ;
-    *(p_I2 ) = (GrB_Index *) I2 ;
-    *(p_I2k) = (GrB_Index *) I2k ;
+    *(p_I2 ) = (GrB_Index *) I2  ; (*I2_size_handle ) = I2_size ;
+    *(p_I2k) = (GrB_Index *) I2k ; (*I2k_size_handle) = I2k_size ;
     *(p_ni ) = (int64_t    ) ni2 ;
-
     return (GrB_SUCCESS) ;
 }
 

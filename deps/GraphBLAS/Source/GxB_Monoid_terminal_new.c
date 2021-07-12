@@ -14,7 +14,7 @@
 #include "GB.h"
 
 #define GB_MONOID_TERMINAL_NEW(type,T)                                      \
-GrB_Info GxB_Monoid_terminal_new_ ## T   /* create a new monoid */          \
+GrB_Info GB_EVAL2 (GXB (Monoid_terminal_new_), T) /* create a new monoid */ \
 (                                                                           \
     GrB_Monoid *monoid,             /* handle of monoid to create    */     \
     GrB_BinaryOp op,                /* binary operator of the monoid */     \

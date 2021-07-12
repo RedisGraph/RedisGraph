@@ -17,14 +17,14 @@
 
 #define USAGE "C = GB_mex_export_import (A, format_matrix, format_export)"
 
-#define FREE_WORK                       \
-{                                       \
-    GB_FREE (Cp) ;                      \
-    GB_FREE (Ch) ;                      \
-    GB_FREE (Ci) ;                      \
-    GB_FREE (Cx) ;                      \
-    GB_FREE (Cb) ;                      \
-    GrB_Matrix_free_(&C) ;              \
+#define FREE_WORK                                               \
+{                                                               \
+    REMOVE (Cp) ; if (Cp != NULL) mxFree (Cp) ; Cp = NULL ;     \
+    REMOVE (Ch) ; if (Ch != NULL) mxFree (Ch) ; Ch = NULL ;     \
+    REMOVE (Cb) ; if (Cb != NULL) mxFree (Cb) ; Cb = NULL ;     \
+    REMOVE (Ci) ; if (Ci != NULL) mxFree (Ci) ; Ci = NULL ;     \
+    REMOVE (Cx) ; if (Cx != NULL) mxFree (Cx) ; Cx = NULL ;     \
+    GrB_Matrix_free_(&C) ;                                      \
 }
 
 #define FREE_ALL                        \
@@ -52,12 +52,12 @@ int8_t *Cb = NULL ;
 GB_Context Context = NULL ;
 GrB_Index nvec = 0, nvals = 0, nrows = 0, ncols = 0 ;
 
+GrB_Index Cp_size = 0 ;
+GrB_Index Ch_size = 0 ;
+GrB_Index Cb_size = 0 ;
 GrB_Index Ci_size = 0 ;
 GrB_Index Cx_size = 0 ;
-GrB_Index Cp_size = 0 ;
-GrB_Index Cj_size = 0 ;
-GrB_Index Cb_size = 0 ;
-GrB_Index Ch_size = 0 ;
+bool iso = false ;
 
 int64_t ignore = -1 ;
 bool jumbled = false ;
@@ -128,7 +128,7 @@ void mexFunction
         METHOD (vector_export_import (format_matrix, format_export)) ;
     }
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
     FREE_ALL ;
 }
@@ -246,10 +246,12 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSR (&C, &type, &nrows, &ncols,
-                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, &jumbled, NULL)) ;
+                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, &iso,
+                &jumbled, NULL)) ;
 
             OK (GxB_Matrix_import_CSR (&C, type, nrows, ncols,
-                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, jumbled, NULL)) ;
+                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso,
+                jumbled, NULL)) ;
 
             break ;
 
@@ -258,10 +260,12 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSC (&C, &type, &nrows, &ncols,
-                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, &jumbled, NULL)) ;
+                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, &iso,
+                &jumbled, NULL)) ;
 
             OK (GxB_Matrix_import_CSC (&C, type, nrows, ncols,
-                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, jumbled, NULL)) ;
+                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso,
+                jumbled, NULL)) ;
 
             break ;
 
@@ -270,11 +274,13 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSR (&C, &type, &nrows, &ncols,
-                &Cp, &Ch, &Ci, &Cx, &Cp_size, &Ch_size, &Ci_size, &Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                &Cp_size, &Ch_size, &Ci_size, &Cx_size, &iso,
                 &nvec, &jumbled, NULL)) ;
 
             OK (GxB_Matrix_import_HyperCSR (&C, type, nrows, ncols,
-                &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, jumbled, NULL)) ;
 
             break ;
@@ -284,11 +290,13 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSC (&C, &type, &nrows, &ncols,
-                &Cp, &Ch, &Ci, &Cx, &Cp_size, &Ch_size, &Ci_size, &Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                &Cp_size, &Ch_size, &Ci_size, &Cx_size, &iso,
                 &nvec, &jumbled, NULL)) ;
 
             OK (GxB_Matrix_import_HyperCSC (&C, type, nrows, ncols,
-                &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, jumbled, NULL)) ;
 
             break ;
@@ -298,10 +306,10 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_BitmapR (&C, &type, &nrows, &ncols,
-                &Cb, &Cx, &Cb_size, &Cx_size, &nvals, NULL)) ;
+                &Cb, &Cx, &Cb_size, &Cx_size, &iso, &nvals, NULL)) ;
 
             OK (GxB_Matrix_import_BitmapR (&C, type, nrows, ncols,
-                &Cb, &Cx, Cb_size, Cx_size, nvals, NULL)) ;
+                &Cb, &Cx, Cb_size, Cx_size, iso, nvals, NULL)) ;
 
             break ;
 
@@ -310,10 +318,10 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_BitmapC (&C, &type, &nrows, &ncols,
-                &Cb, &Cx, &Cb_size, &Cx_size, &nvals, NULL)) ;
+                &Cb, &Cx, &Cb_size, &Cx_size, &iso, &nvals, NULL)) ;
 
             OK (GxB_Matrix_import_BitmapC (&C, type, nrows, ncols,
-                &Cb, &Cx, Cb_size, Cx_size, nvals, NULL)) ;
+                &Cb, &Cx, Cb_size, Cx_size, iso, nvals, NULL)) ;
 
             break ;
 
@@ -322,10 +330,10 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_FullR (&C, &type, &nrows, &ncols,
-                &Cx, &Cx_size, NULL)) ;
+                &Cx, &Cx_size, &iso, NULL)) ;
 
             OK (GxB_Matrix_import_FullR (&C, type, nrows, ncols,
-                &Cx, Cx_size, NULL)) ;
+                &Cx, Cx_size, iso, NULL)) ;
 
             break ;
 
@@ -334,10 +342,10 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_FullC (&C, &type, &nrows, &ncols,
-                &Cx, &Cx_size, NULL)) ;
+                &Cx, &Cx_size, &iso, NULL)) ;
 
             OK (GxB_Matrix_import_FullC (&C, type, nrows, ncols,
-                &Cx, Cx_size, NULL)) ;
+                &Cx, Cx_size, iso, NULL)) ;
 
             break ;
 
@@ -346,10 +354,12 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSR (&C, &type, &nrows, &ncols,
-                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, NULL, NULL)) ;
+                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, &iso,
+                NULL, NULL)) ;
 
             OK (GxB_Matrix_import_CSR (&C, type, nrows, ncols,
-                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, false, NULL)) ;
+                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso,
+                false, NULL)) ;
 
             break ;
 
@@ -358,10 +368,12 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_CSC (&C, &type, &nrows, &ncols,
-                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, NULL, NULL)) ;
+                &Cp, &Ci, &Cx, &Cp_size, &Ci_size, &Cx_size, &iso,
+                NULL, NULL)) ;
 
             OK (GxB_Matrix_import_CSC (&C, type, nrows, ncols,
-                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, false, NULL)) ;
+                &Cp, &Ci, &Cx, Cp_size, Ci_size, Cx_size, iso,
+                false, NULL)) ;
 
             break ;
 
@@ -370,11 +382,13 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSR (&C, &type, &nrows, &ncols,
-                &Cp, &Ch, &Ci, &Cx, &Cp_size, &Ch_size, &Ci_size, &Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                &Cp_size, &Ch_size, &Ci_size, &Cx_size, &iso,
                 &nvec, NULL, NULL)) ;
 
             OK (GxB_Matrix_import_HyperCSR (&C, type, nrows, ncols,
-                &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, false, NULL)) ;
 
             break ;
@@ -384,11 +398,13 @@ GrB_Info export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Matrix_export_HyperCSC (&C, &type, &nrows, &ncols,
-                &Cp, &Ch, &Ci, &Cx, &Cp_size, &Ch_size, &Ci_size, &Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                &Cp_size, &Ch_size, &Ci_size, &Cx_size, &iso,
                 &nvec, NULL, NULL)) ;
 
             OK (GxB_Matrix_import_HyperCSC (&C, type, nrows, ncols,
-                &Cp, &Ch, &Ci, &Cx, Cp_size, Ch_size, Ci_size, Cx_size,
+                &Cp, &Ch, &Ci, &Cx,
+                Cp_size, Ch_size, Ci_size, Cx_size, iso,
                 nvec, false, NULL)) ;
 
             break ;
@@ -494,10 +510,12 @@ GrB_Info vector_export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Vector_export_CSC ((GrB_Vector *) &C, &type, &nrows,
-                &Ci, &Cx, &Ci_size, &Cx_size, &nvals, &jumbled, NULL)) ;
+                &Ci, &Cx, &Ci_size, &Cx_size, &iso,
+                &nvals, &jumbled, NULL)) ;
 
             OK (GxB_Vector_import_CSC ((GrB_Vector *) &C, type, nrows,
-                &Ci, &Cx, Ci_size, Cx_size, nvals, jumbled, NULL)) ;
+                &Ci, &Cx, Ci_size, Cx_size, iso,
+                nvals, jumbled, NULL)) ;
 
             break ;
 
@@ -524,10 +542,10 @@ GrB_Info vector_export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Vector_export_Bitmap ((GrB_Vector *) &C, &type, &nrows,
-                &Cb, &Cx, &Cb_size, &Cx_size, &nvals, NULL)) ;
+                &Cb, &Cx, &Cb_size, &Cx_size, &iso, &nvals, NULL)) ;
 
             OK (GxB_Vector_import_Bitmap ((GrB_Vector *) &C, type, nrows,
-                &Cb, &Cx, Cb_size, Cx_size, nvals, NULL)) ;
+                &Cb, &Cx, Cb_size, Cx_size, iso, nvals, NULL)) ;
 
             break ;
 
@@ -542,10 +560,10 @@ GrB_Info vector_export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Vector_export_Full ((GrB_Vector *) &C, &type, &nrows,
-                &Cx, &Cx_size, NULL)) ;
+                &Cx, &Cx_size, &iso, NULL)) ;
 
             OK (GxB_Vector_import_Full ((GrB_Vector *) &C, type, nrows,
-                &Cx, Cx_size, NULL)) ;
+                &Cx, Cx_size, iso, NULL)) ;
 
             break ;
 
@@ -560,10 +578,12 @@ GrB_Info vector_export_import
         //----------------------------------------------------------------------
 
             OK (GxB_Vector_export_CSC ((GrB_Vector *) &C, &type, &nrows,
-                &Ci, &Cx, &Ci_size, &Cx_size, &nvals, NULL, NULL)) ;
+                &Ci, &Cx, &Ci_size, &Cx_size, &iso,
+                &nvals, NULL, NULL)) ;
 
             OK (GxB_Vector_import_CSC ((GrB_Vector *) &C, type, nrows,
-                &Ci, &Cx, Ci_size, Cx_size, nvals, false, NULL)) ;
+                &Ci, &Cx, Ci_size, Cx_size, iso,
+                nvals, false, NULL)) ;
 
             break ;
 

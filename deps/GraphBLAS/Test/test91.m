@@ -8,7 +8,7 @@ fprintf ('\n------------------------------ testing GB_mex_Matrix_subref\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 ntrials = 10 ;
@@ -34,14 +34,14 @@ for ilen = [1 10 100 1000 10000 100000 1e6]
         C1 = A (I) ;
     end
     tm = toc ;
-    fprintf ('MATLAB sparse: %g sec\n', tm) ;
+    fprintf ('built-in sparse: %g sec\n', tm) ;
 
     tic
     for trials = 1:ntrials
         Cfull = F (I) ;
     end
     tf = toc ;
-    fprintf ('MATLAB full:   %g sec\n', tf) ;
+    fprintf ('built-in full:   %g sec\n', tf) ;
 
     J0 = uint64 (0) ;
 
@@ -62,7 +62,7 @@ for trials = 1:ntrials
     C1 = A (:) ;
 end
 tm = toc ;
-fprintf ('MATLAB:        %g\n', tm) ;
+fprintf ('built-in:        %g\n', tm) ;
 
 tic
 for trials = 1:ntrials
@@ -80,6 +80,6 @@ for trials = 1:ntrials
     C0 (1) = 1 ;    % make sure the copy gets done, not a lazy copy
 end
 tf = toc ;
-fprintf ('\nMATLAB (full): %g\n', tf) ;
+fprintf ('\nbuilt-in (full): %g\n', tf) ;
 
 nthreads_set (save, save_chunk) ;

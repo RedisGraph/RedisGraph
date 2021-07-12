@@ -1,7 +1,7 @@
 function result = nonz (A, varargin)
 %GRB.NONZ count or query the nonzeros of a matrix.
 % A GraphBLAS matrix can include explicit entries that have the value
-% zero.  These entries never appear in a MATLAB sparse matrix.  This
+% zero.  These entries never appear in a built-in sparse matrix.  This
 % function counts or queries the nonzeros of matrix, checking their value
 % and treating explicit zeros the same as entries that do not appear in
 % the pattern of A.
@@ -32,13 +32,13 @@ function result = nonz (A, varargin)
 % 'zero' can be specified; d = GrB.nonz (A, ..., id).  For example, to
 % count all entries in A not equal to one, use GrB.nonz (A, 1).
 %
-% The result is a MATLAB scalar or vector, except for the 'degree'
+% The result is a built-in scalar or vector, except for the 'degree'
 % usage, in which case the result is a GrB vector d.
 %
 % Example:
 %
 %   A = magic (5) ;
-%   A (A < 10) = 0              % MATLAB full matrix with explicit zeros
+%   A (A < 10) = 0              % built-in full matrix with explicit zeros
 %   nnz (A)
 %   GrB.nonz (A)                % same as nnz (A)
 %   G = GrB (A)                 % contains explicit zeros
@@ -46,22 +46,22 @@ function result = nonz (A, varargin)
 %   G (A > 18) = sparse (0)     % entries A>18 deleted, explicit zeros
 %   GrB.nonz (G)
 %   GrB.nonz (G, 'list')
-%   S = double (G)              % MATLAB sparse matrix; no explicit zeros
+%   S = double (G)              % built-in sparse matrix; no explicit zeros
 %   GrB.nonz (S)
 %   GrB.nonz (S, 'list')
 %
 % See also GrB.entries, GrB/nnz, GrB/nonzeros, GrB.prune.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
-matlab_sparse = false ;
+builtin_sparse = false ;
 if (isobject (A))
     % A is a GraphBLAS matrix; get its opaque content
     A = A.opaque ;
 elseif (builtin ('issparse', A))
-    % A is a MATLAB sparse matrix
-    matlab_sparse = true ;
+    % A is a built-in sparse matrix
+    builtin_sparse = true ;
 end
 
 % get the identity value
@@ -79,9 +79,9 @@ end
 if (id ~= 0)
     % id is nonzero, so prune A first (for any matrix A)
     A = gbselect (A, '~=', id) ;
-elseif (~matlab_sparse)
+elseif (~builtin_sparse)
     % id is zero, so prune A only if it is a GraphBLAS matrix,
-    % or a MATLAB full matrix.  A MATLAB sparse matrix can remain
+    % or a built-in full matrix.  A built-in sparse matrix can remain
     % unchanged.
     A = gbselect (A, 'nonzero') ;
 end

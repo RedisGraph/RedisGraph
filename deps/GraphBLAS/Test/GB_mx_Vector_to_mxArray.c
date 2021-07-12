@@ -7,12 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-// Convert a GraphBLAS sparse vector to a MATLAB struct containing a
+// Convert a GraphBLAS sparse vector to a built-in struct containing a
 // sparse vector and a string.  The GraphBLAS vector is destroyed.
 
 #include "GB_mex.h"
 
-mxArray *GB_mx_Vector_to_mxArray   // returns the MATLAB mxArray
+mxArray *GB_mx_Vector_to_mxArray   // returns the built-in mxArray
 (
     GrB_Vector *handle,             // handle of GraphBLAS matrix to convert
     const char *name,               // name for error reporting

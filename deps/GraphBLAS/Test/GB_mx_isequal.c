@@ -38,20 +38,10 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     if (A->vdim  != B->vdim ) return (false) ;
     if (A->nvec  != B->nvec ) return (false) ;
 
-    if (GB_NNZ (A)  != GB_NNZ (B) ) return (false) ;
+    if (GB_nnz (A)  != GB_nnz (B) ) return (false) ;
 
     if ((A->h != NULL) != (B->h != NULL)) return (false) ;
     if (A->is_csc   != B->is_csc  ) return (false) ;
-
-    // these differences are OK
-    // if (A->plen  != B->plen ) return (false) ;
-    // if (A->nzmax != B->nzmax) return (false) ;
-    // if (AP->nmax != BP->nmax) return (false) ;
-
-//  if (A->p_shallow        != B->p_shallow        ) return (false) ;
-//  if (A->h_shallow        != B->h_shallow        ) return (false) ;
-//  if (A->i_shallow        != B->i_shallow        ) return (false) ;
-//  if (A->x_shallow        != B->i_shallow        ) return (false) ;
 
     if (A->nzombies         != B->nzombies         ) return (false) ;
 
@@ -67,7 +57,7 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     }
 
     int64_t n = A->nvec ;
-    int64_t nnz = GB_NNZ (A) ;
+    int64_t nnz = GB_nnz (A) ;
     size_t s = sizeof (int64_t) ;
     size_t asize = A->type->size ;
 
@@ -99,7 +89,7 @@ bool GB_mx_isequal     // true if A and B are exactly the same
         }
     }
 
-    if (A->nzmax > 0 && B->nzmax > 0)
+    if (GB_nnz_max (A) > 0 && GB_nnz_max (B) > 0)
     {
         if (!A_is_dense)
         {
@@ -111,18 +101,33 @@ bool GB_mx_isequal     // true if A and B are exactly the same
 
         if (A->type == GrB_FP32 && eps > 0)
         {
-            if (!GB_mx_xsame32 (A->x, B->x, A->b, nnz, A->i, eps))
+            if (!GB_mx_xsame32 (
+                A->x, A->iso,   // OK
+                B->x, B->iso,   // OK
+                A->b, nnz, A->i, eps))
+            {
                 return (false) ;
+            }
         }
         else if (A->type == GrB_FP64 && eps > 0)
         {
-            if (!GB_mx_xsame64 (A->x, B->x, A->b, nnz, A->i, eps))
+            if (!GB_mx_xsame64 (
+                A->x, A->iso,   // OK
+                B->x, B->iso,   // OK
+                A->b, nnz, A->i, eps))
+            {
                 return (false) ;
+            }
         }
         else
         {
-            if (!GB_mx_xsame (A->x, B->x, A->b, nnz, asize, A->i))
+            if (!GB_mx_xsame (
+                A->x, A->iso,   // OK
+                B->x, B->iso,   // OK
+                A->b, nnz, asize, A->i))
+            {
                 return (false) ;
+            }
         }
     }
 
@@ -132,9 +137,16 @@ bool GB_mx_isequal     // true if A and B are exactly the same
         int64_t np = AP->n ;
         if (!GB_mx_same ((char *) AP->i, (char *) BP->i, np*s)) return (false) ;
         if (!GB_mx_same ((char *) AP->j, (char *) BP->j, np*s)) return (false) ;
-        if (!GB_mx_same ((char *) AP->x, (char *) BP->x, np*psize))
+        if ((AP->x == NULL) != (BP->x == NULL)) // OK
         {
             return (false) ;
+        }
+        if (AP->x != NULL && BP->x != NULL)     // OK
+        {
+            if (!GB_mx_same ((char *) AP->x, (char *) BP->x, np*psize)) // OK
+            {
+                return (false) ;
+            }
         }
     }
 

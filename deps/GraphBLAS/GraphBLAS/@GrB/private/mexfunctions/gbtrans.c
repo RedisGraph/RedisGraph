@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -22,7 +22,7 @@
 // is 'transpose', then C<M>=A or C<M>+=A is computed, with A not transposed,
 // since the default behavior is to transpose the input matrix.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 #define USAGE "usage: C = GrB.trans (Cin, M, accum, A, desc)"
 
@@ -146,7 +146,7 @@ void mexFunction
     OK (GrB_Descriptor_free (&desc)) ;
 
     //--------------------------------------------------------------------------
-    // export the output matrix C back to MATLAB
+    // export the output matrix C
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;

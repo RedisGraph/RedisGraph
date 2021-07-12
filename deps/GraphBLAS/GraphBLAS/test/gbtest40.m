@@ -2,7 +2,7 @@ function gbtest40
 %GBTEST40 test sum, prod, max, min, any, all, norm
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 rng ('default')
 
@@ -19,8 +19,6 @@ assert (abs (s1-s2) < 1e-6) ;
 s1 = norm (x, -inf) ;
 s2 = norm (double (x), -inf) ;
 assert (abs (s1-s2) < 1e-6) ;
-
-old = verLessThan ('matlab', '9.6') ;
 
 for trial = 1:3
     for m = 1:3
@@ -48,11 +46,7 @@ for trial = 1:3
                     s1 = sum (A,2) ;
                     s2 = sum (G,2) ;
                     assert (norm (s1-double(s2), 1) < 1e-12) ;
-                    if (old)
-                        s1 = sum (sum (A)) ;
-                    else
-                        s1 = sum (A, 'all') ;
-                    end
+                    s1 = sum (sum (A)) ;
                     s2 = sum (G, 'all') ;
                     assert (norm (s1-double(s2), 1) < 1e-12) ;
 
@@ -65,11 +59,7 @@ for trial = 1:3
                     s1 = prod (A,2) ;
                     s2 = prod (G,2) ;
                     assert (norm (s1-double(s2), 1) < 1e-12) ;
-                    if (old)
-                        s1 = prod (prod (A)) ;
-                    else
-                        s1 = prod (A, 'all') ;
-                    end
+                    s1 = prod (prod (A)) ;
                     s2 = prod (G, 'all') ;
                     assert (norm (s1-double(s2), 1) < 1e-12) ;
 
@@ -114,11 +104,7 @@ for trial = 1:3
                         s1 = max (A, [ ], 2) ;
                         s2 = max (G, [ ], 2) ;
                         assert (gbtest_eq (s1, s2)) ;
-                        if (old)
-                            s1 = max (max (A)) ;
-                        else
-                            s1 = max (A,  [ ], 'all') ;
-                        end
+                        s1 = max (max (A)) ;
                         s2 = max (G,  [ ], 'all') ;
                         assert (gbtest_eq (s1, s2)) ;
 
@@ -142,11 +128,7 @@ for trial = 1:3
                         s2 = min (G, [ ], 1) ;
                         assert (gbtest_eq (s1, s2)) ;
                         assert (gbtest_eq (s1, s2)) ;
-                        if (old)
-                            s1 = min (min (A)) ;
-                        else
-                            s1 = min (A,  [ ], 'all') ;
-                        end
+                        s1 = min (min (A)) ;
                         s2 = min (G,  [ ], 'all') ;
                         assert (gbtest_eq (s1, s2)) ;
 
@@ -174,11 +156,7 @@ for trial = 1:3
                     s1 = any (A,2) ;
                     s2 = any (G,2) ;
                     assert (all (s1 == s2)) ;
-                    if (old)
-                        s1 = any (any (A)) ;
-                    else
-                        s1 = any (A, 'all') ;
-                    end
+                    s1 = any (any (A)) ;
                     s2 = any (G, 'all') ;
                     assert (all (s1 == s2)) ;
 
@@ -191,11 +169,7 @@ for trial = 1:3
                     s1 = all (A,2) ;
                     s2 = all (G,2) ;
                     assert (all (s1 == s2)) ;
-                    if (old)
-                        s1 = all (all (A)) ;
-                    else
-                        s1 = all (A, 'all') ;
-                    end
+                    s1 = all (all (A)) ;
                     s2 = all (G, 'all') ;
                     assert (all (s1 == s2)) ;
 

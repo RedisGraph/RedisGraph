@@ -1,5 +1,5 @@
 function C = GB_spec_subassign (C, Mask, accum, A, I, J, descriptor, scalar)
-%GB_SPEC_SUBASSIGN a MATLAB mimic of GxB_subassign
+%GB_SPEC_SUBASSIGN a mimic of GxB_subassign
 %
 % Usage:
 % C = GB_spec_subassign (C, Mask, accum, A, I, J, descriptor, scalar)

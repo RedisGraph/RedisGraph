@@ -7,14 +7,14 @@
 
 //------------------------------------------------------------------------------
 
-// Get a list of indices from MATLAB
+// Get a list of indices from a built-in array
 
 #include "GB_mex.h"
 
 bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
 (
     GrB_Index **handle,             // index array returned
-    const mxArray *I_matlab,        // MATLAB mxArray to get
+    const mxArray *I_builtin,       // built-in mxArray to get
     GrB_Index *ni,                  // length of I, or special
     GrB_Index Icolon [3],           // for all but GB_LIST
     bool *I_is_list                 // true if GB_LIST
@@ -26,7 +26,7 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
     mxArray *X ;
     GrB_Index *I ;
 
-    if (I_matlab == NULL || mxIsEmpty (I_matlab))
+    if (I_builtin == NULL || mxIsEmpty (I_builtin))
     {
         I = (GrB_Index *) GrB_ALL ;       // like the ":" in C=A(:,j)
         (*ni) = 0 ;
@@ -36,34 +36,34 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
     }
     else
     {
-        if (mxIsStruct (I_matlab))
+        if (mxIsStruct (I_builtin))
         {
             // a struct with 3 integers: I.begin, I.inc, I.end
             (*I_is_list) = false ;
 
             // look for I.begin (required)
-            int fieldnumber = mxGetFieldNumber (I_matlab, "begin") ;
+            int fieldnumber = mxGetFieldNumber (I_builtin, "begin") ;
             if (fieldnumber < 0)
             {
                 mexWarnMsgIdAndTxt ("GB:warn","I.begin missing") ;
                 return (false) ;
             }
-            X = mxGetFieldByNumber (I_matlab, 0, fieldnumber) ;
+            X = mxGetFieldByNumber (I_builtin, 0, fieldnumber) ;
             Icolon [GxB_BEGIN] = (int64_t) mxGetScalar (X) ;
 
             // look for I.end (required)
-            fieldnumber = mxGetFieldNumber (I_matlab, "end") ;
+            fieldnumber = mxGetFieldNumber (I_builtin, "end") ;
             if (fieldnumber < 0)
             {
                 mexWarnMsgIdAndTxt ("GB:warn","I.end missing") ;
                 return (false) ;
             }
             mxArray *X ;
-            X = mxGetFieldByNumber (I_matlab, 0, fieldnumber) ;
+            X = mxGetFieldByNumber (I_builtin, 0, fieldnumber) ;
             Icolon [GxB_END] = (int64_t) mxGetScalar (X) ;
 
             // look for I.inc (optional)
-            fieldnumber = mxGetFieldNumber (I_matlab, "inc") ;
+            fieldnumber = mxGetFieldNumber (I_builtin, "inc") ;
             if (fieldnumber < 0)
             {
                 (*ni) = GxB_RANGE ;
@@ -72,7 +72,7 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
             else
             {
                 // 
-                X = mxGetFieldByNumber (I_matlab, 0, fieldnumber) ;
+                X = mxGetFieldByNumber (I_builtin, 0, fieldnumber) ;
                 int64_t iinc = (int64_t) mxGetScalar (X) ;
                 if (iinc == 0)
                 {
@@ -99,15 +99,15 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
         }
         else
         {
-            if (!mxIsClass (I_matlab, "uint64"))
+            if (!mxIsClass (I_builtin, "uint64"))
             {
                 mexWarnMsgIdAndTxt ("GB:warn","indices must be uint64") ;
                 return (false) ;
             }
 
             (*I_is_list) = true ;
-            I = mxGetData (I_matlab) ;
-            (*ni) = (uint64_t) mxGetNumberOfElements (I_matlab) ;
+            I = mxGetData (I_builtin) ;
+            (*ni) = (uint64_t) mxGetNumberOfElements (I_builtin) ;
             (*handle) = I ;
         }
     }

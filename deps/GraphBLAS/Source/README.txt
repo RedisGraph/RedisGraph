@@ -9,10 +9,13 @@ applications.
 The Template/ files are not compiled separately, but are #include'd into files
 in this folder instead.
 
-The Generated/ files are created by the *.m scripts from the Generator/* files,
-and should not be editted.  If the Generator/ files are modified then type:
+The Generated1/* and Generated2/* files are created by the *.m scripts from the
+Generator/* files, and should not be editted.  If the Generator/ files are
+modified then type:
 
     codegen
 
-in MATLAB to construct the Generated/ files.
+in Octave to construct the Generated1/* and Generated2/* files.
+
+When GBCOMPACT is enabled, only the Generated1/* files are needed.
 

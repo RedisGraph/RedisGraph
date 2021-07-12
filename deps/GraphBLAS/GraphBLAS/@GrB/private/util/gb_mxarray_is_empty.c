@@ -1,15 +1,15 @@
 //------------------------------------------------------------------------------
-// gb_mxarray_is_empty: check if a MATLAB mxArray is empty
+// gb_mxarray_is_empty: check if a built-in mxArray is empty
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
-bool gb_mxarray_is_empty    // true if MATLAB array is NULL, or 2D and 0-by-0
+bool gb_mxarray_is_empty    // true if built-in array is NULL, or 2D and 0-by-0
 (
     const mxArray *S
 )

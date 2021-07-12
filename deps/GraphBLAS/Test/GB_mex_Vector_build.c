@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_Vector_build.c: MATLAB interface to GrB_Vector_build
+// GB_mex_Vector_build.c: interface to GrB_Vector_build
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.

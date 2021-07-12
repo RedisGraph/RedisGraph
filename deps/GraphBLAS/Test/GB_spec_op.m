@@ -30,11 +30,9 @@ function C = GB_spec_op (op, A, B)
 % case z is logical, (2) 'complex', where x and y are real and z is complex,
 % (3) bitshift (where x has the optype and y is int8).
 %
-% Intrinsic MATLAB operators are used as much as possible, so as to test
-% GraphBLAS operators.  Some must be done in GraphBLAS because the
-% divide-by-zero and overflow rules for integers differs between MATLAB and C.
-% Also, typecasting in MATLAB and GraphBLAS differs with underflow and overflow
-% conditions.
+% Intrinsic built-in operators are used as much as possible, so as to test
+% GraphBLAS operators.  Some must be done in GraphBLAS because the typecasting,
+% divide-by-zero and overflow rules for integers differs.
 %
 % Positional ops are not computed by this function.
 
@@ -55,8 +53,8 @@ else
     x = A ;
 end
 
-use_matlab = (isa (x, 'float') && ...
-    (contains (optype, 'single') || contains (optype, 'double'))) ;
+use_builtin = (isa (x, 'float') && ...
+    (test_contains (optype, 'single') || test_contains (optype, 'double'))) ;
 
 if (nargin > 2 && ~ischar (B))
     if (~isequal (GB_spec_type (B), ytype))
@@ -64,7 +62,7 @@ if (nargin > 2 && ~ischar (B))
     else
         y = B ;
     end
-    use_matlab = use_matlab && isa (y, 'float') ;
+    use_builtin = use_builtin && isa (y, 'float') ;
 end
 
 switch opname
@@ -79,7 +77,7 @@ switch opname
     case 'pair'
         z = GB_spec_ones (size (x), ztype) ;
     case 'min'
-        % min(x,y) in SuiteSparse:GraphBLAS is min(x,y,'omitnan') in MATLAB.
+        % min(x,y) in SuiteSparse:GraphBLAS is min(x,y,'omitnan') with built-in.
         % see discussion in SuiteSparse/GraphBLAS/Source/GB.h
         % z = min (x,y,'omitnan') ;
         z = GB_mex_op (op, x, y) ;
@@ -87,49 +85,49 @@ switch opname
         % z = max (x,y,'omitnan') ;
         z = GB_mex_op (op, x, y) ;
     case 'plus'
-        if (use_matlab)
+        if (use_builtin)
             z = x + y ;
         else
             z = GB_mex_op (op, x, y) ;
         end
     case 'minus'
-        if (use_matlab)
+        if (use_builtin)
             z = x - y ;
         else
             z = GB_mex_op (op, x, y) ;
         end
     case 'rminus'
-        if (use_matlab)
+        if (use_builtin)
             z = y - x ;
         else
             z = GB_mex_op (op, x, y) ;
         end
     case 'times'
-        if (use_matlab)
+        if (use_builtin)
             z = x .* y ;
         else
             z = GB_mex_op (op, x, y) ;
         end
     case 'div'
-        if (use_matlab)
+        if (use_builtin)
             z = x ./ y ;
         else
             z = GB_mex_op (op, x, y) ;
         end
     case 'rdiv'
-        if (use_matlab)
+        if (use_builtin)
             z = y ./ x ;
         else
             z = GB_mex_op (op, x, y) ;
         end
     case 'pow'
-        if (use_matlab)
+        if (use_builtin)
             z = x .^ y ;
         else
             z = GB_mex_op (op, x, y) ;
         end
 
-    % 6 binary comparison operators (result is ztype)
+    % 6 binary comparators (result is ztype)
     case 'iseq'
         z = GB_mex_cast (x == y, ztype) ;
     case 'isne'
@@ -143,7 +141,7 @@ switch opname
     case 'isle'
         z = GB_mex_cast (x <= y, ztype) ;
 
-    % 6 binary comparison operators (result is boolean)
+    % 6 binary comparators (result is boolean)
     case 'eq'
         z = (x == y) ;
     case 'ne'
@@ -211,7 +209,7 @@ switch opname
 
     case { 'fmod', 'rem' }
         % see ANSI C11 fmod function
-        % the MATLAB rem differs slightly from the ANSI C11 fmod,
+        % the built-in rem differs slightly from the ANSI C11 fmod,
         % if x/y is O(eps) smaller than an integer.
         z = rem (x,y) ;
 
@@ -235,19 +233,19 @@ switch opname
     case 'identity'
         z = x ;
     case 'ainv'
-        if (use_matlab)
+        if (use_builtin)
             z = -x ;
         else
             z = GB_mex_op (op, x) ;
         end
     case 'abs'
-        if (use_matlab)
+        if (use_builtin)
             z = abs (x) ;
         else
             z = GB_mex_op (op, x) ;
         end
     case 'minv'
-        if (use_matlab)
+        if (use_builtin)
             z = 1 ./ x ;
         else
             z = GB_mex_op (op, x) ;

@@ -8,7 +8,7 @@ function C = random (varargin)
 %   constructed by computing d*m*n entries at random positions, and
 %   then any duplicates are discarded, so if d is large or m*n is
 %   small, then C will have fewer than d*m*n entries.  The value of
-%   d may exceed 1 (this differs from the MATLAB sprand, which limits
+%   d may exceed 1 (this differs from the built-in sprand, which limits
 %   d to 1).  If d is inf, then C is generated as a full GraphBLAS
 %   matrix, with numel (C) = m*n.
 %
@@ -19,7 +19,7 @@ function C = random (varargin)
 %           of values, with entries greater than zero and less than one.
 %
 %   C = GrB.random (..., 'normal', ...) uses a normal distribution, like
-%           the built-in MATLAB sprandn.
+%           the built-in sprandn.
 %
 %   C = GrB.random (..., 'range', [lo hi], ...) changes the range of
 %           the random numbers.  If 'range' is not present, the default
@@ -43,16 +43,16 @@ function C = random (varargin)
 %           square.  Only tril(A) is used to construct C.
 %
 %   C = GrB.random (n, d, 'symmetric', ...) creates an n-by-n symmetric
-%           matrix C, with a uniform distribution of values.  To create
-%           a matrix like C = srandsym (n,d) with the built-in MATLAB
-%           sprandym, use C = GrB.random (n, d, 'symmetric', 'normal').
-%           Note that the pair of arguments (m, n, ...) do not appear;
-%           just a single dimension (n, ...).
+%           matrix C, with a uniform distribution of values.  To create a
+%           matrix like C = srandsym (n,d) with the built-in sprandym, use
+%           C = GrB.random (n, d, 'symmetric', 'normal').  Note that the
+%           pair of arguments (m, n, ...) do not appear; just a single
+%           dimension (n, ...).
 %
 %   To construct a Hermitian matrix instead, use 'hermitian' in place of
 %   'symmetric'.
 %
-% The rc option of the built-in MATLAB sprand and sprandn is not supported.
+% The rc option of the built-in sprand and sprandn is not supported.
 %
 % Example:
 %
@@ -94,7 +94,7 @@ function C = random (varargin)
 % See also GrB/sprand, GrB/sprandn, GrB/sprandsym.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 C = GrB (gb_random (varargin {:})) ;
 

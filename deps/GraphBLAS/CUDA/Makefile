@@ -42,6 +42,8 @@ SRC2 = $(notdir $(wildcard $(SRC)))
 OBJ = $(SRC2:.cu=.o)
 cSRC = $(wildcard *.c) 
 cOBJ = $(cSRC:.c=.o)
+cppSRC = $(wildcard *.cpp)
+cppOBJ = $(cppSRC:.cpp=.o) 
 
 I = -I. -I../Source -I../Source/Template -I../Include -Irmm/rmm/include/  -Irmm/thirdparty/spdlog/include -Irmm/include/thirdparty/cnmem/include
 SO_NAME = libgraphblascuda.so
@@ -72,6 +74,7 @@ JIT_TEMP := $(patsubst %.cu, %.cu.jit, $(TEMPLATES))
 stringify: stringify.cpp
 	$(GXX) -o $@ $< -O3 -Wall
 
+    
 doc: jitify.hpp Doxyfile
 	$(DOXYGEN) Doxyfile
 .PHONY: doc
@@ -79,10 +82,13 @@ doc: jitify.hpp Doxyfile
 test: $(cOBJ)
 	@echo $(cOBJ)
 
-$(cOBJ): %.o: %.c GB_cuda_stringify.h 
+$(cppOBJ): %.o: %.cpp 
+	$(GXX) $(I) -o $@ -c $< -O2 -Wall
+
+$(cOBJ): %.o: %.c GB_stringify.h 
 	$(GCC) $(I) -o $@ -c $< -O2 -Wall
 
-$(SO_NAME): $(OBJ) $(cOBJ) $(JIT_TEMP) GB_AxB_dot3_cuda.o
+$(SO_NAME): $(OBJ) $(cOBJ) $(cppOBJ) $(JIT_TEMP) GB_AxB_dot3_cuda.o
 	echo $(OBJ)
 	nvcc $(SO_OPTS) $(LIBS) $(OBJ) $(cOBJ) -o $@
 

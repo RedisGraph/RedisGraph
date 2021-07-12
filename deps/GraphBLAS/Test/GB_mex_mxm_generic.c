@@ -21,10 +21,6 @@
     GrB_BinaryOp_free_(&myplus) ;                   \
     if (semiring != Complex_plus_times)             \
     {                                               \
-        if (semiring != NULL)                       \
-        {                                           \
-            GrB_Monoid_free_(&(semiring->add)) ;    \
-        }                                           \
         GrB_Semiring_free_(&semiring) ;             \
     }                                               \
     GrB_Descriptor_free_(&desc) ;                   \
@@ -186,7 +182,7 @@ void mexFunction
     // C<Mask> = accum(C,A*B)
     METHOD (GrB_mxm (C, Mask, accum, semiring, A, B, desc)) ;
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output from GrB_mxm", true) ;
 
     FREE_ALL ;

@@ -195,6 +195,10 @@ GrB_Info prand_next
     GrB_Vector_free (Seed) ;                                \
 }
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 GB_PUBLIC
 GrB_Info prand_seed
 (

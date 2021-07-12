@@ -15,14 +15,16 @@
 
 #define GB_FREE_ALL             \
 {                               \
-    GB_Matrix_free (Chandle) ;  \
+    GB_phbix_free (C) ;         \
 }
 
 GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
 (
     // output
-    GrB_Matrix *Chandle,
+    GrB_Matrix C,               // output matrix, static header
     // input, not modified
+    const bool C_iso,           // if true, C is iso
+    const GB_void *cscalar,     // scalar value of C, if iso
     const bool C_is_csc,        // requested format of C
     const GrB_Matrix A,
     const GrB_Index *I,         // index list for C = A(I,J), or GrB_ALL, etc.
@@ -39,7 +41,7 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (Chandle != NULL) ;
+    ASSERT (C != NULL && C->static_header) ;
     ASSERT_MATRIX_OK (A, "A for C=A(I,J) bitmap subref", GB0) ;
     ASSERT (GB_IS_BITMAP (A) || GB_IS_FULL (A)) ;
     ASSERT (!GB_IS_SPARSE (A)) ;
@@ -47,14 +49,12 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
     ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_JUMBLED (A)) ;
     ASSERT (!GB_PENDING (A)) ;
-    (*Chandle) = NULL ;
 
     //--------------------------------------------------------------------------
     // get A
     //--------------------------------------------------------------------------
 
-    const int8_t  *GB_RESTRICT Ab = A->b ;
-    const GB_void *GB_RESTRICT Ax = (GB_void *) A->x ;
+    const int8_t *restrict Ab = A->b ;
     const int64_t avlen = A->vlen ;
     const int64_t avdim = A->vdim ;
     const size_t asize = A->type->size ;
@@ -92,26 +92,21 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
     // allocate C
     //--------------------------------------------------------------------------
 
-    GrB_Matrix C = NULL ;
     int64_t cnzmax ;
     bool ok = GB_Index_multiply ((GrB_Index *) (&cnzmax), nI, nJ) ;
-    if (!ok)
-    {
-        // problem too large
-        return (GrB_OUT_OF_MEMORY) ;
-    }
+    if (!ok) cnzmax = INT64_MAX ;
     GrB_Type ctype = symbolic ? GrB_INT64 : A->type ;
     int sparsity = GB_IS_BITMAP (A) ? GxB_BITMAP : GxB_FULL ;
-    GB_OK (GB_new_bix (Chandle, // bitmap or full, new header
+    // set C->iso = C_iso   OK
+    GB_OK (GB_new_bix (&C, true, // bitmap or full, static header
         ctype, nI, nJ, GB_Ap_null, C_is_csc,
-        sparsity, true, A->hyper_switch, -1, cnzmax, true, Context)) ;
-    C = (*Chandle) ;
+        sparsity, true, A->hyper_switch, -1, cnzmax, true, C_iso, Context)) ;
 
     //--------------------------------------------------------------------------
     // get C
     //--------------------------------------------------------------------------
 
-    int8_t *GB_RESTRICT Cb = C->b ;
+    int8_t *restrict Cb = C->b ;
 
     // In GB_bitmap_assign_IxJ_template, vlen is the vector length of the
     // submatrix C(I,J), but here the template is used to access A(I,J), and so
@@ -142,12 +137,12 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
 
         ASSERT (!symbolic) ;
 
-#if 0
+        #if 0
         if (symbolic)
         {
             // C=A(I,J) symbolic with A and C bitmap
             ASSERT (GB_DEAD_CODE) ;
-            int64_t *GB_RESTRICT Cx = (int64_t *) C->x ;
+            int64_t *restrict Cx = (int64_t *) C->x ;
             #undef  GB_IXJ_WORK
             #define GB_IXJ_WORK(pA,pC)                                      \
             {                                                               \
@@ -159,10 +154,35 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
             #include "GB_bitmap_assign_IxJ_template.c"
         }
         else
-#endif
+        #endif
+
+        if (C_iso)
         { 
-            // C=A(I,J) numeric with A and C bitmap
-            GB_void *GB_RESTRICT Cx = (GB_void *) C->x ;
+
+            //------------------------------------------------------------------
+            // C=A(I,J) iso numeric with A and C bitmap
+            //------------------------------------------------------------------
+
+            memcpy (C->x, cscalar, ctype->size) ;
+            #undef  GB_IXJ_WORK
+            #define GB_IXJ_WORK(pA,pC)                                      \
+            {                                                               \
+                int8_t ab = Ab [pA] ;                                       \
+                Cb [pC] = ab ;                                              \
+                task_cnvals += ab ;                                         \
+            }
+            #include "GB_bitmap_assign_IxJ_template.c"
+
+        }
+        else
+        { 
+
+            //------------------------------------------------------------------
+            // C=A(I,J) non-iso numeric with A and C bitmap; both non-iso
+            //------------------------------------------------------------------
+
+            const GB_void *restrict Ax = (GB_void *) A->x ;
+                  GB_void *restrict Cx = (GB_void *) C->x ;
             #undef  GB_IXJ_WORK
             #define GB_IXJ_WORK(pA,pC)                                      \
             {                                                               \
@@ -176,7 +196,9 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
                 }                                                           \
             }
             #include "GB_bitmap_assign_IxJ_template.c"
+
         }
+
         C->nvals = cnvals ;
 
     }
@@ -189,19 +211,39 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
 
         if (symbolic)
         { 
+
+            //------------------------------------------------------------------
             // C=A(I,J) symbolic with A and C full (from GB_subassign_symbolic)
-            int64_t *GB_RESTRICT Cx = (int64_t *) C->x ;
+            //------------------------------------------------------------------
+
+            int64_t *restrict Cx = (int64_t *) C->x ;
             #undef  GB_IXJ_WORK
             #define GB_IXJ_WORK(pA,pC)                                      \
             {                                                               \
                 Cx [pC] = pA ;                                              \
             }
             #include "GB_bitmap_assign_IxJ_template.c"
+
+        }
+        else if (C_iso)
+        { 
+
+            //------------------------------------------------------------------
+            // C=A(I,J) iso numeric with A and C full
+            //------------------------------------------------------------------
+
+            memcpy (C->x, cscalar, ctype->size) ;
+
         }
         else
         { 
-            // C=A(I,J) numeric with A and C full
-            GB_void *GB_RESTRICT Cx = (GB_void *) C->x ;
+
+            //------------------------------------------------------------------
+            // C=A(I,J) non-iso numeric with A and C full, both are non-iso
+            //------------------------------------------------------------------
+
+            const GB_void *restrict Ax = (GB_void *) A->x ;
+                  GB_void *restrict Cx = (GB_void *) C->x ;
             #undef  GB_IXJ_WORK
             #define GB_IXJ_WORK(pA,pC)                                      \
             {                                                               \

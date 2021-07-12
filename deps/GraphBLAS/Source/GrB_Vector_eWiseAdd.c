@@ -10,24 +10,27 @@
 // w<M> = accum (w,u+v)
 
 #include "GB_ewise.h"
+#include "GB_get_mask.h"
 
 #define GB_EWISE(op)                                                        \
     /* check inputs */                                                      \
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;                                       \
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;                                       \
     GB_RETURN_IF_NULL_OR_FAULTY (v) ;                                       \
-    GB_RETURN_IF_FAULTY (M) ;                                               \
+    GB_RETURN_IF_FAULTY (M_in) ;                                            \
     ASSERT (GB_VECTOR_OK (w)) ;                                             \
     ASSERT (GB_VECTOR_OK (u)) ;                                             \
     ASSERT (GB_VECTOR_OK (v)) ;                                             \
-    ASSERT (M == NULL || GB_VECTOR_OK (M)) ;                                \
+    ASSERT (M_in == NULL || GB_VECTOR_OK (M_in)) ;                          \
     /* get the descriptor */                                                \
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,       \
         xx1, xx2, xx3, xx7) ;                                               \
+    /* get the mask */                                                      \
+    GrB_Matrix M = GB_get_mask ((GrB_Matrix) M_in, &Mask_comp, &Mask_struct) ; \
     /* w<M> = accum (w,t) where t = u+v, u'+v, u+v', or u'+v' */            \
     info = GB_ewise (                                                       \
         (GrB_Matrix) w, C_replace,  /* w and its descriptor        */       \
-        (GrB_Matrix) M, Mask_comp, Mask_struct, /* mask and its descriptor */\
+        M, Mask_comp, Mask_struct,  /* mask and its descriptor */           \
         accum,                      /* accumulate operator         */       \
         op,                         /* operator that defines '+'   */       \
         (GrB_Matrix) u, false,      /* u, never transposed         */       \
@@ -42,7 +45,7 @@
 GrB_Info GrB_Vector_eWiseAdd_BinaryOp       // w<M> = accum (w, u+v)
 (
     GrB_Vector w,                   // input/output vector for results
-    const GrB_Vector M,             // optional mask for w, unused if NULL
+    const GrB_Vector M_in,          // optional mask for w, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GrB_BinaryOp add,         // defines '+' for t=u+v
     const GrB_Vector u,             // first input:  vector u
@@ -75,7 +78,7 @@ GrB_Info GrB_Vector_eWiseAdd_BinaryOp       // w<M> = accum (w, u+v)
 GrB_Info GrB_Vector_eWiseAdd_Monoid         // w<M> = accum (w, u+v)
 (
     GrB_Vector w,                   // input/output vector for results
-    const GrB_Vector M,             // optional mask for w, unused if NULL
+    const GrB_Vector M_in,          // optional mask for w, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GrB_Monoid monoid,        // defines '+' for t=u+v
     const GrB_Vector u,             // first input:  vector u
@@ -109,7 +112,7 @@ GrB_Info GrB_Vector_eWiseAdd_Monoid         // w<M> = accum (w, u+v)
 GrB_Info GrB_Vector_eWiseAdd_Semiring       // w<M> = accum (w, u+v)
 (
     GrB_Vector w,                   // input/output vector for results
-    const GrB_Vector M,             // optional mask for w, unused if NULL
+    const GrB_Vector M_in,          // optional mask for w, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GrB_Semiring semiring,    // defines '+' for t=u+v
     const GrB_Vector u,             // first input:  vector u

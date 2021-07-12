@@ -1,5 +1,5 @@
 function w = GB_spec_Vector_eWiseAdd (w, mask, accum, add, u, v, descriptor)
-%GB_SPEC_VECTOR_EWISEADD a MATLAB mimic of GrB_Vector_eWiseAdd
+%GB_SPEC_VECTOR_EWISEADD a mimic of GrB_Vector_eWiseAdd
 %
 % Usage:
 % w = GB_spec_Vector_eWiseAdd (w, mask, accum, add, u, v, descriptor)

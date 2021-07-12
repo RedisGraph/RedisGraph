@@ -24,8 +24,12 @@
 // operators are redundant and have been renamed.  For these, the boolean
 // monoids are not needed.
 
-// For the PAIR multiply operator, the monoids MIN, MAX, TIMES, EQ, LAND, 
-// and LOR have been renamed to ANY_PAIR.  See GB_AxB_semiring_builtin.c.
+// GB_NO_MIN_MAX_ANY_TIMES_MONOIDS is defined for the PAIR, LOR, LAND, LXOR
+// multiply operators; these are valid semirings, but not useful.  The
+// corresponding semirings (such as GxB_TIMES_LOR_FP32) still exist, but are
+// done using the generic methods, not via fast methods controlled by this case
+// statement.  For the PAIR operator, these semirings are all done by the
+// single ANY_PAIR iso semiring, since C is always iso in that case.
 
 // the additive operator is a monoid, where all types of x,y,z are the same
 ASSERT (zcode == xcode) ;
@@ -37,8 +41,8 @@ if (xcode != GB_BOOL_code)
     switch (add_opcode)
     {
 
-        // MIN_PAIR, MAX_PAIR, and TIMES_PAIR have been renamed to ANY_PAIR
-        #ifndef GB_MULT_IS_PAIR_OPERATOR
+        // disable the MIN, MAX, ANY, and TIMES monoids for some multops
+        #ifndef GB_NO_MIN_MAX_ANY_TIMES_MONOIDS
 
         case GB_MIN_opcode:
 
@@ -101,6 +105,29 @@ if (xcode != GB_BOOL_code)
             }
             break ;
 
+        case GB_ANY_opcode:
+
+            switch (xcode)
+            {
+                // 10 real, non-boolean types, plus 2 complex
+                case GB_INT8_code   : GB_AxB_WORKER (_any, GB_MNAME, _int8  )
+                case GB_INT16_code  : GB_AxB_WORKER (_any, GB_MNAME, _int16 )
+                case GB_INT32_code  : GB_AxB_WORKER (_any, GB_MNAME, _int32 )
+                case GB_INT64_code  : GB_AxB_WORKER (_any, GB_MNAME, _int64 )
+                case GB_UINT8_code  : GB_AxB_WORKER (_any, GB_MNAME, _uint8 )
+                case GB_UINT16_code : GB_AxB_WORKER (_any, GB_MNAME, _uint16)
+                case GB_UINT32_code : GB_AxB_WORKER (_any, GB_MNAME, _uint32)
+                case GB_UINT64_code : GB_AxB_WORKER (_any, GB_MNAME, _uint64)
+                case GB_FP32_code   : GB_AxB_WORKER (_any, GB_MNAME, _fp32  )
+                case GB_FP64_code   : GB_AxB_WORKER (_any, GB_MNAME, _fp64  )
+                #if defined ( GB_COMPLEX )
+                case GB_FC32_code   : GB_AxB_WORKER (_any, GB_MNAME, _fc32  )
+                case GB_FC64_code   : GB_AxB_WORKER (_any, GB_MNAME, _fc64  )
+                #endif
+                default: ;
+            }
+            break ;
+
         #endif
 
         case GB_PLUS_opcode:
@@ -126,29 +153,6 @@ if (xcode != GB_BOOL_code)
             }
             break ;
 
-        case GB_ANY_opcode:
-
-            switch (xcode)
-            {
-                // 10 real, non-boolean types, plus 2 complex
-                case GB_INT8_code   : GB_AxB_WORKER (_any, GB_MNAME, _int8  )
-                case GB_INT16_code  : GB_AxB_WORKER (_any, GB_MNAME, _int16 )
-                case GB_INT32_code  : GB_AxB_WORKER (_any, GB_MNAME, _int32 )
-                case GB_INT64_code  : GB_AxB_WORKER (_any, GB_MNAME, _int64 )
-                case GB_UINT8_code  : GB_AxB_WORKER (_any, GB_MNAME, _uint8 )
-                case GB_UINT16_code : GB_AxB_WORKER (_any, GB_MNAME, _uint16)
-                case GB_UINT32_code : GB_AxB_WORKER (_any, GB_MNAME, _uint32)
-                case GB_UINT64_code : GB_AxB_WORKER (_any, GB_MNAME, _uint64)
-                case GB_FP32_code   : GB_AxB_WORKER (_any, GB_MNAME, _fp32  )
-                case GB_FP64_code   : GB_AxB_WORKER (_any, GB_MNAME, _fp64  )
-                #if defined ( GB_COMPLEX )
-                case GB_FC32_code   : GB_AxB_WORKER (_any, GB_MNAME, _fc32  )
-                case GB_FC64_code   : GB_AxB_WORKER (_any, GB_MNAME, _fc64  )
-                #endif
-                default: ;
-            }
-            break ;
-
         default: ;
     }
 }
@@ -160,13 +164,13 @@ else
         {
             // 5 boolean monoids
             #ifndef GB_MULT_IS_PAIR_OPERATOR
-            // EQ_PAIR, LOR_PAIR, LAND_PAIR, been renamed to ANY_PAIR
+            // all these semirings are replaced with the ANY_PAIR iso semiring
             case GB_LOR_opcode  : GB_AxB_WORKER (_lor , GB_MNAME, _bool)
             case GB_LAND_opcode : GB_AxB_WORKER (_land, GB_MNAME, _bool)
             case GB_EQ_opcode   : GB_AxB_WORKER (_eq  , GB_MNAME, _bool)
+            case GB_ANY_opcode  : GB_AxB_WORKER (_any , GB_MNAME, _bool)
             #endif
             case GB_LXOR_opcode : GB_AxB_WORKER (_lxor, GB_MNAME, _bool)
-            case GB_ANY_opcode  : GB_AxB_WORKER (_any , GB_MNAME, _bool)
             default: ;
         }
 }
@@ -175,4 +179,6 @@ else
 #undef GB_NO_BOOLEAN
 #undef GB_MNAME
 #undef GB_COMPLEX
+#undef GB_NO_MIN_MAX_ANY_TIMES_MONOIDS
+#undef GB_MULT_IS_PAIR_OPERATOR
 

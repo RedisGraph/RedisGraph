@@ -7,6 +7,7 @@ function test145
 
 fprintf ('test145 -------------------- C+=A''*B when C is dense, with dot4\n') ;
 
+GrB.burble (0) ;
 rng ('default') ;
 
 A = sparse (rand (4)) ;
@@ -59,6 +60,18 @@ assert (norm (C1-C2,1) < 1e-5)
 C2 = GB_mex_rdiv2 (AT, BT, true,  true,  1003, 0) ;
 assert (norm (C1-C2,1) < 1e-5)
 
+X = 1./B ;
+C1 = A*X ;
+
+C2 = GB_mex_rdiv2 (A, B,   false, false, 1003, 1) ;
+assert (norm (C1-C2,1) < 1e-5)
+
+C2 = GB_mex_rdiv2 (AT, B,  true,  false, 1003, 1) ;
+assert (norm (C1-C2,1) < 1e-5)
+
+C2 = GB_mex_rdiv2 (A, BT,  false, true,  1003, 1) ;
+assert (norm (C1-C2,1) < 1e-5)
+
 % update C in place with dot4:
 X = 1./B ;
 C1 = A*X + pi ;
@@ -73,3 +86,4 @@ C2 = GB_mex_rdiv2 (A, BT,  false, true,  1003, 1, pi) ;
 assert (norm (C1-C2,1) < 1e-5)
 
 fprintf ('test145: all tests passed\n') ;
+

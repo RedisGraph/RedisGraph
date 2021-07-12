@@ -76,7 +76,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_Descriptor_get      // get the contents of a descriptor
 (
     const GrB_Descriptor desc,  // descriptor to query, may be NULL
@@ -180,8 +180,6 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     // it is available to any internal function that needs it.
     Context->nthreads_max = nthreads_desc ;
     Context->chunk = chunk_desc ;
-
-    // #include "GB_Descriptor_get_mkl_template.c"
 
     return (GrB_SUCCESS) ;
 }

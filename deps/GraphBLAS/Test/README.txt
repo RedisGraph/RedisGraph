@@ -3,21 +3,24 @@ SPDX-License-Identifier: Apache-2.0
 
 GraphBLAS/Test:
 
-This folder includes a MATLAB interface that tests each GraphBLAS function.  It
-is meant for testing and development only, not for general usage.  The
-functions are efficient and robust.  They are not well-suited for general use
-because the interface is not designed to be simple, clean, elegant, and
+This folder includes an *.m interface that tests each GraphBLAS
+function.  It is meant for testing and development only, not for general usage.
+The interface is not designed to be simple, clean, elegant, and
 well-documented.  Such an interface would interfere with the purpose of these
 functions, which is to compute a result in GraphBLAS (via a GB_mex_*
-mexFunction) and then to compare its results with the GB_spec_*.m MATLAB mimic
+mexFunction) and then to compare its results with the GB_spec_*.m mimic
 function.  None of the GB_mex_*.c mexFunctions have corresponding GB_mex_*.m
 files to provide 'help GB_mex...' documentation.
+
+For a usable @GrB interface to GraphBLAS, see the GraphBLAS/GraphBLAS folder,
+and the @GrB object it supports.
 
 Requirements:  the mex command must use a C compiler supporting ANSI C11.
 Microft Visual Studio does not support ANSI C11 so this test is not available
 on Windows unless you use another compiler.
 
-To run the tests, use the following command in this directory, in MATLAB:
+To run the tests, use the following command in this directory, in the 
+Octave Command Window:
 
     make ; testall
 
@@ -38,7 +41,7 @@ To turn off malloc debugging:
     debug_off
 
 Malloc debugging is very extensive.  When enabled, the GraphBLAS wrapper
-functions for malloc/calloc/realloc/free, which are mxMalloc/etc in this MATLAB
+functions for malloc/calloc/realloc/free, which are mxMalloc/etc in this
 interface, decrement a counter when they are been successful.  When this
 reaches zero, they pretend to fail, and thus allow the out-of-memory error
 handling in GraphBLAS to be tested.  If the function fails, the counter is
@@ -46,8 +49,8 @@ reset, and the test is done again.  The initial state of this counter is
 increased until the function succeeds.  During this entire process, a count is
 kept of malloc'd blocks, and an error is reported if a leak is found.
 GraphBLAS will be very slow with malloc debugging enabled.  It is only done
-through the MATLAB interface and has no effect when GraphBLAS is used through a
-C program (as in the Demo/ programs).
+through the @GrB interface and has no effect when GraphBLAS is used through a
+C program.
 
 To enable further debugging tests, see the comments in Source/GB.h.
 
@@ -57,8 +60,9 @@ Files and folders in GraphBLAS/Test:
 
 GB_spec_*.m     'spec' scripts.  These are very concise scripts, yet they
                 perfectly match the GraphBLAS spec.  They are very slow since
-                they rely on MATLAB dense matrices, since MATLAB only supports
-                sparse logical, double, and double complex matrices.
+                they rely on built-in dense matrices, since built-in sparse
+                matrices only support sparse logical, double, and double
+                complex.
 
 GB_mex_*.c      mexFunction interfaces to GraphBLAS functions.  Some of these
                 are interfaces to internal functions in SuiteSparse:GraphBLAS
@@ -73,7 +77,7 @@ GB_mex.h        include file for the mexFunctions
 Template/*.c    a template file for building two mexFunctions:
                 GB_mex_Matrix_build and GB_mex_Vector_build.
 
-make.m          compiles the MATLAB interface to GraphBLAS (links with
+make.m          compiles the Test interface to GraphBLAS (links with
                 dynamic -lgraphblas)
 
 debug_off.m     turns off malloc debugging
@@ -86,10 +90,8 @@ stat.m          report on whether malloc debugging is enabled, and the current
 
 testall.m       a complete set of tests for GraphBLAS
 testperf.m      performance tests for GraphBLAS
-testperf_diary.txt  diary of testperf.m on a MacBookPro, 2.8 GHz Intel Core
-                    i7, 16 GB Ram, OSX 10.11.6, clang 8.0.0, MATLAB R2017A.
 
-spok            an acronym for "sparse OK"; checks if a MATLAB sparse matrix
+spok            an acronym for "sparse OK"; checks if a built-in sparse matrix
                 is valid
 
 README.txt      this file

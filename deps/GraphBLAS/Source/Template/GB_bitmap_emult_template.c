@@ -7,38 +7,58 @@
 
 //------------------------------------------------------------------------------
 
-// C is bitmap.  The mask M can have any sparsity structure, and is efficient
-// to apply (all methods are asymptotically optimal).  A and B are bitmap or
-// full (with at least one of them bitmap).  All cases (no M, M, !M) are
-// handled.
+// C is bitmap.  A and B are bitmap or full.  M depends on the method
 
 {
 
-    ASSERT (A_is_bitmap || B_is_bitmap) ;
-    ASSERT (A_is_bitmap || A_is_full) ;
-    ASSERT (B_is_bitmap || B_is_full) ;
+    //--------------------------------------------------------------------------
+    // get C, A, and B
+    //--------------------------------------------------------------------------
+
+    const int8_t  *restrict Ab = A->b ;
+    const int8_t  *restrict Bb = B->b ;
+    const int64_t vlen = A->vlen ;
+
+    ASSERT (GB_IS_BITMAP (A) || GB_IS_FULL (A) || GB_as_if_full (A)) ;
+    ASSERT (GB_IS_BITMAP (B) || GB_IS_FULL (A) || GB_as_if_full (B)) ;
+
+    const bool A_iso = A->iso ;
+    const bool B_iso = B->iso ;
+
+    int8_t *restrict Cb = C->b ;
+    const int64_t cnz = GB_nnz_held (C) ;
+
+    #ifdef GB_ISO_EMULT
+    ASSERT (C->iso) ;
+    #else
+    ASSERT (!C->iso) ;
+    ASSERT (!(A_iso && B_iso)) ;    // one of A or B can be iso, but not both
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
+    const GB_BTYPE *restrict Bx = (GB_BTYPE *) B->x ;
+          GB_CTYPE *restrict Cx = (GB_CTYPE *) C->x ;
+    #endif
+
+    //--------------------------------------------------------------------------
+    // C=A.*B, C<M>=A.*B, or C<!M>=A.*B: C is bitmap
+    //--------------------------------------------------------------------------
 
     // TODO modify this method so it can modify C in-place, and also use the
     // accum operator.
     int64_t cnvals = 0 ;
 
-    if (M == NULL)
+    if (ewise_method == GB_EMULT_METHOD_05)
     {
 
         //----------------------------------------------------------------------
-        // M is not present
+        // C is bitmap, M is not present
         //----------------------------------------------------------------------
 
         //      ------------------------------------------
         //      C       =           A       .*      B
         //      ------------------------------------------
-        //      bitmap  .           bitmap          bitmap
-        //      bitmap  .           bitmap          full  
-        //      bitmap  .           full            bitmap
-
-        //----------------------------------------------------------------------
-        // Method18: C bitmap, A and B are bitmap or full
-        //----------------------------------------------------------------------
+        //      bitmap  .           bitmap          bitmap  (method: 05)
+        //      bitmap  .           bitmap          full    (method: 05)
+        //      bitmap  .           full            bitmap  (method: 05)
 
         int tid ;
         #pragma omp parallel for num_threads(C_nthreads) schedule(static) \
@@ -52,9 +72,11 @@
                 if (GBB (Ab, p) && GBB (Bb,p))
                 { 
                     // C (i,j) = A (i,j) + B (i,j)
-                    GB_GETA (aij, Ax, p) ;
-                    GB_GETB (bij, Bx, p) ;
+                    #ifndef GB_ISO_EMULT
+                    GB_GETA (aij, Ax, p, A_iso) ;
+                    GB_GETB (bij, Bx, p, B_iso) ;
                     GB_BINOP (GB_CX (p), aij, bij, p % vlen, p / vlen) ;
+                    #endif
                     Cb [p] = 1 ;
                     task_cnvals++ ;
                 }
@@ -63,23 +85,25 @@
         }
 
     }
-    else if (M_is_sparse_or_hyper)
-    { 
+    else if (ewise_method == GB_EMULT_METHOD_06)
+    {
 
         //----------------------------------------------------------------------
-        // C is bitmap, M is sparse or hyper
+        // C is bitmap, !M is sparse or hyper
         //----------------------------------------------------------------------
 
         //      ------------------------------------------
         //      C       <!M>=       A       .*      B
         //      ------------------------------------------
-        //      bitmap  sparse      bitmap          bitmap
-        //      bitmap  sparse      bitmap          full  
-        //      bitmap  sparse      full            bitmap
+        //      bitmap  sparse      bitmap          bitmap  (method: 06)
+        //      bitmap  sparse      bitmap          full    (method: 06)
+        //      bitmap  sparse      full            bitmap  (method: 06)
 
         // M is sparse and complemented.  If M is sparse and not
         // complemented, then C is constructed as sparse, not bitmap.
+        ASSERT (M != NULL) ;
         ASSERT (Mask_comp) ;
+        ASSERT (GB_IS_SPARSE (M) || GB_IS_HYPERSPARSE (M)) ;
 
         // C(i,j) = A(i,j) .* B(i,j) can only be computed where M(i,j) is
         // not present in the sparse pattern of M, and where it is present
@@ -89,50 +113,12 @@
         // scatter M into the C bitmap
         //----------------------------------------------------------------------
 
-        GB_SLICE_MATRIX (M, 8) ;
         GB_bitmap_M_scatter_whole (C, M, Mask_struct, GB_BITMAP_M_SCATTER_SET_2,
-            pstart_Mslice, kfirst_Mslice, klast_Mslice,
-            M_nthreads, M_ntasks, Context) ;
-
-#if 0
-        #pragma omp parallel for num_threads(M_nthreads) schedule(dynamic,1)
-        for (taskid = 0 ; taskid < M_ntasks ; taskid++)
-        {
-            int64_t kfirst = kfirst_Mslice [taskid] ;
-            int64_t klast  = klast_Mslice  [taskid] ;
-            for (int64_t k = kfirst ; k <= klast ; k++)
-            {
-                // find the part of M(:,k) for this task
-                int64_t j = GBH (Mh, k) ;
-                int64_t pM_start, pM_end ;
-                GB_get_pA (&pM_start, &pM_end, taskid, k, kfirst,
-                    klast, pstart_Mslice, Mp, vlen) ;
-                int64_t pC_start = j * vlen ;
-                // traverse over M(:,j), the kth vector of M
-                for (int64_t pM = pM_start ; pM < pM_end ; pM++)
-                {
-                    // mark C(i,j) if M(i,j) is true
-                    bool mij = GB_mcast (Mx, pM, msize) ;
-                    if (mij)
-                    { 
-                        int64_t i = Mi [pM] ;
-                        int64_t p = pC_start + i ;
-                        Cb [p] = 2 ;
-                    }
-                }
-            }
-        }
-#endif
+            M_ek_slicing, M_ntasks, M_nthreads, Context) ;
 
         // C(i,j) has been marked, in Cb, with the value 2 where M(i,j)=1.
         // These positions will not be computed in C(i,j).  C(i,j) can only
         // be modified where Cb [p] is zero.
-
-        //----------------------------------------------------------------------
-        // Method19(!M,sparse): C is bitmap, both A and B are bitmap or full
-        //----------------------------------------------------------------------
-
-        // TODO: M may be jumbled, in which case so is C
 
         int tid ;
         #pragma omp parallel for num_threads(C_nthreads) schedule(static) \
@@ -149,9 +135,11 @@
                     if (GBB (Ab, p) && GBB (Bb, p))
                     { 
                         // C (i,j) = A (i,j) + B (i,j)
-                        GB_GETA (aij, Ax, p) ;
-                        GB_GETB (bij, Bx, p) ;
+                        #ifndef GB_ISO_EMULT
+                        GB_GETA (aij, Ax, p, A_iso) ;
+                        GB_GETB (bij, Bx, p, B_iso) ;
                         GB_BINOP (GB_CX (p), aij, bij, p % vlen, p / vlen) ;
+                        #endif
                         Cb [p] = 1 ;
                         task_cnvals++ ;
                     }
@@ -166,7 +154,7 @@
         }
 
     }
-    else
+    else // if (ewise_method == GB_EMULT_METHOD_07)
     {
 
         //----------------------------------------------------------------------
@@ -176,41 +164,41 @@
         //      ------------------------------------------
         //      C      <M> =        A       .*      B
         //      ------------------------------------------
-        //      bitmap  bitmap      bitmap          bitmap
-        //      bitmap  bitmap      bitmap          full  
-        //      bitmap  bitmap      full            bitmap
+        //      bitmap  bitmap      bitmap          bitmap  (method: 07)
+        //      bitmap  bitmap      bitmap          full    (method: 07)
+        //      bitmap  bitmap      full            bitmap  (method: 07)
 
         //      ------------------------------------------
         //      C      <M> =        A       .*      B
         //      ------------------------------------------
-        //      bitmap  full        bitmap          bitmap
-        //      bitmap  full        bitmap          full  
-        //      bitmap  full        full            bitmap
+        //      bitmap  full        bitmap          bitmap  (method: 07)
+        //      bitmap  full        bitmap          full    (method: 07)
+        //      bitmap  full        full            bitmap  (method: 07)
 
         //      ------------------------------------------
         //      C      <!M> =       A       .*      B
         //      ------------------------------------------
-        //      bitmap  bitmap      bitmap          bitmap
-        //      bitmap  bitmap      bitmap          full  
-        //      bitmap  bitmap      full            bitmap
+        //      bitmap  bitmap      bitmap          bitmap  (method: 07)
+        //      bitmap  bitmap      bitmap          full    (method: 07)
+        //      bitmap  bitmap      full            bitmap  (method: 07)
 
         //      ------------------------------------------
         //      C      <!M> =       A       .*      B
         //      ------------------------------------------
-        //      bitmap  full        bitmap          bitmap
-        //      bitmap  full        bitmap          full  
-        //      bitmap  full        full            bitmap
+        //      bitmap  full        bitmap          bitmap  (method: 07)
+        //      bitmap  full        bitmap          full    (method: 07)
+        //      bitmap  full        full            bitmap  (method: 07)
 
-        ASSERT (M_is_bitmap || M_is_full) ;
+        ASSERT (GB_IS_BITMAP (M) || GB_IS_FULL (M)) ;
+
+        const int8_t  *restrict Mb = M->b ;
+        const GB_void *restrict Mx = (GB_void *) (Mask_struct ? NULL : (M->x)) ;
+        size_t msize = M->type->size ;
 
         #undef  GB_GET_MIJ     
         #define GB_GET_MIJ(p)                                           \
             bool mij = GBB (Mb, p) && GB_mcast (Mx, p, msize) ;         \
-            if (Mask_comp) mij = !mij ;
-
-        //----------------------------------------------------------------------
-        // Method20: C is bitmap; M, A, and B are bitmap or full
-        //----------------------------------------------------------------------
+            if (Mask_comp) mij = !mij ; /* TODO: use ^ */
 
         int tid ;
         #pragma omp parallel for num_threads(C_nthreads) schedule(static) \
@@ -226,17 +214,19 @@
                 {
                     // M(i,j) is true, so C(i,j) can be computed
                     if (GBB (Ab, p) && GBB (Bb, p))
-                    {
+                    { 
                         // C (i,j) = A (i,j) + B (i,j)
-                        GB_GETA (aij, Ax, p) ;
-                        GB_GETB (bij, Bx, p) ;
+                        #ifndef GB_ISO_EMULT
+                        GB_GETA (aij, Ax, p, A_iso) ;
+                        GB_GETB (bij, Bx, p, B_iso) ;
                         GB_BINOP (GB_CX (p), aij, bij, p % vlen, p / vlen) ;
+                        #endif
                         Cb [p] = 1 ;
                         task_cnvals++ ;
                     }
                 }
                 else
-                {
+                { 
                     // M(i,j) == 1, so C(i,j) is not computed
                     Cb [p] = 0 ;
                 }

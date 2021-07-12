@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -12,7 +12,9 @@
 // gbsemiringinfo (semiring_string)
 // gbsemiringinfo (semiring_string, type)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: GrB.semiringinfo (s) or GrB.semiringinfo (s,type)"
 
 void mexFunction
 (
@@ -27,8 +29,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 1 && nargin <= 2 && nargout == 0,
-    "usage: GrB.semiringinfo (semiring) or GrB.semiringinfo (semiring,type)") ;
+    gb_usage (nargin >= 1 && nargin <= 2 && nargout == 0, USAGE) ;
 
     //--------------------------------------------------------------------------
     // construct the GraphBLAS semiring and print it

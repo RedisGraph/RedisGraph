@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// C can have any sparsity on input; it becomes a full matrix on output.
+// C can have any sparsity on input; it becomes a full non-iso matrix on output.
+// C can have pending work, which is discarded.
 
 #include "GB_dense.h"
 #include "GB_binop.h"
@@ -19,7 +20,7 @@
 GrB_Info GB_dense_ewise3_noaccum    // C = A+B
 (
     GrB_Matrix C,                   // input/output matrix
-    const bool C_is_dense,          // true if C is dense on input
+    const bool C_as_if_full,        // true if C is as-if-full on input
     const GrB_Matrix A,
     const GrB_Matrix B,
     const GrB_BinaryOp op,          // must not be a positional op
@@ -36,23 +37,26 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
     ASSERT_MATRIX_OK (C, "C for dense C=A+B", GB0) ;
     ASSERT (GB_ZOMBIES_OK (C)) ;
     ASSERT (GB_JUMBLED_OK (C)) ;    // C is entirely overwritten by A+B
-    ASSERT (!GB_PENDING (C)) ;
-    ASSERT (GB_IMPLIES (!C_is_dense, (C != A && C != B))) ;
+    ASSERT (GB_PENDING_OK (C)) ;
 
     ASSERT_MATRIX_OK (A, "A for dense C=A+B", GB0) ;
     ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_JUMBLED (A)) ;
     ASSERT (!GB_PENDING (A)) ;
-    ASSERT (GB_is_dense (A)) ;
 
     ASSERT_MATRIX_OK (B, "B for dense C=A+B", GB0) ;
     ASSERT (!GB_ZOMBIES (B)) ;
     ASSERT (!GB_JUMBLED (B)) ;
     ASSERT (!GB_PENDING (B)) ;
-    ASSERT (GB_is_dense (B)) ;
+
+    ASSERT (GB_as_if_full (A)) ;
+    ASSERT (GB_as_if_full (B)) ;
 
     ASSERT (!GB_IS_BITMAP (A)) ;
     ASSERT (!GB_IS_BITMAP (B)) ;
+
+    ASSERT (!A->iso) ;
+    ASSERT (!B->iso) ;
 
     ASSERT_BINARYOP_OK (op, "op for dense C=A+B", GB0) ;
     ASSERT (!GB_OP_IS_POSITIONAL (op)) ;
@@ -64,26 +68,31 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    int64_t anz = GB_NNZ (A) ;
-
+    int64_t anz = GB_nnz (A) ;
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = GB_nthreads (2 * anz, chunk, nthreads_max) ;
 
     //--------------------------------------------------------------------------
-    // if C not already dense, allocate it as full
+    // if C not already full, allocate it as full
     //--------------------------------------------------------------------------
 
     // clear prior content and create C as a full matrix.  Keep the same type
     // and CSR/CSC for C.  Allocate the values of C but do not initialize them.
 
-    if (!C_is_dense)
+    if (!C_as_if_full)
     { 
-        // convert C to full; just allocate C->x.  Keep the dimensions of C.
-        GB_OK (GB_convert_to_full (C)) ;    // prior content deleted
+        // free the content of C and reallocate it as a non-iso full matrix
+        ASSERT (C != A && C != B) ;
+        GB_phbix_free (C) ;
+        // set C->iso = false   OK
+        GB_OK (GB_new_bix (&C, C->static_header,
+            C->type, C->vlen, C->vdim, GB_Ap_null, C->is_csc, GxB_FULL, false,
+            C->hyper_switch, -1, GB_nnz_full (C), true, false, Context)) ;
+        C->magic = GB_MAGIC ;
     }
     else if (!GB_IS_FULL (C))
-    {
-        // C is dense, but not full; convert to full
+    { 
+        // ensure C is full
         GB_convert_any_to_full (C) ;
     }
     ASSERT (GB_IS_FULL (C)) ;
@@ -93,7 +102,7 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
     //--------------------------------------------------------------------------
 
     #define GB_Cdense_ewise3_noaccum(op,xname) \
-        GB_Cdense_ewise3_noaccum_ ## op ## xname
+        GB (_Cdense_ewise3_noaccum_ ## op ## xname)
 
     #define GB_BINOP_WORKER(op,xname)                                       \
     {                                                                       \

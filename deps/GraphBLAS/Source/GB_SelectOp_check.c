@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
 (
     const GxB_SelectOp op,  // GraphBLAS operator to print and check
@@ -23,7 +23,7 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("\n    GraphBLAS SelectOp: %s: ", GB_NAME) ;
+    GBPR0 ("\n    GraphBLAS SelectOp: %s: ", ((name != NULL) ? name : "")) ;
 
     if (op == NULL)
     { 
