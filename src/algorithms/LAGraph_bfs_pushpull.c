@@ -598,9 +598,9 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 			// q(i) = i+1 for all entries in q.
 
 			GrB_Index *qi ;
+			bool iso;
 			bool jumbled ;
 			int64_t q_size ;
-			bool iso;
 			GrB_Index qi_size, qx_size ;
 
 			if(n > INT32_MAX) {
@@ -617,7 +617,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 				}
 
 				GxB_Vector_import_CSC(&q, int_type, n,
-						&qi, (void **) (&qx), qi_size, qx_size, &iso, nq,
+						&qi, (void **) (&qx), qi_size, qx_size, false, nq,
 						jumbled, NULL) ;
 			} else {
 				int32_t *qx ;
