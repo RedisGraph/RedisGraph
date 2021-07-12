@@ -36,13 +36,12 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 		ids = array_new(EdgeID, 2);
 		array_append(ids, *x);
 		array_append(ids, *y);
-		// TODO: Make sure MSB of ids isn't on.
-		*z = (EdgeID)ids;
+		*z = (EdgeID)SET_MSB(ids);
 	} else {
 		// Multiple edges, adding another edge.
-		ids = (EdgeID *)(*x);
+		ids = CLEAR_MSB(*x);
 		array_append(ids, *y);
-		*z = (EdgeID)ids;
+		*z = (EdgeID)SET_MSB(ids);
 	}
 }
 
@@ -53,7 +52,7 @@ void _binary_op_free_edge(void *z, const void *x, const void *y) {
 	if((SINGLE_EDGE(*id))) {
 		DataBlock_DeleteItem(g->edges, *id);
 	} else {
-		EdgeID *ids = (EdgeID *)(*id);
+		EdgeID *ids = CLEAR_MSB(*id);
 		uint id_count = array_len(ids);
 		for(uint i = 0; i < id_count; i++) {
 			DataBlock_DeleteItem(g->edges, ids[i]);
@@ -841,7 +840,7 @@ void Graph_GetNodeEdges
 					array_append(*edges, e);	
 				} else {
 					// multi-edge entry
-					EdgeID *ids = (EdgeID*)id;
+					EdgeID *ids = CLEAR_MSB(id);
 					uint len = array_len(ids);
 					for(uint j = 0; j < len; j++) {
 						Graph_GetEdge(g, ids[j], &e);
