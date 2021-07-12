@@ -36,7 +36,7 @@ static void _removeEntryFromMultiValArr
 	if(array_len(entries) == 1) {
 		entry = entries[0];
 		array_free(entries);
-		*entries = SET_MSB(entry);
+		*entries = entry;
 	}
 }
 
@@ -57,6 +57,7 @@ static GrB_Info _removeElementMultiVal
 	ASSERT((SINGLE_EDGE(x)) == false);
 
 	// remove entry from multi-value
+	v = CLEAR_MSB(v);
 	_removeEntryFromMultiValArr(&x, v);
 	// update entry
 	info = GrB_Matrix_setElement(A, x, i, j);
