@@ -247,7 +247,7 @@ void RG_Matrix_validateState
 void RG_Matrix_get
 (
 	RG_Matrix C,
-    GrB_Matrix M
+	GrB_Matrix M
 ) {
 	ASSERT(C != NULL);
 	ASSERT(A != NULL);
@@ -257,7 +257,8 @@ void RG_Matrix_get
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
 
-	GrB_Matrix_dup(&M, m);
+	info = GrB_Matrix_dup(&M, m);
+	ASSERT(info == GrB_SUCCESS);
 
 	info = GrB_wait(&delta_plus);
 	ASSERT(info == GrB_SUCCESS);
