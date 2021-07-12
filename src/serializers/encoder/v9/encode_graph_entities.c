@@ -295,7 +295,7 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 		e.destNodeID = dest;
 		GrB_Matrix_extractElement_UINT64(&edgeID, M, e.srcNodeID, e.destNodeID);
 		if(SINGLE_EDGE(edgeID)) {
-			edgeID = SINGLE_EDGE_ID(edgeID);
+			edgeID = edgeID;
 			Graph_GetEdge(gc->g, edgeID, &e);
 			_RdbSaveEdge(rdb, gc->g, &e, r);
 			encoded_edges++;

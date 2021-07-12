@@ -36,7 +36,7 @@ static void _removeEntryFromMultiValArr
 	if(array_len(entries) == 1) {
 		entry = entries[0];
 		array_free(entries);
-		*entries = SET_MSB(entry);
+		*entries = entry;
 	}
 }
 

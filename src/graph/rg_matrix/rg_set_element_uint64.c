@@ -28,21 +28,23 @@ static GrB_Info setMultiEdgeEntry
 	// new entry, simply set
 	if(!exists) {
 		// mark 'x' as a single entry
-		v = SET_MSB(x);
+		v = x;
 		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
 	} else {
 		// entry already exists
 		if(SINGLE_EDGE(v)) {
 			// swap from single entry to multi-entry
 			entries = array_new(uint64_t, 2);
-			array_append(entries, SINGLE_EDGE_ID(v));
-			array_append(entries, SINGLE_EDGE_ID(x));
+			array_append(entries, v);
+			array_append(entries, x);
 		} else {
+			v = CLEAR_MSB(v);
 			// append entry to array
 			entries = (uint64_t *)v;
-			array_append(entries, SINGLE_EDGE_ID(x));
+			array_append(entries, x);
 		}
 		v = entries;
+		v = SET_MSB(v);
 		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
 		// cheap sync, entry already exists
 		GrB_wait(&A);

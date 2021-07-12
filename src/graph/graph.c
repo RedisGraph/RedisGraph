@@ -34,14 +34,14 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 	 * switching from single edge ID to multiple IDs. */
 	if(SINGLE_EDGE(*x)) {
 		ids = array_new(EdgeID, 2);
-		array_append(ids, SINGLE_EDGE_ID(*x));
-		array_append(ids, SINGLE_EDGE_ID(*y));
+		array_append(ids, *x);
+		array_append(ids, *y);
 		// TODO: Make sure MSB of ids isn't on.
 		*z = (EdgeID)ids;
 	} else {
 		// Multiple edges, adding another edge.
 		ids = (EdgeID *)(*x);
-		array_append(ids, SINGLE_EDGE_ID(*y));
+		array_append(ids, *y);
 		*z = (EdgeID)ids;
 	}
 }
@@ -51,7 +51,7 @@ void _binary_op_free_edge(void *z, const void *x, const void *y) {
 	const EdgeID *id = (const EdgeID *)y;
 
 	if((SINGLE_EDGE(*id))) {
-		DataBlock_DeleteItem(g->edges, SINGLE_EDGE_ID(*id));
+		DataBlock_DeleteItem(g->edges, *id);
 	} else {
 		EdgeID *ids = (EdgeID *)(*id);
 		uint id_count = array_len(ids);
@@ -153,8 +153,6 @@ void _Graph_GetEdgesConnectingNodes
 	if(res == GrB_NO_VALUE) return;
 
 	if(SINGLE_EDGE(edgeId)) {
-		// discard most significate bit
-		edgeId = SINGLE_EDGE_ID(edgeId);
 		e.entity = DataBlock_GetItem(g->edges, edgeId);
 		e.id = edgeId;
 		ASSERT(e.entity);
@@ -556,7 +554,7 @@ int Graph_GetEdgeRelation
 		if(info != GrB_SUCCESS) continue;
 
 		if(SINGLE_EDGE(edgeId)) {
-			EdgeID curEdgeID = SINGLE_EDGE_ID(edgeId);
+			EdgeID curEdgeID = edgeId;
 			if(curEdgeID == id) {
 				Edge_SetRelationID(e, i);
 				return i;
@@ -657,7 +655,6 @@ void Graph_FormConnection
 	RG_Matrix  adj   =  Graph_GetRelationMatrix(g, GRAPH_NO_RELATION, false);
 
 	// rows represent source nodes, columns represent destination nodes.
-	edge_id = SET_MSB(edge_id);
 	// TODO: consider using the same approach as Graph_CreateNode uses
 	// this avoids going through Graph_GetRelationMatrix
 	RG_Matrix_setElement_BOOL(adj, true, src, dest);
@@ -788,7 +785,6 @@ void Graph_GetNodeEdges
 				EdgeID id = vx[i];
 
 				if(SINGLE_EDGE(id)) {
-					id = SINGLE_EDGE_ID(id);
 					Graph_GetEdge(g, id, &e);
 					array_append(*edges, e);	
 				} else {
@@ -841,7 +837,6 @@ void Graph_GetNodeEdges
 				EdgeID id = vx[i];
 
 				if(SINGLE_EDGE(id)) {
-					id = SINGLE_EDGE_ID(id);
 					Graph_GetEdge(g, id, &e);
 					array_append(*edges, e);	
 				} else {
@@ -940,7 +935,7 @@ int Graph_DeleteEdge
 		if(array_len(edges) == 1) {
 			edge_id = edges[0];
 			array_free(edges);
-			RG_Matrix_setElement_UINT64(R, SET_MSB(edge_id), src_id, dest_id);
+			RG_Matrix_setElement_UINT64(R, edge_id, src_id, dest_id);
 		}
 	}
 
