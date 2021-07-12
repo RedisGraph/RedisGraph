@@ -597,3 +597,143 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	ASSERT_TRUE(A == NULL);
 }
 
+// nvals(A eWiseMult B) == nvals(A) == nvals(B)
+void Compare_Matrices(GrB_Matrix m, GrB_Matrix n, GrB_Type t, GrB_Index nrows, GrB_Index ncols)
+{
+	GrB_Matrix  CMP                 =  NULL;
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   nvals_M             =  0;
+	GrB_Index   nvals_N             =  0;
+	GrB_Index   nvals_CMP           =  0;
+
+	info = GrB_Matrix_new(&CMP, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = GrB_Matrix_eWiseMult_BinaryOp(CMP, NULL, NULL, GrB_LAND, m, n, NULL);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	GrB_Matrix_nvals(&nvals_N, n);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	GrB_Matrix_nvals(&nvals_M, m);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	GrB_Matrix_nvals(&nvals_CMP, CMP);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(nvals_CMP, nvals_N);
+	ASSERT_EQ(nvals_CMP, nvals_M);
+
+	// clean up
+	info = GrB_Matrix_free(&CMP);
+	ASSERT_EQ(info, GrB_SUCCESS);
+}
+//------------------------------------------------------------------------------
+// fuzzy test compare RG_Matrix to GrB_Matrix
+//------------------------------------------------------------------------------
+
+TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
+	GrB_Type    t                   =  GrB_BOOL;
+	RG_Matrix   A                   =  NULL;
+	RG_Matrix   T                   =  NULL;  // A transposed
+	GrB_Matrix  M                   =  NULL;  // primary internal matrix
+	GrB_Matrix  MT                   =  NULL;
+	GrB_Matrix  N                   =  NULL;
+	GrB_Matrix  NT                   =  NULL;
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   nrows               =  100;
+	GrB_Index   ncols               =  100;
+	GrB_Index   i                   =  0;
+	GrB_Index   j                   =  1;
+	bool        x                   =  true;  // M[i,j] = x
+	uint64_t    v                   =  0;  // v = M[i,j]
+	uint32_t    operations          =  1000;
+	GrB_Index*  I                   =  (GrB_Index*)malloc(sizeof(GrB_Index)*operations);
+	GrB_Index*  J                   =  (GrB_Index*)malloc(sizeof(GrB_Index)*operations);
+	bool        multi_edge          =  false;
+	bool        maintain_transpose  =  true;
+
+	//--------------------------------------------------------------------------
+	// create RGMatrix
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// make sure transposed was created
+	T = RG_Matrix_getTranspose(A);
+	ASSERT_TRUE(T != A);
+	ASSERT_TRUE(T != NULL);
+
+	// get internal matrices
+	M   =  RG_MATRIX_M(A);
+	MT  =  RG_MATRIX_M(T);
+
+	info = GrB_Matrix_new(&N, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	for (size_t index = 0; i < operations; index++)
+	{
+		if (index < 10 || rand() % 100 > 20)
+		{
+			i = rand() % nrows;
+			j = rand() % ncols;
+
+			//--------------------------------------------------------------------------
+			// set element at position i,j
+			//--------------------------------------------------------------------------
+
+			info = RG_Matrix_setElement_BOOL(A, x, i, j);
+			ASSERT_EQ(info, GrB_SUCCESS);
+
+			info = GrB_Matrix_setElement_BOOL(N, x, i, j);
+			ASSERT_EQ(info, GrB_SUCCESS);
+
+			I[index] = i;
+			J[index] = j;
+		}
+		else
+		{
+			uint32_t delete_pos = rand() % index;
+			i = I[delete_pos];
+			j = J[delete_pos];
+
+			//--------------------------------------------------------------------------
+			// delete element at position i,j
+			//--------------------------------------------------------------------------
+			
+			info = RG_Matrix_removeElement(A, i, j);
+			ASSERT_EQ(info, GrB_SUCCESS);
+
+			info = GrB_Matrix_removeElement(N, i, j);
+			ASSERT_EQ(info, GrB_SUCCESS);
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// flush matrix
+	//--------------------------------------------------------------------------
+
+	RG_Matrix_wait(A, true);
+
+	//--------------------------------------------------------------------------
+	// validation
+	//--------------------------------------------------------------------------
+
+	Compare_Matrices(M, N, t, nrows, ncols);
+
+	info = GrB_transpose(NT, NULL, NULL, N, NULL);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	Compare_Matrices(MT, NT, t, nrows, ncols);
+
+	// clean up
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	info = GrB_Matrix_free(&N);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = GrB_Matrix_free(&NT);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	free(I);
+	free(J);
+}
