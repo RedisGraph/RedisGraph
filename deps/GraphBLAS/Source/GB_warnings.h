@@ -41,7 +41,7 @@
 #pragma GCC diagnostic ignored "-Wformat-truncation="
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 // enable these warnings as errors
-#pragma GCC diagnostic error "-Wmisleading-indentation"
+// #pragma GCC diagnostic error "-Wmisleading-indentation"
 #endif
 
 // disable warnings from -Wall -Wextra -Wpendantic

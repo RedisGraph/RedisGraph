@@ -8040,7 +8040,6 @@ GrB_Info GxB_Vector_resize      // change the size of a vector (historical)
     (arg1, __VA_ARGS__)
 #endif
 
-
 //------------------------------------------------------------------------------
 // GxB_Matrix_Pending:  Checks to see if matrix has pending operations
 //------------------------------------------------------------------------------
