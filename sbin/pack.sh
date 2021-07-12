@@ -81,7 +81,7 @@ pack_ramp() {
 	local platform="$OS-$OSNICK-$ARCH"
 	local stem=${PACKAGE_NAME}.${platform}
 
-	local verspec=${SEMVER}${VARIANT}
+	local verspec=${SEMVER}${_VARIANT}
 	
 	local fq_package=$stem.${verspec}.zip
 
@@ -113,7 +113,7 @@ pack_ramp() {
 	mkdir -p $BINDIR/snapshots
 	cd $BINDIR/snapshots
 	if [[ ! -z $BRANCH ]]; then
-		local snap_package=$stem.${BRANCH}${VARIANT}.zip
+		local snap_package=$stem.${BRANCH}${_VARIANT}.zip
 		ln -sf ../$fq_package $snap_package
 	fi
 
@@ -126,7 +126,7 @@ pack_deps() {
 	local dep="$1"
 
 	local platform="$OS-$OSNICK-$ARCH"
-	local verspec=${SEMVER}${VARIANT}
+	local verspec=${SEMVER}${_VARIANT}
 	local stem=${PACKAGE_NAME}-${dep}.${platform}
 
 	local artdir=$BINDIR
@@ -154,7 +154,7 @@ pack_deps() {
 	mkdir -p $BINDIR/snapshots
 	cd $BINDIR/snapshots
 	if [[ ! -z $BRANCH ]]; then
-		local snap_dep=$stem.${BRANCH}${VARIANT}.tgz
+		local snap_dep=$stem.${BRANCH}${_VARIANT}.tgz
 		ln -sf ../$fq_dep $snap_dep
 		ln -sf ../$fq_dep.sha256 $snap_dep.sha256
 	fi
@@ -178,8 +178,9 @@ prepare_symbols_dep() {
 export NUMVER=$(NUMERIC=1 $ROOT/sbin/getver)
 export SEMVER=$($ROOT/sbin/getver)
 
-if [[ ! -z $VARIANT ]]; then
-	VARIANT=-${VARIANT}
+_VARIANT=
+if [[ -n $VARIANT ]]; then
+	_VARIANT=-${VARIANT}
 fi
 
 [[ -z $BRANCH ]] && BRANCH=${CIRCLE_BRANCH:-`git rev-parse --abbrev-ref HEAD`}
@@ -207,7 +208,7 @@ if [[ $RAMP == 1 ]]; then
 		exit 1
 	fi
 
-	echo "Building RAMP $VARIANT files ..."
+	echo "Building RAMP files ..."
 	pack_ramp
 	echo "Done."
 fi
