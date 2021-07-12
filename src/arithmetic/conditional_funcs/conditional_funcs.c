@@ -79,12 +79,12 @@ void Register_ConditionalFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
-	types = array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, SI_ALL);
+	array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true, false);
 	AR_RegFunc(func_desc);
 }

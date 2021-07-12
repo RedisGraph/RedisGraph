@@ -21,7 +21,7 @@ void SIArray_Append(SIValue *siarray, SIValue value) {
 	// clone and persist incase of pointer values
 	SIValue clone = SI_CloneValue(value);
 	// append
-	siarray->array = array_append(siarray->array, clone);
+	array_append(siarray->array, clone);
 
 }
 
@@ -72,16 +72,18 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "]");
 }
 
-/* This method referenced by Java ArrayList.hashCode() method, which takes
- * into account the hasing of nested values.*/
+// this method referenced by Java ArrayList.hashCode() method, which takes
+// into account the hasing of nested values
 XXH64_hash_t SIArray_HashCode(SIValue siarray) {
-	SIType t = SI_TYPE(siarray);
+	SIType t = T_ARRAY;
 	XXH64_hash_t hashCode = XXH64(&t, sizeof(t), 0);
+
 	uint arrayLen = SIArray_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue value = siarray.array[i];
 		hashCode = 31 * hashCode + SIValue_HashCode(value);
 	}
+
 	return hashCode;
 }
 

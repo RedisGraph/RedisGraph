@@ -24,7 +24,7 @@ static AR_ExpNode **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	for(uint i = 0; i < arg_count; i ++) {
 		const cypher_astnode_t *exp = cypher_ast_call_get_argument(call_clause, i);
 		AR_ExpNode *arg = AR_EXP_FromASTNode(exp);
-		arguments = array_append(arguments, arg);
+		array_append(arguments, arg);
 	}
 
 	return arguments;
@@ -58,7 +58,7 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 		}
 
 		exp->resolved_name = identifier;
-		expressions = array_append(expressions, exp);
+		array_append(expressions, exp);
 	}
 
 	// If the procedure call is missing its yield part, include procedure outputs.
@@ -72,7 +72,7 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 			const char *name = Procedure_GetOutput(proc, i);
 			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(name);
 			exp->resolved_name = name;
-			expressions = array_append(expressions, exp);
+			array_append(expressions, exp);
 		}
 		Proc_Free(proc);
 	}

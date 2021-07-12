@@ -1,4 +1,5 @@
 import sys
+import os
 from RLTest import Env
 from base import FlowTestsBase
 from redis import ResponseError
@@ -10,7 +11,7 @@ redis_graph = None
 class testQueryTimeout(FlowTestsBase):
     def __init__(self):
         # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
+        if Env().envRunner.debugger is not None or os.getenv('COV') == '1':
             Env().skip() # queries will be much slower under Valgrind
 
         self.env = Env(decodeResponses=True)

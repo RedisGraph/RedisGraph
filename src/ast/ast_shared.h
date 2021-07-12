@@ -98,9 +98,6 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);
 // Convert a map of properties from the AST into a set of attribute ID keys and AR_ExpNode values.
 PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props);
 
-// Clone EntityUpdateEvalCtx.
-EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx);
-
 // Clone NodeCreateCtx.
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
 

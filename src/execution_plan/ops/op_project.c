@@ -33,7 +33,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
+		array_append(op->record_offsets, record_idx);
 	}
 
 	return (OpBase *)op;

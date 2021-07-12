@@ -23,7 +23,7 @@ class ArrTest: public ::testing::Test {
 
 TEST_F(ArrTest, TestArrCloneWithCB) {
 	int *arr = array_new(int, 10);
-	for(int i = 0; i < 10; i++) arr = array_append(arr, i);
+	for(int i = 0; i < 10; i++) array_append(arr, i);
 	int *arr_clone;
 	array_clone_with_cb(arr_clone, arr, int_identity);
 	ASSERT_EQ(array_len(arr), array_len(arr_clone));

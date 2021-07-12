@@ -71,10 +71,10 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 	pdata->mapping = mapping;
 	pdata->ranking = ranking;
 	pdata->output = array_new(SIValue, 4);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
-	pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
-	pdata->output = array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("node"));
+	array_append(pdata->output, SI_Node(NULL)); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("score"));
+	array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
 	ctx->privateData = pdata;
 
 	// Get label matrix.
@@ -196,8 +196,8 @@ ProcedureCtx *Proc_PagerankCtx() {
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
 	ProcedureOutput output_node = {.name = "node", .type = T_NODE};
 	ProcedureOutput output_score = {.name = "score", .type = T_DOUBLE};
-	outputs = array_append(outputs, output_node);
-	outputs = array_append(outputs, output_score);
+	array_append(outputs, output_node);
+	array_append(outputs, output_score);
 
 	ProcedureCtx *ctx = ProcCtxNew("algo.pageRank",
 								   2,

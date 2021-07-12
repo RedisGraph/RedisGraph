@@ -41,6 +41,6 @@ inline void DataBlock_MarkAsDeletedOutOfOrder(DataBlock *dataBlock, uint64_t idx
 	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, idx);
 	// Delete
 	MARK_HEADER_AS_DELETED(item_header);
-	dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
+	array_append(dataBlock->deletedIdx, idx);
 }
 

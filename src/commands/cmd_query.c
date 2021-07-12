@@ -59,12 +59,19 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	const cypher_astnode_t *index_op = ast->root;
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		// Retrieve strings from AST node
+		bool index_added = false;
+		unsigned int nprops = cypher_ast_create_node_props_index_nprops(index_op);
 		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
-														  index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
-															  index_op, 0));
+												index_op));
+		// add index for each property
 		QueryCtx_LockForCommit();
-		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) Index_Construct(idx);
+		for(unsigned int i = 0; i < nprops; i++) {
+			const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
+																index_op, i));
+			index_added |= (GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK);
+		}
+		// populate the index only when at least one attribute was introduced
+		if(index_added) Index_Construct(idx);
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// Retrieve strings from AST node
@@ -239,20 +246,13 @@ void Graph_Query(void *args) {
 
 	// parse query parameters and build an execution plan or retrieve it from the cache
 	ExecutionCtx *exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
-
-	// if there were any query compile time errors, report them
-	if(ErrorCtx_EncounteredError()) {
-		ErrorCtx_EmitException();
-		goto cleanup;
-	}
-	if(exec_ctx->exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
+	if(exec_ctx == NULL) goto cleanup;
 
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
 
 	// write query executing via GRAPH.RO_QUERY isn't allowed
 	if(!readonly && _readonly_cmd_mode(command_ctx)) {
 		ErrorCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
-		ErrorCtx_EmitException();
 		goto cleanup;
 	}
 
@@ -269,12 +269,18 @@ void Graph_Query(void *args) {
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
 	// the read-only threadpool
-	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) _ExecuteQuery(gq_ctx);
-	else _DelegateWriter(gq_ctx);
+	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
+		_ExecuteQuery(gq_ctx);
+	} else {
+		_DelegateWriter(gq_ctx);
+	}
 
 	return;
 
 cleanup:
+	// if there were any query compile time errors, report them
+	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
+
 	// Cleanup routine invoked after encountering errors in this function.
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
@@ -282,3 +288,4 @@ cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
+
