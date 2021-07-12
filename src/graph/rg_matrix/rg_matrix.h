@@ -22,7 +22,7 @@ typedef _RG_Matrix *RG_Matrix;
 // Clear X's most significat bit on.
 #define CLEAR_MSB(x) (x) & MSB_MASK_CMP
 // Checks if X represents edge ID.
-#define SINGLE_EDGE(x) ~((x) & MSB_MASK)
+#define SINGLE_EDGE(x) !((x) & MSB_MASK)
 
 #define RG_MATRIX_M(C) (C)->matrix
 #define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus

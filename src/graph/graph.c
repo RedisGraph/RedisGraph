@@ -159,7 +159,7 @@ void _Graph_GetEdgesConnectingNodes
 	} else {
 		// multiple edges connecting src to dest,
 		// entry is a pointer to an array of edge IDs
-		EdgeID *edgeIds = (EdgeID *)edgeId;
+		EdgeID *edgeIds = CLEAR_MSB(edgeId);
 		int edgeCount = array_len(edgeIds);
 
 		for(int i = 0; i < edgeCount; i++) {
@@ -561,7 +561,7 @@ int Graph_GetEdgeRelation
 		} else {
 			// multiple edges exists between src and dest
 			// see if given edge is one of them
-			EdgeID *edges = (EdgeID *)edgeId;
+			EdgeID *edges = CLEAR_MSB(edgeId);
 			int edge_count = array_len(edges);
 			for(int j = 0; j < edge_count; j++) {
 				if(edges[j] == id) {
@@ -788,7 +788,7 @@ void Graph_GetNodeEdges
 					array_append(*edges, e);	
 				} else {
 					// multi-edge entry
-					EdgeID *ids = (EdgeID*)id;
+					EdgeID *ids = CLEAR_MSB(id);
 					uint len = array_len(ids);
 					for(uint j = 0; j < len; j++) {
 						Graph_GetEdge(g, ids[j], &e);
@@ -827,7 +827,7 @@ void Graph_GetNodeEdges
 
 		// inspect row entries
 		for(GrB_Index i = 0; i < nvals; i++) {
-			if(edgeType == GRAPH_NO_RELATION) {
+			if(ed16ype == GRAPH_NO_RELATION) {
 				srcNodeID = vi[i];
 				// collect all edges connecting this source node to destination node
 				Graph_GetEdgesConnectingNodes(g, srcNodeID, destNodeID, edgeType, edges);
@@ -917,7 +917,7 @@ int Graph_DeleteEdge
 
 		int i = 0;
 		EdgeID id = ENTITY_GET_ID(e);
-		EdgeID *edges = (EdgeID *)edge_id;
+		EdgeID *edges = CLEAR_MSB(edge_id);
 		int edge_count = array_len(edges);
 
 		// locate edge within edge array
