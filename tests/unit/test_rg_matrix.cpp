@@ -649,9 +649,9 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	RG_Matrix   A                   =  NULL;
 	RG_Matrix   T                   =  NULL;  // A transposed
 	GrB_Matrix  M                   =  NULL;  // primary internal matrix
-	GrB_Matrix  MT                   =  NULL;
+	GrB_Matrix  MT                  =  NULL;
 	GrB_Matrix  N                   =  NULL;
-	GrB_Matrix  NT                   =  NULL;
+	GrB_Matrix  NT                  =  NULL;
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
@@ -682,6 +682,9 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	MT  =  RG_MATRIX_M(T);
 
 	info = GrB_Matrix_new(&N, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = GrB_Matrix_new(&NT, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	for (size_t index = 0; i < operations; index++)
@@ -758,11 +761,11 @@ TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
 	GrB_Matrix  M                   =  NULL;
 	GrB_Matrix  N                   =  NULL;  // exported matrix 
 	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   i                   =  0;
+	GrB_Index   j                   =  1;
 	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
-	GrB_Index   i                   =  0;
-	GrB_Index   j                   =  1;
 	bool        sync                =  false;
 	bool        multi_edge          =  false;
 	bool        maintain_transpose  =  false;
@@ -813,11 +816,11 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	GrB_Matrix  M                   =  NULL;
 	GrB_Matrix  N                   =  NULL;  // exported matrix
 	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   i                   =  0;
+	GrB_Index   j                   =  1;
 	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
-	GrB_Index   i                   =  0;
-	GrB_Index   j                   =  1;
 	bool        sync                =  false;
 	bool        multi_edge          =  false;
 	bool        maintain_transpose  =  false;
