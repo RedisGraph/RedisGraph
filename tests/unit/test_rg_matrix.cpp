@@ -598,7 +598,7 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 }
 
 // nvals(A eWiseMult B) == nvals(A) == nvals(B)
-void Compare_Matrices(GrB_Matrix m, GrB_Matrix n, GrB_Type t, GrB_Index nrows, GrB_Index ncols)
+void ASSERT_GrB_Matrices_EQ(GrB_Matrix m, GrB_Matrix n, GrB_Type t, GrB_Index nrows, GrB_Index ncols)
 {
 	GrB_Matrix  CMP                 =  NULL;
 	GrB_Info    info                =  GrB_SUCCESS;
@@ -720,12 +720,12 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	// validation
 	//--------------------------------------------------------------------------
 
-	Compare_Matrices(M, N, t, nrows, ncols);
+	ASSERT_GrB_Matrices_EQ(M, N, t, nrows, ncols);
 
 	info = GrB_transpose(NT, NULL, NULL, N, NULL);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	Compare_Matrices(MT, NT, t, nrows, ncols);
+	ASSERT_GrB_Matrices_EQ(MT, NT, t, nrows, ncols);
 
 	// clean up
 	RG_Matrix_free(&A);
@@ -738,14 +738,13 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	free(J);
 }
 
-
+// test exporting RG_Matrix to GrB_Matrix when there are no pending changes
+// by exporting the matrix after flushing
 TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
 	GrB_Type    t                   =  GrB_BOOL;
-	RG_Matrix   A                   =  NULL;
+	RG_Matrix   A                   =  NULL; 
 	GrB_Matrix  M                   =  NULL;
-	GrB_Matrix  N                   =  NULL;
-	GrB_Matrix  DP                  =  NULL;
-	GrB_Matrix  DM                  =  NULL;
+	GrB_Matrix  N                   =  NULL;  // exported matrix 
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
@@ -765,8 +764,6 @@ TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
 
 	// get internal matrices
 	M   =  RG_MATRIX_M(A);
-	DP  =  RG_MATRIX_DELTA_PLUS(A);
-	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
 	//--------------------------------------------------------------------------
 	// flush matrix, sync
@@ -778,15 +775,6 @@ TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
 
 	RG_Matrix_nvals(&nvals, A);
 	ASSERT_EQ(nvals, 1);
-
-	// M should be empty
-	M_NOT_EMPTY();
-
-	// DM should be empty
-	DM_EMPTY();
-
-	// DP should contain a single element
-	DP_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// export matrix
@@ -799,21 +787,22 @@ TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
 	// validation
 	//--------------------------------------------------------------------------
 
-	Compare_Matrices(M, N, t, nrows, ncols);
+	ASSERT_GrB_Matrices_EQ(M, N, t, nrows, ncols);
 
 	// clean up
+	GrB_Matrix_free(&N);
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
-	GrB_Matrix_free(&N);
 }
 
+// test exporting RG_Matrix to GrB_Matrix when there are pending changes
+// by exporting the matrix after making changes
+// then flush the matrix and compare the internal matrix to the exported matrix
 TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	GrB_Type    t                   =  GrB_BOOL;
 	RG_Matrix   A                   =  NULL;
 	GrB_Matrix  M                   =  NULL;
-	GrB_Matrix  N                   =  NULL;
-	GrB_Matrix  DP                  =  NULL;
-	GrB_Matrix  DM                  =  NULL;
+	GrB_Matrix  N                   =  NULL;  // exported matrix
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
@@ -833,8 +822,6 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 
 	// get internal matrices
 	M   =  RG_MATRIX_M(A);
-	DP  =  RG_MATRIX_DELTA_PLUS(A);
-	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
 	//--------------------------------------------------------------------------
 	// flush matrix, sync
@@ -847,19 +834,9 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	RG_Matrix_nvals(&nvals, A);
 	ASSERT_EQ(nvals, 1);
 
-	// M should be empty
-	M_NOT_EMPTY();
-
-	// DM should be empty
-	DM_EMPTY();
-
-	// DP should contain a single element
-	DP_EMPTY();
-
 	//--------------------------------------------------------------------------
 	// set pending changes
 	//--------------------------------------------------------------------------
-
 
 	// remove element at position i,j
 	info = RG_Matrix_removeElement(A, i, j);
@@ -887,23 +864,14 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	RG_Matrix_nvals(&nvals, A);
 	ASSERT_EQ(nvals, 1);
 
-	// M should be empty
-	M_NOT_EMPTY();
-
-	// DM should be empty
-	DM_EMPTY();
-
-	// DP should contain a single element
-	DP_EMPTY();
-
 	//--------------------------------------------------------------------------
 	// validation
 	//--------------------------------------------------------------------------
 
-	Compare_Matrices(M, N, t, nrows, ncols);
+	ASSERT_GrB_Matrices_EQ(M, N, t, nrows, ncols);
 
 	// clean up
+	GrB_Matrix_free(&N);
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
-	GrB_Matrix_free(&N);
 }

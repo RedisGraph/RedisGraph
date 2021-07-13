@@ -293,6 +293,13 @@ GrB_Info RG_mxm                     // C = A * B
 	const RG_Matrix B               // second input: matrix B
 );
 
+// get matrix C without writing to internal matrix
+GrB_Info RG_Matrix_export
+(
+	GrB_Matrix *A,
+	RG_Matrix C
+);
+
 GrB_Info RG_Matrix_wait
 (
 	RG_Matrix C,
@@ -302,12 +309,5 @@ GrB_Info RG_Matrix_wait
 void RG_Matrix_free
 (
 	RG_Matrix *C
-);
-
-// get matrix C without writing to internal matrix
-GrB_Info RG_Matrix_export
-(
-	GrB_Matrix *A,
-	RG_Matrix C
 );
 

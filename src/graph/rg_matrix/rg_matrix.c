@@ -253,7 +253,7 @@ GrB_Info RG_Matrix_export
 	ASSERT(A != NULL);
 
 	GrB_Info    info         =  GrB_SUCCESS;
-	GrB_Matrix  a            =  rm_calloc(1, sizeof(GrB_Matrix));
+	GrB_Matrix  a            =  NULL;
 	GrB_Matrix  m            =  RG_MATRIX_M(C);
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
@@ -273,6 +273,12 @@ GrB_Info RG_Matrix_export
 	info = GrB_Matrix_new(&a, t, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
 
+	info = GrB_wait(&delta_plus);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_wait(&delta_minus);
+	ASSERT(info == GrB_SUCCESS);
+
 	GrB_Index delta_plus_nvals;
 	GrB_Index delta_minus_nvals;
 	info = GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
@@ -289,17 +295,10 @@ GrB_Info RG_Matrix_export
 	
 	// in case there are items to delete use mask otherwise just copy
 	GrB_Matrix mask = deletions ? delta_minus : NULL;
-	GrB_Descriptor desc = deletions ? GrB_DESC_RSCT0 : GrB_DESC_RST0;
+	GrB_Descriptor desc = deletions ? GrB_DESC_RSCT0 : GrB_DESC_RT0;
 	info = GrB_transpose(a, mask, NULL, m, desc);
 	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_wait(&delta_plus);
-	ASSERT(info == GrB_SUCCESS);
-
-	info = GrB_wait(&delta_minus);
-	ASSERT(info == GrB_SUCCESS);
 	
-
 	//--------------------------------------------------------------------------
 	// perform additions
 	//--------------------------------------------------------------------------
