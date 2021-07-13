@@ -244,20 +244,53 @@ void RG_Matrix_validateState
 }
 
 
-void RG_Matrix_get
+void RG_Matrix_export
 (
-	RG_Matrix C,
-	GrB_Matrix M
+	GrB_Matrix *A,
+	RG_Matrix C
 ) {
 	ASSERT(C != NULL);
 	ASSERT(A != NULL);
 
 	GrB_Info    info         =  GrB_SUCCESS;
+	GrB_Matrix  a            =  rm_calloc(1, sizeof(GrB_Matrix));
 	GrB_Matrix  m            =  RG_MATRIX_M(C);
 	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
+	GrB_Type    t;
+	GrB_Index   nrows;
+	GrB_Index   ncols;
+	
+	info = GxB_Matrix_type(&t, m);
+	ASSERT(info == GrB_SUCCESS);
 
-	info = GrB_Matrix_dup(&M, m);
+	info = GrB_Matrix_nrows(&nrows, m);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_ncols(&ncols, m);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_new(&a, t, nrows, ncols);
+	ASSERT(info == GrB_SUCCESS);
+
+	GrB_Index delta_plus_nvals;
+	GrB_Index delta_minus_nvals;
+	info = GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
+	ASSERT(info == GrB_SUCCESS);
+	info = GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
+	ASSERT(info == GrB_SUCCESS);
+
+	bool  additions  =  delta_plus_nvals  >  0;
+	bool  deletions  =  delta_minus_nvals  >  0;
+
+	//--------------------------------------------------------------------------
+	// perform copy and deletions if needed
+	//--------------------------------------------------------------------------
+	
+	// in case there are items to delete use mask otherwise just copy
+	GrB_Matrix mask = deletions ? delta_minus : NULL;
+	GrB_Descriptor desc = deletions ? GrB_DESC_RSCT0 : GrB_DESC_RST0;
+	info = GrB_transpose(a, mask, NULL, m, desc);
 	ASSERT(info == GrB_SUCCESS);
 
 	info = GrB_wait(&delta_plus);
@@ -266,37 +299,20 @@ void RG_Matrix_get
 	info = GrB_wait(&delta_minus);
 	ASSERT(info == GrB_SUCCESS);
 	
-	GrB_Index delta_plus_nvals;
-	GrB_Index delta_minus_nvals;
-	GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
-	GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
-
-	bool  additions  =  delta_plus_nvals  >  0;
-	bool  deletions  =  delta_minus_nvals  >  0;
-
-	//--------------------------------------------------------------------------
-	// perform deletions
-	//--------------------------------------------------------------------------
-
-	if(deletions) {
-		info = GrB_transpose(M, delta_minus, GrB_NULL, m, GrB_DESC_RSCT0);
-		ASSERT(info == GrB_SUCCESS);
-	}
 
 	//--------------------------------------------------------------------------
 	// perform additions
 	//--------------------------------------------------------------------------
 
 	if(additions) {
-		GrB_Type t;
 		GrB_Semiring s;
-		info = GxB_Matrix_type(&t, m);
-		ASSERT(info == GrB_SUCCESS);
 
 		s = (t == GrB_BOOL) ? GxB_ANY_PAIR_BOOL : GxB_ANY_PAIR_UINT64;
-		info = GrB_Matrix_eWiseAdd_Semiring(M, NULL, NULL, s, m, delta_plus, NULL);
+		info = GrB_Matrix_eWiseAdd_Semiring(a, NULL, NULL, s, m, delta_plus, NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
+
+	*A = a;
 
 	return info;
 }
