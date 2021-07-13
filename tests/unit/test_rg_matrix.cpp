@@ -598,24 +598,36 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 }
 
 // nvals(A eWiseMult B) == nvals(A) == nvals(B)
-void Compare_Matrices(GrB_Matrix m, GrB_Matrix n, GrB_Type t, GrB_Index nrows, GrB_Index ncols)
+void ASSERT_GrB_Matrices_EQ(const GrB_Matrix A, const GrB_Matrix B)
 {
+	GrB_Type    t                   =  NULL;
 	GrB_Matrix  CMP                 =  NULL;
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   nvals_M             =  0;
 	GrB_Index   nvals_N             =  0;
 	GrB_Index   nvals_CMP           =  0;
+	GrB_Index   nrows               =  0;
+	GrB_Index   ncols               =  0;
+
+	info = GxB_Matrix_type(&t, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = GrB_Matrix_nrows(&nrows, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = GrB_Matrix_ncols(&ncols, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
 
 	info = GrB_Matrix_new(&CMP, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = GrB_Matrix_eWiseMult_BinaryOp(CMP, NULL, NULL, GrB_LAND, m, n, NULL);
+	info = GrB_Matrix_eWiseMult_BinaryOp(CMP, NULL, NULL, GrB_LAND, A, B, NULL);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	GrB_Matrix_nvals(&nvals_N, n);
+	GrB_Matrix_nvals(&nvals_N, B);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	GrB_Matrix_nvals(&nvals_M, m);
+	GrB_Matrix_nvals(&nvals_M, A);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	GrB_Matrix_nvals(&nvals_CMP, CMP);
@@ -637,9 +649,9 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	RG_Matrix   A                   =  NULL;
 	RG_Matrix   T                   =  NULL;  // A transposed
 	GrB_Matrix  M                   =  NULL;  // primary internal matrix
-	GrB_Matrix  MT                   =  NULL;
+	GrB_Matrix  MT                  =  NULL;
 	GrB_Matrix  N                   =  NULL;
-	GrB_Matrix  NT                   =  NULL;
+	GrB_Matrix  NT                  =  NULL;
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
@@ -670,6 +682,9 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	MT  =  RG_MATRIX_M(T);
 
 	info = GrB_Matrix_new(&N, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = GrB_Matrix_new(&NT, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	for (size_t index = 0; i < operations; index++)
@@ -720,12 +735,12 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	// validation
 	//--------------------------------------------------------------------------
 
-	Compare_Matrices(M, N, t, nrows, ncols);
+	ASSERT_GrB_Matrices_EQ(M, N);
 
 	info = GrB_transpose(NT, NULL, NULL, N, NULL);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	Compare_Matrices(MT, NT, t, nrows, ncols);
+	ASSERT_GrB_Matrices_EQ(MT, NT);
 
 	// clean up
 	RG_Matrix_free(&A);
@@ -736,4 +751,133 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 	free(I);
 	free(J);
+}
+
+// test exporting RG_Matrix to GrB_Matrix when there are no pending changes
+// by exporting the matrix after flushing
+TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
+	GrB_Type    t                   =  GrB_BOOL;
+	RG_Matrix   A                   =  NULL; 
+	GrB_Matrix  M                   =  NULL;
+	GrB_Matrix  N                   =  NULL;  // exported matrix 
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   i                   =  0;
+	GrB_Index   j                   =  1;
+	GrB_Index   nvals               =  0;
+	GrB_Index   nrows               =  100;
+	GrB_Index   ncols               =  100;
+	bool        sync                =  false;
+	bool        multi_edge          =  false;
+	bool        maintain_transpose  =  false;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// get internal matrices
+	M = RG_MATRIX_M(A);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	//--------------------------------------------------------------------------
+	// export matrix
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_export(&N, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// validation
+	//--------------------------------------------------------------------------
+
+	ASSERT_GrB_Matrices_EQ(M, N);
+
+	// clean up
+	GrB_Matrix_free(&N);
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+}
+
+// test exporting RG_Matrix to GrB_Matrix when there are pending changes
+// by exporting the matrix after making changes
+// then flush the matrix and compare the internal matrix to the exported matrix
+TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
+	GrB_Type    t                   =  GrB_BOOL;
+	RG_Matrix   A                   =  NULL;
+	GrB_Matrix  M                   =  NULL;
+	GrB_Matrix  N                   =  NULL;  // exported matrix
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   i                   =  0;
+	GrB_Index   j                   =  1;
+	GrB_Index   nvals               =  0;
+	GrB_Index   nrows               =  100;
+	GrB_Index   ncols               =  100;
+	bool        sync                =  false;
+	bool        multi_edge          =  false;
+	bool        maintain_transpose  =  false;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// get internal matrices
+	M = RG_MATRIX_M(A);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	//--------------------------------------------------------------------------
+	// set pending changes
+	//--------------------------------------------------------------------------
+
+	// remove element at position i,j
+	info = RG_Matrix_removeElement(A, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i+1,j+1
+	info = RG_Matrix_setElement_BOOL(A, true, i+1, j+1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// export matrix
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_export(&N, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	//--------------------------------------------------------------------------
+	// validation
+	//--------------------------------------------------------------------------
+
+	ASSERT_GrB_Matrices_EQ(M, N);
+
+	// clean up
+	GrB_Matrix_free(&N);
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
 }

@@ -244,3 +244,74 @@ void RG_Matrix_validateState
 }
 
 
+GrB_Info RG_Matrix_export
+(
+	GrB_Matrix *A,
+	RG_Matrix C
+) {
+	ASSERT(C != NULL);
+	ASSERT(A != NULL);
+
+	GrB_Type    t;
+	GrB_Index   nrows;
+	GrB_Index   ncols;
+	GrB_Matrix  a            =  NULL;
+	GrB_Matrix  m            =  RG_MATRIX_M(C);
+	GrB_Info    info         =  GrB_SUCCESS;
+	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
+	
+	info = GxB_Matrix_type(&t, m);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_nrows(&nrows, m);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_ncols(&ncols, m);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_new(&a, t, nrows, ncols);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_wait(&delta_plus);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_wait(&delta_minus);
+	ASSERT(info == GrB_SUCCESS);
+
+	GrB_Index delta_plus_nvals;
+	GrB_Index delta_minus_nvals;
+	info = GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
+	ASSERT(info == GrB_SUCCESS);
+	info = GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
+	ASSERT(info == GrB_SUCCESS);
+
+	bool  additions  =  delta_plus_nvals   >  0;
+	bool  deletions  =  delta_minus_nvals  >  0;
+
+	//--------------------------------------------------------------------------
+	// perform copy and deletions if needed
+	//--------------------------------------------------------------------------
+	
+	// in case there are items to delete use mask otherwise just copy
+	GrB_Matrix mask = deletions ? delta_minus : NULL;
+	GrB_Descriptor desc = deletions ? GrB_DESC_RSCT0 : GrB_DESC_RT0;
+	info = GrB_transpose(a, mask, NULL, m, desc);
+	ASSERT(info == GrB_SUCCESS);
+	
+	//--------------------------------------------------------------------------
+	// perform additions
+	//--------------------------------------------------------------------------
+
+	if(additions) {
+		GrB_Semiring s;
+
+		s = (t == GrB_BOOL) ? GxB_ANY_PAIR_BOOL : GxB_ANY_PAIR_UINT64;
+		info = GrB_Matrix_eWiseAdd_Semiring(a, NULL, NULL, s, m, delta_plus, NULL);
+		ASSERT(info == GrB_SUCCESS);
+	}
+
+	*A = a;
+
+	return info;
+}
