@@ -41,8 +41,7 @@ ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
-	CFLAGS += -mmacosx-version-min=10.14
-	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
+	SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 	export OS = Mac
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
@@ -275,7 +274,7 @@ endif
 
 package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
-	@VARIANT=rce $(ROOT)/sbin/pack.sh
+	@PACKAGE_NAME=redisgraph-rce RAMP_YAML=$(ROOT)/ramp-rce.yml $(ROOT)/sbin/pack.sh
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------
