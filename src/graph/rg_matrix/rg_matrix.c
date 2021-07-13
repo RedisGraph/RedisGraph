@@ -252,14 +252,14 @@ GrB_Info RG_Matrix_export
 	ASSERT(C != NULL);
 	ASSERT(A != NULL);
 
-	GrB_Info    info         =  GrB_SUCCESS;
-	GrB_Matrix  a            =  NULL;
-	GrB_Matrix  m            =  RG_MATRIX_M(C);
-	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
 	GrB_Type    t;
 	GrB_Index   nrows;
 	GrB_Index   ncols;
+	GrB_Matrix  a            =  NULL;
+	GrB_Matrix  m            =  RG_MATRIX_M(C);
+	GrB_Info    info         =  GrB_SUCCESS;
+	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(C);
 	
 	info = GxB_Matrix_type(&t, m);
 	ASSERT(info == GrB_SUCCESS);
@@ -286,7 +286,7 @@ GrB_Info RG_Matrix_export
 	info = GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
 	ASSERT(info == GrB_SUCCESS);
 
-	bool  additions  =  delta_plus_nvals  >  0;
+	bool  additions  =  delta_plus_nvals   >  0;
 	bool  deletions  =  delta_minus_nvals  >  0;
 
 	//--------------------------------------------------------------------------
