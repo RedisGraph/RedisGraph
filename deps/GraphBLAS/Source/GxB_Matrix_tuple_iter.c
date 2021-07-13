@@ -418,7 +418,7 @@ GrB_Info GxB_MatrixTupleIter_free
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_free (iter)") ;
 	GB_RETURN_IF_NULL(iter) ;
-	GB_FREE(iter, iter->size) ;
+	GB_FREE(&iter, iter->size) ;
 	return (GrB_SUCCESS) ;
 }
 
