@@ -244,7 +244,7 @@ void RG_Matrix_validateState
 }
 
 
-void RG_Matrix_export
+GrB_Info RG_Matrix_export
 (
 	GrB_Matrix *A,
 	RG_Matrix C

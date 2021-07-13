@@ -305,7 +305,7 @@ void RG_Matrix_free
 );
 
 // get matrix C without writing to internal matrix
-void RG_Matrix_export
+GrB_Info RG_Matrix_export
 (
 	GrB_Matrix *A,
 	RG_Matrix C

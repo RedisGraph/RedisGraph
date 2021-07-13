@@ -737,3 +737,173 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	free(I);
 	free(J);
 }
+
+
+TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
+	GrB_Type    t                   =  GrB_BOOL;
+	RG_Matrix   A                   =  NULL;
+	GrB_Matrix  M                   =  NULL;
+	GrB_Matrix  N                   =  NULL;
+	GrB_Matrix  DP                  =  NULL;
+	GrB_Matrix  DM                  =  NULL;
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   nvals               =  0;
+	GrB_Index   nrows               =  100;
+	GrB_Index   ncols               =  100;
+	GrB_Index   i                   =  0;
+	GrB_Index   j                   =  1;
+	bool        sync                =  false;
+	bool        multi_edge          =  false;
+	bool        maintain_transpose  =  false;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// get internal matrices
+	M   =  RG_MATRIX_M(A);
+	DP  =  RG_MATRIX_DELTA_PLUS(A);
+	DM  =  RG_MATRIX_DELTA_MINUS(A);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	RG_Matrix_nvals(&nvals, A);
+	ASSERT_EQ(nvals, 1);
+
+	// M should be empty
+	M_NOT_EMPTY();
+
+	// DM should be empty
+	DM_EMPTY();
+
+	// DP should contain a single element
+	DP_EMPTY();
+
+	//--------------------------------------------------------------------------
+	// export matrix
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_export(&N, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// validation
+	//--------------------------------------------------------------------------
+
+	Compare_Matrices(M, N, t, nrows, ncols);
+
+	// clean up
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	GrB_Matrix_free(&N);
+}
+
+TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
+	GrB_Type    t                   =  GrB_BOOL;
+	RG_Matrix   A                   =  NULL;
+	GrB_Matrix  M                   =  NULL;
+	GrB_Matrix  N                   =  NULL;
+	GrB_Matrix  DP                  =  NULL;
+	GrB_Matrix  DM                  =  NULL;
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   nvals               =  0;
+	GrB_Index   nrows               =  100;
+	GrB_Index   ncols               =  100;
+	GrB_Index   i                   =  0;
+	GrB_Index   j                   =  1;
+	bool        sync                =  false;
+	bool        multi_edge          =  false;
+	bool        maintain_transpose  =  false;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_BOOL(A, true, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// get internal matrices
+	M   =  RG_MATRIX_M(A);
+	DP  =  RG_MATRIX_DELTA_PLUS(A);
+	DM  =  RG_MATRIX_DELTA_MINUS(A);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	RG_Matrix_nvals(&nvals, A);
+	ASSERT_EQ(nvals, 1);
+
+	// M should be empty
+	M_NOT_EMPTY();
+
+	// DM should be empty
+	DM_EMPTY();
+
+	// DP should contain a single element
+	DP_EMPTY();
+
+	//--------------------------------------------------------------------------
+	// set pending changes
+	//--------------------------------------------------------------------------
+
+
+	// remove element at position i,j
+	info = RG_Matrix_removeElement(A, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i+1,j+1
+	info = RG_Matrix_setElement_BOOL(A, true, i+1, j+1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// export matrix
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_export(&N, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	RG_Matrix_nvals(&nvals, A);
+	ASSERT_EQ(nvals, 1);
+
+	// M should be empty
+	M_NOT_EMPTY();
+
+	// DM should be empty
+	DM_EMPTY();
+
+	// DP should contain a single element
+	DP_EMPTY();
+
+	//--------------------------------------------------------------------------
+	// validation
+	//--------------------------------------------------------------------------
+
+	Compare_Matrices(M, N, t, nrows, ncols);
+
+	// clean up
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	GrB_Matrix_free(&N);
+}
