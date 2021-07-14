@@ -1,7 +1,7 @@
 from RLTest import Env
 from redisgraph import Graph
-import flow_utils
-from flow_utils import *
+import utils
+from utils import *
 
 # 1.test getting and setting config
 # 2. test overflowing the server when there's a limit
@@ -21,7 +21,7 @@ SLOW_QUERY = "UNWIND range (0, 100000) AS x WITH x WHERE (x / 2) = 50  RETURN x"
 
 def issue_query(q):
     try:
-        flow_utils.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
+        utils.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
         return False
     except Exception as e:
         assert "Max pending queries exceeded" in str(e)
