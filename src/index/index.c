@@ -50,11 +50,13 @@ static void _populateIndex(Index *idx) {
 	// Label doesn't exists.
 	if(s == NULL) return;
 
-	Node node = GE_NEW_NODE();
-	NodeID node_id;
-	Graph *g = gc->g;
-	int label_id = s->id;
+	NodeID  node_id;
 	GxB_MatrixTupleIter *it;
+
+	Node   node      =  GE_NEW_NODE();
+	Graph  *g        =  gc->g;
+	int    label_id  =  s->id;
+
 	const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
 	GxB_MatrixTupleIter_new(&it, label_matrix);
 
