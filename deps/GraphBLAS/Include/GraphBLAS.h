@@ -7853,18 +7853,6 @@ typedef struct
             int64_t sparse_row_idx;          // index into hyper-sparse row array 'h'
             int64_t h_size;                  // number of entries in hyper-sparse row array 'h'
     	};
-} _GxB_MatrixTupleIter ;
-
-#define GB_N_ITERATORS 2
-
-// TuplesIter maintains information required
-// to iterate over a matrix
-// aggregates multiple iterators into one
-typedef struct
-{
-    _GxB_MatrixTupleIter iterators[GB_N_ITERATORS]; // Array of nested iterators
-    size_t n;                                       // number of nested iterators
-    size_t idx;                                     // current consumed nested iterator
 } GxB_MatrixTupleIter ;
 
 // Create a new list of matrix iterators
