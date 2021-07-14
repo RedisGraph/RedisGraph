@@ -63,7 +63,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_new) {
 // test RGMatrixTupleIter initialization
 TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	RG_Matrix          A                   =  NULL;
-	GrB_Type           t                   =  GrB_UINT64;
+	GrB_Type           t                   =  GrB_BOOL;
 	GrB_Info           info                =  GrB_SUCCESS;
     RG_MatrixTupleIter *iter               =  NULL;
     GrB_Index          i                   =  0;
