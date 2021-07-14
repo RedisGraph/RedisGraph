@@ -148,11 +148,13 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 			AlgebraicExpression_Edge(op->ae));
 	uint reltype_count = QGEdge_RelationCount(e);
 
-	bool multi_edge = true;
+	bool  multi_edge  =  true;
+	bool  transpose   =  op->traverseDir != GRAPH_EDGE_DIR_OUTGOING;
 	if(reltype_count == 1) {
 		int rel_id = QGEdge_RelationID(e, 0);
 		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
-			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id);
+			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id,
+					transpose);
 		}
 	}
 

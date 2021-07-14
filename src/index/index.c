@@ -61,7 +61,7 @@ static void _populateIndex(Index *idx) {
 	// Iterate over each labeled node.
 	while(true) {
 		bool depleted = false;
-		GxB_MatrixTupleIter_next(it, NULL, &node_id, &depleted);
+		GxB_MatrixTupleIter_next(it, NULL, &node_id, NULL, &depleted);
 		if(depleted) break;
 
 		Graph_GetNode(g, node_id, &node);

@@ -7848,6 +7848,7 @@ typedef struct
 	int64_t p ;             // Number of none zero values in current column
 	int64_t row_idx ;       // Index of current row
 	GrB_Index nrows ;       // Total number of rows in matrix
+	size_t size ;           // Size of an entry in A
 } GxB_MatrixTupleIter ;
 
 // Create a new matrix iterator
@@ -7885,6 +7886,7 @@ GrB_Info GxB_MatrixTupleIter_next
 	GxB_MatrixTupleIter *iter,      // iterator to consume
 	GrB_Index *row,                 // optional row index of current NNZ
 	GrB_Index *col,                 // optional column index of current NNZ
+	void *val,                      // optional value at A[row, col]
 	bool *depleted                  // indicate if iterator depleted
 ) ;
 
