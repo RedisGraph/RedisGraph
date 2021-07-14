@@ -165,7 +165,7 @@ void Graph_WriterLeave(Graph *g) {
 }
 
 /* Force execution of all pending operations on a matrix. */
-static void _Graph_ApplyPending(GrB_Matrix m) {
+static inline void _Graph_ApplyPending(GrB_Matrix m) {
 	GrB_Info res = GrB_wait(&m);
 	ASSERT(res == GrB_SUCCESS);
 }
