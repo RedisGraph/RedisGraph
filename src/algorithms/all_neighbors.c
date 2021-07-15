@@ -124,7 +124,7 @@ EntityID AllNeighborsCtx_NextNeighbor
 
 		bool depleted;
 		GrB_Index dest_id;
-		GxB_MatrixTupleIter_next(it, NULL, &dest_id, &depleted);
+		GxB_MatrixTupleIter_next(it, NULL, &dest_id, NULL, &depleted);
 
 		if(depleted) {
 			// backtrack
