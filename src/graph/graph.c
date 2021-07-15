@@ -182,34 +182,31 @@ static inline size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
 }
 
-// Locates edges connecting src to destination.
-void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
-	ASSERT(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
-		   r < Graph_RelationTypeCount(g));
+static void _CollectEdgesFromEntry
+(
+	const Graph *g,
+	NodeID src,
+	NodeID dest,
+	int r,
+	EdgeID edgeId,
+	Edge **edges
+) {
+	Edge e = {0};
 
-	Edge e;
-	EdgeID edgeId;
-	e.relationID = r;
-	e.srcNodeID = src;
-	e.destNodeID = dest;
-
-	// relation map, maps (src, dest, r) to edge IDs.
-	GrB_Matrix relation = Graph_GetRelationMatrix(g, r);
-	GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, relation, src, dest);
-
-	// No entry at [dest, src], src is not connected to dest with relation R.
-	if(res == GrB_NO_VALUE) return;
+	e.relationID  =  r;
+	e.srcNodeID   =  src;
+	e.destNodeID  =  dest;
 
 	if(SINGLE_EDGE(edgeId)) {
-		// Discard most significate bit.
-		edgeId = SINGLE_EDGE_ID(edgeId);
-		e.entity = DataBlock_GetItem(g->edges, edgeId);
-		e.id = edgeId;
+		// discard most significate bit
+		edgeId    =  SINGLE_EDGE_ID(edgeId);
+		e.id      =  edgeId;
+		e.entity  =  DataBlock_GetItem(g->edges,  edgeId);
 		ASSERT(e.entity);
 		array_append(*edges, e);
 	} else {
-		/* Multiple edges connecting src to dest,
-		 * entry is a pointer to an array of edge IDs. */
+		// multiple edges connecting src to dest,
+		// entry is a pointer to an array of edge IDs
 		EdgeID *edgeIds = (EdgeID *)edgeId;
 		int edgeCount = array_len(edgeIds);
 
@@ -221,6 +218,32 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 			array_append(*edges, e);
 		}
 	}
+}
+
+// Locates edges connecting src to destination.
+void _Graph_GetEdgesConnectingNodes
+(
+	const Graph *g,
+	NodeID src,
+	NodeID dest,
+	int r,
+	Edge **edges
+) {
+	ASSERT(g);
+	ASSERT(r    != GRAPH_NO_RELATION);
+	ASSERT(r    < Graph_RelationTypeCount(g));
+	ASSERT(src  < Graph_RequiredMatrixDim(g));
+	ASSERT(dest < Graph_RequiredMatrixDim(g));
+
+	// relation map, maps (src, dest, r) to edge IDs.
+	EdgeID      id    =  INVALID_ENTITY_ID;
+	GrB_Matrix  M     =  Graph_GetRelationMatrix(g, r);
+	GrB_Info    res   =  GrB_Matrix_extractElement_UINT64(&id, M, src, dest);
+
+	// no entry at [dest, src], src is not connected to dest with relation R
+	if(res == GrB_NO_VALUE) return;
+
+	_CollectEdgesFromEntry(g, src, dest, r, id, edges);
 }
 
 static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
@@ -562,23 +585,34 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	return GRAPH_NO_RELATION;
 }
 
-void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID,
-								   int r, Edge **edges) {
-	ASSERT(g && r < Graph_RelationTypeCount(g) && edges);
+void Graph_GetEdgesConnectingNodes
+(
+	const Graph *g,
+	NodeID srcID,
+	NodeID destID,
+	int r,
+	Edge **edges)
+{
+	ASSERT(g);
+	ASSERT(edges);
+	ASSERT(r < Graph_RelationTypeCount(g)); 
 
-	// Invalid relation type specified; this can occur on multi-type traversals like:
+	// invalid relation type specified;
+	// this can occur on multi-type traversals like:
 	// MATCH ()-[:real_type|fake_type]->()
 	if(r == GRAPH_UNKNOWN_RELATION) return;
 
-	Node srcNode = GE_NEW_NODE();
-	Node destNode = GE_NEW_NODE();
+#if RG_DEBUG
+	Node  srcNode   =  GE_NEW_NODE();
+	Node  destNode  =  GE_NEW_NODE();
 	ASSERT(Graph_GetNode(g, srcID, &srcNode));
 	ASSERT(Graph_GetNode(g, destID, &destNode));
+#endif
 
 	if(r != GRAPH_NO_RELATION) {
 		_Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
 	} else {
-		// Relation type missing, scan through each edge type.
+		// relation type missing, scan through each edge type
 		int relationCount = Graph_RelationTypeCount(g);
 		for(int i = 0; i < relationCount; i++) {
 			_Graph_GetEdgesConnectingNodes(g, srcID, destID, i, edges);
@@ -712,8 +746,8 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	return 1;
 }
 
-/* Retrieves all either incoming or outgoing edges
- * to/from given node N, depending on given direction. */
+// retrieves all either incoming or outgoing edges
+// to/from given node N, depending on given direction
 void Graph_GetNodeEdges
 (
 	const Graph *g,      // graph to collect edges from
@@ -728,10 +762,11 @@ void Graph_GetNodeEdges
 
 	if(r == GRAPH_UNKNOWN_RELATION) return;
 
-	GrB_Matrix           M           =  NULL;
-	NodeID               srcID       =  ENTITY_GET_ID(n);
-	NodeID               destID      =  INVALID_ENTITY_ID;
-	GxB_MatrixTupleIter  *tupleIter  =  NULL;
+	GrB_Matrix           M       =  NULL;
+	GxB_MatrixTupleIter  *it     =  NULL;
+	NodeID               srcID   =  ENTITY_GET_ID(n);
+	NodeID               destID  =  INVALID_ENTITY_ID;
+	EdgeID               edgeID  =  INVALID_ENTITY_ID;
 
 	// outgoing
 	if(dir == GRAPH_EDGE_DIR_OUTGOING || dir == GRAPH_EDGE_DIR_BOTH) {
@@ -742,16 +777,21 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		GxB_MatrixTupleIter_new(&tupleIter, M);
-		GxB_MatrixTupleIter_iterate_row(tupleIter, srcID);
+		GxB_MatrixTupleIter_new(&it, M);
+		GxB_MatrixTupleIter_iterate_row(it, srcID);
 		while(true) {
 			bool depleted = false;
-			GxB_MatrixTupleIter_next(tupleIter, NULL, &destID, &depleted);
+			GxB_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted);
 			if(depleted) break;
+
 			// collect all edges (src)->(dest)
-			Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
+			if(r != GRAPH_NO_RELATION) {
+				_CollectEdgesFromEntry(g, srcID, destID, r, edgeID, edges);
+			} else {
+				Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
+			}
 		}
-		GxB_MatrixTupleIter_free(tupleIter);
+		GxB_MatrixTupleIter_free(it);
 	}
 
 	// incoming
@@ -763,19 +803,23 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		GxB_MatrixTupleIter_new(&tupleIter, M);
-		GxB_MatrixTupleIter_iterate_row(tupleIter, srcID);
+		GxB_MatrixTupleIter_new(&it, M);
+		GxB_MatrixTupleIter_iterate_row(it, srcID);
 
 		while(true) {
 			bool depleted = false;
-			GxB_MatrixTupleIter_next(tupleIter, NULL, &destID, &depleted);
+			GxB_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted);
 			if(depleted) break;
 			// collect all edges connecting destId to srcId
-			Graph_GetEdgesConnectingNodes(g, destID, srcID, r, edges);
+			if(r != GRAPH_NO_RELATION) {
+				_CollectEdgesFromEntry(g, destID, srcID, r, edgeID, edges);
+			} else {
+				Graph_GetEdgesConnectingNodes(g, destID, srcID, r, edges);
+			}
 		}
 
 		// Clean up
-		GxB_MatrixTupleIter_free(tupleIter);
+		GxB_MatrixTupleIter_free(it);
 	}
 }
 
@@ -1123,7 +1167,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		// outgoing edges
 		GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
 		while(true) {
-			GxB_MatrixTupleIter_next(adj_iter, NULL, &dest, &depleted);
+			GxB_MatrixTupleIter_next(adj_iter, NULL, &dest, NULL, &depleted);
 			if(depleted) break;
 			GrB_Matrix_setElement_BOOL(Mask, true, ID, dest);
 		}
@@ -1133,7 +1177,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		// incoming edges
 		GxB_MatrixTupleIter_iterate_row(tadj_iter, ID);
 		while(true) {
-			GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, &depleted);
+			GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, NULL, &depleted);
 			if(depleted) break;
 			GrB_Matrix_setElement_BOOL(Mask, true, src, ID);
 		}
@@ -1518,11 +1562,21 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
 }
 
 // Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise
-bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r) {
+bool Graph_RelationshipContainsMultiEdge
+(
+	const Graph *g,
+	int r,
+	bool transpose
+) {
 	ASSERT(Graph_RelationTypeCount(g) > r);
-	GrB_Index nvals;
-	// A relationship matrix contains multi-edge if nvals < number of edges with type r.
-	GrB_Matrix R = Graph_GetRelationMatrix(g, r);
+
+	GrB_Matrix  R;
+	GrB_Index   nvals;
+	// a relationship matrix contains multi-edge
+	// if nvals < number of edges with type r
+	if(transpose) R = Graph_GetTransposedRelationMatrix(g, r);
+	else R = Graph_GetRelationMatrix(g, r);
+
 	GrB_Matrix_nvals(&nvals, R);
 
 	return (Graph_RelationEdgeCount(g, r) > nvals);

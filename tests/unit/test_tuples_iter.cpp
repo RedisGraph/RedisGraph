@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -35,25 +35,29 @@ class TuplesTest: public ::testing::Test {
 	GrB_Matrix CreateSquareNByNDiagonalMatrix(GrB_Index n) {
 		GrB_Matrix A = CreateSquareNByNEmptyMatrix(n);
 
-		GrB_Index I[n];
-		GrB_Index J[n];
-		bool X[n];
+		uint64_t  *X = (uint64_t*)  malloc(sizeof(uint64_t)  * n);
+		GrB_Index *I = (GrB_Index*) malloc(sizeof(GrB_Index) * n);
+		GrB_Index *J = (GrB_Index*) malloc(sizeof(GrB_Index) * n);
 
-		// Initialize.
+		// initialize
 		for(int i = 0; i < n; i++) {
 			I[i] = i;
 			J[i] = i;
-			X[i] = i;
+			X[i] = 1;
 		}
 
-		GrB_Matrix_build_BOOL(A, I, J, X, n, GrB_FIRST_BOOL);
+		GrB_Matrix_build_UINT64(A, I, J, X, n, GrB_FIRST_UINT64);
+
+		free(X);
+		free(I);
+		free(J);
 
 		return A;
 	}
 
 	GrB_Matrix CreateSquareNByNEmptyMatrix(GrB_Index n) {
 		GrB_Matrix A;
-		GrB_Matrix_new(&A, GrB_BOOL, n, n);
+		GrB_Matrix_new(&A, GrB_UINT64, n, n);
 		return A;
 	}
 };
@@ -98,11 +102,11 @@ TEST_F(TuplesTest, RandomVectorTest) {
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, NULL, &col, NULL, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(col, I_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, NULL, &col, NULL, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -123,31 +127,35 @@ TEST_F(TuplesTest, VectorIteratorTest) {
 	GrB_Vector_new(&A, GrB_BOOL, 4);
 
 	GrB_Index nvals = 2;
-	GrB_Index I[2] = {1, 3};
-	bool X[2] = {true, true};
+	GrB_Index I[2]  = {1, 3};
+	bool      X[2]  = {true, true};
+
+	bool      X_expected[nvals];
 	GrB_Index I_expected[nvals];
 
 	GrB_Vector_build_BOOL(A, I, X, nvals, GrB_FIRST_BOOL);
-	GrB_Vector_extractTuples_BOOL(I_expected, NULL, &nvals, A);
+	GrB_Vector_extractTuples_BOOL(I_expected, X_expected, &nvals, A);
 
 	//--------------------------------------------------------------------------
 	// Get an iterator over all vector nonzero elements.
 	//--------------------------------------------------------------------------
 
-	GxB_MatrixTupleIter *iter;
+	bool                 val;
+	GrB_Index            col;
+	GxB_MatrixTupleIter  *iter;
 	GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)A);
-	GrB_Index col;
 
 	//--------------------------------------------------------------------------
 	// Verify iterator returned values.
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, NULL, &col, &val, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(col, I_expected[i]);
+		ASSERT_EQ(val, X_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, NULL, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -156,11 +164,12 @@ TEST_F(TuplesTest, VectorIteratorTest) {
 
 	GxB_MatrixTupleIter_reset(iter);
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, NULL, &col, &val, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(col, I_expected[i]);
+		ASSERT_EQ(val, X_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(iter, NULL, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, NULL, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -179,11 +188,12 @@ TEST_F(TuplesTest, RandomMatrixTest) {
 	GrB_Index nvals = 0;
 	GrB_Index nrows = 1024;
 	GrB_Index ncols = 1024;
-	GrB_Index *I = (GrB_Index *)malloc(sizeof(GrB_Index) * ncols * nrows);
-	GrB_Index *J = (GrB_Index *)malloc(sizeof(GrB_Index) * ncols * nrows);
-	bool *X = (bool *)malloc(sizeof(bool) * ncols * nrows);
 
-	GrB_Matrix_new(&A, GrB_BOOL, nrows, ncols);
+	uint64_t  *X = (uint64_t  *) malloc(sizeof(GrB_UINT64) * ncols * nrows);
+	GrB_Index *I = (GrB_Index *) malloc(sizeof(GrB_Index)  * ncols * nrows);
+	GrB_Index *J = (GrB_Index *) malloc(sizeof(GrB_Index)  * ncols * nrows);
+
+	GrB_Matrix_new(&A, GrB_UINT64, nrows, ncols);
 
 	double mid_point = RAND_MAX / 2;
 	for(int i = 0; i < nrows; i++) {
@@ -191,37 +201,41 @@ TEST_F(TuplesTest, RandomMatrixTest) {
 			if(rand() > mid_point) {
 				I[nvals] = i;
 				J[nvals] = j;
-				X[nvals] = true;
+				X[nvals] = rand();
 				nvals++;
 			}
 		}
 	}
-	GrB_Matrix_build_BOOL(A, I, J, X, nvals, GrB_FIRST_BOOL);
+	GrB_Matrix_build_UINT64(A, I, J, X, nvals, GrB_FIRST_UINT64);
 
-	GrB_Index *I_expected = (GrB_Index *)malloc(sizeof(GrB_Index) * nvals);
-	GrB_Index *J_expected = (GrB_Index *)malloc(sizeof(GrB_Index) * nvals);
-	GrB_Matrix_extractTuples_BOOL(I_expected, J_expected, NULL, &nvals, A);
+	GrB_Index *I_expected = (GrB_Index *) malloc(sizeof(GrB_Index) * nvals);
+	GrB_Index *J_expected = (GrB_Index *) malloc(sizeof(GrB_Index) * nvals);
+	uint64_t  *X_expected = (uint64_t  *) malloc(sizeof(uint64_t)  * nvals);
+	GrB_Matrix_extractTuples_UINT64(
+			I_expected, J_expected, X_expected, &nvals, A);
 
 	//--------------------------------------------------------------------------
 	// Get an iterator over all matrix nonzero elements.
 	//--------------------------------------------------------------------------
 
-	GxB_MatrixTupleIter *iter;
+	uint64_t             val;
+	GrB_Index            row;
+	GrB_Index            col;
+	GxB_MatrixTupleIter  *iter;
 	GxB_MatrixTupleIter_new(&iter, A);
-	GrB_Index row;
-	GrB_Index col;
 
 	//--------------------------------------------------------------------------
 	// Verify iterator returned values.
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(row, I_expected[i]);
 		ASSERT_EQ(col, J_expected[i]);
+		ASSERT_EQ(val, X_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -232,6 +246,7 @@ TEST_F(TuplesTest, RandomMatrixTest) {
 	free(X);
 	free(I_expected);
 	free(J_expected);
+	free(X_expected);
 	GxB_MatrixTupleIter_free(iter);
 	GrB_Matrix_free(&A);
 }
@@ -245,28 +260,32 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
 	GrB_Matrix A = CreateSquareNByNDiagonalMatrix(nvals);
 	GrB_Index I_expected[nvals];
 	GrB_Index J_expected[nvals];
-	GrB_Matrix_extractTuples_BOOL(I_expected, J_expected, NULL, &nvals, A);
+	uint64_t  X_expected[nvals];
+	GrB_Matrix_extractTuples_UINT64(
+			I_expected, J_expected, X_expected, &nvals, A);
 
 	//--------------------------------------------------------------------------
 	// Get an iterator over all matrix nonzero elements.
 	//--------------------------------------------------------------------------
 
-	GxB_MatrixTupleIter *iter;
+	uint64_t             val;
+	GrB_Index            row;
+	GrB_Index            col;
+	GxB_MatrixTupleIter  *iter;
 	GxB_MatrixTupleIter_new(&iter, A);
-	GrB_Index row;
-	GrB_Index col;
 
 	//--------------------------------------------------------------------------
 	// Verify iterator returned values.
 	//--------------------------------------------------------------------------
 	bool depleted = false;
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(row, I_expected[i]);
 		ASSERT_EQ(col, J_expected[i]);
+		ASSERT_EQ(val, X_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -275,12 +294,13 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
 
 	GxB_MatrixTupleIter_reset(iter);
 	for(int i = 0; i < nvals; i++) {
-		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_FALSE(depleted);
 		ASSERT_EQ(row, I_expected[i]);
 		ASSERT_EQ(col, J_expected[i]);
+		ASSERT_EQ(val, X_expected[i]);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 	//--------------------------------------------------------------------------
@@ -307,9 +327,9 @@ TEST_F(TuplesTest, ColumnIteratorTest) {
 	GxB_MatrixTupleIter_new(&iter, A);
 
 	for(int j = 0; j < ncols; j++) {
-		GrB_Vector_new(&v, GrB_BOOL, nrows);
+		GrB_Vector_new(&v, GrB_UINT64, nrows);
 		GrB_Col_extract(v, NULL, NULL, A, GrB_ALL, nrows, j, NULL);
-		GrB_Vector_extractTuples_BOOL(I_expected, NULL, &nvals, v);
+		GrB_Vector_extractTuples_UINT64(I_expected, NULL, &nvals, v);
 
 		//--------------------------------------------------------------------------
 		// Test iterating over each column twice, this is to check
@@ -328,12 +348,12 @@ TEST_F(TuplesTest, ColumnIteratorTest) {
 			//--------------------------------------------------------------------------
 			bool depleted = false;
 			for(int i = 0; i < nvals; i++) {
-				GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+				GxB_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
 				ASSERT_FALSE(depleted);
 				ASSERT_EQ(row, I_expected[i]);
 				ASSERT_EQ(col, j);
 			}
-			GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+			GxB_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
 			ASSERT_TRUE(depleted);
 		}
 
@@ -367,7 +387,7 @@ TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 		// Verify iterator returned values.
 		//--------------------------------------------------------------------------
 		bool depleted = false;
-		GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		GxB_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
 		ASSERT_TRUE(depleted);
 	}
 
@@ -378,18 +398,19 @@ TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 TEST_F(TuplesTest, IteratorJumpToRowTest) {
 
 	// Matrix is 5X5 and will be populated with the following indices.
-	GrB_Index indices[5][2] = {
-		{0, 2},
-		{2, 1},
-		{2, 3},
-		{3, 0},
-		{3, 4}
+	GrB_Index indices[5][3] = {
+		{0, 2, 2},
+		{2, 1, 2},
+		{2, 3, 3},
+		{3, 0, 3},
+		{3, 4, 4}
 	};
 
-	bool depleted;
-	GrB_Info info;
-	GrB_Index row;
-	GrB_Index col;
+	GrB_Info   info;
+	GrB_Index  row;
+	GrB_Index  col;
+	uint64_t   val;
+	bool       depleted;
 
 	// Create and populate the matrix.
 	GrB_Index n = 5;
@@ -397,7 +418,8 @@ TEST_F(TuplesTest, IteratorJumpToRowTest) {
 	for(int i = 0; i < 5; i ++) {
 		row = indices[i][0];
 		col = indices[i][1];
-		GrB_Matrix_setElement_BOOL(A, true, row, col);
+		val = indices[i][2];
+		GrB_Matrix_setElement_UINT64(A, val, row, col);
 	}
 
 	// Create iterator.
@@ -416,13 +438,14 @@ TEST_F(TuplesTest, IteratorJumpToRowTest) {
 
 	// Check that the right indices are retrived.
 	for(int i = 1; i < 5; i++) {
-		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
+		ASSERT_EQ(indices[i][2], val);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 	// Jump to start, check that iterator is depleted only when it is done iterating the matrix.
@@ -430,33 +453,34 @@ TEST_F(TuplesTest, IteratorJumpToRowTest) {
 	ASSERT_EQ(GrB_SUCCESS, info);
 
 	for(int i = 0; i < 5; i ++) {
-		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
+		ASSERT_EQ(indices[i][2], val);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 }
-
 
 TEST_F(TuplesTest, IteratorRange) {
 
 	// Matrix is 6X6 and will be populated with the following indices.
-	GrB_Index indices[6][2] = {
-		{0, 2},
-		{2, 1},
-		{2, 3},
-		{3, 0},
-		{3, 4},
-		{5, 5}
+	GrB_Index indices[6][3] = {
+		{0, 2, 2},
+		{2, 1, 2},
+		{2, 3, 3},
+		{3, 0, 3},
+		{3, 4, 4},
+		{5, 5, 5}
 	};
 
-	bool depleted;
-	GrB_Info info;
-	GrB_Index row;
-	GrB_Index col;
+	GrB_Info   info;
+	GrB_Index  row;
+	GrB_Index  col;
+	uint64_t   val;
+	bool       depleted;
 
 	// Create and populate the matrix.
 	GrB_Index n = 6;
@@ -464,7 +488,8 @@ TEST_F(TuplesTest, IteratorRange) {
 	for(int i = 0; i < 6; i ++) {
 		row = indices[i][0];
 		col = indices[i][1];
-		GrB_Matrix_setElement_BOOL(A, true, row, col);
+		val = indices[i][2];
+		GrB_Matrix_setElement_UINT64(A, val, row, col);
 	}
 
 	// Create iterator.
@@ -486,13 +511,14 @@ TEST_F(TuplesTest, IteratorRange) {
 
 	// Check that the right indices are retrived.
 	for(int i = 1; i <= 2; i++) {
-		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
+		ASSERT_EQ(indices[i][2], val);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 	// Check for legal range setting.
@@ -501,28 +527,31 @@ TEST_F(TuplesTest, IteratorRange) {
 
 	// Check that the right indices are retrived.
 	for(int i = 1; i <= 4; i++) {
-		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
+		ASSERT_EQ(indices[i][2], val);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
 
-	// Set the entire rows as range, check that iterator is depleted only when it is done iterating the matrix.
+	// Set the entire rows as range,
+	// check that iterator is depleted only when it is done iterating the matrix
 	info = GxB_MatrixTupleIter_iterate_range(iter, 0, n - 1);
 	ASSERT_EQ(GrB_SUCCESS, info);
 
 	for(int i = 0; i < 6; i ++) {
-		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
+		ASSERT_EQ(indices[i][2], val);
 		ASSERT_FALSE(depleted);
 	}
-	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 }
 
