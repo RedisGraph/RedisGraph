@@ -27,22 +27,33 @@ static inline void _EmptyIterator
 static inline GrB_Info _MatrixTupleIter_init
 (
 	GxB_MatrixTupleIter *iter,      // iterator to init
-	GrB_Matrix A,                    // matrix to iterate over
-	int sparsity_type                // The sparsity type of the matrix
+	GrB_Matrix A,                   // matrix to iterate over
+	int sparsity_type               // The sparsity type of the matrix
 ) {
 	GB_WHERE(A, "_MatrixTupleIter_init (iter, A)") ;
-	GrB_Index nrows ;
+	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
+
+	size_t     size   ;
+	GrB_Type   type   ;
+	GrB_Index  nrows  ;
+
+	GxB_Matrix_type(&type, A) ;
+	GxB_Type_size(&size, type) ;
+
 	GrB_Matrix_nrows(&nrows, A) ;
 	GrB_Matrix_nvals(&iter->nvals, A) ;
-
-	iter->sparsity_type = sparsity_type;
-	iter->A = A ;
-	iter->nnz_idx = 0 ;
-	iter->row_idx = 0 ;
-	iter->nrows = nrows ;
-	iter->p = A->p[0] ;              // set p to 0, A->p[0] always equal 0
-	if(iter->sparsity_type == GxB_HYPERSPARSE)
-		_MatrixTupleIter_init_hypersparse_fields(iter, 0, A->nvec);
+	  
+  iter->A             =  A             ;
+	iter->p             =  A->p[0]       ;
+	iter->size          =  size          ;
+  iter->nrows         =  nrows         ;
+  iter->nnz_idx       =  0             ;
+	iter->row_idx       =  0             ;
+  iter->sparsity_type =  sparsity_type ;
+  
+	if(iter->sparsity_type == GxB_HYPERSPARSE) {
+		_MatrixTupleIter_init_hypersparse_fields(iter, 0, A->nvec) ;
+  }
 
 	return GrB_SUCCESS ;
 }
@@ -273,6 +284,7 @@ GrB_Info GxB_MatrixTupleIter_next
 	GxB_MatrixTupleIter *iter,      // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
+	void *val,                      // optional value at A[row,col]
 	bool *depleted                  // indicate if iterator depleted
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_next (iter, row, col, depleted)") ;
@@ -293,6 +305,10 @@ GrB_Info GxB_MatrixTupleIter_next
 
 	if(col)
 		*col = A->i[nnz_idx] ;
+	if(val) {
+		GrB_Index offset = nnz_idx * iter->size;
+		memcpy(val, (char*)A->x + offset, iter->size);
+	}
 
 	//--------------------------------------------------------------------------
 	// extract the row indices

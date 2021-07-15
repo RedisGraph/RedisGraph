@@ -321,8 +321,13 @@ GrB_Matrix Graph_GetRelationMatrix(
 	int relation        // Relation described by matrix.
 );
 
-// Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise.
-bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r);
+// returns true if relationship matrix 'r' contains multi-edge entries
+// false otherwise
+bool Graph_RelationshipContainsMultiEdge(
+	const Graph *g, // Graph containing matrix to inspect
+	int r,          // Relationship ID
+	bool transpose  // false for R, true for transpose R
+);
 
 // Retrieves a transposed typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.

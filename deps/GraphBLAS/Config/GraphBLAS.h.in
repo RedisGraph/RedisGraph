@@ -7849,9 +7849,10 @@ typedef struct
     int64_t p ;                                           // number of values already been iterated in current row
     int64_t row_idx ;                                     // Index of current row
     GrB_Index nrows ;                                     // Total number of rows in matrix
-    	struct { // Hypersparce only related fields
-            int64_t sparse_row_idx;          // index into hyper-sparse row array 'h'
-            int64_t h_size;                  // number of entries in hyper-sparse row array 'h'
+    size_t size ;                                         // Size of an entry in A
+    	struct {                                            // Hypersparce only related fields
+            int64_t sparse_row_idx;                       // index into hyper-sparse row array 'h'
+            int64_t h_size;                               // number of entries in hyper-sparse row array 'h'
     	};
 } GxB_MatrixTupleIter ;
 
@@ -7890,6 +7891,7 @@ GrB_Info GxB_MatrixTupleIter_next
 	GxB_MatrixTupleIter *iter,      // iterator to consume
 	GrB_Index *row,                 // optional row index of current NNZ
 	GrB_Index *col,                 // optional column index of current NNZ
+	void *val,                      // optional value at A[row, col]
 	bool *depleted                  // indicate if iterator depleted
 ) ;
 

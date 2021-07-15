@@ -140,7 +140,8 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	NodeID dest_id = INVALID_ENTITY_ID;
 
 	while(true) {
-		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id, &depleted);
+		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id,
+				NULL, &depleted);
 
 		// Managed to get a tuple, break.
 		if(!depleted) break;
