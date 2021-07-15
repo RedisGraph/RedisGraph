@@ -40,11 +40,10 @@ static GrB_Info setMultiEdgeEntry
 		} else {
 			v = CLEAR_MSB(v);
 			// append entry to array
-			entries = (uint64_t *)v;
+			entries = (intptr_t)v;
 			array_append(entries, x);
 		}
-		v = entries;
-		v = SET_MSB(v);
+		v = SET_MSB(entries);
 		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
 		// cheap sync, entry already exists
 		GrB_wait(&A);

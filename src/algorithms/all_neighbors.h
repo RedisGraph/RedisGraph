@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../graph/rg_matrix.h"
+#include "../graph/rg_matrix/rg_matrix.h"
 #include "../graph/entities/node.h"
 
 // performs iterative DFS from 'src'

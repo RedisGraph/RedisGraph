@@ -103,7 +103,7 @@ GrB_Info RG_Matrix_nrows
 	ASSERT(C);
 	ASSERT(nrows);
 
-	GrB_Matrix m = RG_Matrix_M();
+	GrB_Matrix m = RG_MATRIX_M(C);
 	return GrB_Matrix_nrows(nrows, m);
 }
 
@@ -115,7 +115,7 @@ GrB_Info RG_Matrix_ncols
 	ASSERT(C);
 	ASSERT(ncols);
 
-	GrB_Matrix m = RG_Matrix_M();
+	GrB_Matrix m = RG_MATRIX_M(C);
 	return GrB_Matrix_ncols(ncols, m);
 }
 

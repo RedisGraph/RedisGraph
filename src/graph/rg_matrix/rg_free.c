@@ -22,7 +22,7 @@ static void free_multiedge_array(void *out, const void *in) {
 	if(!(SINGLE_EDGE(*id))) {
 		// entry is a pointer to dynamic array, free it
 		EdgeID *ids = (EdgeID *)(*id);
-		array_free(*ids);
+		array_free(ids);
 	}
 
 	// set out to 0

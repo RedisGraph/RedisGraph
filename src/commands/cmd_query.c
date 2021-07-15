@@ -165,7 +165,6 @@ static void _ExecuteQuery(void *args) {
 			GraphContext_MarkWriter(rm_ctx, gc);
 		}
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
-		Graph_WriterEnter(gc->g);  // single writer
 	}
 
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
@@ -194,7 +193,6 @@ static void _ExecuteQuery(void *args) {
 	ResultSet_Reply(result_set);
 
 	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
-	else Graph_WriterLeave(gc->g);
 
 	// log query to slowlog
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);

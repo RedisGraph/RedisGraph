@@ -81,75 +81,75 @@ static void _process_yield(BFSCtx *ctx, const char **yield) {
 
 static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 									   const SIValue *args, const char **yield) {
-	// Validate inputs
-	ASSERT(ctx != NULL);
-	ASSERT(args != NULL);
+	//// Validate inputs
+	//ASSERT(ctx != NULL);
+	//ASSERT(args != NULL);
 
-	if(array_len((SIValue *)args) != 3) return PROCEDURE_ERR;
-	if(SI_TYPE(args[0]) != T_NODE                 ||   // Source node.
-	   SI_TYPE(args[1]) != T_INT64                ||   // Max level to iterate to, unlimited if 0.
-	   !(SI_TYPE(args[2]) & (T_NULL | T_STRING)))      // Relationship type to traverse if not NULL.
-		return PROCEDURE_ERR;
+	//if(array_len((SIValue *)args) != 3) return PROCEDURE_ERR;
+	//if(SI_TYPE(args[0]) != T_NODE                 ||   // Source node.
+	//   SI_TYPE(args[1]) != T_INT64                ||   // Max level to iterate to, unlimited if 0.
+	//   !(SI_TYPE(args[2]) & (T_NULL | T_STRING)))      // Relationship type to traverse if not NULL.
+	//	return PROCEDURE_ERR;
 
-	BFSCtx *bfs_ctx = ctx->privateData;
-	_process_yield(bfs_ctx, yield);
+	//BFSCtx *bfs_ctx = ctx->privateData;
+	//_process_yield(bfs_ctx, yield);
 
-	//--------------------------------------------------------------------------
-	// Process inputs
-	//--------------------------------------------------------------------------
+	////--------------------------------------------------------------------------
+	//// Process inputs
+	////--------------------------------------------------------------------------
 
-	Node *source_node = args[0].ptrval;
-	int64_t max_level = args[1].longval;
-	const char *reltype = SIValue_IsNull(args[2]) ? NULL : args[2].stringval;
+	//Node *source_node = args[0].ptrval;
+	//int64_t max_level = args[1].longval;
+	//const char *reltype = SIValue_IsNull(args[2]) ? NULL : args[2].stringval;
 
-	/* The BFS algorithm uses a level of 1 to indicate the source node.
-	 * If this value is not zero (unlimited), increment it by 1
-	 * to make level 1 indicate the source's direct neighbors. */
-	if(max_level > 0) max_level++;
-	GrB_Index src_id = ENTITY_GET_ID(source_node);
+	///* The BFS algorithm uses a level of 1 to indicate the source node.
+	// * If this value is not zero (unlimited), increment it by 1
+	// * to make level 1 indicate the source's direct neighbors. */
+	//if(max_level > 0) max_level++;
+	//GrB_Index src_id = ENTITY_GET_ID(source_node);
 
-	// Get edge matrix and transpose matrix, if available.
-	GrB_Matrix R;
-	GrB_Matrix TR;
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	if(reltype == NULL) {
-		R = Graph_GetAdjacencyMatrix(gc->g);
-		TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
-	} else {
-		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-		if(!s) return PROCEDURE_OK; // Failed to find schema, first step will return NULL.
-		bfs_ctx->reltype_id = s->id;
-		R = Graph_GetRelationMatrix(gc->g, s->id);
-		bool maintain_transpose;
-		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-		if(maintain_transpose) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
-		else TR = GrB_NULL;
-	}
+	//// Get edge matrix and transpose matrix, if available.
+	//GrB_Matrix R;
+	//GrB_Matrix TR;
+	//GraphContext *gc = QueryCtx_GetGraphCtx();
+	//if(reltype == NULL) {
+	//	R = Graph_GetAdjacencyMatrix(gc->g);
+	//	TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
+	//} else {
+	//	Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
+	//	if(!s) return PROCEDURE_OK; // Failed to find schema, first step will return NULL.
+	//	bfs_ctx->reltype_id = s->id;
+	//	R = Graph_GetRelationMatrix(gc->g, s->id);
+	//	bool maintain_transpose;
+	//	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
+	//	if(maintain_transpose) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
+	//	else TR = GrB_NULL;
+	//}
 
-	/* If we're not collecting edges, pass a NULL parent pointer
-	 * so that the algorithm will not perform unnecessary work. */
-	GrB_Vector V = GrB_NULL;  // Vector of results
-	GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
-	GrB_Vector *pPI = &PI;
-	if(!bfs_ctx->yield_edges) pPI = NULL;
-	GrB_Info res = LAGraph_bfs_pushpull(&V, pPI, R, TR, src_id, NULL, max_level, true);
-	ASSERT(res == GrB_SUCCESS);
+	///* If we're not collecting edges, pass a NULL parent pointer
+	// * so that the algorithm will not perform unnecessary work. */
+	//GrB_Vector V = GrB_NULL;  // Vector of results
+	//GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
+	//GrB_Vector *pPI = &PI;
+	//if(!bfs_ctx->yield_edges) pPI = NULL;
+	//GrB_Info res = LAGraph_bfs_pushpull(&V, pPI, R, TR, src_id, NULL, max_level, true);
+	//ASSERT(res == GrB_SUCCESS);
 
-	/* Remove all values with a level less than or equal to 1.
-	 * Values of 0 are not connected to the source, and values of 1 are the source. */
-	GxB_Scalar thunk;
-	GxB_Scalar_new(&thunk, GrB_UINT64);
-	GxB_Scalar_setElement_UINT64(thunk, 1);
-	GxB_Vector_select(V, GrB_NULL, GrB_NULL, GxB_GT_THUNK, V, thunk, GrB_NULL);
-	GxB_Scalar_free(&thunk);
+	///* Remove all values with a level less than or equal to 1.
+	// * Values of 0 are not connected to the source, and values of 1 are the source. */
+	//GxB_Scalar thunk;
+	//GxB_Scalar_new(&thunk, GrB_UINT64);
+	//GxB_Scalar_setElement_UINT64(thunk, 1);
+	//GxB_Vector_select(V, GrB_NULL, GrB_NULL, GxB_GT_THUNK, V, thunk, GrB_NULL);
+	//GxB_Scalar_free(&thunk);
 
-	// Get number of entries.
-	GrB_Index nvals;
-	GrB_Vector_nvals(&nvals, V);
+	//// Get number of entries.
+	//GrB_Index nvals;
+	//GrB_Vector_nvals(&nvals, V);
 
-	bfs_ctx->n = nvals;
-	bfs_ctx->nodes = V;
-	bfs_ctx->parents = PI;
+	//bfs_ctx->n = nvals;
+	//bfs_ctx->nodes = V;
+	//bfs_ctx->parents = PI;
 
 	return PROCEDURE_OK;
 }

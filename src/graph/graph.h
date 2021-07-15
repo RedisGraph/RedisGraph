@@ -52,7 +52,6 @@ struct Graph {
 	RG_Matrix *relations;               // Relation matrices.
 	RG_Matrix _zero_matrix;             // Zero matrix.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
-	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
 	GraphStatistics stats;              // Graph related statistics.
@@ -120,7 +119,7 @@ void Graph_CreateNode(
 
 // Connects source node to destination node.
 // Returns 1 if connection is formed, 0 otherwise.
-int Graph_ConnectNodes(
+void Graph_CreateEdge(
 	Graph *g,           // Graph on which to operate.
 	NodeID src,         // Source node ID.
 	NodeID dest,        // Destination node ID.
