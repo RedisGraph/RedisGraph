@@ -41,7 +41,7 @@ static GrB_Info _MatrixTupleIter_init
 	GxB_Type_size(&size, type) ;
 
 	GrB_Matrix_nrows(&nrows, A) ;
-	GrB_Matrix_nvals(&iter->nvals, A) ;
+	GrB_Matrix_nvals(&(iter->nvals), A) ;
 
 	GxB_Matrix_Option_get(A, GxB_SPARSITY_STATUS, &sparsity_type);
 	  
@@ -439,7 +439,7 @@ GrB_Info GxB_MatrixTupleIter_reuse
 	if(sparsity_type != GxB_SPARSE && sparsity_type != GxB_HYPERSPARSE)
 		GB_ERROR (GrB_INVALID_VALUE, "Invalid sparsity type: %d", sparsity_type) ;
 
-	return _MatrixTupleIter_init(&iter, A) ;
+	return _MatrixTupleIter_init(iter, A) ;
 }
 
 // release iterator
