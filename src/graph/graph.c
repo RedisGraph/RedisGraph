@@ -191,7 +191,7 @@ static void _CollectEdgesFromEntry
 	EdgeID edgeId,
 	Edge **edges
 ) {
-	Edge e;
+	Edge e = {0};
 
 	e.relationID  =  r;
 	e.srcNodeID   =  src;
