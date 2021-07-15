@@ -250,6 +250,9 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 				rowIdx, iter->nrows) ;
 	}
 
+	// this call needed because we deplete the iterator
+	GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
+
 	GrB_Index _rowIdx = rowIdx ; // the normalized rowIdx
 
 	if(iter->sparsity_type == GxB_HYPERSPARSE) {
