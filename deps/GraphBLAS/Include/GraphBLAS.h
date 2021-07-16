@@ -7842,20 +7842,25 @@ GrB_Info GxB_Matrix_Pending
 // to iterate over a matrix
 typedef struct
 {
-	GrB_Matrix A ;          // Matrix being iterated
-	GrB_Index nvals ;       // Number of none zero values in matrix
-	GrB_Index nnz_idx ;     // Index of current none zero value
-	int64_t p ;             // Number of none zero values in current column
-	int64_t row_idx ;       // Index of current row
-	GrB_Index nrows ;       // Total number of rows in matrix
-	size_t size ;           // Size of an entry in A
+    GrB_Matrix A ;                      // Matrix being iterated
+    int sparsity_type;                  // Either hyper-sparse or sparse
+    GrB_Index nvals ;                   // Number of none zero values in matrix
+    GrB_Index nnz_idx ;                 // Index of current none zero value
+    int64_t p ;                         // number of values already been iterated in current row
+    int64_t row_idx ;                   // Index of current row
+    GrB_Index nrows ;                   // Total number of rows in matrix
+    size_t size ;                       // Size of an entry in A
+		struct {                        // Hypersparce only related fields
+            int64_t sparse_row_idx;     // index into hyper-sparse row array 'h'
+            int64_t h_size;             // number of entries in hyper-sparse row array 'h'
+    	};
 } GxB_MatrixTupleIter ;
 
-// Create a new matrix iterator
+// Create a new list of matrix iterators
 GrB_Info GxB_MatrixTupleIter_new
 (
-	GxB_MatrixTupleIter **iter, // iterator to create
-	GrB_Matrix A                // matrix being iterated
+	GxB_MatrixTupleIter **iter,     // iterator to create
+	const GrB_Matrix A              // matrix to iterate over
 ) ;
 
 // Iterate over specific row
@@ -7890,7 +7895,7 @@ GrB_Info GxB_MatrixTupleIter_next
 	bool *depleted                  // indicate if iterator depleted
 ) ;
 
-// Reset iterator
+// Reset iterator, assumes the iterator is valid
 GrB_Info GxB_MatrixTupleIter_reset
 (
 	GxB_MatrixTupleIter *iter        // iterator to reset
@@ -7900,7 +7905,7 @@ GrB_Info GxB_MatrixTupleIter_reset
 GrB_Info GxB_MatrixTupleIter_reuse
 (
 	GxB_MatrixTupleIter *iter,  // iterator to update
-	GrB_Matrix A				// matrix to scan
+	const GrB_Matrix A          // matrix to scan
 ) ;
 
 // Release every resource consumed by iterator

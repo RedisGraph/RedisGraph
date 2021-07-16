@@ -151,6 +151,12 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	bfs_ctx->nodes = V;
 	bfs_ctx->parents = PI;
 
+	// matrix iterator requires matrix format to be sparse
+	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	// we set matrix format at creation time
+	GxB_Vector_Option_set(bfs_ctx->nodes, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	GxB_Vector_Option_set(bfs_ctx->parents, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+
 	return PROCEDURE_OK;
 }
 
