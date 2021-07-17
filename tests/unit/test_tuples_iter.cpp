@@ -46,6 +46,7 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 		}
 
 		GrB_Matrix_build_UINT64(A, I, J, X, n, GrB_FIRST_UINT64);
+		GrB_Matrix_wait(&A);
 
 		free(X);
 		free(I);
@@ -61,6 +62,7 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 		// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
 		// we set matrix format at creation time
 		GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, GetParam());
+		GrB_Matrix_wait(&A);
 
 		return A;
 	}
@@ -336,83 +338,72 @@ TEST_P(TuplesTest, MatrixIteratorTest) {
 	GrB_Matrix_free(&A);
 }
 
-TEST_P(TuplesTest, ColumnIteratorTest) {
+TEST_P(TuplesTest, RowIteratorTest) {
 	//--------------------------------------------------------------------------
 	// Build a 4X4 matrix
 	//--------------------------------------------------------------------------
 
-	GrB_Index nvals = 4;
-	GrB_Matrix A = CreateSquareNByNDiagonalMatrix(nvals);
-	GrB_Index I_expected[nvals];
-	GrB_Vector v;
-	GrB_Index row;
-	GrB_Index col;
-	GrB_Index nrows = nvals;
-	GrB_Index ncols = nvals;
+	GrB_Index nrows = 4;
+	GrB_Matrix A = CreateSquareNByNDiagonalMatrix(nrows);
+
 	GxB_MatrixTupleIter *iter;
 	GxB_MatrixTupleIter_new(&iter, A);
 
-	for(int j = 0; j < ncols; j++) {
-		GrB_Vector_new(&v, GrB_UINT64, nrows);
-		GrB_Col_extract(v, NULL, NULL, A, GrB_ALL, nrows, j, NULL);
-		GrB_Vector_extractTuples_UINT64(I_expected, NULL, &nvals, v);
-
-		//--------------------------------------------------------------------------
-		// Test iterating over each column twice, this is to check
-		// iterator reusability.
-		//--------------------------------------------------------------------------
+	for(int i = 0; i < nrows; i++) {
+		//----------------------------------------------------------------------
+		// test iterating over each row twice
+		//----------------------------------------------------------------------
 
 		int reuse = 2;
-		for(int k = 0; k < reuse; k++) {
-			//--------------------------------------------------------------------------
-			// Get an iterator over the current column.
-			//--------------------------------------------------------------------------
-			GxB_MatrixTupleIter_iterate_row(iter, j);
+		for(int j = 0; j < reuse; j++) {
+			//------------------------------------------------------------------
+			// get an iterator over the current column
+			//------------------------------------------------------------------
+			GxB_MatrixTupleIter_iterate_row(iter, i);
 
-			//--------------------------------------------------------------------------
-			// Verify iterator returned values.
-			//--------------------------------------------------------------------------
+			//------------------------------------------------------------------
+			// verify iterator returned values
+			//------------------------------------------------------------------
+			GrB_Index row;
+			GrB_Index col;
 			bool depleted = false;
-			for(int i = 0; i < nvals; i++) {
-				GxB_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
-				ASSERT_FALSE(depleted);
-				ASSERT_EQ(row, I_expected[i]);
-				ASSERT_EQ(col, j);
-			}
+
+			GxB_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
+			ASSERT_FALSE(depleted);
+			ASSERT_EQ(row, i);
+			ASSERT_EQ(col, i);
+			
 			GxB_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
 			ASSERT_TRUE(depleted);
 		}
-
-		GrB_Vector_free(&v);
 	}
+
 	GxB_MatrixTupleIter_free(iter);
 	GrB_Matrix_free(&A);
 }
 
-TEST_P(TuplesTest, ColumnIteratorEmptyMatrixTest) {
+TEST_P(TuplesTest, RowIteratorEmptyMatrixTest) {
 	//--------------------------------------------------------------------------
 	// Build a 4X4 empty matrix
 	//--------------------------------------------------------------------------
 
-	GrB_Index nvals = 4;
-	GrB_Matrix A = CreateSquareNByNEmptyMatrix(nvals);
+	GrB_Index nrows = 4;
+	GrB_Matrix A = CreateSquareNByNEmptyMatrix(nrows);
 
 	GrB_Index row;
 	GrB_Index col;
-	GrB_Index ncols = nvals;
 	GxB_MatrixTupleIter *iter;
 	GxB_MatrixTupleIter_new(&iter, A);
 
-	for(int j = 0; j < ncols; j++) {
+	for(int i = 0; i < nrows; i++) {
+		//----------------------------------------------------------------------
+		// Get an iterator over the current row.
+		//----------------------------------------------------------------------
+		GxB_MatrixTupleIter_iterate_row(iter, i);
 
-		//--------------------------------------------------------------------------
-		// Get an iterator over the current column.
-		//--------------------------------------------------------------------------
-		GxB_MatrixTupleIter_iterate_row(iter, j);
-
-		//--------------------------------------------------------------------------
+		//----------------------------------------------------------------------
 		// Verify iterator returned values.
-		//--------------------------------------------------------------------------
+		//----------------------------------------------------------------------
 		bool depleted = false;
 		GxB_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
 		ASSERT_TRUE(depleted);
@@ -423,8 +414,7 @@ TEST_P(TuplesTest, ColumnIteratorEmptyMatrixTest) {
 }
 
 TEST_P(TuplesTest, IteratorJumpToRowTest) {
-
-	// Matrix is 5X5 and will be populated with the following indices.
+	// A is a 5X5 matrix with the following tuples
 	GrB_Index indices[5][3] = {
 		{0, 2, 2},
 		{2, 1, 2},
@@ -439,7 +429,7 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 	uint64_t   val;
 	bool       depleted;
 
-	// Create and populate the matrix.
+	// create and populate the matrix
 	GrB_Index n = 5;
 	GrB_Matrix A = CreateSquareNByNEmptyMatrix(n);
 	for(int i = 0; i < 5; i ++) {
@@ -448,22 +438,23 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 		val = indices[i][2];
 		GrB_Matrix_setElement_UINT64(A, val, row, col);
 	}
+	GrB_Matrix_wait(&A);
 
-	// Create iterator.
+	// create iterator
 	GxB_MatrixTupleIter *iter;
 	GxB_MatrixTupleIter_new(&iter, A);
 
-	// Check for invalid index exception for row jump.
+	// check for invalid index exception
 	info = GxB_MatrixTupleIter_jump_to_row(iter, -1);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
 	info = GxB_MatrixTupleIter_jump_to_row(iter, n);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
 
-	// Check for legal jump to row, and retrive row's value.
+	// jump to row 2, check for legal row jump
 	info = GxB_MatrixTupleIter_jump_to_row(iter, 2);
 	ASSERT_EQ(GrB_SUCCESS, info);
 
-	// Check that the right indices are retrived.
+	// iterate over entire matrix starting at row 2
 	for(int i = 1; i < 5; i++) {
 		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
@@ -475,7 +466,8 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
-	// Jump to start, check that iterator is depleted only when it is done iterating the matrix.
+	// jump to first row
+	// check that iterator is depleted only when scans through the entire matrix
 	info = GxB_MatrixTupleIter_jump_to_row(iter, 0);
 	ASSERT_EQ(GrB_SUCCESS, info);
 
@@ -582,5 +574,5 @@ TEST_P(TuplesTest, IteratorRange) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TestParameters, TuplesTest,
-                         ::testing::Values(GxB_SPARSE, GxB_HYPERSPARSE));
+		::testing::Values(GxB_SPARSE, GxB_HYPERSPARSE));
 
