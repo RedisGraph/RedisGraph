@@ -27,6 +27,7 @@ GrB_Info RG_MatrixTupleIter_new
 	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A);
 
 	RG_MatrixTupleIter *it = rm_calloc(1, sizeof(RG_MatrixTupleIter));
+	it->rg_m = A;
 	*iter = it;
 	info = GxB_MatrixTupleIter_new(&(*iter)->m_iter, M);
 	ASSERT(info == GrB_SUCCESS);

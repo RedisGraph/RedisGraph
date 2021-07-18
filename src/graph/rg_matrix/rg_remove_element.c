@@ -73,7 +73,7 @@ GrB_Info RG_Matrix_removeElement
 		if(multi_edge) {
 			GrB_Matrix_extractElement(&x, dp, i, j);
 			if((SINGLE_EDGE(x)) == false) {
-				array_free((uint64_t*)x);
+				array_free(CLEAR_MSB(x));
 			}
 		}
 

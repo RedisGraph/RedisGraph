@@ -11,6 +11,7 @@
 #include "../util/rmalloc.h"
 #include "../configuration/config.h"
 #include "../util/datablock/oo_datablock.h"
+#include "../graph/rg_matrix/rg_matrix_iter.h"
 
 static GrB_BinaryOp _graph_edge_accum = NULL;
 // GraphBLAS binary operator for freeing edges
@@ -159,8 +160,8 @@ void _Graph_GetEdgesConnectingNodes
 
 	// relation map, maps (src, dest, r) to edge IDs.
 	EdgeID      id    =  INVALID_ENTITY_ID;
-	GrB_Matrix  M     =  Graph_GetRelationMatrix(g, r, false);
-	GrB_Info    res   =  GrB_Matrix_extractElement_UINT64(&id, M, src, dest);
+	RG_Matrix   M     =  Graph_GetRelationMatrix(g, r, false);
+	GrB_Info    res   =  RG_Matrix_extractElement_UINT64(&id, M, src, dest);
 
 	// no entry at [dest, src], src is not connected to dest with relation R
 	if(res == GrB_NO_VALUE) return;
@@ -875,15 +876,15 @@ static void _BulkDeleteNodes
 	GrB_Index           nrows;
 	GrB_Index           ncols;
 	GrB_Index           nvals;       // number of elements in mask
-	GxB_MatrixTupleIter *adj_iter;   // adjacency matrix iterator
-	GxB_MatrixTupleIter *tadj_iter;  // transposed adjacency matrix iterator
+	RG_MatrixTupleIter *adj_iter;   // adjacency matrix iterator
+	RG_MatrixTupleIter *tadj_iter;  // transposed adjacency matrix iterator
 
 	GrB_Index *implicit_edges = array_new(GrB_Index, 1);
 
 	adj = Graph_GetAdjacencyMatrix(g, false);
 	tadj = Graph_GetAdjacencyMatrix(g, true);
-	GxB_MatrixTupleIter_new(&adj_iter, adj);
-	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
+	RG_MatrixTupleIter_new(&adj_iter, adj);
+	RG_MatrixTupleIter_new(&tadj_iter, tadj);
 
 	//--------------------------------------------------------------------------
 	// collect edges to delete
@@ -900,9 +901,9 @@ static void _BulkDeleteNodes
 		// outgoing edges
 		//----------------------------------------------------------------------
 
-		GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
+		RG_MatrixTupleIter_iterate_row(adj_iter, ID);
 		while(true) {
-			GxB_MatrixTupleIter_next(adj_iter, NULL,  &dest, NULL, &depleted);
+			RG_MatrixTupleIter_next(adj_iter, NULL,  &dest, NULL, &depleted);
 			if(depleted) break;
 
 			// append src followed by dest
@@ -916,9 +917,9 @@ static void _BulkDeleteNodes
 		// incoming edges
 		//----------------------------------------------------------------------
 
-		GxB_MatrixTupleIter_iterate_row(tadj_iter, ID);
+		RG_MatrixTupleIter_iterate_row(tadj_iter, ID);
 		while(true) {
-			GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, NULL, &depleted);
+			RG_MatrixTupleIter_next(tadj_iter, NULL, &src, NULL, &depleted);
 			if(depleted) break;
 
 			// append src followed by dest
@@ -986,8 +987,8 @@ static void _BulkDeleteNodes
 
 	// clean up
 	array_free(implicit_edges);
-	GxB_MatrixTupleIter_free(adj_iter);
-	GxB_MatrixTupleIter_free(tadj_iter);
+	RG_MatrixTupleIter_free(adj_iter);
+	RG_MatrixTupleIter_free(tadj_iter);
 }
 
 static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
