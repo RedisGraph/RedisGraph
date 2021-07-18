@@ -70,12 +70,6 @@ void Graph_AcquireWriteLock(Graph *g);
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g);
 
-/* Writer request access to graph. */
-void Graph_WriterEnter(Graph *g);
-
-/* Writer release access to graph. */
-void Graph_WriterLeave(Graph *g);
-
 /* Choose the current matrix synchronization policy. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
 
@@ -299,13 +293,6 @@ bool Graph_RelationshipContainsMultiEdge(
 	const Graph *g, // Graph containing matrix to inspect
 	int r,          // Relationship ID
 	bool transpose  // false for R, true for transpose R
-);
-
-// Retrieves a transposed typed adjacency matrix.
-// Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetTransposedRelationMatrix(
-	const Graph *g,     // Graph from which to get adjacency matrix.
-	int relation        // Relation described by matrix.
 );
 
 // Retrieves the zero matrix.

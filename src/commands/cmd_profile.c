@@ -52,7 +52,7 @@ void Graph_Profile(void *args) {
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
 	} else {
-		Graph_WriterEnter(gc->g);  // Single writer.
+		Graph_AcquireWriteLock(gc->g);  // Single writer.
 		/* If this is a writer query `we need to re-open the graph key with write flag
 		* this notifies Redis that the key is "dirty" any watcher on that key will
 		* be notified. */
@@ -79,8 +79,7 @@ cleanup:
 
 	// Release the read-write lock
 	if(lockAcquired) {
-		if(readonly) Graph_ReleaseLock(gc->g);
-		else Graph_WriterLeave(gc->g);
+		Graph_ReleaseLock(gc->g);
 	}
 
 	ResultSet_Free(result_set);

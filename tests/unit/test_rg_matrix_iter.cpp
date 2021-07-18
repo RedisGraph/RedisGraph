@@ -107,13 +107,13 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
     info = RG_MatrixTupleIter_new(&iter, A);
     ASSERT_TRUE(iter != NULL);
 
-    info = RG_MatrixTupleIter_next(iter, &row, &col, &depleted);
+    info = RG_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
     ASSERT_TRUE(iter != NULL);
     
     ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
 
-    info = RG_MatrixTupleIter_next(iter, &row, &col, &depleted);
+    info = RG_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
     ASSERT_TRUE(iter != NULL);
 
     ASSERT_EQ(depleted, true);

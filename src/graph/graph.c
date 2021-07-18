@@ -716,7 +716,7 @@ void Graph_GetNodeEdges
 		// if a relationship type is specified, retrieve the appropriate
 		// transposed relation matrix,
 		// otherwise use the transposed adjacency matrix
-		M = Graph_GetTransposedRelationMatrix(g, edgeType);
+		M = Graph_GetRelationMatrix(g, edgeType, true);
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges

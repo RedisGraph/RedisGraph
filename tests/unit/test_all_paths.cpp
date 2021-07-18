@@ -58,19 +58,19 @@ class AllPathsTest : public ::testing::Test {
 
 		// Connections:
 		// 0 -> 1
-		Graph_ConnectNodes(g, 0, 1, relation, &e);
+		Graph_CreateEdge(g, 0, 1, relation, &e);
 		// 0 -> 2
-		Graph_ConnectNodes(g, 0, 2, relation, &e);
+		Graph_CreateEdge(g, 0, 2, relation, &e);
 		// 1 -> 0
-		Graph_ConnectNodes(g, 1, 0, relation, &e);
+		Graph_CreateEdge(g, 1, 0, relation, &e);
 		// 1 -> 2
-		Graph_ConnectNodes(g, 1, 2, relation, &e);
+		Graph_CreateEdge(g, 1, 2, relation, &e);
 		// 2 -> 1
-		Graph_ConnectNodes(g, 2, 1, relation, &e);
+		Graph_CreateEdge(g, 2, 1, relation, &e);
 		// 2 -> 3
-		Graph_ConnectNodes(g, 2, 3, relation, &e);
+		Graph_CreateEdge(g, 2, 3, relation, &e);
 		// 3 -> 0
-		Graph_ConnectNodes(g, 3, 0, relation, &e);
+		Graph_CreateEdge(g, 3, 0, relation, &e);
 		return g;
 	}
 

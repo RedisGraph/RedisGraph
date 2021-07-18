@@ -34,16 +34,16 @@ extern AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, 
 QueryGraph *qg;
 
 // Matrices.
-GrB_Matrix mat_p;
-GrB_Matrix mat_ef;
-GrB_Matrix mat_tef;
-GrB_Matrix mat_f;
-GrB_Matrix mat_ev;
-GrB_Matrix mat_tev;
-GrB_Matrix mat_c;
-GrB_Matrix mat_ew;
-GrB_Matrix mat_tew;
-GrB_Matrix mat_e;
+RG_Matrix mat_p;
+RG_Matrix mat_ef;
+RG_Matrix mat_tef;
+RG_Matrix mat_f;
+RG_Matrix mat_ev;
+RG_Matrix mat_tev;
+RG_Matrix mat_c;
+RG_Matrix mat_ew;
+RG_Matrix mat_tew;
+RG_Matrix mat_e;
 rax *_matrices;
 
 const char *query_no_intermidate_return_nodes =
@@ -147,15 +147,15 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 		// Introduce relations, connect nodes.
 		Edge e;
-		Graph_ConnectNodes(g, 0, 1, friend_relation_id, &e);
-		Graph_ConnectNodes(g, 1, 0, friend_relation_id, &e);
+		Graph_CreateEdge(g, 0, 1, friend_relation_id, &e);
+		Graph_CreateEdge(g, 1, 0, friend_relation_id, &e);
 
-		Graph_ConnectNodes(g, 0, 2, visit_relation_id, &e);
-		Graph_ConnectNodes(g, 0, 3, visit_relation_id, &e);
-		Graph_ConnectNodes(g, 1, 2, visit_relation_id, &e);
+		Graph_CreateEdge(g, 0, 2, visit_relation_id, &e);
+		Graph_CreateEdge(g, 0, 3, visit_relation_id, &e);
+		Graph_CreateEdge(g, 1, 2, visit_relation_id, &e);
 
-		Graph_ConnectNodes(g, 2, 3, war_relation_id, &e);
-		Graph_ConnectNodes(g, 3, 2, war_relation_id, &e);
+		Graph_CreateEdge(g, 2, 3, war_relation_id, &e);
+		Graph_CreateEdge(g, 3, 2, war_relation_id, &e);
 
 		Graph_ReleaseLock(g);
 	}
@@ -174,16 +174,16 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		mat_e = Graph_GetLabelMatrix(g, mat_id);
 
 		mat_id = GraphContext_GetSchema(gc, "friend", SCHEMA_EDGE)->id;
-		mat_ef = Graph_GetRelationMatrix(g, mat_id);
-		mat_tef = Graph_GetTransposedRelationMatrix(g, mat_id);
+		mat_ef = Graph_GetRelationMatrix(g, mat_id, false);
+		mat_tef = Graph_GetRelationMatrix(g, mat_id, true);
 
 		mat_id = GraphContext_GetSchema(gc, "visit", SCHEMA_EDGE)->id;
-		mat_ev = Graph_GetRelationMatrix(g, mat_id);
-		mat_tev = Graph_GetTransposedRelationMatrix(g, mat_id);
+		mat_ev = Graph_GetRelationMatrix(g, mat_id, false);
+		mat_tev = Graph_GetRelationMatrix(g, mat_id, true);
 
 		mat_id = GraphContext_GetSchema(gc, "war", SCHEMA_EDGE)->id;
-		mat_ew = Graph_GetRelationMatrix(g, mat_id);
-		mat_tew = Graph_GetTransposedRelationMatrix(g, mat_id);
+		mat_ew = Graph_GetRelationMatrix(g, mat_id, false);
+		mat_tew = Graph_GetRelationMatrix(g, mat_id, true);
 
 		GrB_Matrix dummy_matrix;
 		GrB_Matrix_new(&dummy_matrix, GrB_BOOL, 2, 2);
@@ -281,7 +281,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	void _compare_algebraic_operand(AlgebraicExpression *a, AlgebraicExpression *b) {
 		ASSERT_TRUE(a->type == AL_OPERAND);
 		ASSERT_TRUE(b->type == AL_OPERAND);
-		ASSERT_EQ(a->operand.matrix, b->operand.matrix);
+		ASSERT_EQ(a->operand.grb_matrix, b->operand.grb_matrix);
 	}
 
 	void compare_algebraic_expression(AlgebraicExpression *a, AlgebraicExpression *b) {
@@ -323,7 +323,7 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
 	AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, diagonal, src, dest, edge,
 																  label);
 	ASSERT_EQ(operand->type, AL_OPERAND);
-	ASSERT_EQ(operand->operand.matrix, matrix);
+	ASSERT_EQ(operand->operand.grb_matrix, matrix);
 	ASSERT_EQ(operand->operand.diagonal, diagonal);
 	ASSERT_EQ(operand->operand.src, src);
 	ASSERT_EQ(operand->operand.dest, dest);
@@ -846,16 +846,16 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 				rootRightChild->operation.op == AL_EXP_MUL);
 
 	AlgebraicExpression *leftLeft = rootLeftChild->operation.children[0];
-	ASSERT_TRUE(leftLeft->type == AL_OPERAND && leftLeft->operand.matrix == A);
+	ASSERT_TRUE(leftLeft->type == AL_OPERAND && leftLeft->operand.grb_matrix == A);
 
 	AlgebraicExpression *leftRight = rootLeftChild->operation.children[1];
-	ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand.matrix == C);
+	ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand.grb_matrix == C);
 
 	AlgebraicExpression *rightLeft = rootRightChild->operation.children[0];
-	ASSERT_TRUE(rightLeft->type == AL_OPERAND && rightLeft->operand.matrix == A);
+	ASSERT_TRUE(rightLeft->type == AL_OPERAND && rightLeft->operand.grb_matrix == A);
 
 	AlgebraicExpression *rightRight = rootRightChild->operation.children[1];
-	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == B);
+	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.grb_matrix == B);
 
 	raxFree(matrices);
 	GrB_Matrix_free(&A);
@@ -899,22 +899,22 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 				rootRightChild->operation.op == AL_EXP_MUL);
 
 	AlgebraicExpression *leftchild_0 = rootLeftChild->operation.children[0];
-	ASSERT_TRUE(leftchild_0->type == AL_OPERAND && leftchild_0->operand.matrix == A);
+	ASSERT_TRUE(leftchild_0->type == AL_OPERAND && leftchild_0->operand.grb_matrix == A);
 
 	AlgebraicExpression *leftchild_1 = rootLeftChild->operation.children[1];
-	ASSERT_TRUE(leftchild_1->type == AL_OPERAND && leftchild_1->operand.matrix == B);
+	ASSERT_TRUE(leftchild_1->type == AL_OPERAND && leftchild_1->operand.grb_matrix == B);
 
 	AlgebraicExpression *leftchild_2 = rootLeftChild->operation.children[2];
-	ASSERT_TRUE(leftchild_2->type == AL_OPERAND && leftchild_2->operand.matrix == C);
+	ASSERT_TRUE(leftchild_2->type == AL_OPERAND && leftchild_2->operand.grb_matrix == C);
 
 	AlgebraicExpression *rightchild_0 = rootRightChild->operation.children[0];
-	ASSERT_TRUE(rightchild_0->type == AL_OPERAND && rightchild_0->operand.matrix == A);
+	ASSERT_TRUE(rightchild_0->type == AL_OPERAND && rightchild_0->operand.grb_matrix == A);
 
 	AlgebraicExpression *rightchild_1 = rootRightChild->operation.children[1];
-	ASSERT_TRUE(rightchild_1->type == AL_OPERAND && rightchild_1->operand.matrix == B);
+	ASSERT_TRUE(rightchild_1->type == AL_OPERAND && rightchild_1->operand.grb_matrix == B);
 
 	AlgebraicExpression *rightchild_2 = rootRightChild->operation.children[2];
-	ASSERT_TRUE(rightchild_2->type == AL_OPERAND && rightchild_2->operand.matrix == D);
+	ASSERT_TRUE(rightchild_2->type == AL_OPERAND && rightchild_2->operand.grb_matrix == D);
 
 
 	GrB_Matrix_free(&A);
