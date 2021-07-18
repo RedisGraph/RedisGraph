@@ -484,7 +484,7 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 }
 
 TEST_P(TuplesTest, IteratorRange) {
-	// Matrix is 6X6 and will be populated with the following indices.
+	// matrix is 6X6 and will be populated with the following indices
 	GrB_Index indices[6][3] = {
 		{0, 2, 2},
 		{2, 1, 2},
@@ -500,7 +500,7 @@ TEST_P(TuplesTest, IteratorRange) {
 	uint64_t   val;
 	bool       depleted;
 
-	// Create and populate the matrix.
+	// create and populate the matrix
 	GrB_Index n = 6;
 	GrB_Matrix A = CreateSquareNByNEmptyMatrix(n);
 	for(int i = 0; i < 6; i ++) {
@@ -510,24 +510,25 @@ TEST_P(TuplesTest, IteratorRange) {
 		GrB_Matrix_setElement_UINT64(A, val, row, col);
 	}
 
-	// Create iterator.
+	// create iterator
 	GxB_MatrixTupleIter *iter;
 	GxB_MatrixTupleIter_new(&iter, A);
 
-	// Check for invalid index exception for range iteration.
+	// check for invalid index exception for range iteration
 	info = GxB_MatrixTupleIter_iterate_range(iter, -1, n - 1);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
 	info = GxB_MatrixTupleIter_iterate_range(iter, n - 1, 0);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
-	// Check for invalid index exception on out-of-bounds iterator.
+
+	// check for invalid index exception on out-of-bounds iterator
 	info = GxB_MatrixTupleIter_iterate_range(iter, n + 5, n + 5);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
 
-	// Iterate single row.
+	// iterate single row
 	info = GxB_MatrixTupleIter_iterate_range(iter, 2, 2);
 	ASSERT_EQ(GrB_SUCCESS, info);
 
-	// Check that the right indices are retrived.
+	// check that the right indices are retrived
 	for(int i = 1; i <= 2; i++) {
 		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
@@ -539,11 +540,11 @@ TEST_P(TuplesTest, IteratorRange) {
 	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
-	// Check for legal range setting.
+	// check for legal range setting
 	info = GxB_MatrixTupleIter_iterate_range(iter, 2, 3);
 	ASSERT_EQ(GrB_SUCCESS, info);
 
-	// Check that the right indices are retrived.
+	// check that the right indices are retrived
 	for(int i = 1; i <= 4; i++) {
 		info = GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
@@ -555,10 +556,9 @@ TEST_P(TuplesTest, IteratorRange) {
 	GxB_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_TRUE(depleted);
 
-
-	// Set the entire rows as range,
+	// set the entire rows as range,
 	// check that iterator is depleted only when it is done iterating the matrix
-	info = GxB_MatrixTupleIter_iterate_range(iter, 0, n - 1);
+	info = GxB_MatrixTupleIter_iterate_range(iter, 0, n * 2) ;
 	ASSERT_EQ(GrB_SUCCESS, info);
 
 	for(int i = 0; i < 6; i ++) {

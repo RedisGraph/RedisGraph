@@ -284,6 +284,11 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 				startRowIdx, iter->nrows) ;
 	}
 
+	// make sure endRowIdx is within bounds
+	GrB_Index nrows;
+	GrB_Matrix_nrows(&nrows, iter->A);
+	endRowIdx = (endRowIdx < nrows) ? endRowIdx : nrows - 1 ;
+
 	GrB_Index  _endRowIdx    =  endRowIdx    ;
 	GrB_Index  _startRowIdx  =  startRowIdx  ;
 
@@ -304,9 +309,6 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 		// endRowIDx   = 16
 		// in this case _startRowIdx = 20 and _endRowIdx = 10
 		if(_startRowIdx > _endRowIdx) return (GrB_SUCCESS) ;
-	}
-	else if(_endRowIdx >= iter->A->plen) {
-		_endRowIdx = iter->A->plen - 1;
 	}
 
 	iter->p       =  0 ;
