@@ -101,7 +101,7 @@ void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_na
 	// this information alows for an optimization when loading the data
 	// as construction of a matrix without multiple edge entry is cheaper
 	for(uint i = 0; i < r_count; i++) {
-		bool multi_edge = Graph_RelationshipContainsMultiEdge(g, i);
+		bool multi_edge = Graph_RelationshipContainsMultiEdge(g, i, false);
 		header->multi_edge[i] = multi_edge;
 	}
 }

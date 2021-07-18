@@ -26,6 +26,7 @@
 #define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
 #define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
 #define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
+#define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
 
 typedef enum {
 	GRAPH_EDGE_DIR_INCOMING,
@@ -292,8 +293,13 @@ RG_Matrix Graph_GetRelationMatrix(
 	bool transposed
 );
 
-// Returns true if relationship matrix 'r' contains multi-edge entries, false otherwise.
-bool Graph_RelationshipContainsMultiEdge(const Graph *g, int r);
+// returns true if relationship matrix 'r' contains multi-edge entries
+// false otherwise
+bool Graph_RelationshipContainsMultiEdge(
+	const Graph *g, // Graph containing matrix to inspect
+	int r,          // Relationship ID
+	bool transpose  // false for R, true for transpose R
+);
 
 // Retrieves a transposed typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
