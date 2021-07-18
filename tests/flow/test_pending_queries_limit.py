@@ -53,7 +53,7 @@ class testPendingQueryLimit():
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
         thread_count = threadpool_size * 5
 
-        results = run_test_multiproc(self.env, thread_count, issue_query, (SLOW_QUERY,))
+        results = Multiproc.run_test_multiproc(self.env, thread_count, issue_query, (SLOW_QUERY,))
         error_encountered = any(results)
 
 
