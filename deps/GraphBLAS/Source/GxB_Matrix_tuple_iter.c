@@ -305,6 +305,9 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 		// in this case _startRowIdx = 20 and _endRowIdx = 10
 		if(_startRowIdx > _endRowIdx) return (GrB_SUCCESS) ;
 	}
+	else if(_endRowIdx >= iter->A->plen) {
+		_endRowIdx = iter->A->plen - 1;
+	}
 
 	iter->p       =  0 ;
 	iter->nvals   = iter->A->p[_endRowIdx + 1] ;
