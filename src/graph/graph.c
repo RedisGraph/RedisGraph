@@ -697,9 +697,9 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		GxB_MatrixTupleIter_new(&it, M);
-		GxB_MatrixTupleIter_iterate_row(it, srcID);
-		while(GxB_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
+		RG_MatrixTupleIter_new(&it, M);
+		RG_MatrixTupleIter_iterate_row(it, srcID);
+		while(RG_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
 
 			// collect all edges (src)->(dest)
@@ -709,7 +709,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
-		GxB_MatrixTupleIter_free(it);
+		RG_MatrixTupleIter_free(it);
 	}
 
 	if(incoming) {
@@ -720,10 +720,10 @@ void Graph_GetNodeEdges
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		GxB_MatrixTupleIter_new(&it, M);
-		GxB_MatrixTupleIter_iterate_row(it, srcID);
+		RG_MatrixTupleIter_new(&it, M);
+		RG_MatrixTupleIter_iterate_row(it, srcID);
 
-		while(GxB_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
+		while(RG_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
 			// collect all edges connecting destId to srcId
 			if(edgeType != GRAPH_NO_RELATION) {
@@ -734,7 +734,7 @@ void Graph_GetNodeEdges
 		}
 
 		// Clean up
-		GxB_MatrixTupleIter_free(it);
+		RG_MatrixTupleIter_free(it);
 	}
 }
 

@@ -51,6 +51,7 @@ GrB_Info RG_MatrixTupleIter_next
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
+	void *val,                      // optional value at A[row, col]
 	bool *depleted                  // indicate if iterator depleted
 );
 

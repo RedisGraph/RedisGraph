@@ -101,6 +101,7 @@ GrB_Info RG_MatrixTupleIter_next
 	RG_MatrixTupleIter *iter,       // iterator to consume
 	GrB_Index *row,                 // optional output row index
 	GrB_Index *col,                 // optional output column index
+	void *val,                      // optional value at A[row, col]
 	bool *depleted                  // indicate if iterator depleted
 ) {
 	GrB_Info info = GrB_SUCCESS;
@@ -118,7 +119,7 @@ GrB_Info RG_MatrixTupleIter_next
 		// move next till we found not deleted value
 		do
 		{		
-			info = GxB_MatrixTupleIter_next(iter_cur, row, col, depleted);
+			info = GxB_MatrixTupleIter_next(iter_cur, row, col, val, depleted);
 			ASSERT(info == GrB_SUCCESS);
 
 			if(*depleted) {
@@ -134,7 +135,7 @@ GrB_Info RG_MatrixTupleIter_next
 	// than finish with the delta plus matrix
 	iter_cur = iter->dp_iter;
 
-	return GxB_MatrixTupleIter_next(iter_cur, row, col, depleted);
+	return GxB_MatrixTupleIter_next(iter_cur, row, col, val, depleted);
 }
 
 // Reset iterator, assumes the iterator is valid
@@ -173,7 +174,7 @@ GrB_Info RG_MatrixTupleIter_reuse
 	info = GxB_MatrixTupleIter_free(iter->dp_iter);
 	ASSERT(info == GrB_SUCCESS);
 
-	return RG_MatrixTupleIter_init(&iter, A);
+	return RG_MatrixTupleIter_new(&iter, A);
 }
 
 // Free iterator, assumes the iterator is valid
