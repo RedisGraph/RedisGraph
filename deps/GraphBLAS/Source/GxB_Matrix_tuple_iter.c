@@ -84,7 +84,7 @@ static bool _find_minimal_row_in_Ah_greater_or_equal_to_rowIdx
 
 	bool found ;
 	GrB_Index   left  =  0 ;
-	GrB_Index   right =  A->nvec - 1 ;
+	GrB_Index   right =  A->plen - 1 ;
 	const GrB_Index *__restrict__ Ah = (GrB_Index *)A->h ;
 
 	GB_BINARY_SEARCH(i, Ah, left, right, found) ;
@@ -126,7 +126,7 @@ static bool _find_maximal_row_in_Ah_smaller_or_equal_to_rowIdx
 
 	bool found ;
 	GrB_Index   left  =  0 ;
-	GrB_Index   right =  A->nvec - 1 ;
+	GrB_Index   right =  A->plen - 1 ;
 	const GrB_Index *__restrict__ Ah = (GrB_Index *)A->h ;
 
 	GB_BINARY_SEARCH(i, Ah, left, right, found) ;
@@ -168,7 +168,7 @@ static bool _find_row_index_in_Ah
 
 	bool found ;
 	GrB_Index left = 0 ;
-	GrB_Index right = A->nvec-1 ;
+	GrB_Index right = A->plen-1 ;
 	const GrB_Index *__restrict__ Ah = (GrB_Index *)A->h ;
 
 	GB_BINARY_SEARCH(i, Ah, left, right, found) ;

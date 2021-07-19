@@ -120,6 +120,10 @@ static void _next_m_iter
 
 		// iterator depleted, return
 		if(*depleted) return ;
+
+		bool x ;
+ 		info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
+ 		if(info == GrB_NO_VALUE) break ; // entry isn't deleted, return
 	} while (true) ;
 
 	if(row) *row = _row ;
@@ -147,7 +151,7 @@ GrB_Info RG_MatrixTupleIter_next
 	GxB_MatrixTupleIter  *dp_it   =  iter->dp_iter                     ;
 
 	_next_m_iter(m_it, DM, row, col, val, depleted) ;
-	if(!depleted) return ;
+	if(!(*depleted)) return ;
 
 	// than finish with the delta plus matrix
 	return GxB_MatrixTupleIter_next(dp_it, row, col, val, depleted);

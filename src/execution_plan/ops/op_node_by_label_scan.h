@@ -13,6 +13,7 @@
 #include "../../graph/entities/node.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../util/range/unsigned_range.h"
+#include "../../graph/rg_matrix/rg_matrix_iter.h"
 
 /* NodeByLabelScan, scans entire label. */
 
@@ -22,7 +23,7 @@ typedef struct {
 	NodeScanCtx n;           /* Label data of node being scanned. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
 	UnsignedRange *id_range;    /* ID range to iterate over. */
-	GxB_MatrixTupleIter *iter;
+	RG_MatrixTupleIter *iter;
 	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } NodeByLabelScan;
 
