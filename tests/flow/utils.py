@@ -50,7 +50,7 @@ class Multiproc:
 
     # create and init n_procs workers and their connections which will execute fn(args)
     @staticmethod
-    def run_test_multiproc(env, n_procs, fn, args=tuple()):
+    def run_multiproc(env, n_procs, fn, args=tuple()):
         # on macOS the spawn start method is now the default one since python 3.8.
         # the spawn start methon fails when it stumbles upon objects that contain locks/fds
         # For this reason need to forcefully set the context to fork.
