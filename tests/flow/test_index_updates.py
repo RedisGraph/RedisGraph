@@ -2,8 +2,8 @@ import os
 import sys
 import random
 import string
-import utils
-from utils import *
+import utils.multiproc as mlp
+from utils.multiproc import *
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
@@ -26,7 +26,7 @@ def issue_queries(queries, graph_id):
     nrep = 5
     for i in range(nrep):
         for x in queries:
-            utils.con.execute_command("GRAPH.QUERY", graph_id, x)
+            mlp.con.execute_command("GRAPH.QUERY", graph_id, x)
     return True
 
 
@@ -211,9 +211,9 @@ class testIndexUpdatesFlow(FlowTestsBase):
 
         # create proccess for each index
         with Multiproc(self.env, n_indices) as mp:
-            args = (
+            args = [
             ((query_create_index, query_drop_index), "graph_0"),
             ((query_read_index,), "graph_1"),
             ((query_read_index,), "graph_2"),
-            ((query_read_index,), "graph_3"))
-            mp.add_work_wait((issue_queries,)*n_indices, args)
+            ((query_read_index,), "graph_3")]
+            mp.add_work_wait([issue_queries]*n_indices, args)

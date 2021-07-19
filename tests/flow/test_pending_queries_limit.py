@@ -1,7 +1,6 @@
 from RLTest import Env
 from redisgraph import Graph
-import utils
-from utils import *
+import utils.multiproc as mlp
 
 # 1.test getting and setting config
 # 2. test overflowing the server when there's a limit
@@ -21,7 +20,7 @@ SLOW_QUERY = "UNWIND range (0, 100000) AS x WITH x WHERE (x / 2) = 50  RETURN x"
 
 def issue_query(q):
     try:
-        utils.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
+        mlp.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
         return False
     except Exception as e:
         assert "Max pending queries exceeded" in str(e)
@@ -53,7 +52,7 @@ class testPendingQueryLimit():
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
         thread_count = threadpool_size * 5
 
-        results = Multiproc.run_multiproc(self.env, thread_count, issue_query, (SLOW_QUERY,))
+        results = mlp.run_multiproc(self.env, thread_count, issue_query, (SLOW_QUERY,))
         error_encountered = any(results)
 
 
