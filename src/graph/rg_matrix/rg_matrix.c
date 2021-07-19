@@ -307,7 +307,7 @@ GrB_Info RG_Matrix_export
 		GrB_Semiring s;
 
 		s = (t == GrB_BOOL) ? GxB_ANY_PAIR_BOOL : GxB_ANY_PAIR_UINT64;
-		info = GrB_Matrix_eWiseAdd_Semiring(a, NULL, NULL, s, m, delta_plus, NULL);
+		info = GrB_Matrix_eWiseAdd_Semiring(a, NULL, NULL, s, a, delta_plus, NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
