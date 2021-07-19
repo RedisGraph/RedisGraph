@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -54,24 +54,30 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_new) {
     info = RG_MatrixTupleIter_new(&iter, A);
     ASSERT_TRUE(iter != NULL);
 
+    ASSERT_EQ(iter->A, A);
+    ASSERT_TRUE(iter->m_it != NULL);
+    ASSERT_TRUE(iter->dp_it != NULL);
+
     RG_MatrixTupleIter_free(&iter);
     ASSERT_TRUE(iter == NULL);
+
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
 }
 
-// test RGMatrixTupleIter initialization
+// test RGMatrixTupleIter iteration
 TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_BOOL;
 	GrB_Info           info                =  GrB_SUCCESS;
     RG_MatrixTupleIter *iter               =  NULL;
-    GrB_Index          i                   =  0;
-	GrB_Index          j                   =  1;
+    GrB_Index          i                   =  1;
+	GrB_Index          j                   =  2;
     GrB_Index          row                 =  0;
 	GrB_Index          col                 =  0;
 	GrB_Index          nrows               =  100;
 	GrB_Index          ncols               =  100;
+	bool               val                 =  false;
     bool               sync                =  false;
     bool               depleted            =  false;
 	bool               multi_edge          =  true;
@@ -107,19 +113,20 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
     info = RG_MatrixTupleIter_new(&iter, A);
     ASSERT_TRUE(iter != NULL);
 
-    info = RG_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
-    ASSERT_TRUE(iter != NULL);
-    
+    info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
+
+    ASSERT_FALSE(depleted);
     ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
+    ASSERT_EQ(val, true);
 
-    info = RG_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
-    ASSERT_TRUE(iter != NULL);
+    info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 
     ASSERT_EQ(depleted, true);
 
-    RG_MatrixTupleIter_free(&iter);
-    ASSERT_TRUE(iter == NULL);
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
+    RG_MatrixTupleIter_free(&iter);
+    ASSERT_TRUE(iter == NULL);
 }
+

@@ -14,16 +14,23 @@
 // to iterate over a RG_Matrix
 typedef struct
 {
-    RG_Matrix rg_m;
-    GxB_MatrixTupleIter* m_iter;     // internal m iterator
-    GxB_MatrixTupleIter* dp_iter;    // internal delta plus iterator
+    RG_Matrix A;                     // matrix iterated
+    GxB_MatrixTupleIter* m_it;     // internal m iterator
+    GxB_MatrixTupleIter* dp_it;    // internal delta plus iterator
 } RG_MatrixTupleIter ;
 
-// Create a new iterator
+// create a new iterator
 GrB_Info RG_MatrixTupleIter_new
 (
 	RG_MatrixTupleIter **iter,     // iterator to create
 	const RG_Matrix A              // matrix to iterate over
+);
+
+// reuse iterator to iterate over given matrix
+GrB_Info RG_MatrixTupleIter_reuse
+(
+	RG_MatrixTupleIter *iter,       // iterator to update
+	const RG_Matrix A               // matrix to scan
 );
 
 GrB_Info RG_MatrixTupleIter_iterate_row
@@ -45,7 +52,7 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	GrB_Index endRowIdx         // row index to finish with
 );
 
-// Advance iterator
+// advance iterator
 GrB_Info RG_MatrixTupleIter_next
 (
 	RG_MatrixTupleIter *iter,       // iterator to consume
@@ -55,13 +62,13 @@ GrB_Info RG_MatrixTupleIter_next
 	bool *depleted                  // indicate if iterator depleted
 );
 
-// Reset iterator
+// reset iterator
 GrB_Info RG_MatrixTupleIter_reset
 (
 	RG_MatrixTupleIter *iter       // iterator to reset
 );
 
-// Free iterator
+// free iterator
 GrB_Info RG_MatrixTupleIter_free
 (
 	RG_MatrixTupleIter **iter       // iterator to free
