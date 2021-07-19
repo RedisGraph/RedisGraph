@@ -1018,7 +1018,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
 		// free and remove edges from datablock
-		DataBlock_DeleteItem(g->edges, e);
+		DataBlock_DeleteItem(g->edges, edge_id);
 	}
 }
 
