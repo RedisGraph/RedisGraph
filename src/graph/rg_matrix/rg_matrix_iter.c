@@ -19,10 +19,6 @@ GrB_Info RG_MatrixTupleIter_new
 	ASSERT(A != NULL);
 	ASSERT(iter != NULL);
 
-	int sparsity_type;
-	GxB_Matrix_Option_get(A, GxB_SPARSITY_CONTROL, &sparsity_type);
-	ASSERT(sparsity_type == GxB_SPARSE || sparsity_type == GxB_HYPERSPARSE);
-
 	GrB_Matrix M  = RG_MATRIX_M(A);
 	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A);
 
@@ -126,7 +122,6 @@ GrB_Info RG_MatrixTupleIter_next
 			if(*depleted) {
 				break;
 			}
-			info = GrB_Matrix_extractElement(NULL, DM, *row, *col);
 		} while (info == GrB_SUCCESS);
 		if(!*depleted){
 			return (GrB_SUCCESS);
@@ -186,7 +181,6 @@ GrB_Info RG_MatrixTupleIter_free
 	GrB_Info info = GrB_SUCCESS;
 
 	ASSERT(iter != NULL);
-	ASSERT(A != NULL);
 
 	info = GxB_MatrixTupleIter_free(iter->m_iter);
 	ASSERT(info == GrB_SUCCESS);
