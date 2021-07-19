@@ -1,37 +1,42 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "RG.h"
 #include "./rg_matrix_iter.h"
-#include "../../util/rmalloc.h"s
+#include "../../util/rmalloc.h"
 
-// Create a new iterator
+// create a new iterator
 GrB_Info RG_MatrixTupleIter_new
 (
 	RG_MatrixTupleIter **iter,     // iterator to create
 	const RG_Matrix A              // matrix to iterate over
 ) {
-	GrB_Info info = GrB_SUCCESS;
+	GrB_Info info ;
 
-	ASSERT(A != NULL);
-	ASSERT(iter != NULL);
+	ASSERT(A != NULL) ;
+	ASSERT(iter != NULL) ;
 
-	GrB_Matrix M  = RG_MATRIX_M(A);
-	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A);
+	int sparsity_type ;
+	GxB_Matrix_Option_get(A, GxB_SPARSITY_CONTROL, &sparsity_type) ;
+	ASSERT(sparsity_type == GxB_SPARSE || sparsity_type == GxB_HYPERSPARSE) ;
 
-	RG_MatrixTupleIter *it = rm_calloc(1, sizeof(RG_MatrixTupleIter));
-	it->rg_m = A;
-	*iter = it;
-	info = GxB_MatrixTupleIter_new(&(*iter)->m_iter, M);
-	ASSERT(info == GrB_SUCCESS);
+	GrB_Matrix M  = RG_MATRIX_M(A) ;
+	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A) ;
 
-	info = GxB_MatrixTupleIter_new(&(*iter)->dp_iter, DP);
-	ASSERT(info == GrB_SUCCESS);
+	RG_MatrixTupleIter *it = rm_calloc(1, sizeof(RG_MatrixTupleIter)) ;
+	it->rg_m = A ;
 
-	return info ;
+	info = GxB_MatrixTupleIter_new(&(it->m_iter), M) ;
+	ASSERT(info == GrB_SUCCESS) ;
+
+	info = GxB_MatrixTupleIter_new(&(it->dp_iter), DP) ;
+	ASSERT(info == GrB_SUCCESS) ;
+
+	*iter = it ;
+	return (GrB_SUCCESS) ;
 }
 
 GrB_Info RG_MatrixTupleIter_iterate_row
@@ -39,16 +44,17 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	RG_MatrixTupleIter *iter,
 	GrB_Index rowIdx
 ) {
-	GrB_Info info = GrB_SUCCESS;
+	GrB_Info info ;
 
-	ASSERT(iter != NULL);
-	if(iter->m_iter == NULL || iter->dp_iter == NULL) return GrB_INVALID_VALUE; // no iterators to iterate over is invalid scenario
+	ASSERT(iter          != NULL) ;
+	ASSERT(iter->m_iter  != NULL) ;
+	ASSERT(iter->dp_iter != NULL) ;
 
-	info = GxB_MatrixTupleIter_iterate_row(iter->m_iter, rowIdx);
-	ASSERT(info == GrB_SUCCESS);
+	info = GxB_MatrixTupleIter_iterate_row(iter->m_iter, rowIdx) ;
+	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_iterate_row(iter->dp_iter, rowIdx);
-	ASSERT(info == GrB_SUCCESS);
+	info = GxB_MatrixTupleIter_iterate_row(iter->dp_iter, rowIdx) ;
+	ASSERT(info == GrB_SUCCESS) ;
 
 	return (GrB_SUCCESS) ;
 }
@@ -58,16 +64,17 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 	RG_MatrixTupleIter *iter,
 	GrB_Index rowIdx
 ) {
-	GrB_Info info = GrB_SUCCESS;
+	GrB_Info info ;
 
-	ASSERT(iter != NULL);
-	if(iter->m_iter == NULL || iter->dp_iter == NULL) return GrB_INVALID_VALUE; // no iterators to iterate over is invalid scenario
+	ASSERT(iter          != NULL) ;
+	ASSERT(iter->m_iter  != NULL) ;
+	ASSERT(iter->dp_iter != NULL) ;
 
-	info = GxB_MatrixTupleIter_jump_to_row(iter->m_iter, rowIdx);
-	ASSERT(info == GrB_SUCCESS);
+	info = GxB_MatrixTupleIter_jump_to_row(iter->m_iter, rowIdx) ;
+	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_jump_to_row(iter->dp_iter, rowIdx);
-	ASSERT(info == GrB_SUCCESS);
+	info = GxB_MatrixTupleIter_jump_to_row(iter->dp_iter, rowIdx) ;
+	ASSERT(info == GrB_SUCCESS) ;
 
 	return (GrB_SUCCESS) ;
 }
@@ -78,18 +85,53 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	GrB_Index startRowIdx,      // row index to start with
 	GrB_Index endRowIdx         // row index to finish with
 ) {
-	GrB_Info info = GrB_SUCCESS;
+	GrB_Info info = GrB_SUCCESS ;
 
-	ASSERT(iter != NULL);
-	if(iter->m_iter == NULL || iter->dp_iter == NULL) return GrB_INVALID_VALUE; // no iterators to iterate over is invalid scenario
+	ASSERT(iter          != NULL) ;
+	ASSERT(iter->m_iter  != NULL) ;
+	ASSERT(iter->dp_iter != NULL) ;
 
-	info = GxB_MatrixTupleIter_iterate_range(iter->m_iter, startRowIdx, endRowIdx);
-	ASSERT(info == GrB_SUCCESS);
+	info = GxB_MatrixTupleIter_iterate_range(iter->m_iter, startRowIdx, endRowIdx) ;
+	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_iterate_range(iter->dp_iter, startRowIdx, endRowIdx);
-	ASSERT(info == GrB_SUCCESS);
+	info = GxB_MatrixTupleIter_iterate_range(iter->dp_iter, startRowIdx, endRowIdx) ;
+	ASSERT(info == GrB_SUCCESS) ;
 
-	return (GrB_SUCCESS);
+	return (GrB_SUCCESS) ;
+}
+
+// iterate over M matrix
+static void _next_m_iter
+(
+	GxB_MatrixTupleIter *it, // iterator scanning M
+	const GxB_Matrix DM,     // delta-minus, masking entries
+	GrB_Index *row,          // optional extracted row index
+	GrB_Index *col,          // optional extracted column index
+	void *val,               // optional extracted value
+	bool *depleted           // [output] true if iterator depleted
+) {
+	ASSERT(it       != NULL) ;
+	ASSERT(DM       != NULL) ;
+	ASSERT(depleted != NULL) ;
+
+	GrB_Index  _row ;
+	GrB_Index  _col ;
+
+	do {
+		info = GxB_MatrixTupleIter_next(it, &_row, &_col, val, depleted) ;
+		ASSERT(info == GrB_SUCCESS) ;
+
+		// iterator depleted, return
+		if(*depleted) return ;
+
+		// make sure entry isn't marked as deleted
+		bool x ;
+		info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
+		if(info == GrB_NO_VALUE) break ; // entry isn't deleted, return
+	} while (true) ;
+
+	if(row) *row = _row ;
+	if(col) *col = _col ;
 }
 
 // Advance iterator
@@ -101,32 +143,23 @@ GrB_Info RG_MatrixTupleIter_next
 	void *val,                      // optional value at A[row, col]
 	bool *depleted                  // indicate if iterator depleted
 ) {
-	GrB_Info info = GrB_SUCCESS;
+	GrB_Info info ;
 
-	ASSERT(iter != NULL);
-	ASSERT(depleted != NULL);
-	if(iter->m_iter == NULL || iter->dp_iter == NULL) return GrB_INVALID_VALUE; // no iterators to iterate over is invalid scenario
+	ASSERT(iter          != NULL) ;
+	ASSERT(depleted      != NULL) ;
+	ASSERT(iter->m_iter  != NULL) ;
+	ASSERT(iter->dp_iter != NULL) ;
 
-	GrB_Matrix DM = RG_MATRIX_DELTA_MINUS(iter->rg_m);
-	GxB_MatrixTupleIter *iter_cur = iter->m_iter;
-	GrB_Index nnz_idx = iter_cur->nnz_idx;
+	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->rg_m) ;
+	GxB_MatrixTupleIter  *m_it    =  iter->m_iter                      ;
+	GxB_MatrixTupleIter  *dp_it   =  iter->dp_iter                     ;
 
-	// first finish with the M matrix
-	if(nnz_idx < iter_cur->nvals) {
-		// move next till we found not deleted value
-		do
-		{		
-			info = GxB_MatrixTupleIter_next(iter_cur, row, col, val, depleted);
-			ASSERT(info == GrB_SUCCESS);
-
-			if(*depleted) {
-				break;
-			}
-		} while (info == GrB_SUCCESS);
-		if(!*depleted){
-			return (GrB_SUCCESS);
-		}
-	}
+	_next_m_iter(m_it, DM, row, col, val, depleted) ;
+	if(!depleted) return ;
+	
+	// try consuming from delta-plus
+	_consume_dp_iter(dp_it, row, col, val, depleted) ;
+	if(!depleted) return ;
 
 	// than finish with the delta plus matrix
 	iter_cur = iter->dp_iter;

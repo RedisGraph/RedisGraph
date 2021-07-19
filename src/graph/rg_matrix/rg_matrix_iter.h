@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -7,8 +7,8 @@
 #pragma once
 
 #include <stdint.h>
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "./rg_matrix.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // TuplesIter maintains information required
 // to iterate over a RG_Matrix
@@ -28,14 +28,14 @@ GrB_Info RG_MatrixTupleIter_new
 
 GrB_Info RG_MatrixTupleIter_iterate_row
 (
-	RG_MatrixTupleIter *iter,
-	GrB_Index rowIdx
+	RG_MatrixTupleIter *iter,      // iterator to use
+	GrB_Index rowIdx               // row to iterate
 );
 
 GrB_Info RG_MatrixTupleIter_jump_to_row
 (
-	RG_MatrixTupleIter *iter,
-	GrB_Index rowIdx
+	RG_MatrixTupleIter *iter,      // iterator to use
+	GrB_Index rowIdx               // row to jump to
 );
 
 GrB_Info RG_MatrixTupleIter_iterate_range
@@ -55,14 +55,15 @@ GrB_Info RG_MatrixTupleIter_next
 	bool *depleted                  // indicate if iterator depleted
 );
 
-// Reset iterator, assumes the iterator is valid
+// Reset iterator
 GrB_Info RG_MatrixTupleIter_reset
 (
 	RG_MatrixTupleIter *iter       // iterator to reset
 );
 
-// Free iterator, assumes the iterator is valid
+// Free iterator
 GrB_Info RG_MatrixTupleIter_free
 (
 	RG_MatrixTupleIter *iter       // iterator to free
 );
+
