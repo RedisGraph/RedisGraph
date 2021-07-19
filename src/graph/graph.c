@@ -710,7 +710,7 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
-		RG_MatrixTupleIter_free(it);
+		RG_MatrixTupleIter_free(&it);
 	}
 
 	if(incoming) {
@@ -735,7 +735,7 @@ void Graph_GetNodeEdges
 		}
 
 		// Clean up
-		RG_MatrixTupleIter_free(it);
+		RG_MatrixTupleIter_free(&it);
 	}
 }
 
@@ -990,8 +990,8 @@ static void _BulkDeleteNodes
 
 	// clean up
 	array_free(implicit_edges);
-	RG_MatrixTupleIter_free(adj_iter);
-	RG_MatrixTupleIter_free(tadj_iter);
+	RG_MatrixTupleIter_free(&adj_iter);
+	RG_MatrixTupleIter_free(&tadj_iter);
 }
 
 static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {

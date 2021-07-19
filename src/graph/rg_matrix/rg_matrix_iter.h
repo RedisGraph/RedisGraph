@@ -64,6 +64,6 @@ GrB_Info RG_MatrixTupleIter_reset
 // Free iterator
 GrB_Info RG_MatrixTupleIter_free
 (
-	RG_MatrixTupleIter *iter       // iterator to free
+	RG_MatrixTupleIter **iter       // iterator to free
 );
 

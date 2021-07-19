@@ -195,19 +195,21 @@ GrB_Info RG_MatrixTupleIter_reuse
 // Free iterator, assumes the iterator is valid
 GrB_Info RG_MatrixTupleIter_free
 (
-	RG_MatrixTupleIter *iter       // iterator to free
+	RG_MatrixTupleIter **iter       // iterator to free
 ) {
 	GrB_Info info = GrB_SUCCESS;
 
-	ASSERT(iter != NULL);
+	ASSERT(*iter != NULL);
 
-	info = GxB_MatrixTupleIter_free(iter->m_iter);
+	info = GxB_MatrixTupleIter_free((*iter)->m_iter);
 	ASSERT(info == GrB_SUCCESS);
 
-	info = GxB_MatrixTupleIter_free(iter->dp_iter);
+	info = GxB_MatrixTupleIter_free((*iter)->dp_iter);
 	ASSERT(info == GrB_SUCCESS);
 
-	rm_free(iter);
+	rm_free(*iter);
+
+	*iter = NULL;
 
 	return (GrB_SUCCESS);
 }
