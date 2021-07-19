@@ -39,7 +39,9 @@ GrB_Info RG_Matrix_removeElement
 
 	if(C->maintain_transpose) {
 		info = RG_Matrix_removeElement(C->transposed, j, i);
-		ASSERT(info == GrB_SUCCESS);
+		if(info != GrB_SUCCESS) {
+			return info;
+		} 
 	}
 
 	info = GrB_Matrix_extractElement(&x, m, i, j);
@@ -56,7 +58,7 @@ GrB_Info RG_Matrix_removeElement
 
 	// entry missing from both 'm' and 'dp'
 	if(!(in_m || in_dp)) {
-		return GrB_SUCCESS;
+		return GrB_NO_VALUE;
 	}
 
 	// entry exists in 'M'

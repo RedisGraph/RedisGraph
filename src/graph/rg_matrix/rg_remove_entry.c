@@ -25,7 +25,9 @@ static void _removeEntryFromMultiValArr
 			break;
 		}
 	}
-	ASSERT(i < n);
+
+	//ASSERT(i < n);
+	if(i == n) return;
 
 	// remove located entry
 	// migrate last element and reduce array size
@@ -79,7 +81,9 @@ GrB_Info RG_Matrix_removeEntry
 
 	if(C->maintain_transpose) {
 		info = RG_Matrix_removeElement(C->transposed, j, i);
-		ASSERT(info == GrB_SUCCESS);
+		if(info != GrB_SUCCESS) {
+			return info;
+		} 
 	}
 
 	bool multi_edge = RG_Matrix_getMultiEdge(C);
@@ -118,7 +122,7 @@ GrB_Info RG_Matrix_removeEntry
 
 	// entry missing from both 'm' and 'dp'
 	if(!(in_m || in_dp)) {
-		return GrB_SUCCESS;
+		return GrB_NO_VALUE;
 	}
 
 	// delta-plus[i,j] exists

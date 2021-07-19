@@ -19,10 +19,6 @@ GrB_Info RG_MatrixTupleIter_new
 	ASSERT(A != NULL) ;
 	ASSERT(iter != NULL) ;
 
-	int sparsity_type ;
-	GxB_Matrix_Option_get(A, GxB_SPARSITY_CONTROL, &sparsity_type) ;
-	ASSERT(sparsity_type == GxB_SPARSE || sparsity_type == GxB_HYPERSPARSE) ;
-
 	GrB_Matrix M  = RG_MATRIX_M(A) ;
 	GrB_Matrix DP = RG_MATRIX_DELTA_PLUS(A) ;
 
@@ -104,7 +100,7 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 static void _next_m_iter
 (
 	GxB_MatrixTupleIter *it, // iterator scanning M
-	const GxB_Matrix DM,     // delta-minus, masking entries
+	const GrB_Matrix DM,     // delta-minus, masking entries
 	GrB_Index *row,          // optional extracted row index
 	GrB_Index *col,          // optional extracted column index
 	void *val,               // optional extracted value
@@ -116,6 +112,7 @@ static void _next_m_iter
 
 	GrB_Index  _row ;
 	GrB_Index  _col ;
+	GrB_Info   info ;
 
 	do {
 		info = GxB_MatrixTupleIter_next(it, &_row, &_col, val, depleted) ;
@@ -123,11 +120,6 @@ static void _next_m_iter
 
 		// iterator depleted, return
 		if(*depleted) return ;
-
-		// make sure entry isn't marked as deleted
-		bool x ;
-		info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
-		if(info == GrB_NO_VALUE) break ; // entry isn't deleted, return
 	} while (true) ;
 
 	if(row) *row = _row ;
@@ -156,15 +148,9 @@ GrB_Info RG_MatrixTupleIter_next
 
 	_next_m_iter(m_it, DM, row, col, val, depleted) ;
 	if(!depleted) return ;
-	
-	// try consuming from delta-plus
-	_consume_dp_iter(dp_it, row, col, val, depleted) ;
-	if(!depleted) return ;
 
 	// than finish with the delta plus matrix
-	iter_cur = iter->dp_iter;
-
-	return GxB_MatrixTupleIter_next(iter_cur, row, col, val, depleted);
+	return GxB_MatrixTupleIter_next(dp_it, row, col, val, depleted);
 }
 
 // Reset iterator, assumes the iterator is valid

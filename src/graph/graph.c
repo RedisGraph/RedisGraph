@@ -930,9 +930,6 @@ static void _BulkDeleteNodes
 	
 	int implicit_edge_count = array_len(implicit_edges);
 
-	// update deleted node count
-	*node_deleted += node_count;
-
 	// update deleted edge count
 	*edge_deleted += implicit_edge_count;
 
@@ -973,6 +970,7 @@ static void _BulkDeleteNodes
 	// remove nodes from label matrices
 	//--------------------------------------------------------------------------
 
+	uint _node_deleted = 0;
 	// all nodes marked for deleteion are detected (no incoming/outgoing edges)
 	int node_type_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < node_type_count; i++) {
@@ -981,9 +979,14 @@ static void _BulkDeleteNodes
 		for(int j = 0; j < node_count; j++) {
 			Node *n = nodes + j;
 			NodeID ID = ENTITY_GET_ID(n);
-			RG_Matrix_removeElement(L, ID, ID);
+			if(RG_Matrix_removeElement(L, ID, ID) == GrB_SUCCESS) {
+				_node_deleted++;
+			}
 		}
 	}
+
+	// update deleted node count
+	*node_deleted += _node_deleted;
 
 	// clean up
 	array_free(implicit_edges);
@@ -997,9 +1000,8 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 	ASSERT(edges);
 	ASSERT(edge_count > 0);
 
-	bool        update_adj_matrices   =  false;
-	int         relationCount         =  Graph_RelationTypeCount(g);
-
+	int relationCount = Graph_RelationTypeCount(g);
+	
 	GrB_Index n = Graph_RequiredMatrixDim(g);
 
 	for(int i = 0; i < edge_count; i++) {
@@ -1011,20 +1013,12 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		EdgeID     edge_id  =  ENTITY_GET_ID(e);
 
 		GrB_Info info = RG_Matrix_removeEntry(R, src_id, dest_id, edge_id);
-		ASSERT(info == GrB_SUCCESS);
 
 		// edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
-		if(SINGLE_EDGE(edge_id))  update_adj_matrices = true;
-
 		// free and remove edges from datablock
-		DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
-	}
-
-	if(update_adj_matrices) {
-		// TODO: update adj matrix
-		ASSERT(false);
+		DataBlock_DeleteItem(g->edges, e);
 	}
 }
 
