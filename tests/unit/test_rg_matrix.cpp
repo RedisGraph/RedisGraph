@@ -227,7 +227,7 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	//--------------------------------------------------------------------------
 
 	info = RG_Matrix_removeElement(A, i, j);
-	ASSERT_EQ(info, GrB_SUCCESS);
+	ASSERT_EQ(info, GrB_NO_VALUE);
 
 	//--------------------------------------------------------------------------
 	// remove none flushed addition
@@ -717,11 +717,9 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 			// delete element at position i,j
 			//--------------------------------------------------------------------------
 			
-			info = RG_Matrix_removeElement(A, i, j);
-			ASSERT_EQ(info, GrB_SUCCESS);
+			RG_Matrix_removeElement(A, i, j);
 
-			info = GrB_Matrix_removeElement(N, i, j);
-			ASSERT_EQ(info, GrB_SUCCESS);
+			GrB_Matrix_removeElement(N, i, j);
 		}
 	}
 
