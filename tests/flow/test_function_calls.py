@@ -152,6 +152,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[2]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COLLECT should associate false and 'false' to different groups.
+        query = "UNWIND [false,'false',0,'0'] AS a RETURN a, count(a)"
+        actual_result = graph.query(query)
+        expected_result = [[0, 1], [False, 1], ["false", 1], ['0', 1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
     
     def test09_static_aggregation(self):
         query = "RETURN count(*)"
