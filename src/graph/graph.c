@@ -879,6 +879,7 @@ static void _BulkDeleteNodes
 	RG_MatrixTupleIter *adj_iter;   // adjacency matrix iterator
 	RG_MatrixTupleIter *tadj_iter;  // transposed adjacency matrix iterator
 
+	Edge *edges = array_new(Edge, 2);
 	GrB_Index *implicit_edges = array_new(GrB_Index, 1);
 
 	adj = Graph_GetAdjacencyMatrix(g, false);
@@ -886,16 +887,25 @@ static void _BulkDeleteNodes
 	RG_MatrixTupleIter_new(&adj_iter, adj);
 	RG_MatrixTupleIter_new(&tadj_iter, tadj);
 
+	// removing duplicates
+#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+	QSORT(Node, nodes, node_count, is_edge_lt);
+
 	//--------------------------------------------------------------------------
 	// collect edges to delete
 	//--------------------------------------------------------------------------
-
 	for(uint i = 0; i < node_count; i++) {
+		// As long as current is the same as follows.
+		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
+
+		Node *n = nodes + i;
 		GrB_Index src;
 		GrB_Index dest;
-		Node *n = nodes + i;
 		bool depleted = false;
 		NodeID ID = ENTITY_GET_ID(n);
+		
+		// collect edges
+		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
 
 		//----------------------------------------------------------------------
 		// outgoing edges
@@ -931,30 +941,49 @@ static void _BulkDeleteNodes
 	int implicit_edge_count = array_len(implicit_edges);
 
 	// update deleted edge count
-	*edge_deleted += implicit_edge_count;
+	uint _edge_deleted = 0;
+
+	int relation_count = Graph_RelationTypeCount(g);
+	uint64_t edge_deletion_count[relation_count];
+	for (int i = 0; i < relation_count; i++)
+	{
+		edge_deletion_count[i] = 0;
+	}
+	
+	int edge_count = array_len(edges);
+
+	// removing duplicates
+#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+	QSORT(Edge, edges, edge_count, is_edge_lt);
+
+	for (int i = 0; i < edge_count; i++)
+	{
+		// As long as current is the same as follows.
+		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
+
+		Edge *e        = edges+i;
+		EdgeID edge_id = ENTITY_GET_ID(e);
+		RG_Matrix R = Graph_GetRelationMatrix(g, e->relationID, false);
+
+		RG_Matrix_removeElement(R, e->src, e->dest);
+		DataBlock_DeleteItem(g->edges, edge_id);
+		_edge_deleted++;
+		edge_deletion_count[e->relationID]++;
+	}
+
 
 	//--------------------------------------------------------------------------
 	// remove edges from relationship matrices
 	//--------------------------------------------------------------------------
-
-	int relation_count = Graph_RelationTypeCount(g);
+	
 	for(int i = 0; i < relation_count; i++) {
-		RG_Matrix R = Graph_GetRelationMatrix(g, i, false);
-		uint64_t edges_before_deletion = Graph_EdgeCount(g);
-
-		for(int j = 0; j < implicit_edge_count; j+=2) {
-			GrB_Index src = implicit_edges[j];
-			GrB_Index dest = implicit_edges[j+1];
-			RG_Matrix_removeElement(R, src, dest);
-		}
-
-		// the number of deleted edges is equals to the diff in the number of
-		// items in the DataBlock
-		uint64_t n_deleted_edges = edges_before_deletion - Graph_EdgeCount(g);
-
 		// multiple edges of type r has just been deleted, update statistics
-		GraphStatistics_DecEdgeCount(&g->stats, i, n_deleted_edges);
+		GraphStatistics_DecEdgeCount(&g->stats, i, edge_deletion_count[i]);
 	}
+
+	array_free(edges);
+
+	*edge_deleted += _edge_deleted;
 
 	//--------------------------------------------------------------------------
 	// remove edges from the adjacency matrix
@@ -980,6 +1009,7 @@ static void _BulkDeleteNodes
 			Node *n = nodes + j;
 			NodeID ID = ENTITY_GET_ID(n);
 			if(RG_Matrix_removeElement(L, ID, ID) == GrB_SUCCESS) {
+				DataBlock_DeleteItem(g->nodes, ID);
 				_node_deleted++;
 			}
 		}
