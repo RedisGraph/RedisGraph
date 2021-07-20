@@ -25,18 +25,18 @@ class Multiproc:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.pool.terminate()
 
-    # get a fn to run async and it args and returns AsyncResult
+    # executes fn(args) asynchronously, returns AsyncResult
     def run_async(self, fn, args=tuple()):
         return self.pool.apply_async(fn, args=args)
 
     # executes fns asynchronously, 
-    # waits for all functions to finish before collecting return values into an array
+    # waits for all functions to finish before collecting return values
     def add_work_wait(self, fns=[], args=[tuple()]):
         assert len(fns) == len(args) and len(fns) != 0
         async_calls = [self.run_async(fn, args_i) for fn, args_i in zip(fns, args)]
         return [res.get() for res in async_calls]
 
 # create and init n_procs workers and their connections which will execute fn(args)
-def run_multiproc(env, n_procs, fn, args=tuple()):
+def run_async(env, n_procs, fn, args=tuple()):
         with Multiproc(env, n_procs) as mp:
             return mp.add_work_wait([fn]*n_procs, [args]*n_procs)
