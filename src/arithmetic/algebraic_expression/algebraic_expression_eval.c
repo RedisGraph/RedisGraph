@@ -9,44 +9,28 @@
 #include "../algebraic_expression.h"
 
 // forward declarations
-GrB_Matrix _AlgebraicExpression_Eval
+RG_Matrix _AlgebraicExpression_Eval
 (
 	const AlgebraicExpression *exp,
-	GrB_Matrix res
+	RG_Matrix res
 );
 
-GrB_Matrix _Eval_Mul
+RG_Matrix _Eval_Mul
 (
 	const AlgebraicExpression *exp,
-	GrB_Matrix res
+	RG_Matrix res
 );
 
-GrB_Matrix _Eval_Add
+RG_Matrix _Eval_Add
 (
 	const AlgebraicExpression *exp,
-	GrB_Matrix res
+	RG_Matrix res
 );
 
-static GrB_Matrix _Eval_Transpose
+RG_Matrix _AlgebraicExpression_Eval
 (
 	const AlgebraicExpression *exp,
-	GrB_Matrix res
-) {
-	// this function is currently unused
-	ASSERT(exp && AlgebraicExpression_ChildCount(exp) == 1);
-
-	AlgebraicExpression *child = FIRST_CHILD(exp);
-	ASSERT(child->type == AL_OPERAND);
-	ASSERT(child->operand.type == AL_GrB_MAT);
-	GrB_Info info = GrB_transpose(res, NULL, NULL, child->operand.grb_matrix, NULL);
-	ASSERT(info == GrB_SUCCESS);
-	return res;
-}
-
-GrB_Matrix _AlgebraicExpression_Eval
-(
-	const AlgebraicExpression *exp,
-	GrB_Matrix res
+	RG_Matrix res
 ) {
 	ASSERT(exp);
 
@@ -63,7 +47,7 @@ GrB_Matrix _AlgebraicExpression_Eval
 			break;
 
 		case AL_EXP_TRANSPOSE:
-			res = _Eval_Transpose(exp, res);
+			ASSERT("transpose should have been applied prior to evaluation");
 			break;
 
 		default:
@@ -71,8 +55,7 @@ GrB_Matrix _AlgebraicExpression_Eval
 		}
 		break;
 	case AL_OPERAND:
-		ASSERT(exp->operand.type == AL_GrB_MAT);
-		res = exp->operand.grb_matrix;
+		res = exp->operand.matrix;
 		break;
 	default:
 		ASSERT("Unknown algebraic expression node type" && false);
@@ -81,12 +64,12 @@ GrB_Matrix _AlgebraicExpression_Eval
 	return res;
 }
 
-void AlgebraicExpression_Eval
+RG_Matrix AlgebraicExpression_Eval
 (
 	const AlgebraicExpression *exp,
-	GrB_Matrix res
+	RG_Matrix res
 ) {
 	ASSERT(exp != NULL);
-	_AlgebraicExpression_Eval(exp, res);
+	return _AlgebraicExpression_Eval(exp, res);
 }
 

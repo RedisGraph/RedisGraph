@@ -124,7 +124,7 @@ static void _CollectEdgesFromEntry
 
 	if(SINGLE_EDGE(edgeId)) {
 		e.id      =  edgeId;
-		e.entity  =  DataBlock_GetItem(g->edges,  edgeId);
+		e.entity  =  DataBlock_GetItem(g->edges, edgeId);
 		ASSERT(e.entity);
 		array_append(*edges, e);
 	} else {

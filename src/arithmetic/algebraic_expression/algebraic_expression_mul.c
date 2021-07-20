@@ -8,10 +8,10 @@
 #include "../../query_ctx.h"
 #include "../algebraic_expression.h"
 
-GrB_Matrix _Eval_Mul
+RG_Matrix _Eval_Mul
 (
 	const AlgebraicExpression *exp,
-	GrB_Matrix res
+	RG_Matrix res
 ) {
 	//--------------------------------------------------------------------------
 	// validate expression
@@ -22,9 +22,8 @@ GrB_Matrix _Eval_Mul
 	ASSERT(AlgebraicExpression_OperationCount(exp, AL_EXP_MUL) == 1) ;
 
 	GrB_Info             info    ;
-	GrB_Matrix           GrB_A   ;  // left operand
-	GrB_Matrix           GrB_B   ;  // right operand
-	RG_Matrix            RG_B    ;  // right operand
+	RG_Matrix            A       ;  // left operand
+	RG_Matrix            B       ;  // right operand
 	GrB_Index            nvals   ;  // NNZ in res
 	AlgebraicExpression  *left   ;  // left child
 	AlgebraicExpression  *right  ;  // right child
@@ -34,42 +33,24 @@ GrB_Matrix _Eval_Mul
 	left = CHILD_AT(exp, 0) ;
 	ASSERT(left->type == AL_OPERAND) ;
 
-	// leftmost operand is expected to be a GrB_Matrix
-	AlgebraicExpressionMatrixType A_MatType = left->operand.type ;
-	ASSERT(A_MatType == AL_GrB_MAT) ;
-
-	GrB_A = left->operand.grb_matrix ;
+	A = left->operand.matrix ;
 
 	GrB_Semiring semiring = GxB_ANY_PAIR_BOOL ;
 	uint child_count = AlgebraicExpression_ChildCount(exp) ;
 
 	// scan through children 1..n
-	// perform GrB_mxm or RG_mxm depending on the type of operand i
+	// perform RG_mxm
 	for(uint i = 1; i < child_count; i++) {
 		right = CHILD_AT(exp, i) ;
+		B = right->operand.matrix ;
+		info = RG_mxm(res, semiring, A, B) ;
+		ASSERT(info == GrB_SUCCESS) ;
 
-		switch(right->operand.type) {
-			case AL_RG_MAT:
-				RG_B = right->operand.rg_matrix ;
-				info = RG_mxm(res, semiring, GrB_A, RG_B) ;
-				ASSERT(info == GrB_SUCCESS) ;
-				break ;
-			case AL_GrB_MAT:
-				GrB_B = right->operand.grb_matrix ;
-				info = GrB_mxm(res, NULL, NULL, semiring, GrB_A, GrB_B, NULL) ;
-				ASSERT(info == GrB_SUCCESS) ;
-				break ;
-			default:
-				// A is a RG_Matrix, shouldn't happen!
-				ASSERT(false) ;
-				break ;
-		}
-
-		GrB_Matrix_nvals(&nvals, res) ;
+		RG_Matrix_nvals(&nvals, res) ;
 		if(nvals == 0) break ;
 
 		// set A to res, preparation for next iteration
-		GrB_A = res ;
+		A = res ;
 	}
 
 	return res ;

@@ -1,9 +1,15 @@
+/*
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include "utils.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../configuration/config.h"
 
-/* Performs inplace re-purposing of an operand into an operation. */
+// Performs inplace re-purposing of an operand into an operation
 void _InplaceRepurposeOperandToOperation
 (
 	AlgebraicExpression *operand,
@@ -193,8 +199,7 @@ void _AlgebraicExpression_FreeOperand
 ) {
 	ASSERT(node && node->type == AL_OPERAND);
 	if(node->operand.bfree) {
-		ASSERT(node->operand.type == AL_GrB_MAT);
-		GrB_Matrix_free(&node->operand.grb_matrix);
+		RG_Matrix_free(&node->operand.matrix);
 	}
 }
 
@@ -244,7 +249,7 @@ static void _AlgebraicExpression_PopulateOperand(AlgebraicExpression *operand,
 	// do not update matrix if already set,
 	// as algebraic expression test depends on this behavior
 	// TODO: Redesign _AlgebraicExpression_FromString to remove this condition
-	if(operand->operand.type != AL_MISSING) return;
+	if(operand->operand.matrix != NULL) return;
 
 	Graph       *g      =       gc->g;
 	Schema      *s      =       NULL;
@@ -268,8 +273,7 @@ static void _AlgebraicExpression_PopulateOperand(AlgebraicExpression *operand,
 	if(m == NULL) m = Graph_GetZeroMatrix(g);
 
 	// set operand matrix
-	operand->operand.rg_matrix = m;
-	operand->operand.type = AL_RG_MAT;
+	operand->operand.matrix = m;
 }
 
 // populate a transposed operand with a transposed relationship matrix
@@ -287,7 +291,7 @@ static void _AlgebraicExpression_PopulateTransposedOperand(AlgebraicExpression *
 	// do not update matrix if already set
 	// as algebraic expression test depends on this behavior
 	// TODO: Redesign _AlgebraicExpression_FromString to remove this condition
-	if(operand->operand.type != AL_MISSING) return;
+	if(operand->operand.matrix != NULL) return;
 
 	Schema *s = NULL;
 	RG_Matrix m = NULL;
@@ -301,8 +305,7 @@ static void _AlgebraicExpression_PopulateTransposedOperand(AlgebraicExpression *
 		else m = Graph_GetRelationMatrix(gc->g, s->id, true);
 	}
 
-	operand->operand.rg_matrix = m;
-	operand->operand.type = AL_RG_MAT;
+	operand->operand.matrix = m;
 }
 
 // TODO: this function is only used within AlgebraicExpression_Optimize, consider moving it.
@@ -314,11 +317,7 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 	case AL_OPERATION:
 		child_count = AlgebraicExpression_ChildCount(root);
 
-		// if we are maintaining transposed matrices, it can be retrieved now
-		bool maintain_transpose = false;
-		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-
-		if(root->operation.op == AL_EXP_TRANSPOSE && maintain_transpose) {
+		if(root->operation.op == AL_EXP_TRANSPOSE) {
 			ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
 			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);
 			// fetch the transposed matrix and update the operand
