@@ -287,10 +287,18 @@ GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
 
 GrB_Info RG_mxm                     // C = A * B
 (
-	GrB_Matrix C,                   // input/output matrix for results
+	RG_Matrix C,                    // input/output matrix for results
 	const GrB_Semiring semiring,    // defines '+' and '*' for A*B
-	const GrB_Matrix A,             // first input:  matrix A
+	const RG_Matrix A,              // first input:  matrix A
 	const RG_Matrix B               // second input: matrix B
+);
+
+GrB_Info RG_eWiseAdd                // C = A + B
+(
+    RG_Matrix C,                    // input/output matrix for results
+    const GrB_Semiring semiring,    // defines '+' for T=A+B
+    const RG_Matrix A,              // first input:  matrix A
+    const RG_Matrix B               // second input: matrix B
 );
 
 // get matrix C without writing to internal matrix
