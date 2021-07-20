@@ -944,36 +944,37 @@ TEST_F(GraphTest, GraphStatistics) {
 	* 9. Verify r0 multi edge (True) */
 
 	// 1. Verify r0 multi edge (False)
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
+	bool transpose = false;
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
 	// (0)-[r0]->(1)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
 	ASSERT_EQ(g->stats.edge_count[r0], 1);
 	// 2. Verify r0 multi edge (False)
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
 	// (0)-[r0]->(1)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
 	// 3. Verify r0 multi edge (True)
-	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
 	// 4. Verify r1 no multi edge
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
 	// (0)-[r1]->(1)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
 	// 5. Verify r1 multi edge (False)
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
 	// (1)-[r1]->(0)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[3]);
 	// 6. Verify r1 multi edge (False)
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
 	// (2)-[r1]->(1)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[4]);
 	// 7. Verify r1 multi edge (False)
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
 	// (2)-[r1]->(1)
 	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[5]);
 	// 8. Verify r1 multi edge (True)
-	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
 	// 9. Verify r0 multi edge (True)
-	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0));
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
 
 	Graph_ReleaseLock(g);
 	/* Delete edges:
@@ -990,8 +991,8 @@ TEST_F(GraphTest, GraphStatistics) {
 	Graph_BulkDelete(g, &n[2], 1, &e[0], 1, &node_deleted, &edge_deleted);
 	Graph_ReleaseLock(g);
 
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0));
-	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 1);
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 2);
 	ASSERT_EQ(node_deleted, 1);
