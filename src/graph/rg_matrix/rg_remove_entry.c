@@ -12,7 +12,7 @@
 static void _removeEntryFromMultiValArr
 (
 	uint64_t *entries,   // multi-value array
-	uint64_t entry       // element to remove
+	uint64_t *entry      // element to remove output new value
 ) {
 	ASSERT(entries != NULL);
 
@@ -21,7 +21,7 @@ static void _removeEntryFromMultiValArr
 
 	// search for entry
 	for(; i < n; i++) {
-		if(entries[i] == entry) {
+		if(entries[i] == *entry) {
 			break;
 		}
 	}
@@ -36,9 +36,8 @@ static void _removeEntryFromMultiValArr
 
 	// incase we're left with a single entry revert back to scalar
 	if(array_len(entries) == 1) {
-		entry = entries[0];
+		*entry = entries[0];
 		array_free(entries);
-		*entries = entry;
 	}
 }
 
@@ -59,10 +58,10 @@ static GrB_Info _removeElementMultiVal
 	ASSERT((SINGLE_EDGE(x)) == false);
 
 	// remove entry from multi-value
-	v = CLEAR_MSB(v);
-	_removeEntryFromMultiValArr(&x, v);
+	x = CLEAR_MSB(x);
+	_removeEntryFromMultiValArr(x, &v);
 	// update entry
-	info = GrB_Matrix_setElement(A, x, i, j);
+	info = GrB_Matrix_setElement(A, v, i, j);
 
 	return info;
 }

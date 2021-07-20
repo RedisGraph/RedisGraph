@@ -805,39 +805,26 @@ TEST_F(GraphTest, BulkDelete) {
 
 	// Node 0 is connected to node 1 with multiple edges.
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
-	Edge_SetRelationID(&e[0], r0);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
-	Edge_SetRelationID(&e[1], r0);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
-	Edge_SetRelationID(&e[2], r1);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[3]);
-	Edge_SetRelationID(&e[3], r1);
 
 	// Node 1 is connected to node 0 with multiple edges.
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[4]);
-	Edge_SetRelationID(&e[4], r0);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[5]);
-	Edge_SetRelationID(&e[5], r0);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[6]);
-	Edge_SetRelationID(&e[6], r1);
 
 	// Node 2 is connected to nodes 0,1 and 3.
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[0]), r0, &e[7]);
-	Edge_SetRelationID(&e[7], r0);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[8]);
-	Edge_SetRelationID(&e[8], r1);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[3]), r1, &e[9]);
-	Edge_SetRelationID(&e[9], r1);
 
 	// Node 3 is connected to node 4 with multiple edges.
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[10]);
-	Edge_SetRelationID(&e[10], r1);
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[11]);
-	Edge_SetRelationID(&e[11], r1);
 
 	// Node 4 is connected to node 3.
 	Graph_CreateEdge(g, ENTITY_GET_ID(&n[4]), ENTITY_GET_ID(&n[3]), r0, &e[12]);
-	Edge_SetRelationID(&e[12], r0);
 
 	Graph_ReleaseLock(g);
 	/* Delete nodes 0,1.
@@ -869,8 +856,7 @@ TEST_F(GraphTest, BulkDelete) {
 	Graph_ReleaseLock(g);
 
 	ASSERT_EQ(node_deleted, 2);
-	// Statistics do not count for multi edge deletions.
-	// ASSERT_EQ(edge_deleted, 10);
+	ASSERT_EQ(edge_deleted, 10);
 
 	/* Verification, updated graph:
 	 * (2)-[r1]->(3)
@@ -996,7 +982,7 @@ TEST_F(GraphTest, GraphStatistics) {
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 1);
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 2);
 	ASSERT_EQ(node_deleted, 1);
-	ASSERT_EQ(edge_deleted, 2);
+	ASSERT_EQ(edge_deleted, 3);
 
 	// Clean up.
 	Graph_Free(g);
