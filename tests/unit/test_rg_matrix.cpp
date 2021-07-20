@@ -687,7 +687,7 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	info = GrB_Matrix_new(&NT, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	for (size_t index = 0; i < operations; index++)
+	for (size_t index = 0; index < operations; index++)
 	{
 		if (index < 10 || rand() % 100 > 20)
 		{
