@@ -210,10 +210,9 @@ class testIndexUpdatesFlow(FlowTestsBase):
             graphs.append(graph)
 
         # create proccess for each index
-        with Multiproc(self.env, n_indices) as mp:
-            args = [
-            ((query_create_index, query_drop_index), "graph_0"),
-            ((query_read_index,), "graph_1"),
-            ((query_read_index,), "graph_2"),
-            ((query_read_index,), "graph_3")]
-            mp.add_work_wait([issue_queries]*n_indices, args)
+        args = [
+        ((query_create_index, query_drop_index), "graph_0"),
+        ((query_read_index,), "graph_1"),
+        ((query_read_index,), "graph_2"),
+        ((query_read_index,), "graph_3")]
+        mlp.run_multiproc(self.env, fns=[issue_queries]*n_indices, args=args)

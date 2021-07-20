@@ -1,5 +1,6 @@
 import random
-import threading
+import utils.multiproc as mlp
+from utils.multiproc import *
 from itertools import cycle
 from RLTest import Env
 from redisgraph import Graph
@@ -30,6 +31,14 @@ MEM_THRIFTY_QUERY  =  """UNWIND range(0, 10) AS x
                          WHERE (x / 2) = 50
                          RETURN x, count(x)"""
 
+def issue_query(q):
+    try:
+        mlp.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
+        return True
+    except Exception as e:
+        assert "Query's mem consumption exceeded capacity" in str(e)
+        return False
+
 class testQueryMemoryLimit():
     def __init__(self):
         global g
@@ -37,38 +46,9 @@ class testQueryMemoryLimit():
         self.conn = self.env.getConnection()
         g = Graph(GRAPH_NAME, self.conn)
 
-    def issue_query(self, conn, q, should_fail):
-        try:
-            g.query(q)
-            self.env.assertFalse(should_fail)
-        except Exception as e:
-            assert "Query's mem consumption exceeded capacity" in str(e)
-            self.env.assertTrue(should_fail)
-
-    def stress_server(self, queries):
-        threads = []
-        connections = []
-        threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
-
-        # init connections
-        for t in range(threadpool_size):
-            connections.append(self.env.getConnection())
-
-        # init circular iterator
-        connections_pool = cycle(connections)
-
-        # invoke queries
-        for q in queries:
-            con = next(connections_pool)
-            t = threading.Thread(target=self.issue_query, args=(con, q[0], q[1]))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-
-        # wait for threads to return
-        while len(threads) > 0:
-            t = threads.pop()
-            t.join()
+    def stress_server(self, query, nrep, should_fail):
+        res = mlp.run_multiproc(self.env, [issue_query]*nrep, [(query,)]*nrep)
+        self.env.assertNotEqual(res[0], should_fail)
 
     def test_01_read_memory_limit_config(self):
         # read configuration, test default value, expecting unlimited memory cap
@@ -93,7 +73,7 @@ class testQueryMemoryLimit():
         limit = 0
         self.conn.execute_command("GRAPH.CONFIG", "SET", "QUERY_MEM_CAPACITY", limit) 
 
-        self.stress_server([(MEM_HOG_QUERY, False)] * n_queries_to_execute)
+        self.stress_server(MEM_HOG_QUERY, n_queries_to_execute, False)
 
     def test_03_no_overflow_with_limit(self):
         # execute query on each one of the threads
@@ -103,7 +83,7 @@ class testQueryMemoryLimit():
         limit = 1024*1024*1024
         self.conn.execute_command("GRAPH.CONFIG", "SET", "QUERY_MEM_CAPACITY", limit) 
 
-        self.stress_server([(MEM_HOG_QUERY, False)] * n_queries_to_execute)
+        self.stress_server(MEM_HOG_QUERY, n_queries_to_execute, False)
 
     def test_04_overflow_with_limit(self):
         # execute query on each one of the threads
@@ -113,12 +93,13 @@ class testQueryMemoryLimit():
         limit = 1024*1024
         self.conn.execute_command("GRAPH.CONFIG", "SET", "QUERY_MEM_CAPACITY", limit)
 
-        self.stress_server([(MEM_HOG_QUERY, True)] * n_queries_to_execute)
+        self.stress_server(MEM_HOG_QUERY, n_queries_to_execute, True)
 
     def test_05_test_mixed_queries(self):
         queries = []
+        should_fail_list = []
         total_query_count = 100
-
+        
         # Query the threadpool_size
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
 
@@ -135,6 +116,9 @@ class testQueryMemoryLimit():
                 q = MEM_HOG_QUERY
                 should_fail = True
 
-            queries.append((q, should_fail))
+            should_fail_list.append(should_fail)
+            queries.append((q,))
 
-        self.stress_server(queries)
+            res = mlp.run_multiproc(self.env, fns=[issue_query]*len(queries), args=queries)
+            for r, should_fail in zip(res, should_fail_list):
+                self.env.assertNotEqual(r, should_fail)

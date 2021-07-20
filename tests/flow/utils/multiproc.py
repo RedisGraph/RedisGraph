@@ -37,6 +37,6 @@ class Multiproc:
         return [res.get() for res in async_calls]
 
 # create and init n_procs workers and their connections which will execute fn(args)
-def run_multiproc(env, n_procs, fn, args=tuple()):
-        with Multiproc(env, n_procs) as mp:
-            return mp.add_work_wait([fn]*n_procs, [args]*n_procs)
+def run_multiproc(env, fns=[], args=[tuple()]):
+        with Multiproc(env, len(fns)) as mp:
+            return mp.add_work_wait(fns, args)

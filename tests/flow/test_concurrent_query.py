@@ -1,6 +1,8 @@
 import os
 import sys
 import threading
+import utils.multiproc as mlp
+from utils.multiproc import *
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from redis import ResponseError
@@ -14,11 +16,13 @@ assertions = [True] * CLIENT_COUNT  # Each thread places its verdict at position
 exceptions = [None] * CLIENT_COUNT  # Each thread which fails sets its exception content ar position threadID.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def query_aggregate(graph, query, threadID):
+def query_aggregate(GRAPH_NAME, query, threadID):
+
     global assertions
     assertions[threadID] = True
 
     for i in range(10):
+        mlp.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
         actual_result = graph.query(query)
         person_count = actual_result.result_set[0][0]
         if person_count != len(people):
