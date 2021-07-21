@@ -165,8 +165,8 @@ GrB_Info RG_MatrixTupleIter_reset
 	GrB_Info info = GrB_SUCCESS;
 
 	ASSERT(iter        != NULL) ;
-	ASSERT(iter->m_it  == NULL) ;
-	ASSERT(iter->dp_it == NULL) ;
+	ASSERT(iter->m_it  != NULL) ;
+	ASSERT(iter->dp_it != NULL) ;
 
 	info = GxB_MatrixTupleIter_reset(iter->m_it) ;
 	ASSERT(info == GrB_SUCCESS) ;

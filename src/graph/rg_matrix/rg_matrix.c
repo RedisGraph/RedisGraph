@@ -315,3 +315,25 @@ GrB_Info RG_Matrix_export
 
 	return info;
 }
+
+
+GrB_Info RG_Matrix_clear
+(
+    RG_Matrix A
+) {	
+	GrB_Matrix  m            =  RG_MATRIX_M(A);
+	GrB_Info    info         =  GrB_SUCCESS;
+	GrB_Matrix  delta_plus   =  RG_MATRIX_DELTA_PLUS(A);
+	GrB_Matrix  delta_minus  =  RG_MATRIX_DELTA_MINUS(A);
+
+	info = GrB_Matrix_clear(m);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_clear(m);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_clear(m);
+	ASSERT(info == GrB_SUCCESS);
+
+	return info;
+}

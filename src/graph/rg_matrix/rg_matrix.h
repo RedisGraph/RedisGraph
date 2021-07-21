@@ -301,6 +301,11 @@ GrB_Info RG_eWiseAdd                // C = A + B
     const RG_Matrix B               // second input: matrix B
 );
 
+GrB_Info RG_Matrix_clear    // clear a matrix of all entries;
+(                           // type and dimensions remain unchanged
+    RG_Matrix A            // matrix to clear
+);
+
 // get matrix C without writing to internal matrix
 GrB_Info RG_Matrix_export
 (
