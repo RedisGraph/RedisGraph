@@ -874,24 +874,32 @@ static void _BulkDeleteNodes
 	RG_Matrix adj;        // adjacency matrix
 	adj = Graph_GetAdjacencyMatrix(g, false);
 
-	Edge *edges = array_new(Edge, 2);
+	Node *distinct_nodes = array_new(Node, 1);
+	Edge *edges = array_new(Edge, 1);
 
+	for(uint i = 0; i < node_count; i++) {
+		array_append(distinct_nodes, *(nodes + i));
+	}
 	// removing duplicates
-#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-	QSORT(Node, nodes, node_count, is_edge_lt);
+	#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+	QSORT(Node, distinct_nodes, node_count, is_edge_lt);
+
+	for(uint i = 0; i < node_count - 1; i++) {
+		if(ENTITY_GET_ID(distinct_nodes + i) == ENTITY_GET_ID(distinct_nodes + i + 1)) {
+			array_del(distinct_nodes, i);
+			node_count--;
+			i--;
+		}
+	}
 
 	//--------------------------------------------------------------------------
 	// collect edges to delete
 	//--------------------------------------------------------------------------
 
 	for(uint i = 0; i < node_count; i++) {
-		// As long as current is the same as follows.
-		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
-
-		Node *n = nodes + i;
+		Node *n = distinct_nodes + i;
 		GrB_Index src;
 		GrB_Index dest;
-		bool depleted = false;
 		NodeID ID = ENTITY_GET_ID(n);
 		
 		// collect edges
@@ -906,14 +914,11 @@ static void _BulkDeleteNodes
 
 	int relation_count = Graph_RelationTypeCount(g);
 	int edge_deletion_count[relation_count];
-	for (int i = 0; i < relation_count; i++) {
-		edge_deletion_count[i] = 0;
-	}
+	memset(edge_deletion_count, 0, relation_count*sizeof(edge_deletion_count[0]));
 	
 	int edge_count = array_len(edges);
 
 	// removing duplicates
-#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 	QSORT(Edge, edges, edge_count, is_edge_lt);
 
 	for (int i = 0; i < edge_count; i++) {
@@ -933,8 +938,9 @@ static void _BulkDeleteNodes
 	}
 	
 	for(int i = 0; i < relation_count; i++) {
-		// multiple edges of type r has just been deleted, update statistics
-		GraphStatistics_DecEdgeCount(&g->stats, i, edge_deletion_count[i]);
+		// multiple edges of type i has just been deleted, update statistics
+		if(edge_deletion_count[i])
+			GraphStatistics_DecEdgeCount(&g->stats, i, edge_deletion_count[i]);
 	}
 
 	*edge_deleted += _edge_deleted - Graph_EdgeCount(g);
@@ -947,18 +953,12 @@ static void _BulkDeleteNodes
 	// all nodes marked for deleteion are detected (no incoming/outgoing edges)
 	int node_type_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < node_count; i++) {
-		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
-
-		Node *n = nodes + i;
+		Node *n = distinct_nodes + i;
 		NodeID ID = ENTITY_GET_ID(n);
+		RG_Matrix L = Graph_GetLabelMatrix(g, n->labelID);
 
+		RG_Matrix_removeElement(L, ID, ID);
 		DataBlock_DeleteItem(g->nodes, ID);
-
-		for(int j = 0; j < node_type_count; j++) {
-			RG_Matrix L = Graph_GetLabelMatrix(g, j);
-
-			RG_Matrix_removeElement(L, ID, ID);
-		}
 	}
 
 	// update deleted node count
@@ -966,6 +966,7 @@ static void _BulkDeleteNodes
 
 	// clean up
 	array_free(edges);
+	array_free(distinct_nodes);
 }
 
 static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
