@@ -29,12 +29,12 @@ GrB_Info RG_Matrix_new
 	ASSERT(type == GrB_BOOL || type == GrB_UINT64);
 
 	matrix->dirty               =  false;
-	matrix->multi_edge          =  multi_edge;
+	matrix->multi_edge          =  multi_edge & (type == GrB_UINT64);
 	matrix->maintain_transpose  =  maintain_transpose;
 
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// create m, delta-plus and delta-minus
-	//----------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 
 	info = GrB_Matrix_new(&matrix->matrix, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);

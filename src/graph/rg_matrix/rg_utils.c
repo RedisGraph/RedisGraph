@@ -4,6 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
+#include "rg_matrix.h"
+
 // check if i and j are within matrix boundries
 // i < nrows
 // j < ncols

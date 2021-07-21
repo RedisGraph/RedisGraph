@@ -661,6 +661,7 @@ void Graph_CreateEdge
 
 	Graph_FormConnection(g, src, dest, id, r);
 }
+
 // retrieves all either incoming or outgoing edges
 // to/from given node N, depending on given direction
 void Graph_GetNodeEdges
@@ -676,7 +677,7 @@ void Graph_GetNodeEdges
 	ASSERT(edges);
 
 	RG_Matrix            M        =  NULL;
-	GxB_MatrixTupleIter  *it      =  NULL;
+	RG_MatrixTupleIter  *it       =  NULL;
 	NodeID               srcID    =  ENTITY_GET_ID(n);
 	NodeID               destID   =  INVALID_ENTITY_ID;
 	EdgeID               edgeID   =  INVALID_ENTITY_ID;
@@ -871,7 +872,7 @@ static void _BulkDeleteNodes
 	ASSERT(g->_writelocked);
 	ASSERT(node_count > 0);
 
-	RG_Matrix adj;        // adjacency matrix
+	RG_Matrix adj; // adjacency matrix
 	adj = Graph_GetAdjacencyMatrix(g, false);
 
 	Node *distinct_nodes = array_new(Node, 1);
@@ -922,11 +923,11 @@ static void _BulkDeleteNodes
 		// As long as current is the same as follows.
 		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
 
-		Edge *e        = edges+i;
-		GrB_Index src  = e->src;
-		GrB_Index dest = e->dest;
-		EdgeID edge_id = ENTITY_GET_ID(e);
-		RG_Matrix R    = Graph_GetRelationMatrix(g, e->relationID, false);
+		Edge       *e       =  edges+i;
+		NodeID     src      =  Edge_GetSrcNodeID(e);
+		NodeID     dest     =  Edge_GetDestNodeID(e);
+		EdgeID     edge_id  =  ENTITY_GET_ID(e);
+		RG_Matrix  R        =  Graph_GetRelationMatrix(g, e->relationID, false);
 
 		RG_Matrix_removeElement(adj, src, dest);
 		RG_Matrix_removeElement(R, src, dest);

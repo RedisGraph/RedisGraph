@@ -5,10 +5,10 @@
 */
 
 #include "RG.h"
+#include "rg_utils.h"
 #include "rg_matrix.h"
 #include "../../util/arr.h"
 
-// sets A[i,j] = x
 // dealing with multi-value entries
 static GrB_Info setMultiEdgeEntry
 (
@@ -55,50 +55,23 @@ static GrB_Info setMultiEdgeEntry
 	return info;
 }
 
-static GrB_Info setDP                   // DP (i,j) = x
+static GrB_Info setEntry                // C (i,j) = x
 (
-    RG_Matrix C,                        // matrix to modify
+    GrB_Matrix C,                       // matrix to modify
     uint64_t x,                         // scalar to assign to C(i,j)
     GrB_Index i,                        // row index
-    GrB_Index j                         // column index
+    GrB_Index j,                        // column index
+	bool multi_edge                     // matrix supports multi-edge
 ) {
 	// add entry to delta-plus
 	GrB_Info info;
-	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
-	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
 
-	if(!multi_edge) {
-		// no support for multi-edge simply set entry
-		info = GrB_Matrix_setElement_UINT64(dp, x, i, j);
+	if(multi_edge) {
+		info = setMultiEdgeEntry(C, x, i, j);
 	} else {
-		info = setMultiEdgeEntry(dp, x, i, j);
-	}
-
-	if(info == GrB_SUCCESS) RG_Matrix_setDirty(C);
-
-	return info;
-}
-
-static GrB_Info setM                    // M (i,j) = x
-(
-    RG_Matrix C,                        // matrix to modify
-    uint64_t x,                         // scalar to assign to C(i,j)
-    GrB_Index i,                        // row index
-    GrB_Index j                         // column index
-) {
-	// add entry to delta-plus
-	GrB_Info info;
-	GrB_Matrix  m           =  RG_MATRIX_M(C);
-	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
-
-	if(!multi_edge) {
 		// no support for multi-edge simply set entry
-		info = GrB_Matrix_setElement_UINT64(m, x, i, j);
-	} else {
-		info = setMultiEdgeEntry(m, x, i, j);
+		info = GrB_Matrix_setElement_UINT64(C, x, i, j);
 	}
-
-	if(info == GrB_SUCCESS) RG_Matrix_setDirty(C);
 
 	return info;
 }
@@ -111,32 +84,38 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
     GrB_Index j                         // column index
 ) {
 	ASSERT(C != NULL);
+	RG_Matrix_checkBounds(C, i, j);
 
-	GrB_Info info;
+	uint64_t  v;
+	GrB_Info  info;
+	bool      entry_exists       =  false;          //  M[i,j] exists
+	bool      mark_for_deletion  =  false;          //  dm[i,j] exists
+	bool      multi_edge         =  C->multi_edge;
+
+	GrB_Matrix m  = RG_MATRIX_M(C);
+	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
 
 	if(C->maintain_transpose) {
 		info = RG_Matrix_setElement_UINT64(C->transposed, x, j, i);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	GrB_Matrix m  = RG_MATRIX_M(C);
-	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
-
-	uint64_t v;
-	bool  entry_exists     =  false;  //  M[i,j] exists
-	bool  mark_as_deleted  =  false;  //  dm[i,j] exists
-
 	//--------------------------------------------------------------------------
 	// check deleted
 	//--------------------------------------------------------------------------
 
 	info = GrB_Matrix_extractElement(&v, dm, i, j);	
-	mark_as_deleted = (info == GrB_SUCCESS);
+	mark_for_deletion = (info == GrB_SUCCESS);
 
-	if(mark_as_deleted) {
-		// can't use 'M', add entry to 'delta-plus'
-		info = setDP(C, x, i, j);
+	if(mark_for_deletion) {
+		// clear dm[i,j]
+		info = GrB_Matrix_removeElement(dm, i, j);
+		ASSERT(info == GrB_SUCCESS);
+
+		// overwrite m[i,j]
+		info = GrB_Matrix_setElement(m, x, i, j);
+		ASSERT(info == GrB_SUCCESS);
 	} else {
 		// entry isn't marked for deletion
 		// see if entry already exists in 'm'
@@ -146,10 +125,11 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 		entry_exists = (info == GrB_SUCCESS);
 
 		if(entry_exists) {
-			info = setM(C, x, i, j);
+			// update entry at m[i,j]
+			info = setEntry(m, x, i, j, multi_edge);
 		} else {
-			// add entry to 'delta-plus'
-			info = setDP(C, x, i, j);
+			// update entry at dp[i,j]
+			info = setEntry(dp, x, i, j, multi_edge);
 		}
 	}
 
@@ -157,6 +137,7 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 	RG_Matrix_validateState(C, i, j);
 #endif
 
+	RG_Matrix_setDirty(C);
 	return info;
 }
 

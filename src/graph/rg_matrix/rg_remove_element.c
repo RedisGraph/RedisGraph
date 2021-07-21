@@ -17,18 +17,19 @@ GrB_Info RG_Matrix_removeElement
     GrB_Index j                     // column index
 ) {
 	ASSERT(C);
+	RG_Matrix_checkBounds(C, i, j);
 
-	uint64_t    x;
+	uint64_t    m_x;
+	uint64_t    dm_x;
+	uint64_t    dp_x;
 	GrB_Info    info;
 	bool        in_m        =  false;
 	bool        in_dp       =  false;
 	bool        in_dm       =  false;
-	bool        multi_edge  =  false;
+	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
 	GrB_Matrix  m           =  RG_MATRIX_M(C);
 	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
-
-	RG_Matrix_checkBounds(C, i, j);
 
 	if(C->maintain_transpose) {
 		info = RG_Matrix_removeElement(C->transposed, j, i);
@@ -37,13 +38,13 @@ GrB_Info RG_Matrix_removeElement
 		} 
 	}
 
-	info = GrB_Matrix_extractElement(&x, m, i, j);
+	info = GrB_Matrix_extractElement(&m_x, m, i, j);
 	in_m = (info == GrB_SUCCESS);
 
-	info = GrB_Matrix_extractElement(&x, dp, i, j);
+	info = GrB_Matrix_extractElement(&dp_x, dp, i, j);
 	in_dp = (info == GrB_SUCCESS);
 
-	info = GrB_Matrix_extractElement(&x, dm, i, j);
+	info = GrB_Matrix_extractElement(&dm_x, dm, i, j);
 	in_dm = (info == GrB_SUCCESS);
 
 	// mask 'in_m' incase it is marked for deletion
@@ -54,21 +55,38 @@ GrB_Info RG_Matrix_removeElement
 		return GrB_NO_VALUE;
 	}
 
+	// entry can't exists in both 'm' and 'dp'
+	ASSERT(in_m != in_dp);
+
+	//--------------------------------------------------------------------------
 	// entry exists in 'M'
+	//--------------------------------------------------------------------------
+
 	if(in_m) {
+		if(multi_edge) {
+			// free multi-edge entry, leave M[i,j] dirty
+			if((SINGLE_EDGE(m_x)) == false) {
+				m_x = CLEAR_MSB(m_x);
+				array_free(m_x);
+			}
+		}
+
 		// mark deletion in delta minus
 		info = GrB_Matrix_setElement(dm, true, i, j);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
+	//--------------------------------------------------------------------------
 	// entry exists in 'delta-plus'
+	//--------------------------------------------------------------------------
+
 	if(in_dp) {
 		// remove entry from 'dp'
-		multi_edge = RG_Matrix_getMultiEdge(C);
 		if(multi_edge) {
-			GrB_Matrix_extractElement(&x, dp, i, j);
-			if((SINGLE_EDGE(x)) == false) {
-				array_free(CLEAR_MSB(x));
+			// free multi-edge entry
+			if((SINGLE_EDGE(dp_x)) == false) {
+				dp_x = CLEAR_MSB(dp_x);
+				array_free(dp_x);
 			}
 		}
 

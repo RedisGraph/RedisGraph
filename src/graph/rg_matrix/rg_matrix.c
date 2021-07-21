@@ -243,7 +243,6 @@ void RG_Matrix_validateState
 			  pending_deletion));
 }
 
-
 GrB_Info RG_Matrix_export
 (
 	GrB_Matrix *A,

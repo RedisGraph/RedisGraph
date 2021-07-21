@@ -5,6 +5,7 @@
 */
 
 #include "RG.h"
+#include "rg_utils.h"
 #include "rg_matrix.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
@@ -77,9 +78,19 @@ GrB_Info RG_Matrix_removeEntry
 	uint64_t  v                     // value to remove
 ) {
 	ASSERT(C);
+	RG_Matrix_checkBounds(C, i, j);
 
-	uint64_t  x;
-	GrB_Info  info;
+	uint64_t    m_x;
+	uint64_t    dm_x;
+	uint64_t    dp_x;
+	GrB_Info    info;
+	bool        in_m        =  false;
+	bool        in_dp       =  false;
+	bool        in_dm       =  false;
+	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
+	GrB_Matrix  m           =  RG_MATRIX_M(C);
+	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
 
 	if(C->maintain_transpose) {
 		info = RG_Matrix_removeElement(C->transposed, j, i);
@@ -88,35 +99,17 @@ GrB_Info RG_Matrix_removeEntry
 		} 
 	}
 
-	bool multi_edge = RG_Matrix_getMultiEdge(C);
 	ASSERT(multi_edge);
-
-	bool        in_m        =  false;
-	bool        in_dp       =  false;
-	bool        in_dm       =  false;
-	GrB_Matrix  m           =  RG_MATRIX_M(C);
-	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
-
-#if RG_DEBUG
-	// check bounds
-	GrB_Index nrows;
-	GrB_Index ncols;
-	GrB_Matrix_nrows(&nrows, m);
-	GrB_Matrix_ncols(&ncols, m);
-	ASSERT(i < nrows);
-	ASSERT(j < ncols);
-#endif
 
 	// entry should exists in either delta-plus or main
 	// locate entry
-	info = GrB_Matrix_extractElement(&x, m, i, j);
+	info = GrB_Matrix_extractElement(&m_x, m, i, j);
 	in_m = (info == GrB_SUCCESS);
 
-	info = GrB_Matrix_extractElement(&x, dp, i, j);
+	info = GrB_Matrix_extractElement(&dp_x, dp, i, j);
 	in_dp = (info == GrB_SUCCESS);
 
-	info = GrB_Matrix_extractElement(&x, dm, i, j);
+	info = GrB_Matrix_extractElement(&dm_x, dm, i, j);
 	in_dm = (info == GrB_SUCCESS);
 
 	// mask 'in_m' incase it is marked for deletion
@@ -127,33 +120,37 @@ GrB_Info RG_Matrix_removeEntry
 		return GrB_NO_VALUE;
 	}
 
-	// delta-plus[i,j] exists
-	if(in_dp) {
-		info = GrB_Matrix_extractElement(&x, dp, i, j);
-		if(info == GrB_SUCCESS) {
-			if(SINGLE_EDGE(x)) {
-				info = GrB_Matrix_removeElement(dp, i, j);
-				ASSERT(info == GrB_SUCCESS);
-				RG_Matrix_setDirty(C);
-			} else {
-				 info = _removeElementMultiVal(dp, i, j, v);
-				 ASSERT(info == GrB_SUCCESS);
-			}
+	// entry can't exists in both 'm' and 'dp'
+	ASSERT(in_m != in_dp);
+
+	//--------------------------------------------------------------------------
+	// entry exists in 'M'
+	//--------------------------------------------------------------------------
+
+	if(in_m) {
+		if(SINGLE_EDGE(m_x)) {
+			// mark deletion in delta minus
+			GrB_Matrix_setElement(dm, true, i, j);
+			ASSERT(info == GrB_SUCCESS);
+			RG_Matrix_setDirty(C);
+		} else {
+			info = _removeElementMultiVal(m, i, j, v);
+			ASSERT(info == GrB_SUCCESS);
 		}
 	}
 
-	// M[i,j] exists
-	if(in_m) {
-		info = GrB_Matrix_extractElement(&x, m, i, j);
-		if(info == GrB_SUCCESS) {
-			if(SINGLE_EDGE(x)) {
-				GrB_Matrix_setElement(dm, true, i, j);
-				ASSERT(info == GrB_SUCCESS);
-				RG_Matrix_setDirty(C);
-			} else {
-				 info = _removeElementMultiVal(m, i, j, v);
-				 ASSERT(info == GrB_SUCCESS);
-			}
+	//--------------------------------------------------------------------------
+	// entry exists in 'delta-plus'
+	//--------------------------------------------------------------------------
+
+	if(in_dp) {
+		if(SINGLE_EDGE(dp_x)) {
+			info = GrB_Matrix_removeElement(dp, i, j);
+			ASSERT(info == GrB_SUCCESS);
+			RG_Matrix_setDirty(C);
+		} else {
+			info = _removeElementMultiVal(dp, i, j, v);
+			ASSERT(info == GrB_SUCCESS);
 		}
 	}
 
