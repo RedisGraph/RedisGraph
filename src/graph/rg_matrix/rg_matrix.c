@@ -335,5 +335,7 @@ GrB_Info RG_Matrix_clear
 	info = GrB_Matrix_clear(m);
 	ASSERT(info == GrB_SUCCESS);
 
+	A->dirty = false;
+
 	return info;
 }
