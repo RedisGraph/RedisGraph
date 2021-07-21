@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "rg_matrix.h"
+#include "rg_utils.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
@@ -27,15 +28,7 @@ GrB_Info RG_Matrix_removeElement
 	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
 
-#if RG_DEBUG
-	// check bounds
-	GrB_Index nrows;
-	GrB_Index ncols;
-	GrB_Matrix_nrows(&nrows, m);
-	GrB_Matrix_ncols(&ncols, m);
-	ASSERT(i < nrows);
-	ASSERT(j < ncols);
-#endif
+	RG_Matrix_checkBounds(C, i, j);
 
 	if(C->maintain_transpose) {
 		info = RG_Matrix_removeElement(C->transposed, j, i);
