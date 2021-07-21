@@ -877,20 +877,17 @@ static void _BulkDeleteNodes
 	Node *distinct_nodes = array_new(Node, 1);
 	Edge *edges = array_new(Edge, 1);
 
-	for(uint i = 0; i < node_count; i++) {
-		array_append(distinct_nodes, *(nodes + i));
-	}
 	// removing duplicates
 	#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-	QSORT(Node, distinct_nodes, node_count, is_edge_lt);
+	QSORT(Node, nodes, node_count, is_edge_lt);
 
-	for(uint i = 0; i < node_count - 1; i++) {
-		if(ENTITY_GET_ID(distinct_nodes + i) == ENTITY_GET_ID(distinct_nodes + i + 1)) {
-			array_del(distinct_nodes, i);
-			node_count--;
-			i--;
-		}
+	for(uint i = 0; i < node_count; i++) {
+		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
+
+		array_append(distinct_nodes, *(nodes + i));
 	}
+
+	node_count = array_len(distinct_nodes);
 
 	//--------------------------------------------------------------------------
 	// collect edges to delete
