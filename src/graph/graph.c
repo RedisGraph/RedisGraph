@@ -871,21 +871,10 @@ static void _BulkDeleteNodes
 	ASSERT(g->_writelocked);
 	ASSERT(node_count > 0);
 
-	RG_Matrix           adj;        // adjacency matrix
-	RG_Matrix           tadj;       // transposed adjacency matrix
-	GrB_Index           nrows;
-	GrB_Index           ncols;
-	GrB_Index           nvals;       // number of elements in mask
-	RG_MatrixTupleIter *adj_iter;   // adjacency matrix iterator
-	RG_MatrixTupleIter *tadj_iter;  // transposed adjacency matrix iterator
+	RG_Matrix adj;        // adjacency matrix
+	adj = Graph_GetAdjacencyMatrix(g, false);
 
 	Edge *edges = array_new(Edge, 2);
-	GrB_Index *implicit_edges = array_new(GrB_Index, 1);
-
-	adj = Graph_GetAdjacencyMatrix(g, false);
-	tadj = Graph_GetAdjacencyMatrix(g, true);
-	RG_MatrixTupleIter_new(&adj_iter, adj);
-	RG_MatrixTupleIter_new(&tadj_iter, tadj);
 
 	// removing duplicates
 #define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
@@ -894,6 +883,7 @@ static void _BulkDeleteNodes
 	//--------------------------------------------------------------------------
 	// collect edges to delete
 	//--------------------------------------------------------------------------
+
 	for(uint i = 0; i < node_count; i++) {
 		// As long as current is the same as follows.
 		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
@@ -906,47 +896,17 @@ static void _BulkDeleteNodes
 		
 		// collect edges
 		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
-
-		//----------------------------------------------------------------------
-		// outgoing edges
-		//----------------------------------------------------------------------
-
-		RG_MatrixTupleIter_iterate_row(adj_iter, ID);
-		while(true) {
-			RG_MatrixTupleIter_next(adj_iter, NULL,  &dest, NULL, &depleted);
-			if(depleted) break;
-
-			// append src followed by dest
-			array_append(implicit_edges, ID);
-			array_append(implicit_edges, dest); 
-		}
-
-		depleted = false;
-
-		//----------------------------------------------------------------------
-		// incoming edges
-		//----------------------------------------------------------------------
-
-		RG_MatrixTupleIter_iterate_row(tadj_iter, ID);
-		while(true) {
-			RG_MatrixTupleIter_next(tadj_iter, NULL, &src, NULL, &depleted);
-			if(depleted) break;
-
-			// append src followed by dest
-			array_append(implicit_edges, src);
-			array_append(implicit_edges, ID); 
-		}
 	}
 	
-	int implicit_edge_count = array_len(implicit_edges);
+	//--------------------------------------------------------------------------
+	// remove edges from matrices
+	//--------------------------------------------------------------------------
 
-	// update deleted edge count
-	uint _edge_deleted = 0;
+	uint _edge_deleted = Graph_EdgeCount(g);
 
 	int relation_count = Graph_RelationTypeCount(g);
-	uint64_t edge_deletion_count[relation_count];
-	for (int i = 0; i < relation_count; i++)
-	{
+	int edge_deletion_count[relation_count];
+	for (int i = 0; i < relation_count; i++) {
 		edge_deletion_count[i] = 0;
 	}
 	
@@ -956,72 +916,56 @@ static void _BulkDeleteNodes
 #define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 	QSORT(Edge, edges, edge_count, is_edge_lt);
 
-	for (int i = 0; i < edge_count; i++)
-	{
+	for (int i = 0; i < edge_count; i++) {
 		// As long as current is the same as follows.
 		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
 
 		Edge *e        = edges+i;
+		GrB_Index src  = e->src;
+		GrB_Index dest = e->dest;
 		EdgeID edge_id = ENTITY_GET_ID(e);
-		RG_Matrix R = Graph_GetRelationMatrix(g, e->relationID, false);
+		RG_Matrix R    = Graph_GetRelationMatrix(g, e->relationID, false);
 
-		RG_Matrix_removeElement(R, e->src, e->dest);
+		RG_Matrix_removeElement(adj, src, dest);
+		RG_Matrix_removeElement(R, src, dest);
 		DataBlock_DeleteItem(g->edges, edge_id);
-		_edge_deleted++;
 		edge_deletion_count[e->relationID]++;
 	}
-
-
-	//--------------------------------------------------------------------------
-	// remove edges from relationship matrices
-	//--------------------------------------------------------------------------
 	
 	for(int i = 0; i < relation_count; i++) {
 		// multiple edges of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, i, edge_deletion_count[i]);
 	}
 
-	array_free(edges);
-
-	*edge_deleted += _edge_deleted;
-
-	//--------------------------------------------------------------------------
-	// remove edges from the adjacency matrix
-	//--------------------------------------------------------------------------
-
-	for(int j = 0; j < implicit_edge_count; j+=2) {
-		GrB_Index src = implicit_edges[j];
-		GrB_Index dest = implicit_edges[j+1];
-		RG_Matrix_removeElement(adj, src, dest);
-	}
+	*edge_deleted += _edge_deleted - Graph_EdgeCount(g);
 
 	//--------------------------------------------------------------------------
 	// remove nodes from label matrices
 	//--------------------------------------------------------------------------
 
-	uint _node_deleted = 0;
+	uint _node_deleted = Graph_NodeCount(g);
 	// all nodes marked for deleteion are detected (no incoming/outgoing edges)
 	int node_type_count = Graph_LabelTypeCount(g);
-	for(int i = 0; i < node_type_count; i++) {
-		RG_Matrix L = Graph_GetLabelMatrix(g, i);
+	for(int i = 0; i < node_count; i++) {
+		while(i < node_count - 1 && ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) i++;
 
-		for(int j = 0; j < node_count; j++) {
-			Node *n = nodes + j;
-			NodeID ID = ENTITY_GET_ID(n);
-			if(RG_Matrix_removeElement(L, ID, ID) == GrB_SUCCESS) {
-				DataBlock_DeleteItem(g->nodes, ID);
-				_node_deleted++;
-			}
+		Node *n = nodes + i;
+		NodeID ID = ENTITY_GET_ID(n);
+
+		DataBlock_DeleteItem(g->nodes, ID);
+
+		for(int j = 0; j < node_type_count; j++) {
+			RG_Matrix L = Graph_GetLabelMatrix(g, j);
+
+			RG_Matrix_removeElement(L, ID, ID);
 		}
 	}
 
 	// update deleted node count
-	*node_deleted += _node_deleted;
+	*node_deleted += _node_deleted - Graph_NodeCount(g);
 
 	// clean up
-	array_free(implicit_edges);
-	RG_MatrixTupleIter_free(&adj_iter);
-	RG_MatrixTupleIter_free(&tadj_iter);
+	array_free(edges);
 }
 
 static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
