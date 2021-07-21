@@ -9,36 +9,38 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
-static void _removeEntryFromMultiValArr
+static bool _removeEntryFromMultiValArr
 (
-	uint64_t *entries,   // multi-value array
-	uint64_t *entry      // element to remove output new value
+	uint64_t **entries,  // multi-value array
+	uint64_t entry       // element to remove output new value
 ) {
-	ASSERT(entries != NULL);
+	ASSERT(*entries != NULL);
 
 	uint  i  =  0;
-	uint  n  =  array_len(entries);
+	uint  n  =  array_len(*entries);
 
 	// search for entry
 	for(; i < n; i++) {
-		if(entries[i] == *entry) {
+		if((*entries)[i] == entry) {
 			break;
 		}
 	}
 
-	//ASSERT(i < n);
-	if(i == n) return;
+	ASSERT(i < n);
 
 	// remove located entry
 	// migrate last element and reduce array size
-	// TODO: reallocate array of size / capacity ratio is high
-	array_del_fast(entries, i);
+	array_del_fast(*entries, i);
 
 	// incase we're left with a single entry revert back to scalar
-	if(array_len(entries) == 1) {
-		*entry = entries[0];
-		array_free(entries);
+	if(array_len(*entries) == 1) {
+		entry = (*entries)[0];
+		array_free(*entries);
+		*entries = entry;
+		return true;
 	}
+
+	return false;
 }
 
 static GrB_Info _removeElementMultiVal
@@ -59,9 +61,10 @@ static GrB_Info _removeElementMultiVal
 
 	// remove entry from multi-value
 	x = CLEAR_MSB(x);
-	_removeEntryFromMultiValArr(x, &v);
-	// update entry
-	info = GrB_Matrix_setElement(A, v, i, j);
+	if(_removeEntryFromMultiValArr(&x, v)) {
+		// update entry
+		info = GrB_Matrix_setElement(A, x, i, j);
+	}
 
 	return info;
 }
