@@ -193,7 +193,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	ASSERT_TRUE(iter == NULL);
 }
 
-// test RGMatrixTupleIter iteration
+// test RGMatrixTupleIter_iterate_row
 TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	RG_Matrix          A                   =  NULL;
 	GrB_Type           t                   =  GrB_UINT64;
@@ -245,7 +245,6 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
-
 	ASSERT_EQ(depleted, true);
 
 	info = RG_MatrixTupleIter_reset(iter);
@@ -262,6 +261,143 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
 	ASSERT_EQ(val, 1);
+
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
+	ASSERT_EQ(depleted, true);
+
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	RG_MatrixTupleIter_free(&iter);
+	ASSERT_TRUE(iter == NULL);
+}
+
+// test RGMatrixTupleiIter_jump_to_row
+TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_jump_to_row) {
+	RG_Matrix          A                   =  NULL;
+	GrB_Type           t                   =  GrB_UINT64;
+	GrB_Info           info                =  GrB_SUCCESS;
+	RG_MatrixTupleIter *iter               =  NULL;
+	GrB_Index          i                   =  1;
+	GrB_Index          j                   =  2;
+	GrB_Index          row                 =  0;
+	GrB_Index          col                 =  0;
+	GrB_Index          nrows               =  100;
+	GrB_Index          ncols               =  100;
+	uint64_t           val                 =  0;
+	bool               sync                =  false;
+	bool               depleted            =  false;
+	bool               multi_edge          =  true;
+	bool               maintain_transpose  =  true;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_UINT64(A, 0, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	//--------------------------------------------------------------------------
+	// set pending changes
+	//--------------------------------------------------------------------------
+
+	// remove element at position i,j
+	info = RG_Matrix_removeElement(A, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i+1,j+1
+	info = RG_Matrix_setElement_UINT64(A, 1, i+1, j+1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_MatrixTupleIter_new(&iter, A);
+	ASSERT_TRUE(iter != NULL);
+
+	info = RG_MatrixTupleIter_jump_to_row(iter, i+1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
+
+	ASSERT_FALSE(depleted);
+	ASSERT_EQ(row, i+1);
+	ASSERT_EQ(col, j+1);
+	ASSERT_EQ(val, 1);
+
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
+	ASSERT_EQ(depleted, true);
+
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	RG_MatrixTupleIter_free(&iter);
+	ASSERT_TRUE(iter == NULL);
+}
+
+// test RGMatrixTupleiIter_iterate_range
+TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_range) {
+	RG_Matrix          A                   =  NULL;
+	GrB_Type           t                   =  GrB_UINT64;
+	GrB_Info           info                =  GrB_SUCCESS;
+	RG_MatrixTupleIter *iter               =  NULL;
+	GrB_Index          i                   =  1;
+	GrB_Index          j                   =  2;
+	GrB_Index          row                 =  0;
+	GrB_Index          col                 =  0;
+	GrB_Index          nrows               =  100;
+	GrB_Index          ncols               =  100;
+	uint64_t           val                 =  0;
+	bool               sync                =  false;
+	bool               depleted            =  false;
+	bool               multi_edge          =  true;
+	bool               maintain_transpose  =  true;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i,j
+	info = RG_Matrix_setElement_UINT64(A, 0, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	//--------------------------------------------------------------------------
+	// set pending changes
+	//--------------------------------------------------------------------------
+
+	// remove element at position i,j
+	info = RG_Matrix_removeElement(A, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position i+1,j+1
+	info = RG_Matrix_setElement_UINT64(A, 1, i+1, j+1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_MatrixTupleIter_new(&iter, A);
+	ASSERT_TRUE(iter != NULL);
+
+	info = RG_MatrixTupleIter_iterate_range(iter, i+1, i+1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
+
+	ASSERT_FALSE(depleted);
+	ASSERT_EQ(row, i+1);
+	ASSERT_EQ(col, j+1);
+	ASSERT_EQ(val, 1);
+
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
+	ASSERT_EQ(depleted, true);
 
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
