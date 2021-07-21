@@ -213,7 +213,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	iter->p        =  0 ;
 	iter->nvals    =  iter->A->p[_rowIdx + 1] ;
 	iter->nnz_idx  =  iter->A->p[_rowIdx] ;
-	iter->row_idx  =  rowIdx ;
+	iter->row_idx  =  _rowIdx ;
 
 	return (GrB_SUCCESS) ;
 }
