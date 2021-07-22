@@ -38,18 +38,18 @@ GrB_Info RG_Matrix_new
 
 	info = GrB_Matrix_new(&matrix->matrix, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
-	info = GxB_set(matrix->matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	ASSERT(info == GrB_SUCCESS);
+	//info = GxB_set(matrix->matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	//ASSERT(info == GrB_SUCCESS);
 
 	info = GrB_Matrix_new(&matrix->delta_plus, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
-	info = GxB_set(matrix->delta_plus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
-	ASSERT(info == GrB_SUCCESS);
+	//info = GxB_set(matrix->delta_plus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+	//ASSERT(info == GrB_SUCCESS);
 
 	info = GrB_Matrix_new(&matrix->delta_minus, GrB_BOOL, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
-	info = GxB_set(matrix->delta_minus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
-	ASSERT(info == GrB_SUCCESS);
+	//info = GxB_set(matrix->delta_minus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+	//ASSERT(info == GrB_SUCCESS);
 
 	//----------------------------------------------------------------------------
 	// create transpose matrix if required

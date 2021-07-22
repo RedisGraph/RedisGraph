@@ -96,6 +96,19 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
 
+	#if RG_DEBUG
+
+		//----------------------------------------------------------------------
+		// validate type
+		//----------------------------------------------------------------------
+
+		GrB_Type t;
+		info = GxB_Matrix_type(&t, m);
+		ASSERT(info == GrB_SUCCESS);
+		ASSERT(t == GrB_UINT64);
+
+	#endif
+
 	if(C->maintain_transpose) {
 		info = RG_Matrix_setElement_UINT64(C->transposed, x, j, i);
 		ASSERT(info == GrB_SUCCESS);
