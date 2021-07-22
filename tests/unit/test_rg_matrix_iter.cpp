@@ -55,8 +55,6 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_new) {
 	ASSERT_TRUE(iter != NULL);
 
 	ASSERT_EQ(iter->A, A);
-	ASSERT_TRUE(iter->m_it != NULL);
-	ASSERT_TRUE(iter->dp_it != NULL);
 
 	RG_MatrixTupleIter_free(&iter);
 	ASSERT_TRUE(iter == NULL);
