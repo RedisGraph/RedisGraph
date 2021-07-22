@@ -12,21 +12,6 @@ graphs       = None  # one graph object per client
 GRAPH_ID     = "G"   # graph identifier
 CLIENT_COUNT = 100   # number of concurrent connections
 
-def query_crud(threadID, GRAPH_ID):
-    for i in range(10):
-        create_query = "CREATE (n:node {v:'%s'}), (n)-[:have]->({value:'%s'}), (n)-[:have]->({value:'%s'})" % (threadID, threadID, threadID)
-        read_query   = "MATCH (n0:node {v:'%s'})<-[:have]-(n:node)-[:have]->(n1:node) return n1.v" % threadID
-        update_query = "MATCH (n:node {v: '%s'}) SET n.x = '%s'" % (threadID, threadID)
-        delete_query = "MATCH (n:node {v: '%s'})-[:have*]->(n1:node) DELETE n, n1" % threadID
-
-        try:
-            mlp.con.execute_command("GRAPH.QUERY", GRAPH_ID, create_query)
-            mlp.con.execute_command("GRAPH.QUERY", GRAPH_ID, read_query)
-            mlp.con.execute_command("GRAPH.QUERY", GRAPH_ID, update_query)
-            mlp.con.execute_command("GRAPH.QUERY", GRAPH_ID, delete_query)
-        except:
-            return
-
 # run n_iterations and create n node in each iteration
 def create_nodes(GRAPH_ID, n_iterations, n):
     for i in range(n_iterations):
@@ -85,7 +70,15 @@ class testStressFlow(FlowTestsBase):
 
     # Count number of nodes in the graph
     def test00_stress(self):
-        mlp.run_multiproc(self.env, [query_crud]*CLIENT_COUNT, [(i, GRAPH_ID) for i in range(CLIENT_COUNT)])
+        create_query = "CREATE (n:node {v:'%s'}), (n)-[:have]->({value:'%s'}), (n)-[:have]->({value:'%s'})"
+        read_query   = "MATCH (n0:node {v:'%s'})<-[:have]-(n:node)-[:have]->(n1:node) return n1.v"
+        update_query = "MATCH (n:node {v: '%s'}) SET n.x = '%s'"
+        delete_query = "MATCH (n:node {v: '%s'})-[:have*]->(n1:node) DELETE n, n1"
+        queries = [(create_query % (i,i,i),read_query % i,update_query % (i,i),delete_query % i) for i in range(CLIENT_COUNT)]
+        res = mlp.run_queries_multiproc(self.env, queries, [(GRAPH_ID,)*4]*CLIENT_COUNT, 10)
+        for r in res:
+            if isinstance(r, Exception):
+                raise r
 
         # make sure we did not crashed
         conn = self.env.getConnection()

@@ -4,8 +4,9 @@ import threading
 import utils.multiproc as mlp
 from utils.multiproc import *
 from RLTest import Env
-from redisgraph import Graph, Node, Edge
+from redisgraph import Graph, Node, Edge, query_result
 from redis import ResponseError
+import inspect
 
 from base import FlowTestsBase
 
@@ -15,32 +16,6 @@ graphs = None                       # One graph object per client.
 assertions = [True] * CLIENT_COUNT  # Each thread places its verdict at position threadID.
 exceptions = [None] * CLIENT_COUNT  # Each thread which fails sets its exception content ar position threadID.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
-
-def query_aggregate(GRAPH_NAME, query, threadID):
-
-    global assertions
-    assertions[threadID] = True
-
-    for i in range(10):
-        mlp.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
-        actual_result = graph.query(query)
-        person_count = actual_result.result_set[0][0]
-        if person_count != len(people):
-            assertions[threadID] = False
-            break
-
-def query_neighbors(graph, query, threadID):
-    global assertions
-    assertions[threadID] = True
-
-    # Fully connected graph + header row.
-    expected_resultset_size = len(people) * (len(people)-1)
-
-    for i in range(10):
-        actual_result = graph.query(query)
-        if len(actual_result.result_set) is not expected_resultset_size:
-            assertions[threadID] = False
-            break
 
 def query_write(graph, query, threadID):
     global assertions
@@ -58,17 +33,6 @@ def thread_run_query(graph, query, threadID):
         assertions[threadID] = graph.query(query)
     except ResponseError as e:
         exceptions[threadID] = str(e)
-
-def delete_graph(graph, threadID):
-    global assertions
-    assertions[threadID] = True
-
-    # Try to delete graph.
-    try:
-        graph.delete()
-    except:
-        # Graph deletion failed.
-        assertions[threadID] = False
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
@@ -102,71 +66,50 @@ class testConcurrentQueryFlow(FlowTestsBase):
     # Count number of nodes in the graph
     def test01_concurrent_aggregation(self):
         q = """MATCH (p:person) RETURN count(p)"""
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=query_aggregate, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
-            self.env.assertTrue(assertions[i])
+        graph_ids = [(graphs[i].name,) for i in range(CLIENT_COUNT)]
+        res = mlp.run_queries_multiproc(self.env, [(q,)]*CLIENT_COUNT, graph_ids, 10)
+        for r in res:
+            if isinstance(r, Exception):
+                raise r
+            else:
+                person_count = r[1][0][0]
+                self.env.assertEqual(person_count, len(people))
     
     # Concurrently get neighbors of every node.
     def test02_retrieve_neighbors(self):
         q = """MATCH (p:person)-[know]->(n:person) RETURN n.name"""
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=query_neighbors, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
-            self.env.assertTrue(assertions[i])
+        graph_ids = [(graphs[i].name,) for i in range(CLIENT_COUNT)]
+        res = mlp.run_queries_multiproc(self.env, [(q,)]*CLIENT_COUNT, graph_ids, 10)
+        for r in res:
+            if isinstance(r, Exception):
+                raise r
+            else:
+                # Fully connected graph + header row.
+                expected_resultset_size = len(people) * (len(people)-1)
+                self.env.assertEqual(len(r[1]), expected_resultset_size)
 
     # Concurrent writes
-    def test_03_concurrent_write(self):        
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            q = """CREATE (c:country {id:"%d"})""" % i            
-            t = threading.Thread(target=query_write, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
-            self.env.assertTrue(assertions[i])
+    def test_03_concurrent_write(self):
+        q = "CREATE (c:country {id:'%d'})"
+        graph_ids = [(graphs[i].name,) for i in range(CLIENT_COUNT)]
+        res = mlp.run_queries_multiproc(self.env, [(q % i,) for i in range (CLIENT_COUNT)], graph_ids, 10)
+        for r in res:
+            if isinstance(r, Exception):
+                raise r
+            else:
+                result_set = query_result.QueryResult(graphs[0], r)
+                self.env.assertTrue(result_set.nodes_created == 1 and result_set.properties_set == 1)
     
     # Try to delete graph multiple times.
     def test_04_concurrent_delete(self):
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=delete_graph, args=(graph, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-        
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
+        res = mlp.run_commands_multiproc(self.env, [(("GRAPH.DELETE", graphs[0].name),)]*CLIENT_COUNT, 1)
+        n_succeeded = 0
+        for r in res:
+            if not isinstance(r, Exception):
+                n_succeeded += 1
 
         # Exactly one thread should have successfully deleted the graph.
-        self.env.assertEquals(assertions.count(True), 1)
+        self.env.assertEquals(n_succeeded, 1)
 
     # Try to delete a graph while multiple queries are executing.
     def test_05_concurrent_read_delete(self):
@@ -176,6 +119,20 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # Delete graph via Redis DEL key.
         ##############################################################################################
         self.populate_graph()
+
+        q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
+        fns = [(redis_con.execute_command,)]*CLIENT_COUNT + [(redis_con.delete,)]
+        args = [("GRAPH.QUERY", graphs[0].name, q)]*CLIENT_COUNT + [(graphs[0].name,)]
+        res = mlp.run_fns_multiproc(self.env, fns, args, 1)
+        for r in res:
+            if not isinstance(r, Exception):
+                actual_resultset = query_result.QueryResult(graphs[0], r)
+                self.env.assertEquals(actual_resultset.result_set[0][0], 900)
+
+        # Make sure Graph is empty, e.g. graph was deleted.
+        resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
+        self.env.assertEquals(resultset[0][0], 0)
+
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         threads = []
         for i in range(CLIENT_COUNT):

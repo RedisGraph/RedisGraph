@@ -31,14 +31,6 @@ MEM_THRIFTY_QUERY  =  """UNWIND range(0, 10) AS x
                          WHERE (x / 2) = 50
                          RETURN x, count(x)"""
 
-def issue_query(q):
-    try:
-        mlp.con.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
-        return True
-    except Exception as e:
-        assert "Query's mem consumption exceeded capacity" in str(e)
-        return False
-
 class testQueryMemoryLimit():
     def __init__(self):
         global g
@@ -46,9 +38,14 @@ class testQueryMemoryLimit():
         self.conn = self.env.getConnection()
         g = Graph(GRAPH_NAME, self.conn)
 
-    def stress_server(self, query, nrep, should_fail):
-        res = mlp.run_multiproc(self.env, [issue_query]*nrep, [(query,)]*nrep)
-        self.env.assertNotEqual(res[0], should_fail)
+    def stress_server(self, query, nprocs, should_fail):
+        res = mlp.run_queries_multiproc(self.env, [(query,)]*nprocs, [(GRAPH_NAME,)]*nprocs, 1)
+        for r in res:
+            if isinstance(r, Exception):
+                assert "Query's mem consumption exceeded capacity" in str(r)
+                self.env.assertTrue(should_fail)
+            else:
+                self.env.assertFalse(should_fail)
 
     def test_01_read_memory_limit_config(self):
         # read configuration, test default value, expecting unlimited memory cap
@@ -119,6 +116,12 @@ class testQueryMemoryLimit():
             should_fail_list.append(should_fail)
             queries.append((q,))
 
-            res = mlp.run_multiproc(self.env, fns=[issue_query]*len(queries), args=queries)
-            for r, should_fail in zip(res, should_fail_list):
-                self.env.assertNotEqual(r, should_fail)
+
+        res = mlp.run_queries_multiproc(self.env, queries, [(GRAPH_NAME,)]*len(queries), 1)
+        for r, should_fail in zip(res, should_fail_list):
+            if isinstance(r, Exception):
+                assert "Query's mem consumption exceeded capacity" in str(r)
+                self.env.assertTrue(should_fail)
+            else:
+                self.env.assertFalse(should_fail)
+

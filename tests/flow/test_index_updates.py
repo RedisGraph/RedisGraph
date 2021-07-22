@@ -22,14 +22,6 @@ query_create_index = "CREATE INDEX ON :person(age)"
 query_drop_index = "DROP INDEX ON :person(age)"
 query_read_index = "MATCH (p:person) WHERE p.age > 0 RETURN p.age"
 
-def issue_queries(queries, graph_id):
-    nrep = 5
-    for i in range(nrep):
-        for x in queries:
-            mlp.con.execute_command("GRAPH.QUERY", graph_id, x)
-    return True
-
-
 class testIndexUpdatesFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
@@ -210,9 +202,14 @@ class testIndexUpdatesFlow(FlowTestsBase):
             graphs.append(graph)
 
         # create proccess for each index
-        args = [
-        ((query_create_index, query_drop_index), "graph_0"),
-        ((query_read_index,), "graph_1"),
-        ((query_read_index,), "graph_2"),
-        ((query_read_index,), "graph_3")]
-        mlp.run_multiproc(self.env, fns=[issue_queries]*n_indices, args=args)
+        queries = [
+        (query_create_index, query_drop_index),
+        (query_read_index,),
+        (query_read_index,),
+        (query_read_index,)]
+        graphs_names = [("graph_0", "graph_0"), ("graph_1",), ("graph_2",), ("graph_3",)]
+        res = mlp.run_queries_multiproc(self.env, queries, graphs_names, 5)
+        for r in res:
+            if isinstance(r, Exception):
+                raise r
+
