@@ -366,8 +366,8 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 
 	// M should contain a single element
 	M_NOT_EMPTY();
-	DP_NOT_EMPTY();
-	DM_NOT_EMPTY();
+	DP_EMPTY();
+	DM_EMPTY();
 
 	//--------------------------------------------------------------------------
 	// commit
@@ -658,7 +658,6 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
 	bool        x                   =  true;  // M[i,j] = x
-	uint64_t    v                   =  0;  // v = M[i,j]
 	uint32_t    operations          =  1000;
 	GrB_Index*  I                   =  (GrB_Index*)malloc(sizeof(GrB_Index)*operations);
 	GrB_Index*  J                   =  (GrB_Index*)malloc(sizeof(GrB_Index)*operations);
@@ -761,7 +760,6 @@ TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
-	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
 	bool        sync                =  false;
@@ -816,7 +814,6 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	GrB_Info    info                =  GrB_SUCCESS;
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
-	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
 	bool        sync                =  false;
