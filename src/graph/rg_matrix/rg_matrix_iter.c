@@ -122,8 +122,8 @@ static GrB_Info _next_m_iter
 		if(*depleted) return info;
 
 		bool x ;
- 		info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
- 		if(info == GrB_NO_VALUE) break ; // entry isn't deleted, return
+ 		GrB_Info delete_info = GrB_Matrix_extractElement_BOOL(&x, DM, _row, _col) ;
+ 		if(delete_info == GrB_NO_VALUE) break ; // entry isn't deleted, return
 	} while (true) ;
 
 	if(row) *row = _row ;

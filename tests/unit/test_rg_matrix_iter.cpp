@@ -114,7 +114,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	ASSERT_TRUE(iter != NULL);
 
 	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
-
+	ASSERT_EQ(info, GrB_SUCCESS);
+	
 	ASSERT_FALSE(depleted);
 	ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
