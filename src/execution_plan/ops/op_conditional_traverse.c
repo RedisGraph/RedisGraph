@@ -48,8 +48,8 @@ void _traverse(OpCondTraverse *op) {
 		/* Create both filter and result matrices.
 		 * make sure M's format is SPARSE, required by the matrix iterator */
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim, false, true);
-		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim, false, true);
+		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim, false, false);
+		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim, false, false);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
@@ -68,7 +68,7 @@ void _traverse(OpCondTraverse *op) {
 	else RG_MatrixTupleIter_reuse(op->iter, op->M);
 
 	// Clear filter matrix.
-	GrB_Matrix_clear(op->F);
+	RG_Matrix_clear(op->F);
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
@@ -208,7 +208,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
 
 	if(op->iter) {
-		RG_MatrixTupleIter_free(op->iter);
+		RG_MatrixTupleIter_free(&op->iter);
 		op->iter = NULL;
 	}
 	if(op->F != NULL) RG_Matrix_clear(op->F);
@@ -225,7 +225,7 @@ static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase 
 static void CondTraverseFree(OpBase *ctx) {
 	OpCondTraverse *op = (OpCondTraverse *)ctx;
 	if(op->iter) {
-		RG_MatrixTupleIter_free(op->iter);
+		RG_MatrixTupleIter_free(&op->iter);
 		op->iter = NULL;
 	}
 

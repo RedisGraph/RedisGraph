@@ -30,8 +30,9 @@ static void _populate_filter_matrix(OpExpandInto *op) {
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
 		NodeID srcId = ENTITY_GET_ID(n);
-		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
+		RG_Matrix_setElement_BOOL(op->F, true, i, srcId);
 	}
+	RG_Matrix_wait(op->F, true);
 }
 
 /* Evaluate algebraic expression:
@@ -41,11 +42,11 @@ static void _populate_filter_matrix(OpExpandInto *op) {
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
 	// If op->F is null, this is the first time we are traversing.
-	if(op->F == GrB_NULL) {
+	if(op->F == NULL) {
 		// Create both filter and result matrices.
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		GrB_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
-		GrB_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
+		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim, false, false);
+		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim, false, false);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
@@ -61,7 +62,7 @@ static void _traverse(OpExpandInto *op) {
 	AlgebraicExpression_Eval(op->ae, op->M);
 
 	// Clear filter matrix.
-	GrB_Matrix_clear(op->F);
+	RG_Matrix_clear(op->F);
 }
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
@@ -69,8 +70,8 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
-	op->F = GrB_NULL;
-	op->M = GrB_NULL;
+	op->F = NULL;
+	op->M = NULL;
 	op->records = NULL;
 	op->record_cap = BATCH_SIZE;
 	op->record_count = 0;
@@ -128,7 +129,7 @@ static Record _handoff(OpExpandInto *op) {
 		Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
 		NodeID destId = ENTITY_GET_ID(destNode);
 		bool x;
-		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
+		GrB_Info res = RG_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
 		// Src is not connected to dest, free the current record and continue.
 		if(res != GrB_SUCCESS) {
 			OpBase_DeleteRecord(op->r);
@@ -207,7 +208,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	op->record_count = 0;
 
 	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
-	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
+	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
 }
 
@@ -220,14 +221,14 @@ static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *o
 /* Frees ExpandInto */
 static void ExpandIntoFree(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
-	if(op->F != GrB_NULL) {
-		GrB_Matrix_free(&op->F);
-		op->F = GrB_NULL;
+	if(op->F != NULL) {
+		RG_Matrix_free(&op->F);
+		op->F = NULL;
 	}
 
-	if(op->M != GrB_NULL) {
-		GrB_Matrix_free(&op->M);
-		op->M = GrB_NULL;
+	if(op->M != NULL) {
+		RG_Matrix_free(&op->M);
+		op->M = NULL;
 	}
 
 	if(op->ae) {
