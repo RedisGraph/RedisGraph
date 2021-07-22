@@ -32,6 +32,8 @@ static void _populate_filter_matrix(OpCondTraverse *op) {
 		NodeID srcId = ENTITY_GET_ID(n);
 		RG_Matrix_setElement_BOOL(op->F, true, i, srcId);
 	}
+
+	RG_Matrix_wait(op->F, true);
 }
 
 /* Evaluate algebraic expression:

@@ -206,7 +206,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	GrB_Index          nrows               =  100;
 	GrB_Index          ncols               =  100;
 	RG_MatrixTupleIter *iter               =  NULL;
-	// uint64_t           val                 =  0;
+	uint64_t           val                 =  0;
 	bool               sync                =  false;
 	bool               depleted            =  false;
 	bool               multi_edge          =  true;
@@ -246,19 +246,10 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	info = RG_MatrixTupleIter_new(&iter, A);
 	ASSERT_TRUE(iter != NULL);
 
-	GrB_Matrix M   =  RG_MATRIX_M(A);
-	GrB_Matrix DP  =  RG_MATRIX_DELTA_PLUS(A);
-	GrB_Matrix DM  =  RG_MATRIX_DELTA_MINUS(A);
-
-	GxB_Matrix_fprint(M, "M", GxB_COMPLETE_VERBOSE, stdout);
-	GxB_Matrix_fprint(DP, "DP", GxB_COMPLETE_VERBOSE, stdout);
-	GxB_Matrix_fprint(DM, "DM", GxB_COMPLETE_VERBOSE, stdout);
-
 	info = RG_MatrixTupleIter_iterate_row(iter, i);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	//info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
-	info = RG_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_EQ(depleted, true);
 
 	info = RG_MatrixTupleIter_reset(iter);
@@ -269,16 +260,14 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	info = RG_MatrixTupleIter_iterate_row(iter, i+1);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	//info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
-	info = RG_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 
 	ASSERT_FALSE(depleted);
 	ASSERT_EQ(row, i+1);
 	ASSERT_EQ(col, j+1);
-	//ASSERT_EQ(val, 1);
+	ASSERT_EQ(val, 2);
 
-	//info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
-	info = RG_MatrixTupleIter_next(iter, &row, &col, NULL, &depleted);
+	info = RG_MatrixTupleIter_next(iter, &row, &col, &val, &depleted);
 	ASSERT_EQ(depleted, true);
 
 	RG_Matrix_free(&A);
