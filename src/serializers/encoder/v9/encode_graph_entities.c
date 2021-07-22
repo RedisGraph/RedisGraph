@@ -242,7 +242,8 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 	// Get current relation matrix.
 	uint r = GraphEncodeContext_GetCurrentRelationID(gc->encoding_context);
 
-	RG_Matrix M = Graph_GetRelationMatrix(gc->g, r, false);
+	GrB_Matrix M;
+	RG_Matrix_export(&M, Graph_GetRelationMatrix(gc->g, r, false));
 	// Get matrix tuple iterator from context, already set to the next entry to fetch, for previous edge encide or create new one.
 	GxB_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
 	if(!iter) GxB_MatrixTupleIter_new(&iter, M);
@@ -285,9 +286,10 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 			r++;
 			// If done iterating over all the matrices, jump to finish.
 			if(r == relation_count) goto finish;
+			GrB_Matrix_free(&M);
 			// Get matrix and set iterator.
-			M = Graph_GetRelationMatrix(gc->g, r, false);
-			GxB_MatrixTupleIter_new(&iter, M);
+			RG_Matrix_export(&M, Graph_GetRelationMatrix(gc->g, r, false));
+			GxB_MatrixTupleIter_reuse(iter, M);
 			GxB_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
 		}
 
@@ -319,6 +321,10 @@ finish:
 			GxB_MatrixTupleIter_free(iter);
 			iter = NULL;
 		}
+	}
+
+	if(M) {
+		GrB_Matrix_free(&M);
 	}
 
 	// Update context.
