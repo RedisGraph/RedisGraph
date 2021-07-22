@@ -130,7 +130,7 @@ GrB_Info RG_Matrix_removeEntry
 	if(in_m) {
 		if(SINGLE_EDGE(m_x)) {
 			// mark deletion in delta minus
-			GrB_Matrix_setElement(dm, true, i, j);
+			info = GrB_Matrix_setElement(dm, true, i, j);
 			ASSERT(info == GrB_SUCCESS);
 			RG_Matrix_setDirty(C);
 		} else {
