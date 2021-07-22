@@ -32,7 +32,7 @@ GrB_Info RG_MatrixTupleIter_new
 	ASSERT(info == GrB_SUCCESS) ;
 
 	*iter = it ;
-	return (GrB_SUCCESS) ;
+	return info ;
 }
 
 GrB_Info RG_MatrixTupleIter_iterate_row
@@ -52,7 +52,7 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	info = GxB_MatrixTupleIter_iterate_row(iter->dp_it, rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	return (GrB_SUCCESS) ;
+	return info ;
 }
 
 GrB_Info RG_MatrixTupleIter_jump_to_row
@@ -72,7 +72,7 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 	info = GxB_MatrixTupleIter_jump_to_row(iter->dp_it, rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	return (GrB_SUCCESS) ;
+	return info ;
 }
 
 GrB_Info RG_MatrixTupleIter_iterate_range
@@ -93,7 +93,7 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	info = GxB_MatrixTupleIter_iterate_range(iter->dp_it, startRowIdx, endRowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	return (GrB_SUCCESS) ;
+	return info ;
 }
 
 // iterate over M matrix
@@ -174,7 +174,7 @@ GrB_Info RG_MatrixTupleIter_reset
 	info = GxB_MatrixTupleIter_reset(iter->dp_it) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	return (GrB_SUCCESS) ;
+	return info ;
 }
 
 // update iterator to scan given matrix
@@ -219,6 +219,6 @@ GrB_Info RG_MatrixTupleIter_free
 	rm_free(*iter);
 	*iter = NULL;
 
-	return (GrB_SUCCESS);
+	return info ;
 }
 
