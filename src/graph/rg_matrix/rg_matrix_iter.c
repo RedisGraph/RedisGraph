@@ -141,6 +141,8 @@ GrB_Info RG_MatrixTupleIter_next
 	void *val,                      // optional value at A[row, col]
 	bool *depleted                  // [output] true if iterator depleted
 ) {
+	if(iter == NULL) return GrB_NULL_POINTER;
+
 	ASSERT(iter        != NULL) ;
 	ASSERT(depleted    != NULL) ;
 	ASSERT(iter->m_it  != NULL) ;

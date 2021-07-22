@@ -20,11 +20,11 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	NodeScanCtx n;           /* Label data of node being scanned. */
-	unsigned int nodeRecIdx;    /* Node position within record. */
-	UnsignedRange *id_range;    /* ID range to iterate over. */
+	NodeScanCtx n;              // Label data of node being scanned
+	unsigned int nodeRecIdx;    // Node position within record
+	UnsignedRange *id_range;    // ID range to iterate over
 	RG_MatrixTupleIter *iter;
-	Record child_record;        /* The Record this op acts on if it is not a tap. */
+	Record child_record;        // The Record this op acts on if it is not a tap
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
