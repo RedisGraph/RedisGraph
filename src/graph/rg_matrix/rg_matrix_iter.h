@@ -14,9 +14,9 @@
 // to iterate over a RG_Matrix
 typedef struct
 {
-    RG_Matrix A;                     // matrix iterated
-    GxB_MatrixTupleIter* m_it;     // internal m iterator
-    GxB_MatrixTupleIter* dp_it;    // internal delta plus iterator
+    RG_Matrix A;                   // matrix iterated
+    GxB_MatrixTupleIter m_it;      // internal m iterator
+    GxB_MatrixTupleIter dp_it;     // internal delta plus iterator
 } RG_MatrixTupleIter ;
 
 // create a new iterator

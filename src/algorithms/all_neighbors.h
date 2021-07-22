@@ -8,6 +8,7 @@
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../graph/rg_matrix/rg_matrix.h"
+#include "../graph/rg_matrix/rg_matrix_iter.h"
 #include "../graph/entities/node.h"
 
 // performs iterative DFS from 'src'
@@ -27,7 +28,7 @@ typedef struct {
 	int current_level;             // cuurent depth
 	bool first_pull;               // first call to Next
 	EntityID *visited;             // visited nodes
-	GxB_MatrixTupleIter *levels;   // array of neighbors iterator
+	RG_MatrixTupleIter *levels;    // array of neighbors iterator
 } AllNeighborsCtx;
 
 void AllNeighborsCtx_Reset

@@ -14,7 +14,6 @@ GrB_Info RG_MatrixTupleIter_new
 	RG_MatrixTupleIter **iter,     // iterator to create
 	const RG_Matrix A              // matrix to iterate over
 ) {
-
 	ASSERT(A != NULL) ;
 	ASSERT(iter != NULL) ;
 
@@ -25,10 +24,10 @@ GrB_Info RG_MatrixTupleIter_new
 	RG_MatrixTupleIter *it = rm_calloc(1, sizeof(RG_MatrixTupleIter)) ;
 	it->A = A ;
 
-	info = GxB_MatrixTupleIter_new(&(it->m_it), M) ;
+	info = GxB_MatrixTupleIter_reuse(&(it->m_it), M) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_new(&(it->dp_it), DP) ;
+	info = GxB_MatrixTupleIter_reuse(&(it->dp_it), DP) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
 	*iter = it ;
@@ -42,14 +41,12 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 ) {
 	GrB_Info info ;
 
-	ASSERT(iter        != NULL) ;
-	ASSERT(iter->m_it  != NULL) ;
-	ASSERT(iter->dp_it != NULL) ;
+	ASSERT(iter != NULL) ;
 
-	info = GxB_MatrixTupleIter_iterate_row(iter->m_it, rowIdx) ;
+	info = GxB_MatrixTupleIter_iterate_row(&(iter->m_it), rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_iterate_row(iter->dp_it, rowIdx) ;
+	info = GxB_MatrixTupleIter_iterate_row(&(iter->dp_it), rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
 	return info ;
@@ -62,14 +59,12 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 ) {
 	GrB_Info info ;
 
-	ASSERT(iter        != NULL) ;
-	ASSERT(iter->m_it  != NULL) ;
-	ASSERT(iter->dp_it != NULL) ;
+	ASSERT(iter != NULL) ;
 
-	info = GxB_MatrixTupleIter_jump_to_row(iter->m_it, rowIdx) ;
+	info = GxB_MatrixTupleIter_jump_to_row(&(iter->m_it), rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_jump_to_row(iter->dp_it, rowIdx) ;
+	info = GxB_MatrixTupleIter_jump_to_row(&(iter->dp_it), rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
 	return info ;
@@ -83,14 +78,14 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 ) {
 	GrB_Info info ;
 
-	ASSERT(iter        != NULL) ;
-	ASSERT(iter->m_it  != NULL) ;
-	ASSERT(iter->dp_it != NULL) ;
+	ASSERT(iter != NULL) ;
 
-	info = GxB_MatrixTupleIter_iterate_range(iter->m_it, startRowIdx, endRowIdx) ;
+	info = GxB_MatrixTupleIter_iterate_range(&(iter->m_it), startRowIdx,
+			endRowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_iterate_range(iter->dp_it, startRowIdx, endRowIdx) ;
+	info = GxB_MatrixTupleIter_iterate_range(&(iter->dp_it), startRowIdx,
+			endRowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
 	return info ;
@@ -129,7 +124,7 @@ static GrB_Info _next_m_iter
 	if(row) *row = _row ;
 	if(col) *col = _col ;
 
-	return info;
+	return info ;
 }
 
 // advance iterator
@@ -145,12 +140,10 @@ GrB_Info RG_MatrixTupleIter_next
 
 	ASSERT(iter        != NULL) ;
 	ASSERT(depleted    != NULL) ;
-	ASSERT(iter->m_it  != NULL) ;
-	ASSERT(iter->dp_it != NULL) ;
 
 	GrB_Matrix           DM       =  RG_MATRIX_DELTA_MINUS(iter->A) ;
-	GxB_MatrixTupleIter  *m_it    =  iter->m_it                     ;
-	GxB_MatrixTupleIter  *dp_it   =  iter->dp_it                    ;
+	GxB_MatrixTupleIter  *m_it    =  &(iter->m_it)                  ;
+	GxB_MatrixTupleIter  *dp_it   =  &(iter->dp_it)                 ;
 
 	GrB_Info info = _next_m_iter(m_it, DM, row, col, val, depleted) ;
 	if(!(*depleted)) return info ;
@@ -166,14 +159,12 @@ GrB_Info RG_MatrixTupleIter_reset
 ) {
 	GrB_Info info = GrB_SUCCESS;
 
-	ASSERT(iter        != NULL) ;
-	ASSERT(iter->m_it  != NULL) ;
-	ASSERT(iter->dp_it != NULL) ;
+	ASSERT(iter != NULL) ;
 
-	info = GxB_MatrixTupleIter_reset(iter->m_it) ;
+	info = GxB_MatrixTupleIter_reset(&(iter->m_it)) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_reset(iter->dp_it) ;
+	info = GxB_MatrixTupleIter_reset(&(iter->dp_it)) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
 	return info ;
@@ -194,10 +185,10 @@ GrB_Info RG_MatrixTupleIter_reuse
 
 	iter->A = A ;
 
-	info = GxB_MatrixTupleIter_reuse(iter->m_it, M) ;
+	info = GxB_MatrixTupleIter_reuse(&(iter->m_it), M) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
-	info = GxB_MatrixTupleIter_reuse(iter->dp_it, DP) ;
+	info = GxB_MatrixTupleIter_reuse(&(iter->dp_it), DP) ;
 	ASSERT(info == GrB_SUCCESS) ;
 
 	return info;
@@ -208,19 +199,11 @@ GrB_Info RG_MatrixTupleIter_free
 (
 	RG_MatrixTupleIter **iter       // iterator to free
 ) {
-	ASSERT(*iter != NULL);
+	ASSERT(*iter != NULL) ;
 
-	GrB_Info info ;
+	rm_free(*iter) ;
+	*iter = NULL ;
 
-	info = GxB_MatrixTupleIter_free((*iter)->m_it) ;
-	ASSERT(info == GrB_SUCCESS) ;
-
-	info = GxB_MatrixTupleIter_free((*iter)->dp_it) ;
-	ASSERT(info == GrB_SUCCESS);
-
-	rm_free(*iter);
-	*iter = NULL;
-
-	return info ;
+	return GrB_SUCCESS ;
 }
 
