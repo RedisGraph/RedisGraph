@@ -35,7 +35,7 @@ GrB_Info RG_Matrix_extractElement_BOOL     // x = A(i,j)
 		return info;
 	}
 
-	return info;
+	return GrB_NO_VALUE;
 }
 
 GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
