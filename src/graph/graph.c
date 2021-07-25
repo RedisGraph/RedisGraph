@@ -768,11 +768,11 @@ int Graph_DeleteEdge
 	// an edge of type r has just been deleted, update statistics
 	GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
-	if(SINGLE_EDGE(edge_id)) {
-		// single edge of type R connecting src to dest, delete entry
-		info = RG_Matrix_removeEntry(R, src_id, dest_id, edge_id);
-		ASSERT(info == GrB_SUCCESS);
+	// single edge of type R connecting src to dest, delete entry
+	info = RG_Matrix_removeEntry(R, src_id, dest_id, ENTITY_GET_ID(e));
+	ASSERT(info == GrB_SUCCESS);
 
+	if(SINGLE_EDGE(edge_id)) {
 		// see if source is connected to destination with additional edges
 		bool connected = false;
 		int relationCount = Graph_RelationTypeCount(g);
@@ -789,36 +789,9 @@ int Graph_DeleteEdge
 		// there are no additional edges connecting source to destination
 		// remove edge from THE adjacency matrix
 		if(!connected) {
-			M = Graph_GetRelationMatrix(g, GRAPH_NO_RELATION, false);
+			M = Graph_GetAdjacencyMatrix(g, false);
 			info = RG_Matrix_removeElement(M, src_id, dest_id);
 			ASSERT(info == GrB_SUCCESS);
-		}
-	} else {
-		// multiple edges connecting src to dest
-		// locate specific edge and remove it
-		// revert back from array representation to edge ID
-		// incase we're left with a single edge connecting src to dest
-
-		int i = 0;
-		EdgeID id = ENTITY_GET_ID(e);
-		EdgeID *edges = CLEAR_MSB(edge_id);
-		int edge_count = array_len(edges);
-
-		// locate edge within edge array
-		for(; i < edge_count; i++) if(edges[i] == id) break;
-		ASSERT(i < edge_count);
-
-		// remove edge from edge array
-		// migrate last edge ID and reduce array size
-		// TODO: reallocate array of size / capacity ratio is high
-		array_del_fast(edges, i);
-
-		// incase we're left with a single edge connecting src to dest
-		// revert back from array to scalar
-		if(array_len(edges) == 1) {
-			edge_id = edges[0];
-			array_free(edges);
-			RG_Matrix_setElement_UINT64(R, edge_id, src_id, dest_id);
 		}
 	}
 

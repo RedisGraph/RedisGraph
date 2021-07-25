@@ -93,7 +93,7 @@ GrB_Info RG_Matrix_removeEntry
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
 
 	if(C->maintain_transpose) {
-		info = RG_Matrix_removeElement(C->transposed, j, i);
+		info = RG_Matrix_removeEntry(C->transposed, j, i, v);
 		if(info != GrB_SUCCESS) {
 			return info;
 		} 
