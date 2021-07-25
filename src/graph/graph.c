@@ -925,14 +925,16 @@ static void _BulkDeleteNodes
 	int node_type_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < node_count; i++) {
 		Node *n = distinct_nodes + i;
-		NodeID ID = ENTITY_GET_ID(n);
-		for (int j = 0; j < node_type_count; j++)
-		{
-			RG_Matrix L = Graph_GetLabelMatrix(g, j);
+		NodeID entity_id = ENTITY_GET_ID(n);
+		int label_id = NODE_GET_LABEL_ID(n, g);
+		ASSERT(label_id != GRAPH_UNKNOWN_LABEL);
 
-			RG_Matrix_removeElement(L, ID, ID);
+		if(label_id != GRAPH_NO_LABEL) {
+			RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
+			RG_Matrix_removeElement(L, entity_id, entity_id);
 		}
-		DataBlock_DeleteItem(g->nodes, ID);
+
+		DataBlock_DeleteItem(g->nodes, entity_id);
 	}
 
 	// update deleted node count
