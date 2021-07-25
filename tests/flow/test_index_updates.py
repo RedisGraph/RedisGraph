@@ -32,19 +32,20 @@ class testIndexUpdatesFlow(FlowTestsBase):
         self.build_indices() 
 
     def new_node(self):
-        return Node(label = labels[node_ctr % 2],
+        global node_ctr
+        n = Node(label = labels[node_ctr % 2],
                     properties = {'unique': node_ctr,
                                   'group': random.choice(groups),
                                   'doubleval': round(random.uniform(-1, 1), 2),
                                   'intval': random.randint(1, 10000),
                                   'stringval': ''.join(random.choice(string.ascii_lowercase) for x in range(6))})
+        node_ctr += 1
+        return n
 
     def populate_graph(self):
-        global node_ctr
         for i in range(1000):
             node = self.new_node()
             redis_graph.add_node(node)
-            node_ctr += 1
         redis_graph.commit()
     
     def build_indices(self):
@@ -121,11 +122,9 @@ class testIndexUpdatesFlow(FlowTestsBase):
     def test03_node_creation(self):
         # Reset nodes in the Graph object so that we won't double-commit the originals
         redis_graph.nodes = {}
-        global node_ctr
         for i in range(100):
             node = self.new_node()
             redis_graph.add_node(node)
-            node_ctr += 1
         redis_graph.commit()
         self.validate_state()
 
@@ -182,13 +181,6 @@ class testIndexUpdatesFlow(FlowTestsBase):
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
 
-    def populate_graph_many_nodes(self, graph):
-        global node_ctr
-        for i in range(10000):
-            node = Node("person", properties = {'age': i})
-            redis_graph.add_node(node)
-        redis_graph.commit()
-
     def test07_conccurent_indices(self):
         n_indices = 4
         graphs = []
@@ -198,7 +190,8 @@ class testIndexUpdatesFlow(FlowTestsBase):
             con = self.env.getConnection()
             connections.append(con)
             graph = Graph("graph_" + str(i), con)
-            self.populate_graph_many_nodes(graph)
+            graph.query("UNWIND range(0, 10000) AS x CREATE (:person {age: x})")
+            graph.commit()
             graphs.append(graph)
 
         # create proccess for each index
@@ -212,4 +205,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
         for r in res:
             if isinstance(r, Exception):
                 raise r
+            else:
+                possible_results = [10000, 0]
+                self.env.assertContains(len(r.result_set), possible_results)
 
