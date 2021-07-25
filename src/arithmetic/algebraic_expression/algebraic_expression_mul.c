@@ -43,11 +43,16 @@ RG_Matrix _Eval_Mul
 	for(uint i = 1; i < child_count; i++) {
 		right = CHILD_AT(exp, i) ;
 		B = right->operand.matrix ;
-		info = RG_mxm(res, semiring, A, B) ;
-		ASSERT(info == GrB_SUCCESS) ;
+		if(B != IDENTITY_MATRIX) {
+			info = RG_mxm(res, semiring, A, B) ;
+			ASSERT(info == GrB_SUCCESS) ;
 
-		RG_Matrix_nvals(&nvals, res) ;
-		if(nvals == 0) break ;
+			RG_Matrix_nvals(&nvals, res) ;
+			if(nvals == 0) break ;
+		}
+		else if (i == 1) {
+			RG_Matrix_copy(res, A);
+		}
 
 		// set A to res, preparation for next iteration
 		A = res ;
