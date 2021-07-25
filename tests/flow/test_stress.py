@@ -95,7 +95,7 @@ class testStressFlow(FlowTestsBase):
         conn = self.env.getConnection()
         graphs[0].query("CREATE INDEX ON :Node(val)")
 
-        res = mlp.run_multiproc(self.env, fns=[create_nodes,delete_nodes,read_nodes,update_nodes,BGSAVE_loop], 
+        res = mlp.run_multiproc(self.env, fns=[create_nodes,delete_nodes,read_nodes,update_nodes,BGSAVE_loop],
         args=[(GRAPH_ID, n_iterations, n_nodes),
         (GRAPH_ID, n_iterations, n_nodes/2),
         (GRAPH_ID, n_iterations),
