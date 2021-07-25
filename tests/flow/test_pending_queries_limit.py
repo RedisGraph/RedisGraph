@@ -1,4 +1,3 @@
-import threading
 from RLTest import Env
 from redisgraph import Graph
 import utils.multiproc as mlp
