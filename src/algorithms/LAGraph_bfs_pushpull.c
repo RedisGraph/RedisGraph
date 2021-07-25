@@ -617,7 +617,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 				}
 
 				GxB_Vector_import_CSC(&q, int_type, n,
-						&qi, (void **) (&qx), qi_size, qx_size, iso, nq,
+						&qi, (void **) (&qx), qi_size, qx_size, false, nq,
 						jumbled, NULL) ;
 			} else {
 				int32_t *qx ;
@@ -632,7 +632,7 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 					qx [k] = qi [k] + 1 ;
 				}
 				GxB_Vector_import_CSC(&q, int_type, n,
-						&qi, (void **) (&qx), qi_size, qx_size, iso, nq,
+						&qi, (void **) (&qx), qi_size, qx_size, false, nq,
 						jumbled, NULL) ;
 			}
 
