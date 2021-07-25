@@ -926,9 +926,12 @@ static void _BulkDeleteNodes
 	for(int i = 0; i < node_count; i++) {
 		Node *n = distinct_nodes + i;
 		NodeID ID = ENTITY_GET_ID(n);
-		RG_Matrix L = Graph_GetLabelMatrix(g, n->labelID);
+		for (int j = 0; j < node_type_count; j++)
+		{
+			RG_Matrix L = Graph_GetLabelMatrix(g, j);
 
-		RG_Matrix_removeElement(L, ID, ID);
+			RG_Matrix_removeElement(L, ID, ID);
+		}
 		DataBlock_DeleteItem(g->nodes, ID);
 	}
 
