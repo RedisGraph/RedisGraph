@@ -63,7 +63,8 @@ GrB_Info GxB_MatrixTupleIter_new
 		GB_ERROR(GrB_INVALID_VALUE, "Invalid sparsity type: %d", sparsity) ;
 	}
 
-	*iter = GB_MALLOC(1, GxB_MatrixTupleIter) ;
+	size_t size_allocated;
+	*iter = GB_MALLOC(1, GxB_MatrixTupleIter, &size_allocated) ;
 	return _init(*iter, A) ;
 }
 
@@ -348,7 +349,10 @@ GrB_Info GxB_MatrixTupleIter_next
 		*col = A->i[nnz_idx] ;
 	}
 	if(val) {
-		GrB_Index offset = nnz_idx * iter->size;
+		bool iso;
+		GxB_Matrix_iso(&iso, A); // return iso status of a matrix
+		// in iso matrix the values represented by the first item in Ax
+		GrB_Index offset = iso ? 0 : nnz_idx * iter->size;
 		memcpy(val, (char*)A->x + offset, iter->size);
 	}
 
