@@ -22,40 +22,49 @@ RG_Matrix _Eval_Mul
 	ASSERT(AlgebraicExpression_OperationCount(exp, AL_EXP_MUL) == 1) ;
 
 	GrB_Info             info    ;
-	RG_Matrix            A       ;  // left operand
-	RG_Matrix            B       ;  // right operand
+	RG_Matrix            M       ;  // current operand
 	GrB_Index            nvals   ;  // NNZ in res
-	AlgebraicExpression  *left   ;  // left child
-	AlgebraicExpression  *right  ;  // right child
+	AlgebraicExpression  *c      ;  // current child node
 
 	UNUSED(info) ;
 
-	left = CHILD_AT(exp, 0) ;
-	ASSERT(left->type == AL_OPERAND) ;
+	RG_Matrix     A             =  NULL                                 ; 
+	bool          res_modified  =  false                                ;
+	GrB_Semiring  semiring      =  GxB_ANY_PAIR_BOOL                    ;
+	uint          child_count   =  AlgebraicExpression_ChildCount(exp)  ;
 
-	A = left->operand.matrix ;
+	for(uint i = 0; i < child_count; i++) {
+		c = CHILD_AT(exp, i) ;
+		ASSERT(c->type == AL_OPERAND) ;
 
-	GrB_Semiring semiring = GxB_ANY_PAIR_BOOL ;
-	uint child_count = AlgebraicExpression_ChildCount(exp) ;
+		M = c->operand.matrix ;
 
-	// scan through children 1..n
-	// perform RG_mxm
-	for(uint i = 1; i < child_count; i++) {
-		right = CHILD_AT(exp, i) ;
-		B = right->operand.matrix ;
-		if(B != IDENTITY_MATRIX) {
-			info = RG_mxm(res, semiring, A, B) ;
-			ASSERT(info == GrB_SUCCESS) ;
+		// skip identity matrix, A*I = A
+		if(M == IDENTITY_MATRIX) continue ;
 
-			RG_Matrix_nvals(&nvals, res) ;
-			if(nvals == 0) break ;
-		}
-		else if (i == 1) {
-			RG_Matrix_copy(res, A);
+		// first time A is set
+		if(A == NULL) {
+			A = M ;
+			continue ;
 		}
 
-		// set A to res, preparation for next iteration
+		// both A and M are valid matrices, perform multiplication
+		info = RG_mxm(res, semiring, A, M) ;
+		res_modified = true ;
+		// setup for next iteration
 		A = res ;
+
+		// exit early if 'res' is empty 0 * A = 0
+		info = RG_Matrix_nvals(&nvals, res);
+		ASSERT(info == GrB_SUCCESS) ;
+		if(nvals == 0) break ;
+	}
+
+	if(!res_modified) {
+		// expecting at-least one operand not to be the identity matrix
+		ASSERT(A != IDENTITY_MATRIX) ;
+		info = RG_Matrix_copy(res, A) ;
+		ASSERT(info == GrB_SUCCESS) ;
 	}
 
 	return res ;
