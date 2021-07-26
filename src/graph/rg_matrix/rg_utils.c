@@ -28,6 +28,7 @@ void RG_Matrix_checkBounds
 #endif
 }
 
+// TODO: add doc
 void RG_Matrix_checkCompatible
 (
 	const RG_Matrix M,
@@ -55,3 +56,4 @@ void RG_Matrix_checkCompatible
 	ASSERT(m_ncols == n_ncols);
 #endif
 }
+

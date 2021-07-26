@@ -114,7 +114,6 @@ struct _RG_Matrix {
 	bool dirty;                         // Indicates if matrix requires sync
 	bool multi_edge;                    // Entry i,j can contain multiple edges
 	bool maintain_transpose;            // Maintain transpose matrix
-	bool locked;                        // Rather or not mutex is acquired
 	GrB_Matrix matrix;                  // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions

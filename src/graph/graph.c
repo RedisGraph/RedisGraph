@@ -1116,9 +1116,10 @@ RG_Matrix Graph_GetRelationMatrix
 
 	if(relation_idx == GRAPH_NO_RELATION) m = g->adjacency_matrix;
 	else m = g->relations[relation_idx];
-	if(transposed) m = RG_Matrix_getTranspose(m);
 
 	g->SynchronizeMatrix(g, m);
+
+	if(transposed) m = RG_Matrix_getTranspose(m);
 
 	return m;
 }

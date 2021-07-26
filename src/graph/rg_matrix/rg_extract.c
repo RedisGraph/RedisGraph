@@ -31,7 +31,7 @@ GrB_Info RG_Matrix_extractElement_BOOL     // x = A(i,j)
 	// if dm[i,j] exists, return no value
 	info = GrB_Matrix_extractElement(x, dm, i, j);
 	if(info == GrB_SUCCESS) {
-		// entry is marked for deletion
+		// entry marked for deletion
 		return GrB_NO_VALUE;
 	}
 
@@ -64,7 +64,7 @@ GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
 	// if dm[i,j] exists, return no value
 	info = GrB_Matrix_extractElement(x, dm, i, j);
 	if(info == GrB_SUCCESS) {
-		// entry is marked for deletion
+		// entry marked for deletion
 		return GrB_NO_VALUE;
 	}
 

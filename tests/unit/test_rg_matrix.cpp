@@ -1015,3 +1015,4 @@ TEST_F(RGMatrixTest, RGMatrix_copy) {
 	RG_Matrix_free(&B);
 	ASSERT_TRUE(B == NULL);
 }
+

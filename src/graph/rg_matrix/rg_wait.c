@@ -89,12 +89,6 @@ static GrB_Info RG_Matrix_sync
 	info = GrB_wait(&m);
 	ASSERT(info == GrB_SUCCESS);
 
-	//--------------------------------------------------------------------------
-	// unlock
-	//--------------------------------------------------------------------------
-
-	RG_Matrix_Unlock(C);
-
 	return info;
 }
 
@@ -126,7 +120,6 @@ GrB_Info RG_Matrix_wait
 	if(force_sync ||
 	   delta_plus_nvals + delta_minus_nvals >= DELTA_MAX_PENDING_CHANGES) {
 		info = RG_Matrix_sync(A);
-		 
 	}
 
 	_SetUndirty(A);
