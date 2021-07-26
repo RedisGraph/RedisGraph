@@ -109,25 +109,32 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	GrB_Index src_id = ENTITY_GET_ID(source_node);
 
 	// Get edge matrix and transpose matrix, if available.
-	GrB_Matrix R;
-	GrB_Matrix TR;
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+	GrB_Matrix    R    =  NULL;
+	GrB_Matrix    TR   =  NULL;
+	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
+
 	if(reltype == NULL) {
 		RG_Matrix_export(&R, Graph_GetAdjacencyMatrix(gc->g, false));
 		RG_Matrix_export(&TR, Graph_GetAdjacencyMatrix(gc->g, true));
 	} else {
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-		if(!s) return PROCEDURE_OK; // Failed to find schema, first step will return NULL.
+		// failed to find schema, first step will return NULL
+		if(!s) return PROCEDURE_OK; 
+
 		bfs_ctx->reltype_id = s->id;
 		RG_Matrix_export(&R, Graph_GetRelationMatrix(gc->g, s->id, false));
 		bool maintain_transpose;
 		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-		if(maintain_transpose) RG_Matrix_export(&TR, Graph_GetRelationMatrix(gc->g, s->id, true));
-		else TR = GrB_NULL;
+		if(maintain_transpose) {
+			RG_Matrix_export(&TR,
+				Graph_GetRelationMatrix(gc->g, s->id, true));
+		} else {
+			TR = GrB_NULL;
+		}
 	}
 
 	/* If we're not collecting edges, pass a NULL parent pointer
-	* so that the algorithm will not perform unnecessary work. */
+	 * so that the algorithm will not perform unnecessary work. */
 	GrB_Vector V = GrB_NULL;  // Vector of results
 	GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
 	GrB_Vector *pPI = &PI;
