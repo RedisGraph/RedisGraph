@@ -189,18 +189,13 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 				ASSERT(res == GrB_SUCCESS);
 				res = GrB_Matrix_free(&adj);
 				ASSERT(res == GrB_SUCCESS);
-				// TODO: do not add transposed matrices, simply transpose the
-				// result matrix ctx->R
 				if(maintain_transposes) {
-					ASSERT(false);
-					GrB_Matrix adj;
-					res = RG_Matrix_export(&adj, Graph_GetRelationMatrix(gc->g,
-								ctx->reltypes[i], true));
+					GrB_Index nrows;
+					res = GrB_Matrix_nrows(&nrows, ctx->R);
 					ASSERT(res == GrB_SUCCESS);
-					res = GrB_eWiseAdd(ctx->TR, GrB_NULL, GrB_NULL,
-							GxB_ANY_PAIR_BOOL, ctx->TR, adj, GrB_NULL);
+					res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, nrows, nrows);
 					ASSERT(res == GrB_SUCCESS);
-					res = GrB_Matrix_free(&adj);
+					res = GrB_transpose(ctx->TR, NULL, NULL, ctx->R, GrB_DESC_R);
 					ASSERT(res == GrB_SUCCESS);
 				}
 			}

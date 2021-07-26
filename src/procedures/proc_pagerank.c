@@ -143,6 +143,9 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 
 	// Clean up.
 	GrB_free(&r);
+	if(label) {
+		GrB_free(&l);
+	}
 
 	// Update context.
 	pdata->n = n;
