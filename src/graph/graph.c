@@ -951,10 +951,9 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 	ASSERT(edges);
 	ASSERT(edge_count > 0);
 
-	int relationCount = Graph_RelationTypeCount(g);
-	
-	GrB_Index n = Graph_RequiredMatrixDim(g);
-	RG_Matrix adj = Graph_GetAdjacencyMatrix(g, false);
+	int        relationCount  =  Graph_RelationTypeCount(g);
+	GrB_Index  n              =  Graph_RequiredMatrixDim(g);
+	RG_Matrix  adj            =  Graph_GetAdjacencyMatrix(g,  false);
 
 	for(int i = 0; i < edge_count; i++) {
 		Edge       *e       =  edges + i;
@@ -973,12 +972,15 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		DataBlock_DeleteItem(g->edges, edge_id);
 
 		int j = 0;
-		for (; j < relationCount; j++)
-		{
+		for (; j < relationCount; j++) {
 			GrB_Index e;
 			RG_Matrix r = Graph_GetRelationMatrix(g, j, false);
-			if(RG_Matrix_extractElement_UINT64(&e, r, src_id, dest_id)==GrB_SUCCESS) break;
+			info = RG_Matrix_extractElement_UINT64(&e, r, src_id, dest_id);
+			if(info == GrB_SUCCESS) break;
 		}
+
+		// no additional connection between src to dest
+		// remove entry from adj matrix
 		if(j == relationCount) {
 			RG_Matrix_removeElement(adj, src_id, dest_id);
 		}
