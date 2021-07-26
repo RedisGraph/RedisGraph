@@ -30,17 +30,13 @@ static void _copyMatrix
 	ASSERT(info == GrB_SUCCESS);
 }
 
-// TODO: add tests
 GrB_Info RG_Matrix_copy
 (
 	RG_Matrix C,
 	const RG_Matrix A
 ) {
-
-	// TODO: Add utility function which verifies
-	// compatibility between two matrices
-	// see if GraphBLAS already has something to offer?
-
+	RG_Matrix_checkCompatible(C, A);
+	
 	GrB_Matrix  in_m             =  RG_MATRIX_M(A);
 	GrB_Matrix  out_m            =  RG_MATRIX_M(C);
 	GrB_Matrix  in_delta_plus    =  RG_MATRIX_DELTA_PLUS(A);
@@ -50,7 +46,7 @@ GrB_Info RG_Matrix_copy
 
 	_copyMatrix(in_m, out_m);
 	_copyMatrix(in_delta_plus, out_delta_plus);
-	_copyMatrix(out_delta_minus, out_delta_minus);
+	_copyMatrix(in_delta_minus, out_delta_minus);
 
 	return GrB_SUCCESS;
 }

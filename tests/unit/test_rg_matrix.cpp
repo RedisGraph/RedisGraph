@@ -938,3 +938,80 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	ASSERT_TRUE(A == NULL);
 }
 
+TEST_F(RGMatrixTest, RGMatrix_copy) {
+	GrB_Type    t                   =  GrB_BOOL;
+	RG_Matrix   A                   =  NULL;
+	RG_Matrix   B                   =  NULL;
+	GrB_Matrix  A_M                 =  NULL;
+	GrB_Matrix  B_M                 =  NULL;
+	GrB_Matrix  A_DP                =  NULL;
+	GrB_Matrix  B_DP                =  NULL;
+	GrB_Matrix  A_DM                =  NULL;
+	GrB_Matrix  B_DM                =  NULL;
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   nrows               =  100;
+	GrB_Index   ncols               =  100;
+	bool        sync                =  false;
+	bool        multi_edge          =  false;
+	bool        maintain_transpose  =  false;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_Matrix_new(&B, t, nrows, ncols, multi_edge, maintain_transpose);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set elements
+	info = RG_Matrix_setElement_BOOL(A, true, 0, 0);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = RG_Matrix_setElement_BOOL(A, true, 1, 1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+
+	//--------------------------------------------------------------------------
+	// set pending changes
+	//--------------------------------------------------------------------------
+
+	// remove element at position 0,0
+	info = RG_Matrix_removeElement(A, 0, 0);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position 2,2
+	info = RG_Matrix_setElement_BOOL(A, true, 2, 2);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// copy matrix
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_copy(B, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// validation
+	//--------------------------------------------------------------------------
+
+	A_M  = RG_MATRIX_M(A);
+	B_M  = RG_MATRIX_M(B);
+	A_DP = RG_MATRIX_DELTA_PLUS(A);
+	B_DP = RG_MATRIX_DELTA_PLUS(B);
+	A_DM = RG_MATRIX_DELTA_MINUS(A);
+	B_DM = RG_MATRIX_DELTA_MINUS(B);
+	
+	ASSERT_GrB_Matrices_EQ(A_M, B_M);
+	ASSERT_GrB_Matrices_EQ(A_DP, B_DP);
+	ASSERT_GrB_Matrices_EQ(A_DM, B_DM);
+
+	// clean up
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	RG_Matrix_free(&B);
+	ASSERT_TRUE(B == NULL);
+}

@@ -15,3 +15,8 @@ void RG_Matrix_checkBounds
 	GrB_Index j
 );
 
+void RG_Matrix_checkCompatible
+(
+	const RG_Matrix M,
+	const RG_Matrix N
+);

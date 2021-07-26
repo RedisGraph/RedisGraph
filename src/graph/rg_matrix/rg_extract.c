@@ -28,14 +28,16 @@ GrB_Info RG_Matrix_extractElement_BOOL     // x = A(i,j)
 		return info;
 	}
 
-	// if dm[i,j] doesn't exists, return M[i,j]
+	// if dm[i,j] exists, return no value
 	info = GrB_Matrix_extractElement(x, dm, i, j);
-	if(info != GrB_SUCCESS) {
-		info = GrB_Matrix_extractElement(x, m, i, j);
-		return info;
+	if(info == GrB_SUCCESS) {
+		// entry is marked for deletion
+		return GrB_NO_VALUE;
 	}
 
-	return GrB_NO_VALUE;
+	// entry isn't marked for deletion, see if it exists in 'm'
+	info = GrB_Matrix_extractElement(x, m, i, j);
+	return info;
 }
 
 GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
@@ -59,7 +61,7 @@ GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
 		return info;
 	}
 
-	// if dm[i,j] doesn't exists, return M[i,j]
+	// if dm[i,j] exists, return no value
 	info = GrB_Matrix_extractElement(x, dm, i, j);
 	if(info == GrB_SUCCESS) {
 		// entry is marked for deletion
