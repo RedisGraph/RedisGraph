@@ -242,11 +242,10 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 	// Get current relation matrix.
 	uint r = GraphEncodeContext_GetCurrentRelationID(gc->encoding_context);
 
-	GrB_Matrix M;
-	RG_Matrix_export(&M, Graph_GetRelationMatrix(gc->g, r, false));
+	RG_Matrix M = Graph_GetRelationMatrix(gc->g, r, false);
 	// Get matrix tuple iterator from context, already set to the next entry to fetch, for previous edge encide or create new one.
-	GxB_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
-	if(!iter) GxB_MatrixTupleIter_new(&iter, M);
+	RG_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
+	if(!iter) RG_MatrixTupleIter_new(&iter, M);
 
 	// First, see if the last edges encoding stopped at multiple edges array
 	EdgeID *multiple_edges_array = GraphEncodeContext_GetMultipleEdgesArray(gc->encoding_context);
@@ -275,22 +274,21 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 		EdgeID edgeID;
 		bool depleted = false;
 		// Try to get next tuple.
-		GxB_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+		RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
 		// If iterator is depleted, get new tuple from different matrix or finish encode.
 		while(depleted && r < relation_count) {
 			// Free iterator
-			GxB_MatrixTupleIter_free(iter);
+			RG_MatrixTupleIter_free(iter);
 			iter = NULL;
 			depleted = false;
 			// Proceed to next relation matrix.
 			r++;
 			// If done iterating over all the matrices, jump to finish.
 			if(r == relation_count) goto finish;
-			GrB_Matrix_free(&M);
 			// Get matrix and set iterator.
-			RG_Matrix_export(&M, Graph_GetRelationMatrix(gc->g, r, false));
-			GxB_MatrixTupleIter_reuse(iter, M);
-			GxB_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+			M = Graph_GetRelationMatrix(gc->g, r, false);
+			RG_MatrixTupleIter_reuse(iter, M);
+			RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
 		}
 
 		e.srcNodeID = src;
@@ -318,13 +316,9 @@ finish:
 	// Check if done encoding edges.
 	if(offset + edges_to_encode == graph_edges) {
 		if(iter) {
-			GxB_MatrixTupleIter_free(iter);
+			RG_MatrixTupleIter_free(&iter);
 			iter = NULL;
 		}
-	}
-
-	if(M) {
-		GrB_Matrix_free(&M);
 	}
 
 	// Update context.

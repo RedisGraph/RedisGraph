@@ -176,14 +176,14 @@ void GraphEncodeContext_SetCurrentRelationID(GraphEncodeContext *ctx,
 	ctx->current_relation_matrix_id = current_relation_matrix_id;
 }
 
-GxB_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(
+RG_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(
 	const GraphEncodeContext *ctx) {
 	ASSERT(ctx);
 	return ctx->matrix_tuple_iterator;
 }
 
 void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx,
-											   GxB_MatrixTupleIter *iter) {
+											   RG_MatrixTupleIter *iter) {
 	ASSERT(ctx);
 	ctx->matrix_tuple_iterator = iter;
 }
