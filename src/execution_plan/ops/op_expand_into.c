@@ -90,11 +90,9 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		/* This operation will populate an edge in the Record.
-		 * Prepare all necessary information for collecting matching edges. */
-		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
+		OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+		op->edge_ctx = Traverse_NewEdgeCtx(op->ae, e);
 	}
 
 	return (OpBase *)op;
@@ -102,6 +100,16 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
+
+	const char *edge = AlgebraicExpression_Edge(op->ae);
+	if(edge) {
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
+		int edge_idx;
+	   	OpBase_Aware((OpBase *)op, edge, &edge_idx);
+		Traverse_SetEdgeIdx(op->edge_ctx, edge_idx);
+	}
+
 	// Create 'records' with this Init function as 'record_cap'
 	// might be set during optimization time (applyLimit)
 	// If cap greater than BATCH_SIZE is specified,

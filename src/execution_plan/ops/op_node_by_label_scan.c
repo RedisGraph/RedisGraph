@@ -39,7 +39,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanClone,
 				NodeByLabelScanFree, false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
+	OpBase_Modifies((OpBase *)op, n.alias);
 
 	return (OpBase *)op;
 }
@@ -62,7 +62,8 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
-	OpBase_UpdateConsume(opBase, NodeByLabelScanConsume); // Default consume function.
+
+	OpBase_Aware((OpBase *)op, op->n.alias, &op->nodeRecIdx);
 
 	// Operation has children, consume from child.
 	if(opBase->childCount > 0) {

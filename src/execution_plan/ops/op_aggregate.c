@@ -13,6 +13,7 @@
 #include "../../grouping/group.h"
 
 /* Forward declarations. */
+static OpResult AggregateInit(OpBase *opBase);
 static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -198,6 +199,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	op->group = NULL;
 	op->group_iter = NULL;
 	op->group_keys = NULL;
+	op->record_offsets = NULL;
 	op->groups = CacheGroupNew();
 	op->should_cache_records = should_cache_records;
 
@@ -208,24 +210,39 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	// Allocate memory for group keys if we have any non-aggregate expressions.
 	if(op->key_count) op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
 
-	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL, AggregateConsume,
+	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateClone, AggregateFree, false, plan);
 
+	// Mark all aggregated values as being modified
+	for(uint i = 0; i < op->key_count; i ++) {
+		OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+	}
+	for(uint i = 0; i < op->aggregate_count; i ++) {
+		OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
+	}
+
+	return (OpBase *)op;
+}
+
+static OpResult AggregateInit(OpBase *opBase) {
+	OpAggregate *op = (OpAggregate *)opBase;
 	// The projected record will associate values with their resolved name
 	// to ensure that space is allocated for each entry.
 	op->record_offsets = array_new(uint, op->aggregate_count + op->key_count);
 	for(uint i = 0; i < op->key_count; i ++) {
 		// Store the index of each key expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+		int record_idx;
+	   	OpBase_Aware((OpBase *)op, op->key_exps[i]->resolved_name, &record_idx);
 		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
+		int record_idx;
+		OpBase_Aware((OpBase *)op, op->aggregate_exps[i]->resolved_name, &record_idx);
 		array_append(op->record_offsets, record_idx);
 	}
 
-	return (OpBase *)op;
+	return OP_OK;
 }
 
 static Record AggregateConsume(OpBase *opBase) {

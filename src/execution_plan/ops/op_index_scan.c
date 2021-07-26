@@ -22,7 +22,7 @@ static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
-		RSIndex *idx, FT_FilterNode *filter) {
+					   RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
 	ASSERT(g      != NULL);
 	ASSERT(idx    != NULL);
@@ -43,15 +43,18 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
 				IndexScanReset, IndexScanToString, NULL, IndexScanFree, false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
+	OpBase_Modifies((OpBase *)op, n.alias);
 	return (OpBase *)op;
 }
 
 static OpResult IndexScanInit(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 
+	// Store the Record index of the scanned node
+	OpBase_Aware((OpBase *)op, op->n.alias, &op->nodeRecIdx);
+
 	if(opBase->childCount > 0) {
-		// find out how many different entities are refered to 
+		// find out how many different entities are refered to
 		// within the filter tree, if number of entities equals 1
 		// (current node being scanned) there's no need to re-build the index
 		// query for every input record
@@ -98,7 +101,7 @@ pull_index:
 
 	if(op->iter != NULL) {
 		while((nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
-				!= NULL) {
+			  != NULL) {
 			// populate record with node
 			_UpdateRecord(op, op->child_record, *nodeId);
 			// apply unresolved filters
@@ -149,17 +152,17 @@ pull_index:
 		FilterTree_ResolveVariables(filter, op->child_record);
 
 		// make sure there's only one unresolve entity in filter
-		#ifdef RG_DEBUG
+#ifdef RG_DEBUG
 		{
 			rax *entities = FilterTree_CollectModified(filter);
 			ASSERT(raxSize(entities) == 1);
 			raxFree(entities);
 		}
-		#endif
+#endif
 
 		// convert filter into a RediSearch query
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
-				filter, op->idx);
+													   filter, op->idx);
 		FilterTree_Free(filter);
 
 		// create iterator
@@ -190,14 +193,14 @@ static Record IndexScanConsume(OpBase *opBase) {
 	// create iterator on first call
 	if(op->iter == NULL) {
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
-				op->filter, op->idx);
+													   op->filter, op->idx);
 		ASSERT(op->unresolved_filters == NULL);
 
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	}
 
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx,
-			NULL);
+															NULL);
 	if(!nodeId) return NULL;
 
 	// populate the Record with the actual node

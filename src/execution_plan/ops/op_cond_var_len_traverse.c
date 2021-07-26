@@ -100,6 +100,8 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->M                  =  GrB_NULL;
 	op->ae                 =  ae;
 	op->ft                 =  NULL;
+	op->edge               =  NULL;
+	op->edgesIdx           =  -1;
 	op->expandInto         =  false;
 	op->allPathsCtx        =  NULL;
 	op->collect_paths      =  true;
@@ -114,12 +116,15 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 
 	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
 	ASSERT(aware);
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
+	OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
 	// populate edge value in record only if it is referenced
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
-	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
+	if(AST_AliasIsReferenced(ast, e->alias)) {
+		op->edge = e->alias;
+		OpBase_Modifies((OpBase *)op, e->alias);
+	}
 	_setTraverseDirection(op, e);
 
 	return (OpBase *)op;
@@ -127,6 +132,10 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 
 static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
+
+	OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(op->ae), &op->destNodeIdx);
+
+	if(op->edge) OpBase_Aware((OpBase *)op, op->edge, &op->edgesIdx);
 
 	// check if variable length traversal doesn't require path construction
 	// in which case we only care for reachable destination nodes
@@ -145,7 +154,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	// in which case we can use a faster consume function
 
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
-			AlgebraicExpression_Edge(op->ae));
+										  AlgebraicExpression_Edge(op->ae));
 	uint reltype_count = QGEdge_RelationCount(e);
 
 	bool  multi_edge  =  true;
@@ -154,7 +163,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 		int rel_id = QGEdge_RelationID(e, 0);
 		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
 			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id,
-					transpose);
+															 transpose);
 		}
 	}
 
@@ -164,7 +173,7 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 	   reltype_count   == 1                   && // single relationship
 	   multi_edge      == false               && // no multi edge entries
 	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
-	) {
+	  ) {
 		AlgebraicExpression_Optimize(&op->ae);
 		ASSERT(op->ae->type == AL_OPERAND);
 		op->collect_paths = false;
@@ -180,8 +189,8 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 	Node                dest    =  GE_NEW_NODE();
 	EntityID            dest_id =  INVALID_ENTITY_ID;
 
-	while ((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) ==
-			INVALID_ENTITY_ID) {
+	while((dest_id = AllNeighborsCtx_NextNeighbor(op->allNeighborsCtx)) ==
+		  INVALID_ENTITY_ID) {
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
@@ -213,11 +222,11 @@ static Record CondVarLenTraverseOptimizedConsume(OpBase *opBase) {
 
 		if(op->allNeighborsCtx == NULL) {
 			op->allNeighborsCtx = AllNeighborsCtx_New(srcNode->id, op->M,
-					op->minHops, op->maxHops);
+													  op->minHops, op->maxHops);
 		} else {
 			// in case ctx already allocated simply reset it
 			AllNeighborsCtx_Reset(op->allNeighborsCtx, srcNode->id, op->M,
-					op->minHops, op->maxHops);
+								  op->minHops, op->maxHops);
 		}
 	}
 

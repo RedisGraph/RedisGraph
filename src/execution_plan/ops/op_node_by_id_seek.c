@@ -48,14 +48,15 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, Unsigned
 				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekClone, NodeByIdSeekFree,
 				false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
-
 	return (OpBase *)op;
 }
 
 static OpResult NodeByIdSeekInit(OpBase *opBase) {
 	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
+
+	OpBase_Aware((OpBase *)op, op->alias, &op->nodeRecIdx);
+
 	// The largest possible entity ID is the number of nodes - deleted and real - in the DataBlock.
 	size_t node_count = Graph_UncompactedNodeCount(op->g);
 	op->maxId = MIN(node_count - 1, op->maxId);

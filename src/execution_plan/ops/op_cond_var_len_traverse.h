@@ -22,6 +22,7 @@ typedef struct {
 	int srcNodeIdx;                        /* Node set by operation. */
 	int destNodeIdx;                       /* Node set by operation. */
 	bool expandInto;                       /* Both src and dest already resolved. */
+	const char *edge;                      /* The traversed edge alias, if it is referenced. */
 	FT_FilterNode *ft;                     /* If not NULL, FilterTree applied to traversed edge. */
 	unsigned int minHops;                  /* Maximum number of hops to perform. */
 	unsigned int maxHops;                  /* Maximum number of hops to perform. */

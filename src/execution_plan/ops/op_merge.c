@@ -48,17 +48,26 @@ static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
 }
 
-static void _InitializeUpdates(OpMerge *op, rax *updates, raxIterator *it) {
-	// if we have ON MATCH / ON CREATE directives, set the appropriate record IDs of entities to be updated
+static void _RegisterUpdateAliases(OpMerge *op, rax *updates, raxIterator *it) {
+	// if we have ON MATCH / ON CREATE directives, mark the aliases within as being modified
 	raxStart(it, updates);
 	raxSeek(it, "^", NULL, 0);
 	// iterate over all expressions
 	while(raxNext(it)) {
 		EntityUpdateEvalCtx *ctx = it->data;
-		// set the record index for every entity modified by this operation
-		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
+		OpBase_Modifies((OpBase *)op, ctx->alias);
 	}
+}
 
+static void _TrackUpdateIndices(OpMerge *op, rax *updates, raxIterator *it) {
+	// if we have ON MATCH / ON CREATE directives, set the appropriate record IDs of entities to be updated
+	raxSeek(it, "^", NULL, 0);
+	// iterate over all expressions
+	while(raxNext(it)) {
+		EntityUpdateEvalCtx *ctx = it->data;
+		// set the record index for every entity modified by this operation
+		OpBase_Aware((OpBase *)op, ctx->alias, &ctx->record_idx);
+	}
 }
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
@@ -75,8 +84,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
 				MergeFree, true, plan);
 
-	if(op->on_match) _InitializeUpdates(op, op->on_match, &op->on_match_it);
-	if(op->on_create) _InitializeUpdates(op, op->on_create, &op->on_create_it);
+	if(op->on_match) _RegisterUpdateAliases(op, op->on_match, &op->on_match_it);
+	if(op->on_create) _RegisterUpdateAliases(op, op->on_create, &op->on_create_it);
 
 	return (OpBase *)op;
 }
@@ -92,12 +101,16 @@ static OpBase *_LocateOp(OpBase *root, OPType type) {
 }
 
 static OpResult MergeInit(OpBase *opBase) {
+	OpMerge *op = (OpMerge *)opBase;
+	// Track the indices of variables modified in ON MATCH CREATE/SET directives
+	if(op->on_match) _TrackUpdateIndices(op, op->on_match, &op->on_match_it);
+	if(op->on_create) _TrackUpdateIndices(op, op->on_create, &op->on_create_it);
+
 	/* Merge has 2 children if it is the first clause, and 3 otherwise
 	 * - If there are 3 children, the first should resolve the Merge pattern's bound variables
 	 * - The next (first if there are 2 children, second otherwise) should attempt to match the pattern
 	 * - The last creates the pattern */
 	ASSERT(opBase->childCount == 2 || opBase->childCount == 3);
-	OpMerge *op = (OpMerge *)opBase;
 	op->stats = QueryCtx_GetResultSetStatistics();
 	if(opBase->childCount == 2) {
 		// if we only have 2 streams, we simply need to determine which has a MergeCreate op
@@ -283,15 +296,15 @@ static Record MergeConsume(OpBase *opBase) {
 			Record created_record;
 			while((created_record = _pullFromStream(op->create_stream))) {
 				array_append(op->output_records,
-						created_record);
+							 created_record);
 				create_count ++;
 			}
 			// if we are setting properties with ON CREATE
 			// compute all pending updates
 			if(op->on_create) {
 				_UpdateProperties(&op->pending_updates, op->stats,
-						op->on_create_it, op->output_records + match_count,
-						create_count);
+								  op->on_create_it, op->output_records + match_count,
+								  create_count);
 			}
 		}
 	}

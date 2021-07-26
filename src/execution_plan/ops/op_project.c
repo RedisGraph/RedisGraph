@@ -12,6 +12,7 @@
 #include "../../util/rmalloc.h"
 
 /* Forward declarations. */
+static OpResult ProjectInit(OpBase *opBase);
 static Record ProjectConsume(OpBase *opBase);
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
@@ -26,17 +27,28 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->projection = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
-				NULL, NULL, ProjectClone, ProjectFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectInit,
+				ProjectConsume, NULL, NULL, ProjectClone, ProjectFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
-		// The projected record will associate values with their resolved name
-		// to ensure that space is allocated for each entry.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
-		array_append(op->record_offsets, record_idx);
+		OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult ProjectInit(OpBase *opBase) {
+	OpProject *op = (OpProject *)opBase;
+	for(uint i = 0; i < op->exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		int record_idx;
+		bool res = OpBase_Aware((OpBase *)op, op->exps[i]->resolved_name, &record_idx);
+		ASSERT(res == true);
+		array_append(op->record_offsets, record_idx);
+	}
+
+	return OP_OK;
 }
 
 static Record ProjectConsume(OpBase *opBase) {

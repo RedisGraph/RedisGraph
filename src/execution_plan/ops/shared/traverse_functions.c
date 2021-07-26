@@ -53,7 +53,7 @@ static GRAPH_EDGE_DIR _Traverse_SetDirection(AlgebraicExpression *ae, const QGEd
 
 	// locate operand representing the referenced edge
 	bool located = AlgebraicExpression_LocateOperand(ae, &operand, &parent,
-			e->src->alias, e->dest->alias, e->alias);
+													 e->src->alias, e->dest->alias, e->alias);
 	ASSERT(located == true);
 
 	// if parent exists and it is a transpose operation, edge is reversed
@@ -67,31 +67,35 @@ static GRAPH_EDGE_DIR _Traverse_SetDirection(AlgebraicExpression *ae, const QGEd
 	return dir;
 }
 
-EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx) {
+EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e) {
 	EdgeTraverseCtx *edge_ctx = rm_malloc(sizeof(EdgeTraverseCtx));
 	edge_ctx->edges = array_new(Edge, 32); // Instantiate array to collect matching edges.
 	_Traverse_SetRelationTypes(edge_ctx, e); // Build the array of relation type IDs.
-	edge_ctx->edgeRecIdx = idx;
 	edge_ctx->direction = _Traverse_SetDirection(ae, e);
 	return edge_ctx;
+}
+
+inline void Traverse_SetEdgeIdx(EdgeTraverseCtx *ctx, int idx) {
+	ASSERT(ctx);
+	ctx->edgeRecIdx = idx;
 }
 
 /* Populate the traverse context's edges array with all edges of the appropriate
  * direction connecting the source and destination nodes. */
 void Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest) {
 	switch(edge_ctx->direction) {
-	case GRAPH_EDGE_DIR_OUTGOING:
-		_Traverse_CollectEdges(edge_ctx, src, dest);
-		return;
-	case GRAPH_EDGE_DIR_INCOMING:
-		// If we're traversing incoming edges, swap the source and destination.
-		_Traverse_CollectEdges(edge_ctx, dest, src);
-		return;
-	case GRAPH_EDGE_DIR_BOTH:
-		// If we're traversing in both directions, collect edges in both directions.
-		_Traverse_CollectEdges(edge_ctx, src, dest);
-		_Traverse_CollectEdges(edge_ctx, dest, src);
-		return;
+		case GRAPH_EDGE_DIR_OUTGOING:
+			_Traverse_CollectEdges(edge_ctx, src, dest);
+			return;
+		case GRAPH_EDGE_DIR_INCOMING:
+			// If we're traversing incoming edges, swap the source and destination.
+			_Traverse_CollectEdges(edge_ctx, dest, src);
+			return;
+		case GRAPH_EDGE_DIR_BOTH:
+			// If we're traversing in both directions, collect edges in both directions.
+			_Traverse_CollectEdges(edge_ctx, src, dest);
+			_Traverse_CollectEdges(edge_ctx, dest, src);
+			return;
 	}
 }
 

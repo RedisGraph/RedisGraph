@@ -14,8 +14,6 @@
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 
-#define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
-
 typedef enum {
 	OPType_ALL_NODE_SCAN,
 	OPType_NODE_BY_LABEL_SCAN,
@@ -130,9 +128,8 @@ OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op);
 // returns operation type
 OPType OpBase_Type(const OpBase *op);
 
-/* Mark alias as being modified by operation.
- * Returns the ID associated with alias. */
-int OpBase_Modifies(OpBase *op, const char *alias);
+// Mark alias as being modified by operation.
+void OpBase_Modifies(OpBase *op, const char *alias);
 
 /* Adds an alias to an existing modifier, such that record[modifier] = record[alias]. */
 int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias);

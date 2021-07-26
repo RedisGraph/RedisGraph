@@ -30,14 +30,18 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
 				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanClone, AllNodeScanFree, false,
 				plan);
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
+	OpBase_Modifies((OpBase *)op, alias);
 	return (OpBase *)op;
 }
 
 static OpResult AllNodeScanInit(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
+
+	OpBase_Aware((OpBase *)op, op->alias, &op->nodeRecIdx);
+
 	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, AllNodeScanConsumeFromChild);
 	else op->iter = Graph_ScanNodes(QueryCtx_GetGraph());
+
 	return OP_OK;
 }
 

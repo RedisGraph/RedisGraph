@@ -95,7 +95,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	ASSERT(aware == true);
 
 	const char *dest = AlgebraicExpression_Destination(ae);
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
+	OpBase_Modifies((OpBase *)op, dest);
 	// Check the QueryGraph node and retrieve label data if possible.
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(plan->query_graph, dest);
 	op->dest_label = dest_node->label;
@@ -103,11 +103,9 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		/* This operation will populate an edge in the Record.
-		 * Prepare all necessary information for collecting matching edges. */
-		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
+		OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+		op->edge_ctx = Traverse_NewEdgeCtx(op->ae, e);
 	}
 
 	return (OpBase *)op;
@@ -115,6 +113,18 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 static OpResult CondTraverseInit(OpBase *opBase) {
 	OpCondTraverse *op = (OpCondTraverse *)opBase;
+
+	const char *dest = AlgebraicExpression_Destination(op->ae);
+	OpBase_Aware((OpBase *)op, dest, &op->destNodeIdx);
+	const char *edge = AlgebraicExpression_Edge(op->ae);
+	if(edge) {
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
+		int edge_idx;
+		OpBase_Aware((OpBase *)op, edge, &edge_idx);
+		Traverse_SetEdgeIdx(op->edge_ctx, edge_idx);
+	}
+
 	// Create 'records' with this Init function as 'record_cap'
 	// might be set during optimization time (applyLimit)
 	// If cap greater than BATCH_SIZE is specified,
@@ -141,7 +151,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	while(true) {
 		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id,
-				NULL, &depleted);
+												  NULL, &depleted);
 
 		// Managed to get a tuple, break.
 		if(!depleted) break;

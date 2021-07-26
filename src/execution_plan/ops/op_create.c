@@ -11,6 +11,7 @@
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
+static OpResult CreateInit(OpBase *opBase);
 static Record CreateConsume(OpBase *opBase);
 static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CreateFree(OpBase *opBase);
@@ -20,29 +21,52 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateC
 	op->records = NULL;
 	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
+	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", CreateInit, CreateConsume,
 				NULL, NULL, CreateClone, CreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
 
-	// Construct the array of IDs this operation modifies
+	// track all modified variables
 	for(uint i = 0; i < node_blueprint_count; i ++) {
 		NodeCreateCtx *n = nodes + i;
-		n->node_idx = OpBase_Modifies((OpBase *)op, n->alias);
+		OpBase_Modifies((OpBase *)op, n->alias);
 	}
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
 		EdgeCreateCtx *e = edges + i;
-		e->edge_idx = OpBase_Modifies((OpBase *)op, e->alias);
-		bool aware;
-		UNUSED(aware);
+		OpBase_Modifies((OpBase *)op, e->alias);
+	}
+
+	return (OpBase *)op;
+}
+
+static OpResult CreateInit(OpBase *opBase) {
+	OpCreate *op = (OpCreate *)opBase;
+
+	NodeCreateCtx *nodes = op->pending.nodes_to_create;
+	EdgeCreateCtx *edges = op->pending.edges_to_create;
+	uint node_blueprint_count = array_len(nodes);
+	uint edge_blueprint_count = array_len(edges);
+
+	bool aware;
+	UNUSED(aware);
+	// Construct the array of IDs this operation modifies
+	for(uint i = 0; i < node_blueprint_count; i ++) {
+		NodeCreateCtx *n = nodes + i;
+		aware = OpBase_Aware((OpBase *)op, n->alias, &n->node_idx);
+		ASSERT(aware == true);
+	}
+	for(uint i = 0; i < edge_blueprint_count; i ++) {
+		EdgeCreateCtx *e = edges + i;
+		aware = OpBase_Aware((OpBase *)op, e->alias, &e->edge_idx);
+		ASSERT(aware == true);
 		aware = OpBase_Aware((OpBase *)op, e->src, &e->src_idx);
 		ASSERT(aware == true);
 		aware = OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx);
 		ASSERT(aware == true);
 	}
 
-	return (OpBase *)op;
+	return OP_OK;
 }
 
 // Prepare to create all nodes for the current Record.

@@ -41,13 +41,12 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
-	// iterate over all update expressions
-	// set the record index for every entity modified by this operation
+	// mark each alias modified by this operation
 	raxStart(&op->it, update_exps);
 	raxSeek(&op->it, "^", NULL, 0);
 	while(raxNext(&op->it)) {
 		EntityUpdateEvalCtx *ctx = op->it.data;
-		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
+		OpBase_Modifies((OpBase *)op, ctx->alias);
 	}
 
 	return (OpBase *)op;
@@ -59,6 +58,15 @@ static OpResult UpdateInit(OpBase *opBase) {
 	op->stats    =    QueryCtx_GetResultSetStatistics();
 	op->records  =    array_new(Record, 64);
 	op->updates  =    array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+
+	// iterate over all update expressions
+	// set the record index for every entity modified by this operation
+	raxStart(&op->it, op->update_ctxs);
+	raxSeek(&op->it, "^", NULL, 0);
+	while(raxNext(&op->it)) {
+		EntityUpdateEvalCtx *ctx = op->it.data;
+		OpBase_Aware((OpBase *)op, ctx->alias, &ctx->record_idx);
+	}
 
 	return OP_OK;
 }

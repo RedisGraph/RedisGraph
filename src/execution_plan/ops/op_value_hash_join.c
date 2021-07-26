@@ -210,12 +210,16 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString, ValueHashJoinClone,
 				ValueHashJoinFree, false, plan);
 
-	op->join_value_rec_idx = OpBase_Modifies((OpBase *)op, "pivot");
+	OpBase_Modifies((OpBase *)op, "pivot");
 	return (OpBase *)op;
 }
 
-static OpResult ValueHashJoinInit(OpBase *ctx) {
-	ASSERT(ctx->childCount == 2);
+static OpResult ValueHashJoinInit(OpBase *opBase) {
+	ASSERT(opBase->childCount == 2);
+	OpValueHashJoin *op = (OpValueHashJoin *)opBase;
+
+	OpBase_Aware((OpBase *)op, "pivot", &op->join_value_rec_idx);
+
 	return OP_OK;
 }
 

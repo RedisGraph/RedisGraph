@@ -32,7 +32,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
 				UnwindReset, NULL, UnwindClone, UnwindFree, false, plan);
 
-	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
+	OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;
 }
 
@@ -52,6 +52,7 @@ static void _initList(OpUnwind *op) {
 
 static OpResult UnwindInit(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *) opBase;
+	OpBase_Aware((OpBase *)op, op->exp->resolved_name, &op->unwindRecIdx);
 	op->currentRecord = OpBase_CreateRecord((OpBase *)op);
 
 	if(op->op.childCount == 0) {

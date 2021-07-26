@@ -19,7 +19,9 @@ typedef struct {
 } EdgeTraverseCtx;
 
 // Initialize an EdgeTraverseCtx struct to populate edges appropriately for traversal operations.
-EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx);
+EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e);
+
+void Traverse_SetEdgeIdx(EdgeTraverseCtx *ctx, int idx);
 
 // Collect all appropriate edges between the given endpoints.
 void Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest);

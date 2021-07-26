@@ -17,7 +17,7 @@ typedef struct {
 	AR_ExpNode *rhs_exp;                // Right hand side expression to join on.
 	int64_t intersect_idx;              // Current intersection, < number_of_intersections
 	Record *cached_records;             // Cached left hand side records.
-	uint join_value_rec_idx;            // position on joined expression within record.
+	int join_value_rec_idx;             // position on joined expression within record.
 	int64_t number_of_intersections;    // Number of intersections located.
 } OpValueHashJoin;
 
