@@ -76,61 +76,27 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	ResultSet_ReportQueryRuntime(ctx);
 }
 
-/* Map each column to a record index
- * such that when resolving resultset row i column j we'll extract
- * data from record at position columns_record_map[j]. */
-void ResultSet_MapProjection(ResultSet *set, const Record r) {
-	if(!set->columns_record_map) set->columns_record_map = rm_malloc(sizeof(uint) * set->column_count);
-
-	for(uint i = 0; i < set->column_count; i++) {
-		const char *column = set->columns[i];
-		uint idx = Record_GetEntryIdx(r, column);
-		ASSERT(idx != INVALID_INDEX);
-		set->columns_record_map[i] = idx;
-	}
-}
-
 static void _ResultSet_ReplyWithPreamble(ResultSet *set) {
 	if(set->column_count > 0) {
 		// prepare a response containing a header, records, and statistics
 		RedisModule_ReplyWithArray(set->ctx, 3);
 		// emit the table header using the appropriate formatter
-		set->formatter->EmitHeader(set->ctx, set->columns, set->columns_record_map);
+		set->formatter->EmitHeader(set->ctx, set->columns);
 	} else {
 		// prepare a response containing only statistics
 		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
 }
 
-static void _ResultSet_SetColumns(ResultSet *set) {
-	ASSERT(set->columns == NULL);
-
-	AST *ast = QueryCtx_GetAST();
-	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
-	if(root_type == CYPHER_AST_QUERY) {
-		uint clause_count = cypher_ast_query_nclauses(ast->root);
-		const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-		cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
-		bool query_has_return = (last_clause_type == CYPHER_AST_RETURN);
-		if(query_has_return) {
-			set->columns = AST_BuildReturnColumnNames(last_clause);
-			set->column_count = array_len(set->columns);
-		} else if(last_clause_type == CYPHER_AST_CALL) {
-			set->columns = AST_BuildCallColumnNames(last_clause);
-			set->column_count = array_len(set->columns);
-		}
-	}
-}
-
-ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
+ResultSet *NewResultSet(RedisModuleCtx *ctx, const char **columns,
+						ResultSetFormatterType format) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
 	set->gc = QueryCtx_GetGraphCtx();
 	set->format = format;
 	set->formatter = ResultSetFormatter_GetFormatter(format);
-	set->columns = NULL;
-	set->column_count = 0;
-	set->columns_record_map = NULL;
+	set->columns = columns;
+	set->column_count = array_len(columns);
 	set->cells = DataBlock_New(32, sizeof(SIValue), NULL);
 
 	set->stats.labels_added = 0;
@@ -143,8 +109,6 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	set->stats.indices_deleted = STAT_NOT_SET;
 	set->stats.cached = false;
 
-	_ResultSet_SetColumns(set);
-
 	return set;
 }
 
@@ -156,9 +120,8 @@ uint64_t ResultSet_RowCount(const ResultSet *set) {
 
 void _ResultSet_ConsumeRecord(ResultSet *set, Record r) {
 	for(int i = 0; i < set->column_count; i++) {
-		int idx = set->columns_record_map[i];
 		SIValue *cell = DataBlock_AllocateItem(set->cells, NULL);
-		*cell = Record_Get(r, idx);
+		*cell = Record_Get(r, i);
 		SIValue_Persist(cell);
 	}
 
@@ -166,17 +129,13 @@ void _ResultSet_ConsumeRecord(ResultSet *set, Record r) {
 	// this will ensure duplicated projections are not removed
 	// too early, consider: MATCH (a) RETURN max(a.val), max(a.val)
 	for(int i = 0; i < set->column_count; i++) {
-		int idx = set->columns_record_map[i];
-		Record_Remove(r, idx);
+		Record_Remove(r, i);
 	}
 }
 
 int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// if result-set format is NOP, don't process record
 	if(set->format == FORMATTER_NOP) return RESULTSET_OK;
-
-	// if this is the first Record encountered, map columns to record indices
-	if(DataBlock_ItemCount(set->cells) == 0) ResultSet_MapProjection(set, r);
 
 	_ResultSet_ConsumeRecord(set, r);
 
@@ -254,8 +213,6 @@ void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx) {
 void ResultSet_Free(ResultSet *set) {
 	if(!set) return;
 
-	if(set->columns) array_free(set->columns);
-	if(set->columns_record_map) rm_free(set->columns_record_map);
 	if(set->cells) DataBlock_Free(set->cells);
 
 	rm_free(set);

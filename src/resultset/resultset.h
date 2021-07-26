@@ -20,7 +20,6 @@ typedef struct {
 	GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
 	uint column_count;              /* Number of columns in result set. */
 	const char **columns;           /* Field names for each column of results. */
-	uint *columns_record_map;       /* Mapping between column name and record index.*/
 	DataBlock *cells;               /* Accumulated cells */
 	double timer[2];                /* Query runtime tracker. */
 	ResultSetStatistics stats;      /* ResultSet statistics. */
@@ -28,9 +27,8 @@ typedef struct {
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-void ResultSet_MapProjection(ResultSet *set, const Record r);
-
-ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format);
+ResultSet *NewResultSet(RedisModuleCtx *ctx, const char **columns,
+						ResultSetFormatterType format);
 
 // returns number of rows in result-set
 uint64_t ResultSet_RowCount(const ResultSet *set);

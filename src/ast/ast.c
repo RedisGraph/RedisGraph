@@ -251,10 +251,89 @@ void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
 	array_free(identifier_nodes);
 }
 
+// Collect the aliases from a RETURN clause to populate ResultSet column names.
+static const char **_AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
+	const char **columns;
+	if(cypher_ast_return_has_include_existing(return_clause)) {
+		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
+		const char **projection_names = AST_GetProjectAll(return_clause);
+		array_clone(columns, projection_names);
+		return columns;
+	}
+
+	// Collect every alias from the RETURN projections.
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	columns = array_new(const char *, projection_count);
+	for(uint i = 0; i < projection_count; i++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
+		// If the projection was not aliased, the projection itself is an identifier.
+		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(projection);
+		const char *alias = cypher_ast_identifier_get_name(ast_alias);
+		array_append(columns, alias);
+	}
+
+	return columns;
+}
+
+// Collect the aliases from a CALL clause to populate ResultSet column names.
+static const char **_AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
+	const char **proc_output_columns = NULL;
+	uint yield_count = cypher_ast_call_nprojections(call_clause);
+	if(yield_count > 0) {
+		proc_output_columns = array_new(const char *, yield_count);
+		for(uint i = 0; i < yield_count; i ++) {
+			const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
+			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
+
+			const char *identifier = NULL;
+			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+			if(alias_node) {
+				// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
+				identifier = cypher_ast_identifier_get_name(alias_node);
+			} else {
+				// This expression did not have an alias, so it must be an identifier
+				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+				// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
+				identifier = cypher_ast_identifier_get_name(ast_exp);
+			}
+			array_append(proc_output_columns, identifier);
+		}
+	} else {
+		// If the procedure call is missing its yield part, include procedure outputs.
+		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+		ProcedureCtx *proc = Proc_Get(proc_name);
+		ASSERT(proc);
+		unsigned int output_count = Procedure_OutputCount(proc);
+		proc_output_columns = array_new(const char *, output_count);
+		for(uint i = 0; i < output_count; i++) {
+			array_append(proc_output_columns, Procedure_GetOutput(proc, i));
+		}
+		Proc_Free(proc);
+	}
+	return proc_output_columns;
+}
+
+static void _AST_BuildColumns(AST *ast) {
+	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
+	if(root_type == CYPHER_AST_QUERY) {
+		uint clause_count = cypher_ast_query_nclauses(ast->root);
+		const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+		cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
+		bool query_has_return = (last_clause_type == CYPHER_AST_RETURN);
+		if(query_has_return) {
+			ast->column_names = _AST_BuildReturnColumnNames(last_clause);
+		} else if(last_clause_type == CYPHER_AST_CALL) {
+			ast->column_names = _AST_BuildCallColumnNames(last_clause);
+		}
+	}
+}
+
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->ref_count = rm_malloc(sizeof(uint));
 	ast->free_root = false;
+	ast->column_names = NULL;
 	ast->params_parse_result = NULL;
 	ast->referenced_entities = NULL;
 	ast->parse_result = parse_result;
@@ -278,6 +357,9 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// Augment the AST with annotations for naming entities and populating WITH/RETURN * projections.
 	AST_Enrich(ast);
 
+	// Build array of column names if this query returns data.
+	_AST_BuildColumns(ast);
+
 	return ast;
 }
 
@@ -286,6 +368,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->canonical_entity_names = master_ast->canonical_entity_names;
 	ast->free_root = true;
+	ast->column_names = NULL;
 	ast->ref_count = rm_malloc(sizeof(uint));
 	ast->parse_result = NULL;
 	ast->params_parse_result = NULL;
@@ -418,67 +501,6 @@ const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
 	return cypher_astnode_get_annotation(project_all_ctx, projection_clause);
 }
 
-const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
-	const char **columns;
-	if(cypher_ast_return_has_include_existing(return_clause)) {
-		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
-		const char **projection_names = AST_GetProjectAll(return_clause);
-		array_clone(columns, projection_names);
-		return columns;
-	}
-
-	// Collect every alias from the RETURN projections.
-	uint projection_count = cypher_ast_return_nprojections(return_clause);
-	columns = array_new(const char *, projection_count);
-	for(uint i = 0; i < projection_count; i++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
-		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
-		// If the projection was not aliased, the projection itself is an identifier.
-		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(projection);
-		const char *alias = cypher_ast_identifier_get_name(ast_alias);
-		array_append(columns, alias);
-	}
-
-	return columns;
-}
-
-const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
-	const char **proc_output_columns = NULL;
-	uint yield_count = cypher_ast_call_nprojections(call_clause);
-	if(yield_count > 0) {
-		proc_output_columns = array_new(const char *, yield_count);
-		for(uint i = 0; i < yield_count; i ++) {
-			const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
-
-			const char *identifier = NULL;
-			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
-			if(alias_node) {
-				// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
-				identifier = cypher_ast_identifier_get_name(alias_node);
-			} else {
-				// This expression did not have an alias, so it must be an identifier
-				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
-				// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
-				identifier = cypher_ast_identifier_get_name(ast_exp);
-			}
-			array_append(proc_output_columns, identifier);
-		}
-	} else {
-		// If the procedure call is missing its yield part, include procedure outputs.
-		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
-		ProcedureCtx *proc = Proc_Get(proc_name);
-		ASSERT(proc);
-		unsigned int output_count = Procedure_OutputCount(proc);
-		proc_output_columns = array_new(const char *, output_count);
-		for(uint i = 0; i < output_count; i++) {
-			array_append(proc_output_columns, Procedure_GetOutput(proc, i));
-		}
-		Proc_Free(proc);
-	}
-	return proc_output_columns;
-}
-
 const char *_AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = _AST_parse_result_root(partial_result);
@@ -514,6 +536,7 @@ void AST_Free(AST *ast) {
 		} else {
 			/* this is the master AST,
 			 * free the annotation contexts that have been constructed */
+			array_free(ast->column_names);
 			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
 			raxFreeWithCallback(ast->canonical_entity_names, rm_free);
 			parse_result_free(ast->parse_result);

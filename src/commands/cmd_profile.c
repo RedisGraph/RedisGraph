@@ -14,7 +14,7 @@
 #include "../execution_plan/execution_plan.h"
 
 void Graph_Profile(void *args) {
-  bool readonly           = true;
+	bool readonly           = true;
 	bool lockAcquired       = false;
 	ResultSet *result_set   = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
@@ -64,7 +64,7 @@ void Graph_Profile(void *args) {
 	}
 	lockAcquired = true;
 
-	result_set = NewResultSet(ctx, FORMATTER_NOP);
+	result_set = NewResultSet(ctx, NULL, FORMATTER_NOP);
 	// Indicate a cached execution.
 	if(cached) ResultSet_CachedExecution(result_set);
 	QueryCtx_SetResultSet(result_set);
@@ -90,3 +90,4 @@ cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
+

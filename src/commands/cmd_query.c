@@ -62,12 +62,12 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		bool index_added = false;
 		unsigned int nprops = cypher_ast_create_node_props_index_nprops(index_op);
 		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
-												index_op));
+														  index_op));
 		// add index for each property
 		QueryCtx_LockForCommit();
 		for(unsigned int i = 0; i < nprops; i++) {
 			const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
-																index_op, i));
+																  index_op, i));
 			index_added |= (GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK);
 		}
 		// populate the index only when at least one attribute was introduced
@@ -148,7 +148,7 @@ static void _ExecuteQuery(void *args) {
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
-	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
+	ResultSet *result_set = NewResultSet(rm_ctx, ast->column_names, resultset_format);
 	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
 
 	QueryCtx_SetResultSet(result_set);

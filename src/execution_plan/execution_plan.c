@@ -277,6 +277,40 @@ static inline void _implicit_result(ExecutionPlan *plan) {
 	}
 }
 
+static void _reorder_record_map(ExecutionPlan *plan, AST *ast) {
+	// no work needs to be performed if we're not returning results
+	if(ast->column_names == NULL) return;
+
+	rax *record_map = ExecutionPlan_GetMappings(plan);
+
+	rax *new_record_map = raxNew();
+	uint column_count = array_len(ast->column_names);
+	// insert the column names in order with IDs 0..N
+	for(intptr_t i = 0; i < column_count; i ++) {
+		const char *column = ast->column_names[i];
+		raxInsert(new_record_map, (unsigned char *)column, strlen(column),
+				  (void *)i, NULL);
+	}
+
+	raxIterator it;
+	raxStart(&it, record_map);
+	raxSeek(&it, "^", NULL, 0);
+	// iterate over the original record map
+	while(raxNext(&it)) {
+		// retrieve the access-safe version of the volatile entry string
+		char *alias = raxFind(ast->canonical_entity_names, it.key, it.key_len);
+		intptr_t id = raxSize(new_record_map);
+		// add each new entry to the new record map with an updated ID
+		raxTryInsert(new_record_map, (unsigned char *)alias, it.key_len,
+					 (void *)id, NULL);
+	}
+	raxStop(&it);
+
+	// replace the original record map with the updated version
+	raxFree(record_map);
+	plan->record_map = new_record_map;
+}
+
 ExecutionPlan *NewExecutionPlan(void) {
 	AST *ast = QueryCtx_GetAST();
 
@@ -296,6 +330,9 @@ ExecutionPlan *NewExecutionPlan(void) {
 	// the root operation is OpResults only if the query culminates in a RETURN
 	// or CALL clause
 	_implicit_result(plan);
+
+	// migrate returned variables to the start of the record map if necessary
+	_reorder_record_map(plan, ast);
 
 	// clean up
 	array_free(segments);

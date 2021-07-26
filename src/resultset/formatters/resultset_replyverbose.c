@@ -22,42 +22,42 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
 	switch(SI_TYPE(v)) {
-	case T_STRING:
-		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
-		return;
-	case T_INT64:
-		RedisModule_ReplyWithLongLong(ctx, v.longval);
-		return;
-	case T_DOUBLE:
-		_ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
-		return;
-	case T_BOOL:
-		if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
-		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
-		return;
-	case T_NULL:
-		RedisModule_ReplyWithNull(ctx);
-		return;
-	case T_NODE:
-		_ResultSet_VerboseReplyWithNode(ctx, gc, v.ptrval);
-		return;
-	case T_EDGE:
-		_ResultSet_VerboseReplyWithEdge(ctx, gc, v.ptrval);
-		return;
-	case T_ARRAY:
-		_ResultSet_VerboseReplyWithArray(ctx, v);
-		return;
-	case T_PATH:
-		_ResultSet_VerboseReplyWithPath(ctx, v);
-		return;
-	case T_MAP:
-		_ResultSet_VerboseReplyWithMap(ctx, v);
-		return;
-	case T_POINT:
-		_ResultSet_VerboseReplyWithPoint(ctx, v);
-		return;
-	default:
-		RedisModule_Assert("Unhandled value type" && false);
+		case T_STRING:
+			RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
+			return;
+		case T_INT64:
+			RedisModule_ReplyWithLongLong(ctx, v.longval);
+			return;
+		case T_DOUBLE:
+			_ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
+			return;
+		case T_BOOL:
+			if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
+			else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+			return;
+		case T_NULL:
+			RedisModule_ReplyWithNull(ctx);
+			return;
+		case T_NODE:
+			_ResultSet_VerboseReplyWithNode(ctx, gc, v.ptrval);
+			return;
+		case T_EDGE:
+			_ResultSet_VerboseReplyWithEdge(ctx, gc, v.ptrval);
+			return;
+		case T_ARRAY:
+			_ResultSet_VerboseReplyWithArray(ctx, v);
+			return;
+		case T_PATH:
+			_ResultSet_VerboseReplyWithPath(ctx, v);
+			return;
+		case T_MAP:
+			_ResultSet_VerboseReplyWithMap(ctx, v);
+			return;
+		case T_POINT:
+			_ResultSet_VerboseReplyWithPoint(ctx, v);
+			return;
+		default:
+			RedisModule_Assert("Unhandled value type" && false);
 	}
 }
 
@@ -186,13 +186,13 @@ static void _ResultSet_VerboseReplyWithPoint(RedisModuleCtx *ctx, SIValue point)
 	// point({latitude:56.7, longitude:12.78})
 	char buffer[256];
 	int bytes_written = sprintf(buffer, "point({latitude:%f, longitude:%f})",
-			Point_lat(point), Point_lon(point));
+								Point_lat(point), Point_lon(point));
 
 	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 }
 
 void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -203,8 +203,7 @@ void ResultSet_EmitVerboseRow(RedisModuleCtx *ctx, GraphContext *gc,
 }
 
 // Emit the alias or descriptor for each column in the header.
-void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-		uint *col_rec_map) {
+void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
@@ -212,3 +211,4 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+

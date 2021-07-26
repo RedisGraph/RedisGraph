@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -33,13 +33,12 @@ typedef enum {
 } ValueType;
 
 // Typedef for header formatters.
-typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns,
-							   uint *col_rec_map);
+typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns);
 
 // Typedef for row formatters.
 typedef void (*EmitRowFunc)(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols);
-							   
+							SIValue **row, uint numcols);
+
 typedef struct {
 	EmitRowFunc    EmitRow;
 	EmitHeaderFunc EmitHeader;
@@ -58,3 +57,4 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
 	// Output string-formatted number
 	RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
+

@@ -21,14 +21,15 @@ typedef enum {
 } AST_Validation;
 
 typedef struct {
-	const cypher_astnode_t *root;                       // Root element of libcypher-parser AST
-	rax *referenced_entities;                           // Mapping of the referenced entities.
-	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
-	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
 	uint *ref_count;                                    // A pointer to reference counter (for deletion).
+	rax *referenced_entities;                           // Mapping of the referenced entities.
+	const char **column_names;                          // The column names if this query returns data.
+	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
+	const cypher_astnode_t *root;                       // Root element of libcypher-parser AST
 	cypher_parse_result_t *parse_result;                // Query parsing output.
 	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
+	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
 } AST;
 
 // Checks to see if libcypher-parser reported any errors.
@@ -115,12 +116,6 @@ const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity);
 
 // Retrieve the array of projected aliases for a WITH/RETURN * clause.
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause);
-
-// Collect the aliases from a RETURN clause to populate ResultSet column names.
-const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);
-
-// Collect the aliases from a CALL clause to populate ResultSet column names.
-const char **AST_BuildCallColumnNames(const cypher_astnode_t *return_clause);
 
 // Parse a query to construct an immutable AST.
 cypher_parse_result_t *parse_query(const char *query);
