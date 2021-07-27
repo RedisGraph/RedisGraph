@@ -35,6 +35,10 @@ static GrB_Info _init
 
 	GxB_Matrix_Option_get(A, GxB_SPARSITY_STATUS, &sparsity_type) ;
 
+	bool iso;
+	GxB_Matrix_iso(&iso, A); // returns iso status of a matrix
+	iter->iso = iso;
+
 	iter->A              =  A              ;
 	iter->p              =  0              ;
 	iter->size           =  size           ;
@@ -349,10 +353,8 @@ GrB_Info GxB_MatrixTupleIter_next
 		*col = A->i[nnz_idx] ;
 	}
 	if(val) {
-		bool iso;
-		GxB_Matrix_iso(&iso, A); // return iso status of a matrix
 		// in iso matrix the values represented by the first item in Ax
-		GrB_Index offset = iso ? 0 : nnz_idx * iter->size;
+		GrB_Index offset = iter->iso ? 0 : nnz_idx * iter->size;
 		memcpy(val, (char*)A->x + offset, iter->size);
 	}
 

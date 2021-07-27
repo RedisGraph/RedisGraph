@@ -8066,6 +8066,7 @@ typedef struct
     GrB_Index row_idx ;        // Index of current row
     GrB_Index nrows ;          // Total number of rows in matrix
     size_t size ;              // Size of an entry in A
+    bool iso ;                 // is the matrix isomorphic
 } GxB_MatrixTupleIter ;
 
 // Create a new list of matrix iterators
