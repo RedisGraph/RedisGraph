@@ -8,7 +8,7 @@
 #include "rg_matrix.h"
 #include "../../util/rmalloc.h"
 
-#define DELTA_MAX_PENDING_CHANGES 2
+#define DELTA_MAX_PENDING_CHANGES 10000
 
 static inline void _SetUndirty
 (

@@ -157,6 +157,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		Graph_CreateEdge(g, 2, 3, war_relation_id, &e);
 		Graph_CreateEdge(g, 3, 2, war_relation_id, &e);
 
+		Graph_ApplyAllPending(g);
 		Graph_ReleaseLock(g);
 	}
 
@@ -251,9 +252,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		GrB_Matrix_nvals(&bvals, b);
 
 		if(acols != bcols || arows != brows || avals != bvals) {
-			printf("acols: %llu bcols: %llu", acols, bcols);
-			printf("arows: %llu brows: %llu", arows, brows);
-			printf("avals: %llu bvals: %llu", avals, bvals);
+			printf("acols: %llu bcols: %llu\n", acols, bcols);
+			printf("arows: %llu brows: %llu\n", arows, brows);
+			printf("avals: %llu bvals: %llu\n", avals, bvals);
 
 			GrB_Matrix_free(&b);
 			return false;

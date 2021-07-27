@@ -61,20 +61,26 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
 	RG_Matrix     L    =  Graph_GetLabelMatrix(gc->g, schema->id);
 
+	info = RG_Matrix_nrows(&nrows, L);
+	ASSERT(info == GrB_SUCCESS);
+
+	// make sure range is within matrix bounds
+	UnsignedRange_TightenRange(op->id_range, OP_GE, 0);
+	UnsignedRange_TightenRange(op->id_range, OP_LT, nrows);
+
+	if(!UnsignedRange_IsValid(op->id_range)) return GrB_DIMENSION_MISMATCH;
+
 	if(op->id_range->include_min) minId = op->id_range->min;
 	else minId = op->id_range->min + 1;
 
 	if(op->id_range->include_max) maxId = op->id_range->max;
 	else maxId = op->id_range->max - 1;
 
-	info = RG_Matrix_nrows(&nrows, L);
-	ASSERT(info == GrB_SUCCESS);
-
 	info = RG_MatrixTupleIter_new(&(op->iter), L);
 	ASSERT(info == GrB_SUCCESS);
 
 	// use range only when minId and maxId are subset of the entire matrix
-	if(minId >= 0 && maxId < nrows) {
+	if(minId > 0 || maxId < nrows-1) {
 		info = RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
 	}
 
@@ -152,7 +158,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 			Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
 			// No label matrix, it might be created in the next iteration.
 			if(!schema) continue;
-			_ConstructIterator(op, schema); // OK to fail (invalid range) iter will be depleted.
+			if(_ConstructIterator(op, schema) != GrB_SUCCESS) continue;
 		} else {
 			// Iterator depleted - reset.
 			// TODO: GxB_MatrixTupleIter_reset
