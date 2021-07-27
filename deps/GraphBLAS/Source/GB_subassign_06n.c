@@ -74,12 +74,12 @@ GrB_Info GB_subassign_06n
     GB_GET_C ;      // C must not be bitmap
     int64_t zorig = C->nzombies ;
     const int64_t Cnvec = C->nvec ;
-    const int64_t *GB_RESTRICT Ch = C->h ;
-    const int64_t *GB_RESTRICT Cp = C->p ;
+    const int64_t *restrict Ch = C->h ;
+    const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
     GB_GET_MASK ;
     GB_GET_A ;
-    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *restrict Ah = A->h ;
     const int64_t Anvec = A->nvec ;
     const bool A_is_hyper = (Ah != NULL) ;
     GrB_BinaryOp accum = NULL ;
@@ -428,7 +428,7 @@ GrB_Info GB_subassign_06n
                             // C (iC,jC) is not present, A (i,j) is present
                             // ----[. A 1]--------------------------------------
                             // [. A 1]: action: ( insert )
-                            GB_PENDING_INSERT (Ax +(pA*asize)) ;
+                            GB_PENDING_INSERT_aij ;
                         }
                     }
                 }

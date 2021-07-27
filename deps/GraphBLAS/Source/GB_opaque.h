@@ -10,6 +10,8 @@
 #ifndef GB_OPAQUE_H
 #define GB_OPAQUE_H
 
+#define GB_OPAQUE(x) GB (GB_EVAL2 (_opaque__, x))
+
 //------------------------------------------------------------------------------
 // GB_void: like void, but valid for pointer arithmetic
 //------------------------------------------------------------------------------
@@ -24,7 +26,7 @@ typedef enum
 {
     // the 14 scalar types: 13 built-in types, and one user-defined type code
     GB_ignore_code  = 0,
-    GB_BOOL_code    = 1,        // 'logical' in MATLAB
+    GB_BOOL_code    = 1,        // 'logical' in @GrB interface
     GB_INT8_code    = 2,
     GB_UINT8_code   = 3,
     GB_INT16_code   = 4,
@@ -33,9 +35,9 @@ typedef enum
     GB_UINT32_code  = 7,
     GB_INT64_code   = 8,
     GB_UINT64_code  = 9,
-    GB_FP32_code    = 10,       // float ('single' in MATLAB)
+    GB_FP32_code    = 10,       // float ('single' in @GrB interface)
     GB_FP64_code    = 11,       // double
-    GB_FC32_code    = 12,       // float complex ('single complex' in MATLAB)
+    GB_FC32_code    = 12,       // float complex ('single complex' in @GrB)
     GB_FC64_code    = 13,       // double complex
     GB_UDT_code     = 14        // void *, user-defined type
 }
@@ -51,10 +53,11 @@ typedef enum
     // NOP
     //--------------------------------------------------------------------------
 
+    GB_BAD_opcode       = -1,   // erroneous
     GB_NOP_opcode       = 0,    // no operation
 
     //==========================================================================
-    // binary operators
+    // unary operators
     //==========================================================================
 
     //--------------------------------------------------------------------------
@@ -325,6 +328,7 @@ GB_Select_Opcode ;
 struct GB_Type_opaque       // content of GrB_Type
 {
     int64_t magic ;         // for detecting uninitialized objects
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     size_t size ;           // size of the type
     GB_Type_code code ;     // the type code
     char name [GB_LEN] ;    // name of the type
@@ -333,6 +337,7 @@ struct GB_Type_opaque       // content of GrB_Type
 struct GB_UnaryOp_opaque    // content of GrB_UnaryOp
 {
     int64_t magic ;         // for detecting uninitialized objects
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     GrB_Type xtype ;        // type of x
     GrB_Type ztype ;        // type of z
     GxB_unary_function function ;        // a pointer to the unary function
@@ -343,6 +348,7 @@ struct GB_UnaryOp_opaque    // content of GrB_UnaryOp
 struct GB_BinaryOp_opaque   // content of GrB_BinaryOp
 {
     int64_t magic ;         // for detecting uninitialized objects
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     GrB_Type xtype ;        // type of x
     GrB_Type ytype ;        // type of y
     GrB_Type ztype ;        // type of z
@@ -354,6 +360,7 @@ struct GB_BinaryOp_opaque   // content of GrB_BinaryOp
 struct GB_SelectOp_opaque   // content of GxB_SelectOp
 {
     int64_t magic ;         // for detecting uninitialized objects
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     GrB_Type xtype ;        // type of x, or NULL if generic
     GrB_Type ttype ;        // type of thunk, or NULL if not used or generic
     GxB_select_function function ;        // a pointer to the select function
@@ -364,34 +371,38 @@ struct GB_SelectOp_opaque   // content of GxB_SelectOp
 struct GB_Monoid_opaque     // content of GrB_Monoid
 {
     int64_t magic ;         // for detecting uninitialized objects
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     GrB_BinaryOp op ;       // binary operator of the monoid
     void *identity ;        // identity of the monoid; type is op->ztype
     void *terminal ;        // early-exit (NULL if no value); type is op->ztype
-    bool monoid_is_builtin ;       // built-in or user defined
+    size_t identity_size ;  // size of the malloc'd block for identity, or 0
+    size_t terminal_size ;  // size of the malloc'd block for terminal, or 0
 } ;
 
 struct GB_Semiring_opaque   // content of GrB_Semiring
 {
     int64_t magic ;         // for detecting uninitialized objects
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     GrB_Monoid add ;        // add operator of the semiring
     GrB_BinaryOp multiply ; // multiply operator of the semiring
-    bool semiring_is_builtin ;       // built-in or user defined
 } ;
 
 struct GB_Descriptor_opaque // content of GrB_Descriptor
 {
+    // first 4 items exactly match GrB_Matrix, GrB_Vector, GxB_Scalar structs:
     int64_t magic ;         // for detecting uninitialized objects
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     char *logger ;          // error logger string
+    size_t logger_size ;    // size of the malloc'd block for logger, or 0
+    // specific to the descriptor struct:
+    double chunk ;          // chunk size for # of threads for small problems
     GrB_Desc_Value out ;    // output descriptor
     GrB_Desc_Value mask ;   // mask descriptor
     GrB_Desc_Value in0 ;    // first input descriptor (A for C=A*B, for example)
     GrB_Desc_Value in1 ;    // second input descriptor (B for C=A*B)
     GrB_Desc_Value axb ;    // for selecting the method for C=A*B
     int nthreads_max ;      // max # threads to use in this call to GraphBLAS
-    double chunk ;          // chunk size for # of threads for small problems
-    bool predefined ;       // if true, descriptor is predefined
     bool do_sort ;          // if nonzero, do the sort in GrB_mxm
-    // #include "GB_Descriptor_opaque_mkl_template.h"
 } ;
 
 //------------------------------------------------------------------------------
@@ -403,12 +414,16 @@ struct GB_Descriptor_opaque // content of GrB_Descriptor
 
 struct GB_Pending_struct    // list of pending tuples for a matrix
 {
+    size_t header_size ;    // size of the malloc'd block for this struct, or 0
     int64_t n ;         // number of pending tuples to add to matrix
     int64_t nmax ;      // size of i,j,x
     bool sorted ;       // true if pending tuples are in sorted order
     int64_t *i ;        // row indices of pending tuples
+    size_t i_size ;
     int64_t *j ;        // col indices of pending tuples; NULL if A->vdim <= 1
+    size_t j_size ;
     GB_void *x ;        // values of pending tuples
+    size_t x_size ;
     GrB_Type type ;     // the type of s
     size_t size ;       // type->size
     GrB_BinaryOp op ;   // operator to assemble pending tuples
@@ -435,6 +450,17 @@ struct GB_Matrix_opaque     // content of GrB_Matrix
     #include "GB_matrix.h"
 } ;
 
+static inline GrB_Matrix GB_clear_static_header // clear a static header
+(
+    GrB_Matrix C    // static header to clear
+)
+{ 
+    ASSERT (C != NULL) ;
+    memset (C, 0, sizeof (struct GB_Matrix_opaque)) ;
+    C->static_header = true ;
+    return (C) ;
+}
+
 //------------------------------------------------------------------------------
 // Accessing the content of a scalar, vector, or matrix
 //------------------------------------------------------------------------------
@@ -443,7 +469,7 @@ struct GB_Matrix_opaque     // content of GrB_Matrix
 #define GBH(Ah,k)       ((Ah == NULL) ? (k) : Ah [k])
 #define GBI(Ai,p,avlen) ((Ai == NULL) ? ((p) % (avlen)) : Ai [p])
 #define GBB(Ab,p)       ((Ab == NULL) ? 1 : Ab [p])
-// #define GBX(...)     TODO: constant-valued matrices
+#define GBX(Ax,p,A_iso) (Ax [(A_iso) ? 0 : (p)])
 
 #endif
 

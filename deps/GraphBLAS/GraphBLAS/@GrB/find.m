@@ -3,7 +3,7 @@ function [I, J, X] = find (G, k, search)
 % [I, J, X] = find (G) extracts the nonzeros from a matrix G.
 % X has the same type as G ('double', 'single', 'int8', ...).
 %
-% Linear 1D indexing (I = find (S) for the MATLAB matrix S) is not yet
+% Linear 1D indexing (I = find (S) for the built-in matrix S) is not yet
 % supported.
 %
 % A GraphBLAS matrix G may contain explicit zero entries, and by default
@@ -22,7 +22,7 @@ function [I, J, X] = find (G, k, search)
 % See also sparse, GrB.build, GrB.extracttuples.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: add linear indexing
 
@@ -77,7 +77,7 @@ else
         I = gbextracttuples (G) ;
     else
         % FUTURE: this does not return the same thing as I = find (G)
-        % in MATLAB. (need to add 1D linear indexing)
+        % for the built-in find (..). (need to add 1D linear indexing)
         error ('Linear indexing not yet supported') ;
         % I = gbextracttuples (G) ;
     end

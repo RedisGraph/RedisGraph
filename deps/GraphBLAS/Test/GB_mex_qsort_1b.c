@@ -51,11 +51,6 @@ void mexFunction
     int64_t *Jout = mxGetData (pargout [1]) ;
     memcpy (Jout, J, n * sizeof (int64_t)) ;
 
-    GB_MEX_TIC ;
-
     GB_qsort_1b (Iout, Jout, sizeof (int64_t), n) ;
-
-    GB_MEX_TOC ;
-    GB_mx_put_time ( ) ;
 }
 

@@ -111,7 +111,7 @@ void mexFunction
     GrB_Matrix_new (&C, A->type, nrows, ncols) ;
     GrB_mxm (C, NULL, NULL, semiring, A, T, desc) ;
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C from GrB_mxm_triple", true) ;
 
     FREE_ALL ;

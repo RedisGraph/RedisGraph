@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -11,7 +11,9 @@
 
 // gbselectopinfo (selectop)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: GrB.selectopinfo (selectop)"
 
 void mexFunction
 (
@@ -26,8 +28,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin == 1 && nargout == 0,
-        "usage: GrB.selectopinfo (selectop)") ;
+    gb_usage (nargin == 1 && nargout == 0, USAGE) ;
 
     //--------------------------------------------------------------------------
     // construct the GraphBLAS selectop and print it

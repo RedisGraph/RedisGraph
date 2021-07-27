@@ -1,3 +1,4 @@
+#include "mex.h"
 #include "../spok.h"
 
 /* spok_invalid: returns an invalid sparse matrix to test SPOK. */

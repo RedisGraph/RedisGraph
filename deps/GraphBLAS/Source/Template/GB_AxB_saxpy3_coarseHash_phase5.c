@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_saxpy3_coarseHash_phase5:
+// GB_AxB_saxpy3_coarseHash_phase5: C=A*B for coarse hash method, phase 5
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -28,16 +28,12 @@
 
         #ifdef GB_CHECK_MASK_ij
 
-            // The mask M is packed (full, bitmap, or sparse/hyper and not
-            // jumbled with all entries present in the entire matrix).  Get
-            // pointers Mjb and Mjx into the M(:,j) vector.
+            // The mask M is bitmap or as-if-full
             GB_GET_M_j                  // get M(:,j)
-            #ifndef M_SIZE
-            #define M_SIZE 1
+            #ifdef GB_MASK_IS_BITMAP_AND_STRUCTURAL
+            // Mjb is the M(:,j) vector, if M is bitmap and structural
+            const int8_t *restrict Mjb = Mb + pM_start ;
             #endif
-            const M_TYPE *GB_RESTRICT Mjx = Mask_struct ? NULL :
-                ((M_TYPE *) Mx) + (M_SIZE * pM_start) ;
-            const int8_t *GB_RESTRICT Mjb = M_is_bitmap ? (Mb+pM_start) : NULL ;
 
         #else
 
@@ -97,6 +93,5 @@
     }
 }
 
-#undef M_TYPE
-#undef M_SIZE
+#undef GB_MASK_IS_BITMAP_AND_STRUCTURAL
 

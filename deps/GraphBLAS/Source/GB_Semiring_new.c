@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_semiring_new: create a new semiring
+// GB_Semiring_new: create a new semiring
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -11,7 +11,7 @@
 
 GrB_Info GB_Semiring_new            // create a semiring
 (
-    GrB_Semiring *semiring,         // handle of semiring to create
+    GrB_Semiring semiring,          // semiring to create
     GrB_Monoid add,                 // additive monoid of the semiring
     GrB_BinaryOp multiply           // multiply operator of the semiring
 )
@@ -22,7 +22,6 @@ GrB_Info GB_Semiring_new            // create a semiring
     //--------------------------------------------------------------------------
 
     ASSERT (semiring != NULL) ;
-    (*semiring) = NULL ;
     ASSERT (add != NULL) ;
     ASSERT (multiply != NULL) ;
     ASSERT_MONOID_OK (add, "semiring->add", GB0) ;
@@ -35,26 +34,15 @@ GrB_Info GB_Semiring_new            // create a semiring
     // z = multiply(x,y); type of z must match monoid z = add(z,z)
     if (multiply->ztype != add->op->ztype)
     { 
-        (*semiring) = NULL ;
         return (GrB_DOMAIN_MISMATCH) ;
     }
 
-    // allocate the semiring
-    (*semiring) = GB_CALLOC (1, struct GB_Semiring_opaque) ;
-    if (*semiring == NULL)
-    { 
-        // out of memory
-        return (GrB_OUT_OF_MEMORY) ;
-    }
-
     // initialize the semiring
-    GrB_Semiring s = *semiring ;
-    s->magic = GB_MAGIC ;
-    s->add = add ;
-    s->multiply = multiply ;
-    s->semiring_is_builtin = false ;
+    semiring->magic = GB_MAGIC ;
+    semiring->add = add ;
+    semiring->multiply = multiply ;
 
-    ASSERT_SEMIRING_OK (s, "new semiring", GB0) ;
+    ASSERT_SEMIRING_OK (semiring, "new semiring", GB0) ;
     return (GrB_SUCCESS) ;
 }
 

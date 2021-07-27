@@ -1,46 +1,47 @@
 classdef GrB
-%GrB GraphBLAS sparse matrices for MATLAB.
+%GrB GraphBLAS sparse matrices for Octave/MATLAB.
 %
 % GraphBLAS is a library for creating graph algorithms based on sparse
 % linear algebraic operations over semirings.  Visit http://graphblas.org
 % for more details and resources.  See also the SuiteSparse:GraphBLAS User
 % Guide in this package.
 %
-% The MATLAB GrB class represents a GraphBLAS sparse matrix.  The GrB
-% method creates a GraphBLAS sparse matrix from a MATLAB matrix.  Other
+% The GrB class represents a GraphBLAS sparse matrix.  The GrB
+% method creates a GraphBLAS sparse matrix from a built-in matrix.  Other
 % methods also generate GrB matrices.  For example:
 %
 %   G = GrB.subassign (C, M, A) ;
 %
 % constructs a GraphBLAS matrix G, which is the result of C<M>=A in
-% GraphBLAS notation (like C(M)=A(M) in MATLAB).  The matrices used in any
-% GrB.method may be MATLAB matrices (sparse or full) or GraphBLAS matrices
-% (hyper, sparse, bitmap, or full, by row or column), in any combination.
+% GraphBLAS notation (like C(M)=A(M)).  The matrices used in any
+% GrB.method may be built-in matrices (sparse or full) or GraphBLAS
+% matrices (hyper, sparse, bitmap, or full, by row or column), in any
+% combination.
 %
 % --------------------
 % The GrB constructor:
 % --------------------
 %
 %   The GrB constructor creates a GraphBLAS matrix.  The input A may be
-%   any MATLAB or GraphBLAS matrix:
+%   any built-in or GraphBLAS matrix:
 %
 %   C = GrB (A) ;            GraphBLAS copy of a matrix A, same type
 %   C = GrB (m, n) ;         m-by-n GraphBLAS double matrix, no entries
 %   C = GrB (..., type) ;    create or typecast to a different type
 %   C = GrB (..., format) ;  create in a specified format
 %
-%   The m and n parameters above are MATLAB scalars.  The type and format
+%   The m and n parameters above are built-in scalars.  The type and format
 %   parameters are strings.  The default format is 'by col', to match the
-%   format used in MATLAB (see also GrB.format), but many graph
+%   format used in built-in (see also GrB.format), but many graph
 %   algorithms are faster if the format is 'by row'.  The format can also
 %   specify the data structure to use (hypersparse, sparse, bitmap, and/or
 %   full).
 %
-%   The usage C = GrB (m, n, type) is analgous to A = sparse (m, n),
-%   which creates an empty MATLAB sparse matrix A.  The type parameter is
-%   a string, which defaults to 'double' if not present.
+%   The usage C = GrB (m, n, type) is analgous to A = sparse (m, n), which
+%   creates an empty built-in sparse matrix A.  The type parameter is a
+%   string, which defaults to 'double' if not present.
 %
-%   For the usage C = GrB (A, type), A is either a MATLAB sparse or full
+%   For the usage C = GrB (A, type), A is either a built-in sparse or full
 %   matrix, or a GraphBLAS sparse matrix object.  C is created as a
 %   GraphBLAS sparse matrix object that contains a copy of A, typecasted
 %   to the given type if the type string does not match the type of A.
@@ -50,8 +51,8 @@ classdef GrB
 % Matrix types:
 % --------------------
 %
-%   Most of the valid type strings correspond to MATLAB class of the same
-%   name (see 'help class'):
+%   Most of the valid type strings correspond to built-in class of the
+%   same name (see 'help class'):
 %
 %       'logical'           8-bit boolean
 %       'int8'              8-bit signed integer
@@ -67,7 +68,7 @@ classdef GrB
 %       'single complex'    single complex
 %       'double complex'    double complex (also just 'complex')
 %
-%   In MATLAB matrices, complex is an attribute, not a class.  In GrB
+%   In built-in matrices, complex is an attribute, not a class.  In GrB
 %   matrices, 'double complex' and 'single complex' are treated as their
 %   own data types.
 %
@@ -78,11 +79,10 @@ classdef GrB
 %   The format of a GraphBLAS matrix can have a large impact on
 %   performance.  GraphBLAS matrices can be stored by column or by row.
 %   The corresponding format string is 'by col' or 'by row', respectively.
-%   Since the only format that MATLAB supports for its sparse and full
-%   matrices is 'by col', that is the default format for GraphBLAS
-%   matrices via this MATLAB interfance.  However, the default for the C
-%   API is 'by row' since graph algorithms tend to be faster with that
-%   format.
+%   Since the only format for built-in sparse and full matrices is 'by
+%   col', that is the default format for GraphBLAS matrices via this
+%   interface to GraphBLAS.  However, the default for the C API is 'by
+%   row' since graph algorithms tend to be faster with that format.
 %
 %   Column vectors are always stored 'by col', and row vectors are always
 %   stored 'by row'.  The format for new matrices propagates from the
@@ -92,8 +92,8 @@ classdef GrB
 %   by the descriptor (if present), or by the default format (see
 %   GrB.format).
 %
-%   When a GraphBLAS matrix is converted into a MATLAB sparse or full
-%   matrix, it is always returned to MATLAB 'by col'.
+%   When a GraphBLAS matrix is converted into a built-in sparse or full
+%   matrix, it is always returned as 'by col'.
 %
 %   The format can also specify the data structure to use.  By default
 %   GraphBLAS selects automatically between hypersparse, sparse, bitmap,
@@ -103,7 +103,7 @@ classdef GrB
 % Integer operations:
 %--------------------
 %
-%   Operations on integer values differ from MATLAB.  In MATLAB,
+%   Operations on integer values differ from built-in operations, where
 %   uint8(255)+1 is 255, since the arithmetic saturates.  This is not
 %   possible in matrix operations such as C=A*B, since saturation of
 %   integer arithmetic would render most of the monoids useless.
@@ -120,7 +120,7 @@ classdef GrB
 %
 %   C = GrB (...)           construct a GraphBLAS matrix
 %
-% Overloaded MATLAB operators (all except 'colon'):
+% Overloaded operators (all except 'colon'):
 %
 %   C = and (A, B)          C = A & B
 %   C = ctranspose (G)      C = G'
@@ -152,7 +152,7 @@ classdef GrB
 %   C = uplus (G)           C = +G
 %   C = vertcat (A, B)      C = [A ; B]
 %
-% Overloaded MATLAB functions:
+% Overloaded functions:
 %
 %   C = abs (G)             absolute value
 %   C = acos (G)            inverse cosine
@@ -183,10 +183,12 @@ classdef GrB
 %   C = bitor (A, B, ...)           bitwise or
 %   C = bitxor (A, B, ...)          bitwise xor
 %
-%   C = cast (G, ...)       cast GrB matrix to MATLAB matrix
+%   C = cast (G, ...)       cast GrB matrix to built-in matrix
+%   C = cat (dim, ...)      contatenate matrices
 %   C = ceil (G)            round towards infinity
+%   C = cell2mat (A)        concatenate a cell array of matrices
 %   p = colamd (G)          column approximate minimum degree ordering
-%   C = complex (G)         cast GrB matrix to MATLAB sparse complex
+%   C = complex (G)         cast GrB matrix to built-in sparse complex
 %   C = conj (G)            complex conjugate
 %   C = cos (G)             cosine
 %   C = cosh (G)            hyperbolic cosine
@@ -197,10 +199,10 @@ classdef GrB
 %
 %   C = diag (A, k)         diagonal matrices and diagonals
 %   DiGraph = digraph (G,...)   directed Graph
-%   disp (A, level)         display a MATLAB or GrB matrix A
+%   disp (A, level)         display a built-in or GrB matrix A
 %   display (G)             display a GrB matrix G; same as disp(G,2)
 %   [...] = dmperm (G)      Dulmage-Mendelsohn permutation
-%   C = double (G)          cast GrB matrix to MATLAB sparse double
+%   C = double (G)          cast GrB matrix to built-in sparse double
 %
 %   [V, ...] = eig (G,...)  eigenvalues and eigenvectors
 %   G = GrB.empty (m, n)    empty matrix for the GrB class
@@ -211,7 +213,6 @@ classdef GrB
 %   C = exp (G)             natural exponent
 %   C = expm1 (G)           exp (x) - 1
 %
-%   C = false (...)         all-false logical matrix
 %   [I,J,X] = find (G, ...) extract entries from a matrix
 %   C = fix (G)             round towards zero
 %   C = flip (G, dim)       flip the order of entries
@@ -226,10 +227,10 @@ classdef GrB
 %   C = hypot (A, B)        sqrt of sum of squares
 %
 %   C = imag (G)            imaginary part of a complex matrix
-%   C = int8 (G)            cast GrB matrix to MATLAB full int8
-%   C = int16 (G)           cast GrB matrix to MATLAB full int16
-%   C = int32 (G)           cast GrB matrix to MATLAB full int32
-%   C = int64 (G)           cast GrB matrix to MATLAB full int64
+%   C = int8 (G)            cast GrB matrix to built-in full int8
+%   C = int16 (G)           cast GrB matrix to built-in full int16
+%   C = int32 (G)           cast GrB matrix to built-in full int32
+%   C = int64 (G)           cast GrB matrix to built-in full int64
 %   s = isa (G, classname)  check if a GrB matrix is of a specific class
 %   s = isbanded (G,...)    true if G is banded
 %   s = iscolumn (G)        true if n=1, for an m-by-n GrB matrix G
@@ -261,18 +262,19 @@ classdef GrB
 %   C = log10 (G)           base-10 logarithm
 %   C = log1p (G)           log (1+x)
 %   [F, E] = log2 (G)       base-2 logarithm
-%   C = logical (G)         cast GrB matrix to MATLAB sparse logical
+%   C = logical (G)         cast GrB matrix to built-in sparse logical
 %
+%   C = mat2cell (A,m,n)    break a matrix into a cell array of matrices
 %   C = max (A,B,option)    reduce via max, to vector or scalar
 %   C = min (A,B,option)    reduce via min, to vector or scalar
 %
 %   e = nnz (G)             number of entries in a GrB matrix G
 %   X = nonzeros (G)        extract all entries from a GrB matrix
 %   s = norm (G, kind)      norm of a GrB matrix
+%   C = num2cell (A,dim)    convert a matrix into a cell array
 %   e = numel (G)           m*n for an m-by-n GrB matrix G
 %   e = nzmax (G)           number of entries in a GrB matrix G
 %
-%   C = ones (...)          matrix with all ones, same type as G
 %
 %   C = pow2 (F, E)         base-2 power
 %   C = prod (G, option)    reduce via product, to vector or scalar
@@ -286,7 +288,7 @@ classdef GrB
 %   C = sech (G)            hyperbolic secant
 %   C = sign (G)            signum function
 %   C = sin (G)             sine
-%   C = single (G)          cast GrB matrix to MATLAB full single
+%   C = single (G)          cast GrB matrix to built-in full single
 %   C = sinh (G)            hyperbolic sine
 %   [m,n,t] = size (G,dim)  size and type of a GrB matrix
 %   C = sparse (G)          makes a copy of a GrB matrix
@@ -305,28 +307,25 @@ classdef GrB
 %   C = tanh (G)            hyperbolic tangent
 %   L = tril (G, k)         lower triangular part of GrB matrix G
 %   U = triu (G, k)         upper triangular part of GrB matrix G
-%   C = true (...)          all-true logical matrix
 %
-%   C = uint8 (G)           cast GrB matrix to MATLAB full uint8
-%   C = uint16 (G)          cast GrB matrix to MATLAB full uint16
-%   C = uint32 (G)          cast GrB matrix to MATLAB full uint32
-%   C = uint64 (G)          cast GrB matrix to MATLAB full uint64
+%   C = uint8 (G)           cast GrB matrix to built-in full uint8
+%   C = uint16 (G)          cast GrB matrix to built-in full uint16
+%   C = uint32 (G)          cast GrB matrix to built-in full uint32
+%   C = uint64 (G)          cast GrB matrix to built-in full uint64
 %
 %   C = xor (A, B)          exclusive or
-%
-%   C = zeros (...)         all-zero matrix, same type as G
 %
 %-------------------------------------------------------------------------
 % Static Methods:
 %-------------------------------------------------------------------------
 %
 %   The Static Methods for the GrB class can be used on input matrices of
-%   any kind: GraphBLAS sparse matrices, MATLAB sparse matrices, or MATLAB
-%   full matrices, in any combination.  The output matrix C is a GraphBLAS
-%   matrix, by default, but can be optionally returned as a MATLAB sparse
-%   or full matrix.  The static methods divide into three categories:
-%   those that perform basic functions, graph algorithms, and the 12
-%   foundational GraphBLAS operations.
+%   any kind: GraphBLAS sparse matrices, built-in sparse matrices, or
+%   built-in full matrices, in any combination.  The output matrix C is a
+%   GraphBLAS matrix, by default, but can be optionally returned as a
+%   built-in sparse or full matrix.  The static methods divide into three
+%   categories: those that perform basic functions, graph algorithms, and
+%   the 12 foundational GraphBLAS operations.
 %
 %---------------------------
 % GraphBLAS basic functions:
@@ -348,6 +347,12 @@ classdef GrB
 %   GrB.semiringinfo (s, type)   list properties of a semiring
 %   GrB.unopinfo (op, type)      list properties of a unary operator
 %
+%   basic matrices:
+%   C = GrB.false (...)          all-false logical matrix
+%   C = GrB.true (...)           all-true logical matrix
+%   C = GrB.ones (...)           matrix with all ones
+%   C = GrB.zeros (...)          all-zero matrix
+%
 %   operations:
 %   C = GrB.build (I,J,X,m,n,dup,type,desc) build a GrB matrix from
 %                                list of entries (like C=sparse(I,J,X...))
@@ -367,9 +372,13 @@ classdef GrB
 %   C = GrB.prune (A, id)        prune entries equal to id
 %   C = GrB.random (...)         random GraphBLAS matrix (like 'sprand')
 %   C = GrB.speye (m,n,type)     identity matrix of any type (like 'speye')
-%   t = GrB.type (A)             get the type of a MATLAB or GrB matrix A
+%   t = GrB.type (A)             get the type of a built-in or GrB matrix A
 %   v = GrB.version              string with SuiteSparse:GraphBLAS version
 %   v = GrB.ver                  struct with SuiteSparse:GraphBLAS version
+%
+%   load/save:
+%   C = GrB.load (filename)      load a single matrix from a file
+%   GrB.save (A, filename)       save a single matrix to a file
 %
 %-------------------------------------
 % Static Methods for graph algorithms:
@@ -389,19 +398,19 @@ classdef GrB
 %-----------------------------------
 %
 %   GraphBLAS has 12 foundational operations, listed below.  All have
-%   similar parameters.  The full set of input parameters is listed in
-%   the order in which they appear in the GraphBLAS C API, except that
-%   for the MATLAB interface, Cin and C are different matrices.  They
-%   combine into a single input/output matrix in the GraphBLAS C API.  In
-%   the MATLAB interface, many of the parameters become optional, and
-%   they can appear in different order.
+%   similar parameters.  The full set of input parameters is listed in the
+%   order in which they appear in the GraphBLAS C API, except that for the
+%   @GrB interface, Cin and C are different matrices.  They combine into a
+%   single input/output matrix in the GraphBLAS C API.  In the @GrB
+%   interface, many of the parameters become optional, and they can appear
+%   in different order.
 %
 %   GrB.apply       apply a unary operator
 %   GrB.apply2      apply a binary operator
 %   GrB.assign      sparse matrix assignment, such as C(I,J)=A
 %   GrB.eadd        element-wise addition
 %   GrB.emult       element-wise multiplication
-%   GrB.extract     extract submatrix, like C=A(I,J) in MATLAB
+%   GrB.extract     extract submatrix, like C=A(I,J)
 %   GrB.kronecker   Kronecker product
 %   GrB.mxm         sparse matrix-matrix multiplication over a semiring
 %   GrB.reduce      reduce a matrix to a scalar
@@ -415,7 +424,7 @@ classdef GrB
 %
 %       C<#M,replace> = accum (C, operation (A or A', B or B'))
 %
-%   C is both an input and output matrix.  In this MATLAB interface to
+%   C is both an input and output matrix.  In this interface to
 %   GraphBLAS, it is split into Cin (the value of C on input) and C
 %   (the value of C on output).  M is the optional mask matrix, and #M is
 %   either M or ~M depending on whether or not the mask is complemented
@@ -432,7 +441,7 @@ classdef GrB
 %   matrix addition (see GrB.eadd), in terms of the structure of the
 %   result C, but any binary operator can be used.
 %
-%   The mask M acts like MATLAB logical indexing.  If M(i,j)=1 then
+%   The mask M acts like built-in logical indexing.  If M(i,j)=1 then
 %   C(i,j) can be modified; if zero, it cannot be modified by the
 %   operation.
 %
@@ -502,10 +511,10 @@ classdef GrB
 %       with 2  cell inputs: I, J
 %
 %       Each cell array may appear with 0, 1, 2, or 3 items:
-%           0: { }                  ":" in MATLAB notation
+%           0: { }                  ":" in built-in notation
 %           1: { list }             a list of integer indices
-%           2: { start,fini }       start:fini in MATLAB notation
-%           3: { start,inc,fini }   start:inc:fini in MATLAB notation
+%           2: { start,fini }       start:fini in built-in notation
+%           3: { start,inc,fini }   start:inc:fini in built-in notation
 %
 %   (4) The descriptor is an optional struct.  If present, it must
 %       appear last, after all other parameters.
@@ -556,7 +565,7 @@ classdef GrB
 % See also sparse.
 %
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 properties (SetAccess = private, GetAccess = private)
     % The struct contains the entire opaque content of a GraphBLAS
@@ -598,10 +607,10 @@ methods
                 % GraphBLAS mexFunction into a GrB matrix object.
                 C.opaque = arg1 ;
             elseif (isobject (arg1))
-                % arg1 is already a GrB matrix; nothing to do
-                C = arg1 ;
+                % arg1 is already a GrB matrix; make a deep copy
+                C.opaque = gbnew (arg1.opaque) ;
             else
-                % arg1 is a MATLAB matrix; convert to a GrB matrix
+                % arg1 is a built-in matrix; convert to a GrB matrix
                 C.opaque = gbnew (arg1) ;
             end
         else
@@ -627,7 +636,7 @@ methods
     %---------------------------------------------------------------------
 
     % The following methods work without any implemention needed here,
-    % because they are built-in MATLAB m-files that can operate with GrB
+    % because they are built-in m-files that can operate with GrB
     % inputs:
     %
     %   matrix operations: flipdim fliplr flipud cast isrow iscolumn ndims
@@ -640,18 +649,18 @@ methods
     % FUTURE:: many these could also be overloaded:
     %---------------------------------------------------------------------
 
-    % methods in the MATLAB/ops folder:
+    % methods in the ops folder:
     %
     %   colon idivide ismembertol uniquetol
     %   m-files: intersect ismember setdiff setxorunion unique
     %       (if 'sort' is overloaded, and 1D indexing added,
     %       then all these will work for GrB matrices)
 
-    % methods in the MATLAB/datatypes folder:
+    % methods in the datatypes folder:
     %
     %   typecast swapbytes
 
-    % methods in the MATLAB/datafun folder:
+    % methods in the datafun folder:
     %
     %   cummax cummin cumprod cumsum diff histcounts islocalmax
     %   ismissing issorted maxk mink movmad movmax movmean movmedian
@@ -666,7 +675,7 @@ methods
     %
     %   Possible 'double' functions to overload in the future (note that
     %   mod and rem are not the same as the ANSI fmod or remainder, but
-    %   the MATLAB rem is almost the same as the ANSI fmod):
+    %   the built-in rem is almost the same as the ANSI fmod):
     %
     %       mod rem unwrap sind asind cosd acosd tand
     %       atand secd asecd cscd acscd cotd acotd atan2d
@@ -688,7 +697,7 @@ methods
     %
     %       others: colon factor divisors superiorfloat
 
-    % methods in MATLAB/matfun not implemented here:
+    % methods in matfun not implemented here:
     %
     %       balance cdf2rdf chol cholupdate condeig condest cond
     %       decomposition det expm funm gsvd hess inv ldl linsolve logm
@@ -697,16 +706,16 @@ methods
     %       qrupdate qz rank rcond rref rsf2csf schur sqrtm svd sylvester
     %       trace vecnorm
 
-    % methods in MATLAB/sparfun not implemented here:
+    % methods in sparfun not implemented here:
     %
     %       colperm delsq dissect eigs ichol ilu spalloc spaugment
     %       spconvert spdiags svds symbfact symmlq unmesh
     %
     %       not needed: treeplot treelayout numgrid nested spparms
 
-    % methods in MATLAB/elmat not implemented here:
+    % methods in elmat not implemented here:
     %
-    %       accumarray blkdiag bsxfun cat circshift compan gallery
+    %       accumarray blkdiag bsxfun circshift compan gallery
     %       hadamard hankel hilb inf invhilb ipermute isequaln nan ndgrid
     %       pascal permute repelem rot90 shiftdim toeplitz vander
     %       wilkinson
@@ -734,7 +743,7 @@ methods
     % methods in LAGraph: (see the LAGraph/Source folder)
 
     %---------------------------------------------------------------------
-    % MATLAB operator overloading
+    % operator overloading
     %---------------------------------------------------------------------
 
     C = and (A, B) ;            % C = (A & B)
@@ -768,18 +777,18 @@ methods
     C = vertcat (varargin) ;    % C = [A ; B]
 
     %---------------------------------------------------------------------
-    % Methods that overload built-in MATLAB functions:
+    % Methods that overload built-in functions:
     %---------------------------------------------------------------------
 
     %   In the list below, G is always a GraphBLAS matrix.  The inputs A
-    %   and B can be a mix of GraphBLAS and/or MATLAB matrices, but at
-    %   least one will be a GraphBLAS matrix because these are all
-    %   methods that are overloaded from the MATLAB versions.  If all
-    %   inputs are MATLAB matrices, these methods are not used.  The
-    %   output matrix (C, L, or U) is always a GraphBLAS matrix.  Lower
-    %   case variables i, e, s, and n are scalars.  Outputs p, parent, I,
-    %   J, and X are MATLAB vectors.  Graph is a MATLAB undirected graph.
-    %   DiGraph is a MATLAB directed digraph.
+    %   and B can be a mix of GraphBLAS and/or built-in matrices, but at
+    %   least one will be a GraphBLAS matrix because these are all methods
+    %   that are overloaded from the built-in versions.  If all inputs are
+    %   built-in matrices, these methods are not used.  The output matrix
+    %   (C, L, or U) is always a GraphBLAS matrix.  Lower case variables
+    %   i, e, s, and n are scalars.  Outputs p, parent, I, J, and X are
+    %   built-in vectors.  Graph is a built-in undirected graph.  DiGraph
+    %   is a built-in directed digraph.
 
     C = abs (G) ;
     C = acos (G) ;
@@ -811,6 +820,7 @@ methods
     C = bitxor (A, B, assumedtype) ;
 
 %   C = cast (G, ...)       built-in works as-is
+    C = cat (dim, varargin) ;
     C = ceil (G) ;
     [p, varargout] = colamd (G, varargin) ;
     C = complex (A, B) ;
@@ -837,7 +847,6 @@ methods
     C = exp (G) ;
     C = expm1 (G) ;
 
-    C = false (varargin) ;
     [I,J,X] = find (G, k, search) ;
     C = fix (G) ;
     C = flip (G, dim) ;
@@ -889,16 +898,16 @@ methods
     [F, E] = log2 (G) ;
     C = logical (G) ;
 
+    C = mat2cell (A, m, n) ;
     C = max (A, B, option) ;
     C = min (A, B, option) ;
 
     e = nnz (G) ;
     X = nonzeros (G) ;
     s = norm (G, kind) ;
+    C = num2cell (A, dim) ;
     s = numel (G) ;
     e = nzmax (G) ;
-
-    C = ones (varargin) ;
 
     C = pow2 (A, B) ;
     C = prod (G, option) ;
@@ -932,7 +941,6 @@ methods
     C = tanh (G) ;
     L = tril (G, k) ;
     U = triu (G, k) ;
-    C = true (varargin) ;
 
     C = uint8 (G) ;
     C = uint16 (G) ;
@@ -940,8 +948,6 @@ methods
     C = uint64 (G) ;
 
     C = xor (A, B) ;
-
-    C = zeros (varargin) ;
 
 end
 
@@ -953,25 +959,28 @@ methods (Static)
 
     % All of these are used as GrB.method (...), with the "GrB." prefix.
     % The input matrices (A, B, C, M, ...) are of any kind (GraphBLAS,
-    % MATLAB sparse, or MATLAB full).  The output matrix C is a GraphBLAS
-    % matrix.
+    % built-in sparse, or built-in full).  The output matrix C is a
+    % GraphBLAS matrix.
 
     % Some of the methods listed below are high-level graph algorithms that
     % rely on GrB objects internally (bfs, dnn, ktruss, mis, pagerank, and
     % tricount), for simplicity and readability.  All of the other methods
     % extract the opaque content of the GrB objects just once, operate on
-    % them, and then cast their results back into a MATLAB GrB object just
-    % once.  This makes for less-readable MATLAB code, but it avoids the
-    % performance cost of accessing/modifying a MATLAB object.
+    % them, and then cast their results back into a GrB object just
+    % once.  This makes for less-readable code, but it avoids the
+    % performance cost of accessing/modifying a object.
 
     MATLAB_vs_GrB ;
     C = apply (Cin, M, accum, op, A, desc) ;
     C = apply2 (Cin, M, accum, op, A, B, desc) ;
+    [x,p] = argmin (A, dim) ;
+    [x,p] = argmax (A, dim) ;
     C = assign (Cin, M, accum, A, I, J, desc) ;
     [v, parent] = bfs (A, s, varargin) ;        % uses GrB matrices
     binopinfo (op, type) ;
     C = build (I, J, X, m, n, dup, type, desc) ;
     b = burble (b) ;
+    C = cell2mat (A) ;
     c = chunk (c) ;
     clear ;
     [C, I, J] = compact (A, id) ;
@@ -996,6 +1005,7 @@ methods (Static)
     C = kronecker (Cin, M, accum, op, A, B, desc) ;
     C = ktruss (A, k, check) ;                  % uses GrB matrices
     L = laplacian (A, type, check) ;
+    C = load (filename) ;
     iset = mis (A, check) ;                     % uses GrB matrices
     monoidinfo (monoid, type) ;
     C = mxm (Cin, M, accum, semiring, A, B, desc) ;
@@ -1007,6 +1017,7 @@ methods (Static)
     C = prune (A, identity) ;
     C = random (varargin) ;
     C = reduce (cin, accum, monoid, A, desc) ;
+    filename_used = save (C, filename) ;
     C = select (Cin, M, accum, selectop, A, b, desc) ;
     selectopinfo (op) ;
     semiringinfo (s, type) ;
@@ -1020,6 +1031,12 @@ methods (Static)
     v = version ;
     v = ver ;
     C = vreduce (Cin, M, accum, monoid, A, desc) ;
+
+    % these were formerly overloaded methods, now Static methods
+    C = false (varargin) ;
+    C = true (varargin) ;
+    C = ones (varargin) ;
+    C = zeros (varargin) ;
 
 end
 end

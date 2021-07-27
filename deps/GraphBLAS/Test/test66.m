@@ -59,9 +59,8 @@ y2 = yin + (sum (A,2)) ;
 t1 = toc ;
 tic
 y = GB_mex_reduce_to_vector (yin, [ ], 'plus', 'plus', A) ;
-% t2 = toc ;
-t2 = grbresults ;
-fprintf ('MATLAB: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
+t2 = toc ;
+fprintf ('builtin: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
 y1 = 1*y.matrix ;
 err = norm (y1-y2,1) / norm (y2,1) ;
 assert (err < 1e-14)
@@ -74,9 +73,8 @@ y2 = (sum (A,2)) ;
 t1 = toc ;
 tic
 y = GB_mex_reduce_to_vector (yin, [ ], [ ], 'plus', A) ;
-% t2 = toc ;
-t2 = grbresults ;
-fprintf ('MATLAB: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
+t2 = toc ;
+fprintf ('builtin: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
 y1 = 1*y.matrix ;
 err = norm (y1-y2,1) / norm (y2,1) ;
 assert (err < 1e-14)
@@ -90,9 +88,8 @@ y2 = yinrow + (sum (A,1)) ;
 t1 = toc ;
 tic
 y = GB_mex_reduce_to_vector (yin, [ ], 'plus', 'plus', A, d) ;
-% t2 = toc ;
-t2 = grbresults ;
-fprintf ('MATLAB: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
+t2 = toc ;
+fprintf ('builtin: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
 y1 = 1*y.matrix ;
 err = norm (y1-y2',1) / norm (y2,1) ;
 assert (err < 1e-14)
@@ -106,9 +103,8 @@ y2 = (sum (A,1)) ;
 t1 = toc ;
 tic
 y = GB_mex_reduce_to_vector (yempty, [ ], [ ], 'plus', A, d) ;
-% t2 = toc ;
-t2 = grbresults ;
-fprintf ('MATLAB: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
+t2 = toc ;
+fprintf ('builtin: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
 y1 = 1*y.matrix ;
 err = norm (y1-y2',1) / norm (y2,1) ;
 assert (err < 1e-14)
@@ -121,9 +117,8 @@ x = full (sum (sum (A))) ;
 t1 = toc ;
 tic
 y = GB_mex_reduce_to_scalar (0, '', 'plus', A) ;
-%t2 = toc ;
-t2 = grbresults ;
-fprintf ('MATLAB: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
+t2 = toc ;
+fprintf ('builtin: %g GraphBLAS %g speedup %g\n', t1, t2, t1/t2) ;
 assert (norm(x-y) < nnz (A) * eps * norm(x))
 
 fprintf ('\ntest66: all tests passed\n') ;

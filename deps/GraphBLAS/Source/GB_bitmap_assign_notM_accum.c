@@ -24,8 +24,10 @@
 
 #include "GB_bitmap_assign_methods.h"
 
-#define GB_FREE_ALL \
-    GB_ek_slice_free (&pstart_Mslice, &kfirst_Mslice, &klast_Mslice) ;
+#define GB_FREE_ALL                         \
+{                                           \
+    GB_WERK_POP (M_ek_slicing, int64_t) ;   \
+}
 
 GrB_Info GB_bitmap_assign_notM_accum
 (
@@ -80,8 +82,7 @@ GrB_Info GB_bitmap_assign_notM_accum
     // Cb [pC] += 2 for each entry M(i,j) in the mask
     GB_bitmap_M_scatter (C, I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
         M, Mask_struct, assign_kind, GB_BITMAP_M_SCATTER_PLUS_2,
-        pstart_Mslice, kfirst_Mslice, klast_Mslice,
-        M_nthreads, M_ntasks, Context) ;
+        M_ek_slicing, M_ntasks, M_nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // do the assignment
@@ -163,8 +164,7 @@ GrB_Info GB_bitmap_assign_notM_accum
         // Cb [pC] -= 2 for each entry M(i,j) in the mask
         GB_bitmap_M_scatter (C, I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
             M, Mask_struct, assign_kind, GB_BITMAP_M_SCATTER_MINUS_2,
-            pstart_Mslice, kfirst_Mslice, klast_Mslice,
-            M_nthreads, M_ntasks, Context) ;
+            M_ek_slicing, M_ntasks, M_nthreads, Context) ;
     }
     else
     { 

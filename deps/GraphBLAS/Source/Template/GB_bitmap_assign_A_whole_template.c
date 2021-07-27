@@ -17,30 +17,24 @@
     // matrix assignment: slice the entries of A for each task
     //--------------------------------------------------------------------------
 
+    GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     const int64_t avlen = A->vlen ;
-    int nthreads = GB_nthreads (GB_NNZ (A) + A->nvec, chunk, nthreads_max) ;
-    int ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;
-    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
-    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, &ntasks))
-    { 
-        // out of memory
-        GB_FREE_ALL ;
-        return (GrB_OUT_OF_MEMORY) ;
-    }
+    int A_ntasks, A_nthreads ;
+    GB_SLICE_MATRIX (A, 8, chunk) ;
 
     //--------------------------------------------------------------------------
     // traverse of the entries of the matrix A
     //--------------------------------------------------------------------------
 
     int tid ;
-    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
+    #pragma omp parallel for num_threads(A_nthreads) schedule(dynamic,1) \
         reduction(+:cnvals)
-    for (tid = 0 ; tid < ntasks ; tid++)
+    for (tid = 0 ; tid < A_ntasks ; tid++)
     {
 
         // if kfirst > klast then task tid does no work at all
-        int64_t kfirst = kfirst_slice [tid] ;
-        int64_t klast  = klast_slice  [tid] ;
+        int64_t kfirst = kfirst_Aslice [tid] ;
+        int64_t klast  = klast_Aslice  [tid] ;
         int64_t task_cnvals = 0 ;
 
         //----------------------------------------------------------------------
@@ -57,7 +51,7 @@
             int64_t j = GBH (Ah, k) ;
             int64_t pA_start, pA_end ;
             GB_get_pA (&pA_start, &pA_end, tid, k, kfirst,
-                klast, pstart_slice, Ap, avlen) ;
+                klast, pstart_Aslice, Ap, avlen) ;
 
             //------------------------------------------------------------------
             // traverse over A(:,j), the kth vector of A
@@ -82,6 +76,6 @@
     // free workspace
     //--------------------------------------------------------------------------
 
-    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice) ;
+    GB_WERK_POP (A_ek_slicing, int64_t) ;
 }
 

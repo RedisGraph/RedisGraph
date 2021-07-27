@@ -4,7 +4,7 @@ function C = bitget (A, B, assumedtype)
 % A is an integer array.  If B(i,j) is an integer in the range 1 (the
 % least significant bit) to the number of bits in the data type of A, then
 % C(i,j) is that bit of A(i,j).  If B(i,j) is outside this range, C(i,j)
-% is zero; note that this behavior is an extension to the built-in MATLAB
+% is zero; note that this behavior is an extension to the built-in
 % bitget, which results in an error for this case.  This modified rule
 % allows the inputs A and B to be sparse.  If B(i,j) is implicitly zero
 % (not in the pattern of B), or if A(i,j) is implicitly zero, then C(i,j)
@@ -29,7 +29,6 @@ function C = bitget (A, B, assumedtype)
 %   fprintf ('\nA: ') ; fprintf ('%3x ', A) ; fprintf ('\n') ;
 %   fprintf ('\nB: ') ; fprintf ('%3x ', B) ; fprintf ('\n') ;
 %   fprintf ('\nC: ') ; fprintf ('%3x ', C) ; fprintf ('\n') ;
-%   % in MATLAB:
 %   C2 = bitget (uint16 (A), uint16 (B))
 %   isequal (C2, C)
 %
@@ -37,7 +36,7 @@ function C = bitget (A, B, assumedtype)
 % GrB/bitset, GrB/bitclr.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (nargin < 3)
     assumedtype = 'uint64' ;
@@ -54,7 +53,7 @@ end
 atype = gbtype (A) ;
 btype = gbtype (B) ;
 
-if (contains (atype, 'complex') || contains (btype, 'complex'))
+if (gb_contains (atype, 'complex') || gb_contains (btype, 'complex'))
     error ('inputs must be real') ;
 end
 
@@ -62,7 +61,7 @@ if (isequal (atype, 'logical') || isequal (btype, 'logical'))
     error ('inputs must not be logical') ;
 end
 
-if (~contains (assumedtype, 'int'))
+if (~gb_contains (assumedtype, 'int'))
     error ('assumedtype must be an integer type') ;
 end
 

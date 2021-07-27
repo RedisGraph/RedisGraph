@@ -13,8 +13,8 @@
 
 #define FREE_ALL                            \
 {                                           \
-    GrB_Matrix_free_(&C) ;                   \
-    GrB_Matrix_free_(&A) ;                   \
+    GrB_Matrix_free_(&C) ;                  \
+    GrB_Matrix_free_(&A) ;                  \
     GrB_Descriptor_free_(&desc) ;           \
     GB_mx_put_global (true) ;               \
 }
@@ -40,10 +40,10 @@ void mexFunction
 
     // get A C (make a deep copy)
     #define GET_DEEP_COPY       \
-        C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;   \
-        GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, C->sparsity) ;      \
-        A = GB_mx_mxArray_to_Matrix (pargin [1], "A input", true, true) ;   \
-        GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, A->sparsity) ;
+        C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;      \
+        GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, C->sparsity_control) ; \
+        A = GB_mx_mxArray_to_Matrix (pargin [1], "A input", true, true) ;      \
+        GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, A->sparsity_control) ;
     #define FREE_DEEP_COPY      \
         GrB_Matrix_free_(&C) ;  \
         GrB_Matrix_free_(&A) ;
@@ -69,7 +69,7 @@ void mexFunction
     METHOD (GxB_Matrix_subassign_(C, A, NULL, A,
         GrB_ALL, nrows, GrB_ALL, ncols, desc)) ;
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
 
     FREE_ALL ;

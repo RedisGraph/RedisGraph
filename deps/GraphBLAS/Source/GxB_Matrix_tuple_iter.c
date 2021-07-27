@@ -21,12 +21,15 @@ static GrB_Info _init
 	GB_RETURN_IF_NULL(iter) ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
+	bool       iso    ;
 	size_t     size   ;
 	GrB_Type   type   ;
 	GrB_Index  nrows  ;
 	GrB_Index  nvals  ;
 	int sparsity_type ;
 
+	GxB_Matrix_iso(&iso, A) ;
+	
 	GxB_Matrix_type(&type, A) ;
 	GxB_Type_size(&size, type) ;
 
@@ -37,6 +40,7 @@ static GrB_Info _init
 
 	iter->A              =  A              ;
 	iter->p              =  0              ;
+	iter->iso            =  iso            ;
 	iter->size           =  size           ;
 	iter->nrows          =  nrows          ;
 	iter->nvals          =  nvals          ;
@@ -63,7 +67,8 @@ GrB_Info GxB_MatrixTupleIter_new
 		GB_ERROR(GrB_INVALID_VALUE, "Invalid sparsity type: %d", sparsity) ;
 	}
 
-	*iter = GB_MALLOC(1, GxB_MatrixTupleIter) ;
+	size_t size_allocated;
+	*iter = GB_MALLOC(1, GxB_MatrixTupleIter, &size_allocated) ;
 	return _init(*iter, A) ;
 }
 
@@ -348,7 +353,8 @@ GrB_Info GxB_MatrixTupleIter_next
 		*col = A->i[nnz_idx] ;
 	}
 	if(val) {
-		GrB_Index offset = nnz_idx * iter->size;
+		// in iso matrix the values represented by the first item in Ax
+		GrB_Index offset = (iter->iso) ? 0 : nnz_idx * iter->size;
 		memcpy(val, (char*)A->x + offset, iter->size);
 	}
 
@@ -418,7 +424,7 @@ GrB_Info GxB_MatrixTupleIter_free
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_free (iter)") ;
 	GB_RETURN_IF_NULL(iter) ;
-	GB_FREE(iter) ;
+	GB_FREE(&iter, iter->size) ;
 	return (GrB_SUCCESS) ;
 }
 

@@ -8,7 +8,7 @@ fprintf ('\n--------------performance test GB_mex_subassign\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 debug_off
 
@@ -88,7 +88,7 @@ I = randperm (m,ni) ;
 J = randperm (n,nj) ;
 fprintf ('nnzB: %g\n', nnz (B)) ;
 
-fprintf ('\nC(I,J)=B, MATLAB start:\n')
+fprintf ('\nC(I,J)=B, builtin start:\n')
 tic
 C (I,J) = B ;
 toc
@@ -103,8 +103,9 @@ fprintf ('GraphBLAS start:\n')
 
 for nthreads = [1 20 40]
     nthreads_set (nthreads) ;
+    tic
     C3 = GB_mex_subassign (C2, [], [], B, I0, J0, []) ;
-    tg = grbresults ;
+    tg = toc ;
     fprintf ('%d threads, GB time: %g\n', nthreads, tg) ;
     assert (isequal (C, C3.matrix)) ;
 end
@@ -116,7 +117,7 @@ end
 C = A ;
 C (1,1) = 1 ;
 
-fprintf ('\nC(I,J)+=B, MATLAB start:\n')
+fprintf ('\nC(I,J)+=B, builtin start:\n')
 tic
 C (I,J) = C (I,J) + B ;
 toc
@@ -128,8 +129,9 @@ fprintf ('GraphBLAS start:\n')
 
 for nthreads = [1 20 40]
     nthreads_set (nthreads) ;
+    tic
     C3 = GB_mex_subassign (C2, [], 'plus', B, I0, J0, []) ;
-    tg = grbresults ;
+    tg = toc ;
     fprintf ('%d threads, GB time: %g\n', nthreads, tg) ;
     assert (isequal (C, C3.matrix)) ;
 end

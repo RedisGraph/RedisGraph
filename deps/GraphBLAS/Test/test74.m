@@ -22,7 +22,7 @@ dnn_hash = struct ( 'axb', 'hash' ) ;
 ntrials = 0 ;
 
 rng ('default') ;
-GB_builtin_complex_set (1) ;
+GB_builtin_complex_set (true) ;
 
 m_list = [ 1  2    9  ] ;
 n_list = [ 1  2   10  ] ;

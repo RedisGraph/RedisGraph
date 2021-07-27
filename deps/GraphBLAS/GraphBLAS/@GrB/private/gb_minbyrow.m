@@ -3,7 +3,7 @@ function C = gb_minbyrow (op, A)
 % Implements C = min (A, [ ], 2)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % C = min (A, [ ], 2) reduces each row to a scalar; C is m-by-1
 C = gbvreduce (op, A) ;

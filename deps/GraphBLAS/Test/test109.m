@@ -33,4 +33,5 @@ for k = [false true]
     assert (t == 0)
 end
 
+GB_builtin_complex_set (true) ;
 fprintf ('\ntest109: all tests passed\n') ;

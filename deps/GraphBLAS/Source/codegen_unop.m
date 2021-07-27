@@ -9,7 +9,7 @@ function codegen_unop
 
 fprintf ('\nunary operators:\n') ;
 
-f = fopen ('Generated/GB_unop__include.h', 'w') ;
+f = fopen ('Generated2/GB_unop__include.h', 'w') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;
 fprintf (f, '// GB_unop__include.h: definitions for GB_unop__*.c\n') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;
@@ -19,15 +19,6 @@ fprintf (f, '// SPDX-License-Identifier: Apache-2.0\n\n') ;
 fprintf (f, '// This file has been automatically generated from Generator/GB_unop.h') ;
 fprintf (f, '\n\n') ;
 fclose (f) ;
-
-codegen_unop_template ('one', ...
-    'true',                     ... % bool
-    '1',                        ... % int
-    '1',                        ... % uint
-    '1',                        ... % float
-    '1',                        ... % double
-    'GxB_CMPLXF(1,0)',          ... % GxB_FC32_t
-    'GxB_CMPLX(1,0)') ;         ... % GxB_FC64_t
 
 codegen_unop_template ('identity', ...
     'xarg',                     ... % bool

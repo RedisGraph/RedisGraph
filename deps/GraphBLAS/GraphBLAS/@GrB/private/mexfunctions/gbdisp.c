@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -11,7 +11,9 @@
 
 // gbdisp (C, cnz, level)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: gbdisp (C, cnz, level)"
 
 void mexFunction
 (
@@ -26,13 +28,13 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin == 3 && nargout == 0, "usage: gbdisp (C, cnz, level)") ;
+    gb_usage (nargin == 3 && nargout == 0, USAGE) ;
 
     //--------------------------------------------------------------------------
     // get cnz and level
     //--------------------------------------------------------------------------
 
-    int64_t cnz = (int64_t) mxGetScalar (pargin [1]) ;
+    double cnz = mxGetScalar (pargin [1]) ;
     int level = (int) mxGetScalar (pargin [2]) ;
 
     #define LEN 256
@@ -45,9 +47,13 @@ void mexFunction
     { 
         snprintf (s, LEN, "1 nonzero") ;
     }
+    else if (cnz < INT64_MAX)
+    {
+        snprintf (s, LEN, GBd " nonzeros", (int64_t) cnz) ;
+    }
     else
     { 
-        snprintf (s, LEN, GBd " nonzeros", cnz) ;
+        snprintf (s, LEN, "%g nonzeros", cnz) ;
     }
 
     s [LEN] = '\0' ;
@@ -57,7 +63,10 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     // print 1-based indices
-    GB_Global_print_one_based_set (true) ;
+    OK (GxB_Global_Option_set (GxB_PRINT_1BASED, true)) ;
+
+    // print sizes of shallow components
+    GB_Global_print_mem_shallow_set (true) ;
 
     GrB_Matrix C = gb_get_shallow (pargin [0]) ;
     OK (GxB_Matrix_fprint (C, s, level, NULL)) ;

@@ -88,6 +88,7 @@ GrB_Info GB_bitmap_assign_noM_accum_whole
             // scalar assignment: C += scalar
             //------------------------------------------------------------------
 
+            // TODO: can skip the test for C_iso in the macros below
             #undef  GB_CIJ_WORK
             #define GB_CIJ_WORK(pC)                 \
             {                                       \
@@ -103,7 +104,10 @@ GrB_Info GB_bitmap_assign_noM_accum_whole
                     GB_ACCUM_SCALAR (pC) ;          \
                 }                                   \
             }
-            #include "GB_bitmap_assign_C_whole_template.c"
+            if (!C_iso)
+            {
+                #include "GB_bitmap_assign_C_whole_template.c"
+            }
 
             // free the bitmap or set it to all ones
             GB_bitmap_assign_to_full (C, nthreads_max) ;
@@ -123,6 +127,7 @@ GrB_Info GB_bitmap_assign_noM_accum_whole
                 // C += A where C is bitmap and A is full
                 //--------------------------------------------------------------
 
+                // TODO: can skip the test for C_iso in the macros below
                 #undef  GB_CIJ_WORK
                 #define GB_CIJ_WORK(pC)                     \
                 {                                           \
@@ -138,7 +143,10 @@ GrB_Info GB_bitmap_assign_noM_accum_whole
                         GB_ACCUM_AIJ (pC, pC) ;             \
                     }                                       \
                 }
-                #include "GB_bitmap_assign_C_whole_template.c"
+                if (!C_iso)
+                {
+                    #include "GB_bitmap_assign_C_whole_template.c"
+                }
 
                 // free the bitmap or set it to all ones
                 GB_bitmap_assign_to_full (C, nthreads_max) ;

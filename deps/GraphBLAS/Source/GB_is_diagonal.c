@@ -57,7 +57,7 @@ bool GB_is_diagonal             // true if A is diagonal
         return (false) ;
     }
 
-    int64_t anz  = GB_NNZ (A) ;
+    int64_t anz  = GB_nnz (A) ;
     int64_t nvec = A->nvec ;
 
     if (n != anz || n != nvec)
@@ -84,8 +84,8 @@ bool GB_is_diagonal             // true if A is diagonal
     // examine each vector of A
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Ap = A->p ;
-    const int64_t *GB_RESTRICT Ai = A->i ;
+    const int64_t *restrict Ap = A->p ;
+    const int64_t *restrict Ai = A->i ;
 
     int diagonal = true ;
 

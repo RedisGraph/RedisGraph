@@ -18,7 +18,7 @@
 //          is TxT->T (as is the monoid).
 
 //      GB_AxB_compare_factory: handles all semirings where the multiply
-//          operator is TxT -> bool (for the comparison operators, LT, GT,
+//          operator is TxT -> bool (for the comparators, LT, GT,
 //          etc), and where the monoid is bool x bool -> bool.
 
 //      GB_AxB_bitwise_factory: handles all semirings for bitwise operators.
@@ -32,6 +32,8 @@
 // SECOND, prior to using this factory, since that is faster for the
 // saxpy-based methods (y is the value of B(k,j), which is loaded less
 // frequently from memory than A(i,k)).
+
+// This switch factory is not used to call the ANY_PAIR iso semiring.
 
 ASSERT (mult_opcode != GB_ANY_opcode) ;
 
@@ -67,23 +69,6 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             #define GB_MNAME _second
             #define GB_COMPLEX
             #include "GB_AxB_type_factory.c"
-            break ;
-
-        //----------------------------------------------------------------------
-        case GB_PAIR_opcode   :    // z = 1
-        //----------------------------------------------------------------------
-
-            // 26 semirings with PAIR:
-            // 20: (plus,any) for 10 real non-boolean
-            // 2: (xor,any) for boolean
-            // 4: (plus,any) for 2 complex
-            // land_pair, lor_pair, max_pair, min_pair, times_pair, eq_pair
-            // all become any_pair.
-            #define GB_MULT_IS_PAIR_OPERATOR
-            #define GB_MNAME _pair
-            #define GB_COMPLEX
-            #include "GB_AxB_type_factory.c"
-            #undef  GB_MULT_IS_PAIR_OPERATOR
             break ;
 
         //----------------------------------------------------------------------
@@ -191,72 +176,6 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
-        case GB_ISEQ_opcode    :    // z = (x == y)
-        //----------------------------------------------------------------------
-
-            // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
-            // ISEQ == EQ for boolean
-            #define GB_NO_BOOLEAN
-            #define GB_MNAME _iseq
-            #include "GB_AxB_type_factory.c"
-            break ;
-
-        //----------------------------------------------------------------------
-        case GB_ISNE_opcode    :    // z = (x != y)
-        //----------------------------------------------------------------------
-
-            // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
-            // MINUS == RMINUS == NE == ISNE == XOR for boolean
-            #define GB_NO_BOOLEAN
-            #define GB_MNAME _isne
-            #include "GB_AxB_type_factory.c"
-            break ;
-
-        //----------------------------------------------------------------------
-        case GB_ISGT_opcode    :    // z = (x >  y)
-        //----------------------------------------------------------------------
-
-            // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
-            // ISGT == GT for boolean
-            #define GB_NO_BOOLEAN
-            #define GB_MNAME _isgt
-            #include "GB_AxB_type_factory.c"
-            break ;
-
-        //----------------------------------------------------------------------
-        case GB_ISLT_opcode    :    // z = (x <  y)
-        //----------------------------------------------------------------------
-
-            // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
-            // ISLT == LT for boolean
-            #define GB_NO_BOOLEAN
-            #define GB_MNAME _islt
-            #include "GB_AxB_type_factory.c"
-            break ;
-
-        //----------------------------------------------------------------------
-        case GB_ISGE_opcode    :    // z = (x >= y)
-        //----------------------------------------------------------------------
-
-            // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
-            // ISGE == GE for boolean
-            #define GB_NO_BOOLEAN
-            #define GB_MNAME _isge
-            #include "GB_AxB_type_factory.c"
-            break ;
-
-        //----------------------------------------------------------------------
-        case GB_ISLE_opcode     :    // z = (x <= y)
-        //----------------------------------------------------------------------
-
-            // 50 semirings: (min,max,plus,times,any) for 10 real non-boolean
-            // ISLE == LE for boolean
-            #define GB_NO_BOOLEAN
-            #define GB_MNAME _isle
-            #include "GB_AxB_type_factory.c"
-            break ;
-
-        //----------------------------------------------------------------------
         case GB_EQ_opcode      :    // z = (x == y)
         //----------------------------------------------------------------------
 
@@ -313,10 +232,27 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
             break ;
 
         //----------------------------------------------------------------------
+        case GB_PAIR_opcode   :    // z = 1
+        //----------------------------------------------------------------------
+
+            // 13 semirings with PAIR: (not including ANY_PAIR)
+            // 12: (plus) for 10 real non-boolean and 2 complex
+            // 1: (xor) for boolean
+            #define GB_NO_MIN_MAX_ANY_TIMES_MONOIDS
+            #define GB_MULT_IS_PAIR_OPERATOR
+            #define GB_MNAME _pair
+            #define GB_COMPLEX
+            #include "GB_AxB_type_factory.c"
+            break ;
+
+        //----------------------------------------------------------------------
         case GB_LOR_opcode     :    // z = x || y
         //----------------------------------------------------------------------
 
-            // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
+            // 15 semirings:
+            // 10 semirings: plus_lor for 10 real non-boolean types
+            // 5 semirings: (lor,land,eq,lxor,any) for boolean
+            #define GB_NO_MIN_MAX_ANY_TIMES_MONOIDS
             #define GB_MNAME _lor
             #include "GB_AxB_type_factory.c"
             break ;
@@ -325,7 +261,8 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
         case GB_LAND_opcode    :    // z = x && y
         //----------------------------------------------------------------------
 
-            // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
+            // 15 semirings: same as LOR
+            #define GB_NO_MIN_MAX_ANY_TIMES_MONOIDS
             #define GB_MNAME _land
             #include "GB_AxB_type_factory.c"
             break ;
@@ -334,7 +271,8 @@ ASSERT (mult_opcode != GB_ANY_opcode) ;
         case GB_LXOR_opcode    :    // z = x != y
         //----------------------------------------------------------------------
 
-            // 55 semirings: (and,or,xor,eq,any) * 11 types (all but complex)
+            // 15 semirings: same as LOR
+            #define GB_NO_MIN_MAX_ANY_TIMES_MONOIDS
             #define GB_MNAME _lxor
             #include "GB_AxB_type_factory.c"
             break ;

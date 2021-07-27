@@ -13,19 +13,14 @@
 #include "GB_reduce.h"
 #include "GB_binop.h"
 #include "GB_mxm.h"
+#include "GB_get_mask.h"
 
-#define GB_FREE_ALL                     \
-{                                       \
-    GB_Matrix_free (&B) ;               \
-    /* cannot use GrB_BinaryOp_free: */ \
-    GB_FREE (first_op) ;                \
-    GrB_Semiring_free (&semiring) ;     \
-}
+#define GB_FREE_ALL ;
 
 GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
 (
     GrB_Matrix C,                   // input/output for results, size n-by-1
-    const GrB_Matrix M,             // optional M for C, unused if NULL
+    const GrB_Matrix M_in,          // optional M for C, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for z=accum(C,T)
     const GrB_Monoid monoid,        // reduce monoid for T=reduce(A)
     const GrB_Matrix A,             // first input:  matrix A
@@ -38,36 +33,36 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     // check inputs
     //--------------------------------------------------------------------------
 
-    GrB_Matrix B = NULL ;
-    GrB_BinaryOp first_op = NULL ;
-    GrB_Semiring semiring = NULL ;
+    struct GB_Matrix_opaque B_header ;
+    GrB_Matrix B = GB_clear_static_header (&B_header) ;
 
     // C may be aliased with M and/or A
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
-    GB_RETURN_IF_FAULTY (M) ;
+    GB_RETURN_IF_FAULTY (M_in) ;
     GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
     GB_RETURN_IF_NULL_OR_FAULTY (monoid) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_RETURN_IF_FAULTY (desc) ;
 
     ASSERT_MATRIX_OK (C, "C input for reduce-to-vector", GB0) ;
-    ASSERT_MATRIX_OK_OR_NULL (M, "M for reduce-to-vector", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M_in, "M_in for reduce-to-vector", GB0) ;
     ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for reduce-to-vector", GB0) ;
     ASSERT_MONOID_OK (monoid, "monoid for reduce-to-vector", GB0) ;
     ASSERT_MATRIX_OK (A, "A input for reduce-to-vector", GB0) ;
     ASSERT_DESCRIPTOR_OK_OR_NULL (desc, "desc for reduce-to-vector", GB0) ;
+    ASSERT (GB_VECTOR_OK (C)) ;
+    ASSERT (GB_IMPLIES (M_in != NULL, GB_VECTOR_OK (M_in))) ;
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
         A_transpose, xx1, xx2, do_sort) ;
 
-    // C and M are n-by-1 GrB_Vector objects, typecasted to GrB_Matrix
-    ASSERT (GB_VECTOR_OK (C)) ;
-    ASSERT (GB_IMPLIES (M != NULL, GB_VECTOR_OK (M))) ;
+    // get the mask
+    GrB_Matrix M = GB_get_mask (M_in, &Mask_comp, &Mask_struct) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Type ztype = monoid->op->ztype ;
-    GB_OK (GB_compatible (C->type, C, M, accum, ztype, Context)) ;
+    GB_OK (GB_compatible (C->type, C, M, Mask_struct, accum, ztype, Context)) ;
 
     // T = reduce (T,A) must be compatible
     if (!GB_Type_compatible (A->type, ztype))
@@ -103,51 +98,56 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     }
 
     // quick return if an empty mask is complemented
-    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp, Mask_struct) ;
 
     //--------------------------------------------------------------------------
-    // allocate B as full vector but with B->x of NULL
+    // create B as full iso vector
     //--------------------------------------------------------------------------
 
-    // B is constructed in O(1) time and space, even though it is m-by-1
+    // B is constructed with a static header in O(1) time and space, even
+    // though it is m-by-1.  It contains no dynamically-allocated content and
+    // does not need to be freed.
     int64_t m = A_transpose ? GB_NROWS (A) : GB_NCOLS (A) ;
-    GB_OK (GB_new (&B,  // full, new header
-        ztype, m, 1, GB_Ap_null, true, GxB_FULL, GB_NEVER_HYPER, 1, Context)) ;
-    B->nzmax = m ;
+    info = GB_new (&B, true,  // full, static header
+        ztype, m, 1, GB_Ap_null, true, GxB_FULL, GB_NEVER_HYPER, 1, Context) ;
+    ASSERT (info == GrB_SUCCESS) ;
     B->magic = GB_MAGIC ;
-    ASSERT_MATRIX_OK (B, "temp vector for reduce-to-vector", GB0) ;
+    B->iso = true ;             // OK: B is a temporary matrix; no burble
+    size_t zsize = ztype->size ;
+    GB_void bscalar [GB_VLA(zsize)] ;
+    memset (bscalar, 0, zsize) ;
+    B->x = bscalar ;
+    B->x_shallow = true ;
+    B->x_size = zsize ;
+    ASSERT_MATRIX_OK (B, "B for reduce-to-vector", GB0) ;
+
+    //--------------------------------------------------------------------------
+    // create the FIRST_ZTYPE binary operator
+    //--------------------------------------------------------------------------
+
+    // note the function pointer is NULL; it is not needed by FIRST
+    struct GB_BinaryOp_opaque op_header ;
+    GrB_BinaryOp op = &op_header ;
+    GB_binop_new (op, NULL, ztype, ztype, ztype, "1st_ztype", GB_FIRST_opcode) ;
+    ASSERT_BINARYOP_OK (op, "op for reduce-to-vector", GB0) ;
 
     //--------------------------------------------------------------------------
     // create the REDUCE_FIRST_ZTYPE semiring
     //--------------------------------------------------------------------------
 
-    // create the FIRST_ZTYPE operator; note the function pointer is NULL.
-    // first_op must be freed with GB_FREE, not GrB_BinaryOp_free, because the
-    // opcode is GB_FIRST_opcode.  GrB_BinaryOp_free uses the opcode to decide
-    // if the operator is user-defined or built-in, and it only frees operators
-    // with an opcode of GB_USER_opcode.
-    GB_OK (GB_binop_new (&first_op, NULL, ztype, ztype, ztype, "first_ztype",
-        GB_FIRST_opcode)) ;
-    ASSERT_BINARYOP_OK (first_op, "op for reduce-to-vector", GB0) ;
-
-    // create the REDUCE_FIRST_ZTYPE semiring
-    GB_OK (GB_Semiring_new (&semiring, monoid, first_op)) ;
+    struct GB_Semiring_opaque semiring_header ;
+    GrB_Semiring semiring = &semiring_header ;
+    semiring->header_size = 0 ;
+    info = GB_Semiring_new (semiring, monoid, op) ;
+    ASSERT (info == GrB_SUCCESS) ;
     ASSERT_SEMIRING_OK (semiring, "semiring for reduce-to-vector", GB0) ;
 
     //--------------------------------------------------------------------------
     // reduce the matrix to a vector via C<M> = accum (C, A*B)
     //--------------------------------------------------------------------------
 
-    GB_OK (GB_mxm (C, C_replace, M, Mask_comp, Mask_struct, accum,
+    return (GB_mxm (C, C_replace, M, Mask_comp, Mask_struct, accum,
         semiring, A, A_transpose, B, false, false, GxB_DEFAULT, do_sort,
         Context)) ;
-    ASSERT_MATRIX_OK (C, "C result for reduce-to-vector", GB0) ;
-
-    //--------------------------------------------------------------------------
-    // free workspace and return result
-    //--------------------------------------------------------------------------
-
-    GB_FREE_ALL ;
-    return (GrB_SUCCESS) ;
 }
 

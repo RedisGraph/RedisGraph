@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mx_string_to_UnaryOp.c: get a GraphBLAS operator from MATLAB strings
+// GB_mx_string_to_UnaryOp.c: get a GraphBLAS operator from built-in strings
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -9,9 +9,9 @@
 
 #include "GB_mex.h"
 
-// opname_mx: a MATLAB string defining the operator name
+// opname_mx: a built-in string defining the operator name
 
-// optype_mx: a MATLAB string defining the operator type for built-in ops
+// optype_mx: a built-in string defining the operator type for built-in ops
 
 // default_optype: default type if optype_mx is NULL
 
@@ -19,8 +19,8 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
 (
     GrB_UnaryOp *op_handle,             // the unary op
     const GrB_Type default_optype,      // default operator type
-    const mxArray *opname_mx,           // MATLAB string with operator name
-    const mxArray *optype_mx,           // MATLAB string with operator type
+    const mxArray *opname_mx,           // built-in string with operator name
+    const mxArray *optype_mx,           // built-in string with operator type
     const bool user_complex             // true if X is complex
 )
 {

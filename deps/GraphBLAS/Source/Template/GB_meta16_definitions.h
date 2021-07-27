@@ -17,7 +17,6 @@
 
 #if defined ( GB_META16 )
 
-    // this method appears in the GB_meta16_factory
     #if ( GB_B_IS_HYPER || GB_A_IS_HYPER )
 
         // A or B are hyper
@@ -216,6 +215,8 @@
 //------------------------------------------------------------------------------
 // GB_COMPUTE_DENSE_C_j: compute C(:,j)=A*B(:,j) when C(:,j) is completely dense
 //------------------------------------------------------------------------------
+
+// This method is not used for the saxpy3 generic method.
 
 #undef GB_COMPUTE_DENSE_C_j
 

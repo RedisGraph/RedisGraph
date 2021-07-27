@@ -10,21 +10,92 @@
 switch (opcode)
 {
 
-    case GB_TRIL_opcode          : GB_SEL_WORKER (_tril    , _any, GB_void)
-    case GB_TRIU_opcode          : GB_SEL_WORKER (_triu    , _any, GB_void)
-    case GB_DIAG_opcode          : GB_SEL_WORKER (_diag    , _any, GB_void)
-    case GB_OFFDIAG_opcode       : GB_SEL_WORKER (_offdiag , _any, GB_void)
-    case GB_USER_SELECT_opcode   : GB_SEL_WORKER (_user    , _any, GB_void)
+    case GB_TRIL_opcode          :  // C = tril (A,k)
 
+        #ifdef GB_SELECT_PHASE1
+        GB_SEL_WORKER (_tril, _iso, GB_void)
+        #else
+        switch (typecode)
+        {
+            case GB_ignore_code  : GB_SEL_WORKER (_tril, _iso, GB_void)
+            default              : GB_SEL_WORKER (_tril, _any, GB_void)
+        }
+        break ;
+        #endif
+
+    case GB_TRIU_opcode          :  // C = triu (A,k)
+
+        #ifdef GB_SELECT_PHASE1
+        GB_SEL_WORKER (_triu, _iso, GB_void)
+        #else
+        switch (typecode)
+        {
+            case GB_ignore_code  : GB_SEL_WORKER (_triu, _iso, GB_void)
+            default              : GB_SEL_WORKER (_triu, _any, GB_void)
+        }
+        break ;
+        #endif
+
+    case GB_DIAG_opcode          :  // C = diag (A,k)
+
+        #ifdef GB_SELECT_PHASE1
+        GB_SEL_WORKER (_diag, _iso, GB_void)
+        #else
+        switch (typecode)
+        {
+            case GB_ignore_code  : GB_SEL_WORKER (_diag, _iso, GB_void)
+            default              : GB_SEL_WORKER (_diag, _any, GB_void)
+        }
+        break ;
+        #endif
+
+    case GB_OFFDIAG_opcode       :  // C = offdiag (A,k)
+
+        #ifdef GB_SELECT_PHASE1
+        GB_SEL_WORKER (_offdiag, _iso, GB_void)
+        #else
+        switch (typecode)
+        {
+            case GB_ignore_code  : GB_SEL_WORKER (_offdiag, _iso, GB_void)
+            default              : GB_SEL_WORKER (_offdiag, _any, GB_void)
+        }
+        break ;
+        #endif
+
+    case GB_USER_SELECT_opcode   : // C = user_select (A,k)
+
+        switch (typecode)
+        {
+            case GB_ignore_code  : GB_SEL_WORKER (_user, _iso, GB_void)
+            default              : GB_SEL_WORKER (_user, _any, GB_void)
+        }
+        break ;
+
+    //--------------------------------------------------------------------------
     // resize and nonzombie selectors are not used for the bitmap case
+    //--------------------------------------------------------------------------
+
     #ifndef GB_BITMAP_SELECTOR
-    case GB_RESIZE_opcode        : GB_SEL_WORKER (_resize  , _any, GB_void)
-    case GB_NONZOMBIE_opcode :  // A(i,j) not a zombie
+
+    case GB_RESIZE_opcode        :  // C = resize (A)
+
+        #ifdef GB_SELECT_PHASE1
+        GB_SEL_WORKER (_resize, _iso, GB_void)
+        #else
+        switch (typecode)
+        {
+            case GB_ignore_code  : GB_SEL_WORKER (_resize, _iso, GB_void)
+            default              : GB_SEL_WORKER (_resize, _any, GB_void)
+        }
+        break ;
+        #endif
+
+    case GB_NONZOMBIE_opcode     :  // C = all entries A(i,j) not a zombie
 
         #ifdef GB_SELECT_PHASE1
         // phase1: use a single worker for all types, since the test does not
         // depend on the values, just Ai.
-        GB_SEL_WORKER (_nonzombie, _any, GB_void)
+        GB_SEL_WORKER (_nonzombie, _iso, GB_void)
         #else
         // phase2:
         switch (typecode)
@@ -42,11 +113,18 @@ switch (opcode)
             case GB_FP64_code   : GB_SEL_WORKER (_nonzombie, _fp64  , double  )
             case GB_FC32_code   : GB_SEL_WORKER (_nonzombie, _fc32, GxB_FC32_t)
             case GB_FC64_code   : GB_SEL_WORKER (_nonzombie, _fc64, GxB_FC64_t)
-            default             : GB_SEL_WORKER (_nonzombie, _any   , GB_void )
+            case GB_UDT_code    : GB_SEL_WORKER (_nonzombie, _any   , GB_void )
+            case GB_ignore_code : GB_SEL_WORKER (_nonzombie, _iso   , GB_void )
+            default: ;          // not used
         }
         break ;
         #endif
+
     #endif
+
+    //--------------------------------------------------------------------------
+    // none of these selectop workers are needed when A is iso
+    //--------------------------------------------------------------------------
 
     case GB_NONZERO_opcode   :  // A(i,j) != 0
 
@@ -65,7 +143,8 @@ switch (opcode)
             case GB_FP64_code   : GB_SEL_WORKER (_nonzero, _fp64  , double  )
             case GB_FC32_code   : GB_SEL_WORKER (_nonzero, _fc32, GxB_FC32_t)
             case GB_FC64_code   : GB_SEL_WORKER (_nonzero, _fc64, GxB_FC64_t)
-            default             : GB_SEL_WORKER (_nonzero, _any   , GB_void )
+            case GB_UDT_code    : GB_SEL_WORKER (_nonzero, _any   , GB_void )
+            default: ;          // not used
         }
         break ;
 
@@ -86,14 +165,14 @@ switch (opcode)
             case GB_FP64_code   : GB_SEL_WORKER (_eq_zero, _fp64  , double  )
             case GB_FC32_code   : GB_SEL_WORKER (_eq_zero, _fc32, GxB_FC32_t)
             case GB_FC64_code   : GB_SEL_WORKER (_eq_zero, _fc64, GxB_FC64_t)
-            default             : GB_SEL_WORKER (_eq_zero, _any   , GB_void )
+            case GB_UDT_code    : GB_SEL_WORKER (_eq_zero, _any   , GB_void )
+            default: ;          // not used
         }
         break ;
 
     case GB_GT_ZERO_opcode   :  // A(i,j) > 0
 
         // bool and uint: renamed GxB_GT_ZERO to GxB_NONZERO
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_gt_zero, _int8  , int8_t  )
@@ -102,14 +181,13 @@ switch (opcode)
             case GB_INT64_code  : GB_SEL_WORKER (_gt_zero, _int64 , int64_t )
             case GB_FP32_code   : GB_SEL_WORKER (_gt_zero, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_gt_zero, _fp64  , double  )
-            default: ;          // not for uint, bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
     case GB_GE_ZERO_opcode   :  // A(i,j) >= 0
 
         // bool and uint: always true; use GB_dup
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_ge_zero, _int8  , int8_t  )
@@ -118,14 +196,13 @@ switch (opcode)
             case GB_INT64_code  : GB_SEL_WORKER (_ge_zero, _int64 , int64_t )
             case GB_FP32_code   : GB_SEL_WORKER (_ge_zero, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_ge_zero, _fp64  , double  )
-            default: ;          // not for uint, bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
     case GB_LT_ZERO_opcode   :  // A(i,j) < 0
 
         // bool and uint: always false; return an empty matrix
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_lt_zero, _int8  , int8_t  )
@@ -134,14 +211,13 @@ switch (opcode)
             case GB_INT64_code  : GB_SEL_WORKER (_lt_zero, _int64 , int64_t )
             case GB_FP32_code   : GB_SEL_WORKER (_lt_zero, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_lt_zero, _fp64  , double  )
-            default: ;          // not for uint, bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
     case GB_LE_ZERO_opcode   :  // A(i,j) <= 0
 
         // bool and uint: renamed GxB_LE_ZERO to GxB_EQ_ZERO
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_le_zero, _int8  , int8_t  )
@@ -150,7 +226,7 @@ switch (opcode)
             case GB_INT64_code  : GB_SEL_WORKER (_le_zero, _int64 , int64_t )
             case GB_FP32_code   : GB_SEL_WORKER (_le_zero, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_le_zero, _fp64  , double  )
-            default: ;          // not for uint, bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
@@ -172,7 +248,8 @@ switch (opcode)
             case GB_FP64_code   : GB_SEL_WORKER (_ne_thunk, _fp64  , double  )
             case GB_FC32_code   : GB_SEL_WORKER (_ne_thunk, _fc32, GxB_FC32_t)
             case GB_FC64_code   : GB_SEL_WORKER (_ne_thunk, _fc64, GxB_FC64_t)
-            default             : GB_SEL_WORKER (_ne_thunk, _any   , GB_void )
+            case GB_UDT_code    : GB_SEL_WORKER (_ne_thunk, _any   , GB_void )
+            default: ;          // not used
         }
         break ;
 
@@ -194,7 +271,8 @@ switch (opcode)
             case GB_FP64_code   : GB_SEL_WORKER (_eq_thunk, _fp64  , double  )
             case GB_FC32_code   : GB_SEL_WORKER (_eq_thunk, _fc32, GxB_FC32_t)
             case GB_FC64_code   : GB_SEL_WORKER (_eq_thunk, _fc64, GxB_FC64_t)
-            default             : GB_SEL_WORKER (_eq_thunk, _any   , GB_void )
+            case GB_UDT_code    : GB_SEL_WORKER (_eq_thunk, _any   , GB_void )
+            default: ;          // not used
         }
         break ;
 
@@ -202,7 +280,6 @@ switch (opcode)
 
         // bool: if thunk is false, renamed GxB_GT_THUNK to GxB_NONZERO
         //       if thunk is true,  return an empty matrix
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_gt_thunk, _int8  , int8_t  )
@@ -215,7 +292,7 @@ switch (opcode)
             case GB_UINT64_code : GB_SEL_WORKER (_gt_thunk, _uint64, uint64_t)
             case GB_FP32_code   : GB_SEL_WORKER (_gt_thunk, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_gt_thunk, _fp64  , double  )
-            default: ;          // not for bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
@@ -223,7 +300,6 @@ switch (opcode)
 
         // bool: if thunk is false, use GB_dup
         //       if thunk is true,  renamed GxB_GE_THUNK to GxB_NONZERO
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_ge_thunk, _int8  , int8_t  )
@@ -236,7 +312,7 @@ switch (opcode)
             case GB_UINT64_code : GB_SEL_WORKER (_ge_thunk, _uint64, uint64_t)
             case GB_FP32_code   : GB_SEL_WORKER (_ge_thunk, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_ge_thunk, _fp64  , double  )
-            default: ;          // not for bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
@@ -244,7 +320,6 @@ switch (opcode)
 
         // bool: if thunk is true,  renamed GxB_LT_THUNK to GxB_EQ_ZERO
         //       if thunk is false, return an empty matrix
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_lt_thunk, _int8  , int8_t  )
@@ -257,7 +332,7 @@ switch (opcode)
             case GB_UINT64_code : GB_SEL_WORKER (_lt_thunk, _uint64, uint64_t)
             case GB_FP32_code   : GB_SEL_WORKER (_lt_thunk, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_lt_thunk, _fp64  , double  )
-            default: ;          // not for bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
@@ -265,7 +340,6 @@ switch (opcode)
 
         // bool: if thunk is true,  use GB_dup
         //       if thunk is false, renamed GxB_LE_ZERO to GxB_EQ_ZERO
-        // user type and complex: return error
         switch (typecode)
         {
             case GB_INT8_code   : GB_SEL_WORKER (_le_thunk, _int8  , int8_t  )
@@ -278,10 +352,10 @@ switch (opcode)
             case GB_UINT64_code : GB_SEL_WORKER (_le_thunk, _uint64, uint64_t)
             case GB_FP32_code   : GB_SEL_WORKER (_le_thunk, _fp32  , float   )
             case GB_FP64_code   : GB_SEL_WORKER (_le_thunk, _fp64  , double  )
-            default: ;          // not for bool, complex, or user-defined
+            default: ;          // not used
         }
         break ;
 
-    default:  ;
+    default: ;
 }
 

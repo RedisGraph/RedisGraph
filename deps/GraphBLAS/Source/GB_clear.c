@@ -21,8 +21,8 @@
 // header is left.
 
 // A is first converted to sparse or hypersparse, and then conformed via
-// GB_conform.  If A->sparsity disables the sparse and hypersparse structures,
-// A is converted bitmap instead.
+// GB_conform.  If A->sparsity_control disables the sparse and hypersparse
+// structures, A is converted bitmap instead.
 
 #include "GB.h"
 
@@ -49,12 +49,13 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
     // clear the content of A if bitmap
     //--------------------------------------------------------------------------
 
-    int sparsity = GB_sparsity_control (A->sparsity, A->vdim) ;
-    if (((sparsity & (GxB_SPARSE + GxB_HYPERSPARSE)) == 0) && GB_IS_BITMAP (A))
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+    int sparsity_control = GB_sparsity_control (A->sparsity_control, A->vdim) ;
+    if (((sparsity_control & (GxB_SPARSE + GxB_HYPERSPARSE)) == 0)
+        && GB_IS_BITMAP (A))
     { 
         // A should remain bitmap
-        GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
-        GB_memset (A->b, 0, GB_NNZ_HELD (A), nthreads_max) ;
+        GB_memset (A->b, 0, GB_nnz_held (A), nthreads_max) ;
         A->nvals = 0 ;
         A->magic = GB_MAGIC ;
         return (GrB_SUCCESS) ;
@@ -91,7 +92,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         int64_t plen = A->vdim ;
         A->nvec = plen ;
         A->plen = plen ;
-        A->p = GB_CALLOC (plen+1, int64_t) ;
+        A->p = GB_MALLOC (plen+1, int64_t, &(A->p_size)) ;
         ASSERT (A->h == NULL) ;
         if (A->p == NULL)
         { 
@@ -99,6 +100,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
             GB_phbix_free (A) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
+        GB_memset (A->p, 0, (plen+1) * sizeof (int64_t), nthreads_max) ;
 
     }
     else
@@ -111,13 +113,19 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         int64_t plen = GB_IMIN (1, A->vdim) ;
         A->nvec = 0 ;
         A->plen = plen ;
-        A->p = GB_CALLOC (plen+1, int64_t) ;
-        A->h = GB_CALLOC (plen  , int64_t) ;
+        A->p = GB_MALLOC (plen+1, int64_t, &(A->p_size)) ;
+        A->h = GB_MALLOC (plen  , int64_t, &(A->h_size)) ;
         if (A->p == NULL || A->h == NULL)
         { 
             // out of memory
             GB_phbix_free (A) ;
             return (GrB_OUT_OF_MEMORY) ;
+        }
+        A->p [0] = 0 ;
+        if (plen > 0)
+        { 
+            A->p [1] = 0 ;
+            A->h [0] = 0 ;
         }
     }
 

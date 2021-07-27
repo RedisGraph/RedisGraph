@@ -59,7 +59,7 @@
 // for finding tests that trigger statement coverage.  If running a test
 // in GraphBLAS/Tcov, the test does not terminate.
 #if 1
-#ifdef GBTESTCOV
+#ifdef GBCOVER
 #define GB_GOTCHA                                                   \
 {                                                                   \
     fprintf (stderr, "Gotcha: " __FILE__ " line: %d\n", __LINE__) ; \

@@ -13,7 +13,7 @@
 // not shallow.  If the input matrix is already non-hypersparse, nothing is
 // changed (and in that case A->p remains shallow on output if shallow on
 // input). The A->x and A->i content is not changed; it remains in whatever
-// shallow/non-shallow state that it had on input).
+// shallow/non-shallow/iso property that it had on input).
 
 // If an out-of-memory condition occurs, all content of the matrix is cleared.
 
@@ -21,7 +21,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
 (
     GrB_Matrix A,           // matrix to convert to non-hypersparse
@@ -43,7 +43,7 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
     //--------------------------------------------------------------------------
 
     if (GB_IS_HYPERSPARSE (A))
-    { 
+    {
 
         //----------------------------------------------------------------------
         // determine the number of threads to use
@@ -62,8 +62,8 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
         // allocate the new Ap array, of size n+1
         //----------------------------------------------------------------------
 
-        int64_t *GB_RESTRICT Ap_new ;
-        Ap_new = GB_MALLOC (n+1, int64_t) ;
+        int64_t *restrict Ap_new = NULL ; size_t Ap_new_size = 0 ;
+        Ap_new = GB_MALLOC (n+1, int64_t, &Ap_new_size) ;
         if (Ap_new == NULL)
         { 
             // out of memory
@@ -80,10 +80,10 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
         //----------------------------------------------------------------------
 
         int64_t nvec = A->nvec ;                // # of vectors in Ah_old
-        int64_t *GB_RESTRICT Ap_old = A->p ;    // size nvec+1
-        int64_t *GB_RESTRICT Ah_old = A->h ;    // size nvec
+        int64_t *restrict Ap_old = A->p ;    // size nvec+1
+        int64_t *restrict Ah_old = A->h ;    // size nvec
         int64_t nvec_nonempty = 0 ;             // recompute A->nvec_nonempty
-        int64_t anz = GB_NNZ (A) ;
+        int64_t anz = GB_nnz (A) ;
 
         //----------------------------------------------------------------------
         // construct the new vector pointers
@@ -202,7 +202,7 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
         GB_ph_free (A) ;
 
         // transplant the new vector pointers; matrix is no longer hypersparse
-        A->p = Ap_new ;
+        A->p = Ap_new ; A->p_size = Ap_new_size ;
         A->h = NULL ;
         A->nvec = n ;
         A->nvec_nonempty = nvec_nonempty ;
@@ -210,7 +210,7 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
         A->p_shallow = false ;
         A->h_shallow = false ;
         A->magic = GB_MAGIC ;
-        ASSERT (anz == GB_NNZ (A)) ;
+        ASSERT (anz == GB_nnz (A)) ;
 
         //----------------------------------------------------------------------
         // A is now sparse

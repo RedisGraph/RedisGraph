@@ -16,8 +16,8 @@
 
 // For both methods, if the two matrices are FP32 or FP64, and have NaNs, then
 // these functions will return false, since NaN == NaN is false.  To check for
-// NaN equality (like isequalwithequalnans in MATLAB), use isequal_type with a
-// user-defined operator f(x,y) that returns true if x and y are both NaN.
+// NaN equality, use isequal_type with a user-defined operator f(x,y) that
+// returns true if x and y are both NaN.
 
 #include "GraphBLAS.h"
 #undef GB_PUBLIC

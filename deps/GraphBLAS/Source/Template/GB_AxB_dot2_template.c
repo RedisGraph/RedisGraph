@@ -8,8 +8,9 @@
 //------------------------------------------------------------------------------
 
 // A and B are sparse, bitmap, or full; never hypersparse.  If the input
-// matrices A and/or B are hypersparse, they are packed into sparse matrices,
-// and C is unpacked from bitmap to sparse/hypersparse when done.
+// matrices A and/or B are hypersparse, they are converted into hyper_shallow
+// sparse matrices, and C is converted from bitmap to sparse/hypersparse when
+// done.
 
 #if ( !GB_A_IS_HYPER && !GB_B_IS_HYPER )
 {

@@ -66,7 +66,6 @@ for n = [1 10 20:10:60 61:65 70:10:100]
 
     relwork = [relwork cwork/awork] ;
 
-    % fprintf ('MATLAB:\n') ;
     tic
     C = A'*B ;
     t1 = toc ;
@@ -80,7 +79,6 @@ for n = [1 10 20:10:60 61:65 70:10:100]
     tic
     C4 = GB_mex_AxB (A,B, true) ;
     t4 = toc ;
-    t4 = grbresults ;
 
     % fprintf ('GrB A''*B native:\n') ;
     tic
@@ -90,7 +88,7 @@ for n = [1 10 20:10:60 61:65 70:10:100]
     reltime = [reltime t2/t5] ;
 
     fprintf (...
-'m %3d n %3d %10.2e MATLAB: %10.4f AdotB : %10.4f GB,auto:: %10.4f outer %10.4f', ...
+'m %3d n %3d %10.2e builtin: %10.4f AdotB : %10.4f GB,auto:: %10.4f outer %10.4f', ...
     m, n, cwork/awork, t1, t2, t4, t5) ;
     % fprintf (' speedup: %10.4f (no Mask)\n', t2/t5) ;
     fprintf (' rel: %10.4f ', t2/t5) ;
@@ -102,7 +100,6 @@ for n = [1 10 20:10:60 61:65 70:10:100]
 
     %{
 
-    % fprintf ('MATLAB:\n') ;
     tic
     C = Mask .* (A'*B) ;
     t1 = toc ;
@@ -123,7 +120,7 @@ for n = [1 10 20:10:60 61:65 70:10:100]
     t5 = toc ;
 
     fprintf (...
-    'm %2d MATLAB: %10.4f AdotB : %10.4f   GB,auto:: %10.4f outer %10.4f', ...
+    'm %2d builtin: %10.4f AdotB : %10.4f   GB,auto:: %10.4f outer %10.4f', ...
     m, t1, t2, t4, t5) ;
     fprintf (' speedup: %10.4f (with Mask)\n', t1/t4) ;
 

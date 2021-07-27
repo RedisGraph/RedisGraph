@@ -3,7 +3,7 @@ function C = gb_min3 (op, A, option)
 % Implements C = min (A, [ ], option)
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isequal (option, 'all'))
     % C = min (A, [ ] 'all'), reducing all entries to a scalar

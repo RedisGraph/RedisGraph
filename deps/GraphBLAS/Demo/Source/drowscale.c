@@ -15,7 +15,7 @@
 // optional step ensures that C has no empty columns, which speeds up the
 // subsequent PageRank computation.
 
-/* MATLAB equivalent (excluding the addition of I):
+/* equivalent computation as an *.m function (excluding the addition of I):
 
     function C = rowscale (A)
     %ROWSCALE row scale an adjacency matrix by out-degree
@@ -90,7 +90,8 @@ GrB_Info drowscale          // GrB_SUCCESS or error condition
     //--------------------------------------------------------------------------
 
     OK (GrB_Vector_new (&dout, GrB_FP64, n)) ;
-    OK (GrB_Matrix_reduce_BinaryOp (dout, NULL, NULL, GrB_PLUS_FP64, A, NULL)) ;
+    OK (GrB_Matrix_reduce_Monoid (dout, NULL, NULL, GrB_PLUS_MONOID_FP64,
+        A, NULL)) ;
 
     //--------------------------------------------------------------------------
     // construct scaling matrix D

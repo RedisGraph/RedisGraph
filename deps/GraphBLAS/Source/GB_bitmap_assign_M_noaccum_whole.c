@@ -24,8 +24,10 @@
 
 #include "GB_bitmap_assign_methods.h"
 
-#define GB_FREE_ALL \
-    GB_ek_slice_free (&pstart_Mslice, &kfirst_Mslice, &klast_Mslice) ;
+#define GB_FREE_ALL                         \
+{                                           \
+    GB_WERK_POP (M_ek_slicing, int64_t) ;   \
+}
 
 GrB_Info GB_bitmap_assign_M_noaccum_whole
 (
@@ -85,8 +87,7 @@ GrB_Info GB_bitmap_assign_M_noaccum_whole
             // Cb [pC] += 2 for each entry M(i,j) in the mask
             GB_bitmap_M_scatter_whole (C,
                 M, Mask_struct, GB_BITMAP_M_SCATTER_PLUS_2,
-                pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                M_nthreads, M_ntasks, Context) ;
+                M_ek_slicing, M_ntasks, M_nthreads, Context) ;
             // the bitmap of C now contains:
             //  Cb (i,j) = 0:   cij not present, mij zero
             //  Cb (i,j) = 1:   cij present, mij zero
@@ -176,8 +177,7 @@ GrB_Info GB_bitmap_assign_M_noaccum_whole
                 // Cb [pC] += 2 for each entry M(i,j) in the mask
                 GB_bitmap_M_scatter_whole (C,
                     M, Mask_struct, GB_BITMAP_M_SCATTER_PLUS_2,
-                    pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                    M_nthreads, M_ntasks, Context) ;
+                    M_ek_slicing, M_ntasks, M_nthreads, Context) ;
                 // the bitmap of C now contains:
                 //  Cb (i,j) = 0:   cij not present, mij zero
                 //  Cb (i,j) = 1:   cij present, mij zero
@@ -285,8 +285,7 @@ GrB_Info GB_bitmap_assign_M_noaccum_whole
                 // Cb [pC] += 2 for each entry M(i,j) in the mask
                 GB_bitmap_M_scatter_whole (C,
                     M, Mask_struct, GB_BITMAP_M_SCATTER_PLUS_2,
-                    pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                    M_nthreads, M_ntasks, Context) ;
+                    M_ek_slicing, M_ntasks, M_nthreads, Context) ;
                 // the bitmap of C now contains:
                 //  Cb (i,j) = 0:   cij not present, mij zero
                 //  Cb (i,j) = 1:   cij present, mij zero
@@ -320,8 +319,8 @@ GrB_Info GB_bitmap_assign_M_noaccum_whole
                 #include "GB_bitmap_assign_C_whole_template.c"
 
             }
-            else if (GB_NNZ (A) == 0)
-            {
+            else if (GB_nnz (A) == 0)
+            { 
 
                 //--------------------------------------------------------------
                 // C<M> = A where A is sparse or hyper, with no entries
@@ -350,8 +349,7 @@ GrB_Info GB_bitmap_assign_M_noaccum_whole
                 // Cb [pC] += 2 for each entry M(i,j) in the mask
                 GB_bitmap_M_scatter_whole (C,
                     M, Mask_struct, GB_BITMAP_M_SCATTER_PLUS_2,
-                    pstart_Mslice, kfirst_Mslice, klast_Mslice,
-                    M_nthreads, M_ntasks, Context) ;
+                    M_ek_slicing, M_ntasks, M_nthreads, Context) ;
                 // the bitmap of C now contains:
                 //  Cb (i,j) = 0:   cij not present, mij zero
                 //  Cb (i,j) = 1:   cij present, mij zero

@@ -17,16 +17,17 @@ GrB_Info GrB_UnaryOp_free           // free a user-created unary operator
 
     if (unaryop != NULL)
     {
-        // only free a user-defined operator
+        // only free a dynamically-allocated operator
         GrB_UnaryOp op = *unaryop ;
-        if (op != NULL && op->opcode == GB_USER_opcode)
+        if (op != NULL)
         {
-            if (op->magic == GB_MAGIC)
+            size_t header_size = op->header_size ;
+            if (header_size > 0)
             { 
                 op->magic = GB_FREED ;  // to help detect dangling pointers
-                GB_FREE (*unaryop) ;
+                op->header_size = 0 ;
+                GB_FREE (unaryop, header_size) ;
             }
-            (*unaryop) = NULL ;
         }
     }
 

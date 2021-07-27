@@ -29,17 +29,16 @@ GrB_Info GB_Type_new
     (*type) = NULL ;
 
     #if ( ! GB_HAS_VLA )
-
-        // Microsoft Visual Studio does not support variable-length arrays
-        // allocating automatically on the stack.  These arrays are used for
-        // scalar values for a given type.  If VLA is not supported,
-        // user-defined types can be no larger than GB_VLA_MAXSIZE.
-
+    {
+        // Microsoft Visual Studio does not support VLAs allocating
+        // automatically on the stack.  These arrays are used for scalar values
+        // for a given type.  If VLA is not supported, user-defined types can
+        // be no larger than GB_VLA_MAXSIZE.
         if (sizeof_ctype > GB_VLA_MAXSIZE)
         {
             return (GrB_INVALID_VALUE) ;
         }
-
+    }
     #endif
 
     //--------------------------------------------------------------------------
@@ -47,7 +46,8 @@ GrB_Info GB_Type_new
     //--------------------------------------------------------------------------
 
     // allocate the type
-    (*type) = GB_CALLOC (1, struct GB_Type_opaque) ;
+    size_t header_size ;
+    (*type) = GB_MALLOC (1, struct GB_Type_opaque, &header_size) ;
     if (*type == NULL)
     { 
         // out of memory
@@ -57,15 +57,14 @@ GrB_Info GB_Type_new
     // initialize the type
     GrB_Type t = *type ;
     t->magic = GB_MAGIC ;
+    t->header_size = header_size ;
     t->size = GB_IMAX (sizeof_ctype, 1) ;
     t->code = GB_UDT_code ;     // user-defined type
+    t->name [0] = '\0' ;
 
     //--------------------------------------------------------------------------
     // get the name
     //--------------------------------------------------------------------------
-
-    // if no name found, a generic name is used instead
-    strncpy (t->name, "user-type", GB_LEN-1) ;
 
     char input2 [GB_LEN+1] ;
     char *p = NULL ;
@@ -94,6 +93,10 @@ GrB_Info GB_Type_new
         // p now contains the final name, copy it to the output name
         strncpy (t->name, p, GB_LEN-1) ;
     }
+
+    //--------------------------------------------------------------------------
+    // return result
+    //--------------------------------------------------------------------------
 
     return (GrB_SUCCESS) ;
 }

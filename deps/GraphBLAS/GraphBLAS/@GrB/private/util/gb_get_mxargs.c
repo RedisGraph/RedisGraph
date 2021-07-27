@@ -3,19 +3,19 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
 // gb_get_mxargs collects all the input arguments for the 12 foundational
 // GraphBLAS operations.  The user-level view is described below.  For
 // the private mexFunctions, the descriptor optionally appears as the last
-// argument.  The matrix arguments are either MATLAB sparse or full matrices,
+// argument.  The matrix arguments are either built-in sparse or full matrices,
 // GraphBLAS matrices.  To call the mexFunction, the opaque content of the
 // GraphBLAS matrices has been extracted, so they appear here as GraphBLAS
-// structs (a MATLAB struct G whose first field is always G.GraphBLAS).
+// structs (a built-in struct G whose first field is always G.GraphBLAS).
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 void gb_get_mxargs
 (

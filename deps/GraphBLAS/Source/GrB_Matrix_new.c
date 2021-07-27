@@ -58,7 +58,7 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
         vdim = (int64_t) nrows ;
     }
 
-    info = GB_new (A, // auto sparsity, new header
+    info = GB_new (A, false, // auto sparsity, new user header
         type, vlen, vdim, GB_Ap_calloc, A_is_csc,
         GxB_AUTO_SPARSITY, GB_Global_hyper_switch_get ( ), 1, Context) ;
     return (info) ;

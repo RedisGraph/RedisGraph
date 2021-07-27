@@ -4,7 +4,7 @@ function descriptorinfo (d)
 %   GrB.descriptorinfo
 %   GrB.descriptorinfo (d)
 %
-% The GraphBLAS descriptor is a MATLAB struct that modifies the behavior
+% The GraphBLAS descriptor is a struct that modifies the behavior
 % of GraphBLAS operations.  It contains the following components, each of
 % which are a string or a number.  Any component of struct that is not
 % present is set to the default value.  If the descriptor d is empty, or
@@ -28,14 +28,14 @@ function descriptorinfo (d)
 %            determine the method automatically, via a heuristic.
 %
 %   d.kind   For most GrB.methods, this is a string equal to 'default',
-%            'GrB', 'sparse', 'full', or 'matlab'.  The default is 'GrB',
+%            'GrB', 'sparse', 'full', or 'builtin'.  The default is 'GrB',
 %            where the GraphBLAS operation returns an object, which is
 %            preferred since GraphBLAS sparse matrices are faster and can
 %            represent many more data types.  However, if you want a
-%            standard MATLAB sparse matrix on ouput, use d.kind='sparse'.
-%            Use d.kind='full' to return a MATLAB full matrix.  Use
-%            d.kind='matlab' for a MATLAB sparse or full matrix (full if
-%            all entries are present, sparse otherwise).
+%            standard sparse matrix on ouput, use d.kind='sparse'.  Use
+%            d.kind='full' to return a full matrix.  Use d.kind='builtin'
+%            for a built-in sparse or full matrix (full if all entries are
+%            present, sparse otherwise).
 %
 %   d.base   A string equal to 'default', 'zero-based', 'one-based', or
 %            'one-based int'.  The default is 'one-based'.  If d.base is
@@ -79,7 +79,7 @@ function descriptorinfo (d)
 % GrB.semiringinfo, GrB.unopinfo.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: add desc.in* = 'conjugate transpose'
 

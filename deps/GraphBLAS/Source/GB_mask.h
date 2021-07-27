@@ -25,7 +25,7 @@ GrB_Info GB_mask                // C<M> = Z
 
 GrB_Info GB_masker          // R = masker (C, M, Z)
 (
-    GrB_Matrix *Rhandle,    // output matrix (unallocated on input)
+    GrB_Matrix R,           // output matrix, static header
     const bool R_is_csc,    // format of output matrix R
     const GrB_Matrix M,     // required input mask
     const bool Mask_comp,   // descriptor for M
@@ -37,18 +37,20 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
 
 GrB_Info GB_masker_phase1           // count nnz in each R(:,j)
 (
+    // computed by phase1:
     int64_t **Rp_handle,            // output of size Rnvec+1
+    size_t *Rp_size_handle,
     int64_t *Rnvec_nonempty,        // # of non-empty vectors in R
     // tasks from phase1a:
-    GB_task_struct *GB_RESTRICT TaskList,       // array of structs
+    GB_task_struct *restrict TaskList,       // array of structs
     const int R_ntasks,               // # of tasks
     const int R_nthreads,             // # of threads to use
     // analysis from phase0:
     const int64_t Rnvec,
-    const int64_t *GB_RESTRICT Rh,
-    const int64_t *GB_RESTRICT R_to_M,
-    const int64_t *GB_RESTRICT R_to_C,
-    const int64_t *GB_RESTRICT R_to_Z,
+    const int64_t *restrict Rh,
+    const int64_t *restrict R_to_M,
+    const int64_t *restrict R_to_C,
+    const int64_t *restrict R_to_Z,
     // original input:
     const GrB_Matrix M,             // required mask
     const bool Mask_comp,           // if true, then M is complemented
@@ -60,21 +62,23 @@ GrB_Info GB_masker_phase1           // count nnz in each R(:,j)
 
 GrB_Info GB_masker_phase2           // phase2 for R = masker (C,M,Z)
 (
-    GrB_Matrix *Rhandle,            // output matrix (unallocated on input)
+    GrB_Matrix R,                   // output matrix, static header
     const bool R_is_csc,            // format of output matrix R
     // from phase1:
-    const int64_t *GB_RESTRICT Rp,  // vector pointers for R
+    int64_t **Rp_handle,            // vector pointers for R
+    size_t Rp_size,
     const int64_t Rnvec_nonempty,   // # of non-empty vectors in R
     // tasks from phase1a:
-    const GB_task_struct *GB_RESTRICT TaskList,     // array of structs
+    const GB_task_struct *restrict TaskList,     // array of structs
     const int R_ntasks,               // # of tasks
     const int R_nthreads,             // # of threads to use
     // analysis from phase0:
     const int64_t Rnvec,
-    const int64_t *GB_RESTRICT Rh,
-    const int64_t *GB_RESTRICT R_to_M,
-    const int64_t *GB_RESTRICT R_to_C,
-    const int64_t *GB_RESTRICT R_to_Z,
+    int64_t **Rh_handle,
+    size_t Rh_size,
+    const int64_t *restrict R_to_M,
+    const int64_t *restrict R_to_C,
+    const int64_t *restrict R_to_Z,
     const int R_sparsity,
     // original input:
     const GrB_Matrix M,             // required mask

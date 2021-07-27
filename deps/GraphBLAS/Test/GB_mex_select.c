@@ -203,6 +203,7 @@ void mexFunction
             }
             else
             {
+                GxB_print (thunk_type, 3) ;
                 mexErrMsgTxt ("unknown thunk type") ;
             }
             GxB_Scalar_wait_(&Thunk) ;
@@ -236,7 +237,7 @@ void mexFunction
         METHOD (GxB_Matrix_select_(C, M, accum, op, A, Thunk, desc)) ; // C
     }
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
 
     FREE_ALL ;

@@ -18,20 +18,21 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
     GrB_Index *nrows,   // number of rows of the matrix
     GrB_Index *ncols,   // number of columns of the matrix
 
-    GrB_Index **Ap,     // row "pointers", Ap_size >= nvec+1
-    GrB_Index **Ah,     // row indices, Ah_size >= nvec
-    GrB_Index **Aj,     // column indices, Aj_size >= nvals(A)
-    void **Ax,          // values, Ax_size 1, or >= nvals(A)
-    GrB_Index *Ap_size, // size of Ap
-    GrB_Index *Ah_size, // size of Ah
-    GrB_Index *Aj_size, // size of Aj
-    GrB_Index *Ax_size, // size of Ax
+    GrB_Index **Ap,     // row "pointers"
+    GrB_Index **Ah,     // row indices
+    GrB_Index **Aj,     // column indices
+    void **Ax,          // values
+    GrB_Index *Ap_size, // size of Ap in bytes
+    GrB_Index *Ah_size, // size of Ah in bytes
+    GrB_Index *Aj_size, // size of Aj in bytes
+    GrB_Index *Ax_size, // size of Ax in bytes
+    bool *iso,          // if true, A is iso
 
     GrB_Index *nvec,    // number of rows that appear in Ah
     bool *jumbled,      // if true, indices in each row may be unsorted
     const GrB_Descriptor desc
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs and get the descriptor
@@ -39,22 +40,21 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
 
     GB_WHERE1 ("GxB_Matrix_export_HyperCSR (&A, &type, &nrows, &ncols, "
         "&Ap, &Ah, &Aj, &Ax, &Ap_size, &Ah_size, &Aj_size, &Ax_size, "
-        "&nvec, &jumbled, desc)") ;
+        "&iso, &nvec, &jumbled, desc)") ;
     GB_BURBLE_START ("GxB_Matrix_export_HyperCSR") ;
     GB_RETURN_IF_NULL (A) ;
     GB_RETURN_IF_NULL_OR_FAULTY (*A) ;
     GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
 
     //--------------------------------------------------------------------------
-    // ensure the matrix is in CSR format
+    // ensure the matrix is in by-row format
     //--------------------------------------------------------------------------
 
     if ((*A)->is_csc)
     { 
-        // A = A', done in-place, to put A in CSR format
+        // A = A', done in-place, to put A in by-row format
         GBURBLE ("(transpose) ") ;
-        GB_OK (GB_transpose (NULL, NULL, false, *A,
-            NULL, NULL, NULL, false, Context)) ;
+        GB_OK (GB_transpose_in_place (*A, false, Context)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -91,14 +91,15 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
     int sparsity ;
     bool is_csc ;
 
-    info = GB_export (A, type, ncols, nrows,
+    info = GB_export (false, A, type, ncols, nrows, false,
         Ap,   Ap_size,  // Ap
         Ah,   Ah_size,  // Ah
         NULL, NULL,     // Ab
         Aj,   Aj_size,  // Aj
         Ax,   Ax_size,  // Ax
         NULL, jumbled, nvec,                // jumbled or not
-        &sparsity, &is_csc, Context) ;      // hypersparse by row
+        &sparsity, &is_csc,                 // hypersparse by row
+        iso, Context) ;
 
     if (info == GrB_SUCCESS)
     {

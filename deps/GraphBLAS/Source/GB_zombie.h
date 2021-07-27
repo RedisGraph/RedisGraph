@@ -32,13 +32,12 @@
 // regular entry, taking on the value from A.  The row index is unflipped.
 
 // Zombies are deleted and pending tuples are added into the matrix all at
-// once, by GB_Matrix_wait.
+// once, by GB_wait.
 
 #define GB_FLIP(i)             (-(i)-2)
 #define GB_IS_FLIPPED(i)       ((i) < 0)
 #define GB_IS_ZOMBIE(i)        ((i) < 0)
 #define GB_IS_NOT_FLIPPED(i)   ((i) >= 0)
-#define GB_IS_NOT_ZOMBIE(Ai,p) ((Ai == NULL) ? true : (Ai [p] >= 0))
 #define GB_UNFLIP(i)           (((i) < 0) ? GB_FLIP(i) : (i))
 #define GBI_UNFLIP(Ai,p,avlen)      \
     ((Ai == NULL) ? ((p) % (avlen)) : GB_UNFLIP (Ai [p]))
