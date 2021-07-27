@@ -8,7 +8,7 @@ fprintf ('\n--------------performance test GB_mex_assign\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 dt = struct ('inp0', 'tran') ;
@@ -77,7 +77,7 @@ I = randperm (m) ; I = I (1:ni) ;
 J = randperm (n) ; J = J (1:nj) ;
 fprintf ('nnzB: %g\n', nnz (B)) ;
 
-fprintf ('MATLAB start:\n')
+fprintf ('built-in start:\n')
 tic
 C (I,J) = B ;
 toc
@@ -99,7 +99,7 @@ A = Prob.A ;
 C = A ;
 C (1,1) = 1 ;
 
-fprintf ('MATLAB start:\n')
+fprintf ('built-in start:\n')
 tic
 C (I,J) = C (I,J) + B ;
 toc

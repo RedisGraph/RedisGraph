@@ -23,28 +23,28 @@ for trial = 1:ntrials
     s = full (max (max (A))) ;
 end
 tm = toc ;
-fprintf ('MATLAB max: %g\n', tm) ;
+fprintf ('builtin max: %g\n', tm) ;
 
 tic
 for trial = 1:ntrials
     s = full (min (min (A))) ;
 end
 tm = toc ;
-fprintf ('MATLAB min: %g\n', tm) ;
+fprintf ('builtin min: %g\n', tm) ;
 
 tic
 for trial = 1:ntrials
     s = full (sum (sum (A))) ;
 end
 tm = toc ;
-fprintf ('MATLAB sum: %g\n', tm) ;
+fprintf ('builtin sum: %g\n', tm) ;
 
 tic
 for trial = 1:ntrials
     s = full (prod (prod (A))) ;
 end
 tm = toc ;
-fprintf ('MATLAB prod: %g\n', tm) ;
+fprintf ('builtin prod: %g\n', tm) ;
 
 S.matrix = A ;
 S.pattern = logical (spones (A)) ;
@@ -67,8 +67,8 @@ for k1 = 1:length(ops)
         tic
         for trial = 1:ntrials
             c1 = GB_mex_reduce_to_scalar (cin, [ ], op, S) ;
-            t = t + grbresults ;
         end
+        t = toc ;
         if (nthreads == 1)
             t1 = t ;
         end
@@ -127,8 +127,8 @@ for k1 = 1:length(ops)
             tic
             for trial = 1:ntrials
                 c1 = GB_mex_reduce_to_scalar (cin, [ ], op, S) ;
-                t = t + grbresults ;
             end
+            t = toc ;
             if (nthreads == 1)
                 t1 = t ;
             end

@@ -1,5 +1,5 @@
 function C = GB_spec_Col_assign (C, Mask, accum, A, I, j, descriptor)
-%GB_SPEC_COL_ASSIGN a MATLAB mimic of GrB_Col_assign
+%GB_SPEC_COL_ASSIGN a mimic of GrB_Col_assign
 %
 % Usage:
 % C = GB_spec_Col_assign (C, Mask, accum, A, I, j, descriptor)

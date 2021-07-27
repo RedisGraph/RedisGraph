@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_eslice: uniform partition of e items to each task 
+// GB_eslice: equal partition of e items to each task 
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -20,9 +20,9 @@ void GB_eslice
 )
 {
     Slice [0] = 0 ;
-    for (int tid = 0 ; tid < ntasks ; tid++)
+    for (int tid = 1 ; tid < ntasks ; tid++)
     { 
-        Slice [tid] = GB_PART (tid, e, ntasks) ;
+        Slice [tid] = (int64_t) GB_PART (tid, e, ntasks) ;
     }
     Slice [ntasks] = e ;
 }

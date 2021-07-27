@@ -32,5 +32,22 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     GB_Context Context
 ) ;
 
+void GB_iso_reduce_to_scalar        // s = reduce (A) where A is iso
+(
+    GB_void *restrict s,    // output scalar of type reduce->op->ztype
+    GrB_Monoid reduce,      // monoid to use for the reduction
+    GrB_Matrix A,           // matrix to reduce
+    GB_Context Context
+) ;
+
+void GB_iso_reduce_worker
+(
+    GB_void *restrict s,            // output scalar
+    GxB_binary_function freduce,    // reduction function
+    GB_void *restrict a,            // iso value of A
+    uint64_t n,                     // number of entries in A to reduce
+    size_t zsize                    // size of s and a
+) ;
+
 #endif
 

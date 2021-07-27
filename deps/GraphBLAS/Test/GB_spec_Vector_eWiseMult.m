@@ -1,5 +1,5 @@
 function w = GB_spec_Vector_eWiseMult (w, mask, accum, mult, u, v, descriptor)
-%GB_SPEC_VECTOR_EWISEMULT a MATLAB mimic of GrB_Vector_eWiseMult
+%GB_SPEC_VECTOR_EWISEMULT a mimic of GrB_Vector_eWiseMult
 %
 % Usage:
 % w = GB_spec_Vector_eWiseMult (w, mask, accum, mult, u, v, descriptor)

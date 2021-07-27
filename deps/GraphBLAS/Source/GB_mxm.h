@@ -10,6 +10,7 @@
 #ifndef GB_MXM_H
 #define GB_MXM_H
 #include "GB_AxB_saxpy.h"
+#include "GB_binop.h"
 
 //------------------------------------------------------------------------------
 
@@ -34,7 +35,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
 
 GrB_Info GB_AxB_dot                 // dot product (multiple methods)
 (
-    GrB_Matrix *Chandle,            // output matrix, NULL on input
+    GrB_Matrix C,                   // output matrix, static header
     GrB_Matrix C_in_place,          // input/output matrix, if done in-place
     GrB_Matrix M,                   // optional mask matrix
     const bool Mask_comp,           // if true, use !M
@@ -48,18 +49,19 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     GB_Context Context
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 (
-    GrB_Matrix *Chandle,            // output matrix (if not done in-place)
-    GrB_Matrix C_in_place,          // input/output matrix, if done in-place
+    GrB_Matrix C,                   // output, static header (if not in-place)
+    GrB_Matrix C_in,                // input/output matrix, if done in-place
     bool C_replace,                 // C matrix descriptor
     const bool C_is_csc,            // desired CSR/CSC format of C
-    GrB_Matrix *MT_handle,          // return MT = M' to caller, if computed
+    GrB_Matrix MT,                  // return MT = M' (static header)
+    bool *M_transposed,             // true if MT = M' was computed
     const GrB_Matrix M_in,          // mask for C<M> (not complemented)
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
-    const GrB_BinaryOp accum,       // accum operator for C_input += A*B
+    const GrB_BinaryOp accum,       // accum operator for C_in += A*B
     const GrB_Matrix A_in,          // input matrix
     const GrB_Matrix B_in,          // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
@@ -75,7 +77,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
 GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
 (
-    GrB_Matrix *Chandle,            // output matrix
+    GrB_Matrix C,                   // output matrix, static header
     const GrB_Matrix D,             // diagonal input matrix
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=D*A
@@ -85,7 +87,7 @@ GrB_Info GB_AxB_rowscale            // C = D*B, row scale with diagonal D
 
 GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
 (
-    GrB_Matrix *Chandle,            // output matrix
+    GrB_Matrix C,                   // output matrix, static header
     const GrB_Matrix A,             // input matrix
     const GrB_Matrix D,             // diagonal input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*D
@@ -111,15 +113,17 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     GB_Type_code *zcode             // type code for z output
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 (
-    GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // mask matrix for C<!M>=A'*B
+    GrB_Matrix C,                   // output matrix, static header
+    const bool C_iso,               // true if C is iso
+    const GB_void *cscalar,         // iso value of C
+    const GrB_Matrix M_in,          // mask matrix for C<!M>=A'*B, may be NULL
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
-    const GrB_Matrix A,             // input matrix
-    const GrB_Matrix B,             // input matrix
+    const GrB_Matrix A_in,          // input matrix
+    const GrB_Matrix B_in,          // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     GB_Context Context
@@ -131,11 +135,13 @@ bool GB_is_diagonal             // true if A is diagonal
     GB_Context Context
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 (
-    GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // mask matrix for C<M>=A'*B or C<!M>=A'*B
+    GrB_Matrix C,                   // output matrix, static header
+    const bool C_iso,               // true if C is iso
+    const GB_void *cscalar,         // iso value of C
+    const GrB_Matrix M,             // mask matrix
     const bool Mask_struct,         // if true, use the only structure of M
     const GrB_Matrix A,             // input matrix
     const GrB_Matrix B,             // input matrix
@@ -148,7 +154,7 @@ GrB_Info GB_AxB_dot3_slice
 (
     // output:
     GB_task_struct **p_TaskList,    // array of structs, of size max_ntasks
-    int *p_max_ntasks,              // size of TaskList
+    size_t *p_TaskList_size,        // size of TaskList
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads to use
     // input:
@@ -160,7 +166,7 @@ GrB_Info GB_AxB_dot3_one_slice
 (
     // output:
     GB_task_struct **p_TaskList,    // array of structs, of size max_ntasks
-    int *p_max_ntasks,              // size of TaskList
+    size_t *p_TaskList_size,        // size of TaskList
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads to use
     // input:
@@ -178,31 +184,25 @@ GrB_Info GB_AxB_dot4                // C+=A'*B, dot product method
     GB_Context Context
 ) ;
 
-void GB_AxB_pattern
-(
-    // outputs:
-    bool *A_is_pattern,     // true if A is pattern-only, because of the mult
-    bool *B_is_pattern,     // true if B is pattern-only, because of the mult
-    // inputs:
-    const bool flipxy,      // if true,  z = mult (b,a) will be computed
-                            // if false, z = mult (a,b) will be computed
-    const GB_Opcode mult_opcode // opcode of multiply operator
-) ;
-
 //------------------------------------------------------------------------------
 // GB_AxB_dot4_control: determine if the dot4 method should be used
 //------------------------------------------------------------------------------
 
-// C += A'*B where C is modified in-place
+// C += A'*B where C is modified in-place. C may be iso on input but dot4
+// does not handle the case where C is iso on output.  C must be as-if-full
+// on input, and remains so on output.
 
 static inline bool GB_AxB_dot4_control
 (
-    const GrB_Matrix C_in,      // NULL if C cannot be modified in-place
-    const GrB_Matrix M,
-    const bool Mask_comp
+    const bool C_out_iso,       // true if C is iso on output; must be false
+                                // to use dot4
+    const GrB_Matrix C_in,      // must be present and as-if-full to use dot4
+    const GrB_Matrix M,         // must be NULL to use dot4
+    const bool Mask_comp        // must be false to use dot4
 )
 {
-    return (C_in != NULL && M == NULL && !Mask_comp && !GB_IS_BITMAP (C_in)) ;
+    return (!C_out_iso && C_in != NULL && M == NULL && !Mask_comp &&
+        GB_as_if_full (C_in)) ;
 }
 
 //------------------------------------------------------------------------------
@@ -233,6 +233,23 @@ bool GB_AxB_dot2_control  // true: use dot2, false: use saxpy
     const GrB_Matrix A,
     const GrB_Matrix B,
     GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// GB_iso_AxB: determine if C=A*B results in an iso matrix C
+//------------------------------------------------------------------------------
+
+bool GB_iso_AxB             // C = A*B, return true if C is iso
+(
+    // output
+    GB_void *restrict c,    // output scalar of iso array
+    // input
+    GrB_Matrix A,           // input matrix
+    GrB_Matrix B,           // input matrix
+    uint64_t n,             // inner dimension of the matrix multiply
+    GrB_Semiring semiring,  // semiring
+    bool flipxy,            // true if z=fmult(b,a), false if z=fmult(a,b)
+    bool ignore_monoid      // rowscale and colscale do not use the monoid
 ) ;
 
 #endif

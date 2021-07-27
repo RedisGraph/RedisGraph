@@ -25,9 +25,18 @@ bool GB_AxB_dot3_cuda_branch
         // TODO if A or B are not accessed (first, 2nd, or pair ops)
         // then the type if A can be user-defined here, for CUDA.
 
+        // TODO: the test for a built-in semiring needs to be
+        // removed, to allow for the generation of CUDA kernels for non-
+        // built-in semirings.  The code generation process currently does not
+        // support user-defined types and operators, but this needs to be
+        // handled.  In addition, CUDA kernels could be built for semirings
+        // that are not built-in, but consist solely of built-in types and
+        // operators (such as BOR_BSHIFT on INT32 inputs).
+
         int ngpus_to_use = GB_ngpus_to_use (work) ;
         GBURBLE (" work:%g gpus:%d ", work, ngpus_to_use) ;
-        if (ngpus_to_use > 0 && semiring->semiring_is_builtin
+        if (ngpus_to_use > 0
+            && (semiring->header_size == 0)     // semiring is built-in
             && (A->type->code != GB_UDT_code)
             && (B->type->code != GB_UDT_code))
         {

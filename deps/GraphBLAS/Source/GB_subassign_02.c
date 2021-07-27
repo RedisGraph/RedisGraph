@@ -52,7 +52,7 @@ GrB_Info GB_subassign_02
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
-    GB_OK (GB_subassign_symbolic (&S, C, I, ni, J, nj, true, Context)) ;
+    GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -324,7 +324,7 @@ GrB_Info GB_subassign_02
                         // S (i,j) is not present, A (i,j) is present
                         // [. A 1]: action: ( insert )
                         int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                        GB_PENDING_INSERT (Ax +(pA*asize)) ;
+                        GB_PENDING_INSERT_aij ;
                         GB_NEXT (A) ;
                     }
                     else if (Sfound)
@@ -394,7 +394,7 @@ GrB_Info GB_subassign_02
                         // S (i,j) is not present, A (i,j) is present
                         // [. A 1]: action: ( insert )
                         int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                        GB_PENDING_INSERT (Ax +(pA*asize)) ;
+                        GB_PENDING_INSERT_aij ;
                         GB_NEXT (A) ;
                     }
                     else
@@ -414,7 +414,7 @@ GrB_Info GB_subassign_02
                     // [. A 1]: action: ( insert )
                     int64_t iA = GBI (Ai, pA, Avlen) ;
                     int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                    GB_PENDING_INSERT (Ax +(pA*asize)) ;
+                    GB_PENDING_INSERT_aij ;
                     GB_NEXT (A) ;
                 }
             }

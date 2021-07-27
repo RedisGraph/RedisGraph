@@ -1,52 +1,52 @@
-% GraphBLAS Test/ folder: test GraphBLAS in MATLAB
+% GraphBLAS Test/ folder: test GraphBLAS
 % See the README.txt file for more details.
 
 % Primary functiuns
 
-%   make          - compiles the MATLAB interface to GraphBLAS (for testing only)
+%   make          - compiles the interface to GraphBLAS (for testing only)
 %   testall       - run all GraphBLAS tests
 %   nthreads_get  - get # of threads and chunk to use in GraphBLAS
 %   nthreads_set  - set # of threads and chunk to use in GraphBLAS
 
-% MATLAB mimics of GraphBLAS operations:
+% mimics of GraphBLAS operations:
 %
-%   GB_spec_Col_assign            - a MATLAB mimic of GrB_Col_assign
-%   GB_spec_Col_extract           - a MATLAB mimic of GrB_Col_extract
-%   GB_spec_Matrix_extract        - a MATLAB mimic of GrB_Matrix_extract
-%   GB_spec_Matrix_extractElement - a MATLAB mimic of GrB_Matrix_extractElement
-%   GB_spec_Row_assign            - a MATLAB mimic of GrB_Row_assign
-%   GB_spec_Vector_extract        - a MATLAB mimic of GrB_Vector_extract
-%   GB_spec_Vector_extractElement - a MATLAB mimic of GrB_Matrix_extractElement
-%   GB_spec_accum                 - MATLAB mimic of the Z=accum(C,T) operation in GraphBLAS
+%   GB_spec_Col_assign            - a mimic of GrB_Col_assign
+%   GB_spec_Col_extract           - a mimic of GrB_Col_extract
+%   GB_spec_Matrix_extract        - a mimic of GrB_Matrix_extract
+%   GB_spec_Matrix_extractElement - a mimic of GrB_Matrix_extractElement
+%   GB_spec_Row_assign            - a mimic of GrB_Row_assign
+%   GB_spec_Vector_extract        - a mimic of GrB_Vector_extract
+%   GB_spec_Vector_extractElement - a mimic of GrB_Matrix_extractElement
+%   GB_spec_accum                 - mimic of the Z=accum(C,T) operation in GraphBLAS
 %   GB_spec_accum_mask            - apply the accumulator and mask
-%   GB_spec_apply                 - a MATLAB mimic of GrB_apply
-%   GB_spec_assign                - a MATLAB mimic of GrB_assign (but not Row or Col variants)
-%   GB_spec_build                 - a MATLAB version of GrB_Matrix_build and GrB_vector_build
-%   GB_spec_compare               - compare MATLAB mimic result with GraphBLAS result
+%   GB_spec_apply                 - a mimic of GrB_apply
+%   GB_spec_assign                - a mimic of GrB_assign (but not Row or Col variants)
+%   GB_spec_build                 - a version of GrB_Matrix_build and GrB_vector_build
+%   GB_spec_compare               - compare mimic result with GraphBLAS result
 %   GB_spec_descriptor            - return components of a descriptor
-%   GB_spec_Matrix_eWiseAdd       - a MATLAB mimic of GrB_Matrix_eWiseAdd
-%   GB_spec_Vector_eWiseAdd       - a MATLAB mimic of GrB_Vector_eWiseAdd
-%   GB_spec_Matrix_eWiseMult      - a MATLAB mimic of GrB_Matrix_eWiseMult
-%   GB_spec_Vector_eWiseMult      - a MATLAB mimic of GrB_Vector_eWiseMult
-%   GB_spec_extractTuples         - a MATLAB mimic of GrB_*_extractTuples
+%   GB_spec_Matrix_eWiseAdd       - a mimic of GrB_Matrix_eWiseAdd
+%   GB_spec_Vector_eWiseAdd       - a mimic of GrB_Vector_eWiseAdd
+%   GB_spec_Matrix_eWiseMult      - a mimic of GrB_Matrix_eWiseMult
+%   GB_spec_Vector_eWiseMult      - a mimic of GrB_Vector_eWiseMult
+%   GB_spec_extractTuples         - a mimic of GrB_*_extractTuples
 %   GB_spec_identity              - the additive identity of a monoid
-%   GB_spec_kron                  - a MATLAB mimic of GrB_kronecker
-%   GB_spec_mask                  - a pure MATLAB implementation of GrB_mask
-%   GB_spec_matrix                - a MATLAB mimic that conforms a matrix to the GraphBLAS spec
-%   GB_spec_mxm                   - a MATLAB mimic of GrB_mxm
-%   GB_spec_mxv                   - a MATLAB mimic of GrB_mxv
+%   GB_spec_kron                  - a mimic of GrB_kronecker
+%   GB_spec_mask                  - a pure implementation of GrB_mask
+%   GB_spec_matrix                - a mimic that conforms a matrix to the GraphBLAS spec
+%   GB_spec_mxm                   - a mimic of GrB_mxm
+%   GB_spec_mxv                   - a mimic of GrB_mxv
 %   GB_spec_op                    - apply a unary or binary operator
 %   GB_spec_operator              - get the contents of an operator
 %   GB_spec_opsall                - return a list of all operators, types, and semirings
 %   GB_spec_random                - generate random matrix
-%   GB_spec_reduce_to_scalar      - a MATLAB mimic of GrB_reduce (to scalar)
-%   GB_spec_reduce_to_vector      - a MATLAB mimic of GrB_reduce (to vector)
-%   GB_spec_resize                - a MATLAB mimic of GxB_resize
-%   GB_spec_select                - a MATLAB mimic of GxB_select
+%   GB_spec_reduce_to_scalar      - a mimic of GrB_reduce (to scalar)
+%   GB_spec_reduce_to_vector      - a mimic of GrB_reduce (to vector)
+%   GB_spec_resize                - a mimic of GxB_resize
+%   GB_spec_select                - a mimic of GxB_select
 %   GB_spec_semiring              - create a semiring
-%   GB_spec_subassign             - a MATLAB mimic of GxB_subassign
-%   GB_spec_transpose             - a MATLAB mimic of GrB_transpose
-%   GB_spec_vxm                   - a MATLAB mimic of GrB_vxm
+%   GB_spec_subassign             - a mimic of GxB_subassign
+%   GB_spec_transpose             - a mimic of GrB_transpose
+%   GB_spec_vxm                   - a mimic of GrB_vxm
 %   GB_complex_compare            - compare GraphBLAS results for complex types
 %   GB_user_op                    - apply a complex binary and unary operator
 %   GB_user_opsall                - return list of complex operators
@@ -57,7 +57,6 @@
 
 % Test scripts:
 
-%   test00   - test GB_mex_mis
 %   test01   - test GraphBLAS error handling
 %   test02   - test GrB_*_dup
 %   test03   - test GB_*_check functions
@@ -119,8 +118,8 @@
 %   test52   - test AdotB vs AxB
 %   test53   - test GrB_Matrix_extract
 %   test54   - test GB_subref (numeric case) with I=lo:hi, J=lo:hi
-%   test55   - test GxB_subassign, illustrate duplicate indices, MATLAB vs GraphBLAS
-%   test55b  - test GrB_assign, illustrate duplicate indices, MATLAB vs GraphBLAS
+%   test55   - test GxB_subassign, illustrate duplicate indices
+%   test55b  - test GrB_assign, illustrate duplicate indices
 %   test56   - test GrB_*_build
 %   test57   - test operator on large uint32 values
 %   test58   - test GrB_eWiseAdd
@@ -158,15 +157,11 @@
 %   test90   - test AxB with user-defined semirings: plus_rdiv and plus_rdiv2
 %   test91   - test subref performance on dense vectors
 %   test92   - test GB_subref (symbolic case)
-%   test93   - test dpagerank and ipagerank
-%   test93b  - test dpagerank and ipagerank
-%   test94   - test pagerank
 %   test95   - performance test for GrB_transpose
 %   test96   - test dot product
 %   test97   - test GB_assign, scalar expansion and zombies
 %   test98   - test GrB_mxm, typecasting on the fly
 %   test99   - test GB_mex_transpose with explicit zeros in the Mask
-%   test100  - test GB_mex_isequal
 %   test101  - test import/export
 %   test102  - test GB_AxB_saxpy3_flopcount
 %   test103  - test aliases in GrB_transpose
@@ -189,7 +184,6 @@
 %   test120  - performance tests for GrB_assign
 %   test121  - performance tests for GrB_assign
 %   test122  - performance tests for GrB_assign
-%   test123  - test MIS on large matrix
 %   test124  - GrB_extract, trigger case 6
 %   test125  - test GrB_mxm: row and column scaling
 %   test126  - test GrB_reduce to vector on a very sparse matrix 
@@ -223,6 +217,8 @@
 %   test154  - test GrB_apply with scalar binding
 %   test155  - test GrB_*_setElement and GrB_*_removeElement
 %   test156  - test assign C=A with typecasting
+
+% TODO:: add new tests here
 
 %   testc1   - test complex operators
 %   testc2   - test complex A*B, A'*B, A*B', A'*B', A+B
@@ -273,7 +269,6 @@
 %   stat             - report status of statement coverage and malloc debugging
 %   GB_define        - create C source code for GraphBLAS.h
 
-%   grbresults       - return time taken by last GraphBLAS function
 %   isequal_roundoff - compare two matrices, allowing for roundoff errors
 
 %   test_other       - installs all packages needed for extensive tests
@@ -281,29 +276,8 @@
 %   grb_clear_coverage - clear current statement coverage
 %   grb_get_coverage   - return current statement coverage
 
-%   bfs_book         - run BFS on a small graph
-%   bfs_matlab       - a simple breadth-first-search in MATLAB
-%   bfs_test         - compares bfs_matlab and GB_mex_bfs
 %   flopcount        - cumulative sum of flop counts for A*B, C<M>=A*B, C<!M>=A*B
 %   floptest         - compare flopcount with GB_mex_mxm_flops
-
-% Triangle counting:
-
-%   ../Demo/MATLAB/tricount       - count the number of triangles in an undirected unweighted graph
-%   ../Demo/MATLAB/adj_to_edges   - create an edge incidence matrix from an adjacency matrix
-%   ../Demo/MATLAB/check_adj      - ensure A is a valid adjacency matrix
-%   ../Demo/MATLAB/edges_to_adj   - create an adjacency matrix from an edge incidence matrix
-%   ../Demo/MATLAB/tri_matlab     - run tricount tests in MATLAB
-%   test70                        - performance comparison of triangle counting methods
-%   test70_plot                   - plot the results from test70
-%   test71                        - performance comparison of triangle counting methods
-%   test71_plot                   - plot the results from test71
-%   test71_table                  - print the table for triangle counting results
-
-% Other demos
-
-%   ../Demo/MATLAB/kron_demo      - test Program/kron_demo.c and compare with MATLAB kron
-%   ../Demo/MATLAB/kron_test      - test kron_demo.m
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0

@@ -10,7 +10,7 @@ for x = [3 nan inf]
         a = min (x, y);
         c = min (x, y, 'includenan');
         b = GB_mex_op ('min', x, y) ;
-        fprintf ('x: %4g y: %4g  matlab(omit): %4g matlab(incl): %4g GrB %4g match: %d\n', ...
+        fprintf ('x: %4g y: %4g  built-in(omit): %4g built-in(incl): %4g GrB %4g match: %d\n', ...
             x, y, a, c, b, isequalwithequalnans (a,b)) ;
     end
 end
@@ -21,7 +21,7 @@ for x = [3 nan inf]
         a = max (x, y);
         c = max (x, y, 'includenan');
         b = GB_mex_op ('max', x, y) ;
-        fprintf ('x: %4g y: %4g  matlab(omit): %4g matlab(incl): %4g GrB %4g match: %d\n', ...
+        fprintf ('x: %4g y: %4g  built-in(omit): %4g built-in(incl): %4g GrB %4g match: %d\n', ...
             x, y, a, c, b, isequalwithequalnans (a,b)) ;
     end
 end

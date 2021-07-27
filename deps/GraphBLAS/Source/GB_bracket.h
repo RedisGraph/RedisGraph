@@ -26,7 +26,7 @@
 static inline void GB_bracket_left
 (
     const int64_t imin,
-    const int64_t *GB_RESTRICT X,  // input list is in X [kleft:kright]
+    const int64_t *restrict X,  // input list is in X [kleft:kright]
     int64_t *kleft,
     const int64_t kright
 )
@@ -55,7 +55,7 @@ static inline void GB_bracket_left
 static inline void GB_bracket_right
 (
     const int64_t imax,
-    const int64_t *GB_RESTRICT X,  // input list is in X [kleft:kright]
+    const int64_t *restrict X,  // input list is in X [kleft:kright]
     const int64_t kleft,
     int64_t *kright
 )
@@ -91,7 +91,7 @@ static inline void GB_bracket
 (
     const int64_t imin,         // search for entries in the range imin:imax
     const int64_t imax,
-    const int64_t *GB_RESTRICT X,  // input list is in X [kleft:kright]
+    const int64_t *restrict X,  // input list is in X [kleft:kright]
     const int64_t kleft_in,
     const int64_t kright_in,
     int64_t *kleft_new,         // output list is in X [kleft_new:kright_new]

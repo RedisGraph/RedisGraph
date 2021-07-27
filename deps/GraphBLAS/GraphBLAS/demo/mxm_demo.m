@@ -4,13 +4,12 @@ function mxm_demo
 % See https://sparse.tamu.edu.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % reset to the default number of threads
-maxNumCompThreads ('automatic') ;
+ncores = demo_nproc ;
 GrB.clear ;
 
-ncores = feature ('numcores') ;
 rng ('default') ;
 Prob = ssget (936)
 Prob2 = ssget (2662)
@@ -20,8 +19,6 @@ try
     system ('hostname') ;
 catch
 end
-v = ver ('matlab') ;
-fprintf ('MATLAB version: %s release: %s\n', v.Version, v.Release) ;
 v = GrB.ver ;
 fprintf ('GraphBLAS version: %s (%s)\n', v.Version, v.Date) ;
 
@@ -30,10 +27,16 @@ G = GrB (1) ;
 G = G*G ;
 clear G
 
-for nth = [1 ncores 2*ncores]
+if (have_octave)
+    thread_list = ncores ;
+else
+    thread_list = [ 1 ncores 2*ncores] ;
+end
 
-    % tell MATLAB and GraphBLAS to use nth threads:
-    maxNumCompThreads (nth) ;
+for nth = thread_list
+
+    % tell built-in method and GraphBLAS to use nth threads:
+    demo_nproc (nth) ;
     GrB.threads (nth) ;
 
     fprintf ('\n-------------------------------------------------\n') ;
@@ -55,16 +58,16 @@ for nth = [1 ncores 2*ncores]
         % The output matrix has the same type as the range parameter.
         switch (type)
             case 'single'
-                fprintf ('\n=== MATLAB: double (real) ') ;
+                fprintf ('\n=== builtin: double (real) ') ;
                 range = single ([-1 1]) ;
             case 'double'
-                fprintf ('\n=== MATLAB: double (real) ') ;
+                fprintf ('\n=== builtin: double (real) ') ;
                 range = double ([-1 1]) ;
             case 'single complex'
-                fprintf ('\n=== MATLAB: double complex ') ;
+                fprintf ('\n=== builtin: double complex ') ;
                 range = complex (single ([-1 1])) ;
             case 'double complex'
-                fprintf ('\n=== MATLAB: double complex ') ;
+                fprintf ('\n=== builtin: double complex ') ;
                 range = complex (double ([-1 1])) ;
         end
 
@@ -73,11 +76,10 @@ for nth = [1 ncores 2*ncores]
         fprintf ('vs GraphBLAS: %s\n', GrB.type (GA)) ;
         [m, n] = size (Prob.A) ;
 
-        % create MATLAB versions of GA and GB.  The overloaded "double"
-        % function converts GA and GB to double or double complex,
-        % just like the built-in.  MATLAB doesn't have sparse 'single'
-        % or 'single complex', so all of these test use 'double' or
-        % 'double complex'.
+        % create built-in versions of GA and GB.  The overloaded "double"
+        % function converts GA and GB to double or double complex, just like
+        % the built-in.  Built-in sparse matrices cannot be 'single' or 'single
+        % complex', so all of these test use 'double' or 'double complex'.
         A = double (GA) ;
         B = double (GB) ;
 
@@ -94,14 +96,14 @@ for nth = [1 ncores 2*ncores]
             C2 = GA*GB ;
             tg = toc ;
             err = norm (C1-C2,1) / norm (C1, 1) ;
-            fprintf ('trial %d: MATLAB: %10.4f GrB: %10.4f', trial, tm, tg);
+            fprintf ('trial %d: builtin: %10.4f GrB: %10.4f', trial, tm, tg);
             fprintf (' speedup: %10.2f err: %g\n', tm / tg, err) ;
             tm_total = tm_total + tm ;
             tg_total = tg_total + tg ;
         end
         tm = tm_total / ntrials ;
         tg = tg_total / ntrials ;
-        fprintf ('average: MATLAB: %10.4f GrB: %10.4f', tm, tg) ;
+        fprintf ('average: builtin: %10.4f GrB: %10.4f', tm, tg) ;
         fprintf (' speedup: %10.2f\n', tm / tg) ;
 
         GA = GrB.random (Prob2.A, 'range', range) ;
@@ -121,14 +123,14 @@ for nth = [1 ncores 2*ncores]
             C2 = GA*Gx ;
             tg = toc ;
             err = norm (C1-C2,1) / norm (C1, 1) ;
-            fprintf ('trial %d: MATLAB: %10.4f GrB: %10.4f', trial, tm, tg);
+            fprintf ('trial %d: builtin: %10.4f GrB: %10.4f', trial, tm, tg);
             fprintf (' speedup: %10.2f err: %g\n', tm / tg, err) ;
             tm_total = tm_total + tm ;
             tg_total = tg_total + tg ;
         end
         tm = tm_total / ntrials ;
         tg = tg_total / ntrials ;
-        fprintf ('average: MATLAB: %10.4f GrB: %10.4f', tm, tg) ;
+        fprintf ('average: builtin: %10.4f GrB: %10.4f', tm, tg) ;
         fprintf (' speedup: %10.2f\n', tm / tg) ;
 
         Gx = GrB.random (n, 1, inf, 'range', range) ;
@@ -145,20 +147,20 @@ for nth = [1 ncores 2*ncores]
             C2 = GA*Gx ;
             tg = toc ;
             err = norm (C1-C2,1) / norm (C1, 1) ;
-            fprintf ('trial %d: MATLAB: %10.4f GrB: %10.4f', trial, tm, tg);
+            fprintf ('trial %d: builtin: %10.4f GrB: %10.4f', trial, tm, tg);
             fprintf (' speedup: %10.2f err: %g\n', tm / tg, err) ;
             tm_total = tm_total + tm ;
             tg_total = tg_total + tg ;
         end
         tm = tm_total / ntrials ;
         tg = tg_total / ntrials ;
-        fprintf ('average: MATLAB: %10.4f GrB: %10.4f', tm, tg) ;
+        fprintf ('average: builtin: %10.4f GrB: %10.4f', tm, tg) ;
         fprintf (' speedup: %10.2f\n', tm / tg) ;
 
     end
 end
 
 % restore # of threads to their defaults
-maxNumCompThreads ('automatic') ;
+ncores = demo_nproc ;
 GrB.clear ;
 

@@ -20,25 +20,22 @@
     // slice the entries for each task
     //--------------------------------------------------------------------------
 
-    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
-    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, &ntasks))
-    { 
-        // out of memory
-        return (GrB_OUT_OF_MEMORY) ;
-    }
+    GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
+    int A_ntasks, A_nthreads ;
+    GB_SLICE_MATRIX (A, 32, chunk) ;
 
     //--------------------------------------------------------------------------
     // Cx = positional_op (A)
     //--------------------------------------------------------------------------
 
     int tid ;
-    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (tid = 0 ; tid < ntasks ; tid++)
+    #pragma omp parallel for num_threads(A_nthreads) schedule(dynamic,1)
+    for (tid = 0 ; tid < A_ntasks ; tid++)
     {
 
         // if kfirst > klast then task tid does no work at all
-        int64_t kfirst = kfirst_slice [tid] ;
-        int64_t klast  = klast_slice  [tid] ;
+        int64_t kfirst = kfirst_Aslice [tid] ;
+        int64_t klast  = klast_Aslice  [tid] ;
 
         //----------------------------------------------------------------------
         // C(:,kfirst:klast) = op (A(:,kfirst:klast))
@@ -54,7 +51,7 @@
             int64_t j = GBH (Ah, k) ;
             int64_t pA_start, pA_end ;
             GB_get_pA (&pA_start, &pA_end, tid, k,
-                kfirst, klast, pstart_slice, Ap, avlen) ;
+                kfirst, klast, pstart_Aslice, Ap, avlen) ;
 
             //------------------------------------------------------------------
             // C(:,j) = op (A(:,j))
@@ -73,7 +70,7 @@
     // free workspace
     //--------------------------------------------------------------------------
 
-    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice) ;
+    GB_WERK_POP (A_ek_slicing, int64_t) ;
 }
 
 #undef GB_POSITION

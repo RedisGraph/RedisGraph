@@ -7,7 +7,7 @@
 % http://faculty.cse.tamu.edu/davis
 %
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 %% GraphBLAS: faster and more general sparse matrices for MATLAB
 % GraphBLAS is not only useful for creating graph algorithms; it also
@@ -27,7 +27,7 @@
 
 % reset to the default number of threads
 clear all
-maxNumCompThreads ('automatic') ;
+ncores = demo_nproc ;
 GrB.clear ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
 
@@ -39,23 +39,27 @@ G = GrB (X)              % GraphBLAS copy of a matrix X, same type
 %% Sparse integer matrices
 % Here's an int8 version of the same matrix:
 
-S = int8 (G)             % convert G to a full MATLAB int8 matrix
+S = int8 (G)             % convert G to a full built-in int8 matrix
 S (1,1) = 0              % add an explicit zero to S
 G = GrB (X, 'int8')      % a GraphBLAS full int8 matrix
 G (1,1) = 0              % add an explicit zero to G
 G = GrB.prune (G)        % a GraphBLAS sparse int8 matrix
 
 try
-    S = sparse (S) ;     % MATLAB can't create sparse int8 matrices
+    S = sparse (S) ;     % built-in sparse matrices cannot be int8
 catch me
     display (me)
 end
 
 %% Sparse single-precision matrices
 % Matrix operations in GraphBLAS are typically as fast, or faster than
-% MATLAB.  Here's an unfair comparison: computing X^2 with MATLAB in
-% double precision and with GraphBLAS in single precision.  You would
-% naturally expect GraphBLAS to be faster. 
+% MATLAB.  The following test is unfair, since it compares computing
+% X*X with MATLAB in double precision and with GraphBLAS in single
+% precision.  You would naturally expect GraphBLAS to be faster. 
+%
+% CAVEAT:  MATLAB R2021a uses SuiteSparse:GraphBLAS v3.3.3 for C=A*B,
+% so on that version of MATLAB, we're comparing 2 versions of GraphBLAS
+% by the same author.
 %
 % Please wait ...
 
@@ -63,15 +67,15 @@ n = 1e5 ;
 X = spdiags (rand (n, 201), -100:100, n, n) ;
 G = GrB (X, 'single') ;
 tic
-G2 = G^2 ;
+G2 = G*G ;
 gb_time = toc ;
 tic
-X2 = X^2 ;
-matlab_time = toc ;
+X2 = X*X ;
+builtin_time = toc ;
 fprintf ('\nGraphBLAS time: %g sec (in single)\n', gb_time) ;
-fprintf ('MATLAB time:    %g sec (in double)\n', matlab_time) ;
-fprintf ('Speedup of GraphBLAS over MATLAB: %g\n', ...
-    matlab_time / gb_time) ;
+fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
+    demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
 
 %% Mixing MATLAB and GraphBLAS matrices
@@ -88,17 +92,17 @@ whos G G2 X X2
 %% Faster matrix operations
 % But even with standard double precision sparse matrices, GraphBLAS is
 % typically faster than the built-in MATLAB methods.  Here's a fair
-% comparison:
+% way to compare (caveat: these both use GraphBLAS in MATLAB R2021a):
 
 G = GrB (X) ;
 tic
-G2 = G^2 ;
+G2 = G*G ;
 gb_time = toc ;
 err = norm (X2 - G2, 1) / norm (X2,1)
 fprintf ('\nGraphBLAS time: %g sec (in double)\n', gb_time) ;
-fprintf ('MATLAB time:    %g sec (in double)\n', matlab_time) ;
-fprintf ('Speedup of GraphBLAS over MATLAB: %g\n', ...
-    matlab_time / gb_time) ;
+fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
+    demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
 
 %% A wide range of semirings
@@ -187,14 +191,13 @@ GrB.type (C2)
 % That gives you a lot of tools to create all kinds of interesting
 % graph algorithms.  For example:
 %
-%   GrB.bfs    % breadth-first search
 %   GrB.dnn    % sparse deep neural network (http://graphchallenge.org)
 %   GrB.mis    % maximal independent set
 %
 % See 'help GrB.binopinfo' for a list of the binary operators, and
 % 'help GrB.monoidinfo' for the ones that can be used as the additive
 % monoid in a semiring.  'help GrB.unopinfo' lists the unary operators.
-% 'help GrB.semiringinfo' descripts the semirings.
+% 'help GrB.semiringinfo' describes the semirings.
 
 %% 
 help GrB.binopinfo
@@ -389,7 +392,7 @@ err = norm (H-G,1)
 % vectors, but not huge matrices (when n is huge).
 
 clear
-[c, huge] = computer ;
+huge = 2^48 ;
 C = sparse (huge, 1)    % MATLAB can create a huge-by-1 sparse column
 try
     C = sparse (huge, huge)     % but this fails
@@ -402,7 +405,7 @@ end
 % O(nnz(A)) space.  The difference can be huge if nnz (A) << n.
 
 clear
-[c, huge] = computer ;
+huge = 2^48 ;
 G = GrB (huge, 1)            % no problem for GraphBLAS
 H = GrB (huge, huge)         % this works in GraphBLAS too
 
@@ -498,35 +501,6 @@ C2 = G * uint8 (40)
 S = double (C1 < 255) ;
 assert (isequal (double (C1).*S, double (C2).*S))
 
-%% An example graph algorithm: breadth-first search
-% The breadth-first search of a graph finds all nodes reachable from the
-% source node, and their level, v.  v=GrB.bfs(A,s) or v=bfs_matlab(A,s)
-% compute the same thing, but GrB.bfs uses GraphBLAS matrices and
-% operations, while bfs_matlab uses pure MATLAB operations.  v is defined
-% as v(s) = 1 for the source node, v(i) = 2 for nodes adjacent to the
-% source, and so on.
-
-clear
-rng ('default') ;
-n = 1e5 ;
-A = logical (sprandn (n, n, 1e-3)) ;
-
-tic
-v1 = GrB.bfs (A, 1) ;
-gb_time = toc ;
-
-tic
-v2 = bfs_matlab (A, 1) ;
-matlab_time = toc ;
-
-assert (isequal (double (v1'), v2))
-fprintf ('\nnodes reached: %d of %d\n', nnz (v2), n) ;
-fprintf ('GraphBLAS time: %g sec\n', gb_time) ;
-fprintf ('MATLAB time:    %g sec\n', matlab_time) ;
-fprintf ('Speedup of GraphBLAS over MATLAB: %g\n', ...
-    matlab_time / gb_time) ;
-fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
-
 %% Example graph algorithm: Luby's method in GraphBLAS
 % The GrB.mis function is variant of Luby's randomized algorithm [Luby
 % 1985].  It is a parallel method for finding an maximal independent set
@@ -561,7 +535,7 @@ assert (logical (all (deg > 0)))
 % a set of large sparse deep neural network problems.  In this demo, the
 % MATLAB reference solution is compared with a solution using GraphBLAS,
 % for a randomly constructed neural network.  See the GrB.dnn and
-% dnn_matlab.m functions for details.
+% dnn_builtin.m functions for details.
 
 clear
 rng ('default') ;
@@ -584,7 +558,7 @@ fprintf ('construct problem time: %g sec\n', t_setup) ;
 
 % convert the problem from MATLAB to GraphBLAS
 t = tic ;
-[W_gb, bias_gb, Y0_gb] = dnn_mat2gb (W, bias, Y0) ;
+[W_gb, bias_gb, Y0_gb] = dnn_builtin2gb (W, bias, Y0) ;
 t = toc (t) ;
 fprintf ('setup time: %g sec\n', t) ;
 
@@ -600,11 +574,11 @@ fprintf ('total time in GraphBLAS: %g sec\n', gb_time) ;
 % Please wait ...
 
 tic
-Y2 = dnn_matlab (W, bias, Y0) ;
-matlab_time = toc ;
-fprintf ('total time in MATLAB:    %g sec\n', matlab_time) ;
-fprintf ('Speedup of GraphBLAS over MATLAB: %g\n', ...
-    matlab_time / gb_time) ;
+Y2 = dnn_builtin (W, bias, Y0) ;
+builtin_time = toc ;
+fprintf ('total time in %s:    %g sec\n', demo_whoami, builtin_time) ;
+fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
+    demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
 
 err = norm (Y1-Y2,1)
@@ -657,16 +631,22 @@ end
 %% Iterative solvers work as-is
 % Many built-in functions work with GraphBLAS matrices unmodified.
 
-A = sparse (rand (4)) ;
-b = sparse (rand (4,1)) ;
-x = gmres (A,b)
-norm (A*x-b)
-x = gmres (GrB(A), GrB(b))
-norm (A*x-b)
+if (~demo_octave)
+    % Octave7: gmres does not yet work for @GrB input matrices
+    A = sparse (rand (4)) ;
+    b = sparse (rand (4,1)) ;
+    x = gmres (A,b)
+    norm (A*x-b)
+    x = gmres (GrB(A), GrB(b))
+    norm (A*x-b)
+end
 
 %% ... even in single precision
-x = gmres (GrB(A,'single'), GrB(b,'single'))
-norm (A*x-b)
+if (~demo_octave)
+    % Octave7: gmres does not yet work for @GrB input matrices
+    x = gmres (GrB(A,'single'), GrB(b,'single'))
+    norm (A*x-b)
+end
 
 %%
 % Both of the following uses of minres (A,b) fail to converge because A
@@ -674,17 +654,21 @@ norm (A*x-b)
 % reported, and both the MATLAB version and the GraphBLAS version return
 % the same incorrect vector x.
 
-x = minres (A, b)
-x = minres (GrB(A), GrB(b))
+if (exist ('minres'))
+    x = minres (A, b)
+    x = minres (GrB(A), GrB(b))
+end
 
 %%
 % With a proper symmetric matrix
 
-A = A+A' ;
-x = minres (A, b)
-norm (A*x-b)
-x = minres (GrB(A), GrB(b))
-norm (A*x-b)
+if (exist ('minres'))
+    A = A+A' ;
+    x = minres (A, b)
+    norm (A*x-b)
+    x = minres (GrB(A), GrB(b))
+    norm (A*x-b)
+end
 
 %% Extreme performance differences between GraphBLAS and MATLAB.
 % The GraphBLAS operations used so far are perhaps 2x to 50x faster than
@@ -757,20 +741,45 @@ fprintf ('\nGraphBLAS time: %g sec for C(M)=A(M)\n', gb_time2) ;
 
 tic
 C (M) = A (M) ;
-matlab_time = toc ;
+builtin_time = toc ;
 
 fprintf ('\nGraphBLAS time: %g sec (GrB.assign)\n', gb_time) ;
 fprintf ('GraphBLAS time: %g sec (overloading)\n', gb_time2) ;
-fprintf ('MATLAB time:    %g sec\n', matlab_time) ;
-fprintf ('Speedup of GraphBLAS (overloading) over MATLAB: %g\n', ...
-    matlab_time / gb_time2) ;
-fprintf ('Speedup of GraphBLAS (GrB.assign)  over MATLAB: %g\n', ...
-    matlab_time / gb_time) ;
+fprintf ('MATLAB time:    %g sec\n', builtin_time) ;
+fprintf ('Speedup of GraphBLAS (overloading) over %s: %g\n', ...
+    demo_whoami, builtin_time / gb_time2) ;
+fprintf ('Speedup of GraphBLAS (GrB.assign)  over %s: %g\n', ...
+    demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
 
 assert (isequal (C1, C))
 assert (isequal (C2, C))
-fprintf ('Results of GrB and MATLAB match perfectly.\n')
+fprintf ('Results of GrB and %s match perfectly.\n', demo_whoami)
+
+%% Even more extreme performance differences for C(M)=A(M)
+%
+% See the tmask script in this GraphBLAS/demo folder for a test comparing
+% C(M)=A(M) for a sequence of large matrices.  The test takes far to long
+% to run in this demo, because MATLAB is exceedingly slow.  Below are
+% the results on a 4-core Dell laptop:
+%
+%         n      nnz(C)     nnz(M)  GraphBLAS  MATLAB    speedup
+%                                   (sec)      (sec)
+%     2,048      20,432      2,048  0.005         0.024     4.7
+%     4,096      40,908      4,096  0.003         0.115     39
+%     8,192      81,876      8,191  0.009         0.594     68
+%    16,384     163,789     16,384  0.009         2.53     273
+%    32,768     327,633     32,767  0.014        12.4      864
+%    65,536     655,309     65,536  0.025        65.9    2,617
+%   131,072   1,310,677    131,070  0.055       276.2    4,986
+%   262,144   2,621,396    262,142  0.071     1,077.    15,172
+%   524,288   5,242,830    524,288  0.114     5,855.    51,274
+% 1,048,576  10,485,713  1,048,576  0.197    27,196.   137,776
+% 2,097,152  20,971,475  2,097,152  0.406   100,799.   248,200
+% 4,194,304  41,942,995  4,194,304  0.855   ~4 days?   500,000?
+%
+% The last run for MATLAB never finished but I estimate it would
+% take about 4 to 5 days.
 
 %% Limitations and their future solutions
 % The MATLAB interface for SuiteSparse:GraphBLAS is a work-in-progress.
@@ -813,35 +822,24 @@ fprintf ('Results of GrB and MATLAB match perfectly.\n')
 % the equivalent built-in operators and functions in MATLAB.
 %
 % There are few notable exceptions; these will be addressed in the future.
-% Full matrices and vectors held as GraphBLAS objects can be slightly
-% slower than their MATLAB counterparts.  horzcat and vertcat, for [A B]
-% and [A;B] when either A or B are GraphBLAS matrices, are also slow, as
-% illustrated below in the next example.
-%
-% Other methods that will be faster in the future include bandwidth,
-% istriu, istril, isdiag, reshape, issymmetric, and ishermitian.
+% These include bandwidth, istriu, istril, isdiag, reshape, issymmetric,
+% and ishermitian, all of which should be faster in a future release.
 
 %%
-% Here is an example that illustrates the performance of C = [A B]
-clear
+% Here is an example that illustrates the performance of istril.
 A = sparse (rand (2000)) ;
-B = sparse (rand (2000)) ;
 tic
-C1 = [A B] ;
-matlab_time = toc ;
-
+c1 = istril (A) ;
+builtin_time = toc ;
 A = GrB (A) ;
-B = GrB (B) ;
 tic
-C2 = [A B] ;
+c2 = istril (A) ;
 gb_time = toc ;
-
-err = norm (C1-C2,1)
-fprintf ('\nMATLAB: %g sec, GraphBLAS: %g sec\n', ...
-    matlab_time, gb_time) ;
-if (gb_time > matlab_time)
+fprintf ('\n%s: %g sec, GraphBLAS: %g sec\n', ...
+    demo_whoami, builtin_time, gb_time) ;
+if (gb_time > builtin_time)
     fprintf ('GraphBLAS is slower by a factor of %g\n', ...
-        gb_time / matlab_time) ;
+        gb_time / builtin_time) ;
 end
 
 %%
@@ -906,7 +904,7 @@ toc
 %
 %   in GrB syntax:  C<#M,replace> = accum (C, A*B)
 %
-%   in @GrB MATLAB: C = GrB.mxm (Cin, M, accum, semiring, A, B, desc) ;
+%   in @GrB: C = GrB.mxm (Cin, M, accum, semiring, A, B, desc) ;
 %
 % In the above expression, #M is either empty (no mask), M (with a mask
 % matrix) or ~M (with a complemented mask matrix), as determined by the

@@ -52,7 +52,7 @@ A(1,2) =44 ;
 
 fprintf ('-------------------------- case 5, ni large, qsort, no dupl:\n') ;
 p = amd (A) ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
 tic
 A1 = A (p,p) ;
 t0 = toc ;
@@ -76,7 +76,7 @@ end
 assert (ok) ;
 
 assert (isequal (A1, A2)) ;
-fprintf ('MATLAB %g GrB %g CSparse %g\n', t0, t1, t2) ;
+fprintf ('builtin %g GrB %g CSparse %g\n', t0, t1, t2) ;
 
 n = size (A,1) ;
 
@@ -85,7 +85,7 @@ I = uint64 (randperm (floor (n/2))) ;
 J = uint64 (randperm (floor (n/2))) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
@@ -101,7 +101,7 @@ J = sort (J) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
 fprintf ('length (I), %d min %d max %d\n', length (I), min (I), max (I)) ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
@@ -116,7 +116,7 @@ I = uint64 (floor (n * rand (n,1))) ;
 J = uint64 (floor (n * rand (n,1))) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
@@ -126,7 +126,7 @@ fprintf ('GB:\n') ;
     toc
     assert (isequal (C0, C1)) ;
 
-    fprintf ('double transpose time in MATLAB:\n') ;
+    fprintf ('double transpose time for built-in method:\n') ;
     tic
     C0 = C0'' ;
     toc
@@ -151,7 +151,7 @@ for k = i:(i+50)
     C1 = GB_mex_Matrix_subref (A, I, [ ]) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
+    fprintf ('builtin: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
 end
 
 fprintf ('-------------------------- last row:\n') ;
@@ -166,14 +166,14 @@ tic
 C1 = GB_mex_Matrix_subref (A, I, [ ]) ;
 t1 = toc ;
 assert (isequal (C0, C1)) ;
-fprintf ('MATLAB: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
+fprintf ('builtin: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
 
 fprintf ('-------------------------- contig, sorted:\n') ;
 I = uint64 (0:floor(n/2)) ;
 J = uint64 (0:floor(n/2)) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
@@ -189,7 +189,7 @@ J = uint64 (floor(n/2):n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
 fprintf ('length (I), %d min %d max %d\n', length (I), min (I), max (I)) ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
@@ -212,7 +212,7 @@ for i = 0:1000:n-1
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
+    fprintf ('builtin: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
 end
 
 
@@ -230,7 +230,7 @@ for i = 0:1000:n-2
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
+    fprintf ('builtin: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
 end
 
 
@@ -247,7 +247,7 @@ for i = 0:1000:n-3
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
+    fprintf ('builtin: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
 end
 
 fprintf ('-------------------------- four contig rows:\n') ;
@@ -263,7 +263,7 @@ for i = 0:1000:n-4
     C1 = GB_mex_Matrix_subref (A, I, J) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
+    fprintf ('builtin: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
 end
 
 
@@ -280,7 +280,7 @@ for j = 0:1000:n-4
     C1 = GB_mex_Matrix_subref (A, [ ], J) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
+    fprintf ('builtin: %0.6f  speedup %6.2f\n', t0, t0/t1) ;
 end
 
 
@@ -289,7 +289,7 @@ I = [ ] ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (:,J1) ;
     toc
@@ -304,7 +304,7 @@ I = uint64 (floor (n/2 : 0.5 : n-1)) ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
@@ -319,7 +319,7 @@ I = uint64 ([ floor(n/2) floor((2+n/2):n-1) ]) ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc
@@ -334,7 +334,7 @@ I = uint64 ([ floor(n/2:n-1) ]) ;
 J = uint64 (1:n-1) ;
 I1 = I + 1 ;
 J1 = J + 1 ;
-fprintf ('MATLAB:\n') ;
+fprintf ('builtin:\n') ;
     tic
     C0 = A (I1,J1) ;
     toc

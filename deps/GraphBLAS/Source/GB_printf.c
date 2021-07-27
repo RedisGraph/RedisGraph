@@ -9,9 +9,6 @@
 
 #include "GB.h"
 
-int (* GB_printf_function ) (const char *format, ...) = NULL ;
-int (* GB_flush_function  ) ( void ) = NULL ;
-
 #if GB_BURBLE
 
 void GB_burble_assign
@@ -65,7 +62,7 @@ void GB_burble_assign
     // construct the Mask string
     //--------------------------------------------------------------------------
 
-    char *Mask ;
+    const char *Mask ;
     char Mask_string [GB_LEN+1] ;
     if (M == NULL)
     {
@@ -94,14 +91,14 @@ void GB_burble_assign
     // construct the string for A or the scalar
     //--------------------------------------------------------------------------
 
-    char *S = (A == NULL) ? "scalar" : "A" ;
+    const char *S = (A == NULL) ? "scalar" : "A" ;
 
     //--------------------------------------------------------------------------
     // construct the string for (I,J)
     //--------------------------------------------------------------------------
 
-    char *Istr = (Ikind == GB_ALL) ? ":" : "I" ;
-    char *Jstr = (Jkind == GB_ALL) ? ":" : "J" ;
+    const char *Istr = (Ikind == GB_ALL) ? ":" : "I" ;
+    const char *Jstr = (Jkind == GB_ALL) ? ":" : "J" ;
     char IJ [GB_LEN+1] ;
     snprintf (IJ, GB_LEN, "(%s,%s)", Istr, Jstr) ;
     if (Ikind == GB_ALL && Jkind == GB_ALL)

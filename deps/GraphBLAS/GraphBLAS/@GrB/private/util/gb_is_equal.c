@@ -3,20 +3,20 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
 // gb_is_equal checks if two matrices are identically equal (same size,
 // type, pattern, size, and values).
 
-// If the two matrices are GrB_FP32, GrB_FP64, GxB_FC32, or GxB_FC64,
-// and have NaNs, then gb_is_equal returns false, since NaN == NaN is
-// false.  To check for NaN equality (like isequaln in MATLAB), use gb_is_all
-// with a user-defined operator f(x,y) that returns true if x and y are equal,
-// or if both are NaN, and false otherwise.
+// If the two matrices are GrB_FP32, GrB_FP64, GxB_FC32, or GxB_FC64, and have
+// NaNs, then gb_is_equal returns false, since NaN == NaN is false.  To check
+// for NaN equality (like the built-in isequaln), use gb_is_all with a
+// user-defined operator f(x,y) that returns true if x and y are equal, or if
+// both are NaN, and false otherwise.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 bool gb_is_equal            // true if A == B, false if A ~= B
 (

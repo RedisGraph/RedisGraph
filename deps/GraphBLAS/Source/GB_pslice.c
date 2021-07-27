@@ -24,12 +24,12 @@
 
 static void GB_pslice_worker
 (
-    int64_t *GB_RESTRICT Slice,     // size ntasks+1
-    const int64_t *GB_RESTRICT Ap,  // array size n+1
+    int64_t *restrict Slice,     // size ntasks+1
+    const int64_t *restrict Ap,  // array size n+1
     int tlo,                        // assign to Slice [(tlo+1):(thi-1)]
     int thi                     
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -113,12 +113,11 @@ static void GB_pslice_worker
 // GB_pslice: partition Ap for a set of tasks
 //------------------------------------------------------------------------------
 
-
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
-bool GB_pslice          // slice Ap; return true if ok, false if out of memory
+GB_PUBLIC
+void GB_pslice                      // slice Ap
 (
-    int64_t *GB_RESTRICT *Slice_handle,    // size ntasks+1
-    const int64_t *GB_RESTRICT Ap,  // array size n+1 (NULL if full or bitmap)
+    int64_t *restrict Slice,     // size ntasks+1
+    const int64_t *restrict Ap,  // array size n+1 (NULL if full or bitmap)
     const int64_t n,
     const int ntasks,               // # of tasks
     const bool perfectly_balanced
@@ -126,26 +125,10 @@ bool GB_pslice          // slice Ap; return true if ok, false if out of memory
 {
 
     //--------------------------------------------------------------------------
-    // allocate result, unless it is already allocated on input
+    // check inputs
     //--------------------------------------------------------------------------
 
-    int64_t *Slice ;
-    if ((*Slice_handle) == NULL)
-    {
-        (*Slice_handle) = NULL ;
-        Slice = GB_MALLOC (ntasks+1, int64_t) ;
-        if (Slice == NULL)
-        { 
-            // out of memory
-            return (false) ;
-        }
-        (*Slice_handle) = Slice ;
-    }
-    else
-    { 
-        Slice = (*Slice_handle) ;
-    }
-
+    ASSERT (Slice != NULL) ;
     #ifdef GB_DEBUG
     for (int taskid = 0 ; taskid <= ntasks ; taskid++)
     {
@@ -154,27 +137,17 @@ bool GB_pslice          // slice Ap; return true if ok, false if out of memory
     #endif
 
     //--------------------------------------------------------------------------
-    // assign first and last task boundaries
-    //--------------------------------------------------------------------------
-
-    Slice [0] = 0 ;
-    Slice [ntasks] = n ;
-
-    //--------------------------------------------------------------------------
-    // slice the work for remainder of the tasks, 1:ntasks-1
+    // slice the work
     //--------------------------------------------------------------------------
 
     if (Ap == NULL)
-    {
+    { 
 
         //----------------------------------------------------------------------
-        // A is full or bitmap
+        // A is full or bitmap: slice 0:n equally for all tasks
         //----------------------------------------------------------------------
 
-        for (int taskid = 1 ; taskid < ntasks ; taskid++)
-        { 
-            Slice [taskid] = (int64_t) GB_PART (taskid, n, ntasks) ;
-        }
+        GB_eslice (Slice, n, ntasks) ;
 
     }
     else
@@ -185,17 +158,16 @@ bool GB_pslice          // slice Ap; return true if ok, false if out of memory
         //----------------------------------------------------------------------
 
         if (n == 0 || ntasks <= 1 || Ap [n] == 0)
-        {
+        { 
             // matrix is empty, or a single thread is used
-            for (int taskid = 1 ; taskid < ntasks ; taskid++)
-            { 
-                // slice sparse/hyper with 1 task, n == 0, or no work
-                Slice [taskid] = 0 ;
-            }
+            memset ((void *) Slice, 0, ntasks * sizeof (int64_t)) ;
+            Slice [ntasks] = n ;
         }
         else
         {
             // slice Ap by # of entries
+            Slice [0] = 0 ;
+            Slice [ntasks] = n ;
             if (perfectly_balanced)
             {
                 // this method is costly, and should only be used if the
@@ -236,7 +208,5 @@ bool GB_pslice          // slice Ap; return true if ok, false if out of memory
         ASSERT (Slice [taskid] <= Slice [taskid+1]) ;
     }
     #endif
-
-    return (true) ;
 }
 

@@ -42,7 +42,7 @@ static inline bool GB_removeElement
         // V is bitmap
         //----------------------------------------------------------------------
 
-        int8_t *GB_RESTRICT Vb = V->b ;
+        int8_t *restrict Vb = V->b ;
         int8_t vb = Vb [i] ;
         if (vb != 0)
         { 
@@ -61,8 +61,8 @@ static inline bool GB_removeElement
         // V is sparse
         //----------------------------------------------------------------------
 
-        const int64_t *GB_RESTRICT Vp = V->p ;
-        const int64_t *GB_RESTRICT Vi = V->i ;
+        const int64_t *restrict Vp = V->p ;
+        const int64_t *restrict Vi = V->i ;
         bool found ;
 
         // look in V(:)
@@ -73,7 +73,7 @@ static inline bool GB_removeElement
         bool is_zombie ;
         if (vnz == V->vlen)
         { 
-            // V(:) is packed so no binary search is needed to find V(i)
+            // V(:) is as-if-full so no binary search is needed to find V(i)
             pleft = i ;
             ASSERT (GB_UNFLIP (Vi [pleft]) == i) ;
             found = true ;
@@ -133,7 +133,8 @@ GrB_Info GrB_Vector_removeElement
         else
         { 
             // V is sparse and jumbled
-            GB_OK (GB_Matrix_wait ((GrB_Matrix) V, Context)) ;
+            GB_OK (GB_wait ((GrB_Matrix) V, "v (removeElement:jumbled",
+                Context)) ;
         }
         ASSERT (!GB_IS_FULL (V)) ;
         ASSERT (!GB_ZOMBIES (V)) ;
@@ -164,7 +165,7 @@ GrB_Info GrB_Vector_removeElement
 
     // if V is sparse, it may have pending tuples
     bool V_is_pending = GB_PENDING (V) ; 
-    if (V->nzmax == 0 && !V_is_pending)
+    if (GB_nnz ((GrB_Matrix) V) == 0 && !V_is_pending)
     { 
         // quick return
         return (GrB_SUCCESS) ;
@@ -183,7 +184,8 @@ GrB_Info GrB_Vector_removeElement
         GrB_Info info ;
         GB_WHERE (V, GB_WHERE_STRING) ;
         GB_BURBLE_START ("GrB_Vector_removeElement") ;
-        GB_OK (GB_Matrix_wait ((GrB_Matrix) V, Context)) ;
+        GB_OK (GB_wait ((GrB_Matrix) V, "v (removeElement:pending tuples)",
+            Context)) ;
         ASSERT (!GB_ZOMBIES (V)) ;
         ASSERT (!GB_JUMBLED (V)) ;
         ASSERT (!GB_PENDING (V)) ;

@@ -17,16 +17,17 @@ GrB_Info GrB_Type_free          // free a user-defined type
 
     if (type != NULL)
     {
-        // only free a user-defined type, not a built-in one
+        // only free a dynamically-allocated type
         GrB_Type t = *type ;
-        if (t != NULL && t->code == GB_UDT_code)
+        if (t != NULL)
         {
-            if (t->magic == GB_MAGIC)
+            size_t header_size = t->header_size ;
+            if (header_size > 0)
             { 
-                t->magic = GB_FREED ;   // to help detect dangling pointers
-                GB_FREE (*type) ;
+                t->magic = GB_FREED ;  // to help detect dangling pointers
+                t->header_size = 0 ;
+                GB_FREE (type, header_size) ;
             }
-            (*type) = NULL ;
         }
     }
 

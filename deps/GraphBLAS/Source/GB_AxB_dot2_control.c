@@ -38,8 +38,8 @@ bool GB_AxB_dot2_control  // true: use dot2, false: use saxpy
     // where all 3 matrices are CSR, equivalently.  The comments here assume
     // CSC, but this method is CSC/CSR agnostic.
 
-    double anz = GB_NNZ (A) ;       // # of entries in A
-    double bnz = GB_NNZ (B) ;       // # of entries in B
+    double anz = GB_nnz (A) ;       // # of entries in A
+    double bnz = GB_nnz (B) ;       // # of entries in B
     if (A->nvec_nonempty < 0) A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
     if (B->nvec_nonempty < 0) B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
     double anvec = A->nvec_nonempty ;

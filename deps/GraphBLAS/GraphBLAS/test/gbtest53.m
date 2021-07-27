@@ -2,7 +2,7 @@ function gbtest53
 %GBTEST53 test GrB.monoidinfo
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 types10 = {
     'double'
@@ -23,7 +23,7 @@ nmonoids = 0 ;
 ops = { '+', '*', 'min', 'max', 'any' } ;
 for k1 = 1:5
     op = ops {k1} ;
-    fprintf ('\nop [ %s ]=============================================\n', op) ;
+    fprintf ('\nop ( %s )=============================================\n', op) ;
     for k2 = 1:10
         type = types10 {k2} ;
         GrB.monoidinfo ([op '.' type]) ;
@@ -36,7 +36,7 @@ end
 ops = { '|', '&', 'xor', 'xnor', 'any' } ;
 for k1 = 1:5
     op = ops {k1} ;
-    fprintf ('\nop [ %s ]=============================================\n', op) ;
+    fprintf ('\nop ( %s )=============================================\n', op) ;
     GrB.monoidinfo ([op '.logical']) ;
     GrB.monoidinfo (op, 'logical') ;
     nmonoids = nmonoids + 1 ;
@@ -47,7 +47,7 @@ ops = { '+', '*', 'any' } ;
 types = { 'single complex', 'double complex' } ;
 for k1 = 1:3
     op = ops {k1} ;
-    fprintf ('\nop [ %s ]=============================================\n', op) ;
+    fprintf ('\nop ( %s )=============================================\n', op) ;
     for k2 = 1:2
         type = types {k2} ;
         GrB.monoidinfo ([op '.' type]) ;
@@ -61,7 +61,7 @@ ops = { 'bitor', 'bitand', 'bitxor', 'bitxnor' } ;
 types = { 'uint8', 'uint16', 'uint32', 'uint64' } ;
 for k1 = 1:4
     op = ops {k1} ;
-    fprintf ('\nop [ %s ]=============================================\n', op) ;
+    fprintf ('\nop ( %s )=============================================\n', op) ;
     for k2 = 1:4
         type = types {k2} ;
         GrB.monoidinfo ([op '.' type]) ;

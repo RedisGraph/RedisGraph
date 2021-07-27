@@ -1,14 +1,10 @@
 function gbcovmake
-%GBCOVMAKE compile the MATLAB interface for statement coverage testing
+%GBCOVMAKE compile the interface for statement coverage testing
 %
 % See also: gbcover, gbcov_edit
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
-
-if verLessThan ('matlab', '9.4')
-    error ('MATLAB 9.4 (R2018a) or later is required') ;
-end
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 warning ('off', 'MATLAB:MKDIR:DirectoryExists') ;
 mkdir ('tmp/@GrB/') ;
@@ -42,15 +38,17 @@ count = gbcov_edit (ufiles, count, 'tmp/@GrB/util') ;
 
 % create the gbfinish.c file and place in tmp/@GrB/util
 f = fopen ('tmp/@GrB/util/gbcovfinish.c', 'w') ;
-fprintf (f, '#include "gb_matlab.h"\n') ;
+fprintf (f, '#include "gb_interface.h"\n') ;
 fprintf (f, 'int64_t gbcov [GBCOV_MAX] ;\n') ;
 fprintf (f, 'int gbcov_max = %d ;\n', count) ;
 fclose (f) ;
 
-% compile the modified MATLAB interface
+% compile the modified interface
 
 % use -R2018a for the new interleaved complex API
 flags = '-g -R2018a -DGBCOV' ;
+
+need_rename = ~verLessThan ('matlab', '9.10') ;
 
 try
     if (strncmp (computer, 'GLNX', 4))
@@ -74,7 +72,21 @@ try
 catch
 end
 
-libraries = '-L../../../../../../build -L. -L/usr/local/lib -lgraphblas' ;
+here = pwd ;
+
+if (need_rename)
+    fprintf ('R2021a and later include an earlier version of\n') ;
+    fprintf ('GraphBLAS, as a built-in library.  This interface to the\n') ;
+    fprintf ('latest version of GraphBLAS links against a library with\n') ;
+    fprintf ('with renamed symbols, to avoid a library conflict.\n') ;
+    flags = [flags ' -DGBRENAME=1 ' ] ;
+    inc = sprintf ('-I%s/../../rename ', here) ;
+    libraries = '-L../../../../../build -L. -L/usr/local/lib -lgraphblas_renamed' ;
+else
+    inc = [' '] ;
+    libraries = '-L../../../../../../build -L. -L/usr/local/lib -lgraphblas' ;
+end
+
 
 if (~ismac && isunix)
     flags = [ flags   ' CFLAGS="$CXXFLAGS -fopenmp -fPIC -Wno-pragmas" '] ;
@@ -82,10 +94,8 @@ if (~ismac && isunix)
     flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp -fPIC" '] ;
 end
 
-inc = ...
-'-I. -I../util -I../../../../../../Include -I../../../../../../Source -I../../../../../../Source/Template' ;
+inc = [ inc '-I. -I../util -I../../../../../../Include -I../../../../../../Source -I../../../../../../Source/Template' ] ;
 
-here = pwd ;
 cd tmp/@GrB/private
 try
 
@@ -102,7 +112,8 @@ try
         objlist = [ objlist ' ' objfile ] ; %#ok<*AGROW>
         % compile the cfile
         mexcmd = sprintf ('mex -c %s -silent %s %s', flags, inc, cfile) ;
-        fprintf ('%s\n', cfile) ;
+        fprintf ('.') ;
+        % fprintf ('%s\n', cfile) ;
         % fprintf ('%s\n', mexcmd) ;
         eval (mexcmd) ;
     end
@@ -119,10 +130,12 @@ try
         % compile the mexFunction
         mexcmd = sprintf ('mex -silent %s %s %s %s %s', ...
             flags, inc, mexfunction, objlist, libraries) ;
-        fprintf ('%s\n', mexfunction) ;
+        fprintf (':') ;
+        % fprintf ('%s\n', mexfunction) ;
         % fprintf ('%s\n', mexcmd) ;
         eval (mexcmd) ;
     end
+    fprintf ('\n') ;
 
 catch me
     disp (me.message)

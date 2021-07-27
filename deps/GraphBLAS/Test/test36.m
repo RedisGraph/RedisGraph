@@ -8,7 +8,7 @@ fprintf ('\ntest36 --------------------- performance of GB_Matrix_subref\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 rng ('default') ;
@@ -28,7 +28,7 @@ fprintf (' V(:,1): nnz (V) = %d\n', nnz (V)) ;
     C1 = GB_mex_Matrix_subref (V, [ ], [ ]) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
+    fprintf ('builtin %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
 fprintf (' V(50e6:80e6,1) explicit list:\n') ;
 I = uint64 (50e6:80e6) ;
@@ -40,7 +40,7 @@ I1 = I+1 ;
     C1 = GB_mex_Matrix_subref (V, I, [ ]) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
+    fprintf ('builtin %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
 fprintf (' V(50e6:80e6,1) colon:\n') ;
 clear I
@@ -53,7 +53,7 @@ I.begin = 50e6-1 ; I.inc = 1 ; I.end = 80e6-1  ;
     C1 = GB_mex_Matrix_subref (V, I, [ ]) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
+    fprintf ('builtin %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
 I1 = i (floor (nz/2)) ;
 I = uint64 (I1)-1 ;
@@ -68,7 +68,7 @@ fprintf (' V(%d,1):\n', I1) ;
     C1 = GB_mex_Matrix_subref (V, I, J) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
+    fprintf ('builtin %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
     tic
     C0 = V (I1,1) ;
@@ -77,7 +77,7 @@ fprintf (' V(%d,1):\n', I1) ;
     C1 = GB_mex_Matrix_subref (V, I, J) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
+    fprintf ('builtin %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
 
 fprintf (' V( 100 entries ,1):\n') ;
@@ -92,7 +92,7 @@ I = uint64 (I1)-1 ;
     C1 = GB_mex_Matrix_subref (V, I, [ ] ) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
+    fprintf ('builtin %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
 
 fprintf (' V( 100 entries ,1:4):\n') ;
@@ -105,7 +105,7 @@ V = [V V V V] ;
     C1 = GB_mex_Matrix_subref (V, I, [ ]) ;
     t1 = toc ;
     assert (isequal (C0, C1)) ;
-    fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
+    fprintf ('builtin %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
 nthreads_set (save, save_chunk) ;
 

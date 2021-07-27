@@ -2,11 +2,8 @@ function gbtest99
 %GBTEST99 test performance of C=A'*B and C=A'
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
-if (~ispc)
-    feature ('numcores') ;
-end
 fprintf ('# of threads in @GrB: %d\n', GrB.threads) ;
 n = 10 * 1e6 ;
 kset = [1    2    10  32 100 120 150 1000] ;
@@ -21,14 +18,14 @@ for kk = 1:length (kset)
     A = sprand (n, k, 0.001) ;
     B = sprand (n, k, 0.001) ;
 
-    % MATLAB, with warmup:
+    % built-in, with warmup:
     C1 = A'*B ;
     tic
     for trial = 1:ntrials
         C1 = A'*B ;
     end
     t1 = toc / ntrials ;
-    fprintf ('MATLAB time: %g sec\n', t1) ;
+    fprintf ('built-in time: %g sec\n', t1) ;
 
     % GrB, with warmup, using the descriptor transpose
     A = GrB (A) ;
@@ -65,7 +62,7 @@ for kk = 1:length (kset)
     C2 = A'*B ; %#ok<NASGU>
     GrB.burble (0) ;
 
-    % MATLAB transpose time
+    % built-in transpose time
     A = double (A) ;
     C1 = A' ;
     tic
@@ -73,7 +70,7 @@ for kk = 1:length (kset)
         C1 = A' ;
     end
     t1 = toc / ntrials ;
-    fprintf ('\nMATLAB transpose time: %g sec\n', t1) ;
+    fprintf ('\nbuilt-in transpose time: %g sec\n', t1) ;
 
     % GrB transpose time
     A = GrB (A) ;

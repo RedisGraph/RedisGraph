@@ -7,22 +7,16 @@
 
 //------------------------------------------------------------------------------
 
-// TODO: if I == GrB_ALL and J == GrB_ALL (pass in Ikind and Jkind), then
-// let S be a purely shallow copy of C.  Let S->x be NULL, which denotes
-// S->x [p] == p.  But S->i needs to be a deep, zombie-less copy of C->i,
-// because C->i is changing (zombie status).  S->p and S->h can be shallow
-// copies of C->p and C->h.
-
 #include "GB_subassign_methods.h"
 #include "GB_subref.h"
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL GB_Matrix_free (Shandle) ;
+#define GB_FREE_ALL GB_phbix_free (S) ;
 
 GrB_Info GB_subassign_symbolic
 (
     // output
-    GrB_Matrix *Shandle,        // S = C(I,J), extracting the pattern not values
+    GrB_Matrix S,               // S = symbolic(C(I,J)), static header
     // inputs, not modified:
     const GrB_Matrix C,         // matrix to extract the pattern of
     const GrB_Index *I,         // index list for S = C(I,J), or GrB_ALL, etc.
@@ -40,6 +34,7 @@ GrB_Info GB_subassign_symbolic
 
     GrB_Info info ;
     ASSERT (!GB_IS_BITMAP (C)) ;    // the caller cannot tolerate C bitmap
+    ASSERT (S != NULL && S->static_header) ;
 
     //--------------------------------------------------------------------------
     // extract the pattern: S = C(I,J) for S_Extraction method, and quick mask
@@ -68,9 +63,8 @@ GrB_Info GB_subassign_symbolic
     // S and C have the same CSR/CSC format.  S can be jumbled.  It is in
     // in the same hypersparse form as C (unless S is empty, in which case
     // it is always returned as hypersparse). This also checks I and J.
-    (*Shandle) = NULL ;
-    GB_OK (GB_subref (Shandle, C->is_csc, C, I, ni, J, nj, true, Context)) ;
-    GrB_Matrix S = (*Shandle) ;
+    // S is not iso, even if C is iso.
+    GB_OK (GB_subref (S, false, C->is_csc, C, I, ni, J, nj, true, Context)) ;
     ASSERT (GB_JUMBLED_OK (S)) ;    // GB_subref can return S as unsorted
 
     //--------------------------------------------------------------------------
@@ -106,10 +100,10 @@ GrB_Info GB_subassign_symbolic
     GB_ijlength (J, nj, C->vdim, &nJ, &Jkind, Jcolon) ;
 
     // get S
-    const int64_t *GB_RESTRICT Sp = S->p ;
-    const int64_t *GB_RESTRICT Sh = S->h ;
-    const int64_t *GB_RESTRICT Si = S->i ;
-    const int64_t *GB_RESTRICT Sx = (int64_t *) S->x ;
+    const int64_t *restrict Sp = S->p ;
+    const int64_t *restrict Sh = S->h ;
+    const int64_t *restrict Si = S->i ;
+    const int64_t *restrict Sx = (int64_t *) S->x ;
     // for each vector of S
     for (int64_t k = 0 ; k < S->nvec ; k++)
     {
@@ -128,7 +122,7 @@ GrB_Info GB_subassign_symbolic
             // iC = I [iA] ; or I is a colon expression
             int64_t iC = GB_ijlist (I, inew, Ikind, Icolon) ;
             int64_t p = Sx [pS] ;
-            ASSERT (p >= 0 && p < GB_NNZ (C)) ;
+            ASSERT (p >= 0 && p < GB_nnz (C)) ;
             int64_t pC_start, pC_end, pleft = 0, pright = C->nvec-1 ;
             bool found = GB_lookup (C->h != NULL, C->h, C->p, C->vlen,
                 &pleft, pright, jC, &pC_start, &pC_end) ;

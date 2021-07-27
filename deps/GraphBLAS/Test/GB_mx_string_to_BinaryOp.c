@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mx_string_to_BinaryOp.c: get a GraphBLAS operator from MATLAB strings
+// GB_mx_string_to_BinaryOp.c: get a GraphBLAS operator from built-in strings
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -9,14 +9,14 @@
 
 #include "GB_mex.h"
 
-// opname_mx: a MATLAB string defining the operator name:
+// opname_mx: a built-in string defining the operator name:
 // 10: first, second, pair, min, max, plus, minus, rminus, times, div, rdiv
 //  6: iseq, isne, isgt, islt, isge, isle,
 //  6: eq, ne, gt, lt, ge, le,
 //  3: or, and, xor
 //  ... and more
 
-// optype_mx: a MATLAB string defining one of 11 operator types:
+// optype_mx: a built-in string defining one of 11 operator types:
 //  'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64',
 //  'uint64', 'single', 'double', 'single complex', or 'double complex'
 
@@ -27,8 +27,8 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
 (
     GrB_BinaryOp *op_handle,        // the binary op
     const GrB_Type default_optype,  // default operator type
-    const mxArray *opname_mx,       // MATLAB string with operator name
-    const mxArray *optype_mx,       // MATLAB string with operator type
+    const mxArray *opname_mx,       // built-in string with operator name
+    const mxArray *optype_mx,       // built-in string with operator type
     const bool user_complex         // if true, use user-defined Complex op
 )
 {

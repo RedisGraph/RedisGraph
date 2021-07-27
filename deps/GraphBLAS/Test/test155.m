@@ -24,7 +24,7 @@ for trial = 1:4
     % starting with an empty matrix:
     %---------------------------------------------------------------------------
 
-    % do the work in MATLAB
+    % do the work with built-in methods
     C1 = sparse (m, n) ;
     for k = 1:nz
         if (Action (k) == 0)
@@ -54,7 +54,7 @@ for trial = 1:4
     % starting with a full matrix:
     %---------------------------------------------------------------------------
 
-    % do the work in MATLAB
+    % do the work with built-in methods
     C1 = rand (m, n) ;
     C1_start = C1 ;
     for k = 1:nz

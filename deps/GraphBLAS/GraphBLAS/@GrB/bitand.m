@@ -13,10 +13,10 @@ function C = bitand (A, B, assumedtype)
 % 'int64', 'uint8', 'uint16', 'uint32' or 'uint64'.  The default is
 % 'uint64'.
 %
-% The input matrices must be real, and may be either GraphBLAS and/or
-% MATLAB matrices, in any combination.  C is returned as a GraphBLAS
-% matrix.  The type of C is given by GrB.optype (A,B), after any
-% conversion to assumedtype, if needed.
+% The input matrices must be real, and may be GraphBLAS/built-in
+% matrices, in any combination.  C is returned as a GraphBLAS matrix.
+% The type of C is given by GrB.optype (A,B), after any conversion to
+% assumedtype, if needed.
 %
 % Example:
 %
@@ -27,7 +27,6 @@ function C = bitand (A, B, assumedtype)
 %   fprintf ('\nA: ') ; fprintf ('%3x ', A) ; fprintf ('\n') ;
 %   fprintf ('\nB: ') ; fprintf ('%3x ', B) ; fprintf ('\n') ;
 %   fprintf ('\nC: ') ; fprintf ('%3x ', C) ; fprintf ('\n') ;
-%   % in MATLAB:
 %   C2 = bitand (uint8 (A), uint8 (B))
 %   isequal (C2, C)
 %
@@ -35,7 +34,7 @@ function C = bitand (A, B, assumedtype)
 % GrB/bitset, GrB/bitclr.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (nargin < 3)
     assumedtype = 'uint64' ;

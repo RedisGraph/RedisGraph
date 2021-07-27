@@ -1,9 +1,9 @@
 function result = entries (A, varargin)
 %GRB.ENTRIES count or query the entries of a matrix.
 % An entry A(i,j) in a GraphBLAS matrix is one that is present in the
-% data structure.  Unlike a MATLAB sparse matrix, a GraphBLAS matrix can
-% contain explicit zero entries.  All entries in a MATLAB sparse matrix
-% are nonzero.  A MATLAB full matrix has all of its entries present,
+% data structure.  Unlike a built-in sparse matrix, a GraphBLAS matrix can
+% contain explicit zero entries.  All entries in a built-in sparse matrix
+% are nonzero.  A built-in full matrix has all of its entries present,
 % regardless of their value.  The GrB.entries function looks only at the
 % pattern of A, not its values.  To exclude explicit entries with a value
 % of zero (or any specified additive identity value) use GrB.nonz
@@ -33,27 +33,27 @@ function result = entries (A, varargin)
 %   then d(j) is an implicit zero, not present in the pattern of d, so
 %   that I = find (d) is the same I = GrB.entries (A, 'col', 'list').
 %
-% The result is a MATLAB scalar or vector, except for the 'degree'
+% The result is a built-in scalar or vector, except for the 'degree'
 % usage, in which case the result is a GrB vector d.
 %
 % Example:
 %
 %   A = magic (5) ;
-%   A (A < 10) = 0             % MATLAB full matrix with some explicit zeros
-%   GrB.entries (A)            % all entries present in a MATLAB full matrix
+%   A (A < 10) = 0             % built-in full matrix with some explicit zeros
+%   GrB.entries (A)            % all entries present in a built-in full matrix
 %   G = GrB (A)                % contains explicit zeros
 %   GrB.entries (G)
 %   G (A > 18) = sparse (0)    % entries A>18 deleted, has explicit zeros
 %   GrB.entries (G)
 %   GrB.entries (G, 'list')
-%   S = double (G)             % MATLAB sparse matrix; no explicit zeros
+%   S = double (G)             % built-in sparse matrix; no explicit zeros
 %   GrB.entries (S)
 %   GrB.entries (S, 'list')
 %
 % See also GrB.nonz, nnz, GrB/nnz, nonzeros, GrB/nonzeros.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     % A is a GraphBLAS matrix; get its opaque content

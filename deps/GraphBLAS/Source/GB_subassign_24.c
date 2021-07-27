@@ -15,7 +15,7 @@
 // Handles arbitrary typecasting.
 
 // if C sparse and A dense/full, C is converted to full, ignoring
-// C->sparsity.  C is conformed to its desired sparsity structure later.
+// C->sparsity_control.  C is conformed to its desired sparsity structure later.
 
 // A can be jumbled, in which case C is also jumbled.
 // A can have any sparsity structure (sparse, hyper, bitmap, or full).
@@ -61,9 +61,10 @@ GrB_Info GB_subassign_24    // C = A, copy A into an existing matrix C
     GB_MATRIX_WAIT_IF_PENDING_OR_ZOMBIES (A) ;
 
     C->jumbled = false ;        // prior contents of C are discarded
+    const bool C_iso = A->iso ; // C is iso if A is iso
 
     // save the sparsity control of C
-    int C_sparsity = C->sparsity ;
+    int C_sparsity_control = C->sparsity_control ;
     float C_hyper_switch = C->hyper_switch ;
     float C_bitmap_switch = C->bitmap_switch ;
 
@@ -102,6 +103,7 @@ GrB_Info GB_subassign_24    // C = A, copy A into an existing matrix C
         // make C full, if not full already
         C->nzombies = 0 ;                   // overwrite any zombies
         GB_Pending_free (&(C->Pending)) ;   // abandon all pending tuples
+        C->iso = C_iso ;
         GB_convert_any_to_full (C) ;        // ensure C is full
 
     }
@@ -116,33 +118,33 @@ GrB_Info GB_subassign_24    // C = A, copy A into an existing matrix C
         bool C_is_csc = C->is_csc ;
         GB_phbix_free (C) ;
         // copy the pattern, not the values
-        GB_OK (GB_dup2 (&C, A, false, C->type, Context)) ;
+        // set C->iso = C_iso   OK
+        GB_OK (GB_dup_worker (&C, C_iso, A, false, C->type, Context)) ;
         C->is_csc = C_is_csc ;      // do not change the CSR/CSC format of C
+        // GB_assign_prep has assigned the C->x iso value, but this has just
+        // been cleared, so it needs to be reassigned below by GB_cast_matrix.
     }
 
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // copy the values from A to C, typecasting as needed
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 
     if (C->type != A->type)
     { 
         GBURBLE ("(typecast) ") ;
     }
 
-    int64_t anz = GB_NNZ_HELD (A) ;
-    int nthreads = GB_nthreads (anz, chunk, nthreads_max) ;
-    GB_cast_array (C->x, C->type->code, A->x, A->type->code,
-        A->b, A->type->size, anz, nthreads) ;
+    GB_cast_matrix (C, A, Context) ;
 
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // restore the sparsity control of C
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 
-    C->sparsity = C_sparsity ;
+    C->sparsity_control = C_sparsity_control ;
     C->hyper_switch = C_hyper_switch ;
     C->bitmap_switch = C_bitmap_switch ;
 
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // return the result
     //--------------------------------------------------------------------------
 

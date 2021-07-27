@@ -11,38 +11,20 @@
 // semiring matches the accum operator, and the type of C matches the ztype of
 // accum.  That is, no typecasting can be done with C.
 
+// The matrix C is the user input matrix.  C is not iso on output, but might
+// iso on input, in which case the input iso scalar is cinput, and C->x has
+// been expanded but is not initialized.  A and/or B can be iso.
+
 #define GB_DOT4
 
 // cij += A(k,i) * B(k,j)
 #undef  GB_DOT
-#define GB_DOT(k,pA,pB)                                             \
-{                                                                   \
-    if (!cij_updated)                                               \
-    {                                                               \
-        cij_updated = true ;                                        \
-        GB_GETC (cij, pC) ;                 /* cij = Cx [pC] */     \
-    }                                                               \
-    GB_GETA (aki, Ax, pA) ;                 /* aki = A(k,i) */      \
-    GB_GETB (bkj, Bx, pB) ;                 /* bkj = B(k,j) */      \
-    GB_MULTADD (cij, aki, bkj, i, k, j) ;   /* cij += aki * bkj */  \
-    GB_DOT_TERMINAL (cij) ;         /* break if cij == terminal */  \
-}
-
-// C(i,j) = cij
-#undef  GB_DOT_ALWAYS_SAVE_CIJ
-#define GB_DOT_ALWAYS_SAVE_CIJ  \
-{                               \
-    GB_PUTC (cij, pC) ;         \
-}
-
-// save C(i,j) if it has been updated
-#undef  GB_DOT_SAVE_CIJ
-#define GB_DOT_SAVE_CIJ         \
-{                               \
-    if (cij_updated)            \
-    {                           \
-        GB_PUTC (cij, pC) ;     \
-    }                           \
+#define GB_DOT(k,pA,pB)                                                 \
+{                                                                       \
+    GB_DOT_TERMINAL (cij) ;         /* break if cij == terminal */      \
+    GB_GETA (aki, Ax, pA, A_iso) ;          /* aki = A(k,i) */          \
+    GB_GETB (bkj, Bx, pB, B_iso) ;          /* bkj = B(k,j) */          \
+    GB_MULTADD (cij, aki, bkj, i, k, j) ;   /* cij += aki * bkj */      \
 }
 
 { 
@@ -51,28 +33,36 @@
     // get A, B, and C
     //--------------------------------------------------------------------------
 
-    GB_CTYPE *GB_RESTRICT Cx = (GB_CTYPE *) C->x ;
     const int64_t cvlen = C->vlen ;
 
-    const int64_t  *GB_RESTRICT Bp = B->p ;
-    const int8_t   *GB_RESTRICT Bb = B->b ;
-    const int64_t  *GB_RESTRICT Bh = B->h ;
-    const int64_t  *GB_RESTRICT Bi = B->i ;
-    const GB_BTYPE *GB_RESTRICT Bx = (GB_BTYPE *) (B_is_pattern ? NULL : B->x) ;
+    const int64_t  *restrict Bp = B->p ;
+    const int8_t   *restrict Bb = B->b ;
+    const int64_t  *restrict Bh = B->h ;
+    const int64_t  *restrict Bi = B->i ;
+    const bool B_iso = B->iso ;
     const int64_t vlen = B->vlen ;
     const bool B_is_hyper = GB_IS_HYPERSPARSE (B) ;
     const bool B_is_bitmap = GB_IS_BITMAP (B) ;
     const bool B_is_sparse = GB_IS_SPARSE (B) ;
 
-    const int64_t  *GB_RESTRICT Ap = A->p ;
-    const int8_t   *GB_RESTRICT Ab = A->b ;
-    const int64_t  *GB_RESTRICT Ah = A->h ;
-    const int64_t  *GB_RESTRICT Ai = A->i ;
-    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) (A_is_pattern ? NULL : A->x) ;
+    const int64_t  *restrict Ap = A->p ;
+    const int8_t   *restrict Ab = A->b ;
+    const int64_t  *restrict Ah = A->h ;
+    const int64_t  *restrict Ai = A->i ;
+    const bool A_iso = A->iso ;
     ASSERT (A->vlen == B->vlen) ;
     const bool A_is_hyper = GB_IS_HYPERSPARSE (A) ;
     const bool A_is_bitmap = GB_IS_BITMAP (A) ;
     const bool A_is_sparse = GB_IS_SPARSE (A) ;
+
+    #if GB_IS_ANY_PAIR_SEMIRING
+    #error "any_pair_iso semiring not supported for the dot4 method"
+    #endif
+
+    ASSERT (!C->iso) ; // C was iso on input, it has been expanded to non-iso
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) (A_is_pattern ? NULL : A->x) ;
+    const GB_BTYPE *restrict Bx = (GB_BTYPE *) (B_is_pattern ? NULL : B->x) ;
+          GB_CTYPE *restrict Cx = (GB_CTYPE *) C->x ;
 
     int ntasks = naslice * nbslice ;
 
@@ -83,8 +73,7 @@
     #include "GB_meta16_factory.c"
 }
 
-#undef GB_DOT_ALWAYS_SAVE_CIJ
-#undef GB_DOT_SAVE_CIJ
+#undef GB_DOT
 
 #undef GB_DOT4
 

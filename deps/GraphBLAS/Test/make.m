@@ -1,8 +1,8 @@
 function make (what)
-%MAKE compiles the MATLAB interface to GraphBLAS (for testing only)
+%MAKE compiles the @GrB interface to GraphBLAS (for testing only)
 % and dynamically links it with the libraries in ../build/libgraphblas.
 %
-% This MATLAB interface to GraphBLAS is meant for testing and development,
+% This @GrB interface to GraphBLAS is meant for testing and development,
 % not for general use.
 %
 % Usage:
@@ -28,6 +28,13 @@ end
 
 fprintf ('\nCompiling GraphBLAS tests:\n') ;
 
+have_octave = (exist ('OCTAVE_VERSION', 'builtin') == 5) ;
+if (have_octave)
+    need_rename = false ;
+else
+    need_rename = ~verLessThan ('matlab', '9.10') ;
+end
+
 try
     spok (sparse (1)) ;
 catch
@@ -45,66 +52,73 @@ make_all = (isequal (what, 'all')) ;
 
 flags = '-g -R2018a' ;
 
-try
-    if (strncmp (computer, 'GLNX', 4))
-        % remove -ansi from CFLAGS and replace it with -std=c11
-        cc = mex.getCompilerConfigurations ('C', 'Selected') ;
-        env = cc.Details.SetEnv ;
-        c1 = strfind (env, 'CFLAGS=') ;
-        q = strfind (env, '"') ;
-        q = q (q > c1) ;
-        if (~isempty (c1) && length (q) > 1)
-            c2 = q (2) ;
-            cflags = env (c1:c2) ;  % the CFLAGS="..." string
-            ansi = strfind (cflags, '-ansi') ;
-            if (~isempty (ansi))
-                cflags = [cflags(1:ansi-1) '-std=c11' cflags(ansi+5:end)] ;
-                flags = [flags ' ' cflags] ;
-                fprintf ('compiling with -std=c11 instead of default -ansi\n') ;
+if (~have_octave)
+    try
+        if (strncmp (computer, 'GLNX', 4))
+            % remove -ansi from CFLAGS and replace it with -std=c11
+            cc = mex.getCompilerConfigurations ('C', 'Selected') ;
+            env = cc.Details.SetEnv ;
+            c1 = strfind (env, 'CFLAGS=') ;
+            q = strfind (env, '"') ;
+            q = q (q > c1) ;
+            if (~isempty (c1) && length (q) > 1)
+                c2 = q (2) ;
+                cflags = env (c1:c2) ;  % the CFLAGS="..." string
+                ansi = strfind (cflags, '-ansi') ;
+                if (~isempty (ansi))
+                    cflags = [cflags(1:ansi-1) '-std=c11' cflags(ansi+5:end)] ;
+                    flags = [flags ' ' cflags] ;
+                    fprintf ('compiling with -std=c11 instead of default -ansi\n') ;
+                end
             end
         end
+    catch
     end
-catch
 end
 
 mexfunctions = dir ('GB_mex_*.c') ;
-cfiles = [ dir('GB_mx_*.c') ; ...
-           dir('../Demo/Source/bfs5m.c') ; ...
-           dir('../Demo/Source/drowscale.c') ; ...
-           dir('../Demo/Source/dpagerank.c') ; ...
-           dir('../Demo/Source/dpagerank2.c') ; ...
-           dir('../Demo/Source/ipagerank.c') ; ...
-           dir('../Demo/Source/irowscale.c') ; ...
-           dir('../Demo/Source/isequal.c') ; ...
-           dir('../Demo/Source/mis_check.c') ; ...
-           dir('../Demo/Source/mis_score.c') ; ...
-           dir('../Demo/Source/wathen.c') ; ...
-           dir('../Demo/Source/random_matrix.c') ; ...
-           dir('../Demo/Source/simple_rand.c') ; ...
-           dir('../Demo/Source/prand.c') ; ...
-           dir('../Demo/Source/simple_timer.c') ; ...
-           dir('../Demo/Source/tricount.c') ; ...
-           dir('../Demo/Source/usercomplex.c') ] ;
+cfiles = [ dir('GB_mx_*.c') ] ;
 
-hfiles = [ dir('*.h') ; dir('Template/*.c') ; dir('../Demo/Include/*.h') ] ;
-inc = '-ITemplate -I../Include -I../Source -I../Source/Template -I../Demo/Include' ;
+hfiles = [ dir('*.h') ; dir('Template/*.c') ] ;
+inc = '-ITemplate -I../Include -I../Source -I../Source/Template' ;
 
 if (ismac)
     % Mac (do 'make install' for GraphBLAS first)
-    libraries = '-L/usr/local/lib -lgraphblas' ; % -lomp' ;
+    if (need_rename)
+        libraries = '-L/usr/local/lib -lgraphblas_renamed' ; % -lomp' ;
+    else
+        libraries = '-L/usr/local/lib -lgraphblas' ; % -lomp' ;
+    end
 %   flags = [ flags   ' CFLAGS="$CXXFLAGS -Xpreprocessor -fopenmp" ' ] ;
 %   flags = [ flags ' CXXFLAGS="$CXXFLAGS -Xpreprocessor -fopenmp" ' ] ;
 %   flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp"' ] ;
 elseif (ispc)
     % Windows
-    libraries = '-L../build/Release -L. -lgraphblas' ;
+    if (need_rename)
+        libraries = '-L../GraphBLAS/build/Release -L. -lgraphblas_renamed' ;
+    else
+        libraries = '-L../build/Release -L. -lgraphblas' ;
+    end
     flags = [ flags ' CFLAGS="$CXXFLAGS -wd\"4244\" -wd\"4146\" -wd\"4217\" -wd\"4286\" -wd\"4018\" -wd\"4996\" -wd\"4047\" -wd\"4554\"" '] ;
 else
     % Linux
-    libraries = '-L../build -L. -lgraphblas' ;
+    if (need_rename)
+        libraries = '-L../GraphBLAS/build -L. -lgraphblas_renamed' ;
+    else
+        libraries = '-L../build -L. -lgraphblas' ;
+    end
     flags = [ flags   ' CFLAGS="$CXXFLAGS -fopenmp -fPIC -Wno-pragmas" '] ;
     flags = [ flags ' CXXFLAGS="$CXXFLAGS -fopenmp -fPIC -Wno-pragmas" '] ;
     flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp -fPIC" '] ;
+end
+
+if (need_rename)
+    fprintf ('Linking with -lgraphblas_renamed\n') ;
+    flags = [flags ' -DGBRENAME=1 ' ] ;
+    inc = [inc ' -I../GraphBLAS/rename ' ] ;
+    libgraphblas = '-lgraphblas_renamed' ;
+else
+    libgraphblas = '-lgraphblas' ;
 end
 
 %-------------------------------------------------------------------------------
@@ -152,7 +166,7 @@ for k = 1:length (cfiles)
     % compile the cfile if it is newer than its object file, or any hfile
     if (make_all || tc > tobj || htime > tobj)
         % compile the cfile
-        fprintf ('.', cfile) ;
+        fprintf ('.') ;
         % fprintf ('%s\n', cfile) ;
         mexcmd = sprintf ('mex -c %s -silent %s %s', flags, inc, cfile) ;
         if (dryrun)
@@ -200,7 +214,7 @@ for k = 1:length (mexfunctions)
 end
 
 % compile GB_spones_mex
-mex -O -R2018a GB_spones_mex.c
+mex -g -R2018a GB_spones_mex.c
 
 % load the library
 if (ispc)

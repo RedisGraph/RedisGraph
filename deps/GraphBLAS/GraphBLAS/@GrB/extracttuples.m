@@ -3,8 +3,8 @@ function [I,J,X] = extracttuples (A, desc)
 %
 %   [I,J,X] = GrB.extracttuples (A, desc)
 %
-% GrB.extracttuples extracts all entries from either a MATLAB or
-% GraphBLAS matrix.  If A is a MATLAB sparse or full matrix,
+% GrB.extracttuples extracts all entries from either a built-in or
+% GraphBLAS matrix.  If A is a built-in sparse or full matrix,
 % [I,J,X] = GrB.extracttuples (A) is identical to [I,J,X] = find (A).
 %
 % For a GraphBLAS matrix G, GrB.extracttuples (G) returns any explicit
@@ -18,12 +18,12 @@ function [I,J,X] = extracttuples (A, desc)
 % that I and J are int64 vectors with one-based indices.  One-based
 % indices in I are in the range 1 to m, and the indices in J are in the
 % range 1 to n, if A is m-by-n.  This is identical to [I,J,X] = find (A)
-% for a MATLAB sparse or full matrix.
+% for a built-in sparse or full matrix.
 %
 % If 'zero-based', I and J are returned as int64 arrays, with zero-based
 % indices.  The entries in I and J are in the range 0 to m-1 and 0 to
 % n-1, respectively, if [m n] = size (A).  This usage is not the
-% conventional 1-based indexing in MATLAB, but it is the fastest method.
+% conventional 1-based indexing, but it is the fastest method.
 %
 % The overloaded [I,J,X] = find (A) method for a GraphBLAS matrix A uses
 % desc.base of 'default', and always removes explicit zeros.
@@ -31,7 +31,7 @@ function [I,J,X] = extracttuples (A, desc)
 % See also GrB/find, GrB/build.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;

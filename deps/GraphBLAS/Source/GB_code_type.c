@@ -16,7 +16,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Type GB_code_type           // return the GrB_Type corresponding to the code
 (
     const GB_Type_code code,    // type code to convert
@@ -29,12 +29,12 @@ GrB_Type GB_code_type           // return the GrB_Type corresponding to the code
     {
         case GB_BOOL_code   : return (GrB_BOOL)   ;
         case GB_INT8_code   : return (GrB_INT8)   ;
-        case GB_UINT8_code  : return (GrB_UINT8)  ;
         case GB_INT16_code  : return (GrB_INT16)  ;
-        case GB_UINT16_code : return (GrB_UINT16) ;
         case GB_INT32_code  : return (GrB_INT32)  ;
-        case GB_UINT32_code : return (GrB_UINT32) ;
         case GB_INT64_code  : return (GrB_INT64)  ;
+        case GB_UINT8_code  : return (GrB_UINT8)  ;
+        case GB_UINT16_code : return (GrB_UINT16) ;
+        case GB_UINT32_code : return (GrB_UINT32) ;
         case GB_UINT64_code : return (GrB_UINT64) ;
         case GB_FP32_code   : return (GrB_FP32)   ;
         case GB_FP64_code   : return (GrB_FP64)   ;

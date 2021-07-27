@@ -17,7 +17,7 @@
 
 typedef struct
 {
-    int gunk [16] ;
+    int stuff [16] ;
 }
 wild ;
 
@@ -36,6 +36,7 @@ void mexFunction
     GrB_Vector victor = NULL ;
     GrB_Descriptor desc = NULL ;
     GrB_Type Wild = NULL ;
+    char *err ;
 
     //--------------------------------------------------------------------------
     // startup GraphBLAS
@@ -120,7 +121,7 @@ void mexFunction
     ERR (GxB_Matrix_select (C, NULL, NULL, GxB_LT_THUNK, A, scalar, NULL)) ;
     char *message = NULL ;
     OK (GrB_Matrix_error (&message, C)) ;
-    printf ("error expected: %s\n", message) ;
+    printf ("expected error: %s\n", message) ;
     GrB_Matrix_free_(&C) ;
     GxB_Scalar_free_(&scalar) ;
 
@@ -128,18 +129,15 @@ void mexFunction
     // GB_pslice
     //--------------------------------------------------------------------------
 
-    int64_t *Slice = NULL ;
-    GB_pslice (&Slice, A->p, n, 2, true) ;
+    int64_t Slice [30] ;
+    GB_pslice (Slice, A->p, n, 2, true) ;
     CHECK (Slice [0] == 0) ;
-    GB_FREE (Slice) ;
 
-    int64_t Ap [11] = { 1, 1, 1, 1, 1,
-                        1, 1, 1, 1, 1, 1 } ;
-    bool ok = GB_pslice (&Slice, Ap, 10, 10, false) ;
+    int64_t Ap [11] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } ;
+    GB_pslice (Slice, Ap, 10, 10, false) ;
     printf ("Slice: ") ;
     for (int k = 0 ; k <= 10 ; k++) printf (" %ld", Slice [k]) ;
     printf ("\n") ;
-    GB_FREE (Slice) ;
 
     GrB_Matrix_free_(&A) ;
 
@@ -159,14 +157,14 @@ void mexFunction
     OK (GrB_Matrix_wait (&A)) ;
     OK (GxB_Matrix_fprint (A, "valid matrix", GxB_SHORT, NULL)) ;
     // mangle the matrix
-    GB_FREE (A->p) ;
-    GB_FREE (A->x) ;
+    GB_FREE (&(A->p), A->p_size) ;
+    GB_FREE (&(A->x), A->x_size) ;  // OK
     expected = GrB_INVALID_OBJECT ;
     ERR (GxB_Matrix_fprint (A, "invalid sparse matrix", GxB_SHORT, NULL)) ;
     GrB_Matrix_free_(&A) ;
 
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
-    A->sparsity = 999 ;
+    A->sparsity_control = 999 ;
     ERR (GxB_Matrix_fprint (A, "invalid sparsity control", GxB_SHORT, NULL)) ;
     GrB_Matrix_free_(&A) ;
 
@@ -188,7 +186,7 @@ void mexFunction
     ERR (GxB_Matrix_fprint (A, "full matrix cannot have zombies",
         GxB_SHORT, NULL)) ;
     A->nzombies = 0 ;
-    CHECK (GB_Pending_alloc (&(A->Pending), GrB_INT32, NULL, true, 4)) ;
+    CHECK (GB_Pending_alloc (&(A->Pending), false, GrB_INT32, NULL, true, 4)) ;
     ERR (GxB_Matrix_fprint (A, "full matrix cannot have pending tuples",
         GxB_SHORT, NULL)) ;
     GrB_Matrix_free_(&A) ;
@@ -254,14 +252,14 @@ void mexFunction
     OK (GrB_Matrix_setElement_INT32 (A, 12345, 0, 0)) ;
     OK (GrB_Matrix_dup (&C, A)) ;
     CHECK (!GB_aliased (A, C)) ;
-    GB_FREE (C->p) ;
+    GB_FREE (&(C->p), C->p_size) ;
     C->p = A->p ;
     C->p_shallow = true ;
     CHECK (GB_aliased (A, C)) ;
     C->p = NULL ;
     C->p_shallow = false ;
     CHECK (!GB_aliased (A, C)) ;
-    GB_FREE (C->i) ;
+    GB_FREE (&(C->i), C->i_size) ;
     C->i = A->i ;
     C->i_shallow = true ;
     CHECK (GB_aliased (A, C)) ;
@@ -281,7 +279,7 @@ void mexFunction
     ERR (GxB_Matrix_apply_BinaryOp2nd (C, NULL, NULL, GrB_PLUS_INT32, A,
         scalar, NULL)) ;
     OK (GrB_Matrix_error (&message, C)) ;
-    printf ("error expected: %s\n", message) ;
+    printf ("expected error: %s\n", message) ;
     GrB_Matrix_free_(&A) ;
     GrB_Matrix_free_(&C) ;
     GxB_Scalar_free_(&scalar) ;
@@ -320,7 +318,7 @@ void mexFunction
     expected = GrB_DOMAIN_MISMATCH ;
     ERR (GrB_Matrix_build_INT32 (A, I, I, I, 0, GxB_FIRSTI_INT32)) ;
     OK (GrB_Matrix_error (&message, A)) ;
-    printf ("error expected: %s\n", message) ;
+    printf ("expected error: %s\n", message) ;
     GrB_Matrix_free_(&A) ;
 
     //--------------------------------------------------------------------------
@@ -351,13 +349,13 @@ void mexFunction
     // jumbled user-defined matrix
     //--------------------------------------------------------------------------
 
-    wild w ;
+    wild ww, w2 ;
     n = 3 ;
-    memset (w.gunk, 13, 16 * sizeof (int)) ;
+    memset (ww.stuff, 13, 16 * sizeof (int)) ;
     OK (GrB_Type_new (&Wild, sizeof (wild))) ;
     OK (GrB_Matrix_new (&C, Wild, n, n)) ;
     OK (GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
-    OK (GrB_Matrix_assign_UDT (C, NULL, NULL, &w, GrB_ALL, n, GrB_ALL, n,
+    OK (GrB_Matrix_assign_UDT (C, NULL, NULL, &ww, GrB_ALL, n, GrB_ALL, n,
         NULL)) ;
     OK (GxB_Matrix_fprint (C, "wild matrix", GxB_SHORT, NULL)) ;
 
@@ -372,20 +370,21 @@ void mexFunction
     OK (GxB_Matrix_fprint (C, "wild matrix unjumbled", GxB_SHORT, NULL)) ;
 
     GrB_Matrix_free_(&C) ;
-    GrB_Type_free_(&Wild) ;
 
     //--------------------------------------------------------------------------
     // malloc/realloc wrappers
     //--------------------------------------------------------------------------
 
-    ok = false ;
-    int *p = GB_malloc_memory (4, sizeof (int)) ;
+    size_t nbytes ;
+    bool ok = false ;
+    int *p = GB_malloc_memory (4, sizeof (int), &nbytes) ;
     CHECK (p != NULL) ;
-    p = GB_realloc_memory (4, 4, sizeof (int), p, &ok) ;
+    p = GB_realloc_memory (1024*1024, sizeof (int), p, &nbytes, &ok, NULL) ;
     CHECK (p != NULL) ;
     CHECK (ok) ;
-    GB_free_memory (p) ;
-    p = NULL ;
+    p = GB_realloc_memory (4, GxB_INDEX_MAX + 1, p, &nbytes, &ok, NULL) ;
+    CHECK (!ok) ;
+    GB_free_memory (&p, nbytes) ;
 
     //--------------------------------------------------------------------------
     // try to import a huge full matrix (this will fail):
@@ -393,12 +392,12 @@ void mexFunction
 
     GrB_Matrix X = NULL ;
     info = GxB_Matrix_import_FullC (&X, GrB_FP32, GxB_INDEX_MAX, GxB_INDEX_MAX,
-        NULL, UINT64_MAX, NULL) ;
+        NULL, UINT64_MAX, false, NULL) ;
     if (info != GrB_INVALID_VALUE || X != NULL) mexErrMsgTxt ("huge fail1") ;
 
     GrB_Index nhuge = (((GrB_Index) 2) << 50) ;
     info = GxB_Matrix_import_BitmapC (&X, GrB_FP32, nhuge, nhuge,
-        NULL, NULL, 0, 0, 0, NULL) ;
+        NULL, NULL, 0, 0, false, 0, NULL) ;
     if (info != GrB_INVALID_VALUE || X != NULL) mexErrMsgTxt ("huge fail5") ;
 
     // try to convert a huge sparse matrix to bitmap (this will fail too):
@@ -406,14 +405,233 @@ void mexFunction
     if (info != GrB_SUCCESS) mexErrMsgTxt ("huge fail2") ;
     info = GxB_Matrix_Option_set_(X, GxB_SPARSITY_CONTROL, GxB_BITMAP) ;
     if (info != GrB_OUT_OF_MEMORY) mexErrMsgTxt ("huge fail3") ;
-    info = GB_convert_to_full (X) ;
-    if (info != GrB_OUT_OF_MEMORY) mexErrMsgTxt ("huge fail4") ;
     GrB_Matrix_free (&X) ;
+
+    //--------------------------------------------------------------------------
+    // hypermatrix prune
+    //--------------------------------------------------------------------------
+
+    OK (GrB_Matrix_new (&C, GrB_FP32, GxB_INDEX_MAX, GxB_INDEX_MAX)) ;
+    OK (GrB_Matrix_setElement_FP32 (C, (double) 3, 0, 0)) ;
+    OK (GrB_Matrix_wait (&C)) ;
+    OK (GxB_Matrix_fprint (C, "huge matrix", GxB_SHORT, NULL)) ;
+    C->nvec_nonempty = -1 ;
+    OK (GB_hypermatrix_prune (C, NULL)) ;
+    CHECK (C->nvec_nonempty == 1) ;
+    GrB_Matrix_free (&C) ;
+
+    //--------------------------------------------------------------------------
+    // vector option set/get
+    //--------------------------------------------------------------------------
+
+    OK (GrB_Vector_new (&victor, GrB_FP32, 10)) ;
+    OK (GxB_Vector_Option_set (victor, GxB_BITMAP_SWITCH, (double) 4.5)) ;
+    double bitmap_switch = 8 ;
+    OK (GxB_Vector_Option_get (victor, GxB_BITMAP_SWITCH, &bitmap_switch)) ;
+    CHECK (bitmap_switch == 4.5) ;
+    GrB_Vector_free (&victor) ;
+
+    //--------------------------------------------------------------------------
+    // split/concat for user-defined types
+    //--------------------------------------------------------------------------
+
+    printf ("\n ======================== split/concat tests: ") ;
+    int sparsity [4] ;
+    sparsity [0] = GxB_HYPERSPARSE ;
+    sparsity [1] = GxB_SPARSE ;
+    sparsity [2] = GxB_BITMAP ;
+    sparsity [3] = GxB_FULL ;
+    GrB_Matrix Tiles [4] ;
+    memset (Tiles, 0, 4 * sizeof (GrB_Matrix)) ;
+    n = 20 ;
+    GrB_Index Tile_nrows [2] = { 5, 15 } ;
+    GrB_Index Tile_ncols [2] = { 12, 8 } ;
+
+    for (int k = 0 ; k <= 3 ; k++)
+    {
+        for (int k2 = 0 ; k2 <= 1 ; k2++)
+        {
+            OK (GrB_Matrix_new (&C, Wild, n, n)) ;
+            OK (GxB_Matrix_Option_set (C, GxB_SPARSITY_CONTROL, sparsity [k])) ;
+            if (k2 == 0)
+            {
+                // C(:,:) = ww
+                OK (GrB_Matrix_assign_UDT (C, NULL, NULL, &ww, GrB_ALL,
+                    n, GrB_ALL, n, NULL)) ;
+            }
+            else
+            {
+                // C = diagonal matrix
+                for (int64_t kk = 0 ; kk < 20 ; kk++)
+                {
+                    OK (GrB_Matrix_setElement_UDT (C, &ww, kk, kk)) ;
+                }
+            }
+            // split C into 4 matrices
+            OK (GxB_Matrix_split (Tiles, 2, 2, Tile_nrows, Tile_ncols, C,
+                NULL)) ;
+            // concatenate the 4 matrices back in X
+            OK (GrB_Matrix_new (&X, Wild, n, n)) ;
+            OK (GxB_Matrix_Option_set (X, GxB_SPARSITY_CONTROL, sparsity [k])) ;
+            OK (GxB_Matrix_concat (X, Tiles, 2, 2, NULL)) ;
+            // ensure C and X are the same (just use a brute force method)
+            for (int64_t i = 0 ; i < n ; i++)
+            {
+                for (int64_t j = 0 ; j < n ; j++)
+                {
+                    wild wc, wx ;
+                    int infoc = GrB_Matrix_extractElement_UDT (&wc, C, i, j) ;
+                    int infox = GrB_Matrix_extractElement_UDT (&wx, X, i, j) ;
+                    CHECK (infoc == GrB_SUCCESS || infoc == GrB_NO_VALUE) ;
+                    CHECK (infoc == infox) ;
+                    if (infoc == GrB_SUCCESS)
+                    {
+                        for (int kk = 0 ; kk < 16 ; kk++)
+                        {
+                            CHECK (wc.stuff [kk] == wx.stuff [kk]) ;
+                        }
+                    }
+                }
+            }
+            GrB_Matrix_free (&X) ;
+            GrB_Matrix_free (&C) ;
+
+            expected = GrB_DOMAIN_MISMATCH ;
+            OK (GrB_Matrix_new (&X, GrB_FP32, n, n)) ;
+            ERR (GxB_Matrix_concat (X, Tiles, 2, 2, NULL)) ;
+            OK (GrB_Matrix_error (&err, X)) ;
+            printf ("expected error: %s\n", err) ;
+            GrB_Matrix_free (&X) ;
+
+            expected = GrB_DIMENSION_MISMATCH ;
+            OK (GrB_Matrix_new (&X, Wild, 100, 100)) ;
+            ERR (GxB_Matrix_concat (X, Tiles, 2, 2, NULL)) ;
+            OK (GrB_Matrix_error (&err, X)) ;
+            printf ("expected error: %s\n", err) ;
+            GrB_Matrix_free (&X) ;
+
+            OK (GrB_Matrix_new (&X, Wild, n, n)) ;
+            GrB_Matrix_free (&(Tiles [3])) ;
+            OK (GrB_Matrix_new (&(Tiles [3]), Wild, 15, 100)) ;
+            ERR (GxB_Matrix_concat (X, Tiles, 2, 2, NULL)) ;
+            // GxB_print (X, 3) ;
+            OK (GrB_Matrix_error (&err, X)) ;
+            printf ("expected error: %s\n", err) ;
+            GrB_Matrix_free (&(Tiles [3])) ;
+
+            OK (GrB_Matrix_new (&(Tiles [3]), Wild, 100, 8)) ;
+            ERR (GxB_Matrix_concat (X, Tiles, 2, 2, NULL)) ;
+            OK (GrB_Matrix_error (&err, X)) ;
+            printf ("expected error: %s\n", err) ;
+
+            for (int kk = 0 ; kk < 4 ; kk++)
+            {
+                GrB_Matrix_free (&(Tiles [kk])) ;
+            }
+
+            expected = GrB_NULL_POINTER ;
+            ERR (GxB_Matrix_concat (X, Tiles, 2, 2, NULL)) ;
+            GrB_Matrix_free (&X) ;
+        }
+    }
+
+    //--------------------------------------------------------------------------
+    // split/concat error handling
+    //--------------------------------------------------------------------------
+
+    expected = GrB_INVALID_VALUE ;
+    OK (GrB_Matrix_new (&C, GrB_FP32, n, n)) ;
+    ERR (GxB_Matrix_split (Tiles, 0, 0, Tile_nrows, Tile_ncols, C, NULL)) ;
+    ERR (GxB_Matrix_concat (C, Tiles, 0, 0, NULL)) ;
+    GrB_Matrix_free (&C) ;
+
+    expected = GrB_DIMENSION_MISMATCH ;
+    OK (GrB_Matrix_new (&C, GrB_FP32, n, n)) ;
+    Tile_nrows [0] = -1 ;
+    ERR (GxB_Matrix_split (Tiles, 2, 2, Tile_nrows, Tile_ncols, C, NULL)) ;
+    Tile_nrows [0] = 1 ;
+    ERR (GxB_Matrix_split (Tiles, 2, 2, Tile_nrows, Tile_ncols, C, NULL)) ;
+    Tile_nrows [0] = 5 ;
+    Tile_ncols [0] = -1 ;
+    ERR (GxB_Matrix_split (Tiles, 2, 2, Tile_nrows, Tile_ncols, C, NULL)) ;
+    Tile_ncols [0] = 1 ;
+    ERR (GxB_Matrix_split (Tiles, 2, 2, Tile_nrows, Tile_ncols, C, NULL)) ;
+    GrB_Matrix_free (&C) ;
+
+    //--------------------------------------------------------------------------
+    // C<C,struct> = scalar
+    //--------------------------------------------------------------------------
+
+    printf ("\n\ntesting C<C,struct> = scalar for user-defined type:\n") ;
+    OK (GxB_Global_Option_set (GxB_BURBLE, true)) ;
+    OK (GrB_Matrix_new (&C, Wild, n, n)) ;
+    memset (ww.stuff,  0, 16 * sizeof (int)) ;
+    memset (w2.stuff,  1, 16 * sizeof (int)) ;
+    for (int64_t kk = 0 ; kk < 16 ; kk++)
+    {
+        w2.stuff [kk] = kk ;
+    }
+    for (int64_t kk = 0 ; kk < 20 ; kk++)
+    {
+        OK (GrB_Matrix_setElement_UDT (C, &ww, kk, kk)) ;
+    }
+    OK (GrB_Matrix_wait (&C)) ;
+    info = GrB_Matrix_assign_UDT (C, C, NULL, &w2, GrB_ALL, 20, GrB_ALL, 20,
+        GrB_DESC_S) ;
+    wild w3 ;
+
+    for (int64_t kk = 0 ; kk < 20 ; kk++)
+    {
+        memset (w3.stuff,  9, 16 * sizeof (int)) ;
+        info = (GrB_Matrix_extractElement_UDT (&w3, C, kk, kk)) ;
+        CHECK (info == GrB_SUCCESS) ;
+        for (int64_t t = 0 ; t < 16 ; t++)
+        {
+            CHECK (w3.stuff [t] == t) ;
+        }
+    }
+    GrB_Matrix_free (&C) ;
+    OK (GxB_Global_Option_set (GxB_BURBLE, false)) ;
+
+    //--------------------------------------------------------------------------
+    // GxB_Matrix_diag and GxB_Vector_diag error handling
+    //--------------------------------------------------------------------------
+
+    expected = GrB_DIMENSION_MISMATCH ;
+
+    OK (GrB_Matrix_new (&C, GrB_FP32, 10, 20)) ;
+    OK (GrB_Vector_new (&victor, GrB_FP32, 10)) ;
+    ERR (GxB_Matrix_diag (C, victor, 0, NULL)) ;
+    OK (GrB_Matrix_error (&err, C)) ;
+    printf ("expected error: %s\n", err) ;
+    GrB_Matrix_free (&C) ;
+
+    OK (GrB_Matrix_new (&C, GrB_FP32, 5, 5)) ;
+    ERR (GxB_Matrix_diag (C, victor, 0, NULL)) ;
+    OK (GrB_Matrix_error (&err, C)) ;
+    printf ("expected error: %s\n", err) ;
+    ERR (GxB_Vector_diag (victor, C, 0, NULL)) ;
+    OK (GrB_Vector_error (&err, victor)) ;
+    printf ("expected error: %s\n", err) ;
+    GrB_Matrix_free (&C) ;
+
+    expected = GrB_DOMAIN_MISMATCH ;
+
+    OK (GrB_Matrix_new (&C, Wild, 10, 10)) ;
+    ERR (GxB_Matrix_diag (C, victor, 0, NULL)) ;
+    OK (GrB_Matrix_error (&err, C)) ;
+    printf ("expected error: %s\n", err) ;
+    ERR (GxB_Vector_diag (victor, C, 0, NULL)) ;
+    OK (GrB_Vector_error (&err, victor)) ;
+    printf ("expected error: %s\n", err) ;
+    GrB_Matrix_free (&C) ;
+    GrB_Vector_free (&victor) ;
 
     //--------------------------------------------------------------------------
     // wrapup
     //--------------------------------------------------------------------------
 
+    GrB_Type_free_(&Wild) ;
     GB_mx_put_global (true) ;   
     fclose (f) ;
     printf ("\nAll errors printed above were expected.\n") ;

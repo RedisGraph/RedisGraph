@@ -21,10 +21,11 @@
     // create the tasks to iterate over IxJ
     //--------------------------------------------------------------------------
 
-    int ntasks = 0, max_ntasks = 0, nthreads ;
-    GB_task_struct *TaskList = NULL ;
-    GB_OK (GB_subassign_IxJ_slice (&TaskList, &max_ntasks, &ntasks, &nthreads,
-        /* I, */ nI, /* Ikind, Icolon, J, */ nJ, /* Jkind, Jcolon, */ Context));
+    int ntasks = 0, nthreads ;
+    GB_task_struct *TaskList = NULL ; size_t TaskList_size = 0 ;
+    GB_OK (GB_subassign_IxJ_slice (&TaskList, &TaskList_size, &ntasks,
+        &nthreads, /* I, */ nI, /* Ikind, Icolon, J, */ nJ,
+        /* Jkind, Jcolon, */ Context)) ;
 
     //--------------------------------------------------------------------------
     // iterate over all IxJ
@@ -91,6 +92,6 @@
     // free workpace
     //--------------------------------------------------------------------------
 
-    GB_FREE (TaskList) ;
+    GB_FREE_WERK (&TaskList, TaskList_size) ;
 }
 

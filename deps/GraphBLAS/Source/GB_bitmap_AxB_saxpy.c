@@ -8,14 +8,12 @@
 //------------------------------------------------------------------------------
 
 #include "GB_bitmap_AxB_saxpy.h"
+#include "GB_AxB__include1.h"
 #ifndef GBCOMPACT
-#include "GB_AxB__include.h"
+#include "GB_AxB__include2.h"
 #endif
 
-#define GB_FREE_ALL             \
-{                               \
-    GB_Matrix_free (Chandle) ;  \
-}
+#define GB_FREE_ALL GB_phbix_free (C) ;
 
 //------------------------------------------------------------------------------
 // GB_bitmap_AxB_saxpy: compute C=A*B, C<M>=A*B, or C<!M>=A*B
@@ -27,7 +25,9 @@
 GB_PUBLIC                           // for testing only
 GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
 (
-    GrB_Matrix *Chandle,            // output matrix (not computed in-place)
+    GrB_Matrix C,                   // output matrix, static header
+    const bool C_iso,               // true if C is iso
+    const GB_void *cscalar,         // iso value of C
     const int C_sparsity,
     const GrB_Matrix M,             // optional mask matrix
     const bool Mask_comp,           // if true, use !M
@@ -48,8 +48,7 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     GrB_Info info ;
 
     (*mask_applied) = false ;
-    ASSERT (Chandle != NULL) ;
-    ASSERT (*Chandle == NULL) ;
+    ASSERT (C != NULL && C->static_header) ;
 
     ASSERT_MATRIX_OK_OR_NULL (M, "M for bitmap saxpy A*B", GB0) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -79,16 +78,12 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     // monoid, then do not create C, but compute in-place instead.
 
     GrB_Type ctype = semiring->add->op->ztype ;
-    int64_t cnzmax ;
-    bool ok = GB_Index_multiply ((GrB_Index *) &cnzmax, A->vlen, B->vdim) ;
-    if (!ok)
-    { 
-        // problem too large
-        return (GrB_OUT_OF_MEMORY) ;
-    }
-    GB_OK (GB_new_bix (Chandle, ctype, A->vlen, B->vdim, GB_Ap_null, true,
-        C_sparsity, true, GB_HYPER_SWITCH_DEFAULT, -1, cnzmax, true, Context)) ;
-    GrB_Matrix C = *Chandle ;
+    int64_t cnzmax = 1 ;
+    (void) GB_Index_multiply ((GrB_Index *) &cnzmax, A->vlen, B->vdim) ;
+    // set C->iso = C_iso   OK
+    GB_OK (GB_new_bix (&C, true, // static header
+        ctype, A->vlen, B->vdim, GB_Ap_null, true, C_sparsity, true,
+        GB_HYPER_SWITCH_DEFAULT, -1, cnzmax, true, C_iso, Context)) ;
     C->magic = GB_MAGIC ;
 
     //--------------------------------------------------------------------------
@@ -99,56 +94,80 @@ GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap or full
     GrB_Monoid add = semiring->add ;
     ASSERT (mult->ztype == add->op->ztype) ;
     bool A_is_pattern, B_is_pattern ;
-    GB_AxB_pattern (&A_is_pattern, &B_is_pattern, flipxy, mult->opcode) ;
+    GB_binop_pattern (&A_is_pattern, &B_is_pattern, flipxy, mult->opcode) ;
 
     //--------------------------------------------------------------------------
     // C<#M>+=A*B
     //--------------------------------------------------------------------------
 
-    bool done = false ;
-
-    #ifndef GBCOMPACT
-
-        //----------------------------------------------------------------------
-        // define the worker for the switch factory
-        //----------------------------------------------------------------------
-
-        #define GB_Asaxpy3B(add,mult,xname) \
-            GB_Asaxpy3B_ ## add ## mult ## xname
-
-        #define GB_AxB_WORKER(add,mult,xname)                               \
-        {                                                                   \
-            info = GB_Asaxpy3B (add,mult,xname) (C, M, Mask_comp,           \
-                Mask_struct, true, A, A_is_pattern,  B,                     \
-                B_is_pattern, NULL, 0, 0, 0, 0, Context) ;                  \
-            done = (info != GrB_NO_VALUE) ;                                 \
-        }                                                                   \
-        break ;
-
-        //----------------------------------------------------------------------
-        // launch the switch factory
-        //----------------------------------------------------------------------
-
-        GB_Opcode mult_opcode, add_opcode ;
-        GB_Type_code xcode, ycode, zcode ;
-        if (GB_AxB_semiring_builtin (A, A_is_pattern, B,
-            B_is_pattern, semiring, flipxy, &mult_opcode, &add_opcode, &xcode,
-            &ycode, &zcode))
-        { 
-            #include "GB_AxB_factory.c"
-        }
-
-    #endif
-
-    //--------------------------------------------------------------------------
-    // generic method
-    //--------------------------------------------------------------------------
-
-    if (!done)
+    if (C_iso)
     { 
-        info = GB_AxB_saxpy_generic (C, M, Mask_comp, Mask_struct,
-            true, A, A_is_pattern, B, B_is_pattern, semiring,
-            flipxy, NULL, 0, 0, 0, 0, Context) ;
+
+        //----------------------------------------------------------------------
+        // C is iso; compute the pattern of C<#>=A*B with the any_pair semiring
+        //----------------------------------------------------------------------
+
+        GBURBLE ("(iso bitmap saxpy) ") ;
+        memcpy (C->x, cscalar, ctype->size) ;
+        info = GB (_AsaxbitB__any_pair_iso) (C, M, Mask_comp, Mask_struct, A,
+            true, B, true, Context) ;
+
+    }
+    else
+    {
+
+        //----------------------------------------------------------------------
+        // C is non-iso
+        //----------------------------------------------------------------------
+
+        GBURBLE ("(bitmap saxpy) ") ;
+        bool done = false ;
+
+        #ifndef GBCOMPACT
+
+            //------------------------------------------------------------------
+            // define the worker for the switch factory
+            //------------------------------------------------------------------
+
+            #define GB_AsaxbitB(add,mult,xname)  \
+                GB (_AsaxbitB_ ## add ## mult ## xname)
+
+            #define GB_AxB_WORKER(add,mult,xname)                       \
+            {                                                           \
+                info = GB_AsaxbitB (add,mult,xname) (C, M, Mask_comp,   \
+                    Mask_struct, A, A_is_pattern, B, B_is_pattern,      \
+                    Context) ;                                          \
+                done = (info != GrB_NO_VALUE) ;                         \
+            }                                                           \
+            break ;
+
+            //------------------------------------------------------------------
+            // launch the switch factory
+            //------------------------------------------------------------------
+
+            GB_Opcode mult_opcode, add_opcode ;
+            GB_Type_code xcode, ycode, zcode ;
+            if (GB_AxB_semiring_builtin (A, A_is_pattern, B, B_is_pattern,
+                semiring, flipxy, &mult_opcode, &add_opcode, &xcode, &ycode,
+                &zcode))
+            { 
+                #include "GB_AxB_factory.c"
+            }
+
+        #endif
+
+        //----------------------------------------------------------------------
+        // generic method
+        //----------------------------------------------------------------------
+
+        if (!done)
+        { 
+            info = GB_AxB_saxpy_generic (C, M, Mask_comp, Mask_struct,
+                true, A, A_is_pattern, B, B_is_pattern, semiring,
+                flipxy, GB_SAXPY_METHOD_BITMAP,
+                NULL, 0, 0, 0, 0,
+                Context) ;
+        }
     }
 
     if (info != GrB_SUCCESS)

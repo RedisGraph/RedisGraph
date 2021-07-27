@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mx_create_full: create a full MATLAB matrix of a given GrB_Type
+// GB_mx_create_full: create a full built-in matrix of a given GrB_Type
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -9,7 +9,7 @@
 
 #include "GB_mex.h"
 
-mxArray *GB_mx_create_full      // return new MATLAB full matrix
+mxArray *GB_mx_create_full      // return new built-in full matrix
 (
     const GrB_Index nrows,
     const GrB_Index ncols,

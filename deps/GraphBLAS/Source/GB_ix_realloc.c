@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_ix_realloc: reallocate a matrix to hold a given number of entries
+// GB_ix_realloc: reallocate a sparse/hyper matrix to hold a given # of entries
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -9,16 +9,15 @@
 
 // Does not modify A->p.  Reallocates A->x and A->i to the requested size,
 // preserving the existing content of A->x and A->i.  Preserves pending tuples
-// and zombies, if any.  If numeric is false, then A->x is freed instead.
+// and zombies, if any.
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_ix_realloc      // reallocate space in a matrix
 (
     GrB_Matrix A,               // matrix to allocate space for
     const int64_t nzmax_new,    // new number of entries the matrix can hold
-    const bool numeric,         // if true, reallocate A->x, else A->x is NULL
     GB_Context Context
 )
 {
@@ -28,13 +27,13 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     //--------------------------------------------------------------------------
 
     // This method is used only by GB_ix_resize, which itself is used only by
-    // GrB_Matrix_wait.  Full and bitmap matrices never have pending work, so
+    // GB_wait.  Full and bitmap matrices never have pending work, so
     // this function is only called for hypersparse and sparse matrices.
     ASSERT (!GB_IS_FULL (A)) ;
     ASSERT (!GB_IS_BITMAP (A)) ;
     ASSERT (GB_IS_SPARSE (A) || GB_IS_HYPERSPARSE (A)) ;
 
-    // A->p has been allocated but might not be initialized.  GB_Matrix_check
+    // A->p has been allocated but might not be initialized.  GB_matvec_check
     // fails in this case.  Thus, ASSERT_MATRIX_OK (A, "A", ...) ;  cannot be
     // used here.
     ASSERT (A != NULL && A->p != NULL) ;
@@ -57,25 +56,20 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
 
     size_t nzmax_new1 = GB_IMAX (nzmax_new, 1) ;
     bool ok1 = true, ok2 = true ;
-    GB_REALLOC (A->i, nzmax_new1, A->nzmax, int64_t, &ok1) ;
-    if (numeric)
+    GB_REALLOC (A->i, nzmax_new1, int64_t, &(A->i_size), &ok1, Context) ;
+    size_t asize = A->type->size ;
+    if (A->iso)
     { 
-        size_t asize = A->type->size ;
-        GB_REALLOC (A->x, nzmax_new1*asize, (A->nzmax)*asize, GB_void, &ok2) ;
+        // shrink A->x so it holds a single entry
+        GB_REALLOC (A->x, asize, GB_void, &(A->x_size), &ok2, Context) ;
     }
     else
     { 
-        GB_FREE (A->x) ;
+        // reallocate A->x from its current size to nzmax_new1 entries
+        GB_REALLOC (A->x, nzmax_new1*asize, GB_void, &(A->x_size), &ok2,
+            Context) ;
     }
     bool ok = ok1 && ok2 ;
-
-    // always succeeds if the space shrinks
-    ASSERT (GB_IMPLIES (nzmax_new1 <= A->nzmax, ok)) ;
-
-    if (ok)
-    { 
-        A->nzmax = nzmax_new1 ;
-    }
 
     // The matrix is always left in a valid state.  If the reallocation fails
     // it just won't have the requested size (and ok is false in this case).

@@ -28,8 +28,6 @@ test58(0)       % longer GB_mex_Matrix_eWiseAdd performance test
 test61 ;        % performance test of GrB_eMult
 test68 ;        % performance tests for eWiseMult
 f = [936 2662] ;
-test70 (f) ;    % performance comparison of triangle counting methods
-test71 (f) ;    % performance comparison of triangle counting methods
 test73 ;        % performance of C = A*B, with mask
 test86 ;        % performance of GrB_Matrix_extract
 test52 ;        % performance of A*B with tall matrices, AdotB, AxB

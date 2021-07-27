@@ -90,9 +90,9 @@ for k0 = 1:size (problems,1) ;
                 end
             end
 
-            if (contains (op.optype, 'single'))
+            if (test_contains (op.optype, 'single'))
                 epsilon = 1e-5 ;
-            elseif (contains (op.optype, 'double'))
+            elseif (test_contains (op.optype, 'double'))
                 epsilon = 1e-12 ;
             else
                 epsilon = 0 ;

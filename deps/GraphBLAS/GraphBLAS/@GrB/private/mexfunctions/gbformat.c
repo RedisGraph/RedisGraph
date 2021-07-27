@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -12,9 +12,11 @@
 // fmt = gbformat ;                 get the global default format (row/col)
 // fmt = gbformat (fmt) ;           set the global default format
 // [f,sparsity] = gbformat (G) ;    get the format and sparsity of a matrix
-//                                  (either GraphBLAS or MATLAB)
+//                                  (either GraphBLAS or built-in)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: [f,s] = GrB.format, GrB.format (f), GrB.format (G)"
 
 void mexFunction
 (
@@ -29,8 +31,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin <= 1 && nargout <= 2,
-        "usage: [f,s] = GrB.format, GrB.format (f), GrB.format (G)") ;
+    gb_usage (nargin <= 1 && nargout <= 2, USAGE) ;
 
     //--------------------------------------------------------------------------
     // get/set the format
@@ -76,13 +77,29 @@ void mexFunction
             //------------------------------------------------------------------
 
             // get the type
-            mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv4") ;
-            CHECK_ERROR (mx_type == NULL, "invalid GraphBLASv4 struct") ;
+            mxArray *mx_type = mxGetField (pargin [0], 0, "GraphBLASv5_1") ;
+            if (mx_type == NULL)
+            {
+                // check if it is a GraphBLASv5 struct
+                mx_type = mxGetField (pargin [0], 0, "GraphBLASv5") ;
+            }
+            if (mx_type == NULL)
+            {
+                // check if it is a GraphBLASv4 struct
+                mx_type = mxGetField (pargin [0], 0, "GraphBLASv4") ;
+            }
+            if (mx_type == NULL)
+            {
+                // check if it is a GraphBLASv3 struct
+                mx_type = mxGetField (pargin [0], 0, "GraphBLAS") ;
+            }
+            CHECK_ERROR (mx_type == NULL, "invalid GraphBLAS struct") ;
 
             // get the row/column format of the input matrix G
             mxArray *opaque = mxGetField (pargin [0], 0, "s") ;
-            CHECK_ERROR (opaque == NULL, "invalid GraphBLASv4 struct") ;
-            int64_t *s = mxGetInt64s (opaque) ;
+            CHECK_ERROR (opaque == NULL, "invalid GraphBLAS struct") ;
+            // use mxGetData (best for Octave, fine for MATLAB)
+            int64_t *s = (int64_t *) mxGetData (opaque) ;
             bool is_csc = (bool) (s [6]) ;
             fmt = (is_csc) ? GxB_BY_COL : GxB_BY_ROW ;
 
@@ -93,7 +110,7 @@ void mexFunction
                 case 4 : sparsity = GxB_BITMAP ;      break ;
                 case 5 : sparsity = GxB_SPARSE ;      break ;
                 case 6 : sparsity = GxB_HYPERSPARSE ; break ;
-                default: ERROR ("invalid GraphBLASv4 struct") ;
+                default: ERROR ("invalid GraphBLAS struct") ;
             }
 
         }
@@ -101,12 +118,12 @@ void mexFunction
         { 
 
             //------------------------------------------------------------------
-            // GrB.format (A) for a MATLAB matrix A
+            // GrB.format (A) for a built-in matrix A
             //------------------------------------------------------------------
 
-            // MATLAB matrices are always stored by column
+            // built-in matrices are always stored by column
             fmt = GxB_BY_COL ;
-            // MATLAB matrices are sparse or full, never hypersparse or bitmap
+            // built-in matrices are sparse or full, never hypersparse or bitmap
             sparsity = mxIsSparse (pargin [0]) ? GxB_SPARSE : GxB_FULL ;
         }
     }

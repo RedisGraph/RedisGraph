@@ -14,33 +14,32 @@ function C = extract (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %
 % I and J are cell arrays.  I contains 0, 1, 2, or 3 items:
 %
-%       0:   { }    This is the MATLAB ':', like A(:,J), refering to all m
-%                   rows, if A is m-by-n.
+%       0:   { }    This is the built-in ':', like A(:,J), refering to
+%                   all m rows, if A is m-by-n.
 %
-%       1:   { I }  1D list of row indices, like A(I,J) in MATLAB.
+%       1:   { I }  1D list of row indices, like A(I,J).
 %
 %       2:  { start,fini }  start and fini are scalars (either double,
 %                   int64, or uint64).  This defines I = start:fini in
-%                   MATLAB index notation.
+%                   index notation.
 %
 %       3:  { start,inc,fini } start, inc, and fini are scalars (double,
 %                   int64, or uint64).  This defines I = start:inc:fini in
-%                   MATLAB notation.
+%                   notation.
 %
 %       The J argument is identical, except that it is a list of column
 %       indices of A.  If only one cell array is provided, J = {  } is
-%       implied, refering to all n columns of A, like A(I,:) in MATLAB
-%       notation.  1D indexing of a matrix A, as in C = A(I), is not yet
-%       supported.
+%       implied, refering to all n columns of A, like A(I,:).  1D
+%       indexing of a matrix A, as in C = A(I), is not yet supported.
 %
-%       If neither I nor J are provided on input, then this implies
-%       both I = { } and J = { }, or A(:,:) in MATLAB notation,
-%       refering to all rows and columns of A.
+%       If neither I nor J are provided on input, then this implies both
+%       I = { } and J = { }, or A(:,:) refering to all rows and columns
+%       of A.
 %
 %       If desc.base is 'zero-based', then I and J are interpretted as
-%       zero-based, where the rows and columns of A range from 0 to m-1 and
-%       n-1, respectively.  If desc.base is 'one-based' (which is the
-%       default), then indices are intrepetted as 1-based, just as in MATLAB.
+%       zero-based, where the rows and columns of A range from 0 to m-1
+%       and n-1, respectively.  If desc.base is 'one-based' (which is the
+%       default), then indices are intrepetted as 1-based.
 %
 % Cin: an optional input matrix, containing the initial content of the
 %       matrix C.  C on output is the content of C after the assignment is
@@ -66,7 +65,7 @@ function C = extract (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % See also GrB/subsref.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

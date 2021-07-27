@@ -113,80 +113,87 @@ void mexFunction
 
     GrB_Type t ;
 
-    GB_UnaryOp_check (GrB_LNOT, "LNOT", GxB_COMPLETE, stdout) ;
-    GxB_UnaryOp_ztype (&t, GrB_LNOT) ;
-    GB_UnaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
-    GxB_UnaryOp_xtype (&t, GrB_LNOT) ;
-    GB_UnaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
+    OK (GB_UnaryOp_check (GrB_LNOT, "LNOT", GxB_COMPLETE, stdout)) ;
+    OK (GxB_UnaryOp_ztype (&t, GrB_LNOT)) ;
+    OK (GB_Type_check (t, "ztype", GxB_COMPLETE, stdout)) ;
+    OK (GxB_UnaryOp_xtype (&t, GrB_LNOT)) ;
+    OK (GB_Type_check (t, "xtype", GxB_COMPLETE, stdout)) ;
 
-    GB_UnaryOp_check (GxB_LNOT_FP32, "LNOT_FP32", GxB_COMPLETE, stdout) ;
-    GxB_UnaryOp_ztype (&t, GxB_LNOT_FP32) ;
-    GB_UnaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
-    GxB_UnaryOp_xtype (&t, GxB_LNOT_FP32) ;
-    GB_UnaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
+    OK (GB_UnaryOp_check (GxB_LNOT_FP32, "LNOT_FP32", GxB_COMPLETE, stdout)) ;
+    OK (GxB_UnaryOp_ztype (&t, GxB_LNOT_FP32)) ;
+    OK (GB_Type_check (t, "ztype", GxB_COMPLETE, stdout)) ;
+    OK (GxB_UnaryOp_xtype (&t, GxB_LNOT_FP32)) ;
+    OK (GB_Type_check (t, "xtype", GxB_COMPLETE, stdout)) ;
 
-    GB_BinaryOp_check (GxB_ISEQ_INT32, "ISEQ_INT32", GxB_COMPLETE, stdout) ;
-    GxB_BinaryOp_ztype (&t, GxB_ISEQ_INT32) ;
-    GB_BinaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
-    GxB_BinaryOp_xtype (&t, GxB_ISEQ_INT32) ;
-    GB_BinaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
-    GxB_BinaryOp_ytype (&t, GxB_ISEQ_INT32) ;
-    GB_BinaryOp_check (t, "ytype", GxB_COMPLETE, stdout) ;
+    OK (GB_BinaryOp_check (GxB_ISEQ_INT32, "ISEQ_INT32", GxB_COMPLETE, stdout)) ;
+    OK (GxB_BinaryOp_ztype (&t, GxB_ISEQ_INT32)) ;
+    OK (GB_Type_check (t, "ztype", GxB_COMPLETE, stdout)) ;
+    OK (GxB_BinaryOp_xtype (&t, GxB_ISEQ_INT32)) ;
+    OK (GB_Type_check (t, "xtype", GxB_COMPLETE, stdout)) ;
+    OK (GxB_BinaryOp_ytype (&t, GxB_ISEQ_INT32)) ;
+    OK (GB_Type_check (t, "ytype", GxB_COMPLETE, stdout)) ;
 
-    GB_BinaryOp_check (GrB_EQ_INT32, "EQ_INT32", GxB_COMPLETE, stdout) ;
-    GxB_BinaryOp_ztype (&t, GrB_EQ_INT32) ;
-    GB_BinaryOp_check (t, "ztype", GxB_COMPLETE, stdout) ;
-    GxB_BinaryOp_xtype (&t, GrB_EQ_INT32) ;
-    GB_BinaryOp_check (t, "xtype", GxB_COMPLETE, stdout) ;
-    GxB_BinaryOp_ytype (&t, GrB_EQ_INT32) ;
-    GB_BinaryOp_check (t, "ytype", GxB_COMPLETE, stdout) ;
+    OK (GB_BinaryOp_check (GrB_EQ_INT32, "EQ_INT32", GxB_COMPLETE, stdout)) ;
+    OK (GxB_BinaryOp_ztype (&t, GrB_EQ_INT32)) ;
+    OK (GB_Type_check (t, "ztype", GxB_COMPLETE, stdout)) ;
+    OK (GxB_BinaryOp_xtype (&t, GrB_EQ_INT32)) ;
+    OK (GB_Type_check (t, "xtype", GxB_COMPLETE, stdout)) ;
+    OK (GxB_BinaryOp_ytype (&t, GrB_EQ_INT32)) ;
+    OK (GB_Type_check (t, "ytype", GxB_COMPLETE, stdout)) ;
 
     GrB_Monoid m ;
     GrB_BinaryOp op ;
 
-    GrB_Monoid_new_UINT16_(&m, GrB_PLUS_UINT16, (uint16_t) 0) ;
+    OK (GrB_Monoid_new_UINT16_(&m, GrB_PLUS_UINT16, (uint16_t) 0)) ;
     OK (GrB_Monoid_wait_(&m)) ;
-    GB_Monoid_check (m, "plus uint16 monoid", GxB_COMPLETE, stdout) ;
+    OK (GB_Monoid_check (m, "plus uint16 monoid", GxB_COMPLETE, stdout)) ;
     uint16_t id ;
-    GxB_Monoid_identity (&id, m) ;
+    OK (GxB_Monoid_identity (&id, m)) ;
     printf ("id is %d\n", id) ;
-    GxB_Monoid_operator (&op, m) ;
-    GB_Monoid_check (op, "plus op from monoid", GxB_COMPLETE, stdout) ;
+    OK (GxB_Monoid_operator (&op, m)) ;
+    OK (GB_BinaryOp_check (op, "plus op from monoid", GxB_COMPLETE, stdout)) ;
+
+    // mangle the identity
+    void *save_identity = m->identity ;
+    m->identity = NULL ;
+    GrB_Info expected = GrB_INVALID_OBJECT ;
+    ERR (GB_Monoid_check (m, "mangled monoid, no identity", GxB_COMPLETE, stdout)) ;
+    m->identity = save_identity ;
 
     GrB_Monoid_free_(&m) ;
 
     int16_t id0 = INT16_MIN ;
 
     GrB_Monoid_new_INT16_(&m, GrB_MAX_INT16, id0) ;
-    GB_Monoid_check (m, "max int16 monoid", GxB_COMPLETE, stdout) ;
+    OK (GB_Monoid_check (m, "max int16 monoid", GxB_COMPLETE, stdout)) ;
     int16_t id1 ;
-    GxB_Monoid_identity (&id1, m) ;
+    OK (GxB_Monoid_identity (&id1, m)) ;
     printf ("id1 is %d\n", id1) ;
-    GxB_Monoid_operator (&op, m) ;
-    GB_BinaryOp_check (op, "plus op from monoid", GxB_COMPLETE, stdout) ;
+    OK (GxB_Monoid_operator (&op, m)) ;
+    OK (GB_BinaryOp_check (op, "plus op from monoid", GxB_COMPLETE, stdout)) ;
 
     GrB_Semiring sem ;
-    GrB_Semiring_new (&sem, m, GrB_TIMES_INT16) ;
+    OK (GrB_Semiring_new (&sem, m, GrB_TIMES_INT16)) ;
     OK (GrB_Semiring_wait_(&sem)) ;
-    GB_Semiring_check (sem, "\nnew sem", GxB_COMPLETE, stdout) ;
+    OK (GB_Semiring_check (sem, "\nnew sem", GxB_COMPLETE, stdout)) ;
 
     GrB_Monoid mm ;
-    GxB_Semiring_add (&mm, sem) ;
-    GB_Monoid_check (mm, "sem mm", GxB_COMPLETE, stdout) ;
-    GxB_Semiring_multiply (&op, sem) ;
-    GB_BinaryOp_check (op, "sem mult", GxB_COMPLETE, stdout) ;
+    OK (GxB_Semiring_add (&mm, sem)) ;
+    OK (GB_Monoid_check (mm, "sem mm", GxB_COMPLETE, stdout)) ;
+    OK (GxB_Semiring_multiply (&op, sem)) ;
+    OK (GB_BinaryOp_check (op, "sem mult", GxB_COMPLETE, stdout)) ;
 
-    GrB_Monoid_free_(&m) ;
-    GrB_Semiring_free_(&sem) ;
+    OK (GrB_Monoid_free_(&m)) ;
+    OK (GrB_Semiring_free_(&sem)) ;
 
     int64_t *stuff = NULL ;
     int64_t morestuff = 44 ;
     GrB_Matrix Gunk ;
-    GrB_Matrix_new (&Gunk, GrB_FP64, 5, 5) ;
+    OK (GrB_Matrix_new (&Gunk, GrB_FP64, 5, 5)) ;
     info = ack (&morestuff, Gunk) ;
 
-    GxB_Matrix_type (&t, Gunk) ;
-    GB_Type_check (t, "matrix Gunk type is:", GxB_COMPLETE, stdout) ;
+    OK (GxB_Matrix_type (&t, Gunk)) ;
+    OK (GB_Type_check (t, "matrix Gunk type is:", GxB_COMPLETE, stdout)) ;
 
     GrB_Vector victor ;
     GrB_Vector_new (&victor, GrB_UINT32, 43) ;
@@ -211,6 +218,11 @@ void mexFunction
     GxB_Desc_get (Duh, GrB_MASK, &val) ; printf ("got mask %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
     GxB_Desc_get (Duh, GrB_INP0, &val) ; printf ("got inp0 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
     GxB_Desc_get (Duh, GrB_INP1, &val) ; printf ("got inp1 %d\n", val) ; CHECK (val == GxB_DEFAULT) ;
+
+    GxB_Desc_set (Duh, GxB_SORT, true) ;
+    GB_Descriptor_check (Duh, "\n------------------------------- Duh set sort:",
+        GxB_COMPLETE, stdout) ;
+    GxB_Desc_get (Duh, GxB_SORT, &val) ; printf ("got sort %d\n", val) ; CHECK (val == true) ;
 
     GxB_Desc_set (Duh, GrB_INP0, GrB_TRAN) ;
     GB_Descriptor_check (Duh, "\n------------------------------- Duh set:",
@@ -527,26 +539,31 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     OK (GrB_Matrix_new (&A, GrB_BOOL, 10000, 10000)) ;
-    OK (GB_shallow_copy (&C, A->is_csc, A, NULL)) ;
-    OK (GxB_Matrix_fprint_(C, GxB_COMPLETE, NULL)) ;
+    struct GB_Matrix_opaque Q_header ;
+    GrB_Matrix Q = GB_clear_static_header (&Q_header) ;
+    OK (GB_shallow_copy (Q, A->is_csc, A, NULL)) ;      // A is empty, not iso
+    OK (GxB_Matrix_fprint_(Q, GxB_COMPLETE, NULL)) ;
     GrB_Matrix_free_(&A) ;
-    GrB_Matrix_free_(&C) ;
+    GrB_Matrix_free_(&Q) ;
 
     //--------------------------------------------------------------------------
     // tests with memory tracking off
     //--------------------------------------------------------------------------
 
+    size_t nbytes ;
     GB_Global_malloc_tracking_set (false) ;
-    GB_void *p = GB_malloc_memory (4, sizeof (int64_t)) ;
+    GB_void *p = GB_malloc_memory (4, sizeof (int64_t), &nbytes) ;
     CHECK (p != NULL) ;
-    GB_FREE (p) ;
-    p = GB_calloc_memory (4, sizeof (int64_t)) ;
+    GB_FREE (&p, nbytes) ;
+    CHECK (p == NULL) ;
+    p = GB_calloc_memory (4, sizeof (int64_t), &nbytes, NULL) ;
     CHECK (p != NULL) ;
     bool ok = true ;
-    p = GB_realloc_memory (6, 4, sizeof (int64_t), p, &ok) ;
+    p = GB_realloc_memory (6, sizeof (int64_t), p, &nbytes, &ok, NULL) ;
     CHECK (p != NULL) ;
     CHECK (ok) ;
-    GB_FREE (p) ;
+    GB_FREE (&p, nbytes) ;
+    CHECK (p == NULL) ;
 
     CHECK (!GB_Global_malloc_is_thread_safe_get ( )) ;
     GB_Global_malloc_is_thread_safe_set (true) ;
@@ -560,19 +577,23 @@ void mexFunction
     // other global settings
     //--------------------------------------------------------------------------
 
-    GB_Global_hack_set (90123) ;
-    CHECK (GB_Global_hack_get ( ) == 90123) ;
+    int64_t hack0 = GB_Global_hack_get (0) ;
+    int64_t hack1 = GB_Global_hack_get (1) ;
 
-    GrB_Info expected = GrB_INVALID_VALUE ;
+    GB_Global_hack_set (0, 90123) ; CHECK (GB_Global_hack_get (0) == 90123) ;
+    GB_Global_hack_set (0, hack0) ; CHECK (GB_Global_hack_get (0) == hack0) ;
+    GB_Global_hack_set (1, 99123) ; CHECK (GB_Global_hack_get (1) == 99123) ;
+    GB_Global_hack_set (1, hack1) ; CHECK (GB_Global_hack_get (1) == hack1) ;
+
+    expected = GrB_INVALID_VALUE ;
 
     //--------------------------------------------------------------------------
     // GB_pslice
     //--------------------------------------------------------------------------
 
-    int64_t *Slice = NULL ;
-    GB_pslice (&Slice, NULL, 0, 4, true) ;
+    int64_t Slice [30] ;
+    GB_pslice (Slice, NULL, 0, 4, true) ;
     for (int t = 0 ; t < 4 ; t++) CHECK (Slice [t] == 0) ;
-    GB_FREE (Slice) ;
 
     //--------------------------------------------------------------------------
     // renamed boolean monoids
@@ -842,9 +863,14 @@ void mexFunction
     OK (GxB_Matrix_select_(C, NULL, NULL, selectop, A, thunk, NULL)) ;
 
     printf ("\nprint in one-based, long format:\n") ;
-    GB_Global_print_one_based_set (true) ;
+    bool onebased ;
+    OK (GxB_Global_Option_set (GxB_PRINT_1BASED, true)) ;
+    OK (GxB_Global_Option_get (GxB_PRINT_1BASED, &onebased)) ;
+    CHECK (onebased) ;
     OK (GxB_Matrix_fprint_(C, GxB_COMPLETE_VERBOSE, NULL)) ;
-    GB_Global_print_one_based_set (false) ;
+    OK (GxB_Global_Option_set (GxB_PRINT_1BASED, false)) ;
+    OK (GxB_Global_Option_get (GxB_PRINT_1BASED, &onebased)) ;
+    CHECK (!onebased) ;
 
     expected = GrB_NULL_POINTER ;
     ERR1 (C, GxB_Matrix_select_(C, NULL, NULL, selectop, A, NULL, NULL)) ;
@@ -1052,12 +1078,14 @@ void mexFunction
     GrB_Index n = INT32_MAX ;
     n = n * 1024 ;
     OK (GrB_Matrix_new (&A, GrB_FP64, n, n)) ;
-    expected = GrB_OUT_OF_MEMORY ;
-    ERR1 (A, GrB_Matrix_assign_FP64_(A, NULL, NULL, (double) 1,
+    OK (GrB_Matrix_assign_FP64_(A, NULL, NULL, (double) 1,
         GrB_ALL, n, GrB_ALL, n, NULL)) ;
-    GrB_Matrix_error_(&err, A) ;
-    printf ("\nproblem too large, expected error: %s\n", err) ;
-    OK (GrB_Matrix_free_(&A)) ;
+    OK (GxB_Matrix_fprint (A, "A iso full", 3, NULL)) ;
+    GrB_Index I0 [1] = { 0 } ;
+    expected = GrB_OUT_OF_MEMORY ;
+    ERR1 (A, GrB_Matrix_assign_FP64_(A, NULL, NULL, (double) 2,
+        I0, 1, I0, 1, NULL)) ;
+    GrB_Matrix_free_(&A) ;
 
     //--------------------------------------------------------------------------
     // setElement typecast
@@ -1098,6 +1126,8 @@ void mexFunction
     // GrB_error
     //--------------------------------------------------------------------------
 
+    printf ("Test GrB_error:\n") ;
+
     GrB_Type_error_(&err, user_type) ;
     CHECK (err != NULL && err [0] == '\0') ;
 
@@ -1137,21 +1167,6 @@ void mexFunction
     GxB_Scalar_free_(&scalar) ;
     GrB_Type_free_(&user_type) ;
     GrB_Matrix_free_(&A) ;
-
-    //--------------------------------------------------------------------------
-    // test for problem too large in GB_bitmap_AxB_saxpy
-    //--------------------------------------------------------------------------
-
-    n = INT32_MAX ;
-    OK (GrB_Matrix_new (&A, GrB_FP32, n, 0)) ;
-    OK (GrB_Matrix_new (&B, GrB_FP32, 0, n)) ;
-    expected = GrB_OUT_OF_MEMORY ;
-    bool ignore ;
-    ERR (GB_bitmap_AxB_saxpy (&C, GxB_BITMAP, NULL, false, false, A, B,
-        GrB_PLUS_TIMES_SEMIRING_FP32, false, &ignore, NULL)) ;
-    GrB_Matrix_free_(&A) ;
-    GrB_Matrix_free_(&B) ;
-    CHECK (C == NULL) ;
 
     //--------------------------------------------------------------------------
     // wrapup

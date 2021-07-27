@@ -27,11 +27,11 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
     //--------------------------------------------------------------------------
 
     int64_t anvec = (A->nvec_nonempty < 0) ? A->nvec : A->nvec_nonempty ;
-    int64_t anz = GB_NNZ (A) ;
+    int64_t anz = GB_nnz (A) ;
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
-    int anzlog = (anz   == 0) ? 1 : (int) ceil (log2 ((double) anz)) ;
-    int mlog   = (avlen == 0) ? 1 : (int) ceil (log2 ((double) avlen)) ;
+    int anzlog = (anz   == 0) ? 1 : (int) GB_CEIL_LOG2 (anz) ;
+    int mlog   = (avlen == 0) ? 1 : (int) GB_CEIL_LOG2 (avlen) ;
     double alpha ;
 
     // determine # of threads for bucket method

@@ -48,7 +48,7 @@
 #elif GB_IS_ANY_MONOID
 
     //--------------------------------------------------------------------------
-    // ANY monoid
+    // ANY monoid, including the ANY_PAIR semiring
     //--------------------------------------------------------------------------
 
     #if defined ( GB_DOT3 )
@@ -56,8 +56,8 @@
         // for the dot3 method: C is sparse or hyper
         #define GB_DOT(k,pA,pB)                                         \
         {                                                               \
-            GB_GETA (aki, Ax, pA) ;  /* aki = A(k,i) */                 \
-            GB_GETB (bkj, Bx, pB) ;  /* bkj = B(k,j) */                 \
+            GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) */          \
+            GB_GETB (bkj, Bx, pB, B_iso) ;  /* bkj = B(k,j) */          \
             /* cij = (A')(i,k) * B(k,j), and add to the pattern */      \
             cij_exists = true ;                                         \
             GB_MULT (cij, aki, bkj, i, k, j) ;                          \
@@ -69,8 +69,8 @@
         // for the dot2 method: C is bitmap
         #define GB_DOT(k,pA,pB)                                         \
         {                                                               \
-            GB_GETA (aki, Ax, pA) ;  /* aki = A(k,i) */                 \
-            GB_GETB (bkj, Bx, pB) ;  /* bkj = B(k,j) */                 \
+            GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) */          \
+            GB_GETB (bkj, Bx, pB, B_iso) ;  /* bkj = B(k,j) */          \
             /* cij = (A')(i,k) * B(k,j), and add to the pattern */      \
             GB_MULT (cij, aki, bkj, i, k, j) ;                          \
             int64_t pC = pC_start + i ;                                 \
@@ -90,8 +90,8 @@
 
     #define GB_DOT(k,pA,pB)                                             \
     {                                                                   \
-        GB_GETA (aki, Ax, pA) ;  /* aki = A(k,i) */                     \
-        GB_GETB (bkj, Bx, pB) ;  /* bkj = B(k,j) */                     \
+        GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) */              \
+        GB_GETB (bkj, Bx, pB, B_iso) ;  /* bkj = B(k,j) */              \
         if (cij_exists)                                                 \
         {                                                               \
             /* cij += (A')(i,k) * B(k,j) */                             \

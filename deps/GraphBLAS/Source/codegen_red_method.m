@@ -14,21 +14,21 @@ name = sprintf ('%s_%s', opname, aname) ;
 is_any = isequal (opname, 'any') ;
 
 % function names
-fprintf (f, 'define(`GB_red_build'', `GB_red_build__%s'')\n', name) ;
+fprintf (f, 'define(`_red_build'', `_red_build__%s'')\n', name) ;
 
 % the type of A and C (no typecasting)
 fprintf (f, 'define(`GB_atype'', `%s'')\n', atype) ;
 fprintf (f, 'define(`GB_ctype'', `%s'')\n', atype) ;
 
 if (~isempty (identity))
-    fprintf (f, 'define(`GB_red_scalar'',    `GB_red_scalar__%s'')\n',    name);
+    fprintf (f, 'define(`_red_scalar'',    `_red_scalar__%s'')\n',    name);
     % identity and terminal values for the monoid
     fprintf (f, 'define(`GB_identity'', `%s'')\n', identity) ;
     fprintf (f, 'define(`if_is_monoid'', `'')\n') ;
     fprintf (f, 'define(`endif_is_monoid'', `'')\n') ;
 else
-    fprintf (f, 'define(`GB_red_scalar'',    `GB_red_scalar__(none)'')\n') ;
-    % first and second operators are not monoids (GB_red_build only)
+    fprintf (f, 'define(`_red_scalar'',    `_red_scalar__(none)'')\n') ;
+    % first and second operators are not monoids
     fprintf (f, 'define(`GB_identity'', `(none)'')\n') ;
     fprintf (f, 'define(`if_is_monoid'', `#if 0'')\n') ;
     fprintf (f, 'define(`endif_is_monoid'', `#endif'')\n') ;
@@ -45,7 +45,7 @@ elseif (~isempty (terminal))
     fprintf (f, 'define(`GB_has_terminal'', `1'')\n') ;
     fprintf (f, 'define(`GB_terminal_value'', `%s'')\n', terminal) ;
     fprintf (f, 'define(`GB_is_terminal'', `(s == %s)'')\n', terminal) ;
-    fprintf (f, 'define(`GB_terminal'', `if (s == %s) break ;'')\n', terminal) ;
+    fprintf (f, 'define(`GB_terminal'', `if (s == %s) { break ; }'')\n', terminal) ;
 else
     fprintf (f, 'define(`GB_is_any_monoid'', `0'')\n') ;
     fprintf (f, 'define(`GB_has_terminal'', `0'')\n') ;
@@ -63,7 +63,7 @@ end
 % create the operator
 func = strrep (func, 'zarg', '`$1''') ;
 func = strrep (func, 'yarg', '`$2''') ;
-fprintf (f, 'define(`GB_REDUCE_OP'', `%s'')\n', func) ;
+fprintf (f, 'define(`GB_reduce_op'', `%s'')\n', func) ;
 
 % create the disable flag
 disable  = sprintf ('GxB_NO_%s', upper (opname)) ;
@@ -75,14 +75,14 @@ fclose (f) ;
 
 % construct the *.c file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_red.c | m4 | tail -n +16 > Generated/GB_red__%s.c', ...
+'cat control.m4 Generator/GB_red.c | m4 | tail -n +16 > Generated2/GB_red__%s.c', ...
 name) ;
 fprintf ('.') ;
 system (cmd) ;
 
 % append to the *.h file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_red.h | m4 | tail -n +16 >> Generated/GB_red__include.h') ;
+'cat control.m4 Generator/GB_red.h | m4 | tail -n +16 >> Generated2/GB_red__include.h') ;
 system (cmd) ;
 
 delete ('control.m4') ;

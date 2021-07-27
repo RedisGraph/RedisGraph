@@ -11,14 +11,15 @@
 
 bool GB_mx_xsame32  // true if arrays X and Y are the same (ignoring zombies)
 (
-    float *X,
-    float *Y,
+    float *X,   bool X_iso,
+    float *Y,   bool Y_iso,
     int8_t *Xb,     // bitmap of X and Y (NULL if no bitmap)
     int64_t len,    // length of X and Y
     int64_t *I,     // row indices (for zombies), same length as X and Y
     float eps       // error tolerance allowed (eps > 0)
 )
 {
+
     if (X == Y) return (true) ;
     if (X == NULL) return (false) ;
     if (Y == NULL) return (false) ;
@@ -32,8 +33,10 @@ bool GB_mx_xsame32  // true if arrays X and Y are the same (ignoring zombies)
         // check X [i] and Y [i], but ignore zombies
         if (I == NULL || I [i] >= 0)
         {
-            int c = fpclassify (X [i]) ;
-            if (c != fpclassify (Y [i])) return (false) ;
+            float xi = GBX (X, i, X_iso) ;
+            float yi = GBX (Y, i, Y_iso) ;
+            int c = fpclassify (xi) ;
+            if (c != fpclassify (yi)) return (false) ;
             if (c == FP_ZERO)
             {
                 // both are zero, which is OK
@@ -41,12 +44,12 @@ bool GB_mx_xsame32  // true if arrays X and Y are the same (ignoring zombies)
             else if (c == FP_INFINITE)
             {
                 // + or -infinity
-                if (X [i] != Y [i]) return (false) ;
+                if (xi != yi) return (false) ;
             }
             else if (c != FP_NAN)
             {
                 // both are normal or subnormal, and nonzero
-                float err = fabsf (X [i] - Y [i]) / fabsf (X [i]) ;
+                float err = fabsf (xi - yi) / fabsf (xi) ;
                 if (err > eps) return (false) ;
             }
         }

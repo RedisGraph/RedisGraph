@@ -1,20 +1,30 @@
-# GraphBLAS/GraphBLAS: MATLAB interface for SuiteSparse:GraphBLAS
+# GraphBLAS/GraphBLAS: Octave/MATLAB interface for SuiteSparse:GraphBLAS
 
 SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-SPDX-License-Identifier: Apache-2.0
+The @GrB interface (including its test suite and demos) is under the GNU
+GPLv3 (or later) license.
+SPDX-License-Identifier: GPL-3.0-or-later
+You may not use the @GrB interface under the Apache-2.0 license.
 
-The GrB class provides an easy-to-use MATLAB interface to SuiteSparse:GraphBLAS.
+The @GrB class provides an easy-to-use interface to SuiteSparse:GraphBLAS.
 
-To install it for use in MATLAB, first compile the GraphBLAS library,
--lgraphblas.  See the instructions in the top-level GraphBLAS folder for
-details.  Be sure to use OpenMP for best performance.  The default installation
-process places the GraphBLAS library in /usr/local/lib.  If you do not have
-root access and cannot install GraphBLAS into /usr/local/lib, then follow the
-instructions below to modify your library path, but instead of /usr/local/lib,
-use /home/me/SuiteSparse/GraphBLAS/build, where
-"/home/me/SuiteSparse/GraphBLAS" is where you placed your copy of GraphBLAS.
+To install it for use in Octave/MATLAB, first compile the GraphBLAS library,
+-lgraphblas (or -lgraphblas_rename for MATLAB R2021a and later).  See the
+instructions in the top-level GraphBLAS folder for details.  Be sure to use
+OpenMP for best performance.  The default installation process places the
+GraphBLAS library in /usr/local/lib.  If you do not have root access and cannot
+install GraphBLAS into /usr/local/lib, then follow the instructions below to
+modify your library path, but instead of /usr/local/lib, use
+/home/me/SuiteSparse/GraphBLAS/build, where "/home/me/SuiteSparse/GraphBLAS" is
+where you placed your copy of GraphBLAS.
 
-MATLAB needs to know where to find the compiled GraphBLAS library.  On
+If you have MATLAB R2021a, the gbmake script will link against the library
+-lgraphblas_rename, not -lgraphblas, because that version of MATLAB includes
+its own version of SuiteSparse:GraphBLAS (v3.3.3, an earlier one).  To avoid a
+name conflict, you must compile the -lgraphblas_rename library in
+/home/me/SuiteSparse/GraphBLAS/GraphBLAS/build.
+
+Octave/MATLAB needs to know where to find the compiled GraphBLAS library.  On
 Linux/Unix, if you are using the bash or korn shells, make sure that add the
 following to your login profile (typically .bash_profile for bash, or .profile
 for korn):
@@ -31,19 +41,24 @@ On the Mac, use the following:
     DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/lib
     export DYLD_LIBRARY_PATH
 
+If you don't have system priveledges to change /usr/local/lib, then add the
+build folder to your LD_LIBRARY_PATH instead, either.  For Octave, and MATLAB
+R2020b and earlier: /home/me/SuiteSparse/GraphBLAS/build for libgraphblas.so,
+For R2021a:  /home/me/SuiteSparse/GraphBLAS/GraphBLAS/build for
+libgraphblas_rename.so.
+
 On Windows 10, on the Search bar type env and hit enter; (or you can
 right-click My Computer or This PC and select Properties, and then select
 Advanced System Settings).  Select "Edit the system environment variables",
 then "Environment Variables".  Under "System Variables" select "Path" and click
 "Edit".  These "New" to add a path and then "Browse".  Browse to the folder
 (for example: C:/Users/me/Documents/SuiteSparse/GraphBLAS/build/Release) and
-add it to your path.  Then close the editor, sign out of Windows and sign back
-in again.
+add it to your path.  For MATLAB R2021a and later, you must use the
+libgraphblas_rename.dll, in:
+/User/me/SuiteSparse/GraphBLAS/GraphBLAS/build/Release instead.  Then close the
+editor, sign out of Windows and sign back in again.
 
-For more details on setting your Linux/Unix/Mac library path for MATLAB see
-https://www.mathworks.com/help/matlab/matlab_external/building-on-unix-operating-systems.html
-
-Next, start MATLAB and go to this GraphBLAS/GraphBLAS folder.  Type
+Next, start Octave/MATLAB and go to this GraphBLAS/GraphBLAS folder.  Type
 
     addpath (pwd)
 
@@ -54,14 +69,14 @@ to add the GraphBLAS interface to your path.  Then do
 Or, if that function is not allowed because of file permissions, add this
 command to your startup.m file:
 
-    % add the MATLAB interface to the MATLAB path
+    % add the Octave/MATLAB interface to the Octave/MATLAB path
     addpath ('/home/me/SuiteSparse/GraphBLAS/GraphBLAS') :
 
 where the path /home/me/SuiteSparse/GraphBLAS/GraphBLAS is the full path to
 this folder.
 
 The name "GraphBLAS/GraphBLAS" is used for this folder so that this can be done
-in MATLAB:
+in Octave/MATLAB:
 
     help graphblas
 
@@ -70,9 +85,9 @@ To get additional help, type:
     methods GrB
     help GrB
 
-Next, go to the GraphBLAS/GraphBLAS/@GrB/private folder and compile the MATLAB
-mexFunctions.  Assuming your working directory is GraphBLAS/GraphBLAS
-(where this README.md file is located), do the following:
+Next, go to the GraphBLAS/GraphBLAS/@GrB/private folder and compile the
+Octave/MATLAB mexFunctions.  Assuming your working directory is
+GraphBLAS/GraphBLAS (where this README.md file is located), do the following:
 
     cd @GrB/private
     gbmake
@@ -89,12 +104,12 @@ To test your installation, go to GraphBLAS/GraphBLAS/test and type:
 
     gbtest
 
-If everything is successful, it should report 'gbtest: all tests passed'.
-Note that gbtest tests all features of the MATLAB interface to
-SuiteSparse/GraphBLAS, including error handling, so you can expect to see
-error messages during the test.  This is expected.
+If everything is successful, it should report 'gbtest: all tests passed'.  Note
+that gbtest tests all features of the Octave/MATLAB interface to
+SuiteSparse/GraphBLAS, including error handling, so you can expect to see error
+messages during the test.  This is expected.
 
-# FUTURE: Not yet supported for GrB matrices in MATLAB:
+# FUTURE: Not yet supported for GrB matrices in Octave/MATLAB:
 
     linear indexing
     2nd output for [x,i] = max (...) and [x,i] = min (...); needs
@@ -106,19 +121,11 @@ error messages during the test.  This is expected.
         this might be done by converting the higher dimensioal
         indices down to a large 2D space, and relying on hypersparsity.
     saturating element-wise binary and unary operators for integers.
-        See also the discussion in the User Guide, and the details
-        in MATLAB_vs_GraphBLAS.txt in this folder.
+        See also the discussion in the User Guide.
 
-The last two features don't exist for MATLAB sparse matrices.
+The last two features don't exist for Octave/MATLAB sparse matrices.
 
-These features are supported, but are not as fast as they could be:
-
-    concatenation: [A B], [A;B], and the built-in functions: bandwidth, eps,
-    isbanded, isdiag, ishermitian, issymmetric, istril, istriu, spfun.
-
-A GrB matrix object can be saved to a mat-file and loaded back in, but
-must be loaded in with the same major version of SuiteSparse:GraphBLAS.
-v4.0.1. cannot load mat-files saved from v3.3.3 for example.  In the
-future, I will consider GrB.load and GrB.save methods that would work
-across different versions.
+These functions are supported, but are not yet as fast as they could be:
+bandwidth, eps, isbanded, isdiag, ishermitian, issymmetric, istril, istriu,
+spfun.
 

@@ -13,7 +13,7 @@
 
 #define FREE_ALL                                    \
 {                                                   \
-    GrB_Matrix_free_(&C) ;                           \
+    GrB_Matrix_free_(&C) ;                          \
     if (semiring != Complex_plus_times)             \
     {                                               \
         if (semiring != NULL)                       \
@@ -86,7 +86,7 @@ void mexFunction
     // C<C> = accum(C,C*C)
     METHOD (GrB_mxm (C, C, accum, semiring, C, C, desc)) ;
 
-    // return C to MATLAB as a struct and free the GraphBLAS C
+    // return C as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
 
     FREE_ALL ;
