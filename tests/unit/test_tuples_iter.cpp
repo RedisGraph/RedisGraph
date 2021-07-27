@@ -17,7 +17,11 @@ extern "C" {
 }
 #endif
 
-class TuplesTest: public ::testing::TestWithParam<int> {
+#define _ISO true
+#define _NOT_ISO false
+bool _iso;
+
+class TuplesTest: public ::testing::TestWithParam<std::tuple<int, bool>> {
   protected:
 	void SetUp() override {
 		// Use the malloc family for allocations
@@ -25,6 +29,7 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 
 		GrB_init(GrB_NONBLOCKING);
 		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
+		_iso = std::get<1>(GetParam());
 	}
 
 	void TearDown() override {
@@ -42,7 +47,7 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 		for(int i = 0; i < n; i++) {
 			I[i] = i;
 			J[i] = i;
-			X[i] = 1;
+			X[i] = _iso ? 1 : i;
 		}
 
 		GrB_Matrix_build_UINT64(A, I, J, X, n, GrB_FIRST_UINT64);
@@ -51,6 +56,10 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 		free(X);
 		free(I);
 		free(J);
+
+		bool iso;
+		GxB_Matrix_iso(&iso, A); // returns iso status of a matrix
+		if(iso != _iso) throw;
 
 		return A;
 	}
@@ -61,8 +70,12 @@ class TuplesTest: public ::testing::TestWithParam<int> {
 		// matrix iterator requires matrix format to be sparse
 		// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
 		// we set matrix format at creation time
-		GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, GetParam());
+		GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, std::get<0>(GetParam()));
 		GrB_Matrix_wait(&A);
+
+		bool iso;
+		GxB_Matrix_iso(&iso, A); // returns iso status of a matrix
+		if(iso) throw;
 
 		return A;
 	}
@@ -149,7 +162,7 @@ TEST_P(TuplesTest, VectorIteratorTest) {
 
 	GrB_Index nvals = 2;
 	GrB_Index I[2]  = {1, 3};
-	bool      X[2]  = {true, true};
+	bool      X[2]  = {true, _iso ? true : false};
 
 	bool      X_expected[nvals];
 	GrB_Index I_expected[nvals];
@@ -220,7 +233,7 @@ TEST_P(TuplesTest, RandomMatrixTest) {
 	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
 	// we set matrix format at creation time
 	GrB_Info info;
-	info = GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, GetParam());
+	info = GxB_Matrix_Option_set(A, GxB_SPARSITY_CONTROL, std::get<0>(GetParam()));
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	double mid_point = RAND_MAX / 2;
@@ -416,11 +429,11 @@ TEST_P(TuplesTest, RowIteratorEmptyMatrixTest) {
 TEST_P(TuplesTest, IteratorJumpToRowTest) {
 	// A is a 5X5 matrix with the following tuples
 	GrB_Index indices[5][3] = {
-		{0, 2, 2},
-		{2, 1, 2},
-		{2, 3, 3},
-		{3, 0, 3},
-		{3, 4, 4}
+		{0, 2, _iso ? (GrB_Index)9 : (GrB_Index)2},
+		{2, 1, _iso ? (GrB_Index)9 : (GrB_Index)2},
+		{2, 3, _iso ? (GrB_Index)9 : (GrB_Index)3},
+		{3, 0, _iso ? (GrB_Index)9 : (GrB_Index)3},
+		{3, 4, _iso ? (GrB_Index)9 : (GrB_Index)4}
 	};
 
 	GrB_Info   info;
@@ -439,6 +452,10 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 		GrB_Matrix_setElement_UINT64(A, val, row, col);
 	}
 	GrB_Matrix_wait(&A);
+
+	bool iso;
+	GxB_Matrix_iso(&iso, A); // returns iso status of a matrix
+	ASSERT_EQ(iso, _iso);
 
 	// create iterator
 	GxB_MatrixTupleIter *iter;
@@ -486,12 +503,12 @@ TEST_P(TuplesTest, IteratorJumpToRowTest) {
 TEST_P(TuplesTest, IteratorRange) {
 	// matrix is 6X6 and will be populated with the following indices
 	GrB_Index indices[6][3] = {
-		{0, 2, 2},
-		{2, 1, 2},
-		{2, 3, 3},
-		{3, 0, 3},
-		{3, 4, 4},
-		{5, 5, 5}
+		{0, 2, _iso ? (GrB_Index)7 : (GrB_Index)2},
+		{2, 1, _iso ? (GrB_Index)7 : (GrB_Index)2},
+		{2, 3, _iso ? (GrB_Index)7 : (GrB_Index)3},
+		{3, 0, _iso ? (GrB_Index)7 : (GrB_Index)3},
+		{3, 4, _iso ? (GrB_Index)7 : (GrB_Index)4},
+		{5, 5, _iso ? (GrB_Index)7 : (GrB_Index)5}
 	};
 
 	GrB_Info   info;
@@ -574,5 +591,7 @@ TEST_P(TuplesTest, IteratorRange) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TestParameters, TuplesTest,
-		::testing::Values(GxB_SPARSE, GxB_HYPERSPARSE));
+		::testing::Combine(
+			::testing::Values(GxB_SPARSE, GxB_HYPERSPARSE),
+			::testing::Values(_ISO, _NOT_ISO)));
 
