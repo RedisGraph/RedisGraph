@@ -21,12 +21,15 @@ static GrB_Info _init
 	GB_RETURN_IF_NULL(iter) ;
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
+	bool       iso    ;
 	size_t     size   ;
 	GrB_Type   type   ;
 	GrB_Index  nrows  ;
 	GrB_Index  nvals  ;
 	int sparsity_type ;
 
+	GxB_Matrix_iso(&iso, A) ;
+	
 	GxB_Matrix_type(&type, A) ;
 	GxB_Type_size(&size, type) ;
 
@@ -35,12 +38,9 @@ static GrB_Info _init
 
 	GxB_Matrix_Option_get(A, GxB_SPARSITY_STATUS, &sparsity_type) ;
 
-	bool iso;
-	GxB_Matrix_iso(&iso, A); // returns iso status of a matrix
-	iter->iso = iso;
-
 	iter->A              =  A              ;
 	iter->p              =  0              ;
+	iter->iso            =  iso            ;
 	iter->size           =  size           ;
 	iter->nrows          =  nrows          ;
 	iter->nvals          =  nvals          ;
@@ -354,7 +354,7 @@ GrB_Info GxB_MatrixTupleIter_next
 	}
 	if(val) {
 		// in iso matrix the values represented by the first item in Ax
-		GrB_Index offset = iter->iso ? 0 : nnz_idx * iter->size;
+		GrB_Index offset = (iter->iso) ? 0 : nnz_idx * iter->size;
 		memcpy(val, (char*)A->x + offset, iter->size);
 	}
 
