@@ -112,8 +112,6 @@ static inline void _ResetIterator(NodeByLabelScan *op) {
 
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
-	ASSERT(op->op.children[0]->type == OPType_ARGUMENT ||
-		   op->op.children[0]->type == OPType_PROJECT);
 
 	// Try to get new nodeID.
 	GrB_Index nodeId;
