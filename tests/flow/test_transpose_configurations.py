@@ -65,7 +65,7 @@ class testTransposeConfigurations(FlowTestsBase):
         self.env.stop()
 
         # Instantiate a new server without transposed matrices
-        configured_env = Env(decodeResponses=True, moduleArgs="MAINTAIN_TRANSPOSED_MATRICES no")
+        configured_env = Env(decodeResponses=True, moduleArgs="")
         configured_graph = Graph(GRAPH_ID, configured_env.getConnection())
         # Repopulate the graph
         self.populate_graph(configured_graph)
@@ -106,7 +106,7 @@ class testTransposeConfigurations(FlowTestsBase):
         self.env.stop()
 
         # Instantiate a new server without transposed matrices
-        configured_env = Env(decodeResponses=True, moduleArgs="MAINTAIN_TRANSPOSED_MATRICES no")
+        configured_env = Env(decodeResponses=True, moduleArgs="")
         configured_graph = Graph(GRAPH_ID, configured_env.getConnection())
         # Repopulate the graph
         self.populate_graph(configured_graph)
@@ -138,7 +138,7 @@ class testTransposeConfigurations(FlowTestsBase):
         self.env.stop()
 
         # Instantiate a new server without transposed matrices
-        configured_env = Env(decodeResponses=True, moduleArgs="MAINTAIN_TRANSPOSED_MATRICES no")
+        configured_env = Env(decodeResponses=True, moduleArgs="")
         configured_graph = Graph(GRAPH_ID, configured_env.getConnection())
         # Repopulate the graph
         self.populate_graph(configured_graph)
