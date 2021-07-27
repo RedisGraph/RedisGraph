@@ -53,11 +53,32 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 }
 
 static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	RG_MatrixTupleIter_new(&(op->iter), Graph_GetLabelMatrix(gc->g, schema->id));
-	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
-	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1;
-	return RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	NodeID minId;
+	NodeID maxId;
+	GrB_Info info;
+	GrB_Index nrows;
+
+	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
+	RG_Matrix     L    =  Graph_GetLabelMatrix(gc->g, schema->id);
+
+	if(op->id_range->include_min) minId = op->id_range->min;
+	else minId = op->id_range->min + 1;
+
+	if(op->id_range->include_max) maxId = op->id_range->max;
+	else maxId = op->id_range->max - 1;
+
+	info = RG_Matrix_nrows(&nrows, L);
+	ASSERT(info == GrB_SUCCESS);
+
+	info = RG_MatrixTupleIter_new(&(op->iter), L);
+	ASSERT(info == GrB_SUCCESS);
+
+	// use range only when minId and maxId are subset of the entire matrix
+	if(minId >= 0 && maxId < nrows) {
+		info = RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	}
+
+	return info;
 }
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {

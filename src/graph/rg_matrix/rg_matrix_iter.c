@@ -41,7 +41,7 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 ) {
 	GrB_Info info ;
 
-	ASSERT(iter != NULL) ;
+	if(iter == NULL) return GrB_NULL_POINTER ;
 
 	info = GxB_MatrixTupleIter_iterate_row(&(iter->m_it), rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
@@ -59,7 +59,7 @@ GrB_Info RG_MatrixTupleIter_jump_to_row
 ) {
 	GrB_Info info ;
 
-	ASSERT(iter != NULL) ;
+	if(iter == NULL) return GrB_NULL_POINTER ;
 
 	info = GxB_MatrixTupleIter_jump_to_row(&(iter->m_it), rowIdx) ;
 	ASSERT(info == GrB_SUCCESS) ;
@@ -78,7 +78,7 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 ) {
 	GrB_Info info ;
 
-	ASSERT(iter != NULL) ;
+	if(iter == NULL) return GrB_NULL_POINTER ;
 
 	info = GxB_MatrixTupleIter_iterate_range(&(iter->m_it), startRowIdx,
 			endRowIdx) ;
@@ -159,7 +159,7 @@ GrB_Info RG_MatrixTupleIter_reset
 ) {
 	GrB_Info info = GrB_SUCCESS;
 
-	ASSERT(iter != NULL) ;
+	if(iter == NULL) return GrB_NULL_POINTER ;
 
 	info = GxB_MatrixTupleIter_reset(&(iter->m_it)) ;
 	ASSERT(info == GrB_SUCCESS) ;
@@ -176,8 +176,8 @@ GrB_Info RG_MatrixTupleIter_reuse
 	RG_MatrixTupleIter *iter,       // iterator to update
 	const RG_Matrix A               // matrix to scan
 ) {
-	ASSERT(A    != NULL) ;
-	ASSERT(iter != NULL) ;
+	if(A == NULL) return GrB_NULL_POINTER ;
+	if(iter == NULL) return GrB_NULL_POINTER ;
 
 	GrB_Info info ;
 	GrB_Matrix M  = RG_MATRIX_M(A) ;
