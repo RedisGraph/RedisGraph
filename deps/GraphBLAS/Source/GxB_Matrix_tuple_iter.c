@@ -87,6 +87,8 @@ static bool _find_minimal_row_in_Ah_greater_or_equal_to_rowIdx
 	GB_RETURN_IF_NULL(A) ;
 	GB_RETURN_IF_NULL(result) ;
 
+	if(A->nvec == 0) return false;
+
 	bool found ;
 	GrB_Index   left  =  0 ;
 	GrB_Index   right =  A->nvec - 1 ;
@@ -129,6 +131,8 @@ static bool _find_maximal_row_in_Ah_smaller_or_equal_to_rowIdx
 	GB_RETURN_IF_NULL(A) ;
 	GB_RETURN_IF_NULL(result) ;
 
+	if(A->nvec == 0) return false;
+
 	bool found ;
 	GrB_Index   left  =  0 ;
 	GrB_Index   right =  A->nvec - 1 ;
@@ -170,6 +174,8 @@ static bool _find_row_index_in_Ah
 
 	GB_RETURN_IF_NULL(A) ;
 	GB_RETURN_IF_NULL(result) ;
+
+	if(A->nvec == 0) return false;
 
 	bool found ;
 	GrB_Index left = 0 ;
