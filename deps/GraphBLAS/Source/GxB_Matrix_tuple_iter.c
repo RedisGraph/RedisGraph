@@ -82,9 +82,11 @@ static bool _find_minimal_row_in_Ah_greater_or_equal_to_rowIdx
 	GB_RETURN_IF_NULL(A) ;
 	GB_RETURN_IF_NULL(result) ;
 
+	if(A->nvec == 0) return false;
+
 	bool found ;
 	GrB_Index   left  =  0 ;
-	GrB_Index   right =  A->plen - 1 ;
+	GrB_Index   right =  A->nvec - 1 ;
 	const GrB_Index *__restrict__ Ah = (GrB_Index *)A->h ;
 
 	GB_BINARY_SEARCH(i, Ah, left, right, found) ;
@@ -124,9 +126,11 @@ static bool _find_maximal_row_in_Ah_smaller_or_equal_to_rowIdx
 	GB_RETURN_IF_NULL(A) ;
 	GB_RETURN_IF_NULL(result) ;
 
+	if(A->nvec == 0) return false;
+
 	bool found ;
 	GrB_Index   left  =  0 ;
-	GrB_Index   right =  A->plen - 1 ;
+	GrB_Index   right =  A->nvec - 1 ;
 	const GrB_Index *__restrict__ Ah = (GrB_Index *)A->h ;
 
 	GB_BINARY_SEARCH(i, Ah, left, right, found) ;
@@ -136,6 +140,7 @@ static bool _find_maximal_row_in_Ah_smaller_or_equal_to_rowIdx
 	} else {
 		// not found
 		if(Ah[left] < i) {
+			GxB_print(A, GxB_COMPLETE_VERBOSE);
 			// i not found, look for the maximal value which is smaller than i
 			// this can be located in Ah[left] or Ah[left-1]
 			*result = left ;
@@ -165,10 +170,12 @@ static bool _find_row_index_in_Ah
 
 	GB_RETURN_IF_NULL(A) ;
 	GB_RETURN_IF_NULL(result) ;
+	
+	if(A->nvec == 0) return false;
 
 	bool found ;
 	GrB_Index left = 0 ;
-	GrB_Index right = A->plen-1 ;
+	GrB_Index right = A->nvec-1 ;
 	const GrB_Index *__restrict__ Ah = (GrB_Index *)A->h ;
 
 	GB_BINARY_SEARCH(i, Ah, left, right, found) ;
