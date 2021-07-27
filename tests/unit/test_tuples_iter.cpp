@@ -527,6 +527,10 @@ TEST_P(TuplesTest, IteratorRange) {
 		GrB_Matrix_setElement_UINT64(A, val, row, col);
 	}
 
+	bool iso;
+	GxB_Matrix_iso(&iso, A); // returns iso status of a matrix
+	ASSERT_EQ(iso, _iso);
+
 	// create iterator
 	GxB_MatrixTupleIter *iter;
 	GxB_MatrixTupleIter_new(&iter, A);
