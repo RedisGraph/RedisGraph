@@ -255,17 +255,17 @@ static FT_FilterNode *_Concat_Filters(OpFilter **filter_ops) {
 	// concat using AND nodes
 	FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
 	FilterTree_AppendLeftChild(root,
-			FilterTree_Clone(filter_ops[0]->filterTree));
+							   FilterTree_Clone(filter_ops[0]->filterTree));
 	FilterTree_AppendRightChild(root,
-			FilterTree_Clone(filter_ops[1]->filterTree));
+								FilterTree_Clone(filter_ops[1]->filterTree));
 
 	for(uint i = 2; i < count; i++) {
 		// new and root node
-		FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
-		FilterTree_AppendLeftChild(and, root);
+		FT_FilterNode * and = FilterTree_CreateConditionFilter(OP_AND);
+		FilterTree_AppendLeftChild( and, root);
 		root = and;
 		FilterTree_AppendRightChild(root,
-				FilterTree_Clone(filter_ops[i]->filterTree));
+									FilterTree_Clone(filter_ops[i]->filterTree));
 	}
 
 	return root;
@@ -318,6 +318,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 		OpBase *arg = NewArgumentOp(plan, vars);
 		// add the Argument as a child of the IndexScan
 		ExecutionPlan_AddOp(indexOp, arg);
+		array_free(vars);
 		raxFree(bound_vars);
 	}
 
