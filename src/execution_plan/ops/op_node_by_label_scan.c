@@ -191,7 +191,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		op->child_record = NULL;
 	}
-	_ResetIterator(op);
+	if(op->iter) _ResetIterator(op);
 	return OP_OK;
 }
 
