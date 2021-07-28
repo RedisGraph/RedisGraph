@@ -199,25 +199,6 @@ void _MatrixSynchronize
 	// matrix fully synced, nothing to do
 	if(!require_resize && !RG_Matrix_isDirty(m)) return;
 
-	//--------------------------------------------------------------------------
-	// sync under WRITE
-	//--------------------------------------------------------------------------
-
-	// if the graph belongs to one thread, we don't need to lock the mutex
-	if(g->_writelocked) {
-		if(require_resize) {
-			info = RG_Matrix_resize(m, dims, dims);
-			ASSERT(info == GrB_SUCCESS);
-		}
-
-		// writer under write lock, no need to flush pending changes
-		return;
-	}
-
-	//--------------------------------------------------------------------------
-	// sync under READ
-	//--------------------------------------------------------------------------
-
 	// lock the matrix
 	RG_Matrix_Lock(m);
 
