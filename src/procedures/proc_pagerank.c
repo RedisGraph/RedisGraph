@@ -124,8 +124,9 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 								  mapping, n, GrB_NULL);
 		ASSERT(info == GrB_SUCCESS);
 
+		GrB_free(&r);
 		r = reduced;
-	} else {		
+	} else {
 		// Resize to remove unused rows.
 		n = Graph_UncompactedNodeCount(g);
 		GxB_Matrix_resize(r, n, n);
@@ -136,7 +137,6 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 	ASSERT(info == GrB_SUCCESS);
 
 	if(nvals > 0) {
-		GxB_fprint(r, GxB_SHORT, stdout);
 		info = Pagerank(&ranking, r, itermax, tol, &iters);
 		ASSERT(info == GrB_SUCCESS);
 	}
