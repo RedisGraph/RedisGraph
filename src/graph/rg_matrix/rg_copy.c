@@ -5,6 +5,7 @@
 */
 
 #include "RG.h"
+#include "rg_utils.h"
 #include "rg_matrix.h"
 #include "../../util/rmalloc.h"
 

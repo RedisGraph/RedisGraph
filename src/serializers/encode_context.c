@@ -56,7 +56,7 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 
 	// Avoid leaks in case or reset during encodeing.
 	if(ctx->matrix_tuple_iterator != NULL) {
-		GxB_MatrixTupleIter_free(ctx->matrix_tuple_iterator);
+		RG_MatrixTupleIter_free(&ctx->matrix_tuple_iterator);
 		ctx->matrix_tuple_iterator = NULL;
 	}
 }

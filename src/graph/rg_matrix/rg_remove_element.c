@@ -12,9 +12,9 @@
 
 GrB_Info RG_Matrix_removeElement
 (
-    RG_Matrix C,                    // matrix to remove entry from
-    GrB_Index i,                    // row index
-    GrB_Index j                     // column index
+	RG_Matrix C,                    // matrix to remove entry from
+	GrB_Index i,                    // row index
+	GrB_Index j                     // column index
 ) {
 	ASSERT(C);
 	RG_Matrix_checkBounds(C, i, j);
@@ -35,7 +35,7 @@ GrB_Info RG_Matrix_removeElement
 		info = RG_Matrix_removeElement(C->transposed, j, i);
 		if(info != GrB_SUCCESS) {
 			return info;
-		} 
+		}
 	}
 
 	info = GrB_Matrix_extractElement(&m_x, m, i, j);
@@ -67,7 +67,7 @@ GrB_Info RG_Matrix_removeElement
 			// free multi-edge entry, leave M[i,j] dirty
 			if((SINGLE_EDGE(m_x)) == false) {
 				m_x = CLEAR_MSB(m_x);
-				array_free(m_x);
+				array_free((uint64_t *)m_x);
 			}
 		}
 
@@ -86,7 +86,7 @@ GrB_Info RG_Matrix_removeElement
 			// free multi-edge entry
 			if((SINGLE_EDGE(dp_x)) == false) {
 				dp_x = CLEAR_MSB(dp_x);
-				array_free(dp_x);
+				array_free((uint64_t *)dp_x);
 			}
 		}
 

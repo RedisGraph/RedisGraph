@@ -40,7 +40,7 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 		*z = (EdgeID)SET_MSB(ids);
 	} else {
 		// Multiple edges, adding another edge.
-		ids = CLEAR_MSB(*x);
+		ids = (EdgeID *)(CLEAR_MSB(*x));
 		array_append(ids, *y);
 		*z = (EdgeID)SET_MSB(ids);
 	}
@@ -53,7 +53,7 @@ void _binary_op_free_edge(void *z, const void *x, const void *y) {
 	if((SINGLE_EDGE(*id))) {
 		DataBlock_DeleteItem(g->edges, *id);
 	} else {
-		EdgeID *ids = CLEAR_MSB(*id);
+		EdgeID *ids = (EdgeID *)(CLEAR_MSB(*id));
 		uint id_count = array_len(ids);
 		for(uint i = 0; i < id_count; i++) {
 			DataBlock_DeleteItem(g->edges, ids[i]);
@@ -63,7 +63,7 @@ void _binary_op_free_edge(void *z, const void *x, const void *y) {
 }
 
 //------------------------------------------------------------------------------
-// Synchronization functions 
+// Synchronization functions
 //------------------------------------------------------------------------------
 
 // acquire a lock that does not restrict access from additional reader threads
@@ -130,10 +130,10 @@ static void _CollectEdgesFromEntry
 	} else {
 		// multiple edges connecting src to dest,
 		// entry is a pointer to an array of edge IDs
-		EdgeID *edgeIds = (intptr_t)CLEAR_MSB(edgeId);
-		int edgeCount = array_len(edgeIds);
+		EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(edgeId));
+		uint edgeCount = array_len(edgeIds);
 
-		for(int i = 0; i < edgeCount; i++) {
+		for(uint i = 0; i < edgeCount; i++) {
 			edgeId = edgeIds[i];
 			e.entity = DataBlock_GetItem(g->edges, edgeId);
 			e.id = edgeId;
@@ -351,7 +351,7 @@ Graph *Graph_New
 	if(!_binary_op_delete_edges) {
 		// The binary operator has not yet been constructed; build it now.
 		info = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
-				GrB_UINT64, GrB_UINT64, GrB_UINT64);
+								GrB_UINT64, GrB_UINT64, GrB_UINT64);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
@@ -493,7 +493,7 @@ int Graph_GetEdgeRelation
 		EdgeID edgeId = 0;
 		RG_Matrix M = Graph_GetRelationMatrix(g, i, false);
 		info = RG_Matrix_extractElement_UINT64(&edgeId, M, srcNodeID,
-				destNodeID);
+											   destNodeID);
 		if(info != GrB_SUCCESS) continue;
 
 		if(SINGLE_EDGE(edgeId)) {
@@ -506,7 +506,7 @@ int Graph_GetEdgeRelation
 		} else {
 			// multiple edges exists between src and dest
 			// see if given edge is one of them
-			EdgeID *edges = CLEAR_MSB(edgeId);
+			EdgeID *edges = (EdgeID *)(CLEAR_MSB(edgeId));
 			int edge_count = array_len(edges);
 			for(int j = 0; j < edge_count; j++) {
 				if(edges[j] == id) {
@@ -529,11 +529,10 @@ void Graph_GetEdgesConnectingNodes
 	NodeID srcID,
 	NodeID destID,
 	int r,
-	Edge **edges)
-{
+	Edge **edges) {
 	ASSERT(g);
 	ASSERT(edges);
-	ASSERT(r < Graph_RelationTypeCount(g)); 
+	ASSERT(r < Graph_RelationTypeCount(g));
 
 	// invalid relation type specified;
 	// this can occur on multi-type traversals like:
@@ -653,7 +652,7 @@ void Graph_GetNodeEdges
 	Edge **edges         // [output] array of edges
 ) {
 	ASSERT(g);
-   	ASSERT(n);
+	ASSERT(n);
 	ASSERT(edges);
 
 	RG_Matrix            M        =  NULL;
@@ -666,10 +665,10 @@ void Graph_GetNodeEdges
 	if(edgeType == GRAPH_UNKNOWN_RELATION) return;
 
 	bool outgoing = (dir == GRAPH_EDGE_DIR_OUTGOING ||
-			         dir == GRAPH_EDGE_DIR_BOTH);
+					 dir == GRAPH_EDGE_DIR_BOTH);
 
 	bool incoming = (dir == GRAPH_EDGE_DIR_INCOMING ||
-		             dir == GRAPH_EDGE_DIR_BOTH);
+					 dir == GRAPH_EDGE_DIR_BOTH);
 
 	if(outgoing) {
 		// if a relationship type is specified,
@@ -816,8 +815,8 @@ static void _BulkDeleteNodes
 (
 	Graph *g,
 	Node *nodes,
-	uint node_count, 
-	uint *node_deleted, 
+	uint node_count,
+	uint *node_deleted,
 	uint *edge_deleted
 ) {
 	ASSERT(g != NULL);
@@ -832,7 +831,7 @@ static void _BulkDeleteNodes
 	Edge *edges = array_new(Edge, 1);
 
 	// removing duplicates
-	#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 	QSORT(Node, nodes, node_count, is_edge_lt);
 
 	for(uint i = 0; i < node_count; i++) {
@@ -852,11 +851,11 @@ static void _BulkDeleteNodes
 		GrB_Index src;
 		GrB_Index dest;
 		NodeID ID = ENTITY_GET_ID(n);
-		
+
 		// collect edges
 		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
 	}
-	
+
 	//--------------------------------------------------------------------------
 	// remove edges from matrices
 	//--------------------------------------------------------------------------
@@ -865,18 +864,18 @@ static void _BulkDeleteNodes
 
 	int relation_count = Graph_RelationTypeCount(g);
 	int edge_deletion_count[relation_count];
-	memset(edge_deletion_count, 0, relation_count*sizeof(edge_deletion_count[0]));
-	
+	memset(edge_deletion_count, 0, relation_count * sizeof(edge_deletion_count[0]));
+
 	int edge_count = array_len(edges);
 
 	// removing duplicates
 	QSORT(Edge, edges, edge_count, is_edge_lt);
 
-	for (int i = 0; i < edge_count; i++) {
+	for(int i = 0; i < edge_count; i++) {
 		// As long as current is the same as follows.
 		while(i < edge_count - 1 && ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
 
-		Edge       *e       =  edges+i;
+		Edge       *e       =  edges + i;
 		NodeID     src      =  Edge_GetSrcNodeID(e);
 		NodeID     dest     =  Edge_GetDestNodeID(e);
 		EdgeID     edge_id  =  ENTITY_GET_ID(e);
@@ -887,7 +886,7 @@ static void _BulkDeleteNodes
 		DataBlock_DeleteItem(g->edges, edge_id);
 		edge_deletion_count[e->relationID]++;
 	}
-	
+
 	for(int i = 0; i < relation_count; i++) {
 		// multiple edges of type i has just been deleted, update statistics
 		if(edge_deletion_count[i])
@@ -952,7 +951,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		DataBlock_DeleteItem(g->edges, edge_id);
 
 		int j = 0;
-		for (; j < relationCount; j++) {
+		for(; j < relationCount; j++) {
 			GrB_Index e;
 			RG_Matrix r = Graph_GetRelationMatrix(g, j, false);
 			info = RG_Matrix_extractElement_UINT64(&e, r, src_id, dest_id);
@@ -1071,7 +1070,7 @@ int Graph_AddRelationType
 
 RG_Matrix Graph_GetLabelMatrix
 (
-	const Graph *g, 
+	const Graph *g,
 	int label_idx
 ) {
 	ASSERT(g);
@@ -1085,7 +1084,7 @@ RG_Matrix Graph_GetLabelMatrix
 RG_Matrix Graph_GetRelationMatrix
 (
 	const Graph *g,
-	int relation_idx, 
+	int relation_idx,
 	bool transposed
 ) {
 	ASSERT(g);
@@ -1188,3 +1187,4 @@ void Graph_Free(Graph *g) {
 
 	rm_free(g);
 }
+
