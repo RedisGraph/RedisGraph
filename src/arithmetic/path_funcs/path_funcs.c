@@ -174,10 +174,6 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			GrB_Index dims = Graph_RequiredMatrixDim(gc->g);
 			res = GrB_Matrix_new(&ctx->R, GrB_BOOL, dims, dims);
 			ASSERT(res == GrB_SUCCESS);
-			if(maintain_transposes) {
-				res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, dims, dims);
-				ASSERT(res == GrB_SUCCESS);
-			}
 
 			for(uint i = 0; i < ctx->reltype_count; i ++) {
 				GrB_Matrix adj;
@@ -189,15 +185,16 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 				ASSERT(res == GrB_SUCCESS);
 				res = GrB_Matrix_free(&adj);
 				ASSERT(res == GrB_SUCCESS);
-				if(maintain_transposes) {
-					GrB_Index nrows;
-					res = GrB_Matrix_nrows(&nrows, ctx->R);
-					ASSERT(res == GrB_SUCCESS);
-					res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, nrows, nrows);
-					ASSERT(res == GrB_SUCCESS);
-					res = GrB_transpose(ctx->TR, NULL, NULL, ctx->R, GrB_DESC_R);
-					ASSERT(res == GrB_SUCCESS);
-				}
+			}
+
+			if(maintain_transposes) {
+				GrB_Index nrows;
+				res = GrB_Matrix_nrows(&nrows, ctx->R);
+				ASSERT(res == GrB_SUCCESS);
+				res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, nrows, nrows);
+				ASSERT(res == GrB_SUCCESS);
+				res = GrB_transpose(ctx->TR, NULL, NULL, ctx->R, GrB_DESC_R);
+				ASSERT(res == GrB_SUCCESS);
 			}
 		}
 	}
