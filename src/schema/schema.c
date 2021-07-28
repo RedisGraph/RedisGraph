@@ -40,25 +40,25 @@ unsigned short Schema_IndexCount(const Schema *s) {
 }
 
 Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType type) {
-	Index *idx = NULL;
-
 	if(type == IDX_EXACT_MATCH) {
-		idx = s->index;
+		// Return NULL if an attribute was specified but does not reside on the index.
+		if(attribute_id && !Index_ContainsAttribute(s->index, *attribute_id)) return NULL;
+		return s->index;
 	} else if(type ==  IDX_FULLTEXT) {
-		idx = s->fulltextIdx;
-	} else {
-		// If type is unspecified, use the first index that exists.
-		idx = s->index ? : s->fulltextIdx;
+		// Return NULL if an attribute was specified but does not reside on the index.
+		if(attribute_id && !Index_ContainsAttribute(s->fulltextIdx, *attribute_id)) return NULL;
+		return s->fulltextIdx;
+	} else if(type == IDX_ANY && attribute_id) {
+		// If an attribute was specified, return the first index that contains it.
+		if(s->index && Index_ContainsAttribute(s->index, *attribute_id)) return s->index;
+		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attribute_id)) return s->fulltextIdx;
+	} else if(type == IDX_ANY && attribute_id == NULL) {
+		// If no attribute was specified, return the first extant index.
+		if(s->index) return s->index;
+		if(s->fulltextIdx) return s->fulltextIdx;
 	}
 
-	if(!idx) return NULL;
-
-	// Make sure field is indexed.
-	if(attribute_id) {
-		if(!Index_ContainsAttribute(idx, *attribute_id)) return NULL;
-	}
-
-	return idx;
+	return NULL;
 }
 
 int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
@@ -117,12 +117,12 @@ static int _Schema_RemoveFullTextIndex(Schema *s) {
 
 int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 	switch(type) {
-	case IDX_FULLTEXT:
-		return _Schema_RemoveFullTextIndex(s);
-	case IDX_EXACT_MATCH:
-		return _Schema_RemoveExactMatchIndex(s, field);
-	default:
-		return INDEX_FAIL;
+		case IDX_FULLTEXT:
+			return _Schema_RemoveFullTextIndex(s);
+		case IDX_EXACT_MATCH:
+			return _Schema_RemoveExactMatchIndex(s, field);
+		default:
+			return INDEX_FAIL;
 	}
 }
 
