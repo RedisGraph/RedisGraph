@@ -158,7 +158,10 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			ASSERT(res == GrB_SUCCESS);
 
 			for(uint i = 0; i < ctx->reltype_count; i ++) {
-				GrB_Matrix adj = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[i]);
+				GrB_Matrix adj = Graph_GetRelationMatrix(gc->g, ctx->reltypes[i]);
+				res = GrB_eWiseAdd(ctx->R, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, ctx->R, adj, GrB_NULL);
+				ASSERT(res == GrB_SUCCESS);
+				adj = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[i]);
 				res = GrB_eWiseAdd(ctx->TR, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, ctx->TR, adj, GrB_NULL);
 				ASSERT(res == GrB_SUCCESS);
 			}

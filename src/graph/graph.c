@@ -392,9 +392,6 @@ void Graph_ApplyAllPending(Graph *g) {
 	for(int i = 0; i < array_len(g->relations); i ++) {
 		M = g->relations[i];
 		g->SynchronizeMatrix(g, M);
-	}
-
-	for(int i = 0; i < array_len(g->t_relations); i ++) {
 		M = g->t_relations[i];
 		g->SynchronizeMatrix(g, M);
 	}
@@ -811,16 +808,14 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	ASSERT(e != NULL);
 
 	uint64_t    x;
-	GrB_Matrix  R;
 	GrB_Matrix  M;
 	GrB_Info    info;
 	EdgeID      edge_id;
 	int         r         =  Edge_GetRelationID(e);
 	NodeID      src_id    =  Edge_GetSrcNodeID(e);
 	NodeID      dest_id   =  Edge_GetDestNodeID(e);
+	GrB_Matrix  R         =  Graph_GetRelationMatrix(g, r);
 	GrB_Matrix  TR        =  Graph_GetTransposedRelationMatrix(g, r);
-
-	R = Graph_GetRelationMatrix(g, r);
 
 	// test to see if edge exists
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
@@ -1023,11 +1018,12 @@ static void _BulkDeleteImplicitEdges(Graph *g, GrB_Matrix Mask) {
 
 		uint64_t edges_before_deletion = Graph_EdgeCount(g);
 		// The number of deleted edges is equals the diff in the number of items in the DataBlock
-		uint64_t n_deleted_edges = edges_before_deletion - Graph_EdgeCount(g);
 
 		// free each multi edge array entry in A
 		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
 									 _binary_op_delete_edges, thunk, A, GrB_NULL);
+
+		uint64_t n_deleted_edges = edges_before_deletion - Graph_EdgeCount(g);
 
 		// Multiple edges of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, i, n_deleted_edges);
@@ -1038,6 +1034,28 @@ static void _BulkDeleteImplicitEdges(Graph *g, GrB_Matrix Mask) {
 		// remove every entry of R marked by Mask
 		GrB_Matrix_apply(R, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 		_Graph_SetRelationMatrixDirty(g, i);
+
+
+		/* repeat all the above steps with the transposed Mask */
+		GrB_Matrix TR = Graph_GetTransposedRelationMatrix(g, i);
+
+		// reset mask descriptor
+		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
+
+		/* isolate implicit edges
+		* A will contain all implicitly deleted edges from TR */
+		GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
+
+		// free each multi edge array entry in A
+		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
+										_binary_op_delete_edges, thunk, A, GrB_NULL);
+
+		// clear the relation matrix
+		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
+		GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
+
+		// remove every entry of TR marked by Mask
+		GrB_Matrix_apply(TR, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
 	}
 
 	// reset mask descriptor
@@ -1053,28 +1071,6 @@ static void _BulkDeleteImplicitEdges(Graph *g, GrB_Matrix Mask) {
 	// update the transposed adjacency matrix
 	GrB_Matrix_apply(tadj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, tadj, desc);
 
-	/* repeat all the above steps with the transposed Mask */
-	for(int i = 0; i < relation_count; i++) {
-		GrB_Matrix TR = Graph_GetTransposedRelationMatrix(g, i);
-
-		// reset mask descriptor
-		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
-
-		/* isolate implicit edges
-			* A will contain all implicitly deleted edges from TR */
-		GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
-
-		// free each multi edge array entry in A
-		GxB_Matrix_apply_BinaryOp1st(A, GrB_NULL, GrB_NULL,
-										_binary_op_delete_edges, thunk, A, GrB_NULL);
-
-		// clear the relation matrix
-		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
-		GrB_Descriptor_set(desc, GrB_MASK, GrB_STRUCTURE);
-
-		// remove every entry of TR marked by Mask
-		GrB_Matrix_apply(TR, Mask, GrB_NULL, GrB_IDENTITY_UINT64, TR, desc);
-	}
 	// Clean up.
 	GrB_free(&A);
 	GrB_free(&thunk);
@@ -1476,11 +1472,11 @@ int Graph_AddRelationType(Graph *g) {
 
 	RG_Matrix m = RG_Matrix_New(g, GrB_UINT64);
 	array_append(g->relations, m);
-	// Adding a new relationship type, update the stats structures to support it.
-	GraphStatistics_IntroduceRelationship(&g->stats);
-
 	RG_Matrix tm = RG_Matrix_New(g, GrB_UINT64);
 	array_append(g->t_relations, tm);
+
+	// Adding a new relationship type, update the stats structures to support it.
+	GraphStatistics_IntroduceRelationship(&g->stats);
 
 	int relationID = Graph_RelationTypeCount(g) - 1;
 	return relationID;
