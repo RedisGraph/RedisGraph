@@ -427,11 +427,12 @@ GrB_Info GxB_MatrixTupleIter_reuse
 // release iterator
 GrB_Info GxB_MatrixTupleIter_free
 (
-	GxB_MatrixTupleIter *iter       // iterator to free
+	GxB_MatrixTupleIter **iter       // iterator to free
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_free (iter)") ;
-	GB_RETURN_IF_NULL(iter) ;
-	GB_FREE(&iter, iter->size) ;
+	GB_RETURN_IF_NULL(*iter) ;
+	GB_FREE(iter, (*iter)->size) ;
+	*iter = NULL;
 	return (GrB_SUCCESS) ;
 }
 

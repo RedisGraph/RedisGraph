@@ -231,7 +231,7 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 
 	// Clean up.
 	array_free(edge);
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 
 	return bfs_ctx->output;
 }
