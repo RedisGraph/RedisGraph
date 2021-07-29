@@ -149,6 +149,8 @@ void _MatrixSynchronize
 	RG_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
 
+	UNUSED(info);
+
 	// matrix must be resized if its dimensions missmatch required dimensions
 	bool require_resize = (n_rows != dims || n_cols != dims);
 

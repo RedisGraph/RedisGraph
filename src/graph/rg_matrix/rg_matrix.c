@@ -160,6 +160,10 @@ void RG_Matrix_validateState
 	info_dp = GrB_Matrix_extractElement(&x_dp, dp, i, j);
 	info_dm = GrB_Matrix_extractElement(&x_dm, dm, i, j);
 
+	UNUSED(existing_entry);
+	UNUSED(pending_addition);
+	UNUSED(pending_deletion);
+
 	existing_entry    =  info_m  == GrB_SUCCESS;
 	pending_addition  =  info_dp == GrB_SUCCESS;
 	pending_deletion  =  info_dm == GrB_SUCCESS;

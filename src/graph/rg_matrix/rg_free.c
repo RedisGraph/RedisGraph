@@ -40,6 +40,8 @@ void RG_Matrix_free
 
 	GrB_Info info;
 
+	UNUSED(info);
+
 	// force flush both C and TC
 	info = RG_Matrix_wait(M, true);
 	ASSERT(info == GrB_SUCCESS);

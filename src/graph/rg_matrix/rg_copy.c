@@ -17,6 +17,8 @@ static void _copyMatrix
 	GrB_Index   nvals;
 	GrB_Info    info =  GrB_SUCCESS;
 
+	UNUSED(info);
+
 	info = GrB_Matrix_nvals(&nvals, in);
 	ASSERT(info == GrB_SUCCESS);
 

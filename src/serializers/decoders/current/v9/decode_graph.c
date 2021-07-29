@@ -60,6 +60,8 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	// multi edge data not used anymore
 	uint64_t multi_edge[relation_count];
 
+	UNUSED(multi_edge);
+
 	for(uint i = 0; i < relation_count; i++) {
 		multi_edge[i] = RedisModule_LoadUnsigned(rdb);
 	}
