@@ -94,6 +94,7 @@ void *ShortestPath_Clone(void *orig) {
 	ctx_clone->R = GrB_NULL;
 	ctx_clone->TR = GrB_NULL;
 	ctx_clone->free_matrices = false;
+	ctx_clone->bidirectional = ctx->bidirectional;
 
 	return ctx_clone;
 }
@@ -139,6 +140,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 		// Initialize the traversed matrices.
 		bool maintain_transposes;
 		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transposes);
+
 		// Get edge matrix and transpose matrix, if available.
 		if(ctx->reltypes == NULL) {
 			// No edge types were specified, use the overall adjacency matrix.
@@ -173,6 +175,37 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 					ASSERT(res == GrB_SUCCESS);
 				}
 			}
+		}
+
+		// traversing in both directions
+		// make sure R is symetric
+		if(ctx->bidirectional) {
+			GrB_Matrix sym = GrB_NULL;
+			// if R is already allocated re-use it
+			// otherwise alocate a new matrix
+			if(ctx->free_matrices) {
+				sym = ctx->R;
+			} else {
+				GrB_Index dims = Graph_RequiredMatrixDim(gc->g);
+				res = GrB_Matrix_new(&sym, GrB_BOOL, dims, dims);
+				ASSERT(res == GrB_SUCCESS);
+			}
+
+			if(ctx->TR != GrB_NULL) {
+				GrB_eWiseAdd(sym, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, ctx->R,
+						ctx->TR, GrB_NULL);
+			} else {
+				// TODO: use transpose INP1
+			}
+
+			// free redundent TR matrix
+			if(ctx->free_matrices && ctx->TR) GrB_free(&ctx->TR);
+
+			ctx->free_matrices = true; // R must be freed
+
+			// set both R and TR to sym
+			ctx->R = sym;
+			ctx->TR = sym;
 		}
 	}
 
@@ -213,9 +246,11 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 		// Retrieve edges connecting the parent node to the current node.
 		if(ctx->reltype_count == 0) {
 			Graph_GetEdgesConnectingNodes(gc->g, parent_id, id, GRAPH_NO_RELATION, &edges);
+			if(ctx->bidirectional) Graph_GetEdgesConnectingNodes(gc->g, id, parent_id, GRAPH_NO_RELATION, &edges);
 		} else {
 			for(uint j = 0; j < ctx->reltype_count; j ++) {
 				Graph_GetEdgesConnectingNodes(gc->g, parent_id, id, ctx->reltypes[j], &edges);
+				if(ctx->bidirectional) Graph_GetEdgesConnectingNodes(gc->g, id, parent_id, ctx->reltypes[j], &edges);
 				if(array_len(edges) > 0) break;
 			}
 		}
