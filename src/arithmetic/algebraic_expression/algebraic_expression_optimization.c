@@ -457,69 +457,6 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 	operand->operand.bfree = true;
 }
 
-/* Find transpose operations with an operand child and replace them with an actual transposed
- * operand. This optimization should be valid for all transpose operations at this point.
- *
- * If at this point we have the tree:
- *
- *                (+)
- *    (transpose)     (transpose)
- *         (A)            (B)
- *
- * It will become:
- *                (+)
- *           (A')     (B')
- *
- * Similarly, if we have:
- *
- *                (*)
- *    (transpose)     (transpose)
- *         (B)            (A)
- *
- * It will become:
- *                (*)
- *           (B')     (A')
- */
-static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
-	uint child_count = 0;
-	AlgebraicExpression *child = NULL;
-
-	switch(root->type) {
-	case AL_OPERAND:
-		break;  // Nothing to be done.
-
-	case AL_OPERATION:
-		switch(root->operation.op) {
-		case AL_EXP_ADD:    // Fall through.
-		case AL_EXP_MUL:    // Fall through.
-		case AL_EXP_POW:    // Fall through.
-			child_count = AlgebraicExpression_ChildCount(root);
-			for(uint i = 0; i < child_count; i++) {
-				child = root->operation.children[i];
-				_AlgebraicExpression_ApplyTranspose(child);
-			}
-			break;
-
-		case AL_EXP_TRANSPOSE:
-			ASSERT(AlgebraicExpression_ChildCount(root) == 1 &&
-				   "transpose operation had invalid number of children");
-			child = _AlgebraicExpression_OperationRemoveDest(root);
-			// Transpose operands will currently always have an operand child.
-			ASSERT(child->type == AL_OPERAND && "encountered unexpected operation as transpose child");
-			// Transpose the child operand.
-			_AlgebraicExpression_TransposeOperand(child);
-			// Replace this operation with the transposed operand.
-			_AlgebraicExpression_InplaceRepurpose(root, child);
-			break;
-		default:
-			ASSERT("Unknown operation" && false);
-		}
-		break;  // Break out of case AL_OPERATION.
-	default:
-		ASSERT("Unknown algebraic expression node type" && false);
-	}
-}
-
 //------------------------------------------------------------------------------
 // AlgebraicExpression optimizations
 //------------------------------------------------------------------------------
@@ -535,13 +472,5 @@ void AlgebraicExpression_Optimize
 
 	// Retrieve all operands now that they are guaranteed to be leaves.
 	_AlgebraicExpression_PopulateOperands(*exp, QueryCtx_GetGraphCtx());
-
-	// If we are maintaining transposed matrices, all transpose operations have already been replaced.
-	bool maintain_transpose;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-	if(maintain_transpose == false) {
-		// Replace transpose operators with actual transposed operands.
-		_AlgebraicExpression_ApplyTranspose(*exp);
-	}
 }
 
