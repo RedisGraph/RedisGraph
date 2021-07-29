@@ -176,7 +176,13 @@ class testIndexUpdatesFlow(FlowTestsBase):
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
 
-    def test07_update_exact_and_fulltext_indexes(self):
+    # Validate that when a label has both exact-match and full-text indexes
+    # on different properties, an update operation checks all indexes to
+    # determine whether they must be updated.
+    # This is necessary because either one of the indexes may not track the
+    # property being updated, but that does not guarantee that the other
+    # index does not track the property.
+    def test07_update_property_only_on_fulltext_index(self):
         # Remove the exact-match index on a property
         redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
         # Add a full-text index on the property
