@@ -14,6 +14,7 @@ void RG_Matrix_setDirty
 ) {
 	ASSERT(C);
 	C->dirty = true;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) C->transposed->dirty = true;
 }
 
 RG_Matrix RG_Matrix_getTranspose
@@ -77,24 +78,6 @@ void RG_Matrix_Unlock
 	pthread_mutex_unlock(&C->mutex);
 }
 
-void RG_Matrix_setMultiEdge
-(
-	RG_Matrix C,
-	bool multi_edge
-) {
-	ASSERT(C);
-	if(C->maintain_transpose) RG_Matrix_setMultiEdge(C->transposed, multi_edge);
-	C->multi_edge = multi_edge;
-}
-
-bool RG_Matrix_getMultiEdge
-(
-	const RG_Matrix C
-) {
-	ASSERT(C);
-	return C->multi_edge;
-}
-
 GrB_Info RG_Matrix_nrows
 (
 	GrB_Index *nrows,
@@ -150,48 +133,6 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 	ASSERT(info == GrB_SUCCESS);
 
 	*nvals = m_nvals + dp_nvals - dm_nvals;
-	return info;
-}
-
-GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
-(
-    RG_Matrix C,                    // input/output matrix for results
-    const GrB_Matrix Mask,          // optional mask for C(I,J), unused if NULL
-    const GrB_BinaryOp accum,       // optional accum for Z=accum(C(I,J),x)
-    uint64_t x,                     // scalar to assign to C(I,J)
-    const GrB_Index *I,             // row indices
-    GrB_Index ni,                   // number of row indices
-    const GrB_Index *J,             // column indices
-    GrB_Index nj,                   // number of column indices
-    const GrB_Descriptor desc       // descriptor for C(I,J) and Mask
-) {
-	// TODO: do we really need this function?
-	ASSERT(false);
-	ASSERT(C != NULL);
-	GrB_Info info;
-
-	if(C->maintain_transpose) {
-		info = RG_Matrix_subassign_UINT64(C->transposed, Mask, accum, x, J, nj,
-				I, ni, desc); 
-		ASSERT(info == GrB_SUCCESS);
-	}
-
-	GrB_Matrix delta_plus = RG_MATRIX_DELTA_PLUS(C);
-
-	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-		(
-		 delta_plus,           // input/output matrix for results
-		 Mask,                 // optional mask for C(I,J), unused if NULL
-		 accum,                // optional accum for Z=accum(C(I,J),x)
-		 x,                    // scalar to assign to C(I,J)
-		 I,                    // row indices
-		 ni,                   // number of row indices
-		 J,                    // column indices
-		 nj,                   // number of column indices
-		 desc                  // descriptor for C(I,J) and Mask
-		);
-
-	if(info == GrB_SUCCESS) RG_Matrix_setDirty(C);
 	return info;
 }
 
@@ -262,7 +203,7 @@ GrB_Info RG_Matrix_clear
 	ASSERT(info == GrB_SUCCESS);
 
 	A->dirty = false;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(A)) A->transposed->dirty = false;
 
 	return info;
 }
-

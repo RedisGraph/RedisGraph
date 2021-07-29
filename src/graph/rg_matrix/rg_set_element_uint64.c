@@ -13,6 +13,7 @@
 static GrB_Info setMultiEdgeEntry
 (
     GrB_Matrix A,                       // matrix to modify
+	GrB_Matrix TA,                      // transposed matrix to modify
     uint64_t x,                         // scalar to assign to A(i,j)
     GrB_Index i,                        // row index
     GrB_Index j                         // column index
@@ -30,6 +31,7 @@ static GrB_Info setMultiEdgeEntry
 		// mark 'x' as a single entry
 		v = x;
 		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
+		info = GrB_Matrix_setElement_UINT64(TA, v, j, i);
 	} else {
 		// entry already exists
 		if(SINGLE_EDGE(v)) {
@@ -46,32 +48,12 @@ static GrB_Info setMultiEdgeEntry
 		v = (uint64_t)entries;
 		v = SET_MSB(v);
 		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
+		info = GrB_Matrix_setElement_UINT64(TA, v, j, i);
 		// cheap sync, entry already exists
 		GrB_wait(&A);
 	}
 
 	ASSERT(info == GrB_SUCCESS);
-
-	return info;
-}
-
-static GrB_Info setEntry                // C (i,j) = x
-(
-    GrB_Matrix C,                       // matrix to modify
-    uint64_t x,                         // scalar to assign to C(i,j)
-    GrB_Index i,                        // row index
-    GrB_Index j,                        // column index
-	bool multi_edge                     // matrix supports multi-edge
-) {
-	// add entry to delta-plus
-	GrB_Info info;
-
-	if(multi_edge) {
-		info = setMultiEdgeEntry(C, x, i, j);
-	} else {
-		// no support for multi-edge simply set entry
-		info = GrB_Matrix_setElement_UINT64(C, x, i, j);
-	}
 
 	return info;
 }
@@ -84,17 +66,20 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
     GrB_Index j                         // column index
 ) {
 	ASSERT(C != NULL);
+	ASSERT(RG_MATRIX_MAINTAIN_TRANSPOSE(C));
 	RG_Matrix_checkBounds(C, i, j);
 
 	uint64_t  v;
 	GrB_Info  info;
 	bool      entry_exists       =  false;          //  M[i,j] exists
 	bool      mark_for_deletion  =  false;          //  dm[i,j] exists
-	bool      multi_edge         =  C->multi_edge;
 
-	GrB_Matrix m  = RG_MATRIX_M(C);
-	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix dm = RG_MATRIX_DELTA_MINUS(C);
+	GrB_Matrix m   = RG_MATRIX_M(C);
+	GrB_Matrix dp  = RG_MATRIX_DELTA_PLUS(C);
+	GrB_Matrix dm  = RG_MATRIX_DELTA_MINUS(C);
+	GrB_Matrix tm  = RG_MATRIX_TM(C);
+	GrB_Matrix tdp = RG_MATRIX_TDELTA_PLUS(C);
+	GrB_Matrix tdm = RG_MATRIX_TDELTA_MINUS(C);
 
 	#if RG_DEBUG
 
@@ -109,11 +94,6 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 
 	#endif
 
-	if(C->maintain_transpose) {
-		info = RG_Matrix_setElement_UINT64(C->transposed, x, j, i);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
 	//--------------------------------------------------------------------------
 	// check deleted
 	//--------------------------------------------------------------------------
@@ -121,13 +101,17 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 	info = GrB_Matrix_extractElement(&v, dm, i, j);	
 	mark_for_deletion = (info == GrB_SUCCESS);
 
-	if(mark_for_deletion) {
+	if(mark_for_deletion) { // m contains single edge, simple replace
 		// clear dm[i,j]
 		info = GrB_Matrix_removeElement(dm, i, j);
+		ASSERT(info == GrB_SUCCESS);
+		info = GrB_Matrix_removeElement(tdm, j, i);
 		ASSERT(info == GrB_SUCCESS);
 
 		// overwrite m[i,j]
 		info = GrB_Matrix_setElement(m, x, i, j);
+		ASSERT(info == GrB_SUCCESS);
+		info = GrB_Matrix_setElement(tm, x, j, i);
 		ASSERT(info == GrB_SUCCESS);
 	} else {
 		// entry isn't marked for deletion
@@ -139,10 +123,10 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 
 		if(entry_exists) {
 			// update entry at m[i,j]
-			info = setEntry(m, x, i, j, multi_edge);
+			info = setMultiEdgeEntry(m, tm, x, i, j);
 		} else {
 			// update entry at dp[i,j]
-			info = setEntry(dp, x, i, j, multi_edge);
+			info = setMultiEdgeEntry(dp, tdp, x, i, j);
 		}
 	}
 

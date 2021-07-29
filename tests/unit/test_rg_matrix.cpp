@@ -142,10 +142,8 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
 	// int         scontrol            =  GxB_ANY_SPARSITY;
-	bool        multi_edge          =  true;
-	bool        maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
@@ -166,12 +164,6 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 
 	// matrix shouldn't be dirty
 	ASSERT_FALSE(RG_Matrix_isDirty(A));
-
-	// matrix multi-edge set accordingly
-	ASSERT_EQ(RG_Matrix_getMultiEdge(A), multi_edge);
-
-	// matrix maintain transpose set accordingly
-	ASSERT_EQ(A->maintain_transpose, maintain_transpose);
 
 	// matrix should be empty
 	M_EMPTY();
@@ -200,10 +192,8 @@ TEST_F(RGMatrixTest, RGMatrix_simple_set) {
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  1;
-	bool        multi_edge          =  false;
-	bool        maintain_transpose  =  false;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	//--------------------------------------------------------------------------
@@ -286,10 +276,8 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  1;
-	bool        multi_edge          =  true;
-	bool        maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
@@ -301,7 +289,7 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	// remove none existing entry
 	//--------------------------------------------------------------------------
 
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_NO_VALUE);
 
 	// matrix should not be dirty
@@ -316,7 +304,7 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// remove element at position i,j
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// matrix should be mark as dirty
@@ -352,7 +340,7 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	info = RG_Matrix_wait(A, true);
 
 	// remove element at position i,j
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	//--------------------------------------------------------------------------
@@ -427,7 +415,7 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	//--------------------------------------------------------------------------
 
 	// remove element at position i,j
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	M_NOT_EMPTY();
@@ -484,10 +472,8 @@ TEST_F(RGMatrixTest, RGMatrix_flush) {
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
 	bool        sync                =  false;
-	bool        multi_edge          =  false;
-	bool        maintain_transpose  =  false;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i,j
@@ -561,14 +547,12 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  0;  // M[i,j] = x
 	uint64_t    v                   =  0;  // v = M[i,j]
-	bool        multi_edge          =  false;
-	bool        maintain_transpose  =  true;
 
 	//--------------------------------------------------------------------------
 	// create RGMatrix
 	//--------------------------------------------------------------------------
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// make sure transposed was created
@@ -634,7 +618,7 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	// delete element at position i,j
 	//--------------------------------------------------------------------------
 	
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// matrix should be mark as dirty
@@ -696,8 +680,6 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	GrB_Index*  J                   =  NULL;
 	bool        x                   =  true;  // M[i,j] = x
 	uint32_t    operations          =  10000;
-	bool        multi_edge          =  false;
-	bool        maintain_transpose  =  true;
 
 	//--------------------------------------------------------------------------
 	// create RGMatrix
@@ -706,7 +688,8 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	I = (GrB_Index*) malloc(sizeof(GrB_Index) * operations);
 	J = (GrB_Index*) malloc(sizeof(GrB_Index) * operations);
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
+	info = RG_Matrix_new(&A->transposed, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// make sure transposed was created
@@ -756,7 +739,7 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 			// delete element at position i,j
 			//------------------------------------------------------------------
 			
-			RG_Matrix_removeElement(A, i, j);
+			RG_Matrix_removeElement_BOOL(A, i, j);
 
 			GrB_Matrix_removeElement(N, i, j);
 		}
@@ -808,10 +791,8 @@ TEST_F(RGMatrixTest, RGMatrix_export_no_changes) {
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
 	bool        sync                =  false;
-	bool        multi_edge          =  false;
-	bool        maintain_transpose  =  false;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
@@ -876,10 +857,8 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
 	bool        sync                =  false;
-	bool        multi_edge          =  false;
-	bool        maintain_transpose  =  false;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// get internal matrices
@@ -904,7 +883,7 @@ TEST_F(RGMatrixTest, RGMatrix_export_pending_changes) {
 	//--------------------------------------------------------------------------
 
 	// remove element at position 0,0
-	info = RG_Matrix_removeElement(A, 0, 0);
+	info = RG_Matrix_removeElement_BOOL(A, 0, 0);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position 2,2
@@ -952,13 +931,11 @@ TEST_F(RGMatrixTest, RGMatrix_copy) {
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
 	bool        sync                =  false;
-	bool        multi_edge          =  false;
-	bool        maintain_transpose  =  false;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_Matrix_new(&B, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&B, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set elements
@@ -980,7 +957,7 @@ TEST_F(RGMatrixTest, RGMatrix_copy) {
 	//--------------------------------------------------------------------------
 
 	// remove element at position 0,0
-	info = RG_Matrix_removeElement(A, 0, 0);
+	info = RG_Matrix_removeElement_BOOL(A, 0, 0);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position 2,2

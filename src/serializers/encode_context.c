@@ -57,28 +57,7 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	// Avoid leaks in case or reset during encodeing.
 	if(ctx->matrix_tuple_iterator != NULL) {
 		RG_MatrixTupleIter_free(&ctx->matrix_tuple_iterator);
-		ctx->matrix_tuple_iterator = NULL;
 	}
-}
-
-// Determine if matrix 'R' contains entries representing multiple edges
-// TODO: consider relocating this function
-static bool _MultiEdgeMatrix(GrB_Matrix R, GrB_Monoid min_monoid) {
-	GrB_Info info;
-	UNUSED(info);
-	bool multi_edge;
-	uint64_t edgeID = 0;
-
-	// To determine if matrix R contains an entry which represents
-	// multiple edges, we need to find the minimum value entry
-	// as a single-edge entry has its MSB turned on, by searching for the
-	// minimum value entry we'll get an entry with a pointer value in
-	// it (if such exists) as these have thier MSB turned off
-	info = GrB_Matrix_reduce_UINT64(&edgeID, NULL, min_monoid, R, NULL);
-	ASSERT(info == GrB_SUCCESS);
-	multi_edge = !(SINGLE_EDGE(edgeID));
-
-	return multi_edge;
 }
 
 void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g) {

@@ -45,10 +45,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_new) {
 	RG_MatrixTupleIter *iter               =  NULL;
 	GrB_Index          nrows               =  100;
 	GrB_Index          ncols               =  100;
-	bool               multi_edge          =  true;
-	bool               maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	info = RG_MatrixTupleIter_new(&iter, A);
@@ -78,10 +76,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
 	bool               depleted            =  false;
-	bool               multi_edge          =  true;
-	bool               maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i,j
@@ -101,7 +97,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_next) {
 	//--------------------------------------------------------------------------
 
 	// remove element at position i,j
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i+1,j+1
@@ -146,13 +142,11 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_reuse) {
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
 	bool               depleted            =  false;
-	bool               multi_edge          =  true;
-	bool               maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = RG_Matrix_new(&B, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&B, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i,j
@@ -207,10 +201,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
 	bool               depleted            =  false;
-	bool               multi_edge          =  true;
-	bool               maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i,j
@@ -230,7 +222,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_row) {
 	//--------------------------------------------------------------------------
 
 	// remove element at position i,j
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// wait, DM can't have pendding changes
@@ -289,10 +281,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_jump_to_row) {
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
 	bool               depleted            =  false;
-	bool               multi_edge          =  true;
-	bool               maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i,j
@@ -312,7 +302,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_jump_to_row) {
 	//--------------------------------------------------------------------------
 
 	// remove element at position i,j
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i+1,j+1
@@ -356,10 +346,8 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_range) {
 	uint64_t           val                 =  0;
 	bool               sync                =  false;
 	bool               depleted            =  false;
-	bool               multi_edge          =  true;
-	bool               maintain_transpose  =  true;
 
-	info = RG_Matrix_new(&A, t, nrows, ncols, multi_edge, maintain_transpose);
+	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i,j
@@ -379,7 +367,7 @@ TEST_F(RGMatrixTupleIterTest, RGMatrixTupleiIter_iterate_range) {
 	//--------------------------------------------------------------------------
 
 	// remove element at position i,j
-	info = RG_Matrix_removeElement(A, i, j);
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// set element at position i+1,j+1

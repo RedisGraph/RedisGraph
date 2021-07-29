@@ -28,6 +28,20 @@ typedef _RG_Matrix *RG_Matrix;
 #define RG_MATRIX_DELTA_PLUS(C) (C)->delta_plus
 #define RG_MATRIX_DELTA_MINUS(C) (C)->delta_minus
 
+#define RG_MATRIX_TM(C) (C)->transposed->matrix
+#define RG_MATRIX_TDELTA_PLUS(C) (C)->transposed->delta_plus
+#define RG_MATRIX_TDELTA_MINUS(C) (C)->transposed->delta_minus
+
+#define RG_MATRIX_MAINTAIN_TRANSPOSE(C) (C)->transposed != NULL
+
+#define RG_MATRIX_MULTI_EDGE(M) ({ \
+	GrB_Type t;                    \
+	GrB_Matrix m = RG_MATRIX_M(M); \
+	GxB_Matrix_type(&t, m);        \
+	(t == GrB_UINT64);             \
+})
+
+
 //------------------------------------------------------------------------------
 //
 // possible combinations
@@ -69,7 +83,7 @@ typedef _RG_Matrix *RG_Matrix;
 //   . . .     . . .     . . .
 //
 //------------------------------------------------------------------------------
-//
+//  impossible state
 //  existing entry deleted and then added back
 //
 //   A         DP        DM
@@ -112,8 +126,6 @@ typedef _RG_Matrix *RG_Matrix;
 
 struct _RG_Matrix {
 	bool dirty;                         // Indicates if matrix requires sync
-	bool multi_edge;                    // Entry i,j can contain multiple edges
-	bool maintain_transpose;            // Maintain transpose matrix
 	GrB_Matrix matrix;                  // Underlying GrB_Matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
@@ -126,9 +138,7 @@ GrB_Info RG_Matrix_new
 	RG_Matrix *A,            // handle of matrix to create
 	GrB_Type type,           // type of matrix to create
 	GrB_Index nrows,         // matrix dimension is nrows-by-ncols
-	GrB_Index ncols,
-	bool multi_edge,         // alow multi edge
-	bool maintain_transpose  // maintain transpose matrix
+	GrB_Index ncols
 );
 
 // validate 'C' isn't in an invalid state
@@ -184,17 +194,6 @@ void RG_Matrix_Lock
 void RG_Matrix_Unlock
 (
 	RG_Matrix C
-);
-
-void RG_Matrix_setMultiEdge
-(
-	RG_Matrix C,
-	bool multi_edge
-);
-
-bool RG_Matrix_getMultiEdge
-(
-	const RG_Matrix C
 );
 
 GrB_Info RG_Matrix_nrows
@@ -255,7 +254,14 @@ GrB_Info RG_Matrix_extractElement_UINT64   // x = A(i,j)
 ) ;
 
 // remove entry at position C[i,j]
-GrB_Info RG_Matrix_removeElement
+GrB_Info RG_Matrix_removeElement_BOOL
+(
+	RG_Matrix C,                    // matrix to remove entry from
+	GrB_Index i,                    // row index
+	GrB_Index j                     // column index
+);
+
+GrB_Info RG_Matrix_removeElement_UINT64
 (
 	RG_Matrix C,                    // matrix to remove entry from
 	GrB_Index i,                    // row index
@@ -269,19 +275,6 @@ GrB_Info RG_Matrix_removeEntry
 	GrB_Index i,                    // row index
 	GrB_Index j,                    // column index
 	uint64_t  v                     // value to remove
-);
-
-GrB_Info RG_Matrix_subassign_UINT64 // C(I,J)<Mask> = accum (C(I,J),x)
-(
-	RG_Matrix C,                    // input/output matrix for results
-	const GrB_Matrix Mask,          // optional mask for C(I,J), unused if NULL
-	const GrB_BinaryOp accum,       // optional accum for Z=accum(C(I,J),x)
-	uint64_t x,                     // scalar to assign to C(I,J)
-	const GrB_Index *I,             // row indices
-	GrB_Index ni,                   // number of row indices
-	const GrB_Index *J,             // column indices
-	GrB_Index nj,                   // number of column indices
-	const GrB_Descriptor desc       // descriptor for C(I,J) and Mask
 );
 
 GrB_Info RG_mxm                     // C = A * B

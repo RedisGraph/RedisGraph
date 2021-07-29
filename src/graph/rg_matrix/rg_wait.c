@@ -16,6 +16,7 @@ static inline void _SetUndirty
 ) {
 	ASSERT(C);
 	C->dirty = false;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) C->transposed->dirty = false;
 }
 
 static GrB_Info RG_Matrix_sync
@@ -98,7 +99,7 @@ GrB_Info RG_Matrix_wait
 	bool force_sync
 ) {
 	ASSERT(A != NULL);
-	if(A->maintain_transpose) RG_Matrix_wait(A->transposed, force_sync);
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(A)) RG_Matrix_wait(A->transposed, force_sync);
 	
 	GrB_Info    info         =  GrB_SUCCESS;
 	GrB_Matrix  m            =  RG_MATRIX_M(A);

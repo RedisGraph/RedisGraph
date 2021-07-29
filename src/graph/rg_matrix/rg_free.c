@@ -44,18 +44,17 @@ void RG_Matrix_free
 	info = RG_Matrix_wait(M, true);
 	ASSERT(info == GrB_SUCCESS);
 
-	if(M->maintain_transpose) RG_Matrix_free(&M->transposed);
+	GrB_Matrix m = RG_MATRIX_M(M);
 
 	// free edges
-	if(M->multi_edge) {
+	if(RG_MATRIX_MULTI_EDGE(M)) {
 		if(free_multi_edge_op == NULL) {
 			// create unary operation
-			GrB_Type t = GrB_UINT64;
-			info = GrB_UnaryOp_new(&free_multi_edge_op, free_multiedge_array, t, t);
+			info = GrB_UnaryOp_new(&free_multi_edge_op, free_multiedge_array, 
+				GrB_UINT64, GrB_UINT64);
 			ASSERT(info == GrB_SUCCESS);
 		}
 
-		GrB_Matrix m = RG_MATRIX_M(M);
 		// frees multi-edge arrays
 		info = GrB_Matrix_apply(m, NULL, NULL, free_multi_edge_op, m, NULL);
 		ASSERT(info == GrB_SUCCESS);
@@ -71,8 +70,22 @@ void RG_Matrix_free
 	ASSERT(info == GrB_SUCCESS);
 
 	pthread_mutex_destroy(&M->mutex);
-	rm_free(M);
 
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(M)) {
+		info = GrB_Matrix_free(&M->transposed->matrix);
+		ASSERT(info == GrB_SUCCESS);
+
+		info = GrB_Matrix_free(&M->transposed->delta_plus);
+		ASSERT(info == GrB_SUCCESS);
+
+		info = GrB_Matrix_free(&M->transposed->delta_minus);
+		ASSERT(info == GrB_SUCCESS);
+
+		rm_free(M->transposed);
+	}
+
+	rm_free(M);
+	
 	*C = NULL;
 }
 

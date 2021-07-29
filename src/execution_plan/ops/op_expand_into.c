@@ -45,8 +45,8 @@ static void _traverse(OpExpandInto *op) {
 	if(op->F == NULL) {
 		// Create both filter and result matrices.
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim, false, false);
-		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim, false, false);
+		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
+		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);

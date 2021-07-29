@@ -16,7 +16,7 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
     GrB_Index j                         // column index
 ) {
 	ASSERT(C != NULL);
-	ASSERT(!C->multi_edge); // boolean matrices can't support multi-edge
+	ASSERT(!RG_MATRIX_MULTI_EDGE(C));
 	RG_Matrix_checkBounds(C, i, j);
 
 	bool v;
@@ -30,7 +30,7 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 	bool  marked_for_deletion  =  false;  // dm[i,j] exists
 	bool  marked_for_addition  =  false;  // dp[i,j] exists
 
-	if(C->maintain_transpose) {
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
 		info = RG_Matrix_setElement_BOOL(C->transposed, x, j, i);
 		ASSERT(info == GrB_SUCCESS);
 	}

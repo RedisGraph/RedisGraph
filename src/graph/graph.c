@@ -13,54 +13,10 @@
 #include "../util/datablock/oo_datablock.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
-static GrB_BinaryOp _graph_edge_accum = NULL;
-// GraphBLAS binary operator for freeing edges
-static GrB_BinaryOp _binary_op_delete_edges = NULL;
-
 //------------------------------------------------------------------------------
 // Forward declarations
 //------------------------------------------------------------------------------
 void _MatrixResizeToCapacity(const Graph *g, RG_Matrix m);
-
-//------------------------------------------------------------------------------
-// GraphBLAS functions
-//------------------------------------------------------------------------------
-void _edge_accum(void *_z, const void *_x, const void *_y) {
-	EdgeID *z = (EdgeID *)_z;
-	const EdgeID *x = (const EdgeID *)_x;
-	const EdgeID *y = (const EdgeID *)_y;
-
-	EdgeID *ids;
-	/* Single edge ID,
-	 * switching from single edge ID to multiple IDs. */
-	if(SINGLE_EDGE(*x)) {
-		ids = array_new(EdgeID, 2);
-		array_append(ids, *x);
-		array_append(ids, *y);
-		*z = (EdgeID)SET_MSB(ids);
-	} else {
-		// Multiple edges, adding another edge.
-		ids = (EdgeID *)(CLEAR_MSB(*x));
-		array_append(ids, *y);
-		*z = (EdgeID)SET_MSB(ids);
-	}
-}
-
-void _binary_op_free_edge(void *z, const void *x, const void *y) {
-	const Graph *g = (const Graph *) * ((uint64_t *)x);
-	const EdgeID *id = (const EdgeID *)y;
-
-	if((SINGLE_EDGE(*id))) {
-		DataBlock_DeleteItem(g->edges, *id);
-	} else {
-		EdgeID *ids = (EdgeID *)(CLEAR_MSB(*id));
-		uint id_count = array_len(ids);
-		for(uint i = 0; i < id_count; i++) {
-			DataBlock_DeleteItem(g->edges, ids[i]);
-		}
-		array_free(ids);
-	}
-}
 
 //------------------------------------------------------------------------------
 // Synchronization functions
@@ -326,8 +282,9 @@ Graph *Graph_New
 	UNUSED(info);
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n, false, true);
-	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n, false, false);
+	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n);
+	RG_Matrix_new(&g->adjacency_matrix->transposed, GrB_BOOL, n, n);
+	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n);
 
 	// init graph statistics
 	GraphStatistics_init(&g->stats);
@@ -341,19 +298,6 @@ Graph *Graph_New
 
 	// force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
-
-	// create edge accumulator binary function
-	if(!_graph_edge_accum) {
-		info = GrB_BinaryOp_new(&_graph_edge_accum, _edge_accum, GrB_UINT64, GrB_UINT64, GrB_UINT64);
-		ASSERT(info == GrB_SUCCESS);
-	}
-
-	if(!_binary_op_delete_edges) {
-		// The binary operator has not yet been constructed; build it now.
-		info = GrB_BinaryOp_new(&_binary_op_delete_edges, _binary_op_free_edge,
-								GrB_UINT64, GrB_UINT64, GrB_UINT64);
-		ASSERT(info == GrB_SUCCESS);
-	}
 
 	return g;
 }
@@ -769,7 +713,7 @@ int Graph_DeleteEdge
 		// remove edge from THE adjacency matrix
 		if(!connected) {
 			M = Graph_GetAdjacencyMatrix(g, false);
-			info = RG_Matrix_removeElement(M, src_id, dest_id);
+			info = RG_Matrix_removeElement_BOOL(M, src_id, dest_id);
 			ASSERT(info == GrB_SUCCESS);
 		}
 	}
@@ -797,7 +741,7 @@ void Graph_DeleteNode
 	uint32_t label_count = array_len(g->labels);
 	for(int i = 0; i < label_count; i++) {
 		RG_Matrix M = Graph_GetLabelMatrix(g, i);
-		RG_Matrix_removeElement(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
+		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
 	}
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
@@ -881,8 +825,8 @@ static void _BulkDeleteNodes
 		EdgeID     edge_id  =  ENTITY_GET_ID(e);
 		RG_Matrix  R        =  Graph_GetRelationMatrix(g, e->relationID, false);
 
-		RG_Matrix_removeElement(adj, src, dest);
-		RG_Matrix_removeElement(R, src, dest);
+		RG_Matrix_removeElement_BOOL(adj, src, dest);
+		RG_Matrix_removeElement_UINT64(R, src, dest);
 		DataBlock_DeleteItem(g->edges, edge_id);
 		edge_deletion_count[e->relationID]++;
 	}
@@ -910,7 +854,7 @@ static void _BulkDeleteNodes
 
 		if(label_id != GRAPH_NO_LABEL) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
-			RG_Matrix_removeElement(L, entity_id, entity_id);
+			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
 		}
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
@@ -961,7 +905,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// no additional connection between src to dest
 		// remove entry from adj matrix
 		if(j == relationCount) {
-			RG_Matrix_removeElement(adj, src_id, dest_id);
+			RG_Matrix_removeElement_BOOL(adj, src_id, dest_id);
 		}
 	}
 }
@@ -1039,7 +983,7 @@ int Graph_AddLabel
 	RG_Matrix m;
 	GrB_Info info;
 	size_t n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&m, GrB_BOOL, n, n, false, false);
+	RG_Matrix_new(&m, GrB_BOOL, n, n);
 
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
@@ -1054,10 +998,7 @@ int Graph_AddRelationType
 	RG_Matrix m;
 	size_t n = Graph_RequiredMatrixDim(g);
 
-	bool maintain_transpose;
-	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-
-	RG_Matrix_new(&m, GrB_UINT64, n, n, true, maintain_transpose);
+	RG_Matrix_new(&m, GrB_UINT64, n, n);
 
 	array_append(g->relations, m);
 

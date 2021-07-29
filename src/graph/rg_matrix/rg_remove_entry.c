@@ -46,7 +46,8 @@ static bool _removeEntryFromMultiValArr
 
 static GrB_Info _removeElementMultiVal
 (
-    GrB_Matrix A,                    // matrix to remove entry from
+    GrB_Matrix A,                   // matrix to remove entry from
+	GrB_Matrix TA,                  // transposed matrix to remove entry from
     GrB_Index i,                    // row index
     GrB_Index j,                    // column index
 	uint64_t  v                     // value to remove
@@ -67,6 +68,7 @@ static GrB_Info _removeElementMultiVal
 		// update entry
 		x = (uint64_t)entries;
 		info = GrB_Matrix_setElement(A, x, i, j);
+		info = GrB_Matrix_setElement(TA, x, j, i);
 	}
 
 	return info;
@@ -80,28 +82,29 @@ GrB_Info RG_Matrix_removeEntry
 	uint64_t  v                     // value to remove
 ) {
 	ASSERT(C);
+	ASSERT(RG_MATRIX_MAINTAIN_TRANSPOSE(C));
 	RG_Matrix_checkBounds(C, i, j);
 
 	uint64_t    m_x;
 	uint64_t    dm_x;
 	uint64_t    dp_x;
 	GrB_Info    info;
+	GrB_Type    type;
 	bool        in_m        =  false;
 	bool        in_dp       =  false;
 	bool        in_dm       =  false;
-	bool        multi_edge  =  RG_Matrix_getMultiEdge(C);
 	GrB_Matrix  m           =  RG_MATRIX_M(C);
 	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
+	GrB_Matrix  tm          =  RG_MATRIX_TM(C);
+	GrB_Matrix  tdp         =  RG_MATRIX_TDELTA_PLUS(C);
+	GrB_Matrix  tdm         =  RG_MATRIX_TDELTA_MINUS(C);
 
-	if(C->maintain_transpose) {
-		info = RG_Matrix_removeEntry(C->transposed, j, i, v);
-		if(info != GrB_SUCCESS) {
-			return info;
-		} 
-	}
-
-	ASSERT(multi_edge);
+#ifdef RG_DEBUG
+	info = GxB_Matrix_type(&type, m);
+	ASSERT(info == GrB_SUCCESS);
+	ASSERT(type == GrB_UINT64);
+#endif
 
 	// entry should exists in either delta-plus or main
 	// locate entry
@@ -134,9 +137,11 @@ GrB_Info RG_Matrix_removeEntry
 			// mark deletion in delta minus
 			info = GrB_Matrix_setElement(dm, true, i, j);
 			ASSERT(info == GrB_SUCCESS);
+			info = GrB_Matrix_setElement(tdm, true, j, i);
+			ASSERT(info == GrB_SUCCESS);
 			RG_Matrix_setDirty(C);
 		} else {
-			info = _removeElementMultiVal(m, i, j, v);
+			info = _removeElementMultiVal(m, tm, i, j, v);
 			ASSERT(info == GrB_SUCCESS);
 		}
 	}
@@ -149,9 +154,11 @@ GrB_Info RG_Matrix_removeEntry
 		if(SINGLE_EDGE(dp_x)) {
 			info = GrB_Matrix_removeElement(dp, i, j);
 			ASSERT(info == GrB_SUCCESS);
+			info = GrB_Matrix_removeElement(tdp, j, i);
+			ASSERT(info == GrB_SUCCESS);
 			RG_Matrix_setDirty(C);
 		} else {
-			info = _removeElementMultiVal(dp, i, j, v);
+			info = _removeElementMultiVal(dp, tdp, i, j, v);
 			ASSERT(info == GrB_SUCCESS);
 		}
 	}
@@ -162,4 +169,3 @@ GrB_Info RG_Matrix_removeEntry
 
 	return info;
 }
-
