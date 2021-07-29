@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 #include "../../src/util/rmalloc.h"
+#include "../../src/configuration/config.h"
 #include "../../src/graph/rg_matrix/rg_matrix.h"
 
 #ifdef __cplusplus
@@ -122,7 +123,10 @@ class RGMatrixTest: public ::testing::Test {
 		GrB_init(GrB_NONBLOCKING);
 
 		// all matrices in CSR format
-		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); 
+		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);
+
+		// set delta matrix flush threshold
+		Config_Option_set(Config_DELTA_MAX_PENDING_CHANGES, "10000");
 	}
 
 	static void TearDownTestCase() {

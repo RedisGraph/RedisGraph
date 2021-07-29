@@ -46,6 +46,9 @@
 // Max mem(bytes) that query/thread can utilize at any given time
 #define QUERY_MEM_CAPACITY "QUERY_MEM_CAPACITY"
 
+// number of pending changed befor RG_Matrix flushed
+#define DELTA_MAX_PENDING_CHANGES "DELTA_MAX_PENDING_CHANGES"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
@@ -66,6 +69,7 @@ typedef struct {
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
+	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
 	Config_on_change cb;               // callback function which being called when config param changed
 } RG_Config;
 
@@ -242,6 +246,23 @@ uint64_t Config_query_mem_capacity_get(void)
 	return config.query_mem_capacity;
 }
 
+//------------------------------------------------------------------------------
+// query mem capacity
+//------------------------------------------------------------------------------
+
+void Config_delta_max_pending_changes_set(int64_t capacity)
+{
+	if (capacity == 0)
+		config.delta_max_pending_changes = DELTA_MAX_PENDING_CHANGES_DEFAULT;
+	else
+		config.delta_max_pending_changes = capacity;
+}
+
+uint64_t Config_delta_max_pending_changes_get(void)
+{
+	return config.delta_max_pending_changes;
+}
+
 bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 {
 	ASSERT(field_str != NULL);
@@ -266,6 +287,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 		f = Config_MAX_QUEUED_QUERIES;
 	} else if (!(strcasecmp(field_str, QUERY_MEM_CAPACITY))) {
 		f = Config_QUERY_MEM_CAPACITY;
+	} else if (!(strcasecmp(field_str, DELTA_MAX_PENDING_CHANGES))) {
+		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else {
 		return false;
 	}
@@ -318,6 +341,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 			name = QUERY_MEM_CAPACITY;
 			break;
 
+		case Config_DELTA_MAX_PENDING_CHANGES:
+			name = DELTA_MAX_PENDING_CHANGES;
+			break;
+
         //----------------------------------------------------------------------
         // invalid option
         //----------------------------------------------------------------------
@@ -367,6 +394,9 @@ void _Config_SetToDefaults(void) {
 
 	// no limit on query memory capacity
 	config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
+
+	// number of pending changed befor RG_Matrix flushed
+	config.delta_max_pending_changes = DELTA_MAX_PENDING_CHANGES_DEFAULT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -570,6 +600,21 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 			}
 			break;
 
+		//----------------------------------------------------------------------
+		// number of pending changed befor RG_Matrix flushed
+		//----------------------------------------------------------------------
+
+		case Config_DELTA_MAX_PENDING_CHANGES:
+			{
+				va_start(ap, field);
+				int64_t *delta_max_pending_changes = va_arg(ap, int64_t *);
+				va_end(ap);
+
+				ASSERT(delta_max_pending_changes != NULL);
+				(*delta_max_pending_changes) = Config_delta_max_pending_changes_get();
+			}
+			break;
+
         //----------------------------------------------------------------------
         // invalid option
         //----------------------------------------------------------------------
@@ -715,6 +760,19 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
 
 				Config_query_mem_capacity_set(query_mem_capacity);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// number of pending changed befor RG_Matrix flushed
+		//----------------------------------------------------------------------
+
+		case Config_DELTA_MAX_PENDING_CHANGES:
+			{
+				long long delta_max_pending_changes;
+				if (!_Config_ParsePositiveInteger(val, &delta_max_pending_changes)) return false;
+
+				Config_delta_max_pending_changes_set(delta_max_pending_changes);
 			}
 			break;
 
