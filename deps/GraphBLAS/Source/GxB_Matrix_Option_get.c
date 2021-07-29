@@ -60,10 +60,10 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
 
             {
                 va_start (ap, field) ;
-                int *sparsity = va_arg (ap, int *) ;
+                int *sparsity_control = va_arg (ap, int *) ;
                 va_end (ap) ;
-                GB_RETURN_IF_NULL (sparsity) ;
-                (*sparsity) = A->sparsity ;
+                GB_RETURN_IF_NULL (sparsity_control) ;
+                (*sparsity_control) = A->sparsity_control ;
             }
             break ;
 
@@ -89,7 +89,7 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
             }
             break ;
 
-        case GxB_IS_HYPER : // deprecated; use GxB_SPARSITY_STATUS instead
+        case GxB_IS_HYPER : // historical; use GxB_SPARSITY_STATUS instead
 
             {
                 va_start (ap, field) ;

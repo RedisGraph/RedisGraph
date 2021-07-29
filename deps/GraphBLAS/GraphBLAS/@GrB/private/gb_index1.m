@@ -6,7 +6,7 @@ function I = gb_index1 (G)
 % handled by the mexFunctions.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 type = gbtype (G) ;
 I = gbextractvalues (G) ;

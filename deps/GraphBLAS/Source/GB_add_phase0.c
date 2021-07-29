@@ -58,11 +58,9 @@
 
 #include "GB_add.h"
 
-#define GB_FREE_WORK        \
-{                           \
-    GB_FREE (kA_start) ;    \
-    GB_FREE (kB_start) ;    \
-    GB_FREE (kC_start) ;    \
+#define GB_FREE_WORK                \
+{                                   \
+    GB_WERK_POP (Work, int64_t) ;   \
 }
 
 //------------------------------------------------------------------------------
@@ -72,31 +70,31 @@
 static inline bool GB_allocate_result
 (
     int64_t Cnvec,
-    int64_t *GB_RESTRICT *Ch_handle,
-    int64_t *GB_RESTRICT *C_to_M_handle,
-    int64_t *GB_RESTRICT *C_to_A_handle,
-    int64_t *GB_RESTRICT *C_to_B_handle
+    int64_t *restrict *Ch_handle,        size_t *Ch_size_handle,
+    int64_t *restrict *C_to_M_handle,    size_t *C_to_M_size_handle,
+    int64_t *restrict *C_to_A_handle,    size_t *C_to_A_size_handle,
+    int64_t *restrict *C_to_B_handle,    size_t *C_to_B_size_handle
 )
 {
     bool ok = true ;
     if (Ch_handle != NULL)
     { 
-        (*Ch_handle) = GB_MALLOC (Cnvec, int64_t) ;
+        (*Ch_handle) = GB_MALLOC (Cnvec, int64_t, Ch_size_handle) ;
         ok = (*Ch_handle != NULL) ;
     }
     if (C_to_M_handle != NULL)
     { 
-        (*C_to_M_handle) = GB_MALLOC (Cnvec, int64_t) ;
+        (*C_to_M_handle) = GB_MALLOC_WERK (Cnvec, int64_t, C_to_M_size_handle) ;
         ok = ok && (*C_to_M_handle != NULL) ;
     }
     if (C_to_A_handle != NULL)
     { 
-        *C_to_A_handle = GB_MALLOC (Cnvec, int64_t) ;
+        *C_to_A_handle = GB_MALLOC_WERK (Cnvec, int64_t, C_to_A_size_handle) ;
         ok = ok && (*C_to_A_handle != NULL) ;
     }
     if (C_to_B_handle != NULL)
     { 
-        *C_to_B_handle = GB_MALLOC (Cnvec, int64_t) ;
+        *C_to_B_handle = GB_MALLOC_WERK (Cnvec, int64_t, C_to_B_size_handle) ;
         ok = ok && (*C_to_B_handle != NULL) ;
     }
 
@@ -105,19 +103,19 @@ static inline bool GB_allocate_result
         // out of memory
         if (Ch_handle != NULL)
         { 
-            GB_FREE (*Ch_handle) ;
+            GB_FREE (Ch_handle, *Ch_size_handle) ;
         }
         if (C_to_M_handle != NULL)
         { 
-            GB_FREE (*C_to_M_handle) ;
+            GB_FREE_WERK (C_to_M_handle, *C_to_M_size_handle) ;
         }
         if (C_to_A_handle != NULL)
         { 
-            GB_FREE (*C_to_A_handle) ;
+            GB_FREE_WERK (C_to_A_handle, *C_to_A_size_handle) ;
         }
         if (C_to_B_handle != NULL)
         { 
-            GB_FREE (*C_to_B_handle) ;
+            GB_FREE_WERK (C_to_B_handle, *C_to_B_size_handle) ;
         }
     }
     return (ok) ;
@@ -130,10 +128,14 @@ static inline bool GB_allocate_result
 GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
 (
     int64_t *p_Cnvec,           // # of vectors to compute in C
-    int64_t *GB_RESTRICT *Ch_handle,        // Ch: size Cnvec, or NULL
-    int64_t *GB_RESTRICT *C_to_M_handle,    // C_to_M: size Cnvec, or NULL
-    int64_t *GB_RESTRICT *C_to_A_handle,    // C_to_A: size Cnvec, or NULL
-    int64_t *GB_RESTRICT *C_to_B_handle,    // C_to_B: of size Cnvec, or NULL
+    int64_t *restrict *Ch_handle,        // Ch: size Cnvec, or NULL
+    size_t *Ch_size_handle,                 // size of Ch in bytes
+    int64_t *restrict *C_to_M_handle,    // C_to_M: size Cnvec, or NULL
+    size_t *C_to_M_size_handle,             // size of C_to_M in bytes
+    int64_t *restrict *C_to_A_handle,    // C_to_A: size Cnvec, or NULL
+    size_t *C_to_A_size_handle,             // size of C_to_A in bytes
+    int64_t *restrict *C_to_B_handle,    // C_to_B: of size Cnvec, or NULL
+    size_t *C_to_B_size_handle,             // size of C_to_A in bytes
     bool *p_Ch_is_Mh,           // if true, then Ch == Mh
     int *C_sparsity,            // sparsity structure of C
     const GrB_Matrix M,         // optional mask, may be NULL; not complemented
@@ -198,14 +200,12 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         return (GrB_SUCCESS) ;
     }
 
-    int64_t *GB_RESTRICT Ch = NULL ;
-    int64_t *GB_RESTRICT C_to_M = NULL ;
-    int64_t *GB_RESTRICT C_to_A = NULL ;
-    int64_t *GB_RESTRICT C_to_B = NULL ;
+    int64_t *restrict Ch     = NULL ; size_t Ch_size = 0 ;
+    int64_t *restrict C_to_M = NULL ; size_t C_to_M_size = 0 ;
+    int64_t *restrict C_to_A = NULL ; size_t C_to_A_size = 0 ;
+    int64_t *restrict C_to_B = NULL ; size_t C_to_B_size = 0 ;
 
-    int64_t *GB_RESTRICT kA_start = NULL ;
-    int64_t *GB_RESTRICT kB_start = NULL ;
-    int64_t *GB_RESTRICT kC_start = NULL ;
+    GB_WERK_DECLARE (Work, int64_t) ;
     int ntasks = 0 ;
 
     //--------------------------------------------------------------------------
@@ -224,19 +224,19 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
     int64_t n = A->vdim ;
     int64_t Anvec = A->nvec ;
     int64_t vlen = A->vlen ;
-    const int64_t *GB_RESTRICT Ap = A->p ;
-    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *restrict Ap = A->p ;
+    const int64_t *restrict Ah = A->h ;
     bool A_is_hyper = (Ah != NULL) ;
     #define GB_Ah(k) (A_is_hyper ? Ah [k] : (k))
 
     int64_t Bnvec = B->nvec ;
-    const int64_t *GB_RESTRICT Bp = B->p ;
-    const int64_t *GB_RESTRICT Bh = B->h ;
+    const int64_t *restrict Bp = B->p ;
+    const int64_t *restrict Bh = B->h ;
     bool B_is_hyper = (Bh != NULL) ;
 
     int64_t Mnvec = 0 ;
-    const int64_t *GB_RESTRICT Mp = NULL ;
-    const int64_t *GB_RESTRICT Mh = NULL ;
+    const int64_t *restrict Mp = NULL ;
+    const int64_t *restrict Mh = NULL ;
     bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;
     if (M != NULL)
     { 
@@ -266,8 +266,11 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         Cnvec = Mnvec ;
         nthreads = GB_nthreads (Cnvec, chunk, nthreads_max) ;
 
-        if (!GB_allocate_result (Cnvec, &Ch, NULL,
-            (A_is_hyper) ? (&C_to_A) : NULL, (B_is_hyper) ? (&C_to_B) : NULL))
+        if (!GB_allocate_result (Cnvec,
+            &Ch,    &Ch_size,
+            NULL,   NULL,
+            (A_is_hyper) ? (&C_to_A) : NULL, &C_to_A_size,
+            (B_is_hyper) ? (&C_to_B) : NULL, &C_to_B_size))
         { 
             // out of memory
             GB_FREE_WORK ;
@@ -328,15 +331,16 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         ntasks = GB_IMIN (ntasks, work) ;
 
         // allocate workspace
-        kA_start = GB_MALLOC (ntasks+1, int64_t) ;
-        kB_start = GB_MALLOC (ntasks+1, int64_t) ;
-        kC_start = GB_MALLOC (ntasks+1, int64_t) ;
-        if (kA_start == NULL || kB_start == NULL || kC_start == NULL)
+        GB_WERK_PUSH (Work, 3*(ntasks+1), int64_t) ;
+        if (Work == NULL)
         { 
             // out of memory
             GB_FREE_WORK ;
             return (GrB_OUT_OF_MEMORY) ;
         }
+        int64_t *restrict kA_start = Work ;
+        int64_t *restrict kB_start = Work + (ntasks+1) ;
+        int64_t *restrict kC_start = Work + (ntasks+1)*2 ;
 
         kA_start [0] = (Anvec == 0) ? -1 : 0 ;
         kB_start [0] = (Bnvec == 0) ? -1 : 0 ;
@@ -398,7 +402,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         // cumulative sum of entries in Ch for each task
         //----------------------------------------------------------------------
 
-        GB_cumsum (kC_start, ntasks, NULL, 1) ;
+        GB_cumsum (kC_start, ntasks, NULL, 1, NULL) ;
         Cnvec = kC_start [ntasks] ;
 
         //----------------------------------------------------------------------
@@ -408,8 +412,11 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         // C will be hypersparse, so Ch is allocated.  The mask M is ignored
         // for computing Ch.  Ch is the set union of Ah and Bh.
 
-        if (!GB_allocate_result (Cnvec, &Ch,
-            (M_is_hyper) ? (&C_to_M) : NULL, &C_to_A, &C_to_B))
+        if (!GB_allocate_result (Cnvec,
+            &Ch,    &Ch_size,
+            (M_is_hyper) ? (&C_to_M) : NULL, &C_to_M_size,
+            &C_to_A, &C_to_A_size,
+            &C_to_B, &C_to_B_size))
         { 
             // out of memory
             GB_FREE_WORK ;
@@ -559,8 +566,11 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         Cnvec = n ;
         nthreads = GB_nthreads (Cnvec, chunk, nthreads_max) ;
 
-        if (!GB_allocate_result (Cnvec, NULL,
-            (M_is_hyper) ? (&C_to_M) : NULL, &C_to_A, NULL))
+        if (!GB_allocate_result (Cnvec,
+            NULL, NULL,
+            (M_is_hyper) ? (&C_to_M) : NULL, &C_to_M_size,
+            &C_to_A, &C_to_A_size,
+            NULL, NULL))
         { 
             // out of memory
             GB_FREE_WORK ;
@@ -596,8 +606,11 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         Cnvec = n ;
         nthreads = GB_nthreads (Cnvec, chunk, nthreads_max) ;
 
-        if (!GB_allocate_result (Cnvec, NULL,
-            (M_is_hyper) ? (&C_to_M) : NULL, NULL, &C_to_B))
+        if (!GB_allocate_result (Cnvec,
+            NULL, NULL,
+            (M_is_hyper) ? (&C_to_M) : NULL, &C_to_M_size,
+            NULL, NULL,
+            &C_to_B, &C_to_B_size))
         { 
             // out of memory
             GB_FREE_WORK ;
@@ -632,8 +645,11 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         Cnvec = n ;
         nthreads = GB_nthreads (Cnvec, chunk, nthreads_max) ;
 
-        if (!GB_allocate_result (Cnvec, NULL,
-            (M_is_hyper) ? (&C_to_M) : NULL, NULL, NULL))
+        if (!GB_allocate_result (Cnvec,
+            NULL, NULL,
+            (M_is_hyper) ? (&C_to_M) : NULL, &C_to_M_size,
+            NULL, NULL,
+            NULL, NULL))
         { 
             // out of memory
             GB_FREE_WORK ;
@@ -687,13 +703,13 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
     //--------------------------------------------------------------------------
 
     (*p_Cnvec) = Cnvec ;
-    (*Ch_handle) = Ch ;
+    (*Ch_handle) = Ch ;             (*Ch_size_handle) = Ch_size ;
     if (C_to_M_handle != NULL)
     { 
-        (*C_to_M_handle) = C_to_M ;
+        (*C_to_M_handle) = C_to_M ; (*C_to_M_size_handle) = C_to_M_size ;
     }
-    (*C_to_A_handle) = C_to_A ;
-    (*C_to_B_handle) = C_to_B ;
+    (*C_to_A_handle) = C_to_A ;     (*C_to_A_size_handle) = C_to_A_size ;
+    (*C_to_B_handle) = C_to_B ;     (*C_to_B_size_handle) = C_to_B_size ;
     if (p_Ch_is_Mh != NULL)
     { 
         // return Ch_is_Mh to GB_add.  For GB_masker, Ch is never Mh.

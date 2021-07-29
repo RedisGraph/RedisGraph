@@ -8,7 +8,7 @@ fprintf ('test144 ---------------------- test GB_cumsum\n') ;
 
 rng ('default') ;
 
-n = 1e5 ;
+n = 1e6 ;
 
 c = int64 (50 * rand (1,n)) ;
 

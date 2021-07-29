@@ -1,5 +1,5 @@
 function [Z simple] = GB_spec_accum (accum, C, T, identity)
-%GB_SPEC_ACCUM MATLAB mimic of the Z=accum(C,T) operation in GraphBLAS
+%GB_SPEC_ACCUM mimic of the Z=accum(C,T) operation in GraphBLAS
 %
 % Z = GB_spec_accum (accum, C, T, identity)
 %

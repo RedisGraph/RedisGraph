@@ -2,7 +2,7 @@ function gbtest96
 %GBTEST96 test GrB.optype
 
 fprintf ('Table of types of binary operators when inputs types are\n') ;
-fprintf ('are mixed (the type of c for c=a+b, for example).\n') ;
+fprintf ('are mixed (the type of C for C=A+B, for example).\n') ;
 fprintf ('\nLegend:\n') ;
 
 types = gbtest_types ;

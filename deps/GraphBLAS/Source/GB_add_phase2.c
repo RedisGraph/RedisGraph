@@ -24,9 +24,8 @@
 // and C->h.  Either way, the caller must not free them.
 
 // op may be NULL.  In this case, the intersection of A and B must be empty.
-// This is used by GB_Matrix_wait only, for merging the pending tuple matrix T
-// into A.  In this case, C is always sparse or hypersparse, not bitmap or
-// full.
+// This is used by GB_wait only, for merging the pending tuple matrix T into A.
+// In this case, C is always sparse or hypersparse, not bitmap or full.
 
 #include "GB_add.h"
 #include "GB_binop.h"
@@ -37,39 +36,41 @@
 #endif
 
 #undef  GB_FREE_WORK
-#define GB_FREE_WORK                                                    \
-{                                                                       \
-    GB_ek_slice_free (&pstart_Mslice, &kfirst_Mslice, &klast_Mslice) ;  \
-    GB_ek_slice_free (&pstart_Aslice, &kfirst_Aslice, &klast_Aslice) ;  \
-    GB_ek_slice_free (&pstart_Bslice, &kfirst_Bslice, &klast_Bslice) ;  \
+#define GB_FREE_WORK                        \
+{                                           \
+    GB_WERK_POP (B_ek_slicing, int64_t) ;   \
+    GB_WERK_POP (A_ek_slicing, int64_t) ;   \
+    GB_WERK_POP (M_ek_slicing, int64_t) ;   \
 }
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL         \
-{                           \
-    GB_FREE_WORK ;          \
-    GB_Matrix_free (&C) ;   \
+#define GB_FREE_ALL                 \
+{                                   \
+    GB_FREE_WORK ;                  \
+    GB_phbix_free (C) ;             \
 }
 
 GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
 (
-    GrB_Matrix *Chandle,    // output matrix (unallocated on input)
+    GrB_Matrix C,           // output matrix, static header
     const GrB_Type ctype,   // type of output matrix C
     const bool C_is_csc,    // format of output matrix C
     const GrB_BinaryOp op,  // op to perform C = op (A,B), or NULL if no op
     // from phase1:
-    const int64_t *GB_RESTRICT Cp,  // vector pointers for C
+    int64_t **Cp_handle,    // vector pointers for C
+    size_t Cp_size,
     const int64_t Cnvec_nonempty,   // # of non-empty vectors in C
     // tasks from phase1a:
-    const GB_task_struct *GB_RESTRICT TaskList,    // array of structs
+    const GB_task_struct *restrict TaskList,    // array of structs
     const int C_ntasks,         // # of tasks
     const int C_nthreads,       // # of threads to use
     // analysis from phase0:
     const int64_t Cnvec,
-    const int64_t *GB_RESTRICT Ch,
-    const int64_t *GB_RESTRICT C_to_M,
-    const int64_t *GB_RESTRICT C_to_A,
-    const int64_t *GB_RESTRICT C_to_B,
+    int64_t **Ch_handle,
+    size_t Ch_size,
+    const int64_t *restrict C_to_M,
+    const int64_t *restrict C_to_A,
+    const int64_t *restrict C_to_B,
     const bool Ch_is_Mh,        // if true, then Ch == M->h
     const int C_sparsity,
     // original input:
@@ -86,6 +87,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     // check inputs
     //--------------------------------------------------------------------------
 
+    ASSERT (C != NULL && C->static_header) ;
     ASSERT_BINARYOP_OK_OR_NULL (op, "op for add phase2", GB0) ;
     ASSERT_MATRIX_OK (A, "A for add phase2", GB0) ;
     ASSERT_MATRIX_OK (B, "B for add phase2", GB0) ;
@@ -96,9 +98,14 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     ASSERT (!GB_JUMBLED (A)) ;
     ASSERT (!GB_JUMBLED (B)) ;
 
-    int64_t *pstart_Mslice = NULL, *kfirst_Mslice = NULL, *klast_Mslice = NULL ;
-    int64_t *pstart_Aslice = NULL, *kfirst_Aslice = NULL, *klast_Aslice = NULL ;
-    int64_t *pstart_Bslice = NULL, *kfirst_Bslice = NULL, *klast_Bslice = NULL ;
+    GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
+    GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
+    GB_WERK_DECLARE (B_ek_slicing, int64_t) ;
+
+    ASSERT (Cp_handle != NULL) ;
+    ASSERT (Ch_handle != NULL) ;
+    int64_t *restrict Cp = (*Cp_handle) ;
+    int64_t *restrict Ch = (*Ch_handle) ;
 
     //--------------------------------------------------------------------------
     // get the opcode
@@ -117,7 +124,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
 
     if (op == NULL)
     { 
-        // GB_Matrix_wait does no typecasting.  A and T have the same type when
+        // GB_wait does no typecasting.  A and T have the same type when
         // computing A=A+T, and no operator is used since A and T have disjoint
         // nonzero patterns.  No mask is used.
         ASSERT (ctype == A->type) ;
@@ -137,6 +144,14 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     }
 
     //--------------------------------------------------------------------------
+    // check if C is iso and compute its iso value if it is
+    //--------------------------------------------------------------------------
+
+    const size_t csize = ctype->size ;
+    GB_void cscalar [GB_VLA(csize)] ;
+    bool C_iso = GB_iso_add (cscalar, ctype, A, B, op) ;
+
+    //--------------------------------------------------------------------------
     // allocate the output matrix C: hypersparse, sparse, bitmap, or full
     //--------------------------------------------------------------------------
 
@@ -144,97 +159,119 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     // or if M is present, not complemented, and hypersparse.
     // C acquires the same hyperatio as A.
 
-    int64_t cnz = (C_is_sparse_or_hyper) ? Cp [Cnvec] : (A->vlen*A->vdim) ;
-    (*Chandle) = NULL ;
+    int64_t cnz = (C_is_sparse_or_hyper) ? (Cp [Cnvec]) : GB_nnz_full (A) ;
 
     // allocate the result C (but do not allocate C->p or C->h)
-    GrB_Matrix C = NULL ;
-    GrB_Info info = GB_new_bix (&C, // any sparsity, new header
+    // set C->iso = C_iso   OK
+    GrB_Info info = GB_new_bix (&C, true, // any sparsity, static header
         ctype, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
-        C_sparsity, true, A->hyper_switch, Cnvec, cnz, true, Context) ;
+        C_sparsity, true, A->hyper_switch, Cnvec, cnz, true, C_iso, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory; caller must free C_to_M, C_to_A, C_to_B
-        GB_FREE (Cp) ;
-        GB_FREE (Ch) ;
+        GB_FREE_ALL ;
+        GB_FREE (Cp_handle, Cp_size) ;
+        GB_FREE (Ch_handle, Ch_size) ;
         return (info) ;
     }
 
     // add Cp as the vector pointers for C, from GB_add_phase1
     if (C_is_sparse_or_hyper)
-    {
+    { 
         C->nvec_nonempty = Cnvec_nonempty ;
-        C->p = (int64_t *) Cp ;
+        C->p = (int64_t *) Cp ; C->p_size = Cp_size ;
+        (*Cp_handle) = NULL ;
     }
 
     // add Ch as the hypersparse list for C, from GB_add_phase0
     if (C_is_hyper)
     { 
-        C->h = (int64_t *) Ch ;
+        C->h = (int64_t *) Ch ; C->h_size = Ch_size ;
         C->nvec = Cnvec ;
+        (*Ch_handle) = NULL ;
     }
 
-    // now Cp and Ch have been transplanted into C, so they must not be freed.
+    // now Cp and Ch have been transplanted into C
+    ASSERT ((*Cp_handle) == NULL) ;
+    ASSERT ((*Ch_handle) == NULL) ;
     C->magic = GB_MAGIC ;
     GB_Type_code ccode = ctype->code ;
-
-    //--------------------------------------------------------------------------
-    // check if the values of A and/or B are ignored
-    //--------------------------------------------------------------------------
-
-    // With C = ewiseadd (A,B), the union of A and B is used.
-    // Entries in A but not B, and in B but not A, are copied to C without using
-    // the operator, so entries in A and B are never ignored.
-    // Contrast with ewisemult.
-
-    // A is passed as x, and B as y, in z = op(x,y)
-    bool A_is_pattern = false ;
-    bool B_is_pattern = false ;
 
     //--------------------------------------------------------------------------
     // using a built-in binary operator (except for positional operators)
     //--------------------------------------------------------------------------
 
+    #define GB_PHASE_2_OF_2
+
     bool done = false ;
 
-    #ifndef GBCOMPACT
+    if (C_iso)
+    { 
 
         //----------------------------------------------------------------------
-        // define the worker for the switch factory
+        // C is iso
         //----------------------------------------------------------------------
 
-        #define GB_AaddB(mult,xname) GB_AaddB_ ## mult ## xname
+        // Cx [0] = cscalar = op (A,B)
+        GB_BURBLE_MATRIX (C, "(iso add) ") ;
+        memcpy (C->x, cscalar, csize) ;
 
-        #define GB_BINOP_WORKER(mult,xname)                                 \
-        {                                                                   \
-            info = GB_AaddB(mult,xname) (C, C_sparsity,                     \
-                M, Mask_struct, Mask_comp,                                  \
-                A, B, Ch_is_Mh, C_to_M, C_to_A, C_to_B,                     \
-                TaskList, C_ntasks, C_nthreads, Context) ;                  \
-            done = (info != GrB_NO_VALUE) ;                                 \
-        }                                                                   \
-        break ;
+        // pattern of C = set union of pattern of A and B
+        #define GB_ISO_ADD
+        #define GB_PRAGMA_SIMD_VECTORIZE GB_PRAGMA_SIMD
+        #include "GB_add_template.c"
+        done = true ;
+
+    }
+    else
+    {
 
         //----------------------------------------------------------------------
-        // launch the switch factory
+        // C is non-iso
         //----------------------------------------------------------------------
 
-        GB_Type_code xcode, ycode, zcode ;
-        if (!op_is_positional &&
-            GB_binop_builtin (A->type, A_is_pattern, B->type, B_is_pattern,
-            op, false, &opcode, &xcode, &ycode, &zcode) && ccode == zcode)
-        { 
-            #include "GB_binop_factory.c"
-        }
+        #ifndef GBCOMPACT
 
-        if (info == GrB_OUT_OF_MEMORY)
-        { 
-            // out of memory
-            GB_FREE_ALL ;
-            return (info) ;
-        }
+            //------------------------------------------------------------------
+            // define the worker for the switch factory
+            //------------------------------------------------------------------
 
-    #endif
+            #define GB_AaddB(mult,xname) GB (_AaddB_ ## mult ## xname)
+
+            #define GB_BINOP_WORKER(mult,xname)                             \
+            {                                                               \
+                info = GB_AaddB(mult,xname) (C, C_sparsity,                 \
+                    M, Mask_struct, Mask_comp,                              \
+                    A, B, Ch_is_Mh, C_to_M, C_to_A, C_to_B,                 \
+                    TaskList, C_ntasks, C_nthreads, Context) ;              \
+                done = (info != GrB_NO_VALUE) ;                             \
+            }                                                               \
+            break ;
+
+            //------------------------------------------------------------------
+            // launch the switch factory
+            //------------------------------------------------------------------
+
+            GB_Type_code xcode, ycode, zcode ;
+            if (!op_is_positional &&
+                GB_binop_builtin (A->type, false, B->type, false,
+                op, false, &opcode, &xcode, &ycode, &zcode) && ccode == zcode)
+            { 
+                #include "GB_binop_factory.c"
+            }
+
+            // TODO: M, A, and B can be sliced before calling the worker, then
+            // the worker can't run out of memory. Then pass in the ek_slice
+            // arrays to the worker.
+            if (info == GrB_OUT_OF_MEMORY)
+            { 
+                // out of memory
+                GB_FREE_ALL ;
+                return (info) ;
+            }
+
+        #endif
+    }
 
     //--------------------------------------------------------------------------
     // generic worker for positional ops, user-defined ops, and typecasting
@@ -245,8 +282,10 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
         GB_BURBLE_MATRIX (C, "(generic add: %s) ",
             (op == NULL) ? "second" : op->name) ;
 
+// TODO:: use GB_ewise_generic
+
         GxB_binary_function fadd ;
-        size_t csize, asize, bsize, xsize, ysize, zsize ;
+        size_t asize, bsize, xsize, ysize, zsize ;
         GB_cast_function cast_A_to_C, cast_B_to_C ;
         GB_cast_function cast_A_to_X, cast_B_to_Y, cast_Z_to_C ;
 
@@ -254,7 +293,6 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
         { 
             // implicit GB_SECOND_[type] operator with no typecasting
             fadd = NULL ;               // the operator is not called
-            csize = ctype->size ;
             asize = csize ;
             bsize = csize ;
             xsize = csize ;
@@ -267,10 +305,9 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
             cast_Z_to_C = GB_copy_user_user ;
         }
         else
-        { 
-            // normal case, C = A + B with optional typecasting
+        {
+            // normal case, with optional typecasting
             fadd = op->function ;       // NULL if op is positional
-            csize = ctype->size ;
             asize = A->type->size ;
             bsize = B->type->size ;
 
@@ -305,43 +342,47 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
         }
 
         // C(i,j) = (ctype) A(i,j), located in Ax [pA]
-        #define GB_COPY_A_TO_C(cij,Ax,pA)                                   \
-            cast_A_to_C (cij, Ax +((pA)*asize), asize) ;
+        #undef  GB_COPY_A_TO_C
+        #define GB_COPY_A_TO_C(cij,Ax,pA,A_iso)                             \
+            cast_A_to_C (cij, Ax +((A_iso) ? 0: (pA)*asize), asize) ;
 
         // C(i,j) = (ctype) B(i,j), located in Bx [pB]
-        #define GB_COPY_B_TO_C(cij,Bx,pB)                                   \
-            cast_B_to_C (cij, Bx +((pB)*bsize), bsize) ;
+        #undef  GB_COPY_B_TO_C
+        #define GB_COPY_B_TO_C(cij,Bx,pB,B_iso)                             \
+            cast_B_to_C (cij, Bx +((B_iso) ? 0: (pB)*bsize), bsize) ;
 
         // aij = (xtype) A(i,j), located in Ax [pA]
-        #define GB_GETA(aij,Ax,pA)                                          \
+        #undef  GB_GETA
+        #define GB_GETA(aij,Ax,pA,A_iso)                                    \
             GB_void aij [GB_VLA(xsize)] ;                                   \
             if (cast_A_to_X != NULL)                                        \
             {                                                               \
-                cast_A_to_X (aij, Ax +((pA)*asize), asize) ;                \
+                cast_A_to_X (aij, Ax +((A_iso) ? 0:(pA)*asize), asize) ;    \
             }
 
         // bij = (ytype) B(i,j), located in Bx [pB]
-        #define GB_GETB(bij,Bx,pB)                                          \
+        #undef  GB_GETB
+        #define GB_GETB(bij,Bx,pB,B_iso)                                    \
             GB_void bij [GB_VLA(ysize)] ;                                   \
             if (cast_B_to_Y != NULL)                                        \
             {                                                               \
-                cast_B_to_Y (bij, Bx +((pB)*bsize), bsize) ;                \
+                cast_B_to_Y (bij, Bx +((B_iso) ? 0:(pB)*bsize), bsize) ;    \
             }
 
         // address of Cx [p]
+        #undef  GB_CX
         #define GB_CX(p) Cx +((p)*csize)
+
+        // loops cannot be vectorized
+        #undef  GB_PRAGMA_SIMD_VECTORIZE
+        #define GB_PRAGMA_SIMD_VECTORIZE ;
 
         #define GB_ATYPE GB_void
         #define GB_BTYPE GB_void
         #define GB_CTYPE GB_void
 
-        #define GB_PHASE_2_OF_2
-
-        // loops cannot be vectorized
-        #define GB_PRAGMA_SIMD_VECTORIZE ;
-
         if (op_is_positional)
-        { 
+        {
 
             //------------------------------------------------------------------
             // C(i,j) = positional_op (aij, bij)
@@ -350,7 +391,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
             int64_t offset = GB_positional_offset (opcode) ;
 
             if (op->ztype == GrB_INT64)
-            {
+            { 
                 switch (opcode)
                 {
                     case GB_FIRSTI_opcode    : // z = first_i(A(i,j),y) == i
@@ -377,7 +418,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
                 }
             }
             else
-            {
+            { 
                 switch (opcode)
                 {
                     case GB_FIRSTI_opcode    : // z = first_i(A(i,j),y) == i
@@ -413,7 +454,7 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
             //------------------------------------------------------------------
 
             // C(i,j) = (ctype) (A(i,j) + B(i,j))
-            // not used if op is null
+            // not used if op is null since the intersection of A and B is empty
             #undef  GB_BINOP
             #define GB_BINOP(cij, aij, bij, i, j)   \
                 ASSERT (op != NULL) ;               \
@@ -438,7 +479,6 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     // caller must free C_to_M, C_to_A, and C_to_B, but not Cp or Ch
     GB_FREE_WORK ;
     ASSERT_MATRIX_OK (C, "C output for add phase2", GB0) ;
-    (*Chandle) = C ;
     return (GrB_SUCCESS) ;
 }
 

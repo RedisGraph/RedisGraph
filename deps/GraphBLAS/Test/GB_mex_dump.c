@@ -54,7 +54,7 @@ void mexFunction
         mexErrMsgTxt ("matrix fail") ;
     }
 
-    // return A to MATLAB as a struct and free the GraphBLAS A
+    // return A as a struct and free the GraphBLAS A
     pargout [0] = GB_mx_Matrix_to_mxArray (&A, "C output", true) ;
 
     FREE_ALL ;

@@ -13,9 +13,9 @@
 
 #define FREE_ALL                            \
 {                                           \
-    GrB_Matrix_free_(&A) ;                   \
-    GrB_Matrix_free_(&B) ;                   \
-    GrB_Matrix_free_(&M) ;                   \
+    GrB_Matrix_free_(&A) ;                  \
+    GrB_Matrix_free_(&B) ;                  \
+    GrB_Matrix_free_(&M) ;                  \
     GB_mx_put_global (true) ;               \
 }
 
@@ -69,19 +69,21 @@ void mexFunction
 
     // allocate Bflops (note the calloc)
     int64_t bnvec = B->nvec ;
-    int64_t *Bflops = mxCalloc ((bnvec+1), sizeof (int64_t)) ;
+    size_t bfsize = (bnvec+1) * sizeof (int64_t) ;
+    int64_t *Bflops = mxMalloc (bfsize) ;
+    memset (Bflops, 0, bfsize) ;
 
     // compute the flop count
     int64_t Mwork = 0 ;
 
     GB_AxB_saxpy3_flopcount (&Mwork, Bflops, M, Mask_comp, A, B, Context) ;
 
-    // return result to MATLAB
+    // return result
     pargout [0] = mxCreateDoubleMatrix (1, bnvec+1, mxREAL) ;
-    double *Bflops_matlab = mxGetPr (pargout [0]) ; 
+    double *Bflops_builtin = mxGetPr (pargout [0]) ; 
     for (int64_t kk = 0 ; kk <= bnvec ; kk++)
     {
-        Bflops_matlab [kk] = (double) Bflops [kk] ;
+        Bflops_builtin [kk] = (double) Bflops [kk] ;
     }
 
     pargout [1] = mxCreateDoubleScalar (Mwork) ;

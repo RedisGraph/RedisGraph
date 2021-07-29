@@ -8,7 +8,7 @@ fprintf ('\n----------------------------- eWiseMult performance tests\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 Prob = ssget (2662)
@@ -32,7 +32,7 @@ d = nnz (A) / prod (size (A)) ;
     t2 = toc ;
 
     fprintf (...
-    'd %10.6g nnz(C) %8d MATLAB %10.6f GB %10.6f  speedup %10.4f\n',...
+    'd %10.6g nnz(C) %8d built-in %10.6f GB %10.6f  speedup %10.4f\n',...
         d, nnz (C), t1, t2, t1/t2) ;
 
 
@@ -54,7 +54,7 @@ for d = [0.00001:0.00001:0.0001 0.0002:0.0001: 0.001 0.002:.001:0.01 0.02:0.01:.
     t2 = toc ;
 
     fprintf (...
-    'd %10.6g nnz(C) %8d MATLAB %10.6f GB %10.6f  speedup %10.4f\n',...
+    'd %10.6g nnz(C) %8d built-in %10.6f GB %10.6f  speedup %10.4f\n',...
         d, nnz (C), t1, t2, t1/t2) ;
 
     assert (isequal (C, C2.matrix)) ;

@@ -2,7 +2,7 @@ function gbtest_perf1
 %GBTEST_PERF1 test A*x performance
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 max_nthreads = GrB.threads ;
 threads = [1 2 4 8 16 20 32 40 64] ;
@@ -34,15 +34,15 @@ for test = 1:4
     end
 
     fprintf ('\n\n========================\n') ;
-    fprintf ('in MATLAB: y = A*x where x = %s\n', X) ;
+    fprintf ('built-in: y = A*x where x = %s\n', X) ;
 
     tic
     for trial = 1:ntrials
         y = A*x ;
     end
-    tmatlab = toc ;
-    fprintf ('MATLAB time: %8.4f sec\n', tmatlab) ;
-    ymatlab = y ;
+    tbuiltin = toc ;
+    fprintf ('built-in time: %8.4f sec\n', tbuiltin) ;
+    ybuiltin = y ;
 
     fprintf ('\nGrB: y = A*x where x = %s\n', X) ;
 
@@ -60,9 +60,9 @@ for test = 1:4
             t1 = t ;
         end
         fprintf (...
-            'threads: %2d GrB time: %8.4f speedup vs MATLAB: %8.2f  vs: GrB(1 thread) %8.2f\n', ...
-            nthreads, t, tmatlab / t, t1 / t) ;
-        assert (norm (y-ymatlab, 1) / norm (ymatlab,1) < 1e-12)
+            'threads: %2d GrB time: %8.4f speedup vs built-in: %8.2f  vs: GrB(1 thread) %8.2f\n', ...
+            nthreads, t, tbuiltin / t, t1 / t) ;
+        assert (norm (y-ybuiltin, 1) / norm (ybuiltin,1) < 1e-12)
     end
 
 end

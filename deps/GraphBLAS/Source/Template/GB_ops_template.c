@@ -9,86 +9,87 @@
 
 // This file is #include'd many times in GB_ops.c to define the built-in unary
 // and binary operators.  In that file, GB_TYPE is a built-in C type (bool,
-// int8_t, uint64_t, double, etc) for the inputs x and y, and GB(x) is the
-// corresponding macro that creates the function name (GB_*_BOOL, GB_*_INT8,
-// etc).
+// int8_t, uint64_t, double, etc) for the inputs x and y, and GB_XTYPE is
+// corresponding GraphBLAS type, without the prefix (BOOL, INT8, etc).
 
 //------------------------------------------------------------------------------
 // unary functions z=f(x) where z and x have the same type
 //------------------------------------------------------------------------------
 
-GB_OP1 (GxB_, ONE, "one") ;
+GXB_OP1 (ONE, "one") ;
 
 #if defined ( GB_COMPLEX )
 
     // complex types
-    GB_OP1 (GxB_, IDENTITY , "identity" ) ;
-    GB_OP1 (GxB_, AINV     , "ainv"     ) ;
-    GB_OP1 (GxB_, MINV     , "minv"     ) ;
+    GXB_OP1 (IDENTITY , "identity" ) ;
+    GXB_OP1 (AINV     , "ainv"     ) ;
+    GXB_OP1 (MINV     , "minv"     ) ;
 
 #else
 
     // real types
-    GB_OP1 (GrB_, IDENTITY , "identity" ) ;
-    GB_OP1 (GrB_, AINV     , "ainv"     ) ;
-    GB_OP1 (GrB_, MINV     , "minv"     ) ;
+    GRB_OP1 (IDENTITY , "identity" ) ;
+    GRB_OP1 (AINV     , "ainv"     ) ;
+    GRB_OP1 (MINV     , "minv"     ) ;
 
     // z=abs(x), z and x have the same type
-    GB_OP1 (GrB_, ABS      , "abs"      ) ;
+    GRB_OP1 (ABS      , "abs"      ) ;
 
-    // GxB_ABS_* is now GrB_ABS_*, and GxB_ABS is deprecated
-    GB_OP1_RENAME (GxB_, GrB_, ABS) ;
+    // GxB_ABS_* is now GrB_ABS_*, and GxB_ABS_* is historical.
+    // The new name is preferred.  The old name will be kept for historical
+    // compatibility.
+    GXB_OP1_RENAME (ABS) ;
 
     // LNOT is only defined for real types, not complex
-    GB_OP1 (GxB_, LNOT     , "not"      ) ;
+    GXB_OP1 (LNOT     , "not"      ) ;
 
 #endif
 
 #if defined ( GB_FLOATING_POINT )
 
-    GB_OP1 (GxB_, SQRT     , "sqrt"     ) ;
-    GB_OP1 (GxB_, LOG      , "log"      ) ;
-    GB_OP1 (GxB_, EXP      , "exp"      ) ;
+    GXB_OP1 (SQRT     , "sqrt"     ) ;
+    GXB_OP1 (LOG      , "log"      ) ;
+    GXB_OP1 (EXP      , "exp"      ) ;
 
-    GB_OP1 (GxB_, SIN      , "sin"      ) ;
-    GB_OP1 (GxB_, COS      , "cos"      ) ;
-    GB_OP1 (GxB_, TAN      , "tan"      ) ;
+    GXB_OP1 (SIN      , "sin"      ) ;
+    GXB_OP1 (COS      , "cos"      ) ;
+    GXB_OP1 (TAN      , "tan"      ) ;
 
-    GB_OP1 (GxB_, ASIN     , "asin"     ) ;
-    GB_OP1 (GxB_, ACOS     , "acos"     ) ;
-    GB_OP1 (GxB_, ATAN     , "atan"     ) ;
+    GXB_OP1 (ASIN     , "asin"     ) ;
+    GXB_OP1 (ACOS     , "acos"     ) ;
+    GXB_OP1 (ATAN     , "atan"     ) ;
 
-    GB_OP1 (GxB_, SINH     , "sinh"     ) ;
-    GB_OP1 (GxB_, COSH     , "cosh"     ) ;
-    GB_OP1 (GxB_, TANH     , "tanh"     ) ;
+    GXB_OP1 (SINH     , "sinh"     ) ;
+    GXB_OP1 (COSH     , "cosh"     ) ;
+    GXB_OP1 (TANH     , "tanh"     ) ;
 
-    GB_OP1 (GxB_, ASINH    , "asinh"    ) ;
-    GB_OP1 (GxB_, ACOSH    , "acosh"    ) ;
-    GB_OP1 (GxB_, ATANH    , "atanh"    ) ;
+    GXB_OP1 (ASINH    , "asinh"    ) ;
+    GXB_OP1 (ACOSH    , "acosh"    ) ;
+    GXB_OP1 (ATANH    , "atanh"    ) ;
 
-    GB_OP1 (GxB_, SIGNUM   , "signum"   ) ;
-    GB_OP1 (GxB_, CEIL     , "ceil"     ) ;
-    GB_OP1 (GxB_, FLOOR    , "floor"    ) ;
-    GB_OP1 (GxB_, ROUND    , "round"    ) ;
-    GB_OP1 (GxB_, TRUNC    , "trunc"    ) ;
+    GXB_OP1 (SIGNUM   , "signum"   ) ;
+    GXB_OP1 (CEIL     , "ceil"     ) ;
+    GXB_OP1 (FLOOR    , "floor"    ) ;
+    GXB_OP1 (ROUND    , "round"    ) ;
+    GXB_OP1 (TRUNC    , "trunc"    ) ;
 
-    GB_OP1 (GxB_, EXP2     , "exp2"     ) ;
-    GB_OP1 (GxB_, EXPM1    , "expm1"    ) ;
-    GB_OP1 (GxB_, LOG10    , "log10"    ) ;
-    GB_OP1 (GxB_, LOG1P    , "log1p"    ) ;
-    GB_OP1 (GxB_, LOG2     , "log2"     ) ;
+    GXB_OP1 (EXP2     , "exp2"     ) ;
+    GXB_OP1 (EXPM1    , "expm1"    ) ;
+    GXB_OP1 (LOG10    , "log10"    ) ;
+    GXB_OP1 (LOG1P    , "log1p"    ) ;
+    GXB_OP1 (LOG2     , "log2"     ) ;
 
     #if defined ( GB_COMPLEX )
     // complex only
-    GB_OP1 (GxB_, CONJ     , "conj"     ) ;
+    GXB_OP1 (CONJ     , "conj"     ) ;
     #else
     // real only
-    GB_OP1 (GxB_, LGAMMA   , "lgamma"   ) ;
-    GB_OP1 (GxB_, TGAMMA   , "tgamma"   ) ;
-    GB_OP1 (GxB_, ERF      , "erf"      ) ;
-    GB_OP1 (GxB_, ERFC     , "erfc"     ) ;
-    GB_OP1 (GxB_, FREXPX   , "frexpx"   ) ;
-    GB_OP1 (GxB_, FREXPE   , "frexpe"   ) ;
+    GXB_OP1 (LGAMMA   , "lgamma"   ) ;
+    GXB_OP1 (TGAMMA   , "tgamma"   ) ;
+    GXB_OP1 (ERF      , "erf"      ) ;
+    GXB_OP1 (ERFC     , "erfc"     ) ;
+    GXB_OP1 (FREXPX   , "frexpx"   ) ;
+    GXB_OP1 (FREXPE   , "frexpe"   ) ;
     #endif
 
 #endif
@@ -96,7 +97,7 @@ GB_OP1 (GxB_, ONE, "one") ;
 #if defined ( GB_SIGNED_INT ) || defined ( GB_UNSIGNED_INT )
 
     // bitwise complement
-    GB_OP1 (GrB_, BNOT     , "bnot"     ) ;
+    GRB_OP1 (BNOT     , "bnot"     ) ;
 
 #endif
 
@@ -107,40 +108,40 @@ GB_OP1 (GxB_, ONE, "one") ;
 #if defined ( GB_FLOAT )
 
     // z = f(x) where x is float, and z is bool
-    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL ) ;
-    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL ) ;
-    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+    GXB_OP1z (ISINF     , "isinf"     , bool   , BOOL ) ;
+    GXB_OP1z (ISNAN     , "isnan"     , bool   , BOOL ) ;
+    GXB_OP1z (ISFINITE  , "isfinite"  , bool   , BOOL ) ;
 
 #elif defined ( GB_DOUBLE )
 
     // z = f(x) where x is double, and z is bool
-    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL ) ;
-    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL ) ;
-    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+    GXB_OP1z (ISINF     , "isinf"     , bool   , BOOL ) ;
+    GXB_OP1z (ISNAN     , "isnan"     , bool   , BOOL ) ;
+    GXB_OP1z (ISFINITE  , "isfinite"  , bool   , BOOL ) ;
 
 #elif defined ( GB_FLOAT_COMPLEX )
 
     // z = f(x) where x is float complex, and the type of z is listed below:
-    GB_OP1z (GxB_, ABS       , "abs"       , float  , GrB_FP32) ;
-    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL) ;
-    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL) ;
-    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+    GXB_OP1z (ABS       , "abs"       , float  , FP32) ;
+    GXB_OP1z (ISINF     , "isinf"     , bool   , BOOL) ;
+    GXB_OP1z (ISNAN     , "isnan"     , bool   , BOOL) ;
+    GXB_OP1z (ISFINITE  , "isfinite"  , bool   , BOOL ) ;
 
-    GB_OP1z (GxB_, CREAL     , "creal"     , float  , GrB_FP32) ;
-    GB_OP1z (GxB_, CIMAG     , "cimag"     , float  , GrB_FP32) ;
-    GB_OP1z (GxB_, CARG      , "carg"      , float  , GrB_FP32) ;
+    GXB_OP1z (CREAL     , "creal"     , float  , FP32) ;
+    GXB_OP1z (CIMAG     , "cimag"     , float  , FP32) ;
+    GXB_OP1z (CARG      , "carg"      , float  , FP32) ;
 
 #elif defined ( GB_DOUBLE_COMPLEX )
 
     // z = f(x) where x is double complex, and the type of z is listed below:
-    GB_OP1z (GxB_, ABS       , "abs"       , double , GrB_FP64) ;
-    GB_OP1z (GxB_, ISINF     , "isinf"     , bool   , GrB_BOOL) ;
-    GB_OP1z (GxB_, ISNAN     , "isnan"     , bool   , GrB_BOOL) ;
-    GB_OP1z (GxB_, ISFINITE  , "isfinite"  , bool   , GrB_BOOL ) ;
+    GXB_OP1z (ABS       , "abs"       , double , FP64) ;
+    GXB_OP1z (ISINF     , "isinf"     , bool   , BOOL) ;
+    GXB_OP1z (ISNAN     , "isnan"     , bool   , BOOL) ;
+    GXB_OP1z (ISFINITE  , "isfinite"  , bool   , BOOL ) ;
 
-    GB_OP1z (GxB_, CREAL     , "creal"     , double , GrB_FP64) ;
-    GB_OP1z (GxB_, CIMAG     , "cimag"     , double , GrB_FP64) ;
-    GB_OP1z (GxB_, CARG      , "carg"      , double , GrB_FP64) ;
+    GXB_OP1z (CREAL     , "creal"     , double , FP64) ;
+    GXB_OP1z (CIMAG     , "cimag"     , double , FP64) ;
+    GXB_OP1z (CARG      , "carg"      , double , FP64) ;
 
 #endif
 
@@ -148,73 +149,73 @@ GB_OP1 (GxB_, ONE, "one") ;
 // binary functions z=f(x,y) where z, x, and y all have the same type
 //------------------------------------------------------------------------------
 
-GB_OP2 (GxB_, RMINUS , "rminus")
-GB_OP2 (GxB_, RDIV   , "rdiv"  )
-GB_OP2 (GxB_, PAIR   , "pair"  )
-GB_OP2 (GxB_, ANY    , "any"   )
-GB_OP2 (GxB_, ISEQ   , "iseq"  )
-GB_OP2 (GxB_, ISNE   , "isne"  )
-GB_OP2 (GxB_, POW    , "pow"   )
+GXB_OP2 (RMINUS , "rminus")
+GXB_OP2 (RDIV   , "rdiv"  )
+GXB_OP2 (PAIR   , "pair"  )
+GXB_OP2 (ANY    , "any"   )
+GXB_OP2 (ISEQ   , "iseq"  )
+GXB_OP2 (ISNE   , "isne"  )
+GXB_OP2 (POW    , "pow"   )
 
 #if defined ( GB_COMPLEX ) 
 
     // complex types
-    GB_OP2 (GxB_, FIRST  , "first" )
-    GB_OP2 (GxB_, SECOND , "second")
-    GB_OP2 (GxB_, PLUS   , "plus"  )
-    GB_OP2 (GxB_, MINUS  , "minus" )
-    GB_OP2 (GxB_, TIMES  , "times" )
-    GB_OP2 (GxB_, DIV    , "div"   )
+    GXB_OP2 (FIRST  , "first" )
+    GXB_OP2 (SECOND , "second")
+    GXB_OP2 (PLUS   , "plus"  )
+    GXB_OP2 (MINUS  , "minus" )
+    GXB_OP2 (TIMES  , "times" )
+    GXB_OP2 (DIV    , "div"   )
 
 #else
 
     // real types
-    GB_OP2 (GrB_, FIRST  , "first" )
-    GB_OP2 (GrB_, SECOND , "second")
-    GB_OP2 (GrB_, PLUS   , "plus"  )
-    GB_OP2 (GrB_, MINUS  , "minus" )
-    GB_OP2 (GrB_, TIMES  , "times" )
-    GB_OP2 (GrB_, DIV    , "div"   )
+    GRB_OP2 (FIRST  , "first" )
+    GRB_OP2 (SECOND , "second")
+    GRB_OP2 (PLUS   , "plus"  )
+    GRB_OP2 (MINUS  , "minus" )
+    GRB_OP2 (TIMES  , "times" )
+    GRB_OP2 (DIV    , "div"   )
 
-    GB_OP2 (GrB_, MIN    , "min" )
-    GB_OP2 (GrB_, MAX    , "max" )
+    GRB_OP2 (MIN    , "min" )
+    GRB_OP2 (MAX    , "max" )
 
-    GB_OP2 (GxB_, LOR    , "or"  )
-    GB_OP2 (GxB_, LAND   , "and" )
-    GB_OP2 (GxB_, LXOR   , "xor" )
+    GXB_OP2 (LOR    , "or"  )
+    GXB_OP2 (LAND   , "and" )
+    GXB_OP2 (LXOR   , "xor" )
 
-    GB_OP2 (GxB_, ISGT   , "isgt")
-    GB_OP2 (GxB_, ISLT   , "islt")
-    GB_OP2 (GxB_, ISGE   , "isge")
-    GB_OP2 (GxB_, ISLE   , "isle")
+    GXB_OP2 (ISGT   , "isgt")
+    GXB_OP2 (ISLT   , "islt")
+    GXB_OP2 (ISGE   , "isge")
+    GXB_OP2 (ISLE   , "isle")
 
 #endif
 
 #if defined (GB_FLOAT) || defined (GB_DOUBLE)
 
     // these operators are only defined for float and double
-    GB_OP2 (GxB_, ATAN2    , "atan2"    )
-    GB_OP2 (GxB_, HYPOT    , "hypot"    )
-    GB_OP2 (GxB_, FMOD     , "fmod"     )
-    GB_OP2 (GxB_, REMAINDER, "remainder")
-    GB_OP2 (GxB_, COPYSIGN , "copysign" )
-    GB_OP2 (GxB_, LDEXP    , "ldexp"    )
+    GXB_OP2 (ATAN2    , "atan2"    )
+    GXB_OP2 (HYPOT    , "hypot"    )
+    GXB_OP2 (FMOD     , "fmod"     )
+    GXB_OP2 (REMAINDER, "remainder")
+    GXB_OP2 (COPYSIGN , "copysign" )
+    GXB_OP2 (LDEXP    , "ldexp"    )
 
 #endif
 
 #if defined ( GB_SIGNED_INT ) || defined ( GB_UNSIGNED_INT )
 
     // bitwise binary operators
-    GB_OP2 (GrB_, BOR      , "bitor"   ) ;
-    GB_OP2 (GrB_, BAND     , "bitand"  ) ;
-    GB_OP2 (GrB_, BXOR     , "bitxor"  ) ;
-    GB_OP2 (GrB_, BXNOR    , "bitxnor" ) ;
+    GRB_OP2 (BOR      , "bitor"   ) ;
+    GRB_OP2 (BAND     , "bitand"  ) ;
+    GRB_OP2 (BXOR     , "bitxor"  ) ;
+    GRB_OP2 (BXNOR    , "bitxnor" ) ;
 
-    GB_OP2 (GxB_, BGET     , "bitget"   ) ;
-    GB_OP2 (GxB_, BSET     , "bitset"   ) ;
-    GB_OP2 (GxB_, BCLR     , "bitclear" ) ;
+    GXB_OP2 (BGET     , "bitget"   ) ;
+    GXB_OP2 (BSET     , "bitset"   ) ;
+    GXB_OP2 (BCLR     , "bitclear" ) ;
 
-    GB_OP2shift (GxB_, BSHIFT, "bitshift") ;
+    GXB_OP2shift (BSHIFT, "bitshift") ;
 
 #endif
 
@@ -225,32 +226,32 @@ GB_OP2 (GxB_, POW    , "pow"   )
 #if defined ( GB_FLOAT )
 
     // z = cmplx(x,y) where z is float complex, x and y are float
-    GB_OP2z (GxB_, CMPLX, "cmplx", GxB_FC32_t, GxB_FC32)
+    GXB_OP2z (CMPLX, "cmplx", GxB_FC32_t, FC32)
 
 #endif
 
 #if defined ( GB_DOUBLE )
 
     // z = cmplx(x,y) where z is double complex, x and y are double
-    GB_OP2z (GxB_, CMPLX, "cmplx", GxB_FC64_t, GxB_FC64)
+    GXB_OP2z (CMPLX, "cmplx", GxB_FC64_t, FC64)
 
 #endif
 
 #if defined ( GB_COMPLEX )
 
     // complex types
-    GB_OP2z (GxB_, EQ, "eq", bool, GrB_BOOL)
-    GB_OP2z (GxB_, NE, "ne", bool, GrB_BOOL)
+    GXB_OP2z (EQ, "eq", bool, BOOL)
+    GXB_OP2z (NE, "ne", bool, BOOL)
 
 #else
 
     // real types
-    GB_OP2z (GrB_, EQ, "eq", bool, GrB_BOOL)
-    GB_OP2z (GrB_, NE, "ne", bool, GrB_BOOL)
-    GB_OP2z (GrB_, GT, "gt", bool, GrB_BOOL)
-    GB_OP2z (GrB_, LT, "lt", bool, GrB_BOOL)
-    GB_OP2z (GrB_, LE, "le", bool, GrB_BOOL)
-    GB_OP2z (GrB_, GE, "ge", bool, GrB_BOOL)
+    GRB_OP2z (EQ, "eq", bool, BOOL)
+    GRB_OP2z (NE, "ne", bool, BOOL)
+    GRB_OP2z (GT, "gt", bool, BOOL)
+    GRB_OP2z (LT, "lt", bool, BOOL)
+    GRB_OP2z (LE, "le", bool, BOOL)
+    GRB_OP2z (GE, "ge", bool, BOOL)
 
 #endif
 
@@ -258,10 +259,8 @@ GB_OP2 (GxB_, POW    , "pow"   )
 // clear macros for next use of this file
 //------------------------------------------------------------------------------
 
-#undef GB
 #undef GB_TYPE
 #undef GB_XTYPE
-#undef GrB_NAME
 #undef GB_FLOATING_POINT
 #undef GB_COMPLEX
 #undef GB_FLOAT

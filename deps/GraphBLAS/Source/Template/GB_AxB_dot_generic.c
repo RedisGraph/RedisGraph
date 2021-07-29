@@ -16,6 +16,8 @@
     // get operators, functions, workspace, contents of A, B, C
     //--------------------------------------------------------------------------
 
+    ASSERT (!C->iso) ;
+
     GxB_binary_function fmult = mult->function ;    // NULL if positional
     GxB_binary_function fadd  = add->op->function ;
     GB_Opcode opcode = mult->opcode ;
@@ -35,7 +37,7 @@
     size_t aki_size = flipxy ? ysize : xsize ;
     size_t bkj_size = flipxy ? xsize : ysize ;
 
-    GB_void *GB_RESTRICT terminal = (GB_void *) add->terminal ;
+    GB_void *restrict terminal = (GB_void *) add->terminal ;
 
     GB_cast_function cast_A, cast_B ;
     if (flipxy)
@@ -77,14 +79,16 @@
         if (flipxy)
         { 
             // flip a positional multiplicative operator
-            opcode = GB_binop_flip (opcode) ;
+            bool handled ;
+            opcode = GB_flip_opcode (opcode, &handled) ; // for positional ops
+            ASSERT (handled) ;      // all positional ops can be flipped
         }
 
-        // aki = A(i,k), located in Ax [pA], value not used
-        #define GB_GETA(aki,Ax,pA) ;
+        // aki = A(i,k), located in Ax [A_iso?0:pA], but value not used
+        #define GB_GETA(aki,Ax,pA,A_iso) ;
 
-        // bkj = B(k,j), located in Bx [pB], value not used
-        #define GB_GETB(bkj,Bx,pB) ;
+        // bkj = B(k,j), located in Bx [B_iso?0:pB], but value not used
+        #define GB_GETB(bkj,Bx,pB,B_iso) ;
 
         // define cij for each task
         #define GB_CIJ_DECLARE(cij) GB_CTYPE cij
@@ -92,8 +96,16 @@
         // address of Cx [p]
         #define GB_CX(p) (&Cx [p])
 
-        // cij = Cx [p]
-        #define GB_GETC(cij,p) cij = Cx [p]
+        // get the value of C(i,j) on input, for dot4 only
+        #define GB_GET4C(cij,p)                                         \
+            if (C_in_iso)                                               \
+            {                                                           \
+                memcpy (&cij, cinput, csize) ;                          \
+            }                                                           \
+            else                                                        \
+            {                                                           \
+                cij = Cx [p] ;                                          \
+            }
 
         // Cx [p] = cij
         #define GB_PUTC(cij,p) Cx [p] = cij
@@ -227,17 +239,17 @@
         // generic semirings with standard multiply operators
         //----------------------------------------------------------------------
 
-        // aki = A(k,i), located in Ax [pA]
+        // aki = A(i,k), located in Ax [A_iso?0:pA]
         #undef  GB_GETA
-        #define GB_GETA(aki,Ax,pA)                                      \
+        #define GB_GETA(aki,Ax,pA,A_iso)                                \
             GB_void aki [GB_VLA(aki_size)] ;                            \
-            if (!A_is_pattern) cast_A (aki, Ax +((pA)*asize), asize)
+            if (!A_is_pattern) cast_A (aki, Ax +((A_iso) ? 0:(pA)*asize), asize)
 
-        // bkj = B(k,j), located in Bx [pB]
+        // bkj = B(k,j), located in Bx [B_iso?0:pB]
         #undef  GB_GETB
-        #define GB_GETB(bkj,Bx,pB)                                      \
+        #define GB_GETB(bkj,Bx,pB,B_iso)                                \
             GB_void bkj [GB_VLA(bkj_size)] ;                            \
-            if (!B_is_pattern) cast_B (bkj, Bx +((pB)*bsize), bsize)
+            if (!B_is_pattern) cast_B (bkj, Bx +((B_iso) ? 0:(pB)*bsize), bsize)
 
         // define cij for each task
         #undef  GB_CIJ_DECLARE
@@ -247,9 +259,17 @@
         #undef  GB_CX
         #define GB_CX(p) Cx +((p)*csize)
 
-        // cij = Cx [p]
-        #undef  GB_GETC
-        #define GB_GETC(cij,p) memcpy (cij, GB_CX (p), csize)
+        // get the value of C(i,j) on input, for dot4 only
+        #undef  GB_GET4C
+        #define GB_GET4C(cij,p)                                         \
+            if (C_in_iso)                                               \
+            {                                                           \
+                memcpy (cij, cinput, csize) ;                           \
+            }                                                           \
+            else                                                        \
+            {                                                           \
+                memcpy (cij, GB_CX (p), csize) ;                        \
+            }
 
         // Cx [p] = cij
         #undef  GB_PUTC
@@ -279,7 +299,9 @@
             if (flipxy)
             { 
                 // flip first and second
-                opcode = GB_binop_flip (opcode) ;
+                bool handled ;
+                opcode = GB_flip_opcode (opcode, &handled) ; // for 1st and 2nd
+                ASSERT (handled) ;      // FIRST and SECOND ops can be flipped
             }
             if (opcode == GB_FIRST_opcode)
             { 

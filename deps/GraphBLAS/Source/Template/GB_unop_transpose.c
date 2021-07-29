@@ -16,8 +16,10 @@
     // get A and C
     //--------------------------------------------------------------------------
 
-    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) A->x ;
-    GB_CTYPE *GB_RESTRICT Cx = (GB_CTYPE *) C->x ;
+    #ifndef GB_ISO_TRANSPOSE
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
+          GB_CTYPE *restrict Cx = (GB_CTYPE *) C->x ;
+    #endif
 
     //--------------------------------------------------------------------------
     // C = op (cast (A'))
@@ -33,29 +35,30 @@
         // A is avlen-by-avdim; C is avdim-by-avlen
         int64_t avlen = A->vlen ;
         int64_t avdim = A->vdim ;
-        int64_t anz = avlen * avdim ;
+        int64_t anz = avlen * avdim ;   // ignore integer overflow
 
-        const int8_t *GB_RESTRICT Ab = A->b ;
-        int8_t *GB_RESTRICT Cb = C->b ;
+        const int8_t *restrict Ab = A->b ;
+        int8_t *restrict Cb = C->b ;
         ASSERT ((Cb == NULL) == (Ab == NULL)) ;
 
-        //----------------------------------------------------------------------
-        // A and C are both full or bitmap
-        //----------------------------------------------------------------------
+        // TODO: it would be faster to do this by tiles, not rows/columns, for
+        // large matrices, but in most of the cases in GraphBLAS, A and C will
+        // be tall-and-thin or short-and-fat.
 
-        // TODO: it would be faster to by tiles, not rows/columns, for large
-        // matrices, but in most of the cases, A and C will be tall-and-thin
-        // or short-and-fat.
-
-        int tid ;
-        #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (tid = 0 ; tid < nthreads ; tid++)
+        if (Ab == NULL)
         {
-            int64_t pC_start, pC_end ;
-            GB_PARTITION (pC_start, pC_end, anz, tid, nthreads) ;
-            if (Ab == NULL)
+
+            //------------------------------------------------------------------
+            // A and C are both full (no work if A and C are iso)
+            //------------------------------------------------------------------
+
+            #ifndef GB_ISO_TRANSPOSE
+            int tid ;
+            #pragma omp parallel for num_threads(nthreads) schedule(static)
+            for (tid = 0 ; tid < nthreads ; tid++)
             {
-                // A and C are both full
+                int64_t pC_start, pC_end ;
+                GB_PARTITION (pC_start, pC_end, anz, tid, nthreads) ;
                 for (int64_t pC = pC_start ; pC < pC_end ; pC++)
                 { 
                     // get i and j of the entry C(i,j)
@@ -64,12 +67,25 @@
                     // find the position of the entry A(j,i) 
                     // pA = j + i * avlen
                     // Cx [pC] = op (Ax [pA])
-                    GB_CAST_OP (pC, ((pC / avdim) + (pC % avdim) * avlen)) ;
+                    GB_CAST_OP (pC, ((pC/avdim) + (pC%avdim) * avlen)) ;
                 }
             }
-            else
+            #endif
+
+        }
+        else
+        {
+
+            //------------------------------------------------------------------
+            // A and C are both bitmap
+            //------------------------------------------------------------------
+
+            int tid ;
+            #pragma omp parallel for num_threads(nthreads) schedule(static)
+            for (tid = 0 ; tid < nthreads ; tid++)
             {
-                // A and C are both bitmap
+                int64_t pC_start, pC_end ;
+                GB_PARTITION (pC_start, pC_end, anz, tid, nthreads) ;
                 for (int64_t pC = pC_start ; pC < pC_end ; pC++)
                 {
                     // get i and j of the entry C(i,j)
@@ -80,28 +96,30 @@
                     int64_t pA = ((pC / avdim) + (pC % avdim) * avlen) ;
                     int8_t cij_exists = Ab [pA] ;
                     Cb [pC] = cij_exists ;
+                    #ifndef GB_ISO_TRANSPOSE
                     if (cij_exists)
                     { 
                         // Cx [pC] = op (Ax [pA])
                         GB_CAST_OP (pC, pA) ;
                     }
+                    #endif
                 }
             }
         }
 
     }
     else
-    { 
+    {
 
         //----------------------------------------------------------------------
         // A is sparse or hypersparse; C is sparse
         //----------------------------------------------------------------------
 
-        const int64_t *GB_RESTRICT Ap = A->p ;
-        const int64_t *GB_RESTRICT Ah = A->h ;
-        const int64_t *GB_RESTRICT Ai = A->i ;
+        const int64_t *restrict Ap = A->p ;
+        const int64_t *restrict Ah = A->h ;
+        const int64_t *restrict Ai = A->i ;
         const int64_t anvec = A->nvec ;
-        int64_t *GB_RESTRICT Ci = C->i ;
+        int64_t *restrict Ci = C->i ;
 
         if (nthreads == 1)
         {
@@ -110,7 +128,7 @@
             // sequential method
             //------------------------------------------------------------------
 
-            int64_t *GB_RESTRICT workspace = Workspaces [0] ;
+            int64_t *restrict workspace = Workspaces [0] ;
             for (int64_t k = 0 ; k < anvec ; k++)
             {
                 // iterate over the entries in A(:,j)
@@ -123,8 +141,10 @@
                     int64_t i = Ai [pA] ;
                     int64_t pC = workspace [i]++ ;
                     Ci [pC] = j ;
+                    #ifndef GB_ISO_TRANSPOSE
                     // Cx [pC] = op (Ax [pA])
                     GB_CAST_OP (pC, pA) ;
+                    #endif
                 }
             }
 
@@ -136,7 +156,7 @@
             // atomic method
             //------------------------------------------------------------------
 
-            int64_t *GB_RESTRICT workspace = Workspaces [0] ;
+            int64_t *restrict workspace = Workspaces [0] ;
             int tid ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
             for (tid = 0 ; tid < nthreads ; tid++)
@@ -155,8 +175,10 @@
                         int64_t pC ;
                         GB_ATOMIC_CAPTURE_INC64 (pC, workspace [i]) ;
                         Ci [pC] = j ;
+                        #ifndef GB_ISO_TRANSPOSE
                         // Cx [pC] = op (Ax [pA])
                         GB_CAST_OP (pC, pA) ;
+                        #endif
                     }
                 }
             }
@@ -173,7 +195,7 @@
             #pragma omp parallel for num_threads(nthreads) schedule(static)
             for (tid = 0 ; tid < nthreads ; tid++)
             {
-                int64_t *GB_RESTRICT workspace = Workspaces [tid] ;
+                int64_t *restrict workspace = Workspaces [tid] ;
                 for (int64_t k = A_slice [tid] ; k < A_slice [tid+1] ; k++)
                 {
                     // iterate over the entries in A(:,j)
@@ -186,12 +208,16 @@
                         int64_t i = Ai [pA] ;
                         int64_t pC = workspace [i]++ ;
                         Ci [pC] = j ;
+                        #ifndef GB_ISO_TRANSPOSE
                         // Cx [pC] = op (Ax [pA])
                         GB_CAST_OP (pC, pA) ;
+                        #endif
                     }
                 }
             }
         }
     }
 }
+
+#undef GB_ISO_TRANSPOSE
 

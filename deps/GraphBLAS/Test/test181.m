@@ -8,7 +8,7 @@ function test181
 
 rng ('default') ;
 
-fprintf ('test181: assign with explicit zeros in the Mask\n') ;
+fprintf ('test181: transpose with explicit zeros in the Mask\n') ;
 
 masks = { '', 'complement', 'structural', 'structural complement' } ;
 repls = { '', 'replace' } ;

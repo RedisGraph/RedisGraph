@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_dot3_phase1_template: analysis phase for dot3 (C<M> = A'*B)
+// GB_AxB_dot3_phase1_template: analysis phase for dot3; C<M> = A'*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.

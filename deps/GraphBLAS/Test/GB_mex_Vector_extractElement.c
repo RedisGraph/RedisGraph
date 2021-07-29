@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_Vector_extractElement: MATLAB interface for x = v(i)
+// GB_mex_Vector_extractElement: interface for x = v(i)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.

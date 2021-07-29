@@ -11,7 +11,7 @@ rng ('default') ;
 n = 10e6 ;
 
 [save_nthreads, save_chunk] = nthreads_get ;
-nthreads_max = feature ('numcores')
+nthreads_max = feature_numcores
 
 %-------------------------------------------------------------------------------
 fprintf ('================== int8 min:\n') ;
@@ -23,22 +23,24 @@ s = int8 (inf) ;
 tic
 c0 = min (X) ;
 tm = toc ;
-fprintf ('MATLAB: %g sec\n', tm) ;
+fprintf ('built-in: %g sec\n', tm) ;
 
 A.matrix = sparse (double (X)) ;
 A.pattern = logical (spones (X)) ;
 A.class = 'int8' ;
 
 nthreads_set (1,1) ;
+tic
 c1 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
+t1 = toc ;
 assert (c1 == c0) ;
-t1 = grbresults ;
 fprintf ('1 thread  %g sec\n', t1) ;
 
 nthreads_set (nthreads_max,1) ;
+tic
 c2 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
+t2 = toc ;
 assert (c2 == c0) ;
-t2 = grbresults ;
 fprintf ('%d threads %g sec\n', nthreads_max, t2) ;
 
 %-------------------------------------------------------------------------------
@@ -53,20 +55,22 @@ A.class = 'double' ;
 tic
 c0 = min (X) ;
 tm = toc ;
-fprintf ('MATLAB: %g sec\n', tm) ;
+fprintf ('built-in: %g sec\n', tm) ;
 
 s = double (inf) ;
 
 nthreads_set (1,1) ;
+tic
 c1 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
+t1 = toc ;
 assert (c1 == c0) ;
-t1 = grbresults ;
 fprintf ('1 thread  %g sec\n', t1) ;
 
 nthreads_set (nthreads_max,1) ;
+tic
 c2 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
+t2 = toc ;
 assert (c2 == c0) ;
-t2 = grbresults ;
 fprintf ('%d threads %g sec\n', nthreads_max, t2) ;
 
 %-------------------------------------------------------------------------------
@@ -76,7 +80,7 @@ X = rand (n,1) ;
 tic
 c0 = sum (X) ;
 tm = toc ;
-fprintf ('MATLAB: %g sec (full)\n', tm) ;
+fprintf ('built-in: %g sec (full)\n', tm) ;
 
 X = sparse (X) ;
 
@@ -87,20 +91,22 @@ A.class = 'double' ;
 tic
 c0 = full (sum (X)) ;
 tm = toc ;
-fprintf ('MATLAB: %g sec (sparse)\n', tm) ;
+fprintf ('built-in: %g sec (sparse)\n', tm) ;
 
 s = double (inf) ;
 
 nthreads_set (1,1) ;
+tic
 c1 = GB_mex_reduce_to_scalar (s, [ ], 'plus', A) ;
+t1 = toc ;
 assert (norm (c1 - c0) / norm (c0) < 1e-12) ;
-t1 = grbresults ;
 fprintf ('1 thread  %g sec\n', t1) ;
 
 nthreads_set (nthreads_max,1) ;
+tic
 c2 = GB_mex_reduce_to_scalar (s, [ ], 'plus', A) ;
+t2 = toc ;
 assert (norm (c2 - c0) / norm (c0) < 1e-12) ;
-t2 = grbresults ;
 fprintf ('%d threads %g sec\n', nthreads_max, t2) ;
 
 %-------------------------------------------------------------------------------

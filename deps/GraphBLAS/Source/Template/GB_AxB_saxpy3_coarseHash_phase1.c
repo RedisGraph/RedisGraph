@@ -19,9 +19,8 @@
     // f < mark          : unoccupied.
     // h == i, f == mark : occupied with C(i,j)
 
-    // The mask M can be optionally checked, if it is packed (full, bitmap, or
-    // sparse/hyper with all entries present and not jumbled) and checked in
-    // place.  This method is not used if M is present and sparse.
+    // The mask M can be optionally checked, if it is bitmap, or as-if-full and
+    // checked in place.  This method is not used if M is present and sparse.
 
     for (int64_t kk = kfirst ; kk <= klast ; kk++)
     {
@@ -42,13 +41,12 @@
 
         #ifdef GB_CHECK_MASK_ij
 
-            // The mask M is packed (full, bitmap, or sparse/hyper and not
-            // jumbled, with all entries present in the entire matrix).  Get
-            // pointers Mjb and Mjx into the M(:,j) vector.
+            // The mask M is bitmap or as-if-full.  Get pointers Mjb and Mjx
+            // into the M(:,j) vector.
             GB_GET_M_j
-            const M_TYPE *GB_RESTRICT Mjx = Mask_struct ? NULL :
+            const M_TYPE *restrict Mjx = Mask_struct ? NULL :
                 ((M_TYPE *) Mx) + (M_SIZE * pM_start) ;
-            const int8_t *GB_RESTRICT Mjb = M_is_bitmap ? (Mb+pM_start) : NULL ;
+            const int8_t *restrict Mjb = M_is_bitmap ? (Mb+pM_start) : NULL ;
 
         #else
 

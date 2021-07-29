@@ -6,7 +6,7 @@ function test49
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 d = struct ('inp0', 'tran', 'axb', 'dot') ;
@@ -35,12 +35,11 @@ for m = 1:4
 
         tic ;
         C2 = GB_mex_mxm (W, [], [], semiring, A, B, d) ;
-        % t2 = toc ;
-        t2 = grbresults ;
+        t2 = toc ;
 
         e = norm (C - C2.matrix, 1) ;
         fprintf (...
-       'm %3d n %3d MATLAB: %10.5g  GrB: %10.5g  speedup %10.2f  err: %g\n', ...
+       'm %3d n %3d built-in: %10.5g  GrB: %10.5g  speedup %10.2f  err: %g\n', ...
            m, n, t1, t2, t1/t2, e) ;
     end
 end

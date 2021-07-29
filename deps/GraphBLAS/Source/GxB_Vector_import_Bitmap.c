@@ -15,10 +15,11 @@ GrB_Info GxB_Vector_import_Bitmap // import a bitmap vector
     GrB_Type type,      // type of vector to create
     GrB_Index n,        // vector length
 
-    int8_t **vb,        // bitmap, vb_size >= n
-    void **vx,          // values, vx_size 1, or >= n
-    GrB_Index vb_size,  // size of vb
-    GrB_Index vx_size,  // size of vx
+    int8_t **vb,        // bitmap
+    void **vx,          // values
+    GrB_Index vb_size,  // size of vb in bytes
+    GrB_Index vx_size,  // size of vx in bytes
+    bool iso,           // if true, A is iso
 
     GrB_Index nvals,    // # of entries in bitmap
     const GrB_Descriptor desc
@@ -30,7 +31,7 @@ GrB_Info GxB_Vector_import_Bitmap // import a bitmap vector
     //--------------------------------------------------------------------------
 
     GB_WHERE1 ("GxB_Vector_import_Bitmap (&v, type, n, "
-        " &vb, &vx, vb_size, vx_size, nvals, desc)") ;
+        "&vb, &vx, vb_size, vx_size, iso, nvals, desc)") ;
     GB_BURBLE_START ("GxB_Vector_import_Bitmap") ;
     GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
 
@@ -38,14 +39,15 @@ GrB_Info GxB_Vector_import_Bitmap // import a bitmap vector
     // import the vector
     //--------------------------------------------------------------------------
 
-    info = GB_import ((GrB_Matrix *) v, type, n, 1,
+    info = GB_import (false, (GrB_Matrix *) v, type, n, 1, false,
         NULL, 0,        // Ap
         NULL, 0,        // Ah
         vb,   vb_size,  // Ab
         NULL, 0,        // Ai
         vx,   vx_size,  // Ax
         nvals, false, 0,                    // nvals for bitmap
-        GxB_BITMAP, true, Context) ;        // bitmap by col
+        GxB_BITMAP, true,                   // bitmap by col
+        iso, Context) ;
 
     GB_BURBLE_END ;
     return (info) ;

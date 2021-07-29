@@ -19,7 +19,7 @@ function [xdomain, ydomain] = GB_spec_opdomain (op)
 xdomain = [-inf, inf] ;
 ydomain = [-inf, inf] ;
 
-if (contains (optype, 'complex'))
+if (test_contains (optype, 'complex'))
     % complex operators z=f(x,y) are valid over all x and y
     return
 end

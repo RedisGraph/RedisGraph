@@ -2,7 +2,7 @@ function gbtest8
 %GBTEST8 test GrB.select
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 %   tril
 %   triu
@@ -120,7 +120,7 @@ A (3,4) = b ;
 % nonzero
 %-------------------------------------------------------------------------
 
-    % all explicit entries in the MATLAB sparse matrix are nonzero,
+    % all explicit entries in the built-in sparse matrix are nonzero,
     % so this does nothing.  A better test would be to compute a GraphBLAS
     % matrix with explicit zeros first.
 
@@ -141,7 +141,7 @@ A (3,4) = b ;
 % zero
 %-------------------------------------------------------------------------
 
-    % all explicit entries in the MATLAB sparse matrix are nonzero,
+    % all explicit entries in the built-in sparse matrix are nonzero,
     % so this does nothing.
 
     C1 = sparse (m,n) ;

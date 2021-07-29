@@ -12,7 +12,7 @@ function [F, E] = log2 (G)
 % See also GrB/pow2, GrB/log, GrB/log1p, GrB/log10, GrB/exp.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 

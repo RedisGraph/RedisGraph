@@ -18,7 +18,7 @@
 
 GrB_Info GB_BinaryOp_new
 (
-    GrB_BinaryOp *binaryop,         // handle for the new binary operator
+    GrB_BinaryOp *op,               // handle for the new binary operator
     GxB_binary_function function,   // pointer to the binary function
     GrB_Type ztype,                 // type of output z
     GrB_Type xtype,                 // type of input x
@@ -32,18 +32,31 @@ GrB_Info GB_BinaryOp_new
     //--------------------------------------------------------------------------
 
     GB_WHERE1 ("GrB_BinaryOp_new (op, function, ztype, xtype, ytype)") ;
-    GB_RETURN_IF_NULL (binaryop) ;
-    (*binaryop) = NULL ;
+    GB_RETURN_IF_NULL (op) ;
+    (*op) = NULL ;
     GB_RETURN_IF_NULL (function) ;
     GB_RETURN_IF_NULL_OR_FAULTY (ztype) ;
     GB_RETURN_IF_NULL_OR_FAULTY (xtype) ;
     GB_RETURN_IF_NULL_OR_FAULTY (ytype) ;
 
     //--------------------------------------------------------------------------
+    // allocate the binary op
+    //--------------------------------------------------------------------------
+
+    size_t header_size ;
+    (*op) = GB_MALLOC (1, struct GB_BinaryOp_opaque, &header_size) ;
+    if (*op == NULL)
+    { 
+        // out of memory
+        return (GrB_OUT_OF_MEMORY) ;
+    }
+    (*op)->header_size = header_size ;
+
+    //--------------------------------------------------------------------------
     // create the binary op
     //--------------------------------------------------------------------------
 
-    return (GB_binop_new (binaryop, function, ztype, xtype, ytype, name,
-        GB_USER_opcode)) ;
+    GB_binop_new (*op, function, ztype, xtype, ytype, name, GB_USER_opcode) ;
+    return (GrB_SUCCESS) ;
 }
 

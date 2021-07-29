@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -12,7 +12,9 @@
 // gbmonoidinfo (monoid)
 // gbmonoidinfo (monoid, type)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: GrB.monoidinfo (monoid) or GrB.monoidinfo (monoid,type)"
 
 void mexFunction
 (
@@ -27,8 +29,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 1 && nargin <= 2 && nargout == 0,
-        "usage: GrB.monoidinfo (monoid) or GrB.monoidinfo (monoid,type)") ;
+    gb_usage (nargin >= 1 && nargin <= 2 && nargout == 0, USAGE) ;
 
     //--------------------------------------------------------------------------
     // construct the GraphBLAS monoid and print it

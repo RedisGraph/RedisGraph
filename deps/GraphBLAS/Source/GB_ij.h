@@ -12,7 +12,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB interface only
+GB_PUBLIC
 void GB_ijlength            // get the length and kind of an index list I
 (
     const GrB_Index *I,     // list of indices (actual or implicit)
@@ -45,11 +45,13 @@ GrB_Info GB_ijproperties        // check I and determine its properties
 
 GrB_Info GB_ijsort
 (
-    const GrB_Index *GB_RESTRICT I, // size ni, where ni > 1 always holds
-    int64_t *GB_RESTRICT p_ni,      // : size of I, output: # of indices in I2
-    GrB_Index *GB_RESTRICT *p_I2,   // size ni2, where I2 [0..ni2-1]
+    const GrB_Index *restrict I, // size ni, where ni > 1 always holds
+    int64_t *restrict p_ni,      // : size of I, output: # of indices in I2
+    GrB_Index *restrict *p_I2,   // size ni2, where I2 [0..ni2-1]
                         // contains the sorted indices with duplicates removed.
-    GrB_Index *GB_RESTRICT *p_I2k,  // output array of size ni2
+    size_t *I2_size_handle,
+    GrB_Index *restrict *p_I2k,  // output array of size ni2
+    size_t *I2k_size_handle,
     GB_Context Context
 ) ;
 

@@ -31,8 +31,8 @@
 
 #define GB_FREE_ALL                 \
 {                                   \
-    GB_FREE (W) ;                   \
-    GB_FREE (F) ;                   \
+    GB_WERK_POP (F, bool) ;         \
+    GB_WERK_POP (W, GB_void) ;      \
 }
 
 GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
@@ -54,8 +54,8 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     GB_RETURN_IF_NULL_OR_FAULTY (reduce) ;
     GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
     GB_RETURN_IF_NULL (c) ;
-    GB_void *GB_RESTRICT W = NULL ;
-    bool    *GB_RESTRICT F = NULL ;
+    GB_WERK_DECLARE (W, GB_void) ;
+    GB_WERK_DECLARE (F, bool) ;
 
     ASSERT_TYPE_OK (ctype, "type of scalar c", GB0) ;
     ASSERT_MONOID_OK (reduce, "reduce for reduce_to_scalar", GB0) ;
@@ -64,7 +64,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
 
     // check domains and dimensions for c = accum (c,s)
     GrB_Type ztype = reduce->op->ztype ;
-    GB_OK (GB_compatible (ctype, NULL, NULL, accum, ztype, Context)) ;
+    GB_OK (GB_compatible (ctype, NULL, NULL, false, accum, ztype, Context)) ;
 
     // s = reduce (s,A) must be compatible
     if (!GB_Type_compatible (A->type, ztype))
@@ -89,7 +89,8 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
 
     int64_t asize = A->type->size ;
     int64_t zsize = ztype->size ;
-    int64_t anz = GB_NNZ_HELD (A) ;
+    int64_t anz = GB_nnz_held (A) ;
+    ASSERT (anz >= A->nzombies) ;
 
     // s = identity
     GB_void s [GB_VLA(zsize)] ;
@@ -100,7 +101,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     //--------------------------------------------------------------------------
 
     #if defined ( GBCUDA )
-    if (GB_reduce_to_scalar_cuda_branch (reduce, A, Context))
+    if (!A->iso && GB_reduce_to_scalar_cuda_branch (reduce, A, Context))
     {
 
         //----------------------------------------------------------------------
@@ -129,8 +130,8 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
         // allocate workspace
         //----------------------------------------------------------------------
 
-        W = GB_MALLOC (ntasks * zsize, GB_void) ;
-        F = GB_MALLOC (ntasks, bool) ;
+        GB_WERK_PUSH (W, ntasks * zsize, GB_void) ;
+        GB_WERK_PUSH (F, ntasks, bool) ;
         if (W == NULL || F == NULL)
         { 
             // out of memory
@@ -143,16 +144,27 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
         //----------------------------------------------------------------------
 
         // get terminal value, if any
-        GB_void *GB_RESTRICT terminal = (GB_void *) reduce->terminal ;
+        GB_void *restrict terminal = (GB_void *) reduce->terminal ;
 
-        if (anz == 0)
+        if (anz == A->nzombies)
         { 
 
             //------------------------------------------------------------------
-            // nothing to do
+            // no live entries in A; nothing to do
             //------------------------------------------------------------------
 
             ;
+
+        }
+        else if (A->iso)
+        { 
+
+            //------------------------------------------------------------------
+            // reduce an iso matrix to scalar
+            //------------------------------------------------------------------
+
+            // this takes at most O(log(nvals(A))) time, for any monoid
+            GB_iso_reduce_to_scalar (s, reduce, A, Context) ;
 
         }
         else if (A->type == ztype)
@@ -170,7 +182,8 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
                 // define the worker for the switch factory
                 //--------------------------------------------------------------
 
-                #define GB_red(opname,aname) GB_red_scalar_ ## opname ## aname
+                #define GB_red(opname,aname) \
+                    GB (_red_scalar_ ## opname ## aname)
 
                 #define GB_RED_WORKER(opname,aname,atype)                   \
                 {                                                           \
@@ -216,10 +229,6 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
                     GB_void t [GB_VLA(zsize)] ;                         \
                     memcpy (t, reduce->identity, zsize) ;
 
-                // t = W [tid], no typecast
-                #define GB_COPY_ARRAY_TO_SCALAR(t, W, tid)              \
-                    memcpy (t, W +(tid*zsize), zsize)
-
                 // W [tid] = t, no typecast
                 #define GB_COPY_SCALAR_TO_ARRAY(W, tid, t)              \
                     memcpy (W +(tid*zsize), t, zsize)
@@ -232,10 +241,6 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
                 #define GB_HAS_TERMINAL 1
                 #define GB_IS_TERMINAL(s) \
                     (terminal != NULL && memcmp (s, terminal, zsize) == 0)
-
-                // t = (ztype) Ax [p], but no typecasting needed
-                #define GB_CAST_ARRAY_TO_SCALAR(t,Ax,p)                 \
-                    memcpy (t, Ax +((p)*zsize), zsize)
 
                 // t += (ztype) Ax [p], but no typecasting needed
                 #define GB_ADD_CAST_ARRAY_TO_SCALAR(t,Ax,p)             \
@@ -259,19 +264,14 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
             GB_cast_function
                 cast_A_to_Z = GB_cast_factory (ztype->code, A->type->code) ;
 
-                // t = (ztype) Ax [p], with typecast
-                #undef  GB_CAST_ARRAY_TO_SCALAR
-                #define GB_CAST_ARRAY_TO_SCALAR(t,Ax,p)                 \
-                    cast_A_to_Z (t, Ax +((p)*asize), asize)
+            // t += (ztype) Ax [p], with typecast
+            #undef  GB_ADD_CAST_ARRAY_TO_SCALAR
+            #define GB_ADD_CAST_ARRAY_TO_SCALAR(t,Ax,p)             \
+                GB_void awork [GB_VLA(zsize)] ;                     \
+                cast_A_to_Z (awork, Ax +((p)*asize), asize) ;       \
+                freduce (t, t, awork)
 
-                // t += (ztype) Ax [p], with typecast
-                #undef  GB_ADD_CAST_ARRAY_TO_SCALAR
-                #define GB_ADD_CAST_ARRAY_TO_SCALAR(t,Ax,p)             \
-                    GB_void awork [GB_VLA(zsize)] ;                     \
-                    cast_A_to_Z (awork, Ax +((p)*asize), asize) ;       \
-                    freduce (t, t, awork)
-
-                #include "GB_reduce_to_scalar_template.c"
+            #include "GB_reduce_to_scalar_template.c"
         }
     }
 

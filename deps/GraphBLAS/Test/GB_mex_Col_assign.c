@@ -13,7 +13,7 @@
 // the Mask is a single row or column in these cases, and C is not modified
 // outside that single row (for GrB_Row_assign) or column (for GrB_Col_assign).
 
-// This function does the same thing as the MATLAB mimic GB_spec_assign.m.
+// This function does the same thing as the mimic GB_spec_assign.m.
 
 //------------------------------------------------------------------------------
 
@@ -23,9 +23,9 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Matrix_free_(&Mask) ;            \
-    GrB_Matrix_free_(&C) ;               \
+    GrB_Matrix_free_(&A) ;              \
+    GrB_Matrix_free_(&Mask) ;           \
+    GrB_Matrix_free_(&C) ;              \
     GrB_Descriptor_free_(&desc) ;       \
     GB_mx_put_global (true) ;           \
 }
@@ -83,10 +83,9 @@ GrB_Info assign ( )
     ASSERT_BINARYOP_OK_OR_NULL (accum, "accum", GB0) ;
     ASSERT_DESCRIPTOR_OK_OR_NULL (desc, "desc", GB0) ;
 
-    if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_NNZ (A) == 1)
+    if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_nnz (A) == 1)
     {
-        // scalar expansion to matrix or vector
-        GB_void *Ax = A->x ;
+        GB_void *Ax = A->x ; // OK: A is a scalar with exactly one entry
 
         if (ni == 1 && nj == 1 && Mask == NULL && I != GrB_ALL && J != GrB_ALL
             && GB_op_is_second (accum, C->type) && A->type->code < GB_FC64_code
@@ -486,7 +485,7 @@ void mexFunction
     }
 
     //--------------------------------------------------------------------------
-    // return C to MATLAB as a struct
+    // return C as a struct
     //--------------------------------------------------------------------------
 
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C assign result", true) ;

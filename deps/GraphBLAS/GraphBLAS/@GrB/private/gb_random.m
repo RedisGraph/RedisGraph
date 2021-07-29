@@ -3,7 +3,7 @@ function C = gb_random (varargin)
 % Implements C = GrB.random (...), C = sprand (...), C = sprand (...),
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 %---------------------------------------------------------------------------
 % parse inputs
@@ -118,10 +118,10 @@ else
     if (~isempty (range))
         lo = double (min (range)) ;
         hi = double (max (range)) ;
-        if (contains (type, 'int'))
+        if (gb_contains (type, 'int'))
             % X is signed or unsigned integer
             X = cast (floor ((hi - lo + 1) * X + lo), type) ;
-        elseif (~contains (type, 'complex'))
+        elseif (~gb_contains (type, 'complex'))
             % X is single or double real
             X = cast ((hi - lo) * X + lo, type) ;
         else
@@ -158,11 +158,11 @@ if (symmetric)
 elseif (hermitian)
     % C = L + L' + real (diag (C))
     LT = gbtrans (L) ;
-    if (contains (gbtype (LT), 'complex'))
+    if (gb_contains (gbtype (LT), 'complex'))
         LT = gbapply ('conj', LT) ;
     end
     D = gbselect ('diag', C, 0) ;
-    if (contains (gbtype (D), 'complex'))
+    if (gb_contains (gbtype (D), 'complex'))
         D = gbapply ('creal', D) ;
     end
     C = gbeadd (L, '+', gbeadd (LT, '+', D)) ;

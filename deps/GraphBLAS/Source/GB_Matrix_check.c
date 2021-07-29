@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_Matrix_check    // check a GraphBLAS matrix
 (
     const GrB_Matrix A,     // GraphBLAS matrix to print and check

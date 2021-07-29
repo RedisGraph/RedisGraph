@@ -74,7 +74,7 @@ void mexFunction
     // C = triu (A,k)
     METHOD (GxB_Matrix_select_(C, NULL, NULL, GxB_TRIU, A, Thunk, NULL)) ;
 
-    // return C to MATLAB as a regular MATLAB sparse matrix
+    // return C as a regular built-in sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C triu", false) ;
 
     FREE_ALL ;

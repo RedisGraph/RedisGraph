@@ -1,3 +1,98 @@
+Version 5.1.3, July 3, 2021
+
+    * added GxB_Matrix_iso and GxB_Vector_iso: to query if a matrix or vector
+        is held as iso-valued.
+    * (29) bug fix: Matrix_pack_*R into a matrix previously held by
+        column, or pack*C into a matrix by row, would flip the dimensions.
+        Caught by Erik Welch, Anaconda.
+
+Version 5.1.2, June 30, 2021
+
+    * (28) bug fix: kron(A,B) with iso input matrices A and B fixed.
+        Caught by Michel Pelletier, Graphegon.
+
+Version 5.1.1, June 29, 2021
+
+    * (27) bug fix: v5.1.0 had a wrong version of a file (GB_ops.c,
+        which wouldn't compile) posted by mistake.
+        Caught by Michel Pelletier, Graphegon.
+
+Version 5.1.0, June 28, 2021
+
+    * iso matrices and vectors added
+    * GxB_*_build_Scalar added: builds an iso matrix or vector
+    * import/export: can now import/export iso matrices and vectors
+    * GxB_*_pack/unpack methods added
+    * GrB.argmin/argmax: added to @GrB interface
+    * GxB_PRINT_1BASED: added to the global settings
+    * GxB_*_memoryUsage added
+    * Source/Generated: split into Source/Generated1 and Source/Generated2
+        for faster compilation when GBCOMPACT is enabled
+    * port to Octave:  gbmake and gbtest work in Octave7 to build and test
+        the @GrB interface to GraphBLAS.  Octave 7.0.0 is required.
+
+Version 5.0.6, May 24, 2021
+
+    * bfs and triangle counting demos: removed.  See LAGraph for these
+        algorithms.
+
+Version 5.0.5, May 17, 2021
+
+    * (26) performance bug fix:  reduce-to-vector where A is hypersparse CSR
+        with a transposed descriptor (or CSC with no transpose), and some cases
+        for GrB_mxm/mxv/vxm when computing C=A*B with A hypersparse CSC and B
+        bitmap/full (or A bitmap/full and B hypersparse CSR), the wrong
+        internal method was being selected via the auto-selection strategy,
+        resulting in a significant slowdown in some cases.
+
+Version 5.0.4, May 13, 2021
+
+    * @GrB interface: changed license from Apache-2.0
+        to GNU GPLv3 or later.
+
+Version 5.0.3, May 12, 2021
+
+    * (25) bug fix: disabling ANY_PAIR semirings in Source/GB_control.h would
+        cause a segfault if those disabled semirings were used.
+    * demos: no longer built by default
+    * (24) bug fix: GB_PUBLIC added to the new functions in GraphBLAS.h
+    * GrB_Matrix_reduce_BinaryOp: reinstated from v4.0.3;
+        same limit on built-in ops that correspond to known monoids.
+    * Source/GB_control.h: more semirings disabled by default to reduce
+        compile time and binary library size.  The semirings still work, but
+        are not as fast since they now use the generic methods.
+
+Version 5.0.2, May 5, 2021
+
+    * GrB_Matrix_reduce_BinaryOp: removed.  Use a monoid instead, with
+        GrB_reduce or GrB_Matrix_reduce_Monoid.
+    * (23) bug fix: GrB_Matrix_apply_BinaryOp1st and 2nd were using the
+        wrong descriptors for GrB_INP0 and GrB_INP1. Caught by Erik Welch,
+        Anaconda.
+    * memory pool added for faster memory allocation
+    * calloc no longer used: using malloc+memset(0) instead
+    * realloc option: if not available, uses malloc+memcpy+free
+    * @GrB interface ported to R2021a.
+    * GxB_Matrix_diag: construct a diagonal matrix from a vector
+    * GxB_Vector_diag: extract a diagonal from a matrix
+    * concat/split: added methods to concatenate and split matrices
+    * import/export: size of arrays now in bytes, not entries.
+        A new parameter, is_uniform, has been added to all import/export
+        methods, which indicates that the matrix values are all the same.
+    * (22) bug fix: SIMD vectorization was missing reduction(+,task_cnvals)
+        in GB_dense_subassign_06d_template.c.  Caught by Jeff Huang, Texas A&M,
+        with his software package for race-condition detection.
+
+Version 4.0.3, Jan 19, 2021
+
+    * faster min/max monoids
+    * @GrB: G=GrB(G) converts G from v3 object to v4
+
+Version 4.0.2, Jan 11, 2021
+
+    * added ability to load *.mat files saved with GraphBLAS v3.
+    * GrB_wait: added #pragma omp flush after any GrB_wait
+
 Version 4.0.1, Jan 4, 2021
 
     * substantial performance gains: compared with v3.3.3: up to 5x faster in
@@ -8,7 +103,10 @@ Version 4.0.1, Jan 4, 2021
     * GrB_wait(&object): polymorphic function added
     * GrB_*_nvals: no longer guarantees completion; use GrB_wait for that
     * GrB_error: now has two parameters: a string (char **) and an object
-    * GrB_Matrix_reduce_BinaryOp: limited to certain built-in ops
+        The no-input GrB_error(void) method has been deprecated and removed.
+    * GrB_Matrix_reduce_BinaryOp: limited to certain built-in ops.
+        Support for user-defined operators and binary ops that do not
+        correspond to built-in monoids has been deprecated and removed.
     * GrB_*_extractTuples: may return indices out of order
     * removed internal features: GBI iterator, slice and hyperslice matrices
     * bitmap/full matrices and vectors added: faster and lower memory usage
@@ -23,7 +121,7 @@ Version 4.0.1, Jan 4, 2021
     * GxB_SelectOp: nrows and ncols removed from function signature
     * OpenMP tasking removed from mergesort: just as fast; now ports to Windows
     * GxB_BURBLE added: for diagnostic output
-    * (21) bug fix: A({lo,hi})=scalar in MATLAB; A(lo:hi)=scalar was OK
+    * (21) bug fix: A({lo,hi})=scalar in @GrB; A(lo:hi)=scalar was OK
 
 Version 3.3.3, July 14, 2020
 
@@ -51,7 +149,7 @@ Version 3.3.0, June 26, 2020
     * added GrB_*_apply_BinaryOp1st and 2nd: also GxB version with GxB_Scalar
     * added bitwise operators: and their monoids and semirings
     * added predefined GrB* monoids and semirings: from the v1.3 spec.
-    * MATLAB interface: added complex matrices and operators, bitwise
+    * @GrB interface: added complex matrices and operators, bitwise
         operators; improved performance
     * changed typecasting rules: for casting floating point types to integers
     * added GrB_*_wait: wait for specific object to complete
@@ -65,11 +163,7 @@ Version 3.3.0, June 26, 2020
 
 Version 3.2.2, Apr 2, 2020
 
-    * (16) bug fix to MATLAB interface: for matrices with dimension > 2^53.
-        Note that MATLAB will not display the size correctly in 'whos', which
-        rounds the int64 values of m and n for [m,n]=size(A) of a GrB_matrix to
-        a 'flint', which is a double value, that then gets rounded.  This is
-        outside of my control.  size(A) is correct, just the 'whos' is wrong.
+    * (16) bug fix to @GrB interface: for matrices with dimension > 2^53.
     * port to Microsoft Visual Studio: including GraphBLAS/Demo and
         GraphBLAS/Test, which had not been ported in v3.1.2.
     * remove dependency on m4: end-users no longer need m4;  still needed by
@@ -77,12 +171,12 @@ Version 3.2.2, Apr 2, 2020
 
 Version 3.2.1, Mar 10, 2020
 
-    * GAP benchmarks in MATLAB: in GraphBLAS/GraphBLAS/GAP (all but CC).
+    * GAP benchmarks in *.m in GraphBLAS/GraphBLAS/GAP (all but CC).
     * atomic read/write: faster atomics for icc (see Source/GB_atomics.h)
     * install name for Mac: in alternative/Makefile and Tcov/Makefile
     * enable -DGBCOMPACT from CMake: for faster Travis builds
-    * MATLAB interface: better error message in GrB.reduce
-    * MATLAB triangle count: added sorting heuristic in GrB.tricount.
+    * @GrB interface: better error message in GrB.reduce
+    * @GrB triangle count: added sorting heuristic in GrB.tricount.
     * bug fix for GraphBLAS/Demo/simple_timer: better selection of which
         timer to use; simple_timer.[ch] made consistent.
     * no bug fixes needed in primary GraphBLAS library: just in Demo, test,
@@ -116,7 +210,7 @@ Version 3.1.2, Dec 16, 2019
     * (15) bug fix in parallel matrix-matrix multiply: could occur when # of
         threads is larger than the # of columns of B, for C=A*B, and when
         B is a standard matrix with one or more empty vectors.
-    * (14) bug fix for MATLAB interface: A(58) and A(:) were conflated.
+    * (14) bug fix for @GrB interface: A(58) and A(:) were conflated.
     * compiler port: changes to allow GraphBLAS to be compiled with older
         compilers (pre ANSI C11), and Microsoft Visual Studio.
 
@@ -126,12 +220,12 @@ Version 3.1.1, Oct 21, 2019
 
 Version 3.1.0, Oct 2, 2019
 
-    * added MATLAB interface: GraphBLAS/GraphBLAS is new.  In Source/, added
-        global pointer to printf for MATLAB mexPrintf, pointer to
+    * added @GrB interface: GraphBLAS/GraphBLAS is new.  In Source/, added
+        global pointer to printf for mexPrintf, pointer to
         mexMakeMemoryPersistent for Sauna workspace.  Changed how GraphBLAS
         objects are printed with GxB_print.  Changed how duplicate indices are
-        handled in assign and extract, to match the MATLAB stadard.  Added
-        helper functions for MATLAB (GB_matlab_helper.[ch]).
+        handled in assign and extract, to match the built-in stadard.
+        Added helper functions.
         Code size: @GrB is 9.7KLOC, test/ is 4.5KLOC).
     * bug counter added to this ChangeLog: to count # of bugs that appeared
         in formal releases that affect production code.  The count excludes
@@ -139,7 +233,7 @@ Version 3.1.0, Oct 2, 2019
         in beta versions that were fixed before any formal release, and
         bugs prior to version 1.0.  Code size of Source/, Include/ excluding
         Source/Generated, and Config/*.m4, is 42,659 lines (not including the
-        new MATLAB interface).  13 bugs / 42K lines is a bug rate of 0.3 bugs
+        new @GrB interface).  13 bugs / 42K lines is a bug rate of 0.3 bugs
         per KLOC, much lower than most commercial software, but higher than
         UMFPACK, CHOLMOD, etc (with about 0.1 bug per KLOC).  GraphBLAS is a
         much more complex library, from the external view, than solving Ax=b.
@@ -168,7 +262,7 @@ Version 3.0.1, July 26, 2019
     * added GxB_Scalar: acts like a GrB_Vector of length 1.
     * OpenMP parallelism: added nthreads and chunk parameters to GxB_set/get.
     * added parameter to GxB_init: bool user_malloc_is_thread_safe,
-        for the MATLAB mexFunction interface, or any other malloc library that
+        for the @GrB mexFunction interface, or any other malloc library that
         might not be thread-safe.  mxMalloc is not thread-safe.
         This change is not backward compatible with Version 2.x.
     * changed thunk parameter of GxB_select:  was (void *), now GxB_Scalar.
@@ -183,7 +277,7 @@ Version 3.0.1, July 26, 2019
 
 Version 2.3.5, Oct 20, 2019
 
-    * minor update: fix for tests in MATLAB R2019b
+    * minor update: fix for tests in R2019b
 
 Version 2.3.4, July 4, 2019
 
@@ -211,7 +305,7 @@ Version 2.3.0, Feb 25, 2019
     * early exit: for integer TIMES monoids (terminal value is 0);
         cannot use zero for floating-point, to preserve NaN behavior
     * GrB_assign / GxB_subassign: further exploit of aliased inputs
-    * Test/: MATLAB mexFunctions now link against the dynamic -lgraphblas
+    * Test/: @GrB mexFunctions now link against the dynamic -lgraphblas
     * bug fix for Demo/mis*: random number generator could create
         duplicate scores, which leads to a stall
     * terminal values for user monoids: added GxB_Monoid_terminal_new,
@@ -299,7 +393,7 @@ Version 2.2.0 (BETA2), Nov 15, 2018
 
     * added additional pagerank example in Demo/
     * beta bug fix: GxB_Monoid_define: bug fix for C struct types.  bug first
-        appears in Version 2.2.0 (BETA1), not in any non-BETA final release. 
+        appears in Version 2.2.0 (BETA1), not in any non-BETA final release.
 
 Version 2.2.0 (BETA1), Nov 2, 2018
 
@@ -330,7 +424,7 @@ Version 2.1.0 (BETA1), Sept 11, 2018
         backward compatible with Version 2.0, so the SO version does not
         increase (it is still 2.x).
     * added GxB_AxB_METHOD: for user selection of C=A*B method
-    * added GxB_RANGE, GxB_STRIDE and GxB_BACKWARDS: for MATLAB-like colon
+    * added GxB_RANGE, GxB_STRIDE and GxB_BACKWARDS: for colon
         notation: begin:end and begin:inc:end.
     * added GxB_*Option* functions: to control hypersparsity and CSR/CSC format
     * added GxB_set and GxB_set: to set/get the descriptor and other options
@@ -395,13 +489,13 @@ Version 1.1.0: Dec 1, 2017
     * to clarify which features of SuiteSparse:GraphBLAS are extensions to
         the spec, the names of functions and objects not in the spec have
         changed.  They are now GxB_* (GXB_ for macros).
-    * modified how the global matrix queue is accessed, for thread safety
+    * modified how the global matrix queue is accessed: for thread safety
         in case the user application is multi-threaded
 
 Version 1.0.0: Nov 25, 2017
 
     * transition to CMake
-    * tested on many compilers (gcc 4.9 to 7.2 on Linux, clang 8 and gcc 6.2.0
+    * tested on many compilers: gcc 4.9 to 7.2 on Linux, clang 8 and gcc 6.2.0
         on the Mac, xlc 13.01 on IBM Power)
     * changed printf formats in Demo/ to silence warnings from older compilers
     * complex.h in gcc-6.2.0 on the Mac doesn't #define CMPLX;
@@ -416,8 +510,8 @@ Version 1.0.0: Nov 25, 2017
 Version 0.5.0: Nov 13, 2017
 
     * resolved icc -O3 segfault: Intel compiler bug fixed icc version 18.0
-    * added triangle-counting demo in C (Demo/tricount.c) and MATLAB
-        (Test/tricount.m).  See also Test/test69, Test/test70. and Test/test71.
+    * added triangle-counting demo: in C (Demo/tricount.c) and
+        Test/tricount.m.  See also Test/test69, Test/test70. and Test/test71.
     * performance enhancements to GrB_eWiseMult, GrB_assign, GrB_subassign,
         GrB_extract, and GrB_mxm, reducing time and memory.  mxm now exploits
         the mask during computation, to save memory and often saving time.
@@ -428,7 +522,7 @@ Version 0.5.0: Nov 13, 2017
 Version 0.4.0: Oct 24, 2017
 
     * SPEC: SuiteSparse:GraphBLAS 0.4.0 fully conforms to 1.1.0 of the spec
-    * GrB_assign functions added; all now conform to the 1.1.0 spec 
+    * GrB_assign functions added; all now conform to the 1.1.0 spec
     * renamed all prior GrB_*_assign functions to GrB_*_subassign
 
 Version 0.3.0: Oct 14, 2017
@@ -456,7 +550,7 @@ Version 0.2.0: Sept 5, 2017
     * User Guide updated (SPEC discussion)
     * GraphBLAS.h modified (SPEC discussions)
     * Licensed under Apache 2.0; versions 0.1.x were limited releases
-    * removed wathen_mod.m (to see it do 'type private/wathen' in MATLAB)
+    * removed wathen_mod.m
 
 Version 0.1.2: Aug 30, 2017
 
@@ -473,7 +567,7 @@ Version 0.1.2: Aug 30, 2017
     * changes for GraphBLAS spec 1.0.2 (Aug 10, 2017 version):
         * GrB_Vector_reduce_Monoid renamed to GrB_Matrix_reduce_Monoid
         * GrB_Vector_reduce_BinaryOp renamed to GrB_Matrix_reduce_BinaryOp
-        * GrB_Row_extract was renamed in the spec to GrB_Col_extract, but 
+        * GrB_Row_extract was renamed in the spec to GrB_Col_extract, but
             this version keeps the name GrB_Column_extract since it parallels
             the name GrB_Column_assign.
 

@@ -35,8 +35,6 @@ GrB_Info GB_dup             // make an exact copy of a matrix
 (
     GrB_Matrix *Chandle,    // handle of output matrix to create
     const GrB_Matrix A,     // input matrix to copy
-    const bool numeric,     // if true, duplicate the numeric values
-    const GrB_Type ctype,   // type of C, if numeric is false
     GB_Context Context
 )
 { 
@@ -47,18 +45,20 @@ GrB_Info GB_dup             // make an exact copy of a matrix
 
     ASSERT (Chandle != NULL) ;
     ASSERT_MATRIX_OK (A, "A to duplicate", GB0) ;
+    (*Chandle) = NULL ;
 
     //--------------------------------------------------------------------------
     // delete any lingering zombies and assemble any pending tuples
     //--------------------------------------------------------------------------
 
-    GB_MATRIX_WAIT (A) ;        // TODO: allow C and A to be jumbled
+    GB_MATRIX_WAIT (A) ;        // TODO: keep zombies and jumbled
 
     //--------------------------------------------------------------------------
     // C = A
     //--------------------------------------------------------------------------
 
-    (*Chandle) = NULL ; // create a new header for C
-    return (GB_dup2 (Chandle, A, numeric, ctype, Context)) ;
+    // set C->iso = A->iso      OK
+    GB_BURBLE_MATRIX (A, "(iso dup) ") ;
+    return (GB_dup_worker (Chandle, A->iso, A, true, NULL, Context)) ;
 }
 

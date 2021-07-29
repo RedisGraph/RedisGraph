@@ -7,9 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// FUTURE: allow the accum and the 'plus' op to differ (as in C += A-B,
-// with PLUS as the accum and MINUS as the operator, so CBLAS can be used
-// for this combination.
+// No matrix is iso.
 
 {
 
@@ -21,7 +19,10 @@
     GB_ATYPE *Ax = (GB_ATYPE *) A->x ;
     GB_BTYPE *Bx = (GB_BTYPE *) B->x ;
     GB_CTYPE *Cx = (GB_CTYPE *) C->x ;
-    const int64_t cnz = GB_NNZ (C) ;
+    const int64_t cnz = GB_nnz (C) ;
+    ASSERT (!C->iso) ;
+    ASSERT (!A->iso) ;
+    ASSERT (!B->iso) ;
     int64_t p ;
 
     //--------------------------------------------------------------------------
@@ -35,29 +36,15 @@
         // C += A+A where A and C are dense
         //----------------------------------------------------------------------
 
-        // If the op is PLUS, this becomes C += 2*A.  If the op is MINUS,
-        // almost nothing happens since C=C-(A-A) = C, except if A has Infs or
-        // NaNs.  In this case, don't bother to call the CBLAS if the op is
-        // MINUS.
-
-        #if defined ( GB_HAS_CBLAS ) && GB_OP_IS_PLUS_REAL
-
-            // C += 2*A via GB_cblas_saxpy or GB_cblas_daxpy
-            GB_CBLAS_AXPY (cnz, (GB_CTYPE) 2, Ax, Cx, nthreads) ;   // C += 2*A
-
-        #else
-
-            // C += A+A
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < cnz ; p++)
-            { 
-                GB_GETA (aij, Ax, p) ;                  // aij = Ax [p]
-                GB_CTYPE_SCALAR (t) ;                   // declare scalar t
-                GB_BINOP (t, aij, aij, 0, 0) ;          // t = aij + aij
-                GB_BINOP (GB_CX (p), GB_CX (p), t, 0, 0) ; // Cx [p] = cij + t
-            }
-
-        #endif
+        // C += A+A
+        #pragma omp parallel for num_threads(nthreads) schedule(static)
+        for (p = 0 ; p < cnz ; p++)
+        { 
+            GB_GETA (aij, Ax, p, false) ;           // aij = Ax [p]
+            GB_CTYPE_SCALAR (t) ;                   // declare scalar t
+            GB_BINOP (t, aij, aij, 0, 0) ;          // t = aij + aij
+            GB_BINOP (GB_CX (p), GB_CX (p), t, 0, 0) ; // Cx [p] = cij + t
+        }
 
     }
     else
@@ -67,31 +54,15 @@
         // C += A+B where all 3 matrices are dense
         //----------------------------------------------------------------------
 
-        #if defined ( GB_HAS_CBLAS ) && GB_OP_IS_PLUS_REAL
-
-            // C += A+B via GB_cblas_saxpy or GB_cblas_daxpy
-            GB_CBLAS_AXPY (cnz, (GB_CTYPE) 1, Ax, Cx, nthreads) ;   // C += A
-            GB_CBLAS_AXPY (cnz, (GB_CTYPE) 1, Bx, Cx, nthreads) ;   // C += B
-
-        #elif defined ( GB_HAS_CBLAS ) && GB_OP_IS_MINUS_REAL
-
-            // C -= (A-B) via GB_cblas_saxpy or GB_cblas_daxpy
-            GB_CBLAS_AXPY (cnz, (GB_CTYPE) -1, Ax, Cx, nthreads) ;  // C -= A
-            GB_CBLAS_AXPY (cnz, (GB_CTYPE)  1, Bx, Cx, nthreads) ;  // C += B
-
-        #else
-
-            #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (p = 0 ; p < cnz ; p++)
-            { 
-                GB_GETA (aij, Ax, p) ;                  // aij = Ax [p]
-                GB_GETB (bij, Bx, p) ;                  // bij = Bx [p]
-                GB_CTYPE_SCALAR (t) ;                   // declare scalar t
-                GB_BINOP (t, aij, bij, 0, 0) ;          // t = aij + bij
-                GB_BINOP (GB_CX (p), GB_CX (p), t, 0, 0) ; // Cx [p] = cij + t
-            }
-
-        #endif
+        #pragma omp parallel for num_threads(nthreads) schedule(static)
+        for (p = 0 ; p < cnz ; p++)
+        { 
+            GB_GETA (aij, Ax, p, false) ;           // aij = Ax [p]
+            GB_GETB (bij, Bx, p, false) ;           // bij = Bx [p]
+            GB_CTYPE_SCALAR (t) ;                   // declare scalar t
+            GB_BINOP (t, aij, bij, 0, 0) ;          // t = aij + bij
+            GB_BINOP (GB_CX (p), GB_CX (p), t, 0, 0) ; // Cx [p] = cij + t
+        }
     }
 }
 

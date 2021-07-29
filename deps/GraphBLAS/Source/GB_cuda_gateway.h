@@ -117,7 +117,7 @@ GrB_Info GB_cuda_red__plus_int64
     int64_t *result,
     int64_t *Ax,
     int64_t anz,
-    int64_t *GB_RESTRICT W,      // array of size ntasks
+    int64_t *restrict W,      // array of size ntasks
     int64_t worksize,
     int ntasks,
     int nthreads,
@@ -126,7 +126,7 @@ GrB_Info GB_cuda_red__plus_int64
 
 GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
 (
-    GrB_Matrix *Chandle,            // output matrix
+    GrB_Matrix C,                   // output matrix, static header
     const GrB_Matrix M,             // mask matrix
     const bool Mask_struct,         // if true, use the only structure of M
     const GrB_Matrix A,             // input matrix

@@ -11,8 +11,8 @@
 
 bool GB_mx_xsame64  // true if arrays X and Y are the same (ignoring zombies)
 (
-    double *X,
-    double *Y,
+    double *X,  bool X_iso,
+    double *Y,  bool Y_iso,
     int8_t *Xb,     // bitmap of X and Y (NULL if no bitmap)
     int64_t len,    // length of X and Y
     int64_t *I,     // row indices (for zombies), same length as X and Y
@@ -32,8 +32,10 @@ bool GB_mx_xsame64  // true if arrays X and Y are the same (ignoring zombies)
         // check X [i] and Y [i], but ignore zombies
         if (I == NULL || I [i] >= 0)
         {
-            int c = fpclassify (X [i]) ;
-            if (c != fpclassify (Y [i])) return (false) ;
+            double xi = GBX (X, i, X_iso) ;
+            double yi = GBX (Y, i, Y_iso) ;
+            int c = fpclassify (xi) ;
+            if (c != fpclassify (yi)) return (false) ;
             if (c == FP_ZERO)
             {
                 // both are zero, which is OK
@@ -41,12 +43,12 @@ bool GB_mx_xsame64  // true if arrays X and Y are the same (ignoring zombies)
             else if (c == FP_INFINITE)
             {
                 // + or -infinity
-                if (X [i] != Y [i]) return (false) ;
+                if (xi != yi) return (false) ;
             }
             else if (c != FP_NAN)
             {
                 // both are normal or subnormal, and nonzero
-                double err = fabs (X [i] - Y [i]) / fabs (X [i]) ;
+                double err = fabs (xi - yi) / fabs (xi) ;
                 if (err > eps) return (false) ;
             }
         }

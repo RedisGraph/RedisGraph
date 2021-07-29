@@ -67,8 +67,7 @@ GrB_Info info ;
 GrB_Info mis_check_results
 (
     int64_t *p_isize,
-    GrB_Vector iset,
-    double t
+    GrB_Vector iset
 )
 {
 
@@ -163,8 +162,8 @@ GrB_Info mis_check_results
 
     free (I) ; I = NULL ;
 
-    fprintf (stderr, "maximal independent set OK %.16g of %.16g nodes"
-        " time: %g\n", (double) isize, (double) n, t) ;
+    fprintf (stderr, "maximal independent set OK %.16g of %.16g nodes\n",
+        (double) isize, (double) n) ;
     return (GrB_SUCCESS) ;
 }
 
@@ -175,17 +174,15 @@ GrB_Info mis_check_results
 int main (int argc, char **argv)
 {
 
-    double tic [2], t1, t2 ;
     OK (GrB_init (GrB_NONBLOCKING)) ;
-    int nthreads ;
-    OK (GxB_Global_Option_get (GxB_GLOBAL_NTHREADS, &nthreads)) ;
-    fprintf (stderr, "\nmis_demo: nthreads: %d\n", nthreads) ;
+    fprintf (stderr, "\nmis_demo: (DO NOT BENCHMARK)\n") ;
+     printf (        "\nmis_demo: (DO NOT BENCHMARK)\n") ;
 
     //--------------------------------------------------------------------------
     // get a symmetric matrix with no self edges
     //--------------------------------------------------------------------------
 
-    OK (get_matrix (&A, argc, argv, true, true)) ;
+    OK (get_matrix (&A, argc, argv, true, true, true)) ;
     OK (GrB_Matrix_nrows (&n, A)) ;
 
     //--------------------------------------------------------------------------
@@ -208,23 +205,17 @@ int main (int argc, char **argv)
     for (int64_t seed = 1 ; seed <= 2 ; seed++)
     {
 
-        simple_tic (tic) ;
         OK (mis (&iset1, A, seed)) ;
-        t1 = simple_toc (tic) ;
-        printf ("MIS time in seconds: %14.6f\n", t1) ;
 
         // also test the version that checks every error condition
-        simple_tic (tic) ;
         OK (mis_check (&iset2, A, seed)) ;
-        t2 = simple_toc (tic) ;
-        printf ("MIS time in seconds: %14.6f\n", t2) ;
 
         //----------------------------------------------------------------------
         // compare results
         //----------------------------------------------------------------------
 
-        mis_check_results (&isize1, iset1, t1) ;
-        mis_check_results (&isize2, iset2, t2) ;
+        mis_check_results (&isize1, iset1) ;
+        mis_check_results (&isize2, iset2) ;
 
         printf ("isize: %.16g %.16g\n", (double) isize1, (double) isize2) ;
 

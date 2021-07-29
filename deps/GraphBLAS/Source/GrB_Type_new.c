@@ -22,8 +22,9 @@
 
 // the macro version of this function must first be #undefined
 #undef GrB_Type_new
+#undef GrM_Type_new
 
-GrB_Info GrB_Type_new           // create a new GraphBLAS type
+GrB_Info GRB (Type_new)         // create a new GraphBLAS type
 (
     GrB_Type *type,             // handle of user type to create
     size_t sizeof_ctype         // size = sizeof (ctype) of the C type

@@ -60,8 +60,7 @@ alternative/*_demo
 
 Test/*.log
 Test/errlog.txt
-Test/errlog2.txt
-Test/errlog3.txt
+Test/errlog*.txt
 Test/log.txt
 Test/gunk*
 Test/fprint.txt
@@ -70,8 +69,7 @@ Doc/GraphBLAS_UserGuide.log
 Doc/GraphBLAS_UserGuide.out
 
 Tcov/errlog.txt
-Tcov/errlog2.txt
-Tcov/errlog3.txt
+Tcov/errlog*.txt
 Tcov/log.txt
 Tcov/grbstat.mat
 Tcov/fprint.txt

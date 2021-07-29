@@ -33,9 +33,10 @@ function C = mxm (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % The semiring is a required string defining the semiring to use, in the
 % form 'add.mult.type', where '.type' is optional.  For example,
 % '+.*.double' is the conventional semiring for numerical linear algebra,
-% used in MATLAB for C=A*B when A and B are double.  If A or B are double
-% complex, then C=A*B uses the '+.*.double complex' semiring. GraphBLAS has
-% many more semirings.  See 'help GrB.semiringinfo' for more details.
+% used in the built-in C=A*B when A and B are double.  If A or B are
+% double complex, then C=A*B uses the '+.*.double complex' semiring.
+% GraphBLAS has many more semirings.  See 'help GrB.semiringinfo' for more
+% details.
 %
 % A and B are the input matrices.  A is transposed on input if desc.in0
 % is 'transpose', and/or desc.in1 = 'transpose' transposes B.
@@ -57,7 +58,7 @@ function C = mxm (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % See also GrB.descriptorinfo, GrB.add, GrB/mtimes.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

@@ -23,7 +23,7 @@
 bool GB_convert_sparse_to_bitmap_test    // test for hyper/sparse to bitmap
 (
     float bitmap_switch,    // A->bitmap_switch
-    int64_t anz,            // # of entries in A = GB_NNZ (A)
+    int64_t anz,            // # of entries in A = GB_nnz (A)
     int64_t vlen,           // A->vlen
     int64_t vdim            // A->vdim
 )

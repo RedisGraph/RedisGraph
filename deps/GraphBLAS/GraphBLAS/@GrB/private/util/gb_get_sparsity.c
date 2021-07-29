@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@
 
 // (6) Otherwise, the global default sparsity is used for C.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 GxB_Format_Value gb_get_sparsity        // 0 to 15
 (

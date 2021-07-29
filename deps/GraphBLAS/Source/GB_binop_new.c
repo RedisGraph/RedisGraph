@@ -11,13 +11,16 @@
 // be NULL, for implied functions (FIRST and SECOND).  It may not be NULL
 // otherwise.
 
+// The binary op header is allocated by the caller, and passed in
+// uninitialized.
+
 #include "GB.h"
 #include "GB_binop.h"
 #include <ctype.h>
 
-GrB_Info GB_binop_new
+void GB_binop_new
 (
-    GrB_BinaryOp *binaryop,         // handle for the new binary operator
+    GrB_BinaryOp op,                // new binary operator
     GxB_binary_function function,   // binary function (may be NULL)
     GrB_Type ztype,                 // type of output z
     GrB_Type xtype,                 // type of input x
@@ -31,42 +34,28 @@ GrB_Info GB_binop_new
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (binaryop != NULL) ;
+    ASSERT (op != NULL) ;
     ASSERT (ztype != NULL) ;
     ASSERT (xtype != NULL) ;
     ASSERT (ytype != NULL) ;
 
     //--------------------------------------------------------------------------
-    // create the binary op
+    // initialize the binary operator
     //--------------------------------------------------------------------------
 
-    // allocate the binary operator
-    (*binaryop) = GB_CALLOC (1, struct GB_BinaryOp_opaque) ;
-    if (*binaryop == NULL)
-    { 
-        // out of memory
-        return (GrB_OUT_OF_MEMORY) ;
-    }
-
-    // initialize the binary operator
-    GrB_BinaryOp op = *binaryop ;
     op->magic = GB_MAGIC ;
     op->xtype = xtype ;
     op->ytype = ytype ;
     op->ztype = ztype ;
     op->function = function ;       // may be NULL
     op->opcode = opcode ;
+    op->name [0] = '\0' ;
 
     //--------------------------------------------------------------------------
     // find the name of the operator
     //--------------------------------------------------------------------------
 
-    if (name == NULL)
-    { 
-        // if no name , a generic name is used instead
-        strncpy (op->name, "user_binary_operator", GB_LEN-1) ;
-    }
-    else
+    if (name != NULL)
     {
         // see if the typecast "(GxB_binary_function)" appears in the name
         char *p = NULL ;
@@ -92,6 +81,5 @@ GrB_Info GB_binop_new
     //--------------------------------------------------------------------------
 
     ASSERT_BINARYOP_OK (op, "new binary op", GB0) ;
-    return (GrB_SUCCESS) ;
 }
 

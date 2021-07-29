@@ -131,6 +131,6 @@ dt = struct ('inp0', 'tran') ;
     end
     end
 
+GB_builtin_complex_set (true) ;
 fprintf ('\ntest129: all tests passed\n') ;
-
 

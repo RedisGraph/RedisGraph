@@ -1,5 +1,5 @@
 function C = GB_spec_select (C, Mask, accum, opname, A, thunk, descriptor)
-%GB_SPEC_SELECT a MATLAB mimic of GxB_select
+%GB_SPEC_SELECT a mimic of GxB_select
 %
 % Usage:
 % C = GB_spec_select (C, Mask, accum, opname, A, thunk, descriptor)
@@ -22,7 +22,7 @@ A = GB_spec_matrix (A) ;
 Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % select the descriptor to A
@@ -36,7 +36,7 @@ T.matrix = GB_spec_zeros (size (A.matrix), atype) ;
 thunk = full (thunk) ;
 xthunk = GB_mex_cast (thunk, atype) ;
 
-is_complex = contains (atype, 'complex') ;
+is_complex = test_contains (atype, 'complex') ;
 if (is_complex)
     switch (opname)
         case { 'gt_zero', 'ge_zero', 'lt_zero', 'le_zero', ...
