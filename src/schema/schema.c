@@ -41,12 +41,20 @@ unsigned short Schema_IndexCount(const Schema *s) {
 
 Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType type) {
 	if(type == IDX_EXACT_MATCH) {
-		// Return NULL if an attribute was specified but does not reside on the index.
-		if(attribute_id && !Index_ContainsAttribute(s->index, *attribute_id)) return NULL;
+		// Return NULL if the index does not exist, or an attribute was
+		// specified but does not reside on the index.
+		if(s->index == NULL ||
+		   (attribute_id && !Index_ContainsAttribute(s->index, *attribute_id))) {
+			return NULL;
+		}
 		return s->index;
 	} else if(type ==  IDX_FULLTEXT) {
-		// Return NULL if an attribute was specified but does not reside on the index.
-		if(attribute_id && !Index_ContainsAttribute(s->fulltextIdx, *attribute_id)) return NULL;
+		// Return NULL if the index does not exist, or an attribute was
+		// specified but does not reside on the index.
+		if(s->fulltextIdx == NULL ||
+		   (attribute_id && !Index_ContainsAttribute(s->fulltextIdx, *attribute_id))) {
+			return NULL;
+		}
 		return s->fulltextIdx;
 	} else if(type == IDX_ANY && attribute_id) {
 		// If an attribute was specified, return the first index that contains it.
