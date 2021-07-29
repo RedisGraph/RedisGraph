@@ -12,7 +12,6 @@
 #include "../execution_plan_build/execution_plan_modify.h"
 
 /* Forward declarations. */
-static OpResult DistinctInit(OpBase *opBase);
 static Record DistinctConsume(OpBase *opBase);
 static OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DistinctFree(OpBase *opBase);
@@ -51,72 +50,22 @@ static void _updateOffsets(OpDistinct *op, Record r) {
 	}
 }
 
-// collect expression aliases on which distinct will be performed
-static void LocateDistinctExpressions(OpDistinct *op) {
-	// search for projection op
-	uint        exp_count  =  0;
-	const char  *alias     =  NULL;
-	OPType      types[2]   =  {OPType_PROJECT, OPType_AGGREGATE};
-	OpBase      *project   =  ExecutionPlan_LocateOpMatchingType((OpBase*)op, types, 2);
-	ASSERT(project != NULL);
-
-	OPType t = OpBase_Type(project);
-	if(t == OPType_PROJECT) {
-		// collect expression aliases from project operation
-		OpProject *proj = (OpProject*)project;
-		exp_count = proj->exp_count;
-		AR_ExpNode **exps = proj->exps;
-		op->aliases = rm_malloc(sizeof(char*) * exp_count);
-
-		for(uint i = 0; i < exp_count; i++) {
-			alias = exps[i]->resolved_name;
-			ASSERT(alias != NULL);
-			op->aliases[i] = alias;
-		}
-	} else {
-		// collect expression aliases from aggregate operation
-		OpAggregate *proj = (OpAggregate*)project;
-		exp_count = proj->key_count + proj->aggregate_count;
-		op->aliases = rm_malloc(sizeof(char*) * exp_count);
-
-		AR_ExpNode **exps = proj->key_exps;
-		for(uint i = 0; i < proj->key_count; i++) {
-			alias = exps[i]->resolved_name;
-			ASSERT(alias != NULL);
-			op->aliases[i] = alias;
-		}
-
-		exps = proj->aggregate_exps;
-		for(uint i = 0; i < proj->aggregate_count; i++) {
-			alias = exps[i]->resolved_name;
-			ASSERT(alias != NULL);
-			op->aliases[i + proj->key_count] = alias;
-		}
-	}
-
-	op->offsets = rm_malloc(sizeof(int) * exp_count);
-	op->offset_count = exp_count;
-}
-
-OpBase *NewDistinctOp(const ExecutionPlan *plan) {
+OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alias_count) {
 	OpDistinct *op = rm_malloc(sizeof(OpDistinct));
 
 	op->found           =  raxNew();
 	op->mapping         =  NULL;
-	op->aliases         =  NULL;
-	op->offsets         =  NULL;
-	op->offset_count    =  0;
+	op->aliases         =  rm_malloc(alias_count * sizeof(const char *));
+	op->offset_count    =  alias_count;
+	op->offsets         =  rm_calloc(op->offset_count, sizeof(uint));
 
-	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", DistinctInit, DistinctConsume,
+	// Copy aliases into heap array managed by this op
+	memcpy(op->aliases, aliases, alias_count * sizeof(const char *));
+
+	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
 				NULL, NULL, DistinctClone, DistinctFree, false, plan);
 
 	return (OpBase *)op;
-}
-
-static OpResult DistinctInit(OpBase *opBase) {
-	OpDistinct *op = (OpDistinct*)opBase;
-	LocateDistinctExpressions(op);
-	return OP_OK;
 }
 
 static Record DistinctConsume(OpBase *opBase) {
@@ -150,7 +99,8 @@ static Record DistinctConsume(OpBase *opBase) {
 
 static inline OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_DISTINCT);
-	return NewDistinctOp(plan);
+	OpDistinct *op = (OpDistinct *)opBase;
+	return NewDistinctOp(plan, op->aliases, op->offset_count);
 }
 
 static void DistinctFree(OpBase *ctx) {
@@ -162,12 +112,12 @@ static void DistinctFree(OpBase *ctx) {
 
 	if(op->aliases) {
 		rm_free(op->aliases);
-		op->aliases	= NULL;
+		op->aliases = NULL;
 	}
 
 	if(op->offsets) {
 		rm_free(op->offsets);
-		op->offsets	= NULL;
+		op->offsets = NULL;
 	}
 }
 

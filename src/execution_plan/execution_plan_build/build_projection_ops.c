@@ -161,6 +161,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 									   const cypher_astnode_t *clause) {
 
 	OpBase                  *op               =  NULL  ;
+	OpBase                  *distinct_op      =  NULL  ;
 	bool                    distinct          =  false ;
 	bool                    aggregate         =  false ;
 	int                     *sort_directions  =  NULL  ;
@@ -188,6 +189,19 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		order_clause  =  cypher_ast_return_get_order_by(clause);
 	}
 
+	if(distinct) {
+		// Prepare the distinct op but do not add it to op tree.
+		// This is required so that it does not operate on order expressions.
+		uint projection_count = array_len(projections);
+
+		// Populate a stack array with the aliases to perform Distinct on
+		const char *aliases[projection_count];
+		for(uint i = 0; i < projection_count; i ++) {
+			aliases[i] = projections[i]->resolved_name;
+		}
+		distinct_op = NewDistinctOp(plan, aliases, projection_count);
+	}
+
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
@@ -208,9 +222,8 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	/* Add modifier operations in order such that the final execution plan will follow the sequence:
 	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
 
-	if(distinct) {
-		op = NewDistinctOp(plan);
-		ExecutionPlan_UpdateRoot(plan, op);
+	if(distinct_op) {
+		ExecutionPlan_UpdateRoot(plan, distinct_op);
 	}
 
 	if(sort_directions) {

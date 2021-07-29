@@ -119,3 +119,14 @@ class testUnion(FlowTestsBase):
 
         # The same results should be produced regardless of whether ALL is specified.
         self.env.assertEquals(union_result.result_set, union_all_result.result_set)
+
+    # Union should function properly when one of its subqueries is ordered
+    # and the other is not.
+    def test07_union_with_partial_ordering(self):
+        query = """UNWIND range(1, 2) AS v RETURN v ORDER BY v DESC
+                   UNION
+                   UNWIND range(1, 2) AS v RETURN v"""
+        result = redis_graph.query(query)
+        expected_result = [[2],
+                           [1]]
+        self.env.assertEquals(result.result_set, expected_result)
