@@ -1,17 +1,19 @@
 function [S,p] = GB_spec_build (I, J, X, nrows, ncols, op, order, sclass)
-%GB_SPEC_BUILD a MATLAB version of GrB_Matrix_build and GrB_vector_build
+%GB_SPEC_BUILD a built-in version of GrB_Matrix_build and GrB_vector_build
 %
 % Usage:
 % [S p] = GB_spec_build (I, J, X, nrows, ncols, op, order)
 %
-% GB_spec_build builds a full matrix S, mimicing GB_mex_Matrix_build but in
-% almost pure MATLAB.  This function is very slow since it creates a dense
-% matrix instead of a sparse one.  It is meant only as an executable version of
-% the GraphBLAS spec.  It cannot operate purely in MATLAB, however, because the
-% casting and operator rules in MATLAB differ from the C-style casting and
-% operator rules GraphBLAS.  In MATLAB, adding two int8 values 120 + 30 results
-% in 127; since 150 is larger than the max int8 value of 127, the result is
-% that max value.  In C, the result wraps around, modulo 256, to be -106.
+% GB_spec_build builds a full matrix S, mimicing GB_mex_Matrix_build but using
+% almost pure built-in methods.  This function is very slow since it creates a
+% dense matrix instead of a sparse one.  It is meant only as an executable
+% version of the GraphBLAS spec.  It cannot operate purely with built-in
+% methods, however, because the casting and operator rules for built-in methods
+% differ from the C-style casting and operator rules GraphBLAS.  With built-in
+% methods, adding two int8 values 120 + 30 results in 127; since 150 is larger
+% than the max int8 value of 127, the result is that max value.  In C, the
+% result wraps around, modulo 256, to be -106.
+
 %
 % S is returned as a struct, with S.matrix being the matrix, S.class the class,
 % and S.pattern the nonzero pattern of S.
@@ -21,7 +23,7 @@ function [S,p] = GB_spec_build (I, J, X, nrows, ncols, op, order, sclass)
 % optional arguments:
 % J: column indices. Default J is a vector of all zeros, for building a column
 %       vector.
-% X: numerical values, with MATLAB class logical, any integer, single, or
+% X: numerical values, with built-in class logical, any integer, single, or
 %       double.  I, J, and X must have the same number of entries.
 %       Default X is a logical vector of all true.
 % nrows: number of rows of S.  Default is nrows = max (I) + 1 ;
@@ -120,7 +122,7 @@ if (nargin < 7)
 end
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % sort or randomize the tuples
@@ -142,7 +144,7 @@ S.class = optype ;
 
 % assemble the tuples into S
 for t = 1:nnz
-    i = 1 + I (t) ;     % convert from 0-based GraphBLAS to 1-based MATLAB
+    i = 1 + I (t) ;     % convert from 0-based GraphBLAS to 1-based
     j = 1 + J (t) ;
     if (~S.pattern (i,j))
         % first time S(i,j) is modified: cast x into S

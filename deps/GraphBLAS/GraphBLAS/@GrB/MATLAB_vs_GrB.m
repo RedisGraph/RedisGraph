@@ -1,18 +1,18 @@
-%% Operations MATLAB matrices vs GraphBLAS matrices
+%% Operations on built-in matrices vs GraphBLAS matrices
 %
 % Most of the overloaded operations on GrB matrices work just the same as
-% the MATLAB operations of the same name.  There are some important
-% differences.  In future versions, the GrB MATLAB interface to GraphBLAS
+% the built-in operations of the same name.  There are some important
+% differences.  In future versions, the GrB interface to GraphBLAS
 % may be modified to minimize these differences.
 %
 % ------------------------------------------------
 %% Matrix classes and types:
 % ------------------------------------------------
 %
-%     MATLAB supports 3 kinds of sparse matrices: logical, double, and
-%     double complex.  For single precision floating-point (real or
-%     complex), and integer matrices, MATLAB only supports full matrices,
-%     not sparse.
+%     Octave/MATLAB supports 3 kinds of sparse matrices: logical, double,
+%     and double complex.  For single precision floating-point (real or
+%     complex), and integer matrices, Octave/MATLAB only supports full
+%     matrices, not sparse.
 %
 %     GraphBLAS supports all types:  logical, int8, int16, int32, int64,
 %     uint8, uint16, uint32, uint64, single, double, single complex, and
@@ -24,33 +24,34 @@
 %% Explicit zeros:
 % ------------------------------------------------
 %
-%     MATLAB always drops explicit zeros from its sparse matrices.
+%     Octave/MATLAB always drops explicit zeros from its sparse matrices.
 %     GraphBLAS never drops them, except on request (A = GrB.prune (A)).
-%     This difference will always exist between MATLAB and GraphBLAS.
+%     This difference will always exist between Octave/MATLAB and
+%     GraphBLAS.
 %
 %     GraphBLAS cannot drop zeros automatically, since the explicit zero
 %     might be meaningful.  The value zero is the additive identity for
-%     the single monoid supported by MATLAB (the '+' of the '+.*'
-%     conventional semiring).  MATLAB has only two semirings ('+.*.double'
-%     and '+.*.double complex').  GraphBLAS supports both of those, but
-%     many 1000s more, many of which have a different identity value.
-%     In a shortest-path problem, for example, an edge of weight zero is
-%     very different than no edge at all (the identity is inf, for the
-%     'min' monoid often used in path problems).
+%     the single monoid supported by built-in (the '+' of the '+.*'
+%     conventional semiring).  Octave/MATLAB has only two semirings
+%     ('+.*.double' and '+.*.double complex').  GraphBLAS supports both of
+%     those, but many 1000s more, many of which have a different identity
+%     value.  In a shortest-path problem, for example, an edge of weight
+%     zero is very different than no edge at all (the identity is inf, for
+%     the 'min' monoid often used in path problems).
 %
 % ------------------------------------------------
-%% MATLAB linear indexing:
+%% Linear indexing:
 % ------------------------------------------------
 %
-%     In MATLAB, as in A = rand (3) ; X = A (1:6) extracts the first two
-%     columns of A as a 6-by-1 vector.  This is not yet supported in
-%     GraphBLAS, but may be added in the future.
+%     In Octave/MATLAB, as in A = rand (3) ; X = A (1:6) extracts the
+%     first two columns of A as a 6-by-1 vector.  This is not yet
+%     supported in GraphBLAS, but may be added in the future.
 %
 % ------------------------------------------------
 %% Increasing/decreasing the size of a matrix:
 % ------------------------------------------------
 %
-%     This can be done with a MATLAB matrix, and the result is a sparse
+%     This can be done with a built-in matrix, and the result is a sparse
 %     10-by-10 sparse matrix A:
 %
 %         clear A
@@ -69,34 +70,32 @@
 %     This feature is not yet supported but may be added in the future.
 %
 % ------------------------------------------------
-%% The outputs of min and max, and operations on complex matrices:
+%% min and max operations on complex matrices:
 % ------------------------------------------------
 %
-%     MATLAB can compute the min and max on complex values (they return
-%     the entry with the largest magnitude).  This is not well-defined
-%     mathematically, since the resulting min and max operations cannot be
-%     used as monoids, as they can for real types (integer or
-%     floating-point types).  As a result, GraphBLAS does not yet support
-%     min and max for complex types.
+%     Octave/MATLAB can compute the min and max on complex values (they
+%     return the entry with the largest magnitude).  This is not
+%     well-defined mathematically, since the resulting min and max
+%     operations cannot be used as monoids, as they can for real types
+%     (integer or floating-point types).  As a result, GraphBLAS does not
+%     support min and max for complex types, and will never do so.
 %
-%     The 2nd output for [x,i] = min (...) and max do not work in
-%     GraphBLAS, and the 'includenan' option is also not available.
 %     GraphBLAS uses the 'omitnan' behavior, which is the default in
-%     MATLAB.
+%     Octave/MATLAB.  The 'includenam' option is not available in
+%     GraphBLAS, but may appear in the future.
 %
-%     Likewise, logical comparisons (< <= > >=) are not well-defined
-%     mathematically for complex types.  MATLAB defines them, but
+%     Likewise, logical comparators (< <= > >=) are not well-defined
+%     mathematically for complex types.  Octave/MATLAB defines them, but
 %     GraphBLAS does not.  GraphBLAS can only compare for equality (==)
 %     and inequality (~=) with complex types.
-%
-%     These features may be added to GraphBLAS in the future.
 %
 % ------------------------------------------------
 %% Singleton expansion:
 % ------------------------------------------------
 %
-%     MATLAB can expand a 'singleton' dimension (of size 1) of one input
-%     to match the required size of the other input.  For example, given
+%     Octave/MATLAB can expand a 'singleton' dimension (of size 1) of one
+%     input to match the required size of the other input.  For example,
+%     given
 %
 %         A = rand (4)
 %         x = [10 100 1000 10000]
@@ -117,10 +116,10 @@
 %% Typecasting from floating-point types to integer:
 % ------------------------------------------------
 %
-%     In MATLAB, the default is to round to the nearest integer.  If the
-%     fractional part is exactly 0.5: the integer with larger magnitude is
-%     selected.  In GraphBLAS, typecasting matches the MATLAB behavior
-%     when explicitly converting matrices:
+%     In Octave/MATLAB, the default is to round to the nearest integer.
+%     If the fractional part is exactly 0.5: the integer with larger
+%     magnitude is selected.  In GraphBLAS, typecasting matches the
+%     built-in behavior when explicitly converting matrices:
 %
 %       G = 100 * rand (4)
 %       G = GrB (G, 'int8')
@@ -135,15 +134,15 @@
 %       % uses GraphBLAS typecasting
 %       C = GrB.mxm (A, '+.*.int8', B)
 %
-%       % uses MATLAB typecasting:
+%       % uses built-in typecasting:
 %       C = GrB.mxm (GrB (A, 'int8'), '+.*.int8', GrB (B, 'int8'))
 %
 % ------------------------------------------------
 %% Mixing different integers:
 % ------------------------------------------------
 %
-%     MATLAB refuses to compute int16(1) + int8(1).  GraphBLAS can do
-%     this, using the rules listed by:
+%     Octave/MATLAB refuses to compute int16(1) + int8(1).  GraphBLAS can
+%     do this, using the rules listed by:
 %
 %         help GrB.optype
 %
@@ -151,14 +150,14 @@
 %% Combining 32-bit or lower integers and floating-point:
 % ------------------------------------------------
 %
-%     Both MATLAB and GraphBLAS do the work in floating-point.  In MATLAB,
-%     the result is then cast to the integer type.  In GraphBLAS, the GrB
-%     matrix has the floating-point type.  MATLAB can only do this if
-%     the floating-point operand is a scalar; GraphBLAS can work with any
-%     matrices of valid sizes.
+%     Both Octave/MATLAB and GraphBLAS do the work in floating-point.  In
+%     Octave/MATLAB, the result is then cast to the integer type.  In
+%     GraphBLAS, the GrB matrix has the floating-point type.
+%     Octave/MATLAB can only do this if the floating-point operand is a
+%     scalar; GraphBLAS can work with any matrices of valid sizes.
 %
-%     To use the MATLAB rule in GraphBLAS: after computing the result,
-%     simply typecast to the desired integer type with
+%     To use the Octave/MATLAB rule in GraphBLAS: after computing the
+%     result, simply typecast to the desired integer type with
 %
 %       A = cast (5 * rand (4), 'int8') ;
 %       % C is int8:
@@ -173,39 +172,39 @@
 %% 64-bit integers (int64 and uint64) and double:
 % ------------------------------------------------
 %
-%     In MATLAB, both inputs are converted to 80-bit long double
+%     In Octave/MATLAB, both inputs are converted to 80-bit long double
 %     (floating-poing) and then the result is typecasted back to the
 %     integer type.  In GraphBLAS the work is done in double, and the
 %     result is left in the double type.
 %
-%     This can be done in MATLAB only if the double operator is a scalar,
-%     as in A+pi.  With GraphBLAS, A+B can mix arbitrary types, but A+pi
-%     is computed in double, not long double.
+%     This can be done in Octave/MATLAB only if the double operator is a
+%     scalar, as in A+pi.  With GraphBLAS, A+B can mix arbitrary types,
+%     but A+pi is computed in double, not long double.
 %
 %     This feature may be added to GraphBLAS in the future, by adding
 %     new operators that internally do their work in long double.
 %
 % ------------------------------------------------
-%% MATLAB integer operations saturate:
+%% Octave/MATLAB integer operations saturate:
 % ------------------------------------------------
 %
-%     If a = uint8 (255), and b = uint8 (1), then a+b for MATLAB matrices
-%     is 255.  That is, the results saturate on overflow or underflow, to
-%     the largest and smallest integer respectively.
+%     If a = uint8 (255), and b = uint8 (1), then a+b for built-in
+%     matrices is 255.  That is, the results saturate on overflow or
+%     underflow, to the largest and smallest integer respectively.
 %
 %     This kind of arithmetic is not compatible with integer semirings,
-%     and thus MATLAB does not support integer matrix computations such as
-%     C=A*B.
+%     and thus Octave/MATLAB does not support integer matrix computations
+%     such as C=A*B.
 %
 %     GraphBLAS supports integer semirings, and to do so requires
 %     integer operations that act in a modulo fashion.  As a result if
 %     a=GrB(255,'uint8') and b=GrB(1,'uint8'), then a+b is zero.
 %
 %     It would be possible to add saturating binary operators to replicate
-%     the saturating integer behavior in MATLAB, since this is useful for
-%     operations such as A+B or A.*B for signals and images.  This may be
-%     added in the future, as C = GrB.eadd (A, '+saturate', B) for
-%     example.
+%     the saturating integer behavior in Octave/MATLAB, since this is
+%     useful for operations such as A+B or A.*B for signals and images.
+%     This may be added in the future, as C = GrB.eadd (A, '+saturate', B)
+%     for example.
 %
 %     This affects the following operators and functions, and likely more
 %     as well:
@@ -217,13 +216,13 @@
 %         ./  ldivide
 %         .\  rdivide
 %         .^  power
-%         sum, prod:  MATLAB converts to double; GraphBLAS keeps the type
-%                     of the input
+%         sum, prod:  built-in converts to double; GraphBLAS keeps the
+%                     type of the input
 %
 %     It does not affect the following:
 %
 %         +   uplus
-%         *   mtimes (GraphBLAS can do this, MATLAB can't)
+%         *   mtimes (GraphBLAS can do this, built-in method can't)
 %         <   lt
 %         <=  le
 %         >   gt
@@ -245,15 +244,15 @@
 % ------------------------------------------------
 %
 %     For C = [A1 A2] and [A1 ; A2], the type of C differs.
-%     GraphBLAS uses the rules given by 'help GrB.optype'
+%     GraphBLAS uses the rules given by 'help GrB.optype'.
 %
 % ------------------------------------------------
 %% Bitwise operators:
 % ------------------------------------------------
 %
-%     GraphBLAS includes all the bitwise operators that MATLAB has.  In
-%     addition, GraphBLAS can use the bitwise operations in semirings; for
-%     example, if A and B are uint8, then:
+%     GraphBLAS includes all the bitwise operators that Octave/MATLAB has.
+%     In addition, GraphBLAS can use the bitwise operations in semirings;
+%     for example, if A and B are uint8, then:
 %
 %         C = GrB.mxm (A, 'bitor.bitand', B) ;
 %
@@ -265,7 +264,7 @@
 % See also GrB, sparse.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 help GrB.MATLAB_vs_GrB ;
 

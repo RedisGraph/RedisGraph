@@ -29,7 +29,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
 
 GrB_Info GB_kroner                  // C = kron (A,B)
 (
-    GrB_Matrix *Chandle,            // output matrix
+    GrB_Matrix C,                   // output matrix (static header)
     const bool C_is_csc,            // desired format of C
     const GrB_BinaryOp op,          // multiply operator
     const GrB_Matrix A,             // input matrix

@@ -73,7 +73,7 @@
         {                                                                   \
             /* ----[. A 1]-------------------------------------- */         \
             /* [. A 1]: action: ( insert )                       */         \
-            GB_PENDING_INSERT (Ax +(pA*asize)) ;                            \
+            GB_PENDING_INSERT_aij ;                                         \
         }                                                                   \
     }                                                                       \
 }
@@ -124,12 +124,12 @@ GrB_Info GB_subassign_08n
     GB_GET_C ;      // C must not be bitmap
     int64_t zorig = C->nzombies ;
     const int64_t Cnvec = C->nvec ;
-    const int64_t *GB_RESTRICT Ch = C->h ;
-    const int64_t *GB_RESTRICT Cp = C->p ;
+    const int64_t *restrict Ch = C->h ;
+    const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
     GB_GET_MASK ;
     GB_GET_A ;
-    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *restrict Ah = A->h ;
     GB_GET_ACCUM ;
 
     //--------------------------------------------------------------------------
@@ -145,7 +145,7 @@ GrB_Info GB_subassign_08n
     // same index i, the entry A(i,j) is accumulated or inserted into C.
 
     // The algorithm is very much like the eWise multiplication of A.*M, so the
-    // parallel scheduling relies on GB_emult_phase0 and GB_ewise_slice.
+    // parallel scheduling relies on GB_emult_01_phase0 and GB_ewise_slice.
 
     //--------------------------------------------------------------------------
     // Parallel: slice the eWiseMult of Z=A.*M (Method 08n only)
@@ -162,13 +162,13 @@ GrB_Info GB_subassign_08n
     // in any combination.
 
     int64_t Znvec ;
-    int64_t *GB_RESTRICT Zh_shallow = NULL ;
-    GB_OK (GB_subassign_emult_slice (
-        &TaskList, &max_ntasks, &ntasks, &nthreads,
-        &Znvec, &Zh_shallow, &Z_to_A, &Z_to_M,
+    const int64_t *restrict Zh_shallow = NULL ;
+    GB_OK (GB_subassign_08n_slice (
+        &TaskList, &TaskList_size, &ntasks, &nthreads,
+        &Znvec, &Zh_shallow, &Z_to_A, &Z_to_A_size, &Z_to_M, &Z_to_M_size,
         C, I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
         A, M, Context)) ;
-    GB_ALLOCATE_NPENDING ;
+    GB_ALLOCATE_NPENDING_WERK ;
 
     //--------------------------------------------------------------------------
     // phase 1: undelete zombies, update entries, and count pending tuples

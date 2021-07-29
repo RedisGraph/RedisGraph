@@ -3,11 +3,11 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 GrB_Matrix gb_typecast          // C = (type) A, where C is deep
 (
@@ -51,7 +51,7 @@ GrB_Matrix gb_typecast          // C = (type) A, where C is deep
 
     if (gb_is_integer (type) && gb_is_float (atype))
     { 
-        // C = (type) round (A), using MATLAB rules for typecasting.
+        // C = (type) round (A), using built-in rules for typecasting.
         OK1 (C, GrB_Matrix_apply (C, NULL, NULL, gb_round_binop (atype), A,
             NULL)) ;
     }

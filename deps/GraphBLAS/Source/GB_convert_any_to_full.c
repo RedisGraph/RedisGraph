@@ -8,12 +8,13 @@
 //------------------------------------------------------------------------------
 
 // All entries in A must be present, with no pending work; GB_as_if_full (A)
-// must be true on input.  A may be hypersparse, sparse, bitmap, or full on
-// input, and full on output.
+// must be true on input, or A must be iso.  A may be hypersparse, sparse,
+// bitmap, or full on input. A is full on output.  If A is iso, it remains so
+// on output.
 
 #include "GB.h"
 
-GB_PUBLIC                       // used by MATLAB interface
+GB_PUBLIC
 void GB_convert_any_to_full     // convert any matrix to full
 (
     GrB_Matrix A                // matrix to convert to full
@@ -25,7 +26,7 @@ void GB_convert_any_to_full     // convert any matrix to full
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (A, "A converting any to full", GB0) ;
-    ASSERT (GB_as_if_full (A)) ;
+    ASSERT (A->iso || GB_as_if_full (A)) ;
 
     if (GB_IS_FULL (A))
     { 
@@ -42,11 +43,11 @@ void GB_convert_any_to_full     // convert any matrix to full
 
     GB_ph_free (A) ;
 
-    if (!A->i_shallow) GB_FREE (A->i) ;
+    if (!A->i_shallow) GB_FREE (&(A->i), A->i_size) ;
     A->i = NULL ;
     A->i_shallow = false ;
 
-    if (!A->b_shallow) GB_FREE (A->b) ;
+    if (!A->b_shallow) GB_FREE (&(A->b), A->b_size) ;
     A->b = NULL ;
     A->b_shallow = false ;
 

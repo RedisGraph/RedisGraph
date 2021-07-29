@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -12,7 +12,9 @@
 // nthreads = gbthreads
 // nthreads = gbthreads (nthreads)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: nthreads = GrB.threads ; or GrB.threads (nthreads)"
 
 void mexFunction
 (
@@ -27,8 +29,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin <= 1 && nargout <= 1,
-        "usage: nthreads = GrB.threads ; or GrB.threads (nthreads)") ;
+    gb_usage (nargin <= 1 && nargout <= 1, USAGE) ;
 
     //--------------------------------------------------------------------------
     // set the # of threads, if requested

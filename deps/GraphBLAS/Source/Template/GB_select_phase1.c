@@ -7,6 +7,10 @@
 
 //------------------------------------------------------------------------------
 
+    const int64_t *restrict kfirst_Aslice = A_ek_slicing ;
+    const int64_t *restrict klast_Aslice  = A_ek_slicing + A_ntasks ;
+    const int64_t *restrict pstart_Aslice = A_ek_slicing + A_ntasks * 2 ;
+
 #if defined ( GB_ENTRY_SELECTOR )
 
     //--------------------------------------------------------------------------
@@ -30,10 +34,10 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const int64_t  *GB_RESTRICT Ap = A->p ;
-    const int64_t  *GB_RESTRICT Ah = A->h ;
-    const int64_t  *GB_RESTRICT Ai = A->i ;
-    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) A->x ;
+    const int64_t  *restrict Ap = A->p ;
+    const int64_t  *restrict Ah = A->h ;
+    const int64_t  *restrict Ai = A->i ;
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
     size_t  asize = A->type->size ;
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
@@ -45,13 +49,15 @@
 
     // each thread reduces its own part in parallel
     int tid ;
-    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (tid = 0 ; tid < ntasks ; tid++)
+    #pragma omp parallel for num_threads(A_nthreads) schedule(dynamic,1)
+    for (tid = 0 ; tid < A_ntasks ; tid++)
     {
 
         // if kfirst > klast then thread tid does no work at all
-        int64_t kfirst = kfirst_slice [tid] ;
-        int64_t klast  = klast_slice  [tid] ;
+        int64_t kfirst = kfirst_Aslice [tid] ;
+        int64_t klast  = klast_Aslice  [tid] ;
+        Wfirst [tid] = 0 ;
+        Wlast  [tid] = 0 ;
 
         //----------------------------------------------------------------------
         // reduce vectors kfirst to klast
@@ -65,43 +71,30 @@
             //------------------------------------------------------------------
 
             GB_GET_J ; // int64_t j = GBH (Ah, k) ; but for user selectop only
-            int64_t pA_start, pA_end ;
-            GB_get_pA (&pA_start, &pA_end, tid, k,
-                kfirst, klast, pstart_slice, Ap, avlen) ;
+            int64_t pA, pA_end ;
+            GB_get_pA (&pA, &pA_end, tid, k,
+                kfirst, klast, pstart_Aslice, Ap, avlen) ;
 
             //------------------------------------------------------------------
-            // count entries in Ax [pA_start ... pA_end-1], if non-empty
+            // count entries in Ax [pA ... pA_end-1]
             //------------------------------------------------------------------
 
-            if (pA_start < pA_end)
-            {
-
-                //--------------------------------------------------------------
-                // count the live entries in Ax [pA_start ... pA_end-1]
-                //--------------------------------------------------------------
-
-                int64_t s = 0 ;
-                for (int64_t p = pA_start ; p < pA_end ; p++)
-                { 
-                    if (GB_TEST_VALUE_OF_ENTRY (p)) s++ ;
-                }
-
-                //--------------------------------------------------------------
-                // save the result s
-                //--------------------------------------------------------------
-
-                if (k == kfirst)
-                { 
-                    Wfirst [tid] = s ;
-                }
-                else if (k == klast)
-                { 
-                    Wlast [tid] = s ;
-                }
-                else
-                { 
-                    Cp [k] = s ; 
-                }
+            int64_t cjnz = 0 ;
+            for ( ; pA < pA_end ; pA++)
+            { 
+                if (GB_TEST_VALUE_OF_ENTRY (pA)) cjnz++ ;
+            }
+            if (k == kfirst)
+            { 
+                Wfirst [tid] = cjnz ;
+            }
+            else if (k == klast)
+            { 
+                Wlast [tid] = cjnz ;
+            }
+            else
+            { 
+                Cp [k] = cjnz ; 
             }
         }
     }
@@ -110,73 +103,7 @@
     // reduce the first and last vector of each slice using a single thread
     //--------------------------------------------------------------------------
 
-    // This step is sequential, but it takes only O(ntasks) time.  The only
-    // case where this could be a problem is if a user-defined operator was
-    // a very costly one.
-
-    int64_t kprior = -1 ;
-
-    for (int tid = 0 ; tid < ntasks ; tid++)
-    {
-
-        //----------------------------------------------------------------------
-        // sum up the partial result that thread tid computed for kfirst
-        //----------------------------------------------------------------------
-
-        int64_t kfirst = kfirst_slice [tid] ;
-        int64_t klast  = klast_slice  [tid] ;
-
-        if (kfirst <= klast)
-        {
-            int64_t pA_start = pstart_slice [tid] ;
-            int64_t pA_end   = GBP (Ap, kfirst+1, avlen) ;
-            pA_end = GB_IMIN (pA_end, pstart_slice [tid+1]) ;
-            if (pA_start < pA_end)
-            {
-                if (kprior < kfirst)
-                { 
-                    // This thread is the first one that did work on
-                    // A(:,kfirst), so use it to start the reduction.
-                    Cp [kfirst] = Wfirst [tid] ;
-                }
-                else
-                { 
-                    Cp [kfirst] += Wfirst [tid] ;
-                }
-                kprior = kfirst ;
-            }
-        }
-
-        //----------------------------------------------------------------------
-        // sum up the partial result that thread tid computed for klast
-        //----------------------------------------------------------------------
-
-        if (kfirst < klast)
-        {
-            int64_t pA_start = GBP (Ap, klast, avlen) ;
-            int64_t pA_end   = pstart_slice [tid+1] ;
-            if (pA_start < pA_end)
-            {
-                /* if */ ASSERT (kprior < klast) ;
-                { 
-                    // This thread is the first one that did work on
-                    // A(:,klast), so use it to start the reduction.
-                    Cp [klast] = Wlast [tid] ;
-                }
-                /*
-                else
-                {
-                    // If kfirst < klast and A(:,klast is not empty, then this
-                    // task is always the first one to do work on A(:,klast),
-                    // so this case is never used.
-                    ASSERT (GB_DEAD_CODE) ;
-                    Cp [klast] += Wlast [tid] ;
-                }
-                */
-                kprior = klast ;
-            }
-        }
-    }
+    GB_ek_slice_merge1 (Cp, Wfirst, Wlast, A_ek_slicing, A_ntasks) ;
 
 #else
 
@@ -184,9 +111,9 @@
     // positional selector (tril, triu, diag, offdiag, resize)
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Ap = A->p ;
-    const int64_t *GB_RESTRICT Ah = A->h ;
-    const int64_t *GB_RESTRICT Ai = A->i ;
+    const int64_t *restrict Ap = A->p ;
+    const int64_t *restrict Ah = A->h ;
+    const int64_t *restrict Ai = A->i ;
     int64_t anvec = A->nvec ;
     int64_t avlen = A->vlen ;
     ASSERT (!GB_JUMBLED (A)) ;
@@ -196,7 +123,7 @@
     //--------------------------------------------------------------------------
 
     int64_t k ;
-    #pragma omp parallel for num_threads(nthreads) schedule(guided)
+    #pragma omp parallel for num_threads(A_nthreads) schedule(guided)
     for (k = 0 ; k < anvec ; k++)
     {
 
@@ -308,21 +235,23 @@
     // compute Wfirst and Wlast for each task
     //--------------------------------------------------------------------------
 
-    // Wfirst [0..ntasks-1] and Wlast [0..ntasks-1] are required for
-    // constructing C_start_slice [0..ntasks-1] in GB_selector.
+    // Wfirst [0..A_ntasks-1] and Wlast [0..A_ntasks-1] are required for
+    // constructing C_start_slice [0..A_ntasks-1] in GB_selector.
 
-    for (int tid = 0 ; tid < ntasks ; tid++)
+    for (int tid = 0 ; tid < A_ntasks ; tid++)
     {
 
         // if kfirst > klast then task tid does no work at all
-        int64_t kfirst = kfirst_slice [tid] ;
-        int64_t klast  = klast_slice  [tid] ;
+        int64_t kfirst = kfirst_Aslice [tid] ;
+        int64_t klast  = klast_Aslice  [tid] ;
+        Wfirst [tid] = 0 ;
+        Wlast  [tid] = 0 ;
 
         if (kfirst <= klast)
         {
-            int64_t pA_start = pstart_slice [tid] ;
+            int64_t pA_start = pstart_Aslice [tid] ;
             int64_t pA_end   = GBP (Ap, kfirst+1, avlen) ;
-            pA_end = GB_IMIN (pA_end, pstart_slice [tid+1]) ;
+            pA_end = GB_IMIN (pA_end, pstart_Aslice [tid+1]) ;
             if (pA_start < pA_end)
             { 
                 #if defined ( GB_TRIL_SELECTOR )
@@ -356,13 +285,12 @@
 
                 #endif
             }
-
         }
 
         if (kfirst < klast)
         {
             int64_t pA_start = GBP (Ap, klast, avlen) ;
-            int64_t pA_end   = pstart_slice [tid+1] ;
+            int64_t pA_end   = pstart_Aslice [tid+1] ;
             if (pA_start < pA_end)
             { 
                 #if defined ( GB_TRIL_SELECTOR )

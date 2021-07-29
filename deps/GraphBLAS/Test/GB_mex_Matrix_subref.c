@@ -26,10 +26,11 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
+    struct GB_Matrix_opaque C_header ;
+    GrB_Matrix C = GB_clear_static_header (&C_header) ;
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
-    GrB_Matrix C = NULL ;
     GrB_Index *I = NULL, ni = 0, I_range [3] ;
     GrB_Index *J = NULL, nj = 0, J_range [3] ;
     bool ignore ;
@@ -67,9 +68,9 @@ void mexFunction
     }
 
     // C = A(I,J), numeric not symbolic
-    METHOD (GB_subref (&C, true, A, I, ni, J, nj, false, Context)) ;
+    METHOD (GB_subref (C, C->iso, true, A, I, ni, J, nj, false, Context)) ;
 
-    // return C to MATLAB
+    // return C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C subref result", false) ;
 
     FREE_ALL ;

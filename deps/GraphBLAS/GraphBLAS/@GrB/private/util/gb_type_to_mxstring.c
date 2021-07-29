@@ -1,15 +1,15 @@
 //------------------------------------------------------------------------------
-// gb_type_to_mxstring: create a MATLAB string from a GraphBLAS type
+// gb_type_to_mxstring: create a built-in string from a GraphBLAS type
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
-GrB_Type gb_type_to_mxstring    // return the MATLAB string from a GrB_Type
+GrB_Type gb_type_to_mxstring    // return the built-in string from a GrB_Type
 (
     const GrB_Type type
 )

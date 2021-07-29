@@ -1,12 +1,11 @@
 function [z tol] = GB_user_op (op, x, y)
 %GB_USER_OP apply a complex binary and unary operator
 %
-% MATLAB equivalents of the GraphBLAS user-defined Complex operators.
-% See ../Demo/usercomplex.[ch] and the GB_mex_op mexFunction
+% built-in equivalents of the GraphBLAS user-defined Complex operators.
 %
 % [z tol] = GB_user_op (op,x,y) returns tol true if GB_mex_op(op,x,y) is
 % allowed to have roundoff error when compared with GB_user_op(op,x,y).  tol is
-% false if the result in MATLAB and GraphBLAS should match exactly.
+% false if the result with built-in methods and GraphBLAS should match exactly.
 %
 % No typecasting is done for user-defined operators.  x,y,z are either
 % double complex or double
@@ -42,9 +41,9 @@ switch op
     case 'times'
         z = x.*y ;
     case 'div'
-        % MATLAB doesn't return a complex NaN (Nan+1i*Nan), but the GraphBLAS
-        % GB_mex_op mexFunction does.  So if z has any of them, replace them
-        % with a complex Nan, just to make sure the tests pass...
+        % built-in methods don't return a complex NaN (Nan+1i*Nan), but the
+        % GraphBLAS GB_mex_op mexFunction does.  So if z has any of them,
+        % replace them with a complex Nan, just to make sure the tests pass...
         z = x./y ;
         if (any (isnan (z)))
             z (isnan (z)) = complex (nan,nan) ;

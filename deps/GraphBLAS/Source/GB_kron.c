@@ -16,9 +16,17 @@
 #include "GB_transpose.h"
 #include "GB_accum_mask.h"
 
+#define GB_FREE_WORK        \
+{                           \
+    GB_phbix_free (AT) ;    \
+    GB_phbix_free (BT) ;    \
+}
+
 #define GB_FREE_ALL         \
-    GB_Matrix_free (&AT) ;  \
-    GB_Matrix_free (&BT) ;
+{                           \
+    GB_FREE_WORK ;          \
+    GB_phbix_free (T) ;     \
+}
 
 GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
 (
@@ -44,8 +52,10 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     // C may be aliased with M, A, and/or B
 
     GrB_Info info ;
-    GrB_Matrix AT = NULL ;
-    GrB_Matrix BT = NULL ;
+    struct GB_Matrix_opaque T_header, AT_header, BT_header ;
+    GrB_Matrix T  = GB_clear_static_header (&T_header) ;
+    GrB_Matrix AT = GB_clear_static_header (&AT_header) ;
+    GrB_Matrix BT = GB_clear_static_header (&BT_header) ;
     GrB_BinaryOp op = op_in ;
 
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
@@ -63,11 +73,12 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     ASSERT_MATRIX_OK (B, "B for GB_kron", GB0) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
-    GB_OK (GB_compatible (C->type, C, M, accum, op->ztype, Context)) ;
+    GB_OK (GB_compatible (C->type, C, M, Mask_struct, accum, op->ztype,
+        Context)) ;
 
     // T=op(A,B) via op operator, so A and B must be compatible with z=op(a,b)
-    GB_OK (GB_BinaryOp_compatible (op, NULL, A->type, B->type,
-        GB_ignore_code, Context)) ;
+    GB_OK (GB_BinaryOp_compatible (op, NULL, A->type, B->type, GB_ignore_code,
+        Context)) ;
 
     // delete any lingering zombies and assemble any pending tuples in A and B,
     // so that cnz = nnz(A) * nnz(B) can be computed.  Updates of C and M are
@@ -83,7 +94,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     GrB_Index cnrows, cncols, cnz = 0 ;
     bool ok = GB_Index_multiply (&cnrows, anrows,  bnrows) ;
     ok = ok && GB_Index_multiply (&cncols, ancols,  bncols) ;
-    ok = ok && GB_Index_multiply (&cnz, GB_NNZ (A), GB_NNZ (B)) ;
+    ok = ok && GB_Index_multiply (&cnz, GB_nnz (A), GB_nnz (B)) ;
     if (!ok || GB_NROWS (C) != cnrows || GB_NCOLS (C) != cncols)
     { 
         GB_ERROR (GrB_DIMENSION_MISMATCH, "%s:\n"
@@ -92,12 +103,12 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
             "second input is " GBd "-by-" GBd "%s with " GBd " entries",
             ok ? "Dimensions not compatible:" : "Problem too large:",
             GB_NROWS (C), GB_NCOLS (C), cnrows, cncols,
-            anrows, ancols, A_transpose ? " (transposed)" : "", GB_NNZ (A),
-            bnrows, bncols, B_transpose ? " (transposed)" : "", GB_NNZ (B)) ;
+            anrows, ancols, A_transpose ? " (transposed)" : "", GB_nnz (A),
+            bnrows, bncols, B_transpose ? " (transposed)" : "", GB_nnz (B)) ;
     }
 
     // quick return if an empty mask is complemented
-    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp, Mask_struct) ;
 
     //--------------------------------------------------------------------------
     // transpose A and B if requested
@@ -116,7 +127,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     }
 
     if (!T_is_csc)
-    { 
+    {
         if (GB_OP_IS_POSITIONAL (op))
         { 
             // positional ops must be flipped, with i and j swapped
@@ -124,28 +135,23 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
         }
     }
 
-    // TODO: if A, B are pattern: do not compute values of AT=A', BT=B'
     bool A_is_pattern, B_is_pattern ;
-    GB_AxB_pattern (&A_is_pattern, &B_is_pattern, false, op->opcode) ;
-
+    GB_binop_pattern (&A_is_pattern, &B_is_pattern, false, op->opcode) ;
     if (A_transpose)
-    {
+    { 
         // AT = A' and typecast to op->xtype
-        // transpose: typecast, no op, not in-place
         GBURBLE ("(A transpose) ") ;
-        GB_OK (GB_transpose (&AT, A_is_pattern ? A->type : op->xtype, T_is_csc,
-            A, NULL, NULL, NULL, false, Context)) ;
-        ASSERT_MATRIX_OK (A , "A after AT kron", GB0) ;
+        GB_OK (GB_transpose_cast (AT, op->xtype, T_is_csc, A, A_is_pattern,
+            Context)) ;
         ASSERT_MATRIX_OK (AT, "AT kron", GB0) ;
     }
 
     if (B_transpose)
-    {
+    { 
         // BT = B' and typecast to op->ytype
-        // transpose: typecast, no op, not in-place
         GBURBLE ("(B transpose) ") ;
-        GB_OK (GB_transpose (&BT, B_is_pattern ? B->type : op->ytype, T_is_csc,
-            B, NULL, NULL, NULL, false, Context)) ;
+        GB_OK (GB_transpose_cast (BT, op->ytype, T_is_csc, B, B_is_pattern,
+            Context)) ;
         ASSERT_MATRIX_OK (BT, "BT kron", GB0) ;
     }
 
@@ -153,14 +159,11 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     // T = kron(A,B)
     //--------------------------------------------------------------------------
 
-    GrB_Matrix T ;
-    GB_OK (GB_kroner (&T, T_is_csc, op,
+    GB_OK (GB_kroner (T, T_is_csc, op,
         A_transpose ? AT : A, A_is_pattern,
         B_transpose ? BT : B, B_is_pattern, Context)) ;
 
-    // free workspace
-    GB_FREE_ALL ;
-
+    GB_FREE_WORK ;
     ASSERT_MATRIX_OK (T, "T = kron(A,B)", GB0) ;
 
     //--------------------------------------------------------------------------

@@ -21,7 +21,7 @@ GrB_BinaryOp Complex_first , Complex_second , Complex_min ,
              Complex_rminus, Complex_pair ;
 
 //------------------------------------------------------------------------------
-// 6 binary comparison functions, z=f(x,y), where CxC -> C
+// 6 binary comparators, z=f(x,y), where CxC -> C
 //------------------------------------------------------------------------------
 
 GB_PUBLIC
@@ -37,7 +37,7 @@ GB_PUBLIC
 GrB_BinaryOp Complex_or , Complex_and , Complex_xor ;
 
 //------------------------------------------------------------------------------
-// 6 binary comparison functions, z=f(x,y), where CxC -> bool
+// 6 binary comparators, z=f(x,y), where CxC -> bool
 //------------------------------------------------------------------------------
 
 GB_PUBLIC

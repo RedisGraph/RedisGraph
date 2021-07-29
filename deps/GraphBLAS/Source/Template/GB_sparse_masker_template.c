@@ -45,16 +45,23 @@
 // R(i,j) = Z(i,j) when Z is sparse or hypersparse
 //------------------------------------------------------------------------------
 
+#undef GB_COPY_Z
 #if defined ( GB_PHASE_1_OF_2 )
     #define GB_COPY_Z                                           \
     {                                                           \
         rjnz++ ;                                                \
     }
+#elif defined ( GB_ISO_MASKER )
+    #define GB_COPY_Z                                           \
+    {                                                           \
+        Ri [pR] = i ;                                           \
+        pR++ ;                                                  \
+    }
 #else
     #define GB_COPY_Z                                           \
     {                                                           \
         Ri [pR] = i ;                                           \
-        memcpy (Rx +(pR)*rsize, Zx +(pZ)*rsize, rsize) ;        \
+        memcpy (Rx +(pR)*rsize, Zx +(Z_iso ? 0:(pZ)*rsize), rsize) ;        \
         pR++ ;                                                  \
     }
 #endif
@@ -63,10 +70,21 @@
 // R(i,j) = Z(i,j) when Z is bitmap or full
 //------------------------------------------------------------------------------
 
+#undef GB_COPY_Z_BITMAP_OR_FULL
 #if defined ( GB_PHASE_1_OF_2 )
     #define GB_COPY_Z_BITMAP_OR_FULL                            \
     {                                                           \
         rjnz += GBB (Zb, pZ_start + i - iZ_first) ;             \
+    }
+#elif defined ( GB_ISO_MASKER )
+    #define GB_COPY_Z_BITMAP_OR_FULL                            \
+    {                                                           \
+        int64_t pZ = pZ_start + i - iZ_first ;                  \
+        if (GBB (Zb, pZ))                                       \
+        {                                                       \
+            Ri [pR] = i ;                                       \
+            pR++ ;                                              \
+        }                                                       \
     }
 #else
     #define GB_COPY_Z_BITMAP_OR_FULL                            \
@@ -75,7 +93,7 @@
         if (GBB (Zb, pZ))                                       \
         {                                                       \
             Ri [pR] = i ;                                       \
-            memcpy (Rx +(pR)*rsize, Zx +(pZ)*rsize, rsize) ;    \
+            memcpy (Rx +(pR)*rsize, Zx +(Z_iso ? 0:(pZ)*rsize), rsize) ;    \
             pR++ ;                                              \
         }                                                       \
     }
@@ -85,16 +103,23 @@
 // R(i,j) = C(i,j)
 //------------------------------------------------------------------------------
 
+#undef GB_COPY_C
 #if defined ( GB_PHASE_1_OF_2 )
     #define GB_COPY_C                                           \
     {                                                           \
         rjnz++ ;                                                \
     }
+#elif defined ( GB_ISO_MASKER )
+    #define GB_COPY_C                                           \
+    {                                                           \
+        Ri [pR] = i ;                                           \
+        pR++ ;                                                  \
+    }
 #else
     #define GB_COPY_C                                           \
     {                                                           \
         Ri [pR] = i ;                                           \
-        memcpy (Rx +(pR)*rsize, Cx +(pC)*rsize, rsize) ;        \
+        memcpy (Rx +(pR)*rsize, Cx +(C_iso ? 0:(pC)*rsize), rsize) ;        \
         pR++ ;                                                  \
     }
 #endif
@@ -409,7 +434,19 @@
                     #else
                     ASSERT (rjnz == cjnz) ;
                     memcpy (Ri +(pR),       Ci +(pC), cjnz * sizeof (int64_t)) ;
-                    memcpy (Rx +(pR)*rsize, Cx +(pC)*rsize, cjnz*rsize) ;
+                    #ifndef GB_ISO_MASKER
+                    if (C_iso)
+                    {
+                        for (int64_t k = 0 ; k < cjnz ; k++)
+                        {
+                            memcpy (Rx +(pR+k)*rsize, Cx, rsize) ;
+                        }
+                    }
+                    else
+                    {
+                        memcpy (Rx +(pR)*rsize, Cx +(pC)*rsize, cjnz*rsize) ;
+                    }
+                    #endif
                     #endif
 
                 }
@@ -425,8 +462,20 @@
                     rjnz = zjnz ;
                     #else
                     ASSERT (rjnz == zjnz) ;
-                    memcpy (Ri +(pR),       Zi +(pZ), zjnz * sizeof (int64_t)) ;
-                    memcpy (Rx +(pR)*rsize, Zx +(pZ)*rsize, zjnz*rsize) ;
+                    memcpy (Ri +(pR), Zi +(pZ), zjnz * sizeof (int64_t)) ;
+                    #ifndef GB_ISO_MASKER
+                    if (Z_iso)
+                    {
+                        for (int64_t k = 0 ; k < zjnz ; k++)
+                        {
+                            memcpy (Rx +(pR+k)*rsize, Zx, rsize) ;
+                        }
+                    }
+                    else
+                    {
+                        memcpy (Rx +(pR)*rsize, Zx +(pZ)*rsize, zjnz*rsize) ;
+                    }
+                    #endif
                     #endif
                 }
 
@@ -479,16 +528,20 @@
                         pM++ ;
                     }
                     if (Mask_comp) mij = !mij ;
+                    #ifndef GB_ISO_MASKER
                     if (mij)
                     { 
                         // R(i,j) = Z (i,j)
-                        memcpy (Rx +(pR+p)*rsize, Zx +(pZ+p)*rsize, rsize) ;
+                        memcpy (Rx +(pR+p)*rsize, Zx +(Z_iso? 0:(pZ+p)*rsize),
+                            rsize) ;
                     }
                     else
                     { 
                         // R(i,j) = C (i,j)
-                        memcpy (Rx +(pR+p)*rsize, Cx +(pC+p)*rsize, rsize) ;
+                        memcpy (Rx +(pR+p)*rsize, Cx +(C_iso? 0:(pC+p)*rsize),
+                            rsize) ;
                     }
+                    #endif
                 }
                 #endif
 

@@ -1,13 +1,13 @@
 function DiGraph = digraph (G, option)
-%DIGRAPH convert a GraphBLAS matrix into a MATLAB directed DiGraph.
+%DIGRAPH convert a GraphBLAS matrix into a directed DiGraph.
 % DiGraph = digraph (G) converts a GraphBLAS matrix G into a directed
-% MATLAB DiGraph.  G must be square.  If G is logical, then no weights are
-% added to the DiGraph.  If G is single or double, these become the weights
-% of the MATLAB DiGraph.  If G is integer, the DiGraph is constructed with
-% weights of type double.
+% DiGraph.  G must be square.  If G is logical, then no weights are added
+% to the DiGraph.  If G is single or double, these become the weights of
+% the DiGraph.  If G is integer, the DiGraph is constructed with weights
+% of type double.
 %
-% DiGraph = digraph (G, 'omitselfloops') ignores the diagonal of G, and the
-% resulting MATLAB DiGraph has no self-edges.  The default is that
+% DiGraph = digraph (G, 'omitselfloops') ignores the diagonal of G, and
+% the resulting DiGraph has no self-edges.  The default is that
 % self-edges are created from any diagonal entries of G.
 %
 % Example:
@@ -25,7 +25,7 @@ function DiGraph = digraph (G, option)
 % See also graph, digraph, GrB/graph.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 
@@ -55,20 +55,20 @@ switch (type)
 
     case { 'single' }
 
-        % The MATLAB digraph(...) function can accept x as single, but not
-        % from a MATLAB sparse matrix.  So extract the tuples of G first.
+        % The digraph(...) function can accept x as single, but not
+        % from a sparse matrix.  So extract the tuples of G first.
         [i, j, x] = gbextracttuples (G) ;
         DiGraph = digraph (i, j, x, n) ;
 
     case { 'logical' }
 
-        % The MATLAB digraph(...) function allows for logical
+        % The digraph(...) function allows for logical
         % adjacency matrices (no edge weights are created).
-        DiGraph = digraph (gbmatlab (G, 'logical')) ;
+        DiGraph = digraph (gbbuiltin (G, 'logical')) ;
 
     otherwise
 
         % typecast to double
-        DiGraph = digraph (gbmatlab (G, 'double')) ;
+        DiGraph = digraph (gbbuiltin (G, 'double')) ;
 end
 

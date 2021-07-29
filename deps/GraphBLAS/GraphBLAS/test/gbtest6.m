@@ -2,7 +2,7 @@ function gbtest6
 %GBTEST6 test GrB.mxm
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 rng ('default') ;
 A = sparse (rand (2)) ;

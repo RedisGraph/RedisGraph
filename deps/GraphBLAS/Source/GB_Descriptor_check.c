@@ -92,7 +92,7 @@ static GrB_Info GB_dc
 // GB_Descriptor_check
 //------------------------------------------------------------------------------
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
 (
     const GrB_Descriptor D,     // GraphBLAS descriptor to print and check
@@ -106,7 +106,7 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("\n    GraphBLAS Descriptor: %s ", GB_NAME) ;
+    GBPR0 ("\n    GraphBLAS Descriptor: %s ", ((name != NULL) ? name : "")) ;
 
     if (D == NULL)
     { 
@@ -161,11 +161,9 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
     }
 
     if (D->do_sort)
-    {
+    { 
         GBPR0 ("    d.sort     = true\n") ;
     }
-
-    // #include "GB_Descriptor_check_mkl_template.c"
 
     return (GrB_SUCCESS) ;
 }

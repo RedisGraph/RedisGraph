@@ -1,22 +1,22 @@
 //------------------------------------------------------------------------------
-// gb_mxstring_to_string: copy a MATLAB string into a C string
+// gb_mxstring_to_string: copy a built-in string into a C string
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
 // The string is converted to lower case, so that all input strings to the
-// SuiteSparse:GraphBLAS MATLAB interface are case-insensitive.
+// SuiteSparse:GraphBLAS interface are case-insensitive.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
-void gb_mxstring_to_string  // copy a MATLAB string into a C string
+void gb_mxstring_to_string  // copy a built-in string into a C string
 (
     char *string,           // size at least maxlen+1
     const size_t maxlen,    // length of string
-    const mxArray *S,       // MATLAB mxArray containing a string
+    const mxArray *S,       // built-in mxArray containing a string
     const char *name        // name of the mxArray
 )
 {

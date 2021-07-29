@@ -15,8 +15,9 @@
 
 // the macro version of this function must first be #undefined
 #undef GrB_UnaryOp_new
+#undef GrM_UnaryOp_new
 
-GrB_Info GrB_UnaryOp_new            // create a new user-defined unary operator
+GrB_Info GRB (UnaryOp_new)          // create a new user-defined unary operator
 (
     GrB_UnaryOp *unaryop,           // handle for the new unary operator
     GxB_unary_function function,    // pointer to the unary function

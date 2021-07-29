@@ -17,7 +17,7 @@ else
 end
 
 [save_nthreads save_chunk] = nthreads_get ;
-nthreads_max = feature ('numcores') ;
+nthreads_max = feature_numcores ;
 
 rng ('default') ;
 
@@ -40,7 +40,7 @@ tic
 [Iout, Jout] = GB_mex_qsort_1b (I, J) ;
 t2 = toc ;
 
-fprintf ('MATLAB: sortrows %g sec  qsort1b: %g  speedup: %g\n', t, t2, t/t2) ;
+fprintf ('built-in: sortrows %g sec  qsort1b: %g  speedup: %g\n', t, t2, t/t2) ;
 
 assert (isequal ([Iout Jout], IJout))
 
@@ -56,27 +56,27 @@ t = toc ;
 
 tic
 [Iout, Jout] = GB_mex_qsort_2 (I, J) ;
+t2_just = toc ;
 t2 = toc ;
-t2_just = grbresults ;
 assert (isequal ([Iout Jout], IJout));
 
-fprintf ('MATLAB: sortrows %g sec  qsort2: %g %g speedup: %g\n', ...
+fprintf ('built-in: sortrows %g sec  qsort2: %g %g speedup: %g\n', ...
     t, t2, t2_just, t/t2) ;
 
 for nthreads = [1 2 4 8 16 20 32 40 64 128 256]
     if (nthreads > 2*nthreads_max)
         break ;
     end
-    % tic
+    tic
     [Iout, Jout] = GB_mex_msort_2 (I, J, nthreads) ;
-    tp = grbresults ; % toc ;
+    tp = toc ;
     if (nthreads == 1)
         tp1 = tp ;
     end
     assert (isequal ([Iout Jout], IJout));
     fprintf ('msort2: %3d: %10.4g ', nthreads, tp) ;
     fprintf ('speedup vs 1: %8.3f ', tp1 / tp) ;
-    fprintf ('speedup vs MATLAB: %8.3f\n', t / tp) ;
+    fprintf ('speedup vs built-in: %8.3f\n', t / tp) ;
 end
 
 fprintf ('\n----------------------- qsort 3\n') ;
@@ -92,26 +92,26 @@ t = toc ;
 
 tic
 [Iout, Jout, Kout] = GB_mex_qsort_3 (I, J, K) ;
-t2_just = grbresults ;
+t2_just = toc ;
 t2 = toc ;
 assert (isequal ([Iout Jout Kout], IJKout))
 
-fprintf ('MATLAB: sortrows %g sec  qsort3: %g  speedup: %g\n', t, t2, t/t2) ;
+fprintf ('built-in: sortrows %g sec  qsort3: %g  speedup: %g\n', t, t2, t/t2) ;
 
 for nthreads = [1 2 4 8 16 20 32 40 64 128 256]
     if (nthreads > 2*nthreads_max)
         break ;
     end
-    % tic
+    tic
     [Iout, Jout, Kout] = GB_mex_msort_3 (I, J, K, nthreads) ;
-    tp = grbresults ; % toc ;
+    tp = toc ;
     if (nthreads == 1)
         tp1 = tp ;
     end
     assert (isequal ([Iout Jout Kout], IJKout));
     fprintf ('msort3: %3d: %10.4g ', nthreads, tp) ;
     fprintf ('speedup vs 1: %8.3f ', tp1 / tp) ;
-    fprintf ('speedup vs MATLAB: %8.3f\n', t / tp) ;
+    fprintf ('speedup vs built-in: %8.3f\n', t / tp) ;
 end
 
 end

@@ -25,20 +25,20 @@ tm2 = toc ;
 s = sparse (huge, 1) ;
 tic
 w = GB_mex_reduce_to_vector (s, [ ], [ ], 'plus', A, [ ]) ;
-tg1 = grbresults ;
+tg1 = toc ;
 assert (norm (col - w.matrix, 1) / nrm < 1e-12)
 
 dtn.inp0 = 'tran' ;
 s = sparse (n, 1) ;
 tic
 w = GB_mex_reduce_to_vector (s, [ ], [ ], 'plus', A, dtn) ;
-tg2 = grbresults ;
+tg2 = toc ;
 assert (norm (row' - w.matrix, 1) / nrm < 1e-12)
 
-fprintf ('reduce each vector: MATLAB %g GrB %g speedup %g\n', ...
+fprintf ('reduce each vector: built-in %g GrB %g speedup %g\n', ...
     tm1, tg1, tm1/tg1) ;
 
-fprintf ('reduce each index:  MATLAB %g GrB %g speedup %g\n', ...
+fprintf ('reduce each index:  built-in %g GrB %g speedup %g\n', ...
     tm2, tg2, tm2/tg2) ;
 
 fprintf ('test126: all tests passed\n') ;

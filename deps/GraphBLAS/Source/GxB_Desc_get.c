@@ -122,8 +122,6 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             }
             break ;
 
-        // #include "GxB_Desc_get_mkl_template.c"
-
         default : 
 
             return (GrB_INVALID_VALUE) ;

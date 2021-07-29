@@ -25,7 +25,7 @@ for trial = 1:2
         B = sprand (k, n, nz / (k*n)) ;
     end
 
-    fprintf ('\n---------------matlab: C=A*B\n') ;
+    fprintf ('\n---------------builtin: C=A*B\n') ;
     tic ;
     C = (A*B) ;
     toc
@@ -49,7 +49,7 @@ for trial = 1:2
     fprintf ('err %g\n', err) ;
     assert (isequal (C, S)) ;
 
-    fprintf ('\n---------------matlab: C=(A*B)''\n') ;
+    fprintf ('\n---------------builtin: C=(A*B)''\n') ;
     tic ;
     C = (A*B)' ;
     toc

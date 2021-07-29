@@ -13,7 +13,7 @@
 // shallow.  If the input matrix is already hypersparse, nothing is changed
 // (and in that case A->p and A->h remain shallow on output if shallow on
 // input). The A->x and A->i content is not changed; it remains in whatever
-// shallow/non-shallow state that it had on input).
+// shallow/non-shallow/iso property that it had on input).
 
 // If an out-of-memory condition occurs, all content of the matrix is cleared.
 
@@ -33,7 +33,7 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (A, "A converting to hypersparse", GB0) ;
-    int64_t anz = GB_NNZ (A) ;
+    int64_t anz = GB_nnz (A) ;
     ASSERT (GB_ZOMBIES_OK (A)) ;
     ASSERT (GB_JUMBLED_OK (A)) ;
     ASSERT (GB_PENDING_OK (A)) ;
@@ -43,7 +43,7 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
     //--------------------------------------------------------------------------
 
     if (GB_IS_SPARSE (A))
-    { 
+    {
 
         //----------------------------------------------------------------------
         // determine the number of threads to use
@@ -63,10 +63,12 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
 
         ASSERT (A->nvec == A->plen && A->plen == n) ;
 
-        const int64_t *GB_RESTRICT Ap_old = A->p ;
+        const int64_t *restrict Ap_old = A->p ;
+        size_t Ap_old_size = A->p_size ;
         bool Ap_old_shallow = A->p_shallow ;
 
-        int64_t *GB_RESTRICT Count = GB_MALLOC (ntasks+1, int64_t) ;
+        GB_WERK_DECLARE (Count, int64_t) ;
+        GB_WERK_PUSH (Count, ntasks+1, int64_t) ;
         if (Count == NULL)
         { 
             // out of memory
@@ -90,7 +92,7 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
         // compute cumulative sum of Counts and nvec_nonempty
         //----------------------------------------------------------------------
 
-        GB_cumsum (Count, ntasks, NULL, 1) ;
+        GB_cumsum (Count, ntasks, NULL, 1, NULL) ;
         int64_t nvec_nonempty = Count [ntasks] ;
         A->nvec_nonempty = nvec_nonempty ;
 
@@ -98,14 +100,16 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
         // allocate the new A->p and A->h
         //----------------------------------------------------------------------
 
-        int64_t *GB_RESTRICT Ap_new = GB_MALLOC (nvec_nonempty+1, int64_t) ;
-        int64_t *GB_RESTRICT Ah_new = GB_MALLOC (nvec_nonempty  , int64_t) ;
+        int64_t *restrict Ap_new = NULL ; size_t Ap_new_size = 0 ;
+        int64_t *restrict Ah_new = NULL ; size_t Ah_new_size = 0 ;
+        Ap_new = GB_MALLOC (nvec_nonempty+1, int64_t, &Ap_new_size) ;
+        Ah_new = GB_MALLOC (nvec_nonempty  , int64_t, &Ah_new_size) ;
         if (Ap_new == NULL || Ah_new == NULL)
         { 
             // out of memory
-            GB_FREE (Count) ;
-            GB_FREE (Ap_new) ;
-            GB_FREE (Ah_new) ;
+            GB_WERK_POP (Count, int64_t) ;
+            GB_FREE (&Ap_new, Ap_new_size) ;
+            GB_FREE (&Ah_new, Ah_new_size) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 
@@ -115,8 +119,8 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
 
         A->plen = nvec_nonempty ;
         A->nvec = nvec_nonempty ;
-        A->p = Ap_new ;
-        A->h = Ah_new ;
+        A->p = Ap_new ; A->p_size = Ap_new_size ;
+        A->h = Ah_new ; A->h_size = Ah_new_size ;
         A->p_shallow = false ;
         A->h_shallow = false ;
 
@@ -149,10 +153,10 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
         // free workspace, and free the old A->p unless it's shallow
         //----------------------------------------------------------------------
 
-        GB_FREE (Count) ;
+        GB_WERK_POP (Count, int64_t) ;
         if (!Ap_old_shallow)
         { 
-            GB_FREE (Ap_old) ;
+            GB_FREE (&Ap_old, Ap_old_size) ;
         }
 
         //----------------------------------------------------------------------
@@ -166,7 +170,7 @@ GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
     // A is now in hypersparse form (or left as full or bitmap)
     //--------------------------------------------------------------------------
 
-    ASSERT (anz == GB_NNZ (A)) ;
+    ASSERT (anz == GB_nnz (A)) ;
     ASSERT_MATRIX_OK (A, "A conv to hypersparse (or left full/bitmap)", GB0) ;
     ASSERT (!GB_IS_SPARSE (A)) ;
     ASSERT (GB_ZOMBIES_OK (A)) ;

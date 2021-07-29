@@ -1,5 +1,5 @@
 function s = GB_spec_type (X)
-%GB_SPEC_TYPE determine the class of a MATLAB matrix
+%GB_SPEC_TYPE determine the class of a built-in matrix
 % s = GB_spec_type (X) determines the class of X.  It is identical to s =
 % class(X), except when X is a complex matrix.  In this case the string
 % 'complex' is appended to the result of class (X).  If X is a single and
@@ -7,7 +7,7 @@ function s = GB_spec_type (X)
 % 'double complex'.  Complex integer matrices result in 'int8 complex' (for
 % example), although GraphBLAS does not currently handle those.
 %
-% For a MATLAB matrix X, GB_spec_type (X) and GrB.type (X) are identical.
+% For a built-in matrix X, GB_spec_type (X) and GrB.type (X) are identical.
 %
 % See also GrB.type.
 

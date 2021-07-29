@@ -6,15 +6,15 @@ function I = subsindex (G)
 % See also GrB/subsref, GrB/subsasgn.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % On input, G must contain integers in the range 1 to prod (size (A))-1.
 % The dimensions of A are not provided to subsindex.
 
 G = G.opaque ;
 
-% As an extension to the MATLAB expression A(G), prune zeros and negative
-% values first.  The MATLAB expression A(G) becomes A (G (find (G > 0))).
+% As an extension to the expression A(G), prune zeros and negative
+% values first.  The expression A(G) becomes A (G (find (G > 0))).
 G = gbselect ('>0', G) ;
 
 [m, n, type] = gbsize (G) ;
@@ -33,7 +33,7 @@ if (isequal (type, 'double') || isequal (type, 'single'))
         error ('array indices must be integers') ;
     end
     I = int64 (I) ;
-elseif (contains (type, 'int'))
+elseif (gb_contains (type, 'int'))
     % any integer: just extract the values
     I = gbextractvalues (G) ;
 else

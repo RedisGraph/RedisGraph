@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
 (
     const GrB_Semiring semiring,    // GraphBLAS semiring to print and check
@@ -23,7 +23,7 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("\n    GraphBLAS Semiring: %s ", GB_NAME) ;
+    GBPR0 ("\n    GraphBLAS Semiring: %s ", ((name != NULL) ? name : "")) ;
 
     if (semiring == NULL)
     { 
@@ -36,7 +36,7 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     //--------------------------------------------------------------------------
 
     GB_CHECK_MAGIC (semiring, "Semiring") ;
-    GBPR0 (semiring->semiring_is_builtin ? "(built-in)" : "(user-defined)") ;
+    GBPR0 (semiring->header_size > 0 ? "(user-defined)" : "(built-in)") ;
 
     GrB_Info info ;
     info = GB_Monoid_check (semiring->add, "semiring->add", pr, f) ;

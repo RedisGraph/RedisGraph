@@ -8,7 +8,7 @@ fprintf ('\n-----------performance test GB_mex_assign, multiple ops\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 rng ('default')
@@ -129,7 +129,7 @@ for problem = 1:5
         fprintf ('GraphBLAS time: %g\n', t1) ;
         fprintf ('final nnz: %d\n', nnz (C2.matrix)) ;
 
-        fprintf ('start MATLAB...\n') ;
+        fprintf ('start builtin...\n') ;
         tic
         C = Corig ;
         % full (C)
@@ -150,7 +150,7 @@ for problem = 1:5
             % full (C)
         end
         t2 = toc ;
-        fprintf ('MATLAB    time: %g\n', t2) ;
+        fprintf ('builtin time: %g\n', t2) ;
         fprintf ('GraphBLAS speedup: %g\n', t2/t1) ;
 
         % C2.matrix

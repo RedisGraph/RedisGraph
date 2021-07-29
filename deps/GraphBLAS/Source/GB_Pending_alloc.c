@@ -12,6 +12,7 @@
 bool GB_Pending_alloc       // create a list of pending tuples
 (
     GB_Pending *PHandle,    // output
+    bool iso,               // if true, do not allocate Pending->x
     GrB_Type type,          // type of pending tuples
     GrB_BinaryOp op,        // operator for assembling pending tuples
     bool is_matrix,         // true if Pending->j must be allocated
@@ -30,7 +31,8 @@ bool GB_Pending_alloc       // create a list of pending tuples
     // allocate the Pending header
     //--------------------------------------------------------------------------
 
-    GB_Pending Pending = GB_CALLOC (1, struct GB_Pending_struct) ;
+    size_t header_size ;
+    GB_Pending Pending = GB_MALLOC (1, struct GB_Pending_struct, &header_size) ;
     if (Pending == NULL)
     { 
         // out of memory
@@ -42,27 +44,32 @@ bool GB_Pending_alloc       // create a list of pending tuples
     //--------------------------------------------------------------------------
 
     nmax = GB_IMAX (nmax, GB_PENDING_INIT) ;
+    Pending->header_size = header_size ;
     Pending->n = 0 ;                    // no pending tuples yet
     Pending->nmax = nmax ;              // initial size of list
     Pending->sorted = true ;            // keep track if tuples are sorted
     Pending->type = type ;              // type of pending tuples
     Pending->size = type->size ;        // size of pending tuple type
-    Pending->op = op ;                  // pending operator (NULL is OK)
+    Pending->op = (iso) ? NULL : op ;   // pending operator (NULL is OK)
+    Pending->i_size = 0 ;
+    Pending->j_size = 0 ;
+    Pending->x_size = 0 ;
 
-    Pending->i = GB_MALLOC (nmax, int64_t) ;
-
+    Pending->i = GB_MALLOC (nmax, int64_t, &(Pending->i_size)) ;
+    Pending->j = NULL ;
     if (is_matrix)
     { 
-        Pending->j = GB_MALLOC (nmax, int64_t) ;
+        Pending->j = GB_MALLOC (nmax, int64_t, &(Pending->j_size)) ;
     }
-    else
+    Pending->x = NULL ;
+    if (!iso)
     { 
-        Pending->j = NULL ;
+        Pending->x = GB_MALLOC (nmax * Pending->size, GB_void,
+            &(Pending->x_size)) ;
     }
 
-    Pending->x = GB_MALLOC (nmax * Pending->size, GB_void) ;
-
-    if (Pending->i == NULL || Pending->x == NULL
+    if (Pending->i == NULL
+        || (!iso && Pending->x == NULL)
         || (is_matrix && Pending->j == NULL))
     { 
         // out of memory

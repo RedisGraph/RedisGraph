@@ -9,7 +9,7 @@
 
 // Reduce a matrix to a vector: w<mask> = accum (w, reduce_to_vector (A))
 
-// MATLAB interface to GrB_reduce, which relies on GrB_Matrix_reduce_BinaryOp
+// Test interface to GrB_reduce, which relies on GrB_Matrix_reduce_BinaryOp
 // and GrB_Matrix_reduce_Monoid to reduce a matrix to a vector.
 
 #include "GB_mex.h"
@@ -18,7 +18,7 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
+    GrB_Matrix_free_(&A) ;              \
     GrB_Vector_free_(&w) ;              \
     GrB_Vector_free_(&mask) ;           \
     GrB_Descriptor_free_(&desc) ;       \
@@ -222,7 +222,7 @@ void mexFunction
         METHOD (GrB_Matrix_reduce_Monoid_(w, mask, accum, reduce, A, desc)) ;
     }
 
-    // return w to MATLAB as a struct and free the GraphBLAS w
+    // return w as a struct and free the GraphBLAS w
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;
 
     FREE_ALL ;

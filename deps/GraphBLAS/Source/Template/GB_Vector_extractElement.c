@@ -39,7 +39,7 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
         GrB_Info info ;
         GB_WHERE1 (GB_WHERE_STRING) ;
         GB_BURBLE_START ("GrB_Vector_extractElement") ;
-        GB_OK (GB_Matrix_wait ((GrB_Matrix) V, Context)) ;
+        GB_OK (GB_wait ((GrB_Matrix) V, "v", Context)) ;
         GB_BURBLE_END ;
     }
 
@@ -58,7 +58,7 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
         return (GrB_DOMAIN_MISMATCH) ;
     }
 
-    if (V->nzmax == 0)
+    if (GB_nnz ((GrB_Matrix) V) == 0)
     { 
         // quick return
         return (GrB_NO_VALUE) ;
@@ -70,12 +70,12 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
 
     int64_t pleft ;
     bool found ;
-    const int64_t *GB_RESTRICT Vp = V->p ;
+    const int64_t *restrict Vp = V->p ;
 
     if (Vp != NULL)
     { 
         // V is sparse
-        const int64_t *GB_RESTRICT Vi = V->i ;
+        const int64_t *restrict Vi = V->i ;
 
         pleft = 0 ;
         int64_t pright = Vp [1] - 1 ;
@@ -88,7 +88,7 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
     {
         // V is bitmap or full
         pleft = i ;
-        const int8_t *GB_RESTRICT Vb = V->b ;
+        const int8_t *restrict Vb = V->b ;
         if (Vb != NULL)
         { 
             // V is bitmap
@@ -110,18 +110,18 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = V(i)
         #if !defined ( GB_UDT_EXTRACT )
         if (GB_XCODE == vcode)
         { 
-            // copy the value from V into x, no typecasting, for built-in
-            // types only.
-            GB_XTYPE *GB_RESTRICT Vx = ((GB_XTYPE *) (V->x)) ;
-            (*x) = Vx [pleft] ;
+            // copy the value from V [...] into the scalar x, no typecasting,
+            // for built-in types only.
+            GB_XTYPE *restrict Vx = ((GB_XTYPE *) (V->x)) ;
+            (*x) = Vx [V->iso ? 0:pleft] ;
         }
         else
         #endif
         { 
-            // typecast the value from V into x
+            // typecast the value from V [...] into the scalar x
             size_t vsize = V->type->size ;
-            GB_cast_array ((GB_void *) x, GB_XCODE,
-                ((GB_void *) V->x) +(pleft*vsize), vcode, NULL, vsize, 1, 1) ;
+            void *vx = ((GB_void *) V->x) + (V->iso ? 0 : (pleft*vsize)) ;
+            GB_cast_scalar (x, GB_XCODE, vx, vcode, vsize) ;
         }
         return (GrB_SUCCESS) ;
     }

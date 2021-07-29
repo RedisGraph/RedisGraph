@@ -1,6 +1,6 @@
 #include "spok.h"
 
-/* check the validity of a MATLAB sparse matrix */
+/* check the validity of a built-in sparse matrix */
 
 /* Copyright 2008-2011, Timothy A. Davis, http://suitesparse.com */
 /* SPDX-License-Identifier: Apache-2.0 */

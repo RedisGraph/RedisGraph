@@ -65,6 +65,6 @@ int main (int argc, char **argv)
     FREE_ALL ;
 
     OK (GrB_finalize ( )) ;
-    printf ("import_demp: all tests passed\n") ;
+    printf ("import_demo: all tests passed\n") ;
 }
 

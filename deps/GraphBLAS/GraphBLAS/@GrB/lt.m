@@ -1,6 +1,6 @@
 function C = lt (A, B)
 %A < B less than.
-% C = (A < B) is an element-by-element comparison of A and B.  One or
+% C = (A < B) compares A and B element-by-element.  One or
 % both may be scalars.  Otherwise, A and B must have the same size.
 %
 % See also GrB/le, GrB/gt, GrB/ge, GrB/ne, GrB/eq.
@@ -15,7 +15,7 @@ function C = lt (A, B)
 % A matrix, B matrix:  C has the pattern of the set union, A+B.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;

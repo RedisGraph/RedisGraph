@@ -29,6 +29,11 @@
 
 #include "GB.h"
 
+#define GB_FREE_ALL                     \
+{                                       \
+    GB_FREE (semiring, header_size) ;   \
+}
+
 GrB_Info GrB_Semiring_new           // create a semiring
 (
     GrB_Semiring *semiring,         // handle of semiring to create
@@ -41,6 +46,7 @@ GrB_Info GrB_Semiring_new           // create a semiring
     // check inputs
     //--------------------------------------------------------------------------
 
+    GrB_Info info ;
     GB_WHERE1 ("GrB_Semiring_new (&semiring, add, multiply)") ;
     GB_RETURN_IF_NULL (semiring) ;
     (*semiring) = NULL ;
@@ -50,9 +56,23 @@ GrB_Info GrB_Semiring_new           // create a semiring
     ASSERT_BINARYOP_OK (multiply, "semiring->multiply", GB0) ;
 
     //--------------------------------------------------------------------------
+    // allocate the semiring
+    //--------------------------------------------------------------------------
+
+    size_t header_size ;
+    (*semiring) = GB_MALLOC (1, struct GB_Semiring_opaque, &header_size) ;
+    if (*semiring == NULL)
+    { 
+        // out of memory
+        return (GrB_OUT_OF_MEMORY) ;
+    }
+    (*semiring)->header_size = header_size ;
+
+    //--------------------------------------------------------------------------
     // create the semiring
     //--------------------------------------------------------------------------
 
-    return (GB_Semiring_new (semiring, add, multiply)) ;
+    GB_OK (GB_Semiring_new (*semiring, add, multiply)) ;
+    return (GrB_SUCCESS) ;
 }
 

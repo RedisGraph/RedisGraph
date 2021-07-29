@@ -13,6 +13,10 @@
 
 // The PAIR operator as the multiplier provides important special cases.
 
+// The matrix C is the user input matrix.  C is not iso on output, but might
+// iso on input, in which case the input iso scalar is cinput, and C->x has
+// been expanded but is not initialized.  A and/or B can be iso.
+
 {
 
     //--------------------------------------------------------------------------
@@ -59,12 +63,6 @@
                 const int64_t pB_start = Bp [kB] ;
                 const int64_t pB_end = Bp [kB+1] ;
                 const int64_t bjnz = pB_end - pB_start ;
-                if (bjnz == 0) continue ;
-                #if ( GB_A_IS_HYPER || GB_A_IS_SPARSE )
-                    // Both A and B are sparse/hyper; get first & last in B(:,j)
-                    const int64_t ib_first = Bi [pB_start] ;
-                    const int64_t ib_last  = Bi [pB_end-1] ;
-                #endif
             #else
                 // B is bitmap or full
                 const int64_t pB_start = j * vlen ;
@@ -92,7 +90,6 @@
                 int64_t pA = Ap [kA] ;
                 const int64_t pA_end = Ap [kA+1] ;
                 const int64_t ainz = pA_end - pA ;
-                if (ainz == 0) continue ;
                 #else
                 // A is bitmap or full
                 const int64_t pA = kA * vlen ;
@@ -104,7 +101,7 @@
 
                 GB_CIJ_DECLARE (cij) ;          // declare the cij scalar
                 int64_t pC = i + pC_start ;     // C(i,j) is at Cx [pC]
-                bool cij_updated = false ;
+                GB_GET4C (cij, pC) ;            // cij = Cx [pC]
 
                 //--------------------------------------------------------------
                 // C(i,j) += A (:,i)*B(:,j): a single dot product
@@ -119,7 +116,6 @@
                     // both A and B are full
                     //----------------------------------------------------------
 
-                    GB_GETC (cij, pC) ;             // cij = Cx [pC]
                     #if GB_IS_PAIR_MULTIPLIER
                     { 
                         #if GB_IS_ANY_MONOID
@@ -149,16 +145,10 @@
                         GB_PRAGMA_SIMD_DOT (cij)
                         for (int64_t k = 0 ; k < vlen ; k++)
                         { 
-                            GB_DOT_TERMINAL (cij) ;         // break if terminal
-                            // cij += A(k,i) * B(k,j)
-                            GB_GETA (aki, Ax, pA+k) ;       // aki = A(k,i)
-                            GB_GETB (bkj, Bx, pB+k) ;       // bkj = B(k,j)
-                            // cij += aki * bkj
-                            GB_MULTADD (cij, aki, bkj, i, k, j) ;
+                            GB_DOT (k, pA+k, pB+k) ;
                         }
                     }
                     #endif
-                    GB_DOT_ALWAYS_SAVE_CIJ ;
 
                 }
                 #elif ( GB_A_IS_FULL && GB_B_IS_BITMAP )
@@ -168,6 +158,7 @@
                     // A is full and B is bitmap
                     //----------------------------------------------------------
 
+                    GB_PRAGMA_SIMD_DOT (cij)
                     for (int64_t k = 0 ; k < vlen ; k++)
                     {
                         if (Bb [pB+k])
@@ -175,7 +166,6 @@
                             GB_DOT (k, pA+k, pB+k) ;
                         }
                     }
-                    GB_DOT_SAVE_CIJ ;
 
                 }
                 #elif ( GB_A_IS_FULL && ( GB_B_IS_SPARSE || GB_B_IS_HYPER ) )
@@ -185,7 +175,6 @@
                     // A is full and B is sparse/hyper
                     //----------------------------------------------------------
 
-                    GB_GETC (cij, pC) ;                 // cij = Cx [pC]
                     #if GB_IS_PAIR_MULTIPLIER
                     { 
                         #if GB_IS_ANY_MONOID
@@ -216,16 +205,11 @@
                         GB_PRAGMA_SIMD_DOT (cij)
                         for (int64_t p = pB ; p < pB_end ; p++)
                         { 
-                            GB_DOT_TERMINAL (cij) ;   // break if terminal
                             int64_t k = Bi [p] ;
-                            // cij += A(k,i) * B(k,j)
-                            GB_GETA (aki, Ax, pA+k) ;     // aki = A(k,i)
-                            GB_GETB (bkj, Bx, p   ) ;     // bkj = B(k,j)
-                            GB_MULTADD (cij, aki, bkj, i, k, j) ;
+                            GB_DOT (k, pA+k, p) ;
                         }
                     }
                     #endif
-                    GB_DOT_ALWAYS_SAVE_CIJ ;
 
                 }
                 #elif ( GB_A_IS_BITMAP && GB_B_IS_FULL )
@@ -235,6 +219,7 @@
                     // A is bitmap and B is full
                     //----------------------------------------------------------
 
+                    GB_PRAGMA_SIMD_DOT (cij)
                     for (int64_t k = 0 ; k < vlen ; k++)
                     {
                         if (Ab [pA+k])
@@ -242,7 +227,6 @@
                             GB_DOT (k, pA+k, pB+k) ;
                         }
                     }
-                    GB_DOT_SAVE_CIJ ;
 
                 }
                 #elif ( GB_A_IS_BITMAP && GB_B_IS_BITMAP )
@@ -252,6 +236,7 @@
                     // both A and B are bitmap
                     //----------------------------------------------------------
 
+                    GB_PRAGMA_SIMD_DOT (cij)
                     for (int64_t k = 0 ; k < vlen ; k++)
                     {
                         if (Ab [pA+k] && Bb [pB+k])
@@ -259,7 +244,6 @@
                             GB_DOT (k, pA+k, pB+k) ;
                         }
                     }
-                    GB_DOT_SAVE_CIJ ;
 
                 }
                 #elif ( GB_A_IS_BITMAP && ( GB_B_IS_SPARSE || GB_B_IS_HYPER ) )
@@ -269,6 +253,7 @@
                     // A is bitmap and B is sparse/hyper
                     //----------------------------------------------------------
 
+                    GB_PRAGMA_SIMD_DOT (cij)
                     for (int64_t p = pB ; p < pB_end ; p++)
                     {
                         int64_t k = Bi [p] ;
@@ -277,7 +262,6 @@
                             GB_DOT (k, pA+k, p) ;
                         }
                     }
-                    GB_DOT_SAVE_CIJ ;
 
                 }
                 #elif ( (GB_A_IS_SPARSE || GB_A_IS_HYPER) && GB_B_IS_FULL )
@@ -287,7 +271,6 @@
                     // A is sparse/hyper and B is full
                     //----------------------------------------------------------
 
-                    GB_GETC (cij, pC) ;             // cij = Cx [pC]
                     #if GB_IS_PAIR_MULTIPLIER
                     { 
                         #if GB_IS_ANY_MONOID
@@ -317,16 +300,11 @@
                         GB_PRAGMA_SIMD_DOT (cij)
                         for (int64_t p = pA ; p < pA_end ; p++)
                         { 
-                            GB_DOT_TERMINAL (cij) ;         // break if terminal
                             int64_t k = Ai [p] ;
-                            // cij += A(k,i) * B(k,j)
-                            GB_GETA (aki, Ax, p   ) ;       // aki = A(k,i)
-                            GB_GETB (bkj, Bx, pB+k) ;       // bkj = B(k,j)
-                            GB_MULTADD (cij, aki, bkj, i, k, j) ;
+                            GB_DOT (k, p, pB+k) ;
                         }
                     }
                     #endif
-                    GB_DOT_ALWAYS_SAVE_CIJ ;
 
                 }
                 #elif ( (GB_A_IS_SPARSE || GB_A_IS_HYPER) && GB_B_IS_BITMAP )
@@ -336,6 +314,7 @@
                     // A is sparse/hyper and B is bitmap
                     //----------------------------------------------------------
 
+                    GB_PRAGMA_SIMD_DOT (cij)
                     for (int64_t p = pA ; p < pA_end ; p++)
                     {
                         int64_t k = Ai [p] ;
@@ -344,7 +323,6 @@
                             GB_DOT (k, p, pB+k) ;
                         }
                     }
-                    GB_DOT_SAVE_CIJ ;
 
                 }
                 #else
@@ -354,11 +332,13 @@
                     // both A and B are sparse/hyper
                     //----------------------------------------------------------
 
-                    if (Ai [pA_end-1] < ib_first || ib_last < Ai [pA])
+                    if (ainz == 0 || bjnz == 0 || 
+                        Ai [pA_end-1] < Bi [pB_start] ||
+                        Bi [pB_end-1] < Ai[pA])
                     { 
 
                         //------------------------------------------------------
-                        // pattern of A(:,i) and B(:,j) don't overlap
+                        // A(:,i) and B(:,j) don't overlap, or are empty
                         //------------------------------------------------------
 
                     }
@@ -396,7 +376,6 @@
                                 pB++ ;
                             }
                         }
-                        GB_DOT_SAVE_CIJ ;
 
                     }
                     else if (bjnz > 8 * ainz)
@@ -433,7 +412,6 @@
                                 pB++ ;
                             }
                         }
-                        GB_DOT_SAVE_CIJ ;
 
                     }
                     else
@@ -465,12 +443,16 @@
                                 pB++ ;
                             }
                         }
-                        GB_DOT_SAVE_CIJ ;
                     }
                 }
                 #endif
+
+                //--------------------------------------------------------------
+                // save C(i,j)
+                //--------------------------------------------------------------
+
+                GB_PUTC (cij, pC) ;
             }
         }
     }
 }
-

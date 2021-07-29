@@ -1,15 +1,15 @@
 //------------------------------------------------------------------------------
-// gb_mxarray_is_scalar: check if MATLAB mxArray is a non-sparse numeric scalar
+// gb_mxarray_is_scalar: check if built-in mxArray is non-sparse numeric scalar
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
-bool gb_mxarray_is_scalar   // true if MATLAB array is a scalar
+bool gb_mxarray_is_scalar   // true if built-in array is a scalar
 (
     const mxArray *S
 )

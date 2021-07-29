@@ -71,9 +71,9 @@ for k1 = k1test % 1:length (types)
         end
 
         fprintf (' binary op: [ %s %s ] ', binop, type) ;
-        if (contains (type, 'single'))
+        if (test_contains (type, 'single'))
             tol = 1e-5 ;
-        elseif (contains (type, 'double'))
+        elseif (test_contains (type, 'double'))
             tol = 1e-12 ;
         else
             tol = 0 ;

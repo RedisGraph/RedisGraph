@@ -39,7 +39,7 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry from S
         GrB_Info info ;
         GB_WHERE1 (GB_WHERE_STRING) ;
         GB_BURBLE_START ("GxB_Scalar_extractElement") ;
-        GB_OK (GB_Matrix_wait ((GrB_Matrix) S, Context)) ;
+        GB_OK (GB_wait ((GrB_Matrix) S, "s", Context)) ;
         GB_BURBLE_END ;
     }
 
@@ -52,7 +52,7 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry from S
         return (GrB_DOMAIN_MISMATCH) ;
     }
 
-    if ((S->nzmax == 0)                         // empty
+    if (GB_nnz ((GrB_Matrix) S) == 0            // empty
         || (S->p != NULL && S->p [1] == 0)      // sparse/hyper with no entry
         || (S->b != NULL && S->b [0] == 0))     // bitmap with no entry
     { 
@@ -67,17 +67,15 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry from S
     #if !defined ( GB_UDT_EXTRACT )
     if (GB_XCODE == scode)
     { 
-        // copy the value from S into x, no typecasting, for built-in
-        // types only.
-        GB_XTYPE *GB_RESTRICT Sx = ((GB_XTYPE *) (S->x)) ;
+        // copy S into x, no typecasting, for built-in types only.
+        GB_XTYPE *restrict Sx = ((GB_XTYPE *) (S->x)) ;
         (*x) = Sx [0] ;
     }
     else
     #endif
     { 
-        // typecast the value from S into x
-        GB_cast_array ((GB_void *) x, GB_XCODE,
-            ((GB_void *) S->x), scode, NULL, S->type->size, 1, 1) ;
+        // typecast S into x
+        GB_cast_scalar (x, GB_XCODE, S->x, scode, S->type->size) ;
     }
     return (GrB_SUCCESS) ;
 }

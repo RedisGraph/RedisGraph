@@ -49,10 +49,10 @@ GrB_Info GxB_Vector_Option_get      // gets the current option of a vector
 
             {
                 va_start (ap, field) ;
-                int *sparsity = va_arg (ap, int *) ;
+                int *sparsity_control = va_arg (ap, int *) ;
                 va_end (ap) ;
-                GB_RETURN_IF_NULL (sparsity) ;
-                (*sparsity) = v->sparsity ;
+                GB_RETURN_IF_NULL (sparsity_control) ;
+                (*sparsity_control) = v->sparsity_control ;
             }
             break ;
 
@@ -79,7 +79,7 @@ GrB_Info GxB_Vector_Option_get      // gets the current option of a vector
             }
             break ;
 
-        case GxB_IS_HYPER : // deprecated; use GxB_SPARSITY_STATUS instead
+        case GxB_IS_HYPER : // historical; use GxB_SPARSITY_STATUS instead
 
             {
                 // a GrB_Vector is never hypersparse

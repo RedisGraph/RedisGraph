@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@
 // is -1.  If two dots are found, s [position [0]] == '.' is the first dot, and
 // s [position [1]] == '.' is the second.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 void gb_find_dot            // find 1st and 2nd dot ('.') in a string
 (

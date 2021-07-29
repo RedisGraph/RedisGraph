@@ -2,7 +2,7 @@ function gbtest2
 %GBTEST2 list all binary operators
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 optype = gbtest_types ;
 opnames = gbtest_binops ;
@@ -20,7 +20,7 @@ for k1 = 1:length(opnames)
             op = [op '.' optype{k2}] ; %#ok<*AGROW>
         end
 
-        fprintf ('\nop: [%s]\n', op) ;
+        fprintf ('\nop: (%s)\n', op) ;
         try
             if (k2 > 0)
                 GrB.binopinfo (op) ;

@@ -8,7 +8,7 @@ fprintf ('\n----------------------- performance tests for GrB_Matrix_build\n') ;
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads_max = feature ('numcores') ;
+nthreads_max = feature_numcores ;
 % fprintf ('GraphBLAS: one thread\n') ;
 % nthreads_set (1, chunk) ;
 
@@ -65,7 +65,7 @@ i = uint64 (i-1) ;
 j = uint64 (j-1) ;
 i1 = double (i+1) ;
 j1 = double (j+1) ;
-fprintf ('MATLAB:\n') ;
+fprintf ('built-in:\n') ;
 tic
 T = sparse (i1, j1, x) ;
 toc
@@ -122,7 +122,7 @@ x  = x  (p) ;
 i  = i  (p) ;
 j  = j  (p) ;
 
-fprintf ('MATLAB:\n') ;
+fprintf ('built-in:\n') ;
 tic
 T = sparse (i1, j1, x) ;
 toc
@@ -153,7 +153,7 @@ x = [x ; x2] ;
 i1 = double (i+1) ;
 j1 = double (j+1) ;
 
-fprintf ('MATLAB:\n') ;
+fprintf ('built-in:\n') ;
 tic
 T = sparse (i1, j1, x) ;
 toc
@@ -207,7 +207,7 @@ x = x (p) ;
 i1 = i1 (p) ;
 j1 = j1 (p) ;
 
-fprintf ('MATLAB:\n') ;
+fprintf ('built-in:\n') ;
 tic
 T = sparse (i1, j1, x) ;
 toc

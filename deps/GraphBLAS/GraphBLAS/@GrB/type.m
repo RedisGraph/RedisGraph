@@ -1,20 +1,20 @@
 function s = type (X)
-%GRB.TYPE get the type of a MATLAB or GraphBLAS matrix.
+%GRB.TYPE get the type of a built-in or GraphBLAS matrix.
 % s = GrB.type (X) returns the type of a GraphBLAS matrix X as a string:
 % 'logical', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16',
 % 'uint32', 'uint64', 'single', 'double', 'single complex', and 'double
 % complex'.  Note that for GraphBLAS matrices, 'complex' is treated as a
-% type, not an attribute, which differs from the MATLAB convention.
+% type, not an attribute, which differs from the built-in convention.
 %
 % For a GraphBLAS matrix X of any type, class (X) returns 'GrB'.
-% GraphBLAS does not overload the MATLAB 'class' or 'isobject' functions,
+% GraphBLAS does not overload the built-in 'class' or 'isobject' functions,
 % but it does overload the 'isa' function, which queries the type of a
 % GraphBLAS matrix.
 %
 % If X is not a GraphBLAS matrix, GrB.type (X) is the same as class (X),
-% except when X is a MATLAB single complex or double complex matrix, in
+% except when X is a built-in single complex or double complex matrix, in
 % which case GrB.type (X) is 'single complex' or 'double complex',
-% respectively.  The MATLAB class (X) is 'single' if X is single complex
+% respectively.  The built-in class (X) is 'single' if X is single complex
 % and 'double' if X is double complex.
 %
 % Examples:
@@ -40,7 +40,7 @@ function s = type (X)
 % See also class, isa, GrB/isa, GrB.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (X))
     X = X.opaque ;

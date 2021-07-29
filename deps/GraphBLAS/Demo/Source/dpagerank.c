@@ -15,7 +15,7 @@
 // node number P[0].page in the graph.  P[1] is the next page, and so on, to
 // the lowest-ranked page P[n-1].page with rank P[n-1].pagerank.
 
-// See dpagerank.m for the equivalent computation in MATLAB (except the random
+// See dpagerank.m for the equivalent computation (except the random
 // number generator differs).
 
 #include "GraphBLAS.h"
@@ -57,7 +57,7 @@ void fscale (double *z, const double *x) { (*z) = c * (*x) ; }
 void fdiv   (double *z, const double *x) { (*z) = (*x) / s ; }
 
 //------------------------------------------------------------------------------
-// comparison function for qsort
+// comparator for qsort
 //------------------------------------------------------------------------------
 
 int compar (const void *x, const void *y)
@@ -110,7 +110,7 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
 
     c = 0.85 ;                  // probability of walking to random neighbor
 
-    // Note the random number generate used here differs from MATLAB, so this
+    // Note the random number generate used here differs, so this
     // function will not compute exactly the same thing as dpagerank.m.
 
     // r = rand (1,n) ;         // random initial pageranks

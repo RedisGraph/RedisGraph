@@ -6,7 +6,7 @@ function test30
 
     [save save_chunk] = nthreads_get ;
     chunk = 4096 ;
-    nthreads = feature ('numcores') ;
+    nthreads = feature_numcores ;
     nthreads_set (nthreads, chunk) ;
 
     Prob = ssget (2662) ;
@@ -23,25 +23,19 @@ function test30
 
     scalar = sparse (pi) ;
 
-    % tic/toc includes the mexFunction overhead of making a deep copy
-    % of the input matrix.  MATLAB can modify C in place, as can GraphBLAS,
-    % but GraphBLAS cannot safely do that through a mexFunction interface
-    % to MATLAB.
-
     fprintf ('start GraphBLAS:\n') ;
 
     tic 
     C2 = GB_mex_subassign (A, [], [], scalar, I0, J0, []) ;
-    toc
-    t = grbresults
+    t = toc ;
 
     C = A ; 
-    fprintf ('start MATLAB:\n') ;
+    fprintf ('start builtin:\n') ;
     tic 
     C (I,J) = scalar ;
     tm = toc
 
-    fprintf ('GraphBLAS speedup over MATLAB: %g\n',  tm/t) ;
+    fprintf ('GraphBLAS speedup over builtin: %g\n',  tm/t) ;
 
     assert (isequal (C, C2.matrix)) ;
     fprintf ('\ntest30: all tests passed\n') ;

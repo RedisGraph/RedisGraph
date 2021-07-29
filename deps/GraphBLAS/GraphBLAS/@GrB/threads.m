@@ -12,26 +12,18 @@ function nthreads = threads (nthreads)
 % Changing the number of threads with GrB.threads(nthreads) causes all
 % subsequent GraphBLAS operations to use at most the given number of
 % threads.  GraphBLAS may use fewer threads, if the problem is small (see
-% GrB.chunk).  The setting is kept for the remainder of the current MATLAB
+% GrB.chunk).  The setting is kept for the remainder of the current
 % session, or until 'clear all' or GrB.clear is used, at which point the
 % setting reverts to the default number of threads.
 %
-% MATLAB can detect the number of physical and logical cores via an
-% undocumented built-in function: ncores = feature('numcores'), or via
-% maxNumCompThreads.
-%
 % Example:
 %
-%   feature ('numcores') ;          % print info about cores
-%   ncores = feature ('numcores') ; % get # of logical cores MATLAB uses
-%   ncores = maxNumCompThreads ;    % same as feature ('numcores')
-%   GrB.threads (2*ncores) ;        % GraphBLAS will use at most 2*ncores
-%                                   % threads
+%   GrB.threads (8) ;  % GraphBLAS will use at most 8 threads
 %
-% See also feature, maxNumCompThreads, GrB.chunk.
+% See also GrB.chunk.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (nargin == 0)
     nthreads = gbthreads ;

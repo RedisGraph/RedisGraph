@@ -1,27 +1,26 @@
 function gbtest51
-%GBTEST51 test GrB.tricount
+%GBTEST51 test GrB.tricount and concatenate
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 files =  {
-'../../Demo/Matrix/2blocks'
-'../../Demo/Matrix/ash219'
-'../../Demo/Matrix/bcsstk01'
-'../../Demo/Matrix/bcsstk16'
-'../../Demo/Matrix/eye3'
-'../../Demo/Matrix/fs_183_1'
-'../../Demo/Matrix/ibm32a'
-'../../Demo/Matrix/ibm32b'
-'../../Demo/Matrix/lp_afiro'
-'../../Demo/Matrix/mbeacxc'
-'../../Demo/Matrix/t1'
-'../../Demo/Matrix/t2'
-'../../Demo/Matrix/west0067' } ;
+'./matrix/2blocks'
+'./matrix/ash219'
+'./matrix/bcsstk01'
+'./matrix/bcsstk16'
+'./matrix/eye3'
+'./matrix/fs_183_1'
+'./matrix/ibm32a'
+'./matrix/ibm32b'
+'./matrix/lp_afiro'
+'./matrix/mbeacxc'
+'./matrix/t1'
+'./matrix/t2'
+'./matrix/west0067' } ;
 nfiles = length (files) ;
 
-% the files in ../../Demo/Matrix that do not have a .mtx filename
-% are zero-based.
+% the files in ./matrix that do not have a .mtx filename are zero-based.
 desc.base = 'zero-based' ;
 
 valid_count = [
@@ -54,7 +53,7 @@ for k = 1:nfiles
     % fprintf ('--------------------------construct G:\n') ;
     [m, n] = size (G) ;
     if (m ~= n)
-        G = [GrB(m,m) G ; G' GrB(n,n)] ; %#ok<*AGROW>
+        G = [GrB(m,m) G ; G' GrB(n,n)] ; %#ok<*AGROW>   (concatenate)
     elseif (~issymmetric (G))
         G = G + G' ;
     end

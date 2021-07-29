@@ -278,7 +278,7 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 		// If iterator is depleted, get new tuple from different matrix or finish encode.
 		while(depleted && r < relation_count) {
 			// Free iterator
-			RG_MatrixTupleIter_free(iter);
+			RG_MatrixTupleIter_free(&iter);
 			iter = NULL;
 			depleted = false;
 			// Proceed to next relation matrix.
@@ -298,7 +298,7 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 			_RdbSaveEdge(rdb, gc->g, &e, r);
 			encoded_edges++;
 		} else {
-			multiple_edges_array = (uintptr_t)CLEAR_MSB(edgeID);
+			multiple_edges_array = (EdgeID *)(CLEAR_MSB(edgeID));
 			_RdbSaveMultipleEdges(rdb, gc, r, multiple_edges_array,
 								  &multiple_edges_current_index, &encoded_edges, edges_to_encode, src, dest);
 			// If the multiple edges array filled the capacity of entities allowed to be encoded, finish encoding.

@@ -26,11 +26,10 @@
 #include "GB_binop__include.h"
 #endif
 
-#define GB_FREE_WORK \
-    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice) ;
-
-#undef  GB_FREE_ALL
-#define GB_FREE_ALL GB_FREE_WORK
+#define GB_FREE_ALL                         \
+{                                           \
+    GB_WERK_POP (B_ek_slicing, int64_t) ;   \
+}
 
 GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
 (
@@ -68,13 +67,13 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
     ASSERT (B->vlen == C->vlen) ;
     ASSERT (B->vdim == C->vdim) ;
 
-    GB_ENSURE_FULL (C) ;        // convert C to full
+    GB_ENSURE_FULL (C) ;    // convert C to full, if sparsity control allows it
 
     //--------------------------------------------------------------------------
     // get the operator
     //--------------------------------------------------------------------------
 
-    if (accum->opcode == GB_FIRST_opcode)
+    if (accum->opcode == GB_FIRST_opcode || C->iso)
     { 
         // nothing to do
         return (GrB_SUCCESS) ;
@@ -89,36 +88,30 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    int64_t bnz = GB_NNZ_HELD (B) ;
-    int64_t bnvec = B->nvec ;
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
-    int nthreads = GB_nthreads (bnz + bnvec, chunk, nthreads_max) ;
-    int ntasks = (nthreads == 1) ? 1 : (32 * nthreads) ;
 
     //--------------------------------------------------------------------------
     // slice the entries for each task
     //--------------------------------------------------------------------------
 
-    // Task tid does entries pstart_slice [tid] to pstart_slice [tid+1]-1 and
-    // vectors kfirst_slice [tid] to klast_slice [tid].  The first and last
-    // vectors may be shared with prior slices and subsequent slices.
+    GB_WERK_DECLARE (B_ek_slicing, int64_t) ;
+    int B_ntasks, B_nthreads ;
 
-    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
-    if (GB_is_packed (B))
+    if (GB_IS_BITMAP (B) || GB_as_if_full (B))
     { 
-        // C is dense and B is either dense or bitmap
-        GBURBLE ("(Z packed) ") ;
-        ntasks = 0 ;   // unused
+        // C is dense and B is bitmap or as-if-full
+        GBURBLE ("(Z bitmap/as-if-full) ") ;
+        int64_t bnvec = B->nvec ;
+        int64_t bnz = GB_nnz_held (B) ;
+        B_nthreads = GB_nthreads (bnz + bnvec, chunk, nthreads_max) ;
+        B_ntasks = 0 ;   // unused
+        ASSERT (B_ek_slicing == NULL) ;
     }
     else
-    {
+    { 
         // create tasks to compute over the matrix B
-        if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, B,
-            &ntasks))
-        { 
-            // out of memory
-            return (GrB_OUT_OF_MEMORY) ;
-        }
+        GB_SLICE_MATRIX (B, 32, chunk) ;
+        ASSERT (B_ek_slicing != NULL) ;
     }
 
     //--------------------------------------------------------------------------
@@ -134,14 +127,14 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
         //----------------------------------------------------------------------
 
         #define GB_Cdense_accumB(accum,xname) \
-            GB_Cdense_accumB_ ## accum ## xname
+            GB (_Cdense_accumB_ ## accum ## xname)
 
-        #define GB_BINOP_WORKER(accum,xname)                                  \
-        {                                                                     \
-            info = GB_Cdense_accumB(accum,xname) (C, B,                       \
-                kfirst_slice, klast_slice, pstart_slice, ntasks, nthreads) ;  \
-            done = (info != GrB_NO_VALUE) ;                                   \
-        }                                                                     \
+        #define GB_BINOP_WORKER(accum,xname)                    \
+        {                                                       \
+            info = GB_Cdense_accumB(accum,xname) (C, B,         \
+                B_ek_slicing, B_ntasks, B_nthreads) ;           \
+            done = (info != GrB_NO_VALUE) ;                     \
+        }                                                       \
         break ;
 
         //----------------------------------------------------------------------
@@ -189,9 +182,9 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
 
         // bij = B(i,j), located in Bx [pB].  Note that GB_GETB is used,
         // since B appears as the 2nd input to z = fadd (x,y)
-        #define GB_GETB(bij,Bx,pB)                                          \
+        #define GB_GETB(bij,Bx,pB,B_iso)                                    \
             GB_void bij [GB_VLA(ysize)] ;                                   \
-            cast_B_to_Y (bij, Bx +((pB)*bsize), bsize)
+            cast_B_to_Y (bij, Bx +(B_iso ? 0:(pB)*bsize), bsize)
 
         // address of Cx [p]
         #define GB_CX(p) Cx +((p)*csize)
@@ -210,7 +203,7 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_ALL ;
     ASSERT_MATRIX_OK (C, "C+=B output", GB0) ;
     return (GrB_SUCCESS) ;
 }

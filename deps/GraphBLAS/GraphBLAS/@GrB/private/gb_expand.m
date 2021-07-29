@@ -4,7 +4,7 @@ function C = gb_expand (scalar, S, type)
 % first input is a scalar; the caller has checked this already.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % typecast the scalar to the desired type
 scalar = gbnew (scalar, type) ;

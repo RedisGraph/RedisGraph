@@ -7,12 +7,19 @@
 
 //------------------------------------------------------------------------------
 
-// Determine if A*B uses a built-in semiring, and if so, determine the
-// opcodes and type codes of the semiring.
+// Determine if the binary operator is built-in, for the multiplicative binary
+// operator for A*B, or the binary operator for ewise operations (A+B, A.*B,
+// and some uses of accum in GrB_assign)
+
+// If so, determine the opcodes and type codes of the semiring.
 
 // If the op is NULL, then it is the implicit GrB_SECOND_[A_type] operator.
 // This is a built-in operator for built-in types.  This feature is only used
-// by GB_Matrix_wait.
+// by GB_wait.
+
+// This function is not used by the CUDA jitified kernels, since they can
+// typecast the entries in the matrices A and B to the types of x and y of the
+// operator, as needed.
 
 #include "GB.h"
 #include "GB_binop.h"
@@ -128,14 +135,17 @@ bool GB_binop_builtin               // true if binary operator is builtin
     // the workers.  The z=x-y and z=x/y operators are flipped using the GxB_*
     // functions rminus (z=y-x)and rdiv (z=y/x).
 
+    bool handled = true ;
     if (flipxy)
     { 
         // All built-in semirings use either commutative multiplicative
         // operators (PLUS, TIMES, ANY, ...), or operators that have flipped
-        // versions (DIV vs RDIV, ...).
-        (*opcode) = GB_binop_flip (*opcode) ;
+        // versions (DIV vs RDIV, ...).  Flipping the operator does not handle
+        // ATAN2, BGET, and other built-in operators, but these do not
+        // correspond to built-in semirings.
+        (*opcode) = GB_flip_opcode (*opcode, &handled) ; // for any opcode
     }
 
-    return (true) ;
+    return (handled) ;
 }
 

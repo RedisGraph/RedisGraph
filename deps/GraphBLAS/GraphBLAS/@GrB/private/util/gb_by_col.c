@@ -3,14 +3,14 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
 // The return value A is set to either the input matrix A_input, or the A_copy
 // matrix.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 GrB_Matrix gb_by_col            // return the matrix by column
 (

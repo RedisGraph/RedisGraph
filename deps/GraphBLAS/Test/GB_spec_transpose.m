@@ -1,5 +1,5 @@
 function C = GB_spec_transpose (C, Mask, accum, A, descriptor)
-%GB_SPEC_TRANSPOSE a MATLAB mimic of GrB_transpose
+%GB_SPEC_TRANSPOSE a mimic of GrB_transpose
 %
 % Usage:
 % C = GB_spec_transpose (C, Mask, accum, A, descriptor)
@@ -8,9 +8,9 @@ function C = GB_spec_transpose (C, Mask, accum, A, descriptor)
 % This function and all GB_spec_* functions are not mean to be fast.  They
 % are meant to represent the GraphBLAS spec, for testing and illustration.
 %
-% The input matrices A, Mask, and C can be plain MATLAB matrices, sparse or
+% The input matrices A, Mask, and C can be plain built-in matrices, sparse or
 % dense, where the class of the matrix is the same as the GraphBLAS type.
-% MATLAB sparse matrices can only handle 'logical', 'double', or 'double
+% built-in sparse matrices can only handle 'logical', 'double', or 'double
 % compex' types, however.  To model this, the input matrices can also be
 % structs.  A.matrix is the matrix itself, and A.class is a string that the
 % matrix is supposed to represent ('logical', 'int8', ... 'single', 'double').
@@ -35,22 +35,22 @@ function C = GB_spec_transpose (C, Mask, accum, A, descriptor)
 % GB_spec_transpose implements the entire specification of GrB_transpose, with
 % a few exceptions.
 %
-% (1) Internally it only works on dense matrices, since MATLAB supports logical
-% and double sparse matrices only.  As a result, the MATLAB GB_spec_* mimics
-% will be slow on large problems.
+% (1) Internally it only works on dense matrices, since built-in methods
+% support logical and double sparse matrices only.  As a result, the
+% GB_spec_* mimics will be slow on large problems.
 %
-% (2) MATLAB does not allow explicit zeros in its sparse matrices. As a result,
-% the structural pattern of an input matrix A, sparse or dense, is assumed to
-% be GB_spones_mex(A).
+% (2) built-in methods do not allow explicit zeros in their sparse matrices. As
+% a result, the structural pattern of an input matrix A, sparse or dense, is
+% assumed to be GB_spones_mex(A).
 %
-% (3) Operations cannot be done purely in MATLAB because of the differences in
-% typecasting rules for integers.
+% (3) Operations cannot be done purely in built-in methods because of the
+% differences in typecasting rules for integers.
 %
 % (4) Finally, this method assumes that the domains of x, y, and z for the
 % operator z=op(x,y) are all the same: optype.  This is true for all built-in
 % operators, but in GraphBLAS users can define their own operators with x, y
 % and z being all different domains.  That feature is not modeled by this
-% MATLAB function.
+% method.
 %
 % Returns a struct with a dense matrix C.matrix with class C.class.
 %
@@ -75,7 +75,7 @@ A = GB_spec_matrix (A) ;
 Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % apply the descriptor to A

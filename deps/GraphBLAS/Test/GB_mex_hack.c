@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_hack: get or set the global hack flag
+// GB_mex_hack: get or set the global hack flags
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -19,24 +19,28 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
-    int64_t hack ;
+    double *hack ;
 
     if (nargin > 1 || nargout > 1)
     {
         mexErrMsgTxt ("usage: " USAGE "\n") ;
     }
 
-    if (nargin == 0)
+    if (nargin == 1)
     {
-        hack = GB_Global_hack_get ( ) ;
-    }
-    else
-    {
-        double *p = mxGetPr (pargin [0]) ;
-        hack = (int64_t) p [0] ;
-        GB_Global_hack_set (hack) ;
+        if (mxGetNumberOfElements (pargin [0]) != 2)
+        {
+            mexErrMsgTxt ("usage: " USAGE " where length(hack) is 2\n") ;
+        }
+        hack = mxGetDoubles (pargin [0]) ;
+        GB_Global_hack_set (0, (int64_t) hack [0]) ;
+        GB_Global_hack_set (1, (int64_t) hack [1]) ;
     }
 
-    pargout [0] = mxCreateDoubleScalar ((double) hack) ;
+    // GB_mex_hack returns an array of size 2
+    pargout [0] = mxCreateDoubleMatrix (1, 2, mxREAL) ;
+    hack = mxGetDoubles (pargout [0]) ;
+    hack [0] = (double) GB_Global_hack_get (0) ;
+    hack [1] = (double) GB_Global_hack_get (1) ;
 }
 

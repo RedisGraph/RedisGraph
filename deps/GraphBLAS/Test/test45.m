@@ -84,13 +84,13 @@ for trial = 1:3
     I0 = uint64 (I)-1 ;
     J0 = uint64 (J)-1 ;
 
-    fprintf ('starting MATLAB... please wait\n') ;
+    fprintf ('starting built-in method... please wait\n') ;
     tic
     for k = 1:ntuples
         A1 (I (k), J (k)) =  X (k) ;
     end
     t = toc ;
-    fprintf ('MATLAB set element:   %g sec\n', t) ;
+    fprintf ('built-in set element:   %g sec\n', t) ;
 
     tic
     A2 = GB_mex_setElement (A, I0, J0, X) ;
@@ -102,7 +102,7 @@ for trial = 1:3
     tic
     [I,J,X]=find(A) ;
     t = toc ;
-    fprintf ('MATLAB find:          %g sec\n', t) ;
+    fprintf ('built-in find:          %g sec\n', t) ;
 
     if (trial >= 2)
         p = randperm (length (X)) ;
@@ -114,7 +114,7 @@ for trial = 1:3
     tic
     G=sparse(I,J,X) ;
     t3 = toc ;
-    fprintf ('MATLAB sparse:        %g sec\n', t3) ;
+    fprintf ('built-in sparse:        %g sec\n', t3) ;
 
     I0 = uint64 (I)-1 ;
     J0 = uint64 (J)-1 ;
@@ -141,7 +141,7 @@ for trial = 1:3
     tic
     G=sparse(I,J,X) ;
     t3 = toc ;
-    fprintf ('MATLAB sparse:        %g sec\n', t3) ;
+    fprintf ('built-in sparse:        %g sec\n', t3) ;
 
     tic
     T = GB_mex_Matrix_build (I0, J0, X, m, n) ;
@@ -162,7 +162,7 @@ for trial = 1:3
     tic
     [I,J,X]=find(B) ;
     t = toc ;
-    fprintf ('MATLAB find:          %g sec\n', t) ;
+    fprintf ('built-in find:          %g sec\n', t) ;
 
     if (trial == 2)
         p = randperm (length (X)) ;
@@ -174,7 +174,7 @@ for trial = 1:3
     tic
     G=sparse(I,J,X,blen,1) ;
     t3 = toc ;
-    fprintf ('MATLAB sparse:        %g sec\n', t3) ;
+    fprintf ('built-in sparse:        %g sec\n', t3) ;
 
     I0 = uint64 (I)-1 ;
     J0 = uint64 (J)-1 ;
@@ -202,7 +202,7 @@ for trial = 1:3
     tic
     G=sparse(I,J,X,blen,1) ;
     t3 = toc ;
-    fprintf ('MATLAB sparse:        %g sec\n', t3) ;
+    fprintf ('built-in sparse:        %g sec\n', t3) ;
 
     tic
     T = GB_mex_Matrix_build (I0, J0, X, blen, 1) ;

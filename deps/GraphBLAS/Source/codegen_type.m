@@ -1,5 +1,5 @@
 function [fname, unsigned, bits] = codegen_type (type)
-%CODEGEN_TYPE determine function _suffix, signed or not
+%CODEGEN_TYPE determine function suffix, signed or not
 % and # bits a C type
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.

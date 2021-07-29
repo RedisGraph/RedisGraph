@@ -183,9 +183,9 @@ for k1 = 1:length (types)
                 A.matrix = Amat2 ;
                 B.matrix = Bmat2 ;
                 C.matrix = Cmat2 ;
-                if (contains (type, 'single'))
+                if (test_contains (type, 'single'))
                     tol = 1e-5 ;
-                elseif (contains (type, 'double'))
+                elseif (test_contains (type, 'double'))
                     tol = 1e-12 ;
                 end
             otherwise
