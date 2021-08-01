@@ -77,9 +77,6 @@ static void _ExecuteQuery(void *args) {
 
 	QueryCtx_ForceUnlockCommit();
 
-	// send result-set back to client
-	ResultSet_Reply(result_set);
-
 	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
 
 	// log query to slowlog
