@@ -76,8 +76,8 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 			continue;
 		}
 
-		// reaching here means unkown argument, to avoid sql injections output error
-		asprintf(errmsg, "Failed to parse query value: %s", arg);
+		// unknown command argument
+		asprintf(errmsg, "Unknown argument: %s", arg);
 		return REDISMODULE_ERR;
 	}
 	return REDISMODULE_OK;
