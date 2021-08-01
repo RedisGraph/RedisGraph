@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "commands.h"
 #include "../errors.h"
 #include "cmd_context.h"
 #include "../util/arr.h"
@@ -11,42 +12,8 @@
 #include "execution_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
+#include "../util/thpool/pools.h"
 #include "../execution_plan/execution_plan.h"
-
-// GraphQueryCtx stores the allocations required to execute a query.
-typedef struct {
-	GraphContext *graph_ctx;  // graph context
-	RedisModuleCtx *rm_ctx;   // redismodule context
-	QueryCtx *query_ctx;      // query context
-	ExecutionCtx *exec_ctx;   // execution context
-	CommandCtx *command_ctx;  // command context
-	bool readonly_query;      // read only query
-} GraphQueryCtx;
-
-static GraphQueryCtx *GraphQueryCtx_New
-(
-	GraphContext *graph_ctx,
-	RedisModuleCtx *rm_ctx,
-	ExecutionCtx *exec_ctx,
-	CommandCtx *command_ctx,
-	bool readonly_query
-) {
-	GraphQueryCtx *ctx = rm_malloc(sizeof(GraphQueryCtx));
-
-	ctx->rm_ctx          =  rm_ctx;
-	ctx->exec_ctx        =  exec_ctx;
-	ctx->graph_ctx       =  graph_ctx;
-	ctx->query_ctx       =  QueryCtx_GetQueryCtx();
-	ctx->command_ctx     =  command_ctx;
-	ctx->readonly_query  =  readonly_query;
-
-	return ctx;
-}
-
-void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
-	ASSERT(ctx != NULL);
-	rm_free(ctx);
-}
 
 /* _ExecuteQuery accepts a GraphQeuryCtx as an argument
  * it may be called directly by a reader thread or the Redis main thread,
