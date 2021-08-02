@@ -145,7 +145,6 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	GrB_Index   nvals               =  0;
 	GrB_Index   nrows               =  100;
 	GrB_Index   ncols               =  100;
-	// int         scontrol            =  GxB_ANY_SPARSITY;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -155,16 +154,40 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	DP  =  RG_MATRIX_DELTA_PLUS(A);
 	DM  =  RG_MATRIX_DELTA_MINUS(A);
 
-	//--------------------------------------------------------------------------
-	// verify sparsity control
-	//--------------------------------------------------------------------------
+	// uint64 matrix always maintain transpose
+	ASSERT_TRUE(RG_MATRIX_MAINTAIN_TRANSPOSE(A));
 
-	//GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &scontrol);
-	//ASSERT_EQ(scontrol, GxB_SPARSE);
-	//GxB_Matrix_Option_get(DP, GxB_SPARSITY_CONTROL, &scontrol);
-	//ASSERT_EQ(scontrol, GxB_HYPERSPARSE);
-	//GxB_Matrix_Option_get(DM, GxB_SPARSITY_CONTROL, &scontrol);
-	//ASSERT_EQ(scontrol, GxB_HYPERSPARSE);
+	// uint64 matrix always multi edge
+	ASSERT_TRUE(RG_MATRIX_MULTI_EDGE(A));
+
+	// matrix shouldn't be dirty
+	ASSERT_FALSE(RG_Matrix_isDirty(A));
+
+	// matrix should be empty
+	M_EMPTY();
+	DP_EMPTY(); 
+	DM_EMPTY();
+	RG_Matrix_nvals(&nvals, A);
+	ASSERT_EQ(nvals, 0);
+
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+
+	t = GrB_BOOL;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// get internal matrices
+	M   =  RG_MATRIX_M(A);
+	DP  =  RG_MATRIX_DELTA_PLUS(A);
+	DM  =  RG_MATRIX_DELTA_MINUS(A);
+
+	// bool matrix always not maintain transpose
+	ASSERT_FALSE(RG_MATRIX_MAINTAIN_TRANSPOSE(A));
+
+	// bool matrix always not multi edge
+	ASSERT_FALSE(RG_MATRIX_MULTI_EDGE(A));
 
 	// matrix shouldn't be dirty
 	ASSERT_FALSE(RG_Matrix_isDirty(A));
