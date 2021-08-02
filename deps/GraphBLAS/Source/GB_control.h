@@ -200,62 +200,62 @@
 // Any disabled unary operators will still work just fine, but operations using
 // them will be slower.
 
-// #define GxB_NO_ABS       1
-// #define GxB_NO_AINV      1
-// #define GxB_NO_IDENTITY  1
-// #define GxB_NO_LNOT      1
-// #define GxB_NO_MINV      1
-// #define GxB_NO_ONE       1
-// #define GxB_NO_BNOT      1
+#define GxB_NO_ABS       1
+#define GxB_NO_AINV      1
+#define GxB_NO_IDENTITY  1
+#define GxB_NO_LNOT      1
+#define GxB_NO_MINV      1
+#define GxB_NO_ONE       1
+#define GxB_NO_BNOT      1
 
-// #define GxB_NO_SQRT      1
-// #define GxB_NO_LOG       1
-// #define GxB_NO_EXP       1
+#define GxB_NO_SQRT      1
+#define GxB_NO_LOG       1
+#define GxB_NO_EXP       1
 
-// #define GxB_NO_SIN       1
-// #define GxB_NO_COS       1
-// #define GxB_NO_TAN       1
+#define GxB_NO_SIN       1
+#define GxB_NO_COS       1
+#define GxB_NO_TAN       1
 
-// #define GxB_NO_ASIN      1
-// #define GxB_NO_ACOS      1
-// #define GxB_NO_ATAN      1
+#define GxB_NO_ASIN      1
+#define GxB_NO_ACOS      1
+#define GxB_NO_ATAN      1
 
-// #define GxB_NO_SINH      1
-// #define GxB_NO_COSH      1
-// #define GxB_NO_TANH      1
+#define GxB_NO_SINH      1
+#define GxB_NO_COSH      1
+#define GxB_NO_TANH      1
 
-// #define GxB_NO_ASINH     1
-// #define GxB_NO_ACOSH     1
-// #define GxB_NO_ATANH     1
+#define GxB_NO_ASINH     1
+#define GxB_NO_ACOSH     1
+#define GxB_NO_ATANH     1
 
-// #define GxB_NO_SIGNUM    1
-// #define GxB_NO_CEIL      1
-// #define GxB_NO_FLOOR     1
-// #define GxB_NO_ROUND     1
-// #define GxB_NO_TRUNC     1
+#define GxB_NO_SIGNUM    1
+#define GxB_NO_CEIL      1
+#define GxB_NO_FLOOR     1
+#define GxB_NO_ROUND     1
+#define GxB_NO_TRUNC     1
 
-// #define GxB_NO_EXP2      1
-// #define GxB_NO_EXPM1     1
-// #define GxB_NO_LOG10     1
-// #define GxB_NO_LOG1P     1
-// #define GxB_NO_LOG2      1
+#define GxB_NO_EXP2      1
+#define GxB_NO_EXPM1     1
+#define GxB_NO_LOG10     1
+#define GxB_NO_LOG1P     1
+#define GxB_NO_LOG2      1
 
-// #define GxB_NO_LGAMMA    1
-// #define GxB_NO_TGAMMA    1
-// #define GxB_NO_ERF       1
-// #define GxB_NO_ERFC      1
+#define GxB_NO_LGAMMA    1
+#define GxB_NO_TGAMMA    1
+#define GxB_NO_ERF       1
+#define GxB_NO_ERFC      1
 
-// #define GxB_NO_FREXPX    1
-// #define GxB_NO_FREXPE    1
+#define GxB_NO_FREXPX    1
+#define GxB_NO_FREXPE    1
 
-// #define GxB_NO_CONJ      1
-// #define GxB_NO_CREAL     1
-// #define GxB_NO_CIMAG     1
-// #define GxB_NO_CARG      1
+#define GxB_NO_CONJ      1
+#define GxB_NO_CREAL     1
+#define GxB_NO_CIMAG     1
+#define GxB_NO_CARG      1
 
-// #define GxB_NO_ISINF     1
-// #define GxB_NO_ISNAN     1
-// #define GxB_NO_ISFINITE  1
+#define GxB_NO_ISINF     1
+#define GxB_NO_ISNAN     1
+#define GxB_NO_ISFINITE  1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the binary operators for all types
@@ -274,57 +274,57 @@
 // #define GxB_NO_SECOND    1
 // #define GxB_NO_PAIR      1
 // #define GxB_NO_ANY       1
-// #define GxB_NO_MIN       1
-// #define GxB_NO_MAX       1
+#define GxB_NO_MIN       1
+#define GxB_NO_MAX       1
 // #define GxB_NO_PLUS      1
-// #define GxB_NO_MINUS     1
-// #define GxB_NO_RMINUS    1
+#define GxB_NO_MINUS     1
+#define GxB_NO_RMINUS    1
 // #define GxB_NO_TIMES     1
-// #define GxB_NO_DIV       1
-// #define GxB_NO_RDIV      1
-// #define GxB_NO_ISEQ      1
-// #define GxB_NO_ISNE      1
-// #define GxB_NO_ISGT      1
-// #define GxB_NO_ISGE      1
-// #define GxB_NO_ISLT      1
-// #define GxB_NO_ISLE      1
+#define GxB_NO_DIV       1
+#define GxB_NO_RDIV      1
+#define GxB_NO_ISEQ      1
+#define GxB_NO_ISNE      1
+#define GxB_NO_ISGT      1
+#define GxB_NO_ISGE      1
+#define GxB_NO_ISLT      1
+#define GxB_NO_ISLE      1
 // #define GxB_NO_EQ        1
-// #define GxB_NO_NE        1
-// #define GxB_NO_GT        1
-// #define GxB_NO_LT        1
-// #define GxB_NO_LE        1
-// #define GxB_NO_GE        1
+#define GxB_NO_NE        1
+#define GxB_NO_GT        1
+#define GxB_NO_LT        1
+#define GxB_NO_LE        1
+#define GxB_NO_GE        1
 // #define GxB_NO_LAND      1
 // #define GxB_NO_LOR       1
-// #define GxB_NO_LXOR      1
+#define GxB_NO_LXOR      1
 
 // #define GxB_NO_BOR       1
 // #define GxB_NO_BAND      1
-// #define GxB_NO_BXOR      1
-// #define GxB_NO_BXNOR     1
-// #define GxB_NO_BGET      1
-// #define GxB_NO_BSET      1
-// #define GxB_NO_BCLR      1
-// #define GxB_NO_BSHIFT    1
+#define GxB_NO_BXOR      1
+#define GxB_NO_BXNOR     1
+#define GxB_NO_BGET      1
+#define GxB_NO_BSET      1
+#define GxB_NO_BCLR      1
+#define GxB_NO_BSHIFT    1
 
-// #define GxB_NO_ATAN2     1
-// #define GxB_NO_HYPOT     1
-// #define GxB_NO_FMOD      1
-// #define GxB_NO_REMAINDER 1
-// #define GxB_NO_COPYSIGN  1
-// #define GxB_NO_LDEXP     1
+#define GxB_NO_ATAN2     1
+#define GxB_NO_HYPOT     1
+#define GxB_NO_FMOD      1
+#define GxB_NO_REMAINDER 1
+#define GxB_NO_COPYSIGN  1
+#define GxB_NO_LDEXP     1
 
-// #define GxB_NO_CMPLX     1
-// #define GxB_NO_POW       1
+#define GxB_NO_CMPLX     1
+#define GxB_NO_POW       1
 
-// #define GxB_NO_FIRSTI    1
-// #define GxB_NO_FIRSTI1   1
-// #define GxB_NO_FIRSTJ    1
-// #define GxB_NO_FIRSTJ1   1
-// #define GxB_NO_SECONDI   1
-// #define GxB_NO_SECONDI1  1
-// #define GxB_NO_SECONDJ   1
-// #define GxB_NO_SECONDJ1  1
+#define GxB_NO_FIRSTI    1
+#define GxB_NO_FIRSTI1   1
+#define GxB_NO_FIRSTJ    1
+#define GxB_NO_FIRSTJ1   1
+#define GxB_NO_SECONDI   1
+#define GxB_NO_SECONDI1  1
+#define GxB_NO_SECONDJ   1
+#define GxB_NO_SECONDJ1  1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the binary operators for each type
@@ -354,62 +354,62 @@
 // using them will be slower.
 
 // also needed by GrB_reduce to vector
-// #define GxB_NO_FIRST_INT8    1
-// #define GxB_NO_FIRST_INT16   1
-// #define GxB_NO_FIRST_INT32   1
-// #define GxB_NO_FIRST_INT64   1
-// #define GxB_NO_FIRST_UINT8   1
-// #define GxB_NO_FIRST_UINT16  1
-// #define GxB_NO_FIRST_UINT32  1
+#define GxB_NO_FIRST_INT8    1
+#define GxB_NO_FIRST_INT16   1
+#define GxB_NO_FIRST_INT32   1
+#define GxB_NO_FIRST_INT64   1
+#define GxB_NO_FIRST_UINT8   1
+#define GxB_NO_FIRST_UINT16  1
+#define GxB_NO_FIRST_UINT32  1
 // #define GxB_NO_FIRST_UINT64  1
-// #define GxB_NO_FIRST_FP32    1
-// #define GxB_NO_FIRST_FP64    1
-// #define GxB_NO_FIRST_FC32    1
-// #define GxB_NO_FIRST_FC64    1
+#define GxB_NO_FIRST_FP32    1
+#define GxB_NO_FIRST_FP64    1
+#define GxB_NO_FIRST_FC32    1
+#define GxB_NO_FIRST_FC64    1
 // #define GxB_NO_FIRST_BOOL    1
 
 // also needed by GrB_reduce to vector
-// #define GxB_NO_SECOND_INT8   1
-// #define GxB_NO_SECOND_INT16  1
-// #define GxB_NO_SECOND_INT32  1
-// #define GxB_NO_SECOND_INT64  1
-// #define GxB_NO_SECOND_UINT8  1
-// #define GxB_NO_SECOND_UINT16 1
-// #define GxB_NO_SECOND_UINT32 1
+#define GxB_NO_SECOND_INT8   1
+#define GxB_NO_SECOND_INT16  1
+#define GxB_NO_SECOND_INT32  1
+#define GxB_NO_SECOND_INT64  1
+#define GxB_NO_SECOND_UINT8  1
+#define GxB_NO_SECOND_UINT16 1
+#define GxB_NO_SECOND_UINT32 1
 // #define GxB_NO_SECOND_UINT64 1
-// #define GxB_NO_SECOND_FP32   1
-// #define GxB_NO_SECOND_FP64   1
-// #define GxB_NO_SECOND_FC32   1
-// #define GxB_NO_SECOND_FC64   1
+#define GxB_NO_SECOND_FP32   1
+#define GxB_NO_SECOND_FP64   1
+#define GxB_NO_SECOND_FC32   1
+#define GxB_NO_SECOND_FC64   1
 // #define GxB_NO_SECOND_BOOL   1
 
-// #define GxB_NO_PAIR_INT8     1
-// #define GxB_NO_PAIR_INT16    1
-// #define GxB_NO_PAIR_INT32    1
-// #define GxB_NO_PAIR_INT64    1
-// #define GxB_NO_PAIR_UINT8    1
-// #define GxB_NO_PAIR_UINT16   1
-// #define GxB_NO_PAIR_UINT32   1
+#define GxB_NO_PAIR_INT8     1
+#define GxB_NO_PAIR_INT16    1
+#define GxB_NO_PAIR_INT32    1
+#define GxB_NO_PAIR_INT64    1
+#define GxB_NO_PAIR_UINT8    1
+#define GxB_NO_PAIR_UINT16   1
+#define GxB_NO_PAIR_UINT32   1
 // #define GxB_NO_PAIR_UINT64   1
-// #define GxB_NO_PAIR_FP32     1
-// #define GxB_NO_PAIR_FP64     1
-// #define GxB_NO_PAIR_FC32     1
-// #define GxB_NO_PAIR_FC64     1
+#define GxB_NO_PAIR_FP32     1
+#define GxB_NO_PAIR_FP64     1
+#define GxB_NO_PAIR_FC32     1
+#define GxB_NO_PAIR_FC64     1
 // #define GxB_NO_PAIR_BOOL     1
 
-// #define GxB_NO_ANY_INT8      1
-// #define GxB_NO_ANY_INT16     1
-// #define GxB_NO_ANY_INT32     1
-// #define GxB_NO_ANY_INT64     1
-// #define GxB_NO_ANY_UINT8     1
-// #define GxB_NO_ANY_UINT16    1
-// #define GxB_NO_ANY_UINT32    1
+#define GxB_NO_ANY_INT8      1
+#define GxB_NO_ANY_INT16     1
+#define GxB_NO_ANY_INT32     1
+#define GxB_NO_ANY_INT64     1
+#define GxB_NO_ANY_UINT8     1
+#define GxB_NO_ANY_UINT16    1
+#define GxB_NO_ANY_UINT32    1
 // #define GxB_NO_ANY_UINT64    1
-// #define GxB_NO_ANY_FP32      1
-// #define GxB_NO_ANY_FP64      1
-// #define GxB_NO_ANY_FC32      1
-// #define GxB_NO_ANY_FC64      1
-// #define GxB_NO_ANY_BOOL      1
+#define GxB_NO_ANY_FP32      1
+#define GxB_NO_ANY_FP64      1
+#define GxB_NO_ANY_FC32      1
+#define GxB_NO_ANY_FC64      1
+#define GxB_NO_ANY_BOOL      1
 
 // #define GxB_NO_MIN_INT8      1
 // #define GxB_NO_MIN_INT16     1
@@ -433,18 +433,18 @@
 // #define GxB_NO_MAX_FP32      1
 // #define GxB_NO_MAX_FP64      1
 
-// #define GxB_NO_PLUS_INT8     1
-// #define GxB_NO_PLUS_INT16    1
-// #define GxB_NO_PLUS_INT32    1
-// #define GxB_NO_PLUS_INT64    1
-// #define GxB_NO_PLUS_UINT8    1
-// #define GxB_NO_PLUS_UINT16   1
-// #define GxB_NO_PLUS_UINT32   1
+#define GxB_NO_PLUS_INT8     1
+#define GxB_NO_PLUS_INT16    1
+#define GxB_NO_PLUS_INT32    1
+#define GxB_NO_PLUS_INT64    1
+#define GxB_NO_PLUS_UINT8    1
+#define GxB_NO_PLUS_UINT16   1
+#define GxB_NO_PLUS_UINT32   1
 // #define GxB_NO_PLUS_UINT64   1
-// #define GxB_NO_PLUS_FP32     1
-// #define GxB_NO_PLUS_FP64     1
-// #define GxB_NO_PLUS_FC32     1
-// #define GxB_NO_PLUS_FC64     1
+#define GxB_NO_PLUS_FP32     1
+#define GxB_NO_PLUS_FP64     1
+#define GxB_NO_PLUS_FC32     1
+#define GxB_NO_PLUS_FC64     1
 
 // #define GxB_NO_MINUS_INT8    1
 // #define GxB_NO_MINUS_INT16   1
@@ -656,28 +656,28 @@
 // #define GxB_NO_LE_FP64       1
 // #define GxB_NO_LE_BOOL
 
-// #define GxB_NO_LOR_INT8      1
-// #define GxB_NO_LOR_INT16     1
-// #define GxB_NO_LOR_INT32     1
-// #define GxB_NO_LOR_INT64     1
-// #define GxB_NO_LOR_UINT8     1
-// #define GxB_NO_LOR_UINT16    1
-// #define GxB_NO_LOR_UINT32    1
+#define GxB_NO_LOR_INT8      1
+#define GxB_NO_LOR_INT16     1
+#define GxB_NO_LOR_INT32     1
+#define GxB_NO_LOR_INT64     1
+#define GxB_NO_LOR_UINT8     1
+#define GxB_NO_LOR_UINT16    1
+#define GxB_NO_LOR_UINT32    1
 // #define GxB_NO_LOR_UINT64    1
-// #define GxB_NO_LOR_FP32      1
-// #define GxB_NO_LOR_FP64      1
+#define GxB_NO_LOR_FP32      1
+#define GxB_NO_LOR_FP64      1
 // #define GxB_NO_LOR_BOOL      1
 
-// #define GxB_NO_LAND_INT8     1
-// #define GxB_NO_LAND_INT16    1
-// #define GxB_NO_LAND_INT32    1
-// #define GxB_NO_LAND_INT64    1
-// #define GxB_NO_LAND_UINT8    1
-// #define GxB_NO_LAND_UINT16   1
-// #define GxB_NO_LAND_UINT32   1
+#define GxB_NO_LAND_INT8     1
+#define GxB_NO_LAND_INT16    1
+#define GxB_NO_LAND_INT32    1
+#define GxB_NO_LAND_INT64    1
+#define GxB_NO_LAND_UINT8    1
+#define GxB_NO_LAND_UINT16   1
+#define GxB_NO_LAND_UINT32   1
 // #define GxB_NO_LAND_UINT64   1
-// #define GxB_NO_LAND_FP32     1
-// #define GxB_NO_LAND_FP64     1
+#define GxB_NO_LAND_FP32     1
+#define GxB_NO_LAND_FP64     1
 // #define GxB_NO_LAND_BOOL     1
 
 // #define GxB_NO_LXOR_INT8     1
