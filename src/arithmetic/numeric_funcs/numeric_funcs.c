@@ -135,6 +135,16 @@ SIValue AR_SQRT(SIValue *argv, int argc) {
 	return SI_DoubleVal(sqrt(SI_GET_NUMERIC(arg)));
 }
 
+// returns the power of base to the exponent power, as in base^exponent
+SIValue AR_POW(SIValue *argv, int argc) {
+	SIValue base = argv[0];
+	SIValue exp = argv[1];
+	// return NULL if input is none numeric
+	if(!_validate_numeric(base) || !_validate_numeric(exp)) return SI_NullVal();
+	// return sqrt of input
+	return SI_DoubleVal(pow(SI_GET_NUMERIC(base), SI_GET_NUMERIC(exp)));
+}
+
 void Register_NumericFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -201,6 +211,11 @@ void Register_NumericFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, (SI_NUMERIC | T_NULL));
 	func_desc = AR_FuncDescNew("sqrt", AR_SQRT, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	func_desc = AR_FuncDescNew("pow", AR_POW, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 }
 
