@@ -55,8 +55,8 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 	// delta-plus disjoint to delta-minus
 	// either both dp[i,j] and dm[i,j] are empty
 	// or only one of them is active
-	ASSERT((!marked_for_addition && !marked_for_addition) ||
-		   (marked_for_addition != marked_for_addition));
+	ASSERT((!marked_for_addition && !marked_for_deletion) ||
+		   (marked_for_addition != marked_for_deletion));
 
 	if(marked_for_deletion) {
 		// unset delta-minus

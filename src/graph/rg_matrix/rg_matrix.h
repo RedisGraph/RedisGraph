@@ -155,24 +155,6 @@ RG_Matrix RG_Matrix_getTranspose
 	const RG_Matrix C
 );
 
-// returns underlying GraphBLAS matrix
-GrB_Matrix RG_Matrix_getGrBMatrix
-(
-	RG_Matrix C
-);
-
-// returns underlying delta plus GraphBLAS matrix
-GrB_Matrix RG_Matrix_getDeltaPlus
-(
-	const RG_Matrix C
-);
-
-// returns underlying delta plus GraphBLAS matrix
-GrB_Matrix RG_Matrix_getDeltaMinus
-(
-	const RG_Matrix C
-);
-
 // mark matrix as dirty
 void RG_Matrix_setDirty
 (

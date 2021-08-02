@@ -25,33 +25,6 @@ RG_Matrix RG_Matrix_getTranspose
 	return C->transposed;
 }
 
-// returns underlying GraphBLAS matrix
-GrB_Matrix RG_Matrix_getGrB_Matrix
-(
-	const RG_Matrix C
-) {
-	ASSERT(C != NULL);
-	return RG_MATRIX_M(C);
-}
-
-// returns underlying delta plus GraphBLAS matrix
-GrB_Matrix RG_Matrix_getDeltaPlus
-(
-	const RG_Matrix C
-) {
-	ASSERT(C != NULL);
-	return RG_MATRIX_DELTA_PLUS(C);
-}
-
-// returns underlying delta plus GraphBLAS matrix
-GrB_Matrix RG_Matrix_getDeltaMinus
-(
-	const RG_Matrix C
-) {
-	ASSERT(C != NULL);
-	return RG_MATRIX_DELTA_MINUS(C);
-}
-
 bool RG_Matrix_isDirty
 (
 	const RG_Matrix C
@@ -171,6 +144,11 @@ void RG_Matrix_validateState
 	//--------------------------------------------------------------------------
 	// impossible states
 	//--------------------------------------------------------------------------
+
+	// matrix disjoint
+	ASSERT(!(existing_entry   &&
+			 pending_addition &&
+			 pending_deletion));
 
 	// deletion only
 	ASSERT(!(!existing_entry   &&
