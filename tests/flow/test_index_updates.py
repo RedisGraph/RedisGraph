@@ -23,7 +23,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
         self.populate_graph()
-        self.build_indices() 
+        self.build_indices()
 
     def new_node(self):
         return Node(label = labels[node_ctr % 2],
@@ -40,7 +40,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
             redis_graph.add_node(node)
             node_ctr += 1
         redis_graph.commit()
-    
+
     def build_indices(self):
         for field in fields:
             redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "CREATE INDEX ON :label_a(%s)" % (field))
@@ -176,3 +176,27 @@ class testIndexUpdatesFlow(FlowTestsBase):
         expected_result = []
         self.env.assertEquals(result.result_set, expected_result)
 
+    # Validate that when a label has both exact-match and full-text indexes
+    # on different properties, an update operation checks all indexes to
+    # determine whether they must be updated.
+    # This is necessary because either one of the indexes may not track the
+    # property being updated, but that does not guarantee that the other
+    # index does not track the property.
+    def test07_update_property_only_on_fulltext_index(self):
+        # Remove the exact-match index on a property
+        redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
+        # Add a full-text index on the property
+        redis_graph.query("CALL db.idx.fulltext.createNodeIndex('label_a', 'group')")
+
+        # Modify the values of the property
+        result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group C' SET a.group = 'Group NEW'")
+        modified_count = result.properties_set
+        self.env.assertGreater(modified_count, 0)
+
+        # Validate that the full-text index reflects the update
+        result = redis_graph.query("CALL db.idx.fulltext.queryNodes('label_a', 'Group NEW')")
+        self.env.assertEquals(len(result.result_set), modified_count)
+
+        # Validate that the previous value has been removed
+        result = redis_graph.query("CALL db.idx.fulltext.queryNodes('label_a', 'Group C')")
+        self.env.assertEquals(len(result.result_set), 0)
