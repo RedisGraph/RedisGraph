@@ -52,6 +52,12 @@ static void _CommitNodes(PendingCreations *pending) {
 		Schema *s = NULL;
 
 		// Get label ID.
+		/*
+		int labelID = (n->labelID == GRAPH_UNKNOWN_LABEL) ? GRAPH_NO_LABEL : n->labelID;
+		if(n->labelID >= 0) {
+			ASSERT(n->label != NULL)
+		}
+		*/
 		int labelID = GRAPH_NO_LABEL;
 		if(n->label != NULL) {
 			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
@@ -110,6 +116,7 @@ static void _CommitEdges(PendingCreations *pending) {
 
 		int relation_id = e->relationID; 
 		// Only on rollback the schema_id will be valid here
+		ASSERT(relation_id == INVALID_SCHEMA_ID);
 		if(likely(relation_id == INVALID_SCHEMA_ID)) {
 			Schema *schema = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 			ASSERT(schema); // All schemas have been created in the edge blueprint loop or earlier.

@@ -9,6 +9,7 @@
 #include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../undo_log/undo_log.h"
 
 /* Forward declarations. */
 static Record CreateConsume(OpBase *opBase);
@@ -155,8 +156,8 @@ static Record CreateConsume(OpBase *opBase) {
 	// Currently we can't exit Create Op in the middle of commit proccess. 
 	// Therefore on rollback all the create ops will be already commited.
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_Inc_N_Ops_Commited(&query_ctx->undo_log_ctx, array_len(op->pending.created_nodes) + array_len(op->pending.created_edges));
-	UndoLog_Add_Create(&query_ctx->undo_log_ctx, op->pending.created_nodes, op->pending.created_edges);
+	//UndoLog_AddCreate(&query_ctx->undo_log, op->pending.created_nodes, op->pending.created_edges);
+	//UndoLog_UpdateCommitted(&query_ctx->undo_log, array_len(op->pending.created_nodes) + array_len(op->pending.created_edges));
 
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
