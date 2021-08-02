@@ -540,8 +540,8 @@ cypher_parse_result_t *parse_query(const char *query) {
 }
 
 
-cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
-	FILE *f = fmemopen((char *)query, strlen(query), "r");
+cypher_parse_result_t *parse_params(const char *query_params) {
+	FILE *f = fmemopen((char *)query_params, strlen(query_params), "r");
 	cypher_parse_result_t *result = cypher_fparse(f, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
 	fclose(f);
 	if(!result) return NULL;
@@ -550,7 +550,6 @@ cypher_parse_result_t *parse_params(const char *query, const char **query_body) 
 		return NULL;
 	}
 	_AST_Extract_Params(result);
-	if(query_body) *query_body = _AST_ExtractQueryString(result);
 	return result;
 }
 

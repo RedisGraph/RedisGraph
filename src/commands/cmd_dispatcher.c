@@ -17,7 +17,7 @@ typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-					   long long *timeout, uint *graph_version, char **errmsg) {
+					   long long *timeout, uint *graph_version, char **errmsg, RedisModuleString **query_params) {
 
 	ASSERT(compact);
 	ASSERT(timeout);
@@ -73,6 +73,17 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 				return REDISMODULE_ERR;
 			}
 
+			continue;
+		}
+
+		if(!strcasecmp(arg, "query_params")) {
+			// Emit error on missing query params.
+			if(i >= argc - 1) {
+				asprintf(errmsg, "Missing query params");
+				return REDISMODULE_ERR;
+			}
+			i++; // Set the current argument to the query params
+			(*query_params) = argv[i];
 			continue;
 		}
 
@@ -155,13 +166,14 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
+	RedisModuleString *query_params = NULL;
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
 	GRAPH_Commands cmd = determine_command(command_name);
 
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 
 	// parse additional arguments
-	int res = _read_flags(argv, argc, &compact, &timeout, &version, &errmsg);
+	int res = _read_flags(argv, argc, &compact, &timeout, &version, &errmsg, &query_params);
 	if(res == REDISMODULE_ERR) {
 		// emit error and exit if argument parsing failed
 		RedisModule_ReplyWithError(ctx, errmsg);
@@ -198,13 +210,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout);
+								 is_replicated, compact, timeout, query_params);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout);
+								 is_replicated, compact, timeout, query_params);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
 			// Report an error once our workers thread pool internal queue

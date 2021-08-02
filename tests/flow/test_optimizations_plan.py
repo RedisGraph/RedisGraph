@@ -366,22 +366,22 @@ class testOptimizationsPlan(FlowTestsBase):
         graph.query(query)
 
         # query with LIMIT 1
-        query = """CYPHER l=1 MATCH (a)-[]->(b) WITH b AS b
+        query = """MATCH (a)-[]->(b) WITH b AS b
         MATCH (b)-[]->(c) RETURN c LIMIT $l"""
 
         # profile query
-        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query, "query_params", "CYPHER l=1")
         profile = [x[0:x.index(',')].strip() for x in profile]
 
         # make sure 'a' to 'b' traversal operation is aware of limit
         self.env.assertIn("Conditional Traverse | (a)->(b) | Records produced: 1", profile)
 
         # query with LIMIT 1
-        query = """CYPHER l=1 MATCH (a), (b) WITH a AS a, b AS b
+        query = """MATCH (a), (b) WITH a AS a, b AS b
         MATCH (a)-[]->(b) WITH b AS b MATCH (b)-[]->(c) RETURN c LIMIT $l"""
 
         # profile query
-        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query, "query_params", "CYPHER l=1")
         profile = [x[0:x.index(',')].strip() for x in profile]
 
         # make sure 'a' to 'b' expand into traversal operation is aware of limit
@@ -389,11 +389,11 @@ class testOptimizationsPlan(FlowTestsBase):
 
         # aggregation should reset limit, otherwise we'll take a performance hit
         # recall aggregation operations are eager
-        query = """CYPHER l=1 MATCH (a)-[]->(b) WITH count(a) AS src, b AS b
+        query = """MATCH (a)-[]->(b) WITH count(a) AS src, b AS b
         MATCH (b)-[]->(c) RETURN c LIMIT $l"""
 
         # profile query
-        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query, "query_params", "CYPHER l=1")
         profile = [x[0:x.index(',')].strip() for x in profile]
 
         # traversal from a to b shouldn't be effected by the limit.
