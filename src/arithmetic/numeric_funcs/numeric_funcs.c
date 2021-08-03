@@ -135,7 +135,7 @@ SIValue AR_SQRT(SIValue *argv, int argc) {
 	return SI_DoubleVal(sqrt(SI_GET_NUMERIC(arg)));
 }
 
-// returns the power of base to the exponent power, as in base^exponent
+// returns base^exponent
 SIValue AR_POW(SIValue *argv, int argc) {
 	SIValue base = argv[0];
 	SIValue exp = argv[1];
