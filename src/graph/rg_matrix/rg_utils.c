@@ -28,7 +28,7 @@ void RG_Matrix_checkBounds
 #endif
 }
 
-// TODO: add doc
+// check 2 matrices have same type nrows and ncols
 void RG_Matrix_checkCompatible
 (
 	const RG_Matrix M,
