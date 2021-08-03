@@ -125,8 +125,22 @@ class testUnion(FlowTestsBase):
     def test07_union_with_partial_ordering(self):
         query = """UNWIND range(1, 2) AS v RETURN v ORDER BY v DESC
                    UNION
-                   UNWIND range(1, 2) AS v RETURN v"""
+                   UNWIND range(1, 3) AS v RETURN v"""
         result = redis_graph.query(query)
         expected_result = [[2],
-                           [1]]
+                           [1],
+                           [3]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # The results should not be modified when variables are aliased
+        query = """UNWIND range(1, 2) AS a RETURN a AS b ORDER BY a DESC
+                   UNION
+                   UNWIND range(1, 3) AS b RETURN b"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.result_set, expected_result)
+
+        query = """UNWIND range(1, 2) AS a RETURN a AS b ORDER BY b DESC
+                   UNION
+                   UNWIND range(1, 3) AS b RETURN b"""
+        result = redis_graph.query(query)
         self.env.assertEquals(result.result_set, expected_result)

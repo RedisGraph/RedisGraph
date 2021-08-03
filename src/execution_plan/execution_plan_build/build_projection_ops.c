@@ -192,14 +192,12 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	if(distinct) {
 		// Prepare the distinct op but do not add it to op tree.
 		// This is required so that it does not operate on order expressions.
-		uint projection_count = array_len(projections);
+		uint n = array_len(projections);
 
 		// Populate a stack array with the aliases to perform Distinct on
-		const char *aliases[projection_count];
-		for(uint i = 0; i < projection_count; i ++) {
-			aliases[i] = projections[i]->resolved_name;
-		}
-		distinct_op = NewDistinctOp(plan, aliases, projection_count);
+		const char *aliases[n];
+		for(uint i = 0; i < n; i ++) aliases[i] = projections[i]->resolved_name;
+		distinct_op = NewDistinctOp(plan, aliases, n);
 	}
 
 	if(order_clause) {

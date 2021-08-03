@@ -51,6 +51,9 @@ static void _updateOffsets(OpDistinct *op, Record r) {
 }
 
 OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alias_count) {
+	ASSERT(aliases != NULL);
+	ASSERT(alias_count > 0);
+
 	OpDistinct *op = rm_malloc(sizeof(OpDistinct));
 
 	op->found           =  raxNew();
