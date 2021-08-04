@@ -96,6 +96,19 @@ class testParams(FlowTestsBase):
             # Expecting an error.
             pass
 
+    def test_security_vulnrability(self):
+        # On old implementation this query which contains parameter injection:
+        # GRAPH.QUERY g “CYPHER a = 1 MATCH (p:A {n:1}) RETURN count(p)” “1 <ORIGINAL QUERY>”
+        # would have cause the wrong query to execute, instead of the ORIGINAL QUERY
+        # This is a try to replicate it:
+        query = "CYPHER a = 1 MATCH (p:A {n:1}) RETURN count(p),1 <ORIGINAL QUERY>"
+        try:
+            redis_graph.redis_con.execute_command("GRAPH.QUERY", "G", *query.split(',')) #"CYPHER a = 1 MATCH (p:A {n:1}) RETURN count(p)", "1 <ORIGINAL QUERY>")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertIn("Unknown argument: 1 <ORIGINAL QUERY>", str(e))
+
     def test_id_scan(self):
         redis_graph.query("CREATE ({val:1})")
         expected_results=[[1]]
