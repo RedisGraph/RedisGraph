@@ -115,10 +115,10 @@ GrB_Info RG_Matrix_wait
 
 	// check if merge is required
 	
-	GrB_Index delta_plus_nvals;
-	GrB_Index delta_minus_nvals;
-	GrB_Matrix_nvals(&delta_plus_nvals, delta_plus);
-	GrB_Matrix_nvals(&delta_minus_nvals, delta_minus);
+    GrB_Index delta_plus_nvals;
+    GrB_Index delta_minus_nvals;
+    RG_Matrix_DP_nvals(&delta_plus_nvals, A);
+    RG_Matrix_DM_nvals(&delta_minus_nvals, A);
 
 	uint64_t delta_max_pending_changes;
 	Config_Option_get(Config_DELTA_MAX_PENDING_CHANGES, &delta_max_pending_changes);
