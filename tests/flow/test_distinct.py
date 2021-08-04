@@ -73,6 +73,15 @@ class testReturnDistinctFlow1(FlowTestsBase):
         result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name LIMIT 2")
         self.env.assertEqual(result.result_set, [['James'], ['Mike']])
 
+    def test_distinct_with_order(self):
+        # The results of DISTINCT should not be affected by the values in the ORDER BY clause
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(c:CHILD) RETURN DISTINCT p.name ORDER BY c.name")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Mike'], ['James']])
+
+        result = graph1.query("UNWIND range(0,3) AS a UNWIND range(4,7) AS b RETURN DISTINCT a ORDER BY b")
+        self.env.assertEqual(result.result_set, [[3], [2], [1], [0]])
+
+
 class testReturnDistinctFlow2(FlowTestsBase):
 
     def __init__(self):
