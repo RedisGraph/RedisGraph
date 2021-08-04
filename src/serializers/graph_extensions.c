@@ -29,8 +29,11 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	n->entity = en;
 	if(label != GRAPH_NO_LABEL) {
 		// Set matrix at position [id, id]
-		RG_Matrix m = Graph_GetLabelMatrix(g, label);
-		RG_Matrix_setElement_BOOL(m, true, id, id);
+		RG_Matrix M   =  Graph_GetLabelMatrix(g, label);
+		GrB_Matrix m  =  RG_MATRIX_M(M);
+		
+		// Optimize set only for decoder
+		GrB_Matrix_setElement_BOOL(m, true, id, id);
 	}
 }
 
