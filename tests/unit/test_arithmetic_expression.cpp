@@ -488,6 +488,82 @@ TEST_F(ArithmeticTest, SqrtTest) {
 	AR_EXP_Free(arExp);
 }
 
+TEST_F(ArithmeticTest, PowTest) {
+	SIValue expected;
+	const char *query;
+	AR_ExpNode *arExp;
+
+	/* POW(1,0) */
+	query = "RETURN pow(1,0)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(1);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* POW(0,1) */
+	query = "RETURN pow(0,1)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(0);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* POW(0,0) */
+	query = "RETURN pow(0,0)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(1);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* POW(2,3) */
+    query = "RETURN pow(2,3)";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(8);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* POW(2,-3) */
+    query = "RETURN pow(2,-3)";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(0.125);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* POW(0.5,2) */
+    query = "RETURN pow(0.5,2)";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(0.25);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* POW(-1,2) */
+    query = "RETURN pow(-1,2)";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(1);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+	/* POW() */
+    query = "RETURN pow(NULL,1)";
+    arExp = _exp_from_query(query);
+    expected = SI_NullVal();
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+	/* POW() */
+    query = "RETURN pow(1,NULL)";
+    arExp = _exp_from_query(query);
+    expected = SI_NullVal();
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* POW() */
+    query = "RETURN pow(NULL,NULL)";
+    arExp = _exp_from_query(query);
+    expected = SI_NullVal();
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+}
+
 TEST_F(ArithmeticTest, ToIntegerTest) {
 	SIValue expected;
 	const char *query;
