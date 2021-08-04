@@ -182,7 +182,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ## Parameters
 Parameters may be specified to allow for more flexible query construction:
 ```sh
-CYPHER name_param = "Niccolò Machiavelli" birth_year_param = 1469; MATCH (p:Person {name: $name_param, birth_year: $birth_year_param}) RETURN p
+GRAPH.QUERY <graph_name> "MATCH (p:Person {name: $name_param, birth_year: $birth_year_param}) RETURN p" query_params "CYPHER name_param = 'Niccolò Machiavelli' birth_year_param = 1469"
 ```
 The example above shows the syntax used by `redis-cli` to set parameters, but 
 each RedisGraph client introduces a language-appropriate method for setting parameters,
