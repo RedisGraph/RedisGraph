@@ -97,6 +97,10 @@ GrB_Info RG_mxm                     // C = A * B
 		ASSERT(info == GrB_SUCCESS);
 	}
 
+	// zero nvals
+	RG_Matrix_setDPNvals(C, 0);
+	RG_Matrix_setDMNvals(C, 0);
+
 	// clean up
 	if(mask)  GrB_free(&mask);
 	if(accum) GrB_free(&accum);

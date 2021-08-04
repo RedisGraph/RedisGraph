@@ -135,6 +135,7 @@ GrB_Info RG_Matrix_removeEntry
 	if(in_m) {
 		if(SINGLE_EDGE(m_x)) {
 			// mark deletion in delta minus
+			RG_Matrix_incDMNvals(C);
 			info = GrB_Matrix_setElement(dm, true, i, j);
 			ASSERT(info == GrB_SUCCESS);
 			info = GrB_Matrix_setElement(tdm, true, j, i);
@@ -152,6 +153,7 @@ GrB_Info RG_Matrix_removeEntry
 
 	if(in_dp) {
 		if(SINGLE_EDGE(dp_x)) {
+			RG_Matrix_decDPNvals(C);
 			info = GrB_Matrix_removeElement(dp, i, j);
 			ASSERT(info == GrB_SUCCESS);
 			info = GrB_Matrix_removeElement(tdp, j, i);

@@ -17,6 +17,8 @@ static GrB_Info _RG_Matrix_init
 ) {
 	GrB_Info info;
 	A->dirty    =  false;
+	A->dm_nvals = 0;
+	A->dp_nvals = 0;
 
 	//--------------------------------------------------------------------------
 	// create m, delta-plus and delta-minus

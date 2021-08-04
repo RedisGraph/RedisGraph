@@ -53,6 +53,7 @@ static GrB_Info RG_Matrix_sync
 		ASSERT(info == GrB_SUCCESS);
 
 		// clear delta minus
+		RG_Matrix_setDMNvals(C, 0);
 		info = GrB_Matrix_clear(dm);
 		ASSERT(info == GrB_SUCCESS);
 	}
@@ -72,6 +73,7 @@ static GrB_Info RG_Matrix_sync
 		ASSERT(info == GrB_SUCCESS);
 
 		// clear delta plus
+		RG_Matrix_setDPNvals(C, 0);
 		info = GrB_Matrix_clear(dp);
 		ASSERT(info == GrB_SUCCESS);
 	}

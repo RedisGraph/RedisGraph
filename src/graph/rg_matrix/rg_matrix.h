@@ -127,6 +127,8 @@ typedef _RG_Matrix *RG_Matrix;
 struct _RG_Matrix {
 	bool dirty;                         // Indicates if matrix requires sync
 	GrB_Matrix matrix;                  // Underlying GrB_Matrix
+	GrB_Index dp_nvals;                 // Number of entries in the delta_plus matrix
+	GrB_Index dm_nvals;                 // Number of entries in the delta_minus matrix
 	GrB_Matrix delta_plus;              // Pending additions
 	GrB_Matrix delta_minus;             // Pending deletions
 	RG_Matrix transposed;               // Transposed matrix
@@ -194,6 +196,58 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 (
 	GrB_Index *nvals,       // matrix has nvals entries
 	const RG_Matrix A       // matrix to query
+);
+
+// get the number of entries in the delta minus matrix
+GrB_Info RG_Matrix_DM_nvals
+(
+	GrB_Index *nvals,       // matrix has nvals entries
+	const RG_Matrix A       // matrix to query
+);
+
+// inc delta minus nvals
+void RG_Matrix_incDMNvals
+(
+	RG_Matrix C
+);
+
+// dec delta minus nvals
+void RG_Matrix_decDMNvals
+(
+	RG_Matrix C
+);
+
+// set delta minus nvals
+void RG_Matrix_setDMNvals
+(
+	RG_Matrix C,
+	GrB_Index nvals
+);
+
+// get the number of entries in the delta plus matrix
+GrB_Info RG_Matrix_DP_nvals
+(
+	GrB_Index *nvals,       // matrix has nvals entries
+	const RG_Matrix A       // matrix to query
+);
+
+// inc delta plus nvals
+void RG_Matrix_incDPNvals
+(
+	RG_Matrix C
+);
+
+// dec delta plus nvals
+void RG_Matrix_decDPNvals
+(
+	RG_Matrix C
+);
+
+// set delta plus nvals
+void RG_Matrix_setDPNvals
+(
+	RG_Matrix C,
+	GrB_Index nvals
 );
 
 GrB_Info RG_Matrix_resize      // change the size of a matrix

@@ -51,6 +51,13 @@ GrB_Info RG_Matrix_copy
 	_copyMatrix(in_delta_plus, out_delta_plus);
 	_copyMatrix(in_delta_minus, out_delta_minus);
 
+	// copy nvals
+	GrB_Index nvals;
+	RG_Matrix_DP_nvals(&nvals, A);
+	RG_Matrix_setDPNvals(C, nvals);
+	RG_Matrix_DM_nvals(&nvals, A);
+	RG_Matrix_setDMNvals(C, nvals);
+
 	return GrB_SUCCESS;
 }
 

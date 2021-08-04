@@ -62,6 +62,10 @@ GrB_Info RG_eWiseAdd                // C = A + B
 	info = GrB_Matrix_eWiseAdd_Semiring(_C, NULL, NULL, semiring, _A, _B, NULL);
 	ASSERT(info == GrB_SUCCESS);
 
+	// zero nvals
+	RG_Matrix_setDPNvals(C, 0);
+	RG_Matrix_setDMNvals(C, 0);
+
 	if(_A != AM) GrB_free(&_A);
 	if(_B != BM) GrB_free(&_B);
 

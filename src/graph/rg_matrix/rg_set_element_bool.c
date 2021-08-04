@@ -60,6 +60,7 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 
 	if(marked_for_deletion) {
 		// unset delta-minus
+		RG_Matrix_decDMNvals(C);
 		info = GrB_Matrix_removeElement(dm, i, j);
 		ASSERT(info == GrB_SUCCESS);
 
@@ -68,6 +69,7 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 		ASSERT(info == GrB_SUCCESS);
 	} else {
 		// add entry to delta-plus
+		RG_Matrix_incDPNvals(C);
 		info = GrB_Matrix_setElement_BOOL(dp, x, i, j);
 		ASSERT(info == GrB_SUCCESS);
 	}

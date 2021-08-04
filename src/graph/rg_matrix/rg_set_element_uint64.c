@@ -16,7 +16,8 @@ static GrB_Info setMultiEdgeEntry
 	GrB_Matrix TA,                      // transposed matrix to modify
     uint64_t x,                         // scalar to assign to A(i,j)
     GrB_Index i,                        // row index
-    GrB_Index j                         // column index
+    GrB_Index j,                        // column index
+	bool *nvals_inc                     // is nvals incremented
 ) {
 	uint64_t v;                // v = A[i,j]
 	GrB_Info info;
@@ -28,12 +29,14 @@ static GrB_Info setMultiEdgeEntry
 
 	// new entry, simply set
 	if(!exists) {
+		*nvals_inc = true;
 		// mark 'x' as a single entry
 		v = x;
 		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
 		info = GrB_Matrix_setElement_UINT64(TA, v, j, i);
 	} else {
 		// entry already exists
+		*nvals_inc = false;
 		if(SINGLE_EDGE(v)) {
 			// swap from single entry to multi-entry
 			entries = array_new(uint64_t, 2);
@@ -103,6 +106,7 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 
 	if(mark_for_deletion) { // m contains single edge, simple replace
 		// clear dm[i,j]
+		RG_Matrix_decDMNvals(C);
 		info = GrB_Matrix_removeElement(dm, i, j);
 		ASSERT(info == GrB_SUCCESS);
 		info = GrB_Matrix_removeElement(tdm, j, i);
@@ -121,12 +125,17 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 		info = GrB_Matrix_extractElement_UINT64(&v, m, i, j);
 		entry_exists = (info == GrB_SUCCESS);
 
+		bool nvals_inc;
+
 		if(entry_exists) {
 			// update entry at m[i,j]
-			info = setMultiEdgeEntry(m, tm, x, i, j);
+			info = setMultiEdgeEntry(m, tm, x, i, j, &nvals_inc);
 		} else {
 			// update entry at dp[i,j]
-			info = setMultiEdgeEntry(dp, tdp, x, i, j);
+			info = setMultiEdgeEntry(dp, tdp, x, i, j, &nvals_inc);
+
+			// increment nvals if new entry created
+			if(nvals_inc) RG_Matrix_incDPNvals(C);
 		}
 	}
 

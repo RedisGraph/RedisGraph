@@ -33,6 +33,86 @@ bool RG_Matrix_isDirty
 	return C->dirty;
 }
 
+// get the number of entries in the delta minus matrix
+GrB_Info RG_Matrix_DM_nvals
+(
+	GrB_Index *nvals,       // matrix has nvals entries
+	const RG_Matrix A       // matrix to query
+) {
+	*nvals = A->dm_nvals;
+}
+
+// inc delta minus nvals
+void RG_Matrix_incDMNvals
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	C->dm_nvals++;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) RG_Matrix_incDMNvals(C->transposed);
+}
+
+// dec delta minus nvals
+void RG_Matrix_decDMNvals
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	C->dm_nvals--;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) RG_Matrix_decDMNvals(C->transposed);
+}
+
+// set delta minus nvals
+void RG_Matrix_setDMNvals
+(
+	RG_Matrix C,
+	GrB_Index nvals
+) {
+	ASSERT(C);
+	C->dm_nvals = nvals;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) RG_Matrix_setDMNvals(C->transposed, nvals);
+}
+
+// get the number of entries in the delta plus matrix
+GrB_Info RG_Matrix_DP_nvals
+(
+	GrB_Index *nvals,       // matrix has nvals entries
+	const RG_Matrix A       // matrix to query
+) {
+	*nvals = A->dp_nvals;
+}
+
+// inc delta plus nvals
+void RG_Matrix_incDPNvals
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	C->dp_nvals++;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) RG_Matrix_incDPNvals(C->transposed);
+}
+
+// dec delta plus nvals
+void RG_Matrix_decDPNvals
+(
+	RG_Matrix C
+) {
+	ASSERT(C);
+	C->dp_nvals--;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) RG_Matrix_decDPNvals(C->transposed);
+}
+
+// set delta plus nvals
+void RG_Matrix_setDPNvals
+(
+	RG_Matrix C,
+	GrB_Index nvals
+) {
+	ASSERT(C);
+	C->dp_nvals = nvals;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) RG_Matrix_setDPNvals(C->transposed, nvals);
+}
+
 // locks the matrix
 void RG_Matrix_Lock
 (
@@ -186,6 +266,11 @@ GrB_Info RG_Matrix_clear
 
 	A->dirty = false;
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(A)) A->transposed->dirty = false;
+
+	A->dp_nvals = 0;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(A)) A->transposed->dp_nvals = 0;
+	A->dm_nvals = 0;
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(A)) A->transposed->dm_nvals = 0;
 
 	return info;
 }
