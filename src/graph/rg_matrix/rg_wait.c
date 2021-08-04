@@ -38,8 +38,8 @@ static GrB_Info RG_Matrix_sync
 	// determin change set
 	//--------------------------------------------------------------------------
 
-	GrB_Matrix_nvals(&dp_nvals, dp);
-	GrB_Matrix_nvals(&dm_nvals, dm);
+	RG_Matrix_DP_nvals(&dp_nvals, C);
+	RG_Matrix_DM_nvals(&dm_nvals, C);
 
 	bool  additions  =  dp_nvals  >  0;
 	bool  deletions  =  dm_nvals  >  0;

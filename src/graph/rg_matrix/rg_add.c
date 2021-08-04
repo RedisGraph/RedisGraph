@@ -37,8 +37,8 @@ GrB_Info RG_eWiseAdd                // C = A + B
 
 	// TODO: check A, B and C are compatible
 
-	GrB_Matrix_nvals(&DM_nvals, ADM);
-	GrB_Matrix_nvals(&DP_nvals, ADP);
+	RG_Matrix_DP_nvals(&DP_nvals, A);
+	RG_Matrix_DM_nvals(&DM_nvals, A);
 	if(DM_nvals > 0 || DP_nvals > 0) {
 		info = RG_Matrix_export(&_A, A);
 		ASSERT(info == GrB_SUCCESS);
@@ -46,8 +46,8 @@ GrB_Info RG_eWiseAdd                // C = A + B
 		_A = AM;
 	}
 
-	GrB_Matrix_nvals(&DM_nvals, BDM);
-	GrB_Matrix_nvals(&DP_nvals, BDP);
+	RG_Matrix_DP_nvals(&DP_nvals, B);
+	RG_Matrix_DM_nvals(&DM_nvals, B);
 	if(DM_nvals > 0 || DP_nvals > 0) {
 		info = RG_Matrix_export(&_B, B);
 		ASSERT(info == GrB_SUCCESS);

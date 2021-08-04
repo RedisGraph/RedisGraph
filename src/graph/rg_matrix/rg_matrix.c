@@ -34,7 +34,7 @@ bool RG_Matrix_isDirty
 }
 
 // get the number of entries in the delta minus matrix
-GrB_Info RG_Matrix_DM_nvals
+void RG_Matrix_DM_nvals
 (
 	GrB_Index *nvals,       // matrix has nvals entries
 	const RG_Matrix A       // matrix to query
@@ -74,7 +74,7 @@ void RG_Matrix_setDMNvals
 }
 
 // get the number of entries in the delta plus matrix
-GrB_Info RG_Matrix_DP_nvals
+void RG_Matrix_DP_nvals
 (
 	GrB_Index *nvals,       // matrix has nvals entries
 	const RG_Matrix A       // matrix to query
@@ -164,8 +164,6 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 	ASSERT(nvals  !=  NULL);
 
 	GrB_Matrix  m;
-	GrB_Matrix  dp;
-	GrB_Matrix  dm;
 	GrB_Info    info;
 
 	GrB_Index  m_nvals   =  0;
@@ -175,15 +173,11 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 	// nvals = nvals(M) + nvals(DP) - nvals(DM)
 
 	m   =  RG_MATRIX_M(A);
-	dp  =  RG_MATRIX_DELTA_PLUS(A);
-	dm  =  RG_MATRIX_DELTA_MINUS(A);
 
 	info = GrB_Matrix_nvals(&m_nvals, m);
 	ASSERT(info == GrB_SUCCESS);
-	info = GrB_Matrix_nvals(&dp_nvals, dp);
-	ASSERT(info == GrB_SUCCESS);
-	info = GrB_Matrix_nvals(&dm_nvals, dm);
-	ASSERT(info == GrB_SUCCESS);
+	RG_Matrix_DP_nvals(&dp_nvals, A);
+	RG_Matrix_DM_nvals(&dm_nvals, A);
 
 	*nvals = m_nvals + dp_nvals - dm_nvals;
 	return info;

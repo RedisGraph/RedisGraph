@@ -199,7 +199,7 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 );
 
 // get the number of entries in the delta minus matrix
-GrB_Info RG_Matrix_DM_nvals
+void RG_Matrix_DM_nvals
 (
 	GrB_Index *nvals,       // matrix has nvals entries
 	const RG_Matrix A       // matrix to query
@@ -225,7 +225,7 @@ void RG_Matrix_setDMNvals
 );
 
 // get the number of entries in the delta plus matrix
-GrB_Info RG_Matrix_DP_nvals
+void RG_Matrix_DP_nvals
 (
 	GrB_Index *nvals,       // matrix has nvals entries
 	const RG_Matrix A       // matrix to query

@@ -48,8 +48,8 @@ GrB_Info RG_mxm                     // C = A * B
 
 	RG_Matrix_nrows(&nrows, C);
 	RG_Matrix_ncols(&ncols, C);
-	GrB_Matrix_nvals(&dp_nvals, dp);
-	GrB_Matrix_nvals(&dm_nvals, dm);
+	RG_Matrix_DP_nvals(&dp_nvals, B);
+	RG_Matrix_DM_nvals(&dm_nvals, B);
 
 	if(dm_nvals > 0) {
 		// compute A * 'delta-minus'
