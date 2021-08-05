@@ -206,7 +206,6 @@ GrB_Info RG_Matrix_resize      // change the size of a matrix
 GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 (
 	RG_Matrix C,                        // matrix to modify
-	bool x,                             // scalar to assign to C(i,j)
 	GrB_Index i,                        // row index
 	GrB_Index j                         // column index
 );

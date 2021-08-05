@@ -524,7 +524,7 @@ void Graph_CreateNode
 	if(label != GRAPH_NO_LABEL) {
 		// set matrix at position [id, id]
 		RG_Matrix  m    =  Graph_GetLabelMatrix(g, label);
-		GrB_Info   res  =  RG_Matrix_setElement_BOOL(m, true, id, id);
+		GrB_Info   res  =  RG_Matrix_setElement_BOOL(m, id, id);
 		ASSERT(res == GrB_SUCCESS);
 	}
 }
@@ -545,7 +545,7 @@ void Graph_FormConnection
 	RG_Matrix  adj  =  Graph_GetAdjacencyMatrix(g, false);
 
 	// rows represent source nodes, columns represent destination nodes
-	info = RG_Matrix_setElement_BOOL(adj, true, src, dest);
+	info = RG_Matrix_setElement_BOOL(adj, src, dest);
 	ASSERT(info == GrB_SUCCESS);
 
 	info = RG_Matrix_setElement_UINT64(M, edge_id, src, dest);
