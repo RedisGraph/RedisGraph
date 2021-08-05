@@ -521,6 +521,13 @@ TEST_F(ArithmeticTest, PowTest) {
     _test_ar_func(arExp, expected);
     AR_EXP_Free(arExp);
 
+	/* 2^3 */
+    query = "RETURN 2^3";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(8);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
     /* POW(2,-3) */
     query = "RETURN pow(2,-3)";
     arExp = _exp_from_query(query);
