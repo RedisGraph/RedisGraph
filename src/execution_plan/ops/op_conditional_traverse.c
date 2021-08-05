@@ -24,16 +24,18 @@ static int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
 }
 
 static void _populate_filter_matrix(OpCondTraverse *op) {
+	GrB_Matrix FM = RG_MATRIX_M(op->F);
+
 	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
-		NodeID srcId = ENTITY_GET_ID(n);
-		RG_Matrix_setElement_BOOL(op->F, true, i, srcId);
+		NodeID srcId = ENTITY_GET_ID(n);	
+		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
 	}
 
-	RG_Matrix_wait(op->F, true);
+	GrB_Matrix_wait(&FM);
 }
 
 /* Evaluate algebraic expression:
@@ -64,8 +66,8 @@ void _traverse(OpCondTraverse *op) {
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
 
-	if(op->iter == NULL) RG_MatrixTupleIter_new(&op->iter, op->M);
-	else RG_MatrixTupleIter_reuse(op->iter, op->M);
+	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, RG_MATRIX_M(op->M));
+	else GxB_MatrixTupleIter_reuse(op->iter, RG_MATRIX_M(op->M));
 
 	// Clear filter matrix.
 	RG_Matrix_clear(op->F);
@@ -141,7 +143,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	NodeID dest_id = INVALID_ENTITY_ID;
 
 	while(true) {
-		if(op->iter) RG_MatrixTupleIter_next(op->iter, &src_id, &dest_id,
+		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id,
 				NULL, &depleted);
 
 		// Managed to get a tuple, break.
@@ -208,8 +210,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
 
 	if(op->iter) {
-		RG_MatrixTupleIter_free(&op->iter);
-		op->iter = NULL;
+		GxB_MatrixTupleIter_free(&op->iter);
 	}
 	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
@@ -225,8 +226,7 @@ static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase 
 static void CondTraverseFree(OpBase *ctx) {
 	OpCondTraverse *op = (OpCondTraverse *)ctx;
 	if(op->iter) {
-		RG_MatrixTupleIter_free(&op->iter);
-		op->iter = NULL;
+		GxB_MatrixTupleIter_free(&op->iter);
 	}
 
 	if(op->F != NULL) {

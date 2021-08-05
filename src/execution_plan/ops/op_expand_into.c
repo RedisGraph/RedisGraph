@@ -24,15 +24,18 @@ static inline int ExpandIntoToString(const OpBase *ctx, char *buf, uint buf_len)
 }
 
 static void _populate_filter_matrix(OpExpandInto *op) {
+	GrB_Matrix FM = RG_MATRIX_M(op->F);
+
 	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
 		NodeID srcId = ENTITY_GET_ID(n);
-		RG_Matrix_setElement_BOOL(op->F, true, i, srcId);
+		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
 	}
-	RG_Matrix_wait(op->F, true);
+
+	GrB_Matrix_wait(&FM);
 }
 
 /* Evaluate algebraic expression:
@@ -129,7 +132,7 @@ static Record _handoff(OpExpandInto *op) {
 		Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
 		NodeID destId = ENTITY_GET_ID(destNode);
 		bool x;
-		GrB_Info res = RG_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
+		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, RG_MATRIX_M(op->M), rowIdx, destId);
 		// Src is not connected to dest, free the current record and continue.
 		if(res != GrB_SUCCESS) {
 			OpBase_DeleteRecord(op->r);

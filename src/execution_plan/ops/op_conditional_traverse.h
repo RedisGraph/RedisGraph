@@ -11,6 +11,7 @@
 #include "shared/traverse_functions.h"
 #include "../../graph/rg_matrix/rg_matrix_iter.h"
 #include "../../arithmetic/algebraic_expression.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* OP Traverse */
 typedef struct {
@@ -22,7 +23,7 @@ typedef struct {
 	NodeID dest_label_id;       // ID of destination node label if known.
 	const char *dest_label;     // Label of destination node if known.
 	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
-	RG_MatrixTupleIter *iter;   // Iterator over M.
+	GxB_MatrixTupleIter *iter;   // Iterator over M.
 	int srcNodeIdx;             // Source node index into record.
 	int destNodeIdx;            // Destination node index into record.
 	uint record_count;          // Number of held records.
