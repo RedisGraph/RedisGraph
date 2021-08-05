@@ -1020,3 +1020,88 @@ TEST_F(RGMatrixTest, RGMatrix_copy) {
 	ASSERT_TRUE(B == NULL);
 }
 
+TEST_F(RGMatrixTest, RGMatrix_mxm) {
+	GrB_Type    t                   =  GrB_BOOL;
+	RG_Matrix   A                   =  NULL;
+	RG_Matrix   B                   =  NULL;
+	RG_Matrix   C                   =  NULL;
+	RG_Matrix   D                   =  NULL;
+	GrB_Matrix  C_M                 =  NULL;
+	GrB_Matrix  D_M                 =  NULL;
+	GrB_Info    info                =  GrB_SUCCESS;
+	GrB_Index   nrows               =  100;
+	GrB_Index   ncols               =  100;
+	bool        sync                =  false;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_Matrix_new(&B, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_Matrix_new(&C, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_Matrix_new(&D, t, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set elements
+	info = RG_Matrix_setElement_BOOL(A, true, 0, 1);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = RG_Matrix_setElement_BOOL(A, true, 2, 3);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = RG_Matrix_setElement_BOOL(B, true, 1, 2);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = RG_Matrix_setElement_BOOL(B, true, 3, 4);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// flush matrix, sync
+	//--------------------------------------------------------------------------
+	
+	// wait, force sync
+	sync = true;
+	RG_Matrix_wait(A, sync);
+	RG_Matrix_wait(B, sync);
+
+	//--------------------------------------------------------------------------
+	// set pending changes
+	//--------------------------------------------------------------------------
+
+	// remove element at position 0,0
+	info = RG_Matrix_removeElement_BOOL(B, 1, 2);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// set element at position 2,2
+	info = RG_Matrix_setElement_BOOL(B, true, 1, 3);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// mxm matrix
+	//--------------------------------------------------------------------------
+
+	info = RG_mxm(C, GxB_ANY_PAIR_BOOL, A, B);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	RG_Matrix_wait(B, sync);
+
+	info = RG_mxm(D, GxB_ANY_PAIR_BOOL, A, B);
+	//--------------------------------------------------------------------------
+	// validation
+	//--------------------------------------------------------------------------
+
+	C_M  = RG_MATRIX_M(C);
+	D_M  = RG_MATRIX_M(D);
+	
+	ASSERT_GrB_Matrices_EQ(C_M, D_M);
+
+	// clean up
+	RG_Matrix_free(&A);
+	ASSERT_TRUE(A == NULL);
+	RG_Matrix_free(&B);
+	ASSERT_TRUE(B == NULL);
+	RG_Matrix_free(&C);
+	ASSERT_TRUE(C == NULL);
+	RG_Matrix_free(&D);
+	ASSERT_TRUE(C == NULL);
+}
