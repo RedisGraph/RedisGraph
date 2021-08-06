@@ -17,7 +17,7 @@ static inline int _NodeToString(char *buf, uint buf_len, const char *alias, cons
 }
 
 int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae) {
-	int offset = 0;
+	uint offset = 0;
 	if(!ae) {
 		offset += snprintf(buf, buf_len, "%s", op->name);
 		return offset;

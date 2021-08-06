@@ -63,10 +63,10 @@ void QGEdge_Reverse(QGEdge *e) {
 	QGNode_ConnectNode(e->src, e->dest, e);
 }
 
-int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
+int QGEdge_ToString(const QGEdge *e, char *buff, uint buff_len) {
 	ASSERT(e && buff);
 
-	int offset = 0;
+	uint offset = 0;
 	offset += snprintf(buff + offset, buff_len - offset, "[");
 
 	if(e->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
