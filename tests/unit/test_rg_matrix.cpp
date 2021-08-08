@@ -693,7 +693,6 @@ TEST_F(RGMatrixTest, RGMatrix_set) {
 	GrB_Index   ncols               =  100;
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
-	bool        x                   =  true;
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
@@ -969,7 +968,6 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	GrB_Index   j                   =  1;
 	GrB_Index*  I                   =  NULL;
 	GrB_Index*  J                   =  NULL;
-	bool        x                   =  true;  // M[i,j] = x
 	uint32_t    operations          =  10000;
 
 	//--------------------------------------------------------------------------

@@ -248,11 +248,10 @@ static void RG_ForkPrepare() {
 	// on BGSAVE acquire read lock for each graph to ensure no graph is being
 	// modified, otherwise the child process might inherit a malformed matrix
 	//
-	// on BGSAVE: acquire read lock and synchronize all matrices
+	// on BGSAVE: acquire read lock
 	// release immediately once forked
-	// as a precocious set child process synchronization policy to NOP
 	//
-	// in the case of RediSearch GC fork quickly return
+	// in the case of RediSearch GC fork, quickly return
 
 	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
@@ -261,9 +260,6 @@ static void RG_ForkPrepare() {
 	for(uint i = 0; i < graph_count; i++) {
 		// acquire read lock, guarantee graph isn't modified
 		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
-
-		// synchronize all matrices, make sure they're in a consistent state
-		Graph_ApplyAllPending(graphs_in_keyspace[i]->g);
 	}
 }
 
@@ -289,10 +285,15 @@ static void RG_AfterForkChild() {
 	// in forked process
 	GxB_set(GxB_NTHREADS, 1);
 
-	// all matrices should be synced, set synchronization policy to NOP
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		Graph_SetMatrixPolicy(graphs_in_keyspace[i]->g, DISABLED);
+		Graph *g = graphs_in_keyspace[i]->g;
+
+		// synchronize all matrices, make sure they're in a consistent state
+		Graph_ApplyAllPending(g);
+
+		// all matrices should be synced, set synchronization policy to NOP
+		Graph_SetMatrixPolicy(g, DISABLED);
 	}
 }
 
