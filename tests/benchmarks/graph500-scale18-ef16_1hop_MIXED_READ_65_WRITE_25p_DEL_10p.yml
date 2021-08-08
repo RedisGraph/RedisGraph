@@ -4,7 +4,7 @@ description: "Test: tests mixed read+write+delete queries within the same benchm
                        - 262017 nodes with label 'Node'
                        - 4194304 relations of type 'IS_CONNECTED'
                        - Indexed properties: 
-                          - exact-match: IS_CONNECTED; [external_id]
+                          - exact-match: Node; [external_id]
              "
 remote:
   - setup: redisgraph-r5
