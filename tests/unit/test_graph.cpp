@@ -41,9 +41,6 @@ class GraphTest : public ::testing::Test {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 
-		// Set global variables
-		Config_Option_set(Config_MAINTAIN_TRANSPOSE, "yes"); // Ensure that transposed matrices are constructed.
-
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
 

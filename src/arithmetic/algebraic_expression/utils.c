@@ -316,7 +316,6 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 	switch(root->type) {
 	case AL_OPERATION:
 		child_count = AlgebraicExpression_ChildCount(root);
-
 		if(root->operation.op == AL_EXP_TRANSPOSE) {
 			ASSERT(child_count == 1 && "Transpose operation had invalid number of children");
 			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveDest(root);

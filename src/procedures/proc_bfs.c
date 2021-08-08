@@ -123,14 +123,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 
 		bfs_ctx->reltype_id = s->id;
 		RG_Matrix_export(&R, Graph_GetRelationMatrix(gc->g, s->id, false));
-		bool maintain_transpose;
-		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-		if(maintain_transpose) {
-			RG_Matrix_export(&TR,
-				Graph_GetRelationMatrix(gc->g, s->id, true));
-		} else {
-			TR = GrB_NULL;
-		}
+		RG_Matrix_export(&TR, Graph_GetRelationMatrix(gc->g, s->id, true));
 	}
 
 	/* If we're not collecting edges, pass a NULL parent pointer

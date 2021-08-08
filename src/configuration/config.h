@@ -22,12 +22,11 @@ typedef enum {
 	Config_OPENMP_NTHREAD            = 3,     // max number of OpenMP threads to use
 	Config_THREAD_POOL_SIZE          = 4,     // number of threads in thread pool
 	Config_RESULTSET_MAX_SIZE        = 5,     // max number of records in result-set
-	Config_MAINTAIN_TRANSPOSE        = 6,     // maintain transpose matrices
-	Config_VKEY_MAX_ENTITY_COUNT     = 7,     // max number of elements in vkey
-	Config_MAX_QUEUED_QUERIES        = 8,     // max number of queued queries
-	Config_QUERY_MEM_CAPACITY        = 9,     // max mem(bytes) that query/thread can utilize at any given time
-	Config_DELTA_MAX_PENDING_CHANGES = 10,    // number of pending changed befor RG_Matrix flushed
-	Config_END_MARKER                = 11
+	Config_VKEY_MAX_ENTITY_COUNT     = 6,     // max number of elements in vkey
+	Config_MAX_QUEUED_QUERIES        = 7,     // max number of queued queries
+	Config_QUERY_MEM_CAPACITY        = 8,     // max mem(bytes) that query/thread can utilize at any given time
+	Config_DELTA_MAX_PENDING_CHANGES = 9,    // number of pending changed befor RG_Matrix flushed
+	Config_END_MARKER                = 10
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of

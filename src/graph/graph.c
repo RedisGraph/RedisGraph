@@ -679,7 +679,6 @@ int Graph_DeleteEdge
 	RG_Matrix   M;
 	GrB_Info    info;
 	EdgeID      edge_id;
-	RG_Matrix   TR        =  GrB_NULL;
 	int         r         =  Edge_GetRelationID(e);
 	NodeID      src_id    =  Edge_GetSrcNodeID(e);
 	NodeID      dest_id   =  Edge_GetDestNodeID(e);

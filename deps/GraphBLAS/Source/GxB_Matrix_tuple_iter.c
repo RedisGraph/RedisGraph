@@ -178,6 +178,8 @@ static bool _find_row_index_in_Ah
 	
 	if(A->nvec == 0) return false;
 
+	if(A->nvec == 0) return false;
+
 	bool found ;
 	GrB_Index left = 0 ;
 	GrB_Index right = A->nvec-1 ;

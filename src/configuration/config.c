@@ -37,9 +37,6 @@
 // config param, max number of entities in each virtual key
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT"
 
-// whether the module should maintain transposed relationship matrices
-#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
-
 // config param, max number of queued queries
 #define MAX_QUEUED_QUERIES "MAX_QUEUED_QUERIES"
 
@@ -66,7 +63,6 @@ typedef struct {
 	uint omp_thread_count;             // Maximum number of OpenMP threads.
 	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
-	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
 	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
@@ -181,18 +177,6 @@ uint64_t Config_virtual_key_entity_count_get(void) {
 }
 
 //------------------------------------------------------------------------------
-// maintain transpose
-//------------------------------------------------------------------------------
-
-void Config_maintain_transpose_set(bool maintain) {
-	config.maintain_transposed_matrices = maintain;
-}
-
-bool Config_maintain_transpose_get(void) {
-	return config.maintain_transposed_matrices;
-}
-
-//------------------------------------------------------------------------------
 // cache size
 //------------------------------------------------------------------------------
 
@@ -277,8 +261,6 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 		f = Config_OPENMP_NTHREAD;
 	} else if(!strcasecmp(field_str, VKEY_MAX_ENTITY_COUNT)) {
 		f = Config_VKEY_MAX_ENTITY_COUNT;
-	} else if(!strcasecmp(field_str, MAINTAIN_TRANSPOSED_MATRICES)) {
-		f = Config_MAINTAIN_TRANSPOSE;
 	} else if(!(strcasecmp(field_str, CACHE_SIZE))) {
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
@@ -319,10 +301,6 @@ const char *Config_Field_name(Config_Option_Field field) {
 
 		case Config_RESULTSET_MAX_SIZE:
 			name = RESULTSET_SIZE;
-			break;
-
-		case Config_MAINTAIN_TRANSPOSE:
-			name = MAINTAIN_TRANSPOSED_MATRICES;
 			break;
 
 		case Config_VKEY_MAX_ENTITY_COUNT:
@@ -379,9 +357,6 @@ void _Config_SetToDefaults(void) {
 	#endif
 
 	config.cache_size = CACHE_SIZE_DEFAULT;
-
-	// always build transposed matrices by default
-	config.maintain_transposed_matrices = true;
 
 	// no limit on result-set size
 	config.resultset_size = RESULTSET_SIZE_UNLIMITED;
@@ -541,21 +516,6 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 			break;
 
 		//----------------------------------------------------------------------
-		// maintain transpose
-		//----------------------------------------------------------------------
-
-		case Config_MAINTAIN_TRANSPOSE:
-			{
-				va_start(ap, field);
-				bool *maintain_transpose = va_arg(ap, bool*);
-				va_end(ap);
-
-				ASSERT(maintain_transpose != NULL);
-				(*maintain_transpose) = Config_maintain_transpose_get();
-			}
-			break;
-
-		//----------------------------------------------------------------------
 		// virtual key entity count
 		//----------------------------------------------------------------------
 
@@ -708,19 +668,6 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 				if(!_Config_ParseInteger(val, &resultset_max_size)) return false;
 
 				Config_resultset_max_size_set(resultset_max_size);
-			}
-			break;
-
-		//----------------------------------------------------------------------
-		// maintain transpose
-		//----------------------------------------------------------------------
-
-		case Config_MAINTAIN_TRANSPOSE:
-			{
-				bool maintain_transpose;
-				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
-
-				Config_maintain_transpose_set(maintain_transpose);
 			}
 			break;
 

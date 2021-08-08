@@ -19,12 +19,6 @@ class testConfig(FlowTestsBase):
     def test01_config_get(self):
         global redis_graph
 
-        # Try reading 'MAINTAIN_TRANSPOSED_MATRICES' from config
-        config_name = "MAINTAIN_TRANSPOSED_MATRICES"
-        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
-        expected_response = [config_name, 1]
-        self.env.assertEqual(response, expected_response)
-
         # Try reading 'QUERY_MEM_CAPACITY' from config
         config_name = "QUERY_MEM_CAPACITY"
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
@@ -34,8 +28,8 @@ class testConfig(FlowTestsBase):
         # Try reading all configurations
         config_name = "*"
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
-        # At least 10 configurations should be reported
-        self.env.assertGreaterEqual(len(response), 10)
+        # At least 9 configurations should be reported
+        self.env.assertGreaterEqual(len(response), 9)
 
     def test02_config_get_invalid_name(self):
         global redis_graph
