@@ -30,8 +30,18 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	// Keep track after all traversal operations along a pattern.
 	for(uint i = 0; i < connectedComponentsCount; i++) {
 		QueryGraph *cc = connectedComponents[i];
+		uint edge_count = array_len(cc->edges);
 		OpBase *root = NULL; // The root of the traversal chain will be added to the ExecutionPlan.
 		OpBase *tail = NULL;
+
+		if(edge_count == 0) {
+ 			// if there are no edges in the component, we only need a node scan
+ 			QGNode *n = cc->nodes[0];
+			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
+				!= raxNotFound) {
+				continue;
+			}
+		}
 
 		AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc);
 		uint expCount = array_len(exps);
@@ -39,8 +49,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		// Reorder exps, to the most performant arrangement of evaluation.
 		orderExpressions(qg, exps, expCount, ft, bound_vars);
 
-		/* Create the SCAN operation that will be the tail of the traversal chain. */
+		// Create the SCAN operation that will be the tail of the traversal chain.
 		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
+
 		if(QGNode_LabelCount(src) > 0) {
 			// Resolve source node by performing label scan.
 			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_GetLabel(src, 0),
