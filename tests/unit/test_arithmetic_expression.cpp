@@ -605,7 +605,7 @@ TEST_F(ArithmeticTest, PowTest) {
     _test_ar_func(arExp, expected);
     AR_EXP_Free(arExp);
 
-	/* POW() */
+    /* POW() */
     query = "RETURN pow(NULL,1)";
     arExp = _exp_from_query(query);
     expected = SI_NullVal();
@@ -619,7 +619,7 @@ TEST_F(ArithmeticTest, PowTest) {
     _test_ar_func(arExp, expected);
     AR_EXP_Free(arExp);
 
-	/* POW() */
+    /* POW() */
     query = "RETURN pow(1,NULL)";
     arExp = _exp_from_query(query);
     expected = SI_NullVal();
