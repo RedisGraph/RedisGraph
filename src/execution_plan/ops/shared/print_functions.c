@@ -37,16 +37,16 @@ int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpres
 	offset += QGNode_ToString(src, buf + offset, buf_len - offset);
 	if(e) {
 		if(transpose) {
-			offset += snprintf(buf + offset, buf_len - offset, "<-");
+			offset += RG_snprintf(buf + offset, buf_len - offset, "<-");
 			offset += QGEdge_ToString(e, buf + offset, buf_len - offset);
-			offset += snprintf(buf + offset, buf_len - offset, "-");
+			offset += RG_snprintf(buf + offset, buf_len - offset, "-");
 		} else {
-			offset += snprintf(buf + offset, buf_len - offset, "-");
+			offset += RG_snprintf(buf + offset, buf_len - offset, "-");
 			offset += QGEdge_ToString(e, buf + offset, buf_len - offset);
-			offset += snprintf(buf + offset, buf_len - offset, "->");
+			offset += RG_snprintf(buf + offset, buf_len - offset, "->");
 		}
 	} else {
-		offset += snprintf(buf + offset, buf_len - offset, "->");
+		offset += RG_snprintf(buf + offset, buf_len - offset, "->");
 	}
 	offset += QGNode_ToString(dest, buf + offset, buf_len - offset);
 	return offset;

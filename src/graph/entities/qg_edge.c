@@ -66,21 +66,21 @@ void QGEdge_Reverse(QGEdge *e) {
 int QGEdge_ToString(const QGEdge *e, char *buff, uint buff_len) {
 	ASSERT(e && buff);
 
-	uint offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "[");
+	int offset = 0;
+	offset += RG_snprintf(buff + offset, buff_len - offset, "[");
 
-	if(e->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
+	if(e->alias) offset += RG_snprintf(buff + offset, buff_len - offset, "%s", e->alias);
 	uint reltype_count = QGEdge_RelationCount(e);
 	for(uint i = 0; i < reltype_count; i ++) {
 		// Multiple relationship types are printed separated by pipe characters
-		if(i > 0) offset += snprintf(buff + offset, buff_len - offset, "|");
-		offset += snprintf(buff + offset, buff_len - offset, ":%s", e->reltypes[i]);
+		if(i > 0) offset += RG_snprintf(buff + offset, buff_len - offset, "|");
+		offset += RG_snprintf(buff + offset, buff_len - offset, ":%s", e->reltypes[i]);
 	}
 	if(e->minHops != 1 || e->maxHops != 1) {
 		if(e->maxHops == EDGE_LENGTH_INF)
-			offset += snprintf(buff + offset, buff_len - offset, "*%u..INF", e->minHops);
+			offset += RG_snprintf(buff + offset, buff_len - offset, "*%u..INF", e->minHops);
 		else
-			offset += snprintf(buff + offset, buff_len - offset, "*%u..%u", e->minHops, e->maxHops);
+			offset += RG_snprintf(buff + offset, buff_len - offset, "*%u..%u", e->minHops, e->maxHops);
 	}
 
 	offset += snprintf(buff + offset, buff_len - offset, "]");

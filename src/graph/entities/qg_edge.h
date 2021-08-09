@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "../../util/branch_pred.h"
 
 struct QGEdge {
 	const char *alias;      /* User-provided alias attached to edge. */
@@ -41,6 +42,20 @@ int QGEdge_RelationID(const QGEdge *e, int idx);
 
 /* Reverse edge direction. */
 void QGEdge_Reverse(QGEdge *e);
+
+#define RG_snprintf(str, size, ...)                \
+({                                                 \
+	int rv;                                        \
+	int n = snprintf(str, size, __VA_ARGS__);      \
+	if (unlikely(n < 0 || n >= size))              \
+	{                                              \
+		ASSERT(false);                             \
+		rv = size;                                 \
+	} else {                                       \
+		rv = n;                                    \
+	}                                              \
+	rv;                                            \
+})
 
 /* Gets a string representation of given edge. */
 int QGEdge_ToString(const QGEdge *e, char *buff, uint buff_len);
