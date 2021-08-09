@@ -307,7 +307,7 @@ bool Graph_RelationshipContainsMultiEdge(
 
 // Retrieves the node-label mapping matrix,
 // Matrix is resized if its size doesn't match graph's node count.
-RG_Matrix Graph_GetNodeLabelMatrix(
+GrB_Matrix Graph_GetNodeLabelMatrix(
 	const Graph *g
 );
 

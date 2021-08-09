@@ -884,7 +884,7 @@ TEST_F(GraphTest, GraphStatistics) {
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 0);
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 0);
 
-	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, l, &n[i]);
+	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, &n[i], &l, 1);
 
 	/* Connect nodes:
 	*

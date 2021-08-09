@@ -279,6 +279,7 @@ Graph *Graph_New
 	UNUSED(info);
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
+	RG_Matrix_new(&g->node_labels, GrB_BOOL, n, GRAPH_DEFAULT_LABEL_CAP);
 	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n);
 	RG_Matrix_new(&g->adjacency_matrix->transposed, GrB_BOOL, n, n);
 	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n);
@@ -862,11 +863,11 @@ static void _BulkDeleteNodes
 	for(int i = 0; i < node_count; i++) {
 		Node *n = distinct_nodes + i;
 		NodeID entity_id = ENTITY_GET_ID(n);
-		int label_id = NODE_GET_LABEL_ID(n, g);
-		ASSERT(label_id != GRAPH_UNKNOWN_LABEL);
+		uint label_count;
+ 		NODE_GET_LABELS(g, n, labels, label_count);
 
-		if(label_id != GRAPH_NO_LABEL) {
-			RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
+		for (int i = 0; i < label_count; i++) {
+			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
 			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
 		}
 
@@ -1086,44 +1087,9 @@ GrB_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 	ASSERT(g != NULL);
 
 	RG_Matrix m  = g->node_labels;
-	GrB_Matrix l = RG_Matrix_Get_GrB_Matrix(m);
-
-	// make sure node-label matrix has no pendding changes and its
-	// dimenssions are node_cap X label_count
-
-	bool pending;
-	GrB_Info info;
-	GrB_Index nrows;
-	GrB_Index ncols;
-	GrB_Matrix_ncols(&ncols, l);
-	GrB_Matrix_nrows(&nrows, l);
-	GxB_Matrix_Pending(l, &pending);
-	size_t node_cap = _Graph_NodeCap(g);
-	int label_count = Graph_LabelTypeCount(g);
-
-	if(pending == true || nrows != node_cap || ncols != label_count) {
-		// if the graph belongs to one thread, we don't need to lock the mutex
-		if(!g->_writelocked) _RG_Matrix_Lock(m);
-		{
-			// locked, recheck
-			GrB_Matrix_ncols(&ncols, l);
-			GrB_Matrix_nrows(&nrows, l);
-			node_cap = _Graph_NodeCap(g);
-			label_count = Graph_LabelTypeCount(g);
-
-			if(nrows != node_cap || ncols != label_count) {
-				info = GxB_Matrix_resize(l, node_cap, label_count);
-				ASSERT(info == GrB_SUCCESS);
-			}
-
-			GxB_Matrix_Pending(l, &pending);
-			if(pending == true) {
-				info = GrB_wait(&l);
-				ASSERT(info == GrB_SUCCESS);
-			}
-		}
-		if(!g->_writelocked) _RG_Matrix_Unlock(m);
-	}
+	g->SynchronizeMatrix(g, m);
+	
+	GrB_Matrix l = RG_MATRIX_M(m);
 
 	return l;
 }
@@ -1160,7 +1126,7 @@ void Graph_Free(Graph *g) {
 	uint32_t labelCount = array_len(g->labels);
 	for(int i = 0; i < labelCount; i++) RG_Matrix_free(&g->labels[i]);
 	array_free(g->labels);
-	RG_Matrix_Free(g->node_labels);
+	RG_Matrix_free(&g->node_labels);
 
 	// TODO: disable datablock deleted items array
 	// there's no need to keep track after deleted items as the graph

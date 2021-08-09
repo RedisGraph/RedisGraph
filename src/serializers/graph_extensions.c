@@ -27,8 +27,7 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, LabelID *labels, uint label_c
 	en->properties = NULL;
 	n->id = id;
 	n->entity = en;
-	RG_Matrix node_labels = Graph_GetNodeLabelMatrix(g);
-	GrB_Matrix node_labels_m = RG_MATRIX_M(node_labels);
+	GrB_Matrix node_labels = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < label_count; i ++) {
 		LabelID label = labels[i];
 		// Set label matrix at position [id, id]
@@ -37,7 +36,7 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, LabelID *labels, uint label_c
 		GrB_Matrix_setElement_BOOL(m, true, id, id);
 
 		// Set node-label matrix at position [id, label]
-		GrB_Matrix_setElement_BOOL(node_labels_m, true, id, label);
+		GrB_Matrix_setElement_BOOL(node_labels, true, id, label);
 	}
 }
 
