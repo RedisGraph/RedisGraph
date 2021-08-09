@@ -12,9 +12,9 @@ clientconfig:
     - clients: 32
     - threads: 4
     - connections: 32
-    - requests: 100
+    - requests: 1000
     - queries:
       - { q: "MATCH (n), (m) WHERE ID(n) = 0 AND ID(m) = 1 WITH n, m MATCH (n)-[*]->(m) RETURN count(1)", ratio: 1 }
 kpis:
-  - le: { $.OverallClientLatencies.Total.q50: 1.0 }
-  - ge: { $.OverallQueryRates.Total: 25000 }
+  - le: { $.OverallClientLatencies.Total.q50: 70.0 }
+  - ge: { $.OverallQueryRates.Total: 5.0 }
