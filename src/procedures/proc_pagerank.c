@@ -82,7 +82,7 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 		s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 		// Unknown label, quickly return.
 		if(!s) return PROCEDURE_OK;
-		l = Graph_GetLabelMatrix(g, s->id);
+		RG_Matrix_export(&l, Graph_GetLabelMatrix(g, s->id));
 	}
 
 	// Get relation matrix.
@@ -90,10 +90,14 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 		s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
 		// Unknown relation, quickly return.
 		if(!s) return PROCEDURE_OK;
-		r = Graph_GetRelationMatrix(g, s->id);
+		RG_Matrix_export(&r, Graph_GetRelationMatrix(g, s->id, false));
+
+		// convert the values to true
+		info = GrB_Matrix_apply(r, NULL, NULL, GxB_ONE_BOOL, r, GrB_DESC_R);
+		ASSERT(info == GrB_SUCCESS);
 	} else {
 		// Relation isn't specified, 'r' is the adjacency matrix.
-		r = Graph_GetAdjacencyMatrix(g);
+		RG_Matrix_export(&r, Graph_GetAdjacencyMatrix(g, false));
 	}
 	/* if label is specified:
 	 * filter 'r' to contain only rows and columns associated with
@@ -120,25 +124,12 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 								  mapping, n, GrB_NULL);
 		ASSERT(info == GrB_SUCCESS);
 
+		GrB_free(&r);
 		r = reduced;
 	} else {
-		//----------------------------------------------------------------------
-		// Make a copy of the relationship matrix,
-		// truncating it to remove unused rows and casting it to boolean.
-		//----------------------------------------------------------------------
-		info = GrB_Matrix_nrows(&nrows, r);
-		ASSERT(info == GrB_SUCCESS);
-
-		// Build a new boolean matrix with the same dimensions of the original
-		// with all values casted to boolean.
-		GrB_Matrix r_trimmed;
-		info = GrB_Matrix_dup(&r_trimmed, r);
-		ASSERT(info == GrB_SUCCESS);
-
 		// Resize to remove unused rows.
 		n = Graph_UncompactedNodeCount(g);
-		GxB_Matrix_resize(r_trimmed, n, n);
-		r = r_trimmed;
+		GxB_Matrix_resize(r, n, n);
 	}
 
 	// Invoke Pagerank only if 'r' contains entries.
@@ -152,6 +143,9 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 
 	// Clean up.
 	GrB_free(&r);
+	if(label) {
+		GrB_free(&l);
+	}
 
 	// Update context.
 	pdata->n = n;

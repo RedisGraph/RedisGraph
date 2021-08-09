@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,6 +13,7 @@
 #include "entities/edge.h"
 #include "../redismodule.h"
 #include "graph_statistics.h"
+#include "rg_matrix/rg_matrix.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -27,19 +28,6 @@
 #define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
 #define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
 
-// Mask with most significat bit on 10000...
-#define MSB_MASK (1UL << (sizeof(EntityID) * 8 - 1))
-// Mask complement 01111...
-#define MSB_MASK_CMP ~MSB_MASK
-// Set X's most significat bit on.
-#define SET_MSB(x) (x) | MSB_MASK
-// Clear X's most significat bit on.
-#define CLEAR_MSB(x) (x) & MSB_MASK_CMP
-// Checks if X represents edge ID.
-#define SINGLE_EDGE(x) (x) & MSB_MASK
-// Returns edge ID.
-#define SINGLE_EDGE_ID(x) CLEAR_MSB(x)
-
 typedef enum {
 	GRAPH_EDGE_DIR_INCOMING,
 	GRAPH_EDGE_DIR_OUTGOING,
@@ -52,15 +40,6 @@ typedef enum {
 	DISABLED,
 } MATRIX_POLICY;
 
-// Forward declaration of RG_Matrix type. Internal to graph.
-typedef struct {
-	bool dirty;                         // Indicates if matrix requires sync
-	bool allow_multi_edge;              // Entry i,j can contain multiple edges
-	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix.
-	pthread_mutex_t mutex;              // Lock.
-} _RG_Matrix;
-typedef _RG_Matrix *RG_Matrix;
-
 // Forward declaration of Graph struct
 typedef struct Graph Graph;
 // typedef for synchronization function pointer
@@ -70,13 +49,10 @@ struct Graph {
 	DataBlock *nodes;                   // Graph nodes stored in blocks.
 	DataBlock *edges;                   // Graph edges stored in blocks.
 	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
-	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
 	RG_Matrix *labels;                  // Label matrices.
 	RG_Matrix *relations;               // Relation matrices.
-	RG_Matrix *t_relations;             // Transposed relation matrices.
 	RG_Matrix _zero_matrix;             // Zero matrix.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
-	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
 	GraphStatistics stats;              // Graph related statistics.
@@ -93,12 +69,6 @@ void Graph_AcquireWriteLock(Graph *g);
 
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g);
-
-/* Writer request access to graph. */
-void Graph_WriterEnter(Graph *g);
-
-/* Writer release access to graph. */
-void Graph_WriterLeave(Graph *g);
 
 /* Choose the current matrix synchronization policy. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
@@ -144,7 +114,7 @@ void Graph_CreateNode(
 
 // Connects source node to destination node.
 // Returns 1 if connection is formed, 0 otherwise.
-int Graph_ConnectNodes(
+void Graph_CreateEdge(
 	Graph *g,           // Graph on which to operate.
 	NodeID src,         // Source node ID.
 	NodeID dest,        // Destination node ID.
@@ -297,28 +267,24 @@ void Graph_GetNodeEdges(
 
 // Retrieves the adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetAdjacencyMatrix(
-	const Graph *g
-);
-
-// Retrieves the transposed adjacency matrix.
-// Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetTransposedAdjacencyMatrix(
-	const Graph *g
+RG_Matrix Graph_GetAdjacencyMatrix(
+	const Graph *g,
+	bool transposed
 );
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetLabelMatrix(
+RG_Matrix Graph_GetLabelMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
 	int label           // Label described by matrix.
 );
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetRelationMatrix(
+RG_Matrix Graph_GetRelationMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
-	int relation        // Relation described by matrix.
+	int relation,       // Relation described by matrix.
+	bool transposed
 );
 
 // returns true if relationship matrix 'r' contains multi-edge entries
@@ -329,17 +295,26 @@ bool Graph_RelationshipContainsMultiEdge(
 	bool transpose  // false for R, true for transpose R
 );
 
-// Retrieves a transposed typed adjacency matrix.
-// Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetTransposedRelationMatrix(
-	const Graph *g,     // Graph from which to get adjacency matrix.
-	int relation        // Relation described by matrix.
-);
-
 // Retrieves the zero matrix.
 // The function will resize it to match all other
 // internal matrices, caller mustn't modify it in any way.
-GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
+RG_Matrix Graph_GetZeroMatrix
+(
+	const Graph *g
+);
+
+RG_Matrix Graph_GetLabelRGMatrix
+(
+	const Graph *g,
+	int label_idx
+);
+
+RG_Matrix Graph_GetRelationRGMatrix
+(
+	const Graph *g,
+	int relation,
+	bool transpose
+);
 
 // Free graph.
 void Graph_Free(

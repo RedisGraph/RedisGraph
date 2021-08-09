@@ -173,7 +173,7 @@ static void _buildOperatorsWhitelist(void) {
 		CYPHER_OP_MULT,
 		CYPHER_OP_DIV,
 		CYPHER_OP_MOD,
-		// CYPHER_OP_POW,
+		CYPHER_OP_POW,
 		CYPHER_OP_UNARY_PLUS,
 		CYPHER_OP_UNARY_MINUS,
 		// CYPHER_OP_SUBSCRIPT,

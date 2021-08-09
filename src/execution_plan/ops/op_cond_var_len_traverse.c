@@ -97,7 +97,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
 	op->g                  =  g;
 	op->r                  =  NULL;
-	op->M                  =  GrB_NULL;
+	op->M                  =  NULL;
 	op->ae                 =  ae;
 	op->ft                 =  NULL;
 	op->expandInto         =  false;

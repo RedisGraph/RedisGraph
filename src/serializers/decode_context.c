@@ -6,6 +6,7 @@
 
 #include "decode_context.h"
 #include "../RG.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../util/rax_extensions.h"
 
@@ -14,12 +15,17 @@ GraphDecodeContext *GraphDecodeContext_New() {
 	ctx->keys_processed = 0;
 	ctx->graph_keys_count = 1;
 	ctx->meta_keys = raxNew();
+	ctx->multi_edge = NULL;
 	return ctx;
 }
 
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx) {
 	ASSERT(ctx);
 	ctx->keys_processed = 0;
+	if(ctx->multi_edge) {
+		array_free(ctx->multi_edge);
+		ctx->multi_edge = NULL;
+	}
 }
 
 void GraphDecodeContext_SetKeyCount(GraphDecodeContext *ctx, uint64_t key_count) {

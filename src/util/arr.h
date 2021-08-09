@@ -275,13 +275,13 @@ static void array_free(array_t arr) {
   })
 
 /* Remove a specified element from the array, but does not preserve order */
-#define array_del_fast(arr, ix)          \
-  ({                                     \
-    if (array_len(arr) > 1) {            \
-      arr[ix] = arr[array_len(arr) - 1]; \
-    }                                    \
-    --array_hdr(arr)->len;               \
-    arr;                                 \
+#define array_del_fast(arr, ix)                \
+  ({                                           \
+    if (array_len((arr)) > 1) {                \
+      (arr)[ix] = (arr)[array_len((arr)) - 1]; \
+    }                                          \
+    --array_hdr((arr))->len;                   \
+    arr;                                       \
   })
 
 /* Duplicate the array to the pointer dest. */

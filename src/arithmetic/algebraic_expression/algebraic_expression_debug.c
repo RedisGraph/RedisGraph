@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -30,7 +30,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 	int len = 0;
 	char *alias;
 	const char *operand;
-	GrB_Matrix m;
+	RG_Matrix m;
 	AlgebraicExpression *op;
 	AlgebraicExpression *rhs;
 	AlgebraicExpression *root = NULL;
@@ -81,9 +81,9 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 			alias[i] = '\0';
 			*exp = *exp + i; // Advance.
 
-			m = GrB_NULL;
+			m = NULL;
 			if(matrices) {
-				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
+				m = (RG_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
 				ASSERT(m != raxNotFound && "Missing matrix");
 			}
 			root = AlgebraicExpression_NewOperand(m, false, alias, alias, NULL, NULL);

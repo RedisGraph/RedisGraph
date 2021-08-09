@@ -1649,7 +1649,6 @@ static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t 
 		}
 	}
 
-	ErrorCtx_SetError("Error: empty query.");
 	return AST_INVALID;
 }
 

@@ -78,9 +78,11 @@ static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 		ASSERT(false && "Unknown encoding state in _CurrentStatePayloadInfo");
 		break;
 	}
+
 	PayloadInfo payload_info;
 	payload_info.state = state;
-	/* When this state will be encoded, the number of entities to encode is the minimum between the number of entities to encode and
+	/* When this state will be encoded, the number of entities to encode
+	 * is the minimum between the number of entities to encode and
 	 * the remaining entities left to encode from the same type. */
 	payload_info.entities_count = MIN(entities_to_encode, required_entities_count - offset);
 	return payload_info;
@@ -97,7 +99,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	PayloadInfo *payloads = array_new(PayloadInfo, 1);
 	// Get current encoding state.
 	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
-	// If it is the start of the encodeing, set the state to be NODES.
+	// If this is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
 
 	uint64_t remaining_entities;
@@ -114,8 +116,8 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	// While there are still remaining entities to encode in this key and the state is valid.
 	while(remaining_entities > 0 && current_state < ENCODE_STATE_FINAL) {
 		// Get the current state payload info, with respect to offset.
-		PayloadInfo current_state_payload_info = _StatePayloadInfo(gc, current_state, offset,
-																   remaining_entities);
+		PayloadInfo current_state_payload_info = _StatePayloadInfo(gc,
+				current_state, offset, remaining_entities);
 		array_append(payloads, current_state_payload_info);
 		if(!last_key) remaining_entities -= current_state_payload_info.entities_count;
 		if(remaining_entities > 0) {
@@ -151,13 +153,17 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 	 * 2. Deleted nodes
 	 * 3. Edges
 	 * 4. Deleted edges
-	 * 5. Graph schema.
+	 * 5. Graph schema
 	 *
-	 * Each payload type can spread over one or more keys. For example: A graph with 200,000 nodes, and the number of entities per payload
-	 * is 100,000 then there will be two nodes payloads, each containing 100,000 nodes, encoded into two different RDB meta keys.
+	 * Each payload type can spread over one or more keys. For example:
+	 * A graph with 200,000 nodes, and the number of entities per payload
+	 * is 100,000 then there will be two nodes payloads,
+	 * each containing 100,000 nodes, encoded into two different RDB meta keys.
 	 */
 
 	GraphContext *gc = value;
+
+	// TODO: remove, no need, as GIL is taken
 
 	// Acquire a read lock if we're not in a thread-safe context.
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
@@ -200,6 +206,7 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 			ASSERT(false && "Unknown encoding phase");
 			break;
 		}
+
 		// Save the current state and the number of encoded entities.
 		GraphEncodeContext_SetEncodeState(gc->encoding_context, payload.state);
 		uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);

@@ -8124,7 +8124,7 @@ GrB_Info GxB_MatrixTupleIter_reuse
 // Release every resource consumed by iterator
 GrB_Info GxB_MatrixTupleIter_free
 (
-	GxB_MatrixTupleIter *iter   // iterator to free
+	GxB_MatrixTupleIter **iter   // iterator to free
 ) ;
 
 
