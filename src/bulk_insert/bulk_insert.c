@@ -165,7 +165,7 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 			NodeID dest = *(NodeID *)&data[data_idx];
 			data_idx += sizeof(NodeID);
 
-			Graph_ConnectNodes(gc->g, src, dest, label_id, &e);
+			Graph_CreateEdge(gc->g, src, dest, label_id, &e);
 			ge = (GraphEntity *)&e;
 		} else {
 			ASSERT(false);

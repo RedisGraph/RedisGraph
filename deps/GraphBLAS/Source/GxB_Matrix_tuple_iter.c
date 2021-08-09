@@ -145,6 +145,7 @@ static bool _find_maximal_row_in_Ah_smaller_or_equal_to_rowIdx
 	} else {
 		// not found
 		if(Ah[left] < i) {
+			GxB_print(A, GxB_COMPLETE_VERBOSE);
 			// i not found, look for the maximal value which is smaller than i
 			// this can be located in Ah[left] or Ah[left-1]
 			*result = left ;
@@ -174,6 +175,8 @@ static bool _find_row_index_in_Ah
 
 	GB_RETURN_IF_NULL(A) ;
 	GB_RETURN_IF_NULL(result) ;
+	
+	if(A->nvec == 0) return false;
 
 	if(A->nvec == 0) return false;
 
@@ -426,11 +429,12 @@ GrB_Info GxB_MatrixTupleIter_reuse
 // release iterator
 GrB_Info GxB_MatrixTupleIter_free
 (
-	GxB_MatrixTupleIter *iter       // iterator to free
+	GxB_MatrixTupleIter **iter       // iterator to free
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_free (iter)") ;
-	GB_RETURN_IF_NULL(iter) ;
-	GB_FREE(&iter, iter->size) ;
+	GB_RETURN_IF_NULL(*iter) ;
+	GB_FREE(iter, (*iter)->size) ;
+	*iter = NULL;
 	return (GrB_SUCCESS) ;
 }
 

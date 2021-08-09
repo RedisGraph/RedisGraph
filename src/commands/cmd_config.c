@@ -107,6 +107,8 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		RedisModuleString  *key  =  argv[i];
 		RedisModuleString  *val  =  argv[i+1];
 
+		UNUSED(res);
+
 		Config_Option_Field config_field;
 		const char *config_name = RedisModule_StringPtrLen(key, NULL);
 		res = Config_Contains_field(config_name, &config_field);

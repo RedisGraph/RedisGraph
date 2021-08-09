@@ -179,7 +179,7 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 ) {
 	bool diagonal = true;
 	bool transpose = false;
-	return AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, n->label);
+	return AlgebraicExpression_NewOperand(NULL, diagonal, n->alias, n->alias, NULL, n->label);
 }
 
 static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
@@ -187,7 +187,6 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	QGEdge *e,
 	bool transpose
 ) {
-	GrB_Matrix mat;
 	uint reltype_id;
 	AlgebraicExpression *add = NULL;
 	AlgebraicExpression *root = NULL;
@@ -216,15 +215,15 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 		uint reltype_count = array_len(e->reltypeIDs);
 		switch(reltype_count) {
 		case 0: // No relationship types specified; use the full adjacency matrix
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, NULL);
+			root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, NULL);
 			break;
 		case 1: // One relationship type
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, e->reltypes[0]);
+			root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, e->reltypes[0]);
 			break;
 		default: // Multiple edge type: -[:A|:B]->
 			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			for(uint i = 0; i < reltype_count; i++) {
-				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest,
+				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(NULL, false, src, dest,
 																			  edge, e->reltypes[i]);
 				AlgebraicExpression_AddChild(add, operand);
 			}
