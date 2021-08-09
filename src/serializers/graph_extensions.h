@@ -12,7 +12,7 @@
 void Serializer_Graph_SetNode(Graph *g, NodeID id, LabelID *labels, uint label_count, Node *n);
 
 // Set a given edge in the graph.
-void Serializer_Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e);
+void Serializer_Graph_SetEdge(Graph *g, int64_t multi_edge, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e);
 
 // Marks a node ID as deleted.
 void Serializer_Graph_MarkNodeDeleted(Graph *g, NodeID ID);

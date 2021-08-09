@@ -14,7 +14,7 @@
 #include "GB_assign.h"
 
 #define GB_ASSIGN_SCALAR(prefix,type,T,ampersand)                              \
-GrB_Info prefix ## Vector_assign_ ## T    /* w<M>(Rows) = accum (w(Rows),x) */ \
+GrB_Info GB_EVAL3 (prefix, _Vector_assign_, T) /* w<M>(Rows)=accum(w(Rows),x)*/\
 (                                                                              \
     GrB_Vector w,                   /* input/output vector for results      */ \
     const GrB_Vector M,             /* optional mask for w                  */ \
@@ -25,7 +25,7 @@ GrB_Info prefix ## Vector_assign_ ## T    /* w<M>(Rows) = accum (w(Rows),x) */ \
     const GrB_Descriptor desc       /* descriptor for w and mask            */ \
 )                                                                              \
 {                                                                              \
-    GB_WHERE (w, GB_STR(prefix) "Vector_assign_" GB_STR(T)                     \
+    GB_WHERE (w, "GrB_Vector_assign_" GB_STR(T)                                \
         " (w, M, accum, x, Rows, nRows, desc)") ;                              \
     GB_BURBLE_START ("GrB_assign") ;                                           \
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;                                          \
@@ -39,18 +39,18 @@ GrB_Info prefix ## Vector_assign_ ## T    /* w<M>(Rows) = accum (w(Rows),x) */ \
     return (info) ;                                                            \
 }
 
-GB_ASSIGN_SCALAR (GrB_, bool      , BOOL   , &)
-GB_ASSIGN_SCALAR (GrB_, int8_t    , INT8   , &)
-GB_ASSIGN_SCALAR (GrB_, uint8_t   , UINT8  , &)
-GB_ASSIGN_SCALAR (GrB_, int16_t   , INT16  , &)
-GB_ASSIGN_SCALAR (GrB_, uint16_t  , UINT16 , &)
-GB_ASSIGN_SCALAR (GrB_, int32_t   , INT32  , &)
-GB_ASSIGN_SCALAR (GrB_, uint32_t  , UINT32 , &)
-GB_ASSIGN_SCALAR (GrB_, int64_t   , INT64  , &)
-GB_ASSIGN_SCALAR (GrB_, uint64_t  , UINT64 , &)
-GB_ASSIGN_SCALAR (GrB_, float     , FP32   , &)
-GB_ASSIGN_SCALAR (GrB_, double    , FP64   , &)
-GB_ASSIGN_SCALAR (GxB_, GxB_FC32_t, FC32   , &)
-GB_ASSIGN_SCALAR (GxB_, GxB_FC64_t, FC64   , &)
-GB_ASSIGN_SCALAR (GrB_, void *    , UDT    ,  )
+GB_ASSIGN_SCALAR (GrB, bool      , BOOL   , &)
+GB_ASSIGN_SCALAR (GrB, int8_t    , INT8   , &)
+GB_ASSIGN_SCALAR (GrB, uint8_t   , UINT8  , &)
+GB_ASSIGN_SCALAR (GrB, int16_t   , INT16  , &)
+GB_ASSIGN_SCALAR (GrB, uint16_t  , UINT16 , &)
+GB_ASSIGN_SCALAR (GrB, int32_t   , INT32  , &)
+GB_ASSIGN_SCALAR (GrB, uint32_t  , UINT32 , &)
+GB_ASSIGN_SCALAR (GrB, int64_t   , INT64  , &)
+GB_ASSIGN_SCALAR (GrB, uint64_t  , UINT64 , &)
+GB_ASSIGN_SCALAR (GrB, float     , FP32   , &)
+GB_ASSIGN_SCALAR (GrB, double    , FP64   , &)
+GB_ASSIGN_SCALAR (GxB, GxB_FC32_t, FC32   , &)
+GB_ASSIGN_SCALAR (GxB, GxB_FC64_t, FC64   , &)
+GB_ASSIGN_SCALAR (GrB, void *    , UDT    ,  )
 

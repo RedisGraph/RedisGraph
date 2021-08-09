@@ -20,7 +20,7 @@ k = 3000 ;
     I1 = randperm (k) ;
     I0 = uint64 (I1) - 1 ;
 
-ncores = feature ('numcores') ;
+ncores = feature_numcores ;
 
 for dc = [2 0 1e-6 1e-5 1e-4 1e-3 1e-2 0.1 1]
 
@@ -56,14 +56,15 @@ for dc = [2 0 1e-6 1e-5 1e-4 1e-3 1e-2 0.1 1]
         nthreads_set (nthreads, chunk) ;
 
         C2 = GB_mex_assign (C0, [ ], 'plus', scalar, I0, I0) ;
+        tic
         C2 = GB_mex_assign (C0, [ ], 'plus', scalar, I0, I0) ;
-        tg = grbresults ;
+        tg = toc ;
         assert (isequal (C1, C2.matrix)) ;
         if (nthreads == 1)
             t1 = tg ;
         end
 
-        fprintf ('%3d : MATLAB: %10.4f GB: %8.4f ', nthreads, tm, tg) ;
+        fprintf ('%3d : built-in: %10.4f GB: %8.4f ', nthreads, tm, tg) ;
         fprintf (' speedup %10.4f %10.4f\n', tm / tg, t1/tg) ;
 
     end

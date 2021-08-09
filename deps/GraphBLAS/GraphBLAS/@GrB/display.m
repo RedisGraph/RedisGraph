@@ -7,7 +7,7 @@ function display (G) %#ok<DISPLAY>
 % See also GrB/disp.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 name = inputname (1) ;
 if (~isempty (name))

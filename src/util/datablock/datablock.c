@@ -108,6 +108,20 @@ void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k) {
 	}
 }
 
+void DataBlock_Ensure(DataBlock *dataBlock, uint64_t idx) {
+	ASSERT(dataBlock != NULL);
+
+	// datablock[idx] exists
+	if(dataBlock->itemCap > idx) return;
+
+	// make sure datablock cap > 'idx'
+	int64_t additionalItems = (1 + idx) - dataBlock->itemCap;
+	int64_t additionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(additionalItems);
+	_DataBlock_AddBlocks(dataBlock, additionalBlocks);
+
+	ASSERT(dataBlock->itemCap > idx);
+}
+
 void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	ASSERT(dataBlock != NULL);
 
@@ -122,16 +136,15 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 }
 
 void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
-	// Make sure we've got room for items.
+	// make sure we've got room for items
 	if(dataBlock->itemCount >= dataBlock->itemCap) {
-		// Allocate twice as much items then we currently hold.
-		uint newCap = dataBlock->itemCount * 2;
-		uint requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
-		_DataBlock_AddBlocks(dataBlock, requiredAdditionalBlocks);
+		// allocate an additional block
+		_DataBlock_AddBlocks(dataBlock, 1);
 	}
+	ASSERT(dataBlock->itemCap > dataBlock->itemCount);
 
-	// Get index into which to store item,
-	// prefer reusing free indicies.
+	// get index into which to store item,
+	// prefer reusing free indicies
 	uint pos = dataBlock->itemCount;
 	if(array_len(dataBlock->deletedIdx) > 0) {
 		pos = array_pop(dataBlock->deletedIdx);
@@ -170,7 +183,7 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	 * in a thread safe matter. */
 	pthread_mutex_lock(&dataBlock->mutex);
 	{
-		dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
+		array_append(dataBlock->deletedIdx, idx);
 		dataBlock->itemCount--;
 	}
 	pthread_mutex_unlock(&dataBlock->mutex);

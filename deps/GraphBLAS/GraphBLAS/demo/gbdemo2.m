@@ -1,5 +1,5 @@
 function gbdemo2 (bnz)
-%GBDEMO2 Extreme performance differences: GraphBLAS vs MATLAB.
+%GBDEMO2 Extreme performance differences: GraphBLAS vs built-in methods.
 %
 % Usage:
 %
@@ -36,12 +36,11 @@ function gbdemo2 (bnz)
 % See also GrB.assign, subsasgn.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % reset to the default number of threads
-maxNumCompThreads ('automatic') ;
+ncores = demo_nproc ;
 GrB.clear ;
-
 nthreads = GrB.threads ;
 help gbdemo2
 fprintf ('\n# of threads used in GraphBLAS: %d\n\n', nthreads) ;
@@ -85,11 +84,11 @@ for n = 1000:1000:6000
     % do the same assignment in pure MATLAB
     tic
     C (I,J) = A ;
-    matlab_time = toc ;
+    builtin_time = toc ;
 
-    fprintf ('    MATLAB time:    %g sec\n', matlab_time) ;
+    fprintf ('    MATLAB time:    %g sec\n', builtin_time) ;
     fprintf ('    Speedup of GraphBLAS over MATLAB: %g\n', ...
-        matlab_time / gb_time) ;
+        builtin_time / gb_time) ;
 
     % check the result
     tic

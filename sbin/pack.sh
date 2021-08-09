@@ -16,18 +16,19 @@ if [[ $1 == --help || $1 == help ]]; then
 		[ARGVARS...] pack.sh [--help|help]
 		
 		Argument variables:
-		VERBOSE=1         Print commands
-		IGNERR=1          Do not abort on error
+		VERBOSE=1           Print commands
+		IGNERR=1            Do not abort on error
 
-		RAMP=1            Build RAMP file
-		DEPS=1            Build dependencies file
+		RAMP=1              Build RAMP file
+		DEPS=1              Build dependencies file
 
-		VARIANT=name      Build variant (empty for standard packages)
-		BRANCH=name       Branch name for snapshot packages
-		GITSHA=1          Append Git SHA to shapshot package names
+		PACKAGE_NAME=name   Package stem name
+		VARIANT=name        Build variant (empty for standard packages)
+		BRANCH=name         Branch name for snapshot packages
+		GITSHA=1            Append Git SHA to shapshot package names
 
-		BINDIR=dir        Directory in which packages are created
-		INSTALL_DIR=dir   Directory in which artifacts are found
+		BINDIR=dir          Directory in which packages are created
+		INSTALL_DIR=dir     Directory in which artifacts are found
 
 	END
 	exit 0
@@ -51,20 +52,18 @@ BINDIR=$(cd $BINDIR && pwd)
 . $READIES/bin/enable-utf8
 
 export ARCH=$($READIES/bin/platform --arch)
-export OS=$($READIES/bin/platform --os)
-export OSNICK=$($READIES/bin/platform --osnick)
-
 [[ $ARCH == x64 ]] && ARCH=x86_64
+
+export OS=$($READIES/bin/platform --os)
 [[ $OS == linux ]] && OS=Linux
-if [[ $OSNICK == bionic ]]; then
-	OSNICK=ubuntu18.04
-elif [[ $OSNICK == xenial ]]; then
-	OSNICK=ubuntu16.04
-elif [[ $OSNICK == trusty ]]; then
-	OSNICK=ubuntu14.04
-elif [[ $OSNICK == centos7 ]]; then
-	OSNICK=rhel7
-fi
+
+export OSNICK=$($READIES/bin/platform --osnick)
+[[ $OSNICK == trusty ]]  && OSNICK=ubuntu14.04
+[[ $OSNICK == xenial ]]  && OSNICK=ubuntu16.04
+[[ $OSNICK == bionic ]]  && OSNICK=ubuntu18.04
+[[ $OSNICK == focal ]]   && OSNICK=ubuntu20.04
+[[ $OSNICK == centos7 ]] && OSNICK=rhel7
+[[ $OSNICK == centos8 ]] && OSNICK=rhel8
 
 export PRODUCT=redisgraph
 export PRODUCT_LIB=$PRODUCT.so
@@ -82,7 +81,7 @@ pack_ramp() {
 	local platform="$OS-$OSNICK-$ARCH"
 	local stem=${PACKAGE_NAME}.${platform}
 
-	local verspec=${SEMVER}${VARIANT}
+	local verspec=${SEMVER}${_VARIANT}
 	
 	local fq_package=$stem.${verspec}.zip
 
@@ -94,18 +93,17 @@ pack_ramp() {
 	local xtx_vars=""
 	local dep_fname=${PACKAGE_NAME}.${platform}.${verspec}.tgz
 
-	if [[ -z $VARIANT ]]; then
-		local rampfile=ramp.yml
-	else
-		local rampfile=ramp$VARIANT.yml
+	if [[ -z $RAMP_YAML ]]; then
+		RAMP_YAML=$ROOT/ramp.yml
 	fi
 
 	python3 $READIES/bin/xtx \
 		$xtx_vars \
 		-e NUMVER -e SEMVER \
-		$ROOT/$rampfile > /tmp/ramp.yml
+		$RAMP_YAML > /tmp/ramp.yml
 	rm -f /tmp/ramp.fname $packfile
-	$RAMP_PROG pack -m /tmp/ramp.yml --packname-file /tmp/ramp.fname --verbose --debug -o $packfile $product_so >/tmp/ramp.err 2>&1 || true
+	$RAMP_PROG pack -m /tmp/ramp.yml --packname-file /tmp/ramp.fname --verbose --debug \
+		-o $packfile $product_so >/tmp/ramp.err 2>&1 || true
 	if [[ ! -e $packfile ]]; then
 		eprint "Error generating RAMP file:"
 		>&2 cat /tmp/ramp.err
@@ -115,7 +113,7 @@ pack_ramp() {
 	mkdir -p $BINDIR/snapshots
 	cd $BINDIR/snapshots
 	if [[ ! -z $BRANCH ]]; then
-		local snap_package=$stem.${BRANCH}${VARIANT}.zip
+		local snap_package=$stem.${BRANCH}${_VARIANT}.zip
 		ln -sf ../$fq_package $snap_package
 	fi
 
@@ -128,7 +126,7 @@ pack_deps() {
 	local dep="$1"
 
 	local platform="$OS-$OSNICK-$ARCH"
-	local verspec=${SEMVER}${VARIANT}
+	local verspec=${SEMVER}${_VARIANT}
 	local stem=${PACKAGE_NAME}-${dep}.${platform}
 
 	local artdir=$BINDIR
@@ -156,7 +154,7 @@ pack_deps() {
 	mkdir -p $BINDIR/snapshots
 	cd $BINDIR/snapshots
 	if [[ ! -z $BRANCH ]]; then
-		local snap_dep=$stem.${BRANCH}${VARIANT}.tgz
+		local snap_dep=$stem.${BRANCH}${_VARIANT}.tgz
 		ln -sf ../$fq_dep $snap_dep
 		ln -sf ../$fq_dep.sha256 $snap_dep.sha256
 	fi
@@ -180,8 +178,9 @@ prepare_symbols_dep() {
 export NUMVER=$(NUMERIC=1 $ROOT/sbin/getver)
 export SEMVER=$($ROOT/sbin/getver)
 
-if [[ ! -z $VARIANT ]]; then
-	VARIANT=-${VARIANT}
+_VARIANT=
+if [[ -n $VARIANT ]]; then
+	_VARIANT=-${VARIANT}
 fi
 
 [[ -z $BRANCH ]] && BRANCH=${CIRCLE_BRANCH:-`git rev-parse --abbrev-ref HEAD`}
@@ -209,7 +208,7 @@ if [[ $RAMP == 1 ]]; then
 		exit 1
 	fi
 
-	echo "Building RAMP $VARIANT files ..."
+	echo "Building RAMP files ..."
 	pack_ramp
 	echo "Done."
 fi

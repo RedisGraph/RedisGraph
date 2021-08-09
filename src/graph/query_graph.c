@@ -66,15 +66,15 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 	for(uint i = 0; i < nreltypes; i ++) {
 		const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity,
 														  i));
-		edge->reltypes = array_append(edge->reltypes, reltype);
+		array_append(edge->reltypes, reltype);
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		if(!s) {
 			// Unknown relationship
-			edge->reltypeIDs = array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+			array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
 			qg->unknown_reltype_ids = true;
 			continue;
 		}
-		edge->reltypeIDs = array_append(edge->reltypeIDs, s->id);
+		array_append(edge->reltypeIDs, s->id);
 	}
 
 	// Incase of a variable length edge, set edge min/max hops.
@@ -196,14 +196,14 @@ QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
 }
 
 void QueryGraph_AddNode(QueryGraph *qg, QGNode *n) {
-	qg->nodes = array_append(qg->nodes, n);
+	array_append(qg->nodes, n);
 }
 
 void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *e) {
 	QGNode_ConnectNode(src, dest, e);
 	e->src = src;
 	e->dest = dest;
-	qg->edges = array_append(qg->edges, e);
+	array_append(qg->edges, e);
 }
 
 void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
@@ -490,7 +490,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 
 		// Get a random node and add it to the frontier.
 		QGNode *s = g->nodes[0];
-		q = array_append(q, s);
+		array_append(q, s);
 
 		// As long as there are nodes in the frontier.
 		while(array_len(q) > 0) {
@@ -506,12 +506,12 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 			for(int i = 0; i < array_len(n->outgoing_edges); i++) {
 				QGEdge *e = n->outgoing_edges[i];
 				seen = raxFind(visited, (unsigned char *)e->dest->alias, strlen(e->dest->alias));
-				if(seen == raxNotFound) q = array_append(q, e->dest);
+				if(seen == raxNotFound) array_append(q, e->dest);
 			}
 			for(int i = 0; i < array_len(n->incoming_edges); i++) {
 				QGEdge *e = n->incoming_edges[i];
 				seen = raxFind(visited, (unsigned char *)e->src->alias, strlen(e->src->alias));
-				if(seen == raxNotFound) q = array_append(q, e->src);
+				if(seen == raxNotFound) array_append(q, e->src);
 			}
 		}
 
@@ -539,7 +539,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 			}
 		}
 
-		connected_components = array_append(connected_components, cc);
+		array_append(connected_components, cc);
 
 		// Clear visited dict for next iteration.
 		raxFree(visited);

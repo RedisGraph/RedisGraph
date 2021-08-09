@@ -23,16 +23,16 @@
         // allocate workspace for each task
         //----------------------------------------------------------------------
 
-        GH_slice = GB_MALLOC (2*ntasks, int64_t) ;
+        GB_WERK_PUSH (GH_slice, 2*ntasks, int64_t) ;
         if (GH_slice == NULL)
-        {
+        { 
             // out of memory
-            GB_FREE_WORK ;
+            GB_FREE_ALL ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 
-        int64_t *GB_RESTRICT G_slice = GH_slice ;
-        int64_t *GB_RESTRICT H_slice = GH_slice + ntasks ;
+        int64_t *restrict G_slice = GH_slice ;
+        int64_t *restrict H_slice = GH_slice + ntasks ;
 
         int64_t gwork = 0 ;
         int64_t hwork = 0 ;
@@ -46,7 +46,7 @@
             G_slice [tid] = gwork ;
             H_slice [tid] = hwork ;
             if (jpanel > 1)
-            {
+            { 
                 // no need to allocate workspace for Gb and Gx if jpanel == 1
                 gwork += jpanel ;
             }
@@ -60,13 +60,13 @@
         size_t wfspace = gfspace + hwork * cvlen ;
         size_t wbxspace = gwork * bvlenx ;
         size_t wcxspace = hwork * cvlenx ;
-        Wf = GB_MALLOC (wfspace, int8_t) ;
-        Wbx = GB_MALLOC (wbxspace, GB_void) ;
-        Wcx = GB_MALLOC (wcxspace, GB_void) ;
+        Wf  = GB_MALLOC_WERK (wfspace, int8_t, &Wf_size) ;
+        Wbx = GB_MALLOC_WERK (wbxspace, GB_void, &Wbx_size) ;
+        Wcx = GB_MALLOC_WERK (wcxspace, GB_void, &Wcx_size) ;
         if (Wf == NULL || Wcx == NULL || Wbx == NULL)
-        {
+        { 
             // out of memory
-            GB_FREE_WORK ;
+            GB_FREE_ALL ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 
@@ -94,20 +94,20 @@
             //------------------------------------------------------------------
 
             // Gb and Gx workspace to load the panel of B
-            int8_t   *GB_RESTRICT Gb = Wf  + G_slice [tid] * bvlenb ;
-            GB_BTYPE *GB_RESTRICT Gx = (GB_BTYPE *)
-                (Wbx + G_slice [tid] * bvlenx) ;
-
             // Hf and Hx workspace to compute the panel of C
-            int8_t   *GB_RESTRICT Hf = Wf  + (H_slice [tid] * cvlen) + gfspace ;
-            GB_CTYPE *GB_RESTRICT Hx = (GB_CTYPE *)
-                (Wcx +  H_slice [tid] * cvlenx) ;
+            int8_t *restrict Gb = Wf + G_slice [tid] * bvlenb ;
+            int8_t *restrict Hf = Wf + (H_slice [tid] * cvlen) + gfspace ;
+
+            #if ( !GB_IS_ANY_PAIR_SEMIRING )
+            GB_BTYPE *restrict Gx = (GB_BTYPE *) (Wbx + G_slice [tid] * bvlenx);
+            GB_CTYPE *restrict Hx = (GB_CTYPE *) (Wcx + H_slice [tid] * cvlenx);
+            #endif
             #if GB_IS_PLUS_FC32_MONOID
-            float  *GB_RESTRICT Hx_real = (float *) Hx ;
-            float  *GB_RESTRICT Hx_imag = Hx_real + 1 ;
+            float  *restrict Hx_real = (float *) Hx ;
+            float  *restrict Hx_imag = Hx_real + 1 ;
             #elif GB_IS_PLUS_FC64_MONOID
-            double *GB_RESTRICT Hx_real = (double *) Hx ;
-            double *GB_RESTRICT Hx_imag = Hx_real + 1 ;
+            double *restrict Hx_real = (double *) Hx ;
+            double *restrict Hx_imag = Hx_real + 1 ;
             #endif
 
             //------------------------------------------------------------------
@@ -137,7 +137,7 @@
                 #if GB_B_IS_BITMAP
                 {
                     if (np == 1)
-                    {
+                    { 
                         // no need to load a single vector of B
                         Gb = (int8_t *) (Bb + (j1 * bvlen)) ;
                     }
@@ -156,12 +156,13 @@
                 }
                 #endif
 
+                #if ( !GB_IS_ANY_PAIR_SEMIRING )
                 if (!B_is_pattern)
                 {
                     if (np == 1)
-                    {
+                    { 
                         // no need to load a single vector of B
-                        GB_void *GB_RESTRICT Bx = B->x ;
+                        GB_void *restrict Bx = (GB_void *) (B->x) ;
                         Gx = (GB_BTYPE *) (Bx + (j1 * bvlen) * GB_BSIZE) ;
                     }
                     else
@@ -175,11 +176,12 @@
                                 // G(i,jj) = B(i,j), and change storage order
                                 int64_t pG = i*np + jj ;
                                 int64_t pB = i + j * bvlen ;
-                                GB_LOADB (Gx, pG, Bx, pB) ;
+                                GB_LOADB (Gx, pG, Bx, pB, B_iso) ;
                             }
                         }
                     }
                 }
+                #endif
 
                 //--------------------------------------------------------------
                 // H = A*G for one panel
@@ -205,7 +207,7 @@
                         // t = A(i,k) * G (k,jj)
                         GB_CIJ_DECLARE (t) ;
                         #define GB_MULT_A_ik_G_kjj(jj)                      \
-                            GB_GETB (gkj, Gx, pG+jj) ;                      \
+                            GB_GETB (gkj, Gx, pG+jj, false) ;               \
                             GB_MULT (t, aik, gkj, i, k, j1 + jj) ;
                     #endif
 
@@ -233,7 +235,7 @@
                     #undef  GB_LOAD_A_ij
                     #define GB_LOAD_A_ij                                    \
                         int64_t i = Ai [pA] ;                               \
-                        GB_GETA (aik, Ax, pA) ;                             \
+                        GB_GETA (aik, Ax, pA, A_iso) ;                      \
                         int64_t pH = i * np ;
 
                     //----------------------------------------------------------
@@ -314,7 +316,7 @@
                     //----------------------------------------------------------
 
                     int64_t j = j1 + jj ;
-                    int64_t pC_start = j * avlen ;  // get pointer to C(:,j)
+                    int64_t pC_start = j * cvlen ;  // get pointer to C(:,j)
 
                     for (int64_t i = 0 ; i < cvlen ; i++)
                     {
@@ -351,11 +353,7 @@
                         if (cb == 0)
                         { 
                             // C(i,j) = H(i,jj)
-                            #if GB_IS_ANY_PAIR_SEMIRING
-                            Cx [pC] = GB_CTYPE_CAST (1, 0) ;    // C(i,j) = 1
-                            #else
                             GB_CIJ_GATHER (pC, pH) ;
-                            #endif
                             Cb [pC] = keep ;
                             task_cnvals++ ;
                         }
@@ -405,19 +403,21 @@
             int64_t kfirst = A_slice [fine_tid] ;
             int64_t klast = A_slice [fine_tid + 1] ;
             int64_t pB_start = j * bvlen ;      // pointer to B(:,j)
-            int64_t pC_start = j * avlen ;      // pointer to C(:,j)
+            int64_t pC_start = j * cvlen ;      // pointer to C(:,j)
             GB_GET_T_FOR_SECONDJ ;              // t = j or j+1 for SECONDJ*
             int64_t task_cnvals = 0 ;
 
             // for Hx Gustavason workspace: use C(:,j) in-place:
-            GB_CTYPE *GB_RESTRICT Hx = (GB_CTYPE *)
+            #if ( !GB_IS_ANY_PAIR_SEMIRING )
+            GB_CTYPE *restrict Hx = (GB_CTYPE *)
                 (((GB_void *) Cx) + (pC_start * GB_CSIZE)) ;
+            #endif
             #if GB_IS_PLUS_FC32_MONOID || GB_IS_ANY_FC32_MONOID
-            float  *GB_RESTRICT Hx_real = (float *) Hx ;
-            float  *GB_RESTRICT Hx_imag = Hx_real + 1 ;
+            float  *restrict Hx_real = (float *) Hx ;
+            float  *restrict Hx_imag = Hx_real + 1 ;
             #elif GB_IS_PLUS_FC64_MONOID || GB_IS_ANY_FC64_MONOID
-            double *GB_RESTRICT Hx_real = (double *) Hx ;
-            double *GB_RESTRICT Hx_imag = Hx_real + 1 ;
+            double *restrict Hx_real = (double *) Hx ;
+            double *restrict Hx_imag = Hx_real + 1 ;
             #endif
 
             //------------------------------------------------------------------
@@ -496,11 +496,7 @@
                         { 
                             // C(i,j) is a new entry
                             GB_MULT_A_ik_B_kj ;             // t = A(i,k)*B(k,j)
-                            #if GB_IS_ANY_PAIR_SEMIRING
-                            GB_ATOMIC_SET_HX_ONE (i) ;      // C(i,j) = 1
-                            #else
                             GB_ATOMIC_WRITE_HX (i, t) ;     // C(i,j) = t
-                            #endif
                             task_cnvals++ ;
                             cb = keep ;                     // keep the entry
                         }
@@ -570,11 +566,7 @@
                         { 
                             // C(i,j) is a new entry
                             GB_MULT_A_ik_B_kj ;             // t = A(i,k)*B(k,j)
-                            #if GB_IS_ANY_PAIR_SEMIRING
-                            GB_ATOMIC_SET_HX_ONE (i) ;      // C(i,j) = 1
-                            #else
                             GB_ATOMIC_WRITE_HX (i, t) ;     // C(i,j) = t
-                            #endif
                             task_cnvals++ ;
                         }
                         else // cb == 1
@@ -614,13 +606,13 @@
         //----------------------------------------------------------------------
 
         size_t workspace = cvlen * ntasks ;
-        Wf = GB_CALLOC (workspace, int8_t) ;
         size_t cxsize = (GB_IS_ANY_PAIR_SEMIRING) ? 0 : GB_CSIZE ;
-        Wcx = GB_MALLOC (workspace * cxsize, GB_void) ;
+        Wf  = GB_MALLOC_WERK (workspace, int8_t, &Wf_size) ;
+        Wcx = GB_MALLOC_WERK (workspace * cxsize, GB_void, &Wcx_size) ;
         if (Wf == NULL || Wcx == NULL)
         { 
             // out of memory
-            GB_FREE_WORK ;
+            GB_FREE_ALL ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 
@@ -646,22 +638,29 @@
             int64_t kfirst = A_slice [fine_tid] ;
             int64_t klast = A_slice [fine_tid + 1] ;
             int64_t pB_start = j * bvlen ;      // pointer to B(:,j)
-            int64_t pC_start = j * avlen ;      // pointer to C(:,j), for bitmap
-            int64_t pW_start = tid * avlen ;    // pointer to W(:,tid)
+            int64_t pC_start = j * cvlen ;      // pointer to C(:,j), for bitmap
+            int64_t pW_start = tid * cvlen ;    // pointer to W(:,tid)
             GB_GET_T_FOR_SECONDJ ;              // t = j or j+1 for SECONDJ*
             int64_t task_cnvals = 0 ;
 
             // for Hf and Hx Gustavason workspace: use W(:,tid):
-            int8_t   *GB_RESTRICT Hf = Wf + pW_start ;
-            GB_CTYPE *GB_RESTRICT Hx = (GB_CTYPE *) 
-                (Wcx + (pW_start * cxsize)) ;
-            #if GB_IS_PLUS_FC32_MONOID
-            float  *GB_RESTRICT Hx_real = (float *) Hx ;
-            float  *GB_RESTRICT Hx_imag = Hx_real + 1 ;
-            #elif GB_IS_PLUS_FC64_MONOID
-            double *GB_RESTRICT Hx_real = (double *) Hx ;
-            double *GB_RESTRICT Hx_imag = Hx_real + 1 ;
+            int8_t   *restrict Hf = Wf + pW_start ;
+            #if ( !GB_IS_ANY_PAIR_SEMIRING )
+            GB_CTYPE *restrict Hx = (GB_CTYPE *) (Wcx + (pW_start * cxsize)) ;
             #endif
+            #if GB_IS_PLUS_FC32_MONOID
+            float  *restrict Hx_real = (float *) Hx ;
+            float  *restrict Hx_imag = Hx_real + 1 ;
+            #elif GB_IS_PLUS_FC64_MONOID
+            double *restrict Hx_real = (double *) Hx ;
+            double *restrict Hx_imag = Hx_real + 1 ;
+            #endif
+
+            //------------------------------------------------------------------
+            // clear Hf
+            //------------------------------------------------------------------
+
+            memset (Hf, 0, cvlen) ;
 
             //------------------------------------------------------------------
             // W<#M> = A(:,k1:k2) * B(k1:k2,j)
@@ -718,7 +717,6 @@
 
                     #if GB_IS_ANY_PAIR_SEMIRING
                     { 
-                        // Hx is not used; Cx [...] = 1 is done below
                         Hf [i] = 1 ;
                     }
                     #else
@@ -772,13 +770,15 @@
             int64_t task_cnvals = 0 ;
 
             // Hx = (typecasted) Wcx workspace, use Wf as-is
-            GB_CTYPE *GB_RESTRICT Hx = ((GB_CTYPE *) Wcx) ;
+            #if ( !GB_IS_ANY_PAIR_SEMIRING )
+            GB_CTYPE *restrict Hx = ((GB_CTYPE *) Wcx) ;
+            #endif
             #if GB_IS_PLUS_FC32_MONOID
-            float  *GB_RESTRICT Hx_real = (float *) Hx ;
-            float  *GB_RESTRICT Hx_imag = Hx_real + 1 ;
+            float  *restrict Hx_real = (float *) Hx ;
+            float  *restrict Hx_imag = Hx_real + 1 ;
             #elif GB_IS_PLUS_FC64_MONOID
-            double *GB_RESTRICT Hx_real = (double *) Hx ;
-            double *GB_RESTRICT Hx_imag = Hx_real + 1 ;
+            double *restrict Hx_real = (double *) Hx ;
+            double *restrict Hx_imag = Hx_real + 1 ;
             #endif
 
             //------------------------------------------------------------------
@@ -824,11 +824,7 @@
                     if (cb == 0)
                     { 
                         // C(i,j) = W(i,w)
-                        #if GB_IS_ANY_PAIR_SEMIRING
-                        Cx [pC] = GB_CTYPE_CAST (1, 0) ;        // C(i,j) = 1
-                        #else
                         GB_CIJ_GATHER (pC, pW) ;
-                        #endif
                         Cb [pC] = keep ;
                         task_cnvals++ ;
                     }

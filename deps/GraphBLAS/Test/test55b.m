@@ -1,13 +1,8 @@
 function test55b
-%TEST55B test GrB_assign, illustrate duplicate indices, MATLAB vs GraphBLAS
+%TEST55B test GrB_assign, illustrate duplicate indices
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
-
-% MATLAB and GraphBLAS differ on how repeated indices are handled
-%
-% MATLAB: last value, no accumulation
-% GraphBLAS: not defined, SuiteSparse:GraphBLAS accumulates
 
 A = magic (5)
 

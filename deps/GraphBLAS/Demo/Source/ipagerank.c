@@ -13,7 +13,7 @@
 // node number P[0].page in the graph.  P[1] is the next page, and so on, to
 // the lowest-ranked page P[n-1].page with rank P[n-1].pagerank.
 
-// See ipagerank.m for the equivalent computation in MATLAB (except the random
+// See ipagerank.m for the equivalent computation (except the random
 // number generator differs).
 
 // This method uses no floating-point arithmetic at all.
@@ -68,7 +68,7 @@ void idiv (uint64_t *z, const uint64_t *x)
 }
 
 //------------------------------------------------------------------------------
-// comparison function for qsort
+// comparator for qsort
 //------------------------------------------------------------------------------
 
 int icompar (const void *x, const void *y)
@@ -124,7 +124,7 @@ GrB_Info ipagerank          // GrB_SUCCESS or error condition
     // ic = 0.85 * ZSCALE ;        // scaled integer version of c
     ic = 912680550 ;
 
-    // Note the random number generate used here differs from MATLAB, so this
+    // Note the random number generate used here differs, so this
     // function will not compute exactly the same thing as ipagerank.m.
 
     // since rand() is in the range 0 to RAND_MAX, the sum of all unscaled

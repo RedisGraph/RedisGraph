@@ -48,20 +48,20 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 	uint yield_count = array_len(yield);
 	for(uint i = 0; i < yield_count; i++) {
 		if(strcasecmp("type", yield[i]) == 0) {
-			pdata->out = array_append(pdata->out, SI_ConstStringVal("type"));
-			pdata->out = array_append(pdata->out, SI_NullVal());
+			array_append(pdata->out, SI_ConstStringVal("type"));
+			array_append(pdata->out, SI_NullVal());
 			pdata->yield_type = pdata->out + (i * 2 + 1);
 			continue;
 		}
 		if(strcasecmp("label", yield[i]) == 0) {
-			pdata->out = array_append(pdata->out, SI_ConstStringVal("label"));
-			pdata->out = array_append(pdata->out, SI_NullVal());
+			array_append(pdata->out, SI_ConstStringVal("label"));
+			array_append(pdata->out, SI_NullVal());
 			pdata->yield_label = pdata->out + (i * 2 + 1);
 			continue;
 		}
 		if(strcasecmp("properties", yield[i]) == 0) {
-			pdata->out = array_append(pdata->out, SI_ConstStringVal("properties"));
-			pdata->out = array_append(pdata->out, SI_NullVal());
+			array_append(pdata->out, SI_ConstStringVal("properties"));
+			array_append(pdata->out, SI_NullVal());
 			pdata->yield_properties = pdata->out + (i * 2 + 1);
 			continue;
 		}
@@ -155,19 +155,19 @@ ProcedureCtx *Proc_IndexesCtx() {
 	output  = (ProcedureOutput) {
 		.name = "type", .type = T_STRING
 	};
-	outputs = array_append(outputs, output);
+	array_append(outputs, output);
 
 	// indexed label
 	output  = (ProcedureOutput) {
 		.name = "label", .type = T_STRING
 	};
-	outputs = array_append(outputs, output);
+	array_append(outputs, output);
 
 	// indexed properties
 	output  = (ProcedureOutput) {
 		.name = "properties", .type = T_ARRAY
 	};
-	outputs = array_append(outputs, output);
+	array_append(outputs, output);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.indexes",
 								   0,

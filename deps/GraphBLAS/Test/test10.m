@@ -90,7 +90,7 @@ for k1 = 1:length(types)
         for k3 = 1:length(types)
             op.optype = types {k3} ;
 
-            if (ispc && contains (op.opname, 'asin') && contains (op.optype, 'complex'))
+            if (ispc && test_contains (op.opname, 'asin') && test_contains (op.optype, 'complex'))
                 % casin and casinf are broken on Windows
                 fprintf (' (skipped)') ;
                 continue ;
@@ -121,7 +121,7 @@ for k1 = 1:length(types)
                     % no change
             end
 
-            if (~contains (optype, 'complex'))
+            if (~test_contains (optype, 'complex'))
 
                 % for real operators, avoiding complex results
                 switch (opname)
@@ -152,9 +152,9 @@ for k1 = 1:length(types)
             % op
 
             tol = 0 ;
-            if (contains (optype, 'single') || contains (atype, 'single'))
+            if (test_contains (optype, 'single') || test_contains (atype, 'single'))
                 tol = 1e-5 ;
-            elseif (contains (optype, 'double') || contains (atype, 'double'))
+            elseif (test_contains (optype, 'double') || test_contains (atype, 'double'))
                 tol = 1e-12 ;
             end
 

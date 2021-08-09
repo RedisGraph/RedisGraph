@@ -64,13 +64,13 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		if(map) converted_properties = ConvertPropertyMap(r, map, false);
 
 		// save node for later insertion
-		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);
+		array_append(op->pending.created_nodes, node_ref);
 
 		// save properties to insert with node
-		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
+		array_append(op->pending.node_properties, converted_properties);
 
 		// save labels to assigned to node
-		op->pending.node_labels = array_append(op->pending.node_labels, n->labelsId);
+		array_append(op->pending.node_labels, n->labelsId);
 	}
 }
 
@@ -102,10 +102,10 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		if(map) converted_properties = ConvertPropertyMap(r, map, false);
 
 		// save edge for later insertion
-		op->pending.created_edges = array_append(op->pending.created_edges, edge_ref);
+		array_append(op->pending.created_edges, edge_ref);
 
 		// save properties to insert with node
-		op->pending.edge_properties = array_append(op->pending.edge_properties, converted_properties);
+		array_append(op->pending.edge_properties, converted_properties);
 	}
 }
 
@@ -135,7 +135,7 @@ static Record CreateConsume(OpBase *opBase) {
 		_CreateEdges(op, r);
 
 		// Save record for later use.
-		op->records = array_append(op->records, r);
+		array_append(op->records, r);
 	} else {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
@@ -149,7 +149,7 @@ static Record CreateConsume(OpBase *opBase) {
 			_CreateEdges(op, r);
 
 			// save record for later use
-			op->records = array_append(op->records, r);
+			array_append(op->records, r);
 		}
 	}
 

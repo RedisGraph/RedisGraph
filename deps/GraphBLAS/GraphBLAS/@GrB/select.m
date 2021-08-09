@@ -17,20 +17,20 @@ function C = select (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %   C = GrB.select (Cin, M, accum, selectop, A, b)
 %   C = GrB.select (Cin, M, accum, selectop, A, b, desc)
 %
-% GrB.select selects a subset of entries from the matrix A, based on
-% their value or position.  For example, L = GrB.select ('tril', A, 0)
-% returns the lower triangular part of the GraphBLAS or MATLAB matrix A,
-% just like L = tril (A) for a MATLAB matrix A.  The select operators can
-% also depend on the values of the entries.  The b parameter is an
-% input scalar, used in many of the select operators.  For example,
-% L = GrB.select ('tril', A, -1) is the same as L = tril (A, -1), which
+% GrB.select selects a subset of entries from the matrix A, based on their
+% value or position.  For example, L = GrB.select ('tril', A, 0) returns
+% the lower triangular part of the GraphBLAS or built-in matrix A, just
+% like L = tril (A) for a built-in matrix A.  The select operators can
+% also depend on the values of the entries.  The b parameter is an input
+% scalar, used in many of the select operators.  For example, L =
+% GrB.select ('tril', A, -1) is the same as L = tril (A, -1), which
 % returns the strictly lower triangular part of A.  The b scalar is
 % required for 'tril', 'triu', 'diag', 'offdiag' and the 2-input
 % operators.  It must not appear when using the '*0' operators.
 %
 % The selectop is a string defining the operator:
 %
-%   operator        MATLAB equivalent           alternative strings
+%   operator        built-in equivalent         alternative strings
 %   --------        -----------------           -------------------
 %   'tril'          C = tril (A,b)
 %   'triu'          C = triu (A,b)
@@ -79,7 +79,7 @@ function C = select (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % See also GrB/tril, GrB/triu, GrB/diag.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

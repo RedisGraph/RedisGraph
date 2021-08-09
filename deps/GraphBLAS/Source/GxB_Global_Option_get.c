@@ -119,6 +119,24 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
             break ;
 
         //----------------------------------------------------------------------
+        // memory pool control
+        //----------------------------------------------------------------------
+
+        case GxB_MEMORY_POOL : 
+
+            {
+                va_start (ap, field) ;
+                int64_t *free_pool_limit = va_arg (ap, int64_t *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (free_pool_limit) ;
+                for (int k = 0 ; k < 64 ; k++)
+                { 
+                    free_pool_limit [k] = GB_Global_free_pool_limit_get (k) ;
+                }
+            }
+            break ;
+
+        //----------------------------------------------------------------------
         // SuiteSparse:GraphBLAS version, date, license, etc
         //----------------------------------------------------------------------
 
@@ -277,6 +295,39 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
             }
             break ;
 
+        case GxB_PRINTF : 
+
+            {
+                va_start (ap, field) ;
+                void **printf_func = va_arg (ap, void **) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (printf_func) ;
+                (*printf_func) = (void *) GB_Global_printf_get ( ) ;
+            }
+            break ;
+
+        case GxB_FLUSH : 
+
+            {
+                va_start (ap, field) ;
+                void **flush_func = va_arg (ap, void **) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (flush_func) ;
+                (*flush_func) = (void *) GB_Global_flush_get ( ) ;
+            }
+            break ;
+
+        case GxB_PRINT_1BASED : 
+
+            {
+                va_start (ap, field) ;
+                bool *onebased = va_arg (ap, bool *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (onebased) ;
+                (*onebased) = GB_Global_print_one_based_get ( ) ;
+            }
+            break ;
+
         //----------------------------------------------------------------------
         // CUDA (DRAFT: in progress, do not use)
         //----------------------------------------------------------------------
@@ -302,8 +353,6 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
                 (*gpu_chunk) = GB_Global_gpu_chunk_get ( ) ;
             }
             break ;
-
-        // #include "GxB_Global_Option_get_mkl_template.c"
 
         default : 
 

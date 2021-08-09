@@ -17,13 +17,36 @@ static threadpool _bulk_thpool = NULL;     // bulk loader workers
 static threadpool _readers_thpool = NULL;  // readers
 static threadpool _writers_thpool = NULL;  // writers
 
+int ThreadPools_Init
+(
+) {
+	bool      config_read     =  true;
+	int       reader_count    =  1;
+	int       bulk_count      =  1;
+	int       writer_count    =  1;
+	uint64_t  max_queue_size  =  UINT64_MAX;
+
+	UNUSED(config_read);
+
+	// get thread pool size and thread pool internal queue length from config
+	config_read = Config_Option_get(Config_THREAD_POOL_SIZE, &reader_count);
+	ASSERT(config_read == true);
+
+	config_read = Config_Option_get(Config_MAX_QUEUED_QUERIES, &max_queue_size);
+	ASSERT(config_read == true);
+
+	return ThreadPools_CreatePools(reader_count, writer_count, bulk_count,
+			max_queue_size);
+}
+
 // set up thread pools  (readers and writers)
 // returns 1 if thread pools initialized, 0 otherwise
 int ThreadPools_CreatePools
 (
 	uint reader_count,
 	uint writer_count,
-	uint bulk_count
+	uint bulk_count,
+	uint64_t max_pending_work
 ) {
 	ASSERT(_readers_thpool == NULL);
 	ASSERT(_writers_thpool == NULL);
@@ -36,6 +59,8 @@ int ThreadPools_CreatePools
 
 	_bulk_thpool = thpool_init(bulk_count, "bulk_loader");
 	if(_bulk_thpool == NULL) return 0;
+
+	ThreadPools_SetMaxPendingWork(max_pending_work);
 
 	return 1;
 }
@@ -53,6 +78,14 @@ uint ThreadPools_ThreadCount
 	count += thpool_num_threads(_writers_thpool);
 
 	return count;
+}
+
+uint ThreadPools_ReadersCount
+(
+	void
+) {
+	ASSERT(_readers_thpool != NULL);
+	return thpool_num_threads(_readers_thpool);
 }
 
 // retrieve current thread id
@@ -113,11 +146,6 @@ void ThreadPools_Resume
 	thpool_resume(_writers_thpool);
 }
 
-void ThreadPools_Set_max_pending_work(uint64_t val) {
-	thpool_set_jobqueue_cap(_readers_thpool, val);
-	thpool_set_jobqueue_cap(_writers_thpool, val);
-}
-
 // add task for reader thread
 int ThreadPools_AddWorkReader
 (
@@ -155,5 +183,10 @@ int ThreadPools_AddWorkBulkLoader
 	ASSERT(_bulk_thpool != NULL);
 
 	return thpool_add_work(_bulk_thpool, function_p, arg_p);
+}
+
+void ThreadPools_SetMaxPendingWork(uint64_t val) {
+	if(_readers_thpool != NULL) thpool_set_jobqueue_cap(_readers_thpool, val);
+	if(_writers_thpool != NULL) thpool_set_jobqueue_cap(_writers_thpool, val);
 }
 

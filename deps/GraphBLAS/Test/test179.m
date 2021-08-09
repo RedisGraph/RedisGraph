@@ -44,5 +44,6 @@ for sparsity_control = [1 2 4]
     GB_spec_compare (C1, C2) ;
 end
 
+GB_builtin_complex_set (true) ;
 fprintf ('\ntest179: all tests passed\n') ;
 

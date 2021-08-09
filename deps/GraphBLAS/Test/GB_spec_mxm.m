@@ -1,5 +1,5 @@
 function C = GB_spec_mxm (C, Mask, accum, semiring, A, B, descriptor)
-%GB_SPEC_MXM a MATLAB mimic of GrB_mxm
+%GB_SPEC_MXM a mimic of GrB_mxm
 %
 % Usage:
 % C = GB_spec_mxm (C, Mask, accum, semiring, A, B, descriptor)
@@ -35,7 +35,7 @@ function C = GB_spec_mxm (C, Mask, accum, semiring, A, B, descriptor)
 % sparse matrix A.  If it is not there, it is implied to be equal to the
 % addititive identity.  The identity value does not appear in the sparse
 % GraphBLAS matrix; it is the value of entries not present in the data
-% structure.  The MATLAB GB_spec_*.m functions operate on dense matrices,
+% structure.  The GB_spec_*.m functions operate on dense matrices,
 % however, so these entries must be explicitly set to the additive identity.
 %
 % This gives a matrix T which is then accumulated into the result via
@@ -67,7 +67,7 @@ B = GB_spec_matrix (B, identity) ;
 Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % apply the descriptor to A

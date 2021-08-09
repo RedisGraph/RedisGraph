@@ -81,7 +81,7 @@ static Record UpdateConsume(OpBase *opBase) {
 			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true);
 		}
 
-		op->records = array_append(op->records, r);
+		array_append(op->records, r);
 	}
 
 	// done reading; we're not going to call Consume any longer

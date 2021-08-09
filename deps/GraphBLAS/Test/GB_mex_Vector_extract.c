@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_Vector_extract: MATLAB interface for w<mask> = accum (w,u(I))
+// GB_mex_Vector_extract: interface for w<mask> = accum (w,u(I))
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -98,7 +98,7 @@ void mexFunction
     // w<mask> = accum (w,u(I))
     METHOD (GrB_Vector_extract_(w, mask, accum, u, I, ni, desc)) ;
 
-    // return w to MATLAB as a struct and free the GraphBLAS w
+    // return w as a struct and free the GraphBLAS w
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;
 
     FREE_ALL ;

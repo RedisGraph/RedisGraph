@@ -120,8 +120,7 @@ static void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);
 		int res;
 		UNUSED(res);
-		res = Graph_ConnectNodes(gc->g, srcId, destId, relation, &e);
-		ASSERT(res == 1);
+		Graph_CreateEdge(gc->g, srcId, destId, relation, &e);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
 	}
 }

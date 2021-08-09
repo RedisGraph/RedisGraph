@@ -36,12 +36,12 @@
     int64_t mjnz_much = mjnz * gamma
 
 //------------------------------------------------------------------------------
-// GB_SCATTER_M_j_TYPE: scatter M(:,j) of the given type into Gus. workspace
+// GB_SCATTER_Mj_t: scatter M(:,j) of the given type into Gus. workspace
 //------------------------------------------------------------------------------
 
-#define GB_SCATTER_M_j_TYPE(mask_t,pMstart,pMend,mark)                  \
+#define GB_SCATTER_Mj_t(mask_t,pMstart,pMend,mark)                      \
 {                                                                       \
-    const mask_t *GB_RESTRICT Mxx = (mask_t *) Mx ;                     \
+    const mask_t *restrict Mxx = (mask_t *) Mx ;                        \
     if (M_is_bitmap)                                                    \
     {                                                                   \
         /* M is bitmap */                                               \
@@ -96,13 +96,13 @@ break ;
         switch (msize)                                                      \
         {                                                                   \
             default:                                                        \
-            case 1: GB_SCATTER_M_j_TYPE (uint8_t , pMstart, pMend, mark) ;  \
-            case 2: GB_SCATTER_M_j_TYPE (uint16_t, pMstart, pMend, mark) ;  \
-            case 4: GB_SCATTER_M_j_TYPE (uint32_t, pMstart, pMend, mark) ;  \
-            case 8: GB_SCATTER_M_j_TYPE (uint64_t, pMstart, pMend, mark) ;  \
-            case 16:                                                        \
+            case GB_1BYTE: GB_SCATTER_Mj_t (uint8_t , pMstart, pMend, mark) ; \
+            case GB_2BYTE: GB_SCATTER_Mj_t (uint16_t, pMstart, pMend, mark) ; \
+            case GB_4BYTE: GB_SCATTER_Mj_t (uint32_t, pMstart, pMend, mark) ; \
+            case GB_8BYTE: GB_SCATTER_Mj_t (uint64_t, pMstart, pMend, mark) ; \
+            case GB_16BYTE:                                                 \
             {                                                               \
-                const uint64_t *GB_RESTRICT Mxx = (uint64_t *) Mx ;         \
+                const uint64_t *restrict Mxx = (uint64_t *) Mx ;            \
                 for (int64_t pM = pMstart ; pM < pMend ; pM++)              \
                 {                                                           \
                     /* if (M (i,j) == 1) mark Hf [i] */                     \
@@ -122,21 +122,21 @@ break ;
 //------------------------------------------------------------------------------
 
 // hash M(:,j) into Hf and Hi for coarse hash task, C<M>=A*B or C<!M>=A*B
-#define GB_HASH_M_j                                                     \
-    for (int64_t pM = pM_start ; pM < pM_end ; pM++)                    \
-    {                                                                   \
-        GB_GET_M_ij (pM) ;      /* get M(i,j) */                        \
-        if (!mij) continue ;    /* skip if M(i,j)=0 */                  \
-        int64_t i = GBI (Mi, pM, mvlen) ;                               \
-        for (GB_HASH (i))       /* find i in hash */                    \
-        {                                                               \
-            if (Hf [hash] < mark)                                       \
-            {                                                           \
-                Hf [hash] = mark ;  /* insert M(i,j)=1 */               \
-                Hi [hash] = i ;                                         \
-                break ;                                                 \
-            }                                                           \
-        }                                                               \
+#define GB_HASH_M_j                                         \
+    for (int64_t pM = pM_start ; pM < pM_end ; pM++)        \
+    {                                                       \
+        GB_GET_M_ij (pM) ;      /* get M(i,j) */            \
+        if (!mij) continue ;    /* skip if M(i,j)=0 */      \
+        int64_t i = GBI (Mi, pM, mvlen) ;                   \
+        for (GB_HASH (i))       /* find i in hash */        \
+        {                                                   \
+            if (Hf [hash] < mark)                           \
+            {                                               \
+                Hf [hash] = mark ;  /* insert M(i,j)=1 */   \
+                Hi [hash] = i ;                             \
+                break ;                                     \
+            }                                               \
+        }                                                   \
     }
 
 //------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ break ;
 #else
 
     #define GB_GET_B_kj \
-        GB_GETB (bkj, Bx, pB)       /* bkj = Bx [pB] */
+        GB_GETB (bkj, Bx, pB, B_iso)       /* bkj = Bx [pB] */
 
 #endif
 
@@ -233,7 +233,7 @@ break ;
 
     // typical semiring
     #define GB_MULT_A_ik_B_kj                                       \
-        GB_GETA (aik, Ax, pA) ;         /* aik = Ax [pA] ;  */      \
+        GB_GETA (aik, Ax, pA, A_iso) ;  /* aik = Ax [pA] ;  */      \
         GB_CIJ_DECLARE (t) ;            /* ctype t ;        */      \
         GB_MULT (t, aik, bkj, i, k, j)  /* t = aik * bkj ;  */
 
@@ -284,7 +284,7 @@ break ;
     if (do_sort)                                                \
     {                                                           \
         /* sort the pattern of C(:,j) (non-default) */          \
-        GB_qsort_1a (Ci + Cp [kk], cjnz) ;                      \
+        GB_qsort_1 (Ci + Cp [kk], cjnz) ;                       \
     }                                                           \
     else                                                        \
     {                                                           \
@@ -324,27 +324,27 @@ break ;
 #if GB_IS_ANY_PAIR_SEMIRING
 
     // ANY_PAIR: result is purely symbolic
-    #define GB_SORT_AND_GATHER_HASHED_C_j(hash_mark)            \
+    #define GB_SORT_AND_GATHER_HASHED_C_j(hash_mark)                    \
         GB_SORT_C_j_PATTERN ;
 
 #else
 
     // gather the values of C(:,j) for a coarse hash task
-    #define GB_SORT_AND_GATHER_HASHED_C_j(hash_mark)                        \
-        GB_SORT_C_j_PATTERN ;                                               \
-        for (int64_t pC = Cp [kk] ; pC < Cp [kk+1] ; pC++)                  \
-        {                                                                   \
-            int64_t i = Ci [pC] ;                                           \
-            for (GB_HASH (i))           /* find i in hash table */          \
-            {                                                               \
-                if (Hf [hash] == (hash_mark) && (Hi [hash] == i))           \
-                {                                                           \
-                    /* i found in the hash table */                         \
-                    /* Cx [pC] = Hx [hash] ; */                             \
-                    GB_CIJ_GATHER (pC, hash) ;                              \
-                    break ;                                                 \
-                }                                                           \
-            }                                                               \
+    #define GB_SORT_AND_GATHER_HASHED_C_j(hash_mark)                    \
+        GB_SORT_C_j_PATTERN ;                                           \
+        for (int64_t pC = Cp [kk] ; pC < Cp [kk+1] ; pC++)              \
+        {                                                               \
+            int64_t i = Ci [pC] ;                                       \
+            for (GB_HASH (i))           /* find i in hash table */      \
+            {                                                           \
+                if (Hf [hash] == (hash_mark) && (Hi [hash] == i))       \
+                {                                                       \
+                    /* i found in the hash table */                     \
+                    /* Cx [pC] = Hx [hash] ; */                         \
+                    GB_CIJ_GATHER (pC, hash) ;                          \
+                    break ;                                             \
+                }                                                       \
+            }                                                           \
         }
 
 #endif
@@ -384,26 +384,26 @@ break ;
         while (!GB_ATOMIC_COMPARE_EXCHANGE (px, xold, xnew)) ;      \
     }
 
-    #if GB_IS_IMIN_ATOMIC
+    #if GB_IS_IMIN_MONOID
 
         // built-in MIN monoids for signed and unsigned integers
         #define GB_ATOMIC_UPDATE_HX(i,t)                            \
             GB_MINMAX (i, t, xold <= t)
 
-    #elif GB_IS_IMAX_ATOMIC
+    #elif GB_IS_IMAX_MONOID
 
         // built-in MAX monoids for signed and unsigned integers
         #define GB_ATOMIC_UPDATE_HX(i,t)                            \
             GB_MINMAX (i, t, xold >= t)
 
-    #elif GB_IS_FMIN_ATOMIC
+    #elif GB_IS_FMIN_MONOID
 
         // built-in MIN monoids for float and double, with omitnan behavior.
         // The update is skipped entirely if t is NaN.  Otherwise, if t is not
         // NaN, xold is checked.  If xold is NaN, islessequal (xold, t) is
         // always false, so the non-NaN t must be always be assigned to Hx [i].
-        // If both terms are not NaN, then islessequal (xold,t) is just the
-        // comparison xold <= t.  If that is true, there is no work to do and
+        // If both terms are not NaN, then islessequal (xold,t) is just
+        // xold <= t.  If that is true, there is no work to do and
         // the loop breaks.  Otherwise, t is smaller than xold and so it must
         // be assigned to Hx [i].
         #define GB_ATOMIC_UPDATE_HX(i,t)                            \
@@ -414,7 +414,7 @@ break ;
             }                                                       \
         }
 
-    #elif GB_IS_FMAX_ATOMIC
+    #elif GB_IS_FMAX_MONOID
 
         // built-in MAX monoids for float and double, with omitnan behavior.
         #define GB_ATOMIC_UPDATE_HX(i,t)                            \
@@ -501,22 +501,6 @@ break ;
     //--------------------------------------------------------------------------
 
     #define GB_ATOMIC_WRITE_HX(i,t)
-
-    //--------------------------------------------------------------------------
-    // ANY_PAIR: for the bitmap case only: Hx [i] = 1
-    //--------------------------------------------------------------------------
-
-    #if GB_IS_ANY_FC32_MONOID || GB_IS_ANY_FC64_MONOID
-        #define GB_ATOMIC_SET_HX_ONE(i)             \
-            GB_ATOMIC_WRITE                         \
-            Hx_real [2*(i)] = 1 ;                   \
-            GB_ATOMIC_WRITE                         \
-            Hx_imag [2*(i)] = 0 ;
-    #else
-        #define GB_ATOMIC_SET_HX_ONE(i)             \
-            GB_ATOMIC_WRITE                         \
-            Hx [i] = 1 ;
-    #endif
 
 #elif GB_HAS_ATOMIC
 

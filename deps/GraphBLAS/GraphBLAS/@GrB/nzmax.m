@@ -3,12 +3,12 @@ function e = nzmax (G)
 % Since the GraphBLAS data structure is opaque, nzmax (G) has no
 % particular meaning.  Thus, nzmax (G) is simply max (GrB.entries (G), 1).
 % It appears as an overloaded operator for a GrB matrix simply for
-% compatibility with MATLAB sparse matrices.
+% compatibility with built-in sparse matrices.
 %
 % See also GrB/nnz, GrB.entries, GrB.nonz.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 e = max (gbnvals (G), 1) ;

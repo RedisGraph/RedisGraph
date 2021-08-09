@@ -3,12 +3,13 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-// A may be a MATLAB sparse matrix, or a MATLAB struct containing a GraphBLAS
-// matrix.  C is returned as a MATLAB struct containing a GraphBLAS matrix.
+// A may be a built-in sparse matrix, or a built-in struct containing a
+// GraphBLAS matrix.  C is returned as a built-in struct containing a GraphBLAS
+// matrix.
 
 // Usage:
 
@@ -23,7 +24,9 @@
 // C = gbnew (m, n, type, format)
 // C = gbnew (m, n, format, type)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: C = GrB (m,n,type,format) or C = GrB (A,type,format)"
 
 void mexFunction
 (
@@ -38,8 +41,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 1 && nargin <= 4 && nargout <= 1,
-        "usage: C = GrB (m,n,type,format) or C = GrB (A,type,format)") ;
+    gb_usage (nargin >= 1 && nargin <= 4 && nargout <= 1, USAGE) ;
 
     //--------------------------------------------------------------------------
     // construct the GraphBLAS matrix
@@ -89,7 +91,7 @@ void mexFunction
 
                 if (gb_mxarray_is_empty (pargin [0]))
                 { 
-                    // A is a 0-by-0 MATLAB matrix.  create a new 0-by-0
+                    // A is a 0-by-0 built-in matrix.  create a new 0-by-0
                     // GraphBLAS matrix C of the given type, with the default
                     // format.
                     C = gb_new (type, 0, 0, -1, 0) ;
@@ -116,6 +118,7 @@ void mexFunction
                 GrB_Matrix A = gb_get_shallow (pargin [0]) ;
                 // C = A with the requested format and sparsity, no typecast
                 C = gb_typecast (A, NULL, fmt, sparsity) ;
+                OK (GrB_Matrix_free (&A)) ;
 
             }
             else
@@ -277,7 +280,7 @@ void mexFunction
     }
 
     //--------------------------------------------------------------------------
-    // export the output matrix C back to MATLAB as a GraphBLAS matrix
+    // export the output matrix C as a GraphBLAS matrix
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, KIND_GRB) ;

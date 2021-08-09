@@ -12,7 +12,7 @@ function C = spfun (fun, G)
 % operator based on the values, in contract with GrB/sqrt, for example.
 % For a list of types, see 'help GrB.type'.
 %
-% If the string fun is not a GraphBLAS operator, or if fun is a MATLAB
+% If the string fun is not a GraphBLAS operator, or if fun is a built-in
 % function handle, then feval(fun,x) is used instead.
 %
 % The function is not applied to entries not present in G.  Since a
@@ -39,7 +39,7 @@ function C = spfun (fun, G)
 % See also GrB.apply, GrB.unopinfo.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (G))
     G = G.opaque ;

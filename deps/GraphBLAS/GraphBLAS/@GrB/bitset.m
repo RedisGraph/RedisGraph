@@ -6,7 +6,7 @@ function C = bitset (A, B, arg3, arg4)
 % type of A, then C(i,j) is equal to the value of A(i,j) after setting the
 % bit to 1.  If B(i,j) is outside this range, C(i,j) is set to A(i,j),
 % unmodified; note that this behavior is an extension of the built-in
-% MATLAB bigset, which results in an error for this case.  This modified
+% bitset, which results in an error for this case.  This modified
 % rule allows the inputs A and B to be sparse.
 %
 % If A and B are matrices, the pattern of C is the set union of A
@@ -35,7 +35,6 @@ function C = bitset (A, B, arg3, arg4)
 %   fprintf ('\nA: ') ; fprintf ('%3x ', A) ; fprintf ('\n') ;
 %   fprintf ('\nB: ') ; fprintf ('%3x ', B) ; fprintf ('\n') ;
 %   fprintf ('\nC: ') ; fprintf ('%3x ', C) ; fprintf ('\n') ;
-%   % in MATLAB:
 %   C2 = bitset (uint8 (A), B)
 %   isequal (C2, C)
 %
@@ -43,7 +42,7 @@ function C = bitset (A, B, arg3, arg4)
 % GrB/bitset, GrB/bitclr.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: bitset(A,B,V) for two matrices A and B is slower than it could be.
 % See comments in gb_union_op.
@@ -59,7 +58,7 @@ end
 [am, an, atype] = gbsize (A) ;
 [bm, bn, btype] = gbsize (B) ;
 
-if (contains (atype, 'complex') || contains (btype, 'complex'))
+if (gb_contains (atype, 'complex') || gb_contains (btype, 'complex'))
     error ('inputs must be real') ;
 end
 
@@ -87,7 +86,7 @@ else
     assumedtype = 'uint64' ;
 end
 
-if (~contains (assumedtype, 'int'))
+if (~gb_contains (assumedtype, 'int'))
     error ('assumedtype must be an integer type') ;
 end
 

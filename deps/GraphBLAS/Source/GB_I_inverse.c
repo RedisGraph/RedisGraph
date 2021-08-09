@@ -25,8 +25,10 @@ GrB_Info GB_I_inverse           // invert the I list for C=A(I,:)
     int64_t nI,                 // length of I
     int64_t avlen,              // length of the vectors of A
     // outputs:
-    int64_t *GB_RESTRICT *p_Mark,  // head pointers for buckets, size avlen
-    int64_t *GB_RESTRICT *p_Inext, // next pointers for buckets, size nI
+    int64_t *restrict *p_Mark,  // head pointers for buckets, size avlen
+    size_t *p_Mark_size,
+    int64_t *restrict *p_Inext, // next pointers for buckets, size nI
+    size_t *p_Inext_size,
     int64_t *p_ndupl,           // number of duplicate entries in I
     GB_Context Context
 )
@@ -36,25 +38,25 @@ GrB_Info GB_I_inverse           // invert the I list for C=A(I,:)
     // get inputs
     //--------------------------------------------------------------------------
 
-    int64_t *Mark = NULL ;
-    int64_t *Inext = NULL ;
+    int64_t *Mark  = NULL ; size_t Mark_size = 0 ;
+    int64_t *Inext = NULL ; size_t Inext_size = 0 ;
     int64_t ndupl = 0 ;
 
-    (*p_Mark ) = NULL ;
-    (*p_Inext) = NULL ;
+    (*p_Mark ) = NULL ; (*p_Mark_size ) = 0 ;
+    (*p_Inext) = NULL ; (*p_Inext_size) = 0 ;
     (*p_ndupl) = 0 ;
 
     //--------------------------------------------------------------------------
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Mark  = GB_CALLOC (avlen, int64_t) ;
-    Inext = GB_MALLOC (nI,    int64_t) ;
+    Mark  = GB_CALLOC_WERK (avlen, int64_t, &Mark_size) ;
+    Inext = GB_MALLOC_WERK (nI,    int64_t, &Inext_size) ;
     if (Inext == NULL || Mark == NULL)
     { 
         // out of memory
-        GB_FREE (Mark) ;
-        GB_FREE (Inext) ;
+        GB_FREE_WERK (&Mark, Mark_size) ;
+        GB_FREE_WERK (&Inext, Inext_size) ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
@@ -95,7 +97,7 @@ GrB_Info GB_I_inverse           // invert the I list for C=A(I,:)
     // GB_for_each_index_in_bucket (inew,i)) { ... }
 
     #define GB_for_each_index_in_bucket(inew,i) \
-        for (int64_t inew = Mark[i]-1 ; inew >= 0 ; inew = Inext [inew])
+        for (int64_t inew = Mark [i] - 1 ; inew >= 0 ; inew = Inext [inew])
 
     // If Mark [i] < 1, then the ith bucket is empty and i is not in I.
     // Otherise, the first index in bucket i is (Mark [i] - 1).
@@ -115,8 +117,8 @@ GrB_Info GB_I_inverse           // invert the I list for C=A(I,:)
     // return result
     //--------------------------------------------------------------------------
 
-    (*p_Mark ) = Mark ;
-    (*p_Inext) = Inext ;
+    (*p_Mark ) = Mark  ; (*p_Mark_size ) = Mark_size ;
+    (*p_Inext) = Inext ; (*p_Inext_size) = Inext_size ;
     (*p_ndupl) = ndupl ;
     return (GrB_SUCCESS) ;
 }

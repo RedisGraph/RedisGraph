@@ -20,25 +20,43 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
     GB_Context Context
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
-GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
+GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
 (
-    GrB_Matrix *Chandle,        // output matrix C, possibly modified in-place
+    GrB_Matrix C,               // output matrix C, possibly modified in-place
     GrB_Type ctype,             // desired type of C; if NULL use A->type.
                                 // ignored if op is present (cast to op->ztype)
     const bool C_is_csc,        // desired CSR/CSC format of C
-    const GrB_Matrix A_in,      // input matrix
+    const GrB_Matrix A,         // input matrix; C == A if done in place
         // no operator is applied if both op1 and op2 are NULL
-        const GrB_UnaryOp op1,          // unary operator to apply
-        const GrB_BinaryOp op2,         // binary operator to apply
+        const GrB_UnaryOp op1_in,       // unary operator to apply
+        const GrB_BinaryOp op2_in,      // binary operator to apply
         const GxB_Scalar scalar,        // scalar to bind to binary operator
         bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
     GB_Context Context
 ) ;
 
+GB_PUBLIC
+GrB_Info GB_transpose_in_place   // C=A', no change of type, no operators
+(
+    GrB_Matrix C,               // output matrix C, possibly modified in-place
+    const bool C_is_csc,        // desired CSR/CSC format of C
+    GB_Context Context
+) ;
+
+GrB_Info GB_transpose_cast      // C= (ctype) A' or one (A'), not in-place
+(
+    GrB_Matrix C,               // output matrix C, not in place
+    GrB_Type ctype,             // desired type of C
+    const bool C_is_csc,        // desired CSR/CSC format of C
+    const GrB_Matrix A,         // input matrix; C != A
+    const bool iso_one,         // if true, C = one (A'), as iso
+    GB_Context Context
+) ;
+
 GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 (
-    GrB_Matrix *Chandle,        // output matrix (unallocated on input)
+    GrB_Matrix C,               // output matrix (static header)
+    const GB_iso_code C_code_iso,   // iso code for C
     const GrB_Type ctype,       // type of output matrix C
     const bool C_is_csc,        // format of output matrix C
     const GrB_Matrix A,         // input matrix
@@ -57,8 +75,8 @@ void GB_transpose_ix            // transpose the pattern and values of a matrix
     GrB_Matrix C,                       // output matrix
     const GrB_Matrix A,                 // input matrix
     // for sparse case:
-    int64_t *GB_RESTRICT *Workspaces,   // Workspaces, size nworkspaces
-    const int64_t *GB_RESTRICT A_slice, // how A is sliced, size nthreads+1
+    int64_t *restrict *Workspaces,      // Workspaces, size nworkspaces
+    const int64_t *restrict A_slice,    // how A is sliced, size nthreads+1
     int nworkspaces,                    // # of workspaces to use
     // for all cases:
     int nthreads                        // # of threads to use
@@ -67,6 +85,7 @@ void GB_transpose_ix            // transpose the pattern and values of a matrix
 void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
 (
     GrB_Matrix C,                       // output matrix
+    const GB_iso_code C_code_iso,       // iso code for C
         // no operator is applied if both op1 and op2 are NULL
         const GrB_UnaryOp op1,          // unary operator to apply
         const GrB_BinaryOp op2,         // binary operator to apply
@@ -74,17 +93,17 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
         bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
     const GrB_Matrix A,                 // input matrix
     // for sparse or hypersparse case:
-    int64_t *GB_RESTRICT *Workspaces,   // Workspaces, size nworkspaces
-    const int64_t *GB_RESTRICT A_slice, // how A is sliced, size nthreads+1
+    int64_t *restrict *Workspaces,      // Workspaces, size nworkspaces
+    const int64_t *restrict A_slice,    // how A is sliced, size nthreads+1
     int nworkspaces,                    // # of workspaces to use
     // for all cases:
     int nthreads                        // # of threads to use
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB interface only
+GB_PUBLIC
 GrB_Info GB_shallow_copy    // create a purely shallow matrix
 (
-    GrB_Matrix *Chandle,    // output matrix C
+    GrB_Matrix C,           // output matrix C, with a static header
     const bool C_is_csc,    // desired CSR/CSC format of C
     const GrB_Matrix A,     // input matrix
     GB_Context Context

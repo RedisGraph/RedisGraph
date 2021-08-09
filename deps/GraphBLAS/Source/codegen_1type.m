@@ -9,7 +9,7 @@ function codegen_1type
 
 fprintf ('\ntypes:\n') ;
 
-f = fopen ('Generated/GB_type__include.h', 'w') ;
+f = fopen ('Generated2/GB_type__include.h', 'w') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;
 fprintf (f, '// GB_type__include.h: definitions for GB_type__*.c\n') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;

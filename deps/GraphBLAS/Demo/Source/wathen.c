@@ -8,9 +8,7 @@
 //------------------------------------------------------------------------------
 
 // Create a finite-element matrix on an nx-by-ny 2D mesh, as computed by
-// wathen.m in MATLAB.  To view the wathen.m file, use this command in MATLAB:
-//
-//      type private/wathen
+// wathen.m.
 
 #include "GraphBLAS.h"
 #undef GB_PUBLIC
@@ -53,15 +51,15 @@ GrB_Info wathen             // construct a random Wathen matrix
     }
 
     // macro to free all workspace.  Not every method uses every object
-    #define FREE_ALL                    \
-        GrB_Matrix_free (&A) ;                 \
-        GrB_Matrix_free (&F) ;                 \
-        GrB_Matrix_free (&D) ;                 \
-        GrB_Matrix_free (&E) ;                 \
+    #define FREE_ALL                            \
+        GrB_Matrix_free (&A) ;                  \
+        GrB_Matrix_free (&F) ;                  \
+        GrB_Matrix_free (&D) ;                  \
+        GrB_Matrix_free (&E) ;                  \
         GrB_UnaryOp_free (&rho_op) ;            \
-        if (rho_rand != NULL) free (rho_rand) ;   \
-        if (I != NULL) free (I) ;       \
-        if (J != NULL) free (J) ;       \
+        if (rho_rand != NULL) free (rho_rand) ; \
+        if (I != NULL) free (I) ;               \
+        if (J != NULL) free (J) ;               \
         if (X != NULL) free (X) ;
 
     GrB_Info info ;
@@ -146,11 +144,11 @@ GrB_Info wathen             // construct a random Wathen matrix
         case 0:
         {
             // This method is fastest, but only 20% faster than methods 2 and
-            // 3.  It is about 15% to 20% faster than the MATLAB wathen
-            // function, and uses the identical algorithm.  The code here is
-            // nearly identical to the wathen.m M-file, except that here an
-            // adjustment to the indices must be made since GraphBLAS matrices
-            // are indexed starting at row and column 0, not 1.
+            // 3.  It is about 15% to 20% faster than the wathen.m function,
+            // and uses the identical algorithm.  The code here is nearly
+            // identical to the wathen.m M-file, except that here an adjustment
+            // to the indices must be made since GraphBLAS matrices are indexed
+            // starting at row and column 0, not 1.
 
             // allocate the tuples
             int64_t ntriplets = nx*ny*64 ;
@@ -218,13 +216,13 @@ GrB_Info wathen             // construct a random Wathen matrix
             // the other three methods here.
 
             // This method is the same as the older version of wathen.m, before
-            // it was updated to use the sparse function in MATLAB.  That older
-            // wathen.m function was asymptotically slower, and 300x slower in
-            // practice for moderate sized problems.  The performance
-            // difference increases greatly as the problem gets larger, as
-            // well.  By contrast, this method is asympotically just as fast as
-            // the other methods here, it's just a constant times slower (by a
-            // uniform factor of just under 2).
+            // it was updated to use the sparse function.  That older wathen.m
+            // function was asymptotically slower, and 300x slower in practice
+            // for moderate sized problems.  The performance difference
+            // increases greatly as the problem gets larger, as well.  By
+            // contrast, this method is asympotically just as fast as the other
+            // methods here, it's just a constant times slower (by a typical
+            // factor of just under 2).
 
             for (int j = 1 ; j <= ny ; j++)
             {
@@ -261,11 +259,11 @@ GrB_Info wathen             // construct a random Wathen matrix
 
         case 2:
         {
-            // This method is about 20% slower than method 0, but it has
-            // the advantage of not requiring the number of tuples to be
-            // known in advance.  Method 3 is just as fast as this method.
-            // This method is uniformaly about 5% to 10% slower than the
-            // MATLAB wathen.m regardless of the problem size.
+            // This method is about 20% slower than method 0, but it has the
+            // advantage of not requiring the number of tuples to be known in
+            // advance.  Method 3 is just as fast as this method.  This method
+            // is typically about 5% to 10% slower than wathen.m regardless of
+            // the problem size.
 
             // create a single 8-by-8 finite-element matrix F
             OK (GrB_Matrix_new (&F, GrB_FP64, 8, 8)) ;
@@ -308,11 +306,11 @@ GrB_Info wathen             // construct a random Wathen matrix
 
         case 3:
         {
-            // This method is as fast as method 2.  It is very flexible
-            // since any method can be used to construct the finite-element
-            // matrix.  Then A(nn,nn)+=F is very efficient when F is a matrix.
-            // This method is uniformaly about 5% to 10% slower than the
-            // MATLAB wathen.m regardless of the problem size.
+            // This method is as fast as method 2.  It is very flexible since
+            // any method can be used to construct the finite-element matrix.
+            // Then A(nn,nn)+=F is very efficient when F is a matrix.  This
+            // method is typically about 5% to 10% slower than wathen.m
+            // regardless of the problem size.
 
             // create a single 8-by-8 finite-element matrix F
             OK (GrB_Matrix_new (&F, GrB_FP64, 8, 8)) ;

@@ -41,7 +41,8 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     //--------------------------------------------------------------------------
 
     // allocate the select operator
-    (*selectop) = GB_CALLOC (1, struct GB_SelectOp_opaque) ;
+    size_t header_size ;
+    (*selectop) = GB_MALLOC (1, struct GB_SelectOp_opaque, &header_size) ;
     if (*selectop == NULL)
     { 
         // out of memory
@@ -51,21 +52,18 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     // initialize the select operator
     GxB_SelectOp op = *selectop ;
     op->magic = GB_MAGIC ;
+    op->header_size = header_size ;
     op->xtype = xtype ;
     op->ttype = ttype ;
     op->function = function ;
     op->opcode = GB_USER_SELECT_opcode ;
+    op->name [0] = '\0' ;
 
     //--------------------------------------------------------------------------
     // find the name of the operator
     //--------------------------------------------------------------------------
 
-    if (name == NULL)
-    { 
-        // if no name , a generic name is used instead
-        strncpy (op->name, "user_select_operator", GB_LEN-1) ;
-    }
-    else
+    if (name != NULL)
     {
         // see if the typecast "(GxB_select_function)" appears in the name
         char *p = NULL ;

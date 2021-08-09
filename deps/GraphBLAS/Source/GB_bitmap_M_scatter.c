@@ -26,11 +26,9 @@ void GB_bitmap_M_scatter        // scatter M into the C bitmap
     const bool Mask_struct,     // true if M is structural, false if valued
     const int assign_kind,      // row assign, col assign, assign, or subassign
     const int operation,        // +=2, -=2, or %=2
-    const int64_t *GB_RESTRICT pstart_Mslice, // size ntasks+1
-    const int64_t *GB_RESTRICT kfirst_Mslice, // size ntasks
-    const int64_t *GB_RESTRICT klast_Mslice,  // size ntasks
-    const int M_nthreads,
+    const int64_t *M_ek_slicing,    // size 3*M_ntasks+1
     const int M_ntasks,
+    const int M_nthreads,
     GB_Context Context
 )
 {
@@ -41,6 +39,9 @@ void GB_bitmap_M_scatter        // scatter M into the C bitmap
 
     ASSERT_MATRIX_OK (M, "M for bitmap scatter", GB0) ;
     ASSERT (GB_IS_SPARSE (M) || GB_IS_HYPERSPARSE (M)) ;
+    ASSERT (M_ntasks > 0) ;
+    ASSERT (M_nthreads > 0) ;
+    ASSERT (M_ek_slicing != NULL) ;
 
     //--------------------------------------------------------------------------
     // get C and M

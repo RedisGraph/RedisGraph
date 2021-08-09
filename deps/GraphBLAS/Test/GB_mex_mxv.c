@@ -116,7 +116,7 @@ void mexFunction
     // w<mask> = accum(w,A*u)
     METHOD (GrB_mxv (w, mask, accum, semiring, A, u, desc)) ;
 
-    // return w to MATLAB as a struct and free the GraphBLAS w
+    // return w as a struct and free the GraphBLAS w
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;
 
     FREE_ALL ;

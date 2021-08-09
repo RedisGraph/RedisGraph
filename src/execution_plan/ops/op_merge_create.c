@@ -126,13 +126,13 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		}
 
 		// Save node for later insertion
-		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);
+		array_append(op->pending.created_nodes, node_ref);
 
 		// Save properties to insert with node
-		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
+		array_append(op->pending.node_properties, converted_properties);
 
 		// save labels to assigned to node
-		op->pending.node_labels = array_append(op->pending.node_labels, n->labelsId);
+		array_append(op->pending.node_labels, n->labelsId);
 	}
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
@@ -184,10 +184,10 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		}
 
 		/* Save edge for later insertion. */
-		op->pending.created_edges = array_append(op->pending.created_edges, edge_ref);
+		array_append(op->pending.created_edges, edge_ref);
 
 		/* Save properties to insert with node. */
-		op->pending.edge_properties = array_append(op->pending.edge_properties, converted_properties);
+		array_append(op->pending.edge_properties, converted_properties);
 	}
 
 	// Finalize the hash value for all processed creations.
@@ -226,7 +226,7 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		ASSERT(entities_created == true);
 
 		// Save record for later use.
-		op->records = array_append(op->records, r);
+		array_append(op->records, r);
 	} else {
 		// Pull record from child.
 		r = OpBase_Consume(opBase->children[0]);
@@ -234,7 +234,7 @@ static Record MergeCreateConsume(OpBase *opBase) {
 			/* Create entities. */
 			if(_CreateEntities(op, r)) {
 				// Save record for later use.
-				op->records = array_append(op->records, r);
+				array_append(op->records, r);
 			} else {
 				OpBase_DeleteRecord(r);
 			}

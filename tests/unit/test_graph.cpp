@@ -41,9 +41,6 @@ class GraphTest : public ::testing::Test {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 
-		// Set global variables
-		Config_Option_set(Config_MAINTAIN_TRANSPOSE, "yes"); // Ensure that transposed matrices are constructed.
-
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
 
@@ -64,10 +61,10 @@ class GraphTest : public ::testing::Test {
 		for(uint i = 0; i < node_count; i++) Graph_CreateNode(g, &n, NULL, 0);
 
 		// Validate nodes creation.
-		GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-		ASSERT_EQ(GrB_Matrix_nrows(&nrows, adj), GrB_SUCCESS);
-		ASSERT_EQ(GrB_Matrix_ncols(&ncols, adj), GrB_SUCCESS);
-		ASSERT_EQ(GrB_Matrix_nvals(&nvals, adj), GrB_SUCCESS);
+		RG_Matrix adj = Graph_GetAdjacencyMatrix(g, false);
+		ASSERT_EQ(RG_Matrix_nrows(&nrows, adj), GrB_SUCCESS);
+		ASSERT_EQ(RG_Matrix_ncols(&ncols, adj), GrB_SUCCESS);
+		ASSERT_EQ(RG_Matrix_nvals(&nvals, adj), GrB_SUCCESS);
 
 		ASSERT_EQ(nvals, 0);                  // No connection were formed.
 		ASSERT_GE(ncols, Graph_NodeCount(g)); // Graph's adjacency matrix dimensions.
@@ -93,14 +90,14 @@ class GraphTest : public ::testing::Test {
 			connections[i].srcId = i;                           // Source node id.
 			connections[i].destId = i + 1;                      // Destination node id.
 			connections[i].relationId = (i % relationCount);    // Relation.
-			Graph_ConnectNodes(g, connections[i].srcId, connections[i].destId, connections[i].relationId, &e);
+			Graph_CreateEdge(g, connections[i].srcId, connections[i].destId, connections[i].relationId, &e);
 		}
 
 		// Validate edges creation,
 		// expecting number of none zero entries to be edge_count.
 		GrB_Index nvals;
-		GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-		ASSERT_EQ(GrB_Matrix_nvals(&nvals, adj), GrB_SUCCESS);
+		RG_Matrix adj = Graph_GetAdjacencyMatrix(g, false);
+		ASSERT_EQ(RG_Matrix_nvals(&nvals, adj), GrB_SUCCESS);
 		ASSERT_EQ(nvals, edge_count);
 
 		// Inspect graph matrices;
@@ -113,13 +110,13 @@ class GraphTest : public ::testing::Test {
 			bool v = false;
 
 			// src_id connected to dest_id.
-			ASSERT_EQ(GrB_Matrix_extractElement_BOOL(&v, adj, dest_id, src_id), GrB_SUCCESS);
+			ASSERT_EQ(RG_Matrix_extractElement_BOOL(&v, adj, dest_id, src_id), GrB_SUCCESS);
 			ASSERT_TRUE(v);
 
 			// Test relation matrix.
 			v = false;
-			GrB_Matrix mat = Graph_GetRelationMatrix(g, r);
-			ASSERT_EQ(GrB_Matrix_extractElement_BOOL(&v, mat, dest_id, src_id), GrB_SUCCESS);
+			RG_Matrix mat = Graph_GetRelationMatrix(g, r, false);
+			ASSERT_EQ(RG_Matrix_extractElement_BOOL(&v, mat, dest_id, src_id), GrB_SUCCESS);
 			ASSERT_TRUE(v);
 		}
 	}
@@ -138,9 +135,9 @@ class GraphTest : public ::testing::Test {
 		// Validate nodes creation.
 		ASSERT_EQ(Graph_NodeCount(g), prev_node_count + additional_node_count);
 		// Graph's adjacency matrix dimensions.
-		GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-		ASSERT_EQ(GrB_Matrix_nrows(&nrows, adj), GrB_SUCCESS);
-		ASSERT_EQ(GrB_Matrix_ncols(&ncols, adj), GrB_SUCCESS);
+		RG_Matrix adj = Graph_GetAdjacencyMatrix(g, false);
+		ASSERT_EQ(RG_Matrix_nrows(&nrows, adj), GrB_SUCCESS);
+		ASSERT_EQ(RG_Matrix_ncols(&ncols, adj), GrB_SUCCESS);
 		ASSERT_GE(ncols, Graph_NodeCount(g));
 		ASSERT_GE(nrows, Graph_NodeCount(g));
 
@@ -157,9 +154,9 @@ class GraphTest : public ::testing::Test {
 		uint relation_count = Graph_RelationTypeCount(g);
 		ASSERT_GT(relation_count, 0);
 		for(unsigned int i = 0; i < relation_count; i++) {
-			GrB_Matrix r = Graph_GetRelationMatrix(g, i);
-			ASSERT_EQ(GrB_Matrix_nrows(&nrows, r), GrB_SUCCESS);
-			ASSERT_EQ(GrB_Matrix_ncols(&ncols, r), GrB_SUCCESS);
+			RG_Matrix r = Graph_GetRelationMatrix(g, i, false);
+			ASSERT_EQ(RG_Matrix_nrows(&nrows, r), GrB_SUCCESS);
+			ASSERT_EQ(RG_Matrix_ncols(&ncols, r), GrB_SUCCESS);
 			ASSERT_GE(ncols, Graph_NodeCount(g));
 			ASSERT_GE(nrows, Graph_NodeCount(g));
 		}
@@ -277,7 +274,7 @@ void benchmark_edge_creation_with_relationships() {
 
 		simple_tic(tic);
 		for(int j = 0; j < edge_count; j++) {
-			Graph_ConnectNodes(g, connections[j].srcId, connections[j].destId, connections[j].relationId,
+			Graph_CreateEdge(g, connections[j].srcId, connections[j].destId, connections[j].relationId,
 							   &edge);
 		}
 		timings[i] = simple_toc(tic);
@@ -311,18 +308,20 @@ TEST_F(GraphTest, NewGraph) {
 	GrB_Index ncols, nrows, nvals;
 	Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 	Graph_AcquireWriteLock(g);
-	GrB_Matrix adj_matrix = g->adjacency_matrix->grb_matrix;
-	ASSERT_EQ(GrB_Matrix_ncols(&ncols, adj_matrix), GrB_SUCCESS);
-	ASSERT_EQ(GrB_Matrix_nrows(&nrows, adj_matrix), GrB_SUCCESS);
-	ASSERT_EQ(GrB_Matrix_nvals(&nvals, adj_matrix), GrB_SUCCESS);
+	RG_Matrix adj_matrix = g->adjacency_matrix;
+	ASSERT_EQ(RG_Matrix_ncols(&ncols, adj_matrix), GrB_SUCCESS);
+	ASSERT_EQ(RG_Matrix_nrows(&nrows, adj_matrix), GrB_SUCCESS);
+	ASSERT_EQ(RG_Matrix_nvals(&nvals, adj_matrix), GrB_SUCCESS);
 
 	ASSERT_TRUE(g->nodes != NULL);
 	ASSERT_TRUE(g->relations != NULL);
 	ASSERT_TRUE(g->labels != NULL);
 	ASSERT_TRUE(g->adjacency_matrix != NULL);
 	ASSERT_EQ(Graph_NodeCount(g), 0);
-	ASSERT_EQ(nrows, GRAPH_DEFAULT_NODE_CAP);
-	ASSERT_EQ(ncols, GRAPH_DEFAULT_NODE_CAP);
+
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+	ASSERT_EQ(nrows, n);
+	ASSERT_EQ(ncols, n);
 	ASSERT_EQ(nvals, 0);
 
 	Graph_ReleaseLock(g);
@@ -346,7 +345,7 @@ TEST_F(GraphTest, GraphConstruction) {
 
 TEST_F(GraphTest, RemoveNodes) {
 	// Construct graph.
-	GrB_Matrix M;
+	RG_Matrix M;
 	GrB_Index nnz;
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
@@ -364,22 +363,22 @@ TEST_F(GraphTest, RemoveNodes) {
 	 * 1 connected to 2. */
 
 	// connect 0 to 1.
-	Graph_ConnectNodes(g, 0, 1, r, &edge);
+	Graph_CreateEdge(g, 0, 1, r, &edge);
 
 	// Connect 1 to 0.
-	Graph_ConnectNodes(g, 1, 0, r, &edge);
+	Graph_CreateEdge(g, 1, 0, r, &edge);
 
 	// Connect 1 to 2.
-	Graph_ConnectNodes(g, 1, 2, r, &edge);
+	Graph_CreateEdge(g, 1, 2, r, &edge);
 
 	// Validate graph creation.
 	ASSERT_EQ(Graph_NodeCount(g), 3);
-	M = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix_nvals(&nnz, M);
+	M = Graph_GetRelationMatrix(g, r, false);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 3);
 
-	M = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix_nvals(&nnz, M);
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 3);
 
 	Edge *edges = (Edge *)array_new(Edge, 3);
@@ -423,19 +422,19 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	for(int i = 0; i < 8; i++) Graph_CreateNode(g, &n, NULL, 0);
 
 	// First node.
-	Graph_ConnectNodes(g, 0, 2, relation, &e);
-	Graph_ConnectNodes(g, 0, 6, relation, &e);
-	Graph_ConnectNodes(g, 0, 7, relation, &e);
+	Graph_CreateEdge(g, 0, 2, relation, &e);
+	Graph_CreateEdge(g, 0, 6, relation, &e);
+	Graph_CreateEdge(g, 0, 7, relation, &e);
 
 	// Right before last node.
-	Graph_ConnectNodes(g, 6, 0, relation, &e);
-	Graph_ConnectNodes(g, 6, 1, relation, &e);
-	Graph_ConnectNodes(g, 6, 7, relation, &e);
+	Graph_CreateEdge(g, 6, 0, relation, &e);
+	Graph_CreateEdge(g, 6, 1, relation, &e);
+	Graph_CreateEdge(g, 6, 7, relation, &e);
 
 	// Last node.
-	Graph_ConnectNodes(g, 7, 0, relation, &e);
-	Graph_ConnectNodes(g, 7, 1, relation, &e);
-	Graph_ConnectNodes(g, 7, 6, relation, &e);
+	Graph_CreateEdge(g, 7, 0, relation, &e);
+	Graph_CreateEdge(g, 7, 1, relation, &e);
+	Graph_CreateEdge(g, 7, 6, relation, &e);
 
 	// Delete first and last nodes.
 	simple_tic(tic);
@@ -460,7 +459,7 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 	GrB_Vector_new(&col, GrB_BOOL, Graph_NodeCount(g));
 
 	// Make sure last and first rows and column are zeroed out.
-	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g, false)->matrix;
 
 	GrB_Col_extract(row, NULL, NULL, adj, GrB_ALL, Graph_NodeCount(g), 7, desc);
 	GrB_Col_extract(col, NULL, NULL, adj, GrB_ALL, Graph_NodeCount(g), 7, NULL);
@@ -489,7 +488,7 @@ TEST_F(GraphTest, RemoveEdges) {
 	// Construct graph.
 	Edge e;
 	Node n;
-	GrB_Matrix M;
+	RG_Matrix M;
 	GrB_Index nnz;
 	Graph *g = Graph_New(32, 32);
 	Graph_AcquireWriteLock(g);
@@ -502,21 +501,21 @@ TEST_F(GraphTest, RemoveEdges) {
 	 * 1 connected to 2. */
 
 	// connect 0 to 1.
-	Graph_ConnectNodes(g, 0, 1, r, &e);
+	Graph_CreateEdge(g, 0, 1, r, &e);
 	// Connect 0 to 2.
-	Graph_ConnectNodes(g, 0, 2, r, &e);
+	Graph_CreateEdge(g, 0, 2, r, &e);
 	// Connect 1 to 2.
-	Graph_ConnectNodes(g, 1, 2, r, &e);
+	Graph_CreateEdge(g, 1, 2, r, &e);
 
 	// Validate graph creation.
 	ASSERT_EQ(Graph_EdgeCount(g), 3);
 
-	M = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix_nvals(&nnz, M);
+	M = Graph_GetRelationMatrix(g, r, false);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 3);
 
-	M = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix_nvals(&nnz, M);
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 3);
 
 	//==============================================================================
@@ -540,20 +539,20 @@ TEST_F(GraphTest, RemoveEdges) {
 	ASSERT_EQ(array_len(edges), 0);
 
 	// Validate matrix update.
-	M = Graph_GetRelationMatrix(g, r);
+	M = Graph_GetRelationMatrix(g, r, false);
 	// Relation matrix at [destID, srcID] should be empty.
 	bool x = false;
-	GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
+	RG_Matrix_extractElement_BOOL(&x, M, destID, srcID);
 	ASSERT_FALSE(x);
-	GrB_Matrix_nvals(&nnz, M);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 2);
 
 	// Adjacency matrix at [destID, srcID] should be empty.
 	x = false;
-	M = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_extractElement_BOOL(&x, M, destID, srcID);
 	ASSERT_FALSE(x);
-	GrB_Matrix_nvals(&nnz, M);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 2);
 
 	//==============================================================================
@@ -576,20 +575,20 @@ TEST_F(GraphTest, RemoveEdges) {
 	ASSERT_EQ(Graph_EdgeCount(g), 1);
 
 	// Validate matrix update.
-	M = Graph_GetRelationMatrix(g, r);
+	M = Graph_GetRelationMatrix(g, r, false);
 	// Relation matrix at [destID, srcID] should be empty.
 	x = false;
-	GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
+	RG_Matrix_extractElement_BOOL(&x, M, destID, srcID);
 	ASSERT_FALSE(x);
-	GrB_Matrix_nvals(&nnz, M);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 1);
 
 	// Adjacency matrix at [destID, srcID] should be empty.
 	x = false;
-	M = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_extractElement_BOOL(&x, M, destID, srcID);
 	ASSERT_FALSE(x);
-	GrB_Matrix_nvals(&nnz, M);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 1);
 
 	//==============================================================================
@@ -606,20 +605,20 @@ TEST_F(GraphTest, RemoveEdges) {
 	ASSERT_EQ(Graph_EdgeCount(g), 0);
 
 	// Validate matrix update.
-	M = Graph_GetRelationMatrix(g, r);
+	M = Graph_GetRelationMatrix(g, r, false);
 	// Relation matrix at [destID, srcID] should be empty.
 	x = false;
-	GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
+	RG_Matrix_extractElement_BOOL(&x, M, destID, srcID);
 	ASSERT_FALSE(x);
-	GrB_Matrix_nvals(&nnz, M);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 0);
 
 	// Adjacency matrix at [destID, srcID] should be empty.
 	x = false;
-	M = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_extractElement_BOOL(&x, M, destID, srcID);
 	ASSERT_FALSE(x);
-	GrB_Matrix_nvals(&nnz, M);
+	RG_Matrix_nvals(&nnz, M);
 	ASSERT_EQ(nnz, 0);
 
 	// Cleanup.
@@ -678,11 +677,11 @@ TEST_F(GraphTest, GetEdge) {
 	 * 4. nodes (2-3) will be connected by relation 2.
 	 * 5. nodes (3-4) will be connected by relation 3. */
 
-	Graph_ConnectNodes(g, 0, 1, relations[0], &e);
-	Graph_ConnectNodes(g, 0, 1, relations[1], &e);
-	Graph_ConnectNodes(g, 1, 2, relations[1], &e);
-	Graph_ConnectNodes(g, 2, 3, relations[2], &e);
-	Graph_ConnectNodes(g, 3, 4, relations[3], &e);
+	Graph_CreateEdge(g, 0, 1, relations[0], &e);
+	Graph_CreateEdge(g, 0, 1, relations[1], &e);
+	Graph_CreateEdge(g, 1, 2, relations[1], &e);
+	Graph_CreateEdge(g, 2, 3, relations[2], &e);
+	Graph_CreateEdge(g, 3, 4, relations[3], &e);
 
 	// Validations
 	// Try to get edges by ID
@@ -800,40 +799,27 @@ TEST_F(GraphTest, BulkDelete) {
 	 * (4)-[r0]->(3) */
 
 	// Node 0 is connected to node 1 with multiple edges.
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
-	Edge_SetRelationID(&e[0], r0);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
-	Edge_SetRelationID(&e[1], r0);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
-	Edge_SetRelationID(&e[2], r1);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[3]);
-	Edge_SetRelationID(&e[3], r1);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[3]);
 
 	// Node 1 is connected to node 0 with multiple edges.
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[4]);
-	Edge_SetRelationID(&e[4], r0);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[5]);
-	Edge_SetRelationID(&e[5], r0);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[6]);
-	Edge_SetRelationID(&e[6], r1);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[4]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[5]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[6]);
 
 	// Node 2 is connected to nodes 0,1 and 3.
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[0]), r0, &e[7]);
-	Edge_SetRelationID(&e[7], r0);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[8]);
-	Edge_SetRelationID(&e[8], r1);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[3]), r1, &e[9]);
-	Edge_SetRelationID(&e[9], r1);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[0]), r0, &e[7]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[8]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[3]), r1, &e[9]);
 
 	// Node 3 is connected to node 4 with multiple edges.
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[10]);
-	Edge_SetRelationID(&e[10], r1);
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[11]);
-	Edge_SetRelationID(&e[11], r1);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[10]);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[11]);
 
 	// Node 4 is connected to node 3.
-	Graph_ConnectNodes(g, ENTITY_GET_ID(&n[4]), ENTITY_GET_ID(&n[3]), r0, &e[12]);
-	Edge_SetRelationID(&e[12], r0);
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[4]), ENTITY_GET_ID(&n[3]), r0, &e[12]);
 
 	Graph_ReleaseLock(g);
 	/* Delete nodes 0,1.
@@ -865,8 +851,7 @@ TEST_F(GraphTest, BulkDelete) {
 	Graph_ReleaseLock(g);
 
 	ASSERT_EQ(node_deleted, 2);
-	// Statistics do not count for multi edge deletions.
-	// ASSERT_EQ(edge_deleted, 10);
+	ASSERT_EQ(edge_deleted, 10);
 
 	/* Verification, updated graph:
 	 * (2)-[r1]->(3)
@@ -882,3 +867,118 @@ TEST_F(GraphTest, BulkDelete) {
 	Graph_Free(g);
 }
 
+TEST_F(GraphTest, GraphStatistics) {
+	// Create graph.
+	int node_count = 4;
+	int edge_count = 10;
+	Node n[node_count];
+	Edge e[edge_count];
+	Graph *g = Graph_New(16, 16);
+
+	Graph_AcquireWriteLock(g);
+
+	int l = Graph_AddLabel(g);
+	int r0 = Graph_AddRelationType(g);
+	int r1 = Graph_AddRelationType(g);
+
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 0);
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 0);
+
+	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, l, &n[i]);
+
+	/* Connect nodes:
+	*
+	* 1. Verify r0 multi edge (False)
+	*
+	* Connect nodes
+	* (0)-[r0]->(1)
+	*
+	* 2. Verify r0 multi edge (False)
+	*
+	* Connect nodes
+	* (0)-[r0]->(1)
+	*
+	* 3. Verify r0 multi edge (True)
+	*
+	* 4. Verify r1 no multi edge
+	*
+	* Connect nodes
+	* (0)-[r1]->(1)
+	*
+	* 5. Verify r1 multi edge (False)
+	*
+	* Connect nodes
+	* (1)-[r1]->(0)
+	*
+	* 6. Verify r1 multi edge (False)
+	*
+	* Connect nodes
+	* (2)-[r1]->(1)
+	*
+	* 7. Verify r1 multi edge (False)
+	*
+	*
+	* Connect nodes
+	* (2)-[r1]->(1)
+	*
+	* 8. Verify r1 multi edge (True)
+	* 9. Verify r0 multi edge (True) */
+
+	// 1. Verify r0 multi edge (False)
+	bool transpose = false;
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
+	// (0)-[r0]->(1)
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
+	ASSERT_EQ(g->stats.edge_count[r0], 1);
+	// 2. Verify r0 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
+	// (0)-[r0]->(1)
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
+	// 3. Verify r0 multi edge (True)
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
+	// 4. Verify r1 no multi edge
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
+	// (0)-[r1]->(1)
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
+	// 5. Verify r1 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
+	// (1)-[r1]->(0)
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[3]);
+	// 6. Verify r1 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
+	// (2)-[r1]->(1)
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[4]);
+	// 7. Verify r1 multi edge (False)
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
+	// (2)-[r1]->(1)
+	Graph_CreateEdge(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[5]);
+	// 8. Verify r1 multi edge (True)
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
+	// 9. Verify r0 multi edge (True)
+	ASSERT_TRUE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
+
+	Graph_ReleaseLock(g);
+	/* Delete edges:
+	 * Implicit deleted edges:
+	 * 4 (2)-[r1]->(1)
+	 * 5 (2)-[r1]->(1)
+	 * Delete edges:
+	 * 0  (0)-[r0]->(1) */
+
+	uint node_deleted = 0;
+	uint edge_deleted = 0;
+
+	Graph_AcquireWriteLock(g);
+	Graph_BulkDelete(g, &n[2], 1, &e[0], 1, &node_deleted, &edge_deleted);
+	Graph_ReleaseLock(g);
+
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r0, transpose));
+	ASSERT_FALSE(Graph_RelationshipContainsMultiEdge(g, r1, transpose));
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 1);
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 2);
+	ASSERT_EQ(node_deleted, 1);
+	ASSERT_EQ(edge_deleted, 3);
+
+	// Clean up.
+	Graph_Free(g);
+}

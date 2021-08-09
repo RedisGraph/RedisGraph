@@ -38,6 +38,7 @@
 
 #define GB_FREE_ALL ;
 
+GB_PUBLIC
 GrB_Info GB_bitmap_assign_noM_noaccum
 (
     // input/output:
@@ -85,15 +86,15 @@ GrB_Info GB_bitmap_assign_noM_noaccum
     //--------------------------------------------------------------------------
 
     if (C_replace)
-    { 
+    {
         if (assign_kind == GB_ASSIGN)
-        {
+        { 
             // for assign: set all Cb(:,:) to zero
             GB_memset (Cb, 0, cnzmax, nthreads_max) ;
             cnvals = 0 ;
         }
         else
-        {
+        { 
             // for row assign: set Cb(i,:) to zero
             // for col assign: set Cb(:,j) to zero
             // for subassign: set all Cb(I,J) to zero
@@ -136,7 +137,7 @@ GrB_Info GB_bitmap_assign_noM_noaccum
 
         }
         else
-        { 
+        {
 
             //------------------------------------------------------------------
             // matrix assignment: C(I,J) = A
@@ -168,7 +169,7 @@ GrB_Info GB_bitmap_assign_noM_noaccum
             }
             #include "GB_bitmap_assign_A_template.c"
 
-            cnvals += GB_NNZ (A) ;
+            cnvals += GB_nnz (A) ;
         }
     }
 

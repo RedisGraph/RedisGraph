@@ -1649,7 +1649,6 @@ static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t 
 		}
 	}
 
-	ErrorCtx_SetError("Error: empty query.");
 	return AST_INVALID;
 }
 
@@ -1661,7 +1660,7 @@ static AST_Validation _AST_ValidateUnionQuery(AST *mock_ast) {
 	// Each self-contained query delimited by a UNION clause has its own scope.
 	uint *query_scopes = AST_GetClauseIndices(mock_ast, CYPHER_AST_UNION);
 	// Append the clause count to check the final scope (from the last UNION to the last clause)
-	query_scopes = array_append(query_scopes, cypher_ast_query_nclauses(mock_ast->root));
+	array_append(query_scopes, cypher_ast_query_nclauses(mock_ast->root));
 	uint scope_count = array_len(query_scopes);
 	uint scope_start = 0;
 	for(uint i = 0; i < scope_count; i ++) {

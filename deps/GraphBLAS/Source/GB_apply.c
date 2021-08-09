@@ -12,6 +12,7 @@
 // GB_apply does the work for GrB_*_apply, including the binary op variants.
 
 #include "GB_apply.h"
+#include "GB_binop.h"
 #include "GB_transpose.h"
 #include "GB_accum_mask.h"
 
@@ -40,6 +41,10 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     //--------------------------------------------------------------------------
 
     // C may be aliased with M and/or A
+
+    struct GB_Matrix_opaque T_header ;
+    GrB_Matrix T = GB_clear_static_header (&T_header) ;
+
     GB_RETURN_IF_FAULTY_OR_POSITIONAL (accum) ;
     ASSERT_MATRIX_OK (C, "C input for GB_apply", GB0) ;
     ASSERT_MATRIX_OK_OR_NULL (M, "M for GB_apply", GB0) ;
@@ -51,7 +56,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     GB_Opcode opcode ;
     GrB_Type T_type ;
     if (op1 != NULL)
-    { 
+    {
         // apply a unary operator
         GB_RETURN_IF_FAULTY (op1) ;
         ASSERT_UNARYOP_OK (op1, "op1 for GB_apply", GB0) ;
@@ -140,11 +145,8 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     }
 
     // check domains and dimensions for C<M> = accum (C,T)
-    GrB_Info info = GB_compatible (C->type, C, M, accum, T_type, Context) ;
-    if (info != GrB_SUCCESS)
-    { 
-        return (info) ;
-    }
+    GrB_Info info ;
+    GB_OK (GB_compatible (C->type, C, M, Mask_struct, accum, T_type, Context)) ;
 
     // check the dimensions
     int64_t tnrows = (A_transpose) ? GB_NCOLS (A) : GB_NROWS (A) ;
@@ -160,18 +162,13 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     }
 
     // quick return if an empty mask is complemented
-    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
+    GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp, Mask_struct) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    GB_MATRIX_WAIT (M) ;        // TODO: postpone until accum/mask phase
-    GB_MATRIX_WAIT (A) ;        // TODO: allow A and C to be jumbled
+    GB_MATRIX_WAIT_IF_PENDING_OR_ZOMBIES (A) ;      // A can be jumbled
     GB_MATRIX_WAIT (scalar) ;
 
-    GB_BURBLE_DENSE (C, "(C %s) ") ;
-    GB_BURBLE_DENSE (M, "(M %s) ") ;
-    GB_BURBLE_DENSE (A, "(A %s) ") ;
-
-    if (op2 != NULL && GB_NNZ (scalar) != 1)
+    if (op2 != NULL && GB_nnz ((GrB_Matrix) scalar) != 1)
     { 
         // the scalar entry must be present
         GB_ERROR (GrB_INVALID_VALUE, "%s", "Scalar must contain an entry") ;
@@ -181,55 +178,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // rename first, second, any, and pair operators
     //--------------------------------------------------------------------------
 
-    if (op2 != NULL)
-    { 
-        // first(A,x), second(y,A), and any(...) become identity(A)
-        if ((opcode == GB_ANY_opcode) ||
-            (opcode == GB_FIRST_opcode  && !binop_bind1st) ||
-            (opcode == GB_SECOND_opcode &&  binop_bind1st))
-        { 
-            switch (op2->xtype->code)
-            {
-                default              :
-                case GB_BOOL_code    : op1 = GrB_IDENTITY_BOOL   ; break ;
-                case GB_INT8_code    : op1 = GrB_IDENTITY_INT8   ; break ;
-                case GB_INT16_code   : op1 = GrB_IDENTITY_INT16  ; break ;
-                case GB_INT32_code   : op1 = GrB_IDENTITY_INT32  ; break ;
-                case GB_INT64_code   : op1 = GrB_IDENTITY_INT64  ; break ;
-                case GB_UINT8_code   : op1 = GrB_IDENTITY_UINT8  ; break ;
-                case GB_UINT16_code  : op1 = GrB_IDENTITY_UINT16 ; break ;
-                case GB_UINT32_code  : op1 = GrB_IDENTITY_UINT32 ; break ;
-                case GB_UINT64_code  : op1 = GrB_IDENTITY_UINT64 ; break ;
-                case GB_FP32_code    : op1 = GrB_IDENTITY_FP32   ; break ;
-                case GB_FP64_code    : op1 = GrB_IDENTITY_FP64   ; break ;
-                case GB_FC32_code    : op1 = GxB_IDENTITY_FC32   ; break ;
-                case GB_FC64_code    : op1 = GxB_IDENTITY_FC64   ; break ;
-            }
-            op2 = NULL ;
-        }
-        else if (opcode == GB_PAIR_opcode)
-        { 
-            // pair (...) becomes one(A)
-            switch (op2->xtype->code)
-            {
-                default              :
-                case GB_BOOL_code    : op1 = GxB_ONE_BOOL   ; break ;
-                case GB_INT8_code    : op1 = GxB_ONE_INT8   ; break ;
-                case GB_INT16_code   : op1 = GxB_ONE_INT16  ; break ;
-                case GB_INT32_code   : op1 = GxB_ONE_INT32  ; break ;
-                case GB_INT64_code   : op1 = GxB_ONE_INT64  ; break ;
-                case GB_UINT8_code   : op1 = GxB_ONE_UINT8  ; break ;
-                case GB_UINT16_code  : op1 = GxB_ONE_UINT16 ; break ;
-                case GB_UINT32_code  : op1 = GxB_ONE_UINT32 ; break ;
-                case GB_UINT64_code  : op1 = GxB_ONE_UINT64 ; break ;
-                case GB_FP32_code    : op1 = GxB_ONE_FP32   ; break ;
-                case GB_FP64_code    : op1 = GxB_ONE_FP64   ; break ;
-                case GB_FC32_code    : op1 = GxB_ONE_FC32   ; break ;
-                case GB_FC64_code    : op1 = GxB_ONE_FC64   ; break ;
-            }
-            op2 = NULL ;
-        }
-    }
+    GB_binop_rename (&op1, &op2, binop_bind1st) ;
 
     //--------------------------------------------------------------------------
     // T = op(A) or op(A')
@@ -257,33 +206,37 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
         }
     }
 
-    GrB_Matrix T = NULL ;
-
     if (A_transpose)
     { 
         // T = op (A'), typecasting to op*->ztype
-        // transpose: typecast, apply an op, not in-place.
         GBURBLE ("(transpose-op) ") ;
-        info = GB_transpose (&T, T_type, T_is_csc, A,
-            op1, op2, scalar, binop_bind1st, Context) ;
+        info = GB_transpose (T, T_type, T_is_csc, A, op1, op2, scalar,
+            binop_bind1st, Context) ;
         ASSERT (GB_JUMBLED_OK (T)) ;
         // A positional op is applied to C after the transpose is computed,
-        // using the T_is_csc format.  The ijflip is handled
-        // above.
+        // using the T_is_csc format.  The ijflip is handled above.
     }
-    else if (M == NULL && accum == NULL && (C == A) && C->type == T_type)
+    else if (M == NULL && accum == NULL && (C == A) && C->type == T_type
+        && GB_nnz (C) > 0)
     {
-        GBURBLE ("(inplace-op) ") ;
+        GBURBLE ("(in-place-op) ") ;
         // C = op (C), operating on the values in-place, with no typecasting
         // of the output of the operator with the matrix C.
         // No work to do if the op is identity.
-        // FUTURE::: also handle C += op(C), with accum.
         if (opcode != GB_IDENTITY_opcode)
-        { 
+        {
             // the output Cx is aliased with C->x in GB_apply_op.
-            GB_void *Cx = (GB_void *) C->x ;
-            info = GB_apply_op (Cx, op1, op2,   // op1 != identity
-                scalar, binop_bind1st, C, Context) ;
+            GB_iso_code
+                C_code_iso = GB_iso_unop_code (C, op1, op2, binop_bind1st) ;
+            info = GB_apply_op ((GB_void *) C->x, C->type, C_code_iso,
+                op1, op2, scalar, binop_bind1st, C, Context) ;
+            if (info == GrB_SUCCESS && C_code_iso != GB_NON_ISO)
+            { 
+                // compact the iso values of C
+                ASSERT (C->iso) ;
+                // set C->iso = true    OK
+                info = GB_convert_any_to_iso (C, NULL, true, Context) ;
+            }
         }
         return (info) ;
     }
@@ -291,13 +244,13 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     { 
         // T = op (A), pattern is a shallow copy of A, type is op*->ztype.
         GBURBLE ("(shallow-op) ") ;
-        info = GB_shallow_op (&T, T_is_csc,
-            op1, op2, scalar, binop_bind1st, A, Context) ;
+        info = GB_shallow_op (T, T_is_csc, op1, op2, scalar, binop_bind1st,
+            A, Context) ;
     }
 
     if (info != GrB_SUCCESS)
     { 
-        GB_Matrix_free (&T) ;
+        GB_phbix_free (T) ;
         return (info) ;
     }
 

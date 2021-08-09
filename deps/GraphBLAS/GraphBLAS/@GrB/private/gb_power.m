@@ -3,19 +3,19 @@ function C = gb_power (A, B)
 % C = A.^B computes element-wise powers.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 [am, an, atype] = gbsize (A) ;
 [bm, bn, btype] = gbsize (B) ;
 a_is_scalar = (am == 1) && (an == 1) ;
 b_is_scalar = (bm == 1) && (bn == 1) ;
-a_is_real = ~contains (atype, 'complex') ;
-b_is_real = ~contains (btype, 'complex') ;
+a_is_real = ~gb_contains (atype, 'complex') ;
+b_is_real = ~gb_contains (btype, 'complex') ;
 
 % determine if C = A.^B is real or complex
 if (a_is_real && b_is_real)
     % A and B are both real.  Determine if C might be complex.
-    if (contains (btype, 'int') || isequal (btype, 'logical'))
+    if (gb_contains (btype, 'int') || isequal (btype, 'logical'))
         % B is logical or integer, so C is real
         c_is_real = true ;
     elseif (gbisequal (B, gbapply ('round', B)))
@@ -25,8 +25,7 @@ if (a_is_real && b_is_real)
         % All entries in A are non-negative, so C is real
         c_is_real = true ;
     else
-        % A contains negative entries, and B is non-integer, so C can
-        % be complex.
+        % A has negative entries, and B is non-integer, so C can be complex.
         c_is_real = false ;
     end
 else
@@ -39,7 +38,7 @@ if (c_is_real)
     ctype = gboptype (atype, btype) ;
 else
     % C is complex
-    if (contains (atype, 'single') && contains (btype, 'single'))
+    if (gb_contains (atype, 'single') && gb_contains (btype, 'single'))
         ctype = 'single complex' ;
     else
         ctype = 'double complex' ;
@@ -85,7 +84,7 @@ else
             C = gbapply2 (op, A, B) ;
         end
     else
-        % both A and B are matrices.  0.^0 is NaN, so C is full.
+        % both A and B are matrices.  0.^0 is 1, so C is full.
         C = gbemult (op, gbfull (A, ctype), B) ;
     end
 

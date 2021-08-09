@@ -27,8 +27,8 @@ INC = tmp_include/*
 SRC2 = $(notdir $(wildcard $(SRC)))
 OBJ = $(SRC2:.c=.o)
 LDFLAGS = -fopenmp
-CFLAGS = -g -std=c11 -fopenmp -fexceptions -fPIC -Wno-pragmas -DGBTESTCOV
-CPPFLAGS = -Itmp_include -DGBCOVER
+CFLAGS = -g -std=c11 -fopenmp -fexceptions -fPIC -Wno-pragmas
+CPPFLAGS = -Itmp_include -DGBCOVER $(RENAME)
 SO_OPTS = $(LDFLAGS)
 
 ifeq ($(UNAME),Darwin)
@@ -62,3 +62,7 @@ distclean: clean
 purge: distclean
 	$(RM) log.txt
 
+config:
+	@echo "CFLAGS:   " $(CFLAGS)
+	@echo "CPPFLAGS: " $(CPPFLAGS)
+	@echo "LDFLAGS:  " $(LDFLAGS)

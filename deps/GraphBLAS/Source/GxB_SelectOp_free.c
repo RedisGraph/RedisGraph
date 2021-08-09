@@ -17,16 +17,17 @@ GrB_Info GxB_SelectOp_free          // free a user-created select operator
 
     if (selectop != NULL)
     {
-        // only free a user-defined operator
+        // only free a dynamically-allocated operator
         GxB_SelectOp op = *selectop ;
-        if (op != NULL && op->opcode == GB_USER_SELECT_opcode)
+        if (op != NULL)
         {
-            if (op->magic == GB_MAGIC)
+            size_t header_size = op->header_size ;
+            if (header_size > 0)
             { 
                 op->magic = GB_FREED ;  // to help detect dangling pointers
-                GB_FREE (*selectop) ;
+                op->header_size = 0 ;
+                GB_FREE (selectop, header_size) ;
             }
-            (*selectop) = NULL ;
         }
     }
 

@@ -15,7 +15,7 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
+    GrB_Matrix_free_(&A) ;              \
     GrB_Monoid_free_(&reduce) ;         \
     GB_mx_put_global (true) ;           \
 }
@@ -103,7 +103,7 @@ void mexFunction
         mexErrMsgTxt ("GrB_reduce failed") ;
     }
 
-    // return result to MATLAB as a boolean scalar
+    // return result as a boolean scalar
     pargout [0] = GB_mx_create_full (1, 1, GrB_BOOL) ;
     GB_void *p = mxGetData (pargout [0]) ;
     memcpy (p, &result, sizeof (bool)) ;

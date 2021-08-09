@@ -16,7 +16,7 @@
 #include "GB_subassign.h"
 
 #define GB_ASSIGN_SCALAR(type,T,ampersand)                                     \
-GrB_Info GxB_Vector_subassign_ ## T /* w(Rows)<M> = accum (w(Rows),x)       */ \
+GrB_Info GB_EVAL2 (GXB (Vector_subassign_), T) /* w(I)<M> = accum (w(I),x)  */ \
 (                                                                              \
     GrB_Vector w,                   /* input/output vector for results      */ \
     const GrB_Vector M,             /* optional mask for w(Rows)            */ \

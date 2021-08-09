@@ -510,7 +510,7 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 		reltype_names = array_new(const char *, reltype_count);
 		for(uint i = 0; i < reltype_count; i ++) {
 			const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(edge, i));
-			reltype_names = array_append(reltype_names, reltype);
+			array_append(reltype_names, reltype);
 		}
 	}
 
@@ -561,7 +561,7 @@ static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {
 
 static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *comp_exp,
 														cypher_astnode_type_t type) {
-	// Set the appropriate function name according to the node type.
+	// set the appropriate function name according to the node type
 	const char *func_name;
 	if(type == CYPHER_AST_ANY) func_name = "ANY";
 	else if(type == CYPHER_AST_ALL) func_name = "ALL";
@@ -574,20 +574,26 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	/* The comprehension's local variable, WHERE expression, and eval routine
 	 * do not change for each invocation, so are bundled together in the function's context. */
 	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
-	ctx->ft = NULL;
-	ctx->eval_exp = NULL;
-	ctx->local_record = NULL;
-	ctx->variable_idx = INVALID_INDEX;
+	ctx->ft            =  NULL;
+	ctx->eval_exp      =  NULL;
+	ctx->local_record  =  NULL;
+	ctx->variable_str  =  NULL;
+	ctx->variable_idx  =  INVALID_INDEX;
+
 	/* Retrieve the variable name introduced in this context to iterate over list elements.
 	 * In the above query, this is 'val'. */
 	const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(comp_exp);
 	ASSERT(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
-	// Retrieve the variable string for the local variable.
+
+	// retrieve the variable string for the local variable
 	ctx->variable_str = cypher_ast_identifier_get_name(variable_node);
 
-	/* The predicate node is the set of WHERE conditions in the comprehension, if any. */
-	const cypher_astnode_t *predicate_node = cypher_ast_list_comprehension_get_predicate(comp_exp);
-	// Build a FilterTree to represent this predicate.
+	// the predicate node is the set of WHERE conditions in the comprehension
+	// if any
+	const cypher_astnode_t *predicate_node =
+		cypher_ast_list_comprehension_get_predicate(comp_exp);
+
+	// build a FilterTree to represent this predicate
 	if(predicate_node) {
 		AST_ConvertFilters(&ctx->ft, predicate_node);
 	} else if(type != CYPHER_AST_LIST_COMPREHENSION) {
@@ -597,27 +603,30 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
-	/* Construct the operator node that will generate updated values, if one is provided.
-	 * In the above query, this will be an operation node representing "val * 2".
-	 * This will always be NULL for comprehensions like any() and all(). */
+	// construct the operator node that will generate updated values,
+	// if one is provided
+	//
+	// in the above query, this will be an operation node representing "val * 2"
+	// this will always be NULL for comprehensions like any() and all()
 	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
 	if(eval_node) ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
 
-	// Build an operation node to represent the list comprehension.
+	// build an operation node to represent the list comprehension
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
 
-	// Add the context to the function descriptor as the function's private data.
+	// add the context to the function descriptor as the function's private data
 	op->op.f = AR_SetPrivateData(op->op.f, ctx);
 
-	/* 'arr' is the list expression.
-	 * Note that this value could resolve to an alias, a literal array, a function call, and so on. */
+	// 'arr' is the list expression
+	// note that this value could resolve to an alias, a literal array,
+	// a function call, and so on
 	const cypher_astnode_t *list_node = cypher_ast_list_comprehension_get_expression(comp_exp);
 	AR_ExpNode *list = _AR_EXP_FromASTNode(list_node);
 
-	// The list expression is the function's first child.
+	// the list expression is the function's first child
 	op->op.children[0] = list;
 
-	// The function's second child will be a pointer to the Record being evaluated.
+	// the second child will be a pointer to the Record being evaluated
 	op->op.children[1] = AR_EXP_NewRecordNode();
 
 	return op;

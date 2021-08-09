@@ -10,16 +10,16 @@ function C = max (A, B, option)
 % C = max (A, [ ], 1) is a row vector with C(j) = max (A (:,j))
 % C = max (A, [ ], 2) is a column vector with C(i) = max (A (i,:))
 %
-% The 2nd output of [C,I] = max (...) in the MATLAB built-in max
-% is not yet supported.  The max (..., nanflag) option is
+% The 2nd output of [C,I] = max (...) in the built-in max
+% is not supported; see GrB.argmax instead.  The max (..., nanflag)
 % not yet supported; only the 'omitnan' behavior is supported.
 %
 % Complex matrices are not supported.
 %
-% See also GrB/min.
+% See also GrB/min, GrB.argmax.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: max(A,B) for two matrices A and B is slower than it could be.
 % See comments in gb_union_op.
@@ -29,7 +29,7 @@ if (isobject (A))
 end
 
 type = gbtype (A) ;
-if (contains (type, 'complex'))
+if (gb_contains (type, 'complex'))
     error ('complex matrices not yet supported') ;
 elseif (isequal (type, 'logical'))
     op = '|.logical' ;

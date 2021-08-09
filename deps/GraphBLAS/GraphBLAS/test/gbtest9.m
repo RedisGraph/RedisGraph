@@ -2,7 +2,7 @@ function gbtest9
 %GBTEST9 test eye and speye
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 types = gbtest_types ;
 

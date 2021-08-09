@@ -5,24 +5,25 @@ This is the GraphBLAS/Demo folder.  It contains a set of simple demo programs
 that illustrate the use of GraphBLAS.  To compile and run the demos, see
 ../README.txt.
 
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+>>> DO NOT BENCHMARK ANY OF THESE PROGRAMS <<<
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    These methods are simple ones, meant for illustration only.  They can be
+    slow.  Use LAGraph for benchmarking and use in production.  Do not use any
+    of these methods in user applications.  Eventually, this Demo folder will
+    be removed, and its purpose will be achieved in LAGraph instead.
+
 --------------------------------------------------------------------------------
 Files in this folder:
 
     README.txt              this file
     demo                    run all demos
-    tri_run                 run tricount on a set of matrices
-    go                      run tricount on GraphChallenge matrices
-    go2                     run tricount on two large matrices
-    go3                     run tricount on a few large matrices
 
 --------------------------------------------------------------------------------
 in Demo/Source:
 --------------------------------------------------------------------------------
 
-    bfs5m.c                 breadth-first search using assign-scalar
-    bfs5m_check.c           as above, but with error checking
-    bfs6.c                  breadth-first serach using apply
-    bfs6_check.c            as above, but with error checking
     get_matrix.c            get a matrix (file, Wathen, or random)
     mis.c                   maximal independent set
     mis_check.c             as above, but with error checking
@@ -30,10 +31,8 @@ in Demo/Source:
     random_matrix.c         create a random matrix
     read_matrix.c           read a matrix from a file (Matrix/*)
     simple_rand.c           a very simple random number generator
-    simple_timer.c          a simple yet portable timer
-    tricount.c              six triangle counting methods using GraphBLAS
     usercomplex.c           user-defined double complex type
-    wathen.c                GraphBLAS version of the MATLAB wathen.m
+    wathen.c                GraphBLAS version of wathen.m
     dpagerank.c             PageRank via real semiring
     dpagerank2.c            PageRank via pagegrank semiring
     drowscale.c             row scaling for dpagerank
@@ -47,13 +46,11 @@ in Demo/Source:
 in Demo/Program:
 --------------------------------------------------------------------------------
 
-    bfs_demo.c              demo program to test bfs
     complex_demo.c          demo program to test complex type
     import_demo.c           demo program to test import/export
     kron_demo.c             demo program to test GrB_kronecker
     mis_demo.c              demo program to test mis
-    tri_demo.c              demo program to test tricount
-    simple_demo.c           demo program to test simple_rand and simple_timer
+    simple_demo.c           demo program to test simple_rand
     wildtype_demo.c         demo program, arbitrary struct as user-defined type
     pagerank_demo.c         demo program to test dpagerank and ipagerank
     openmp_demo.c           demo program using OpenMP
@@ -62,8 +59,7 @@ in Demo/Program:
 in Demo/Output:
 --------------------------------------------------------------------------------
 
-    bfs_demo.out        output of bfs_demo
-    complex_demo_out.m  output of complex_demo, run in MATLAB to check results
+    complex_demo_out.m  output of complex_demo
     mis_demo.out        output of mis_demo
     simple_test.out     output of simple_demo
     tri_demo.out        output of tri_demo
@@ -77,20 +73,16 @@ in Demo/Include:
 
     graphblas_demos.h       include file for all demos
     simple_rand.h           include file for simple_rand.c
-    simple_timer.h          include file for simple_timer
     usercomplex.h           include file for usercomplex.h
 
 --------------------------------------------------------------------------------
-in Demo/MATLAB:
+in Demo/Octave:
 --------------------------------------------------------------------------------
 
-    Contents.m              contents of Demo/MATLAB
-    tricount.m              five triangle counting methods using MATLAB
+    Contents.m              contents of Demo/Octave
     adj_to_edges.m          convert adjacency matrix to incidence matrix
     edges_to_adj.m          convert incidence matrix to adjacency matrix
     check_adj.m             check an adjaceny matrix
-    tri_matlab.m            run a set of GraphChallenge matrices
-    tri_matlab_out.txt      output of tri_matlab.m
     kron_demo.m             kron demo
     kron_test.m             kron test
     dpagerank.m             pagerank with real values

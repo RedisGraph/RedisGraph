@@ -31,7 +31,7 @@ GrB_Info GrB_Matrix_dup     // make an exact copy of a matrix
     // duplicate the matrix
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_dup (C, A, true, NULL, Context) ;
+    GrB_Info info = GB_dup (C, A, Context) ;
     GB_BURBLE_END ;
     return (info) ;
 }

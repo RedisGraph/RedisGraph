@@ -50,7 +50,10 @@ GrB_Info GB_subassign_scalar        // C(Rows,Cols)<M> += x
 
 int GB_subassigner_method           // return method to use in GB_subassigner
 (
-    // inputs: no matrix is modified
+    // outputs
+    bool *C_iso_out,                // true if C is iso on output
+    GB_void *cout,                  // iso value of C on output
+    // inputs
     const GrB_Matrix C,             // input/output matrix for results
     const bool C_replace,           // C matrix descriptor
     const GrB_Matrix M,             // optional mask for C(I,J), unused if NULL
@@ -60,7 +63,9 @@ int GB_subassigner_method           // return method to use in GB_subassigner
     const GrB_Matrix A,             // input matrix (NULL for scalar expansion)
     const int Ikind,
     const int Jkind,
-    const bool scalar_expansion     // if true, expand scalar to A
+    const bool scalar_expansion,    // if true, expand scalar to A
+    const void *scalar,
+    const GrB_Type atype            // type of A, or the type of the scalar
 ) ;
 
 GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
@@ -97,35 +102,43 @@ GrB_Info GB_assign_prep
     GrB_Matrix *Chandle,            // C_in, or C2 if C is aliased to M or A
     GrB_Matrix *Mhandle,            // M_in, or a modified version M2
     GrB_Matrix *Ahandle,            // A_in, or a modified version A2
+    int *subassign_method,          // subassign method to use
 
     // modified versions of the matrices C, M, and A:
     GrB_Matrix *C2_handle,          // NULL, or a copy of C
     GrB_Matrix *M2_handle,          // NULL, or a temporary matrix
     GrB_Matrix *A2_handle,          // NULL, or a temporary matrix
 
+    // static headers for C2, M2, A2, MT and AT
+    GrB_Matrix C2_header_handle,
+    GrB_Matrix M2_header_handle,
+    GrB_Matrix A2_header_handle,
+    GrB_Matrix MT_header_handle,
+    GrB_Matrix AT_header_handle,
+
     // modified versions of the Rows/Cols lists, and their analysis:
-    const GrB_Index **I_handle,     // Rows, Cols, or a modified copy I2
+    GrB_Index **I_handle,           // Rows, Cols, or a modified copy I2
     GrB_Index **I2_handle,          // NULL, or sorted/pruned Rows or Cols
+    size_t *I2_size_handle,
     int64_t *ni_handle,
     int64_t *nI_handle,
     int *Ikind_handle,
     int64_t Icolon [3],
 
-    const GrB_Index **J_handle,     // Rows, Cols, or a modified copy J2
+    GrB_Index **J_handle,           // Rows, Cols, or a modified copy J2
     GrB_Index **J2_handle,          // NULL, or sorted/pruned Rows or Cols
+    size_t *J2_size_handle,
     int64_t *nj_handle,
     int64_t *nJ_handle,
     int *Jkind_handle,
     int64_t Jcolon [3],
 
-    bool *done,                     // true if the prep has finished all work
     GrB_Type *atype_handle,         // type of A or the scalar
 
     // input/output
     GrB_Matrix C_in,                // input/output matrix for results
     bool *C_replace,                // descriptor for C
-    int *assign_kind,               // row assign, col assign, assign, or
-                                    // subassign
+    int *assign_kind,               // row/col assign, assign, or subassign
 
     // input
     const GrB_Matrix M_in,          // optional mask for C
@@ -141,9 +154,13 @@ GrB_Info GB_assign_prep
     const GrB_Index nCols_in,       // number of column indices
     const bool scalar_expansion,    // if true, expand scalar to A
     const void *scalar,             // scalar to be expanded
-    const GB_Type_code scalar_code, // type code of scalar to expand
+    const GB_Type_code scode,       // type code of scalar to expand
     GB_Context Context
 ) ;
+
+//------------------------------------------------------------------------------
+// subassigner methods
+//------------------------------------------------------------------------------
 
 #define GB_SUBASSIGN_METHOD_01   1     // C(I,J) = scalar
 #define GB_SUBASSIGN_METHOD_02   2     // C(I,J) = A
@@ -152,6 +169,7 @@ GrB_Info GB_assign_prep
 #define GB_SUBASSIGN_METHOD_05   5     // C(I,J)<M> = scalar
 #define GB_SUBASSIGN_METHOD_05d 51     // C(:,:)<M> = scalar ; C is dense
 #define GB_SUBASSIGN_METHOD_05e 52     // C(:,:)<M,struct> = scalar
+#define GB_SUBASSIGN_METHOD_05f 53     // C(:,:)<C,struct> = scalar, C == M
 #define GB_SUBASSIGN_METHOD_06d 61     // C(:,:)<A> = A ; C is dense/bitmap
 #define GB_SUBASSIGN_METHOD_06n 62     // C(I,J)<M> = A ; no S
 #define GB_SUBASSIGN_METHOD_06s 63     // C(I,J)<M> = A ; using S

@@ -30,10 +30,10 @@ ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
 	raxStart(&pdata->iter, procedures);
 	raxSeek(&pdata->iter, "^", NULL, 0);
 	pdata->output = array_new(SIValue, 4);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("name"));
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("mode"));
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("name"));
+	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("mode"));
+	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -74,8 +74,8 @@ ProcedureCtx *Proc_ProceduresCtx() {
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
 	ProcedureOutput out_name = {.name = "name", .type = T_STRING};
 	ProcedureOutput out_mode = {.name = "mode", .type = T_STRING};
-	outputs = array_append(outputs, out_name);
-	outputs = array_append(outputs, out_mode);
+	array_append(outputs, out_name);
+	array_append(outputs, out_mode);
 
 	ProcedureCtx *ctx = ProcCtxNew("dbms.procedures",
 	  0,

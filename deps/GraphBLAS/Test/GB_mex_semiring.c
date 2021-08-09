@@ -11,9 +11,9 @@
 
 #define USAGE "GB_mex_semiring (semiring_struct))"
 
-#define FREE_ALL            \
-{                           \
-    GB_mx_put_global (true) ;           \
+#define FREE_ALL                \
+{                               \
+    GB_mx_put_global (true) ;   \
 }
 
 void mexFunction

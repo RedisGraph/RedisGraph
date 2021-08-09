@@ -7,10 +7,10 @@
 
 //------------------------------------------------------------------------------
 
-#include "GB_callback.hpp"
+#include "GB_cuda_stringifier.hpp"
 
 //Global definition required here, sorry
-GB_callback *SR_callback_ptr;   // thunk
+GB_cuda_stringifier *SR_callback_ptr;   // thunk
 
 std::istream* callback_wrapper
 (

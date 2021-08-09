@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// This is for testing only.  See GrB_mxm instead.  Returns a plain MATLAB
+// This is for testing only.  See GrB_mxm instead.  Returns a plain built-in
 // matrix, in double.  The semiring is plus-rdiv2 where plus is the 
 // built-in GrB_PLUS_FP64 operator, and rdiv2 is z=y/x with y float and x
 // double.  The input matrix B is typecasted here to GrB_FP32.
@@ -18,11 +18,11 @@
 
 #define FREE_ALL                            \
 {                                           \
-    GrB_Matrix_free_(&A) ;                   \
-    GrB_Matrix_free_(&B) ;                   \
-    GrB_Matrix_free_(&B64) ;                 \
-    GrB_Matrix_free_(&C) ;                   \
-    GrB_Matrix_free_(&T) ;                   \
+    GrB_Matrix_free_(&A) ;                  \
+    GrB_Matrix_free_(&B) ;                  \
+    GrB_Matrix_free_(&B64) ;                \
+    GrB_Matrix_free_(&C) ;                  \
+    GrB_Matrix_free_(&T) ;                  \
     GrB_BinaryOp_free_(&My_rdiv2) ;         \
     GrB_Semiring_free_(&My_plus_rdiv2) ;    \
     GB_mx_put_global (true) ;               \
@@ -32,10 +32,10 @@
 
 GrB_Info info ;
 bool malloc_debug = false ;
-bool ignore = false, ignore2 = false ;
+bool ignore = false, ignore1 = false, ignore2 = false ;
 bool atranspose = false ;
 bool btranspose = false ;
-GrB_Matrix A = NULL, B = NULL, B64 = NULL, C = NULL, T = NULL ;
+GrB_Matrix A = NULL, B = NULL, B64 = NULL, C = NULL, T = NULL, MT = NULL ;
 int64_t anrows = 0 ;
 int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
@@ -44,6 +44,7 @@ GrB_Desc_Value AxB_method = GxB_DEFAULT ;
 bool flipxy = false ;
 bool done_in_place = false ;
 double C_scalar = 0 ;
+struct GB_Matrix_opaque MT_header, T_header ;
 
 GrB_Info axb (GB_Context Context) ;
 
@@ -98,11 +99,15 @@ GrB_Info axb (GB_Context Context)
         }
     }
 
+    MT = GB_clear_static_header (&MT_header) ;
+    T  = GB_clear_static_header (&T_header) ;
+
     // C = A*B or C += A*B
-    info = GB_AxB_meta (&T, C,  // can be done in place if C != NULL
+    info = GB_AxB_meta (T, C,  // can be done in place if C != NULL
         false,      // C_replace
         true,       // CSC
-        NULL,       // no MT returned
+        MT,         // no MT returned
+        &ignore1,   // M_transposed will be false
         NULL,       // no Mask
         false,      // mask not complemented
         false,      // mask not structural
@@ -127,15 +132,16 @@ GrB_Info axb (GB_Context Context)
         if (!done_in_place)
         {
             GrB_Matrix_free_(&C) ;
-            C = T ;
-            T = NULL ;
+            info = GrB_Matrix_dup (&C, T) ;
         }
     }
-    else
+
+    if (info != GrB_SUCCESS)
     {
         GrB_Matrix_free_(&C) ;
-        GrB_Matrix_free_(&T) ;
     }
+
+    GrB_Matrix_free_(&T) ;
 
     GrB_BinaryOp_free_(&My_rdiv2) ;
     GrB_Semiring_free_(&My_plus_rdiv2) ;
@@ -157,6 +163,8 @@ void mexFunction
     info = GrB_SUCCESS ;
     malloc_debug = GB_mx_get_global (true) ;
     ignore = false ;
+    ignore1 = false ;
+    ignore2 = false ;
     A = NULL ;
     B = NULL ;
     B64 = NULL ;
@@ -244,7 +252,7 @@ void mexFunction
 
     METHOD (axb (Context)) ;
 
-    // return C to MATLAB
+    // return C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;
 
     FREE_ALL ;

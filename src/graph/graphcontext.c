@@ -257,11 +257,11 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 	if(t == SCHEMA_NODE) {
 		label_id = Graph_AddLabel(gc->g);
 		schema = Schema_New(label, label_id);
-		gc->node_schemas = array_append(gc->node_schemas, schema);
+		array_append(gc->node_schemas, schema);
 	} else {
 		label_id = Graph_AddRelationType(gc->g);
 		schema = Schema_New(label, label_id);
-		gc->relation_schemas = array_append(gc->relation_schemas, schema);
+		array_append(gc->relation_schemas, schema);
 	}
 
 	// new schema added, update graph version
@@ -307,7 +307,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 					  strlen(attribute),
 					  attribute_id,
 					  NULL);
-			gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
+			array_append(gc->string_mapping, rm_strdup(attribute));
 
 			// new attribute been added, update graph version
 			_GraphContext_UpdateVersion(gc, attribute);
@@ -449,7 +449,7 @@ void GraphContext_RegisterWithModule(GraphContext *gc) {
 	for(uint i = 0; i < graph_count; i ++) {
 		if(graphs_in_keyspace[i] == gc) return;
 	}
-	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
+	array_append(graphs_in_keyspace, gc);
 }
 
 GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name) {

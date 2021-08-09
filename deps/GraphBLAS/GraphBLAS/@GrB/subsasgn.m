@@ -4,9 +4,9 @@ function C = subsasgn (C, S, A)
 % C.  A must be either a matrix of size length(I)-by-length(J), or a
 % scalar.  Note that C(I,J) = 0 differs from C(I,J) = sparse (0).  The
 % former places an explicit entry with value zero in all positions of
-% C(I,J).  The latter deletes all entries in C(I,J).  With a MATLAB
+% C(I,J).  The latter deletes all entries in C(I,J).  With a built-in
 % sparse matrix C, both statements delete all entries in C(I,J) since
-% MATLAB never stores explicit zeros in its sparse matrices.
+% Built-in sparse matrices never include explicit zeros.
 %
 % With a single index, C(I) = A, both C and A must be vectors; linear
 % indexing is not yet supported.  In this case A must either be a vector
@@ -22,20 +22,21 @@ function C = subsasgn (C, S, A)
 % overloading.  The statement C (M) = A (M) takes about twice the time as
 % C = GrB.subassign (C, M, A), so the latter is preferred for best
 % performance.  However, both methods in GraphBLAS are many thousands of
-% times faster than C (M) = A (M) using purely MATLAB sparse matrices C, M,
-% and A, when the matrices are large.
+% times faster than C (M) = A (M) using purely built-in sparse matrices C,
+% M, and A, when the matrices are large.
 %
 % If I or J are very large colon notation expressions, then C(I,J)=A is
-% not possible, because MATLAB creates I and J as explicit lists first.
-% See GrB.subassign instead.  See also the example with 'help GrB.extract'.
+% not possible, because I and J are created as explicit lists first,
+% before passing them to GraphBLAS.  See GrB.subassign instead.  See also
+% the example with 'help GrB.extract'.
 %
-% Unlike the MATLAB C(I,J)=A, the GraphBLAS assignment does not change
+% Unlike the built-in C(I,J)=A, the GraphBLAS assignment does not change
 % the size of C.
 %
 % See also GrB/subsref, GrB/subsindex, GrB.assign, GrB.subassign.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: add linear indexing, and allow the matrix to grow/shrink in size.
 

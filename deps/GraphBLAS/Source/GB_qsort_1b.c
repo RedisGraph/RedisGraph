@@ -29,8 +29,8 @@
 
 // argument list for defining a function
 #define GB_args(A)                      \
-    int64_t *GB_RESTRICT A ## _0,       \
-    GB_void *GB_RESTRICT A ## _1,       \
+    int64_t *restrict A ## _0,       \
+    GB_void *restrict A ## _1,       \
     size_t xsize
 
 // swap A [a] and A [b]
@@ -48,12 +48,12 @@
 
 #include "GB_qsort_template.c"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 void GB_qsort_1b    // sort array A of size 2-by-n, using 1 key (A [0][])
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    GB_void *GB_RESTRICT A_1,       // size n array
-    const size_t xsize,             // size of entries in A_1
+    int64_t *restrict A_0,       // size n array
+    GB_void *restrict A_1,       // size n array
+    const size_t xsize,          // size of entries in A_1
     const int64_t n
 )
 { 
@@ -82,8 +82,8 @@ void GB_qsort_1b    // sort array A of size 2-by-n, using 1 key (A [0][])
 // argument list for defining a function
 #undef  GB_args
 #define GB_args(A)                      \
-    int64_t *GB_RESTRICT A ## _0,       \
-    A1_type *GB_RESTRICT A ## _1        \
+    int64_t *restrict A ## _0,          \
+    A1_type *restrict A ## _1           \
 
 // swap A [a] and A [b]
 #undef  GB_swap
@@ -102,8 +102,8 @@ void GB_qsort_1b    // sort array A of size 2-by-n, using 1 key (A [0][])
 
 void GB_qsort_1b_size1  // GB_qsort_1b with A_1 with sizeof = 1
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint8_t *GB_RESTRICT A_1,       // size n array
+    int64_t *restrict A_0,       // size n array
+    uint8_t *restrict A_1,       // size n array
     const int64_t n
 )
 { 
@@ -128,8 +128,8 @@ void GB_qsort_1b_size1  // GB_qsort_1b with A_1 with sizeof = 1
 
 void GB_qsort_1b_size2  // GB_qsort_1b with A_1 with sizeof = 2
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint16_t *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,       // size n array
+    uint16_t *restrict A_1,      // size n array
     const int64_t n
 )
 { 
@@ -155,8 +155,8 @@ void GB_qsort_1b_size2  // GB_qsort_1b with A_1 with sizeof = 2
 
 void GB_qsort_1b_size4  // GB_qsort_1b with A_1 with sizeof = 4
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint32_t *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,       // size n array
+    uint32_t *restrict A_1,      // size n array
     const int64_t n
 )
 { 
@@ -182,8 +182,8 @@ void GB_qsort_1b_size4  // GB_qsort_1b with A_1 with sizeof = 4
 
 void GB_qsort_1b_size8  // GB_qsort_1b with A_1 with sizeof = 8
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint64_t *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,       // size n array
+    uint64_t *restrict A_1,      // size n array
     const int64_t n
 )
 { 
@@ -208,12 +208,11 @@ void GB_qsort_1b_size8  // GB_qsort_1b with A_1 with sizeof = 8
 
 void GB_qsort_1b_size16 // GB_qsort_1b with A_1 with sizeof = 16
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    GB_blob16 *GB_RESTRICT A_1,     // size n array
+    int64_t *restrict A_0,       // size n array
+    GB_blob16 *restrict A_1,     // size n array
     const int64_t n
 )
 { 
-    ASSERT (sizeof (GB_blob16) == 16) ;
     uint64_t seed = n ;
     GB_quicksort (GB_arg (A), n, &seed) ;
 }

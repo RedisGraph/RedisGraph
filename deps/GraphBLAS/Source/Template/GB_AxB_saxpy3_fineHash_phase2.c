@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_saxpy3_fineHash_phase2_template: no mask, or dense mask
+// GB_AxB_saxpy3_fineHash_phase2: C=A*B (or with M in-place), fine Hash, phase2
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -25,21 +25,6 @@
 
     // The mask M can be optionally checked, if it is dense and checked in
     // place.  This method is not used if M is present and sparse.
-
-    #ifdef GB_CHECK_MASK_ij
-
-        // The mask M is packed (full, bitmap, or sparse/hyper and not
-        // jumbled, with all entries present in the entire matrix).  Get
-        // pointers Mjb and Mjx into the M(:,j) vector.
-        GB_GET_M_j
-        #ifndef M_SIZE
-        #define M_SIZE 1
-        #endif
-        const M_TYPE *GB_RESTRICT Mjx = Mask_struct ? NULL :
-            ((M_TYPE *) Mx) + (M_SIZE * pM_start) ;
-        const int8_t *GB_RESTRICT Mjb = M_is_bitmap ? (Mb + pM_start) : NULL ;
-
-    #endif
 
     if (team_size == 1)
     {
@@ -174,7 +159,4 @@
         }
     }
 }
-
-#undef M_TYPE
-#undef M_SIZE
 

@@ -5,7 +5,7 @@ function C = asinh (G)
 % See also GrB/sin, GrB/asin, GrB/sinh.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 

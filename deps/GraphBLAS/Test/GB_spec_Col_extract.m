@@ -1,5 +1,5 @@
 function w = GB_spec_Col_extract (w, mask, accum, A, I, j, descriptor)
-%GB_SPEC_COL_EXTRACT a MATLAB mimic of GrB_Col_extract
+%GB_SPEC_COL_EXTRACT a mimic of GrB_Col_extract
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0

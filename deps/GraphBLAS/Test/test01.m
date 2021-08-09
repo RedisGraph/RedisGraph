@@ -7,6 +7,8 @@ function test01
 GB_mex_about2 ;
 GB_mex_about ;
 GB_mex_errors ;
+GB_mex_about3 ;
+GB_mex_about4 ;
 
 fprintf ('\ntest01: all tests passed\n') ;
 

@@ -100,7 +100,7 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 	for(size_t expIdx = 0; expIdx < expCount; expIdx++) {
 		AlgebraicExpression *exp = expressions[expIdx];
 		if(!_AlgebraicExpression_ContainsVariableLengthEdge(qg, exp)) {
-			res = array_append(res, exp);
+			array_append(res, exp);
 			continue;
 		}
 
@@ -122,10 +122,10 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 				// Remove src node matrix from expression.
 				op = AlgebraicExpression_RemoveSourceOp(&exp);
 			}
-			if(op != NULL) res = array_append(res, op);
+			if(op != NULL) array_append(res, op);
 		}
 
-		res = array_append(res, exp);
+		array_append(res, exp);
 
 		// If the expression has a labeled destination, separate it into its own expression.
 		op = NULL;
@@ -145,7 +145,7 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 			   !_AlgebraicExpression_ContainsVariableLengthEdge(qg, expressions[expIdx + 1])) {
 				expressions[expIdx + 1] = _AlgebraicExpression_MultiplyToTheLeft(op, expressions[expIdx + 1]);
 			} else {
-				res = array_append(res, op);
+				array_append(res, op);
 			}
 		}
 	}
@@ -167,23 +167,23 @@ static QGEdge ***_Intermediate_Paths
 	/* Allocating maximum number of expression possible. */
 	QGEdge ***paths = array_new(QGEdge **, pathLen);
 	QGEdge **intermediate_path = array_new(QGEdge *, pathLen);
-	paths = array_append(paths, intermediate_path);
+	array_append(paths, intermediate_path);
 
 	/* Scan path left to right,
 	 * construct intermidate paths by "breaking" on referenced entities. */
 	for(int i = 0; i < pathLen - 1; i++) {
 		e = path[i];
-		intermediate_path = array_append(intermediate_path, e);
+		array_append(intermediate_path, e);
 		if(_should_divide_expression(path, i, qg)) {
 			// Break! add current path to paths and create a new path.
 			intermediate_path = array_new(QGEdge *, pathLen);
-			paths = array_append(paths, intermediate_path);
+			array_append(paths, intermediate_path);
 		}
 	}
 
 	// Handle last hop.
 	e = path[pathLen - 1];
-	intermediate_path = array_append(intermediate_path, e);
+	array_append(intermediate_path, e);
 
 	return paths;
 }
@@ -199,19 +199,19 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 	uint label_count = QGNode_LabelCount(n);
 
 	if(label_count == 0) {
-		return AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, NULL);
+		return AlgebraicExpression_NewOperand(NULL, diagonal, n->alias, n->alias, NULL, NULL);
 	}
 
 	if(label_count == 1) {
 		l = QGNode_GetLabel(n, 0);
-		exp = AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, l);
+		exp = AlgebraicExpression_NewOperand(NULL, diagonal, n->alias, n->alias, NULL, l);
 		return exp;
 	}
 
 	exp = AlgebraicExpression_NewOperation(AL_EXP_MUL);
 	for(int i = 0; i < label_count; i++) {
 		l = QGNode_GetLabel(n, i);
-		AlgebraicExpression *op = AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, l);
+		AlgebraicExpression *op = AlgebraicExpression_NewOperand(NULL, diagonal, n->alias, n->alias, NULL, l);
 		AlgebraicExpression_AddChild(exp, op);
 	}
 
@@ -223,7 +223,6 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	QGEdge *e,
 	bool transpose
 ) {
-	GrB_Matrix mat;
 	uint reltype_id;
 	AlgebraicExpression *add = NULL;
 	AlgebraicExpression *root = NULL;
@@ -252,15 +251,15 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 		uint reltype_count = array_len(e->reltypeIDs);
 		switch(reltype_count) {
 		case 0: // No relationship types specified; use the full adjacency matrix
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, NULL);
+			root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, NULL);
 			break;
 		case 1: // One relationship type
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, e->reltypes[0]);
+			root = AlgebraicExpression_NewOperand(NULL, false, src, dest, edge, e->reltypes[0]);
 			break;
 		default: // Multiple edge type: -[:A|:B]->
 			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			for(uint i = 0; i < reltype_count; i++) {
-				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest,
+				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(NULL, false, src, dest,
 																			  edge, e->reltypes[i]);
 				AlgebraicExpression_AddChild(add, operand);
 			}
@@ -487,7 +486,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	if(edge_count == 0) {
 		ASSERT(QueryGraph_NodeCount(qg) == 1);
 		QGNode *n = qg->nodes[0];
-		exps = array_append(exps, _AlgebraicExpression_OperandFromNode(n));
+		array_append(exps, _AlgebraicExpression_OperandFromNode(n));
 		return exps;
 	}
 
@@ -528,7 +527,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 			// Construct expression.
 			AlgebraicExpression *exp = _AlgebraicExpression_FromPath(paths[i], transpositions + edge_converted);
 			edge_converted += array_len(paths[i]);
-			sub_exps = array_append(sub_exps, exp);
+			array_append(sub_exps, exp);
 
 			/* Remove exp[i] src label matrix (left most operand) as it's
 			 * being used by exp[i-1] dest label matrix.
@@ -562,7 +561,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 		for(uint i = 0; i < sub_count; i++) {
 			AlgebraicExpression *exp = sub_exps[i];
 			// Add constructed expression to return value.
-			exps = array_append(exps, exp);
+			array_append(exps, exp);
 		}
 
 		// Remove path from graph.

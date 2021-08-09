@@ -1,5 +1,5 @@
 function C = GB_spec_apply (C, Mask, accum, op, A, descriptor)
-%GB_SPEC_APPLY a MATLAB mimic of GrB_apply
+%GB_SPEC_APPLY a mimic of GrB_apply
 %
 % Usage:
 % C = GB_spec_apply (C, Mask, accum, op, A, descriptor)
@@ -23,7 +23,7 @@ A = GB_spec_matrix (A) ;
 Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % apply the descriptor to A

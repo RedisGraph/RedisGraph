@@ -17,9 +17,9 @@ function Y = dnn (W, bias, Y0)
 % is somewhat faster.  For the 2019 GraphChallenge, all matrices can be
 % 'single', and the same results are obtained.
 %
-% In the MATLAB reference implementation, the bias{k} is a row vector of
-% size 1-by-nneurons.  The MATLAB reference inputs can be converted to
-% GraphBLAS matrices with the following code:
+% In the original reference implementation, the bias{k} is a row vector of
+% size 1-by-nneurons.  The reference inputs can be converted to GraphBLAS
+% matrices with the following code:
 %
 %   d = struct ('format', 'by row') ;
 %   n = size (Y0, 2) ;
@@ -32,10 +32,10 @@ function Y = dnn (W, bias, Y0)
 % All of the above conversion is optional, except for bias {k} since it is
 % changed from a row vector to a diagonal matrix.
 %
-% See also dnn_matlab, dnn_mat2gb.
+% See also dnn_builtin, dnn_builtin2gb.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % NOTE: this is a high-level algorithm that uses GrB objects.
 

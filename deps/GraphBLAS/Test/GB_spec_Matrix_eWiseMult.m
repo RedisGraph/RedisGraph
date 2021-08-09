@@ -1,5 +1,5 @@
 function C = GB_spec_Matrix_ewiseMult (C, Mask, accum, mult, A, B, descriptor)
-%GB_SPEC_MATRIX_EWISEMULT a MATLAB mimic of GrB_Matrix_ewiseMult
+%GB_SPEC_MATRIX_EWISEMULT a mimic of GrB_Matrix_ewiseMult
 %
 % Usage:
 % C = GB_spec_Matrix_ewiseMult (C, Mask, accum, mult, A, B, descriptor)
@@ -27,7 +27,7 @@ B = GB_spec_matrix (B) ;
 Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % apply the descriptor to A

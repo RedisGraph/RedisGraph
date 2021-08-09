@@ -2,8 +2,9 @@ function [r, stats] = pagerank (A, opts)
 %GRB.PAGERANK PageRank of a graph.
 % r = GrB.pagerank (A) computes the PageRank of a graph with adjacency
 % matrix A.  r = GrB.pagerank (A, options) allows for non-default options
-% to be selected.  For compatibility with MATLAB, defaults are identical to
-% the MATLAB pagerank method in @graph/centrality and @digraph/centrality:
+% to be selected.  For compatibility with the built-in methods, defaults
+% are identical to the built-in pagerank method in @graph/centrality and
+% @digraph/centrality:
 %
 %   opts.tol = 1e-4         stopping criterion
 %   opts.maxit = 100        maximum # of iterations to take
@@ -11,7 +12,7 @@ function [r, stats] = pagerank (A, opts)
 %   opts.weighted = false   true: use edgeweights of A; false: use spones(A)
 %   opts.type = 'double'    compute in 'single' or 'double' precision
 %
-% A can be a GraphBLAS or MATLAB matrix.  A can have any format ('by row'
+% A can be a GraphBLAS or built-in matrix.  A can have any format ('by row'
 % or 'by col'), but GrB.pagerank is faster if A is 'by col'.
 %
 % An optional 2nd output argument provides statistics:
@@ -22,7 +23,7 @@ function [r, stats] = pagerank (A, opts)
 % See also graph/centrality.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % NOTE: this is a high-level algorithm that uses GrB objects.
 

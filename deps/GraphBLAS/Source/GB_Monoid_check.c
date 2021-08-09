@@ -9,7 +9,7 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
 (
     const GrB_Monoid monoid,    // GraphBLAS monoid to print and check
@@ -23,7 +23,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("\n    GraphBLAS Monoid: %s ", GB_NAME) ;
+    GBPR0 ("\n    GraphBLAS Monoid: %s ", ((name != NULL) ? name : "")) ;
 
     if (monoid == NULL)
     { 
@@ -36,7 +36,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     //--------------------------------------------------------------------------
 
     GB_CHECK_MAGIC (monoid, "Monoid") ;
-    GBPR0 (monoid->monoid_is_builtin ? "(built-in)" : "(user-defined)") ;
+    GBPR0 (monoid->header_size > 0 ? "(user-defined)" : "(built-in)") ;
 
     GrB_Info info = GB_BinaryOp_check (monoid->op, "monoid->op", pr, f) ;
     if (info != GrB_SUCCESS || GB_OP_IS_POSITIONAL (monoid->op))
@@ -53,7 +53,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     }
 
     if (monoid->identity == NULL)
-    {
+    { 
         GBPR0 ("    Identity value is missing\n") ;
         return (GrB_INVALID_OBJECT) ;
     }

@@ -7,9 +7,9 @@
 
 //------------------------------------------------------------------------------
 
-// Convert a MATLAB string or struct to a built-in GraphBLAS BinaryOp.  The
+// Convert a built-in string or struct to a built-in GraphBLAS BinaryOp.  The
 // mxArray is either a struct containing two terms: opname (an operator name),
-// and an optional MATLAB string optype (a string, 'logical', 'double', etc).
+// and an optional built-in string optype (a string, 'logical', 'double', etc).
 // If not present, the default type is used (provided on input).
 //
 // That is:
@@ -22,7 +22,7 @@
 bool GB_mx_mxArray_to_BinaryOp          // true if successful, false otherwise
 (
     GrB_BinaryOp *op_handle,            // the binary op
-    const mxArray *op_matlab,           // MATLAB version of op
+    const mxArray *op_builtin,          // built-in version of op
     const char *name,                   // name of the argument
     const GrB_Type default_optype,      // default operator type
     const bool user_complex             // if true, use user-defined Complex
@@ -33,30 +33,30 @@ bool GB_mx_mxArray_to_BinaryOp          // true if successful, false otherwise
 
     const mxArray *opname_mx = NULL, *optype_mx = NULL ;
 
-    if (op_matlab == NULL || mxIsEmpty (op_matlab))
+    if (op_builtin == NULL || mxIsEmpty (op_builtin))
     {
         // op is not present; defaults will be used
         ;
     }
-    else if (mxIsStruct (op_matlab))
+    else if (mxIsStruct (op_builtin))
     {
         // look for op.opname
-        int fieldnumber = mxGetFieldNumber (op_matlab, "opname") ;
+        int fieldnumber = mxGetFieldNumber (op_builtin, "opname") ;
         if (fieldnumber >= 0)
         {
-            opname_mx = mxGetFieldByNumber (op_matlab, 0, fieldnumber) ;
+            opname_mx = mxGetFieldByNumber (op_builtin, 0, fieldnumber) ;
         }
         // look for op.optype
-        fieldnumber = mxGetFieldNumber (op_matlab, "optype") ;
+        fieldnumber = mxGetFieldNumber (op_builtin, "optype") ;
         if (fieldnumber >= 0)
         {
-            optype_mx = mxGetFieldByNumber (op_matlab, 0, fieldnumber) ;
+            optype_mx = mxGetFieldByNumber (op_builtin, 0, fieldnumber) ;
         }
     }
     else
     {
         // op must be a string.  default type will be used
-        opname_mx = op_matlab ;
+        opname_mx = op_builtin ;
     }
 
     // find the corresponding built-in GraphBLAS operator

@@ -55,7 +55,7 @@ GrB_Info GB_subassign_09
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
-    GB_OK (GB_subassign_symbolic (&S, C, I, ni, J, nj, true, Context)) ;
+    GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -89,12 +89,12 @@ GrB_Info GB_subassign_09
     //--------------------------------------------------------------------------
 
     if (M_is_bitmap)
-    {
+    { 
         // all of IxJ must be examined
         GB_SUBASSIGN_IXJ_SLICE ;
     }
     else
-    {
+    { 
         // traverse all M+S
         GB_SUBASSIGN_TWO_SLICE (M, S) ;
     }

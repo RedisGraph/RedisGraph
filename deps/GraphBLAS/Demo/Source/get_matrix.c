@@ -28,7 +28,8 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
     int argc,               // command-line arguments
     char **argv,
     bool no_self_edges,     // if true, ensure the matrix has no self-edges
-    bool boolean            // if true, file is read as GrB_BOOL, else GrB_FP64
+    bool boolean,           // if true, file is read as GrB_BOOL, else GrB_FP64
+    bool spones             // if true, return all entries equal to 1
 )
 {
 
@@ -38,9 +39,6 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
     GrB_Matrix Mask = NULL ;
     GrB_Descriptor desc = NULL ;
     int kind = 0 ;
-
-    double tic [2], t ;
-    simple_tic (tic) ;
 
     if (argc > 2)
     {
@@ -73,17 +71,13 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
             // force completion, just to check timing
             GrB_Matrix_nvals (&nvals, A) ;
 
-            t = simple_toc (tic) ;
-
             // printf format warnings can vary with different compilers, so
             // punt and type cast to double
-            printf (
-                "random %.16g by %.16g, nz: %.16g, method %d time %.3f sec\n",
-                (double) nrows, (double) ncols, (double) nvals, method, t) ;
+            printf ( "random %.16g by %.16g, nz: %.16g, method %d\n",
+                (double) nrows, (double) ncols, (double) nvals, method) ;
 
-            fprintf (stderr,
-                "random %.16g by %.16g, nz: %.16g, method %d time %.3f sec\n",
-                (double) nrows, (double) ncols, (double) nvals, method, t) ;
+            fprintf (stderr, "random %.16g by %.16g, nz: %.16g, method %d\n",
+                (double) nrows, (double) ncols, (double) nvals, method) ;
 
         }
         else
@@ -131,17 +125,15 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
 
             // force completion, just to check timing
             OK (GrB_Matrix_nvals (&nvals, A)) ;
-            t = simple_toc (tic) ;
 
-            printf (
-                "Wathen: nx %.16g ny %.16g n %.16g nz %.16g method %d,"
-                " time: %.3f sec\n", (double) nx, (double) ny, (double) nrows,
-                (double) nvals, method, t) ;
+            printf ("Wathen: nx %.16g ny %.16g n %.16g nz %.16g method %d\n",
+                (double) nx, (double) ny, (double) nrows,
+                (double) nvals, method) ;
 
             fprintf (stderr,
-                "Wathen: nx %.16g ny %.16g n %.16g nz %.16g method %d,"
-                " time: %.3f sec\n", (double) nx, (double) ny, (double) nrows,
-                (double) nvals, method, t) ;
+                "Wathen: nx %.16g ny %.16g n %.16g nz %.16g method %d\n",
+                (double) nx, (double) ny, (double) nrows,
+                (double) nvals, method) ;
 
         }
 
@@ -178,11 +170,19 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
     }
 
     //--------------------------------------------------------------------------
-    // print and return result
+    // replace all values with 1 if spones is true
     //--------------------------------------------------------------------------
 
-    // print a short description of the matrix (about 30 entries)
-//  OK (GxB_Matrix_fprint (A, "from get_matrix:", GxB_SHORT, stdout)) ;
+    if (spones)
+    {
+        // A<A,struct> = 1
+        OK (GrB_Matrix_assign_BOOL (A, A, NULL, true,
+            GrB_ALL, nrows, GrB_ALL, ncols, GrB_DESC_S)) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // print and return result
+    //--------------------------------------------------------------------------
 
     *A_output = A ;
     A = NULL ;

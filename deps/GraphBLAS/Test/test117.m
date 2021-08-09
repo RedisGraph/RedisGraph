@@ -18,7 +18,7 @@ I.begin = 0 ;
 I.inc = 1 ;
 I.end = n-1 ;
 
-ncores = feature ('numcores') ;
+ncores = feature_numcores ;
 
 for dc = [1e-5 1e-4 1e-3 1e-2 1e-1 0.5]
     C0 = sprand (n, n, dc) ;
@@ -63,8 +63,9 @@ for dm = [1e-5 1e-4 1e-3 1e-2 1e-1 0.5]
 
             % warmup:
             C2 = GB_mex_assign (C0, M, 'plus', A, I, I) ;
+            tic
             C2 = GB_mex_assign (C0, M, 'plus', A, I, I) ;
-            tg = grbresults ;
+            tg = toc ;
             assert (isequal (C1, C2.matrix)) ;
             if (nthreads == 1)
                 t1 = tg ;
@@ -72,8 +73,9 @@ for dm = [1e-5 1e-4 1e-3 1e-2 1e-1 0.5]
 
             % ewise
             C2 = GB_mex_Matrix_eWiseMult (C0, [ ], 'plus', 'times', M, A) ;
+            tic
             C2 = GB_mex_Matrix_eWiseMult (C0, [ ], 'plus', 'times', M, A) ;
-            tg3 = grbresults ;
+            tg3 = toc ;
 
             assert (isequal (C1, C2.matrix)) ;
 

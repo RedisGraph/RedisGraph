@@ -152,6 +152,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[2]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COLLECT should associate false and 'false' to different groups.
+        query = "UNWIND [false,'false',0,'0'] AS a RETURN a, count(a)"
+        actual_result = graph.query(query)
+        expected_result = [[0, 1], [False, 1], ["false", 1], ['0', 1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
     
     def test09_static_aggregation(self):
         query = "RETURN count(*)"
@@ -374,6 +380,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         end = {"id": 1, "labels": ["person"], "properties": {"name": "Alon", "val": 1}}
         parsed = json.loads(actual_result.result_set[0][0])
         self.env.assertEquals(parsed, {"type": "relationship", "id": 12, "relationship": "works_with", "properties": {}, "start": start, "end": end})
+
+        # Test converting a path.
+        query = """MATCH path=({val: 0})-[e:works_with]->({val: 1}) RETURN toJSON(path)"""
+        actual_result = graph.query(query)
+        expected = [{'type': 'node', 'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, {'type': 'relationship', 'id': 12, 'relationship': 'works_with', 'properties': {}, 'start': {'id': 0, 'labels': ['person'], 'properties': {'name': 'Roi', 'val': 0}}, 'end': {'id': 1, 'labels': ['person'], 'properties': {'name': 'Alon', 'val': 1}}}, {'type': 'node', 'id': 1, 'labels': ['person'], 'properties': {'name': 'Alon', 'val': 1}}]
+        parsed = json.loads(actual_result.result_set[0][0])
+        self.env.assertEquals(parsed, expected)
 
     # Memory should be freed properly when the key values are heap-allocated.
     def test18_allocated_keys(self):

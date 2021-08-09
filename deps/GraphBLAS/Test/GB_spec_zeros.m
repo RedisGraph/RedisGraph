@@ -1,6 +1,6 @@
 function x = GB_spec_zeros (mn, type)
 %GB_SPEC_ONES all-zero matrix of a given type.
-% x = GB_spec_zeros ([m n], type) returns a dense MATLAB matrix of all zeros
+% x = GB_spec_zeros ([m n], type) returns a dense built-in matrix of all zeros
 % with the given type.  The type is a string, 'logical', 'int8', 'int16',
 % 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64', 'single', 'double',
 % 'single complex', and 'double complex'.

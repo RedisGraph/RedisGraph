@@ -5,7 +5,7 @@ function test02
 % SPDX-License-Identifier: Apache-2.0
 
 [~, ~, ~, types, ~, ~] = GB_spec_opsall ;
-GB_builtin_complex_set (1) ;
+GB_builtin_complex_set (true) ;
 types = types.all ;
 
 rng ('default') ;
@@ -73,5 +73,6 @@ end
 
 format
 
+GB_builtin_complex_set (true) ;
 fprintf ('test02: all typecast and copy tests passed\n') ;
 

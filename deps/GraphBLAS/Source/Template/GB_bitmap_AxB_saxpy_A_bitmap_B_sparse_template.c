@@ -50,13 +50,13 @@
     int64_t waxsize = naslice * axpanel_size ;
     int64_t wcsize  = naslice * hpanel_size ;
     int64_t wcxsize = GB_IS_ANY_PAIR_SEMIRING ? 0 : (wcsize * GB_CSIZE) ;
-    Wf = GB_MALLOC (wafsize + wcsize, int8_t) ;
-    Wax = GB_MALLOC (waxsize, GB_void) ;
-    Wcx = GB_MALLOC (wcxsize, GB_void) ;
+    Wf  = GB_MALLOC_WERK (wafsize + wcsize, int8_t, &Wf_size) ;
+    Wax = GB_MALLOC_WERK (waxsize, GB_void, &Wax_size) ;
+    Wcx = GB_MALLOC_WERK (wcxsize, GB_void, &Wcx_size) ;
     if (Wf == NULL || Wax == NULL || Wcx == NULL)
     { 
         // out of memory
-        GB_FREE_WORK ;
+        GB_FREE_ALL ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
@@ -79,7 +79,7 @@
             // an explicit loop is required to set Hx to identity
             // TODO: should each task initialize its own Hf and Hx,
             // and use a static schedule here and for H=G*B?
-            GB_CTYPE *GB_RESTRICT Hx = (GB_CTYPE *) Wcx ;
+            GB_CTYPE *restrict Hx = (GB_CTYPE *) Wcx ;
             int64_t pH ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
             for (pH = 0 ; pH < wcsize ; pH++)
@@ -136,13 +136,17 @@
                 if (np <= 0) continue ;
                 int64_t kstart, kend ; 
                 GB_PARTITION (kstart, kend, avdim, b_tid, nbslice) ;
-                int8_t   *GB_RESTRICT Gb = Wf  + (a_tid * afpanel_size) ;
-                GB_ATYPE *GB_RESTRICT Gx = (GB_ATYPE *)
+                int8_t   *restrict Gb = Wf  + (a_tid * afpanel_size) ;
+                #if ( !GB_IS_ANY_PAIR_SEMIRING )
+                GB_ATYPE *restrict Gx = (GB_ATYPE *)
                     (Wax + (a_tid * axpanel_size)) ;
+                #endif
 
                 //--------------------------------------------------------------
                 // load A for this panel
                 //--------------------------------------------------------------
+
+// TODO::: if A iso, only load a single entry into Gx, and use Gx as iso
 
                 #if ( GB_A_IS_BITMAP )
                 {
@@ -166,9 +170,10 @@
                                 if (gb)
                                 { 
                                     // Gx (ii,k) = Ax (istart+ii,k)
-                                    GB_LOADA (Gx, pG, Ax, pA) ;
+                                    GB_LOADA (Gx, pG, Ax, pA, A_iso) ;
                                 }
-                                #if GB_HAS_BITMAP_MULTADD
+                                #if GB_HAS_BITMAP_MULTADD \
+                                    && ( !GB_IS_ANY_PAIR_SEMIRING )
                                 else
                                 { 
                                     // Gx (ii,k) = 0
@@ -201,6 +206,7 @@
                     // A is full
                     //----------------------------------------------------------
 
+                    #if ( !GB_IS_ANY_PAIR_SEMIRING )
                     if (!A_is_pattern)
                     {
                         for (int64_t k = kstart ; k < kend ; k++)
@@ -210,10 +216,11 @@
                                 // Gx (ii,k) = Ax (istart+ii,k)
                                 const int64_t pG = ii + k*np ;
                                 const int64_t pA = istart + ii + k*avlen ;
-                                GB_LOADA (Gx, pG, Ax, pA) ;
+                                GB_LOADA (Gx, pG, Ax, pA, A_iso) ;
                             }
                         }
                     }
+                    #endif
                 }
                 #endif
             }
@@ -239,25 +246,36 @@
             int64_t np = iend - istart ;
             if (np <= 0) continue ;
 
-            const int8_t   *GB_RESTRICT Gb ;
-            const GB_ATYPE *GB_RESTRICT Gx ;
-
+            const int8_t *restrict Gb ;
             if (load_apanel)
             { 
                 // A has been loaded into the G panel
                 Gb = Wf  + (a_tid * afpanel_size) ;
-                Gx = (GB_ATYPE *) (Wax + (a_tid * axpanel_size)) ;
             }
             else
             { 
                 // use A in-place
                 Gb = Ab ;
-                Gx = (GB_ATYPE *) Ax ;
             }
 
-            int8_t   *GB_RESTRICT Hf = Wf  + (a_tid * hpanel_size) + wafsize ;
-            GB_CTYPE *GB_RESTRICT Hx = (GB_CTYPE *)
+            int8_t *restrict Hf = Wf + (a_tid * hpanel_size) + wafsize ;
+
+            #if ( !GB_IS_ANY_PAIR_SEMIRING )
+            const GB_ATYPE *restrict Gx ;
+            if (load_apanel)
+            { 
+                // A has been loaded into the G panel
+                Gx = (GB_ATYPE *) (Wax + (a_tid * axpanel_size)) ;
+            }
+            else
+            { 
+                // use A in-place
+                Gx = (GB_ATYPE *) Ax ;
+            }
+            GB_CTYPE *restrict Hx = (GB_CTYPE *)
                 (Wcx + (a_tid * hpanel_size) * GB_CSIZE) ;
+            #endif
+
             GB_XINIT ;  // for plus, bor, band, and bxor monoids only
 
             //------------------------------------------------------------------
@@ -298,7 +316,7 @@
                 #else
                     // t = G(ii,k) * B(k,j)
                     #define GB_MULT_G_iik_B_kj(ii)                          \
-                        GB_GETA (giik, Gx, pG + ii) ;                       \
+                        GB_GETA (giik, Gx, pG + ii, false) ;                \
                         GB_CIJ_DECLARE (t) ;                                \
                         GB_MULT (t, giik, bkj, istart + ii, k, j)
                 #endif
@@ -311,7 +329,7 @@
                     GB_XLOAD (bkj) ;            // X [1] = bkj (plus_times only)
                     // H_panel (:,j) = G_panel (:,k) * B(k,j)
                     for (int64_t ii = 0 ; ii < np ; ii++)
-                    { 
+                    {
                         #if GB_HAS_BITMAP_MULTADD
                         { 
                             // if (Gb (ii,k))
@@ -386,9 +404,11 @@
             int64_t kstart, kend ; 
             GB_PARTITION (kstart, kend, bnvec, b_tid, nbslice) ;
 
-            int8_t   *GB_RESTRICT Hf = Wf  + (a_tid * hpanel_size) + wafsize ;
-            GB_CTYPE *GB_RESTRICT Hx = (GB_CTYPE *)
+            int8_t  *restrict Hf = Wf  + (a_tid * hpanel_size) + wafsize ;
+            #if ( !GB_IS_ANY_PAIR_SEMIRING )
+            GB_CTYPE *restrict Hx = (GB_CTYPE *)
                 (Wcx + (a_tid * hpanel_size) * GB_CSIZE) ;
+            #endif
 
             //------------------------------------------------------------------
             // C<#M>(metapanel,j1:j2-1) += H (:,kstart:kend-1)
@@ -445,11 +465,7 @@
                         if (cb == 0)
                         { 
                             // C(i,j) = H(ii,kk)
-                            #if GB_IS_ANY_PAIR_SEMIRING
-                            Cx [pC] = GB_CTYPE_CAST (1,0) ; // C(i,j) = 1
-                            #else
                             GB_CIJ_GATHER (pC, pH) ;
-                            #endif
                             Cb [pC] = keep ;
                             task_cnvals++ ;
                         }

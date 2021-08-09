@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_setElement: MATLAB interface for A(i,j) = x
+// GB_mex_setElement: interface for A(i,j) = x
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -20,7 +20,7 @@ bool debug_wait = false ;
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
+    GrB_Matrix_free_(&A) ;              \
     GB_mx_put_global (true) ;           \
 }
 
@@ -41,7 +41,7 @@ GrB_Info set_ ## name                                                       \
     }                                                                       \
     if (debug_wait)                                                         \
     {                                                                       \
-        return (GB_Matrix_wait (A, NULL)) ;                                 \
+        return (GB_wait (A, "A", NULL)) ;                                   \
     }                                                                       \
     return (GrB_SUCCESS) ;                                                  \
 }
@@ -66,7 +66,6 @@ setEl (GxB_, FC64   , GxB_FC64_t    ) ;
 setEl (GrB_, UDT    , GxB_FC64_t) ;
 #undef  AMPERSAND
 
-
 // set all elements of a vector and return if an error is encountered
 #define vsetEl(prefix,name,type)                                            \
 GrB_Info vset_ ## name                                                      \
@@ -81,7 +80,7 @@ GrB_Info vset_ ## name                                                      \
     }                                                                       \
     if (debug_wait)                                                         \
     {                                                                       \
-        return (GB_Matrix_wait (A, NULL)) ;                                 \
+        return (GB_wait (A, "A", NULL)) ;                                   \
     }                                                                       \
     return (GrB_SUCCESS) ;                                                  \
 }
@@ -186,7 +185,7 @@ void mexFunction
         mexErrMsgTxt ("X cannot be sparse") ;
     }
 
-    // get debug_wait (if true, to GB_Matrix_wait after setElements)
+    // get debug_wait (if true, to GB_wait after setElements)
     GET_SCALAR (4, bool, debug_wait, false) ;
 
     if (mxIsComplex (pargin [3]))
@@ -268,7 +267,7 @@ void mexFunction
     // only do debug checks after adding lots of tuples
     if (ni > 1000) { ASSERT_MATRIX_OK (A, "A added pending tuples", GB0) ; }
 
-    // return A to MATLAB as a struct and free the GraphBLAS A
+    // return A as a struct and free the GraphBLAS A
     pargout [0] = GB_mx_Matrix_to_mxArray (&A, "A output", true) ;
 
     FREE_ALL ;
