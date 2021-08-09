@@ -500,8 +500,22 @@ TEST_F(ArithmeticTest, PowTest) {
 	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
+	/* 1^0 */
+	query = "RETURN 1^0";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(1);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
 	/* POW(0,1) */
 	query = "RETURN pow(0,1)";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(0);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+	/* 0^1 */
+	query = "RETURN 0^1";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
 	_test_ar_func(arExp, expected);
@@ -514,14 +528,21 @@ TEST_F(ArithmeticTest, PowTest) {
 	_test_ar_func(arExp, expected);
 	AR_EXP_Free(arExp);
 
-	/* POW(2,3) */
+	/* 0^0 */
+	query = "RETURN 0^0";
+	arExp = _exp_from_query(query);
+	expected = SI_DoubleVal(1);
+	_test_ar_func(arExp, expected);
+	AR_EXP_Free(arExp);
+
+    /* POW(2,3) */
     query = "RETURN pow(2,3)";
     arExp = _exp_from_query(query);
     expected = SI_DoubleVal(8);
     _test_ar_func(arExp, expected);
     AR_EXP_Free(arExp);
 
-	/* 2^3 */
+    /* 2^3 */
     query = "RETURN 2^3";
     arExp = _exp_from_query(query);
     expected = SI_DoubleVal(8);
@@ -535,8 +556,29 @@ TEST_F(ArithmeticTest, PowTest) {
     _test_ar_func(arExp, expected);
     AR_EXP_Free(arExp);
 
+    /* 2^-3 */
+    query = "RETURN 2^-3";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(0.125);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* 2^(-3) */
+    query = "RETURN 2^(-3)";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(0.125);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
     /* POW(0.5,2) */
     query = "RETURN pow(0.5,2)";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(0.25);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* 0.5^2 */
+    query = "RETURN 0.5^2";
     arExp = _exp_from_query(query);
     expected = SI_DoubleVal(0.25);
     _test_ar_func(arExp, expected);
@@ -549,8 +591,29 @@ TEST_F(ArithmeticTest, PowTest) {
     _test_ar_func(arExp, expected);
     AR_EXP_Free(arExp);
 
+    /* -1^2 */
+    query = "RETURN -1^2";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(1);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* (-1)^2 */
+    query = "RETURN (-1)^2";
+    arExp = _exp_from_query(query);
+    expected = SI_DoubleVal(1);
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
 	/* POW() */
     query = "RETURN pow(NULL,1)";
+    arExp = _exp_from_query(query);
+    expected = SI_NullVal();
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* NULL^1 */
+    query = "RETURN NULL^1";
     arExp = _exp_from_query(query);
     expected = SI_NullVal();
     _test_ar_func(arExp, expected);
@@ -563,8 +626,22 @@ TEST_F(ArithmeticTest, PowTest) {
     _test_ar_func(arExp, expected);
     AR_EXP_Free(arExp);
 
+    /* 1^NULL */
+    query = "RETURN 1^NULL";
+    arExp = _exp_from_query(query);
+    expected = SI_NullVal();
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
     /* POW() */
     query = "RETURN pow(NULL,NULL)";
+    arExp = _exp_from_query(query);
+    expected = SI_NullVal();
+    _test_ar_func(arExp, expected);
+    AR_EXP_Free(arExp);
+
+    /* NULL^NULL */
+    query = "RETURN NULL^NULL";
     arExp = _exp_from_query(query);
     expected = SI_NullVal();
     _test_ar_func(arExp, expected);
