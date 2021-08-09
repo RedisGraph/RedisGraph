@@ -246,19 +246,14 @@ void Graph_ApplyAllPending
 (
 	Graph *g
 ) {
-	RG_Matrix M;
-	M = Graph_GetAdjacencyMatrix(g, false);
-	RG_Matrix_wait(M, true);
+	uint n = 0;
+	Graph_GetAdjacencyMatrix(g, false);
 
-	for(int i = 0; i < array_len(g->labels); i ++) {
-		M = Graph_GetLabelMatrix(g, i);
-		RG_Matrix_wait(M, true);
-	}
+	n = array_len(g->labels);
+	for(int i = 0; i < n; i ++) Graph_GetLabelMatrix(g, i);
 
-	for(int i = 0; i < array_len(g->relations); i ++) {
-		M = Graph_GetRelationMatrix(g, i, false);
-		RG_Matrix_wait(M, true);
-	}
+	n = array_len(g->relations);
+	for(int i = 0; i < n; i ++) Graph_GetRelationMatrix(g, i, false);
 }
 
 //------------------------------------------------------------------------------
