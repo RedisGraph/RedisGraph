@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "../query_ctx.h"
+#include "execution_ctx.h"
 #include "cmd_bulk_insert.h"
 
 //------------------------------------------------------------------------------

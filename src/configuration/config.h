@@ -9,22 +9,24 @@
 #include <stdbool.h>
 #include "redismodule.h"
 
-#define RESULTSET_SIZE_UNLIMITED     UINT64_MAX
-#define QUERY_MEM_CAPACITY_UNLIMITED 0
-#define CONFIG_TIMEOUT_NO_TIMEOUT    0
-#define VKEY_ENTITY_COUNT_UNLIMITED  UINT64_MAX
+#define RESULTSET_SIZE_UNLIMITED           UINT64_MAX
+#define QUERY_MEM_CAPACITY_UNLIMITED       0
+#define CONFIG_TIMEOUT_NO_TIMEOUT          0
+#define VKEY_ENTITY_COUNT_UNLIMITED        UINT64_MAX
+#define DELTA_MAX_PENDING_CHANGES_DEFAULT  10000
 
 typedef enum {
-	Config_TIMEOUT                  = 0,  // timeout value for queries
-	Config_CACHE_SIZE               = 1,  // number of entries in cache
-	Config_ASYNC_DELETE             = 2,  // delete graph asynchronously
-	Config_OPENMP_NTHREAD           = 3,  // max number of OpenMP threads to use
-	Config_THREAD_POOL_SIZE         = 4,  // number of threads in thread pool
-	Config_RESULTSET_MAX_SIZE       = 5,  // max number of records in result-set
-	Config_VKEY_MAX_ENTITY_COUNT    = 6,  // max number of elements in vkey
-	Config_MAX_QUEUED_QUERIES       = 7,  // max number of queued queries
-	Config_QUERY_MEM_CAPACITY       = 8,  // max mem(bytes) that query/thread can utilize at any given time
-	Config_END_MARKER               = 9
+	Config_TIMEOUT                   = 0,     // timeout value for queries
+	Config_CACHE_SIZE                = 1,     // number of entries in cache
+	Config_ASYNC_DELETE              = 2,     // delete graph asynchronously
+	Config_OPENMP_NTHREAD            = 3,     // max number of OpenMP threads to use
+	Config_THREAD_POOL_SIZE          = 4,     // number of threads in thread pool
+	Config_RESULTSET_MAX_SIZE        = 5,     // max number of records in result-set
+	Config_VKEY_MAX_ENTITY_COUNT     = 6,     // max number of elements in vkey
+	Config_MAX_QUEUED_QUERIES        = 7,     // max number of queued queries
+	Config_QUERY_MEM_CAPACITY        = 8,     // max mem(bytes) that query/thread can utilize at any given time
+	Config_DELTA_MAX_PENDING_CHANGES = 9,    // number of pending changed befor RG_Matrix flushed
+	Config_END_MARKER                = 10
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of
@@ -32,13 +34,14 @@ typedef enum {
 typedef void (*Config_on_change)(Config_Option_Field type);
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 4
+#define RUNTIME_CONFIG_COUNT 5
 static const Config_Option_Field RUNTIME_CONFIGS[] =
 {
 	Config_RESULTSET_MAX_SIZE,
 	Config_TIMEOUT,
 	Config_MAX_QUEUED_QUERIES,
-	Config_QUERY_MEM_CAPACITY
+	Config_QUERY_MEM_CAPACITY,
+	Config_DELTA_MAX_PENDING_CHANGES
 };
 
 // Set module-level configurations to defaults or to user arguments where provided.

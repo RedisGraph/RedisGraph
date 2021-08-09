@@ -26,6 +26,8 @@ int ThreadPools_Init
 	int       writer_count    =  1;
 	uint64_t  max_queue_size  =  UINT64_MAX;
 
+	UNUSED(config_read);
+
 	// get thread pool size and thread pool internal queue length from config
 	config_read = Config_Option_get(Config_THREAD_POOL_SIZE, &reader_count);
 	ASSERT(config_read == true);

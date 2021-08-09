@@ -11,7 +11,7 @@
 #include "stdbool.h"
 #include "../graph/graph.h"
 #include "../util/datablock/datablock.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../graph/rg_matrix/rg_matrix_iter.h"
 #include "../graph/entities/graph_entity.h"
 #include "rax.h"
 
@@ -50,7 +50,7 @@ typedef struct {
 	uint current_relation_matrix_id;            // Current encoded relationship matrix.
 	uint multiple_edges_current_index;          // The current index of the encoded edges array.
 	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
-	GxB_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
+	RG_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
 } GraphEncodeContext;
 
 // Creates a new graph encoding context.
@@ -103,10 +103,10 @@ void GraphEncodeContext_SetCurrentRelationID(GraphEncodeContext *ctx,
 											 uint current_relation_matrix_id);
 
 // Retrieve stored matrix tuple iterator.
-GxB_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(const GraphEncodeContext *ctx);
+RG_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(const GraphEncodeContext *ctx);
 
 // Set graph encoding context matrix tuple iterator - keep iterator state for further usage.
-void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx, GxB_MatrixTupleIter *iter);
+void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx, RG_MatrixTupleIter *iter);
 
 // Sets a multiple edges array and the current index, for saving the state of multiple edges encoding.
 void GraphEncodeContext_SetMutipleEdgesArray(GraphEncodeContext *ctx, EdgeID *edges,

@@ -38,11 +38,6 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 }
 
-static void _EnableMultiEdgeSupport(Graph *g) {
-	uint n = Graph_RelationTypeCount(g);
-	for(uint i = 0; i < n; i++) g->relations[i]->allow_multi_edge = true;
-}
-
 static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	/* Header format:
 	 * Graph name
@@ -73,17 +68,18 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
 	Graph *g = gc->g;
+	
 	// If it is the first key of this graph, allocate all the data structures,
 	// with the appropriate dimensions
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
-
-		// Mark relationship matrices for support of multi-edge entries
+		
+		gc->decoding_context->multi_edge = array_new(uint64_t, relation_count);
 		for(uint i = 0; i < relation_count; i++) {
 			// Enable/Disable support for multi-edge
 			// we will enable support for multi-edge on all relationship
 			// matrices once we finish loading the graph
-			g->relations[i]->allow_multi_edge = multi_edge[i];
+			array_append(gc->decoding_context->multi_edge,  multi_edge[i]);
 		}
 
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
@@ -185,9 +181,6 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
-
-		// Enable support for multi edge on all relationship matrices.
-		_EnableMultiEdgeSupport(gc->g);
 
 		QueryCtx_Free(); // Release thread-local variables.
 		GraphDecodeContext_Reset(gc->decoding_context);

@@ -141,7 +141,7 @@ TEST_P(TuplesTest, RandomVectorTest) {
 	//--------------------------------------------------------------------------
 	free(I);
 	free(X);
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 	GrB_Vector_free(&A);
 }
 
@@ -209,7 +209,7 @@ TEST_P(TuplesTest, VectorIteratorTest) {
 	//--------------------------------------------------------------------------
 	// Clean up.
 	//--------------------------------------------------------------------------
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 	GrB_Vector_free(&A);
 }
 
@@ -288,7 +288,7 @@ TEST_P(TuplesTest, RandomMatrixTest) {
 	free(I_expected);
 	free(J_expected);
 	free(X_expected);
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 	GrB_Matrix_free(&A);
 }
 
@@ -347,7 +347,7 @@ TEST_P(TuplesTest, MatrixIteratorTest) {
 	//--------------------------------------------------------------------------
 	// Clean up.
 	//--------------------------------------------------------------------------
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 	GrB_Matrix_free(&A);
 }
 
@@ -391,7 +391,7 @@ TEST_P(TuplesTest, RowIteratorTest) {
 		}
 	}
 
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 	GrB_Matrix_free(&A);
 }
 
@@ -422,7 +422,7 @@ TEST_P(TuplesTest, RowIteratorEmptyMatrixTest) {
 		ASSERT_TRUE(depleted);
 	}
 
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 	GrB_Matrix_free(&A);
 }
 
