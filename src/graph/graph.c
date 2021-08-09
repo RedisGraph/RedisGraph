@@ -477,7 +477,7 @@ void Graph_GetEdgesConnectingNodes
 }
 
 static void _Graph_LabelNode(Graph *g, NodeID id, int *lbls, uint lbl_count) {
-	GrB_Matrix l = Graph_GetNodeLabelMatrix(g);
+	RG_Matrix l = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < lbl_count; i++) {
 		int label = lbls[i];
 		// set matrix at position [id, id]
@@ -487,7 +487,7 @@ static void _Graph_LabelNode(Graph *g, NodeID id, int *lbls, uint lbl_count) {
 		ASSERT(res == GrB_SUCCESS);
 
 		// map this label in this node's set of labels
-		res = GrB_Matrix_setElement_BOOL(l, true, id, label);
+		res = RG_Matrix_setElement_BOOL(l, id, label);
 		ASSERT(res == GrB_SUCCESS);
 	}
 }
@@ -659,22 +659,29 @@ uint Graph_GetNodeLabels(const Graph *g, const Node *n, LabelID *labels, LabelID
 	UNUSED(res);
 
 	// GrB_Col_extract will iterate over the range of the output size
-	GrB_Matrix M = Graph_GetNodeLabelMatrix(g);
-	GrB_Vector row;
-	GrB_Index ncols;
-	GrB_Matrix_ncols(&ncols, M);
+	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
-	// extract the row associated with this node's ID
-	GrB_Vector_new(&row, GrB_BOOL, label_count);
-	res = GrB_Col_extract(row, GrB_NULL, GrB_NULL, M, GrB_ALL, ncols, n->id,
-			GrB_DESC_T0);
+	RG_MatrixTupleIter* iter;
+	res = RG_MatrixTupleIter_new(&iter, M);
+	ASSERT(res == GrB_SUCCESS);
+	res = RG_MatrixTupleIter_iterate_row(iter, n->id);
 	ASSERT(res == GrB_SUCCESS);
 
-	// Populate array with the node's labels and update label_count to the real value.
-	res = GrB_Vector_extractTuples_BOOL(labels, GrB_NULL, &label_count, row);
+	GrB_Index col = 0;
+	bool depleted = false;
+	label_count = 0;
+	res = RG_MatrixTupleIter_next(iter, NULL, &col, NULL, &depleted);
 	ASSERT(res == GrB_SUCCESS);
-	GrB_free(&row);
+	while (!depleted)
+	{
+		labels[label_count] = col;
+		label_count++;
+		res = RG_MatrixTupleIter_next(iter, NULL, &col, NULL, &depleted);
+		ASSERT(res == GrB_SUCCESS);
+	}
 
+	RG_MatrixTupleIter_free(&iter);
+		
 	return label_count;
 }
 
@@ -1083,15 +1090,41 @@ bool Graph_RelationshipContainsMultiEdge
 	return (Graph_RelationEdgeCount(g, r) > nvals);
 }
 
-GrB_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
+RG_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 	ASSERT(g != NULL);
 
 	RG_Matrix m  = g->node_labels;
-	g->SynchronizeMatrix(g, m);
 	
-	GrB_Matrix l = RG_MATRIX_M(m);
+ 	GrB_Info info;
+ 	GrB_Index nrows;
+ 	GrB_Index ncols;
+ 	RG_Matrix_ncols(&ncols, m);
+ 	RG_Matrix_nrows(&nrows, m);
+ 	size_t node_cap = _Graph_NodeCap(g);
+ 	int label_count = Graph_LabelTypeCount(g);
 
-	return l;
+ 	if(nrows != node_cap || ncols != label_count) {
+ 		// if the graph belongs to one thread, we don't need to lock the mutex
+ 		if(!g->_writelocked) RG_Matrix_Lock(m);
+ 		{
+ 			// locked, recheck
+ 			RG_Matrix_ncols(&ncols, m);
+ 			RG_Matrix_nrows(&nrows, m);
+ 			node_cap = _Graph_NodeCap(g);
+ 			label_count = Graph_LabelTypeCount(g);
+
+ 			if(nrows != node_cap || ncols != label_count) {
+ 				info = RG_Matrix_resize(m, node_cap, label_count);
+ 				ASSERT(info == GrB_SUCCESS);
+ 			}
+
+			info = RG_Matrix_wait(m, false);
+			ASSERT(info == GrB_SUCCESS);
+ 		}
+ 		if(!g->_writelocked) RG_Matrix_Unlock(m);
+ 	}
+	
+	return m;
 }
 
 RG_Matrix Graph_GetZeroMatrix
