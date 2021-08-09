@@ -39,6 +39,7 @@ commands:
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
             bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
+          version: 20.10.2
           docker_layer_caching: true
 
   checkout-all:
@@ -117,6 +118,7 @@ commands:
           command: python3 -m pip install -r ./tests/benchmarks/requirements.txt
       - run:
           name: Run CI benchmarks on aws
+          no_output_timeout: 30m # given we use very large datasets we need this timeout
           command: |
               cd ./tests/benchmarks
               export AWS_ACCESS_KEY_ID=$PERFORMANCE_EC2_ACCESS_KEY
@@ -190,7 +192,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout-all
@@ -220,7 +222,7 @@ jobs:
 
   coverage:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout-all
@@ -238,7 +240,7 @@ jobs:
 
   build_memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout-all
@@ -296,7 +298,7 @@ jobs:
 
   deploy_branch:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -304,13 +306,13 @@ jobs:
           name: Deploy to S3
           command: |
             du -ah --apparent-size artifacts/snapshots/*
-            for f in artifacts/snapshots/*.zip artifacts/snapshots/*.tgz; do
+            for f in `ls artifacts/snapshots/*.zip artifacts/snapshots/*.tgz`; do
               aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
             done
 
   deploy_release:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -318,13 +320,13 @@ jobs:
           name: Deploy to S3
           command: |
             du -ah --apparent-size artifacts/*
-            for f in artifacts/*.zip artifacts/*.tgz; do
+            for f in `ls artifacts/*.zip artifacts/*.tgz`; do
               aws s3 cp $f s3://redismodules/$PACKAGE_NAME/ --acl public-read
             done
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -334,7 +336,7 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -347,7 +349,7 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout
@@ -358,7 +360,7 @@ jobs:
 
   performance_ci_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout
@@ -373,7 +375,7 @@ jobs:
 
   nightly_performance_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.3-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - early-returns
       - checkout-all
@@ -416,6 +418,7 @@ on-integ-branch: &on-integ-branch
       only:
         - master
         - /^\d+\.\d+.*$/
+        - /^feature-.*$/
     tags:
       ignore: /.*/
 
@@ -425,6 +428,7 @@ not-on-integ-branch: &not-on-integ-branch
       ignore:
         - master
         - /^\d+\.\d+.*$/
+        - /^feature-.*$/
     tags:
       ignore: /.*/
 
@@ -441,6 +445,7 @@ on-integ-and-version-tags: &on-integ-and-version-tags
       only:
         - master
         - /^\d+\.\d+.*$/
+        - /^feature-.*$/
     tags:
       only: /^v[0-9].*/
 
