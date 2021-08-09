@@ -481,8 +481,8 @@ static void _Graph_LabelNode(Graph *g, NodeID id, int *lbls, uint lbl_count) {
 	for(uint i = 0; i < lbl_count; i++) {
 		int label = lbls[i];
 		// set matrix at position [id, id]
-		GrB_Matrix m = Graph_GetLabelMatrix(g, label);
-		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		RG_Matrix m = Graph_GetLabelMatrix(g, label);
+		GrB_Info res = RG_Matrix_setElement_BOOL(m, id, id);
 		UNUSED(res);
 		ASSERT(res == GrB_SUCCESS);
 
