@@ -19,12 +19,19 @@
  * argv[2] query */
 void Graph_Explain(void *args) {
 	bool lock_acquired = false;
-	CommandCtx *command_ctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx     = CommandCtx_GetRedisCtx(command_ctx);
-	GraphContext *gc        = CommandCtx_GetGraphContext(command_ctx);
+	CommandCtx     *command_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
+	ExecutionCtx   *exec_ctx    = NULL;
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	CommandCtx_TrackCtx(command_ctx);
+
+	if(strcmp(command_ctx->query, "") == 0) {
+		ErrorCtx_SetError("Error: empty query.");
+		goto cleanup;
+	}
+
 	QueryCtx_BeginTimer(); // Start query timing.
 
 	/* Retrieve the required execution items and information:
@@ -32,7 +39,7 @@ void Graph_Explain(void *args) {
 	 * 2. Whether these items were cached or not */
 	bool           cached     =  false;
 	ExecutionPlan  *plan      =  NULL;
-	ExecutionCtx   *exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
+	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
 
 	plan = exec_ctx->plan;

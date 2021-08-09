@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -409,52 +409,6 @@ void AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 	default:
 		ASSERT("Unknown algebraic expression node type" && false);
 	}
-}
-
-//------------------------------------------------------------------------------
-// Replace transpose ops with transposed operands.
-//------------------------------------------------------------------------------
-
-// Transpose an operand matrix and update the expression accordingly.
-static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) {
-	// Swap the row and column domains of the operand.
-	const char *tmp = operand->operand.dest;
-	operand->operand.src = operand->operand.dest;
-	operand->operand.dest = tmp;
-
-	// Diagonal matrices do not need to be transposed.
-	if(operand->operand.diagonal == true) return;
-
-	GrB_Type type;
-	GrB_Index nrows;
-	GrB_Index ncols;
-	GrB_Matrix replacement;
-	GrB_Matrix A = operand->operand.matrix;
-	// Create a new empty matrix with the type and dimensions of the original.
-	GrB_Matrix_nrows(&nrows, A);
-	GrB_Matrix_ncols(&ncols, A);
-	GxB_Matrix_type(&type, A);
-	GrB_Info info = GrB_Matrix_new(&replacement, type, nrows, ncols);
-	if(info != GrB_SUCCESS) {
-		const char *error_msg = NULL;
-		GrB_error(&error_msg, replacement);
-		fprintf(stderr, "%s", error_msg);
-		ASSERT(false);
-	}
-
-	// Populate the replacement with the transposed contents of the original.
-	info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, A, GrB_NULL);
-	if(info != GrB_SUCCESS) {
-		const char *error_msg = NULL;
-		GrB_error(&error_msg, replacement);
-		fprintf(stderr, "%s", error_msg);
-		ASSERT(false);
-	}
-
-	// Update the matrix pointer.
-	operand->operand.matrix = replacement;
-	// As this matrix was constructed, it must ultimately be freed.
-	operand->operand.bfree = true;
 }
 
 //------------------------------------------------------------------------------

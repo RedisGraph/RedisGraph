@@ -9,6 +9,7 @@
 #include "node.h"
 #include "../../value.h"
 #include "graph_entity.h"
+#include "../rg_matrix/rg_matrix.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define EDGE_LENGTH_INF UINT_MAX - 2
@@ -24,7 +25,7 @@ struct Edge {
 	Node *dest;                 // Pointer to destination node
 	NodeID srcNodeID;           // Source node ID
 	NodeID destNodeID;          // Destination node ID
-	GrB_Matrix mat;             // Adjacency matrix, associated with edge
+	RG_Matrix mat;              // Adjacency matrix, associated with edge
 };
 
 typedef struct Edge Edge;
@@ -48,7 +49,7 @@ Node *Edge_GetSrcNode(Edge *e); // opcreate
 Node *Edge_GetDestNode(Edge *e);
 
 // Retrieves edge matrix.
-GrB_Matrix Edge_GetMatrix(Edge *e); // AE
+RG_Matrix Edge_GetMatrix(Edge *e); // AE
 
 // Sets edge source node.
 void Edge_SetSrcNode(Edge *e, Node *src); // QG
