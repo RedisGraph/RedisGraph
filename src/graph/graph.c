@@ -279,7 +279,7 @@ Graph *Graph_New
 	UNUSED(info);
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&g->node_labels, GrB_BOOL, n, GRAPH_DEFAULT_LABEL_CAP);
+	RG_Matrix_new(&g->node_labels, GrB_BOOL, n, n);
 	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n);
 	RG_Matrix_new(&g->adjacency_matrix->transposed, GrB_BOOL, n, n);
 	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n);
@@ -649,7 +649,13 @@ void Graph_GetNodeEdges
 	}
 }
 
-uint Graph_GetNodeLabels(const Graph *g, const Node *n, LabelID *labels, LabelID label_count) {
+uint Graph_GetNodeLabels
+(
+	const Graph *g, 
+	const Node *n, 
+	LabelID *labels, 
+	LabelID label_count
+) {
 	if(label_count == 0) return 0;
 	// validate inputs
 	ASSERT(g != NULL);
@@ -662,6 +668,7 @@ uint Graph_GetNodeLabels(const Graph *g, const Node *n, LabelID *labels, LabelID
 	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
 	RG_MatrixTupleIter* iter;
+	// TODO: Implement RG_Matrix_extract_row and replace implementation
 	res = RG_MatrixTupleIter_new(&iter, M);
 	ASSERT(res == GrB_SUCCESS);
 	res = RG_MatrixTupleIter_iterate_row(iter, n->id);
@@ -1093,36 +1100,10 @@ bool Graph_RelationshipContainsMultiEdge
 RG_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 	ASSERT(g != NULL);
 
-	RG_Matrix m  = g->node_labels;
+	RG_Matrix m = g->node_labels;
 	
- 	GrB_Info info;
- 	GrB_Index nrows;
- 	GrB_Index ncols;
- 	RG_Matrix_ncols(&ncols, m);
- 	RG_Matrix_nrows(&nrows, m);
- 	size_t node_cap = _Graph_NodeCap(g);
- 	int label_count = Graph_LabelTypeCount(g);
-
- 	if(nrows != node_cap || ncols != label_count) {
- 		// if the graph belongs to one thread, we don't need to lock the mutex
- 		if(!g->_writelocked) RG_Matrix_Lock(m);
- 		{
- 			// locked, recheck
- 			RG_Matrix_ncols(&ncols, m);
- 			RG_Matrix_nrows(&nrows, m);
- 			node_cap = _Graph_NodeCap(g);
- 			label_count = Graph_LabelTypeCount(g);
-
- 			if(nrows != node_cap || ncols != label_count) {
- 				info = RG_Matrix_resize(m, node_cap, label_count);
- 				ASSERT(info == GrB_SUCCESS);
- 			}
-
-			info = RG_Matrix_wait(m, false);
-			ASSERT(info == GrB_SUCCESS);
- 		}
- 		if(!g->_writelocked) RG_Matrix_Unlock(m);
- 	}
+	// event thet the values are set on values
+ 	g->SynchronizeMatrix(g, m);
 	
 	return m;
 }
