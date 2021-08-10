@@ -149,6 +149,10 @@ GrB_Info RG_Matrix_removeElement_UINT64
 		if((SINGLE_EDGE(m_x)) == false) {
 			m_x = CLEAR_MSB(m_x);
 			array_free((uint64_t *)m_x);
+			info = GrB_Matrix_extractElement(&m_x, tm, j, i);
+			ASSERT(info == GrB_SUCCESS);
+			m_x = CLEAR_MSB(m_x);
+			array_free((uint64_t *)m_x);
 		}
 
 		// mark deletion in delta minus
@@ -165,6 +169,10 @@ GrB_Info RG_Matrix_removeElement_UINT64
 	if(in_dp) {
 		// free multi-edge entry
 		if((SINGLE_EDGE(dp_x)) == false) {
+			dp_x = CLEAR_MSB(dp_x);
+			array_free((uint64_t *)dp_x);
+			info = GrB_Matrix_extractElement(&dp_x, tdp, j, i);
+			ASSERT(info == GrB_SUCCESS);
 			dp_x = CLEAR_MSB(dp_x);
 			array_free((uint64_t *)dp_x);
 		}
