@@ -13,6 +13,7 @@
 static bool _removeEntryFromMultiValArr
 (
 	uint64_t **entries,  // multi-value array
+	uint64_t **tentries, // multi-value array (for transposed matrix)
 	uint64_t entry       // element to remove output new value
 ) {
 	ASSERT(*entries != NULL);
@@ -38,6 +39,9 @@ static bool _removeEntryFromMultiValArr
 		entry = (*entries)[0];
 		array_free(*entries);
 		*entries = (uint64_t *)entry;
+		entry = (*tentries)[0];
+		array_free(*tentries);
+		*tentries = (uint64_t *)entry;
 		return true;
 	}
 
@@ -55,20 +59,27 @@ static GrB_Info _removeElementMultiVal
 	ASSERT(A);
 
 	uint64_t  x;
+	uint64_t  tx;
 	GrB_Info  info;
 
 	info = GrB_Matrix_extractElement(&x, A, i, j);
 	ASSERT(info == GrB_SUCCESS);
 	ASSERT((SINGLE_EDGE(x)) == false);
+	info = GrB_Matrix_extractElement(&tx, TA, j, i);
+	ASSERT(info == GrB_SUCCESS);
+	ASSERT((SINGLE_EDGE(tx)) == false);
 
 	// remove entry from multi-value
-	x = CLEAR_MSB(x);
-	uint64_t *entries = (uint64_t *)x;
-	if(_removeEntryFromMultiValArr(&entries, v)) {
+	x  = CLEAR_MSB(x);
+	tx = CLEAR_MSB(tx);
+	uint64_t *entries  = (uint64_t *)x;
+	uint64_t *tentries = (uint64_t *)tx;
+	if(_removeEntryFromMultiValArr(&entries, &tentries, v)) {
 		// update entry
 		x = (uint64_t)entries;
+		tx = (uint64_t)tentries;
 		info = GrB_Matrix_setElement(A, x, i, j);
-		info = GrB_Matrix_setElement(TA, x, j, i);
+		info = GrB_Matrix_setElement(TA, tx, j, i);
 	}
 
 	return info;

@@ -9,6 +9,28 @@
 #include "rg_matrix.h"
 #include "../../util/arr.h"
 
+static GrB_BinaryOp _graph_edge_accum = NULL;
+
+void _edge_accum(void *_z, const void *_x, const void *_y) {
+	uint64_t *z = (uint64_t *)_z;
+	const uint64_t *x = (const uint64_t *)_x;
+	const uint64_t *y = (const uint64_t *)_y;
+
+	uint64_t *ids;
+	/* Single edge ID,
+	 * switching from single edge ID to multiple IDs. */
+	if(SINGLE_EDGE(*x)) {
+		ids = array_new(uint64_t, 2);
+		array_append(ids, *x);
+		array_append(ids, *y);
+	} else {
+		// Multiple edges, adding another edge.
+		ids = (uint64_t *)(CLEAR_MSB(*x));
+		array_append(ids, *y);
+	}
+	*z = (uint64_t)SET_MSB(ids);
+}
+
 // dealing with multi-value entries
 static GrB_Info setMultiEdgeEntry
 (
@@ -18,41 +40,20 @@ static GrB_Info setMultiEdgeEntry
     GrB_Index i,                        // row index
     GrB_Index j                         // column index
 ) {
-	uint64_t v;                // v = A[i,j]
 	GrB_Info info;
-	uint64_t *entries = NULL;  // array of values at A[i,j]
 
-	// check if entry already exists
-	info = GrB_Matrix_extractElement(&v, A, i, j);	
-	bool exists = (info == GrB_SUCCESS);
-
-	// new entry, simply set
-	if(!exists) {
-		// mark 'x' as a single entry
-		v = x;
-		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
-		info = GrB_Matrix_setElement_UINT64(TA, v, j, i);
-	} else {
-		// entry already exists
-		if(SINGLE_EDGE(v)) {
-			// swap from single entry to multi-entry
-			entries = array_new(uint64_t, 2);
-			array_append(entries, v);
-			array_append(entries, x);
-		} else {
-			v = CLEAR_MSB(v);
-			// append entry to array
-			entries = (uint64_t *)v;
-			array_append(entries, x);
-		}
-		v = (uint64_t)entries;
-		v = SET_MSB(v);
-		info = GrB_Matrix_setElement_UINT64(A, v, i, j);
-		info = GrB_Matrix_setElement_UINT64(TA, v, j, i);
-		// cheap sync, entry already exists
-		GrB_wait(&A);
+	// Create edge accumulator binary function
+	if(!_graph_edge_accum) {
+		info = GrB_BinaryOp_new(&_graph_edge_accum, _edge_accum, GrB_UINT64, 
+								GrB_UINT64, GrB_UINT64);
+		ASSERT(info == GrB_SUCCESS);
 	}
 
+	info = GxB_Matrix_subassign_UINT64(A, NULL, _graph_edge_accum, 
+									   x, &i, 1, &j, 1, NULL);
+	ASSERT(info == GrB_SUCCESS);
+	info = GxB_Matrix_subassign_UINT64(TA, NULL, _graph_edge_accum, 
+									   x, &j, 1, &i, 1, NULL);
 	ASSERT(info == GrB_SUCCESS);
 
 	return info;
