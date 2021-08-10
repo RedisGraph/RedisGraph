@@ -95,26 +95,22 @@ void OpBase_PropagateReset(OpBase *op) {
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
 }
 
-static int _OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
-	return snprintf(buff, buff_len,
+static void _OpBase_StatsToString(const OpBase *op, sds *buff) {
+	*buff = sdscatprintf(*buff,
 					" | Records produced: %d, Execution time: %f ms",
 					op->stats->profileRecordCount,
 					op->stats->profileExecTime);
 }
 
-int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
+void OpBase_ToString(const OpBase *op, sds *buff) {
 	int bytes_written = 0;
 
-	if(op->toString) bytes_written = op->toString(op, buff, buff_len);
-	else bytes_written = snprintf(buff, buff_len, "%s", op->name);
+	if(op->toString) op->toString(op, buff);
+	else *buff = sdscatprintf(*buff, "%s", op->name);
 
-	if(op->stats) {
-		bytes_written += _OpBase_StatsToString(op,
-											   buff + bytes_written,
-											   buff_len - bytes_written);
-	}
+	if(op->stats) _OpBase_StatsToString(op, buff);
 
-	return bytes_written;
+	return;
 }
 
 Record OpBase_Profile(OpBase *op) {

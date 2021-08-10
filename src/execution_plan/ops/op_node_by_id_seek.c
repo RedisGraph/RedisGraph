@@ -17,8 +17,8 @@ static OpResult NodeByIdSeekReset(OpBase *opBase);
 static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void NodeByIdSeekFree(OpBase *opBase);
 
-static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((NodeByIdSeek *)ctx)->alias, NULL);
+static inline void NodeByIdSeekToString(const OpBase *ctx, sds *buf) {
+	ScanToString(ctx, buf, ((NodeByIdSeek *)ctx)->alias, NULL);
 }
 
 // Checks to see if operation index is within its bounds.

@@ -169,30 +169,29 @@ void _cache_records(OpValueHashJoin *op) {
 }
 
 /* String representation of operation */
-static int ValueHashJoinToString(const OpBase *ctx, char *buff, uint buff_len) {
+static void ValueHashJoinToString(const OpBase *ctx, sds *buff) {
 	const OpValueHashJoin *op = (const OpValueHashJoin *)ctx;
 
 	char *exp_str = NULL;
 
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
+	*buff = sdscatprintf(*buff, "%s | ", op->op.name);
 
 	/* Return early if we don't have arithmetic expressions to print.
 	 * This can occur when an upstream op like MERGE has
 	 * already freed this operation with PropagateFree. */
-	if(!(op->lhs_exp && op->rhs_exp)) return offset;
+	if(!(op->lhs_exp && op->rhs_exp)) return;
 
 	AR_EXP_ToString(op->lhs_exp, &exp_str);
-	offset += snprintf(buff + offset, buff_len - offset, "%s", exp_str);
+	*buff = sdscatprintf(*buff, "%s", exp_str);
 	rm_free(exp_str);
 
-	offset += snprintf(buff + offset, buff_len - offset, " = ");
+	*buff = sdscatprintf(*buff, " = ");
 
 	AR_EXP_ToString(op->rhs_exp, &exp_str);
-	offset += snprintf(buff + offset, buff_len - offset, "%s", exp_str);
+	*buff = sdscatprintf(*buff, "%s", exp_str);
 	rm_free(exp_str);
 
-	return offset;
+	return;
 }
 
 /* Creates a new valueHashJoin operation */
