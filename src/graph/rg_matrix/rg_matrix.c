@@ -109,65 +109,6 @@ GrB_Info RG_Matrix_nvals    // get the number of entries in a matrix
 	return info;
 }
 
-void RG_Matrix_validateState
-(
-	const RG_Matrix C,
-	GrB_Index i,
-	GrB_Index j
-) {
-#ifdef RG_DEBUG
-	bool        x_m               =  false;
-	bool        x_dp              =  false;
-	bool        x_dm              =  false;
-	bool        existing_entry    =  false;
-	bool        pending_addition  =  false;
-	bool        pending_deletion  =  false;
-	GrB_Info    info_m            =  GrB_SUCCESS;
-	GrB_Info    info_dp           =  GrB_SUCCESS;
-	GrB_Info    info_dm           =  GrB_SUCCESS;
-	GrB_Matrix  m                 =  RG_MATRIX_M(C);
-	GrB_Matrix  dp                =  RG_MATRIX_DELTA_PLUS(C);
-	GrB_Matrix  dm                =  RG_MATRIX_DELTA_MINUS(C);
-
-	// find out which entries exists
-	info_m  = GrB_Matrix_extractElement(&x_m,  m,  i, j);
-	info_dp = GrB_Matrix_extractElement(&x_dp, dp, i, j);
-	info_dm = GrB_Matrix_extractElement(&x_dm, dm, i, j);
-
-	UNUSED(existing_entry);
-	UNUSED(pending_addition);
-	UNUSED(pending_deletion);
-
-	existing_entry    =  info_m  == GrB_SUCCESS;
-	pending_addition  =  info_dp == GrB_SUCCESS;
-	pending_deletion  =  info_dm == GrB_SUCCESS;
-
-	//--------------------------------------------------------------------------
-	// impossible states
-	//--------------------------------------------------------------------------
-
-	// matrix disjoint
-	ASSERT(!(existing_entry   &&
-			 pending_addition &&
-			 pending_deletion));
-
-	// deletion only
-	ASSERT(!(!existing_entry   &&
-			 !pending_addition &&
-			 pending_deletion));
-
-	// addition to already existing entry
-	ASSERT(!(existing_entry   &&
-			 pending_addition &&
-			 !pending_deletion));
-
-	// pending deletion and pending addition
-	ASSERT(!(!existing_entry   &&
-			  pending_addition &&
-			  pending_deletion));
-#endif
-}
-
 GrB_Info RG_Matrix_clear
 (
     RG_Matrix A
