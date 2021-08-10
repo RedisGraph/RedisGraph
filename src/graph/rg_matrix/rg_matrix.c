@@ -115,6 +115,7 @@ void RG_Matrix_validateState
 	GrB_Index i,
 	GrB_Index j
 ) {
+#ifdef RG_DEBUG
 	bool        x_m               =  false;
 	bool        x_dp              =  false;
 	bool        x_dm              =  false;
@@ -164,6 +165,7 @@ void RG_Matrix_validateState
 	ASSERT(!(!existing_entry   &&
 			  pending_addition &&
 			  pending_deletion));
+#endif
 }
 
 GrB_Info RG_Matrix_clear

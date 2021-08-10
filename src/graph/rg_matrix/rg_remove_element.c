@@ -33,7 +33,6 @@ GrB_Info RG_Matrix_removeElement_BOOL
 
 	info = GxB_Matrix_type(&type, m);
 	ASSERT(info == GrB_SUCCESS);
-
 	ASSERT(type == GrB_BOOL);
 
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
@@ -83,9 +82,7 @@ GrB_Info RG_Matrix_removeElement_BOOL
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-#ifdef RG_DEBUG
 	RG_Matrix_validateState(C, i, j);
-#endif
 
 	RG_Matrix_setDirty(C);
 	return info;
@@ -98,7 +95,6 @@ GrB_Info RG_Matrix_removeElement_UINT64
     GrB_Index j                     // column index
 ) {
 	ASSERT(C);
-	ASSERT(RG_MATRIX_MAINTAIN_TRANSPOSE(C));
 	RG_Matrix_checkBounds(C, i, j);
 
 	uint64_t    m_x;
@@ -112,13 +108,19 @@ GrB_Info RG_Matrix_removeElement_UINT64
 	GrB_Matrix  m           =  RG_MATRIX_M(C);
 	GrB_Matrix  dp          =  RG_MATRIX_DELTA_PLUS(C);
 	GrB_Matrix  dm          =  RG_MATRIX_DELTA_MINUS(C);
-	GrB_Matrix  tm          =  RG_MATRIX_TM(C);
-	GrB_Matrix  tdp         =  RG_MATRIX_TDELTA_PLUS(C);
-	GrB_Matrix  tdm         =  RG_MATRIX_TDELTA_MINUS(C);
 
+#ifdef RG_DEBUG
 	info = GxB_Matrix_type(&type, m);
 	ASSERT(info == GrB_SUCCESS);
 	ASSERT(type == GrB_UINT64);
+#endif
+
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
+		info = RG_Matrix_removeElement_UINT64(C->transposed, j, i);
+		if(info != GrB_SUCCESS) {
+			return info;
+		}
+	}
 
 	info = GrB_Matrix_extractElement(&m_x, m, i, j);
 	in_m = (info == GrB_SUCCESS);
@@ -149,16 +151,10 @@ GrB_Info RG_Matrix_removeElement_UINT64
 		if((SINGLE_EDGE(m_x)) == false) {
 			m_x = CLEAR_MSB(m_x);
 			array_free((uint64_t *)m_x);
-			info = GrB_Matrix_extractElement(&m_x, tm, j, i);
-			ASSERT(info == GrB_SUCCESS);
-			m_x = CLEAR_MSB(m_x);
-			array_free((uint64_t *)m_x);
 		}
 
 		// mark deletion in delta minus
 		info = GrB_Matrix_setElement(dm, true, i, j);
-		ASSERT(info == GrB_SUCCESS);
-		info = GrB_Matrix_setElement(tdm, true, j, i);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
@@ -171,23 +167,16 @@ GrB_Info RG_Matrix_removeElement_UINT64
 		if((SINGLE_EDGE(dp_x)) == false) {
 			dp_x = CLEAR_MSB(dp_x);
 			array_free((uint64_t *)dp_x);
-			info = GrB_Matrix_extractElement(&dp_x, tdp, j, i);
-			ASSERT(info == GrB_SUCCESS);
-			dp_x = CLEAR_MSB(dp_x);
-			array_free((uint64_t *)dp_x);
 		}
 
 		// remove entry from 'dp'
 		info = GrB_Matrix_removeElement(dp, i, j);
 		ASSERT(info == GrB_SUCCESS);
-		info = GrB_Matrix_removeElement(tdp, j, i);
-		ASSERT(info == GrB_SUCCESS);
 	}
 
-#ifdef RG_DEBUG
 	RG_Matrix_validateState(C, i, j);
-#endif
 
 	RG_Matrix_setDirty(C);
 	return info;
 }
+
