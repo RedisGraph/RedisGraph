@@ -67,7 +67,7 @@ GrB_Info RG_Matrix_new
 
 	if(type == GrB_UINT64) {
 		matrix->transposed = rm_calloc(1, sizeof(_RG_Matrix));
-		info = _RG_Matrix_init(matrix->transposed, type, nrows, ncols);
+		info = _RG_Matrix_init(matrix->transposed, GrB_BOOL, nrows, ncols);
 		ASSERT(info == GrB_SUCCESS);
 	}
 

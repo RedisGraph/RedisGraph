@@ -101,13 +101,6 @@ GrB_Info RG_Matrix_removeEntry
 	ASSERT(type == GrB_UINT64);
 #endif
 
-	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
-		info = RG_Matrix_removeEntry(C->transposed, j, i, v);
-		if(info != GrB_SUCCESS) {
-			return info;
-		}
-	}
-
 	// entry should exists in either delta-plus or main
 	// locate entry
 	info = GrB_Matrix_extractElement(&m_x, m, i, j);
@@ -139,6 +132,8 @@ GrB_Info RG_Matrix_removeEntry
 			// mark deletion in delta minus
 			info = GrB_Matrix_setElement(dm, true, i, j);
 			ASSERT(info == GrB_SUCCESS);
+			info = RG_Matrix_removeElement_BOOL(C->transposed, j, i);
+			ASSERT(info == GrB_SUCCESS)
 			RG_Matrix_setDirty(C);
 		} else {
 			info = _removeElementMultiVal(m, i, j, v);
@@ -154,6 +149,8 @@ GrB_Info RG_Matrix_removeEntry
 		if(SINGLE_EDGE(dp_x)) {
 			info = GrB_Matrix_removeElement(dp, i, j);
 			ASSERT(info == GrB_SUCCESS);
+			info = RG_Matrix_removeElement_BOOL(C->transposed, j, i);
+			ASSERT(info == GrB_SUCCESS)
 			RG_Matrix_setDirty(C);
 		} else {
 			info = _removeElementMultiVal(dp, i, j, v);
