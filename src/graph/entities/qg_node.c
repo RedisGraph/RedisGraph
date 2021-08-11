@@ -90,15 +90,13 @@ QGNode *QGNode_Clone(const QGNode *orig) {
 	return n;
 }
 
-int QGNode_ToString(const QGNode *n, char *buff, int buff_len) {
+void QGNode_ToString(const QGNode *n, sds *buff) {
 	ASSERT(n && buff);
 
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "(");
-	if(n->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", n->alias);
-	if(n->label) offset += snprintf(buff + offset, buff_len - offset, ":%s", n->label);
-	offset += snprintf(buff + offset, buff_len - offset, ")");
-	return offset;
+	*buff = sdscatprintf(*buff, "(");
+	if(n->alias) *buff = sdscatprintf(*buff, "%s", n->alias);
+	if(n->label) *buff = sdscatprintf(*buff, ":%s", n->label);
+	*buff = sdscatprintf(*buff, ")");
 }
 
 void QGNode_Free(QGNode *node) {

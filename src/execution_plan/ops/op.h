@@ -85,7 +85,7 @@ typedef void (*fpFree)(struct OpBase *);
 typedef OpResult(*fpInit)(struct OpBase *);
 typedef Record(*fpConsume)(struct OpBase *);
 typedef OpResult(*fpReset)(struct OpBase *);
-typedef int (*fpToString)(const struct OpBase *, char *, uint);
+typedef void (*fpToString)(const struct OpBase *, sds *);
 typedef struct OpBase *(*fpClone)(const struct ExecutionPlan *, const struct OpBase *);
 
 // Execution plan operation statistics.
@@ -123,7 +123,7 @@ void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 
-int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
+void OpBase_ToString(const OpBase *op, sds *buff);
 
 OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op);
 
