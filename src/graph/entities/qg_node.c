@@ -159,19 +159,15 @@ QGNode *QGNode_Clone(const QGNode *orig) {
 	return clone;
 }
 
-int QGNode_ToString(const QGNode *n, char *buff, int buff_len) {
+void QGNode_ToString(const QGNode *n, sds *buff) {
 	ASSERT(n && buff);
 
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "(");
-	if(n->alias) {
-		offset += snprintf(buff + offset, buff_len - offset, "%s", n->alias);
+	*buff = sdscatprintf(*buff, "(");
+	if(n->alias) *buff = sdscatprintf(*buff, "%s", n->alias);
+  for(uint i = 0; i < QGNode_LabelCount(n); i++) {
+		*buff = sdscatprintf(*buff, ":%s", n->labels[i]);
 	}
-	for(uint i = 0; i < QGNode_LabelCount(n); i++) {
-		offset += snprintf(buff + offset, buff_len - offset, ":%s", n->labels[i]);
-	}
-	offset += snprintf(buff + offset, buff_len - offset, ")");
-	return offset;
+	*buff = sdscatprintf(*buff, ")");
 }
 
 void QGNode_Free(QGNode *node) {

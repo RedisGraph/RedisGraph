@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include "../../util/sds/sds.h"
 
 // forward declaration of edge
 struct QGEdge;
@@ -71,8 +72,8 @@ void QGNode_RemoveOutgoingEdge(QGNode *n, struct QGEdge *e);
 // clones given node
 QGNode *QGNode_Clone(const QGNode *n);
 
-// gets a string representation of given node
-int QGNode_ToString(const QGNode *n, char *buff, int buff_len);
+/* Gets a string representation of given node. */
+void QGNode_ToString(const QGNode *n, sds *buff);
 
 // frees allocated space by given node
 void QGNode_Free(QGNode *node);

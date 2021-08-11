@@ -31,8 +31,8 @@ typedef enum {
 // read the label strings from a header, update schemas, and retrieve the label IDs
 static int *_BulkInsert_ReadHeaderLabels(GraphContext *gc, SchemaType t,
 										 const char *data, size_t *data_idx) {
-	ASSERT(gc != NULL);
-	ASSERT(data != NULL);
+	ASSERT(gc       != NULL);
+	ASSERT(data     != NULL);
 	ASSERT(data_idx != NULL);
 	// first sequence is entity label
 	const char *labels = data + *data_idx;
@@ -188,14 +188,39 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 	Attribute_ID *prop_indices = _BulkInsert_ReadHeaderProperties(gc, type, data,
 																  &data_idx, &prop_count);
 
-	while(data_idx < data_len) {
-		Node n;
-		Edge e;
-		GraphEntity *ge;
-		if(type == SCHEMA_NODE) {
+	if(type != SCHEMA_NODE && type != SCHEMA_EDGE) {
+		assert(false && "Bulk-Insert, unknown entity type");
+	}
+
+	//--------------------------------------------------------------------------
+	// load nodes
+	//--------------------------------------------------------------------------
+
+	if(type == SCHEMA_NODE) {
+		while(data_idx < data_len) {
+			Node n;
+			GraphEntity *ge;
 			Graph_CreateNode(gc->g, &n, label_ids, label_count);
 			ge = (GraphEntity *)&n;
-		} else if(type == SCHEMA_EDGE) {
+			// process entity attributes
+			for(uint i = 0; i < prop_count; i++) {
+				SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
+				// skip invalid attribute values
+				if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) continue;
+				GraphEntity_AddProperty(ge, prop_indices[i], value);
+			}
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// load edges
+	//--------------------------------------------------------------------------
+
+	if(type == SCHEMA_EDGE) {
+		while(data_idx < data_len) {
+			Edge e;
+			GraphEntity *ge;
+
 			// next 8 bytes are source ID
 			NodeID src = *(NodeID *)&data[data_idx];
 			data_idx += sizeof(NodeID);
@@ -205,16 +230,14 @@ static int _BulkInsert_ProcessFile(GraphContext *gc, const char *data,
 
 			Graph_CreateEdge(gc->g, src, dest, label_ids[0], &e);
 			ge = (GraphEntity *)&e;
-		} else {
-			ASSERT(false);
-		}
 
-		// process entity attributes
-		for(uint i = 0; i < prop_count; i++) {
-			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
-			// skip invalid attribute values
-			if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) continue;
-			GraphEntity_AddProperty(ge, prop_indices[i], value);
+			// process entity attributes
+			for(uint i = 0; i < prop_count; i++) {
+				SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
+				// skip invalid attribute values
+				if(!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) continue;
+				GraphEntity_AddProperty(ge, prop_indices[i], value);
+			}
 		}
 	}
 

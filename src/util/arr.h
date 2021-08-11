@@ -54,7 +54,7 @@ typedef struct {
 
 typedef void *array_t;
 /* Internal - calculate the array size for allocations */
-#define array_sizeof(hdr) (sizeof(array_hdr_t) + hdr->cap * hdr->elem_sz)
+#define array_sizeof(hdr) (sizeof(array_hdr_t) + (uint64_t)hdr->cap * hdr->elem_sz)
 /* Internal - get a pointer to the array header */
 #define array_hdr(arr) ((array_hdr_t *)(((char *)arr) - sizeof(array_hdr_t)))
 /* Interanl - get a pointer to an element inside the array at a given index */
@@ -65,7 +65,7 @@ static inline uint32_t array_len(array_t arr);
 /* Initialize a new array with a given element size and capacity. Should not be used directly - use
  * array_new instead */
 static array_t array_new_sz(uint32_t elem_sz, uint32_t cap, uint32_t len) {
-	unsigned long array_size = cap * elem_sz;
+	uint64_t array_size = (uint64_t)cap * elem_sz;
 	array_hdr_t *hdr = (array_hdr_t *)array_alloc_fn(sizeof(array_hdr_t) + array_size);
 	hdr->cap = cap;
 	hdr->elem_sz = elem_sz;
