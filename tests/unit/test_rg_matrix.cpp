@@ -945,7 +945,7 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	DP_EMPTY();
 
 	//--------------------------------------------------------------------------
-	// delete flushed entry at position i,j
+	// delete entry at position i,j
 	//--------------------------------------------------------------------------
 
 	info = RG_Matrix_setElement_UINT64(A, x, i, j);
@@ -964,21 +964,9 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	ASSERT_EQ(info, GrB_NO_VALUE);
 
-	info = RG_Matrix_setElement_UINT64(A, x, i, j);
-	ASSERT_EQ(info, GrB_SUCCESS);
-	info = RG_Matrix_setElement_UINT64(A, x + 1, i, j);
-	ASSERT_EQ(info, GrB_SUCCESS);
-
-	info = RG_Matrix_removeEntry(A, i, j, x);
-
-	// make sure element at position j,i exists
-	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
-	ASSERT_EQ(info, GrB_SUCCESS);
-	ASSERT_EQ(true, b);
-
-	info = RG_Matrix_removeEntry(A, i, j, x + 1);
-	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
-	ASSERT_EQ(info, GrB_NO_VALUE);
+	//--------------------------------------------------------------------------
+	// delete flushed entry at position i,j
+	//--------------------------------------------------------------------------
 
 	info = RG_Matrix_setElement_UINT64(A, x, i, j);
 	ASSERT_EQ(info, GrB_SUCCESS);
