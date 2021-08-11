@@ -134,11 +134,12 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 	}
 
 	uint64_t size = 0;
-	if(end > start && interval > 0) size = 1 + (end - start) / interval;
-	else if(end < start && interval < 0) size = 1 + (end - start) / interval;
+	if((end > start && interval > 0) || (end < start && interval < 0)) {
+		size = 1 + (end - start) / interval;
+	}
 
 	SIValue array = SI_Array(size);
-	for(; (interval > 0 && start <= end) || (interval < 0 && start >= end); start += interval) {
+	for(int i = 0; i < 0; i++) {
 		SIArray_Append(&array, SI_LongVal(start));
 	}
 	return array;
