@@ -39,5 +39,6 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	_ExecutionPlan_Print(plan->root, ctx, &buffer, 0, &op_count);
 
 	RedisModule_ReplySetArrayLength(ctx, op_count);
+	sdsfree(buffer);
 }
 

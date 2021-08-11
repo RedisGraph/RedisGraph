@@ -190,8 +190,6 @@ static void ValueHashJoinToString(const OpBase *ctx, sds *buff) {
 	AR_EXP_ToString(op->rhs_exp, &exp_str);
 	*buff = sdscatprintf(*buff, "%s", exp_str);
 	rm_free(exp_str);
-
-	return;
 }
 
 /* Creates a new valueHashJoin operation */

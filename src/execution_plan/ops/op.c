@@ -109,8 +109,6 @@ void OpBase_ToString(const OpBase *op, sds *buff) {
 	else *buff = sdscatprintf(*buff, "%s", op->name);
 
 	if(op->stats) _OpBase_StatsToString(op, buff);
-
-	return;
 }
 
 Record OpBase_Profile(OpBase *op) {
