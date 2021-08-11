@@ -39,10 +39,11 @@ void RG_Matrix_free
 	RG_Matrix M = *C;
 
 	GrB_Info info;
-
 	UNUSED(info);
 
-	// force flush both C and TC
+	if(RG_MATRIX_MAINTAIN_TRANSPOSE(M)) RG_Matrix_free(&M->transposed);
+
+	// force flush M
 	info = RG_Matrix_wait(M, true);
 	ASSERT(info == GrB_SUCCESS);
 
@@ -72,19 +73,6 @@ void RG_Matrix_free
 	ASSERT(info == GrB_SUCCESS);
 
 	pthread_mutex_destroy(&M->mutex);
-
-	if(RG_MATRIX_MAINTAIN_TRANSPOSE(M)) {
-		info = GrB_Matrix_free(&M->transposed->matrix);
-		ASSERT(info == GrB_SUCCESS);
-
-		info = GrB_Matrix_free(&M->transposed->delta_plus);
-		ASSERT(info == GrB_SUCCESS);
-
-		info = GrB_Matrix_free(&M->transposed->delta_minus);
-		ASSERT(info == GrB_SUCCESS);
-
-		rm_free(M->transposed);
-	}
 
 	rm_free(M);
 	

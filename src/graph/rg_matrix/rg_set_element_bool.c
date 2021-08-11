@@ -51,9 +51,7 @@ GrB_Info RG_Matrix_setElement_BOOL      // C (i,j) = x
 		}
 	}
 
-#ifdef RG_DEBUG
 	RG_Matrix_validateState(C, i, j);
-#endif
 
 	RG_Matrix_setDirty(C);
 
