@@ -668,27 +668,24 @@ uint Graph_GetNodeLabels
 	// GrB_Col_extract will iterate over the range of the output size
 	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 
-	RG_MatrixTupleIter* iter;
-	// TODO: Implement RG_Matrix_extract_row and replace implementation
-	res = RG_MatrixTupleIter_new(&iter, M);
+	RG_MatrixTupleIter iter;
+	res = RG_MatrixTupleIter_reuse(&iter, M);
 	ASSERT(res == GrB_SUCCESS);
-	res = RG_MatrixTupleIter_iterate_row(iter, n->id);
+	res = RG_MatrixTupleIter_iterate_row(&iter, n->id);
 	ASSERT(res == GrB_SUCCESS);
 
 	GrB_Index col = 0;
 	bool depleted = false;
 	label_count = 0;
-	res = RG_MatrixTupleIter_next(iter, NULL, &col, NULL, &depleted);
+	res = RG_MatrixTupleIter_next(&iter, NULL, &col, NULL, &depleted);
 	ASSERT(res == GrB_SUCCESS);
 	while (!depleted)
 	{
 		labels[label_count] = col;
 		label_count++;
-		res = RG_MatrixTupleIter_next(iter, NULL, &col, NULL, &depleted);
+		res = RG_MatrixTupleIter_next(&iter, NULL, &col, NULL, &depleted);
 		ASSERT(res == GrB_SUCCESS);
 	}
-
-	RG_MatrixTupleIter_free(&iter);
 		
 	return label_count;
 }
