@@ -11,6 +11,9 @@
 // Sets a node in the graph
 void Serializer_Graph_SetNode(Graph *g, NodeID id, LabelID *labels, uint label_count, Node *n);
 
+// Set the node labels in the graph
+void Serializer_Graph_SetNodeLabels(Graph *g);
+
 // Set a given edge in the graph.
 void Serializer_Graph_SetEdge(Graph *g, int64_t multi_edge, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e);
 

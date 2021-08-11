@@ -98,6 +98,8 @@ void RdbLoadNodes_v10(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count)
 
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
 	}
+
+	Serializer_Graph_SetNodeLabels(gc->g);
 }
 
 void RdbLoadDeletedNodes_v10(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_node_count) {

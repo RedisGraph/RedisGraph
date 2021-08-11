@@ -27,18 +27,38 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, LabelID *labels, uint label_c
 	en->properties = NULL;
 	n->id = id;
 	n->entity = en;
-	RG_Matrix node_labels = Graph_GetNodeLabelMatrix(g);
-	GrB_Matrix node_labels_m = RG_MATRIX_M(node_labels);
+
 	for(uint i = 0; i < label_count; i ++) {
 		LabelID label = labels[i];
 		// Set label matrix at position [id, id]
 		RG_Matrix M   =  Graph_GetLabelMatrix(g, label);
 		GrB_Matrix m  =  RG_MATRIX_M(M);
 		GrB_Matrix_setElement_BOOL(m, true, id, id);
-
-		// Set node-label matrix at position [id, label]
-		GrB_Matrix_setElement_BOOL(node_labels_m, true, id, label);
 	}
+}
+
+void Serializer_Graph_SetNodeLabels(Graph *g) {
+	ASSERT(g);
+
+	GrB_Vector v;
+	int node_count          = Graph_RequiredMatrixDim(g);
+	int label_count         = Graph_LabelTypeCount(g);
+	RG_Matrix node_labels   = Graph_GetNodeLabelMatrix(g);
+	GrB_Matrix node_labels_m = RG_MATRIX_M(node_labels);
+
+	GrB_Vector_new(&v, GrB_BOOL, node_count);
+
+	for (int i = 0; i < label_count; i++)
+	{
+		RG_Matrix  M  =  Graph_GetLabelMatrix(g, i);
+		GrB_Matrix m  =  RG_MATRIX_M(M);
+
+		GxB_Vector_diag(v, m, 0, NULL);
+
+		GxB_Col_subassign(node_labels_m, NULL, NULL, v, GrB_ALL, 0, i, NULL);
+	}
+
+	GrB_Vector_free(&v);
 }
 
 // optimized version of Graph_FormConnection 
