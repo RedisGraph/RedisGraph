@@ -19,19 +19,23 @@ static OpResult CondTraverseReset(OpBase *opBase);
 static OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondTraverseFree(OpBase *opBase);
 
-static int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return TraversalToString(ctx, buf, buf_len, ((const OpCondTraverse *)ctx)->ae);
+static void CondTraverseToString(const OpBase *ctx, sds *buf) {
+	TraversalToString(ctx, buf, ((const OpCondTraverse *)ctx)->ae);
 }
 
 static void _populate_filter_matrix(OpCondTraverse *op) {
+	GrB_Matrix FM = RG_MATRIX_M(op->F);
+
 	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
-		NodeID srcId = ENTITY_GET_ID(n);
-		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
+		NodeID srcId = ENTITY_GET_ID(n);	
+		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
 	}
+
+	GrB_Matrix_wait(&FM);
 }
 
 /* Evaluate algebraic expression:
@@ -42,13 +46,12 @@ static void _populate_filter_matrix(OpCondTraverse *op) {
  * clears filter matrix. */
 void _traverse(OpCondTraverse *op) {
 	// If op->F is null, this is the first time we are traversing.
-	if(op->F == GrB_NULL) {
+	if(op->F == NULL) {
 		/* Create both filter and result matrices.
 		 * make sure M's format is SPARSE, required by the matrix iterator */
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		GrB_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
-		GrB_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
-		GxB_set(op->M, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
+		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
 
 		// Prepend the filter matrix to algebraic expression as the leftmost operand.
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
@@ -63,11 +66,11 @@ void _traverse(OpCondTraverse *op) {
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
 
-	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
-	else GxB_MatrixTupleIter_reuse(op->iter, op->M);
+	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, RG_MATRIX_M(op->M));
+	else GxB_MatrixTupleIter_reuse(op->iter, RG_MATRIX_M(op->M));
 
 	// Clear filter matrix.
-	GrB_Matrix_clear(op->F);
+	RG_Matrix_clear(op->F);
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
@@ -76,8 +79,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->ae = ae;
 	op->r = NULL;
 	op->iter = NULL;
-	op->F = GrB_NULL;
-	op->M = GrB_NULL;
+	op->F = NULL;
+	op->M = NULL;
 	op->records = NULL;
 	op->record_count = 0;
 	op->edge_ctx = NULL;
@@ -140,7 +143,8 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	NodeID dest_id = INVALID_ENTITY_ID;
 
 	while(true) {
-		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id, &depleted);
+		if(op->iter) GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id,
+				NULL, &depleted);
 
 		// Managed to get a tuple, break.
 		if(!depleted) break;
@@ -206,10 +210,9 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
 
 	if(op->iter) {
-		GxB_MatrixTupleIter_free(op->iter);
-		op->iter = NULL;
+		GxB_MatrixTupleIter_free(&op->iter);
 	}
-	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
+	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
 }
 
@@ -223,18 +226,17 @@ static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase 
 static void CondTraverseFree(OpBase *ctx) {
 	OpCondTraverse *op = (OpCondTraverse *)ctx;
 	if(op->iter) {
-		GxB_MatrixTupleIter_free(op->iter);
-		op->iter = NULL;
+		GxB_MatrixTupleIter_free(&op->iter);
 	}
 
-	if(op->F != GrB_NULL) {
-		GrB_Matrix_free(&op->F);
-		op->F = GrB_NULL;
+	if(op->F != NULL) {
+		RG_Matrix_free(&op->F);
+		op->F = NULL;
 	}
 
-	if(op->M != GrB_NULL) {
-		GrB_Matrix_free(&op->M);
-		op->M = GrB_NULL;
+	if(op->M != NULL) {
+		RG_Matrix_free(&op->M);
+		op->M = NULL;
 	}
 
 	if(op->ae) {

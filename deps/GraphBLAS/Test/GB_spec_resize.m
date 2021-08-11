@@ -1,5 +1,5 @@
 function C = GB_spec_resize (A, nrows_new, ncols_new)
-%GB_SPEC_RESIZE a MATLAB mimic of GxB_resize
+%GB_SPEC_RESIZE a mimic of GxB_resize
 %
 % Usage:
 % C = GB_spec_resize (A, nrows_new, ncols_new)
@@ -19,7 +19,7 @@ C = GB_spec_matrix (A) ;
 c_class = C.class ;
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 [nrows_old ncols_old] = size (C.matrix) ;

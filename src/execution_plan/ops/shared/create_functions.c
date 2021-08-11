@@ -112,8 +112,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		ASSERT(schema); // All schemas have been created in the edge blueprint loop or earlier.
 		int relation_id = schema->id;
 
-		int nodes_created = Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e);
-		ASSERT(nodes_created == 1);
+		Graph_CreateEdge(g, srcNodeID, destNodeID, relation_id, e);
 
 		if(pending->edge_properties[i]) _AddProperties(pending->stats, (GraphEntity *)e,
 														   pending->edge_properties[i]);

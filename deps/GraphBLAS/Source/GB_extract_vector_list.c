@@ -11,18 +11,22 @@
 // the output J for GB_extractTuples, and I for GB_transpose when the qsort
 // method is used.
 
+// TODO: use #include "GB_positional_op_ijp.c" here
+
 #include "GB_ek_slice.h"
 
-#define GB_FREE_WORK \
-    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice) ;
+#define GB_FREE_ALL                         \
+{                                           \
+    GB_WERK_POP (A_ek_slicing, int64_t) ;   \
+}
 
-bool GB_extract_vector_list     // true if successful, false if out of memory
+GrB_Info GB_extract_vector_list     // extract vector list from a matrix
 (
     // output:
-    int64_t *GB_RESTRICT J,        // size nnz(A) or more
+    int64_t *restrict J,         // size nnz(A) or more
     // input:
     const GrB_Matrix A,
-    int nthreads
+    GB_Context Context
 )
 {
 
@@ -32,7 +36,6 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
 
     ASSERT (J != NULL) ;
     ASSERT (A != NULL) ;
-    ASSERT (nthreads >= 1) ;
     ASSERT (GB_JUMBLED_OK (A)) ;        // pattern not accessed
     ASSERT (GB_ZOMBIES_OK (A)) ;        // pattern not accessed
     ASSERT (!GB_IS_BITMAP (A)) ;
@@ -41,45 +44,36 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
     // get A
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Ap = A->p ;
-    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *restrict Ap = A->p ;
+    const int64_t *restrict Ah = A->h ;
     const int64_t avlen = A->vlen ;
 
     //--------------------------------------------------------------------------
-    // determine the # of tasks to use
+    // determine the max number of threads to use
     //--------------------------------------------------------------------------
 
-    int ntasks = (nthreads == 1) ? 1 : (2 * nthreads) ;
-
-    // TODO: use #include "GB_positional_op_ijp.c" here
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
 
     //--------------------------------------------------------------------------
     // slice the entries for each task
     //--------------------------------------------------------------------------
 
-    // Task tid does entries pstart_slice [tid] to pstart_slice [tid+1]-1 and
-    // vectors kfirst_slice [tid] to klast_slice [tid].  The first and last
-    // vectors may be shared with prior slices and subsequent slices.
-
-    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
-    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, &ntasks))
-    { 
-        // out of memory
-        return (false) ;
-    }
+    GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
+    int A_ntasks, A_nthreads ;
+    GB_SLICE_MATRIX (A, 2, chunk) ;
 
     //--------------------------------------------------------------------------
     // extract the vector index for each entry
     //--------------------------------------------------------------------------
 
     int tid ;
-    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (tid = 0 ; tid < ntasks ; tid++)
+    #pragma omp parallel for num_threads(A_nthreads) schedule(dynamic,1)
+    for (tid = 0 ; tid < A_ntasks ; tid++)
     {
 
         // if kfirst > klast then task tid does no work at all
-        int64_t kfirst = kfirst_slice [tid] ;
-        int64_t klast  = klast_slice  [tid] ;
+        int64_t kfirst = kfirst_Aslice [tid] ;
+        int64_t klast  = klast_Aslice  [tid] ;
 
         for (int64_t k = kfirst ; k <= klast ; k++)
         {
@@ -91,7 +85,7 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
             int64_t j = GBH (Ah, k) ;
             int64_t pA_start, pA_end ;
             GB_get_pA (&pA_start, &pA_end, tid, k, 
-                kfirst, klast, pstart_slice, Ap, avlen) ;
+                kfirst, klast, pstart_Aslice, Ap, avlen) ;
 
             //------------------------------------------------------------------
             // extract vector indices of A(:,j)
@@ -108,7 +102,7 @@ bool GB_extract_vector_list     // true if successful, false if out of memory
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
-    return (true) ;
+    GB_FREE_ALL ;
+    return (GrB_SUCCESS) ;
 }
 

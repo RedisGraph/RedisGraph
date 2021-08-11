@@ -2,7 +2,7 @@ function gbtest47
 %GBTEST47 test GrB.entries, GrB.nonz, numel
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 rng ('default') ;
 
@@ -163,7 +163,7 @@ for trial = 1:40
     d2 = GrB.nonz (G, 'col', 'degree') ;
     d3 = int64 (full (sum (spones (B), 1)))' ;
     assert (isequal (d1, d2)) ;
-    assert (isequal (d1, d3)) ;
+    assert (isequal (double (d1), sparse (double (d3)))) ;
 
     % requires vpa in the Symbolic toolbox:
     if (have_symbolic)

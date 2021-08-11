@@ -8,21 +8,22 @@
 #include "../RG.h"
 #include "./ops/ops.h"
 
-void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
+void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, sds *buffer,
 						  int ident, int *op_count) {
 	if(!op) return;
 
 	*op_count += 1; // account for current operation.
 
 	// Construct operation string representation.
-	int bytes_written = snprintf(buffer, buffer_len, "%*s", ident, "");
-	bytes_written += OpBase_ToString(op, buffer + bytes_written, buffer_len - bytes_written);
+	sdsclear(*buffer);
+	*buffer = sdscatprintf(*buffer, "%*s", ident, "");
+	OpBase_ToString(op, buffer);
 
-	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
+	RedisModule_ReplyWithStringBuffer(ctx, *buffer, sdslen(*buffer));
 
 	// Recurse over child operations.
 	for(int i = 0; i < op->childCount; i++) {
-		_ExecutionPlan_Print(op->children[i], ctx, buffer, buffer_len, ident + 4, op_count);
+		_ExecutionPlan_Print(op->children[i], ctx, buffer, ident + 4, op_count);
 	}
 }
 
@@ -31,12 +32,13 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	ASSERT(plan && ctx);
 
 	int op_count = 0;   // Number of operations printed.
-	char buffer[1024];
+	sds buffer = sdsempty();
 
 	// No idea how many operation are in execution plan.
 	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-	_ExecutionPlan_Print(plan->root, ctx, buffer, 1024, 0, &op_count);
+	_ExecutionPlan_Print(plan->root, ctx, &buffer, 0, &op_count);
 
 	RedisModule_ReplySetArrayLength(ctx, op_count);
+	sdsfree(buffer);
 }
 

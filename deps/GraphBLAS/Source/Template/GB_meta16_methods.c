@@ -22,24 +22,6 @@
     #elif defined ( GB_DOT2 )
     #include "GB_AxB_dot2_template.c"
 
-    // saxpy3 symbolic (coarse Gustavson and hash tasks)
-    #elif defined ( GB_SAXPY_COARSE_GUSTAVSON_NOMASK_PHASE1 )
-    #include "GB_AxB_saxpy3_coarseGus_noM_phase1.c"
-    #elif defined ( GB_SAXPY_COARSE_GUSTAVSON_M_PHASE1 )
-    #include "GB_AxB_saxpy3_coarseGus_M_phase1.c"
-    #elif defined ( GB_SAXPY_COARSE_GUSTAVSON_NOTM_PHASE1 )
-    #include "GB_AxB_saxpy3_coarseGus_notM_phase1.c"
-    #elif defined ( GB_SAXPY_COARSE_HASH_PHASE1 )
-    #include "GB_AxB_saxpy3_coarseHash_phase1.c"
-    #elif defined ( GB_SAXPY_COARSE_HASH_M_PHASE1 )
-    #include "GB_AxB_saxpy3_coarseHash_M_phase1.c"
-    #elif defined ( GB_SAXPY_COARSE_HASH_NOTM_PHASE1 )
-    #include "GB_AxB_saxpy3_coarseHash_notM_phase1.c"
-
-    // saxpy3 numeric (just the no-mask coarse Gustvason task)
-    #elif defined ( GB_SAXPY_COARSE_GUSTAVSON_NOMASK_PHASE5 )
-    #include "GB_AxB_saxpy3_coarseGus_noM_phase5.c"
-
     #else
     #error "method undefined"
     #endif

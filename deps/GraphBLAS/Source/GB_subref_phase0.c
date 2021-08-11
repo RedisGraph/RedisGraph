@@ -25,16 +25,16 @@ static inline void GB_find_Ap_start_end
 (
     // input, not modified
     const int64_t kA,
-    const int64_t *GB_RESTRICT Ap,
-    const int64_t *GB_RESTRICT Ai,
+    const int64_t *restrict Ap,
+    const int64_t *restrict Ai,
     const int64_t avlen,
     const int64_t imin,
     const int64_t imax,
     const int64_t kC,
     const int64_t nzombies,
     // output: Ap_start [kC] and Ap_end [kC]:
-    int64_t *GB_RESTRICT Ap_start,
-    int64_t *GB_RESTRICT Ap_end
+    int64_t *restrict Ap_start,
+    int64_t *restrict Ap_end
 )
 {
 
@@ -140,15 +140,20 @@ static inline void GB_find_Ap_start_end
 // GB_subref_phase0
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK \
-    GB_FREE (Count) ;
+#define GB_FREE_WORK                \
+{                                   \
+    GB_WERK_POP (Count, int64_t) ;  \
+}
 
 GrB_Info GB_subref_phase0
 (
     // output
-    int64_t *GB_RESTRICT *p_Ch,         // Ch = C->h hyperlist, or NULL standard
-    int64_t *GB_RESTRICT *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
-    int64_t *GB_RESTRICT *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
+    int64_t *restrict *p_Ch,         // Ch = C->h hyperlist, or NULL standard
+    size_t *p_Ch_size,
+    int64_t *restrict *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
+    size_t *p_Ap_start_size,
+    int64_t *restrict *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
+    size_t *p_Ap_end_size,
     int64_t *p_Cnvec,       // # of vectors in C
     bool *p_need_qsort,     // true if C must be sorted
     int *p_Ikind,           // kind of I
@@ -199,9 +204,9 @@ GrB_Info GB_subref_phase0
     // get A
     //--------------------------------------------------------------------------
 
-    int64_t *GB_RESTRICT Ap = A->p ;   // Ap (but not A->p) may be trimmed
-    int64_t *GB_RESTRICT Ah = A->h ;   // Ah (but not A->h) may be trimmed
-    int64_t *GB_RESTRICT Ai = A->i ;
+    int64_t *restrict Ap = A->p ;   // Ap (but not A->p) may be trimmed
+    int64_t *restrict Ah = A->h ;   // Ah (but not A->h) may be trimmed
+    int64_t *restrict Ai = A->i ;
     int64_t anvec = A->nvec ;       // may be trimmed
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
@@ -224,7 +229,7 @@ GrB_Info GB_subref_phase0
         &I_unsorted, &I_has_dupl, &I_contig, &imin, &imax, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        // I invalid
+        // I invalid or out of memory
         return (info) ;
     }
 
@@ -232,7 +237,7 @@ GrB_Info GB_subref_phase0
         &J_unsorted, &J_has_dupl, &J_contig, &jmin, &jmax, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        // J invalid
+        // J invalid or out of memory
         return (info) ;
     }
 
@@ -298,24 +303,25 @@ GrB_Info GB_subref_phase0
     // determine # of threads to use
     //--------------------------------------------------------------------------
 
+    #define NTASKS_PER_THREAD 8
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = 1, ntasks = 1 ;
-    int max_ntasks = nthreads_max * 8 ;
-    int64_t *GB_RESTRICT Count = NULL ;        // size max_ntasks+1
+    int ntasks_max = nthreads_max * NTASKS_PER_THREAD ;
 
-    #define GB_GET_NTHREADS_AND_NTASKS(work)                    \
-    {                                                           \
-        nthreads = GB_nthreads (work, chunk, nthreads_max) ;    \
-        ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;         \
-        ntasks = GB_IMIN (ntasks, work) ;                       \
-        ntasks = GB_IMAX (ntasks, 1) ;                          \
+    #define GB_GET_NTHREADS_AND_NTASKS(work)                            \
+    {                                                                   \
+        nthreads = GB_nthreads (work, chunk, nthreads_max) ;            \
+        ntasks = (nthreads == 1) ? 1 : (NTASKS_PER_THREAD * nthreads) ; \
+        ntasks = GB_IMIN (ntasks, work) ;                               \
+        ntasks = GB_IMAX (ntasks, 1) ;                                  \
     }
 
     //--------------------------------------------------------------------------
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Count = GB_CALLOC (max_ntasks+1, int64_t) ;
+    GB_WERK_DECLARE (Count, int64_t) ;
+    GB_WERK_PUSH (Count, ntasks_max+1, int64_t) ;
     if (Count == NULL)
     { 
         // out of memory
@@ -330,9 +336,9 @@ GrB_Info GB_subref_phase0
     // if C(:,jC) is the (kC)th vector of C.  If NULL, then C is standard, and
     // jC == kC.  jC is in the range 0 to nJ-1.
 
-    int64_t *GB_RESTRICT Ch = NULL ;
-    int64_t *GB_RESTRICT Ap_start = NULL ;
-    int64_t *GB_RESTRICT Ap_end   = NULL ;
+    int64_t *restrict Ch       = NULL ; size_t Ch_size = 0 ;
+    int64_t *restrict Ap_start = NULL ; size_t Ap_start_size = 0 ;
+    int64_t *restrict Ap_end   = NULL ; size_t Ap_end_size = 0 ;
     int64_t Cnvec = 0 ;
 
     int64_t jbegin = Jcolon [GxB_BEGIN] ;
@@ -412,7 +418,7 @@ GrB_Info GB_subref_phase0
             Count [tid] = my_Cnvec ;
         }
 
-        GB_cumsum (Count, ntasks, NULL, 1) ;
+        GB_cumsum (Count, ntasks, NULL, 1, NULL) ;
         Cnvec = Count [ntasks] ;
 
     }
@@ -449,7 +455,7 @@ GrB_Info GB_subref_phase0
             Count [tid] = my_Cnvec ;
         }
 
-        GB_cumsum (Count, ntasks, NULL, 1) ;
+        GB_cumsum (Count, ntasks, NULL, 1, NULL) ;
         Cnvec = Count [ntasks] ;
     }
 
@@ -464,7 +470,7 @@ GrB_Info GB_subref_phase0
 
     if (C_is_hyper)
     {
-        Ch = GB_MALLOC (Cnvec, int64_t) ;
+        Ch = GB_MALLOC (Cnvec, int64_t, &Ch_size) ;
         if (Ch == NULL)
         { 
             GB_FREE_WORK ;
@@ -474,15 +480,15 @@ GrB_Info GB_subref_phase0
 
     if (Cnvec > 0)
     {
-        Ap_start = GB_MALLOC (Cnvec, int64_t) ;
-        Ap_end   = GB_MALLOC (Cnvec, int64_t) ;
+        Ap_start = GB_MALLOC_WERK (Cnvec, int64_t, &Ap_start_size) ;
+        Ap_end   = GB_MALLOC_WERK (Cnvec, int64_t, &Ap_end_size) ;
         if (Ap_start == NULL || Ap_end == NULL)
         { 
             // out of memory
             GB_FREE_WORK ;
-            GB_FREE (Ch) ;
-            GB_FREE (Ap_start) ;
-            GB_FREE (Ap_end) ;
+            GB_FREE (&Ch, Ch_size) ;
+            GB_FREE_WERK (&Ap_start, Ap_start_size) ;
+            GB_FREE_WERK (&Ap_end, Ap_end_size) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
     }
@@ -692,9 +698,9 @@ GrB_Info GB_subref_phase0
     //--------------------------------------------------------------------------
 
     GB_FREE_WORK ;
-    (*p_Ch        ) = Ch ;
-    (*p_Ap_start  ) = Ap_start ;
-    (*p_Ap_end    ) = Ap_end ;
+    (*p_Ch        ) = Ch ;          (*p_Ch_size) = Ch_size ;
+    (*p_Ap_start  ) = Ap_start ;    (*p_Ap_start_size) = Ap_start_size ;
+    (*p_Ap_end    ) = Ap_end ;      (*p_Ap_end_size) = Ap_end_size ;
     (*p_Cnvec     ) = Cnvec ;
     (*p_need_qsort) = need_qsort ;
     (*p_Ikind     ) = Ikind ;

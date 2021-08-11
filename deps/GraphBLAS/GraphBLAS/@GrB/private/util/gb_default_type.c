@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -13,7 +13,7 @@
 // If A or B are boolean, the type is taken from the other operand.
 // If either A or B are signed, then the type is signed.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 GrB_Type gb_default_type        // return the default type to use
 (

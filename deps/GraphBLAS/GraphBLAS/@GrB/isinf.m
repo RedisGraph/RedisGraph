@@ -6,7 +6,7 @@ function C = isinf (G)
 % See also GrB/isnan, GrB/isfinite.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 G = G.opaque ;
 [m, n, type] = gbsize (G) ;

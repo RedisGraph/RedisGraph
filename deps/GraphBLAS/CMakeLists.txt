@@ -5,42 +5,7 @@
 # SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# CMakeLists.txt: instructions for cmake to build GraphBLAS.
-# An ANSI C11 compiler is required.
-#
-# To compile the GraphBLAS library and demo programs:
-#
-#   make
-#
-# To compile just the library
-#
-#   make library
-#
-# If that fails for any reason, make sure your compiler supports ANSI C11.  You
-# could try changing your compiler, for example:
-#
-#   cd build
-#   CC=icc cmake ..
-#   cd ..
-#   make
-#
-# Or, with other compilers:
-#
-#   CC=xlc cmake ..
-#   CC=gcc cmake ..
-#
-# To run the demos:
-#
-#   cd ../Demo
-#   ./demo
-#
-# To install GraphBLAS in /usr/local/lib and /usr/local/include:
-#
-#   sudo make install
-#
-# To remove all compiled files and libraries (except installed ones):
-#
-#   make distclean
+# See the User Guide for details on how to compile SuiteSparse:GraphBLAS.
 
 #-------------------------------------------------------------------------------
 # get the version
@@ -59,10 +24,12 @@ endif ( )
 set ( CMAKE_MACOSX_RPATH TRUE )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Jan 4, 2021")
-set ( GraphBLAS_VERSION_MAJOR 4 )
-set ( GraphBLAS_VERSION_MINOR 0 )
-set ( GraphBLAS_VERSION_SUB   1 )
+set ( GraphBLAS_DATE "July 6, 2021")
+set ( GraphBLAS_VERSION_MAJOR 5 )
+set ( GraphBLAS_VERSION_MINOR 1 )
+set ( GraphBLAS_VERSION_SUB   4 )
+
+message ( STATUS "Building SuiteSparse:GraphBLAS version: v" ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}  " date: " ${GraphBLAS_DATE} )
 
 # GraphBLAS C API Specification version, at graphblas.org
 set ( GraphBLAS_API_DATE "Sept 25, 2019" )
@@ -98,27 +65,14 @@ endif ( )
 if ( BUILD_GRB_STATIC_LIBRARY )
     message ( STATUS "Building all GraphBLAS libraries (static and dynamic)" )
 else ( )
-    message ( STATUS "Building dynamic GraphBLAS library only" )
+    message ( STATUS "Building dynamic GraphBLAS library" )
 endif ( )
 
-# select "false" to disable the burble.  It is now enabled by default.
-  set ( GB_BURBLE true )
-# set ( GB_BURBLE false )
-
-if ( GB_BURBLE )
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGB_BURBLE=1 " )
-else ( )
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGB_BURBLE=0 " )
-endif ( )
+# Uncomment this line for for development only, not for end-users:
+# set ( GBCOMPACT true )
 
 if ( GBCOMPACT )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGBCOMPACT=1 " )
-endif ( )
-
-set ( GB_AVX2 false )
-
-if ( GB_AVX2 )
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -mavx2 -DGB_AVX2 " )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -147,7 +101,6 @@ configure_file (
 #-------------------------------------------------------------------------------
 
 include ( FindOpenMP  )
-include ( FindThreads )
 
 # enable_language ( CUDA )
 # for nvcc, add -DGBCUDA
@@ -169,43 +122,18 @@ else ( )
 endif ( )
 
 #-------------------------------------------------------------------------------
-# report status
-#-------------------------------------------------------------------------------
-
-message ( STATUS "CMAKE build type:          " ${CMAKE_BUILD_TYPE} )
-
-if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    message ( STATUS "CMAKE C Flags debug:       " ${CMAKE_C_FLAGS_DEBUG} )
-else ( )
-    message ( STATUS "CMAKE C Flags release:     " ${CMAKE_C_FLAGS_RELEASE} )
-endif ( )
-
-message ( STATUS "CMAKE compiler ID:         " ${CMAKE_C_COMPILER_ID} )
-message ( STATUS "CMAKE thread library:      " ${CMAKE_THREAD_LIBS_INIT} )
-message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_FOUND} )
-
-#-------------------------------------------------------------------------------
 # find the BLAS
 #-------------------------------------------------------------------------------
 
-# FUTURE: CBLAS disabled for now because of a linking issue.  The problem is
-# that GraphBLAS gets linked with both libgomp and libiomp, when the MKL BLAS
-# is used.  The FindOpenMP includes libgomp and FindBLAS with BLA_VENDOR set to
-# Intel10_64ilp includes libiomp.  When this happens, incorrect results are
-# obtained from cblas_saxpy and cblas_daxpy.  The Intel MKL can work with
-# libgomp, but not when libiomp is also included.
-
-# This is fixed in the alternative/Makefile, which only loads libgomp.
-# It is not yet fixed in this CMake script.
-
 #   if ( CMAKE_VERSION VERSION_GREATER "3.13" )
 #       # Look for the parallel 64-bit MKL BLAS by default
-#       set ( BLA_VENDOR Intel10_64ilp )
+#       set ( BLA_VENDOR OpenBLAS )
 #       include ( FindBLAS )
 #       if ( ${BLAS_FOUND} )
-#           set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DMKL_ILP64 " )
+#           message ( STATUS "CBLAS : found" )
+#           set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -lopenblas " )
 #       else ( )
-#           message ( STATUS "CBLAS : Intel MKL not found" )
+#           message ( STATUS "CBLAS : not found" )
 #           # FUTURE: enable other BLAS flavors here
 #           # set ( BLA_VENDOR ... )
 #           # include ( FindBLAS )
@@ -224,12 +152,31 @@ message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_FOUND} )
 #   endif ( )
 
 #-------------------------------------------------------------------------------
+# report status
+#-------------------------------------------------------------------------------
+
+message ( STATUS "CMAKE build type:          " ${CMAKE_BUILD_TYPE} )
+
+if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    message ( STATUS "CMAKE C Flags debug:       " ${CMAKE_C_FLAGS_DEBUG} )
+else ( )
+    message ( STATUS "CMAKE C Flags release:     " ${CMAKE_C_FLAGS_RELEASE} )
+endif ( )
+
+message ( STATUS "CMAKE compiler ID:         " ${CMAKE_C_COMPILER_ID} )
+message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_FOUND} )
+
+#-------------------------------------------------------------------------------
 # include directories for both graphblas and graphblasdemo libraries
 #-------------------------------------------------------------------------------
 
 set ( CMAKE_INCLUDE_CURRENT_DIR ON )
 
-include_directories ( Source/Template Source Source/Generated Source/Generator Include Demo/Include )
+if ( GBCOMPACT )
+    include_directories ( Source/Template Source Include Source/Generated1 Demo/Include )
+else ( )
+    include_directories ( Source/Template Source Include Source/Generated1 Source/Generated2 Demo/Include )
+endif ( )
 
 #-------------------------------------------------------------------------------
 # compiler options
@@ -293,7 +240,7 @@ endif ( )
 if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}" )
 else ( )
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}" )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
 endif ( )
 
 set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_CUDA_FLAG}" )
@@ -323,7 +270,11 @@ set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_CUDA_FLAG}" )
 #   - a public enum is extended (by adding a new item at the end, but without
 #       changing the already existing items)
 
-file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated/*.c" )
+if ( GBCOMPACT )
+    file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated1/*.c" )
+else ( )
+    file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated1/*.c" "Source/Generated2/*.c" )
+endif ( )
 
 add_library ( graphblas SHARED ${GRAPHBLAS_SOURCES} )
 SET_TARGET_PROPERTIES ( graphblas PROPERTIES
@@ -368,9 +319,9 @@ else ( )
     set ( M_LIB "m" )
 endif ( )
 
-target_link_libraries ( graphblas ${M_LIB} )
+target_link_libraries ( graphblas PUBLIC ${M_LIB} )
 if ( BUILD_GRB_STATIC_LIBRARY )
-    target_link_libraries ( graphblas_static ${M_LIB} )
+    target_link_libraries ( graphblas_static PUBLIC ${M_LIB} )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -378,33 +329,29 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 if ( USE_OPENMP )
-    target_link_libraries ( graphblas ${OpenMP_C_LIBRARIES} )
+    target_link_libraries ( graphblas PUBLIC ${OpenMP_C_LIBRARIES} )
     if ( BUILD_GRB_STATIC_LIBRARY )
-        target_link_libraries ( graphblas_static ${OpenMP_C_LIBRARIES} )
+        target_link_libraries ( graphblas_static PUBLIC ${OpenMP_C_LIBRARIES} )
     endif ( )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} " )
 endif ( )
 
 if ( CMAKE_CUDA )
-    target_link_libraries ( graphblas ${GB_CUDA} )
+    target_link_libraries ( graphblas PUBLIC ${GB_CUDA} )
     if ( BUILD_GRB_STATIC_LIBRARY )
-        target_link_libraries ( graphblas_static ${GB_CUDA} )
+        target_link_libraries ( graphblas_static PUBLIC ${GB_CUDA} )
     endif ( )
 endif ( )
 
-if ( CMAKE_THREAD_LIBS_INIT )
-    target_link_libraries ( graphblas ${CMAKE_THREAD_LIBS_INIT} )
-    if ( BUILD_GRB_STATIC_LIBRARY )
-        target_link_libraries ( graphblas_static ${CMAKE_THREAD_LIBS_INIT} )
-    endif ( )
-endif ( )
+#-------------------------------------------------------------------------------
+# add the BLAS
+#-------------------------------------------------------------------------------
 
-# FUTURE:
 # if ( BLAS_FOUND )
-#   # use the dense CBLAS
-#   message ( STATUS "Using dense CBLAS for faster dense matrix/vector operations" )
-#   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGB_HAS_CBLAS " )
-#   target_link_libraries ( graphblas ${BLAS_LIBRARIES} )
+#     # use the dense CBLAS
+#     message ( STATUS "Using dense CBLAS for faster dense matrix/vector operations" )
+#     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGB_HAS_CBLAS " )
+#     target_link_libraries ( graphblas PUBLIC ${BLAS_LIBRARIES} )
 # endif ( )
 
 #-------------------------------------------------------------------------------
@@ -423,56 +370,66 @@ endif ( )
 message ( STATUS "CMAKE C flags: " ${CMAKE_C_FLAGS} )
 
 #-------------------------------------------------------------------------------
-# Demo library
+# Demo library and programs
 #-------------------------------------------------------------------------------
 
-file ( GLOB DEMO_SOURCES "Demo/Source/*.c" )
-add_library ( graphblasdemo SHARED ${DEMO_SOURCES} )
+if ( DEMO )
 
-SET_TARGET_PROPERTIES ( graphblasdemo PROPERTIES
-    VERSION ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}
-    SOVERSION ${GraphBLAS_VERSION_MAJOR}
-    C_STANDARD_REQUIRED 11 )
-set_property ( TARGET graphblasdemo PROPERTY C_STANDARD 11 )
-target_link_libraries ( graphblasdemo ${M_LIB} graphblas  ${GB_CUDA} )
+    #---------------------------------------------------------------------------
+    # demo library
+    #---------------------------------------------------------------------------
 
-if ( BUILD_GRB_STATIC_LIBRARY )
-    add_library ( graphblasdemo_static STATIC ${DEMO_SOURCES} )
-    SET_TARGET_PROPERTIES ( graphblasdemo_static PROPERTIES
+    message ( STATUS "Also compiling the demos in GraphBLAS/Demo" )
+
+    file ( GLOB DEMO_SOURCES "Demo/Source/*.c" )
+    add_library ( graphblasdemo SHARED ${DEMO_SOURCES} )
+
+    SET_TARGET_PROPERTIES ( graphblasdemo PROPERTIES
         VERSION ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}
+        SOVERSION ${GraphBLAS_VERSION_MAJOR}
         C_STANDARD_REQUIRED 11 )
-    set_property ( TARGET graphblasdemo_static PROPERTY C_STANDARD 11 )
-    target_link_libraries ( graphblasdemo_static  graphblas_static  ${GB_CUDA} )
+    set_property ( TARGET graphblasdemo PROPERTY C_STANDARD 11 )
+    target_link_libraries ( graphblasdemo PUBLIC ${M_LIB} graphblas  ${GB_CUDA} )
+
+    if ( BUILD_GRB_STATIC_LIBRARY )
+        add_library ( graphblasdemo_static STATIC ${DEMO_SOURCES} )
+        SET_TARGET_PROPERTIES ( graphblasdemo_static PROPERTIES
+            VERSION ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}
+            C_STANDARD_REQUIRED 11 )
+        set_property ( TARGET graphblasdemo_static PROPERTY C_STANDARD 11 )
+        target_link_libraries ( graphblasdemo_static PUBLIC  graphblas_static  ${GB_CUDA} )
+    endif ( )
+
+    #---------------------------------------------------------------------------
+    # Demo programs
+    #---------------------------------------------------------------------------
+
+    add_executable ( pagerank_demo "Demo/Program/pagerank_demo.c" )
+    add_executable ( openmp_demo   "Demo/Program/openmp_demo.c" )
+    add_executable ( mis_demo      "Demo/Program/mis_demo.c" )
+    add_executable ( complex_demo  "Demo/Program/complex_demo.c" )
+    add_executable ( kron_demo     "Demo/Program/kron_demo.c" )
+    add_executable ( simple_demo   "Demo/Program/simple_demo.c" )
+    add_executable ( wildtype_demo "Demo/Program/wildtype_demo.c" )
+    add_executable ( reduce_demo   "Demo/Program/reduce_demo.c" )
+    add_executable ( import_demo   "Demo/Program/import_demo.c" )
+
+    # Libraries required for Demo programs
+    target_link_libraries ( pagerank_demo PUBLIC graphblas graphblasdemo ${GB_CUDA} )
+    target_link_libraries ( openmp_demo   PUBLIC graphblas graphblasdemo ${GB_CUDA} )
+    target_link_libraries ( mis_demo      PUBLIC graphblas graphblasdemo ${GB_CUDA} )
+    target_link_libraries ( complex_demo  PUBLIC graphblas graphblasdemo ${GB_CUDA} )
+    target_link_libraries ( kron_demo     PUBLIC graphblas graphblasdemo ${GB_CUDA} )
+    target_link_libraries ( simple_demo   PUBLIC graphblasdemo ${GB_CUDA} )
+    target_link_libraries ( wildtype_demo PUBLIC graphblas ${GB_CUDA} )
+    target_link_libraries ( reduce_demo   PUBLIC graphblas ${GB_CUDA} )
+    target_link_libraries ( import_demo   PUBLIC graphblas graphblasdemo ${GB_CUDA} )
+
+else ( )
+
+    message ( STATUS "Skipping the demos in GraphBLAS/Demo" )
+
 endif ( )
-
-#-------------------------------------------------------------------------------
-# Demo programs
-#-------------------------------------------------------------------------------
-
-add_executable ( pagerank_demo "Demo/Program/pagerank_demo.c" )
-add_executable ( bfs_demo      "Demo/Program/bfs_demo.c" )
-add_executable ( tri_demo      "Demo/Program/tri_demo.c" )
-add_executable ( openmp_demo   "Demo/Program/openmp_demo.c" )
-add_executable ( mis_demo      "Demo/Program/mis_demo.c" )
-add_executable ( complex_demo  "Demo/Program/complex_demo.c" )
-add_executable ( kron_demo     "Demo/Program/kron_demo.c" )
-add_executable ( simple_demo   "Demo/Program/simple_demo.c" )
-add_executable ( wildtype_demo "Demo/Program/wildtype_demo.c" )
-add_executable ( reduce_demo   "Demo/Program/reduce_demo.c" )
-add_executable ( import_demo   "Demo/Program/import_demo.c" )
-
-# Libraries required for Demo programs
-target_link_libraries ( pagerank_demo graphblas graphblasdemo ${GB_CUDA} )
-target_link_libraries ( bfs_demo      graphblas graphblasdemo ${GB_CUDA} )
-target_link_libraries ( tri_demo      graphblas graphblasdemo ${GB_CUDA} )
-target_link_libraries ( openmp_demo   graphblas graphblasdemo ${GB_CUDA} )
-target_link_libraries ( mis_demo      graphblas graphblasdemo ${GB_CUDA} )
-target_link_libraries ( complex_demo  graphblas graphblasdemo ${GB_CUDA} )
-target_link_libraries ( kron_demo     graphblas graphblasdemo ${GB_CUDA} )
-target_link_libraries ( simple_demo   graphblasdemo ${GB_CUDA} )
-target_link_libraries ( wildtype_demo graphblas ${GB_CUDA} )
-target_link_libraries ( reduce_demo   graphblas ${GB_CUDA} )
-target_link_libraries ( import_demo   graphblas graphblasdemo ${GB_CUDA} )
 
 #-------------------------------------------------------------------------------
 # graphblas installation location

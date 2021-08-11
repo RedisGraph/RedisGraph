@@ -22,14 +22,17 @@ name = sprintf ('%s_%s_%s', unop, zname, xname) ;
 is_identity = isequal (unop, 'identity') ;
 no_typecast = isequal (ztype, xtype) ;
 if (is_identity && no_typecast)
-    fprintf (f, 'define(`GB_op_is_identity_with_no_typecast'', `1'')\n') ;
+    fprintf (f, 'define(`_unop_apply'', `_unop_apply__(none)'')\n') ;
+    fprintf (f, 'define(`if_unop_apply_enabled'', `#if 0'')\n') ;
+    fprintf (f, 'define(`endif_unop_apply_enabled'', `#endif'')\n') ;
 else
-    fprintf (f, 'define(`GB_op_is_identity_with_no_typecast'', `0'')\n') ;
+    fprintf (f, 'define(`_unop_apply'', `_unop_apply__%s'')\n', name) ;
+    fprintf (f, 'define(`if_unop_apply_enabled'', `'')\n') ;
+    fprintf (f, 'define(`endif_unop_apply_enabled'', `'')\n') ;
 end
 
 % function names
-fprintf (f, 'define(`GB_unop_apply'', `GB_unop_apply__%s'')\n', name) ;
-fprintf (f, 'define(`GB_unop_tran'', `GB_unop_tran__%s'')\n', name) ;
+fprintf (f, 'define(`_unop_tran'', `_unop_tran__%s'')\n', name) ;
 
 % type of C and A
 fprintf (f, 'define(`GB_ctype'', `%s'')\n', ztype) ;
@@ -42,6 +45,7 @@ if (A_is_pattern)
     % A(i,j) is not needed
     fprintf (f, 'define(`GB_geta'', `;'')\n') ;
 else
+    % A is not iso, so GBX (Ax, p, A->iso) is not needed
     fprintf (f, 'define(`GB_geta'', `%s $1 = $2 [$3]'')\n', xtype) ;
 end
 
@@ -78,20 +82,16 @@ end
 fprintf (f, 'define(`GB_disable'', `(%s)'')\n', disable) ;
 fclose (f) ;
 
-% ff = fopen ('temp.h', 'a') ;
-% fprintf (ff, '// #define GxB_NO_%s\n', upper (unop)) ;
-% fclose (ff) ;
-
 % construct the *.c file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_unop.c | m4 | tail -n +10 > Generated/GB_unop__%s.c', ...
+'cat control.m4 Generator/GB_unop.c | m4 | tail -n +11 > Generated2/GB_unop__%s.c', ...
 name) ;
 fprintf ('.') ;
 system (cmd) ;
 
 % append to the *.h file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_unop.h | m4 | tail -n +10 >> Generated/GB_unop__include.h') ;
+'cat control.m4 Generator/GB_unop.h | m4 | tail -n +11 >> Generated2/GB_unop__include.h') ;
 system (cmd) ;
 
 delete ('control.m4') ;

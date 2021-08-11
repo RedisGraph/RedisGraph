@@ -53,10 +53,11 @@
             if (jumbled)
             { 
                 int64_t aknz = pA_end - pA_start ;
-                GB_QSORT_WORKER ;
+                GB_QSORT ;
             }
         }
     }
 }
 
-#undef GB_QSORT_WORKER
+#undef GB_QSORT
+

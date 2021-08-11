@@ -100,27 +100,20 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	// set up the module's configurable variables,
 	// using user-defined values where provided
-	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 	// register for config updates
 	Config_Subscribe_Changes(reconf_handler);
+	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage keys for query and error contexts.
-	if(!QueryCtx_Init()) return REDISMODULE_ERR;
-	if(!ErrorCtx_Init()) return REDISMODULE_ERR;
+	if(!QueryCtx_Init())    return REDISMODULE_ERR;
+	if(!ErrorCtx_Init())    return REDISMODULE_ERR;
+	if(!ThreadPools_Init()) return REDISMODULE_ERR;
 
-	int reader_thread_count;
-	int bulk_thread_count = 1;
-	int writer_thread_count = 1;
-	Config_Option_get(Config_THREAD_POOL_SIZE, &reader_thread_count);
-
-	if(!ThreadPools_CreatePools(reader_thread_count, writer_thread_count, bulk_thread_count)) {
-		return REDISMODULE_ERR;
-	}
-
-	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", reader_thread_count);
+	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.",
+			ThreadPools_ReadersCount());
 
 	int ompThreadCount;
 	Config_Option_get(Config_OPENMP_NTHREAD, &ompThreadCount);
@@ -171,8 +164,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "write", 1, 1,
-								 1) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.CONFIG", Graph_Config, "readonly", 0, 0,
+								 0) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 

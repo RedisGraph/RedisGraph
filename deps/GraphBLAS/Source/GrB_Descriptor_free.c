@@ -20,14 +20,20 @@ GrB_Info GrB_Descriptor_free            // free a descriptor
 
     if (descriptor != NULL)
     {
+        // only free a dynamically-allocated operator
         GrB_Descriptor desc = *descriptor ;
-        if (desc != NULL && desc->magic == GB_MAGIC && !(desc->predefined))
-        { 
-            GB_FREE (desc->logger) ;    // free the error logger string
-            desc->magic = GB_FREED ;    // to help detect dangling pointers
-            GB_FREE (*descriptor) ;
+        if (desc != NULL)
+        {
+            size_t header_size = desc->header_size ;
+            if (header_size > 0)
+            { 
+                GB_FREE (&(desc->logger), desc->logger_size) ;
+                desc->logger_size = 0 ;
+                desc->magic = GB_FREED ;  // to help detect dangling pointers
+                desc->header_size = 0 ;
+                GB_FREE (descriptor, header_size) ;
+            }
         }
-        (*descriptor) = NULL ;
     }
 
     return (GrB_SUCCESS) ;

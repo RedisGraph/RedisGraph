@@ -4,18 +4,17 @@ function C = subsref (A, S)
 % With a single index, C = A(I) extracts a subvector C of a vector A.
 % Linear indexing of a matrix is not yet supported.
 %
-% x = A (M) for a logical matrix M constructs an nnz(M)-by-1 vector x,
-% for MATLAB-style logical indexing.  A or M may be MATLAB sparse or full
-% matrices, or GraphBLAS matrices, in any combination.  M must be either
-% a MATLAB logical matrix (sparse or full), or a GraphBLAS logical
-% matrix; that is, GrB.type (M) must be 'logical'.
+% x = A (M) for a logical matrix M constructs an nnz(M)-by-1 vector x, for
+% built-in-style logical indexing.  A or M may be built-in sparse or full
+% matrices, or GraphBLAS matrices, in any combination.  M must be either a
+% built-in logical matrix (sparse or full), or a GraphBLAS logical matrix;
+% that is, GrB.type (M) must be 'logical'.
 %
 % GraphBLAS can construct huge sparse matrices, but they cannot always be
-% indexed with A(lo:hi,lo:hi), because of a limitation of the MATLAB
-% colon notation.  A colon expression in MATLAB is expanded into an
-% explicit vector, but this can be too big.   Instead of the colon
-% notation start:inc:fini, use a cell array with three integers,
-% {start, inc, fini}.
+% indexed with A(lo:hi,lo:hi), because of a limitation of the built-in
+% colon notation.  A colon expression is expanded into an explicit vector,
+% but this can be too big.   Instead of the colon notation start:inc:fini,
+% use a cell array with three integers, {start, inc, fini}.
 %
 % Example:
 %
@@ -32,7 +31,7 @@ function C = subsref (A, S)
 % GrB.extract.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: add linear indexing.
 

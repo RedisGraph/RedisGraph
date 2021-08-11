@@ -97,7 +97,7 @@ void mexFunction
     // w<v> = sum (A)
     GrB_Matrix_reduce_Monoid (w, v, NULL, GrB_PLUS_MONOID_UINT64, A, NULL) ;
 
-    // return A, v, and w to MATLAB as structs
+    // return A, v, and w as structs
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;
     pargout [1] = GB_mx_Vector_to_mxArray (&v, "v output", true) ;
     pargout [2] = GB_mx_Matrix_to_mxArray (&A, "A output", true) ;

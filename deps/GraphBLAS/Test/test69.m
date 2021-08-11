@@ -36,6 +36,7 @@ for m = [1 5 10 100]
             % C<C,replace> = C
             C1 = GB_mex_assign_alias (C, [ ], [ ], [ ], desc) ;
             C2 = GB_mex_assign (C, [ ], [ ], C, [ ], [ ], desc, 0) ;
+            C2.iso = 0 ;
             assert (isequal (C1, C2)) ;
 
             % C(I,J)<C> += C(I,J)

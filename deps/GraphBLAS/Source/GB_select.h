@@ -29,7 +29,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
 GrB_Info GB_selector
 (
-    GrB_Matrix *Chandle,        // output matrix, NULL to modify A in-place
+    GrB_Matrix C,               // output matrix, NULL or static header
     GB_Select_Opcode opcode,    // selector opcode
     const GxB_SelectOp op,      // user operator
     const bool flipij,          // if true, flip i and j for user operator
@@ -41,21 +41,58 @@ GrB_Info GB_selector
 
 GrB_Info GB_bitmap_selector
 (
-    GrB_Matrix *Chandle,        // output matrix, NULL to modify A in-place
+    GrB_Matrix C,               // output matrix, static header
+    const bool C_iso,           // if true, C is iso
     GB_Select_Opcode opcode,    // selector opcode
     const GxB_select_function user_select,      // user select function
     const bool flipij,          // if true, flip i and j for user operator
     GrB_Matrix A,               // input matrix
     const int64_t ithunk,       // (int64_t) Thunk, if Thunk is NULL
-    const GB_void *GB_RESTRICT xthunk,
+    const GB_void *restrict xthunk,
     GB_Context Context
 ) ;
+
+//------------------------------------------------------------------------------
+// GB_iso_select: assign the iso value of C for GB_*selector
+//------------------------------------------------------------------------------
+
+static inline void GB_iso_select
+(
+    void *Cx,                       // output iso value
+    const GB_Select_Opcode opcode,  // selector opcode
+    const void *xthunk,             // thunk scalar, of size asize
+    const void *Ax,                 // Ax [0] scalar, of size asize
+    const GB_Type_code acode,       // the type code of Ax
+    const size_t asize
+)
+{
+    if (opcode == GB_EQ_ZERO_opcode)
+    { 
+        // all entries in C are zero
+        memset (Cx, 0, asize) ;
+    }
+    else if (opcode == GB_EQ_THUNK_opcode)
+    { 
+        // all entries in C are equal to thunk
+        memcpy (Cx, xthunk, asize) ;
+    }
+    else if (opcode == GB_NONZERO_opcode && acode == GB_BOOL_code)
+    { 
+        // all entries in C are true; C and A are boolean
+        memset (Cx, 1, 1) ;
+    }
+    else
+    { 
+        // A and C are both iso
+        memcpy (Cx, Ax, asize) ;
+    }
+}
 
 //------------------------------------------------------------------------------
 // compiler diagnostics
 //------------------------------------------------------------------------------
 
-// Some parameters are unused for some uses of the Generated/GB_sel_* functions
+// Some parameters are unused for some uses of the Generated2/GB_sel_* functions
 #include "GB_unused.h"
 
 #endif

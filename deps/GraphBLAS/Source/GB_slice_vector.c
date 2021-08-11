@@ -13,12 +13,14 @@
 
 //      C(:,j) = A(:,j) +  B(:,j) in GB_add
 //      C(:,j) = A(:,j) .* B(:,j) in GB_emult
-//      C(:,j)<M(:,j)> = B(:,j) in GB_mask (A is passed in as the input C)
+//      C(:,j)<M(:,j)> = B(:,j) in GB_mask; A is passed in as the input C
 //      union (A->h, B->h) in GB_add_phase0.
 
 // The vector index j is not needed here.  The vectors kA and kB are not
 // required, either; just the positions where the vectors appear in A and B
 // (pA_start, pA_end, pB_start, and pB_end).
+
+// The inputs Mi, Ai, and Bi must be sorted on input.
 
 // This method finds i so that nnz (A (i:end,kA)) + nnz (B (i:end,kB)) is
 // roughly equal to target_work.  The entries in A(i:end,kA) start at position
@@ -26,8 +28,8 @@
 // and Bx.  Once the work is split, pM is found for M(i:end,kM), if the mask M
 // is present.
 
-// The lists Ai and Bi can also be any sorted integer array.  This is used by
-// GB_add_phase0 to construct the set union of A->h and B->h.  In this case,
+// The lists Mi, Ai, and Bi can also be any sorted integer array.  This is used
+// by GB_add_phase0 to construct the set union of A->h and B->h.  In this case,
 // pA_start and pB_start are both zero, and pA_end and pB_end are A->nvec and
 // B->nvec, respectively.
 
@@ -52,13 +54,13 @@ void GB_slice_vector
     // input:
     const int64_t pM_start,         // M(:,kM) starts at pM_start in Mi,Mx
     const int64_t pM_end,           // M(:,kM) ends at pM_end-1 in Mi,Mx
-    const int64_t *GB_RESTRICT Mi,  // indices of M (or NULL)
+    const int64_t *restrict Mi,  // indices of M (or NULL)
     const int64_t pA_start,         // A(:,kA) starts at pA_start in Ai,Ax
     const int64_t pA_end,           // A(:,kA) ends at pA_end-1 in Ai,Ax
-    const int64_t *GB_RESTRICT Ai,  // indices of A (or NULL)
+    const int64_t *restrict Ai,  // indices of A (or NULL)
     const int64_t pB_start,         // B(:,kB) starts at pB_start in Bi,Bx
     const int64_t pB_end,           // B(:,kB) ends at pB_end-1 in Bi,Bx
-    const int64_t *GB_RESTRICT Bi,  // indices of B (or NULL)
+    const int64_t *restrict Bi,  // indices of B (or NULL)
     const int64_t vlen,             // A->vlen and B->vlen
     const double target_work        // target work
 )

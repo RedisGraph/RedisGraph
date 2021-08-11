@@ -166,8 +166,6 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     //--------------------------------------------------------------------------
 
     // but not if creating the augmented system aka a bipartite graph
-    double tic [2], t1 ;
-    simple_tic (tic) ;
     if (no_self_edges && ! (make_symmetric && nrows != ncols))
     {
         int64_t ntuples2 = 0 ;
@@ -191,8 +189,6 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
         }
         ntuples = ntuples2 ;
     }
-    t1 = simple_toc (tic) ;
-    if (pr) printf ("time to prune self-edges: %12.6f\n", t1) ;
 
     //--------------------------------------------------------------------------
     // build the matrix, summing up duplicates, and then free the tuples
@@ -213,7 +209,6 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
         xop2  = GrB_FIRST_FP64 ;
     }
 
-    simple_tic (tic) ;
     GrB_Info info ;
     OK (GrB_Matrix_new (&C, xtype, nrows, ncols)) ;
 
@@ -225,9 +220,6 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     {
         OK (GrB_Matrix_build_FP64 (C, I, J, Xdouble, ntuples, xop)) ;
     }
-    t1 = simple_toc (tic) ;
-    if (pr) printf ("time to build the graph with GrB_Matrix_build: %12.6f\n",
-        t1) ;
 
     free (I) ; I = NULL ;
     free (J) ; J = NULL ;
@@ -265,8 +257,6 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
             //------------------------------------------------------------------
 
             if (pr) printf ("A = (C+C')/2\n") ;
-            double tic [2], t ;
-            simple_tic (tic) ;
             OK (GrB_Matrix_new (&A, xtype, nrows, nrows)) ;
             OK (GrB_Matrix_eWiseAdd_BinaryOp (A, NULL, NULL, xop, C, C, dt2)) ;
             OK (GrB_Matrix_free (&C)) ;
@@ -288,9 +278,6 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
                 C = NULL ;
             }
 
-            t = simple_toc (tic) ;
-            if (pr) printf ("A = (C+C')/2 time %12.6f\n", t) ;
-
         }
         else
         {
@@ -301,9 +288,6 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
 
             // no self edges will exist
             if (pr) printf ("A = [0 C ; C' 0], a bipartite graph\n") ;
-
-            double tic [2], t ;
-            simple_tic (tic) ;
 
             int64_t n = nrows + ncols ;
             OK (GrB_Matrix_new (&A, xtype, n, n)) ;
@@ -329,9 +313,7 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
             // postponed until A is used by the caller in another GraphBLAS
             // operation.
             GrB_Matrix_nvals (&nvals, A) ;
-            t = simple_toc (tic) ;
 
-            if (pr) printf ("time to construct augmented system: %12.6f\n", t) ;
             *A_output = A ;
             // set A to NULL so the FREE_ALL macro does not free *A_output
             A = NULL ;

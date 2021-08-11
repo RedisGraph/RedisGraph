@@ -58,8 +58,8 @@ int QGNode_EdgeCount(const QGNode *n) {
 }
 
 void QGNode_ConnectNode(QGNode *src, QGNode *dest, QGEdge *e) {
-	src->outgoing_edges = array_append(src->outgoing_edges, e);
-	dest->incoming_edges = array_append(dest->incoming_edges, e);
+	array_append(src->outgoing_edges, e);
+	array_append(dest->incoming_edges, e);
 
 	// Set src node as highly connected if in-degree + out-degree > 2
 	if(src->highly_connected == false && QGNode_Degree(src) > 2) {
@@ -90,15 +90,13 @@ QGNode *QGNode_Clone(const QGNode *orig) {
 	return n;
 }
 
-int QGNode_ToString(const QGNode *n, char *buff, int buff_len) {
+void QGNode_ToString(const QGNode *n, sds *buff) {
 	ASSERT(n && buff);
 
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "(");
-	if(n->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", n->alias);
-	if(n->label) offset += snprintf(buff + offset, buff_len - offset, ":%s", n->label);
-	offset += snprintf(buff + offset, buff_len - offset, ")");
-	return offset;
+	*buff = sdscatprintf(*buff, "(");
+	if(n->alias) *buff = sdscatprintf(*buff, "%s", n->alias);
+	if(n->label) *buff = sdscatprintf(*buff, ":%s", n->label);
+	*buff = sdscatprintf(*buff, ")");
 }
 
 void QGNode_Free(QGNode *node) {

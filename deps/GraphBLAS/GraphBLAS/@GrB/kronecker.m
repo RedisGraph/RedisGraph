@@ -8,7 +8,7 @@ function C = kronecker (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 %
 % GrB.kronecker computes the Kronecker product, T=kron(A,B), using the
 % given binary operator op, in place of the conventional '*' operator for
-% the MATLAB built-in kron.  See also C = kron (A,B), which uses the
+% the built-in kron.  See also C = kron (A,B), which uses the
 % default semiring operators if A and/or B are GrB matrices.
 %
 % T is then accumulated into C via C<#M,replace> = accum (C,T).
@@ -16,7 +16,7 @@ function C = kronecker (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % See also kron, GrB/kron.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

@@ -3,11 +3,11 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 GrB_Matrix gb_expand_to_full    // C = full (A), and typecast
 (
@@ -54,7 +54,7 @@ GrB_Matrix gb_expand_to_full    // C = full (A), and typecast
         false) ;
 
     //--------------------------------------------------------------------------
-    // typecast A from float to integer using the MATLAB rules
+    // typecast A from float to integer using the built-in rules
     //--------------------------------------------------------------------------
 
     GrB_Matrix S, T = NULL ;

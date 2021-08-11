@@ -65,18 +65,6 @@ GrB_Info GB_dense_subassign_22      // C += x where C is dense and x is a scalar
 ) ;
 
 //------------------------------------------------------------------------------
-// GB_dense_subassign_21: C(:,:) = scalar where C becomes dense
-//------------------------------------------------------------------------------
-
-GrB_Info GB_dense_subassign_21      // C(:,:) = x, scalar to matrix assignment
-(
-    GrB_Matrix C,                   // input/output matrix
-    const void *scalar,             // input scalar
-    const GrB_Type scalar_type,     // type of the input scalar
-    GB_Context Context
-) ;
-
-//------------------------------------------------------------------------------
 // GB_dense_subassign_05d: C(:,:)<M> = scalar ; C is dense
 //------------------------------------------------------------------------------
 

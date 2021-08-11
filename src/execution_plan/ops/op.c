@@ -47,7 +47,7 @@ inline Record OpBase_Consume(OpBase *op) {
 
 int OpBase_Modifies(OpBase *op, const char *alias) {
 	if(!op->modifies) op->modifies = array_new(const char *, 1);
-	op->modifies = array_append(op->modifies, alias);
+	array_append(op->modifies, alias);
 
 	/* Make sure alias has an entry associated with it
 	 * within the record mapping. */
@@ -69,7 +69,7 @@ int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
 
 	// Make sure to not introduce the same modifier twice.
 	if(raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL)) {
-		op->modifies = array_append(op->modifies, alias);
+		array_append(op->modifies, alias);
 	}
 
 	return (intptr_t)id;
@@ -95,26 +95,20 @@ void OpBase_PropagateReset(OpBase *op) {
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
 }
 
-static int _OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
-	return snprintf(buff, buff_len,
+static void _OpBase_StatsToString(const OpBase *op, sds *buff) {
+	*buff = sdscatprintf(*buff,
 					" | Records produced: %d, Execution time: %f ms",
 					op->stats->profileRecordCount,
 					op->stats->profileExecTime);
 }
 
-int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
+void OpBase_ToString(const OpBase *op, sds *buff) {
 	int bytes_written = 0;
 
-	if(op->toString) bytes_written = op->toString(op, buff, buff_len);
-	else bytes_written = snprintf(buff, buff_len, "%s", op->name);
+	if(op->toString) op->toString(op, buff);
+	else *buff = sdscatprintf(*buff, "%s", op->name);
 
-	if(op->stats) {
-		bytes_written += _OpBase_StatsToString(op,
-											   buff + bytes_written,
-											   buff_len - bytes_written);
-	}
-
-	return bytes_written;
+	if(op->stats) _OpBase_StatsToString(op, buff);
 }
 
 Record OpBase_Profile(OpBase *op) {

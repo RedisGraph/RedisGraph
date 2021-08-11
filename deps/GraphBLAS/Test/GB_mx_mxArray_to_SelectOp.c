@@ -7,29 +7,29 @@
 
 //------------------------------------------------------------------------------
 
-// Convert a MATLAB string to a built-in GraphBLAS SelectOp.
+// Convert a built-in string to a built-in GraphBLAS SelectOp.
 
 #include "GB_mex.h"
 
 bool GB_mx_mxArray_to_SelectOp          // true if successful
 (
     GxB_SelectOp *handle,               // returns GraphBLAS version of op
-    const mxArray *op_matlab,           // MATLAB version of op
+    const mxArray *op_builtin,          // built-in version of op
     const char *name                    // name of the argument
 )
 {
     (*handle) = NULL ;
     const mxArray *opname_mx = NULL ;
 
-    if (op_matlab == NULL || mxIsEmpty (op_matlab))
+    if (op_builtin == NULL || mxIsEmpty (op_builtin))
     {
         mexWarnMsgIdAndTxt ("GB:warn", "select op missing") ;
         return (false) ;
     }
-    else if (mxIsChar (op_matlab))
+    else if (mxIsChar (op_builtin))
     {
         // op is a string
-        opname_mx = op_matlab ;
+        opname_mx = op_builtin ;
     }
     else
     {

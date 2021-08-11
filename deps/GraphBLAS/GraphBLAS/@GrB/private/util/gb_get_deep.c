@@ -1,17 +1,17 @@
 //------------------------------------------------------------------------------
-// gb_get_deep: create a deep GrB_Matrix copy of a MATLAB X
+// gb_get_deep: create a deep GrB_Matrix copy of a built-in X
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
-GrB_Matrix gb_get_deep      // return a deep GrB_Matrix copy of a MATLAB X
+GrB_Matrix gb_get_deep      // return a deep GrB_Matrix copy of a built-in X
 (
-    const mxArray *X        // input MATLAB matrix (sparse or struct)
+    const mxArray *X        // input built-in matrix (sparse or struct)
 )
 { 
 

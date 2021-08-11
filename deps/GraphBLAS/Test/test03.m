@@ -58,5 +58,6 @@ for k = [false true]
     GB_spec_compare (C, A) ;
 end
 
+GB_builtin_complex_set (true) ;
 fprintf ('\ntest03: all object check tests passed\n') ;
 

@@ -11,17 +11,16 @@
 #
 #   make -j8
 #
-# To install: do not just do 'sudo make install' since MKLROOT might be 
-# defined for the user but not for root.  Instead do:
+# To install:
 #
 #   make -j8
 #   sudo make install
 
 default: library
 
-VER1 = 4
-VER2 = 0
-VER3 = 1
+VER1 = 5
+VER2 = 1
+VER3 = 4
 
 # pick your compiler:
   CC = gcc
@@ -31,46 +30,29 @@ VER3 = 1
 # CC = gcc-8
 # note that -mp1 is essential for icc, for proper Inf and NaN behavior:
 # CC = icc -mp1
-
-# A C++ compiler works but is not recommended for use in production,
-# particularly if SuiteSparse:GraphBLAS is used as -lgraphblas.
-# SuiteSparse:GraphBLAS is written in C, not C++.  However, it compiles just
-# fine with a C++ compiler, since it is written so that it uses the
-# intersection of the two languages.  This is helpful for two cases: (1)
-# SuiteSparse:GraphBLAS does a lot of typecasting, and C++ is very strict with
-# this.  Using C++ allows for an extra-careful 'lint' checking.  (2) The end-
-# user may wish to construct a pure C++ application, and embed a C++-compiled
-# GraphBLAS inside.  CMake cannot be used to compile a *.c code with a C++
-# compiler (it complains), and thus this option is only available in this
-# alternative/Makefile.  The GCC C++ 5.4 compiler fails; version 7.5 is
-# sufficient.
 # CC = c++
 
-# Using the Intel MKL (don't try this if CC=c++, it will likely break):
-# from https://software.intel.com/content/www/us/en/develop/articles/intel-mkl-link-line-advisor.html
-# MKL_CFLAGS = -DMKL_ILP64 -m64 -I${MKLROOT}/include -DGB_HAS_CBLAS
-# MKL_LDFLAGS= -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
-
-# without the Intel MKL (default):
-  MKL_CFLAGS = 
-  MKL_LDFLAGS=
-
-SRC = ../Source/*.c ../Source/Generated/*.c
-INC = ../Include/*.h ../Source/*.h ../Source/Template/* ../Source/Generated/*.h ../Source/Generator/*.h 
+SRC = ../Source/*.c ../Source/Generated1/*.c ../Source/Generated2/*.c
+INC = ../Include/*.h ../Source/*.h ../Source/Template/* ../Source/Generated1/*.h ../Source/Generated2/*.h
 SRC2 = $(notdir $(wildcard $(SRC)))
 OBJ = $(SRC2:.c=.o)
-LDFLAGS = -fopenmp -lm $(MKL_LDFLAGS)
-CFLAGS = -fopenmp -fexceptions -fPIC $(MKL_CFLAGS)
-# pick the roptimization level:
+LDFLAGS = -fopenmp -lm
+CFLAGS = -fopenmp -fexceptions -fPIC
+# pick the optimization level:
   CFLAGS += -O3
 # CFLAGS += -g
 ifneq ($(CC),c++)
     # comment this out if using c++:
     CFLAGS += -std=c11 
 endif
-CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated -I../Source/Generator
+CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated1 -I../Source/Generated2
 SO_OPTS = $(LDFLAGS)
 CFLAGS += -Wno-pragmas
+
+# To compile the libgraphblas_renamed library, change all occurences of
+# libgraphblas to libgraphblas_renamed, below, and uncomment these 2 lines:
+# CFLAGS += -DGBRENAME=1
+# CPPFLAGS += -I../GraphBLAS/rename
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
@@ -91,7 +73,10 @@ endif
 %.o: ../Source/%.c $(INC)
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $(notdir $@)
 
-%.o: ../Source/Generated/%.c $(INC)
+%.o: ../Source/Generated1/%.c $(INC)
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $(notdir $@)
+
+%.o: ../Source/Generated2/%.c $(INC)
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $(notdir $@)
 
 library: $(SO_NAME)
@@ -109,7 +94,7 @@ libgraphblas.a: $(OBJ)
 	ar -rv $@ $^
 	- ranlib $@
 
-# Do "make" first, and then "sudo make install" (to set MKLROOT properly)
+# Do "make" first, and then "sudo make install"
 install: library
 	cp $(SO_NAME) /usr/local/lib
 	ln -sf /usr/local/lib/$(SO_NAME) /usr/local/lib/$(SO_NAME0)

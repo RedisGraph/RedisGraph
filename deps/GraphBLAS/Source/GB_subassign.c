@@ -28,8 +28,8 @@
     GB_Matrix_free (&C2) ;          \
     GB_Matrix_free (&M2) ;          \
     GB_Matrix_free (&A2) ;          \
-    GB_FREE (I2) ;                  \
-    GB_FREE (J2) ;                  \
+    GB_FREE_WERK (&I2, I2_size) ;   \
+    GB_FREE_WERK (&J2, J2_size) ;   \
 }
 
 GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
@@ -69,19 +69,22 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     GrB_Matrix C2 = NULL ;
     GrB_Matrix M2 = NULL ;
     GrB_Matrix A2 = NULL ;
-    GrB_Index *I2  = NULL ;
-    GrB_Index *J2  = NULL ;
+    struct GB_Matrix_opaque
+        C2_header, M2_header, A2_header, MT_header, AT_header ;
+    GrB_Index *I2 = NULL ; size_t I2_size = 0 ;
+    GrB_Index *J2 = NULL ; size_t J2_size = 0 ;
 
     GrB_Type atype = NULL ;
-    bool done = false ;
     int64_t ni, nj, nI, nJ, Icolon [3], Jcolon [3] ;
     int Ikind, Jkind ;
     int assign_kind = GB_SUBASSIGN ;
+    int subassign_method ;
 
-    GB_OK (GB_assign_prep (&C, &M, &A, &C2, &M2, &A2,
-        &I, &I2, &ni, &nI, &Ikind, Icolon,
-        &J, &J2, &nj, &nJ, &Jkind, Jcolon,
-        &done, &atype, C_in, &C_replace, &assign_kind,
+    GB_OK (GB_assign_prep (&C, &M, &A, &subassign_method, &C2, &M2, &A2,
+        &C2_header, &M2_header, &A2_header, &MT_header, &AT_header,
+        &I, &I2, &I2_size, &ni, &nI, &Ikind, Icolon,
+        &J, &J2, &J2_size, &nj, &nJ, &Jkind, Jcolon,
+        &atype, C_in, &C_replace, &assign_kind,
         M_in, Mask_comp, Mask_struct, M_transpose, accum,
         A_in, A_transpose, Rows, nRows_in, Cols, nCols_in,
         scalar_expansion, scalar, scalar_code, Context)) ;
@@ -90,20 +93,13 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     // GxB_Vector_subassign all use GB_SUBASSIGN.
     ASSERT (assign_kind == GB_SUBASSIGN) ;
 
-    if (done)
+    if (subassign_method == 0)
     { 
-        // GB_assign_prep has handle the entire assignment itself
+        // GB_assign_prep has handled the entire assignment itself
         ASSERT (C == C_in) ;
         ASSERT_MATRIX_OK (C_in, "Final C for subassign", GB0) ;
         return (GrB_SUCCESS) ;
     }
-
-    //--------------------------------------------------------------------------
-    // determine method for GB_subassigner
-    //--------------------------------------------------------------------------
-
-    int subassign_method = GB_subassigner_method (C, C_replace,
-        M, Mask_comp, Mask_struct, accum, A, Ikind, Jkind, scalar_expansion) ;
 
     //--------------------------------------------------------------------------
     // C(I,J)<M> = A or accum (C(I,J),A) via GB_subassigner
@@ -123,6 +119,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         // Transplant the content of C2 into C_in and free C2.  Zombies and
         // pending tuples can be transplanted from C2 into C_in, and if C2 is
         // jumbled, C_in becomes jumbled too.
+        ASSERT (C2->static_header) ;
         GB_OK (GB_transplant (C_in, C_in->type, &C2, Context)) ;
     }
 

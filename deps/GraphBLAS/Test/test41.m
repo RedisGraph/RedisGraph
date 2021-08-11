@@ -34,7 +34,7 @@ for at = [false true]
 
                 fprintf ('\nat %d bt %d ct %d\n', at, bt, ct) ;
 
-                fprintf ('matlab:  ') ;
+                fprintf ('built-in:  ') ;
                 tic
                 if (at)
                     if (bt)

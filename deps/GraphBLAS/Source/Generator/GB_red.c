@@ -7,24 +7,24 @@
 
 //------------------------------------------------------------------------------
 
-// If this file is in the Generated/ folder, do not edit it (auto-generated).
+// If this file is in the Generated2/ folder, do not edit it
+// (it is auto-generated from Generator/*).
 
 #include "GB.h"
 #ifndef GBCOMPACT
 #include "GB_atomics.h"
-#include "GB_ek_slice.h"
 #include "GB_control.h" 
 #include "GB_red__include.h"
 
 // The reduction is defined by the following types and operators:
 
-// Assemble tuples:    GB_red_build
-// Reduce to scalar:   GB_red_scalar
+// Assemble tuples:    GB (_red_build)
+// Reduce to scalar:   GB (_red_scalar)
 
 // A type:   GB_atype
 // C type:   GB_ctype
 
-// Reduce:   GB_REDUCE_OP(s, aij)
+// Reduce:   GB_reduce_op(s, aij)
 // Identity: GB_identity
 // Terminal: GB_terminal
 
@@ -52,43 +52,27 @@
 
     // W [k] += (ztype) S [i], with typecast
     #define GB_ADD_CAST_ARRAY_TO_ARRAY(W,k,S,i)     \
-        GB_REDUCE_OP(W [k], S [i])
+        GB_reduce_op(W [k], S [i])
 
-    // W [k] = S [i], no typecast
-    #define GB_COPY_ARRAY_TO_ARRAY(W,k,S,i)         \
-        W [k] = S [i]
-
-    // W [k] += S [i], no typecast
-    #define GB_ADD_ARRAY_TO_ARRAY(W,k,S,i)          \
-        GB_REDUCE_OP(W [k], S [i])
+    // W [k] += Ax [p], no typecast
+    #define GB_ADD_ARRAY_TO_ARRAY(W,k,Ax,p)         \
+        GB_reduce_op(W [k], Ax [p])  
 
 // Array to scalar
 
-    // s = (ztype) Ax [p], with typecast
-    #define GB_CAST_ARRAY_TO_SCALAR(s,Ax,p)         \
-        s = Ax [p]
-
-    // s = W [k], no typecast
-    #define GB_COPY_ARRAY_TO_SCALAR(s,W,k)          \
-        s = W [k]
-
     // s += (ztype) Ax [p], with typecast
     #define GB_ADD_CAST_ARRAY_TO_SCALAR(s,Ax,p)     \
-        GB_REDUCE_OP(s, Ax [p])
+        GB_reduce_op(s, Ax [p])
 
     // s += S [i], no typecast
     #define GB_ADD_ARRAY_TO_SCALAR(s,S,i)           \
-        GB_REDUCE_OP(s, S [i])
+        GB_reduce_op(s, S [i])
 
 // Scalar to array
 
     // W [k] = s, no typecast
     #define GB_COPY_SCALAR_TO_ARRAY(W,k,s)          \
         W [k] = s
-
-    // W [k] += s, no typecast
-    #define GB_ADD_SCALAR_TO_ARRAY(W,k,s)           \
-        GB_REDUCE_OP(W [k], s)
 
 // break the loop if terminal condition reached
 
@@ -100,9 +84,6 @@
 
     #define GB_TERMINAL_VALUE                       \
         GB_terminal_value
-
-    #define GB_BREAK_IF_TERMINAL(s)                 \
-        GB_terminal
 
 // panel size for built-in operators
 
@@ -119,17 +100,16 @@
     GB_disable
 
 //------------------------------------------------------------------------------
-// reduce to a scalar, for monoids only
+// reduce to a non-iso matrix to scalar, for monoids only
 //------------------------------------------------------------------------------
 
 if_is_monoid
-
-GrB_Info GB_red_scalar
+GrB_Info GB (_red_scalar)
 (
     GB_atype *result,
     const GrB_Matrix A,
-    GB_void *GB_RESTRICT W_space,
-    bool *GB_RESTRICT F,
+    GB_void *restrict W_space,
+    bool *restrict F,
     int ntasks,
     int nthreads
 )
@@ -138,7 +118,7 @@ GrB_Info GB_red_scalar
     return (GrB_NO_VALUE) ;
     #else
     GB_ctype s = (*result) ;
-    GB_ctype *GB_RESTRICT W = (GB_ctype *) W_space ;
+    GB_ctype *restrict W = (GB_ctype *) W_space ;
     if (A->nzombies > 0 || GB_IS_BITMAP (A))
     {
         #include "GB_reduce_to_scalar_template.c"
@@ -151,24 +131,23 @@ GrB_Info GB_red_scalar
     return (GrB_SUCCESS) ;
     #endif
 }
-
 endif_is_monoid
 
 //------------------------------------------------------------------------------
-// build matrix
+// build a non-iso matrix
 //------------------------------------------------------------------------------
 
-GrB_Info GB_red_build
+GrB_Info GB (_red_build)
 (
-    GB_atype *GB_RESTRICT Tx,
-    int64_t  *GB_RESTRICT Ti,
-    const GB_atype *GB_RESTRICT S,
+    GB_atype *restrict Tx,
+    int64_t  *restrict Ti,
+    const GB_atype *restrict Sx,
     int64_t nvals,
     int64_t ndupl,
-    const int64_t *GB_RESTRICT I_work,
-    const int64_t *GB_RESTRICT K_work,
-    const int64_t *GB_RESTRICT tstart_slice,
-    const int64_t *GB_RESTRICT tnz_slice,
+    const int64_t *restrict I_work,
+    const int64_t *restrict K_work,
+    const int64_t *restrict tstart_slice,
+    const int64_t *restrict tnz_slice,
     int nthreads
 )
 { 

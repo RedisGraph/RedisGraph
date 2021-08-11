@@ -5,13 +5,13 @@ function C = gb_eadd (A, op, B)
 % operator op is only applied to entries in the intersection of the
 % pattern of A and B.
 %
-% The inputs A and B are MATLAB matrices or GraphBLAS structs (not GrB
+% The inputs A and B are built-in matrices or GraphBLAS structs (not GrB
 % objects).  The result is a typically a GraphBLAS struct.
 %
 % See also GrB/plus, GrB/minus, GrB/bitxor, GrB/bitor, GrB/hypot.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 [am, an, atype] = gbsize (A) ;
 [bm, bn, btype] = gbsize (B) ;
@@ -26,7 +26,7 @@ if (a_is_scalar)
     else
         % A is a scalar, B is a matrix.  Result is full, unless A == 0.
         if (gb_scalar (A) == 0)
-            % C = 0+B is a MATLAB matrix if B is a MATLAB matrix
+            % C = 0+B is a built-in matrix if B is a built-in matrix
             C = B ;
         else
             % expand A to a full matrix
@@ -38,7 +38,7 @@ else
     if (b_is_scalar)
         % A is a matrix, B is a scalar.  Result is full, unless B == 0.
         if (gb_scalar (B) == 0)
-            % C = A+0 is a MATLAB matrix if A is a MATLAB matrix
+            % C = A+0 is a built-in matrix if A is a built-in matrix
             C = A ;
         else
             % expand B to a full matrix

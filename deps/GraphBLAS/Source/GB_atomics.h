@@ -353,8 +353,8 @@
 //          type_t *expected,       // input/output
 //          type_t *desired,        // input only, even though it is a pointer
 //          bool weak,              // true, for SuiteSparse:GraphBLAS
-//          int success_memorder,   // __ATOMIC_SEQ_CST for SuiteSparse:GrB
-//          int failure_memorder    // __ATOMIC_SEQ_CST for SuiteSparse:GrB
+//          int success_memorder,   // __ATOMIC_SEQ_CST is used here
+//          int failure_memorder    // __ATOMIC_SEQ_CST is used here
 //      )
 //      {
 //          bool result ;

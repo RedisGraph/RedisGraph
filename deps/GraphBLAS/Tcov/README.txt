@@ -7,10 +7,10 @@ Requirements:  the mex command must use a C compiler supporting ANSI C11.
 Microft Visual Studio does not support ANSI C11 so this test is not available
 on Windows unless you use another compiler.
 
-Since nearly all GraphBLAS tests are in MATLAB, I have taken the unusual step
-of creating a statement coverage mechanism to use within a MATLAB mexFunction.
+Since nearly all GraphBLAS tests are in *.m files, I have taken the unusual
+step of creating a statement coverage mechanism to use within a mexFunction.
 To compile GraphBLAS for statement coverage testing, and to run the tests, type
-this in the MATLAB command window.
+this in the Command Window.
 
     grbcov
 
@@ -38,7 +38,7 @@ To also remove the log.txt file:
 Files in GraphBLAS/Tcov:
 --------------------------------------------------------------------------------
 
-    Contents.m     for 'help Tcov' in MATLAB; list of files
+    Contents.m     for 'help Tcov'; list of files
 
     grbcov.m        makes the tests, runs them, and lists the test coverage
     grbcover.m      compile GraphBLAS for statement coverage testing
@@ -48,7 +48,7 @@ Files in GraphBLAS/Tcov:
     Makefile        just for 'make clean' and 'make purge'
     README.txt      this file
 
-    GB_cover_util.c     get/put the coverage to/from MATLAB
+    GB_cover_util.c     get/put the coverage
     log_*.txt           100% test coverage certificates
 
     tmp_cover       where coverage reports are placed

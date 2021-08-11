@@ -16,15 +16,16 @@
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
 (
     GrB_Matrix A,           // matrix to allocate space for
-    const GrB_Index nzmax,  // number of entries the matrix can hold
-    const bool is_bitmap,   // if true, allocate A->b, otherwise A->b is NULL
+    const GrB_Index nzmax,  // number of entries the matrix can hold;
+                            // ignored if A is iso and full
+    const int sparsity,     // sparse (=hyper/auto) / bitmap / full
     const bool bitmap_calloc,   // if true, calloc A->b, otherwise use malloc
-    const bool is_sparse,   // if true, allocate A->i, otherwise A->i is NULL
     const bool numeric,     // if true, allocate A->x, otherwise A->x is NULL
+    const bool A_iso,       // if true, allocate A as iso
     GB_Context Context
 )
 {
@@ -34,11 +35,6 @@ GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
     //--------------------------------------------------------------------------
 
     ASSERT (A != NULL) ;
-    if (nzmax > GxB_INDEX_MAX)
-    { 
-        // problem too large
-        return (GrB_OUT_OF_MEMORY) ;
-    }
 
     //--------------------------------------------------------------------------
     // allocate the A->b, A->x, and A->i content of the matrix
@@ -47,42 +43,35 @@ GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
     // Free the existing A->b, A->x, and A->i content, if any.
     // Leave A->p and A->h unchanged.
     GB_bix_free (A) ;
-
-    // allocate the new A->x and A->i content
-    A->nzmax = GB_IMAX (nzmax, 1) ;
+    A->iso = A_iso  ;       // OK: see caller for iso burble
 
     bool ok = true ;
-    if (is_sparse)
-    { 
-        if (A->nzmax <= 1)
-        {
-            A->i = GB_CALLOC (1, int64_t) ;
-        }
-        else
-        { 
-            A->i = GB_MALLOC (A->nzmax, int64_t) ;
-        }
-        ok = (A->i != NULL) ;
-    }
-    else if (is_bitmap)
-    { 
+    if (sparsity == GxB_BITMAP)
+    {
         if (bitmap_calloc)
         { 
             // content is fully defined
-            A->b = GB_CALLOC (A->nzmax, int8_t) ;
+            A->b = GB_CALLOC (nzmax, int8_t, &(A->b_size)) ;
             A->magic = GB_MAGIC ;
         }
         else
         { 
             // bitmap is not defined and will be computed by the caller
-            A->b = GB_MALLOC (A->nzmax, int8_t) ;
+            A->b = GB_MALLOC (nzmax, int8_t, &(A->b_size)) ;
         }
         ok = (A->b != NULL) ;
+    }
+    else if (sparsity != GxB_FULL)
+    { 
+        // sparsity: sparse / hyper / auto 
+        A->i = GB_MALLOC (nzmax, int64_t, &(A->i_size)) ;
+        ok = (A->i != NULL) ;
+        if (ok) A->i [0] = 0 ;
     }
 
     if (numeric)
     { 
-        A->x = GB_MALLOC (A->nzmax * A->type->size, GB_void) ;
+        A->x = GB_XALLOC (A_iso, nzmax, A->type->size, &(A->x_size)) ;
         ok = ok && (A->x != NULL) ;
     }
 

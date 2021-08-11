@@ -83,10 +83,13 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t vkey_entity_count;
 	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &vkey_entity_count);
 
-	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) + Graph_DeletedNodeCount(
-								  gc->g) + Graph_DeletedEdgeCount(gc->g);
+	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) +
+		Graph_DeletedNodeCount(gc->g) + Graph_DeletedEdgeCount(gc->g);
+
 	if(entities_count == 0) return 0;
-	// Calculate the required keys and substruct one since there is also the graph context key.
+
+	// calculate the required keys
+	// substruct one since there is also the graph context key
 	uint64_t key_count = ceil((double)entities_count / vkey_entity_count) - 1;
 	return MAX(key_count, 0);
 }
@@ -97,33 +100,45 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	for(uint i = 1; i <= meta_key_count; i++) {
 		char *uuid = UUID_New();
 		RedisModuleString *meta_rm_string;
-		/* Meta keys need to be in the exact shard/slot as the graph context key, to avoid graph sharding at the target db - we want to save all the graph keys on the same shard.
-		 * For that, we need to that them In so their tag hash value will be the same as the graph context key hash value.
-		 * If the graph name already contains a tag, we can duplicate the graph name completely for each meta key. If not, the meta keys tag will be the graph name, so
-		 * when hashing the graphcontext key name (graph name) and the graph meta key tag (graph name) the hash values will be the same. */
+		/* Meta keys need to be in the exact shard/slot as the graph context key
+		 * to avoid graph sharding at the target db
+		 * we want to save all the graph keys on the same shard.
+		 * For that, we need to that them In so their tag hash value will be
+		 * the same as the graph context key hash value.
+		 * If the graph name already contains a tag, we can duplicate
+		 * the graph name completely for each meta key.
+		 * If not, the meta keys tag will be the graph name, so
+		 * when hashing the graphcontext key name (graph name)
+		 * and the graph meta key tag (graph name)
+		 * the hash values will be the same. */
 		if(graph_name_contains_tag) {
 			// Graph already has a tag, create a meta key of "graph_name_uuid"
 			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%s", gc->graph_name, uuid);
 		} else {
-			// Graph is untagged, one must be introduced to ensure that keys are propagated to the same node.
+			// Graph is untagged, one must be introduced to ensure that
+			// keys are propagated to the same node.
 			// Create a meta key of "{graph_name}graph_name_i"
 			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%s", gc->graph_name,
 															gc->graph_name, uuid);
 		}
+
 		const char *key_name = RedisModule_StringPtrLen(meta_rm_string, NULL);
 		GraphEncodeContext_AddMetaKey(gc->encoding_context, key_name);
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
-		// Set value in key.
+
+		// set value in key
 		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, gc);
 		RedisModule_CloseKey(key);
 		RedisModule_FreeString(ctx, meta_rm_string);
 		rm_free(uuid);
 	}
-	RedisModule_Log(ctx, "notice", "Created %d virtual keys for graph %s", meta_key_count,
-					gc->graph_name);
+
+	RedisModule_Log(ctx, "notice", "Created %d virtual keys for graph %s",
+			meta_key_count, gc->graph_name);
 }
 
-// Delete meta keys, upon RDB encode or decode finished event triggering. The decode flag represent the event.
+// Delete meta keys, upon RDB encode or decode finished event triggering.
+// The decode flag represent the event.
 static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool decode) {
 	unsigned char **keys;
 	uint key_count;
@@ -146,7 +161,8 @@ static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool dec
 	RedisModule_Log(ctx, "notice", "Deleted %d virtual keys for graph %s", key_count, gc->graph_name);
 }
 
-// Create the meta keys for each graph in the key space - used on RDB start event.
+// Create the meta keys for each graph in the keyspace
+// used on RDB start event.
 static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
@@ -198,8 +214,8 @@ static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
 }
 
 // Server persistence event handler.
-static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
-									 void *data) {
+static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
+		uint64_t subevent, void *data) {
 	if(_IsEventPersistenceStart(eid, subevent)) _CreateKeySpaceMetaKeys(ctx);
 	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, false);
 }
@@ -232,11 +248,10 @@ static void RG_ForkPrepare() {
 	// on BGSAVE acquire read lock for each graph to ensure no graph is being
 	// modified, otherwise the child process might inherit a malformed matrix
 	//
-	// on BGSAVE: acquire read lock and synchronize all matrices
+	// on BGSAVE: acquire read lock
 	// release immediately once forked
-	// as a precocious set child process synchronization policy to NOP
 	//
-	// in the case of RediSearch GC fork quickly return
+	// in the case of RediSearch GC fork, quickly return
 
 	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
@@ -245,9 +260,6 @@ static void RG_ForkPrepare() {
 	for(uint i = 0; i < graph_count; i++) {
 		// acquire read lock, guarantee graph isn't modified
 		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
-
-		// synchronize all matrices, make sure they're in a consistent state
-		Graph_ApplyAllPending(graphs_in_keyspace[i]->g);
 	}
 }
 
@@ -273,10 +285,15 @@ static void RG_AfterForkChild() {
 	// in forked process
 	GxB_set(GxB_NTHREADS, 1);
 
-	// all matrices should be synced, set synchronization policy to NOP
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		Graph_SetMatrixPolicy(graphs_in_keyspace[i]->g, DISABLED);
+		Graph *g = graphs_in_keyspace[i]->g;
+
+		// synchronize all matrices, make sure they're in a consistent state
+		Graph_ApplyAllPending(g);
+
+		// all matrices should be synced, set synchronization policy to NOP
+		Graph_SetMatrixPolicy(g, DISABLED);
 	}
 }
 
@@ -296,14 +313,18 @@ static void _ModuleEventHandler_TryClearKeyspace(void) {
 	}
 }
 
-/* Increase the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
+/* Increase the number of aux fields encountered during rdb loading.
+ * There could be more than one on multiple shards scenario
  * so each shard is saving the aux field in its own RDB file. */
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void) {
 	aux_field_counter++;
 }
 
-/* Decrease the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
- * so each shard is saving the aux field in its own RDB file. Once the number is zero, the module finished replicating and the meta keys can be deleted. */
+/* Decrease the number of aux fields encountered during rdb loading.
+ * There could be more than one on multiple shards scenario
+ * so each shard is saving the aux field in its own RDB file.
+ * Once the number is zero,
+ * the module finished replicating and the meta keys can be deleted. */
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 	aux_field_counter--;
 	_ModuleEventHandler_TryClearKeyspace();

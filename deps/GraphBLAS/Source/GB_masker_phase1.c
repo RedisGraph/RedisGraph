@@ -24,18 +24,20 @@
 
 GrB_Info GB_masker_phase1           // count nnz in each R(:,j)
 (
+    // computed by phase1:
     int64_t **Rp_handle,            // output of size Rnvec+1
+    size_t *Rp_size_handle,
     int64_t *Rnvec_nonempty,        // # of non-empty vectors in R
     // tasks from phase1a:
-    GB_task_struct *GB_RESTRICT TaskList,       // array of structs
+    GB_task_struct *restrict TaskList,       // array of structs
     const int R_ntasks,               // # of tasks
     const int R_nthreads,             // # of threads to use
     // analysis from phase0:
     const int64_t Rnvec,
-    const int64_t *GB_RESTRICT Rh,
-    const int64_t *GB_RESTRICT R_to_M,
-    const int64_t *GB_RESTRICT R_to_C,
-    const int64_t *GB_RESTRICT R_to_Z,
+    const int64_t *restrict Rh,
+    const int64_t *restrict R_to_M,
+    const int64_t *restrict R_to_C,
+    const int64_t *restrict R_to_Z,
     // original input:
     const GrB_Matrix M,             // required mask
     const bool Mask_comp,           // if true, then M is complemented
@@ -51,6 +53,7 @@ GrB_Info GB_masker_phase1           // count nnz in each R(:,j)
     //--------------------------------------------------------------------------
 
     ASSERT (Rp_handle != NULL) ;
+    ASSERT (Rp_size_handle != NULL) ;
     ASSERT (Rnvec_nonempty != NULL) ;
 
     ASSERT_MATRIX_OK (M, "M for mask phase1", GB0) ;
@@ -73,14 +76,14 @@ GrB_Info GB_masker_phase1           // count nnz in each R(:,j)
     ASSERT (C->vdim == Z->vdim && C->vlen == Z->vlen) ;
     ASSERT (C->vdim == M->vdim && C->vlen == M->vlen) ;
 
-    int64_t *GB_RESTRICT Rp = NULL ;
+    int64_t *restrict Rp = NULL ; size_t Rp_size = 0 ;
     (*Rp_handle) = NULL ;
 
     //--------------------------------------------------------------------------
     // allocate the result
     //--------------------------------------------------------------------------
 
-    Rp = GB_CALLOC (GB_IMAX (2, Rnvec+1), int64_t) ;
+    Rp = GB_CALLOC (GB_IMAX (2, Rnvec+1), int64_t, &Rp_size) ;
     if (Rp == NULL)
     { 
         // out of memory
@@ -98,13 +101,15 @@ GrB_Info GB_masker_phase1           // count nnz in each R(:,j)
     // cumulative sum of Rp and fine tasks in TaskList
     //--------------------------------------------------------------------------
 
-    GB_task_cumsum (Rp, Rnvec, Rnvec_nonempty, TaskList, R_ntasks, R_nthreads) ;
+    GB_task_cumsum (Rp, Rnvec, Rnvec_nonempty, TaskList, R_ntasks, R_nthreads,
+        Context) ;
 
     //--------------------------------------------------------------------------
     // return the result
     //--------------------------------------------------------------------------
 
     (*Rp_handle) = Rp ;
+    (*Rp_size_handle) = Rp_size ;
     return (GrB_SUCCESS) ;
 }
 

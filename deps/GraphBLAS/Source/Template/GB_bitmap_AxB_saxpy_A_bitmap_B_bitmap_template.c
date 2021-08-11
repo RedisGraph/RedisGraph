@@ -7,6 +7,8 @@
 
 //------------------------------------------------------------------------------
 
+// C is bitmap, A and B are bitmap/full.  M has any format.
+
 {
 
     int64_t tid ;

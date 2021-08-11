@@ -31,6 +31,6 @@ GrB_Info GxB_Scalar_dup     // make an exact copy of a GxB_Scalar
     // duplicate the GxB_Scalar
     //--------------------------------------------------------------------------
 
-    return (GB_dup ((GrB_Matrix *) s, (GrB_Matrix) t, true, NULL, Context)) ;
+    return (GB_dup ((GrB_Matrix *) s, (GrB_Matrix) t, Context)) ;
 }
 

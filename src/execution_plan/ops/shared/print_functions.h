@@ -9,7 +9,7 @@
 #include "../op.h"
 #include "../../../arithmetic/algebraic_expression.h"
 
-int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae);
+void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae);
 
-int ScanToString(const OpBase *op, char *buf, uint buf_len, const char *alias, const char *label);
+void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label);
 

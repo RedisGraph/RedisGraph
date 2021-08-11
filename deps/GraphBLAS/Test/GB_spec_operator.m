@@ -48,9 +48,9 @@ ytype = optype ;
 % ztype is usually the optype, except for the cases below
 ztype = optype ;
 
-is_float   = contains (optype, 'single') || contains (optype, 'double') ;
-is_complex = contains (optype, 'complex') ;
-is_int     = contains (optype, 'int') ; % int or uint
+is_float   = test_contains (optype, 'single') || test_contains (optype, 'double') ;
+is_complex = test_contains (optype, 'complex') ;
+is_int     = test_contains (optype, 'int') ; % int or uint
 is_logical = isequal (optype, 'logical') ;
 is_real_float = is_float && ~is_complex ;
 

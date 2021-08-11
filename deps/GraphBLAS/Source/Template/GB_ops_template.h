@@ -10,13 +10,18 @@
 // This file is #include'd many times in GB.h to define the unary and binary
 // functions.
 
+#define GB_UNOP_STRUCT(op,xtype) \
+    GB_PUBLIC struct GB_UnaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype)) ; 
+
+#define GB_BINOP_STRUCT(op,xtype) \
+    GB_PUBLIC struct GB_BinaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype)) ; 
+
 //------------------------------------------------------------------------------
 // z = one (x)
 //------------------------------------------------------------------------------
 
-GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_ONE) ;
-
-inline void GB (ONE_f) (GB_TYPE *z, const GB_TYPE *x)
+GB_UNOP_STRUCT (ONE,GB_XTYPE) ;
+inline void GB_FUNC (ONE) (GB_TYPE *z, const GB_TYPE *x)
 {
     #if defined ( GB_FLOAT_COMPLEX )
     (*z) = GxB_CMPLXF (1,0) ;
@@ -31,9 +36,8 @@ inline void GB (ONE_f) (GB_TYPE *z, const GB_TYPE *x)
 // z = identity (x)
 //------------------------------------------------------------------------------
 
-GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GrB_IDENTITY) ;
-
-inline void GB (IDENTITY_f) (GB_TYPE *z, const GB_TYPE *x)
+GB_UNOP_STRUCT (IDENTITY, GB_XTYPE) ;
+inline void GB_FUNC (IDENTITY) (GB_TYPE *z, const GB_TYPE *x)
 {
     (*z) = (*x) ;
 }
@@ -42,9 +46,8 @@ inline void GB (IDENTITY_f) (GB_TYPE *z, const GB_TYPE *x)
 // z = ainv (x)
 //------------------------------------------------------------------------------
 
-GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GrB_AINV) ;
-
-inline void GB (AINV_f) (GB_TYPE *z, const GB_TYPE *x)
+GB_UNOP_STRUCT (AINV, GB_XTYPE) ;
+inline void GB_FUNC (AINV) (GB_TYPE *z, const GB_TYPE *x)
 {
     #if defined ( GB_FLOAT_COMPLEX )
         (*z) = GB_FC32_ainv (*x) ;
@@ -62,9 +65,8 @@ inline void GB (AINV_f) (GB_TYPE *z, const GB_TYPE *x)
 // z = minv (x)
 //------------------------------------------------------------------------------
 
-GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GrB_MINV) ;
-
-inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
+GB_UNOP_STRUCT (MINV, GB_XTYPE) ;
+inline void GB_FUNC (MINV) (GB_TYPE *z, const GB_TYPE *x)
 {
     #if defined ( GB_BOOLEAN )
         (*z) = true ;
@@ -87,12 +89,12 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 // z = abs (x)
 //------------------------------------------------------------------------------
 
+GB_UNOP_STRUCT (ABS, GB_XTYPE) ;
+
 #if defined ( GB_REAL )
 
-    // GrB_ABS_* is now in the v1.3 spec, as a built-in operator
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GrB_ABS) ;
-
-    inline void GB (ABS_f) (GB_TYPE *z, const GB_TYPE *x)
+    // GrB_ABS_* for non-complex types
+    inline void GB_FUNC (ABS) (GB_TYPE *z, const GB_TYPE *x)
     {
         #if defined ( GB_BOOLEAN )
             (*z) = (*x) ;
@@ -109,16 +111,14 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 
 #else
 
-    // GxB_ABS_FC* for complex types (not in the v1.3 spec)
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_ABS) ;
-
+    // GxB_ABS_FC* for complex types
     #if defined ( GB_FLOAT_COMPLEX )
-        inline void GB (ABS_f) (float *z, const GB_TYPE *x)
+        inline void GB_FUNC (ABS) (float *z, const GB_TYPE *x)
         {
             (*z) = cabsf (*x) ;
         }
     #else
-        inline void GB (ABS_f) (double *z, const GB_TYPE *x)
+        inline void GB_FUNC (ABS) (double *z, const GB_TYPE *x)
         {
             (*z) = cabs (*x) ;
         }
@@ -132,9 +132,8 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 
 #if defined ( GB_REAL )
 
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_LNOT) ;
-
-    inline void GB (LNOT_f) (GB_TYPE *z, const GB_TYPE *x)
+    GB_UNOP_STRUCT (LNOT, GB_XTYPE) ;
+    inline void GB_FUNC (LNOT) (GB_TYPE *z, const GB_TYPE *x)
     {
         #if defined ( GB_BOOLEAN )
             (*z) = ! (*x) ;
@@ -151,9 +150,8 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 
 #if defined ( GB_SIGNED_INT ) || defined ( GB_UNSIGNED_INT )
 
-    // new to the v1.3 spec
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GrB_BNOT) ;
-    inline void GB (BNOT_f) (GB_TYPE *z, const GB_TYPE *x)
+    GB_UNOP_STRUCT (BNOT, GB_XTYPE) ;
+    inline void GB_FUNC (BNOT) (GB_TYPE *z, const GB_TYPE *x)
     {
         (*z) = ~ (*x) ;
     }
@@ -166,28 +164,28 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 
 #if defined ( GB_FLOAT )
 
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_FREXPX) ;
-    inline void GB (FREXPX_f) (float *z, const float *x)
+    GB_UNOP_STRUCT (FREXPX, GB_XTYPE) ;
+    inline void GB_FUNC (FREXPX) (float *z, const float *x)
     {
         (*z) = GB_frexpxf (*x) ;
     }
 
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_FREXPE) ;
-    inline void GB (FREXPE_f) (float *z, const float *x)
+    GB_UNOP_STRUCT (FREXPE, GB_XTYPE) ;
+    inline void GB_FUNC (FREXPE) (float *z, const float *x)
     {
         (*z) = GB_frexpef (*x) ;
     }
 
 #elif defined ( GB_DOUBLE )
 
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_FREXPX) ;
-    inline void GB (FREXPX_f) (double *z, const double *x)
+    GB_UNOP_STRUCT (FREXPX, GB_XTYPE) ;
+    inline void GB_FUNC (FREXPX) (double *z, const double *x)
     {
         (*z) = GB_frexpx (*x) ;
     }
 
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_FREXPE) ;
-    inline void GB (FREXPE_f) (double *z, const double *x)
+    GB_UNOP_STRUCT (FREXPE, GB_XTYPE) ;
+    inline void GB_FUNC (FREXPE) (double *z, const double *x)
     {
         (*z) = GB_frexpe (*x) ;
     }
@@ -201,11 +199,11 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 // For these operators, the input and output types are the same.
 
 #undef  GB_OP
-#define GB_OP(op,func)                                              \
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_ ## op) ;     \
-    inline void GB (op ## _f) (GB_TYPE *z, const GB_TYPE *x)        \
-    {                                                               \
-        (*z) = func (*x) ;                                          \
+#define GB_OP(op,func)                                          \
+    GB_UNOP_STRUCT (op, GB_XTYPE) ;                             \
+    inline void GB_FUNC (op) (GB_TYPE *z, const GB_TYPE *x)     \
+    {                                                           \
+        (*z) = func (*x) ;                                      \
     }
 
 #if defined ( GB_FLOAT )
@@ -387,11 +385,11 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 // x is float, double, float complex, or double complex
 
 #undef  GB_OP
-#define GB_OP(op,expression,z_t,x_t)                                \
-    GB_PUBLIC struct GB_UnaryOp_opaque GB (opaque_GxB_ ## op) ;     \
-    inline void GB (op ## _f) (z_t *z, const x_t *x)                \
-    {                                                               \
-        (*z) = expression ;                                         \
+#define GB_OP(op,expression,z_t,x_t)                        \
+    GB_UNOP_STRUCT(op, GB_XTYPE) ;                          \
+    inline void GB_FUNC (op) (z_t *z, const x_t *x)         \
+    {                                                       \
+        (*z) = expression ;                                 \
     }
 
 #if defined ( GB_FLOAT )
@@ -438,17 +436,17 @@ inline void GB (MINV_f) (GB_TYPE *z, const GB_TYPE *x)
 
 #define GB_Z_X_Y_ARGS GB_TYPE *z, const GB_TYPE *x, const GB_TYPE *y
 
-inline void GB (FIRST_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (FIRST) (GB_Z_X_Y_ARGS)
 {
     (*z) = (*x) ;
 }
 
-inline void GB (SECOND_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (SECOND) (GB_Z_X_Y_ARGS)
 {
     (*z) = (*y) ;
 }
 
-inline void GB (PAIR_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (PAIR) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
         (*z) = GxB_CMPLXF (1, 0) ;
@@ -459,12 +457,12 @@ inline void GB (PAIR_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-inline void GB (ANY_f) (GB_Z_X_Y_ARGS)      // same as SECOND
+inline void GB_FUNC (ANY) (GB_Z_X_Y_ARGS)      // same as SECOND
 {
     (*z) = (*y) ; 
 }
 
-inline void GB (PLUS_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (PLUS) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
         (*z) = GB_FC32_add (*x,*y) ;
@@ -475,7 +473,7 @@ inline void GB (PLUS_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-inline void GB (MINUS_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (MINUS) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
         (*z) = GB_FC32_minus (*x,*y) ;
@@ -486,7 +484,7 @@ inline void GB (MINUS_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-inline void GB (RMINUS_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (RMINUS) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
         (*z) = GB_FC32_minus (*y,*x) ;
@@ -497,7 +495,7 @@ inline void GB (RMINUS_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-inline void GB (TIMES_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (TIMES) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
         (*z) = GB_FC32_mul (*x,*y) ;
@@ -508,7 +506,7 @@ inline void GB (TIMES_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-inline void GB (DIV_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (DIV) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_BOOLEAN )
         // boolean div (== first)
@@ -526,7 +524,7 @@ inline void GB (DIV_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-inline void GB (RDIV_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (RDIV) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_BOOLEAN )
         // boolean rdiv (== second)
@@ -545,7 +543,7 @@ inline void GB (RDIV_f) (GB_Z_X_Y_ARGS)
 }
 
 // z = pow (x,y)
-inline void GB (POW_f) (GB_Z_X_Y_ARGS)
+inline void GB_FUNC (POW) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_BOOLEAN )
         (*z) = (*x) || (!(*y)) ;
@@ -580,18 +578,17 @@ inline void GB (POW_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-GB_PUBLIC struct GB_BinaryOp_opaque
-    GB (opaque_GrB_FIRST),
-    GB (opaque_GrB_SECOND),
-    GB (opaque_GxB_PAIR),
-    GB (opaque_GxB_ANY),
-    GB (opaque_GrB_PLUS),
-    GB (opaque_GrB_MINUS),
-    GB (opaque_GxB_RMINUS),
-    GB (opaque_GrB_TIMES),
-    GB (opaque_GrB_DIV),
-    GB (opaque_GxB_RDIV),
-    GB (opaque_GxB_POW) ;
+GB_BINOP_STRUCT (FIRST, GB_XTYPE) ;
+GB_BINOP_STRUCT (SECOND, GB_XTYPE) ;
+GB_BINOP_STRUCT (PAIR, GB_XTYPE) ;
+GB_BINOP_STRUCT (ANY, GB_XTYPE) ;
+GB_BINOP_STRUCT (PLUS, GB_XTYPE) ;
+GB_BINOP_STRUCT (MINUS, GB_XTYPE) ;
+GB_BINOP_STRUCT (RMINUS, GB_XTYPE) ;
+GB_BINOP_STRUCT (TIMES, GB_XTYPE) ;
+GB_BINOP_STRUCT (DIV, GB_XTYPE) ;
+GB_BINOP_STRUCT (RDIV, GB_XTYPE) ;
+GB_BINOP_STRUCT (POW, GB_XTYPE) ;
 
 //------------------------------------------------------------------------------
 // binary operators for real types only
@@ -600,7 +597,8 @@ GB_PUBLIC struct GB_BinaryOp_opaque
 // min and max: real only, not complex
 #if defined ( GB_REAL )
 
-    inline void GB (MIN_f) (GB_Z_X_Y_ARGS)
+    GB_BINOP_STRUCT (MIN, GB_XTYPE) ;
+    inline void GB_FUNC (MIN) (GB_Z_X_Y_ARGS)
     {
         #if defined ( GB_FLOAT )
             (*z) = fminf ((*x), (*y)) ;
@@ -611,7 +609,8 @@ GB_PUBLIC struct GB_BinaryOp_opaque
         #endif
     }
 
-    inline void GB (MAX_f) (GB_Z_X_Y_ARGS)
+    GB_BINOP_STRUCT (MAX, GB_XTYPE) ;
+    inline void GB_FUNC (MAX) (GB_Z_X_Y_ARGS)
     {
         #if defined ( GB_FLOAT )
             (*z) = fmaxf ((*x), (*y)) ;
@@ -622,9 +621,6 @@ GB_PUBLIC struct GB_BinaryOp_opaque
         #endif
     }
 
-    GB_PUBLIC struct GB_BinaryOp_opaque
-        GB (opaque_GrB_MIN),
-        GB (opaque_GrB_MAX) ;
 #endif
 
 //------------------------------------------------------------------------------
@@ -633,26 +629,22 @@ GB_PUBLIC struct GB_BinaryOp_opaque
 
 #if defined ( GB_SIGNED_INT ) || defined ( GB_UNSIGNED_INT )
 
-    // these are new to the v1.3 spec
-    GB_PUBLIC struct GB_BinaryOp_opaque
-        GB (opaque_GrB_BOR),
-        GB (opaque_GrB_BAND),
-        GB (opaque_GrB_BXOR),
-        GB (opaque_GrB_BXNOR) ;
+    GB_BINOP_STRUCT (BOR, GB_XTYPE) ;
+    GB_BINOP_STRUCT (BAND, GB_XTYPE) ;
+    GB_BINOP_STRUCT (BXOR, GB_XTYPE) ;
+    GB_BINOP_STRUCT (BXNOR, GB_XTYPE) ;
 
-    inline void GB (BOR_f  ) (GB_Z_X_Y_ARGS) { (*z) = (*x) | (*y) ; }
-    inline void GB (BAND_f ) (GB_Z_X_Y_ARGS) { (*z) = (*x) & (*y) ; }
-    inline void GB (BXOR_f ) (GB_Z_X_Y_ARGS) { (*z) = (*x) ^ (*y) ; }
-    inline void GB (BXNOR_f) (GB_Z_X_Y_ARGS) { (*z) = ~((*x) ^ (*y)) ; }
+    inline void GB_FUNC (BOR  ) (GB_Z_X_Y_ARGS) { (*z) = (*x) | (*y) ; }
+    inline void GB_FUNC (BAND ) (GB_Z_X_Y_ARGS) { (*z) = (*x) & (*y) ; }
+    inline void GB_FUNC (BXOR ) (GB_Z_X_Y_ARGS) { (*z) = (*x) ^ (*y) ; }
+    inline void GB_FUNC (BXNOR) (GB_Z_X_Y_ARGS) { (*z) = ~((*x) ^ (*y)) ; }
 
-    // these are SuiteSparse:GraphBLAS extensions
-    GB_PUBLIC struct GB_BinaryOp_opaque
-        GB (opaque_GxB_BGET),
-        GB (opaque_GxB_BSET),
-        GB (opaque_GxB_BCLR),
-        GB (opaque_GxB_BSHIFT) ;
+    GB_BINOP_STRUCT (BGET, GB_XTYPE) ;
+    GB_BINOP_STRUCT (BSET, GB_XTYPE) ;
+    GB_BINOP_STRUCT (BCLR, GB_XTYPE) ;
+    GB_BINOP_STRUCT (BSHIFT, GB_XTYPE) ;
 
-    inline void GB (BGET_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (BGET) (GB_Z_X_Y_ARGS)
     {
         // bitget (x,y) returns a single bit from x, as 0 or 1, whose position
         // is given by y.  y = 1 is the least significant bit, and y = GB_BITS
@@ -687,7 +679,7 @@ GB_PUBLIC struct GB_BinaryOp_opaque
         #endif
     }
 
-    inline void GB (BSET_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (BSET) (GB_Z_X_Y_ARGS)
     {
         // bitset (x,y) returns x modified by setting a bit from x to 1, whose
         // position is given by y.  If y is in the range 1 to GB_BITS, then y
@@ -722,7 +714,7 @@ GB_PUBLIC struct GB_BinaryOp_opaque
         #endif
     }
 
-    inline void GB (BCLR_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (BCLR) (GB_Z_X_Y_ARGS)
     {
         // bitclr (x,y) returns x modified by setting a bit from x to 0, whose
         // position is given by y.  If y is in the range 1 to GB_BITS, then y
@@ -759,7 +751,7 @@ GB_PUBLIC struct GB_BinaryOp_opaque
 
 
     // z = bitshift (x,y)
-    inline void GB (BSHIFT_f) (GB_TYPE *z, const GB_TYPE *x, const int8_t *y)
+    inline void GB_FUNC (BSHIFT) (GB_TYPE *z, const GB_TYPE *x, const int8_t *y)
     {
         // bitshift (x,k) shifts x to the left by k bits if k > 0, and the
         // right by -k bits if k < 0.
@@ -800,46 +792,47 @@ GB_PUBLIC struct GB_BinaryOp_opaque
 
 #if defined ( GB_FLOAT )
 
-    inline void GB (ATAN2_f) (GB_Z_X_Y_ARGS) { (*z) = atan2f ((*x),(*y)) ; }
-    inline void GB (HYPOT_f) (GB_Z_X_Y_ARGS) { (*z) = hypotf ((*x),(*y)) ; }
-    inline void GB (FMOD_f)  (GB_Z_X_Y_ARGS) { (*z) = fmodf  ((*x),(*y)) ; }
+    inline void GB_FUNC (ATAN2) (GB_Z_X_Y_ARGS) { (*z) = atan2f ((*x),(*y)) ; }
+    inline void GB_FUNC (HYPOT) (GB_Z_X_Y_ARGS) { (*z) = hypotf ((*x),(*y)) ; }
+    inline void GB_FUNC (FMOD)  (GB_Z_X_Y_ARGS) { (*z) = fmodf  ((*x),(*y)) ; }
 
-    inline void GB (REMAINDER_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (REMAINDER) (GB_Z_X_Y_ARGS)
     {
         (*z) = remainderf ((*x),(*y)) ;
     }
-    inline void GB (COPYSIGN_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (COPYSIGN) (GB_Z_X_Y_ARGS)
     {
         (*z) = copysignf ((*x),(*y)) ;
     }
-    inline void GB (LDEXP_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (LDEXP) (GB_Z_X_Y_ARGS)
     {
         (*z) = ldexpf ((*x), (int) truncf (*y)) ;
     }
-    inline void GB (CMPLX_f) (GxB_FC32_t *z, const float *x, const float *y)
+    inline void GB_FUNC (CMPLX) (GxB_FC32_t *z, const float *x, const float *y)
     {
         (*z) = GxB_CMPLXF ((*x),(*y)) ;
     }
 
 #elif defined ( GB_DOUBLE )
 
-    inline void GB (ATAN2_f) (GB_Z_X_Y_ARGS) { (*z) = atan2 ((*x),(*y)) ; }
-    inline void GB (HYPOT_f) (GB_Z_X_Y_ARGS) { (*z) = hypot ((*x),(*y)) ; }
-    inline void GB (FMOD_f)  (GB_Z_X_Y_ARGS) { (*z) = fmod  ((*x),(*y)) ; }
+    inline void GB_FUNC (ATAN2) (GB_Z_X_Y_ARGS) { (*z) = atan2 ((*x),(*y)) ; }
+    inline void GB_FUNC (HYPOT) (GB_Z_X_Y_ARGS) { (*z) = hypot ((*x),(*y)) ; }
+    inline void GB_FUNC (FMOD)  (GB_Z_X_Y_ARGS) { (*z) = fmod  ((*x),(*y)) ; }
 
-    inline void GB (REMAINDER_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (REMAINDER) (GB_Z_X_Y_ARGS)
     {
         (*z) = remainder ((*x),(*y)) ;
     }
-    inline void GB (COPYSIGN_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (COPYSIGN) (GB_Z_X_Y_ARGS)
     {
         (*z) = copysign ((*x),(*y)) ;
     }
-    inline void GB (LDEXP_f) (GB_Z_X_Y_ARGS)
+    inline void GB_FUNC (LDEXP) (GB_Z_X_Y_ARGS)
     {
         (*z) = ldexp ((*x), (int) trunc (*y)) ;
     }
-    inline void GB (CMPLX_f) (GxB_FC64_t *z, const double *x, const double *y)
+    inline void GB_FUNC (CMPLX) (GxB_FC64_t *z,
+        const double *x, const double *y)
     {
         (*z) = GxB_CMPLX ((*x),(*y)) ;
     }
@@ -848,25 +841,25 @@ GB_PUBLIC struct GB_BinaryOp_opaque
 
 #if defined (GB_FLOAT) || defined (GB_DOUBLE)
 
-    GB_PUBLIC struct GB_BinaryOp_opaque
-        GB (opaque_GxB_ATAN2),
-        GB (opaque_GxB_HYPOT),
-        GB (opaque_GxB_FMOD),
-        GB (opaque_GxB_REMAINDER),
-        GB (opaque_GxB_COPYSIGN),
-        GB (opaque_GxB_LDEXP),
-        GB (opaque_GxB_CMPLX) ;
+    GB_BINOP_STRUCT (ATAN2, GB_XTYPE) ;
+    GB_BINOP_STRUCT (HYPOT, GB_XTYPE) ;
+    GB_BINOP_STRUCT (FMOD, GB_XTYPE) ;
+    GB_BINOP_STRUCT (REMAINDER, GB_XTYPE) ;
+    GB_BINOP_STRUCT (COPYSIGN, GB_XTYPE) ;
+    GB_BINOP_STRUCT (LDEXP, GB_XTYPE) ;
+    GB_BINOP_STRUCT (CMPLX, GB_XTYPE) ;
 
 #endif
 
 //------------------------------------------------------------------------------
-// 6 binary comparison functions z=f(x,y), where x,y,z have the same type
+// 6 binary comparators z=f(x,y), where x,y,z have the same type
 //------------------------------------------------------------------------------
 
 // iseq and isne: all 13 types, including complex types.
 // isgt, islt, isge, isle: 11 real types only.
 
-inline void GB (ISEQ_f) (GB_Z_X_Y_ARGS)
+GB_BINOP_STRUCT (ISEQ, GB_XTYPE) ;
+inline void GB_FUNC (ISEQ) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
     (*z) = GB_FC32_iseq (*x, *y) ;
@@ -877,7 +870,8 @@ inline void GB (ISEQ_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-inline void GB (ISNE_f) (GB_Z_X_Y_ARGS)
+GB_BINOP_STRUCT (ISNE, GB_XTYPE) ;
+inline void GB_FUNC (ISNE) (GB_Z_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
     (*z) = GB_FC32_isne (*x, *y) ;
@@ -888,22 +882,29 @@ inline void GB (ISNE_f) (GB_Z_X_Y_ARGS)
     #endif
 }
 
-GB_PUBLIC struct GB_BinaryOp_opaque
-    GB (opaque_GxB_ISEQ),
-    GB (opaque_GxB_ISNE) ;
-
 #if defined ( GB_REAL )
 
-    inline void GB (ISGT_f) (GB_Z_X_Y_ARGS) { (*z) = (GB_TYPE) ((*x) >  (*y)) ; }
-    inline void GB (ISLT_f) (GB_Z_X_Y_ARGS) { (*z) = (GB_TYPE) ((*x) <  (*y)) ; }
-    inline void GB (ISGE_f) (GB_Z_X_Y_ARGS) { (*z) = (GB_TYPE) ((*x) >= (*y)) ; }
-    inline void GB (ISLE_f) (GB_Z_X_Y_ARGS) { (*z) = (GB_TYPE) ((*x) <= (*y)) ; }
+    inline void GB_FUNC (ISGT) (GB_Z_X_Y_ARGS)
+    {
+        (*z) = (GB_TYPE) ((*x) >  (*y)) ;
+    }
+    inline void GB_FUNC (ISLT) (GB_Z_X_Y_ARGS)
+    {
+        (*z) = (GB_TYPE) ((*x) <  (*y)) ;
+    }
+    inline void GB_FUNC (ISGE) (GB_Z_X_Y_ARGS)
+    {
+        (*z) = (GB_TYPE) ((*x) >= (*y)) ;
+    }
+    inline void GB_FUNC (ISLE) (GB_Z_X_Y_ARGS)
+    {
+        (*z) = (GB_TYPE) ((*x) <= (*y)) ;
+    }
 
-    GB_PUBLIC struct GB_BinaryOp_opaque
-        GB (opaque_GxB_ISGT),
-        GB (opaque_GxB_ISLT),
-        GB (opaque_GxB_ISGE),
-        GB (opaque_GxB_ISLE) ;
+    GB_BINOP_STRUCT (ISGT, GB_XTYPE) ;
+    GB_BINOP_STRUCT (ISLT, GB_XTYPE) ;
+    GB_BINOP_STRUCT (ISGE, GB_XTYPE) ;
+    GB_BINOP_STRUCT (ISLE, GB_XTYPE) ;
 
 #endif
 
@@ -912,22 +913,38 @@ GB_PUBLIC struct GB_BinaryOp_opaque
 //------------------------------------------------------------------------------
 
 #if defined ( GB_REAL )
-#if defined ( GB_BOOLEAN )
-inline void GB (LOR_f)  (GB_Z_X_Y_ARGS) { (*z) = ((*x) || (*y)) ; }
-inline void GB (LAND_f) (GB_Z_X_Y_ARGS) { (*z) = ((*x) && (*y)) ; }
-inline void GB (LXOR_f) (GB_Z_X_Y_ARGS) { (*z) = ((*x) != (*y)) ; }
-#else
-// The inputs are of type T but are then implicitly converted to boolean
-// The output z is of type T, either 1 or 0 in that type.
-inline void GB (LOR_f)  (GB_Z_X_Y_ARGS) { (*z) = (GB_TYPE) (((*x) != 0) || ((*y) != 0)) ; }
-inline void GB (LAND_f) (GB_Z_X_Y_ARGS) { (*z) = (GB_TYPE) (((*x) != 0) && ((*y) != 0)) ; }
-inline void GB (LXOR_f) (GB_Z_X_Y_ARGS) { (*z) = (GB_TYPE) (((*x) != 0) != ((*y) != 0)) ; }
-#endif
 
-GB_PUBLIC struct GB_BinaryOp_opaque
-    GB (opaque_GxB_LOR),
-    GB (opaque_GxB_LAND),
-    GB (opaque_GxB_LXOR) ;
+    #if defined ( GB_BOOLEAN )
+
+        inline void GB_FUNC (LOR)  (GB_Z_X_Y_ARGS) { (*z) = ((*x) || (*y)) ; }
+        inline void GB_FUNC (LAND) (GB_Z_X_Y_ARGS) { (*z) = ((*x) && (*y)) ; }
+        inline void GB_FUNC (LXOR) (GB_Z_X_Y_ARGS) { (*z) = ((*x) != (*y)) ; }
+
+    #else
+
+        // The inputs are of type T but are then implicitly converted to boolean
+        // The output z is of type T, either 1 or 0 in that type.
+        inline void GB_FUNC (LOR)  (GB_Z_X_Y_ARGS)
+        {
+            (*z) = (GB_TYPE) (((*x) != 0) || ((*y) != 0)) ;
+        }
+
+        inline void GB_FUNC (LAND) (GB_Z_X_Y_ARGS) 
+        {
+            (*z) = (GB_TYPE) (((*x) != 0) && ((*y) != 0)) ;
+        }
+
+        inline void GB_FUNC (LXOR) (GB_Z_X_Y_ARGS)
+        {
+            (*z) = (GB_TYPE) (((*x) != 0) != ((*y) != 0)) ;
+        }
+
+    #endif
+
+    GB_BINOP_STRUCT (LOR, GB_XTYPE) ;
+    GB_BINOP_STRUCT (LAND, GB_XTYPE) ;
+    GB_BINOP_STRUCT (LXOR, GB_XTYPE) ;
+
 #endif
 
 #undef GB_Z_X_Y_ARGS
@@ -941,7 +958,8 @@ GB_PUBLIC struct GB_BinaryOp_opaque
 
 #define GB_Zbool_X_Y_ARGS bool *z, const GB_TYPE *x, const GB_TYPE *y
 
-inline void GB (EQ_f) (GB_Zbool_X_Y_ARGS)
+GB_BINOP_STRUCT (EQ, GB_XTYPE) ;
+inline void GB_FUNC (EQ) (GB_Zbool_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
     (*z) = GB_FC32_eq (*x, *y) ;
@@ -952,7 +970,8 @@ inline void GB (EQ_f) (GB_Zbool_X_Y_ARGS)
     #endif
 }
 
-inline void GB (NE_f) (GB_Zbool_X_Y_ARGS)
+GB_BINOP_STRUCT (NE, GB_XTYPE) ;
+inline void GB_FUNC (NE) (GB_Zbool_X_Y_ARGS)
 {
     #if defined ( GB_FLOAT_COMPLEX )
     (*z) = GB_FC32_ne (*x, *y) ;
@@ -963,26 +982,17 @@ inline void GB (NE_f) (GB_Zbool_X_Y_ARGS)
     #endif
 }
 
-#if defined ( GB_COMPLEX )
+#if !defined ( GB_COMPLEX )
 
-    GB_PUBLIC struct GB_BinaryOp_opaque
-        GB (opaque_GxB_EQ),
-        GB (opaque_GxB_NE) ;
+    inline void GB_FUNC (GT) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) >  (*y)) ; }
+    inline void GB_FUNC (LT) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) <  (*y)) ; }
+    inline void GB_FUNC (GE) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) >= (*y)) ; }
+    inline void GB_FUNC (LE) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) <= (*y)) ; }
 
-#else
-
-    inline void GB (GT_f) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) >  (*y)) ; }
-    inline void GB (LT_f) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) <  (*y)) ; }
-    inline void GB (GE_f) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) >= (*y)) ; }
-    inline void GB (LE_f) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) <= (*y)) ; }
-
-    GB_PUBLIC struct GB_BinaryOp_opaque
-        GB (opaque_GrB_EQ),
-        GB (opaque_GrB_NE),
-        GB (opaque_GrB_GT),
-        GB (opaque_GrB_LT),
-        GB (opaque_GrB_GE),
-        GB (opaque_GrB_LE) ;
+    GB_BINOP_STRUCT (GT, GB_XTYPE) ;
+    GB_BINOP_STRUCT (LT, GB_XTYPE) ;
+    GB_BINOP_STRUCT (GE, GB_XTYPE) ;
+    GB_BINOP_STRUCT (LE, GB_XTYPE) ;
 
 #endif
 
@@ -992,8 +1002,8 @@ inline void GB (NE_f) (GB_Zbool_X_Y_ARGS)
 // clear macros for next use of this file
 //------------------------------------------------------------------------------
 
-#undef GB
 #undef GB_TYPE
+#undef GB_XTYPE
 #undef GB_OP
 #undef GB_BOOLEAN
 #undef GB_FLOATING_POINT
@@ -1006,4 +1016,6 @@ inline void GB (NE_f) (GB_Zbool_X_Y_ARGS)
 #undef GB_DOUBLE_COMPLEX
 #undef GB_FLOAT_COMPLEX
 #undef GB_COMPLEX
+#undef GB_UNOP_STRUCT
+#undef GB_BINOP_STRUCT
 

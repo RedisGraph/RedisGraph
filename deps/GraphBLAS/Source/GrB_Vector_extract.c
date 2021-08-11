@@ -8,11 +8,12 @@
 //------------------------------------------------------------------------------
 
 #include "GB_extract.h"
+#include "GB_get_mask.h"
 
 GrB_Info GrB_Vector_extract         // w<M> = accum (w, u(I))
 (
     GrB_Vector w,                   // input/output vector for results
-    const GrB_Vector M,             // optional mask for w, unused if NULL
+    const GrB_Vector M_in,          // optional mask for w, unused if NULL
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GrB_Vector u,             // first input:  vector u
     const GrB_Index *I,             // row indices
@@ -28,15 +29,18 @@ GrB_Info GrB_Vector_extract         // w<M> = accum (w, u(I))
     GB_WHERE (w, "GrB_Vector_extract (w, M, accum, u, I, ni, desc)") ;
     GB_BURBLE_START ("GrB_extract") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
-    GB_RETURN_IF_FAULTY (M) ;
+    GB_RETURN_IF_FAULTY (M_in) ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
     ASSERT (GB_VECTOR_OK (w)) ;
-    ASSERT (M == NULL || GB_VECTOR_OK (M)) ;
+    ASSERT (M_in == NULL || GB_VECTOR_OK (M_in)) ;
     ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
         xx1, xx2, xx3, xx7) ;
+
+    // get the mask
+    GrB_Matrix M = GB_get_mask ((GrB_Matrix) M_in, &Mask_comp, &Mask_struct) ;
 
     //--------------------------------------------------------------------------
     // extract entries
@@ -55,7 +59,7 @@ GrB_Info GrB_Vector_extract         // w<M> = accum (w, u(I))
 
     info = GB_extract (
         (GrB_Matrix) w,     C_replace,  // w as a matrix, and its descriptor
-        (GrB_Matrix) M, Mask_comp, Mask_struct,  // mask and its descriptor
+        M, Mask_comp, Mask_struct,      // mask and its descriptor
         accum,                          // optional accum for z=accum(w,t)
         (GrB_Matrix) u,     false,      // u as matrix; never transposed
         I, ni,                          // row indices I and length ni

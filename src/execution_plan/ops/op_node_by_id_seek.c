@@ -17,8 +17,8 @@ static OpResult NodeByIdSeekReset(OpBase *opBase);
 static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void NodeByIdSeekFree(OpBase *opBase);
 
-static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((NodeByIdSeek *)ctx)->alias, NULL);
+static inline void NodeByIdSeekToString(const OpBase *ctx, sds *buf) {
+	ScanToString(ctx, buf, ((NodeByIdSeek *)ctx)->alias, NULL);
 }
 
 // Checks to see if operation index is within its bounds.
@@ -56,8 +56,9 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, Unsigned
 static OpResult NodeByIdSeekInit(OpBase *opBase) {
 	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
-	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
-	op->maxId = MIN(Graph_RequiredMatrixDim(op->g) - 1, op->maxId);
+	// The largest possible entity ID is the number of nodes - deleted and real - in the DataBlock.
+	size_t node_count = Graph_UncompactedNodeCount(op->g);
+	op->maxId = MIN(node_count - 1, op->maxId);
 	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, NodeByIdSeekConsumeFromChild);
 	return OP_OK;
 }

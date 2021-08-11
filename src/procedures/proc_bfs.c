@@ -67,15 +67,15 @@ static void _process_yield(BFSCtx *ctx, const char **yield) {
 	ctx->yield_edges = yield_edges;
 
 	if(yield_nodes) {
-		ctx->output = array_append(ctx->output, SI_ConstStringVal("nodes"));
+		array_append(ctx->output, SI_ConstStringVal("nodes"));
 		ctx->nodes_output_idx = array_len(ctx->output);
-		ctx->output = array_append(ctx->output, SI_NullVal()); // Place holder.
+		array_append(ctx->output, SI_NullVal()); // Place holder.
 	}
 
 	if(yield_edges) {
-		ctx->output = array_append(ctx->output, SI_ConstStringVal("edges"));
+		array_append(ctx->output, SI_ConstStringVal("edges"));
 		ctx->edges_output_idx = array_len(ctx->output);
-		ctx->output = array_append(ctx->output, SI_NullVal()); // Place holder.
+		array_append(ctx->output, SI_NullVal()); // Place holder.
 	}
 }
 
@@ -87,8 +87,8 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 
 	if(array_len((SIValue *)args) != 3) return PROCEDURE_ERR;
 	if(SI_TYPE(args[0]) != T_NODE                 ||   // Source node.
-	   SI_TYPE(args[1]) != T_INT64                ||   // Max level to iterate to, unlimited if 0.
-	   !(SI_TYPE(args[2]) & (T_NULL | T_STRING)))      // Relationship type to traverse if not NULL.
+	  SI_TYPE(args[1]) != T_INT64                ||   // Max level to iterate to, unlimited if 0.
+	  !(SI_TYPE(args[2]) & (T_NULL | T_STRING)))      // Relationship type to traverse if not NULL.
 		return PROCEDURE_ERR;
 
 	BFSCtx *bfs_ctx = ctx->privateData;
@@ -103,27 +103,27 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	const char *reltype = SIValue_IsNull(args[2]) ? NULL : args[2].stringval;
 
 	/* The BFS algorithm uses a level of 1 to indicate the source node.
-	 * If this value is not zero (unlimited), increment it by 1
-	 * to make level 1 indicate the source's direct neighbors. */
+	* If this value is not zero (unlimited), increment it by 1
+	* to make level 1 indicate the source's direct neighbors. */
 	if(max_level > 0) max_level++;
 	GrB_Index src_id = ENTITY_GET_ID(source_node);
 
 	// Get edge matrix and transpose matrix, if available.
-	GrB_Matrix R;
-	GrB_Matrix TR;
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+	GrB_Matrix    R    =  NULL;
+	GrB_Matrix    TR   =  NULL;
+	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
+
 	if(reltype == NULL) {
-		R = Graph_GetAdjacencyMatrix(gc->g);
-		TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
+		RG_Matrix_export(&R, Graph_GetAdjacencyMatrix(gc->g, false));
+		RG_Matrix_export(&TR, Graph_GetAdjacencyMatrix(gc->g, true));
 	} else {
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-		if(!s) return PROCEDURE_OK; // Failed to find schema, first step will return NULL.
+		// failed to find schema, first step will return NULL
+		if(!s) return PROCEDURE_OK; 
+
 		bfs_ctx->reltype_id = s->id;
-		R = Graph_GetRelationMatrix(gc->g, s->id);
-		bool maintain_transpose;
-		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
-		if(maintain_transpose) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
-		else TR = GrB_NULL;
+		RG_Matrix_export(&R, Graph_GetRelationMatrix(gc->g, s->id, false));
+		RG_Matrix_export(&TR, Graph_GetRelationMatrix(gc->g, s->id, true));
 	}
 
 	/* If we're not collecting edges, pass a NULL parent pointer
@@ -136,7 +136,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	ASSERT(res == GrB_SUCCESS);
 
 	/* Remove all values with a level less than or equal to 1.
-	 * Values of 0 are not connected to the source, and values of 1 are the source. */
+	* Values of 0 are not connected to the source, and values of 1 are the source. */
 	GxB_Scalar thunk;
 	GxB_Scalar_new(&thunk, GrB_UINT64);
 	GxB_Scalar_setElement_UINT64(thunk, 1);
@@ -150,6 +150,15 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	bfs_ctx->n = nvals;
 	bfs_ctx->nodes = V;
 	bfs_ctx->parents = PI;
+
+	// matrix iterator requires matrix format to be sparse
+	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
+	// we set matrix format at creation time
+	GxB_Vector_Option_set(bfs_ctx->nodes, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+	GxB_Vector_Option_set(bfs_ctx->parents, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+
+	GrB_Matrix_free(&R);
+	GrB_Matrix_free(&TR);
 
 	return PROCEDURE_OK;
 }
@@ -178,7 +187,7 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 	UNUSED(res);
 	res = GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)bfs_ctx->nodes);
 	ASSERT(res == GrB_SUCCESS);
-	res = GxB_MatrixTupleIter_next(iter, NULL, &id, &depleted);
+	res = GxB_MatrixTupleIter_next(iter, NULL, &id, NULL, &depleted);
 	ASSERT(res == GrB_SUCCESS);
 
 	while(!depleted) {
@@ -203,7 +212,7 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 			SIArray_Append(&edges, SI_Edge(edge));
 		}
 
-		res = GxB_MatrixTupleIter_next(iter, NULL, &id, &depleted);
+		res = GxB_MatrixTupleIter_next(iter, NULL, &id, NULL, &depleted);
 		ASSERT(res == GrB_SUCCESS);
 	}
 
@@ -215,7 +224,7 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 
 	// Clean up.
 	array_free(edge);
-	GxB_MatrixTupleIter_free(iter);
+	GxB_MatrixTupleIter_free(&iter);
 
 	return bfs_ctx->output;
 }
@@ -257,8 +266,8 @@ ProcedureCtx *Proc_BFS_Ctx() {
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
 	ProcedureOutput out_nodes = {.name = "nodes", .type = T_ARRAY};
 	ProcedureOutput out_edges = {.name = "edges", .type = T_ARRAY};
-	outputs = array_append(outputs, out_nodes);
-	outputs = array_append(outputs, out_edges);
+	array_append(outputs, out_nodes);
+	array_append(outputs, out_edges);
 
 	ProcedureCtx *ctx = ProcCtxNew("algo.BFS",
 								   3,

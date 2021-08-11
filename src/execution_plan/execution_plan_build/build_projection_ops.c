@@ -24,7 +24,7 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 		// Build an expression for each alias.
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i]);
 		exp->resolved_name = aliases[i];
-		project_exps = array_append(project_exps, exp);
+		array_append(project_exps, exp);
 	}
 
 	return project_exps;
@@ -58,7 +58,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		exp->resolved_name = canonical_name;
 		AST_AttachName(ast, item, exp->resolved_name);
 
-		order_exps = array_append(order_exps, exp);
+		array_append(order_exps, exp);
 	}
 
 	return order_exps;
@@ -124,7 +124,7 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 		}
 
 		exp->resolved_name = identifier;
-		expressions = array_append(expressions, exp);
+		array_append(expressions, exp);
 	}
 
 	return expressions;
@@ -148,7 +148,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 		const char *name = order_exps[i]->resolved_name;
 		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
 		// If it is a new projection, add a clone to the array.
-		if(new_name) project_exps = array_append(project_exps, AR_EXP_Clone(order_exps[i]));
+		if(new_name) array_append(project_exps, AR_EXP_Clone(order_exps[i]));
 	}
 
 	raxFree(projection_names);
@@ -161,6 +161,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 									   const cypher_astnode_t *clause) {
 
 	OpBase                  *op               =  NULL  ;
+	OpBase                  *distinct_op      =  NULL  ;
 	bool                    distinct          =  false ;
 	bool                    aggregate         =  false ;
 	int                     *sort_directions  =  NULL  ;
@@ -188,6 +189,17 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		order_clause  =  cypher_ast_return_get_order_by(clause);
 	}
 
+	if(distinct) {
+		// Prepare the distinct op but do not add it to op tree.
+		// This is required so that it does not operate on order expressions.
+		uint n = array_len(projections);
+
+		// Populate a stack array with the aliases to perform Distinct on
+		const char *aliases[n];
+		for(uint i = 0; i < n; i ++) aliases[i] = projections[i]->resolved_name;
+		distinct_op = NewDistinctOp(plan, aliases, n);
+	}
+
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
@@ -208,9 +220,8 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	/* Add modifier operations in order such that the final execution plan will follow the sequence:
 	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
 
-	if(distinct) {
-		op = NewDistinctOp(plan);
-		ExecutionPlan_UpdateRoot(plan, op);
+	if(distinct_op) {
+		ExecutionPlan_UpdateRoot(plan, distinct_op);
 	}
 
 	if(sort_directions) {

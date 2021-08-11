@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "../../util/branch_pred.h"
 
 struct QGEdge {
 	const char *alias;      /* User-provided alias attached to edge. */
@@ -33,11 +34,17 @@ QGEdge *QGEdge_Clone(const QGEdge *orig);
 /* Determine whether this is a variable length edge. */
 bool QGEdge_VariableLength(const QGEdge *e);
 
+/* Number of relationships associated with edge. */
+int QGEdge_RelationCount(const QGEdge *e);
+
+// Return relationship id for relation at position 'idx'
+int QGEdge_RelationID(const QGEdge *e, int idx);
+
 /* Reverse edge direction. */
 void QGEdge_Reverse(QGEdge *e);
 
 /* Gets a string representation of given edge. */
-int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len);
+void QGEdge_ToString(const QGEdge *e, sds *buff);
 
 /* Free allocations associated with the given edge. */
 void QGEdge_Free(QGEdge *e);

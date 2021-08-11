@@ -16,7 +16,7 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
+    GrB_Matrix_free_(&A) ;              \
     GrB_BinaryOp_free_(&Max) ;          \
     GrB_Monoid_free_(&Max_Terminal) ;   \
     GB_mx_put_global (true) ;           \
@@ -97,7 +97,7 @@ void mexFunction
 
     // printf ("result %g\n", c) ;
 
-    // return C to MATLAB as a scalar
+    // return C as a scalar
     pargout [0] = mxCreateDoubleScalar (c) ;
 
     FREE_ALL ;

@@ -6,7 +6,7 @@ function test89
 
 [save save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 rng ('default') ;
@@ -32,11 +32,11 @@ for do_real = 0:1
         fprintf ('complex:\n') ;
     end
 
-    fprintf ('start MATLAB\n') ;
+    fprintf ('start built-in\n') ;
     tic
     C1 = A*B ;
     tm = toc ;
-    fprintf ('MATLAB %g\n', tm) ;
+    fprintf ('built-in %g\n', tm) ;
 
         % 1001: Gustavson
         % 1003: dot
@@ -55,25 +55,31 @@ for do_real = 0:1
 
         % This uses the default method, which selects Gustavson's method:
 
+        tic
         C2 = GB_mex_AxB (A, B) ;
-        tg = grbresults ;
+        tg = toc ;
         err = norm (C1-C2,1) ;
         fprintf ('GraphBLAS %g speedup %g err: %g\n', tg, tm/tg, err) ;
 
-        % these are expected to be slower still; they do not use the default method
-        % (Gustavson) which is selected by the auto-strategy.
+        % these are expected to be slower still; they do not use the default
+        % method (Gustavson) which is selected by the auto-strategy.
 
+        tic 
         C2 = GB_mex_AxB (A, B, 0, 0, 1004) ;
-        tg = grbresults ;
+        tg = toc ;
         err = norm (C1-C2,1) ;
         fprintf ('GraphBLAS %g speedup %g (hash) err: %g\n', tg, tm/tg, err) ;
 
+        tic
         C2 = GB_mex_AxB (A, B, 0, 0, 1003) ;
-        tg = grbresults ;
+        tg = toc ;
         err = norm (C1-C2,1) ;
         fprintf ('GraphBLAS %g speedup %g (dot) err: %g\n', tg, tm/tg, err) ;
 
     end
 
 end
+
+GB_builtin_complex_set (true) ;
 nthreads_set (save, save_chunk) ;
+

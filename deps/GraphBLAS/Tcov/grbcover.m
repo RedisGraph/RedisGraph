@@ -34,29 +34,28 @@ for k = nmex:-1:1
 end
 
 % list of C files to compile
-cfiles = [ dir('../Test/GB_mx_*.c') ; ...
-           dir('../Demo/Source/usercomplex.c') ; ...
-           dir('../Demo/Source/simple_*.c') ; ...
-           dir('../Demo/Source/random_matrix.c') ; ...
-           dir('../Demo/Source/wathen.c') ; ...
-           dir('../Demo/Source/mis_*.c') ; ...
-           dir('../Demo/Source/prand.c') ; ...
-           dir('../Demo/Source/*pagerank*.c') ; ...
-           dir('../Demo/Source/*rowscale.c') ; ...
-           dir('../Demo/Source/isequal.c') ; ...
-           dir('GB_cover_util.c') ; ] ;
+cfiles = [ dir('../Test/GB_mx_*.c') ; dir('GB_cover_util.c') ; ] ;
 
 % list of *.h and template file dependencies
-hfiles = [ dir('../Test/*.h') ; ...
-           dir('../Test/Template/*.c') ] ;
+hfiles = [ dir('../Test/*.h') ; dir('../Test/Template/*.c') ] ;
 
 % list of include directories
 inc = '-Itmp_include -I../Test -I../Test/Template' ;
+
+have_octave = (exist ('OCTAVE_VERSION', 'builtin') == 5) ;
+if (have_octave)
+    need_rename = false ;
+else
+    need_rename = ~verLessThan ('matlab', '9.10') ;
+end
 
 addpath ../Test
 addpath ../Test/spok
 
 flags = '-g -DGBCOVER -R2018a' ;
+if (need_rename)
+    flags = [flags ' -DGBRENAME=1 '] ;
+end
 
 fprintf ('\nCompiling GraphBLAS tests\nplease wait [') ;
 
@@ -132,7 +131,7 @@ for k = 1:length (cfiles)
     % compile the cfile if it is newer than its object file, or any hfile
     if (make_all || tc > tobj || htime > tobj)
         % compile the cfile
-        fprintf ('.', cfile) ;
+        fprintf ('.') ;
         % fprintf ('%s\n', cfile) ;
         mexcmd = sprintf ('mex -c %s -silent %s %s', flags, inc, cfile) ;
         if (dryrun)
@@ -171,7 +170,7 @@ for k = 1:length (mexfunctions)
         % compile the mexFunction
         mexcmd = sprintf ('mex -silent %s %s %s %s %s', ...
             flags, inc, mexfunction, objlist, libraries) ;
-        fprintf (':') ;
+        fprintf ('.', mexfunction) ;
         % fprintf ('%s\n', mexfunction) ;
         if (dryrun)
             fprintf ('%s\n', mexcmd) ;

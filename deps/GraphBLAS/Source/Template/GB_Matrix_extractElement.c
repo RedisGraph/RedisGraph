@@ -34,13 +34,17 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = A(row,col)
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_RETURN_IF_NULL (x) ;
 
+    // TODO: do not wait unless jumbled.  First try to find the element.
+    // If found (live or zombie), no need to wait.  If not found and pending
+    // tuples exist, wait and then extractElement again.
+
     // delete any lingering zombies, assemble any pending tuples, and unjumble
     if (GB_ANY_PENDING_WORK (A))
     { 
         GrB_Info info ;
         GB_WHERE1 (GB_WHERE_STRING) ;
         GB_BURBLE_START ("GrB_Matrix_extractElement") ;
-        GB_OK (GB_Matrix_wait (A, Context)) ;
+        GB_OK (GB_wait (A, "A", Context)) ;
         GB_BURBLE_END ;
     }
 
@@ -76,7 +80,7 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = A(row,col)
         return (GrB_DOMAIN_MISMATCH) ;
     }
 
-    if (A->nzmax == 0)
+    if (GB_nnz (A) == 0)
     { 
         // quick return
         return (GrB_NO_VALUE) ;
@@ -88,19 +92,19 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = A(row,col)
 
     int64_t pleft ;
     bool found ;
-    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *restrict Ap = A->p ;
 
     if (Ap != NULL)
-    { 
+    {
         // A is sparse or hypersparse
-        const int64_t *GB_RESTRICT Ai = A->i ;
+        const int64_t *restrict Ai = A->i ;
 
         // extract from vector j of a GrB_Matrix
         int64_t k ;
         if (A->h != NULL)
         {
             // A is hypersparse: look for j in hyperlist A->h [0 ... A->nvec-1]
-            const int64_t *GB_RESTRICT Ah = A->h ;
+            const int64_t *restrict Ah = A->h ;
             int64_t pleft = 0 ;
             int64_t pright = A->nvec-1 ;
             GB_BINARY_SEARCH (j, Ah, pleft, pright, found) ;
@@ -129,7 +133,7 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = A(row,col)
     {
         // A is bitmap or full
         pleft = i + j * A->vlen ;
-        const int8_t *GB_RESTRICT Ab = A->b ;
+        const int8_t *restrict Ab = A->b ;
         if (Ab != NULL)
         { 
             // A is bitmap
@@ -151,18 +155,17 @@ GrB_Info GB_EXTRACT_ELEMENT     // extract a single entry, x = A(row,col)
         #if !defined ( GB_UDT_EXTRACT )
         if (GB_XCODE == acode)
         { 
-            // copy the value from A into x, no typecasting, for built-in
-            // types only.
-            GB_XTYPE *GB_RESTRICT Ax = ((GB_XTYPE *) (A->x)) ;
-            (*x) = Ax [pleft] ;
+            // copy A [pleft] into x, no typecasting, for built-in types only.
+            GB_XTYPE *restrict Ax = ((GB_XTYPE *) (A->x)) ;
+            (*x) = Ax [A->iso ? 0:pleft] ;
         }
         else
         #endif
         { 
-            // typecast the value from A into x
+            // typecast the value from A [pleft] into x
             size_t asize = A->type->size ;
-            GB_cast_array ((GB_void *) x, GB_XCODE,
-                ((GB_void *) A->x) +(pleft*asize), acode, NULL, asize, 1, 1) ;
+            void *ax = ((GB_void *) A->x) + (A->iso ? 0 : (pleft*asize)) ;
+            GB_cast_scalar (x, GB_XCODE, ax, acode, asize) ;
         }
         return (GrB_SUCCESS) ;
     }

@@ -56,7 +56,7 @@ GrB_Info GB_subassign_19
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
-    GB_OK (GB_subassign_symbolic (&S, C, I, ni, J, nj, true, Context)) ;
+    GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -65,8 +65,8 @@ GrB_Info GB_subassign_19
     GB_MATRIX_WAIT_IF_JUMBLED (M) ;
 
     GB_GET_C ;      // C must not be bitmap
-    const int64_t *GB_RESTRICT Ch = C->h ;
-    const int64_t *GB_RESTRICT Cp = C->p ;
+    const int64_t *restrict Ch = C->h ;
+    const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
     const int64_t Cnvec = C->nvec ;
     GB_GET_MASK ;

@@ -8,7 +8,7 @@ function floptest (M, Mask_complement, A, B, flops1)
 % flops2 = GB_mex_mxm_flops (M, Mask_complement, A, B)
 %
 % However, flopcount(M,Mask_complement,A,B) can only be computed when M, A, B
-% are all MATLAB sparse matrices, not structs.  If the matrices are
+% are all built-in sparse matrices, not structs.  If the matrices are
 % hypersparse, flops1 has length B->nvec+1, not size(B,2).  In this case,
 % only the total flop count is checked.  In that case, flops1 is a scalar.
 

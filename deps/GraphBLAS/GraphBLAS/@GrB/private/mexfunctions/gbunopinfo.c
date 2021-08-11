@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -12,7 +12,9 @@
 // gbunopinfo (unop)
 // gbunopinfo (unop, type)
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: GrB.unopinfo (unop) or GrB.unopinfo (unop,type)"
 
 void mexFunction
 (
@@ -27,8 +29,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin >= 1 && nargin <= 2 && nargout == 0,
-        "usage: GrB.unopinfo (unop) or GrB.unopinfo (unop,type)") ;
+    gb_usage (nargin >= 1 && nargin <= 2 && nargout == 0, USAGE) ;
 
     //--------------------------------------------------------------------------
     // construct the GraphBLAS unary operator and print it

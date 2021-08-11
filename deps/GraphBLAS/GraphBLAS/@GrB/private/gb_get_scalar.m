@@ -2,7 +2,7 @@ function x = gb_get_scalar (A)
 %GB_GET_SCALAR get a scalar from a matrix
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;

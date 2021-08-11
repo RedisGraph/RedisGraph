@@ -11,29 +11,32 @@
 #define GB_SUBREF_H
 #include "GB_ij.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
 (
     // output
-    GrB_Matrix *Chandle,
+    GrB_Matrix C,               // output matrix, static header
     // input, not modified
+    bool C_iso,                 // if true, return C as iso, regardless of A 
     const bool C_is_csc,        // requested format of C
     const GrB_Matrix A,
     const GrB_Index *I,         // index list for C = A(I,J), or GrB_ALL, etc.
     const int64_t ni,           // length of I, or special
     const GrB_Index *J,         // index list for C = A(I,J), or GrB_ALL, etc.
     const int64_t nj,           // length of J, or special
-    const bool symbolic,        // if true, construct Cx as symbolic
-//  const bool must_sort,       // if true, must return C sorted
+    const bool symbolic,        // if true, construct C as symbolic
     GB_Context Context
 ) ;
 
 GrB_Info GB_subref_phase0
 (
     // output
-    int64_t *GB_RESTRICT *p_Ch,         // Ch = C->h hyperlist, or NULL standard
-    int64_t *GB_RESTRICT *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
-    int64_t *GB_RESTRICT *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
+    int64_t *restrict *p_Ch,         // Ch = C->h hyperlist, or NULL standard
+    size_t *p_Ch_size,
+    int64_t *restrict *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
+    size_t *p_Ap_start_size,
+    int64_t *restrict *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
+    size_t *p_Ap_end_size,
     int64_t *p_Cnvec,       // # of vectors in C
     bool *p_need_qsort,     // true if C must be sorted
     int *p_Ikind,           // kind of I
@@ -53,17 +56,19 @@ GrB_Info GB_subref_phase0
 GrB_Info GB_subref_slice
 (
     // output:
-    GB_task_struct **p_TaskList,    // array of structs, of size max_ntasks
-    int *p_max_ntasks,              // size of TaskList
+    GB_task_struct **p_TaskList,    // array of structs
+    size_t *p_TaskList_size,        // size of TaskList
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads for subref operation
     bool *p_post_sort,              // true if a final post-sort is needed
-    int64_t *GB_RESTRICT *p_Mark,      // for I inverse, if needed; size avlen
-    int64_t *GB_RESTRICT *p_Inext,     // for I inverse, if needed; size nI
+    int64_t *restrict *p_Mark,      // for I inverse, if needed; size avlen
+    size_t *p_Mark_size,
+    int64_t *restrict *p_Inext,     // for I inverse, if needed; size nI
+    size_t *p_Inext_size,
     int64_t *p_nduplicates,         // # of duplicates, if I inverse computed
     // from phase0:
-    const int64_t *GB_RESTRICT Ap_start,   // location of A(imin:imax,kA)
-    const int64_t *GB_RESTRICT Ap_end,
+    const int64_t *restrict Ap_start,   // location of A(imin:imax,kA)
+    const int64_t *restrict Ap_end,
     const int64_t Cnvec,            // # of vectors of C
     const bool need_qsort,          // true if C must be sorted
     const int Ikind,                // GB_ALL, GB_RANGE, GB_STRIDE or GB_LIST
@@ -78,18 +83,20 @@ GrB_Info GB_subref_slice
 
 GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
 (
-    int64_t *GB_RESTRICT *Cp_handle,       // output of size Cnvec+1
+    // computed by phase1:
+    int64_t **Cp_handle,                // output of size Cnvec+1
+    size_t *Cp_size_handle,
     int64_t *Cnvec_nonempty,            // # of non-empty vectors in C
     // tasks from phase0b:
-    GB_task_struct *GB_RESTRICT TaskList,  // array of structs
+    GB_task_struct *restrict TaskList,  // array of structs
     const int ntasks,                   // # of tasks
     const int nthreads,                 // # of threads to use
     const int64_t *Mark,                // for I inverse buckets, size A->vlen
     const int64_t *Inext,               // for I inverse buckets, size nI
     const int64_t nduplicates,          // # of duplicates, if I inverted
     // analysis from phase0:
-    const int64_t *GB_RESTRICT Ap_start,
-    const int64_t *GB_RESTRICT Ap_end,
+    const int64_t *restrict Ap_start,
+    const int64_t *restrict Ap_end,
     const int64_t Cnvec,
     const bool need_qsort,
     const int Ikind,
@@ -104,12 +111,13 @@ GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
 
 GrB_Info GB_subref_phase2   // C=A(I,J)
 (
-    GrB_Matrix *Chandle,    // output matrix (unallocated on input)
+    GrB_Matrix C,               // output matrix, static header
     // from phase1:
-    const int64_t *GB_RESTRICT *p_Cp,   // vector pointers for C
+    int64_t **Cp_handle,        // vector pointers for C
+    size_t Cp_size,
     const int64_t Cnvec_nonempty,       // # of non-empty vectors in C
     // from phase0b:
-    const GB_task_struct *GB_RESTRICT TaskList,    // array of structs
+    const GB_task_struct *restrict TaskList,    // array of structs
     const int ntasks,                           // # of tasks
     const int nthreads,                         // # of threads to use
     const bool post_sort,               // true if post-sort needed
@@ -117,15 +125,19 @@ GrB_Info GB_subref_phase2   // C=A(I,J)
     const int64_t *Inext,               // for I inverse buckets, size nI
     const int64_t nduplicates,          // # of duplicates, if I inverted
     // from phase0:
-    const int64_t *GB_RESTRICT *p_Ch,
-    const int64_t *GB_RESTRICT Ap_start,
-    const int64_t *GB_RESTRICT Ap_end,
+    int64_t **Ch_handle,
+    size_t Ch_size,
+    const int64_t *restrict Ap_start,
+    const int64_t *restrict Ap_end,
     const int64_t Cnvec,
     const bool need_qsort,
     const int Ikind,
     const int64_t nI,
     const int64_t Icolon [3],
     const int64_t nJ,
+    // from GB_subref:
+    const bool C_iso,           // if true, C is iso
+    const GB_void *cscalar,     // iso value of C
     // original input:
     const bool C_is_csc,        // format of output matrix C
     const GrB_Matrix A,
@@ -140,9 +152,28 @@ GrB_Info GB_I_inverse           // invert the I list for C=A(I,:)
     int64_t nI,                 // length of I
     int64_t avlen,              // length of the vectors of A
     // outputs:
-    int64_t *GB_RESTRICT *p_Mark,  // head pointers for buckets, size avlen
-    int64_t *GB_RESTRICT *p_Inext, // next pointers for buckets, size nI
+    int64_t *restrict *p_Mark,  // head pointers for buckets, size avlen
+    size_t *p_Mark_size,
+    int64_t *restrict *p_Inext, // next pointers for buckets, size nI
+    size_t *p_Inext_size,
     int64_t *p_ndupl,           // number of duplicate entries in I
+    GB_Context Context
+) ;
+
+GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
+(
+    // output
+    GrB_Matrix C,               // output matrix, static header
+    // input, not modified
+    const bool C_iso,           // if true, C is iso
+    const GB_void *cscalar,     // scalar value of C, if iso
+    const bool C_is_csc,        // requested format of C
+    const GrB_Matrix A,
+    const GrB_Index *I,         // index list for C = A(I,J), or GrB_ALL, etc.
+    const int64_t ni,           // length of I, or special
+    const GrB_Index *J,         // index list for C = A(I,J), or GrB_ALL, etc.
+    const int64_t nj,           // length of J, or special
+    const bool symbolic,        // if true, construct C as symbolic
     GB_Context Context
 ) ;
 
@@ -290,21 +321,6 @@ static inline int GB_subref_method  // return the method to use (1 to 12)
     }
     return (method) ;
 }
-
-GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
-(
-    // output
-    GrB_Matrix *Chandle,
-    // input, not modified
-    const bool C_is_csc,        // requested format of C
-    const GrB_Matrix A,
-    const GrB_Index *I,         // index list for C = A(I,J), or GrB_ALL, etc.
-    const int64_t ni,           // length of I, or special
-    const GrB_Index *J,         // index list for C = A(I,J), or GrB_ALL, etc.
-    const int64_t nj,           // length of J, or special
-    const bool symbolic,        // if true, construct C as symbolic
-    GB_Context Context
-) ;
 
 #endif
 

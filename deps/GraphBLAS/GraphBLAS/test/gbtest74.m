@@ -2,7 +2,7 @@ function gbtest74
 %GBTEST74 test bitwise operators
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 int_types = {
 'int8'
@@ -123,44 +123,7 @@ for k = 1:8
         assert (isequal (C1, C2)) ;
 
         if (~ispc)
-            % MATLAB R2019b on Windows has a bug here, so this
-            % test is skipped.  Here is the pure MATLAB test:
-            %
-            %   ver
-            %   A = 1287128410976072704
-            %   fprintf ('A:         %30o\n', A) ;
-            %   C = bitcmp (A, 'uint64')
-            %   fprintf ('bitcmp(A): %30o\n', C) ;
-            %
-            % printing input and output in octal, with spaces
-            % added for readability:
-            %
-            % A:                 0 107 346 307 414 442 532 000
-            %
-            % Linux bitcmp(A):   1 670 431 470 363 335 244 000
-            % Win. bitcmp(A):    1 670 431 470 363 335 250 000
-            %
-            % GraphBLAS obtains the Linux result on all
-            % platforms, including Windows.
-            %
-            % Expanding the last 5 octal digits into binary,
-            % with a space where I think the double mantissa
-            % runs about of bits when converted to uint64.
-            %
-            % A:                 32000 = 011.01 0.000.000.000
-            %
-            % Linux bitcmp(A):   44000 = 100.10 0.000.000.000
-            % Win. bitcmp(A):    50000 = 101.00 0.000.000.000
-            %
-            % Note that A starts out as double, so it only
-            % has about 53 bits of mantissa.  I would expect
-            % the result to have 10 or 11 trailing zeros, as a
-            % result.  On Linux (and also GraphBLAS on Windows),
-            % bitcmp(A) has 10 trailing zero bits, and the
-            % remaining bits are properly complemented.
-            %
-            % On MATLAB in Windows, the result is not comprehensible.
-
+            % R2019b on Windows has a bug here.
             C1 = bitcmp (A, type) ;
             C2 = bitcmp (A2, type) ;
             assert (isequal (C1, C2)) ;
@@ -200,7 +163,7 @@ for k = 1:8
         C2 = bitcmp (A2) ;
         assert (isequal (C1, full (C2))) ;
 
-        % the MATLAB bitget and bitset cannot be used for B == 0,
+        % the built-in bitget and bitset cannot be used for B == 0,
         % so find where Bfull is explicitly zero.
         B_is_nonzero = (B ~= 0) ;
         A_ok = Afull (B_is_nonzero) ;
@@ -245,13 +208,9 @@ for k = 1:8
         C2 = bitor (A2, B2) ;
         assert (isequal (C1, full (C2))) ;
 
-        if (verLessThan ('matlab', '9.7') && isequal (type, 'int64'))
-            % skip this test (older MATLAB versions have a bug in bitshift)
-        else
-            C1 = bitshift (A, B) ;
-            C2 = bitshift (A2, B2) ;
-            assert (isequal (C1, full (C2))) ;
-        end
+        C1 = bitshift (A, B) ;
+        C2 = bitshift (A2, B2) ;
+        assert (isequal (C1, full (C2))) ;
 
         C1 = bitcmp (A) ;
         C2 = bitcmp (A2) ;

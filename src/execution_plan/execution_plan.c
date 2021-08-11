@@ -48,7 +48,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	uint start_offset = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
-	union_indices = array_append(union_indices, clause_count);
+	array_append(union_indices, clause_count);
 	int union_count = array_len(union_indices);
 	ASSERT(union_count > 1);
 
@@ -91,9 +91,24 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION,
 														 NULL);
 	if(!cypher_ast_union_has_all(union_clause)) {
-		OpBase *distinct_op = NewDistinctOp(plan);
-		ExecutionPlan_AddOp(results_op, distinct_op);
-		parent = distinct_op;
+		uint clause_count = cypher_ast_query_nclauses(ast->root);
+		const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+		if(cypher_astnode_type(last_clause) == CYPHER_AST_RETURN) {
+			uint projection_count = cypher_ast_return_nprojections(last_clause);
+			// Build a stack array to hold the aliases to perform Distinct on
+			const char *projections[projection_count];
+			for(uint i = 0; i < projection_count; i++) {
+				// Retrieve aliases from the RETURN clause
+				const cypher_astnode_t *projection = cypher_ast_return_get_projection(last_clause, i);
+				const cypher_astnode_t *alias = cypher_ast_projection_get_alias(projection);
+				if(alias == NULL) alias = cypher_ast_projection_get_expression(projection);
+				projections[i] = cypher_ast_identifier_get_name(alias);
+			}
+			// Build a Distinct op and add it to the op tree
+			OpBase *distinct_op = NewDistinctOp(plan, projections, projection_count);
+			ExecutionPlan_AddOp(results_op, distinct_op);
+			parent = distinct_op;
+		}
 	}
 
 	OpBase *join_op = NewJoinOp(plan);
@@ -162,7 +177,7 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
 	// last segment
-	segment_indices = array_append(segment_indices, clause_count);
+	array_append(segment_indices, clause_count);
 	nsegments = array_len(segment_indices);
 	segments = array_new(ExecutionPlan *, nsegments);
 
@@ -181,7 +196,7 @@ static ExecutionPlan **_process_segments(AST *ast) {
 
 		// create ExecutionPlan segment that represents this slice of the AST
 		segment = _process_segment(ast_segment, seg_start_idx, seg_end_idx);
-		segments = array_append(segments, segment);
+		array_append(segments, segment);
 
 		// The next segment will start where the current one ended.
 		seg_start_idx = seg_end_idx;
@@ -396,14 +411,14 @@ static void _ExecutionPlan_Drain(OpBase *root) {
 	ASSERT(root->parent == NULL);
 
 	OpBase **ops = array_new(OpBase*, 1);
-	ops = array_append(ops, root);
+	array_append(ops, root);
 
 	while(array_len(ops) != 0) {
 		OpBase *op = array_pop(ops);
 		op->consume = deplete_consume;
 
 		for(int i = 0; i < op->childCount; i++) {
-			ops = array_append(ops, op->children[i]);
+			array_append(ops, op->children[i]);
 		}
 	}
 

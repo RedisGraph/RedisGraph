@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -28,7 +28,7 @@
 
 // Cin and A are required.  See GrB.m for more details.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 #include "GB_ij.h"
 
 void gb_assign                  // gbassign or gbsubassign mexFunctions
@@ -193,7 +193,7 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     if (J_allocated) gb_mxfree (&J) ;
 
     //--------------------------------------------------------------------------
-    // export the output matrix C back to MATLAB
+    // export the output matrix C
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;

@@ -13,7 +13,7 @@
 #define GB_COVERAGE_H
 
 #ifdef GBCOVER
-#define GBCOVER_MAX 20000
+#define GBCOVER_MAX 30000
 GB_PUBLIC int64_t GB_cov [GBCOVER_MAX] ;
 GB_PUBLIC int GB_cover_max ;
 #endif

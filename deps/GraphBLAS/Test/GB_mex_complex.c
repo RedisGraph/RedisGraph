@@ -10,7 +10,7 @@
 // If A is real, C has an all-zero imaginary part.
 // If A is complex, then C = A.
 
-// This is a sparse version of the MATLAB 'complex' function, which does not
+// This is a sparse version of the built-in 'complex' function, which does not
 // work for sparse matrices.  This is self-contained and does not use GraphBLAS
 // at all.
 

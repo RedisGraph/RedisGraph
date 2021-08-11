@@ -17,19 +17,19 @@ GrB_Info GrB_Monoid_free            // free a user-created monoid
 
     if (monoid != NULL)
     {
+        // only free a dynamically-allocated monoid
         GrB_Monoid mon = *monoid ;
-        if (mon != NULL && !mon->monoid_is_builtin)
+        if (mon != NULL)
         {
-            if (mon->magic == GB_MAGIC)
+            size_t header_size = mon->header_size ;
+            if (header_size > 0)
             { 
-                // only user-defined monoids are freed.  predefined monoids
-                // are statically allocated and cannot be freed.
-                mon->magic = GB_FREED ; // to help detect dangling pointers
-                GB_FREE (mon->identity) ;   // ok if already NULL
-                GB_FREE (mon->terminal) ;   // ok if already NULL
-                GB_FREE (*monoid) ;
+                mon->magic = GB_FREED ;  // to help detect dangling pointers
+                mon->header_size = 0 ;
+                GB_FREE (&(mon->identity), mon->identity_size) ;
+                GB_FREE (&(mon->terminal), mon->terminal_size) ;
+                GB_FREE (monoid, header_size) ;
             }
-            (*monoid) = NULL ;
         }
     }
 

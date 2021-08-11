@@ -28,8 +28,8 @@ ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx,
 	pdata->schema_id = 0;
 	pdata->gc = QueryCtx_GetGraphCtx();
 	pdata->output = array_new(SIValue, 2);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("label"));
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("label"));
+	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -66,7 +66,7 @@ ProcedureCtx *Proc_LabelsCtx() {
 	void *privateData = NULL;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
 	ProcedureOutput output = {.name = "label", .type = T_STRING};
-	outputs = array_append(outputs, output);
+	array_append(outputs, output);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.labels",
 								   0,

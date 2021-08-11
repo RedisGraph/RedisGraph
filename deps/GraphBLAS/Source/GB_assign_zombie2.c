@@ -11,6 +11,8 @@
 // complemented mask requires all entries in C(i,:) to be deleted.
 // C must be sparse or hypersparse.
 
+// C->iso is not affected.
+
 #include "GB_assign.h"
 #include "GB_assign_zombie.h"
 
@@ -36,8 +38,8 @@ void GB_assign_zombie2
     // get C
     //--------------------------------------------------------------------------
 
-    const int64_t *GB_RESTRICT Cp = C->p ;
-    int64_t *GB_RESTRICT Ci = C->i ;
+    const int64_t *restrict Cp = C->p ;
+    int64_t *restrict Ci = C->i ;
     const int64_t Cnvec = C->nvec ;
     int64_t nzombies = C->nzombies ;
     const int64_t zorig = nzombies ;

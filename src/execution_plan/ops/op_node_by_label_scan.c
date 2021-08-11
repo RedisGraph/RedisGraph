@@ -19,9 +19,9 @@ static OpResult NodeByLabelScanReset(OpBase *opBase);
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
 
-static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
+static inline void NodeByLabelScanToString(const OpBase *ctx, sds *buf) {
 	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
-	return ScanToString(ctx, buf, buf_len, op->n.alias, op->n.label);
+	ScanToString(ctx, buf, op->n.alias, op->n.label);
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
@@ -53,11 +53,38 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 }
 
 static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
-	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
-	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1;
-	return GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	NodeID minId;
+	NodeID maxId;
+	GrB_Info info;
+	GrB_Index nrows;
+
+	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
+	RG_Matrix     L    =  Graph_GetLabelMatrix(gc->g, schema->id);
+
+	info = RG_Matrix_nrows(&nrows, L);
+	ASSERT(info == GrB_SUCCESS);
+
+	// make sure range is within matrix bounds
+	UnsignedRange_TightenRange(op->id_range, OP_GE, 0);
+	UnsignedRange_TightenRange(op->id_range, OP_LT, nrows);
+
+	if(!UnsignedRange_IsValid(op->id_range)) return GrB_DIMENSION_MISMATCH;
+
+	if(op->id_range->include_min) minId = op->id_range->min;
+	else minId = op->id_range->min + 1;
+
+	if(op->id_range->include_max) maxId = op->id_range->max;
+	else maxId = op->id_range->max - 1;
+
+	info = RG_MatrixTupleIter_new(&(op->iter), L);
+	ASSERT(info == GrB_SUCCESS);
+
+	// use range only when minId and maxId are subset of the entire matrix
+	if(minId > 0 || maxId < nrows-1) {
+		info = RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	}
+
+	return info;
 }
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
@@ -102,7 +129,7 @@ static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_i
 static inline void _ResetIterator(NodeByLabelScan *op) {
 	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
 	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
-	GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+	RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
 }
 
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
@@ -111,7 +138,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	// Try to get new nodeID.
 	GrB_Index nodeId;
 	bool depleted = true;
-	GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+	RG_MatrixTupleIter_next(op->iter, NULL, &nodeId, NULL, &depleted);
 	/* depleted will be true in the following cases:
 	 * 1. No iterator: GxB_MatrixTupleIter_next will fail and depleted will stay true. This scenario means
 	 * that there was no consumption of a record from a child, otherwise there was an iterator.
@@ -131,14 +158,14 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 			Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
 			// No label matrix, it might be created in the next iteration.
 			if(!schema) continue;
-			_ConstructIterator(op, schema); // OK to fail (invalid range) iter will be depleted.
+			if(_ConstructIterator(op, schema) != GrB_SUCCESS) continue;
 		} else {
 			// Iterator depleted - reset.
 			// TODO: GxB_MatrixTupleIter_reset
 			_ResetIterator(op);
 		}
 		// Try to get new NodeID.
-		GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+		RG_MatrixTupleIter_next(op->iter, NULL, &nodeId, NULL, &depleted);
 	}
 
 	// We've got a record and NodeID.
@@ -154,7 +181,7 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 
 	GrB_Index nodeId;
 	bool depleted = false;
-	GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+	RG_MatrixTupleIter_next(op->iter, NULL, &nodeId, NULL, &depleted);
 	if(depleted) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
@@ -192,7 +219,7 @@ static void NodeByLabelScanFree(OpBase *op) {
 	NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan *)op;
 
 	if(nodeByLabelScan->iter) {
-		GxB_MatrixTupleIter_free(nodeByLabelScan->iter);
+		RG_MatrixTupleIter_free(&(nodeByLabelScan->iter));
 		nodeByLabelScan->iter = NULL;
 	}
 

@@ -7,6 +7,9 @@
 
 //------------------------------------------------------------------------------
 
+// Flip i and j to handle the CSR/CSC variations, for ewise positional ops.
+// This is not used for semirings.
+
 #include "GB.h"
 
 GrB_BinaryOp GB_positional_binop_ijflip // return flipped operator

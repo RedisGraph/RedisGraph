@@ -10,7 +10,7 @@
 #ifndef GB_CUDA_GLOBAL_H
 #define GB_CUDA_GLOBAL_H
 
-#include "GB_callback.hpp"
+#include "GB_cuda_stringifier.hpp"
 
 std::istream* callback_wrapper( std::string file_name, std::iostream& tmp) ;
 

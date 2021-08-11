@@ -55,7 +55,7 @@ GrB_Info GB_subassign_17
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
-    GB_OK (GB_subassign_symbolic (&S, C, I, ni, J, nj, true, Context)) ;
+    GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -65,8 +65,8 @@ GrB_Info GB_subassign_17
 
     GB_GET_C ;      // C must not be bitmap
     const int64_t Cnvec = C->nvec ;
-    const int64_t *GB_RESTRICT Ch = C->h ;
-    const int64_t *GB_RESTRICT Cp = C->p ;
+    const int64_t *restrict Ch = C->h ;
+    const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
     GB_GET_MASK ;
     GB_GET_SCALAR ;

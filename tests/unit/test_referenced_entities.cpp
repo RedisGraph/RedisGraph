@@ -35,7 +35,7 @@ AST *buildAST(const char *query) {
 uint *getASTSegmentIndices(AST *ast) {
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
 	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-	segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root));
+	array_append(segment_indices, cypher_ast_query_nclauses(ast->root));
 	return segment_indices;
 }
 

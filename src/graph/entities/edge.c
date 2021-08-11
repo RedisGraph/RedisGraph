@@ -37,18 +37,18 @@ Node *Edge_GetDestNode(Edge *e) {
 	return e->dest;
 }
 
-GrB_Matrix Edge_GetMatrix(Edge *e) {
+RG_Matrix Edge_GetMatrix(Edge *e) {
 	ASSERT(e);
 
-	// Retrieve matrix from graph if edge matrix isn't set.
+	// retrieve matrix from graph if edge matrix isn't set
 	if(!e->mat) {
 		Graph *g = QueryCtx_GetGraph();
 
-		// Get relation matrix.
+		// get relation matrix
 		if(e->relationID == GRAPH_UNKNOWN_RELATION) {
 			e->mat = Graph_GetZeroMatrix(g);
 		} else {
-			e->mat = Graph_GetRelationMatrix(g, e->relationID);
+			e->mat = Graph_GetRelationMatrix(g, e->relationID, false);
 		}
 	}
 

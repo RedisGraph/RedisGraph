@@ -24,12 +24,20 @@
 //      int64_t *h ;            // always NULL
 
 //------------------------------------------------------------------------------
-// basic information: magic and type
+// basic information: magic, error logger, and type
 //------------------------------------------------------------------------------
 
+// The first four items exactly match the first four items in the
+// GrB_Descriptor struct.
+
 int64_t magic ;         // for detecting uninitialized objects
+size_t header_size ;    // size of the malloc'd block for this struct, or 0
+char *logger ;          // error logger string
+size_t logger_size ;    // size of the malloc'd block for logger, or 0
+
+// The remaining items are specific the GrB_Matrix, GrB_Vector and GxB_Scalar
+// structs, and do not appear in the GrB_Descriptor struct:
 GrB_Type type ;         // the type of each numerical entry
-char *logger ;          // for error logging
 
 //------------------------------------------------------------------------------
 // compressed sparse vector data structure
@@ -46,9 +54,9 @@ char *logger ;          // for error logging
 
 // For the sparse and hypersparse formats, Ap is an integer array of size
 // A->plen+1, with Ap [0] always zero.  The matrix contains A->nvec sparse
-// vectors, where A->nvec <= A->plen <= A->vdim.  The arrays Ai and Ax are both
-// of size A->nzmax, and define the indices and values in each sparse vector.
-// The total number of entries in the matrix is Ap [nvec] <= A->nzmax.
+// vectors, where A->nvec <= A->plen <= A->vdim.  The arrays Ai and Ax define
+// the indices and values in each sparse vector.  The total number of entries
+// in the matrix is Ap [nvec] <= GB_nnz_max (A).
 // For the bitmap and full sparsity structures, Ap and Ai are NULL.
 
 // For both hypersparse and non-hypersparse matrices, if A->nvec_nonempty is
@@ -129,7 +137,7 @@ char *logger ;          // for error logging
     // --------------------------------------
 
         // Ap, Ai, and Ax store a sparse matrix in the a very similar style
-        // as MATLAB and CSparse, as a collection of sparse column vectors.
+        // as CSparse, as a collection of sparse column vectors.
 
         // Column A(:,j) is held in two parts: the row indices are in
         // Ai [Ap [j]...Ap [j+1]-1], and the numerical values are in the
@@ -191,45 +199,10 @@ char *logger ;          // for error logging
         // A is m-by-n: where A->vdim = n, and A->vlen = m
 
 //------------------------------------------------------------------------------
-// GraphBLAS vs MATLAB vs CSparse
-//------------------------------------------------------------------------------
-
-// Like MATLAB, the indices in a completed GraphBLAS matrix (as implemented
-// here) are always kept sorted.  If all vectors in a matrix have row indices
-// in strictly ascending order, the matrix is called "unjumbled" in this code.
-// A matrix with one or more unsorted vectors is "jumbled".
-
-// GraphBLAS allows for pending operations, in a matrix with pending work.
-// Pending work includes one or more of the following (1) the presence of
-// zombies, (2) pending tuples, and (3) the matrix is jumbled.
-
-// Unlike MATLAB, explicit zeros are never dropped in a GraphBLAS matrix.  They
-// cannot be since the semiring "zero" might be something else, like -Infinity
-// for a max-plus semiring.  However, dropping zeros is a minor nuance in the
-// data structure.
-
-// Like GraphBLAS, CSparse also keeps explicit zeros.  CSparse allows its
-// matrices to be jumbled at any time, and this is not considered an unfinished
-// GraphBLAS matrix.
-
-// Finally, MATLAB only allows for boolean ("logical" class) and double
-// precision sparse matrices (complex and real).  CSparse only supports double.
-// By contrast, GraphBLAS supports any type, including types defined at run
-// time by the user application.  In the GraphBLAS code, the term "nonzero" is
-// sometimes used in the comments, but this is short-hand for the phrase "an
-// entry A(i,j) whose value is explicity held in the matrix and which appears
-// in the pattern; its value can be anything".  Entries not in the pattern are
-// simply "not there"; see for example GrB_*_extractElement.  The actual
-// numerical value of these implicit entries is dependent upon the identity
-// value of the semiring's monoid operation used on the matrix.  The actual
-// semiring is not held in the matrix itself, and there are no restrictions on
-// using a matrix in multiple semirings.
-
-//------------------------------------------------------------------------------
 // primary matrix content
 //------------------------------------------------------------------------------
 
-int64_t plen ;          // A->h has size plen, A->p has size plen+1
+int64_t plen ;          // size of A->p and A->h
 int64_t vlen ;          // length of each sparse vector
 int64_t vdim ;          // number of vectors in the matrix
 int64_t nvec ;          // number of non-empty vectors for hypersparse form,
@@ -238,39 +211,35 @@ int64_t nvec ;          // number of non-empty vectors for hypersparse form,
 int64_t nvec_nonempty ; // the actual number of non-empty vectors, or -1 if
                         // not known
 
-int64_t *h ;            // list of non-empty vectors of size plen
-int64_t *p ;            // array of size plen+1
-int64_t *i ;            // array of size nzmax
-void *x ;               // size nzmax; each entry of size A->type->size
-int8_t *b ;             // size nzmax; bitmap
-int64_t nzmax ;         // size of i and x arrays
+int64_t *h ;            // list of non-empty vectors: h_size >= 8*max(plen,1)
+int64_t *p ;            // pointers: p_size >= 8*(plen+1)
+int64_t *i ;            // indices:  i_size >= 8*max(anz,1)
+void *x ;               // values:   x_size >= max(anz*A->type->size,1),
+                        //           or x_size >= 1 if A is iso
+int8_t *b ;             // bitmap:   b_size >= max(anz,1)
 int64_t nvals ;         // nvals(A) if A is bitmap
+
+size_t p_size ;         // exact size of A->p in bytes, zero if A->p is NULL
+size_t h_size ;         // exact size of A->h in bytes, zero if A->h is NULL
+size_t b_size ;         // exact size of A->b in bytes, zero if A->b is NULL
+size_t i_size ;         // exact size of A->i in bytes, zero if A->i is NULL
+size_t x_size ;         // exact size of A->x in bytes, zero if A->x is NULL
 
 //------------------------------------------------------------------------------
 // pending tuples
 //------------------------------------------------------------------------------
 
-// The list of pending tuples is a feature that does not appear in MATLAB or
-// CSparse, although something like it appears in CHOLMOD as the "unpacked"
-// matrix format, which allows the pattern of a matrix to be modified when
-// updating/downdating a Cholesky factorization.
-
 // If an entry A(i,j) does not appear in the data structure, assigning A(i,j)=x
 // requires all entries in vectors j to the end of matrix to be shifted down by
-// one, taking up to O(nnz(A)) time to do so.  This very slow, and it is why in
-// both MATLAB and CSparse, the recommendation is to create a list of tuples,
-// and to build a sparse matrix all at once.  This is done by the MATLAB
-// "sparse" function, the CSparse "cs_compress", and the GraphBLAS
-// GrB_Matrix_build and GrB_Vector_build functions.
+// one, taking up to O(nnz(A)) time to do so.  This very slow.
 
-// MATLAB does not have a "non-blocking" mode of operation, so A(i,j)=x can be
-// very slow for a single scalar x.  With GraphBLAS' non-blocking mode, tuples
-// from GrB_setElement and GrB_*assign can be held in another format that is
-// easy to update: a conventional list of tuples, held inside the matrix
-// itself.  A list of tuples is easy to update but hard to work with in most
-// operations, so whenever another GraphBLAS method or operation needs to
-// access the matrix, the matrix is "flattened" by applying all the pending
-// tuples.
+// Without its "non-blocking" mode of operation, A(i,j)=x would be very slow
+// for a single scalar x.  With GraphBLAS' non-blocking mode, tuples from
+// GrB_setElement and GrB_*assign can be held in another format that is easy to
+// update: a conventional list of tuples, held inside the matrix itself.  A
+// list of tuples is easy to update but hard to work with in most operations,
+// so whenever another GraphBLAS method or operation needs to access the
+// matrix, the matrix is finalized by applying all the pending updates.
 
 // When a new entry is added that does not exist in the matrix, it is added to
 // this list of pending tuples.  Only when the matrix is needed in another
@@ -333,7 +302,7 @@ GB_Pending Pending ;        // list of pending tuples
 // in the right place in the matrix.  However, methods and operations in
 // GraphBLAS that cannot tolerate zombies in their input matries can check the
 // condition (A->nzombies > 0), and then delete all of them if they appear, via
-// GB_Matrix_wait.
+// GB_wait.
 
 uint64_t nzombies ;     // number of zombies marked for deletion
 
@@ -379,8 +348,8 @@ uint64_t nzombies ;     // number of zombies marked for deletion
 //      By default, all GrB_Matrices are held in CSR form, unless they are
 //      n-by-1 (then they are CSC).  The GrB_vector is always CSC.
 
-// (2) If A->sparsity is GxB_AUTO_SPARSITY (15), then the following rules are
-//      used to control the sparsity structure:
+// (2) If A->sparsity_control is GxB_AUTO_SPARSITY (15), then the following
+//      rules are used to control the sparsity structure:
 //
 //      (a) When a matrix is created, it is empty and starts as hypersparse,
 //          except that a GrB_Vector is never hypersparse.
@@ -391,9 +360,9 @@ uint64_t nzombies ;     // number of zombies marked for deletion
 //          A->hyper_switch = (1/16) by default.  See GB_convert*test.
 //
 //      (c) A matrix with all entries present is converted to full (anz =
-//          GB_NNZ(A) = anz_dense = (A->vlen)*(A->vdim)).
+//          GB_nnz (A) = anz_dense = (A->vlen)*(A->vdim)).
 //
-//      (d) A matrix with anz = GB_NNZ(A) entries and dimension A->vlen by
+//      (d) A matrix with anz = GB_nnz (A) entries and dimension A->vlen by
 //          A->vdim can have at most anz_dense = (A->vlen)*(A->vdim) entries.
 //          If A is sparse/hypersparse with anz > A->bitmap_switch * anz_dense,
 //          then it switches to bitmap.  If A is bitmap and anz =
@@ -402,7 +371,7 @@ uint64_t nzombies ;     // number of zombies marked for deletion
 
 float hyper_switch ;    // controls conversion hyper to/from sparse
 float bitmap_switch ;   // controls conversion sparse to/from bitmap
-int sparsity ;          // controls sparsity structure: hypersparse,
+int sparsity_control ;  // controls sparsity structure: hypersparse,
                         // sparse, bitmap, or full, or any combination.
 
 //------------------------------------------------------------------------------
@@ -424,6 +393,7 @@ bool h_shallow ;        // true if h is a shallow copy
 bool b_shallow ;        // true if b is a shallow copy
 bool i_shallow ;        // true if i is a shallow copy
 bool x_shallow ;        // true if x is a shallow copy
+bool static_header ;    // true if this struct is statically allocated
 
 //------------------------------------------------------------------------------
 // other bool content
@@ -434,12 +404,37 @@ bool jumbled ;          // true if the matrix may be jumbled.  bitmap and full
                         // matrices are never jumbled.
 
 //------------------------------------------------------------------------------
+// iso matrices
+//------------------------------------------------------------------------------
+
+// Entries that are present in a GraphBLAS matrix, vector, or scalar always
+// have a value, and thus the C API of GraphBLAS does not have a structure-only
+// data type, where the matrix, vector, or scalar consists only of its pattern,
+// with no values assign to the entries in the matrix.  Such an object might be
+// useful for representing unweighted graphs, but it would result in a
+// mathematical mismatch with all other objects.  Operations between valued
+// matrices and structure-only matrices would not be defined.
+
+// Instead, the common practice is to assign all entries present in the matrix
+// to be equal to a single value, typically 1 or true.  SuiteSparse:GraphBLAS
+// exploits this typical practice by allowing for iso matrices, where all
+// entries present have the same value, held as A->x [0].  The sparsity
+// structure is kept, so in an iso matrix, A(i,j) is either equal to A->x [0],
+// or not present in the sparsity pattern of A.
+
+// If A is full, A->x is the only component present, and thus a full iso matrix
+// takes only O(1) memory, regardless of its dimension.
+
+bool iso ;              // true if all entries have the same value
+
+//------------------------------------------------------------------------------
 // iterating through a matrix
 //------------------------------------------------------------------------------
 
 // The matrix can be held in 8 formats: (hypersparse, sparse, bitmap, full) x
-// (CSR, CSC).  The comments below assume A is in CSC format but the code works
-// for both CSR and CSC.
+// (CSR, CSC).  Each of these can also be iso.  The comments below
+// assume A is in CSC format but the code works for both CSR and CSC.
+// The type is assumed to be double, just for illustration.
 
 #ifdef for_comments_only    // only so vim will add color to the code below:
 
@@ -448,6 +443,7 @@ bool jumbled ;          // true if the matrix may be jumbled.  bitmap and full
 #define GBB(Ab,p)       ((Ab == NULL) ? 1 : Ab [p])
 #define GBP(Ap,k,avlen) ((Ap == NULL) ? ((k) * (avlen)) : Ap [k])
 #define GBH(Ah,k)       ((Ah == NULL) ? (k) : Ah [k])
+#define GBX(Ax,p,A_iso) (Ax [(A_iso) ? 0 : (p)])
 
     // A->vdim: the vector dimension of A (ncols(A))
     // A->nvec: # of vectors that appear in A.  For the hypersparse case,
@@ -466,7 +462,9 @@ bool jumbled ;          // true if the matrix may be jumbled.  bitmap and full
             int64_t pA_end   = (k+1) * vlen ;
             for (p = pA_start ; p < pA_end ; p++)
             {
-                // A(i,j) has row i = (p % vlen), value aij = Ax [p]
+                // entry A(i,j) with row index i and value aij
+                int64_t i = (p % vlen) ;
+                double aij = GBX (Ax, p, A->iso) ;
             }
         }
 
@@ -484,7 +482,9 @@ bool jumbled ;          // true if the matrix may be jumbled.  bitmap and full
             {
                 if (Ab [p] != 0)
                 {
-                    // A(i,j) has row i = (p % vlen), value aij = Ax [p]
+                    // entry A(i,j) with row index i and value aij
+                    int64_t i = (p % vlen) ;
+                    double aij = GBX (Ax, p, A->iso) ;
                 }
                 else
                 {
@@ -502,7 +502,9 @@ bool jumbled ;          // true if the matrix may be jumbled.  bitmap and full
             // operate on column A(:,j)
             for (p = Ap [k] ; p < Ap [k+1] ; p++)
             {
-                // A(i,j) has row i = Ai [p], value aij = Ax [p]
+                // entry A(i,j) with row index i and value aij
+                int64_t i = Ai [p] ;
+                double aij = GBX (Ax, p, A->iso) ;
             }
         }
 
@@ -515,7 +517,9 @@ bool jumbled ;          // true if the matrix may be jumbled.  bitmap and full
             // operate on column A(:,j)
             for (p = Ap [k] ; p < Ap [k+1] ; p++)
             {
-                // A(i,j) has row i = Ai [p], value aij = Ax [p]
+                // entry A(i,j) with row index i and value aij
+                int64_t i = Ai [p] ;
+                double aij = GBX (Ax, p, A->iso) ;
             }
         }
 
@@ -531,14 +535,12 @@ bool jumbled ;          // true if the matrix may be jumbled.  bitmap and full
             int64_t pA_end   = GBP (Ap, k+1, vlen) ;
             for (p = pA_start ; p < pA_end ; p++)
             {
-                // A(i,j) has row index i, value aij = Ax [p]
                 if (!GBB (Ab, p)) continue ;
+                // entry A(i,j) with row index i and value aij
                 int64_t i = GBI (Ai, p, vlen) ;
-                double aij = Ax [p] ;
+                double aij = GBX (Ax, p, A->iso) ;
             }
         }
 
 #endif
-
-// #include "GB_matrix_mkl_template.h"
 

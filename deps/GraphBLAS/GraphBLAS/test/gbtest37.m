@@ -3,7 +3,7 @@ function gbtest37
 % issymmetric, bandwith
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 rng ('default') ;
 nmax = 5 ;
@@ -14,6 +14,7 @@ for trial = 1:10
         for n = 1:nmax
             A = sprand (m, n, 0.5) ;
 
+            skew = false ;
             if (m == n)
                 if (mod (trial, 10) == 1)
                     % make A symmetric
@@ -21,6 +22,7 @@ for trial = 1:10
                 elseif (mod (trial, 10) == 2)
                     % make A skew symmetric
                     A = A - A' ;
+                    skew = true ;
                 end
             end
 
@@ -30,9 +32,11 @@ for trial = 1:10
                 C = A*A' ;
             end
 
-            if (rand < 0.1)
-                A = logical (A) ;
-                C = logical (C) ;
+            if (~skew)
+                if (rand < 0.1)
+                    A = logical (A) ;
+                    C = logical (C) ;
+                end
             end
 
             L = tril (A) ;
@@ -56,7 +60,7 @@ for trial = 1:10
             assert (gbtest_eq (C, GC)) ;
 
             if (~islogical (A))
-                % MATLAB istril, istriu, and isdiag
+                % built-in istril, istriu, and isdiag
                 % are not defined when A is logical.
                 assert (istril (A) == istril (GA)) ;
                 assert (istril (L) == istril (GL)) ;

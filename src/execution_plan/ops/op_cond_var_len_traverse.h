@@ -17,18 +17,23 @@ typedef struct {
 	OpBase op;
 	Graph *g;
 	Record r;
-	FT_FilterNode *ft;              /* If not NULL, FilterTree applied to the traversed edge. */
-	AlgebraicExpression *ae;        /* ArithmeticExpression describing the op's traversal pattern. */
-	int srcNodeIdx;                 /* Node set by operation. */
-	int edgesIdx;                   /* Edges set by operation. */
-	int destNodeIdx;                /* Node set by operation. */
-	bool expandInto;                /* Both src and dest already resolved. */
-	unsigned int minHops;           /* Maximum number of hops to perform. */
-	unsigned int maxHops;           /* Maximum number of hops to perform. */
-	int edgeRelationCount;          /* Length of edgeRelationTypes. */
-	int *edgeRelationTypes;         /* Relation(s) we're traversing. */
-	AllPathsCtx *allPathsCtx;
-	GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
+	RG_Matrix M;                           /* Traversed matrix if using the SimpleConsume routine. */
+	int edgesIdx;                          /* Edges set by operation. */
+	int srcNodeIdx;                        /* Node set by operation. */
+	int destNodeIdx;                       /* Node set by operation. */
+	bool expandInto;                       /* Both src and dest already resolved. */
+	FT_FilterNode *ft;                     /* If not NULL, FilterTree applied to traversed edge. */
+	unsigned int minHops;                  /* Maximum number of hops to perform. */
+	unsigned int maxHops;                  /* Maximum number of hops to perform. */
+	int edgeRelationCount;                 /* Length of edgeRelationTypes. */
+	int *edgeRelationTypes;                /* Relation(s) we're traversing. */
+	AlgebraicExpression *ae;               /* ArithmeticExpression describing op's traversal pattern. */
+	union {
+		AllPathsCtx *allPathsCtx;          /* Context for collecting all paths. */
+		AllNeighborsCtx *allNeighborsCtx;  /* Context for collecting all neighbors . */
+	};
+	bool collect_paths;                    /* Whether we must populate the entire path. */
+	GRAPH_EDGE_DIR traverseDir;            /* Traverse direction. */
 } CondVarLenTraverse;
 
 OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);

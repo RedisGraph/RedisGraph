@@ -27,8 +27,8 @@ ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const SIValue *args, cons
 	pdata->prop_id = 0;
 	pdata->gc = QueryCtx_GetGraphCtx();
 	pdata->output = array_new(SIValue, 2);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("propertyKey"));
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	array_append(pdata->output, SI_ConstStringVal("propertyKey"));
+	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -64,7 +64,7 @@ ProcedureCtx *Proc_PropKeysCtx() {
 	void *privateData = NULL;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
 	ProcedureOutput output = {.name = "propertyKey", .type = T_STRING};
-	outputs = array_append(outputs, output);
+	array_append(outputs, output);
 
 	ProcedureCtx *ctx = ProcCtxNew("db.propertyKeys",
 								   0,

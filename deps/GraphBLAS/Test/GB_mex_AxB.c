@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// This is for testing only.  See GrB_mxm instead.  Returns a plain MATLAB
+// This is for testing only.  See GrB_mxm instead.  Returns a plain built-in
 // matrix, in double.
 
 #include "GB_mex.h"
@@ -31,7 +31,7 @@
 
 GrB_Info info ;
 bool malloc_debug = false ;
-bool ignore = false, ignore2 = false ;
+bool ignore = false, ignore1 = false, ignore2 = false ;
 bool atranspose = false ;
 bool btranspose = false ;
 GrB_Matrix A = NULL, B = NULL, C = NULL, Aconj = NULL, Bconj = NULL,
@@ -42,6 +42,7 @@ int64_t anrows = 0 ;
 int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
+struct GB_Matrix_opaque C_header ;
 
 GrB_Desc_Value AxB_method = GxB_DEFAULT ;
 
@@ -64,11 +65,15 @@ GrB_Info axb (GB_Context Context)
         return (info) ;
     }
 
+    struct GB_Matrix_opaque MT_header ;
+    GrB_Matrix MT = GB_clear_static_header (&MT_header) ;
+
     // C = A*B, A'*B, A*B', or A'*B'
-    info = GB_AxB_meta (&C, NULL,       // C cannot be computed in place
+    info = GB_AxB_meta (C, NULL,
         false,      // C_replace
         true,       // CSC
-        NULL,       // no MT returned
+        MT,         // no MT returned
+        &ignore1,   // M_transposed will be false
         NULL,       // no Mask
         false,      // mask not complemented
         false,      // mask not structural
@@ -157,10 +162,14 @@ GrB_Info axb_complex (GB_Context Context)
         }
     }
 
-    info = GB_AxB_meta (&C, NULL,       // C cannot be computed in place
+    struct GB_Matrix_opaque MT_header ;
+    GrB_Matrix MT = GB_clear_static_header (&MT_header) ;
+
+    info = GB_AxB_meta (C, NULL,
         false,      // C_replace
         true,       // CSC
-        NULL,       // no MT returned
+        MT,         // no MT returned
+        &ignore1,   // M_transposed will be false
         NULL,       // no Mask
         false,      // mask not complemented
         false,      // mask not structural
@@ -197,6 +206,7 @@ void mexFunction
     info = GrB_SUCCESS ;
     malloc_debug = GB_mx_get_global (true) ;
     ignore = false ;
+    ignore1 = false ;
     ignore2 = false ;
     A = NULL ;
     B = NULL ;
@@ -265,6 +275,8 @@ void mexFunction
         mexErrMsgTxt ("invalid dimensions") ;
     }
 
+    C = GB_clear_static_header (&C_header) ;
+
     if (A->type == Complex)
     {
         METHOD (axb_complex (Context)) ;
@@ -274,7 +286,7 @@ void mexFunction
         METHOD (axb (Context)) ;
     }
 
-    // return C to MATLAB
+    // return C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;
 
     FREE_ALL ;

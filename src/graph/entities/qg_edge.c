@@ -39,6 +39,16 @@ bool QGEdge_VariableLength(const QGEdge *e) {
 	return (e->minHops != e->maxHops);
 }
 
+int QGEdge_RelationCount(const QGEdge *e) {
+	ASSERT(e);
+	return array_len(e->reltypes);
+}
+
+int QGEdge_RelationID(const QGEdge *e, int idx) {
+	ASSERT(e != NULL && idx < QGEdge_RelationCount(e));
+	return e->reltypeIDs[idx];
+}
+
 void QGEdge_Reverse(QGEdge *e) {
 	QGNode *src = e->src;
 	QGNode *dest = e->dest;
@@ -53,28 +63,26 @@ void QGEdge_Reverse(QGEdge *e) {
 	QGNode_ConnectNode(e->src, e->dest, e);
 }
 
-int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
-	ASSERT(e && buff);
+void QGEdge_ToString(const QGEdge *e, sds *buff) {
+	ASSERT(e && buff && *buff);
 
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "[");
+	*buff = sdscatprintf(*buff, "[");
 
-	if(e->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
-	uint reltype_count = array_len(e->reltypes);
+	if(e->alias) *buff = sdscatprintf(*buff, "%s", e->alias);
+	uint reltype_count = QGEdge_RelationCount(e);
 	for(uint i = 0; i < reltype_count; i ++) {
 		// Multiple relationship types are printed separated by pipe characters
-		if(i > 0) offset += snprintf(buff + offset, buff_len - offset, "|");
-		offset += snprintf(buff + offset, buff_len - offset, ":%s", e->reltypes[i]);
+		if(i > 0) *buff = sdscatprintf(*buff, "|");
+		*buff = sdscatprintf(*buff, ":%s", e->reltypes[i]);
 	}
 	if(e->minHops != 1 || e->maxHops != 1) {
 		if(e->maxHops == EDGE_LENGTH_INF)
-			offset += snprintf(buff + offset, buff_len - offset, "*%u..INF", e->minHops);
+			*buff = sdscatprintf(*buff, "*%u..INF", e->minHops);
 		else
-			offset += snprintf(buff + offset, buff_len - offset, "*%u..%u", e->minHops, e->maxHops);
+			*buff = sdscatprintf(*buff, "*%u..%u", e->minHops, e->maxHops);
 	}
 
-	offset += snprintf(buff + offset, buff_len - offset, "]");
-	return offset;
+	*buff = sdscatprintf(*buff, "]");
 }
 
 void QGEdge_Free(QGEdge *e) {

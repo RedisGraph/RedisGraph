@@ -1,12 +1,12 @@
 function gbmake (what)
-%GBMAKE compile MATLAB interface for SuiteSparse:GraphBLAS
+%GBMAKE compile @GrB interface for SuiteSparse:GraphBLAS
 %
 % Usage:
 %   gbmake
 %
-% gbmake compiles the MATLAB interface for SuiteSparse:GraphBLAS.  The
-% GraphBLAS library must already be compiled and installed.  MATLAB 9.4
-% (R2018a) or later is required.
+% gbmake compiles the @GrB interface for SuiteSparse:GraphBLAS.  The
+% GraphBLAS library must already be compiled and installed.
+% Octave 7 (recommended) or MATLAB 9.4 (R2018a) or later is required.
 %
 % For the Mac, the GraphBLAS library must be installed in /usr/local/lib/ as
 % libgraphblas.dylib.  It cannot be used where it is created in ../build,
@@ -15,11 +15,15 @@ function gbmake (what)
 % there.
 %
 % See also mex, version, GrB.clear.
-
+%
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
+
+fprintf ('Note that this @GrB interface is under the GNU GPLv3 (or later).\n') ;
+input ('Hit enter to confirm and agree; control-C to decline: ') ;
 
 have_octave = (exist ('OCTAVE_VERSION', 'builtin') == 5) ;
+need_rename = false ;
 
 if (have_octave)
     if verLessThan ('octave', '7')
@@ -29,12 +33,9 @@ else
     if verLessThan ('matlab', '9.4')
         error ('MATLAB 9.4 (R2018a) or later is required') ;
     end
-end
-
-% finish GraphBLAS
-try
-    GrB.finalize
-catch
+    % MATLAB 9.10 (R2021a) and following include a built-in GraphBLAS library
+    % that conflicts with this version, so rename this version.
+    need_rename = ~verLessThan ('matlab', '9.10') ;
 end
 
 if (nargin < 1)
@@ -43,17 +44,13 @@ end
 
 make_all = (isequal (what, 'all')) ;
 
+% use -R2018a for the new interleaved complex API
 if (have_octave)
-    %% Octave does not have the new MEX classdef object and as of
-    %% version 7, the mex command doesn't handle compiler options
-    %% the same way as MATLAB's mex command.
-
-    % use -R2018a for the new interleaved complex API
+    % Octave does not have the new MEX classdef object and as of version 7, the
+    % mex command doesn't handle compiler options the same way.
     flags = '-O -R2018a -std=c11 -fopenmp -fPIC -Wno-pragmas' ;
 else
-    % use -R2018a for the new interleaved complex API
     flags = '-O -R2018a' ;
-
     try
         if (strncmp (computer, 'GLNX', 4))
             % remove -ansi from CFLAGS and replace it with -std=c11
@@ -99,11 +96,15 @@ if ispc
     %   devenv graphblas.sln /build "release|x64" /project graphblas
     %
     % The above commands require MS Visual Studio.  The graphblas.lib is
-    % compiled and placed in GraphBLAS/build/Release.  Then in MATLAB in this
-    % folder, do:
+    % compiled and placed in GraphBLAS/build/Release.  Then in the
+    % Command Window do:
     %
     %   gbmake
-    library = sprintf ('%s/../../../build/Release', pwd) ;
+    if (need_rename)
+        library = sprintf ('%s/../../build/Release', pwd) ;
+    else
+        library = sprintf ('%s/../../../build/Release', pwd) ;
+    end
 else
     % First do one the following in GraphBLAS (use JOBS=n for a parallel
     % build, which is faster):
@@ -113,10 +114,27 @@ else
     %   sudo make install
     %
     % If you can't do "sudo make install" then add the GraphBLAS/build
-    % folder to your LD_LIBRARY_PATH.  Then in this folder in MATLAB do:
+    % folder to your LD_LIBRARY_PATH.  Then in this folder in the
+    % Command Window do:
     %
     %   gbmake
-    library = sprintf ('%s/../../../build', pwd) ;
+    if (need_rename)
+        library = sprintf ('%s/../../build', pwd) ;
+    else
+        library = sprintf ('%s/../../../build', pwd) ;
+    end
+end
+
+if (need_rename)
+    fprintf ('R2021a and later include an earlier version of\n') ;
+    fprintf ('GraphBLAS, as a built-in library.  This interface to the\n') ;
+    fprintf ('latest version of GraphBLAS links against a library with\n') ;
+    fprintf ('with renamed symbols, to avoid a library conflict.\n') ;
+    flags = [flags ' -DGBRENAME=1 ' ] ;
+    inc = [inc ' -I../../rename ' ] ;
+    libgraphblas = '-lgraphblas_renamed' ;
+else
+    libgraphblas = '-lgraphblas' ;
 end
 
 ldflags = sprintf ('-L''%s''', library) ;
@@ -190,8 +208,8 @@ for k = 1:length (mexfunctions)
     % compile if it is newer than its object file, or if any cfile was compiled
     if (make_all || tc > tobj || any_c_compiled)
         % compile the mexFunction
-        mexcmd = sprintf ('mex %s -silent %s %s ''%s'' %s -lgraphblas', ...
-            ldflags, flags, inc, mexfunction, objlist) ;
+        mexcmd = sprintf ('mex %s -silent %s %s ''%s'' %s %s', ...
+            ldflags, flags, inc, mexfunction, objlist, libgraphblas) ;
         % fprintf ('%s\n', mexcmd) ;
         fprintf (':') ;
         eval (mexcmd) ;
@@ -200,13 +218,7 @@ end
 
 fprintf ('\n') ;
 
-% start GraphBLAS
-try
-    GrB.init
-catch
-end
-
-fprintf ('Compilation of the MATLAB interface to GraphBLAS is complete.\n') ;
+fprintf ('Compilation of the @GrB interface to GraphBLAS is complete.\n') ;
 fprintf ('Add the following commands to your startup.m file:\n\n') ;
 here1 = cd ('../..') ;
 addpath (pwd) ;

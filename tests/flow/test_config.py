@@ -19,12 +19,6 @@ class testConfig(FlowTestsBase):
     def test01_config_get(self):
         global redis_graph
 
-        # Try reading 'MAINTAIN_TRANSPOSED_MATRICES' from config
-        config_name = "MAINTAIN_TRANSPOSED_MATRICES"
-        response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
-        expected_response = [config_name, 1]
-        self.env.assertEqual(response, expected_response)
-
         # Try reading 'QUERY_MEM_CAPACITY' from config
         config_name = "QUERY_MEM_CAPACITY"
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
@@ -34,8 +28,8 @@ class testConfig(FlowTestsBase):
         # Try reading all configurations
         config_name = "*"
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
-        # At least 10 configurations should be reported
-        self.env.assertGreaterEqual(len(response), 10)
+        # At least 9 configurations should be reported
+        self.env.assertGreaterEqual(len(response), 9)
 
     def test02_config_get_invalid_name(self):
         global redis_graph
@@ -66,9 +60,8 @@ class testConfig(FlowTestsBase):
         expected_response = [config_name, config_value]
         self.env.assertEqual(response, expected_response)
 
-
         config_name = "QUERY_MEM_CAPACITY"
-        config_value = 1<<30 # 1GB
+        config_value = 1<<20 # 1MB
 
         # Set configuration
         response = redis_con.execute_command("GRAPH.CONFIG SET %s %d" % (config_name, config_value))
@@ -79,10 +72,57 @@ class testConfig(FlowTestsBase):
         expected_response = [config_name, config_value]
         self.env.assertEqual(response, expected_response)
 
-    def test04_config_set_invalid_name(self):
-        global redis_graph
+    def test04_config_set_multi(self):
+        # Set multiple configuration values
+        response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 3 QUERY_MEM_CAPACITY 100")
+        self.env.assertEqual(response, "OK")
 
-        # Ensure that getter fails on invalid parameters appropriately
+        # Make sure both values been updated
+        names = ["RESULTSET_SIZE", "QUERY_MEM_CAPACITY"]
+        values = [3, 100]
+        for name, val in zip(names, values):
+            response = redis_con.execute_command("GRAPH.CONFIG GET %s" % name)
+            expected_response = [name, val]
+            self.env.assertEqual(response, expected_response)
+
+    def test05_config_set_invalid_multi(self):
+        # Get current configuration
+        prev_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
+
+        try:
+            # Set multiple configuration values, VKEY_MAX_ENTITY_COUNT is NOT
+            # a runtime configuration, expecting this command to fail
+            response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 VKEY_MAX_ENTITY_COUNT 40")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Field can not be re-configured" in str(e))
+        
+        try:
+            # Set multiple configuration values, FAKE_CONFIG_NAME is NOT a valid
+            # configuration, expecting this command to fail
+            response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 FAKE_CONFIG_NAME 40")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Unknown configuration field" in str(e))
+
+        try:
+            # Set multiple configuration values, -1 is not a valid value for
+            # MAX_QUEUED_QUERIES, expecting this command to fail
+            response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 150 MAX_QUEUED_QUERIES -1")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Failed to set config value" in str(e))
+
+        # make sure configuration wasn't modified
+        current_conf = redis_con.execute_command("GRAPH.CONFIG GET *")
+        self.env.assertEqual(prev_conf, current_conf)
+
+    def test06_config_set_invalid_name(self):
+
+        # Ensure that setter fails on unknown configuration field
         fake_config_name = "FAKE_CONFIG_NAME"
 
         try:
@@ -93,8 +133,7 @@ class testConfig(FlowTestsBase):
             assert("Unknown configuration field" in str(e))
             pass
 
-    def test05_config_invalid_subcommand(self):
-        global redis_graph
+    def test07_config_invalid_subcommand(self):
 
         # Ensure failure on invalid sub-command, e.g. GRAPH.CONFIG DREP...
         config_name = "RESULTSET_SIZE"

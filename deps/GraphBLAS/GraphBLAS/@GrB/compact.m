@@ -1,12 +1,12 @@
 function [C, I, J] = compact (A, id)
 %GRB.COMPACT remove empty rows and columns from a matrix.
 % C = GrB.compact (A) returns rows and columns from A that have no entries.
-% It has no effect on a MATLAB full matrix, except to convert it to a
-% GraphBLAS matrix, since all entries are present in a MATLAB full matrix.
+% It has no effect on a full matrix, except to convert it to a
+% GraphBLAS matrix, since all entries are present in a full matrix.
 %
 % Explicit zeros in A are treated as entries, and are not removed by
 % default.  To remove rows and columns with no entries or only explicit
-% zero entries, use C = GrB.compact (A,0).  For a MATLAB sparse matrix,
+% zero entries, use C = GrB.compact (A,0).  For a sparse matrix,
 % GrB.compact (A,0) and GrB.compact (A) are identical.
 %
 % To remove rows and colums that either have no entries, or that only have
@@ -35,7 +35,7 @@ function [C, I, J] = compact (A, id)
 % See also GrB.entries, GrB.nonz, GrB.prune.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;
@@ -48,7 +48,7 @@ if (nargin > 1)
         % prune a nonzero identity value from A
         A = gbselect (A, '~=', id) ;
     elseif (~builtin ('issparse', A))
-        % prune zeros from A, but skip this if A is a MATLAB sparse matrix
+        % prune zeros from A
         A = gbselect (A, 'nonzero') ;
     end
 end

@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// All of the GB_qsort_* functions are single-threaded, by design.  Both
+// All of the GB_qsort_* functions are single-threaded, by design.  The
 // GB_msort_* functions are parallel.  None of these sorting methods are
 // guaranteed to be stable, but they are always used in GraphBLAS with unique
 // keys.
@@ -18,95 +18,97 @@
 
 #define GB_BASECASE (64 * 1024)
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 void GB_qsort_1b    // sort array A of size 2-by-n, using 1 key (A [0][])
 (
-    int64_t *GB_RESTRICT A_0,      // size n array
-    GB_void *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,      // size n array
+    GB_void *restrict A_1,      // size n array
     const size_t xsize,         // size of entries in A_1
     const int64_t n
 ) ;
 
 void GB_qsort_1b_size1  // GB_qsort_1b with A1 with sizeof = 1
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint8_t *GB_RESTRICT A_1,       // size n array
+    int64_t *restrict A_0,       // size n array
+    uint8_t *restrict A_1,       // size n array
     const int64_t n
 ) ;
 
 void GB_qsort_1b_size2  // GB_qsort_1b with A1 with sizeof = 2
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint16_t *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,       // size n array
+    uint16_t *restrict A_1,      // size n array
     const int64_t n
 ) ;
 
 void GB_qsort_1b_size4  // GB_qsort_1b with A1 with sizeof = 4
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint32_t *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,       // size n array
+    uint32_t *restrict A_1,      // size n array
     const int64_t n
 ) ;
 
 void GB_qsort_1b_size8  // GB_qsort_1b with A_1 with sizeof = 8
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    uint64_t *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,       // size n array
+    uint64_t *restrict A_1,      // size n array
     const int64_t n
 ) ;
-
-typedef struct
-{
-    uint8_t stuff [16] ;            // not accessed directly
-}
-GB_blob16 ;                         // sizeof (GB_blob16) is 16.
 
 void GB_qsort_1b_size16 // GB_qsort_1b with A_1 with sizeof = 16
 (
-    int64_t *GB_RESTRICT A_0,       // size n array
-    GB_blob16 *GB_RESTRICT A_1,     // size n array
+    int64_t *restrict A_0,       // size n array
+    GB_blob16 *restrict A_1,     // size n array
     const int64_t n
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
-void GB_qsort_1a    // sort array A of size 1-by-n
+GB_PUBLIC
+void GB_qsort_1    // sort array A of size 1-by-n
 (
-    int64_t *GB_RESTRICT A_0,      // size n array
+    int64_t *restrict A_0,      // size n array
     const int64_t n
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 void GB_qsort_2     // sort array A of size 2-by-n, using 2 keys (A [0:1][])
 (
-    int64_t *GB_RESTRICT A_0,      // size n array
-    int64_t *GB_RESTRICT A_1,      // size n array
+    int64_t *restrict A_0,      // size n array
+    int64_t *restrict A_1,      // size n array
     const int64_t n
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 void GB_qsort_3     // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 (
-    int64_t *GB_RESTRICT A_0,      // size n array
-    int64_t *GB_RESTRICT A_1,      // size n array
-    int64_t *GB_RESTRICT A_2,      // size n array
+    int64_t *restrict A_0,      // size n array
+    int64_t *restrict A_1,      // size n array
+    int64_t *restrict A_2,      // size n array
     const int64_t n
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
-GrB_Info GB_msort_2b    // sort array A of size 2-by-n, using 2 keys (A [0:1][])
+GB_PUBLIC
+GrB_Info GB_msort_1     // sort array A of size 1-by-n
 (
-    int64_t *GB_RESTRICT A_0,   // size n array
-    int64_t *GB_RESTRICT A_1,   // size n array
+    int64_t *restrict A_0,   // size n array
     const int64_t n,
     int nthreads                // # of threads to use
 ) ;
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
-GrB_Info GB_msort_3b    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
+GB_PUBLIC
+GrB_Info GB_msort_2    // sort array A of size 2-by-n, using 2 keys (A [0:1][])
 (
-    int64_t *GB_RESTRICT A_0,   // size n array
-    int64_t *GB_RESTRICT A_1,   // size n array
-    int64_t *GB_RESTRICT A_2,   // size n array
+    int64_t *restrict A_0,   // size n array
+    int64_t *restrict A_1,   // size n array
+    const int64_t n,
+    int nthreads                // # of threads to use
+) ;
+
+GB_PUBLIC
+GrB_Info GB_msort_3    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
+(
+    int64_t *restrict A_0,   // size n array
+    int64_t *restrict A_1,   // size n array
+    int64_t *restrict A_2,   // size n array
     const int64_t n,
     int nthreads                // # of threads to use
 ) ;
@@ -127,7 +129,7 @@ GrB_Info GB_msort_3b    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 
 // A [a] and B [b] are keys of two integers.
 
-// GB_lt_2 returns true if A [a] < B [b], for GB_qsort_2 and GB_msort_2b
+// GB_lt_2 returns true if A [a] < B [b], for GB_qsort_2 and GB_msort_2
 
 #define GB_lt_2(A_0, A_1, a, B_0, B_1, b)                                   \
 (                                                                           \
@@ -155,7 +157,7 @@ GrB_Info GB_msort_3b    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 
 // A [a] and B [b] are keys of three integers.
 
-// GB_lt_3 returns true if A [a] < B [b], for GB_qsort_3 and GB_msort_3b
+// GB_lt_3 returns true if A [a] < B [b], for GB_qsort_3 and GB_msort_3
 
 #define GB_lt_3(A_0, A_1, A_2, a, B_0, B_1, B_2, b)                         \
 (                                                                           \
@@ -178,7 +180,7 @@ GrB_Info GB_msort_3b    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 )
 
 //------------------------------------------------------------------------------
-// GB_eq_*: sorting comparator function, three keys
+// GB_eq_*: sorting comparator function, one to three keys
 //------------------------------------------------------------------------------
 
 // A [a] and B [b] are keys of two or three integers.
@@ -195,6 +197,11 @@ GrB_Info GB_msort_3b    // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 (                                                                           \
     (A_0 [a] == B_0 [b]) &&                                                 \
     (A_1 [a] == B_1 [b])                                                    \
+)
+
+#define GB_eq_1(A_0, a, B_0, b)                                             \
+(                                                                           \
+    (A_0 [a] == B_0 [b])                                                    \
 )
 
 //------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 function C = ne (A, B)
 %A ~= B not equal.
-% C = (A ~= B) is an element-by-element comparison of A and B.  One or
+% C = (A ~= B) compares A and B element-by-element.  One or
 % both may be scalars.  Otherwise, A and B must have the same size.
 %
 % See also GrB/lt, GrB/le, GrB/gt, GrB/ge, GrB/eq.
@@ -16,7 +16,7 @@ function C = ne (A, B)
 % Zeroes are then dropped from C after it is computed.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;

@@ -19,7 +19,7 @@ QGNode **BFS(QGNode *s, int *level) {
 	QGNode **next = array_new(QGNode *, 0);     // Nodes to explore next.
 	QGNode **current = array_new(QGNode *, 1);  // Nodes currently explored.
 
-	current = array_append(current, s);
+	array_append(current, s);
 
 	// As long as we've yet to reach required level and there are nodes to process.
 	while(current_level < *level && array_len(current)) {
@@ -36,14 +36,14 @@ QGNode **BFS(QGNode *s, int *level) {
 				QGEdge *e = n->outgoing_edges[j];
 				seen = raxFind(visited, (unsigned char *)e->dest->alias, strlen(e->dest->alias));
 				if(seen == raxNotFound) {
-					next = array_append(next, e->dest);
+					array_append(next, e->dest);
 				}
 			}
 			for(int j = 0; j < array_len(n->incoming_edges); j++) {
 				QGEdge *e = n->incoming_edges[j];
 				seen = raxFind(visited, (unsigned char *)e->src->alias, strlen(e->src->alias));
 				if(seen == raxNotFound) {
-					next = array_append(next, e->src);
+					array_append(next, e->src);
 				}
 			}
 
