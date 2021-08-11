@@ -210,11 +210,13 @@ static Record IndexScanConsume(OpBase *opBase) {
 static OpResult IndexScanReset(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 
-	if(op->rebuild_index_query) {
-		RediSearch_ResultsIteratorFree(op->iter);
-		op->iter = NULL;
-	} else {
-		RediSearch_ResultsIteratorReset(op->iter);
+	if(op->iter != NULL) {
+		if(op->rebuild_index_query) {
+			RediSearch_ResultsIteratorFree(op->iter);
+			op->iter = NULL;
+		} else {
+			RediSearch_ResultsIteratorReset(op->iter);
+		}
 	}
 
 	return OP_OK;

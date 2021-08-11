@@ -399,7 +399,7 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 }
 
 //------------------------------------------------------------------------------
-// Execution plan draining
+// Execution plan abort
 //------------------------------------------------------------------------------
 
 // NOP operation consume routine for immediately terminating execution.
@@ -407,26 +407,46 @@ static Record deplete_consume(struct OpBase *op) {
 	return NULL;
 }
 
-// return true if execution plan been drained
-// false otherwise
-bool ExecutionPlan_Drained(ExecutionPlan *plan) {
-	ASSERT(plan != NULL);
-	ASSERT(plan->root != NULL);
-	return (plan->root->consume == deplete_consume);
-}
-
 static void _ExecutionPlan_Drain(OpBase *root) {
-	root->consume = deplete_consume;
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_Drain(root->children[i]);
+	ASSERT(root->parent == NULL);
+
+	OpBase **ops = array_new(OpBase*, 1);
+	array_append(ops, root);
+
+	while(array_len(ops) != 0) {
+		OpBase *op = array_pop(ops);
+		op->consume = deplete_consume;
+
+		for(int i = 0; i < op->childCount; i++) {
+			array_append(ops, op->children[i]);
+		}
 	}
+
+	array_free(ops);
 }
 
-// Resets each operation consume function to simply return NULL
+// return true if execution plan been drained, set's reason to abort reason
+bool ExecutionPlan_Aborted(const ExecutionPlan *plan,
+		ExecutionPlan_AbortReason *reason) {
+	ASSERT(plan != NULL);
+	ASSERT(reason != NULL);
+
+	*reason = plan->abort_reason;
+	return plan->abort_reason != EXEC_PLAN_ABORT_NONE;
+}
+
+// resets each operation consume function to simply return NULL
 // this will cause the execution-plan to quickly deplete
-void ExecutionPlan_Drain(ExecutionPlan *plan) {
-	ASSERT(plan && plan->root);
-	_ExecutionPlan_Drain(plan->root);
+void ExecutionPlan_Abort(OpBase *root, ExecutionPlan_AbortReason reason) {
+	ASSERT(root);
+
+	// search for execution plan root operation
+	while(root->parent != NULL) root = root->parent;
+
+	ExecutionPlan *plan = (ExecutionPlan*)root->plan;
+	plan->abort_reason = reason;
+
+	_ExecutionPlan_Drain(root);
 }
 
 //------------------------------------------------------------------------------

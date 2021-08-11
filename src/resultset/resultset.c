@@ -207,11 +207,13 @@ void ResultSet_IndexDeleted(ResultSet *set, int status_code) {
 	}
 }
 
-void ResultSet_CachedExecution(ResultSet *set) {
-	set->stats.cached = true;
+inline void ResultSet_CachedExecution(ResultSet *set, bool cached) {
+	set->stats.cached = cached;
 }
 
 void ResultSet_Reply(ResultSet *set) {
+	if(set == NULL) return;
+
 	uint64_t row_count = ResultSet_RowCount(set);
 	/* Check to see if we've encountered a run-time error.
 	 * If so, emit it as the only response. */

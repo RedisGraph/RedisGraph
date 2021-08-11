@@ -111,6 +111,30 @@ int ThreadPools_GetThreadID
 	return 0; // assuming Redis main thread
 }
 
+// returns true if caller thread is a READER thread, false otherwise
+bool ThreadPools_AmReader
+(
+	void
+) {
+	ASSERT(_writers_thpool != NULL);
+
+	int thread_id;
+	pthread_t pthread = pthread_self();
+
+	// see if pthread is in the writers thread pool
+	thread_id = thpool_get_thread_id(_writers_thpool, pthread);
+
+	// true if pthread is not in writers pool
+	return (thread_id == -1);
+}
+
+bool ThreadPools_AmWriter
+(
+	void
+) {
+	return !ThreadPools_AmReader();
+}
+
 // pause all thread pools
 void ThreadPools_Pause
 (

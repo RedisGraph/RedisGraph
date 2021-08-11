@@ -18,6 +18,10 @@
 #include "../execution_plan/execution_plan.h"
 #include "execution_ctx.h"
 
+// forward declaration
+void Graph_Query(void *args);
+static void _ExecuteQuery(void *args);
+
 // GraphQueryCtx stores the allocations required to execute a query.
 typedef struct {
 	GraphContext *graph_ctx;  // graph context
@@ -28,6 +32,70 @@ typedef struct {
 	bool readonly_query;      // read only query
 	bool profile;             // profile query
 } GraphQueryCtx;
+
+static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
+	ASSERT(gq_ctx != NULL);
+
+	//---------------------------------------------------------------------------
+	// Migrate to writer thread
+	//---------------------------------------------------------------------------
+
+	// write queries will be executed on a dedicated writer thread,
+	// clear this thread data
+	ErrorCtx_Clear();
+	QueryCtx_RemoveFromTLS();
+
+	// untrack the CommandCtx
+	CommandCtx_UntrackCtx(gq_ctx->command_ctx);
+
+	// update execution thread to writer
+	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
+
+	// dispatch work to the writer thread
+	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx);
+	ASSERT(res == 0);
+}
+
+static void _RestartQueryAsWriter(GraphQueryCtx *gq_ctx) {
+	ASSERT(gq_ctx != NULL);
+
+	GraphContext  *gc           =  gq_ctx->graph_ctx;
+	CommandCtx    *command_ctx  =  gq_ctx->command_ctx;
+
+	GraphContext_IncreaseRefCount(gc);
+	CommandCtx_UntrackCtx(command_ctx);
+	ThreadPools_AddWorkWriter(Graph_Query, command_ctx);
+}
+
+// check to see if query performs only merge operations
+// if it does we also require that the merge operation doesn't include a
+// ON MATCH directive
+// for example: MERGE ({v:1})
+//              MATCH (n) WHERE n.x > 2 MERGE (n)-[:R]->({v:1})
+//              MERGE (n:L {x:2}) ON CREATE n.v = 1
+static bool _optimistic_merge_query(ExecutionCtx *exec_ctx) {
+	// quick return if this is an index create/delete query
+	if(exec_ctx->exec_type != EXECUTION_TYPE_QUERY) return false;
+
+	AST *ast = exec_ctx->ast;
+	// forbiden clauses
+	// return false if query contains one of the following clauses
+	cypher_astnode_type_t t[3] = {
+		CYPHER_AST_SET,
+		CYPHER_AST_CREATE,
+		CYPHER_AST_DELETE
+	};
+
+	// check if query contains a MERGE clause
+	if(!AST_ContainsClause(ast, CYPHER_AST_MERGE)) return false;
+
+	if(AST_TreeContainsType(ast->root, CYPHER_AST_ON_MATCH)) return false;
+
+	// verify query doesn't contains any of the forbiden clauses
+	for(int i = 0; i < 3; i++) if(AST_ContainsClause(ast, t[i])) return false;
+
+	return true;
+}
 
 static GraphQueryCtx *GraphQueryCtx_New
 (
@@ -101,7 +169,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 void QueryTimedOut(void *pdata) {
 	ASSERT(pdata);
 	ExecutionPlan *plan = (ExecutionPlan *)pdata;
-	ExecutionPlan_Drain(plan);
+	ExecutionPlan_Abort(plan->root, EXEC_PLAN_ABORT_TIMEOUT);
 
 	/* Timer may have triggered after execution-plan ran to completion
 	 * in which case the original query thread had called ExecutionPlan_Free
@@ -130,18 +198,18 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
-	GraphQueryCtx   *gq_ctx       =  args;
-	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
-	GraphContext    *gc           =  gq_ctx->graph_ctx;
-	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
-	bool            profile       =  gq_ctx->profile;
-	bool            readonly      =  gq_ctx->readonly_query;
-	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
-	CommandCtx      *command_ctx  =  gq_ctx->command_ctx;
-	AST             *ast          =  exec_ctx->ast;
-	ExecutionPlan   *plan         =  exec_ctx->plan;
-	ExecutionType   exec_type     =  exec_ctx->exec_type;
-
+	GraphQueryCtx   *gq_ctx            =  args;
+	GraphContext    *gc                =  gq_ctx->graph_ctx;
+	RedisModuleCtx  *rm_ctx            =  gq_ctx->rm_ctx;
+	bool            profile            =  gq_ctx->profile;
+	bool            readonly           =  gq_ctx->readonly_query;
+	bool            execution_aborted  =  false;
+	ExecutionCtx    *exec_ctx          =  gq_ctx->exec_ctx;
+	QueryCtx        *query_ctx         =  gq_ctx->query_ctx;
+	CommandCtx      *command_ctx       =  gq_ctx->command_ctx;
+	AST             *ast               =  exec_ctx->ast;
+	ExecutionPlan   *plan              =  exec_ctx->plan;
+	ExecutionType   exec_type          =  exec_ctx->exec_type;
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
 	if(command_ctx->thread == EXEC_THREAD_WRITER) {
@@ -149,7 +217,9 @@ static void _ExecuteQuery(void *args) {
 		CommandCtx_TrackCtx(command_ctx);
 	}
 
-	// instantiate the query ResultSet
+	//--------------------------------------------------------------------------
+	// instantiate ResultSet
+	//--------------------------------------------------------------------------
 	bool compact = command_ctx->compact;
 	ResultSetFormatterType resultset_format = profile
 		? FORMATTER_NOP 
@@ -157,7 +227,7 @@ static void _ExecuteQuery(void *args) {
 			? FORMATTER_COMPACT 
 			: FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
-	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
+	ResultSet_CachedExecution(result_set, exec_ctx->cached);
 
 	QueryCtx_SetResultSet(result_set);
 
@@ -175,77 +245,86 @@ static void _ExecuteQuery(void *args) {
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	}
 
-	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
-		// set policy after lock acquisition,
-		// avoid resetting policies between readers and writers
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	switch(exec_type) {
+		case EXECUTION_TYPE_QUERY:  // query operation
+			// set policy after lock acquisition,
+			// avoid resetting policies between readers and writers
+			Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
-		ExecutionPlan_PreparePlan(plan);
-		if(profile) {
-			ExecutionPlan_Profile(plan);
-			ExecutionPlan_Print(plan, rm_ctx);
-		}
-		else {
-			result_set = ExecutionPlan_Execute(plan);
-		}
+			ExecutionPlan_PreparePlan(plan);
+			if(profile) {
+				ExecutionPlan_Profile(plan);
+				ExecutionPlan_Print(plan, rm_ctx);
+			}
+			else {
+				result_set = ExecutionPlan_Execute(plan);
+			}
 
-		// Emit error if query timed out.
-		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
+			// see if execution was aborted
+			// 1. timeout reached
+			// 2. optimistic read wants to write
+			ExecutionPlan_AbortReason abort_reason;
+			execution_aborted = ExecutionPlan_Aborted(plan, &abort_reason);
 
-		ExecutionPlan_Free(plan);
-		exec_ctx->plan = NULL;
-	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
-		_index_operation(rm_ctx, gc, ast, exec_type);
-	} else {
-		ASSERT("Unhandled query type" && false);
+			ExecutionPlan_Free(plan);
+			exec_ctx->plan = NULL;
+
+			// handle execution plan abort
+			if(execution_aborted) {
+				switch(abort_reason) {
+					case EXEC_PLAN_ABORT_TIMEOUT:
+						// emit error if query timed out
+						ErrorCtx_SetError("Query timed out");
+						break;
+					case EXEC_PLAN_ABORT_OPTIMISTIC_READ:
+						ASSERT(readonly);
+						Graph_ReleaseLock(gc->g);
+						_RestartQueryAsWriter(gq_ctx);
+						command_ctx = NULL;
+						goto cleanup;
+						break;
+					case EXEC_PLAN_ABORT_NONE:
+						ASSERT("Unexpected abort reason");
+						break;
+					default:
+						ASSERT("Unexpected abort reason");
+						break;
+				}
+			}
+
+			break;
+
+		case EXECUTION_TYPE_INDEX_CREATE:
+		case EXECUTION_TYPE_INDEX_DROP:
+			_index_operation(rm_ctx, gc, ast, exec_type);
+			break;
+		default:
+			ASSERT("Unhandled query type" && false);
+			break;
 	}
 
 	QueryCtx_ForceUnlockCommit();
+
+	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
 
 	if(!profile) {
 		// send result-set back to client
 		ResultSet_Reply(result_set);
 	}
 
-	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
-
 	// log query to slowlog
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
-				QueryCtx_GetExecutionTime(), NULL);
+			QueryCtx_GetExecutionTime(), NULL);
 
-	// clean up
+cleanup:
+	ResultSet_Free(result_set);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // reset the QueryCtx and free its allocations
 	ErrorCtx_Clear();
-	ResultSet_Free(result_set);
 	GraphQueryCtx_Free(gq_ctx);
-}
-
-static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
-	ASSERT(gq_ctx != NULL);
-
-	//---------------------------------------------------------------------------
-	// Migrate to writer thread
-	//---------------------------------------------------------------------------
-
-	// write queries will be executed on a dedicated writer thread,
-	// clear this thread data
-	ErrorCtx_Clear();
-	QueryCtx_RemoveFromTLS();
-
-	// untrack the CommandCtx
-	CommandCtx_UntrackCtx(gq_ctx->command_ctx);
-
-	// update execution thread to writer
-	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
-
-	// dispatch work to the writer thread
-	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx);
-	ASSERT(res == 0);
 }
 
 void _query(bool profile, void *args) {
@@ -267,6 +346,7 @@ void _query(bool profile, void *args) {
 	// parse query parameters and build an execution plan or retrieve it from the cache
 	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
+	AST *ast = exec_ctx->ast;
 
 	ExecutionType exec_type = exec_ctx->exec_type;
 
@@ -277,7 +357,7 @@ void _query(bool profile, void *args) {
 		goto cleanup;
 	}
 
-	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
+	bool readonly = AST_ReadOnly(ast->root);
 
 	// write query executing via GRAPH.RO_QUERY isn't allowed
 	if(!profile && !readonly && _readonly_cmd_mode(command_ctx)) {
@@ -292,15 +372,24 @@ void _query(bool profile, void *args) {
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
-	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
-											  readonly, profile);
+	GraphQueryCtx *gq_ctx = NULL;
 
-	// if 'thread' is redis main thread, continue running
-	// if readonly is true we're executing on a worker thread from
-	// the read-only threadpool
-	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
+	if(ThreadPools_AmWriter()) {
+		// already on a writer thread
+		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, false, profile);
+		_ExecuteQuery(gq_ctx);
+	} else if(command_ctx->thread == EXEC_THREAD_MAIN) {
+		// execute on Redis main thread
+		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, readonly, profile);
+		_ExecuteQuery(gq_ctx);
+	} else if(readonly || _optimistic_merge_query(exec_ctx)) {
+		// optimistic merge
+		// if readonly is true we're executing on a reader worker thread
+		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, true, profile);
 		_ExecuteQuery(gq_ctx);
 	} else {
+		// writer query on reader thread, delegate to a writer thread
+		gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx, false, profile);
 		_DelegateWriter(gq_ctx);
 	}
 

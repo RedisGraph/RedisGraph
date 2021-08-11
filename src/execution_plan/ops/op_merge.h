@@ -17,6 +17,7 @@
  * not bound in an earlier clause in the query. */
 typedef struct {
 	OpBase op;                          // Base op.
+	bool optimistic;                    // Optimistic merge, hoping for no writes
 	OpBase *match_stream;               // Child stream that attempts to resolve the pattern.
 	OpBase *create_stream;              // Child stream that will create the pattern if not found.
 	OpBase *bound_variable_stream;      // Optional child stream to resolve previously bound variables.

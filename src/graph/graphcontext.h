@@ -49,6 +49,13 @@ typedef struct {
 
 // Creates and initializes a graph context struct.
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap);
+
+// increase GraphContext reference count by one
+void GraphContext_IncreaseRefCount(GraphContext *gc);
+
+// decrease GraphContext reference count by one
+void GraphContext_DecreaseRefCount(GraphContext *gc);
+
 /* Retrive the graph context according to the graph name
  * readOnly is the access mode to the graph key */
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,

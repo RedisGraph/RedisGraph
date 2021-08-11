@@ -41,7 +41,7 @@ void ResultSet_IndexCreated(ResultSet *set, int status_code);
 
 void ResultSet_IndexDeleted(ResultSet *set, int status_code);
 
-void ResultSet_CachedExecution(ResultSet *set);
+void ResultSet_CachedExecution(ResultSet *set, bool cached);
 
 void ResultSet_Reply(ResultSet *set);
 

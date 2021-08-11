@@ -12,17 +12,25 @@
 #include "../filter_tree/filter_tree.h"
 #include "../util/object_pool/object_pool.h"
 
+// execution plan abort reasons
+typedef enum {
+	EXEC_PLAN_ABORT_NONE = 0,        // execution wasn't aborted
+	EXEC_PLAN_ABORT_TIMEOUT,         // execution timedout
+	EXEC_PLAN_ABORT_OPTIMISTIC_READ  // optimistic read failed
+} ExecutionPlan_AbortReason;
+
 typedef struct ExecutionPlan ExecutionPlan;
 
 struct ExecutionPlan {
-	OpBase *root;                       // Root operation of overall ExecutionPlan.
-	AST *ast_segment;                   // The segment which the current ExecutionPlan segment is built from.
-	rax *record_map;                    // Mapping between identifiers and record indices.
-	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
-	QueryGraph **connected_components;  // Array of all connected components in this segment.
+	OpBase *root;                            // Root operation of overall ExecutionPlan.
+	AST *ast_segment;                        // The segment which the current ExecutionPlan segment is built from.
+	rax *record_map;                         // Mapping between identifiers and record indices.
+	QueryGraph *query_graph;                 // QueryGraph representing all graph entities in this segment.
+	QueryGraph **connected_components;       // Array of all connected components in this segment.
 	ObjectPool *record_pool;
-	bool prepared;                      // Indicates if the execution plan is ready for execute.
-	int ref_count;                      // Number of active references.
+	bool prepared;                           // Indicates if the execution plan is ready for execute.
+	int ref_count;                           // Number of active references.
+	ExecutionPlan_AbortReason abort_reason;  // Reason why execution been aborted.
 };
 
 /* Creates a new execution plan from AST */
@@ -59,11 +67,11 @@ void ExecutionPlan_Init(ExecutionPlan *plan);
 /* Executes plan */
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 
-/* Checks if execution plan been drained */
-bool ExecutionPlan_Drained(ExecutionPlan *plan);
+/* Checks if execution plan been aborted, in case plan been aborted reason is set */
+bool ExecutionPlan_Aborted(const ExecutionPlan *plan, ExecutionPlan_AbortReason *reason);
 
-/* Drains execution plan */
-void ExecutionPlan_Drain(ExecutionPlan *plan);
+/* Abort execution, drains all operations */
+void ExecutionPlan_Abort(OpBase *root, ExecutionPlan_AbortReason reason);
 
 /* Profile executes plan */
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
