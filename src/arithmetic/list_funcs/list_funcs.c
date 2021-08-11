@@ -126,18 +126,19 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 	if(argc == 3) {
 		ASSERT(SI_TYPE(argv[2]) == T_INT64);
 		interval = argv[2].longval;
-		if(interval < 1) {
-			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() must be >= 1");
+		if(interval == 0) {
+			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() can't be 0");
 			// Incase expection handler wasn't set, return NULL.
 			return SI_NullVal();
 		}
 	}
 
 	uint64_t size = 0;
-	if(end > start) size = 1 + (end - start) / interval;
+	if(end > start && interval > 0) size = 1 + (end - start) / interval;
+	else if(end < start && interval < 0) size = 1 + (end - start) / interval;
 
-	SIValue array = SI_Array(1 + (end - start) / interval);
-	for(; start <= end; start += interval) {
+	SIValue array = SI_Array(size);
+	for(; (interval > 0 && start <= end) || (interval < 0 && start >= end); start += interval) {
 		SIArray_Append(&array, SI_LongVal(start));
 	}
 	return array;
