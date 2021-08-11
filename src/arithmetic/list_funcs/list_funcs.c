@@ -134,7 +134,7 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 	}
 
 	uint64_t size = 0;
-	if((end > start && interval > 0) || (end < start && interval < 0)) {
+	if((end >= start && interval > 0) || (end <= start && interval < 0)) {
 		size = 1 + (end - start) / interval;
 	}
 
