@@ -52,25 +52,24 @@ static void _populateIndex(Index *idx) {
 	if(s == NULL) return;
 
 	NodeID  node_id;
-	RG_MatrixTupleIter *it;
+	RG_MatrixTupleIter it;
 
 	Node   node      =  GE_NEW_NODE();
 	Graph  *g        =  gc->g;
 	int    label_id  =  s->id;
 
 	const RG_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
-	RG_MatrixTupleIter_new(&it, label_matrix);
+	RG_MatrixTupleIter_reuse(&it, label_matrix);
 
 	// Iterate over each labeled node.
 	while(true) {
 		bool depleted = false;
-		RG_MatrixTupleIter_next(it, NULL, &node_id, NULL, &depleted);
+		RG_MatrixTupleIter_next(&it, NULL, &node_id, NULL, &depleted);
 		if(depleted) break;
 
 		Graph_GetNode(g, node_id, &node);
 		Index_IndexNode(idx, &node);
 	}
-	RG_MatrixTupleIter_free(&it);
 }
 
 // Create a new index.

@@ -836,7 +836,7 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	GrB_Index   i                   =  0;
 	GrB_Index   j                   =  1;
 	uint64_t    x                   =  0;  // M[i,j] = x
-	uint64_t    v                   =  0;  // v = M[i,j]
+	bool        b                   =  false;
 
 	//--------------------------------------------------------------------------
 	// create RGMatrix
@@ -863,9 +863,9 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// make sure element at position j,i exists
-	info = RG_Matrix_extractElement_UINT64(&v, T, j, i);
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	ASSERT_EQ(info, GrB_SUCCESS);
-	ASSERT_EQ(x, v);
+	ASSERT_EQ(true, b);
 	
 	// matrix should contain a single element
 	RG_Matrix_nvals(&nvals, T);
@@ -943,6 +943,60 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 
 	// TDP should be empty
 	DP_EMPTY();
+
+	//--------------------------------------------------------------------------
+	// delete flushed entry at position i,j
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = RG_Matrix_setElement_UINT64(A, x + 1, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_Matrix_removeEntry(A, i, j, x);
+
+	// make sure element at position j,i exists
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	ASSERT_EQ(true, b);
+
+	info = RG_Matrix_removeEntry(A, i, j, x + 1);
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
+	ASSERT_EQ(info, GrB_NO_VALUE);
+
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = RG_Matrix_setElement_UINT64(A, x + 1, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	info = RG_Matrix_removeEntry(A, i, j, x);
+
+	// make sure element at position j,i exists
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	ASSERT_EQ(true, b);
+
+	info = RG_Matrix_removeEntry(A, i, j, x + 1);
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
+	ASSERT_EQ(info, GrB_NO_VALUE);
+
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	info = RG_Matrix_setElement_UINT64(A, x + 1, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	RG_Matrix_wait(A, true);
+
+	info = RG_Matrix_removeEntry(A, i, j, x);
+
+	// make sure element at position j,i exists
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	ASSERT_EQ(true, b);
+
+	info = RG_Matrix_removeEntry(A, i, j, x + 1);
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
+	ASSERT_EQ(info, GrB_NO_VALUE);
 
 	// clean up
 	RG_Matrix_free(&A);

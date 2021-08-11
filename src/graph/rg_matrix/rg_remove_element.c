@@ -116,7 +116,7 @@ GrB_Info RG_Matrix_removeElement_UINT64
 #endif
 
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
-		info = RG_Matrix_removeElement_UINT64(C->transposed, j, i);
+		info = RG_Matrix_removeElement_BOOL(C->transposed, j, i);
 		if(info != GrB_SUCCESS) {
 			return info;
 		}
