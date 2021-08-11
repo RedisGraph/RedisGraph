@@ -986,6 +986,25 @@ TEST_F(RGMatrixTest, RGMatrix_managed_transposed) {
 	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
 	ASSERT_EQ(info, GrB_NO_VALUE);
 
+	//--------------------------------------------------------------------------
+	// revive deleted entry at position i,j
+	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	RG_Matrix_wait(A, true);
+
+	info = RG_Matrix_removeElement_UINT64(A, i, j);
+
+	info = RG_Matrix_setElement_UINT64(A, x, i, j);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// make sure element at position j,i exists
+	info = RG_Matrix_extractElement_BOOL(&b, T, j, i);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	ASSERT_EQ(true, b);
+
 	// clean up
 	RG_Matrix_free(&A);
 	ASSERT_TRUE(A == NULL);
