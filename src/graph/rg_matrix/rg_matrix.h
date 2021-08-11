@@ -141,14 +141,6 @@ GrB_Info RG_Matrix_new
 	GrB_Index ncols
 );
 
-// validate 'C' isn't in an invalid state
-void RG_Matrix_validateState
-(
-	const RG_Matrix C,
-	GrB_Index i,
-	GrB_Index j
-);
-
 // returns transposed matrix of C
 RG_Matrix RG_Matrix_getTranspose
 (

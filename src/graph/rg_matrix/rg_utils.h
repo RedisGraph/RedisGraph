@@ -20,3 +20,12 @@ void RG_Matrix_checkCompatible
 	const RG_Matrix M,
 	const RG_Matrix N
 );
+
+// validate 'C' isn't in an invalid state
+void RG_Matrix_validateState
+(
+	const RG_Matrix C,
+	GrB_Index i,
+	GrB_Index j
+);
+
