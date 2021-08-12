@@ -143,6 +143,7 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 			RdbLoadDeletedNodes_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
+			Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 			RdbLoadEdges_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:

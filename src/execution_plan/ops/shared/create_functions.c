@@ -106,9 +106,13 @@ static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
 		Schema *s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
 		if(s == NULL) s = GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
 
+		// calling Graph_GetRelationMatrix will make sure relationship matrix
+		// is of the right dimensions
 		Graph_GetRelationMatrix(g, s->id, false);
 	}
 
+	// call Graph_GetAdjacencyMatrix will make sure the adjacency matrix
+	// is of the right dimensions
 	Graph_GetAdjacencyMatrix(g, false);
 }
 
