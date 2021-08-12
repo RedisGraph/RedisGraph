@@ -73,7 +73,7 @@ GrB_Info RG_Matrix_setElement_UINT64    // C (i,j) = x
 	bool      mark_for_deletion  =  false;          //  dm[i,j] exists
 
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
-		info =  RG_Matrix_setElement_UINT64(C->transposed, x, j, i);
+		info =  RG_Matrix_setElement_BOOL(C->transposed, j, i);
 		if(info != GrB_SUCCESS) {
 			return info;
 		}
