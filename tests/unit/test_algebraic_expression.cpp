@@ -154,7 +154,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		Graph_CreateEdge(g, 2, 3, war_relation_id, &e);
 		Graph_CreateEdge(g, 3, 2, war_relation_id, &e);
 
-		Graph_ApplyAllPending(g);
+		Graph_ApplyAllPending(g, true);
 		Graph_ReleaseLock(g);
 	}
 

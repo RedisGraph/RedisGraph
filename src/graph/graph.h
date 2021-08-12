@@ -74,7 +74,10 @@ void Graph_ReleaseLock(Graph *g);
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
 
 /* Synchronize and resize all matrices in graph. */
-void Graph_ApplyAllPending(Graph *g);
+void Graph_ApplyAllPending(
+	Graph *g,           // graph to sync
+	bool force_flush    // force sync of delta matrices
+);
 
 // Create a new graph.
 Graph *Graph_New(

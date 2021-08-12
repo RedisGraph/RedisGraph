@@ -289,8 +289,13 @@ static void RG_AfterForkChild() {
 	for(uint i = 0; i < graph_count; i++) {
 		Graph *g = graphs_in_keyspace[i]->g;
 
+		// set matrix synchronization policy to default
+		Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+
 		// synchronize all matrices, make sure they're in a consistent state
-		Graph_ApplyAllPending(g);
+		// do not force-flush as this can double memory consumption
+		// constructing M from DP and DM on forked process
+		Graph_ApplyAllPending(g, false);
 
 		// all matrices should be synced, set synchronization policy to NOP
 		Graph_SetMatrixPolicy(g, DISABLED);

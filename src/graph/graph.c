@@ -244,16 +244,26 @@ void Graph_SetMatrixPolicy
 // synchronize and resize all matrices in graph
 void Graph_ApplyAllPending
 (
-	Graph *g
+	Graph *g,
+	bool force_flush
 ) {
-	uint n = 0;
-	Graph_GetAdjacencyMatrix(g, false);
+	uint       n  =  0;
+	RG_Matrix  M  =  NULL;
+
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_wait(M, force_flush);
 
 	n = array_len(g->labels);
-	for(int i = 0; i < n; i ++) Graph_GetLabelMatrix(g, i);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetLabelMatrix(g, i);
+		RG_Matrix_wait(M, force_flush);
+	}
 
 	n = array_len(g->relations);
-	for(int i = 0; i < n; i ++) Graph_GetRelationMatrix(g, i, false);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetRelationMatrix(g, i, false);
+		RG_Matrix_wait(M, force_flush);
+	}
 }
 
 //------------------------------------------------------------------------------
