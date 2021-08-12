@@ -18,6 +18,55 @@
 // fulltext createNodeIndex
 //------------------------------------------------------------------------------
 
+// validate index configuration map
+// label is requierd and of type string
+// configuration can't change if index exists 
+// stopwords is array of strings
+// language is string
+static ProcedureResult _validateLabel(SIValue label) {
+	SIValue si_value;
+	if(Map_Get(label, SI_ConstStringVal("label"), &si_value)) {
+		if(Map_KeyCount(label) > 1) {
+			GraphContext *gc = QueryCtx_GetGraphCtx();
+			Schema *s = GraphContext_GetSchema(gc, si_value.stringval, SCHEMA_NODE);
+			if(s) {
+				Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+				if(idx) {
+					ErrorCtx_SetError("Index already exists configuration can't be changed");
+					return PROCEDURE_ERR;
+				}
+			}
+		}
+	} else {
+		ErrorCtx_SetError("Label is missing");
+		return PROCEDURE_ERR;
+	}
+
+	if(Map_Get(label, SI_ConstStringVal("stopwords"), &si_value)) {
+		if(SI_TYPE(si_value) == T_ARRAY) {
+			int stopwords_count = SIArray_Length(si_value);
+			for (int i = 0; i < stopwords_count; i++) {
+				SIValue stopword = SIArray_Get(si_value, i);
+				if(SI_TYPE(stopword) != T_STRING) {
+					ErrorCtx_SetError("Stopword must be a string");
+					return PROCEDURE_ERR;
+				}
+			}
+		} else {
+			ErrorCtx_SetError("Stopwords must be array");
+			return PROCEDURE_ERR;
+		}
+	}
+	if(Map_Get(label, SI_ConstStringVal("language"), &si_value)) {
+		if(SI_TYPE(si_value) != T_STRING) {
+			ErrorCtx_SetError("Language must be string");
+			return PROCEDURE_ERR;
+		}
+	}
+
+	return PROCEDURE_OK;
+}
+
 // CALL db.idx.fulltext.createNodeIndex(label, fields...)
 // CALL db.idx.fulltext.createNodeIndex('book', 'title', 'authors')
 ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
@@ -33,6 +82,10 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 		ErrorCtx_SetError("Label argument can be string or map");
 		return PROCEDURE_ERR;
 	}
+	if(SI_TYPE(args[0]) == T_MAP && _validateLabel(args[0]) == PROCEDURE_ERR) {
+		return PROCEDURE_ERR;
+	}
+
 	for(uint i = 1; i < arg_count; i++) {
 		if(!(SI_TYPE(args[i]) & T_STRING)) {
 			ErrorCtx_SetError("Field arguments must be string");
@@ -52,12 +105,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	if(SI_TYPE(args[0]) == T_STRING) {
 		label = args[0].stringval;
 	} else if(SI_TYPE(args[0]) == T_MAP) {
-		if(Map_Get(args[0], SI_ConstStringVal("label"), &si_value)) {
-			label = si_value.stringval;
-		} else {
-			ErrorCtx_SetError("Label is missing");
-			return PROCEDURE_ERR;
-		}
+		Map_Get(args[0], SI_ConstStringVal("label"), &si_value);
+		label = si_value.stringval;
 	}
 
 	// introduce fields to index
@@ -69,30 +118,16 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	}
 
 	if(SI_TYPE(args[0]) == T_MAP) {
-		if(!idx->idx) {
-			if(Map_Get(args[0], SI_ConstStringVal("stopwords"), &si_value) && 
-			   SI_TYPE(si_value) == T_ARRAY) {
-				int stopwords_count = SIArray_Length(si_value);
-				idx->stopwords = array_new(char*, stopwords_count);
-				for (int i = 0; i < stopwords_count; i++) {
-					SIValue stopword = SIArray_Get(si_value, i);
-					if(SI_TYPE(stopword) == T_STRING) {
-						array_append(idx->stopwords, rm_strdup(stopword.stringval));
-					} else {
-						array_free(idx->stopwords);
-						idx->stopwords = NULL;
-						ErrorCtx_SetError("Stopword must be a string");
-						return PROCEDURE_ERR;
-					}
-				}
+		if(Map_Get(args[0], SI_ConstStringVal("stopwords"), &si_value)) {
+			int stopwords_count = SIArray_Length(si_value);
+			idx->stopwords = array_new(char*, stopwords_count);
+			for (int i = 0; i < stopwords_count; i++) {
+				SIValue stopword = SIArray_Get(si_value, i);
+				array_append(idx->stopwords, rm_strdup(stopword.stringval));
 			}
-			if(Map_Get(args[0], SI_ConstStringVal("language"), &si_value) && 
-			   SI_TYPE(si_value) == T_STRING) {
-				idx->language = rm_strdup(si_value.stringval);
-			}
-		} else if (Map_KeyCount(args[0]) > 1) {
-			ErrorCtx_SetError("Index already exists configuration can't be changed");
-			return PROCEDURE_ERR;
+		}
+		if(Map_Get(args[0], SI_ConstStringVal("language"), &si_value)) {
+			idx->language = rm_strdup(si_value.stringval);
 		}
 	}
 
