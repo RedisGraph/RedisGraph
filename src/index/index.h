@@ -24,8 +24,9 @@ typedef enum {
 typedef struct {
 	char *label;                // Indexed label.
 	char **fields;              // Indexed fields.
+	char **stopwords;           // Stopwords.
+	char *language;             // Language.
 	Attribute_ID *fields_ids;   // Indexed field IDs.
-	uint fields_count;          // Number of fields.
 	RSIndex *idx;               // RediSearch index.
 	IndexType type;             // Index type exact-match / fulltext.
 } Index;

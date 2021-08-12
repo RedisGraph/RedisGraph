@@ -75,12 +75,13 @@ static void _populateIndex(Index *idx) {
 // Create a new index.
 Index *Index_New(const char *label, IndexType type) {
 	Index *idx = rm_malloc(sizeof(Index));
-	idx->idx = NULL;
-	idx->fields_count = 0;
-	idx->type = type;
-	idx->label = rm_strdup(label);
-	idx->fields = array_new(char *, 0);
-	idx->fields_ids = array_new(Attribute_ID, 0);
+	idx->idx          = NULL;
+	idx->type         = type;
+	idx->label        = rm_strdup(label);
+	idx->fields       = array_new(char *, 0);
+	idx->language     = NULL;
+	idx->stopwords    = NULL;
+	idx->fields_ids   = array_new(Attribute_ID, 0);
 	return idx;
 }
 
@@ -91,7 +92,6 @@ void Index_AddField(Index *idx, const char *field) {
 	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
 	if(Index_ContainsAttribute(idx, fieldID)) return;
 
-	idx->fields_count++;
 	array_append(idx->fields, rm_strdup(field));
 	array_append(idx->fields_ids, fieldID);
 }
@@ -103,9 +103,10 @@ void Index_RemoveField(Index *idx, const char *field) {
 	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, field);
 	if(!Index_ContainsAttribute(idx, attribute_id)) return;
 
-	for(uint i = 0; i < idx->fields_count; i++) {
+	int fields_count = array_len(idx->fields);
+	for(uint i = 0; i < fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) {
-			idx->fields_count--;
+			fields_count--;
 			rm_free(idx->fields[i]);
 			array_del_fast(idx->fields, i);
 			array_del_fast(idx->fields_ids, i);
@@ -116,7 +117,6 @@ void Index_RemoveField(Index *idx, const char *field) {
 
 void Index_IndexNode(Index *idx, const Node *n) {
 	double      score            = 1;     // default score
-	const char  *lang            = NULL;  // default language
 	const char  *field_name      = NULL;  // name of current indexed field
 	SIValue     *v               = NULL;  // current indexed value
 	RSIndex     *rsIdx           = idx->idx;
@@ -125,14 +125,16 @@ void Index_IndexNode(Index *idx, const Node *n) {
 
 	// list of none indexable fields
 	uint none_indexable_fields_count = 0; // number of none indexed fields
-	const char *none_indexable_fields[idx->fields_count]; // none indexed fields
+	const char *none_indexable_fields[array_len(idx->fields)]; // none indexed fields
 
 	// create a document out of node
-	RSDoc *doc = RediSearch_CreateDocument(&node_id, sizeof(EntityID), score, lang);
+	RSDoc *doc = RediSearch_CreateDocument(&node_id, sizeof(EntityID), score, 
+										   idx->language);
 
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
-		for(uint i = 0; i < idx->fields_count; i++) {
+		int fields_count = array_len(idx->fields);
+		for(uint i = 0; i < fields_count; i++) {
 			field_name = idx->fields[i];
 			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
 			if(v == PROPERTY_NOTFOUND) continue;
@@ -147,7 +149,8 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			}
 		}
 	} else {
-		for(uint i = 0; i < idx->fields_count; i++) {
+		int fields_count = array_len(idx->fields);
+		for(uint i = 0; i < fields_count; i++) {
 			field_name = idx->fields[i];
 			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
 			if(v == PROPERTY_NOTFOUND) continue;
@@ -235,17 +238,24 @@ void Index_Construct(Index *idx) {
 	// enable GC, every 30 seconds gc will check if there's garbage
 	// if there are over 100 docs to remove GC will perform clean up
 	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
+
+	if(idx->stopwords) {
+		RediSearch_IndexOptionsSetStopwords(idx_options, (const char**)idx->stopwords, array_len(idx->stopwords));
+	}
+
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
 	RediSearch_FreeIndexOptions(idx_options);
 
 	// create indexed fields
 	if(idx->type == IDX_FULLTEXT) {
-		for(uint i = 0; i < idx->fields_count; i++) {
+		int fields_count = array_len(idx->fields);
+		for(uint i = 0; i < fields_count; i++) {
 			// introduce text field
 			RediSearch_CreateTextField(rsIdx, idx->fields[i]);
 		}
 	} else {
-		for(uint i = 0; i < idx->fields_count; i++) {
+		int fields_count = array_len(idx->fields);
+		for(uint i = 0; i < fields_count; i++) {
 			// introduce both text, numeric and geo fields
 			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i],
@@ -284,7 +294,7 @@ const char *Index_GetLabel(const Index *idx) {
 // Returns number of fields indexed.
 uint Index_FieldsCount(const Index *idx) {
 	ASSERT(idx != NULL);
-	return idx->fields_count;
+	return array_len(idx->fields);
 }
 
 // Returns indexed fields.
@@ -296,7 +306,9 @@ const char **Index_GetFields(const Index *idx) {
 bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
 	ASSERT(idx != NULL);
 	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
-	for(uint i = 0; i < idx->fields_count; i++) {
+	
+	int fields_count = array_len(idx->fields);
+	for(uint i = 0; i < fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) return true;
 	}
 
@@ -309,9 +321,19 @@ void Index_Free(Index *idx) {
 	if(idx->idx) RediSearch_DropIndex(idx->idx);
 
 	rm_free(idx->label);
+	if(idx->language) rm_free(idx->language);
 
-	for(uint i = 0; i < idx->fields_count; i++) {
+	int fields_count = array_len(idx->fields);
+	for(uint i = 0; i < fields_count; i++) {
 		rm_free(idx->fields[i]);
+	}
+
+	if(idx->stopwords) {
+		int stopwords_count = array_len(idx->stopwords);
+		for(uint i = 0; i < stopwords_count; i++) {
+			rm_free(idx->stopwords[i]);
+		}
+		array_free(idx->stopwords);
 	}
 
 	array_free(idx->fields);
