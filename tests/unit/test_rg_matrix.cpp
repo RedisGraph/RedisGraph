@@ -163,6 +163,28 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	// matrix shouldn't be dirty
 	ASSERT_FALSE(RG_Matrix_isDirty(A));
 
+	// test M, DP and DM hyper switch
+	int format;
+	double hyper_switch;
+
+	// M should always never be hyper
+	GxB_Matrix_Option_get(M, GxB_HYPER_SWITCH, &hyper_switch);
+	ASSERT_EQ(hyper_switch, GxB_NEVER_HYPER);
+	GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &format);
+	ASSERT_EQ(format, GxB_SPARSE);
+
+	// DP should always be hyper
+	GxB_Matrix_Option_get(DP, GxB_HYPER_SWITCH, &hyper_switch);
+	ASSERT_EQ(hyper_switch, GxB_ALWAYS_HYPER);
+	GxB_Matrix_Option_get(DP, GxB_SPARSITY_CONTROL, &format);
+	ASSERT_EQ(format, GxB_HYPERSPARSE);
+
+	// DM should always be hyper
+	GxB_Matrix_Option_get(DM, GxB_HYPER_SWITCH, &hyper_switch);
+	ASSERT_EQ(hyper_switch, GxB_ALWAYS_HYPER);
+	GxB_Matrix_Option_get(DM, GxB_SPARSITY_CONTROL, &format);
+	ASSERT_EQ(format, GxB_HYPERSPARSE);
+
 	// matrix should be empty
 	M_EMPTY();
 	DP_EMPTY(); 
