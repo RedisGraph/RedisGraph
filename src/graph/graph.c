@@ -215,6 +215,22 @@ void _MatrixNOP
 	return;
 }
 
+MATRIX_POLICY Graph_GetMatrixPolicy
+(
+	const Graph *g
+) {
+	ASSERT(g != NULL);
+	MATRIX_POLICY policy = SYNC_POLICY_UNKNOWN;
+	SyncMatrixFunc f = g->SynchronizeMatrix;
+
+	if      (f == _MatrixSynchronize)      policy = SYNC_POLICY_FLUSH_RESIZE;
+	else if (f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
+	else if (f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
+	else ASSERT(false);
+
+	return policy;
+}
+
 // define the current behavior for matrix creations and retrievals on this graph
 void Graph_SetMatrixPolicy
 (
@@ -222,17 +238,17 @@ void Graph_SetMatrixPolicy
 	MATRIX_POLICY policy
 ) {
 	switch(policy) {
-		case SYNC_AND_MINIMIZE_SPACE:
+		case SYNC_POLICY_FLUSH_RESIZE:
 			// Default behavior; forces execution of pending GraphBLAS operations
 			// when appropriate and sizes matrices to the current node count.
 			g->SynchronizeMatrix = _MatrixSynchronize;
 			break;
-		case RESIZE_TO_CAPACITY:
+		case SYNC_POLICY_RESIZE:
 			// Bulk insertion and creation behavior; does not force pending operations
 			// and resizes matrices to the graph's current node capacity.
 			g->SynchronizeMatrix = _MatrixResizeToCapacity;
 			break;
-		case DISABLED:
+		case SYNC_POLICY_NOP:
 			// Used when deleting or freeing a graph; forces no matrix updates or resizes.
 			g->SynchronizeMatrix = _MatrixNOP;
 			break;
@@ -294,7 +310,7 @@ Graph *Graph_New
 	g->_writelocked = false;
 
 	// force GraphBLAS updates and resize matrices to node count by default
-	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
 	return g;
 }

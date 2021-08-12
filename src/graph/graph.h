@@ -35,9 +35,10 @@ typedef enum {
 } GRAPH_EDGE_DIR;
 
 typedef enum {
-	SYNC_AND_MINIMIZE_SPACE,
-	RESIZE_TO_CAPACITY,
-	DISABLED,
+	SYNC_POLICY_UNKNOWN,
+	SYNC_POLICY_FLUSH_RESIZE,
+	SYNC_POLICY_RESIZE,
+	SYNC_POLICY_NOP,
 } MATRIX_POLICY;
 
 // Forward declaration of Graph struct
@@ -69,6 +70,9 @@ void Graph_AcquireWriteLock(Graph *g);
 
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g);
+
+/* Retrieve graph matrix synchronization policy. */
+MATRIX_POLICY Graph_GetMatrixPolicy(const Graph *g);
 
 /* Choose the current matrix synchronization policy. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);

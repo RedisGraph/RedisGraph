@@ -293,7 +293,7 @@ static void RG_AfterForkChild() {
 		Graph_ApplyAllPending(g);
 
 		// all matrices should be synced, set synchronization policy to NOP
-		Graph_SetMatrixPolicy(g, DISABLED);
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 	}
 }
 
