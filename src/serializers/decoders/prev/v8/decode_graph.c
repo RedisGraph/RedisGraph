@@ -180,6 +180,9 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
+		// make sure graph doesn't contains may pending changes
+		ASSERT(Graph_Pending(gc->g) == false);
+
 		QueryCtx_Free(); // Release thread-local variables.
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// Graph has finished decoding, inform the module.

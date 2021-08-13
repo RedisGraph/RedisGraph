@@ -247,6 +247,8 @@ void Graph_ApplyAllPending
 	Graph *g,
 	bool force_flush
 ) {
+	ASSERT(g != NULL);
+
 	uint       n  =  0;
 	RG_Matrix  M  =  NULL;
 
@@ -264,6 +266,56 @@ void Graph_ApplyAllPending
 		M = Graph_GetRelationMatrix(g, i, false);
 		RG_Matrix_wait(M, force_flush);
 	}
+}
+
+bool Graph_Pending
+(
+	const Graph *g
+) {
+	ASSERT(g != NULL);
+
+	GrB_Info   info;
+	UNUSED(info);
+
+	bool       res      =  false;
+	bool       pending  =  false;
+	uint       n        =  0;
+	RG_Matrix  M        =  NULL;
+
+	//--------------------------------------------------------------------------
+	// see if ADJ matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	M = g->adjacency_matrix;
+	info = RG_Matrix_pending(M, &pending);
+	ASSERT(info == GrB_SUCCESS);
+	res |= pending;
+
+	//--------------------------------------------------------------------------
+	// see if any label matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	n = array_len(g->labels);
+	for(int i = 0; i < n; i ++) {
+		M = g->labels[i];
+		info = RG_Matrix_pending(M, &pending);
+		ASSERT(info == GrB_SUCCESS);
+		res |= pending;
+	}
+
+	//--------------------------------------------------------------------------
+	// see if any relationship matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	n = array_len(g->relations);
+	for(int i = 0; i < n; i ++) {
+		M = g->relations[i];
+		info = RG_Matrix_pending(M, &pending);
+		ASSERT(info == GrB_SUCCESS);
+		res |= pending;
+	}
+
+	return res;
 }
 
 //------------------------------------------------------------------------------
