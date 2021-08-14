@@ -21,78 +21,110 @@ static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
 	if(stats) stats->properties_set += props->property_count - failed_updates;
 }
 
-/* Commit insertions. */
-static void _CommitNodes(PendingCreations *pending) {
-	Node *n;
+// commit node blueprints
+static void _CommitNodesBlueprint(PendingCreations *pending) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
-	/* Create missing schemas.
-	 * this loop iterates over the CREATE pattern, e.g.
-	 * CREATE (p:Person)
-	 * As such we're not expecting a large number of iterations. */
+	// sync policy should be set to resize to capacity, no need to sync
+	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_RESIZE);
+
+	// create missing schemas
+	// this loop iterates over the CREATE pattern, e.g.
+	// CREATE (p:Person)
+	// As such we're not expecting a large number of iterations
 	uint blueprint_node_count = array_len(pending->nodes_to_create);
 	for(uint i = 0; i < blueprint_node_count; i++) {
 		NodeCreateCtx *node_ctx = pending->nodes_to_create + i;
 
 		const char *label = node_ctx->label;
 		if(label) {
-			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
-				GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(s == NULL) {
+				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 				pending->stats->labels_added++;
 			}
+
+			// sync matrix, make sure label matrix is of the right dimensions
+			Graph_GetLabelMatrix(g, s->id);
 		}
 	}
+}
 
-	uint node_count = array_len(pending->created_nodes);
-	Graph_AllocateNodes(g, node_count);
+// commit nodes
+static void _CommitNodes(PendingCreations *pending) {
+	Node          *n          =  NULL;
+	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
+	Graph         *g          =  gc->g;
+	uint          node_count  =  array_len(pending->created_nodes);
+
+	// sync policy should be set to NOP, no need to sync/resize
+	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
 	for(uint i = 0; i < node_count; i++) {
 		n = pending->created_nodes[i];
 		Schema *s = NULL;
 
-		// Get label ID.
+		// get label ID
 		int labelID = GRAPH_NO_LABEL;
 		if(n->label != NULL) {
 			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 			ASSERT(s != NULL);
-			n->labelID = s->id; // Update the label ID within the node.
+			n->labelID = s->id; // update the label ID within the node
 			labelID = s->id;
 		}
 
-		// Introduce node into graph.
+		// introduce node into graph
 		Graph_CreateNode(g, labelID, n);
 
-		if(pending->node_properties[i]) _AddProperties(pending->stats, (GraphEntity *)n,
-														   pending->node_properties[i]);
+		if(pending->node_properties[i]) {
+			_AddProperties(pending->stats, (GraphEntity *)n,
+					pending->node_properties[i]);
+		}
 
 		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
 	}
 }
 
-static void _CommitEdges(PendingCreations *pending) {
-	Edge *e;
+// commit edge blueprints
+static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
-	/* Create missing schemas.
-	 * this loop iterates over the CREATE pattern, e.g.
-	 * CREATE (p:Person)-[e:VISITED]->(q)
-	 * As such we're not expecting a large number of iterations. */
-	uint blueprint_edge_count = array_len(pending->edges_to_create);
+	// sync policy should be set to resize to capacity, no need to sync
+	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_RESIZE);
+
+	// create missing schemas
+	// this loop iterates over the CREATE pattern, e.g.
+	// CREATE (p:Person)-[e:VISITED]->(q)
+	// As such we're not expecting a large number of iterations
+	uint blueprint_edge_count = array_len(blueprints);
 	for(uint i = 0; i < blueprint_edge_count; i++) {
-		EdgeCreateCtx *edge_ctx = pending->edges_to_create + i;
+		EdgeCreateCtx *edge_ctx = blueprints + i;
 
 		const char *relation = edge_ctx->relation;
-		if(relation) {
-			if(GraphContext_GetSchema(gc, relation, SCHEMA_EDGE) == NULL) {
-				GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
-			}
-		}
+		Schema *s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
+		if(s == NULL) s = GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
+
+		// calling Graph_GetRelationMatrix will make sure relationship matrix
+		// is of the right dimensions
+		Graph_GetRelationMatrix(g, s->id, false);
 	}
 
-	uint edge_count = array_len(pending->created_edges);
-	Graph_AllocateEdges(g, edge_count);
+	// call Graph_GetAdjacencyMatrix will make sure the adjacency matrix
+	// is of the right dimensions
+	Graph_GetAdjacencyMatrix(g, false);
+}
+
+// commit edges
+static void _CommitEdges(PendingCreations *pending) {
+	Edge          *e          =  NULL;
+	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
+	Graph         *g          =  gc->g;
+	uint          edge_count  =  array_len(pending->created_edges);
+
+	// sync policy should be set to NOP, no need to sync/resize
+	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
 	for(uint i = 0; i < edge_count; i++) {
 		e = pending->created_edges[i];
@@ -108,14 +140,18 @@ static void _CommitEdges(PendingCreations *pending) {
 		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
-		Schema *schema = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
-		ASSERT(schema); // All schemas have been created in the edge blueprint loop or earlier.
+		Schema *schema = GraphContext_GetSchema(gc, e->relationship,
+				SCHEMA_EDGE);
+		// all schemas have been created in the edge blueprint loop or earlier
+		ASSERT(schema);
 		int relation_id = schema->id;
 
 		Graph_CreateEdge(g, srcNodeID, destNodeID, relation_id, e);
 
-		if(pending->edge_properties[i]) _AddProperties(pending->stats, (GraphEntity *)e,
-														   pending->edge_properties[i]);
+		if(pending->edge_properties[i]) {
+			_AddProperties(pending->stats, (GraphEntity *)e,
+					pending->edge_properties[i]);
+		}
 	}
 }
 
@@ -142,19 +178,41 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 	// Lock everything.
 	QueryCtx_LockForCommit();
 
-	/* Set sync policy to resize to capacity only for node introduction
-	 * as only node creation can have an effect on matrix dimensions. */
-	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
-	if(node_count > 0) _CommitNodes(pending);
+	if(node_count > 0) {
+		Graph_AllocateNodes(g, node_count);
 
-	/* Reset sync policy to minimum space to avoid further matrix resize:
-	 * From capacity to actual node count.
-	 * Recall that edge creation/deletion doesn't have an effect on matrix dimensions. */
-	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
-	if(edge_count > 0) _CommitEdges(pending);
+		// set graph matrix sync policy to resize
+		// no need to perform sync
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_RESIZE);
+		_CommitNodesBlueprint(pending);
+
+		// set graph matrix sync policy to NOP
+		// no need to perform sync/resize
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
+		_CommitNodes(pending);
+	}
+
+	if(edge_count > 0) {
+		Graph_AllocateEdges(g, edge_count);
+
+		// set graph matrix sync policy to resize
+		// no need to perform sync
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_RESIZE);
+		_CommitEdgesBlueprint(pending->edges_to_create);
+
+		// set graph matrix sync policy to NOP
+		// no need to perform sync/resize
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
+		_CommitEdges(pending);
+	}
+
 	// Release lock.
 	pending->stats->nodes_created += node_count;
 	pending->stats->relationships_created += edge_count;
+
+	// restore matrix sync policy to default
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+
 	QueryCtx_UnlockCommit(op);
 }
 
