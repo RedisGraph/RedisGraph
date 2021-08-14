@@ -27,10 +27,6 @@ GrB_Info RG_Matrix_pending
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	GxB_print(M, GxB_COMPLETE_VERBOSE);
-	GxB_print(DP, GxB_COMPLETE_VERBOSE);
-	GxB_print(DM, GxB_COMPLETE_VERBOSE);
-
 	// check if M contains pending changes
 	info = GxB_Matrix_Pending(M, &p);
 	ASSERT(info == GrB_SUCCESS);

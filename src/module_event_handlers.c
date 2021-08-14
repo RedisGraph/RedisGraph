@@ -290,7 +290,7 @@ static void RG_AfterForkChild() {
 		Graph *g = graphs_in_keyspace[i]->g;
 
 		// set matrix synchronization policy to default
-		Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
 		// synchronize all matrices, make sure they're in a consistent state
 		// do not force-flush as this can double memory consumption
