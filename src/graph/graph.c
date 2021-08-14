@@ -612,8 +612,9 @@ void Graph_GetNodeEdges
 	ASSERT(n);
 	ASSERT(edges);
 
+	RG_MatrixTupleIter   it;
 	RG_Matrix            M        =  NULL;
-	RG_MatrixTupleIter  *it       =  NULL;
+	RG_Matrix            TM       =  NULL;
 	NodeID               srcID    =  ENTITY_GET_ID(n);
 	NodeID               destID   =  INVALID_ENTITY_ID;
 	EdgeID               edgeID   =  INVALID_ENTITY_ID;
@@ -627,17 +628,17 @@ void Graph_GetNodeEdges
 	bool incoming = (dir == GRAPH_EDGE_DIR_INCOMING ||
 					 dir == GRAPH_EDGE_DIR_BOTH);
 
-	if(outgoing) {
-		// if a relationship type is specified,
-		// retrieve the appropriate relation matrix
-		// otherwise use the overall adjacency matrix
-		M = Graph_GetRelationMatrix(g, edgeType, false);
+	// if a relationship type is specified,
+	// retrieve the appropriate relation matrix
+	// otherwise use the overall adjacency matrix
+	M = Graph_GetRelationMatrix(g, edgeType, false);
 
+	if(outgoing) {
 		// construct an iterator to traverse over the source node row,
 		// containing all outgoing edges
-		RG_MatrixTupleIter_new(&it, M);
-		RG_MatrixTupleIter_iterate_row(it, srcID);
-		while(RG_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
+		RG_MatrixTupleIter_reuse(&it, M);
+		RG_MatrixTupleIter_iterate_row(&it, srcID);
+		while(RG_MatrixTupleIter_next(&it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
 
 			// collect all edges (src)->(dest)
@@ -647,22 +648,22 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, srcID, destID, edgeType, edges);
 			}
 		}
-		RG_MatrixTupleIter_free(&it);
 	}
 
 	if(incoming) {
 		// if a relationship type is specified, retrieve the appropriate
 		// transposed relation matrix,
 		// otherwise use the transposed adjacency matrix
-		M = Graph_GetRelationMatrix(g, edgeType, true);
+		TM = Graph_GetRelationMatrix(g, edgeType, true);
 
 		// construct an iterator to traverse over the source node row,
 		// containing all incoming edges
-		RG_MatrixTupleIter_new(&it, M);
-		RG_MatrixTupleIter_iterate_row(it, srcID);
+		RG_MatrixTupleIter_reuse(&it, TM);
+		RG_MatrixTupleIter_iterate_row(&it, srcID);
 
-		while(RG_MatrixTupleIter_next(it, NULL, &destID, &edgeID, &depleted) == GrB_SUCCESS) {
+		while(RG_MatrixTupleIter_next(&it, NULL, &destID, NULL, &depleted) == GrB_SUCCESS) {
 			if(depleted) break;
+			RG_Matrix_extractElement_UINT64(&edgeID, M, destID, srcID);
 			// collect all edges connecting destId to srcId
 			if(edgeType != GRAPH_NO_RELATION) {
 				_CollectEdgesFromEntry(g, destID, srcID, edgeType, edgeID, edges);
@@ -670,9 +671,6 @@ void Graph_GetNodeEdges
 				Graph_GetEdgesConnectingNodes(g, destID, srcID, edgeType, edges);
 			}
 		}
-
-		// Clean up
-		RG_MatrixTupleIter_free(&it);
 	}
 }
 

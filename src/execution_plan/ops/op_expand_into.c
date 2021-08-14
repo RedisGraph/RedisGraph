@@ -19,8 +19,8 @@ static OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
 
 // String representation of operation.
-static inline int ExpandIntoToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return TraversalToString(ctx, buf, buf_len, ((const OpExpandInto *)ctx)->ae);
+static inline void ExpandIntoToString(const OpBase *ctx, sds *buf) {
+	TraversalToString(ctx, buf, ((const OpExpandInto *)ctx)->ae);
 }
 
 static void _populate_filter_matrix(OpExpandInto *op) {
