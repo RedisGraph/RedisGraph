@@ -35,9 +35,10 @@ typedef enum {
 } GRAPH_EDGE_DIR;
 
 typedef enum {
-	SYNC_AND_MINIMIZE_SPACE,
-	RESIZE_TO_CAPACITY,
-	DISABLED,
+	SYNC_POLICY_UNKNOWN,
+	SYNC_POLICY_FLUSH_RESIZE,
+	SYNC_POLICY_RESIZE,
+	SYNC_POLICY_NOP,
 } MATRIX_POLICY;
 
 // forward declaration of Graph struct
@@ -91,6 +92,19 @@ void Graph_ApplyAllPending
 (
 	Graph *g,           // graph to sync
 	bool force_flush    // force sync of delta matrices
+);
+
+// Retrieve graph matrix synchronization policy
+MATRIX_POLICY Graph_GetMatrixPolicy
+(
+  const Graph *g
+);
+
+// choose the current matrix synchronization policy
+void Graph_SetMatrixPolicy
+(
+  Graph *g,
+  MATRIX_POLICY policy
 );
 
 // checks to see if graph has pending operations
@@ -377,4 +391,3 @@ void Graph_Free
 (
 	Graph *g
 );
-

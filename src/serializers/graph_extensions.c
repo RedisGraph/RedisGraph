@@ -37,7 +37,7 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	}
 }
 
-// optimized version of Graph_FormConnection 
+// optimized version of Graph_FormConnection
 // used only when matrix not contains multi edge values
 static void _OptimizedSingleEdgeFormConnection
 (
@@ -58,10 +58,19 @@ static void _OptimizedSingleEdgeFormConnection
 	UNUSED(info);
 
 	// rows represent source nodes, columns represent destination nodes
+
+	//--------------------------------------------------------------------------
+	// update adjacency matrix
+	//--------------------------------------------------------------------------
+
 	info = GrB_Matrix_setElement_BOOL(adj_m, true, src, dest);
 	ASSERT(info == GrB_SUCCESS);
 	info = GrB_Matrix_setElement_BOOL(adj_tm, true, dest, src);
 	ASSERT(info == GrB_SUCCESS);
+
+	//--------------------------------------------------------------------------
+	// update relationship matrix
+	//--------------------------------------------------------------------------
 
 	info = GrB_Matrix_setElement_UINT64(m, edge_id, src, dest);
 	ASSERT(info == GrB_SUCCESS);
@@ -69,11 +78,21 @@ static void _OptimizedSingleEdgeFormConnection
 	ASSERT(info == GrB_SUCCESS);
 
 	// an edge of type r has just been created, update statistics
+	// TODO: stats->edge_count[relation_idx] += nvals;
 	GraphStatistics_IncEdgeCount(&g->stats, r, 1);
 }
 
 // Set a given edge in the graph - Used for deserialization of graph.
-void Serializer_Graph_SetEdge(Graph *g, int64_t multi_edge, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e) {
+void Serializer_Graph_SetEdge
+(
+	Graph *g,
+	bool multi_edge,
+	EdgeID edge_id,
+	NodeID src,
+	NodeID dest,
+	int r,
+	Edge *e
+) {
 	GrB_Info info;
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
@@ -85,14 +104,12 @@ void Serializer_Graph_SetEdge(Graph *g, int64_t multi_edge, EdgeID edge_id, Node
 	e->srcNodeID = src;
 	e->destNodeID = dest;
 
-	if (multi_edge) {
+	if(multi_edge) {
 		Graph_FormConnection(g, src, dest, edge_id, r);
-	}
-	else {
+	} else {
 		_OptimizedSingleEdgeFormConnection(g, src, dest, edge_id, r);
 	}
 }
-
 
 // Returns the graph deleted nodes list.
 uint64_t *Serializer_Graph_GetDeletedNodesList(Graph *g) {

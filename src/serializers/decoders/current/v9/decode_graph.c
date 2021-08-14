@@ -17,7 +17,7 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 		ModuleEventHandler_IncreaseDecodingGraphsCount();
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
-		Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
+		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 	}
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
@@ -153,6 +153,7 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 			RdbLoadDeletedNodes_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
+			Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 			RdbLoadEdges_v9(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
@@ -183,10 +184,10 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 		Graph *g = gc->g;
 
 		// revert to default synchronization behavior
-		Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
 
-		// set the thread-local GraphContext
+    // set the thread-local GraphContext
 		// as it will be accessed when creating indexes
 		QueryCtx_SetGraphCtx(gc);
 
