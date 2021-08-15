@@ -29,12 +29,9 @@ static ProcedureResult _validateLabel(SIValue label) {
 		if(Map_KeyCount(label) > 1) {
 			GraphContext *gc = QueryCtx_GetGraphCtx();
 			Schema *s = GraphContext_GetSchema(gc, value.stringval, SCHEMA_NODE);
-			if(s) {
-				Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-				if(idx) {
-					ErrorCtx_SetError("Index already exists configuration can't be changed");
-					return PROCEDURE_ERR;
-				}
+			if(s && Schema_GetIndex(s, NULL, IDX_FULLTEXT)) {
+				ErrorCtx_SetError("Index already exists configuration can't be changed");
+				return PROCEDURE_ERR;
 			}
 		}
 	} else {
@@ -44,8 +41,8 @@ static ProcedureResult _validateLabel(SIValue label) {
 
 	if(Map_Get(label, SI_ConstStringVal("stopwords"), &value)) {
 		if(SI_TYPE(value) == T_ARRAY) {
-			int stopwords_count = SIArray_Length(value);
-			for (int i = 0; i < stopwords_count; i++) {
+			uint stopwords_count = SIArray_Length(value);
+			for (uint i = 0; i < stopwords_count; i++) {
 				SIValue stopword = SIArray_Get(value, i);
 				if(SI_TYPE(stopword) != T_STRING) {
 					ErrorCtx_SetError("Stopword must be a string");
@@ -77,11 +74,12 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 		return PROCEDURE_ERR;
 	}
 
-	// validation, all arguments should be of type string
+	// label argument should be of type string or map
 	if(!(SI_TYPE(args[0]) & (T_STRING | T_MAP))) {
 		ErrorCtx_SetError("Label argument can be string or map");
 		return PROCEDURE_ERR;
 	}
+	// validation, fields arguments should be of type string
 	if(SI_TYPE(args[0]) == T_MAP && _validateLabel(args[0]) == PROCEDURE_ERR) {
 		return PROCEDURE_ERR;
 	}
@@ -110,7 +108,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	}
 
 	// introduce fields to index
-	for(int i = 0; i < fields_count; i++) {
+	for(uint i = 0; i < fields_count; i++) {
 		SIValue field = fields[i];
 		if(GraphContext_AddIndex(&idx, gc, label, field.stringval, IDX_FULLTEXT) == INDEX_OK) {
 			res = INDEX_OK;
@@ -119,9 +117,9 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 
 	if(SI_TYPE(args[0]) == T_MAP) {
 		if(Map_Get(args[0], SI_ConstStringVal("stopwords"), &value)) {
-			int stopwords_count = SIArray_Length(value);
+			uint stopwords_count = SIArray_Length(value);
 			idx->stopwords = array_new(char*, stopwords_count);
-			for (int i = 0; i < stopwords_count; i++) {
+			for (uint i = 0; i < stopwords_count; i++) {
 				SIValue stopword = SIArray_Get(value, i);
 				array_append(idx->stopwords, rm_strdup(stopword.stringval));
 			}

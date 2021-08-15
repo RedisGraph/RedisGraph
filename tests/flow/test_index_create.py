@@ -1,7 +1,5 @@
 import os
-from re import S
 import sys
-import string
 from RLTest import Env
 from redis import ResponseError
 from redisgraph import Graph

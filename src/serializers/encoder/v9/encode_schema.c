@@ -23,7 +23,7 @@ static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 	if(!idx) return;
 
-	int fields_count = Index_FieldsCount(idx);
+	uint fields_count = Index_FieldsCount(idx);
 	for(uint i = 0; i < fields_count; i++) {
 		// Index type
 		RedisModule_SaveUnsigned(rdb, idx->type);

@@ -103,7 +103,7 @@ void Index_RemoveField(Index *idx, const char *field) {
 	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, field);
 	if(!Index_ContainsAttribute(idx, attribute_id)) return;
 
-	int fields_count = array_len(idx->fields);
+	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) {
 			fields_count--;
@@ -133,7 +133,7 @@ void Index_IndexNode(Index *idx, const Node *n) {
 
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
-		int fields_count = array_len(idx->fields);
+		uint fields_count = array_len(idx->fields);
 		for(uint i = 0; i < fields_count; i++) {
 			field_name = idx->fields[i];
 			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
@@ -149,7 +149,7 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			}
 		}
 	} else {
-		int fields_count = array_len(idx->fields);
+		uint fields_count = array_len(idx->fields);
 		for(uint i = 0; i < fields_count; i++) {
 			field_name = idx->fields[i];
 			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
@@ -248,13 +248,13 @@ void Index_Construct(Index *idx) {
 
 	// create indexed fields
 	if(idx->type == IDX_FULLTEXT) {
-		int fields_count = array_len(idx->fields);
+		uint fields_count = array_len(idx->fields);
 		for(uint i = 0; i < fields_count; i++) {
 			// introduce text field
 			RediSearch_CreateTextField(rsIdx, idx->fields[i]);
 		}
 	} else {
-		int fields_count = array_len(idx->fields);
+		uint fields_count = array_len(idx->fields);
 		for(uint i = 0; i < fields_count; i++) {
 			// introduce both text, numeric and geo fields
 			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
@@ -307,7 +307,7 @@ bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
 	ASSERT(idx != NULL);
 	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
 	
-	int fields_count = array_len(idx->fields);
+	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) return true;
 	}
@@ -323,13 +323,13 @@ void Index_Free(Index *idx) {
 	rm_free(idx->label);
 	if(idx->language) rm_free(idx->language);
 
-	int fields_count = array_len(idx->fields);
+	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		rm_free(idx->fields[i]);
 	}
 
 	if(idx->stopwords) {
-		int stopwords_count = array_len(idx->stopwords);
+		uint stopwords_count = array_len(idx->stopwords);
 		for(uint i = 0; i < stopwords_count; i++) {
 			rm_free(idx->stopwords[i]);
 		}
