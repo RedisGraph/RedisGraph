@@ -142,7 +142,7 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	 */
 
 	// While loading the graph, minimize matrix realloc and synchronization calls.
-	Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 
 	// Load nodes.
 	_RdbLoadNodes(rdb, gc);
@@ -151,7 +151,7 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	_RdbLoadEdges(rdb, gc);
 
 	// Revert to default synchronization behavior
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 
 	// Resize and flush all pending changes to matrices.
 	Graph_ApplyAllPending(gc->g);
