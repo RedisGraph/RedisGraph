@@ -20,7 +20,7 @@ class testFulltextIndexQuery(FlowTestsBase):
 
     def populate_graph(self):
         graph.query("CALL db.idx.fulltext.createNodeIndex('L1', 'v')")
-        graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L2', stopwords: ['redis'] }, 'v')")
+        graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L2', stopwords: ['redis', 'world'] }, 'v')")
 
         a = Node(label="L1", properties={"v": 'hello redis world'})
         graph.add_node(a)
@@ -41,6 +41,10 @@ class testFulltextIndexQuery(FlowTestsBase):
         result = graph.query("CALL db.idx.fulltext.queryNodes('L1', 'redis')")
         self.env.assertEquals(result.result_set[0][0], expected_result.result_set[0][0])
 
+        # fulltext query L1 for world 
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L1', 'world')")
+        self.env.assertEquals(result.result_set[0][0], expected_result.result_set[0][0])
+
         expected_result = graph.query("MATCH (n:L2) RETURN n")
 
         # fulltext query L2 for hello 
@@ -49,4 +53,8 @@ class testFulltextIndexQuery(FlowTestsBase):
 
         # fulltext query L2 for redis 
         result = graph.query("CALL db.idx.fulltext.queryNodes('L2', 'redis')")
+        self.env.assertEquals(result.result_set, [])
+
+        # fulltext query L2 for world 
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L2', 'world')")
         self.env.assertEquals(result.result_set, [])

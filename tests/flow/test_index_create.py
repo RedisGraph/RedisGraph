@@ -44,6 +44,11 @@ class testIndexCreationFlow(FlowTestsBase):
         result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L', 'v3', 'v4')")
         self.env.assertEquals(result.indices_created, 2)
 
+        # create an index over L:v5 and L:v6
+        result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L' }, 'v5', 'v6')")
+        self.env.assertEquals(result.indices_created, 2)
+
+    def test02_fulltext_index_creation_label_config(self):
         # create an index over L1:v1
         result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L1' }, 'v1')")
         self.env.assertEquals(result.indices_created, 1)
@@ -81,6 +86,14 @@ class testIndexCreationFlow(FlowTestsBase):
         except ResponseError as e:
             self.env.assertIn("Index already exists configuration can't be changed", str(e))
 
+        # drop L1 index
+        result = redis_graph.query("CALL db.idx.fulltext.drop('L1')")
+        self.env.assertEquals(result.indices_deleted, 1)
+
+        # create an index over L1:v4 with stopwords
+        result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L1', language: 'english' }, 'v4')")
+        self.env.assertEquals(result.indices_created, 1)
+
         try:
             # create an index over L3:v1 with stopwords should failed
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L3', stopwords: 'The' }, 'v1')")
@@ -96,7 +109,7 @@ class testIndexCreationFlow(FlowTestsBase):
             self.env.assertIn("Language must be string", str(e))
 
 
-    def test02_multi_prop_index_creation(self):
+    def test03_multi_prop_index_creation(self):
         # create an index over person:age and person:name
         result = redis_graph.query("CREATE INDEX ON :person(age, name)")
         self.env.assertEquals(result.indices_created, 2)
