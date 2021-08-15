@@ -25,6 +25,8 @@ typedef struct Pair {
 
 typedef Pair *Map;
 
+#define MAP_GET(map, key, value) Map_Get(map, SI_ConstStringVal(key), &value)
+
 // create a new map
 SIValue Map_New
 (

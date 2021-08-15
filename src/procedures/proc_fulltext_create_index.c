@@ -29,9 +29,9 @@ static ProcedureResult _validateIndexConfigMap(SIValue config) {
 	SIValue label;
 
 	bool multi_config = Map_KeyCount(config) > 1;
-	bool label_exists = Map_Get(config, SI_ConstStringVal("label"), &label);
-	bool stopword_exists = Map_Get(config, SI_ConstStringVal("stopwords"), &sw);
-	bool lang_exists = Map_Get(config, SI_ConstStringVal("language"), &lang);
+	bool label_exists    = MAP_GET(config, "label",     label);
+	bool lang_exists     = MAP_GET(config, "language",  lang);
+	bool stopword_exists = MAP_GET(config, "stopwords", sw);
 
 	if(!label_exists) {
 		ErrorCtx_SetError("Label is missing");
@@ -102,19 +102,22 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	}
 
 	// create full-text index
-	SIValue value;
+	SIValue sw;
+	SIValue lang;
 	int res               = INDEX_FAIL;
 	Index *idx            = NULL;
 	GraphContext *gc      = QueryCtx_GetGraphCtx();
 	uint fields_count     = arg_count - 1;
 	const char *label     = NULL;
+	SIValue label_config  = args[0];
 	const SIValue *fields = args + 1; // skip index name
 
-	if(SI_TYPE(args[0]) == T_STRING) {
-		label = args[0].stringval;
-	} else if(SI_TYPE(args[0]) == T_MAP) {
-		Map_Get(args[0], SI_ConstStringVal("label"), &value);
-		label = value.stringval;
+	if(SI_TYPE(label_config) == T_STRING) {
+		label = label_config.stringval;
+	} else if(SI_TYPE(label_config) == T_MAP) {
+		SIValue label_value;
+		MAP_GET(label_config, "label", label_value);
+		label = label_value.stringval;
 	}
 
 	// introduce fields to index
@@ -123,22 +126,20 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 		res = GraphContext_AddIndex(&idx, gc, label, field, IDX_FULLTEXT);
 	}
 
-	// TODO: similar to the validation function above
-	// introduce an arguments extract function which given argv
-	// will populate label, stopwords and language
-	assert(false);
-
 	if(SI_TYPE(args[0]) == T_MAP) {
-		if(Map_Get(args[0], SI_ConstStringVal("stopwords"), &value)) {
-			uint stopwords_count = SIArray_Length(value);
+		bool lang_exists     = MAP_GET(label_config, "language",  lang);
+		bool stopword_exists = MAP_GET(label_config, "stopwords", sw);
+
+		if(stopword_exists) {
+			uint stopwords_count = SIArray_Length(sw);
 			idx->stopwords = array_new(char*, stopwords_count);
 			for (uint i = 0; i < stopwords_count; i++) {
-				SIValue stopword = SIArray_Get(value, i);
+				SIValue stopword = SIArray_Get(sw, i);
 				array_append(idx->stopwords, rm_strdup(stopword.stringval));
 			}
 		}
-		if(Map_Get(args[0], SI_ConstStringVal("language"), &value)) {
-			idx->language = rm_strdup(value.stringval);
+		if(lang_exists) {
+			idx->language = rm_strdup(lang.stringval);
 		}
 	}
 

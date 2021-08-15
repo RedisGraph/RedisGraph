@@ -34,12 +34,12 @@ SIValue AR_TOPOINT(SIValue *argv, int argc) {
 	SIValue longitude;
 
 	// make sure lat is present in map
-	if(!Map_Get(map, SI_ConstStringVal("latitude"), &latitude)) {
+	if(!MAP_GET(map, "latitude", latitude)) {
 		ErrorCtx_RaiseRuntimeException("Did not find 'latitude' value in point map");
 		return SI_NullVal();
 	}
 	// make sure lon is present in map
-	if(!Map_Get(map, SI_ConstStringVal("longitude"), &longitude)) {
+	if(!MAP_GET(map, "longitude", longitude)) {
 		ErrorCtx_RaiseRuntimeException("Did not find 'longitude' value in point map");
 		return SI_NullVal();
 	}
