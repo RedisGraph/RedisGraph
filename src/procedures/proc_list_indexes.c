@@ -21,6 +21,8 @@ typedef struct {
 	SIValue *yield_type;        // yield index type
 	SIValue *yield_label;       // yield index label
 	SIValue *yield_properties;  // yield index properties
+	SIValue *yield_language;    // yield index language
+	SIValue *yield_stopwords;   // yield index stopwords
 } IndexesContext;
 
 // CALL db.indexes()
@@ -44,6 +46,8 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 	pdata->yield_type       = NULL;
 	pdata->yield_label      = NULL;
 	pdata->yield_properties = NULL;
+	pdata->yield_language   = NULL;
+	pdata->yield_stopwords  = NULL;
 
 	uint yield_count = array_len(yield);
 	for(uint i = 0; i < yield_count; i++) {
@@ -63,6 +67,18 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 			array_append(pdata->out, SI_ConstStringVal("properties"));
 			array_append(pdata->out, SI_NullVal());
 			pdata->yield_properties = pdata->out + (i * 2 + 1);
+			continue;
+		}
+		if(strcasecmp("language", yield[i]) == 0) {
+			array_append(pdata->out, SI_ConstStringVal("language"));
+			array_append(pdata->out, SI_NullVal());
+			pdata->yield_language = pdata->out + (i * 2 + 1);
+			continue;
+		}
+		if(strcasecmp("stopwords", yield[i]) == 0) {
+			array_append(pdata->out, SI_ConstStringVal("stopwords"));
+			array_append(pdata->out, SI_NullVal());
+			pdata->yield_stopwords = pdata->out + (i * 2 + 1);
 			continue;
 		}
 	}
@@ -96,6 +112,25 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 		for(uint i = 0; i < fields_count; i++) {
 			SIArray_Append(ctx->yield_properties,
 					SI_ConstStringVal((char *)fields[i]));
+		}
+	}
+
+	if(ctx->yield_language) {
+		*ctx->yield_language = 
+			SI_ConstStringVal(idx->language ? idx->language : "English");
+	}
+
+	if(ctx->yield_stopwords) {
+		if(idx->stopwords) {
+			const char **stopwords  = (const char **)idx->stopwords;
+			uint stopwords_count    = array_len(stopwords);
+			*ctx->yield_stopwords   = SI_Array(stopwords_count);
+			for (uint i = 0; i < stopwords_count; i++){
+				SIArray_Append(ctx->yield_stopwords,
+					SI_ConstStringVal((char *)stopwords[i]));
+			}
+		} else {
+			*ctx->yield_stopwords = SI_Array(0);
 		}
 	}
 
@@ -149,7 +184,7 @@ ProcedureResult Proc_IndexesFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_IndexesCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 3);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 5);
 
 	// index type (exact-match / fulltext)
 	output  = (ProcedureOutput) {
@@ -166,6 +201,18 @@ ProcedureCtx *Proc_IndexesCtx() {
 	// indexed properties
 	output  = (ProcedureOutput) {
 		.name = "properties", .type = T_ARRAY
+	};
+	array_append(outputs, output);
+
+	// indexed language
+	output  = (ProcedureOutput) {
+		.name = "language", .type = T_STRING
+	};
+	array_append(outputs, output);
+
+	// indexed stopwords
+	output  = (ProcedureOutput) {
+		.name = "stopwords", .type = T_ARRAY
 	};
 	array_append(outputs, output);
 
