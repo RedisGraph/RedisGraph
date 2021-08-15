@@ -22,13 +22,13 @@ typedef enum {
 } IndexType;
 
 typedef struct {
-	char *label;                // Indexed label.
-	char **fields;              // Indexed fields.
-	char **stopwords;           // Stopwords.
-	char *language;             // Language.
-	Attribute_ID *fields_ids;   // Indexed field IDs.
-	RSIndex *idx;               // RediSearch index.
-	IndexType type;             // Index type exact-match / fulltext.
+	char *label;                // indexed label
+	RSIndex *idx;               // rediSearch index
+	char **fields;              // indexed fields
+	char *language;             // language
+	char **stopwords;           // stopwords
+	IndexType type;             // index type exact-match / fulltext
+	Attribute_ID *fields_ids;   // indexed field IDs
 } Index;
 
 /**

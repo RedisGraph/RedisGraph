@@ -100,13 +100,12 @@ void Index_AddField(Index *idx, const char *field) {
 void Index_RemoveField(Index *idx, const char *field) {
 	ASSERT(idx != NULL);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, field);
-	if(!Index_ContainsAttribute(idx, attribute_id)) return;
+	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
+	if(attribute_id == ATTRIBUTE_NOTFOUND) return;
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) {
-			fields_count--;
 			rm_free(idx->fields[i]);
 			array_del_fast(idx->fields, i);
 			array_del_fast(idx->fields_ids, i);
@@ -121,11 +120,12 @@ void Index_IndexNode(Index *idx, const Node *n) {
 	SIValue     *v               = NULL;  // current indexed value
 	RSIndex     *rsIdx           = idx->idx;
 	NodeID      node_id          = ENTITY_GET_ID(n);
+	uint        field_count      = array_len(idx->fields);
 	uint        doc_field_count  = 0;
 
 	// list of none indexable fields
 	uint none_indexable_fields_count = 0; // number of none indexed fields
-	const char *none_indexable_fields[array_len(idx->fields)]; // none indexed fields
+	const char *none_indexable_fields[field_count]; // none indexed fields
 
 	// create a document out of node
 	RSDoc *doc = RediSearch_CreateDocument(&node_id, sizeof(EntityID), score, 
@@ -133,8 +133,7 @@ void Index_IndexNode(Index *idx, const Node *n) {
 
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
-		uint fields_count = array_len(idx->fields);
-		for(uint i = 0; i < fields_count; i++) {
+		for(uint i = 0; i < field_count; i++) {
 			field_name = idx->fields[i];
 			v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
 			if(v == PROPERTY_NOTFOUND) continue;
@@ -144,8 +143,8 @@ void Index_IndexNode(Index *idx, const Node *n) {
 			// value must be of type string
 			if(t == T_STRING) {
 				doc_field_count++;
-				RediSearch_DocumentAddFieldString(doc, idx->fields[i], 
-						v->stringval, strlen(v->stringval), RSFLDTYPE_FULLTEXT);
+				RediSearch_DocumentAddFieldString(doc, field_name, v->stringval,
+						strlen(v->stringval), RSFLDTYPE_FULLTEXT);
 			}
 		}
 	} else {
@@ -159,8 +158,8 @@ void Index_IndexNode(Index *idx, const Node *n) {
 
 			doc_field_count++;
 			if(t == T_STRING) {
-				RediSearch_DocumentAddFieldString(doc, idx->fields[i],
-						v->stringval, strlen(v->stringval), RSFLDTYPE_TAG);
+				RediSearch_DocumentAddFieldString(doc, field_name, v->stringval,
+						strlen(v->stringval), RSFLDTYPE_TAG);
 			} else if(t & (SI_NUMERIC | T_BOOL)) {
 				double d = SI_GET_NUMERIC(*v);
 				RediSearch_DocumentAddFieldNumber(doc, field_name, d,
@@ -240,7 +239,8 @@ void Index_Construct(Index *idx) {
 	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
 
 	if(idx->stopwords) {
-		RediSearch_IndexOptionsSetStopwords(idx_options, (const char**)idx->stopwords, array_len(idx->stopwords));
+		RediSearch_IndexOptionsSetStopwords(idx_options,
+				(const char**)idx->stopwords, array_len(idx->stopwords));
 	}
 
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
@@ -320,13 +320,14 @@ void Index_Free(Index *idx) {
 	ASSERT(idx != NULL);
 	if(idx->idx) RediSearch_DropIndex(idx->idx);
 
-	rm_free(idx->label);
 	if(idx->language) rm_free(idx->language);
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		rm_free(idx->fields[i]);
 	}
+	array_free(idx->fields);
+	array_free(idx->fields_ids);
 
 	if(idx->stopwords) {
 		uint stopwords_count = array_len(idx->stopwords);
@@ -336,8 +337,7 @@ void Index_Free(Index *idx) {
 		array_free(idx->stopwords);
 	}
 
-	array_free(idx->fields);
-	array_free(idx->fields_ids);
-
+	rm_free(idx->label);
 	rm_free(idx);
 }
+

@@ -1,49 +1,57 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "proc_fulltext_create_index.h"
 #include "../value.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
+#include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../index/index.h"
 #include "../datatypes/datatypes.h"
-#include "../errors.h"
 
 //------------------------------------------------------------------------------
 // fulltext createNodeIndex
 //------------------------------------------------------------------------------
 
 // validate index configuration map
-// label is requierd and of type string
+// [required] label <string>
+// [optional] stopwords <string[]>
+// [optional] language <string>
 // configuration can't change if index exists 
-// stopwords is array of strings
-// language is string
-static ProcedureResult _validateLabel(SIValue label) {
-	SIValue value;
-	if(Map_Get(label, SI_ConstStringVal("label"), &value)) {
-		if(Map_KeyCount(label) > 1) {
-			GraphContext *gc = QueryCtx_GetGraphCtx();
-			Schema *s = GraphContext_GetSchema(gc, value.stringval, SCHEMA_NODE);
-			if(s && Schema_GetIndex(s, NULL, IDX_FULLTEXT)) {
-				ErrorCtx_SetError("Index already exists configuration can't be changed");
-				return PROCEDURE_ERR;
-			}
-		}
-	} else {
+static ProcedureResult _validateIndexConfigMap(SIValue config) {
+	SIValue sw;
+	SIValue lang;
+	SIValue label;
+
+	bool multi_config = Map_KeyCount(config) > 1;
+	bool label_exists = Map_Get(config, SI_ConstStringVal("label"), &label);
+	bool stopword_exists = Map_Get(config, SI_ConstStringVal("stopwords"), &sw);
+	bool lang_exists = Map_Get(config, SI_ConstStringVal("language"), &lang);
+
+	if(!label_exists) {
 		ErrorCtx_SetError("Label is missing");
 		return PROCEDURE_ERR;
 	}
 
-	if(Map_Get(label, SI_ConstStringVal("stopwords"), &value)) {
-		if(SI_TYPE(value) == T_ARRAY) {
-			uint stopwords_count = SIArray_Length(value);
+	if(multi_config) {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *s = GraphContext_GetSchema(gc, label.stringval, SCHEMA_NODE);
+		if(s && Schema_GetIndex(s, NULL, IDX_FULLTEXT)) {
+			ErrorCtx_SetError("Index already exists configuration can't be changed");
+			return PROCEDURE_ERR;
+		}
+	}
+
+	if(stopword_exists) {
+		if(SI_TYPE(sw) == T_ARRAY) {
+			uint stopwords_count = SIArray_Length(sw);
 			for (uint i = 0; i < stopwords_count; i++) {
-				SIValue stopword = SIArray_Get(value, i);
+				SIValue stopword = SIArray_Get(sw, i);
 				if(SI_TYPE(stopword) != T_STRING) {
 					ErrorCtx_SetError("Stopword must be a string");
 					return PROCEDURE_ERR;
@@ -54,8 +62,9 @@ static ProcedureResult _validateLabel(SIValue label) {
 			return PROCEDURE_ERR;
 		}
 	}
-	if(Map_Get(label, SI_ConstStringVal("language"), &value)) {
-		if(SI_TYPE(value) != T_STRING) {
+
+	if(lang_exists) {
+		if(SI_TYPE(lang) != T_STRING) {
 			ErrorCtx_SetError("Language must be string");
 			return PROCEDURE_ERR;
 		}
@@ -80,7 +89,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 		return PROCEDURE_ERR;
 	}
 	// validation, fields arguments should be of type string
-	if(SI_TYPE(args[0]) == T_MAP && _validateLabel(args[0]) == PROCEDURE_ERR) {
+	if(SI_TYPE(args[0]) == T_MAP &&
+			_validateIndexConfigMap(args[0]) == PROCEDURE_ERR) {
 		return PROCEDURE_ERR;
 	}
 
@@ -109,11 +119,14 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 
 	// introduce fields to index
 	for(uint i = 0; i < fields_count; i++) {
-		SIValue field = fields[i];
-		if(GraphContext_AddIndex(&idx, gc, label, field.stringval, IDX_FULLTEXT) == INDEX_OK) {
-			res = INDEX_OK;
-		}
+		const char *field = fields[i].stringval;
+		res = GraphContext_AddIndex(&idx, gc, label, field, IDX_FULLTEXT);
 	}
+
+	// TODO: similar to the validation function above
+	// introduce an arguments extract function which given argv
+	// will populate label, stopwords and language
+	assert(false);
 
 	if(SI_TYPE(args[0]) == T_MAP) {
 		if(Map_Get(args[0], SI_ConstStringVal("stopwords"), &value)) {
