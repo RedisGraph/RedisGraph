@@ -28,7 +28,7 @@ static ProcedureResult _validateIndexConfigMap(SIValue config) {
 	SIValue lang;
 	SIValue label;
 
-	bool multi_config = Map_KeyCount(config) > 1;
+	bool multi_config    = Map_KeyCount(config) > 1;
 	bool label_exists    = MAP_GET(config, "label",     label);
 	bool lang_exists     = MAP_GET(config, "language",  lang);
 	bool stopword_exists = MAP_GET(config, "stopwords", sw);
@@ -126,7 +126,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 		res = GraphContext_AddIndex(&idx, gc, label, field, IDX_FULLTEXT);
 	}
 
-	if(SI_TYPE(args[0]) == T_MAP) {
+	if(SI_TYPE(label_config) == T_MAP) {
 		bool lang_exists     = MAP_GET(label_config, "language",  lang);
 		bool stopword_exists = MAP_GET(label_config, "stopwords", sw);
 
