@@ -23,10 +23,28 @@ static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 	if(!idx) return;
 
+	// Index type
+	RedisModule_SaveUnsigned(rdb, idx->type);
+
+	if(idx->type == IDX_FULLTEXT) {
+		// Index language
+		char *language = idx->language ? idx->language : "english";
+		RedisModule_SaveStringBuffer(rdb, language, strlen(language));
+
+		uint stopwords_count = idx->stopwords ? array_len(idx->stopwords) : 0;
+		// Index stopwords count
+		RedisModule_SaveUnsigned(rdb, stopwords_count);
+		for (uint i = 0; i < stopwords_count; i++) {
+			char *stopword = idx->stopwords[i];
+			// Index stopword
+			RedisModule_SaveStringBuffer(rdb, stopword, strlen(stopword));
+		}
+	}
+
 	uint fields_count = Index_FieldsCount(idx);
+	// Indexed fields count
+	RedisModule_SaveUnsigned(rdb, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
-		// Index type
-		RedisModule_SaveUnsigned(rdb, idx->type);
 		// Indexed property
 		RedisModule_SaveStringBuffer(rdb, idx->fields[i], strlen(idx->fields[i]) + 1);
 	}
