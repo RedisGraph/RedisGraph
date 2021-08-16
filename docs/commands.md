@@ -920,6 +920,16 @@ GRAPH.QUERY DEMO_GRAPH
    2) "Query internal execution time: 0.335401 milliseconds"
 ```
 
+RediSearch provide 2 additional index configuration options:
+1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
+2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+
+To construct a full-text index on the `title` using `German` using custom stopwords property of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'], 'title')"
+```
+
 ## GRAPH.PROFILE
 
 Executes a query and produces an execution plan augmented with metrics for each operation's execution.
