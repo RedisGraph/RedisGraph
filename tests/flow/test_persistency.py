@@ -123,7 +123,7 @@ class testGraphPersistency(FlowTestsBase):
                 self.env.assertEquals(edgeCount, 2)
 
                 # Verify indices exists
-                expected_indices = [["exact-match", "country", ["name", "population"]], ["exact-match", "person", ["name", "height"]]]
+                expected_indices = [["exact-match", "country", ["name", "population"], 'English', []], ["exact-match", "person", ["name", "height"], 'English', []]]
                 indices = graph.query("""CALL db.indexes()""").result_set
                 self.env.assertEquals(indices, expected_indices)
 
