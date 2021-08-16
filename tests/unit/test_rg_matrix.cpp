@@ -163,6 +163,28 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 	// matrix shouldn't be dirty
 	ASSERT_FALSE(RG_Matrix_isDirty(A));
 
+	// test M, DP and DM hyper switch
+	int format;
+	double hyper_switch;
+
+	// M should always never be hyper
+	GxB_Matrix_Option_get(M, GxB_HYPER_SWITCH, &hyper_switch);
+	ASSERT_EQ(hyper_switch, GxB_NEVER_HYPER);
+	GxB_Matrix_Option_get(M, GxB_SPARSITY_CONTROL, &format);
+	ASSERT_EQ(format, GxB_SPARSE);
+
+	// DP should always be hyper
+	GxB_Matrix_Option_get(DP, GxB_HYPER_SWITCH, &hyper_switch);
+	ASSERT_EQ(hyper_switch, GxB_ALWAYS_HYPER);
+	GxB_Matrix_Option_get(DP, GxB_SPARSITY_CONTROL, &format);
+	ASSERT_EQ(format, GxB_HYPERSPARSE);
+
+	// DM should always be hyper
+	GxB_Matrix_Option_get(DM, GxB_HYPER_SWITCH, &hyper_switch);
+	ASSERT_EQ(hyper_switch, GxB_ALWAYS_HYPER);
+	GxB_Matrix_Option_get(DM, GxB_SPARSITY_CONTROL, &format);
+	ASSERT_EQ(format, GxB_HYPERSPARSE);
+
 	// matrix should be empty
 	M_EMPTY();
 	DP_EMPTY(); 
@@ -1428,3 +1450,79 @@ TEST_F(RGMatrixTest, RGMatrix_mxm) {
 	RG_Matrix_free(&D);
 	ASSERT_TRUE(C == NULL);
 }
+
+//#ifndef RG_DEBUG
+//// test RGMatrix_pending
+//// if RG_DEBUG is defined, each call to setElement will flush all 3 matrices
+//// causing this test to fail
+//TEST_F(RGMatrixTest, RGMatrix_pending) {
+//	RG_Matrix  A        =  NULL;
+//	GrB_Info   info     =  GrB_SUCCESS;
+//	GrB_Type   t        =  GrB_UINT64;
+//	GrB_Index  nrows    =  100;
+//	GrB_Index  ncols    =  100;
+//	bool       pending  =  false;
+//
+//	info = RG_Matrix_new(&A, t, nrows, ncols);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//
+//	// new RG_Matrix shouldn't have any pending operations
+//	info = RG_Matrix_pending(A, &pending);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//	ASSERT_FALSE(pending);
+//
+//	// set element, modifies delta-plus
+//	info = RG_Matrix_setElement_UINT64(A, 2, 2, 2);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//
+//	// expecting pending changes
+//	info = RG_Matrix_pending(A, &pending);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//	ASSERT_TRUE(pending);
+//
+//	// flush pending changes on both DP and DM
+//	info = RG_Matrix_wait(A, false);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//
+//	// expecting no pending changes
+//	info = RG_Matrix_pending(A, &pending);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//	ASSERT_FALSE(pending);
+//
+//	// remove entry, DP entry is now a zombie
+//	info = RG_Matrix_removeElement_UINT64(A, 2, 2);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//
+//	// expecting pending changes
+//	info = RG_Matrix_pending(A, &pending);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//	ASSERT_TRUE(pending);
+//
+//	// flush pending changes on both DP and DM
+//	info = RG_Matrix_wait(A, false);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//
+//	// expecting no pending changes
+//	info = RG_Matrix_pending(A, &pending);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//	ASSERT_FALSE(pending);
+//
+//	// set element, modifies delta-plus
+//	info = RG_Matrix_setElement_UINT64(A, 2, 2, 2);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//
+//	// flush pending changes on M, DM and DP
+//	info = RG_Matrix_wait(A, true);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//
+//	// expecting no pending changes
+//	info = RG_Matrix_pending(A, &pending);
+//	ASSERT_EQ(info, GrB_SUCCESS);
+//	ASSERT_FALSE(pending);
+//
+//	// clean up
+//	RG_Matrix_free(&A);
+//	ASSERT_TRUE(A == NULL);
+//}
+//#endif
+

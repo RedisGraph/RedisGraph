@@ -168,10 +168,11 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	}
 
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
-		// Revert to default synchronization behavior
+		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(gc->g);
-		// Set the thread-local GraphContext, as it will be accessed when creating indexes.
+		Graph_ApplyAllPending(gc->g, true);
+
+		// set the thread-local GraphContext, as it will be accessed when creating indexes
 		QueryCtx_SetGraphCtx(gc);
 		// Index the nodes when decoding ends.
 		uint node_schemas_count = array_len(gc->node_schemas);
@@ -181,13 +182,15 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
-		QueryCtx_Free(); // Release thread-local variables.
+		// make sure graph doesn't contains may pending changes
+		ASSERT(Graph_Pending(gc->g) == false);
+
+		QueryCtx_Free(); // Release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
-		// Graph has finished decoding, inform the module.
+		// graph has finished decoding, inform the module
 		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
 	return gc;
 }
-

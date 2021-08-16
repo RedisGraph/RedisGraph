@@ -260,16 +260,77 @@ void Graph_SetMatrixPolicy
 // synchronize and resize all matrices in graph
 void Graph_ApplyAllPending
 (
-	Graph *g
+	Graph *g,
+	bool force_flush
 ) {
-	uint n = 0;
-	Graph_GetAdjacencyMatrix(g, false);
+	ASSERT(g != NULL);
+
+	uint       n  =  0;
+	RG_Matrix  M  =  NULL;
+
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_wait(M, force_flush);
 
 	n = array_len(g->labels);
-	for(int i = 0; i < n; i ++) Graph_GetLabelMatrix(g, i);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetLabelMatrix(g, i);
+		RG_Matrix_wait(M, force_flush);
+	}
 
 	n = array_len(g->relations);
-	for(int i = 0; i < n; i ++) Graph_GetRelationMatrix(g, i, false);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetRelationMatrix(g, i, false);
+		RG_Matrix_wait(M, force_flush);
+	}
+}
+
+bool Graph_Pending
+(
+	const Graph *g
+) {
+	ASSERT(g != NULL);
+
+	GrB_Info   info;
+	UNUSED(info);
+
+	uint       n        =  0;
+	RG_Matrix  M        =  NULL;
+	bool       pending  =  false;
+
+	//--------------------------------------------------------------------------
+	// see if ADJ matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	M = g->adjacency_matrix;
+	info = RG_Matrix_pending(M, &pending);
+	ASSERT(info == GrB_SUCCESS);
+	if(pending) return true;
+
+	//--------------------------------------------------------------------------
+	// see if any label matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	n = array_len(g->labels);
+	for(int i = 0; i < n; i ++) {
+		M = g->labels[i];
+		info = RG_Matrix_pending(M, &pending);
+		ASSERT(info == GrB_SUCCESS);
+		if(pending) return true;
+	}
+
+	//--------------------------------------------------------------------------
+	// see if any relationship matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	n = array_len(g->relations);
+	for(int i = 0; i < n; i ++) {
+		M = g->relations[i];
+		info = RG_Matrix_pending(M, &pending);
+		ASSERT(info == GrB_SUCCESS);
+		if(pending) return true;
+	}
+
+	return false;
 }
 
 //------------------------------------------------------------------------------

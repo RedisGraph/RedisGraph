@@ -154,6 +154,9 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 
 	// Resize and flush all pending changes to matrices.
-	Graph_ApplyAllPending(gc->g);
+	Graph_ApplyAllPending(gc->g, true);
+
+	// make sure graph doesn't contains may pending changes
+	ASSERT(Graph_Pending(gc->g) == false);
 }
 
