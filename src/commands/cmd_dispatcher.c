@@ -25,6 +25,7 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 	// set defaults
 	*compact = false;  // verbose
 	*graph_version = GRAPH_VERSION_MISSING;
+	*query_params = NULL;
 	Config_Option_get(Config_TIMEOUT, timeout);
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
@@ -37,6 +38,7 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 
 		// compact result-set
 		if(!strcasecmp(arg, "--compact")) {
+			if(*compact) return REDISMODULE_ERR;
 			*compact = true;
 			continue;
 		}
@@ -46,6 +48,7 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 			int err = REDISMODULE_ERR;
 			if(i < argc - 1) {
 				i++; // Set the current argument to the version value.
+				if(*graph_version != GRAPH_VERSION_MISSING) return REDISMODULE_ERR;
 				err = RedisModule_StringToLongLong(argv[i], &v);
 				*graph_version = v;
 			}
@@ -77,6 +80,12 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 		}
 
 		if(!strcasecmp(arg, "query_params")) {
+			// Emit error on multiple params arguments.
+			if(*query_params) {
+				asprintf(errmsg, "Multiple query_params args");
+				return REDISMODULE_ERR;
+			}
+
 			// Emit error on missing query params.
 			if(i >= argc - 1) {
 				asprintf(errmsg, "Missing query params");

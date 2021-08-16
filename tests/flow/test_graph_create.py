@@ -2,6 +2,7 @@ import os
 import sys
 import redis
 from RLTest import Env
+from pathlib import Path
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -101,4 +102,17 @@ class testGraphCreationFlow(FlowTestsBase):
         expected_result = [[[1, 2]]]
 
         self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.result_set, expected_result)
+
+    def test07_create_graph_with_large_query(self):
+        # The path e is volatile; verify that it can be projected after entity creation.
+        query = Path('query_monitor.txt').read_text()
+        result = None
+        try:
+            result = redis_graph.query(query)
+        except redis.exceptions.ResponseError as e:
+            print(str(e))
+
+        expected_result = []
+
         self.env.assertEquals(result.result_set, expected_result)

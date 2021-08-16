@@ -119,3 +119,23 @@ class testParams(FlowTestsBase):
         plan = redis_graph.execution_plan(query, params)
         self.env.assertIn('NodeByIdSeek', plan)
 
+    def test_large_params_query(self):
+        params = {}
+        for i in range(2000):
+            params[str(i)] = 'abba'
+
+        try:
+            expected = [[1],[2],[3]]
+            res = redis_graph.query("UNWIND [1,2,3] AS x RETURN x", params)
+            self.env.assertEqual(res.result_set, expected)
+        except redis.exceptions.ResponseError as e:
+            print(str(e))
+            self.env.assertFalse(True)
+
+    def test_multi_params(self):
+        redis_con = self.env.getConnection()
+        try:
+            redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "UNWIND [1,2,3] AS x RETURN x", "query_params", "CYPHER $i=1", "query_params", "CYPHER $b=3")
+            self.env.assertFalse(True)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Multiple query_params args", str(e))
