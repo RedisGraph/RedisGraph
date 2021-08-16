@@ -25,6 +25,10 @@ GrB_Info RG_Matrix_pending
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
 		info = RG_Matrix_pending(C->transposed, &res);
 		ASSERT(info == GrB_SUCCESS);
+		if(res == true) {
+			*pending = true;
+			return GrB_SUCCESS;
+		}
 	}
 
 	// check if M contains pending changes

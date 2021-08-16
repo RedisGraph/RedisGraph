@@ -293,10 +293,9 @@ bool Graph_Pending
 	GrB_Info   info;
 	UNUSED(info);
 
-	bool       res      =  false;
-	bool       pending  =  false;
 	uint       n        =  0;
 	RG_Matrix  M        =  NULL;
+	bool       pending  =  false;
 
 	//--------------------------------------------------------------------------
 	// see if ADJ matrix contains pending changes
@@ -305,7 +304,7 @@ bool Graph_Pending
 	M = g->adjacency_matrix;
 	info = RG_Matrix_pending(M, &pending);
 	ASSERT(info == GrB_SUCCESS);
-	res |= pending;
+	if(pending) return true;
 
 	//--------------------------------------------------------------------------
 	// see if any label matrix contains pending changes
@@ -316,7 +315,7 @@ bool Graph_Pending
 		M = g->labels[i];
 		info = RG_Matrix_pending(M, &pending);
 		ASSERT(info == GrB_SUCCESS);
-		res |= pending;
+		if(pending) return true;
 	}
 
 	//--------------------------------------------------------------------------
@@ -328,10 +327,10 @@ bool Graph_Pending
 		M = g->relations[i];
 		info = RG_Matrix_pending(M, &pending);
 		ASSERT(info == GrB_SUCCESS);
-		res |= pending;
+		if(pending) return true;
 	}
 
-	return res;
+	return false;
 }
 
 //------------------------------------------------------------------------------
