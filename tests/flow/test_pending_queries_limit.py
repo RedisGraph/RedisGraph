@@ -57,7 +57,7 @@ class testPendingQueryLimit():
         # invoke queries
         m = pool.amap(issue_query, connections, qs)
 
-        # wait for threads to return
+        # wait for processes to return
         m.wait()
 
         # get the results
