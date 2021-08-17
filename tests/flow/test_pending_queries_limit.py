@@ -21,6 +21,10 @@ def issue_query(conn, q):
 
 class testPendingQueryLimit():
     def __init__(self):
+        # skip test if we're running under Valgrind
+        if Env().envRunner.debugger is not None:
+            Env().skip() # valgrind is not working correctly with replication
+
         self.env = Env(decodeResponses=True)
         self.conn = self.env.getConnection()
 
