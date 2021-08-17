@@ -137,22 +137,22 @@ class testStressFlow(FlowTestsBase):
         conn.ping()
         conn.close()
 
-    def test02_clean_shutdown(self):
-        # issue SHUTDOWN while traffic is generated
-        indexes = range(CLIENT_COUNT)
-        pool = Pool(nodes=CLIENT_COUNT)
+    # def test02_clean_shutdown(self):
+    #     # issue SHUTDOWN while traffic is generated
+    #     indexes = range(CLIENT_COUNT)
+    #     pool = Pool(nodes=CLIENT_COUNT)
 
-        # invoke queries
-        m = pool.amap(query_crud, graphs, indexes)
+    #     # invoke queries
+    #     m = pool.amap(query_crud, graphs, indexes)
 
-        # sleep for half a second, allowing threads to kick in
-        sleep(0.2)
+    #     # sleep for half a second, allowing threads to kick in
+    #     sleep(0.2)
 
-        conn = self.env.getConnection()
-        conn.shutdown()
+    #     conn = self.env.getConnection()
+    #     conn.shutdown()
 
-        # wait for processes to return
-        m.wait()
+    #     # wait for processes to return
+    #     m.wait()
 
         # TODO: exit code doesn't seems to work
         # self.env.assertTrue(self.env.checkExitCode())
