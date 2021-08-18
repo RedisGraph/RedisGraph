@@ -1,22 +1,19 @@
-import os
-import sys
 import time
-from pathos.pools import ProcessPool as Pool
 from time import sleep
 from RLTest import Env
 from redisgraph import Graph
 from base import FlowTestsBase
+from pathos.pools import ProcessPool as Pool
 
 graphs       = None  # one graph object per client
 GRAPH_ID     = "G"   # graph identifier
-CLIENT_COUNT = 100   # number of concurrent connections
 
-def query_crud(graph, threadID):
+def query_crud(graph, query_id):
     for i in range(10):
-        create_query = "CREATE (n:node {v:'%s'}), (n)-[:have]->({value:'%s'}), (n)-[:have]->({value:'%s'})" % (threadID, threadID, threadID)
-        read_query   = "MATCH (n0:node {v:'%s'})<-[:have]-(n:node)-[:have]->(n1:node) return n1.v" % threadID
-        update_query = "MATCH (n:node {v: '%s'}) SET n.x = '%s'" % (threadID, threadID)
-        delete_query = "MATCH (n:node {v: '%s'})-[:have*]->(n1:node) DELETE n, n1" % threadID
+        create_query = "CREATE (n:node {v:'%s'}), (n)-[:have]->({value:'%s'}), (n)-[:have]->({value:'%s'})" % (query_id, query_id, query_id)
+        read_query   = "MATCH (n0:node {v:'%s'})<-[:have]-(n:node)-[:have]->(n1:node) return n1.v" % query_id
+        update_query = "MATCH (n:node {v: '%s'}) SET n.x = '%s'" % (query_id, query_id)
+        delete_query = "MATCH (n:node {v: '%s'})-[:have*]->(n1:node) DELETE n, n1" % query_id
 
         try:
             graph.query(create_query)
@@ -74,30 +71,29 @@ class testStressFlow(FlowTestsBase):
     def __init__(self):
         # skip test if we're running under Valgrind
         if Env().envRunner.debugger is not None:
-            Env().skip() # valgrind is not working correctly with replication
+            Env().skip() # valgrind is not working correctly with multi process
 
         self.env = Env(decodeResponses=True)
         global graphs
         graphs = []
 
-        for i in range(0, CLIENT_COUNT):
+        self.CLIENT_COUNT = self.env.getConnection().execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1] * 5
+
+        for i in range(0, self.CLIENT_COUNT):
             graphs.append(Graph(GRAPH_ID, self.env.getConnection()))
 
     def __del__(self):
-        for i in range(0, CLIENT_COUNT):
+        for i in range(0, self.CLIENT_COUNT):
             g = graphs[0]
             g.redis_con.close()
 
     # Count number of nodes in the graph
     def test00_stress(self):
-        indexes = range(CLIENT_COUNT)
-        pool = Pool(nodes=CLIENT_COUNT)
+        ids = range(self.CLIENT_COUNT)
+        pool = Pool(nodes=self.CLIENT_COUNT)
 
         # invoke queries
-        m = pool.amap(query_crud, graphs, indexes)
-
-        # wait for processes to return
-        m.wait()
+        pool.map(query_crud, graphs, ids)
 
         # make sure we did not crashed
         conn = self.env.getConnection()
@@ -105,10 +101,6 @@ class testStressFlow(FlowTestsBase):
         conn.close()
 
     def test01_bgsave_stress(self):
-        # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
-            Env().skip() # fork doesn't free memory, so valgrind will complain
-
         n_nodes = 1000
         n_iterations = 10
         conn = self.env.getConnection()
@@ -137,23 +129,20 @@ class testStressFlow(FlowTestsBase):
         conn.ping()
         conn.close()
 
-    # def test02_clean_shutdown(self):
-    #     # issue SHUTDOWN while traffic is generated
-    #     indexes = range(CLIENT_COUNT)
-    #     pool = Pool(nodes=CLIENT_COUNT)
+    def test02_clean_shutdown(self):
+        # issue SHUTDOWN while traffic is generated
+        indexes = range(self.CLIENT_COUNT)
+        pool = Pool(nodes=self.CLIENT_COUNT)
 
-    #     # invoke queries
-    #     m = pool.amap(query_crud, graphs, indexes)
+        # invoke queries
+        m = pool.amap(query_crud, graphs, indexes)
 
-    #     # sleep for half a second, allowing threads to kick in
-    #     sleep(0.2)
+        # sleep for half a second, allowing threads to kick in
+        sleep(0.2)
 
-    #     conn = self.env.getConnection()
-    #     conn.shutdown()
+        self.env.stop()
 
-    #     # wait for processes to return
-    #     m.wait()
+        # wait for processes to return
+        m.wait()
 
-        # TODO: exit code doesn't seems to work
-        # self.env.assertTrue(self.env.checkExitCode())
-
+        self.env.assertTrue(self.env.checkExitCode())

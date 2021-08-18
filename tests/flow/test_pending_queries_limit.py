@@ -1,6 +1,6 @@
-from pathos.pools import ProcessPool as Pool
 from RLTest import Env
 from redisgraph import Graph
+from pathos.pools import ProcessPool as Pool
 
 # 1.test getting and setting config
 # 2. test overflowing the server when there's a limit
@@ -23,7 +23,7 @@ class testPendingQueryLimit():
     def __init__(self):
         # skip test if we're running under Valgrind
         if Env().envRunner.debugger is not None:
-            Env().skip() # valgrind is not working correctly with replication
+            Env().skip() # valgrind is not working correctly with multi process
 
         self.env = Env(decodeResponses=True)
         self.conn = self.env.getConnection()
@@ -43,25 +43,18 @@ class testPendingQueryLimit():
         self.env.assertEquals(max_queued_queries, 10)
 
     def stress_server(self):
-        connections = []
-        qs = []
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
         thread_count = threadpool_size * 2
+        qs = [SLOW_QUERY] * thread_count
+        connections = []
         pool = Pool(nodes=thread_count)
 
         # init connections
         for i in range(thread_count):
             connections.append(self.env.getConnection())
-            qs.append(SLOW_QUERY)
 
         # invoke queries
-        m = pool.amap(issue_query, connections, qs)
-
-        # wait for processes to return
-        m.wait()
-
-        # get the results
-        result = m.get()
+        result = pool.map(issue_query, connections, qs)
 
         # return if error encountered
         return any(result)

@@ -1,16 +1,15 @@
-from pathos.pools import ProcessPool as Pool
 from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from redis import ResponseError
-
 from base import FlowTestsBase
+from redis import ResponseError
+from redisgraph import Graph, Node, Edge
+from pathos.pools import ProcessPool as Pool
 
 GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 graphs = None                       # One graph object per client.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def query_aggregate(graph, query, threadID):
+def query_aggregate(graph, query):
     for i in range(10):
         actual_result = graph.query(query)
         person_count = actual_result.result_set[0][0]
@@ -19,7 +18,7 @@ def query_aggregate(graph, query, threadID):
     
     return True
 
-def query_neighbors(graph, query, threadID):
+def query_neighbors(graph, query):
     # Fully connected graph + header row.
     expected_resultset_size = len(people) * (len(people)-1)
 
@@ -30,7 +29,7 @@ def query_neighbors(graph, query, threadID):
     
     return True
 
-def query_write(graph, query, threadID):
+def query_write(graph, query):
     for i in range(10):
         actual_result = graph.query(query)        
         if actual_result.nodes_created != 1 or actual_result.properties_set != 1:
@@ -38,13 +37,13 @@ def query_write(graph, query, threadID):
 
     return True
 
-def thread_run_query(graph, query, threadID):
+def thread_run_query(graph, query):
     try:
         return graph.query(query)
     except ResponseError as e:
         return str(e)
 
-def delete_graph(graph, threadID):
+def delete_graph(graph):
     # Try to delete graph.
     try:
         graph.delete()
@@ -54,18 +53,10 @@ def delete_graph(graph, threadID):
         return False
 
 def run_concurrent(env, queries, f):
-    indexes = range(CLIENT_COUNT)
     pool = Pool(nodes=CLIENT_COUNT)
 
     # invoke queries
-    m = pool.amap(f, graphs, queries, indexes)
-
-    # wait for processes to return
-    m.wait()
-
-    # get the results
-
-    result = m.get()
+    result = pool.map(f, graphs, queries)
 
     # validate all process return true
     env.assertTrue(all(result))
@@ -74,7 +65,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
         # skip test if we're running under Valgrind
         if Env().envRunner.debugger is not None:
-            Env().skip() # valgrind is not working correctly with replication
+            Env().skip() # valgrind is not working correctly with multi processing
 
         self.env = Env(decodeResponses=True)
         global graphs
@@ -122,17 +113,10 @@ class testConcurrentQueryFlow(FlowTestsBase):
     
     # Try to delete graph multiple times.
     def test_04_concurrent_delete(self):
-        indexes = range(CLIENT_COUNT)
         pool = Pool(nodes=CLIENT_COUNT)
 
         # invoke queries
-        m = pool.amap(delete_graph, graphs, indexes)
-
-        # wait for processes to return
-        m.wait()
-
-        # get the results
-        assertions = m.get()
+        assertions = pool.map(delete_graph, graphs)
 
         # Exactly one thread should have successfully deleted the graph.
         self.env.assertEquals(assertions.count(True), 1)
@@ -146,12 +130,11 @@ class testConcurrentQueryFlow(FlowTestsBase):
         ##############################################################################################
         self.populate_graph()
         pool = Pool(nodes=CLIENT_COUNT)
-        indexes = range(CLIENT_COUNT)
 
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
         # invoke queries
-        m = pool.amap(thread_run_query, graphs, queries, indexes)
+        m = pool.amap(thread_run_query, graphs, queries)
 
         redis_con.delete(GRAPH_ID)
 
@@ -162,8 +145,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         result = m.get()
 
         # validate result.
-        for i in range(CLIENT_COUNT):         
-            self.env.assertEquals(result[i].result_set[0][0], 900)
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in result]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
@@ -176,7 +158,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
         # invoke queries
-        m = pool.amap(thread_run_query, graphs, queries, indexes)
+        m = pool.amap(thread_run_query, graphs, queries)
 
         redis_con.flushall()
 
@@ -186,9 +168,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # get the results
         result = m.get()
 
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):        
-            self.env.assertEquals(result[i].result_set[0][0], 900)
+        # validate result.
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in result]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
@@ -201,9 +182,9 @@ class testConcurrentQueryFlow(FlowTestsBase):
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
         # invoke queries
-        m = pool.amap(thread_run_query, graphs, queries, indexes)
+        m = pool.amap(thread_run_query, graphs, queries)
 
-        redis_con.flushall()
+        graphs[-1].delete()
 
         # wait for processes to return
         m.wait()
@@ -211,11 +192,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # get the results
         result = m.get()
 
-        graphs[i].delete()
-
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):          
-            self.env.assertEquals(result[i].result_set[0][0], 900)
+        # validate result.
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in result]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
@@ -228,7 +206,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         pool = Pool(nodes=1)
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
-        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query, 0)
+        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query)
         redis_con.delete(GRAPH_ID)
         writer.wait()
         possible_exceptions = ["Encountered different graph value when opened key " + GRAPH_ID,
@@ -249,8 +227,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # Create new empty graph with id GRAPH_ID + "2"
         redis_con.execute_command("GRAPH.QUERY",new_graph, """MATCH (n) return n""", "--compact")
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
-        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query, 0)
-        redis_con.rename(new_graph, GRAPH_ID)
+        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query)
+        redis_con.rename(GRAPH_ID, new_graph)
         writer.wait()
         # Possible scenarios:
         # 1. Rename is done before query is sent. The name in the graph context is new_graph, so when upon commit, when trying to open new_graph key, it will encounter an empty key since new_graph is not a valid key. 
@@ -273,7 +251,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         pool = Pool(nodes=1)
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
-        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query, 0)
+        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query)
         set_result = redis_con.set(GRAPH_ID, "1")
         writer.wait()
         possible_exceptions = ["Encountered a non-graph value type when opened key " + GRAPH_ID,
@@ -297,13 +275,12 @@ class testConcurrentQueryFlow(FlowTestsBase):
             redis_graphs.append(Graph("G890", redis_con))
         redis_graphs[0].query("""UNWIND(range(0,999)) as x CREATE()-[:R]->()""")
         read_query = """MATCH (n)-[r:R]->(m) RETURN n, r, m"""
-        
-        indexes = range(CLIENT_COUNT)
+
         queries = [read_query] * CLIENT_COUNT
         pool = Pool(nodes=CLIENT_COUNT)
 
         # invoke queries
-        m = pool.amap(thread_run_query, redis_graphs, queries, indexes)
+        m = pool.amap(thread_run_query, redis_graphs, queries)
 
         # wait for processes to return
         m.wait()

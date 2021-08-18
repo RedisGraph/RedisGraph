@@ -1,7 +1,7 @@
 import random
-from pathos.pools import ProcessPool as Pool
 from RLTest import Env
 from redisgraph import Graph
+from pathos.pools import ProcessPool as Pool
 
 # 1. test reading and setting query memory limit configuration
 
@@ -42,7 +42,7 @@ class testQueryMemoryLimit():
     def __init__(self):
         # skip test if we're running under Valgrind
         if Env().envRunner.debugger is not None:
-            Env().skip() # valgrind is not working correctly with replication
+            Env().skip() # valgrind is not working correctly with multi process
 
         self.env = Env(decodeResponses=True)
         self.conn = self.env.getConnection()
@@ -63,13 +63,7 @@ class testQueryMemoryLimit():
             should_fails.append(q[1])
 
         # invoke queries
-        m = pool.amap(issue_query, connections, qs, should_fails)
-
-        # wait for processes to return
-        m.wait()
-
-        # get the results
-        result = m.get()
+        result = pool.map(issue_query, connections, qs, should_fails)
 
         # validate all process return true
         self.env.assertTrue(all(result))
