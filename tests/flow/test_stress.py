@@ -77,20 +77,20 @@ class testStressFlow(FlowTestsBase):
         global graphs
         graphs = []
 
-        self.CLIENT_COUNT = self.env.getConnection().execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1] * 5
+        self.client_count = self.env.getConnection().execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1] * 5
 
-        for i in range(0, self.CLIENT_COUNT):
+        for i in range(0, self.client_count):
             graphs.append(Graph(GRAPH_ID, self.env.getConnection()))
 
     def __del__(self):
-        for i in range(0, self.CLIENT_COUNT):
+        for i in range(0, self.client_count):
             g = graphs[0]
             g.redis_con.close()
 
     # Count number of nodes in the graph
     def test00_stress(self):
-        ids = range(self.CLIENT_COUNT)
-        pool = Pool(nodes=self.CLIENT_COUNT)
+        ids = range(self.client_count)
+        pool = Pool(nodes=self.client_count)
 
         # invoke queries
         pool.map(query_crud, graphs, ids)
@@ -131,8 +131,8 @@ class testStressFlow(FlowTestsBase):
 
     def test02_clean_shutdown(self):
         # issue SHUTDOWN while traffic is generated
-        indexes = range(self.CLIENT_COUNT)
-        pool = Pool(nodes=self.CLIENT_COUNT)
+        indexes = range(self.client_count)
+        pool = Pool(nodes=self.client_count)
 
         # invoke queries
         m = pool.amap(query_crud, graphs, indexes)
