@@ -44,7 +44,7 @@ class testPendingQueryLimit():
 
     def stress_server(self):
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
-        thread_count = threadpool_size * 2
+        thread_count = threadpool_size * 5
         qs = [SLOW_QUERY] * thread_count
         connections = []
         pool = Pool(nodes=thread_count)
