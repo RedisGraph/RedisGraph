@@ -17,7 +17,7 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 		ModuleEventHandler_IncreaseDecodingGraphsCount();
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
-		Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
+		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 	}
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
@@ -141,6 +141,7 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			RdbLoadDeletedNodes_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
+			Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 			RdbLoadEdges_v8(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
@@ -167,10 +168,11 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	}
 
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
-		// Revert to default synchronization behavior
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-		Graph_ApplyAllPending(gc->g);
-		// Set the thread-local GraphContext, as it will be accessed when creating indexes.
+		// revert to default synchronization behavior
+		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
+		Graph_ApplyAllPending(gc->g, true);
+
+		// set the thread-local GraphContext, as it will be accessed when creating indexes
 		QueryCtx_SetGraphCtx(gc);
 		// Index the nodes when decoding ends.
 		uint node_schemas_count = array_len(gc->node_schemas);
@@ -180,13 +182,15 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
-		QueryCtx_Free(); // Release thread-local variables.
+		// make sure graph doesn't contains may pending changes
+		ASSERT(Graph_Pending(gc->g) == false);
+
+		QueryCtx_Free(); // Release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
-		// Graph has finished decoding, inform the module.
+		// graph has finished decoding, inform the module
 		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
 	return gc;
 }
-

@@ -116,4 +116,3 @@ void RG_Matrix_validateState
 #endif
 }
 
-

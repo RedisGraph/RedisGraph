@@ -82,7 +82,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->cache = Cache_New(cache_size, (CacheEntryFreeFunc)ExecutionCtx_Free,
 						  (CacheEntryCopyFunc)ExecutionCtx_Clone);
 
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 	QueryCtx_SetGraphCtx(gc);
 
 	return gc;
@@ -505,7 +505,7 @@ static void _GraphContext_Free(void *arg) {
 	uint len;
 
 	// Disable matrix synchronization for graph deletion.
-	Graph_SetMatrixPolicy(gc->g, DISABLED);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 	Graph_Free(gc->g);
 
 	//--------------------------------------------------------------------------

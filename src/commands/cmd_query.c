@@ -178,7 +178,7 @@ static void _ExecuteQuery(void *args) {
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		// set policy after lock acquisition,
 		// avoid resetting policies between readers and writers
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 
 		ExecutionPlan_PreparePlan(plan);
 		if(profile) {

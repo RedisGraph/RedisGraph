@@ -279,7 +279,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 	// lock graph under write lock
 	// allocate space for new nodes and edges
 	// set graph sync policy to resize only
-	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_RESIZE);
 	Graph_AcquireWriteLock(g);
 	Graph_AllocateNodes(g, node_count);
 	Graph_AllocateEdges(g, edge_count);
@@ -333,7 +333,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 
 cleanup:
 	// reset graph sync policy
-	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 	Graph_ReleaseLock(g);
 	return res;
 }

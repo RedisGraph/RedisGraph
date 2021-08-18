@@ -215,6 +215,22 @@ void _MatrixNOP
 	return;
 }
 
+MATRIX_POLICY Graph_GetMatrixPolicy
+(
+	const Graph *g
+) {
+	ASSERT(g != NULL);
+	MATRIX_POLICY policy = SYNC_POLICY_UNKNOWN;
+	SyncMatrixFunc f = g->SynchronizeMatrix;
+
+	if(f == _MatrixSynchronize)      policy = SYNC_POLICY_FLUSH_RESIZE;
+	else if(f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
+	else if(f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
+	else ASSERT(false);
+
+	return policy;
+}
+
 // define the current behavior for matrix creations and retrievals on this graph
 void Graph_SetMatrixPolicy
 (
@@ -222,17 +238,17 @@ void Graph_SetMatrixPolicy
 	MATRIX_POLICY policy
 ) {
 	switch(policy) {
-		case SYNC_AND_MINIMIZE_SPACE:
+		case SYNC_POLICY_FLUSH_RESIZE:
 			// Default behavior; forces execution of pending GraphBLAS operations
 			// when appropriate and sizes matrices to the current node count.
 			g->SynchronizeMatrix = _MatrixSynchronize;
 			break;
-		case RESIZE_TO_CAPACITY:
+		case SYNC_POLICY_RESIZE:
 			// Bulk insertion and creation behavior; does not force pending operations
 			// and resizes matrices to the graph's current node capacity.
 			g->SynchronizeMatrix = _MatrixResizeToCapacity;
 			break;
-		case DISABLED:
+		case SYNC_POLICY_NOP:
 			// Used when deleting or freeing a graph; forces no matrix updates or resizes.
 			g->SynchronizeMatrix = _MatrixNOP;
 			break;
@@ -244,17 +260,77 @@ void Graph_SetMatrixPolicy
 // synchronize and resize all matrices in graph
 void Graph_ApplyAllPending
 (
-	Graph *g
+	Graph *g,
+	bool force_flush
 ) {
-	uint n = 0;
-	Graph_GetAdjacencyMatrix(g, false);
-	Graph_GetNodeLabelMatrix(g);
+	ASSERT(g != NULL);
+
+	uint       n  =  0;
+	RG_Matrix  M  =  NULL;
+
+	M = Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix_wait(M, force_flush);
 
 	n = array_len(g->labels);
-	for(int i = 0; i < n; i ++) Graph_GetLabelMatrix(g, i);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetLabelMatrix(g, i);
+		RG_Matrix_wait(M, force_flush);
+	}
 
 	n = array_len(g->relations);
-	for(int i = 0; i < n; i ++) Graph_GetRelationMatrix(g, i, false);
+	for(int i = 0; i < n; i ++) {
+		M = Graph_GetRelationMatrix(g, i, false);
+		RG_Matrix_wait(M, force_flush);
+	}
+}
+
+bool Graph_Pending
+(
+	const Graph *g
+) {
+	ASSERT(g != NULL);
+
+	GrB_Info   info;
+	UNUSED(info);
+
+	uint       n        =  0;
+	RG_Matrix  M        =  NULL;
+	bool       pending  =  false;
+
+	//--------------------------------------------------------------------------
+	// see if ADJ matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	M = g->adjacency_matrix;
+	info = RG_Matrix_pending(M, &pending);
+	ASSERT(info == GrB_SUCCESS);
+	if(pending) return true;
+
+	//--------------------------------------------------------------------------
+	// see if any label matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	n = array_len(g->labels);
+	for(int i = 0; i < n; i ++) {
+		M = g->labels[i];
+		info = RG_Matrix_pending(M, &pending);
+		ASSERT(info == GrB_SUCCESS);
+		if(pending) return true;
+	}
+
+	//--------------------------------------------------------------------------
+	// see if any relationship matrix contains pending changes
+	//--------------------------------------------------------------------------
+
+	n = array_len(g->relations);
+	for(int i = 0; i < n; i ++) {
+		M = g->relations[i];
+		info = RG_Matrix_pending(M, &pending);
+		ASSERT(info == GrB_SUCCESS);
+		if(pending) return true;
+	}
+
+	return false;
 }
 
 //------------------------------------------------------------------------------
@@ -296,7 +372,7 @@ Graph *Graph_New
 	g->_writelocked = false;
 
 	// force GraphBLAS updates and resize matrices to node count by default
-	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
 	return g;
 }
@@ -650,9 +726,9 @@ void Graph_GetNodeEdges
 
 uint Graph_GetNodeLabels
 (
-	const Graph *g, 
-	const Node *n, 
-	LabelID *labels, 
+	const Graph *g,
+	const Node *n,
+	LabelID *labels,
 	LabelID label_count
 ) {
 	if(label_count == 0) return 0;
@@ -677,14 +753,13 @@ uint Graph_GetNodeLabels
 	label_count = 0;
 	res = RG_MatrixTupleIter_next(&iter, NULL, &col, NULL, &depleted);
 	ASSERT(res == GrB_SUCCESS);
-	while (!depleted)
-	{
+	while(!depleted) {
 		labels[label_count] = col;
 		label_count++;
 		res = RG_MatrixTupleIter_next(&iter, NULL, &col, NULL, &depleted);
 		ASSERT(res == GrB_SUCCESS);
 	}
-		
+
 	return label_count;
 }
 
@@ -874,9 +949,9 @@ static void _BulkDeleteNodes
 		Node *n = distinct_nodes + i;
 		NodeID entity_id = ENTITY_GET_ID(n);
 		uint label_count;
- 		NODE_GET_LABELS(g, n, labels, label_count);
+		NODE_GET_LABELS(g, n, labels, label_count);
 
-		for (int i = 0; i < label_count; i++) {
+		for(int i = 0; i < label_count; i++) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
 			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
 		}
@@ -1097,10 +1172,10 @@ RG_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 	ASSERT(g != NULL);
 
 	RG_Matrix m = g->node_labels;
-	
+
 	// event thet the values are set on values
- 	g->SynchronizeMatrix(g, m);
-	
+	g->SynchronizeMatrix(g, m);
+
 	return m;
 }
 
