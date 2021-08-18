@@ -1,7 +1,7 @@
-import redis
 from RLTest import Env
 from redisgraph import Graph
 from base import FlowTestsBase
+from redis import ResponseError
 
 GRAPH_ID = "slowlog_test"
 redis_con = None
@@ -17,6 +17,13 @@ class testSlowLog(FlowTestsBase):
         redis_graph = Graph(GRAPH_ID, redis_con)
 
     def test_slowlog(self):
+        # Slow log should contain a single entry, no duplicates.
+        try:
+            slowlog = redis_con.execute_command("GRAPH.SLOWLOG " + GRAPH_ID)
+        except ResponseError as e:
+            self.env.assertIn("Invalid graph operation on empty key", str(e))
+
+
         # Issue create query twice.
         redis_graph.query("""CREATE ()""")
         redis_graph.query("""CREATE ()""")
