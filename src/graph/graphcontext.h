@@ -1,46 +1,46 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPHCONTEXT_H
-#define GRAPHCONTEXT_H
+#pragma once
 
+#include "graph.h"
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
 #include "../slow_log/slow_log.h"
-#include "graph.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
 
-/* GraphContext holds refrences to various elements of a graph object
- * It is the value sitting behind a Redis graph key
- *
- * the graph context is versioned, the version value itself is meaningless
- * it is used as a "signature" for the graph schema: (labels, relationship-types
- * and attribute set) client libraries which cache the mapping between graph
- * schema elements and their internal IDs (see COMPACT reply formatter)
- * can use the graph version to understand if the schema was modified
- * and take action accordingly */
+// GraphContext holds refrences to various elements of a graph object
+// it is the value stored behind a Redis Graph key
+//
+// the graph context is signed, the signature representes the graph schema:
+// labels, relationship-types and attribute set
+// client libraries which cache the mapping between graph
+// schema elements and their internal IDs (see COMPACT reply formatter)
+// can use the graph signature to understand if the schema was modified
+// and take action accordingly
 
 typedef struct {
-	Graph *g;                               // Container for all matrices and entity properties
-	int ref_count;                          // Number of active references.
-	rax *attributes;                        // From strings to attribute IDs
-	pthread_rwlock_t _attribute_rwlock;     // Read-write lock to protect access to the attribute maps.
-	char *graph_name;                       // String associated with graph
-	char **string_mapping;                  // From attribute IDs to strings
-	Schema **node_schemas;                  // Array of schemas for each node label
-	Schema **relation_schemas;              // Array of schemas for each relation type
-	unsigned short index_count;             // Number of indicies.
-	SlowLog *slowlog;                       // Slowlog associated with graph.
-	GraphEncodeContext *encoding_context;   // Encode context of the graph.
-	GraphDecodeContext *decoding_context;   // Decode context of the graph.
-	Cache *cache;                           // Global cache of execution plans.
-	XXH32_hash_t version;                   // Graph version.
+	Graph *g;                               // container for all matrices and entity properties
+	Cache *cache;                           // global cache of execution plans
+	uint version;                           // graph latest MVCC version
+	int ref_count;                          // number of active references
+	rax *attributes;                        // from strings to attribute ids
+	SlowLog *slowlog;                       // slowlog associated with graph
+	char *graph_name;                       // string associated with graph
+	char **string_mapping;                  // from attribute ids to strings
+	Schema **node_schemas;                  // array of schemas for each node label
+	XXH32_hash_t signature;                 // graph signature
+	Schema **relation_schemas;              // array of schemas for each relation type
+	unsigned short index_count;             // number of indicies
+	pthread_rwlock_t _attribute_rwlock;     // read-write lock to protect access to the attribute maps
+	GraphEncodeContext *encoding_context;   // encode context of the graph
+	GraphDecodeContext *decoding_context;   // decode context of the graph
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -67,8 +67,8 @@ const char *GraphContext_GetName(const GraphContext *gc);
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);
 
-// Get graph context version
-XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc);
+// Get graph context signature
+XXH32_hash_t GraphContext_GetSignature(const GraphContext *gc);
 
 //------------------------------------------------------------------------------
 // Schema API
@@ -135,8 +135,20 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
 SlowLog *GraphContext_GetSlowLog(const GraphContext *gc);
 
-/* Cache API - Return cache associated with graph context and current thread id. */
+//------------------------------------------------------------------------------
+// Cache API
+//------------------------------------------------------------------------------
+
+// return cache associated with graph context and current thread id
 Cache *GraphContext_GetCache(const GraphContext *gc);
 
-#endif
+//------------------------------------------------------------------------------
+// Version API
+//------------------------------------------------------------------------------
+
+// get latest version for reading
+uint GraphContext_GetReaderVersion(const GraphContext *gc);
+
+// get latest version for writing
+uint GraphContext_GetWriterVersion(const GraphContext *gc);
 

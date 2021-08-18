@@ -7,6 +7,7 @@
 #include "RG.h"
 #include "graph.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../util/rmalloc.h"
 #include "../configuration/config.h"
@@ -97,6 +98,46 @@ static void _CollectEdgesFromEntry
 			array_append(*edges, e);
 		}
 	}
+}
+
+Graph *Graph_New
+(
+	size_t node_cap,
+	size_t edge_cap
+) {
+	Graph     *g  =  rm_calloc(1, sizeof(Graph));
+	node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
+	edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
+
+	g->nodes      =  DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)FreeEntity);
+	g->edges      =  DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity);
+	g->labels     =  array_new(VRG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
+	g->relations  =  array_new(VRG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+
+	// create adjcency and transposed adjcency matrices
+	RG_Matrix adj;
+	GrB_Index n = Graph_RequiredMatrixDim(g);
+	RG_Matrix_new(&adj, GrB_BOOL, n, n);
+	RG_Matrix_new(&adj->transposed, GrB_BOOL, n, n);
+	g->adjacency_matrix = VRG_Matrix_new(adj, 0);
+
+	// create zero matrix
+	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n);
+
+	// init graph statistics
+	GraphStatistics_init(&g->stats);
+
+	// initialize a read-write lock scoped to the individual graph
+	int res;
+	UNUSED(res);
+	res = pthread_rwlock_init(&g->_rwlock, NULL);
+	ASSERT(res == 0);
+	g->_writelocked = false;
+
+	// force GraphBLAS updates and resize matrices to node count by default
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+
+	return g;
 }
 
 // Locates edges connecting src to destination.
@@ -301,7 +342,13 @@ bool Graph_Pending
 	// see if ADJ matrix contains pending changes
 	//--------------------------------------------------------------------------
 
-	M = g->adjacency_matrix;
+	//TODO: at the moment calling Graph_Get* might flush pending changes
+	// depending on the synchronization policy
+
+	//TODO: introduce VERSION_LATEST
+	//ASSERT(false);
+
+	M = Graph_GetAdjacencyMatrix(g, false);
 	info = RG_Matrix_pending(M, &pending);
 	ASSERT(info == GrB_SUCCESS);
 	if(pending) return true;
@@ -312,7 +359,7 @@ bool Graph_Pending
 
 	n = array_len(g->labels);
 	for(int i = 0; i < n; i ++) {
-		M = g->labels[i];
+		M = Graph_GetLabelMatrix(g, i);
 		info = RG_Matrix_pending(M, &pending);
 		ASSERT(info == GrB_SUCCESS);
 		if(pending) return true;
@@ -324,7 +371,7 @@ bool Graph_Pending
 
 	n = array_len(g->relations);
 	for(int i = 0; i < n; i ++) {
-		M = g->relations[i];
+		M = Graph_GetRelationMatrix(g, i, false);
 		info = RG_Matrix_pending(M, &pending);
 		ASSERT(info == GrB_SUCCESS);
 		if(pending) return true;
@@ -336,45 +383,6 @@ bool Graph_Pending
 //------------------------------------------------------------------------------
 // Graph API
 //------------------------------------------------------------------------------
-
-Graph *Graph_New
-(
-	size_t node_cap,
-	size_t edge_cap
-) {
-	node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
-	edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
-
-	Graph *g = rm_calloc(1, sizeof(Graph));
-
-	g->nodes      =  DataBlock_New(node_cap,  sizeof(Entity), (fpDestructor)FreeEntity);
-	g->edges      =  DataBlock_New(edge_cap,  sizeof(Entity), (fpDestructor)FreeEntity);
-	g->labels     =  array_new(RG_Matrix,     GRAPH_DEFAULT_LABEL_CAP);
-	g->relations  =  array_new(RG_Matrix,     GRAPH_DEFAULT_RELATION_TYPE_CAP);
-
-	GrB_Info info;
-	UNUSED(info);
-
-	GrB_Index n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&g->adjacency_matrix, GrB_BOOL, n, n);
-	RG_Matrix_new(&g->adjacency_matrix->transposed, GrB_BOOL, n, n);
-	RG_Matrix_new(&g->_zero_matrix, GrB_BOOL, n, n);
-
-	// init graph statistics
-	GraphStatistics_init(&g->stats);
-
-	// initialize a read-write lock scoped to the individual graph
-	int res;
-	UNUSED(res);
-	res = pthread_rwlock_init(&g->_rwlock, NULL);
-	ASSERT(res == 0);
-	g->_writelocked = false;
-
-	// force GraphBLAS updates and resize matrices to node count by default
-	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-
-	return g;
-}
 
 // All graph matrices are required to be squared NXN
 // where N = Graph_RequiredMatrixDim.
@@ -818,12 +826,35 @@ void Graph_DeleteNode
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
 
-static void _Graph_FreeRelationMatrices
-(
-	const Graph *g
-) {
-	uint relationCount = Graph_RelationTypeCount(g);
-	for(uint i = 0; i < relationCount; i++) RG_Matrix_free(&g->relations[i]);
+static void _Graph_FreeMatrices(Graph *g) {
+	uint  labelCount     =  Graph_LabelTypeCount(g);
+	uint  relationCount  =  Graph_RelationTypeCount(g);
+
+	//--------------------------------------------------------------------------
+	// free relationship matrices
+	//--------------------------------------------------------------------------
+
+	for(uint i = 0; i < labelCount; i++) VRG_Matrix_free(g->labels + i);
+	array_free(g->labels);
+
+	//--------------------------------------------------------------------------
+	// free label matrices
+	//--------------------------------------------------------------------------
+
+	for(uint i = 0; i < relationCount; i++) VRG_Matrix_free(g->relations + i);
+	array_free(g->relations);
+
+	//--------------------------------------------------------------------------
+	// free adjacency matrices
+	//--------------------------------------------------------------------------
+
+	VRG_Matrix_free(&g->adjacency_matrix);
+
+	//--------------------------------------------------------------------------
+	// free ZERO matrix
+	//--------------------------------------------------------------------------
+
+	RG_Matrix_free(&g->_zero_matrix);
 }
 
 static void _BulkDeleteNodes
@@ -981,9 +1012,9 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 	}
 }
 
-/* Removes both nodes and edges from graph. */
-void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint edge_count,
-					  uint *node_deleted, uint *edge_deleted) {
+// Removes both nodes and edges from graph
+void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges,
+		uint edge_count, uint *node_deleted, uint *edge_deleted) {
 	ASSERT(g);
 
 	uint _edge_deleted = 0;
@@ -1051,33 +1082,67 @@ int Graph_AddLabel
 ) {
 	ASSERT(g != NULL);
 
-	RG_Matrix m;
-	GrB_Info info;
-	size_t n = Graph_RequiredMatrixDim(g);
-	RG_Matrix_new(&m, GrB_BOOL, n, n);
+	RG_Matrix  A        =  NULL;
+	VRG_Matrix VA       =  NULL;
+	size_t     n        =  Graph_RequiredMatrixDim(g);
+	int        label    =  Graph_LabelTypeCount(g);
+	uint       version  =  QueryCtx_GetVersion();
 
-	array_append(g->labels, m);
-	return array_len(g->labels) - 1;
+	// create delta-matrix
+	GrB_Info info = RG_Matrix_new(&A, GrB_BOOL, n, n);
+	ASSERT(info == GrB_SUCCESS);
+
+	// add version control to matrix
+	VA = VRG_Matrix_new(A, version);
+	ASSERT(VA != NULL);
+	array_append(g->labels, VA);
+
+	return label;
 }
 
 int Graph_AddRelationType
 (
 	Graph *g
 ) {
-	ASSERT(g);
+	ASSERT(g != NULL);
 
-	RG_Matrix m;
-	size_t n = Graph_RequiredMatrixDim(g);
+	RG_Matrix  A         =  NULL;
+	VRG_Matrix VA        =  NULL;
+	size_t     n         =  Graph_RequiredMatrixDim(g);
+	int        relation  =  Graph_RelationTypeCount(g);
+	uint       version   =  QueryCtx_GetVersion();
 
-	RG_Matrix_new(&m, GrB_UINT64, n, n);
+	// create delta-matrix
+	GrB_Info info = RG_Matrix_new(&A, GrB_UINT64, n, n);
+	ASSERT(info == GrB_SUCCESS);
 
-	array_append(g->relations, m);
+	// add version control to matrix
+	VA = VRG_Matrix_new(A, version);
+	ASSERT(VA != NULL);
+	array_append(g->relations, VA);
 
 	// adding a new relationship type, update the stats structures to support it
 	GraphStatistics_IntroduceRelationship(&g->stats);
 
-	int relationID = Graph_RelationTypeCount(g) - 1;
-	return relationID;
+	return relation;
+}
+
+RG_Matrix Graph_GetAdjacencyMatrix
+(
+	const Graph *g,
+	bool transposed
+) {
+	ASSERT(g != NULL);
+
+	uint v = QueryCtx_GetVersion();
+	RG_Matrix adj = VRG_Matrix_getVersion(g->adjacency_matrix, v);
+	ASSERT(adj != NULL);
+
+	g->SynchronizeMatrix(g, adj);
+
+	if(transposed) adj = RG_Matrix_getTranspose(adj);
+
+	return adj;
 }
 
 RG_Matrix Graph_GetLabelMatrix
@@ -1085,12 +1150,18 @@ RG_Matrix Graph_GetLabelMatrix
 	const Graph *g,
 	int label_idx
 ) {
-	ASSERT(g);
+	// validate label_idx is within range
+	ASSERT(g != NULL);
 	ASSERT(label_idx < array_len(g->labels));
 
-	RG_Matrix m = g->labels[label_idx];
-	g->SynchronizeMatrix(g, m);
-	return m;
+	// get versioned matrix
+	uint v = QueryCtx_GetVersion();
+	RG_Matrix A = VRG_Matrix_getVersion(g->labels[label_idx], v);
+	ASSERT(A != NULL);
+
+	g->SynchronizeMatrix(g, A);
+
+	return A;
 }
 
 RG_Matrix Graph_GetRelationMatrix
@@ -1103,24 +1174,21 @@ RG_Matrix Graph_GetRelationMatrix
 	ASSERT(relation_idx == GRAPH_NO_RELATION ||
 		   relation_idx < Graph_RelationTypeCount(g));
 
-	RG_Matrix m = GrB_NULL;
+	RG_Matrix A = NULL;
 
-	if(relation_idx == GRAPH_NO_RELATION) m = g->adjacency_matrix;
-	else m = g->relations[relation_idx];
+	if(relation_idx == GRAPH_NO_RELATION) {
+		return Graph_GetAdjacencyMatrix(g, transposed);
+	}
 
-	g->SynchronizeMatrix(g, m);
+	uint v = QueryCtx_GetVersion();
+	A = VRG_Matrix_getVersion(g->relations[relation_idx], v);
 
-	if(transposed) m = RG_Matrix_getTranspose(m);
+	ASSERT(A != NULL);
+	g->SynchronizeMatrix(g, A);
 
-	return m;
-}
+	if(transposed) A = RG_Matrix_getTranspose(A);
 
-RG_Matrix Graph_GetAdjacencyMatrix
-(
-	const Graph *g,
-	bool transposed
-) {
-	return Graph_GetRelationMatrix(g, GRAPH_NO_RELATION, transposed);
+	return A;
 }
 
 // returns true if relationship matrix 'r' contains multi-edge entries,
@@ -1162,16 +1230,10 @@ void Graph_Free(Graph *g) {
 	// free matrices
 	Entity *en;
 	DataBlockIterator *it;
-	RG_Matrix_free(&g->_zero_matrix);
-	RG_Matrix_free(&g->adjacency_matrix);
 
-	_Graph_FreeRelationMatrices(g);
-	array_free(g->relations);
+	_Graph_FreeMatrices(g);
+
 	GraphStatistics_FreeInternals(&g->stats);
-
-	uint32_t labelCount = array_len(g->labels);
-	for(int i = 0; i < labelCount; i++) RG_Matrix_free(&g->labels[i]);
-	array_free(g->labels);
 
 	// TODO: disable datablock deleted items array
 	// there's no need to keep track after deleted items as the graph

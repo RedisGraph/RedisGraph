@@ -26,7 +26,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
-static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
+static void _GraphContext_UpdateSignature(GraphContext *gc, const char *str);
 
 static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
@@ -56,8 +56,9 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	gc->version          = 0;  // initial graph version
 	gc->slowlog          = SlowLog_New();
+	gc->version          = 0;  // initial graph version
+	gc->signature        = 0;  // initial graph signature
 	gc->ref_count        = 0;  // no refences
 	gc->attributes       = raxNew();
 	gc->index_count      = 0;  // no indicies
@@ -115,8 +116,8 @@ static bool _GraphContext_IsModuleReplicating(void) {
 	return aux_field_counter > 0 || currently_decoding_graphs > 0;
 }
 
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
-									bool shouldCreate) {
+GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx,
+		RedisModuleString *graphID, bool readOnly, bool shouldCreate) {
 	if(_GraphContext_IsModuleReplicating()) {
 		// The whole module is currently replicating, emit an error.
 		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
@@ -192,29 +193,29 @@ void GraphContext_Rename(GraphContext *gc, const char *name) {
 	gc->graph_name = rm_strdup(name);
 }
 
-XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
+XXH32_hash_t GraphContext_GetSignature(const GraphContext *gc) {
 	ASSERT(gc != NULL);
 
-	return gc->version;
+	return gc->signature;
 }
 
-// Update graph context version
-static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
+// Update graph context signature
+static void _GraphContext_UpdateSignature(GraphContext *gc, const char *str) {
 	ASSERT(gc != NULL);
 	ASSERT(str != NULL);
 
-	/* Update graph version by hashing 'str' representing the current
-	 * addition to the graph schema: (Label, Relationship-type, Attribute)
-	 *
-	 * Using the current graph version as a seed, by doing so we avoid
-	 * hashing the entire graph schema on each change, while guaranteeing the
-	 * exact same version across a cluster: same graph version on both
-	 * primary and replica shards. */
+	// update graph signature by hashing 'str' representing the current
+	// addition to the graph schema: (Label, Relationship-type, Attribute)
+	//
+	// using the current graph signature as a seed, by doing so we avoid
+	// hashing the entire graph schema on each change, while guaranteeing the
+	// exact same signature across a cluster: same graph signature on both
+	// primary and replica shards
 
 	XXH32_state_t *state = XXH32_createState();
-	XXH32_reset(state, gc->version);
+	XXH32_reset(state, gc->signature);
 	XXH32_update(state, str, strlen(str));
-	gc->version = XXH32_digest(state);
+	gc->signature = XXH32_digest(state);
 	XXH32_freeState(state);
 }
 
@@ -264,8 +265,8 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 		array_append(gc->relation_schemas, schema);
 	}
 
-	// new schema added, update graph version
-	_GraphContext_UpdateVersion(gc, label);
+	// new schema added, update graph signature
+	_GraphContext_UpdateSignature(gc, label);
 
 	return schema;
 }
@@ -315,8 +316,8 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 					  NULL);
 			array_append(gc->string_mapping, rm_strdup(attribute));
 
-			// new attribute been added, update graph version
-			_GraphContext_UpdateVersion(gc, attribute);
+			// new attribute been added, update graph signature
+			_GraphContext_UpdateSignature(gc, attribute);
 		}
 	}
 
@@ -498,6 +499,22 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 Cache *GraphContext_GetCache(const GraphContext *gc) {
 	ASSERT(gc != NULL);
 	return gc->cache;
+}
+
+//------------------------------------------------------------------------------
+// Version API
+//------------------------------------------------------------------------------
+
+// get latest version for reading
+uint GraphContext_GetReaderVersion(const GraphContext *gc) {
+	ASSERT(gc != NULL);
+	return gc->version;
+}
+
+// get latest version for writing
+uint GraphContext_GetWriterVersion(const GraphContext *gc) {
+	ASSERT(false);
+	return 0;
 }
 
 //------------------------------------------------------------------------------

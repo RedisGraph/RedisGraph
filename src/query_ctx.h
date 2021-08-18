@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -15,114 +15,135 @@
 #include "execution_plan/ops/op.h"
 #include <pthread.h>
 
-extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
+extern pthread_key_t _tlsQueryCtxKey;  // thread local storage query context key
 
 typedef struct {
-	AST *ast;       // The scoped AST associated with this query.
-	rax *params;    // Query parameters.
-	const char *query;    // Query string.
+	AST *ast;           // the scoped ast associated with this query
+	rax *params;        // query parameters
+	const char *query;  // query string
 } QueryCtx_QueryData;
 
 typedef struct {
-	double timer[2];            // Query execution time tracking.
-	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
-	ResultSet *result_set;      // Save the execution result set.
-	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
-	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
+	uint version;               // MVCC version
+	double timer[2];            // query execution time tracking
+	RedisModuleKey *key;        // saves an open key value, for later extraction and closing
+	ResultSet *result_set;      // save the execution result set
+	bool locked_for_commit;     // indicates if a call for queryctx_lockforcommit issued before
+	OpBase *last_writer;        // the last writer operation which indicates the need for commit
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
-	RedisModuleCtx *redis_ctx;      // The Redis module context.
-	RedisModuleBlockedClient *bc;   // Blocked client.
-	const char *command_name;       // Command name.
+	RedisModuleCtx *redis_ctx;      // the redis module context
+	RedisModuleBlockedClient *bc;   // blocked client
+	const char *command_name;       // command name
 } QueryCtx_GlobalExecCtx;
 
 typedef struct {
-	QueryCtx_QueryData query_data;              // The data related to the query syntax.
-	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
-	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
-	GraphContext *gc;                           // The GraphContext associated with this query's graph.
+	QueryCtx_QueryData query_data;              // the data related to the query syntax
+	QueryCtx_InternalExecCtx internal_exec_ctx; // the data related to internal query execution
+	QueryCtx_GlobalExecCtx global_exec_ctx;     // the data rlated to global redis execution
+	GraphContext *gc;                           // the GraphContext associated with this query's graph
 } QueryCtx;
 
-/* Instantiate the thread-local QueryCtx on module load. */
+// instantiate the thread-local QueryCtx on module load
 bool QueryCtx_Init(void);
 
-/* Retrieve this thread's QueryCtx. */
+// retrieve this thread's QueryCtx
 QueryCtx *QueryCtx_GetQueryCtx();
 
-/* Set the provided QueryCtx in this thread's storage key. */
+// set the provided QueryCtx in this thread's storage key
 void QueryCtx_SetTLS(QueryCtx *query_ctx);
 
-/* Null-set this thread's storage key. */
+// NULL-set this thread's storage key
 void QueryCtx_RemoveFromTLS();
 
-/* Start timing query execution. */
+// start timing query execution
 void QueryCtx_BeginTimer(void);
 
-/* Setters */
-/* Sets the global execution context */
+//------------------------------------------------------------------------------
+// setters
+//------------------------------------------------------------------------------
+
+// sets the global execution context
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx);
-/* Set the provided AST for access through the QueryCtx. */
+
+// set the provided AST for access through the QueryCtx
 void QueryCtx_SetAST(AST *ast);
-/* Set the provided GraphCtx for access through the QueryCtx. */
+
+// set the provided GraphCtx for access through the QueryCtx
 void QueryCtx_SetGraphCtx(GraphContext *gc);
-/* Set the resultset. */
+
+// set the resultset
 void QueryCtx_SetResultSet(ResultSet *result_set);
-/* Set the last writer which needs to commit */
+
+// set the last writer which needs to commit
 void QueryCtx_SetLastWriter(OpBase *op);
 
-/* Getters */
-/* Retrieve the AST. */
+//------------------------------------------------------------------------------
+// getters
+//------------------------------------------------------------------------------
+
+// retrieve the AST
 AST *QueryCtx_GetAST(void);
-/* Retrive the query parameters values map. */
+
+// retrueve MVCC version associated with current thread
+uint QueryCtx_GetVersion(void);
+
+// retrive the query parameters values map
 rax *QueryCtx_GetParams(void);
-/* Retrieve the Graph object. */
+
+// retrieve the Graph object
 Graph *QueryCtx_GetGraph(void);
-/* Retrieve the GraphCtx. */
+
+// retrieve the GraphCtx
 GraphContext *QueryCtx_GetGraphCtx(void);
-/* Retrieve the Redis module context. */
+
+// retrieve the Redis module context
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
-/* Retrive the resultset. */
+
+// retrive the resultset
 ResultSet *QueryCtx_GetResultSet(void);
-/* Retrive the resultset statistics. */
+
+// retrive the resultset statistics
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
 
-/* Print the current query. */
+// print the current query
 void QueryCtx_PrintQuery(void);
 
-/* Starts a locking flow before commiting changes in the graph and Redis keyspace.
- * Locking flow is:
- * 1. LOCK GIL
- * 2. Key open with `write` flag
- * 3. Graph R/W lock with write flag
- * Since 2PL protocal is implemented, the method returns true if the it managed to achieve
- * locks in this call or a previous call. In case that the locks are already locked, there will
- * be no attempt to lock them again.
- * This method returns false if the key has changed from the current graph,
- * and sets the relevant error message. */
+// starts a locking flow before commiting changes in the graph and Redis keyspace
+// locking flow is:
+// 1. lOCK GIL
+// 2. key open with `write` flag
+// 3. graph R/W lock with write flag
+// Since 2PL protocal is implemented, the method returns true if the it managed to achieve
+// locks in this call or a previous call. In case that the locks are already locked, there will
+// be no attempt to lock them again
+// This method returns false if the key has changed from the current graph,
+// and sets the relevant error message
 bool QueryCtx_LockForCommit(void);
 
-/* Starts an ulocking flow and notifies Redis after commiting changes in the graph and Redis keyspace.
- * The only writer which allow to perform the unlock and commit(replicate) is the last_writer.
- * The method get an OpBase and compares it to the last writer, if they are equal then the commit
- * and unlock flow will start.
- * Unlocking flow is:
- * 1. Replicate.
- * 2. Unlock graph R/W lock
- * 3. Close key
- * 4. Unlock GIL */
+// starts an ulocking flow and notifies Redis after commiting changes in the graph and Redis keyspace
+// the only writer which allow to perform the unlock and commit(replicate) is the last_writer
+// the method get an OpBase and compares it to the last writer, if they are equal then the commit
+// and unlock flow will start.
+// unlocking flow is:
+// 1. replicate
+// 2. unlock graph R/W lock
+// 3. close key
+// 4. unlock GIL
 void QueryCtx_UnlockCommit(OpBase *writer_op);
 
-/*
- * -------------------------FOR SAFETY ONLY---------------------------
- *
- * This method force releases the locks acquired during commit flow if for
- * some reason the last writer op has not invoked QueryCtx_UnlockCommit and Redis is locked.*/
+//------------------------------------------------------------------------------
+// FOR SAFETY ONLY
+//------------------------------------------------------------------------------
+
+// this method force releases the locks acquired during commit flow if for
+// some reason the last writer op has not invoked QueryCtx_UnlockCommit and Redis is locked
 void QueryCtx_ForceUnlockCommit(void);
 
-/* Compute and return elapsed query execution time. */
+// compute and return elapsed query execution time
 double QueryCtx_GetExecutionTime(void);
 
-/* Free the allocations within the QueryCtx and reset it for the next query. */
+// free the allocations within the QueryCtx and reset it for the next query
 void QueryCtx_Free(void);
 

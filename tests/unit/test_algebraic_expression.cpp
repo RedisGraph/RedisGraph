@@ -91,23 +91,24 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	static void _fake_graph_context() {
 		GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
 
-		gc->g = Graph_New(16, 16);
-		gc->index_count = 0;
-		gc->graph_name = strdup("G");
-		gc->attributes = raxNew();
+		gc->g                 =  Graph_New(16, 16);
+		gc->version           =  0;
+		gc->index_count       =  0;
+		gc->graph_name        =  strdup("G");
+		gc->attributes        =  raxNew();
+		gc->string_mapping    =  (char **)array_new(char*, 64);
+		gc->node_schemas      =  (Schema **)array_new(Schema*, GRAPH_DEFAULT_LABEL_CAP);
+		gc->relation_schemas  =  (Schema **)array_new(Schema*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
-		gc->string_mapping = (char **)array_new(char *, 64);
-		gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
-		gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-
-		GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
-		GraphContext_AddSchema(gc, "City", SCHEMA_NODE);
-		GraphContext_AddSchema(gc, "friend", SCHEMA_EDGE);
-		GraphContext_AddSchema(gc, "visit", SCHEMA_EDGE);
-		GraphContext_AddSchema(gc, "war", SCHEMA_EDGE);
 
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
+
+		GraphContext_AddSchema(gc,  "Person",  SCHEMA_NODE);
+		GraphContext_AddSchema(gc,  "City",    SCHEMA_NODE);
+		GraphContext_AddSchema(gc,  "friend",  SCHEMA_EDGE);
+		GraphContext_AddSchema(gc,  "visit",   SCHEMA_EDGE);
+		GraphContext_AddSchema(gc,  "war",     SCHEMA_EDGE);
 	}
 
 	/* Create a graph containing:

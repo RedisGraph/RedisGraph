@@ -14,19 +14,23 @@
 #include "../redismodule.h"
 #include "graph_statistics.h"
 #include "rg_matrix/rg_matrix.h"
+#include "vrg_matrix/vrg_matrix.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define GRAPH_DEFAULT_NODE_CAP 16384            // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_EDGE_CAP 16384            // Default number of edges a graph can hold before resizing.
-#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16      // Default number of different relationship types a graph can hold before resizing.
-#define GRAPH_DEFAULT_LABEL_CAP 16              // Default number of different labels a graph can hold before resizing.
-#define GRAPH_NO_LABEL -1                       // Labels are numbered [0-N], -1 represents no label.
-#define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
-#define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
-#define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
-#define EDGE_BULK_DELETE_THRESHOLD 4            // Max number of deletions to perform without choosing the bulk delete routine.
+#define GRAPH_DEFAULT_NODE_CAP          16384  // default number of nodes a graph can hold before resizing
+#define GRAPH_DEFAULT_EDGE_CAP          16384  // default number of edges a graph can hold before resizing
+#define GRAPH_DEFAULT_LABEL_CAP         16     // default number of different labels a graph can hold before resizing
+#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16     // default number of different relationship types a graph can hold before resizing
+
+#define GRAPH_NO_LABEL                  -1     // labels are numbered [0-n], -1 represents no label
+#define GRAPH_UNKNOWN_LABEL             -2     // labels are numbered [0-n], -2 represents an unknown relation
+
+#define GRAPH_NO_RELATION               -1     // relations are numbered [0-n], -1 represents no relation
+#define GRAPH_UNKNOWN_RELATION          -2     // relations are numbered [0-n], -2 represents an unknown relation
+
+#define EDGE_BULK_DELETE_THRESHOLD       4     // max number of deletions to perform without choosing the bulk delete routine
 
 typedef enum {
 	GRAPH_EDGE_DIR_INCOMING,
@@ -47,17 +51,24 @@ typedef struct Graph Graph;
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 struct Graph {
-	DataBlock *nodes;                   // Graph nodes stored in blocks.
-	DataBlock *edges;                   // Graph edges stored in blocks.
-	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
-	RG_Matrix *labels;                  // Label matrices.
-	RG_Matrix *relations;               // Relation matrices.
-	RG_Matrix _zero_matrix;             // Zero matrix.
-	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
+	DataBlock *nodes;                   // graph nodes stored in blocks
+	DataBlock *edges;                   // graph edges stored in blocks
+	VRG_Matrix adjacency_matrix;        // adjacency matrix, holds all graph connections
+	VRG_Matrix *labels;                 // label matrices
+	VRG_Matrix *relations;              // relation matrices
+	RG_Matrix _zero_matrix;             // zero matrix
+	pthread_rwlock_t _rwlock;           // read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
-	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
-	GraphStatistics stats;              // Graph related statistics.
+	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
+	GraphStatistics stats;              // graph related statistics
 };
+
+// create a new graph
+Graph *Graph_New
+(
+	size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
+	size_t edge_cap     // Allocation size for edge datablocks.
+);
 
 // graph synchronization functions
 // the graph is initialized with a read-write lock allowing
@@ -94,6 +105,12 @@ void Graph_ApplyAllPending
 	bool force_flush    // force sync of delta matrices
 );
 
+// checks to see if graph has pending operations
+bool Graph_Pending
+(
+	const Graph *g
+);
+
 // Retrieve graph matrix synchronization policy
 MATRIX_POLICY Graph_GetMatrixPolicy
 (
@@ -105,19 +122,6 @@ void Graph_SetMatrixPolicy
 (
   Graph *g,
   MATRIX_POLICY policy
-);
-
-// checks to see if graph has pending operations
-bool Graph_Pending
-(
-	const Graph *g
-);
-
-// create a new graph
-Graph *Graph_New
-(
-	size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
-	size_t edge_cap     // Allocation size for edge datablocks.
 );
 
 // creates a new label matrix, returns id given to label
@@ -331,29 +335,23 @@ void Graph_GetNodeEdges
 	Edge **edges            // array_t incoming/outgoing edges.
 );
 
-// retrieves the adjacency matrix
-// matrix is resized if its size doesn't match graph's node count
 RG_Matrix Graph_GetAdjacencyMatrix
 (
-	const Graph *g,
-	bool transposed
+	const Graph *g,     // graph from which to get adjacency matrix
+	bool transposed     // true for transposed matrix
 );
 
-// retrieves a label matrix
-// matrix is resized if its size doesn't match graph's node count
 RG_Matrix Graph_GetLabelMatrix
 (
 	const Graph *g,     // graph from which to get adjacency matrix
 	int label           // label described by matrix
 );
 
-// retrieves a typed adjacency matrix
-// matrix is resized if its size doesn't match graph's node count
 RG_Matrix Graph_GetRelationMatrix
 (
 	const Graph *g,     // graph from which to get adjacency matrix
 	int relation,       // relation described by matrix
-	bool transposed
+	bool transposed     // true for transposed matrix
 );
 
 // returns true if relationship matrix 'r' contains multi-edge entries

@@ -10,21 +10,21 @@
 #include "../util/thpool/pools.h"
 #include "../configuration/config.h"
 
-#define GRAPH_VERSION_MISSING -1
+#define GRAPH_SIGNATURE_MISSING -1
 
 // Command handler function pointer.
 typedef void(*Command_Handler)(void *args);
 
 // Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
 static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
-					   long long *timeout, uint *graph_version, char **errmsg) {
+		long long *timeout, uint *graph_signature, char **errmsg) {
 
 	ASSERT(compact);
 	ASSERT(timeout);
 
 	// set defaults
 	*compact = false;  // verbose
-	*graph_version = GRAPH_VERSION_MISSING;
+	*graph_signature = GRAPH_SIGNATURE_MISSING;
 	Config_Option_get(Config_TIMEOUT, timeout);
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
@@ -41,18 +41,18 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 			continue;
 		}
 
-		if(!strcasecmp(arg, "version")) {
-			long long v = GRAPH_VERSION_MISSING;
+		if(!strcasecmp(arg, "signature")) {
+			long long v = GRAPH_SIGNATURE_MISSING;
 			int err = REDISMODULE_ERR;
 			if(i < argc - 1) {
-				i++; // Set the current argument to the version value.
+				i++; // Set the current argument to the signature value.
 				err = RedisModule_StringToLongLong(argv[i], &v);
-				*graph_version = v;
+				*graph_signature = v;
 			}
 
-			// Emit error on missing, negative, or non-numeric version values.
+			// Emit error on missing, negative, or non-numeric signature values.
 			if(err != REDISMODULE_OK || v < 0 || v > UINT_MAX) {
-				asprintf(errmsg, "Failed to parse graph version value");
+				asprintf(errmsg, "Failed to parse graph signature value");
 				return REDISMODULE_ERR;
 			}
 
@@ -77,18 +77,18 @@ static int _read_flags(RedisModuleString **argv, int argc, bool *compact,
 	return REDISMODULE_OK;
 }
 
-// Returns false if client provided a graph version
-// which mismatch the current graph version
-static bool _verifyGraphVersion(GraphContext *gc, uint version) {
-	// caller did not specify graph version
-	if(version == GRAPH_VERSION_MISSING) return true;
-	return (GraphContext_GetVersion(gc) == version);
+// Returns false if client provided a graph signature
+// which mismatch the current graph signature
+static bool _verifyGraphSignature(GraphContext *gc, uint signature) {
+	// caller did not specify graph signature
+	if(signature == GRAPH_SIGNATURE_MISSING) return true;
+	return (GraphContext_GetSignature(gc) == signature);
 }
 
-static void _rejectOnVersionMismatch(RedisModuleCtx *ctx, uint version) {
+static void _rejectOnSignature(RedisModuleCtx *ctx, uint signature) {
 	RedisModule_ReplyWithArray(ctx, 2);
-	RedisModule_ReplyWithError(ctx, "version mismatch");
-	RedisModule_ReplyWithLongLong(ctx, version);
+	RedisModule_ReplyWithError(ctx, "signature mismatch");
+	RedisModule_ReplyWithLongLong(ctx, signature);
 }
 
 // Return true if the command has a valid number of arguments.
@@ -141,10 +141,10 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 }
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	char *errmsg;
 	bool compact;
-	uint version;
+	uint signature;
 	long long timeout;
+	char *errmsg = NULL;
 	CommandCtx *context = NULL;
 
 	RedisModuleString *graph_name = argv[1];
@@ -152,15 +152,16 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
 	GRAPH_Commands cmd = determine_command(command_name);
 
-	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
+	if(_validate_command_arity(cmd, argc) == false) {
+		return RedisModule_WrongArity(ctx);
+	}
 
 	// parse additional arguments
-	int res = _read_flags(argv, argc, &compact, &timeout, &version, &errmsg);
+	int res = _read_flags(argv, argc, &compact, &timeout, &signature, &errmsg);
 	if(res == REDISMODULE_ERR) {
 		// emit error and exit if argument parsing failed
 		RedisModule_ReplyWithError(ctx, errmsg);
 		free(errmsg);
-		// the API reference dictates that registered functions should always return OK
 		return REDISMODULE_OK;
 	}
 
@@ -168,23 +169,23 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// if GraphContext is null, key access failed and an error been emitted
 	if(!gc) return REDISMODULE_ERR;
 
-	// return incase caller provided a mismatched graph version
-	if(!_verifyGraphVersion(gc, version)) {
-		_rejectOnVersionMismatch(ctx, GraphContext_GetVersion(gc));
-		// Release the GraphContext, as we increased its reference count
-		// when retrieving it.
+	// return incase caller provided a mismatched graph signature
+	if(!_verifyGraphSignature(gc, signature)) {
+		_rejectOnSignature(ctx, GraphContext_GetSignature(gc));
+		// release the GraphContext, as we increased its reference count
+		// when retrieving it
 		GraphContext_Release(gc);
 		return REDISMODULE_OK;
 	}
 
-	/* Determin query execution context
-	 * queries issued within a LUA script or multi exec block must
-	 * run on Redis main thread, others can run on different threads. */
+	// determin query execution context
+	// queries issued within a LUA script or multi exec block must
+	// run on Redis main thread, others can run on different threads
 	int flags = RedisModule_GetContextFlags(ctx);
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 
 	ExecutorThread exec_thread = (flags & (REDISMODULE_CTX_FLAGS_MULTI |
-										   REDISMODULE_CTX_FLAGS_LUA  |
+										   REDISMODULE_CTX_FLAGS_LUA   |
 										   REDISMODULE_CTX_FLAGS_LOADING)) ?
 								 EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
@@ -196,17 +197,18 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		handler(context);
 	} else {
 		// run query on a dedicated thread
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL,
+				NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout);
 
 		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
-			// Report an error once our workers thread pool internal queue
+			// report an error once our workers thread pool internal queue
 			// is full, this error usually happens when the server is
 			// under heavy load and is unable to catch up
 			RedisModule_ReplyWithError(ctx, "Max pending queries exceeded");
-			// Release the GraphContext, as we increased its reference count
-			// when retrieving it.
+			// release the GraphContext, as we increased its reference count
+			// when retrieving it
 			GraphContext_Release(gc);
 			CommandCtx_Free(context);
 		}

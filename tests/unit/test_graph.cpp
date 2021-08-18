@@ -309,18 +309,21 @@ void benchmark_graph() {
 // Validate the creation of a graph,
 // Make sure graph's defaults are applied.
 TEST_F(GraphTest, NewGraph) {
-	GrB_Index ncols, nrows, nvals;
+	GrB_Index ncols;
+	GrB_Index nrows;
+	GrB_Index nvals;
 	Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 	Graph_AcquireWriteLock(g);
-	RG_Matrix adj_matrix = g->adjacency_matrix;
+	RG_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g, false);
+
 	ASSERT_EQ(RG_Matrix_ncols(&ncols, adj_matrix), GrB_SUCCESS);
 	ASSERT_EQ(RG_Matrix_nrows(&nrows, adj_matrix), GrB_SUCCESS);
 	ASSERT_EQ(RG_Matrix_nvals(&nvals, adj_matrix), GrB_SUCCESS);
 
-	ASSERT_TRUE(g->nodes != NULL);
-	ASSERT_TRUE(g->relations != NULL);
-	ASSERT_TRUE(g->labels != NULL);
-	ASSERT_TRUE(g->adjacency_matrix != NULL);
+	ASSERT_TRUE(g->nodes             !=  NULL);
+	ASSERT_TRUE(g->relations         !=  NULL);
+	ASSERT_TRUE(g->labels            !=  NULL);
+	ASSERT_TRUE(g->adjacency_matrix  !=  NULL);
 	ASSERT_EQ(Graph_NodeCount(g), 0);
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);

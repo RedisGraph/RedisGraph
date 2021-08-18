@@ -53,12 +53,14 @@ void QueryCtx_BeginTimer(void) {
 }
 
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->gc = CommandCtx_GetGraphContext(cmd_ctx);
-	ctx->query_data.query = CommandCtx_GetQuery(cmd_ctx);
-	ctx->global_exec_ctx.bc = CommandCtx_GetBlockingClient(cmd_ctx);
-	ctx->global_exec_ctx.redis_ctx = CommandCtx_GetRedisCtx(cmd_ctx);
-	ctx->global_exec_ctx.command_name = CommandCtx_GetCommandName(cmd_ctx);
+	QueryCtx *ctx  = _QueryCtx_GetCtx();
+
+	ctx->gc                            =  CommandCtx_GetGraphContext(cmd_ctx);
+	ctx->query_data.query              =  CommandCtx_GetQuery(cmd_ctx);
+	ctx->internal_exec_ctx.version     =  ctx->gc->version;
+	ctx->global_exec_ctx.bc            =  CommandCtx_GetBlockingClient(cmd_ctx);
+	ctx->global_exec_ctx.redis_ctx     =  CommandCtx_GetRedisCtx(cmd_ctx);
+	ctx->global_exec_ctx.command_name  =  CommandCtx_GetCommandName(cmd_ctx);
 }
 
 void QueryCtx_SetAST(AST *ast) {
@@ -84,6 +86,11 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->query_data.ast;
+}
+
+uint QueryCtx_GetVersion(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->internal_exec_ctx.version;
 }
 
 rax *QueryCtx_GetParams(void) {
