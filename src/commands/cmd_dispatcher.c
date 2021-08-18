@@ -152,7 +152,7 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 		default:
 			ASSERT(false);
 	}
-	return NULL;
+	return false;
 }
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
