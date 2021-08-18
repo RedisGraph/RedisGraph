@@ -1,73 +1,72 @@
-import os
-import sys
-import threading
 from RLTest import Env
-from redisgraph import Graph, Node, Edge
-from redis import ResponseError
-
 from base import FlowTestsBase
+from redis import ResponseError
+from redisgraph import Graph, Node, Edge
+from pathos.pools import ProcessPool as Pool
 
 GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 graphs = None                       # One graph object per client.
-assertions = [True] * CLIENT_COUNT  # Each thread places its verdict at position threadID.
-exceptions = [None] * CLIENT_COUNT  # Each thread which fails sets its exception content ar position threadID.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def query_aggregate(graph, query, threadID):
-    global assertions
-    assertions[threadID] = True
-
+def query_aggregate(graph, query):
     for i in range(10):
         actual_result = graph.query(query)
         person_count = actual_result.result_set[0][0]
         if person_count != len(people):
-            assertions[threadID] = False
-            break
+            return False
+    
+    return True
 
-def query_neighbors(graph, query, threadID):
-    global assertions
-    assertions[threadID] = True
-
+def query_neighbors(graph, query):
     # Fully connected graph + header row.
     expected_resultset_size = len(people) * (len(people)-1)
 
     for i in range(10):
         actual_result = graph.query(query)
         if len(actual_result.result_set) is not expected_resultset_size:
-            assertions[threadID] = False
-            break
-
-def query_write(graph, query, threadID):
-    global assertions
-    assertions[threadID] = True
+            return False
     
+    return True
+
+def query_write(graph, query):
     for i in range(10):
         actual_result = graph.query(query)        
         if actual_result.nodes_created != 1 or actual_result.properties_set != 1:
-            assertions[threadID] = False
-            break
+            return False
 
-def thread_run_query(graph, query, threadID):
-    global assertions
+    return True
+
+def thread_run_query(graph, query):
     try:
-        assertions[threadID] = graph.query(query)
+        return graph.query(query)
     except ResponseError as e:
-        exceptions[threadID] = str(e)
+        return str(e)
 
-def delete_graph(graph, threadID):
-    global assertions
-    assertions[threadID] = True
-
+def delete_graph(graph):
     # Try to delete graph.
     try:
         graph.delete()
+        return True
     except:
         # Graph deletion failed.
-        assertions[threadID] = False
+        return False
+
+def run_concurrent(env, queries, f):
+    pool = Pool(nodes=CLIENT_COUNT)
+
+    # invoke queries
+    result = pool.map(f, graphs, queries)
+
+    # validate all process return true
+    env.assertTrue(all(result))
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
+        # skip test if we're running under Valgrind
+        if Env().envRunner.debugger is not None:
+            Env().skip() # valgrind is not working correctly with multi processing
+
         self.env = Env(decodeResponses=True)
         global graphs
         graphs = []
@@ -98,68 +97,26 @@ class testConcurrentQueryFlow(FlowTestsBase):
     # Count number of nodes in the graph
     def test01_concurrent_aggregation(self):
         q = """MATCH (p:person) RETURN count(p)"""
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=query_aggregate, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
-            self.env.assertTrue(assertions[i])
+        queries = [q] * CLIENT_COUNT
+        run_concurrent(self.env, queries, query_aggregate)
     
     # Concurrently get neighbors of every node.
     def test02_retrieve_neighbors(self):
         q = """MATCH (p:person)-[know]->(n:person) RETURN n.name"""
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=query_neighbors, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
-            self.env.assertTrue(assertions[i])
+        queries = [q] * CLIENT_COUNT
+        run_concurrent(self.env, queries, query_neighbors)
 
     # Concurrent writes
     def test_03_concurrent_write(self):        
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            q = """CREATE (c:country {id:"%d"})""" % i            
-            t = threading.Thread(target=query_write, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
-            self.env.assertTrue(assertions[i])
+        queries = ["""CREATE (c:country {id:"%d"})""" % i for i in range(CLIENT_COUNT)]
+        run_concurrent(self.env, queries, query_write)
     
     # Try to delete graph multiple times.
     def test_04_concurrent_delete(self):
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=delete_graph, args=(graph, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
-        
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
+        pool = Pool(nodes=CLIENT_COUNT)
+
+        # invoke queries
+        assertions = pool.map(delete_graph, graphs)
 
         # Exactly one thread should have successfully deleted the graph.
         self.env.assertEquals(assertions.count(True), 1)
@@ -172,22 +129,23 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # Delete graph via Redis DEL key.
         ##############################################################################################
         self.populate_graph()
+        pool = Pool(nodes=CLIENT_COUNT)
+
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=thread_run_query, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+        queries = [q] * CLIENT_COUNT
+        # invoke queries
+        m = pool.amap(thread_run_query, graphs, queries)
 
         redis_con.delete(GRAPH_ID)
 
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()            
-            self.env.assertEquals(assertions[i].result_set[0][0], 900)
+        # wait for processes to return
+        m.wait()
+
+        # get the results
+        result = m.get()
+
+        # validate result.
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in result]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
@@ -198,21 +156,20 @@ class testConcurrentQueryFlow(FlowTestsBase):
         ##############################################################################################
         self.populate_graph()
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=thread_run_query, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+        queries = [q] * CLIENT_COUNT
+        # invoke queries
+        m = pool.amap(thread_run_query, graphs, queries)
 
         redis_con.flushall()
 
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()            
-            self.env.assertEquals(assertions[i].result_set[0][0], 900)
+        # wait for processes to return
+        m.wait()
+
+        # get the results
+        result = m.get()
+
+        # validate result.
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in result]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
@@ -223,21 +180,20 @@ class testConcurrentQueryFlow(FlowTestsBase):
         ##############################################################################################
         self.populate_graph()
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
-        threads = []
-        for i in range(CLIENT_COUNT):
-            graph = graphs[i]
-            t = threading.Thread(target=thread_run_query, args=(graph, q, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+        queries = [q] * CLIENT_COUNT
+        # invoke queries
+        m = pool.amap(thread_run_query, graphs, queries)
 
-        graphs[i].delete()
+        graphs[-1].delete()
 
-        # Wait for threads to return.
-        for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()            
-            self.env.assertEquals(assertions[i].result_set[0][0], 900)
+        # wait for processes to return
+        m.wait()
+
+        # get the results
+        result = m.get()
+
+        # validate result.
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in result]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
@@ -246,39 +202,34 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def test_06_concurrent_write_delete(self):
         # Test setup - validate that graph exists and possible results are None
         graphs[0].query("MATCH (n) RETURN n")
-        assertions[0] = None
-        exceptions[0] = None
 
+        pool = Pool(nodes=1)
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
-        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
-        writer.setDaemon(True)
-        writer.start()
+        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query)
         redis_con.delete(GRAPH_ID)
-        writer.join()
+        writer.wait()
         possible_exceptions = ["Encountered different graph value when opened key " + GRAPH_ID,
                                "Encountered an empty key when opened key " + GRAPH_ID]
-        if exceptions[0] is not None:
-            self.env.assertContains(exceptions[0], possible_exceptions)
+        result = writer.get()
+        if isinstance(result, str):
+            self.env.assertContains(result, possible_exceptions)
         else:
-            self.env.assertEquals(1000000, assertions[0].nodes_created)       
+            self.env.assertEquals(1000000, result.nodes_created)
     
     def test_07_concurrent_write_rename(self):
         # Test setup - validate that graph exists and possible results are None
         graphs[0].query("MATCH (n) RETURN n")
-        assertions[0] = None
-        exceptions[0] = None
 
+        pool = Pool(nodes=1)
         redis_con = self.env.getConnection()
         new_graph = GRAPH_ID + "2"
         # Create new empty graph with id GRAPH_ID + "2"
         redis_con.execute_command("GRAPH.QUERY",new_graph, """MATCH (n) return n""", "--compact")
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
-        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
-        writer.setDaemon(True)
-        writer.start()
-        redis_con.rename(new_graph, GRAPH_ID)
-        writer.join()
+        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query)
+        redis_con.rename(GRAPH_ID, new_graph)
+        writer.wait()
         # Possible scenarios:
         # 1. Rename is done before query is sent. The name in the graph context is new_graph, so when upon commit, when trying to open new_graph key, it will encounter an empty key since new_graph is not a valid key. 
         #    Note: As from https://github.com/RedisGraph/RedisGraph/pull/820 this may not be valid since the rename event handler might actually rename the graph key, before the query execution.    
@@ -286,56 +237,59 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         possible_exceptions = ["Encountered different graph value when opened key " + GRAPH_ID, 
         "Encountered an empty key when opened key " + new_graph]
-        if exceptions[0] is not None:
-            self.env.assertContains(exceptions[0], possible_exceptions)
+
+        result = writer.get()
+        if isinstance(result, str):
+            self.env.assertContains(result, possible_exceptions)
         else:
-            self.env.assertEquals(1000000, assertions[0].nodes_created)
+            self.env.assertEquals(1000000, result.nodes_created)
         
     def test_08_concurrent_write_replace(self):
         # Test setup - validate that graph exists and possible results are None
         graphs[0].query("MATCH (n) RETURN n")
-        assertions[0] = None
-        exceptions[0] = None
 
+        pool = Pool(nodes=1)
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
-        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
-        writer.setDaemon(True)
-        writer.start()
+        writer = pool.apipe(thread_run_query, graphs[0], heavy_write_query)
         set_result = redis_con.set(GRAPH_ID, "1")
-        writer.join()
+        writer.wait()
         possible_exceptions = ["Encountered a non-graph value type when opened key " + GRAPH_ID,
                                "WRONGTYPE Operation against a key holding the wrong kind of value"]
-        if exceptions[0] is not None:
+
+        result = writer.get()
+        if isinstance(result, str):
             # If the SET command attempted to execute while the CREATE query was running,
             # an exception should have been issued.
-            self.env.assertContains(exceptions[0], possible_exceptions)
+            self.env.assertContains(result, possible_exceptions)
         else:
             # Otherwise, both the CREATE query and the SET command should have succeeded.
-            self.env.assertEquals(1000000, assertions[0].nodes_created)
+            self.env.assertEquals(1000000, result.nodes_created)
             self.env.assertEquals(set_result, True)
 
     def test_09_concurrent_multiple_readers_after_big_write(self):
         # Test issue #890
-        global assertions
-        global exceptions
-        redis_con = self.env.getConnection()
-        redis_graph = Graph("G890", redis_con)
-        redis_graph.query("""UNWIND(range(0,999)) as x CREATE()-[:R]->()""")
+        redis_graphs = []
+        for i in range(0, CLIENT_COUNT):
+            redis_con = self.env.getConnection()
+            redis_graphs.append(Graph("G890", redis_con))
+        redis_graphs[0].query("""UNWIND(range(0,999)) as x CREATE()-[:R]->()""")
         read_query = """MATCH (n)-[r:R]->(m) RETURN n, r, m"""
-        assertions = [True] * CLIENT_COUNT
-        exceptions = [None] * CLIENT_COUNT
-        threads = []
-        for i in range(CLIENT_COUNT):
-            t = threading.Thread(target=thread_run_query, args=(redis_graph, read_query, i))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+
+        queries = [read_query] * CLIENT_COUNT
+        pool = Pool(nodes=CLIENT_COUNT)
+
+        # invoke queries
+        m = pool.amap(thread_run_query, redis_graphs, queries)
+
+        # wait for processes to return
+        m.wait()
+
+        # get the results
+        result = m.get()
         
         for i in range(CLIENT_COUNT):
-            t = threads[i]
-            t.join()
-        
-        for i in range(CLIENT_COUNT):
-            self.env.assertIsNone(exceptions[i])
-            self.env.assertEquals(1000, len(assertions[i].result_set))
+            if isinstance(result[i], str):
+                self.env.assertIsNone(result[i])
+            else:
+                self.env.assertEquals(1000, len(result[i].result_set))
