@@ -152,9 +152,10 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 	}
 
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
-		// Revert to default synchronization behavior
+		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(gc->g);
+		Graph_ApplyAllPending(gc->g, true);
+
 		// Set the thread-local GraphContext, as it will be accessed when creating indexes.
 		QueryCtx_SetGraphCtx(gc);
 		// Index the nodes when decoding ends.
@@ -164,6 +165,10 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
+
+		// make sure graph doesn't contains may pending changes
+		ASSERT(Graph_Pending(gc->g) == false);
+
 		QueryCtx_Free(); // Release thread-local variables.
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// Graph has finished decoding, inform the module.

@@ -22,19 +22,34 @@ static GrB_Info _RG_Matrix_init
 	// create m, delta-plus and delta-minus
 	//--------------------------------------------------------------------------
 
+	//--------------------------------------------------------------------------
+	// m, never hypersparse
+	//--------------------------------------------------------------------------
 	info = GrB_Matrix_new(&A->matrix, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
 	info = GxB_set(A->matrix, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 	ASSERT(info == GrB_SUCCESS);
+	info = GxB_set(A->matrix, GxB_HYPER_SWITCH, GxB_NEVER_HYPER);
+	ASSERT(info == GrB_SUCCESS);
 
+	//--------------------------------------------------------------------------
+	// delta-plus, always hypersparse
+	//--------------------------------------------------------------------------
 	info = GrB_Matrix_new(&A->delta_plus, type, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
 	info = GxB_set(A->delta_plus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
 	ASSERT(info == GrB_SUCCESS);
+	info = GxB_set(A->delta_plus, GxB_HYPER_SWITCH, GxB_ALWAYS_HYPER);
+	ASSERT(info == GrB_SUCCESS);
 
+	//--------------------------------------------------------------------------
+	// delta-minus, always hypersparse
+	//--------------------------------------------------------------------------
 	info = GrB_Matrix_new(&A->delta_minus, GrB_BOOL, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
 	info = GxB_set(A->delta_minus, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+	ASSERT(info == GrB_SUCCESS);
+	info = GxB_set(A->delta_minus, GxB_HYPER_SWITCH, GxB_ALWAYS_HYPER);
 	ASSERT(info == GrB_SUCCESS);
 
 	return info;

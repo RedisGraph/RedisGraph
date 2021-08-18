@@ -284,6 +284,13 @@ GrB_Info RG_Matrix_export
 	RG_Matrix C
 );
 
+// checks to see if matrix has pending operations
+GrB_Info RG_Matrix_pending
+(
+	const RG_Matrix C,              // matrix to query
+	bool *pending                   // are there any pending operations
+);
+
 GrB_Info RG_Matrix_wait
 (
 	RG_Matrix C,
