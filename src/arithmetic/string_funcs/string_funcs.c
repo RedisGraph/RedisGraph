@@ -75,17 +75,25 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 /* returns a string in which the order of all characters in the original string have been reversed. */
 SIValue AR_REVERSE(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	char *str = argv[0].stringval;
-	size_t str_len = strlen(str);
-	char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
-	int i = str_len - 1;
-	int j = 0;
-	while(i >= 0) {
-		reverse[j++] = str[i--];
+	SIValue value = argv[0];
+	if(SI_TYPE(value) == T_STRING) {
+		char *str = value.stringval;
+		size_t str_len = strlen(str);
+		char *reverse = rm_malloc((str_len + 1) * sizeof(char));
+
+		int i = str_len - 1;
+		int j = 0;
+		while(i >= 0) {
+			reverse[j++] = str[i--];
+		}
+		reverse[j] = '\0';
+		return SI_TransferStringVal(reverse);
+	} else {
+		SIValue reverse = SI_CloneValue(value);
+		array_reverse(reverse.array);
+		return reverse;
 	}
-	reverse[j] = '\0';
-	return SI_TransferStringVal(reverse);
 }
 
 /* returns a substring of the original string, beginning with a 0-based index start and length. */
@@ -266,7 +274,7 @@ void Register_StringFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_ARRAY | T_NULL));
 	func_desc = AR_FuncDescNew("reverse", AR_REVERSE, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 

@@ -565,6 +565,8 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	const char *func_name;
 	if(type == CYPHER_AST_ANY) func_name = "ANY";
 	else if(type == CYPHER_AST_ALL) func_name = "ALL";
+	else if(type == CYPHER_AST_SINGLE) func_name = "SINGLE";
+	else if(type == CYPHER_AST_NONE) func_name = "NONE";
 	else func_name = "LIST_COMPREHENSION";
 
 	/* Using the sample query:
@@ -685,7 +687,8 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_PARAMETER) {
 		return _AR_ExpNodeFromParameter(expr);
 	} else if(t == CYPHER_AST_LIST_COMPREHENSION || t == CYPHER_AST_ANY ||
-			  t == CYPHER_AST_ALL) {
+			  t == CYPHER_AST_ALL || t == CYPHER_AST_SINGLE ||
+			  t == CYPHER_AST_NONE) {
 		return _AR_ExpNodeFromComprehensionFunction(expr, t);
 	} else if(t == CYPHER_AST_MAP) {
 		return _AR_ExpFromMapExpression(expr);

@@ -97,7 +97,6 @@ SIValue AR_ANY(SIValue *argv, int argc) {
 
 		// If any element in an ANY function passes the predicate, return true.
 		if(FilterTree_applyFilters(ctx->ft, r)) return SI_BoolVal(true);
-
 	}
 
 	// No element passed, return false.
@@ -130,7 +129,75 @@ SIValue AR_ALL(SIValue *argv, int argc) {
 
 		// If any element in an ALL function does not pass the predicate, return false.
 		if(!FilterTree_applyFilters(ctx->ft, r)) return SI_BoolVal(false);
+	}
 
+	// All elements passed, return true.
+	return SI_BoolVal(true);
+}
+
+SIValue AR_SINGLE(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+	/* ALL comprehensions are invoked with three children:
+	 * The list to iterate over.
+	 * The current Record.
+	 * The function context. */
+	SIValue list = argv[0];
+	Record outer_record = argv[1].ptrval;
+	ListComprehensionCtx *ctx = argv[2].ptrval;
+
+	// On the first invocation, build the local Record.
+	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
+	Record r = ctx->local_record;
+
+	// Populate the local Record with the contents of the outer Record.
+	Record_Clone(outer_record, r);
+
+	bool single = false;
+	uint len = SIArray_Length(list);
+	for(uint i = 0; i < len; i++) {
+		// Retrieve the current element.
+		SIValue current_elem = SIArray_Get(list, i);
+		// Add the current element to the record at its allocated position.
+		Record_AddScalar(r, ctx->variable_idx, current_elem);
+
+		// If any element in an ALL function does not pass the predicate, return false.
+		if(FilterTree_applyFilters(ctx->ft, r)) {
+			if(single) return SI_BoolVal(false);
+			else single = true;
+		}
+	}
+
+	if(single) return SI_BoolVal(true);
+
+	return SI_BoolVal(false);
+}
+
+SIValue AR_NONE(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+	/* ALL comprehensions are invoked with three children:
+	 * The list to iterate over.
+	 * The current Record.
+	 * The function context. */
+	SIValue list = argv[0];
+	Record outer_record = argv[1].ptrval;
+	ListComprehensionCtx *ctx = argv[2].ptrval;
+
+	// On the first invocation, build the local Record.
+	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
+	Record r = ctx->local_record;
+
+	// Populate the local Record with the contents of the outer Record.
+	Record_Clone(outer_record, r);
+
+	uint len = SIArray_Length(list);
+	for(uint i = 0; i < len; i++) {
+		// Retrieve the current element.
+		SIValue current_elem = SIArray_Get(list, i);
+		// Add the current element to the record at its allocated position.
+		Record_AddScalar(r, ctx->variable_idx, current_elem);
+
+		// If any element in an NONE function pass the predicate, return false.
+		if(FilterTree_applyFilters(ctx->ft, r)) return SI_BoolVal(false);
 	}
 
 	// All elements passed, return true.
@@ -201,6 +268,26 @@ void Register_ComprehensionFuncs() {
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("all", AR_ALL, 3, 3, types, true, false);
+	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
+	AR_RegFunc(func_desc);
+	func_desc->bfree = ListComprehension_Free;
+	func_desc->bclone = ListComprehension_Clone;
+
+	types = array_new(SIType, 3);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_PTR);
+	array_append(types, T_PTR);
+	func_desc = AR_FuncDescNew("single", AR_SINGLE, 3, 3, types, true, false);
+	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
+	AR_RegFunc(func_desc);
+	func_desc->bfree = ListComprehension_Free;
+	func_desc->bclone = ListComprehension_Clone;
+
+	types = array_new(SIType, 3);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_PTR);
+	array_append(types, T_PTR);
+	func_desc = AR_FuncDescNew("none", AR_NONE, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 	func_desc->bfree = ListComprehension_Free;
