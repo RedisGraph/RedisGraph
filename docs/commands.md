@@ -716,7 +716,7 @@ MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
 ```
 
 #### Existential comprehension functions
-The functions `any()` and `all()` use a simplified form of the list comprehension syntax and return a boolean value.
+The functions `any()`, `all()`, `single` and `none` use a simplified form of the list comprehension syntax and return a boolean value.
 
 ```sh
 any(element IN array WHERE condition)
