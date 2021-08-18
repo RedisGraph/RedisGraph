@@ -17,12 +17,11 @@ class testSlowLog(FlowTestsBase):
         redis_graph = Graph(GRAPH_ID, redis_con)
 
     def test_slowlog(self):
+        # Slowlog should fail when graph doesn't exists.
         try:
-            # Slow log should fail when graph not exists.
-            slowlog = redis_con.execute_command("GRAPH.SLOWLOG " + GRAPH_ID)
+            slowlog = redis_con.execute_command("GRAPH.SLOWLOG NONE_EXISTING_GRAPH")
         except ResponseError as e:
             self.env.assertIn("Invalid graph operation on empty key", str(e))
-
 
         # Issue create query twice.
         redis_graph.query("""CREATE ()""")
