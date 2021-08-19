@@ -27,7 +27,7 @@ extern uint64_t GB_cast_to_uint64_t (double x) ;
 //------------------------------------------------------------------------------
 
 #define GB_CAST_FUNCTION(ztype,xtype)                                   \
-extern void GB_cast_ ## ztype ## _ ## xtype                             \
+extern void GB (_cast_ ## ztype ## _ ## xtype)                          \
 (                                                                       \
     void *z,            /* typecasted output, of type ztype */          \
     const void *x,      /* input value to typecast, of type xtype */    \

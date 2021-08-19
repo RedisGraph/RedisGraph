@@ -37,7 +37,7 @@ for m = [1 5 10]
 
                 if (~builtin)
                     % no user-defined Complex_any_monoid
-                    if (contains (atype, 'complex'))
+                    if (test_contains (atype, 'complex'))
                         if (isequal (op, 'any'))
                             continue ;
                         end
@@ -46,7 +46,7 @@ for m = [1 5 10]
 
                 try
                     GB_spec_operator (op, atype) ;
-                    GB_builtin_complex_set (1) ;
+                    GB_builtin_complex_set (true) ;
                     cin = GB_spec_identity (op, atype) ;
                     GB_builtin_complex_set (builtin) ;
                 catch
@@ -54,7 +54,7 @@ for m = [1 5 10]
                 end
 
                 if (isempty (cin))
-                    GB_builtin_complex_set (1) ;
+                    GB_builtin_complex_set (true) ;
                     cin = GB_mex_cast (0, atype) ;
                     GB_builtin_complex_set (builtin) ;
                 end
@@ -82,7 +82,7 @@ for m = [1 5 10]
                 if (~builtin)
                     % optype is double, which can't be used to
                     % reduce the user-defined type 'Complex'
-                    if (contains (atype, 'complex'))
+                    if (test_contains (atype, 'complex'))
                         continue ;
                     end
                 end
@@ -105,7 +105,6 @@ for m = [1 5 10]
     end
 end
 
-GB_builtin_complex_set (1) ;
-
+GB_builtin_complex_set (true) ;
 fprintf ('\ntest29: all tests passed\n') ;
 

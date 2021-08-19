@@ -27,7 +27,7 @@ A (:,J) = 77 ;
 tic
 [I1, J1, X1] = find (A) ;
 tm = toc ;
-fprintf ('MATLAB [i,j,x]=find(A) time: %g\n', tm) ;
+fprintf ('built-in [i,j,x]=find(A) time: %g\n', tm) ;
 
 nthreads_max = 2*GB_mex_omp_max_threads ;
 save = nthreads_get ;
@@ -41,12 +41,13 @@ for nthreads = [1 2 4 8 16 20 32 40 64 128 260 256]
     % warmup
     [I2, J2, X2] = GB_mex_extractTuples (A) ;
     % for timing
+    tic
     [I2, J2, X2] = GB_mex_extractTuples (A) ;
-    t = grbresults ;
+    t = toc ;
     if (nthreads == 1)
         t1 = t ;
     end
-    fprintf ('nthreads %3d speedup vs MATLAB: %10.4f  vs GrB: %10.4f\n', ...
+    fprintf ('nthreads %3d speedup vs built-in: %10.4f  vs GrB: %10.4f\n', ...
         nthreads, tm/t, t1/t) ;
     assert (isequal (I1, double (I2+1)))
     assert (isequal (J1, double (J2+1)))

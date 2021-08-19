@@ -9,7 +9,7 @@ function codegen_binop
 
 fprintf ('\nbinary operators:\n') ;
 
-f = fopen ('Generated/GB_binop__include.h', 'w') ;
+f = fopen ('Generated2/GB_binop__include.h', 'w') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;
 fprintf (f, '// GB_binop__include.h: definitions for GB_binop__*.c\n') ;
 fprintf (f, '//------------------------------------------------------------------------------\n') ;

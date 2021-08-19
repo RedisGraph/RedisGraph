@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// If this file is in the Generated/ folder, do not edit it (auto-generated).
+// If this file is in the Generated1/ folder, do not edit it
+// (it is auto-generated from Generator/*).
 
 #include "GB_select.h"
 #include "GB_ek_slice.h"
@@ -15,9 +16,15 @@
 
 // The selection is defined by the following types and operators:
 
-// phase1: GB_sel_phase1
-// phase2: GB_sel_phase2
+// functions:
+// phase1: GB (_sel_phase1)
+// phase2: GB (_sel_phase2)
+// bitmap: GB (_sel_bitmap)
+
 // A type: GB_atype
+
+#define GB_ISO_SELECT \
+    GB_iso_select
 
 // kind
 GB_kind
@@ -27,7 +34,7 @@ GB_kind
 
 // test value of Ax [p]
 #define GB_TEST_VALUE_OF_ENTRY(p)                       \
-    GB_test_value_of_entry(p)
+    GB_test_value_of_entry
 
 // get the vector index (user select operators only)
 #define GB_GET_J                                        \
@@ -43,22 +50,18 @@ GB_kind
 
 if_phase1
 
-void GB_sel_phase1
+void GB (_sel_phase1)
 (
-    int64_t *GB_RESTRICT Zp,
-    int64_t *GB_RESTRICT Cp,
-    int64_t *GB_RESTRICT Wfirst,
-    int64_t *GB_RESTRICT Wlast,
+    int64_t *restrict Zp,
+    int64_t *restrict Cp,
+    int64_t *restrict Wfirst,
+    int64_t *restrict Wlast,
     const GrB_Matrix A,
-    const int64_t *GB_RESTRICT kfirst_slice,
-    const int64_t *GB_RESTRICT klast_slice,
-    const int64_t *GB_RESTRICT pstart_slice,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *GB_RESTRICT xthunk,
+    const GB_atype *restrict xthunk,
     const GxB_select_function user_select,
-    const int ntasks,
-    const int nthreads
+    const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
     GB_get_thunk
@@ -71,23 +74,19 @@ endif_phase1
 // GB_sel_phase2
 //------------------------------------------------------------------------------
 
-void GB_sel_phase2
+void GB (_sel_phase2)
 (
-    int64_t *GB_RESTRICT Ci,
-    GB_atype *GB_RESTRICT Cx,
-    const int64_t *GB_RESTRICT Zp,
-    const int64_t *GB_RESTRICT Cp,
-    const int64_t *GB_RESTRICT C_pstart_slice,
+    int64_t *restrict Ci,
+    GB_atype *restrict Cx,
+    const int64_t *restrict Zp,
+    const int64_t *restrict Cp,
+    const int64_t *restrict Cp_kfirst,
     const GrB_Matrix A,
-    const int64_t *GB_RESTRICT kfirst_slice,
-    const int64_t *GB_RESTRICT klast_slice,
-    const int64_t *GB_RESTRICT pstart_slice,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *GB_RESTRICT xthunk,
+    const GB_atype *restrict xthunk,
     const GxB_select_function user_select,
-    const int ntasks,
-    const int nthreads
+    const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
     GB_get_thunk
@@ -100,15 +99,15 @@ void GB_sel_phase2
 
 if_bitmap
 
-void GB_sel_bitmap
+void GB (_sel_bitmap)
 (
     int8_t *Cb,
-    GB_atype *GB_RESTRICT Cx,
+    GB_atype *restrict Cx,
     int64_t *cnvals_handle,
     GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *GB_RESTRICT xthunk,
+    const GB_atype *restrict xthunk,
     const GxB_select_function user_select,
     const int nthreads
 )

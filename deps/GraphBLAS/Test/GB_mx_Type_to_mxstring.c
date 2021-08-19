@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mx_Type_to_string: return a MATLAB string for a GrB_Type
+// GB_mx_Type_to_string: return a built-in string for a GrB_Type
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -7,11 +7,11 @@
 
 //------------------------------------------------------------------------------
 
-// Given a GrB_Type, constructs a MATLAB string with the type name
+// Given a GrB_Type, constructs a built-in string with the type name
 
 #include "GB_mex.h"
 
-mxArray *GB_mx_Type_to_mxstring        // returns a MATLAB string
+mxArray *GB_mx_Type_to_mxstring        // returns a built-in string
 (
     const GrB_Type type
 )

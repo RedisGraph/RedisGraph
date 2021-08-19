@@ -8,6 +8,7 @@
 //------------------------------------------------------------------------------
 
 // Only prints entries of built-in types; user-defined types can't be printed.
+// Entries are always printed if this function is called
 
 #include "GB.h"
 
@@ -46,7 +47,7 @@
     }                                                               \
 }
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+GB_PUBLIC
 GrB_Info GB_code_check          // print an entry using a type code
 (
     const GB_Type_code code,    // type code of value to print
@@ -67,49 +68,6 @@ GrB_Info GB_code_check          // print an entry using a type code
 
     switch (code)
     {
-        #if GB_DEVELOPER
-
-        case GB_BOOL_code:   i = *((bool     *) x) ; GBPR ("bool "    GBd, i) ;
-            break ;
-        case GB_INT8_code:   i = *((int8_t   *) x) ; GBPR ("int8 "    GBd, i) ;
-            break ;
-        case GB_UINT8_code:  u = *((uint8_t  *) x) ; GBPR ("uint8 "   GBu, u) ;
-            break ;
-        case GB_INT16_code:  i = *((int16_t  *) x) ; GBPR ("int16 "   GBd, i) ;
-            break ;
-        case GB_UINT16_code: u = *((uint16_t *) x) ; GBPR ("uint16 "  GBu, u) ;
-            break ;
-        case GB_INT32_code:  i = *((int32_t  *) x) ; GBPR ("int32 "   GBd, i) ;
-            break ;
-        case GB_UINT32_code: u = *((uint32_t *) x) ; GBPR ("uint32 "  GBu, u) ;
-            break ;
-        case GB_INT64_code:  i = *((int64_t  *) x) ; GBPR ("int64 "   GBd, i) ;
-            break ;
-        case GB_UINT64_code: u = *((uint64_t *) x) ; GBPR ("uint64 "  GBu, u) ;
-            break ;
-
-        case GB_FP32_code:
-            s = *((float *) x) ;
-            GBPR ("float %.6g", (double) s) ;
-            break ;
-
-        case GB_FP64_code:
-            d = *((double *) x) ;
-            GBPR ("double %.15g", d) ;
-            break ;
-
-        case GB_FC32_code:
-            c = *((GxB_FC32_t *) x) ;
-            GBPR ("float complex (%.6g, %6.g)",
-                (double) crealf (c), (double) cimagf (c)) ;
-            break ;
-
-        case GB_FC64_code:
-            z = *((GxB_FC64_t *) x) ;
-            GBPR ("double complex (%.15g, %.15g)", creal (z), cimag (z)) ;
-            break ;
-
-        #else
 
         case GB_BOOL_code   : i = *((bool     *) x) ; GBPR ("  " GBd, i) ;
             break ;
@@ -177,8 +135,6 @@ GrB_Info GB_code_check          // print an entry using a type code
             }
             GBPR ("i") ;
             break ;
-
-        #endif
 
         case GB_UDT_code    : 
             { 

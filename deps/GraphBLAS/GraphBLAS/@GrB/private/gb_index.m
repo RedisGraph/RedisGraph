@@ -1,6 +1,6 @@
 function [I, whole] = gb_index (I)
 %GB_INDEX helper function for subsref and subsasgn
-% [I, whole] = gb_index (I) converts I into a cell array of MATLAB
+% [I, whole] = gb_index (I) converts I into a cell array of built-in
 % matrices or vectors containing integer indices, to access A(I).
 %
 %   I = { }: this denotes A(:), accessing all rows or all columns.
@@ -22,14 +22,14 @@ function [I, whole] = gb_index (I)
 % above forms.  Any member of the cell array that is a GraphBLAS matrix or
 % struct is converted into an index list, with gb_index1(I{k}).
 %
-% MATLAB passes the string I = ':' to the subsref and subsasgn methods.
-% This is converted into I = { }.
+% The subsref and subsasgn methods are passed the string I = ':'.  This is
+% converted into I = { }.
 %
-% If I is a MATLAB matrix or vector (not a cell array), then it is
+% If I is a built-in matrix or vector (not a cell array), then it is
 % wrapped in a cell array, { I }, to denote A(I).
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 whole = false ;
 
@@ -77,7 +77,7 @@ elseif (ischar (I) && isequal (I, ':'))
 
 else
 
-    % C (I) where I is a MATLAB matrix/vector of integer indices
+    % C (I) where I is a built-in matrix/vector of integer indices
     I = { I } ;
 
 end

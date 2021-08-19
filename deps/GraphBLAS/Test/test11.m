@@ -37,9 +37,9 @@ for k1 = 1:length (types)
                 [I2, J2, X2] = GB_spec_extractTuples (A, xtype) ;
 
                 % If A is CSR, the extraction returns tuples in row major
-                % order, but the MATLAB GB_spec_extractTuples always returns
-                % the tuples in column major order.  Either way is fine since
-                % the order does not matter.
+                % order, but GB_spec_extractTuples always returns the tuples in
+                % column major order.  Either way is fine since the order does
+                % not matter.
 
                 [~,p1] = sortrows ([I1 J1]) ;
                 I1 = I1 (p1) ; 

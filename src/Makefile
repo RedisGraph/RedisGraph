@@ -41,8 +41,7 @@ ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -Wl,-Bsymbolic,-Bsymbolic-functions -fopenmp -shared -ldl -lpthread
 	export OS = Linux
 else
-	CFLAGS += -mmacosx-version-min=10.14
-	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
+	SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 	export OS = Mac
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
@@ -133,6 +132,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/execution_plan_build/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/entities/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/rg_matrix/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/encoder/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/encoder/*/*.c)
@@ -141,7 +141,6 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/current/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/current/*/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/ast/*.c)
@@ -275,7 +274,7 @@ endif
 
 package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
-	@VARIANT=rce $(ROOT)/sbin/pack.sh
+	@PACKAGE_NAME=redisgraph-rce RAMP_YAML=$(ROOT)/ramp-rce.yml $(ROOT)/sbin/pack.sh
 .PHONY: package
 
 #----------------------------------------------------------------------------------------------

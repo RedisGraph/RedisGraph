@@ -13,6 +13,7 @@
 #include "../datatypes/point.h"
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
+#include "../graph/rg_matrix/rg_matrix_iter.h"
 
 static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
 							 double *doubleVal) {
@@ -50,24 +51,25 @@ static void _populateIndex(Index *idx) {
 	// Label doesn't exists.
 	if(s == NULL) return;
 
-	Node node = GE_NEW_NODE();
-	NodeID node_id;
-	Graph *g = gc->g;
-	int label_id = s->id;
-	GxB_MatrixTupleIter *it;
-	const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
-	GxB_MatrixTupleIter_new(&it, label_matrix);
+	NodeID  node_id;
+	RG_MatrixTupleIter it;
+
+	Node   node      =  GE_NEW_NODE();
+	Graph  *g        =  gc->g;
+	int    label_id  =  s->id;
+
+	const RG_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
+	RG_MatrixTupleIter_reuse(&it, label_matrix);
 
 	// Iterate over each labeled node.
 	while(true) {
 		bool depleted = false;
-		GxB_MatrixTupleIter_next(it, NULL, &node_id, &depleted);
+		RG_MatrixTupleIter_next(&it, NULL, &node_id, NULL, &depleted);
 		if(depleted) break;
 
 		Graph_GetNode(g, node_id, &node);
 		Index_IndexNode(idx, &node);
 	}
-	GxB_MatrixTupleIter_free(it);
 }
 
 // Create a new index.

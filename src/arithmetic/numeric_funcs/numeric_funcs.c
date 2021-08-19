@@ -13,12 +13,6 @@
 #include <math.h>
 #include <errno.h>
 
-/* Returns 1 if the operand is a numeric type, and 0 otherwise.
- * This also rejects NULL values. */
-static inline int _validate_numeric(const SIValue v) {
-	return SI_TYPE(v) & SI_NUMERIC;
-}
-
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc) {
@@ -53,7 +47,7 @@ SIValue AR_MODULO(SIValue *argv, int argc) {
 /* returns the absolute value of the given number. */
 SIValue AR_ABS(SIValue *argv, int argc) {
 	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
+	if(SIValue_IsNull(result)) return SI_NullVal();
 	if(SI_GET_NUMERIC(argv[0]) < 0) return SIValue_Multiply(argv[0], SI_LongVal(-1));
 	return argv[0];
 }
@@ -61,7 +55,7 @@ SIValue AR_ABS(SIValue *argv, int argc) {
 /* returns the smallest floating point number that is greater than or equal to the given number and equal to a mathematical integer. */
 SIValue AR_CEIL(SIValue *argv, int argc) {
 	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
+	if(SIValue_IsNull(result)) return SI_NullVal();
 	// No modification is required for non-decimal values
 	if(SI_TYPE(result) == T_DOUBLE) result.doubleval = ceil(result.doubleval);
 
@@ -71,7 +65,7 @@ SIValue AR_CEIL(SIValue *argv, int argc) {
 /* returns the largest floating point number that is less than or equal to the given number and equal to a mathematical integer. */
 SIValue AR_FLOOR(SIValue *argv, int argc) {
 	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
+	if(SIValue_IsNull(result)) return SI_NullVal();
 	// No modification is required for non-decimal values
 	if(SI_TYPE(result) == T_DOUBLE) result.doubleval = floor(result.doubleval);
 
@@ -86,7 +80,7 @@ SIValue AR_RAND(SIValue *argv, int argc) {
 /* returns the value of the given number rounded to the nearest integer. */
 SIValue AR_ROUND(SIValue *argv, int argc) {
 	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
+	if(SIValue_IsNull(result)) return SI_NullVal();
 	// No modification is required for non-decimal values
 	if(SI_TYPE(result) == T_DOUBLE) result.doubleval = round(result.doubleval);
 
@@ -95,7 +89,7 @@ SIValue AR_ROUND(SIValue *argv, int argc) {
 
 /* returns the signum of the given number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number. */
 SIValue AR_SIGN(SIValue *argv, int argc) {
-	if(!_validate_numeric(argv[0])) return SI_NullVal();
+	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	int64_t sign = SIGN(SI_GET_NUMERIC(argv[0]));
 	return SI_LongVal(sign);
 }
@@ -130,9 +124,19 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc) {
 SIValue AR_SQRT(SIValue *argv, int argc) {
 	SIValue arg = argv[0];
 	// return NULL if input is none numeric
-	if(!_validate_numeric(arg)) return SI_NullVal();
+	if(SIValue_IsNull(arg)) return SI_NullVal();
 	// return sqrt of input
 	return SI_DoubleVal(sqrt(SI_GET_NUMERIC(arg)));
+}
+
+// returns base^exponent
+SIValue AR_POW(SIValue *argv, int argc) {
+	SIValue base = argv[0];
+	SIValue exp = argv[1];
+	// return NULL if input is NULL
+	if(SIValue_IsNull(base) || SIValue_IsNull(exp)) return SI_NullVal();
+	// return sqrt of input
+	return SI_DoubleVal(pow(SI_GET_NUMERIC(base), SI_GET_NUMERIC(exp)));
 }
 
 void Register_NumericFuncs() {
@@ -201,6 +205,11 @@ void Register_NumericFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, (SI_NUMERIC | T_NULL));
 	func_desc = AR_FuncDescNew("sqrt", AR_SQRT, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	func_desc = AR_FuncDescNew("pow", AR_POW, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 }
 

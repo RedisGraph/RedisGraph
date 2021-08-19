@@ -10,6 +10,10 @@
 // Determine if A*B uses a built-in semiring, and if so, determine the
 // opcodes and type codes of the semiring.
 
+// This function is not used by the CUDA jitified kernels, since they can
+// typecast the entries in the matrices A and B to the types of x and y of the
+// operator, as needed.
+
 #include "GB_mxm.h"
 #include "GB_binop.h"
 
@@ -51,10 +55,10 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     // or not this function handles the semiring as hard-coded.  Now return for
     // cases this function does not handle.
 
-    (*mult_opcode) = 0 ;
-    (*xcode) = 0 ;
-    (*ycode) = 0 ;
-    (*zcode) = 0 ;
+    (*mult_opcode) = GB_NOP_opcode ;
+    (*xcode) = GB_ignore_code ;
+    (*ycode) = GB_ignore_code ;
+    (*zcode) = GB_ignore_code ;
 
     //--------------------------------------------------------------------------
     // check the monoid
@@ -96,12 +100,14 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     { 
         if (((*add_opcode) == GB_EQ_opcode) ||
             ((*add_opcode) == GB_LAND_opcode) ||
+            ((*add_opcode) == GB_BAND_opcode) ||
             ((*add_opcode) == GB_LOR_opcode) ||
+            ((*add_opcode) == GB_BOR_opcode) ||
             ((*add_opcode) == GB_MAX_opcode) ||
             ((*add_opcode) == GB_MIN_opcode) ||
             ((*add_opcode) == GB_TIMES_opcode))
         // rename to ANY_PAIR
-        (*add_opcode) = GB_PAIR_opcode ;
+        (*add_opcode) = GB_ANY_opcode ;
     }
 
     return (true) ;

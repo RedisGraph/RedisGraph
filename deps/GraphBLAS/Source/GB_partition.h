@@ -10,7 +10,7 @@
 #ifndef GB_PARTITION_H
 #define GB_PARTITION_H
 
-// GB_PART and GB_PARTITION:  divide the index range 0:n-1 uniformly
+// GB_PART and GB_PARTITION:  divide the index range 0:n-1 equally
 // for nthreads.  GB_PART(tid,n,nthreads) is the first index for thread tid.
 #define GB_PART(tid,n,nthreads)  \
     (((tid) * ((double) (n))) / ((double) (nthreads)))

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_calloc_memory: wrapper for calloc_function
+// GB_calloc_memory: wrapper for calloc
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -7,22 +7,110 @@
 
 //------------------------------------------------------------------------------
 
-// A wrapper for calloc_function.  Space is set to zero.
-
-// Parameters are the same as the ANSI C11 calloc, except that asking to
-// allocate a block of zero size causes a block of size 1 to be allocated
-// instead.  This allows the return pointer p to be checked for the
-// out-of-memory condition, even when allocating an object of size zero.
+// A wrapper for calloc.  Space is set to zero.
 
 #include "GB.h"
 
-GB_PUBLIC   // accessed by the MATLAB tests in GraphBLAS/Test only
+//------------------------------------------------------------------------------
+// GB_calloc_helper:  use calloc or malloc/memset to allocate initialized block
+//------------------------------------------------------------------------------
+
+static inline void *GB_calloc_helper
+(
+    // input/output:
+    size_t *size,           // on input: # of bytes requested
+                            // on output: # of bytes actually allocated
+    // input:
+    bool malloc_tracking,
+    GB_Context Context
+)
+{
+    bool do_memset = false ;
+    void *p = NULL ;
+
+    // determine the next higher power of 2
+    size_t size_requested = (*size) ;
+    (*size) = GB_IMAX (*size, 8) ;
+    int k = GB_CEIL_LOG2 (*size) ;
+
+    // if available, get the block from the pool
+    if (GB_Global_free_pool_limit_get (k) > 0)
+    { 
+        // round up the size to the nearest power of two
+        (*size) = ((size_t) 1) << k ;
+        p = GB_Global_free_pool_get (k) ;
+        // memset is required if the block comes from the free_pool
+        do_memset = (p != NULL) ;
+        #ifdef GB_MEMDUMP
+        if (p != NULL) printf ("calloc from pool: %p %ld\n", p, *size) ;
+        #endif
+    }
+
+    if (p == NULL)
+    {
+        // no block in the free_pool, so allocate it
+//      if (GB_Global_have_calloc_function ( ))
+//      {
+//          p = GB_Global_calloc_function (*size, 1) ;
+//      }
+//      else
+        {
+
+//          if (GB_Global_rmm_get ( ))
+//          {
+//              p = GB_rmm_alloc (size) ;
+//          }
+//          else
+            {
+                p = GB_Global_malloc_function (*size) ;
+            }
+            // memset is required if the block comes from malloc
+            do_memset = (p != NULL) ;
+        }
+        if (p != NULL && malloc_tracking)
+        { 
+            // success
+            GB_Global_nmalloc_increment ( ) ;
+        }
+        #ifdef GB_MEMDUMP
+        printf ("hard calloc %p %ld\n", p, *size) ;
+        #endif
+    }
+
+    #ifdef GB_MEMDUMP
+    GB_Global_free_pool_dump (2) ; GB_Global_memtable_dump ( ) ;
+    #endif
+
+    if (do_memset)
+    { 
+        // clear the block of memory with a parallel memset
+        GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+        GB_memset (p, 0, size_requested, nthreads_max) ;
+    }
+
+    return (p) ;
+}
+
+//------------------------------------------------------------------------------
+// GB_calloc_memory
+//------------------------------------------------------------------------------
+
+GB_PUBLIC
 void *GB_calloc_memory      // pointer to allocated block of memory
 (
     size_t nitems,          // number of items to allocate
-    size_t size_of_item     // sizeof each item
+    size_t size_of_item,    // sizeof each item
+    // output
+    size_t *size_allocated, // # of bytes actually allocated
+    GB_Context Context
 )
 {
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    ASSERT (size_allocated != NULL) ;
 
     void *p ;
     size_t size ;
@@ -37,54 +125,55 @@ void *GB_calloc_memory      // pointer to allocated block of memory
     if (!ok || nitems > GxB_INDEX_MAX || size_of_item > GxB_INDEX_MAX)
     { 
         // overflow
-        p = NULL ;
+        (*size_allocated) = 0 ;
+        return (NULL) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // allocate the memory block
+    //--------------------------------------------------------------------------
+
+    if (GB_Global_malloc_tracking_get ( ))
+    {
+
+        //----------------------------------------------------------------------
+        // for memory usage testing only
+        //----------------------------------------------------------------------
+
+        // brutal memory debug; pretend to fail if (count-- <= 0).
+        bool pretend_to_fail = false ;
+        if (GB_Global_malloc_debug_get ( ))
+        {
+            pretend_to_fail = GB_Global_malloc_debug_count_decrement ( ) ;
+        }
+
+        // allocate the memory
+        if (pretend_to_fail)
+        { 
+            p = NULL ;
+        }
+        else
+        { 
+            p = GB_calloc_helper (&size, true, Context) ;
+        }
+
     }
     else
     { 
 
-        if (GB_Global_malloc_tracking_get ( ))
-        {
+        //----------------------------------------------------------------------
+        // normal use, in production
+        //----------------------------------------------------------------------
 
-            //------------------------------------------------------------------
-            // for memory usage testing only
-            //------------------------------------------------------------------
-
-            // brutal memory debug; pretend to fail if (count-- <= 0).
-            bool pretend_to_fail = false ;
-            if (GB_Global_malloc_debug_get ( ))
-            {
-                pretend_to_fail = GB_Global_malloc_debug_count_decrement ( ) ;
-            }
-
-            // allocate the memory
-            if (pretend_to_fail)
-            { 
-                p = NULL ;
-            }
-            else
-            { 
-                p = (void *) GB_Global_calloc_function (nitems, size_of_item) ;
-            }
-
-            // check if successful
-            if (p != NULL)
-            { 
-                // success
-                GB_Global_nmalloc_increment ( ) ;
-            }
-
-        }
-        else
-        { 
-
-            //------------------------------------------------------------------
-            // normal use, in production
-            //------------------------------------------------------------------
-
-            p = (void *) GB_Global_calloc_function (nitems, size_of_item) ;
-        }
-
+        p = GB_calloc_helper (&size, false, Context) ;
     }
+
+    //--------------------------------------------------------------------------
+    // return result
+    //--------------------------------------------------------------------------
+
+    (*size_allocated) = (p == NULL) ? 0 : size ;
+    ASSERT (GB_IMPLIES (p != NULL, size == GB_Global_memtable_size (p))) ;
     return (p) ;
 }
 

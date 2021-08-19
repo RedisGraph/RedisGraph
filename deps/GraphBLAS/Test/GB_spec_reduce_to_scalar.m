@@ -1,5 +1,5 @@
 function c = GB_spec_reduce_to_scalar (cin, accum, reduce, A)
-%GB_SPEC_REDUCE_TO_SCALAR a MATLAB mimic of GrB_reduce (to scalar)
+%GB_SPEC_REDUCE_TO_SCALAR a mimic of GrB_reduce (to scalar)
 %
 % Usage:
 % c = GB_spec_reduce_to_scalar (cin, accum, reduce, A)
@@ -58,7 +58,7 @@ if (GB_spec_is_positional (accum_op))
 end
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % cast A to the type of the reduce operator, but only entries in the pattern

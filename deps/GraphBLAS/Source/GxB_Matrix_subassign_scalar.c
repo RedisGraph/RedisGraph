@@ -20,7 +20,7 @@
 #include "GB_subassign.h"
 
 #define GB_ASSIGN_SCALAR(type,T,ampersand)                                     \
-GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<M> += x                 */ \
+GrB_Info GB_EVAL2 (GXB (Matrix_subassign_), T) /* C(Rows,Cols)<M> += x      */ \
 (                                                                              \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
     const GrB_Matrix M,             /* optional mask for C(Rows,Cols)       */ \

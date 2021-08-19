@@ -8,7 +8,7 @@ fprintf ('\ntest26 ------------------------------performance of GxB_select\n') ;
 
 [save_nthreads save_chunk] = nthreads_get ;
 chunk = 4096 ;
-nthreads = feature ('numcores') ;
+nthreads = feature_numcores ;
 nthreads_set (nthreads, chunk) ;
 
 [~, ~, ~, ~, ~, select_ops] = GB_spec_opsall ;
@@ -63,7 +63,7 @@ for probs = 1:nprobs
 
             tic
             C1 = GB_mex_select (Cin, [], [], op, A, k, []) ;
-            t1 = grbresults ; % toc ;
+            t1 = toc ;
             fprintf ('GB: %10.6f ', t1) ;
 
             C3 = 'none' ;
@@ -76,14 +76,14 @@ for probs = 1:nprobs
                     t2 = toc ;
                     tic
                     C3 = GB_mex_tril (A, k) ;
-                    t3 = grbresults ; % toc ;
+                    t3 = toc ;
                 case 'triu'
                     tic
                     C2 = triu (A,k) ;
                     t2 = toc ;
                     tic
                     C3 = GB_mex_triu (A, k) ;
-                    t3 = grbresults ; % toc ;
+                    t3 = toc ;
                 case 'diag'
                     if (size (A,2) > 1)
                         tic
@@ -92,7 +92,7 @@ for probs = 1:nprobs
                     end
                     tic
                     C3 = GB_mex_diag (A, k) ;
-                    t3 = grbresults ; % toc ;
+                    t3 = toc ;
                 case 'offdiag'
                     if (size (A,2) > 1)
                         tic
@@ -101,7 +101,7 @@ for probs = 1:nprobs
                     end
                     tic
                     C3 = GB_mex_offdiag (A, k) ;
-                    t3 = grbresults ; % toc ;
+                    t3 = toc ;
                 case 'nonzero'
                     tic
                     C2 = A .* (A ~= 0) ;
@@ -109,7 +109,7 @@ for probs = 1:nprobs
                     assert (isequal (1*C2,1*A)) ;
                     tic
                     C3 = GB_mex_nonzero (A) ;
-                    t3 = grbresults ; % toc ;
+                    t3 = toc ;
                     assert (isequal (1*C3,1*A)) ;
             end
 
@@ -119,7 +119,7 @@ for probs = 1:nprobs
             end
 
             if (~ischar (C2))
-                fprintf ('MATLAB: %10.6f ', t2) ;
+                fprintf ('builtin: %10.6f ', t2) ;
                 fprintf ('nnz: %10d speedup %5.2f ', nnz (C2), t2/t1) ;
 
                 if (~ischar (C3))

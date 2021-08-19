@@ -38,22 +38,22 @@ for k1 = 1:length(types)
         crange = 1 ;
     end
 
-    is_float = contains (atype, 'single') || contains (atype, 'double') ;
+    is_float = test_contains (atype, 'single') || test_contains (atype, 'double') ;
 
     for A_is_hyper = 0:1
     for A_is_csc   = 0:1
 
-    A.is_csc    = A_is_csc ; A.is_hyper    = A_is_hyper ;
-    B.is_csc    = A_is_csc ; B.is_hyper    = A_is_hyper ;
+    A.is_csc = A_is_csc ; A.is_hyper = A_is_hyper ;
+    B.is_csc = A_is_csc ; B.is_hyper = A_is_hyper ;
 
     for k2 = 1:length(add_ops)
         op = add_ops {k2} ;
 
         if (isequal (op, 'any'))
             tol = [ ] ;
-        elseif (contains (atype, 'single'))
+        elseif (test_contains (atype, 'single'))
             tol = 1e-5 ;
-        elseif (contains (atype, 'double'))
+        elseif (test_contains (atype, 'double'))
             tol = 1e-12 ;
         else
             tol = 0 ;

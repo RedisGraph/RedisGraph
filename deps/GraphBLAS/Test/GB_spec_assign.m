@@ -1,5 +1,5 @@
 function C = GB_spec_assign (C, Mask, accum, A, I, J, descriptor, scalar)
-%GB_SPEC_ASSIGN a MATLAB mimic of GrB_assign (but not Row or Col variants)
+%GB_SPEC_ASSIGN a mimic of GrB_assign (but not Row or Col variants)
 %
 % Usage:
 % C = GB_spec_assign (C, Mask, accum, A, I, J, descriptor, scalar)
@@ -36,7 +36,7 @@ A = GB_spec_matrix (A) ;
 Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
-% do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
+% do the work via a clean *.m interpretation of the entire GraphBLAS spec
 %-------------------------------------------------------------------------------
 
 % apply the descriptor to A

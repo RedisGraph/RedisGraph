@@ -3,11 +3,11 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 #include "GB_binop.h"
 
 //------------------------------------------------------------------------------
@@ -16,7 +16,7 @@
 
 // Using built-in types and operators, many unique semirings can be built.  Not
 // all possible semirings that can be constructed from built-in types and
-// operators are pre-defined.  Below is a list of the 1513 pre-defined
+// operators are pre-defined.  Below is a list of the 1553 pre-defined
 // semirings.
 
 // 1000 semirings with a multiply operator TxT -> T where T is non-Boolean, from
@@ -29,7 +29,7 @@
 //         LOR, LAND, LXOR
 //      10 non-Boolean types, T
 
-// 300 semirings with a comparison operator TxT -> bool, where T is
+// 300 semirings with a comparator TxT -> bool, where T is
 // non-Boolean, from the complete cross product of:
 
 //      5 Boolean add monoids: (LAND, LOR, LXOR, EQ, ANY)

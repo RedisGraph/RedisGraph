@@ -6,12 +6,12 @@ function C = eps (G)
 % See also GrB/isfloat, realmax, realmin.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 % FUTURE: GraphBLAS should have a built-in unary operator to
 % compute eps.
 
-% convert to a MATLAB full matrix and use the MATLAB eps:
+% convert to a built-in full matrix and use the built-in eps:
 
 % FUTURE: there should be a sparse version of 'eps'.  C is full because
 % eps (0) is 2^(-1024).

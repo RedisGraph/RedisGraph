@@ -6,7 +6,6 @@ function test184
 
 rng ('default') ;
 nthreads = nthreads_set ;
-GrB.burble (1) ;
 
 semiring.add = 'plus' ;
 semiring.multiply = 'times' ;
@@ -61,8 +60,8 @@ C1 = A*B ;
 Cin = sparse (m, n) ;
 
 C2 = GB_mex_mxm (Cin, [ ], [ ], semiring, A, B, [ ]) ;
-
-assert (norm (C1 - C2.matrix, 1) < 1e-12)
+err = norm (C1 - C2.matrix, 1) ;
+assert (err < 1e-10)
 
 %----------------------------------------------------------------------
 
@@ -86,6 +85,7 @@ J = J (randperm (nz)) ;
 X = X (randperm (nz)) ;
 I0 = uint64 (I) - 1 ;
 J0 = uint64 (J) - 1 ;
+
 A1 = sparse (I, J, X, m, n) ;
 A2 = GB_mex_Matrix_build (I0, J0, X, m, n, [ ]) ;
 
@@ -99,7 +99,6 @@ assert (norm (v1 - v2.matrix, 1) / norm (v1,1) < 1e-12)
 
 %----------------------------------------------------------------------
 
-GrB.burble (0) ;
 % restore # of threads
 nthreads_set (nthreads) ;
 

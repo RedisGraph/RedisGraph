@@ -120,8 +120,7 @@ static void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);
 		int res;
 		UNUSED(res);
-		res = Graph_ConnectNodes(gc->g, srcId, destId, relation, &e);
-		ASSERT(res == 1);
+		Graph_CreateEdge(gc->g, srcId, destId, relation, &e);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
 	}
 }
@@ -143,7 +142,7 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	 */
 
 	// While loading the graph, minimize matrix realloc and synchronization calls.
-	Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 
 	// Load nodes.
 	_RdbLoadNodes(rdb, gc);
@@ -152,9 +151,12 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	_RdbLoadEdges(rdb, gc);
 
 	// Revert to default synchronization behavior
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 
 	// Resize and flush all pending changes to matrices.
-	Graph_ApplyAllPending(gc->g);
+	Graph_ApplyAllPending(gc->g, true);
+
+	// make sure graph doesn't contains may pending changes
+	ASSERT(Graph_Pending(gc->g) == false);
 }
 

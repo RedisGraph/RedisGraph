@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_op: apply a built-in GraphBLAS operator to MATLAB arrays
+// GB_mex_op: apply a built-in GraphBLAS operator to built-in arrays
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -13,7 +13,7 @@
 // Z = GB_mex_op (op, X)
 
 // Apply a built-in GraphBLAS operator or a user-defined Complex operator to
-// one or two arrays X and Y of any MATLAB logical or numeric type.  X and Y
+// one or two arrays X and Y of any built-in logical or numeric type.  X and Y
 // are first typecasted into the x and y operand types of the op.  The output Z
 // has the same type as the z type of the op.
 
@@ -215,7 +215,7 @@ void mexFunction
     }
 
     //--------------------------------------------------------------------------
-    // free workspace and return to MATLAB
+    // free workspace and return
     //--------------------------------------------------------------------------
 
     FREE_ALL ;

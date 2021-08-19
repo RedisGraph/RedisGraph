@@ -57,7 +57,7 @@ GrB_Info GB_subassign_06s_and_14
     //--------------------------------------------------------------------------
 
     GB_EMPTY_TASKLIST ;
-    GB_OK (GB_subassign_symbolic (&S, C, I, ni, J, nj, true, Context)) ;
+    GB_OK (GB_subassign_symbolic (S, C, I, ni, J, nj, true, Context)) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -419,7 +419,7 @@ GrB_Info GB_subassign_06s_and_14
                             // ----[. A 1]--------------------------------------
                             // [. A 1]: action: ( insert )
                             int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                            GB_PENDING_INSERT (Ax +(pA*asize)) ;
+                            GB_PENDING_INSERT_aij ;
                         }
                     }
                     else if (Sfound)
@@ -502,7 +502,7 @@ GrB_Info GB_subassign_06s_and_14
                             // ----[. A 1]--------------------------------------
                             // [. A 1]: action: ( insert )
                             int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                            GB_PENDING_INSERT (Ax +(pA*asize)) ;
+                            GB_PENDING_INSERT_aij ;
                         }
                         GB_NEXT (A) ;
                     }
@@ -526,7 +526,7 @@ GrB_Info GB_subassign_06s_and_14
                         // ----[. A 1]------------------------------------------
                         // [. A 1]: action: ( insert )
                         int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-                        GB_PENDING_INSERT (Ax +(pA*asize)) ;
+                        GB_PENDING_INSERT_aij ;
                     }
                     GB_NEXT (A) ;
                 }

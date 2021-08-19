@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// This is for testing only.  See GrB_mxm instead.  Returns a plain MATLAB
+// This is for testing only.  See GrB_mxm instead.  Returns a plain built-in
 // matrix, in double.  The semiring is plus-rdiv-fp64 where plus is the 
 // built-in GrB_PLUS_FP64 operator, and rdiv is z=y/x in double.
 
@@ -17,9 +17,9 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GrB_Matrix_free_(&A) ;               \
-    GrB_Matrix_free_(&B) ;               \
-    GrB_Matrix_free_(&C) ;               \
+    GrB_Matrix_free_(&A) ;              \
+    GrB_Matrix_free_(&B) ;              \
+    GrB_Matrix_free_(&C) ;              \
     GrB_BinaryOp_free_(&My_rdiv) ;      \
     GrB_Semiring_free_(&My_plus_rdiv) ; \
     GB_mx_put_global (true) ;           \
@@ -29,14 +29,15 @@
 
 GrB_Info info ;
 bool malloc_debug = false ;
-bool ignore = false, ignore2 = false ;
+bool ignore = false, ignore1 = false, ignore2 = false ;
 bool cprint = false ;
-GrB_Matrix A = NULL, B = NULL, C = NULL ;
+GrB_Matrix A = NULL, B = NULL, C = NULL, MT = NULL ;
 int64_t anrows = 0 ;
 int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
 GrB_Desc_Value AxB_method = GxB_DEFAULT ;
+struct GB_Matrix_opaque MT_header, C_header ;
 
 GrB_Info axb (GB_Context Context, bool cprint) ;
 
@@ -66,11 +67,15 @@ GrB_Info axb (GB_Context Context, bool cprint)
         return (info) ;
     }
 
+    MT = GB_clear_static_header (&MT_header) ;
+    C  = GB_clear_static_header (&C_header) ;
+
     // C = A*B
-    info = GB_AxB_meta (&C, NULL,       // C cannot be computed in place
+    info = GB_AxB_meta (C, NULL,       // C cannot be computed in place
         false,      // C_replace
         true,       // CSC
-        NULL,       // no MT returned
+        MT,         // no MT returned
+        &ignore1,   // M_transposed will be false
         NULL,       // no Mask
         false,      // mask not complemented
         false,      // mask not structural
@@ -111,6 +116,8 @@ void mexFunction
     info = GrB_SUCCESS ;
     malloc_debug = GB_mx_get_global (true) ;
     ignore = false ;
+    ignore1 = false ;
+    ignore2 = false ;
     A = NULL ;
     B = NULL ;
     C = NULL ;
@@ -176,7 +183,7 @@ void mexFunction
 
     METHOD (axb (Context, cprint)) ;
 
-    // return C to MATLAB
+    // return C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;
 
     FREE_ALL ;

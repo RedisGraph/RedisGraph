@@ -136,43 +136,58 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			ctx->reltype_count = array_len(ctx->reltypes);
 		}
 
-		// Initialize the traversed matrices.
-		bool maintain_transposes;
-		Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transposes);
 		// Get edge matrix and transpose matrix, if available.
 		if(ctx->reltypes == NULL) {
 			// No edge types were specified, use the overall adjacency matrix.
-			ctx->R = Graph_GetAdjacencyMatrix(gc->g);
-			ctx->TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
+			ctx->free_matrices = true;
+			res = RG_Matrix_export(&ctx->R, Graph_GetAdjacencyMatrix(gc->g,
+						false));
+			ASSERT(res == GrB_SUCCESS);
+			res = RG_Matrix_export(&ctx->TR, Graph_GetAdjacencyMatrix(gc->g,
+						true));
+			ASSERT(res == GrB_SUCCESS);
 		} else if(ctx->reltype_count == 0) {
-			// If edge types were specified but none were valid, use the zero matrix.
-			ctx->R = Graph_GetZeroMatrix(gc->g);
-			ctx->TR = Graph_GetZeroMatrix(gc->g);
+			// If edge types were specified but none were valid,
+			// use the zero matrix
+			ctx->free_matrices = true;
+			res = RG_Matrix_export(&ctx->R, Graph_GetZeroMatrix(gc->g));
+			ASSERT(res == GrB_SUCCESS);
+			res = RG_Matrix_export(&ctx->TR, Graph_GetZeroMatrix(gc->g));
+			ASSERT(res == GrB_SUCCESS);
 		} else if(ctx->reltype_count == 1) {
-			ctx->R = Graph_GetRelationMatrix(gc->g, ctx->reltypes[0]);
-			if(maintain_transposes) ctx->TR = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[0]);
-			else ctx->TR = GrB_NULL;
+			ctx->free_matrices = true;
+			res = RG_Matrix_export(&ctx->R, Graph_GetRelationMatrix(gc->g,
+						ctx->reltypes[0], false));
+			ASSERT(res == GrB_SUCCESS);
+			res = RG_Matrix_export(&ctx->TR, Graph_GetRelationMatrix(gc->g,
+						ctx->reltypes[0], true));
+			ASSERT(res == GrB_SUCCESS);
 		} else {
-			// We have multiple edge types, combine them into a boolean matrix.
+			// we have multiple edge types, combine them into a boolean matrix
 			ctx->free_matrices = true;
 			GrB_Index dims = Graph_RequiredMatrixDim(gc->g);
 			res = GrB_Matrix_new(&ctx->R, GrB_BOOL, dims, dims);
 			ASSERT(res == GrB_SUCCESS);
-			if(maintain_transposes) {
-				res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, dims, dims);
+
+			for(uint i = 0; i < ctx->reltype_count; i ++) {
+				GrB_Matrix adj;
+				res = RG_Matrix_export(&adj, Graph_GetRelationMatrix(gc->g,
+							ctx->reltypes[i], false));
+				ASSERT(res == GrB_SUCCESS);
+				res = GrB_eWiseAdd(ctx->R, GrB_NULL, GrB_NULL,
+						GxB_ANY_PAIR_BOOL, ctx->R, adj, GrB_NULL);
+				ASSERT(res == GrB_SUCCESS);
+				res = GrB_Matrix_free(&adj);
 				ASSERT(res == GrB_SUCCESS);
 			}
 
-			for(uint i = 0; i < ctx->reltype_count; i ++) {
-				GrB_Matrix adj = Graph_GetRelationMatrix(gc->g, ctx->reltypes[i]);
-				res = GrB_eWiseAdd(ctx->R, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, ctx->R, adj, GrB_NULL);
-				ASSERT(res == GrB_SUCCESS);
-				if(maintain_transposes) {
-					GrB_Matrix adj = Graph_GetTransposedRelationMatrix(gc->g, ctx->reltypes[i]);
-					res = GrB_eWiseAdd(ctx->TR, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, ctx->TR, adj, GrB_NULL);
-					ASSERT(res == GrB_SUCCESS);
-				}
-			}
+			GrB_Index nrows;
+			res = GrB_Matrix_nrows(&nrows, ctx->R);
+			ASSERT(res == GrB_SUCCESS);
+			res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, nrows, nrows);
+			ASSERT(res == GrB_SUCCESS);
+			res = GrB_transpose(ctx->TR, NULL, NULL, ctx->R, GrB_DESC_R);
+			ASSERT(res == GrB_SUCCESS);
 		}
 	}
 

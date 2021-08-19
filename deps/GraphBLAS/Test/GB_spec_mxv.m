@@ -1,5 +1,5 @@
 function w = GB_spec_mxv (w, mask, accum, semiring, A, u, descriptor)
-%GB_SPEC_MXV a MATLAB mimic of GrB_mxv
+%GB_SPEC_MXV a mimic of GrB_mxv
 %
 % Usage:
 % w = GB_spec_mxv (w, mask, accum, semiring, A, u, descriptor)

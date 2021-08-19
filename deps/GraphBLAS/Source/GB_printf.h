@@ -10,13 +10,6 @@
 #ifndef GB_PRINTF_H
 #define GB_PRINTF_H
 
-//------------------------------------------------------------------------------
-// global printf and flush function pointers
-//------------------------------------------------------------------------------
-
-GB_PUBLIC int (* GB_printf_function ) (const char *format, ...) ;
-GB_PUBLIC int (* GB_flush_function  ) ( void ) ;
-
 #define GB_STRING_MATCH(s,t) (strcmp (s,t) == 0)
 
 //------------------------------------------------------------------------------
@@ -27,24 +20,28 @@ GB_PUBLIC int (* GB_flush_function  ) ( void ) ;
 #define GBu "%" PRIu64
 #define GBd "%" PRId64
 
-// print to the standard output, and flush the result.  This function can
-// print to the MATLAB command window.  No error check is done.  This function
-// is meant only for debugging.
-#define GBDUMP(...)                             \
-{                                               \
-    if (GB_printf_function != NULL)             \
-    {                                           \
-        GB_printf_function (__VA_ARGS__) ;      \
-        if (GB_flush_function != NULL)          \
-        {                                       \
-            GB_flush_function ( ) ;             \
-        }                                       \
-    }                                           \
-    else                                        \
-    {                                           \
-        printf (__VA_ARGS__) ;                  \
-        fflush (stdout) ;                       \
-    }                                           \
+// print to the standard output, and flush the result.  No error check is done.
+// This function is used for the BURBLE, and for debugging output. 
+#define GBDUMP(...)                                                     \
+{                                                                       \
+    GB_printf_function_t printf_func = GB_Global_printf_get ( ) ;       \
+    if (printf_func != NULL)                                            \
+    {                                                                   \
+        printf_func (__VA_ARGS__) ;                                     \
+    }                                                                   \
+    else                                                                \
+    {                                                                   \
+        printf (__VA_ARGS__) ;                                          \
+    }                                                                   \
+    GB_flush_function_t flush_func = GB_Global_flush_get ( ) ;          \
+    if (flush_func != NULL)                                             \
+    {                                                                   \
+        flush_func ( ) ;                                                \
+    }                                                                   \
+    else                                                                \
+    {                                                                   \
+        fflush (stdout) ;                                               \
+    }                                                                   \
 }
 
 // print to a file f, or to stdout if f is NULL, and check the result.  This
@@ -54,17 +51,19 @@ GB_PUBLIC int (* GB_flush_function  ) ( void ) ;
     int printf_result = 0 ;                                                 \
     if (f == NULL)                                                          \
     {                                                                       \
-        if (GB_printf_function != NULL)                                     \
+        GB_printf_function_t printf_func = GB_Global_printf_get ( ) ;       \
+        if (printf_func != NULL)                                            \
         {                                                                   \
-            printf_result = GB_printf_function (__VA_ARGS__) ;              \
+            printf_result = printf_func (__VA_ARGS__) ;                     \
         }                                                                   \
         else                                                                \
         {                                                                   \
             printf_result = printf (__VA_ARGS__) ;                          \
         }                                                                   \
-        if (GB_flush_function != NULL)                                      \
+        GB_flush_function_t flush_func = GB_Global_flush_get ( ) ;          \
+        if (flush_func != NULL)                                             \
         {                                                                   \
-            GB_flush_function ( ) ;                                         \
+            flush_func ( ) ;                                                \
         }                                                                   \
         else                                                                \
         {                                                                   \
@@ -78,7 +77,6 @@ GB_PUBLIC int (* GB_flush_function  ) ( void ) ;
     }                                                                       \
     if (printf_result < 0)                                                  \
     {                                                                       \
-        int err = errno ;                                                   \
         return (GrB_INVALID_VALUE) ;                                        \
     }                                                                       \
 }

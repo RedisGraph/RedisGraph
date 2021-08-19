@@ -126,16 +126,22 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 	if(argc == 3) {
 		ASSERT(SI_TYPE(argv[2]) == T_INT64);
 		interval = argv[2].longval;
-		if(interval < 1) {
-			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() must be >= 1");
+		if(interval == 0) {
+			ErrorCtx_RaiseRuntimeException("ArgumentError: step argument to range() can't be 0");
 			// Incase expection handler wasn't set, return NULL.
 			return SI_NullVal();
 		}
 	}
 
-	SIValue array = SI_Array(1 + (end - start) / interval);
-	for(; start <= end; start += interval) {
+	uint64_t size = 0;
+	if((end >= start && interval > 0) || (end <= start && interval < 0)) {
+		size = 1 + (end - start) / interval;
+	}
+
+	SIValue array = SI_Array(size);
+	for(uint64_t i = 0; i < size; i++) {
 		SIArray_Append(&array, SI_LongVal(start));
+		start += interval;
 	}
 	return array;
 }
@@ -249,7 +255,7 @@ void Register_ListFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_STRING | T_ARRAY | T_NULL);
 	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 

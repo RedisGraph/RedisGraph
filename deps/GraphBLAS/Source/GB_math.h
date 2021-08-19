@@ -76,18 +76,18 @@
 #define GB_FC32_minv(x) GB_FC32_div (GxB_CMPLXF (1,0), x)
 #define GB_FC64_minv(x) GB_FC64_div (GxB_CMPLX (1,0), x)
 
-// complex comparisons
+// complex comparators
 #define GB_FC32_eq(x,y) ((crealf(x) == crealf(y)) && (cimagf(x) == cimagf(y)))
 #define GB_FC64_eq(x,y) ((creal (x) == creal (y)) && (cimag (x) == cimag (y)))
 
 #define GB_FC32_ne(x,y) ((crealf(x) != crealf(y)) || (cimagf(x) != cimagf(y)))
 #define GB_FC64_ne(x,y) ((creal (x) != creal (y)) || (cimag (x) != cimag (y)))
 
-#define GB_FC32_iseq(x,y) GxB_CMPLXF ((float) GB_FC32_eq (x,y), 0)
-#define GB_FC64_iseq(x,y) GxB_CMPLX  ((float) GB_FC64_eq (x,y), 0)
+#define GB_FC32_iseq(x,y) GxB_CMPLXF ((float)  GB_FC32_eq (x,y), 0)
+#define GB_FC64_iseq(x,y) GxB_CMPLX  ((double) GB_FC64_eq (x,y), 0)
 
-#define GB_FC32_isne(x,y) GxB_CMPLXF ((float) GB_FC32_ne (x,y), 0)
-#define GB_FC64_isne(x,y) GxB_CMPLX  ((float) GB_FC64_ne (x,y), 0)
+#define GB_FC32_isne(x,y) GxB_CMPLXF ((float)  GB_FC32_ne (x,y), 0)
+#define GB_FC64_isne(x,y) GxB_CMPLX  ((double) GB_FC64_ne (x,y), 0)
 
 #define GB_FC32_eq0(x) ((crealf(x) == 0) && (cimagf(x) == 0))
 #define GB_FC64_eq0(x) ((creal (x) == 0) && (cimag (x) == 0))
@@ -100,39 +100,20 @@
 //------------------------------------------------------------------------------
 
 // For floating-point computations, SuiteSparse:GraphBLAS relies on the IEEE
-// 754 standard for the basic operations (+ - / *).  Comparison operators also
-// work as they should; any comparison with NaN is always false, even
+// 754 standard for the basic operations (+ - / *).  Comparator also
+// work as they should; any compare with NaN is always false, even
 // eq(NaN,NaN) is false.  This follows the IEEE 754 standard.
 
-// For integer MIN and MAX, SuiteSparse:GraphBLAS relies on one comparison:
-
+// For integer MIN and MAX, SuiteSparse:GraphBLAS relies on one compator:
 // z = min(x,y) = (x < y) ? x : y
 // z = max(x,y) = (x > y) ? x : y
 
-// However, this is not suitable for floating-point x and y.  Comparisons with
+// However, this is not suitable for floating-point x and y.  Compares with
 // NaN always return false, so if either x or y are NaN, then z = y, for both
-// min(x,y) and max(x,y).  In MATLAB, min(3,NaN), min(NaN,3), max(3,NaN), and
-// max(NaN,3) are all 3, which is another interpretation.  The MATLAB min and
-// max functions have a 3rd argument that specifies how NaNs are handled:
-// 'omitnan' (default) and 'includenan'.  In SuiteSparse:GraphBLAS 2.2.* and
-// earlier, the min and max functions were the same as 'includenan' in MATLAB.
-// As of version 2.3 and later, they are 'omitnan', to facilitate the terminal
-// exit of the MIN and MAX monoids for floating-point values.
+// min(x,y) and max(x,y).
 
 // The ANSI C11 fmin, fminf, fmax, and fmaxf functions have the 'omitnan'
 // behavior.  These are used in SuiteSparse:GraphBLAS v2.3.0 and later.
-
-// Below is a complete comparison of MATLAB and GraphBLAS.  Both tables are the
-// results for both min and max (they return the same results in these cases):
-
-//   x    y  MATLAB    MATLAB   (x<y)?x:y   SuiteSparse:    SuiteSparse:    ANSI
-//           omitnan includenan             GraphBLAS       GraphBLAS       fmin
-//                                          v 2.2.x         this version
-//
-//   3    3     3        3          3        3              3               3
-//   3   NaN    3       NaN        NaN      NaN             3               3
-//  NaN   3     3       NaN         3       NaN             3               3
-//  NaN  NaN   NaN      NaN        NaN      NaN             NaN             NaN
 
 // for integers only:
 #define GB_IABS(x) (((x) >= 0) ? (x) : (-(x)))
@@ -147,13 +128,11 @@
 // division by zero
 //------------------------------------------------------------------------------
 
-// Integer division by zero is done the same way it's done in MATLAB.  This
-// approach allows GraphBLAS to not terminate the user's application on
-// divide-by-zero, and allows GraphBLAS results to be tested against MATLAB.
-// To compute X/0: if X is zero, the result is zero (like NaN).  if X is
-// negative, the result is the negative integer with biggest magnitude (like
-// -infinity).  if X is positive, the result is the biggest positive integer
-// (like +infinity).
+// Integer division by zero is done os that GraphBLAS does not terminate the
+// user's application on divide-by-zero.  To compute X/0: if X is zero, the
+// result is zero (like NaN).  if X is negative, the result is the negative
+// integer with biggest magnitude (like -infinity).  if X is positive, the
+// result is the biggest positive integer (like +infinity).
 
 // For places affected by this decision in the code do:
 // grep "integer division"
@@ -277,16 +256,15 @@
 )                                                                           \
 
 // GraphBLAS includes a built-in GrB_DIV_BOOL operator, so boolean division
-// must be defined.  There is no MATLAB equivalent since x/y for logical x and
-// y is not permitted in MATLAB.  ANSI C11 does not provide a definition
-// either, and dividing by zero (boolean false) will typically terminate an
-// application.  In this GraphBLAS implementation, boolean division is treated
-// as if it were int1, where 1/1 = 1, 0/1 = 0, 0/0 = integer NaN = 0, 1/0 =
-// +infinity = 1.  Thus Z=X/Y is Z=X.  This is arbitrary, but it allows all
-// operators to work on all types without causing run time exceptions.  It also
-// means that GrB_DIV(x,y) is the same as GrB_FIRST(x,y) for boolean x and y.
-// See for example GB_boolean_rename and Template/GB_ops_template.c.
-// Similarly, GrB_MINV_BOOL, which is 1/x, is simply 'true' for all x.
+// must be defined.  ANSI C11 does not provide a definition either, and
+// dividing by zero (boolean false) will typically terminate an application.
+// In this GraphBLAS implementation, boolean division is treated as if it were
+// int1, where 1/1 = 1, 0/1 = 0, 0/0 = integer NaN = 0, 1/0 = +infinity = 1.
+// Thus Z=X/Y is Z=X.  This is arbitrary, but it allows all operators to work
+// on all types without causing run time exceptions.  It also means that
+// GrB_DIV(x,y) is the same as GrB_FIRST(x,y) for boolean x and y.  See for
+// example GB_boolean_rename and Template/GB_ops_template.c.  Similarly,
+// GrB_MINV_BOOL, which is 1/x, is simply 'true' for all x.
 
 //------------------------------------------------------------------------------
 // complex division
@@ -300,7 +278,7 @@
 // This uses ACM Algo 116, by R. L. Smith, 1962, which tries to avoid underflow
 // and overflow.
 //
-// z can be the same variable as x or y.
+// z can be aliased with x or y.
 //
 // Note that this function has the same signature as SuiteSparse_divcomplex.
 
@@ -400,9 +378,6 @@ inline GxB_FC32_t GB_FC32_div (GxB_FC32_t x, GxB_FC32_t y)
 //------------------------------------------------------------------------------
 // z = x^y: wrappers for pow, powf, cpow, and cpowf
 //------------------------------------------------------------------------------
-
-// The following rules are used to try to align the results with what MATLAB
-// computes for x^y:
 
 //      if x or y are NaN, then z is NaN
 //      if y is zero, then z is 1
@@ -556,27 +531,31 @@ inline uint64_t GB_pow_uint64 (uint64_t x, uint64_t y)
 
 inline float GB_frexpxf (float x)
 {
+    // ignore the exponent and just return the mantissa
     int exp_ignored ;
     return (frexpf (x, &exp_ignored)) ;
 }
 
 inline float GB_frexpef (float x)
 {
+    // ignore the mantissa and just return the exponent
     int exp ;
-    float mantissa_ignored = frexpf (x, &exp) ;
+    (void) frexpf (x, &exp) ;
     return ((float) exp) ;
 }
 
 inline double GB_frexpx (double x)
 {
+    // ignore the exponent and just return the mantissa
     int exp_ignored ;
     return (frexp (x, &exp_ignored)) ;
 }
 
 inline double GB_frexpe (double x)
 {
+    // ignore the mantissa and just return the exponent
     int exp ;
-    double mantissa_ignored = frexp (x, &exp) ;
+    (void) frexp (x, &exp) ;
     return ((double) exp) ;
 }
 

@@ -14,24 +14,27 @@
 
 // If *Ahandle is NULL on input:
 
-//      A new header for the matrix A is allocated.  If successful, *Ahandle
-//      points to the new handle, and its contents, on output.  If an
-//      out-of-memory condition occurs, the header is freed and *Ahandle is
-//      NULL on output.
+//      A new, dynamically allocated header for the matrix A is allocated.  If
+//      successful, *Ahandle points to the new handle, and its contents, on
+//      output.  If an out-of-memory condition occurs, the header is freed and
+//      *Ahandle is NULL on output.  If successful, (*Ahandle)->static_header
+//      will always be false (A_static_header is ignored).
 
 // If *Ahandle is not NULL on input:
 
-//      The existing header for A is used.  The pointer *Ahandle itself is not
+//      The static header for A is used.  The pointer *Ahandle itself is not
 //      modified on output, either on success or failure.  If successful, the
 //      content of A has been created.  If an out-of-memory condition occurs,
 //      the preexisting header is not freed and *Ahandle is unmodified on
-//      output.
+//      output. (*Ahandle)->static_header is determined from the input
+//      parameter, A_static_header.
 
 #include "GB.h"
 
 GrB_Info GB_new_bix             // create a new matrix, incl. A->b, A->i, A->x
 (
     GrB_Matrix *Ahandle,        // output matrix to create
+    const bool A_static_header, // true if Ahandle is statically allocated.
     const GrB_Type type,        // type of output matrix
     const int64_t vlen,         // length of each vector
     const int64_t vdim,         // number of vectors
@@ -41,8 +44,10 @@ GrB_Info GB_new_bix             // create a new matrix, incl. A->b, A->i, A->x
     const bool bitmap_calloc,   // if true, calloc A->b, otherwise use malloc
     const float hyper_switch,   // A->hyper_switch, unless auto
     const int64_t plen,         // size of A->p and A->h, if hypersparse
-    const int64_t anz,          // number of nonzeros the matrix must hold
+    const int64_t nzmax,        // number of nonzeros the matrix must hold;
+                                // ignored if A is iso and full
     const bool numeric,         // if true, allocate A->x, else A->x is NULL
+    const bool A_iso,           // if true, allocate A as iso
     GB_Context Context
 )
 {
@@ -58,8 +63,8 @@ GrB_Info GB_new_bix             // create a new matrix, incl. A->b, A->i, A->x
     //--------------------------------------------------------------------------
 
     bool preexisting_header = (*Ahandle != NULL) ;
-    GrB_Info info = GB_new (Ahandle, type, vlen, vdim, Ap_option,
-        is_csc, sparsity, hyper_switch, plen, Context) ;
+    GrB_Info info = GB_new (Ahandle, A_static_header, type, vlen, vdim,
+        Ap_option, is_csc, sparsity, hyper_switch, plen, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory.
@@ -74,16 +79,15 @@ GrB_Info GB_new_bix             // create a new matrix, incl. A->b, A->i, A->x
     // allocate the bitmap (A->b), indices (A->i), and values (A->x)
     //--------------------------------------------------------------------------
 
-    info = GB_bix_alloc (A, anz, sparsity == GxB_BITMAP, bitmap_calloc,
-        ! (sparsity == GxB_FULL || sparsity == GxB_BITMAP),
-        numeric, Context) ;
+    // set A->iso = A_iso   OK: burble in the caller
+    info = GB_bix_alloc (A, nzmax, sparsity, bitmap_calloc, numeric, A_iso,
+        Context) ;
     if (info != GrB_SUCCESS)
     {
         // out of memory
-        // GB_bix_alloc has already freed all content of A
         if (!preexisting_header)
         { 
-            // also free the header *Ahandle itself
+            // free the header *Ahandle itself unless it existed on input
             GB_Matrix_free (Ahandle) ;
             ASSERT (*Ahandle == NULL) ;
         }

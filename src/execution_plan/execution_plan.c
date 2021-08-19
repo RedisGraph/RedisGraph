@@ -91,9 +91,24 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION,
 														 NULL);
 	if(!cypher_ast_union_has_all(union_clause)) {
-		OpBase *distinct_op = NewDistinctOp(plan);
-		ExecutionPlan_AddOp(results_op, distinct_op);
-		parent = distinct_op;
+		uint clause_count = cypher_ast_query_nclauses(ast->root);
+		const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+		if(cypher_astnode_type(last_clause) == CYPHER_AST_RETURN) {
+			uint projection_count = cypher_ast_return_nprojections(last_clause);
+			// Build a stack array to hold the aliases to perform Distinct on
+			const char *projections[projection_count];
+			for(uint i = 0; i < projection_count; i++) {
+				// Retrieve aliases from the RETURN clause
+				const cypher_astnode_t *projection = cypher_ast_return_get_projection(last_clause, i);
+				const cypher_astnode_t *alias = cypher_ast_projection_get_alias(projection);
+				if(alias == NULL) alias = cypher_ast_projection_get_expression(projection);
+				projections[i] = cypher_ast_identifier_get_name(alias);
+			}
+			// Build a Distinct op and add it to the op tree
+			OpBase *distinct_op = NewDistinctOp(plan, projections, projection_count);
+			ExecutionPlan_AddOp(results_op, distinct_op);
+			parent = distinct_op;
+		}
 	}
 
 	OpBase *join_op = NewJoinOp(plan);

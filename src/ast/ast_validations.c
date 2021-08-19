@@ -75,7 +75,11 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		_AST_GetIdentifiers(child, identifiers);
 	}
 
-	if(type == CYPHER_AST_LIST_COMPREHENSION || type == CYPHER_AST_ANY || type == CYPHER_AST_ALL) {
+	if(type == CYPHER_AST_LIST_COMPREHENSION || 
+	   type == CYPHER_AST_ANY || 
+	   type == CYPHER_AST_ALL || 
+	   type == CYPHER_AST_SINGLE || 
+	   type == CYPHER_AST_NONE) {
 		// A list comprehension has a local variable that should only be accessed within its scope;
 		// do not leave it in the identifiers map.
 		const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(node);
@@ -1649,7 +1653,6 @@ static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t 
 		}
 	}
 
-	ErrorCtx_SetError("Error: empty query.");
 	return AST_INVALID;
 }
 

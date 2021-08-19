@@ -37,14 +37,14 @@
 // config param, max number of entities in each virtual key
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT"
 
-// whether the module should maintain transposed relationship matrices
-#define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES"
-
 // config param, max number of queued queries
 #define MAX_QUEUED_QUERIES "MAX_QUEUED_QUERIES"
 
 // Max mem(bytes) that query/thread can utilize at any given time
 #define QUERY_MEM_CAPACITY "QUERY_MEM_CAPACITY"
+
+// number of pending changed befor RG_Matrix flushed
+#define DELTA_MAX_PENDING_CHANGES "DELTA_MAX_PENDING_CHANGES"
 
 //------------------------------------------------------------------------------
 // Configuration defaults
@@ -63,9 +63,9 @@ typedef struct {
 	uint omp_thread_count;             // Maximum number of OpenMP threads.
 	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
-	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 	uint64_t max_queued_queries;       // max number of queued queries
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
+	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
 	Config_on_change cb;               // callback function which being called when config param changed
 } RG_Config;
 
@@ -177,18 +177,6 @@ uint64_t Config_virtual_key_entity_count_get(void) {
 }
 
 //------------------------------------------------------------------------------
-// maintain transpose
-//------------------------------------------------------------------------------
-
-void Config_maintain_transpose_set(bool maintain) {
-	config.maintain_transposed_matrices = maintain;
-}
-
-bool Config_maintain_transpose_get(void) {
-	return config.maintain_transposed_matrices;
-}
-
-//------------------------------------------------------------------------------
 // cache size
 //------------------------------------------------------------------------------
 
@@ -242,6 +230,23 @@ uint64_t Config_query_mem_capacity_get(void)
 	return config.query_mem_capacity;
 }
 
+//------------------------------------------------------------------------------
+// query mem capacity
+//------------------------------------------------------------------------------
+
+void Config_delta_max_pending_changes_set(int64_t capacity)
+{
+	if (capacity == 0)
+		config.delta_max_pending_changes = DELTA_MAX_PENDING_CHANGES_DEFAULT;
+	else
+		config.delta_max_pending_changes = capacity;
+}
+
+uint64_t Config_delta_max_pending_changes_get(void)
+{
+	return config.delta_max_pending_changes;
+}
+
 bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 {
 	ASSERT(field_str != NULL);
@@ -256,8 +261,6 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 		f = Config_OPENMP_NTHREAD;
 	} else if(!strcasecmp(field_str, VKEY_MAX_ENTITY_COUNT)) {
 		f = Config_VKEY_MAX_ENTITY_COUNT;
-	} else if(!strcasecmp(field_str, MAINTAIN_TRANSPOSED_MATRICES)) {
-		f = Config_MAINTAIN_TRANSPOSE;
 	} else if(!(strcasecmp(field_str, CACHE_SIZE))) {
 		f = Config_CACHE_SIZE;
 	} else if(!(strcasecmp(field_str, RESULTSET_SIZE))) {
@@ -266,6 +269,8 @@ bool Config_Contains_field(const char *field_str, Config_Option_Field *field)
 		f = Config_MAX_QUEUED_QUERIES;
 	} else if (!(strcasecmp(field_str, QUERY_MEM_CAPACITY))) {
 		f = Config_QUERY_MEM_CAPACITY;
+	} else if (!(strcasecmp(field_str, DELTA_MAX_PENDING_CHANGES))) {
+		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else {
 		return false;
 	}
@@ -298,10 +303,6 @@ const char *Config_Field_name(Config_Option_Field field) {
 			name = RESULTSET_SIZE;
 			break;
 
-		case Config_MAINTAIN_TRANSPOSE:
-			name = MAINTAIN_TRANSPOSED_MATRICES;
-			break;
-
 		case Config_VKEY_MAX_ENTITY_COUNT:
 			name = VKEY_MAX_ENTITY_COUNT;
 			break;
@@ -316,6 +317,10 @@ const char *Config_Field_name(Config_Option_Field field) {
 
 		case Config_QUERY_MEM_CAPACITY:
 			name = QUERY_MEM_CAPACITY;
+			break;
+
+		case Config_DELTA_MAX_PENDING_CHANGES:
+			name = DELTA_MAX_PENDING_CHANGES;
 			break;
 
         //----------------------------------------------------------------------
@@ -353,9 +358,6 @@ void _Config_SetToDefaults(void) {
 
 	config.cache_size = CACHE_SIZE_DEFAULT;
 
-	// always build transposed matrices by default
-	config.maintain_transposed_matrices = true;
-
 	// no limit on result-set size
 	config.resultset_size = RESULTSET_SIZE_UNLIMITED;
 
@@ -367,6 +369,9 @@ void _Config_SetToDefaults(void) {
 
 	// no limit on query memory capacity
 	config.query_mem_capacity = QUERY_MEM_CAPACITY_UNLIMITED;
+
+	// number of pending changed befor RG_Matrix flushed
+	config.delta_max_pending_changes = DELTA_MAX_PENDING_CHANGES_DEFAULT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -511,21 +516,6 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 			break;
 
 		//----------------------------------------------------------------------
-		// maintain transpose
-		//----------------------------------------------------------------------
-
-		case Config_MAINTAIN_TRANSPOSE:
-			{
-				va_start(ap, field);
-				bool *maintain_transpose = va_arg(ap, bool*);
-				va_end(ap);
-
-				ASSERT(maintain_transpose != NULL);
-				(*maintain_transpose) = Config_maintain_transpose_get();
-			}
-			break;
-
-		//----------------------------------------------------------------------
 		// virtual key entity count
 		//----------------------------------------------------------------------
 
@@ -567,6 +557,21 @@ bool Config_Option_get(Config_Option_Field field, ...) {
 
 				ASSERT(query_mem_capacity != NULL);
 				(*query_mem_capacity) = Config_query_mem_capacity_get();
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// number of pending changed befor RG_Matrix flushed
+		//----------------------------------------------------------------------
+
+		case Config_DELTA_MAX_PENDING_CHANGES:
+			{
+				va_start(ap, field);
+				int64_t *delta_max_pending_changes = va_arg(ap, int64_t *);
+				va_end(ap);
+
+				ASSERT(delta_max_pending_changes != NULL);
+				(*delta_max_pending_changes) = Config_delta_max_pending_changes_get();
 			}
 			break;
 
@@ -667,19 +672,6 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 			break;
 
 		//----------------------------------------------------------------------
-		// maintain transpose
-		//----------------------------------------------------------------------
-
-		case Config_MAINTAIN_TRANSPOSE:
-			{
-				bool maintain_transpose;
-				if(!_Config_ParseYesNo(val, &maintain_transpose)) return false;
-
-				Config_maintain_transpose_set(maintain_transpose);
-			}
-			break;
-
-		//----------------------------------------------------------------------
 		// virtual key entity count
 		//----------------------------------------------------------------------
 
@@ -715,6 +707,19 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
 
 				Config_query_mem_capacity_set(query_mem_capacity);
+			}
+			break;
+
+		//----------------------------------------------------------------------
+		// number of pending changed befor RG_Matrix flushed
+		//----------------------------------------------------------------------
+
+		case Config_DELTA_MAX_PENDING_CHANGES:
+			{
+				long long delta_max_pending_changes;
+				if (!_Config_ParsePositiveInteger(val, &delta_max_pending_changes)) return false;
+
+				Config_delta_max_pending_changes_set(delta_max_pending_changes);
 			}
 			break;
 

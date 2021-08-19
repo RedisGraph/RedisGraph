@@ -28,5 +28,6 @@ for k = [false true]
     testcc  % transpose
 end
 
+GB_builtin_complex_set (true) ;
 fprintf ('\ntest16: all complex tests passed\n') ;
 

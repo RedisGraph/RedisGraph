@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex.h: definitions for the MATLAB interface to GraphBLAS
+// GB_mex.h: definitions for the Test interface to GraphBLAS
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -13,7 +13,6 @@
 #ifndef GB_MEXH
 #define GB_MEXH
 
-// #include "GB.h"
 #include "GB_mxm.h"
 #include "GB_Pending.h"
 #include "GB_add.h"
@@ -22,20 +21,17 @@
 #include "GB_sort.h"
 #include "GB_apply.h"
 #include "GB_mex_generic.h"
-
-#include "graphblas_demos.h"
-
-// demos.h use mxMalloc, etc, and so do the MATLAB Test/* mexFunctions,
-// but the tests here need to distinguish between mxMalloc and malloc.
-#undef malloc
-#undef calloc
-#undef realloc
-#undef free
-
 #undef OK
-#include "usercomplex.h"
+#include "GB_mx_usercomplex.h"
 #include "mex.h"
 #include "matrix.h"
+
+#define SIMPLE_RAND_MAX 32767
+uint64_t simple_rand (void) ;
+void simple_rand_seed (uint64_t seed) ;
+uint64_t simple_rand_getseed (void) ;
+double simple_rand_x (void) ;
+uint64_t simple_rand_i (void) ;
 
 #define PARGIN(k) ((nargin > (k)) ? pargin [k] : NULL)
 
@@ -46,19 +42,12 @@
 // MATCH(s,t) compares two strings and returns true if equal
 #define MATCH(s,t) (strcmp(s,t) == 0)
 
-// timer functions, and result statistics
-extern double grbtime, tic [2] ;
-void GB_mx_put_time (void) ;
-void GB_mx_clear_time (void) ;          // clear the time and start the tic
-#define GB_MEX_TIC { GB_mx_clear_time ( ) ; }
-#define GB_MEX_TOC { grbtime = simple_toc (tic) ; }
-
 void GB_mx_abort (void) ;               // assertion failure
 
 bool GB_mx_mxArray_to_BinaryOp          // true if successful, false otherwise
 (
     GrB_BinaryOp *op_handle,            // the binary op
-    const mxArray *op_matlab,           // MATLAB version of op
+    const mxArray *op_builtin,          // built-in version of op
     const char *name,                   // name of the argument
     const GrB_Type default_optype,      // default operator type
     const bool user_complex             // if true, use user-defined Complex
@@ -67,7 +56,7 @@ bool GB_mx_mxArray_to_BinaryOp          // true if successful, false otherwise
 bool GB_mx_mxArray_to_UnaryOp           // true if successful
 (
     GrB_UnaryOp *op_handle,             // the unary op
-    const mxArray *op_matlab,           // MATLAB version of op
+    const mxArray *op_builtin,          // built-in version of op
     const char *name,                   // name of the argument
     const GrB_Type default_optype,      // default operator type
     const bool user_complex             // if true, use user-defined Complex
@@ -76,7 +65,7 @@ bool GB_mx_mxArray_to_UnaryOp           // true if successful
 bool GB_mx_mxArray_to_SelectOp          // true if successful
 (
     GxB_SelectOp *handle,               // returns GraphBLAS version of op
-    const mxArray *op_matlab,           // MATLAB version of op
+    const mxArray *op_builtin,          // built-in version of op
     const char *name                    // name of the argument
 ) ;
 
@@ -84,8 +73,8 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
 (
     GrB_BinaryOp *op_handle,        // the binary op
     const GrB_Type default_optype,  // default operator type
-    const mxArray *opname_mx,       // MATLAB string with operator name
-    const mxArray *optype_mx,       // MATLAB string with operator type
+    const mxArray *opname_mx,       // built-in string with operator name
+    const mxArray *optype_mx,       // built-in string with operator type
     const bool user_complex         // if true, use user-defined Complex op
 ) ;
 
@@ -93,26 +82,26 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
 (
     GrB_UnaryOp *op_handle,             // the unary op
     const GrB_Type default_optype,      // default operator type
-    const mxArray *opname_mx,           // MATLAB string with operator name
-    const mxArray *optype_mx,           // MATLAB string with operator type
+    const mxArray *opname_mx,           // built-in string with operator name
+    const mxArray *optype_mx,           // built-in string with operator type
     const bool user_complex             // true if X is complex
 ) ;
 
-mxArray *GB_mx_Vector_to_mxArray    // returns the MATLAB mxArray
+mxArray *GB_mx_Vector_to_mxArray    // returns the built-in mxArray
 (
     GrB_Vector *handle,             // handle of GraphBLAS matrix to convert
     const char *name,               // name for error reporting
     const bool create_struct        // if true, then return a struct
 ) ;
 
-mxArray *GB_mx_Matrix_to_mxArray    // returns the MATLAB mxArray
+mxArray *GB_mx_Matrix_to_mxArray    // returns the built-in mxArray
 (
     GrB_Matrix *handle,             // handle of GraphBLAS matrix to convert
     const char *name,
     const bool create_struct        // if true, then return a struct
 ) ;
 
-mxArray *GB_mx_object_to_mxArray    // returns the MATLAB mxArray
+mxArray *GB_mx_object_to_mxArray    // returns the built-in mxArray
 (
     GrB_Matrix *handle,             // handle of GraphBLAS matrix to convert
     const char *name,
@@ -121,7 +110,7 @@ mxArray *GB_mx_object_to_mxArray    // returns the MATLAB mxArray
 
 GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 (
-    const mxArray *A_matlab,            // MATLAB version of A
+    const mxArray *A_builtin,           // built-in version of A
     const char *name,                   // name of the argument
     bool deep_copy,                     // if true, return a deep copy
     const bool empty    // if false, 0-by-0 matrices are returned as NULL.
@@ -130,7 +119,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 
 GrB_Vector GB_mx_mxArray_to_Vector     // returns GraphBLAS version of V
 (
-    const mxArray *V_matlab,            // MATLAB version of V
+    const mxArray *V_builtin,           // built-in version of V
     const char *name,                   // name of the argument
     const bool deep_copy,               // if true, return a deep copy
     const bool empty    // if false, 0-by-0 matrices are returned as NULL.
@@ -139,12 +128,12 @@ GrB_Vector GB_mx_mxArray_to_Vector     // returns GraphBLAS version of V
 
 GrB_Type GB_mx_Type                    // returns a GraphBLAS type
 (
-    const mxArray *X                   // MATLAB matrix to query
+    const mxArray *X                   // built-in matrix to query
 ) ;
 
 void GB_mx_mxArray_to_array    // convert mxArray to array
 (
-    const mxArray *Xmatlab,     // input MATLAB array
+    const mxArray *Xbuiltin,    // input built-in array
     // output:
     GB_void **X,                // pointer to numerical values (shallow)
     int64_t *nrows,             // number of rows of X
@@ -156,20 +145,20 @@ int GB_mx_mxArray_to_string // returns length of string, or -1 if S not a string
 (
     char *string,           // size maxlen
     const size_t maxlen,    // length of string
-    const mxArray *S        // MATLAB mxArray containing a string
+    const mxArray *S        // built-in mxArray containing a string
 ) ;
 
 bool GB_mx_mxArray_to_Descriptor    // true if successful, false otherwise
 (
     GrB_Descriptor *handle,         // descriptor to return
-    const mxArray *D_matlab,        // MATLAB struct
+    const mxArray *D_builtin,       // built-in struct
     const char *name                // name of the descriptor
 ) ;
 
 bool GB_mx_mxArray_to_Semiring         // true if successful
 (
     GrB_Semiring *handle,               // the semiring
-    const mxArray *semiring_matlab,     // MATLAB version of semiring
+    const mxArray *semiring_builtin,    // built-in version of semiring
     const char *name,                   // name of the argument
     const GrB_Type default_optype,      // default operator type
     const bool user_complex         // if true, use user-defined Complex op
@@ -189,7 +178,7 @@ GrB_Monoid GB_mx_BinaryOp_to_Monoid // monoid, or NULL if error
 bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
 (
     GrB_Index **handle,             // index array returned
-    const mxArray *I_matlab,        // MATLAB mxArray to get
+    const mxArray *I_builtin,       // built-in mxArray to get
     GrB_Index *ni,                  // length of I, or special
     GrB_Index Icolon [3],           // for all but GB_LIST
     bool *I_is_list                 // true if I is an explicit list
@@ -221,8 +210,8 @@ bool GB_mx_same     // true if arrays X and Y are the same
 
 bool GB_mx_xsame    // true if arrays X and Y are the same (ignoring zombies)
 (
-    char *X,
-    char *Y,
+    char *X,    bool X_iso,
+    char *Y,    bool Y_iso,
     int8_t *Xb,     // bitmap of X and Y (NULL if no bitmap)
     int64_t len,    // length of X and Y
     size_t s,       // size of each entry of X and Y
@@ -231,8 +220,8 @@ bool GB_mx_xsame    // true if arrays X and Y are the same (ignoring zombies)
 
 bool GB_mx_xsame32  // true if arrays X and Y are the same (ignoring zombies)
 (
-    float *X,
-    float *Y,
+    float *X,   bool X_iso,
+    float *Y,   bool Y_iso,
     int8_t *Xb,     // bitmap of X and Y (NULL if no bitmap)
     int64_t len,    // length of X and Y
     int64_t *I,     // row indices (for zombies), same length as X and Y
@@ -241,8 +230,8 @@ bool GB_mx_xsame32  // true if arrays X and Y are the same (ignoring zombies)
 
 bool GB_mx_xsame64  // true if arrays X and Y are the same (ignoring zombies)
 (
-    double *X,
-    double *Y,
+    double *X,  bool X_iso,
+    double *Y,  bool Y_iso,
     int8_t *Xb,     // bitmap of X and Y (NULL if no bitmap)
     int64_t len,    // length of X and Y
     int64_t *I,     // row indices (for zombies), same length as X and Y
@@ -268,14 +257,14 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
     GrB_Matrix arg2         // second possible alias
 ) ;
 
-mxArray *GB_mx_create_full      // return new MATLAB full matrix
+mxArray *GB_mx_create_full      // return new built-in full matrix
 (
     const GrB_Index nrows,
     const GrB_Index ncols,
     GrB_Type type               // type of the matrix to create
 ) ;
 
-mxArray *GB_mx_Type_to_mxstring        // returns a MATLAB string
+mxArray *GB_mx_Type_to_mxstring        // returns a built-in string
 (
     const GrB_Type type
 ) ;
@@ -286,11 +275,38 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
     const GrB_Type default_type     // default type if string empty
 ) ;
 
+GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
+(
+    GrB_Matrix *A_output,   // handle of matrix to create
+    bool make_symmetric,    // if true, return A as symmetric
+    bool no_self_edges,     // if true, then do not create self edges
+    int64_t nrows,          // number of rows
+    int64_t ncols,          // number of columns
+    int64_t nedges,         // number of edges
+    int method,             // method to use: 0:setElement, 1:build,
+    bool A_complex          // if true, create a Complex matrix
+) ;
+
 //------------------------------------------------------------------------------
 
-#define AS_IF_FREE(p)                   \
+// remove a block that had been allocated from within GraphBLAS and then
+// exported.
+#define REMOVE(p)                                       \
+{                                                       \
+    if ((p) != NULL)                                    \
+    {                                                   \
+        GB_Global_nmalloc_decrement ( ) ;               \
+        if (GB_Global_memtable_find (p))                \
+        {                                               \
+            GB_Global_memtable_remove (p) ;             \
+        }                                               \
+    }                                                   \
+}
+
+#define GB_AS_IF_FREE(p)                \
 {                                       \
     GB_Global_nmalloc_decrement ( ) ;   \
+    GB_Global_memtable_remove (p) ;     \
     (p) = NULL ;                        \
 }
 
@@ -298,7 +314,8 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
 
 #define METHOD_START(OP) \
     printf ("\n================================================================================\n") ; \
-    printf ("method: [%s] start: "GBd"\n", #OP, GB_Global_nmalloc_get ( )) ; \
+    printf ("method: [%s] start: "GBd" "GBd"\n", #OP, \
+        GB_Global_nmalloc_get ( ), GB_Global_free_pool_nblocks_total ( )) ; \
     printf ("================================================================================\n") ;
 
 #define METHOD_TRY \
@@ -323,13 +340,12 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
     if (!malloc_debug)                                                      \
     {                                                                       \
         /* no malloc debugging; just call the method */                     \
-        GB_MEX_TIC ;                                                        \
         GrB_Info info = GRAPHBLAS_OPERATION ;                               \
-        GB_MEX_TOC ;                                                        \
         if (info == GrB_PANIC) mexErrMsgTxt ("panic!") ;                    \
         if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))                \
         {                                                                   \
             FREE_ALL ;                                                      \
+            printf ("info: %d\n", info) ;                                   \
             mexErrMsgTxt ("method failed") ;                                \
         }                                                                   \
     }                                                                       \
@@ -337,6 +353,7 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
     {                                                                       \
         /* brutal malloc debug */                                           \
         int nmalloc_start = (int) GB_Global_nmalloc_get ( ) ;               \
+        int nfree_pool_start = (int) GB_Global_free_pool_nblocks_total ( ) ;\
         for (int tries = 0 ; ; tries++)                                     \
         {                                                                   \
             /* give GraphBLAS the ability to do a # of mallocs, */          \
@@ -345,10 +362,8 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
             METHOD_TRY ;                                                    \
             /* call the method with malloc debug enabled */                 \
             GB_Global_malloc_debug_set (true) ;                             \
-            GB_MEX_TIC ;                                                    \
             GrB_Info info = GRAPHBLAS_OPERATION ;                           \
             /* do not finish the work */                                    \
-            GB_MEX_TOC ;                                                    \
             GB_Global_malloc_debug_set (false) ;                            \
             if (tries > 1000000) mexErrMsgTxt ("infinite loop!") ;          \
             if (info == GrB_SUCCESS || info == GrB_NO_VALUE)                \
@@ -365,15 +380,21 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
                 FREE_DEEP_COPY ;                                            \
                 GET_DEEP_COPY ;                                             \
                 int nmalloc_end = (int) GB_Global_nmalloc_get ( ) ;         \
+                int nfree_pool_end =                                        \
+                    (int) GB_Global_free_pool_nblocks_total ( ) ;           \
                 int nleak = nmalloc_end - nmalloc_start ;                   \
-                if (nleak > 0)                                              \
+                int nfree_delta = nfree_pool_end - nfree_pool_start ;       \
+                if (nleak > nfree_delta)                                    \
                 {                                                           \
                     /* memory leak */                                       \
                     printf ("Leak! tries %d : nleak %d\n"                   \
                         "nmalloc_end:        %d\n"                          \
                         "nmalloc_start:      %d\n"                          \
+                        "nfree_pool start:   %d\n"                          \
+                        "nfree_pool end:     %d\n"                          \
                         "method [%s]\n",                                    \
                         tries, nleak, nmalloc_end, nmalloc_start,           \
+                        nfree_pool_start, nfree_pool_end,                   \
                         GB_STR (GRAPHBLAS_OPERATION)) ;                     \
                     mexWarnMsgIdAndTxt ("GB:leak", "memory leak") ;         \
                     FREE_ALL ;                                              \
@@ -384,7 +405,7 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
             {                                                               \
                 /* another error has occurred */                            \
                 FREE_ALL ;                                                  \
-                if (info == GrB_PANIC) mexErrMsgTxt ("panic!") ;            \
+                printf ("info: %d\n", info) ; \
                 mexErrMsgTxt ("unexpected error in mex brutal malloc debug") ; \
             }                                                               \
         }                                                                   \
@@ -394,16 +415,16 @@ GrB_Type GB_mx_string_to_Type       // GrB_Type from the string
 // statement coverage
 //------------------------------------------------------------------------------
 
-// GB_cover_get copies GraphBLAS_grbcov from the MATLAB global workspace into
-// the internal GB_cov array.  The MATLAB array is created if it doesn't exist.
-// Thus, to clear the counts simply clear GraphBLAS_grbcov from the MATLAB
-// global workpace.
+// GB_cover_get copies GraphBLAS_grbcov from the built-in global workspace into
+// the internal GB_cov array.  The built-in array is created if it doesn't
+// exist.  Thus, to clear the counts simply clear GraphBLAS_grbcov from the
+// built-in global workpace.
 void GB_cover_get (void) ;
 
-// GB_cover_put copies the internal GB_cov array back into the MATLAB
-// GraphBLAS_grbcov array, for analysis and for subsequent statement counting.
-// This way, multiple tests in MATLAB can be accumulated into a single array
-// of counters.
+// GB_cover_put copies the internal GB_cov array back into the GraphBLAS_grbcov
+// array, for analysis and for subsequent statement counting.  This way,
+// multiple tests in built-in can be accumulated into a single array of
+// counters.
 void GB_cover_put (void) ;
 
 #endif

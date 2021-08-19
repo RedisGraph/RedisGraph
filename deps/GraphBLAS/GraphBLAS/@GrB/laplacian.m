@@ -27,7 +27,7 @@ function L = laplacian (A, type, check)
 % See also graph/laplacian.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;
@@ -58,7 +58,13 @@ if (nargin > 2 && isequal (check, 'check'))
 end
 
 % D = diagonal matrix with d(i,i) = row/column degree of node i
-D = gb_diag (gbdegree (S, true), 0) ;
+fmt = gbformat (S) ;
+if (isequal (fmt, 'by row'))
+    D = gbdegree (S, 'row') ;
+else
+    D = gbdegree (S, 'col') ;
+end
+D = gbmdiag (D, 0) ;
 if (~isequal (type, gbtype (D)))
     % gbdegree returns its result as int64; typecast to desired type
     D = gbnew (D, type) ;

@@ -24,6 +24,21 @@
 
 // phase2: computes C, using the counts computed by phase1.
 
+#undef  GB_FREE_WORK
+#define GB_FREE_WORK                        \
+{                                           \
+    GB_WERK_POP (B_ek_slicing, int64_t) ;   \
+    GB_WERK_POP (A_ek_slicing, int64_t) ;   \
+    GB_WERK_POP (M_ek_slicing, int64_t) ;   \
+}
+
+#undef  GB_FREE_ALL
+#define GB_FREE_ALL                 \
+{                                   \
+    GB_FREE_WORK ;                  \
+    GB_phbix_free (C) ;             \
+}
+
 {
 
     //--------------------------------------------------------------------------
@@ -32,10 +47,10 @@
 
     int taskid ;
 
-    const int64_t *GB_RESTRICT Ap = A->p ;
-    const int64_t *GB_RESTRICT Ah = A->h ;
-    const int8_t  *GB_RESTRICT Ab = A->b ;
-    const int64_t *GB_RESTRICT Ai = A->i ;
+    const int64_t *restrict Ap = A->p ;
+    const int64_t *restrict Ah = A->h ;
+    const int8_t  *restrict Ab = A->b ;
+    const int64_t *restrict Ai = A->i ;
     const int64_t vlen = A->vlen ;
     const bool A_is_hyper = GB_IS_HYPERSPARSE (A) ;
     const bool A_is_sparse = GB_IS_SPARSE (A) ;
@@ -43,21 +58,21 @@
     const bool A_is_full = GB_as_if_full (A) ;
     int A_nthreads, A_ntasks ;
 
-    const int64_t *GB_RESTRICT Bp = B->p ;
-    const int64_t *GB_RESTRICT Bh = B->h ;
-    const int8_t  *GB_RESTRICT Bb = B->b ;
-    const int64_t *GB_RESTRICT Bi = B->i ;
+    const int64_t *restrict Bp = B->p ;
+    const int64_t *restrict Bh = B->h ;
+    const int8_t  *restrict Bb = B->b ;
+    const int64_t *restrict Bi = B->i ;
     const bool B_is_hyper = GB_IS_HYPERSPARSE (B) ;
     const bool B_is_sparse = GB_IS_SPARSE (B) ;
     const bool B_is_bitmap = GB_IS_BITMAP (B) ;
     const bool B_is_full = GB_as_if_full (B) ;
     int B_nthreads, B_ntasks ;
 
-    const int64_t *GB_RESTRICT Mp = NULL ;
-    const int64_t *GB_RESTRICT Mh = NULL ;
-    const int8_t  *GB_RESTRICT Mb = NULL ;
-    const int64_t *GB_RESTRICT Mi = NULL ;
-    const GB_void *GB_RESTRICT Mx = NULL ;
+    const int64_t *restrict Mp = NULL ;
+    const int64_t *restrict Mh = NULL ;
+    const int8_t  *restrict Mb = NULL ;
+    const int64_t *restrict Mi = NULL ;
+    const GB_void *restrict Mx = NULL ;
     const bool M_is_hyper = GB_IS_HYPERSPARSE (M) ;
     const bool M_is_sparse = GB_IS_SPARSE (M) ;
     const bool M_is_bitmap = GB_IS_BITMAP (M) ;
@@ -76,15 +91,25 @@
     }
 
     #if defined ( GB_PHASE_2_OF_2 )
-    const GB_ATYPE *GB_RESTRICT Ax = (GB_ATYPE *) A->x ;
-    const GB_BTYPE *GB_RESTRICT Bx = (GB_BTYPE *) B->x ;
-    const int64_t  *GB_RESTRICT Cp = C->p ;
-    const int64_t  *GB_RESTRICT Ch = C->h ;
-          int8_t   *GB_RESTRICT Cb = C->b ;
-          int64_t  *GB_RESTRICT Ci = C->i ;
-          GB_CTYPE *GB_RESTRICT Cx = (GB_CTYPE *) C->x ;
+    #ifdef GB_ISO_ADD
+    ASSERT (C->iso) ;
+    #else
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
+    const GB_BTYPE *restrict Bx = (GB_BTYPE *) B->x ;
+          GB_CTYPE *restrict Cx = (GB_CTYPE *) C->x ;
+    ASSERT (!C->iso) ;
+    #endif
+
+    // unlike GB_emult, both A and B may be iso
+    const bool A_iso = A->iso ;
+    const bool B_iso = B->iso ;
+    const int64_t  *restrict Cp = C->p ;
+    const int64_t  *restrict Ch = C->h ;
+          int8_t   *restrict Cb = C->b ;
+          int64_t  *restrict Ci = C->i ;
+
     // when C is bitmap or full:
-    const int64_t cnz = GB_NNZ_HELD (C) ;
+    const int64_t cnz = GB_nnz_held (C) ;
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     #endif
 
@@ -96,6 +121,7 @@
 
         // phase1: symbolic phase
         // C is sparse or hypersparse (never bitmap or full)
+        // Werk allocated: none
         #include "GB_sparse_add_template.c"
 
     #else
@@ -104,20 +130,25 @@
         if (C_sparsity == GxB_SPARSE || C_sparsity == GxB_HYPERSPARSE)
         { 
             // C is sparse or hypersparse
+            // Werk allocated: none
             #include "GB_sparse_add_template.c"
         }
         else if (C_sparsity == GxB_BITMAP)
         { 
             // C is bitmap (phase2 only)
+            // Werk: slice M and A, M and B, just A, or just B, or none
             #include "GB_bitmap_add_template.c"
         }
         else
         { 
             // C is full (phase2 only)
             ASSERT (C_sparsity == GxB_FULL) ;
+            // Werk: slice just A, just B, or none
             #include "GB_full_add_template.c"
         }
 
     #endif
 }
+
+#undef GB_ISO_ADD
 

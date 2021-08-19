@@ -32,10 +32,8 @@
         address={Philadelphia, PA},
         annotate={\footnotesize
         Provides a basic overview of many sparse matrix algorithms
-        and a simple sparse matrix data structure.  The sparse data structure
-        used in the book is much like the one in both MATLAB and
-        SuiteSparse:GraphBLAS.  A series of 42 lectures are available on
-        YouTube; see the link at
+        and a simple sparse matrix data structure.
+        A series of 42 lectures are available on YouTube; see the link at
         \href{http://faculty.cse.tamu.edu/davis/publications.html}
         {http://faculty.cse.tamu.edu/davis/publications.html}
         For the book, see
@@ -124,19 +122,6 @@
         \href{https://dx.doi.org/10.1137/1.9780898719918}{https://dx.doi.org/10.1137/1.9780898719918}},
 }
 
-@article{Davis07,
-    author={Davis, T. A},
-    title={Creating Sparse Finite-Element Matrices in {MATLAB}},
-    year={2007},
-    month={Mar.},
-    note={Loren Shure, editor. Published by {The MathWorks}, Natick, MA.
-    \href{http://blogs.mathworks.com/loren/2007/03/01/creating-sparse-finite-element-matrices-in-matlab/}{http://blogs.mathworks.com/loren/2007/03/01/creating-sparse-finite-element-matrices-in-matlab/}},
-    editor={Shure, L.},
-    journal={Loren on the Art of {MATLAB}},
-    publisher={The {MathWorks}, Inc.},
-    address={Natick, MA}
-    }
-
 @article{Luby86,
     author={Luby, M.},
     title={A simple parallel algorithm for the maximal independent set problem},
@@ -147,34 +132,24 @@
     note={\href{https://dx.doi.org/10.1137/0215074}{https://dx.doi.org/10.1137/0215074}}
 }
 
-@article{DavisHu11,
-        author={Davis, T. A. and Hu, Y.},
-        title={The {University} of {Florida} sparse matrix collection},
-        journal={ACM Trans. on Math. Software},
-        volume={38},
-        number={1},
-        month=dec,
-        year={2011},
-        pages={1:1--1:25},
-        note={
-        \href{https://dx.doi.org/10.1145/2049662.2049663}{https://dx.doi.org/10.1145/2049662.2049663}.
-        Now called the SuiteSparse Matrix Collection, at 
-        \href{https:sparse.tamu.edu}{https:sparse.tamu.edu}},
-        publisher={ACM},
-        address={New York, NY, USA},
-        keywords={Graph drawing, multilevel algorithms, performance
-        evaluation, sparse matrices},
-}
-
-@article{Davis18,
-        author={Davis, T. A.},
-        title={Algorithm 9XX: {SuiteSparse:GraphBLAS}: 
-            graph algorithms in the language of sparse linear algebra},
-        journal={ACM Trans. on Math. Software},
-        volume={(to appear)},
-        number={},
-        year={2019},
-        note={\href{http://faculty.cse.tamu.edu/davis/publications.html}{http://faculty.cse.tamu.edu/davis/publications.html}},
+@article{Davis19,
+author = {Davis, Timothy A.},
+title = {Algorithm 1000: {SuiteSparse:GraphBLAS}: Graph Algorithms in the Language of Sparse Linear Algebra},
+year = {2019},
+issue_date = {December 2019},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {45},
+number = {4},
+issn = {0098-3500},
+url = {https://doi.org/10.1145/3322125},
+doi = {10.1145/3322125},
+abstract = {SuiteSparse:GraphBLAS is a full implementation of the GraphBLAS standard, which defines a set of sparse matrix operations on an extended algebra of semirings using an almost unlimited variety of operators and types. When applied to sparse adjacency matrices, these algebraic operations are equivalent to computations on graphs. GraphBLAS provides a powerful and expressive framework for creating graph algorithms based on the elegant mathematics of sparse matrix operations on a semiring. An overview of the GraphBLAS specification is given, followed by a description of the key features and performance of its implementation in the SuiteSparse:GraphBLAS package.},
+journal = {ACM Trans. Math. Softw.},
+month = dec,
+articleno = {44},
+numpages = {25},
+keywords = {sparse matrices, GraphBLAS, Graph algorithms}
 }
 
 @book{Higham,
@@ -194,15 +169,6 @@
         year={1987},
         pages={449--457},
         note={\href{https://dx.doi.org/10.1093/imanum/7.4.449}{https://dx.doi.org/10.1093/imanum/7.4.449} }}
-
-@inproceedings{WolfBerryStark15,
-        author={Wolf, M. M. and Berry, J. W. and Stark, D. T.},
-        title={A task-based linear algebra building blocks approach for scalable graph analytics},
-        year={2015},
-        booktitle={IEEE HPEC'15},
-        publisher={IEEE},
-        pages={1--6}
-}
 
 @inproceedings{Davis18b,
         author={Davis, T. A.},
@@ -253,69 +219,6 @@
 }
 
 
-@article{Burkhardt16,
-        author={Burkhardt, P.},
-        title={Graphing trillions of triangles},
-        journal={Information Visualization},
-        volume={16},
-        pages={157--166},
-        year={2016},
-        note={
-        \href{https://dx.doi.org/10.1177/1473871616666393}{https://dx.doi.org/10.1177/1473871616666393} }
-}
-
-@inproceedings{AzadBulucGilbert15,
-        author={Azad, A. and Bulu\c{c}, A. and Gilbert, J.},
-        title={Parallel triangle counting and enumeration using matrix algebra},
-        booktitle={2015 IEEE International Parallel and Distributed Processing Symposium Workshop, IPDPSW ’15},
-        pages={804--811},
-        year={2015},
-        publisher={IEEE Computer Society},
-}
-
-@article{Cohen09,
-        author={Cohen, J.},
-        title={Graph twiddling in a mapreduce world},
-        journal={Computing in Science and Engineering},
-        volume={11},
-        number={4},
-        pages={29--41},
-        month={July},
-        year={2009}
-}
-
-@INPROCEEDINGS{WolfDeveciBerryHammondRajamanickam17,
-    author={Wolf, M. M. and Deveci, M. and Berry, J. W. and Hammond, S. D. and Rajamanickam, S.},
-    booktitle={2017 IEEE High Performance Extreme Computing Conference (HPEC)},
-    title={Fast linear algebra-based triangle counting with {KokkosKernels}},
-    year={2017},
-    volume={},
-    number={},
-    pages={1-7},
-    annotate={\footnotesize
-    Triangle counting serves as a key building block for a set of
-    important graph algorithms in network science. In this paper, we address
-    the IEEE HPEC Static Graph Challenge problem of triangle counting, focusing
-    on obtaining the best parallel performance on a single multicore node. Our
-    implementation uses a linear algebra-based approach to triangle counting
-    that has grown out of work related to our miniTri data analytics
-    miniapplication and our efforts to pose graph algorithms in the
-    language of linear algebra. We leverage KokkosKernels to implement this
-    approach efficiently on multicore architectures. Our performance results
-    are competitive with the fastest known graph traversal-based approaches and
-    are significantly faster than the Graph Challenge reference
-    implementations, up to 670,000 times faster than the C++ reference and
-    10,000 times faster than the Python reference on a single Intel Haswell
-    node.},
-    keywords={Algorithm design and analysis;C++ languages;Computer
-    architecture;Kernel;Libraries;Linear algebra;Sparse matrices},
-    note={
-    \href{https://dx.doi.org/10.1109/HPEC.2017.8091043}{https://dx.doi.org/10.1109/HPEC.2017.8091043}
-    },
-    ISSN={},
-    month={Sept},
-}
-
 @INPROCEEDINGS{BulucMattsonMcMillanMoreiraYang17, 
     author={A. Bulu\c{c} and T. Mattson and S. McMillan and J. Moreira and C. Yang}, 
     booktitle={2017 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)}, 
@@ -347,38 +250,6 @@
         \href{https://dx.doi.org/10.1145/355791.355796}{https://dx.doi.org/10.1145/355791.355796}},
 }
 
-@article{GilbertMolerSchreiber92,
-        author={Gilbert, J. R. and Moler, C. and Schreiber, R.},
-        title={Sparse matrices in {MATLAB}:  design and implementation},
-        journal=SIMAX,
-        year={1992},
-        volume={13},
-        number={1},
-        pages={333-356},
-        url={ http://dx.doi.org/10.1137/0613024 },
-}
-
-@inproceedings{Beamer:2012:DOB,
-	title={Direction-optimizing Breadth-First Search},
-	author={Beamer, Scott and Asanovic, Krste and Patterson, David},
-	booktitle={International Conference for High Performance Computing, Networking, Storage and Analysis (SC)},
-	pages={1--10},
-	year={2012},
-}
-
-@inproceedings{Yang:2018:IPE,
-	title =	 {Implementing Push-Pull Efficiently in {GraphBLAS}},
-	author =	 {Carl Yang and Ayd\i{}n Bulu\c{c} and John D. Owens},
-	booktitle =	 {Proceedings of the International Conference on
-	Parallel Processing},
-	series =	 {ICPP 2018},
-	month =	 aug,
-	year =	 2018,
-	pages =	 {89:1--89:11},
-	doi =		 {10.1145/3225058.3225122},
-	code =	 {https://github.com/owensgroup/push-pull}
-}
-
 @inproceedings{10.1145/3229710.3229720,
 author = {Nagasaka, Yusuke and Matsuoka, Satoshi and Azad, Ariful and Bulu\c{c}, Ayd\i{}n},
 title = {High-Performance Sparse Matrix-Matrix Products on Intel KNL and Multicore Architectures},
@@ -396,10 +267,3 @@ location = {Eugene, OR, USA},
 series = {ICPP ’18}
 }
 
-
-
-% [2] Yusuke Nagasaka, Satoshi Matsuoka, Ariful Azad, and Aydın Buluç. 2018.
-% High-Performance Sparse Matrix-Matrix Products on Intel KNL and Multicore
-% Architectures. In Proc. 47th Intl. Conf. on Parallel Processing (ICPP '18).
-% Association for Computing Machinery, New York, NY, USA, Article 34, 1–10.
-% DOI:https://doi.org/10.1145/3229710.3229720

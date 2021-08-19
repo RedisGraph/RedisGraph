@@ -116,7 +116,7 @@ GrB_Info GB_bitmap_assign_fullM_noaccum_whole
 
         }
         else
-        {
+        { 
 
             //------------------------------------------------------------------
             // C<M or !M> = scalar
@@ -153,7 +153,7 @@ GrB_Info GB_bitmap_assign_fullM_noaccum_whole
             //------------------------------------------------------------------
 
             if (C_replace)
-            {
+            { 
 
                 //--------------------------------------------------------------
                 // C<M or !M,replace> = A where A is bitmap or full
@@ -181,7 +181,7 @@ GrB_Info GB_bitmap_assign_fullM_noaccum_whole
 
             }
             else
-            {
+            { 
 
                 //--------------------------------------------------------------
                 // C<M or !M> = A where A is bitmap or full
@@ -219,7 +219,7 @@ GrB_Info GB_bitmap_assign_fullM_noaccum_whole
             //------------------------------------------------------------------
 
             if (C_replace)
-            {
+            { 
 
                 //--------------------------------------------------------------
                 // C<M or !M,replace> = A where A is sparse or hyper
@@ -246,7 +246,7 @@ GrB_Info GB_bitmap_assign_fullM_noaccum_whole
 
             }
             else
-            {
+            { 
 
                 //--------------------------------------------------------------
                 // C<M or !M> = A where A is sparse or hyper

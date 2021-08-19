@@ -3,11 +3,11 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
-// gblogextract computes the MATLAB logical indexing expression C = A(M).  The
+// gblogextract computes the built-in logical indexing expression C = A(M).  The
 // matrices A and M must be the same size.  M is normally logical but it can be
 // of any type in this mexFunction.  M should not have any explicit zeros.  C
 // has the same type as A, and is a sparse vector of size nnz(M)-by-1.
@@ -21,15 +21,15 @@
 /*
 
     function C = gblogextract (A, M_input)
-    % Computing the MATLAB logical indexing expression C = A(M) in GraphBLAS.
+    % Computing the built-in logical indexing expression C = A(M) in GraphBLAS.
     % C is a sparse vector of size nnz(M)-by-1.  M is normally a sparse logical
-    % matrix, either GraphBLAS or MATLAB, but it can be of any type.
+    % matrix, either GraphBLAS or built-in, but it can be of any type.
     % A and M have the same size.
 
     [m n] = size (A) ;
 
     % make sure all input, internal, and output matrices are all stored by
-    % column 
+    % column
     save = GrB.format ;
     GrB.format ('by col') ;
     M = GrB (m, n, 'logical') ;
@@ -77,8 +77,12 @@
 
 // C is always returned as a GrB matrix.
 
-#include "gb_matlab.h"
+// TODO:: do not directly access opaque content
+
+#include "gb_interface.h"
 #include "GB_transpose.h"
+
+#define USAGE "usage: C = gblogextract (A, M)"
 
 void mexFunction
 (
@@ -93,8 +97,8 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin == 2 && nargout <= 1, "usage: C = gblogextract (A, M)") ;
-    GB_CONTEXT ("gblogextract") ;
+    gb_usage (nargin == 2 && nargout <= 1, USAGE) ;
+    GB_CONTEXT ("gblogextract") ;       // TODO: remove this
 
     //--------------------------------------------------------------------------
     // get A
@@ -128,6 +132,7 @@ void mexFunction
     int sparsity ;
     OK (GxB_Matrix_Option_get (M, GxB_SPARSITY_STATUS, &sparsity)) ;
     CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 5") ;
+    CHECK_ERROR (!M->iso, "internal error 42")  ;            	
 
     //--------------------------------------------------------------------------
     // G<M> = A
@@ -152,38 +157,55 @@ void mexFunction
     OK (GrB_Matrix_nvals (&gnvals, G)) ;
     OK (GxB_Matrix_Option_get (G, GxB_SPARSITY_STATUS, &sparsity)) ;
     CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 0") ;
+
+    // Remove G->x from G
+    // TODO: use GxB*export to access the content of G
     void *Gx = G->x ;
+    size_t Gx_size = G->x_size ;
+    #ifdef GB_MEMDUMP
+    printf ("remove G->x from memtable: %p\n", G->x) ;
+    #endif
+    GB_Global_memtable_remove (G->x) ; G->x = NULL ; G->x_size = 0 ;
+    bool G_iso = G->iso  ;            	
 
     //--------------------------------------------------------------------------
-    // change G to boolean
+    // change G to boolean (all true and iso) TODO: use G as structural instead
     //--------------------------------------------------------------------------
 
-    // This does not affect the extracted values Gx
-    G->type = GrB_BOOL ;
-    if (G->nzmax > 0)
-    { 
-        G->x = mxMalloc (G->nzmax * sizeof (bool)) ;
-        bool *Gbool = G->x ;
-        GB_matlab_helper6 (Gbool, gnvals) ;
-    }
+    bool Gbool = true ;        							
+    G->type = GrB_BOOL ;       	             	 	                 	
+    G->x = &Gbool ;            		 	 	 	 	 	
+    G->iso = true ;            		 	 	 	 	 	
+    G->x_shallow = true ;      		 	 	 	 	 	
+    G->x_size = sizeof (bool) ; 						
 
     //--------------------------------------------------------------------------
     // K = structure of M, where the kth entry in K is equal to k
     //--------------------------------------------------------------------------
 
     // K is a shallow copy of M, except for its numerical values
-    GrB_Matrix K ;
-    OK (GB_shallow_copy (&K, GxB_BY_COL, M, Context)) ;
+    struct GB_Matrix_opaque K_header ;
+    GrB_Matrix K = GB_clear_static_header (&K_header) ;
+
+    OK (GB_shallow_copy (K, GxB_BY_COL, M, Context)) ;
     OK (GxB_Matrix_Option_get (K, GxB_SPARSITY_STATUS, &sparsity)) ;
     CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 10") ;
 
     // Kx = uint64 (0:mnz-1)
-    uint64_t *Kx = mxMalloc (MAX (mnz, 1) * sizeof (uint64_t)) ;
-    GB_matlab_helper7 (Kx, mnz) ;
+    size_t Kx_size = (MAX (mnz, 1) * sizeof (uint64_t)) ;
+    uint64_t *Kx = mxMalloc (Kx_size) ;
+    GB_helper7 (Kx, mnz) ;
 
+    // add a new K->x to K
     K->x = Kx ;
     K->x_shallow = false ;
     K->type = GrB_UINT64 ;
+    K->x_size = Kx_size ;
+    #ifdef GB_MEMDUMP
+    printf ("add K->x to memtable: %p\n", K->x) ;
+    #endif
+    GB_Global_memtable_add (K->x, K->x_size) ;
+    K->iso = false  ;            	
 
     //--------------------------------------------------------------------------
     // T<G> = K
@@ -201,6 +223,11 @@ void mexFunction
     OK1 (T, GrB_Matrix_wait (&T)) ;
     OK (GrB_Matrix_nvals (&tnvals, T)) ;
     uint64_t *Tx = T->x ;
+    size_t Tx_size = T->x_size ;
+    #ifdef GB_MEMDUMP
+    printf ("remove T->x from memtable: %p\n", T->x) ;
+    #endif
+    GB_Global_memtable_remove (T->x) ; T->x = NULL ; T->x_size = 0 ;
 
     // gnvals and tnvals are identical, by construction
     CHECK_ERROR (gnvals != tnvals, "internal error 1") ;
@@ -216,19 +243,40 @@ void mexFunction
     GrB_Vector V ;
     OK (GrB_Vector_new (&V, type, mnz)) ;
     OK1 (V, GxB_Vector_Option_set (V, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
-    gb_mxfree (&V->i) ;
-    gb_mxfree (&V->x) ;
-    V->i = (int64_t *) Tx ; // transplant values of T as the row indices of V
-    T->x = NULL ;
-    V->x = Gx ;             // transplant the values of G as the values of V
-    V->nzmax = T->nzmax ;
+
+    #ifdef GB_MEMDUMP
+    printf ("remove V->i from memtable: %p\n", V->i) ;
+    printf ("remove V->x from memtable: %p\n", V->x) ;
+    #endif
+    GB_Global_memtable_remove (V->i) ; gb_mxfree (&V->i) ;
+    GB_Global_memtable_remove (V->x) ; gb_mxfree (&V->x) ;
+
+    // transplant values of T as the row indices of V
+    V->i = (int64_t *) Tx ;
+    V->i_size = Tx_size ;
+    V->i_shallow = false ;
+    #ifdef GB_MEMDUMP
+    printf ("add V->i to memtable: %p\n", V->i) ;
+    #endif
+    GB_Global_memtable_add (V->i, V->i_size) ;  // this was the old T->x
+
+    // transplant the values of G as the values of V
+    V->x = Gx ;
+    V->x_size = Gx_size ;
+    V->x_shallow = false ;
+    V->iso = G_iso  ;            	
+    #ifdef GB_MEMDUMP
+    printf ("add V->x to memtable: %p\n", V->x) ;
+    #endif
+    GB_Global_memtable_add (V->x, V->x_size) ;  // this was the old G->x
+
     int64_t *Vp = V->p ;
     Vp [0] = 0 ;
     Vp [1] = tnvals ;
     V->magic = GB_MAGIC ;
     V->nvec_nonempty = (tnvals > 0) ? 1 : 0 ;
 
-    // typecast V to a matrix C, for export back to MATLAB
+    // typecast V to a matrix C, for export
     GrB_Matrix C = (GrB_Matrix) V ;
     V = NULL ;
 
@@ -239,9 +287,10 @@ void mexFunction
     OK (GrB_Matrix_free (&G)) ;
     OK (GrB_Matrix_free (&K)) ;
     OK (GrB_Matrix_free (&T)) ;
+    OK (GrB_Matrix_free (&M)) ;
 
     //--------------------------------------------------------------------------
-    // export the output matrix C back to MATLAB as a GraphBLAS matrix
+    // export the output matrix C as a GraphBLAS matrix
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, KIND_GRB) ;

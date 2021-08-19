@@ -46,9 +46,9 @@ for k2 = 1:length(ops)
                 ylimits = [ ] ;
         end
 
-        if (contains (type, 'single'))
+        if (test_contains (type, 'single'))
             tol = 1e-5 ;
-        elseif (contains (type, 'double'))
+        elseif (test_contains (type, 'double'))
             tol = 1e-12 ;
         else
             tol = 0 ;
@@ -74,7 +74,7 @@ for k2 = 1:length(ops)
 
                         % use pure GraphBLAS
                         Z1 = GB_mex_op (op, A, B) ;
-                        % use MATLAB as much as possible
+                        % use built-in methods as much as possible
                         Z2 = GB_spec_op (op, A, B) ;
                         % the results should either match perfectly
                         assert (isequal (isnan (Z1), isnan (Z2)))

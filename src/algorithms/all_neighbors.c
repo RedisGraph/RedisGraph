@@ -16,12 +16,12 @@ static void _AllNeighborsCtx_CollectNeighbors
 ) {
 	ctx->current_level++;
 	if(ctx->current_level == array_len(ctx->levels)) {
-		GxB_MatrixTupleIter iter;
-		GxB_MatrixTupleIter_reuse(&iter, ctx->M);
+		RG_MatrixTupleIter iter;
+		RG_MatrixTupleIter_reuse(&iter, ctx->M);
 		array_append(ctx->levels, iter);
 	}
 
-	GxB_MatrixTupleIter_iterate_row(&ctx->levels[ctx->current_level], id);
+	RG_MatrixTupleIter_iterate_row(&ctx->levels[ctx->current_level], id);
 }
 
 static bool _AllNeighborsCtx_Visited
@@ -42,7 +42,7 @@ void AllNeighborsCtx_Reset
 (
 	AllNeighborsCtx *ctx,  // all neighbors context to reset
 	EntityID src,          // source node from which to traverse
-	GrB_Matrix M,          // matrix describing connections
+	RG_Matrix M,           // matrix describing connections
 	uint minLen,           // minimum traversal depth
 	uint maxLen            // maximum traversal depth
 ) {
@@ -63,13 +63,13 @@ void AllNeighborsCtx_Reset
 	array_clear(ctx->visited);
 
 	// Dummy iterator at level 0
-	array_append(ctx->levels, (GxB_MatrixTupleIter){0});
+	array_append(ctx->levels, (RG_MatrixTupleIter) {0});
 }
 
 AllNeighborsCtx *AllNeighborsCtx_New
 (
 	EntityID src,  // source node from which to traverse
-	GrB_Matrix M,  // matrix describing connections
+	RG_Matrix M,   // matrix describing connections
 	uint minLen,   // minimum traversal depth
 	uint maxLen    // maximum traversal depth
 ) {
@@ -82,13 +82,13 @@ AllNeighborsCtx *AllNeighborsCtx_New
 	ctx->src            =  src;
 	ctx->minLen         =  minLen;
 	ctx->maxLen         =  maxLen;
-	ctx->levels         =  array_new(GxB_MatrixTupleIter, 1);
+	ctx->levels         =  array_new(RG_MatrixTupleIter, 1);
 	ctx->visited        =  array_new(EntityID, 1);
 	ctx->first_pull     =  true;
 	ctx->current_level  =  0;
 
 	// Dummy iterator at level 0
-	array_append(ctx->levels, (GxB_MatrixTupleIter){0});
+	array_append(ctx->levels, (RG_MatrixTupleIter) {0});
 
 	return ctx;
 }
@@ -120,11 +120,11 @@ EntityID AllNeighborsCtx_NextNeighbor
 
 	while(ctx->current_level > 0) {
 		ASSERT(ctx->current_level < array_len(ctx->levels));
-		GxB_MatrixTupleIter *it = &ctx->levels[ctx->current_level];
+		RG_MatrixTupleIter *it = &ctx->levels[ctx->current_level];
 
 		bool depleted;
 		GrB_Index dest_id;
-		GxB_MatrixTupleIter_next(it, NULL, &dest_id, &depleted);
+		RG_MatrixTupleIter_next(it, NULL, &dest_id, NULL, &depleted);
 
 		if(depleted) {
 			// backtrack

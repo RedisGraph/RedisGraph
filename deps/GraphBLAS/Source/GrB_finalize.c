@@ -12,13 +12,12 @@
 // Results are undefined if more than one thread calls this function at the
 // same time.
 
-// However, in the current version of SuiteSparse:GraphBLAS, this function has
-// nothing to do.
-
 #include "GB.h"
 
 GrB_Info GrB_finalize ( )
 { 
+    // free all memory pools
+    GB_free_pool_finalize ( ) ;
     return (GrB_SUCCESS) ;
 }
 

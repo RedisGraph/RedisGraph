@@ -7,9 +7,9 @@ function C = apply (arg1, arg2, arg3, arg4, arg5, arg6)
 %   C = GrB.apply (Cin, M, op, A, desc)
 %   C = GrB.apply (Cin, M, accum, op, A, desc)
 %
-% GrB.apply applies a unary operator to the entries in the input matrix A,
-% which may be a GraphBLAS or MATLAB matrix (sparse or full).  See 'help
-% GrB.unopinfo' for a list of available unary operators.
+% GrB.apply applies a unary operator to the entries in the input matrix
+% A, which may be a GraphBLAS or built-in matrix (sparse or full).
+% See 'help GrB.unopinfo' for a list of available unary operators.
 %
 % The op and A arguments are required.
 %
@@ -23,7 +23,7 @@ function C = apply (arg1, arg2, arg3, arg4, arg5, arg6)
 % See also GrB/apply2, GrB/spfun.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (arg1))
     arg1 = arg1.opaque ;

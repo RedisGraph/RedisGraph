@@ -46,13 +46,16 @@
 // full.  R is constructed as sparse, hypersparse, or bitmap, depending on
 // the sparsity of M and Z, as determined by GB_masker_sparsity.
 
+// R is iso if both C and Z are iso and zij == cij.  This is handled in
+// GB_masker_phase2.
+
 #include "GB_mask.h"
 #include "GB_add.h"
 #define GB_FREE_ALL ;
 
 GrB_Info GB_masker          // R = masker (C, M, Z)
 (
-    GrB_Matrix *Rhandle,    // output matrix (unallocated on input)
+    GrB_Matrix R,           // output matrix, static header
     const bool R_is_csc,    // format of output matrix R
     const GrB_Matrix M,     // required input mask
     const bool Mask_comp,   // descriptor for M
@@ -69,7 +72,7 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
 
     GrB_Info info ;
 
-    ASSERT (Rhandle != NULL) ;
+    ASSERT (R != NULL && R->static_header) ;
 
     ASSERT_MATRIX_OK (M, "M for masker", GB0) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -102,11 +105,14 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
     // initializations
     //--------------------------------------------------------------------------
 
-    GrB_Matrix R = NULL ;
     int64_t Rnvec, Rnvec_nonempty ;
-    int64_t *Rp = NULL, *Rh = NULL ;
-    int64_t *R_to_M = NULL, *R_to_C = NULL, *R_to_Z = NULL ;
-    int R_ntasks = 0, TaskList_size = 0, R_nthreads ;
+    int64_t *Rp     = NULL ; size_t Rp_size = 0 ;
+    int64_t *Rh     = NULL ; size_t Rh_size = 0 ;
+    int64_t *R_to_M = NULL ; size_t R_to_M_size = 0 ;
+    int64_t *R_to_C = NULL ; size_t R_to_C_size = 0 ;
+    int64_t *R_to_Z = NULL ; size_t R_to_Z_size = 0 ;
+    int R_ntasks = 0, R_nthreads ;
+    size_t TaskList_size = 0 ;
     GB_task_struct *TaskList = NULL ;
 
     //--------------------------------------------------------------------------
@@ -118,7 +124,10 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
 
     info = GB_add_phase0 (
         // computed by by phase0:
-        &Rnvec, &Rh, &R_to_M, &R_to_C, &R_to_Z, NULL, &R_sparsity,
+        &Rnvec, &Rh, &Rh_size,
+        &R_to_M, &R_to_M_size,
+        &R_to_C, &R_to_C_size,
+        &R_to_Z, &R_to_Z_size, NULL, &R_sparsity,
         // original input:
         M, C, Z, Context) ;
     if (info != GrB_SUCCESS)
@@ -158,17 +167,17 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
         if (info != GrB_SUCCESS)
         { 
             // out of memory; free everything allocated by GB_add_phase0
-            GB_FREE (Rh) ;
-            GB_FREE (R_to_M) ;
-            GB_FREE (R_to_C) ;
-            GB_FREE (R_to_Z) ;
+            GB_FREE (&Rh, Rh_size) ;
+            GB_FREE_WERK (&R_to_M, R_to_M_size) ;
+            GB_FREE_WERK (&R_to_C, R_to_C_size) ;
+            GB_FREE_WERK (&R_to_Z, R_to_Z_size) ;
             return (info) ;
         }
 
         // count the number of entries in each vector of R
         info = GB_masker_phase1 (
             // computed or used by phase1:
-            &Rp, &Rnvec_nonempty,
+            &Rp, &Rp_size, &Rnvec_nonempty,
             // from phase1a:
             TaskList, R_ntasks, R_nthreads,
             // from phase0:
@@ -178,11 +187,11 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
         if (info != GrB_SUCCESS)
         { 
             // out of memory; free everything allocated by GB_add_phase0
-            GB_FREE (TaskList) ;
-            GB_FREE (Rh) ;
-            GB_FREE (R_to_M) ;
-            GB_FREE (R_to_C) ;
-            GB_FREE (R_to_Z) ;
+            GB_FREE_WERK (&TaskList, TaskList_size) ;
+            GB_FREE (&Rh, Rh_size) ;
+            GB_FREE_WERK (&R_to_M, R_to_M_size) ;
+            GB_FREE_WERK (&R_to_C, R_to_C_size) ;
+            GB_FREE_WERK (&R_to_Z, R_to_Z_size) ;
             return (info) ;
         }
 
@@ -207,23 +216,23 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
 
     info = GB_masker_phase2 (
         // computed or used by phase2:
-        &R, R_is_csc,
+        R, R_is_csc,
         // from phase1:
-        Rp, Rnvec_nonempty,
+        &Rp, Rp_size, Rnvec_nonempty,
         // from phase1a:
         TaskList, R_ntasks, R_nthreads,
         // from phase0:
-        Rnvec, Rh, R_to_M, R_to_C, R_to_Z, R_sparsity,
+        Rnvec, &Rh, Rh_size, R_to_M, R_to_C, R_to_Z, R_sparsity,
         // original input:
         M, Mask_comp, Mask_struct, C, Z, Context) ;
 
     // if successful, Rh and Rp must not be freed; they are now R->h and R->p
 
     // free workspace
-    GB_FREE (TaskList) ;
-    GB_FREE (R_to_M) ;
-    GB_FREE (R_to_C) ;
-    GB_FREE (R_to_Z) ;
+    GB_FREE_WERK (&TaskList, TaskList_size) ;
+    GB_FREE_WERK (&R_to_M, R_to_M_size) ;
+    GB_FREE_WERK (&R_to_C, R_to_C_size) ;
+    GB_FREE_WERK (&R_to_Z, R_to_Z_size) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -236,7 +245,6 @@ GrB_Info GB_masker          // R = masker (C, M, Z)
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (R, "R output for masker", GB0) ;
-    (*Rhandle) = R ;
     return (GrB_SUCCESS) ;
 }
 

@@ -110,7 +110,7 @@ void mexFunction
     // w<mask> = accum(w,u+v)
     METHOD (GrB_Vector_eWiseAdd_BinaryOp_(w, mask, accum, add, u, v, desc)) ;
 
-    // return w to MATLAB as a struct and free the GraphBLAS w
+    // return w as a struct and free the GraphBLAS w
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;
 
     FREE_ALL ;

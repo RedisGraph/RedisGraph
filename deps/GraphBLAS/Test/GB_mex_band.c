@@ -109,8 +109,6 @@ void mexFunction
         OK (GxB_Desc_set (desc, GrB_INP0, GrB_TRAN)) ;
     }
 
-    GB_MEX_TIC ;
-
     // create operator
     // use the user-defined operator, from the LoHi_band function
     METHOD (GxB_SelectOp_new (&op, (GxB_select_function) LoHi_band,
@@ -146,9 +144,8 @@ void mexFunction
         OK (GxB_Matrix_select_(C, NULL, NULL, op, A, Thunk, desc)) ;
     }
 
-    GB_MEX_TOC ;
 
-    // return C to MATLAB as a sparse matrix and free the GraphBLAS C
+    // return C as a sparse matrix and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", false) ;
 
     FREE_ALL ;

@@ -67,10 +67,10 @@ static inline void _setTraverseDirection(CondVarLenTraverse *op, const QGEdge *e
 	}
 }
 
-static inline int CondVarLenTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+static inline void CondVarLenTraverseToString(const OpBase *ctx, sds *buf) {
 	// TODO: tmp, improve TraversalToString
 	AlgebraicExpression_Optimize(&((CondVarLenTraverse *)ctx)->ae);
-	return TraversalToString(ctx, buf, buf_len, ((const CondVarLenTraverse *)ctx)->ae);
+	return TraversalToString(ctx, buf, ((const CondVarLenTraverse *)ctx)->ae);
 }
 
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
@@ -97,7 +97,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
 	op->g                  =  g;
 	op->r                  =  NULL;
-	op->M                  =  GrB_NULL;
+	op->M                  =  NULL;
 	op->ae                 =  ae;
 	op->ft                 =  NULL;
 	op->expandInto         =  false;
@@ -148,11 +148,13 @@ static OpResult CondVarLenTraverseInit(OpBase *opBase) {
 			AlgebraicExpression_Edge(op->ae));
 	uint reltype_count = QGEdge_RelationCount(e);
 
-	bool multi_edge = true;
+	bool  multi_edge  =  true;
+	bool  transpose   =  op->traverseDir != GRAPH_EDGE_DIR_OUTGOING;
 	if(reltype_count == 1) {
 		int rel_id = QGEdge_RelationID(e, 0);
 		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
-			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id);
+			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id,
+					transpose);
 		}
 	}
 

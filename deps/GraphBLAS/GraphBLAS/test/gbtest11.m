@@ -2,27 +2,27 @@ function gbtest11
 %GBTEST11 test GrB, sparse
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 rng ('default') ;
 A = 100 * rand (4) ;
 A (1,1:2) = 0 %#ok<*NOPRT>
 S = sparse (A)
 
-% x1 = GrB (S)
-% x2 = full (x1)
-% x3 = double (x2)
-% assert (gbtest_eq (S, x3))
+  x1 = GrB (S)
+  x2 = full (x1)
+  x3 = double (x2)
+  assert (gbtest_eq (S, x3))
 
-assert (gbtest_eq (S, double (full (GrB (S)))))
+% assert (gbtest_eq (S, double (full (GrB (S)))))
 
-% x1 = GrB (S)
-% x2 = full (x1)
-% x3 = full (x2)
-% x4 = double (x3)
-% assert (gbtest_eq (S, x4))
+  x1 = GrB (S)
+  x2 = full (x1)
+  x3 = full (x2)
+  x4 = double (x3)
+  assert (gbtest_eq (S, x4))
 
-assert (gbtest_eq (S, double (full (full (GrB (S))))))
+% assert (gbtest_eq (S, double (full (full (GrB (S))))))
 
 assert (gbtest_eq (S, double (full (double (full (GrB (S)))))))
 
@@ -81,10 +81,17 @@ assert (gbtest_eq (X, uint64 (full (G))))
 B = 100 * rand (4) ;
 B (1,[1 3]) = 0 ;
 
+have_octave = gb_octave ;
 X = complex (A)
 G = GrB (X)
-assert (gbtest_eq (X, full (complex (G))))
-assert (gbtest_eq (X, complex (full (G))))
+if (have_octave)
+    % the octave7, full(...) function converts its result to real if the
+    % imaginary part is zero, but MATLAB and GraphBLAS return as complex.
+    assert (gbtest_eq (X, G)) ;
+else
+    assert (gbtest_eq (X, full (complex (G))))
+    assert (gbtest_eq (X, complex (full (G))))
+end
 
 X = complex (A,B)
 G = GrB (X)

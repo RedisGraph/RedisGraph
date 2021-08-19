@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -17,7 +17,7 @@
 
 // If cin is not present then it is implicitly a 1-by-1 matrix with no entries.
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
 
 #define USAGE "usage: C = GrB.reduce (cin, accum, op, A, desc)"
 
@@ -242,7 +242,7 @@ void mexFunction
     OK (GrB_Descriptor_free (&desc)) ;
 
     //--------------------------------------------------------------------------
-    // export the output matrix C back to MATLAB
+    // export the output matrix C
     //--------------------------------------------------------------------------
 
     pargout [0] = gb_export (&C, kind) ;

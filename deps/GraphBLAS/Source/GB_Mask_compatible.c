@@ -14,6 +14,7 @@
 GrB_Info GB_Mask_compatible     // check type and dimensions of mask
 (
     const GrB_Matrix M,         // mask to check
+    const bool Mask_struct,     // true if M is structural
     const GrB_Matrix C,         // C<M>= ...
     const GrB_Index nrows,      // size of output if C is NULL (see GB*assign)
     const GrB_Index ncols,
@@ -28,12 +29,18 @@ GrB_Info GB_Mask_compatible     // check type and dimensions of mask
     if (M != NULL)
     { 
 
-        // M is typecast to boolean
-        if (!GB_Type_compatible (M->type, GrB_BOOL))
-        { 
-            GB_ERROR (GrB_DOMAIN_MISMATCH,
-                "M of type [%s] cannot be typecast to boolean",
-                M->type->name) ;
+        if (!Mask_struct)
+        {
+            // M is typecast to boolean
+            if (!GB_Type_compatible (M->type, GrB_BOOL))
+            { 
+                GB_ERROR (GrB_DOMAIN_MISMATCH,
+                    "M of type [%s] cannot be typecast to boolean",
+                    M->type->name) ;
+            }
+            // if M is iso and can be typecasted to bool, Mask_struct has been
+            // set true by GB_get_mask
+            ASSERT (!M->iso) ;
         }
 
         // check the mask dimensions

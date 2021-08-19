@@ -28,10 +28,10 @@ void GB_Pending_free        // free a list of pending tuples
     GB_Pending Pending = (*PHandle) ;
     if (Pending != NULL)
     { 
-        GB_FREE (Pending->i) ;
-        GB_FREE (Pending->j) ;
-        GB_FREE (Pending->x) ;
-        GB_FREE (Pending) ;
+        GB_FREE (&(Pending->i), Pending->i_size) ;
+        GB_FREE (&(Pending->j), Pending->j_size) ;
+        GB_FREE (&(Pending->x), Pending->x_size) ;
+        GB_FREE (&(Pending), Pending->header_size) ;
     }
 
     (*PHandle) = NULL ;

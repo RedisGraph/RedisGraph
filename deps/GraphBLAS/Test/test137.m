@@ -35,4 +35,6 @@ for k = [false true]
     assert (isequal (C0, C1.matrix)) ;
 end
 
+
+GB_builtin_complex_set (true) ;
 fprintf ('test137: all tests passed\n') ;

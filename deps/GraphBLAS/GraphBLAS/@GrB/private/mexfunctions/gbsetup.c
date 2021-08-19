@@ -3,18 +3,16 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
 // gbsetup initializes GraphBLAS by calling GxB_init and by setting
-// all GraphBLAS global variables to their MATLAB defaults.
+// all GraphBLAS global variables to their defaults.
 
-// Usage:
+#include "gb_interface.h"
 
-// gbsetup ;
-
-#include "gb_matlab.h"
+#define USAGE "GrB.setup"
 
 void mexFunction
 (
@@ -52,7 +50,7 @@ void mexFunction
     // initialize GraphBLAS
     //--------------------------------------------------------------------------
 
-    gb_usage (true, "start") ;
+    gb_usage (true, USAGE) ;
 
     //--------------------------------------------------------------------------
     // save test coverage

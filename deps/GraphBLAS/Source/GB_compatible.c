@@ -10,6 +10,7 @@
 // Check if the types for C<M> = accum (C,T) are all compatible,
 // and (if present) make sure the size of C and M match.
 
+#define GB_FREE_ALL ;
 #include "GB.h"
 
 GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
@@ -17,6 +18,7 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     const GrB_Type ctype,       // the type of C (matrix or scalar)
     const GrB_Matrix C,         // the output matrix C; NULL if C is a scalar
     const GrB_Matrix M,         // optional mask, NULL if no mask
+    const bool Mask_struct,     // true if M is structural
     const GrB_BinaryOp accum,   // C<M> = accum(C,T) is computed
     const GrB_Type ttype,       // type of T
     GB_Context Context
@@ -36,7 +38,7 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     //--------------------------------------------------------------------------
 
     if (accum != NULL)
-    {
+    { 
         // Results T are accumlated via C<M>=accum(C,T)
 
         // For entries in C and T, c=z=accum(c,t) is computed, so C must
@@ -47,12 +49,8 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
         // be compatible.  This is the same as the condition below
         // when accum is NULL.
 
-        info = GB_BinaryOp_compatible (accum, ctype, ctype, ttype,
-            GB_ignore_code, Context) ;
-        if (info != GrB_SUCCESS)
-        { 
-            return (info) ;
-        }
+        GB_OK (GB_BinaryOp_compatible (accum, ctype, ctype, ttype,
+            GB_ignore_code, Context)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -73,6 +71,6 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     // check the mask
     //--------------------------------------------------------------------------
 
-    return (GB_Mask_compatible (M, C, 1, 1, Context)) ;
+    return (GB_Mask_compatible (M, Mask_struct, C, 1, 1, Context)) ;
 }
 

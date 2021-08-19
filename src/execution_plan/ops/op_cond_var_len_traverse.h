@@ -17,7 +17,7 @@ typedef struct {
 	OpBase op;
 	Graph *g;
 	Record r;
-	GrB_Matrix M;                          /* Traversed matrix if using the SimpleConsume routine. */
+	RG_Matrix M;                           /* Traversed matrix if using the SimpleConsume routine. */
 	int edgesIdx;                          /* Edges set by operation. */
 	int srcNodeIdx;                        /* Node set by operation. */
 	int destNodeIdx;                       /* Node set by operation. */

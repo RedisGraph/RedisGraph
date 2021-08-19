@@ -13,7 +13,7 @@
 #include "GB.h"
 
 #define GB_SET(type,T,ampersand)                                            \
-GrB_Info GxB_Scalar_setElement_ ## T    /* s = x */                         \
+GrB_Info GB_EVAL2 (GXB (Scalar_setElement_), T)    /* s = x */              \
 (                                                                           \
     GxB_Scalar s,                       /* GxB_Scalar to modify       */    \
     type x                              /* user scalar to assign to s */    \

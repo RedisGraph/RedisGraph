@@ -14,7 +14,7 @@
 // respectively.  C is not modified outside that single row (for
 // GrB_Row_assign) or column (for GrB_Col_assign).
 
-// This function does the same thing as the MATLAB mimics GB_spec_assign.m
+// This function does the same thing as the mimics GB_spec_assign.m
 // (when kind=0), GB_spec_Col_assign (when kind=1), and GB_spec_Row_assign
 // (when kind=2).
 
@@ -117,10 +117,9 @@ GrB_Info assign ( )
         OK (GrB_Row_assign_(C, (GrB_Vector) Mask, accum, (GrB_Vector) A,
             I [0], J, nj, desc)) ;
     }
-    else if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_NNZ (A) == 1)
+    else if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_nnz (A) == 1)
     {
-        // scalar expansion to matrix or vector
-        GB_void *Ax = A->x ;
+        GB_void *Ax = A->x ; // OK: A is a scalar with exactly one entry
 
         if (ni == 1 && nj == 1 && Mask == NULL && I != GrB_ALL && J != GrB_ALL
             && GB_op_is_second (accum, C->type) && A->type->code <= GB_FC64_code
@@ -569,7 +568,7 @@ void mexFunction
     }
 
     //--------------------------------------------------------------------------
-    // return C to MATLAB as a struct
+    // return C as a struct
     //--------------------------------------------------------------------------
 
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C assign result", true) ;

@@ -6,12 +6,11 @@ function C = full (A, type, identity)
 % complex', 'logical', 'int8', 'int16', 'int32', 'int64', 'uint8',
 % 'uint16', 'uint32', or 'uint64'.
 %
-% If not present, the type defaults to the same type as A, and the identity
-% defaults to zero.  A may be any matrix (GraphBLAS, MATLAB sparse or
-% full).  To use this method for a MATLAB matrix A, use a GraphBLAS
-% identity value such as GrB(0), or use C = full (GrB (A)).  Note that
-% issparse (C) is true, since issparse (A) is true for any GraphBLAS matrix
-% A.
+% If not present, the type defaults to the same type as A, and the
+% identity defaults to zero.  A may be any matrix (GraphBLAS or built-in)
+% To use this method for a built-in matrix A, use a GraphBLAS identity
+% value such as GrB(0), or use C = full (GrB (A)).  Note that issparse (C)
+% is true, since issparse (A) is true for any GraphBLAS matrix A.
 %
 % Examples:
 %
@@ -26,14 +25,14 @@ function C = full (A, type, identity)
 % See also GrB/issparse, sparse, cast, GrB.type, GrB, GrB.isfull.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 A_is_GrB = isobject (A) ;
 if (A_is_GrB)
     % A is a GraphBLAS matrix
     Q = A.opaque ;
 else
-    % A is a MATLAB matrix
+    % A is a built-in matrix
     Q = A ;
 end
 

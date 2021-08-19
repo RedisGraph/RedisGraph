@@ -11,9 +11,13 @@
 // This function only computes C<M>=A'*B on the GPUs.  The mask must be
 // present, and not complemented.  The mask is always applied.
 
+// The output matrix C always has a static header.  The input matrices M, A,
+// and B may have static or dynamic headers.
+
 extern "C" 
 {
   #include "GB_mxm.h"
+  #include "GB_dynamic.h"
 }
 #include "GB_cuda.h"
 
@@ -30,33 +34,39 @@ extern "C"
 #include "templates/reduceNonZombiesWarp.cu.jit"
 
 #include "GB_jit_launcher.h"
+#include "GB_cuda_stringifier.hpp"
+#include "GB_cuda_global.h"
 
+GB_cuda_stringifier *SR_callback_ptr;
 
 const std::vector<std::string> header_names ={};
 
-
 #define GB_FREE_WORK                                                    \
 {                                                                       \
-    GB_cuda_free (Nanobuckets) ;    Nanobuckets = NULL ;                    \
-    GB_cuda_free (Blockbucket) ;    Blockbucket = NULL ;                    \
-    GB_cuda_free (Bucket);          Bucket      = NULL;                     \
-    GB_cuda_free (Bucketp);         Bucketp     = NULL;                     \
-    GB_cuda_free (offset);          offset      = NULL;                     \
+    /* free any dynamic headers allocated by GB_to_dynamic */           \
+    if (M_input_static) GB_Matrix_free (&M) ;                           \
+    if (A_input_static) GB_Matrix_free (&A) ;                           \
+    if (B_input_static) GB_Matrix_free (&B) ;                           \
+    GB_cuda_free (Nanobuckets) ;    Nanobuckets = NULL ;                \
+    GB_cuda_free (Blockbucket) ;    Blockbucket = NULL ;                \
+    GB_cuda_free (Bucket);          Bucket      = NULL;                 \
+    GB_cuda_free (Bucketp);         Bucketp     = NULL;                 \
+    GB_cuda_free (offset);          offset      = NULL;                 \
 }
 
 #define GB_FREE_ALL                                                     \
 {                                                                       \
     GB_FREE_WORK ;                                                      \
-    GrB_Matrix_free (Chandle) ;                                         \
+    GB_Matrix_free (&C) ;                                               \
 }
 
 GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
 (
-    GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // mask matrix
+    GrB_Matrix C_static,            // output matrix, static header
+    const GrB_Matrix M_input,       // mask matrix (may have a static header)
     const bool Mask_struct,         // if true, use the only structure of M
-    const GrB_Matrix A,             // input matrix
-    const GrB_Matrix B,             // input matrix
+    const GrB_Matrix A_input,       // input matrix (may have a static header)
+    const GrB_Matrix B_input,       // input matrix (may have a static header)
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     GB_Context Context
@@ -68,44 +78,51 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    ASSERT (Chandle != NULL) ;
-    ASSERT (*Chandle == NULL) ;
+    ASSERT (C_static != NULL && C_static->static_header) ;
 
-    ASSERT_MATRIX_OK (M, "M for dot3 cuda A'*B", GB0) ;
-    ASSERT_MATRIX_OK (A, "A for dot3 cuda A'*B", GB0) ;
-    ASSERT_MATRIX_OK (B, "B for dot3 cuda A'*B", GB0) ;
+    ASSERT_MATRIX_OK (M_input, "M for dot3 cuda A'*B", GB0) ;
+    ASSERT_MATRIX_OK (A_input, "A for dot3 cuda A'*B", GB0) ;
+    ASSERT_MATRIX_OK (B_input, "B for dot3 cuda A'*B", GB0) ;
 
-    ASSERT (!GB_PENDING (M)) ;
-    ASSERT (GB_JUMBLED_OK (M)) ;
-    ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (M_input)) ;
+    ASSERT (GB_JUMBLED_OK (M_input)) ;
+    ASSERT (!GB_ZOMBIES (M_input)) ;
 
-    ASSERT (!GB_PENDING (A)) ;
-    ASSERT (!GB_JUMBLED (A)) ;
-    ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (A_input)) ;
+    ASSERT (!GB_JUMBLED (A_input)) ;
+    ASSERT (!GB_ZOMBIES (A_input)) ;
 
-    ASSERT (!GB_PENDING (B)) ;
-    ASSERT (!GB_ZOMBIES (B)) ;
-    ASSERT (!GB_JUMBLED (B)) ;
+    ASSERT (!GB_PENDING (B_input)) ;
+    ASSERT (!GB_ZOMBIES (B_input)) ;
+    ASSERT (!GB_JUMBLED (B_input)) ;
 
     ASSERT_SEMIRING_OK (semiring, "semiring for dot3 numeric A'*B", GB0) ;
 
-    ASSERT (A->vlen == B->vlen) ;
+    ASSERT (A_input->vlen == B_input->vlen) ;
     GBURBLE ("(GPU dot3) ") ;
 
     //--------------------------------------------------------------------------
     // initializations
     //--------------------------------------------------------------------------
 
+    GrB_Matrix C = NULL, M = NULL, A = NULL, B = NULL ;
     int ntasks = 0, number_of_sms = 0 ;
     int64_t *Nanobuckets = NULL, *Blockbucket = NULL ;
     int64_t *Bucket = NULL;
     int64_t *Bucketp = NULL;
     int64_t *offset = NULL;
-    (*Chandle) = NULL ;
+    bool M_input_static = false ;
+    bool A_input_static = false ;
+    bool B_input_static = false ;
 
     // just in case M is jumbled and we don't handle it yet (TODO)
-    GB_MATRIX_WAIT (M) ;
-    ASSERT (!GB_JUMBLED (M)) ;
+    GB_MATRIX_WAIT (M_input) ;
+    ASSERT (!GB_JUMBLED (M_input)) ;
+
+    // note that this appears after the wait on M_input:
+    GB_OK (GB_to_dynamic (&M, &M_input_static, M_input, Context)) ;
+    GB_OK (GB_to_dynamic (&A, &A_input_static, A_input, Context)) ;
+    GB_OK (GB_to_dynamic (&B, &B_input_static, B_input, Context)) ;
 
     int device = -1;
 
@@ -148,7 +165,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     // TODO tell GB_CREATE where to put the data: CPU or GPU (via
     // cudaMemAdvise), but this works as-is.
     int sparsity = (M_is_hyper) ? GxB_HYPERSPARSE : GxB_SPARSE ;
-    info = GB_new_bix (Chandle, // sparse or hyper (from M), new header
+    info = GB_new_bix (&C, false, // sparse or hyper (from M), dynamic header
         ctype, cvlen, cvdim, GB_Ap_malloc, true,
         sparsity, false, M->hyper_switch, cnvec,
         cnz+1,  // add one to cnz for GB_cumsum of Cwork 
@@ -161,7 +178,6 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
         return (info) ;
     }
 
-    GrB_Matrix C = (*Chandle) ;
     //int64_t *Citemp =  C->i ;        
     //auto *Cxtemp = C->x ;        
     //cudaMalloc ((void**) &(C->i), cnz * sizeof( int64_t) ); 
@@ -196,9 +212,18 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
     char semiring_code [GB_CUDA_STRLEN+2] ;
     char mask_name [GB_CUDA_STRLEN+2] ;
 
-    GB_cuda_stringify_semiring (semiring, flipxy,
+    GB_cuda_stringifier mysemiring =  GB_cuda_stringifier();
+    uint64_t sr_code;
+
+    // FIXME:  need GB_sparsity(C), etc, not C->sparsity
+    mysemiring.enumify_semiring ( &sr_code, semiring, flipxy,
         ctype, A->type, B->type, M->type, Mask_struct,  // matrix types
-        true, semiring_name, semiring_code, mask_name) ;
+        false, C->sparsity, M->sparsity, A->sparsity, B->sparsity) ;    // FIXME
+
+    const char *header_name = (const char *)"mySemiRing.h";
+    mysemiring.load_string(header_name, semiring_code ) ;
+
+    SR_callback_ptr = &mysemiring;
 
     GBURBLE ("(GPU stringified) ") ;
     //--------------------------------------------------------------------------
@@ -336,11 +361,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
 
     // The work to compute C(i,j) is held in Ci [p], if C(i,j) appears in
     // as the pth entry in C.
-    GB_callback mysemiring;
-    const char *header_name = (const char *)"mySemiRing.h";
-    mysemiring.load_string(header_name, semiring_code ) ;
-    SR_callback_ptr = &mysemiring;
-
+    
 
     //cudaStream_t stream_AxB;
     //cudaStreamCreate ( &stream_AxB);
@@ -635,7 +656,11 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
         cudaDeviceSynchronize();
     }
     GBURBLE ("(GPU phase3 done) ") ;
-    
+
+    // transplant C into C_static, and free C
+    GB_to_static (C_static, &C, Context) ;
+    ASSERT (C == NULL) ;
+
     std::string reduce_kernel_name = "reduceNonZombiesWarp";
     const char*  jit_template;
     #define red_blocksz 1024
@@ -657,8 +682,8 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
                    .set_kernel_inst( reduce_kernel_name , { ctype->name })
                    .configure(red_grid, red_block) //if commented, use implicit 1D configure in launch
                    .launch(
-                            C->i,   // index vector, only sum up values >= 0
-                            C->x,   // input pointer to vector to reduce, with zombies
+                            C_static->i,   // index vector, only sum up values >= 0
+                            C_static->x,   // input pointer to vector to reduce, with zombies
                             block_sum,             // Block sums on return 
                             (unsigned int)cnz      // length of vector to reduce to scalar
 
@@ -688,6 +713,7 @@ GrB_Info GB_AxB_dot3_cuda           // C<M> = A'*B using dot product method
 
     cudaDeviceSynchronize();
 
+    GB_FREE_WORK ;
     return GrB_SUCCESS; 
 }
 

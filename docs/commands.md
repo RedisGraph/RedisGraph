@@ -604,11 +604,13 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                      | Description                                                                               |
-| -------                                       | :-----------                                                                              |
-| exists()                                      | Returns true if the specified property exists in the node or relationship.                |
-| [any()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for any element in the input array.  |
-| [all()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for all elements in the input array. |
+| Function                                         | Description                                                                                 |
+| -------                                          | :-----------                                                                                |
+| exists()                                         | Returns true if the specified property exists in the node or relationship.                  |
+| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.    |
+| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.   |
+| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.  |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array. |
 
 ## Scalar functions
 
@@ -648,14 +650,15 @@ This section contains information on all supported functions from the Cypher que
 
 |Function    | Description|
 | ---------- |:-----------|
-|abs()		 | Returns the absolute value of a number|
-|ceil()		 | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
-|floor()	 | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
-|rand()		 | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
-|round()     | Returns the value of a number rounded to the nearest integer |
-|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
-|sqrt()      | Returns the square root of a number|
-|toInteger() | Converts a floating point or string value to an integer value. |
+|abs()		     | Returns the absolute value of a number|
+|ceil()		    | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+|floor()	    | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer     |
+|rand()		    | Returns a random floating point number in the range from 0 to 1; i.e. [0,1]                                              |
+|round()     | Returns the value of a number rounded to the nearest integer                                                             |
+|sign()      | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number          |
+|sqrt()      | Returns the square root of a number                                                                                      |
+|pow()       | Returns base raised to the power of exponent, base^exponent                                                              |
+|toInteger() | Converts a floating point or string value to an integer value.                                                           |
 
 ## String functions
 
@@ -672,6 +675,7 @@ This section contains information on all supported functions from the Cypher que
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
+| size()      | Returns a string length                                                                         |
 
 ## Point functions
 
@@ -715,7 +719,7 @@ MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
 ```
 
 #### Existential comprehension functions
-The functions `any()` and `all()` use a simplified form of the list comprehension syntax and return a boolean value.
+The functions `any()`, `all()`, `single()` and `none()` use a simplified form of the list comprehension syntax and return a boolean value.
 
 ```sh
 any(element IN array WHERE condition)

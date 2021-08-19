@@ -58,7 +58,8 @@ static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
 	RedisModule_SaveUnsigned(rdb, 0);
 }
 
-// Decode the unsigned placeholders saved before and after the keyspace values and call the module event handler.
+// Decode the unsigned placeholders saved before and after the keyspace values
+// and call the module event handler.
 static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 	RedisModule_LoadUnsigned(rdb);
 	if(when == REDISMODULE_AUX_BEFORE_RDB) ModuleEventHandler_AUXBeforeKeyspaceEvent();

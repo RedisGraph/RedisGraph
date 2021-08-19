@@ -3,13 +3,15 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
 // v = gbver
 
-#include "gb_matlab.h"
+#include "gb_interface.h"
+
+#define USAGE "usage: v = gbver"
 
 static const char *vfields [3] = { "Name", "Version", "Date" } ;
 
@@ -26,10 +28,10 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    gb_usage (nargin == 0 && nargout <= 1, "usage: v = gbver") ;
+    gb_usage (nargin == 0 && nargout <= 1, USAGE) ;
 
     //--------------------------------------------------------------------------
-    // get the version and date information and return it as a MATLAB struct
+    // get the version and date information and return it as a struct
     //--------------------------------------------------------------------------
 
     int version [3] ;
@@ -47,8 +49,7 @@ void mexFunction
         printf ("%s\n", about) ;
         printf ("Version: %d.%d.%d (%s)\n\n",
                 version [0], version [1], version [2], date) ;
-        OK (GxB_Global_Option_get (GxB_LIBRARY_LICENSE, &license)) ;
-        printf ("License:\n%s\n", license) ;
+        printf ("@GrB License: GNU General Public License v3.0 or later\n\n") ;
         OK (GxB_Global_Option_get (GxB_API_ABOUT, &spec)) ;
         printf ("Spec:\n%s\n", spec) ;
         OK (GxB_Global_Option_get (GxB_API_URL, &url)) ;

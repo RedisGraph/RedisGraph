@@ -1,11 +1,11 @@
 function ok = GB_spec_compare (C_spec, C_mex, identity, tol)
-%GB_SPEC_COMPARE compare MATLAB mimic result with GraphBLAS result
+%GB_SPEC_COMPARE compare mimic result with GraphBLAS result
 % ok = GB_spec_compare (C_spec, C_mex, identity, tol)
 %
 % compares two structs C_spec and C_mex.  The C_spec struct contains a dense
-% matrix and is the output of a MATLAB mimic, C_spec = GB_spec_* (...) for
+% matrix and is the output of a mimic, C_spec = GB_spec_* (...) for
 % some GraphBLAS method.  C_mex = GB_mex_* (...) is the output of the
-% corresponding MATLAB interface to the true GraphBLAS method, in C.
+% corresponding interface to the true GraphBLAS method, in C.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
