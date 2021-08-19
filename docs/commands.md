@@ -604,11 +604,13 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-| Function                                      | Description                                                                               |
-| -------                                       | :-----------                                                                              |
-| exists()                                      | Returns true if the specified property exists in the node or relationship.                |
-| [any()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for any element in the input array.  |
-| [all()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for all elements in the input array. |
+| Function                                         | Description                                                                                 |
+| -------                                          | :-----------                                                                                |
+| exists()                                         | Returns true if the specified property exists in the node or relationship.                  |
+| [any()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for any element in the input array.    |
+| [all()](#existential-comprehension-functions)    | Returns true if the inner WHERE predicate holds true for all elements in the input array.   |
+| [none()](#existential-comprehension-functions)   | Returns true if the inner WHERE predicate holds false for all elements in the input array.  |
+| [single()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for 1 element only in the input array. |
 
 ## Scalar functions
 
@@ -716,7 +718,7 @@ MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
 ```
 
 #### Existential comprehension functions
-The functions `any()`, `all()`, `single` and `none` use a simplified form of the list comprehension syntax and return a boolean value.
+The functions `any()`, `all()`, `single()` and `none()` use a simplified form of the list comprehension syntax and return a boolean value.
 
 ```sh
 any(element IN array WHERE condition)

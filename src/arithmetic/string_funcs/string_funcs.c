@@ -72,7 +72,9 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 	return SI_TransferStringVal(trimmed);
 }
 
-/* returns a string in which the order of all characters in the original string have been reversed. */
+/* incase the parameter type is 
+ * 1. string - returns a string in which the order of all characters in the original string have been reversed.
+ * 1. array  - returns an array in which the order of all elements in the original array have been reversed. */
 SIValue AR_REVERSE(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 

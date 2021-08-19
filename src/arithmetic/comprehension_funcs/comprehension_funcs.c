@@ -160,16 +160,15 @@ SIValue AR_SINGLE(SIValue *argv, int argc) {
 		// Add the current element to the record at its allocated position.
 		Record_AddScalar(r, ctx->variable_idx, current_elem);
 
-		// If any element in an ALL function does not pass the predicate, return false.
+		// If more then 1 element in a SINGLE function pass the predicate, return false.
 		if(FilterTree_applyFilters(ctx->ft, r)) {
 			if(single) return SI_BoolVal(false);
 			else single = true;
 		}
 	}
 
-	if(single) return SI_BoolVal(true);
-
-	return SI_BoolVal(false);
+	// If only 1 element in a SINGLE function pass the predicate, return true, otherwise false.s
+	return SI_BoolVal(single);
 }
 
 SIValue AR_NONE(SIValue *argv, int argc) {
