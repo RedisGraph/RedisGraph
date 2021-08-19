@@ -167,7 +167,7 @@ SIValue AR_SINGLE(SIValue *argv, int argc) {
 		}
 	}
 
-	// If only 1 element in a SINGLE function pass the predicate, return true, otherwise false.s
+	// If only 1 element in a SINGLE function pass the predicate, return true, otherwise false.
 	return SI_BoolVal(single);
 }
 
