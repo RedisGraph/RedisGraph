@@ -77,6 +77,7 @@ void ThreadPools_SetMaxPendingWork
 	uint64_t val
 );
 
+// destroies all threadpools, allows threads to exit gracefully
 void ThreadPools_Destroy
 (
 	void
