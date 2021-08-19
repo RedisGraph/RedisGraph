@@ -12,12 +12,12 @@ FLOW_FILES = $(notdir $(FLOW_TESTS))
 #if host is linux
 ifeq ($(OS), Linux)
 # regular tests on linux
-	@python3 -m RLTest --module ../../src/redisgraph.so -r --randomize-ports -t $@ $(TEST_ARGS)
+	@python3 -m RLTest --module ../../src/redisgraph.so --randomize-ports -t $@ $(TEST_ARGS)
 else
 # mac
 ifeq ($(VALGRIND),)
 # no valgrind
-	@python3 -m RLTest --module ../../src/redisgraph.so -r --randomize-ports -t $@ $(TEST_ARGS)
+	@python3 -m RLTest --module ../../src/redisgraph.so --randomize-ports -t $@ $(TEST_ARGS)
 else
 # valgrind in docker
 	@echo running docker to run valgrind flow test on MacOS
