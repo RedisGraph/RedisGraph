@@ -199,7 +199,7 @@ SIValue AR_NONE(SIValue *argv, int argc) {
 		if(FilterTree_applyFilters(ctx->ft, r)) return SI_BoolVal(false);
 	}
 
-	// All elements passed, return true.
+	// No elements passed, return true.
 	return SI_BoolVal(true);
 }
 
