@@ -1,3 +1,4 @@
+import os
 from RLTest import Env
 from redisgraph import Graph
 from pathos.pools import ProcessPool as Pool
@@ -22,7 +23,7 @@ def issue_query(conn, q):
 class testPendingQueryLimit():
     def __init__(self):
         # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
+        if Env().envRunner.debugger is not None or os.getenv('COV') == '1':
             Env().skip() # valgrind is not working correctly with multi process
 
         self.env = Env(decodeResponses=True)

@@ -1,3 +1,4 @@
+import os
 import time
 from time import sleep
 from RLTest import Env
@@ -70,7 +71,7 @@ def BGSAVE_loop(env, conn, n_iterations):
 class testStressFlow(FlowTestsBase):
     def __init__(self):
         # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
+        if Env().envRunner.debugger is not None or os.getenv('COV') == '1':
             Env().skip() # valgrind is not working correctly with multi process
 
         self.env = Env(decodeResponses=True)
