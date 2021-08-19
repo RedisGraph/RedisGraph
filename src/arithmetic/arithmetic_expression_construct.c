@@ -686,8 +686,10 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(t == CYPHER_AST_PARAMETER) {
 		return _AR_ExpNodeFromParameter(expr);
-	} else if(t == CYPHER_AST_LIST_COMPREHENSION || t == CYPHER_AST_ANY ||
-			  t == CYPHER_AST_ALL || t == CYPHER_AST_SINGLE ||
+	} else if(t == CYPHER_AST_LIST_COMPREHENSION || 
+			  t == CYPHER_AST_ANY ||
+			  t == CYPHER_AST_ALL || 
+			  t == CYPHER_AST_SINGLE ||
 			  t == CYPHER_AST_NONE) {
 		return _AR_ExpNodeFromComprehensionFunction(expr, t);
 	} else if(t == CYPHER_AST_MAP) {

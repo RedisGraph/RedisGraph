@@ -675,6 +675,7 @@ This section contains information on all supported functions from the Cypher que
 | toJSON()    | Returns a [JSON representation](#json-format) of a value                                        |
 | toUpper()   | Returns the original string in uppercase                                                        |
 | trim()      | Returns the original string with leading and trailing whitespace removed                        |
+| size()  | Returns a string length |
 
 ## Point functions
 

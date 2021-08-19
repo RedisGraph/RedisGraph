@@ -73,10 +73,10 @@ static void _PopulateComprehensionCtx(ListComprehensionCtx *ctx, Record outer_re
 
 SIValue AR_ANY(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	/* ANY comprehensions are invoked with three children:
-	 * The list to iterate over.
-	 * The current Record.
-	 * The function context. */
+	// ANY comprehensions are invoked with three children:
+	// The list to iterate over.
+	// The current Record.
+	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
 	ListComprehensionCtx *ctx = argv[2].ptrval;
@@ -105,10 +105,10 @@ SIValue AR_ANY(SIValue *argv, int argc) {
 
 SIValue AR_ALL(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	/* ALL comprehensions are invoked with three children:
-	 * The list to iterate over.
-	 * The current Record.
-	 * The function context. */
+	// ALL comprehensions are invoked with three children:
+	// The list to iterate over.
+	// The current Record.
+	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
 	ListComprehensionCtx *ctx = argv[2].ptrval;
@@ -137,10 +137,10 @@ SIValue AR_ALL(SIValue *argv, int argc) {
 
 SIValue AR_SINGLE(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	/* ALL comprehensions are invoked with three children:
-	 * The list to iterate over.
-	 * The current Record.
-	 * The function context. */
+	// ALL comprehensions are invoked with three children:
+	// The list to iterate over.
+	// The current Record.
+	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
 	ListComprehensionCtx *ctx = argv[2].ptrval;
@@ -173,10 +173,10 @@ SIValue AR_SINGLE(SIValue *argv, int argc) {
 
 SIValue AR_NONE(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	/* ALL comprehensions are invoked with three children:
-	 * The list to iterate over.
-	 * The current Record.
-	 * The function context. */
+	// ALL comprehensions are invoked with three children:
+	// The list to iterate over.
+	// The current Record.
+	// The function context.
 	SIValue list = argv[0];
 	Record outer_record = argv[1].ptrval;
 	ListComprehensionCtx *ctx = argv[2].ptrval;
@@ -259,8 +259,6 @@ void Register_ComprehensionFuncs() {
 	func_desc = AR_FuncDescNew("any", AR_ANY, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
-	func_desc->bfree = ListComprehension_Free;
-	func_desc->bclone = ListComprehension_Clone;
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
@@ -269,8 +267,6 @@ void Register_ComprehensionFuncs() {
 	func_desc = AR_FuncDescNew("all", AR_ALL, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
-	func_desc->bfree = ListComprehension_Free;
-	func_desc->bclone = ListComprehension_Clone;
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
@@ -279,8 +275,6 @@ void Register_ComprehensionFuncs() {
 	func_desc = AR_FuncDescNew("single", AR_SINGLE, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
-	func_desc->bfree = ListComprehension_Free;
-	func_desc->bclone = ListComprehension_Clone;
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
@@ -289,8 +283,6 @@ void Register_ComprehensionFuncs() {
 	func_desc = AR_FuncDescNew("none", AR_NONE, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
-	func_desc->bfree = ListComprehension_Free;
-	func_desc->bclone = ListComprehension_Clone;
 
 	types = array_new(SIType, 3);
 	array_append(types, T_ARRAY | T_NULL);
@@ -299,7 +291,5 @@ void Register_ComprehensionFuncs() {
 	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, true, false);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
-	func_desc->bfree = ListComprehension_Free;
-	func_desc->bclone = ListComprehension_Clone;
 }
 
