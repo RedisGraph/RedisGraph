@@ -1,4 +1,3 @@
-import os
 from RLTest import Env
 from redisgraph import Graph
 from pathos.pools import ProcessPool as Pool
