@@ -54,6 +54,8 @@ static void _CommitNodesBlueprint(PendingCreations *pending) {
 			// sync matrix, make sure label matrix is of the right dimensions
 			Graph_GetLabelMatrix(g, s->id);
 		}
+		// sync matrix, make sure mapping matrix is of the right dimensions
+		if(label_count > 0) Graph_GetNodeLabelMatrix(g);
 	}
 }
 
