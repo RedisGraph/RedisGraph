@@ -1,4 +1,3 @@
-import os
 import random
 from RLTest import Env
 from redisgraph import Graph
