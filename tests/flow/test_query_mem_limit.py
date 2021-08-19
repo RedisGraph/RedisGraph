@@ -42,7 +42,7 @@ def issue_query(conn, q, should_fail):
 class testQueryMemoryLimit():
     def __init__(self):
         # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None or os.getenv('COV') == '1':
+        if Env().envRunner.debugger is not None:
             Env().skip() # valgrind is not working correctly with multi process
 
         self.env = Env(decodeResponses=True)
