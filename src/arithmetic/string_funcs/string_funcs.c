@@ -12,7 +12,7 @@
 #include "../../util/strutil.h"
 #include "../../util/json_encoder.h"
 
-/* returns a string containing the specified number of leftmost characters of the original string. */
+// returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
@@ -27,7 +27,7 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
 	return SI_TransferStringVal(left_str);
 }
 
-/* returns the original string with leading whitespace removed. */
+// returns the original string with leading whitespace removed.
 SIValue AR_LTRIM(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
@@ -40,7 +40,7 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
 	return SI_DuplicateStringVal(trimmed);
 }
 
-/* returns a string containing the specified number of rightmost characters of the original string. */
+// returns a string containing the specified number of rightmost characters of the original string.
 SIValue AR_RIGHT(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
@@ -54,7 +54,7 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 	return SI_DuplicateStringVal(argv[0].stringval + start);
 }
 
-/* returns the original string with trailing whitespace removed. */
+// returns the original string with trailing whitespace removed.
 SIValue AR_RTRIM(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
@@ -72,23 +72,34 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 	return SI_TransferStringVal(trimmed);
 }
 
-/* returns a string in which the order of all characters in the original string have been reversed. */
+// incase the parameter type is 
+// 1. string - returns a string in which the order of all characters in the original string have been reversed.
+// 2. array  - returns an array in which the order of all elements in the original array have been reversed.
 SIValue AR_REVERSE(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	char *str = argv[0].stringval;
-	size_t str_len = strlen(str);
-	char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
-	int i = str_len - 1;
-	int j = 0;
-	while(i >= 0) {
-		reverse[j++] = str[i--];
+	SIValue value = argv[0];
+	if(SI_TYPE(value) == T_STRING) {
+		// string reverse
+		char *str = value.stringval;
+		size_t str_len = strlen(str);
+		char *reverse = rm_malloc((str_len + 1) * sizeof(char));
+
+		int i = str_len - 1;
+		int j = 0;
+		while(i >= 0) {
+			reverse[j++] = str[i--];
+		}
+		reverse[j] = '\0';
+		return SI_TransferStringVal(reverse);
+	} else {
+		SIValue reverse = SI_CloneValue(value);
+		array_reverse(reverse.array);
+		return reverse;
 	}
-	reverse[j] = '\0';
-	return SI_TransferStringVal(reverse);
 }
 
-/* returns a substring of the original string, beginning with a 0-based index start and length. */
+// returns a substring of the original string, beginning with a 0-based index start and length.
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 	/*
 	    argv[0] - original string
@@ -128,7 +139,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 	return SI_TransferStringVal(substring);
 }
 
-/* returns the original string in lowercase. */
+// returns the original string in lowercase.
 SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
@@ -138,7 +149,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	return SI_TransferStringVal(lower);
 }
 
-/* returns the original string in uppercase. */
+// returns the original string in uppercase.
 SIValue AR_TOUPPER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
@@ -148,7 +159,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
 	return SI_TransferStringVal(upper);
 }
 
-/* converts an integer, float or boolean value to a string. */
+// converts an integer, float or boolean value to a string.
 SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	size_t len = SIValue_StringJoinLen(argv, 1, "");
@@ -158,14 +169,14 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	return SI_TransferStringVal(str);
 }
 
-/* Returns a JSON string representation of a map value. */
+// Returns a JSON string representation of a map value.
 SIValue AR_TOJSON(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *buf = JsonEncoder_SIValue(argv[0]);
 	return SI_TransferStringVal(buf);
 }
 
-/* returns the original string with leading and trailing whitespace removed. */
+// returns the original string with leading and trailing whitespace removed.
 SIValue AR_TRIM(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	SIValue ltrim = AR_LTRIM(argv, argc);
@@ -173,7 +184,7 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 	return trimmed;
 }
 
-/* returns true if argv[1] is a substring of argv[0]. */
+// returns true if argv[1] is a substring of argv[0].
 SIValue AR_CONTAINS(SIValue *argv, int argc) {
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
@@ -186,7 +197,7 @@ SIValue AR_CONTAINS(SIValue *argv, int argc) {
 	return SI_BoolVal(found);
 }
 
-/* returns true if argv[0] starts with argv[1]. */
+// returns true if argv[0] starts with argv[1].
 SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
@@ -207,7 +218,7 @@ SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 	return SI_BoolVal(true);
 }
 
-/* returns true if argv[0] ends with argv[1]. */
+// returns true if argv[0] ends with argv[1].
 SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
@@ -266,7 +277,7 @@ void Register_StringFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_ARRAY | T_NULL));
 	func_desc = AR_FuncDescNew("reverse", AR_REVERSE, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 

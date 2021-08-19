@@ -255,7 +255,7 @@ void Register_ListFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_STRING | T_ARRAY | T_NULL);
 	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, 1, types, true, false);
 	AR_RegFunc(func_desc);
 
