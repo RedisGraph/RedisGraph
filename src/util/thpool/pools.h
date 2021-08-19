@@ -77,3 +77,7 @@ void ThreadPools_SetMaxPendingWork
 	uint64_t val
 );
 
+void ThreadPools_Destroy
+(
+	void
+);
