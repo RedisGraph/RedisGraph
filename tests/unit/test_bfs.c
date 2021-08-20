@@ -1,15 +1,10 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "gtest.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include "./acutest.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
@@ -17,60 +12,54 @@ extern "C" {
 #include "../../src/graph/entities/qg_edge.h"
 #include "../../src/algorithms/algorithms.h"
 
-#ifdef __cplusplus
+static QGNode *A;
+static QGNode *B;
+static QGNode *C;
+static QGNode *D;
+static QGEdge *AB;
+static QGEdge *BC;
+static QGEdge *BD;
+
+static void setup() {
+	// Use the malloc family for allocations
+	Alloc_Reset();
 }
-#endif
 
-class BFSTest: public ::testing::Test {
-  public:
-	static QGNode *A;
-	static QGNode *B;
-	static QGNode *C;
-	static QGNode *D;
-	static QGEdge *AB;
-	static QGEdge *BC;
-	static QGEdge *BD;
+static QueryGraph *BuildGraph() {
+	// (A)->(B)
+	// (B)->(C)
+	// (B)->(D)
+	size_t node_cap = 4;
+	size_t edge_cap = 3;
 
-  protected:
-	static void SetUpTestCase() {
-		// Use the malloc family for allocations
-		Alloc_Reset();
-	}
+	// Create nodes.
+	const char *relation = "R";
 
-	static QueryGraph *BuildGraph() {
-		// (A)->(B)
-		// (B)->(C)
-		// (B)->(D)
-		size_t node_cap = 4;
-		size_t edge_cap = 3;
+	A = QGNode_New("A");
+	B = QGNode_New("B");
+	C = QGNode_New("C");
+	D = QGNode_New("D");
 
-		// Create nodes.
-		const char *relation = "R";
+	AB = QGEdge_New(relation, "AB");
+	BC = QGEdge_New(relation, "BC");
+	BD = QGEdge_New(relation, "BD");
 
-		A = QGNode_New("A");
-		B = QGNode_New("B");
-		C = QGNode_New("C");
-		D = QGNode_New("D");
+	QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+	QueryGraph_AddNode(g, A);
+	QueryGraph_AddNode(g, B);
+	QueryGraph_AddNode(g, C);
+	QueryGraph_AddNode(g, D);
 
-		AB = QGEdge_New(relation, "AB");
-		BC = QGEdge_New(relation, "BC");
-		BD = QGEdge_New(relation, "BD");
+	QueryGraph_ConnectNodes(g, A, B, AB);
+	QueryGraph_ConnectNodes(g, B, C, BC);
+	QueryGraph_ConnectNodes(g, B, D, BD);
 
-		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
-		QueryGraph_AddNode(g, A);
-		QueryGraph_AddNode(g, B);
-		QueryGraph_AddNode(g, C);
-		QueryGraph_AddNode(g, D);
+	return g;
+}
 
-		QueryGraph_ConnectNodes(g, A, B, AB);
-		QueryGraph_ConnectNodes(g, B, C, BC);
-		QueryGraph_ConnectNodes(g, B, D, BD);
+void test_BFSLevels(void) {
+	setup();
 
-		return g;
-	}
-};
-
-TEST_F(BFSTest, BFSLevels) {
 	QGNode *S;                  // BFS starts here.
 	QGNode **nodes;             // Nodes reached by BFS.
 	QueryGraph *g;              // Graph traversed.
@@ -111,7 +100,7 @@ TEST_F(BFSTest, BFSLevels) {
 					break;
 				}
 			}
-			ASSERT_TRUE(found);
+			TEST_CHECK(found);
 		}
 
 		array_free(nodes);
@@ -126,7 +115,7 @@ TEST_F(BFSTest, BFSLevels) {
 
 	// Determine number of expected nodes.
 	int expected_node_count = sizeof(expected_level_deepest) / sizeof(expected_level_deepest[0]);
-	ASSERT_EQ(expected_node_count, array_len(nodes));
+	TEST_CHECK(expected_node_count == array_len(nodes));
 
 	for(int i = 0; i < expected_node_count; i++) {
 		bool found = false;
@@ -136,7 +125,7 @@ TEST_F(BFSTest, BFSLevels) {
 				break;
 			}
 		}
-		ASSERT_TRUE(found);
+		TEST_CHECK(found);
 	}
 
 	// Clean up.
@@ -144,13 +133,8 @@ TEST_F(BFSTest, BFSLevels) {
 	QueryGraph_Free(g);
 }
 
-// Static function declarations
-QGNode *BFSTest::A;
-QGNode *BFSTest::B;
-QGNode *BFSTest::C;
-QGNode *BFSTest::D;
-
-QGEdge *BFSTest::AB;
-QGEdge *BFSTest::BC;
-QGEdge *BFSTest::BD;
+TEST_LIST = {
+	{ "test_BFSLevels", test_BFSLevels },
+	{ NULL, NULL }     // zeroed record marking the end of the list
+};
 

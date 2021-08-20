@@ -1,99 +1,85 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "gtest.h"
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
+#include "./acutest.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/configuration/config.h"
+#include "../../src/graph/entities/qg_edge.h"
 #include "../../src/algorithms/algorithms.h"
 
-#ifdef __cplusplus
+static void setup(void) {
+	// Use the malloc family for allocations
+	Alloc_Reset();
+
+	// Initialize GraphBLAS.
+	GrB_init(GrB_NONBLOCKING);
+	GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);     // all matrices in CSR format
+	GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
 }
-#endif
 
-class AllPathsTest : public ::testing::Test {
-  protected:
-	static void SetUpTestCase() {
-		// Use the malloc family for allocations
-		Alloc_Reset();
+static Graph *BuildGraph(void) {
+	Edge e;
+	Node n;
+	size_t nodeCount = 4;
+	Graph *g = Graph_New(nodeCount, nodeCount);
+	int relation = Graph_AddRelationType(g);
+	for(int i = 0; i < 4; i++)
+		Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
 
-		// Initialize GraphBLAS.
-		GrB_init(GrB_NONBLOCKING);
-		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW);     // all matrices in CSR format
-		GxB_Global_Option_set(GxB_HYPER_SWITCH, GxB_NEVER_HYPER); // matrices are never hypersparse
-	}
+	/* Connections:
+	 * 0 -> 1
+	 * 0 -> 2
+	 * 1 -> 0
+	 * 1 -> 2
+	 * 2 -> 1
+	 * 2 -> 3
+	 * 3 -> 0 */
 
-	static void TearDownTestCase() {
-		GrB_finalize();
-	}
+	// Connections:
+	// 0 -> 1
+	Graph_CreateEdge(g, 0, 1, relation, &e);
+	// 0 -> 2
+	Graph_CreateEdge(g, 0, 2, relation, &e);
+	// 1 -> 0
+	Graph_CreateEdge(g, 1, 0, relation, &e);
+	// 1 -> 2
+	Graph_CreateEdge(g, 1, 2, relation, &e);
+	// 2 -> 1
+	Graph_CreateEdge(g, 2, 1, relation, &e);
+	// 2 -> 3
+	Graph_CreateEdge(g, 2, 3, relation, &e);
+	// 3 -> 0
+	Graph_CreateEdge(g, 3, 0, relation, &e);
+	return g;
+}
 
-	static Graph *BuildGraph() {
-		Edge e;
-		Node n;
-		size_t nodeCount = 4;
-		Graph *g = Graph_New(nodeCount, nodeCount);
-		int relation = Graph_AddRelationType(g);
-		for(int i = 0; i < 4; i++)
-			Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
-
-		/* Connections:
-		 * 0 -> 1
-		 * 0 -> 2
-		 * 1 -> 0
-		 * 1 -> 2
-		 * 2 -> 1
-		 * 2 -> 3
-		 * 3 -> 0 */
-
-		// Connections:
-		// 0 -> 1
-		Graph_CreateEdge(g, 0, 1, relation, &e);
-		// 0 -> 2
-		Graph_CreateEdge(g, 0, 2, relation, &e);
-		// 1 -> 0
-		Graph_CreateEdge(g, 1, 0, relation, &e);
-		// 1 -> 2
-		Graph_CreateEdge(g, 1, 2, relation, &e);
-		// 2 -> 1
-		Graph_CreateEdge(g, 2, 1, relation, &e);
-		// 2 -> 3
-		Graph_CreateEdge(g, 2, 3, relation, &e);
-		// 3 -> 0
-		Graph_CreateEdge(g, 3, 0, relation, &e);
-		return g;
-	}
-
-	// This function tests for membership of a path, inside an array of multiple paths.
-	bool pathArrayContainsPath(NodeID **array, int arrayLen, Path *path) {
-		for(int i = 0; i < arrayLen; i++) {
-			NodeID *expectedPath = array[i];
-			int expectedPathLen = expectedPath[0];
-			if(expectedPathLen != Path_NodeCount(path)) {
-				continue;
-			}
-			bool arrayContainsPath = true;
-			for(int j = 1; j <= expectedPathLen; j++) {
-				Node n = path->nodes[j - 1];
-				if(ENTITY_GET_ID(&n) != expectedPath[j]) {
-					arrayContainsPath = false;
-					break;
-				}
-			}
-			if(arrayContainsPath) return true;
+// This function tests for membership of a path, inside an array of multiple paths.
+bool pathArrayContainsPath(NodeID **array, int arrayLen, Path *path) {
+	for(int i = 0; i < arrayLen; i++) {
+		NodeID *expectedPath = array[i];
+		int expectedPathLen = expectedPath[0];
+		if(expectedPathLen != Path_NodeCount(path)) {
+			continue;
 		}
-		return false;
+		bool arrayContainsPath = true;
+		for(int j = 1; j <= expectedPathLen; j++) {
+			Node n = path->nodes[j - 1];
+			if(ENTITY_GET_ID(&n) != expectedPath[j]) {
+				arrayContainsPath = false;
+				break;
+			}
+		}
+		if(arrayContainsPath) return true;
 	}
-};
+	return false;
+}
 
-TEST_F(AllPathsTest, NoPaths) {
+void test_NoPaths(void) {
+	setup();
+
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -108,13 +94,15 @@ TEST_F(AllPathsTest, NoPaths) {
 									   maxLen, NULL, NULL, 0);
 	Path *p = AllPathsCtx_NextPath(ctx);
 
-	ASSERT_TRUE(p == NULL);
+	TEST_CHECK(p == NULL);
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
 
-TEST_F(AllPathsTest, LongestPaths) {
+void test_LongestPaths(void) {
+	setup();
+
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -135,13 +123,15 @@ TEST_F(AllPathsTest, LongestPaths) {
 	}
 
 	// 0,1,2,3,0
-	ASSERT_EQ(longestPath, 4);
+	TEST_CHECK(longestPath == 4);
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
 
-TEST_F(AllPathsTest, UpToThreeLegsPaths) {
+void test_UpToThreeLegsPaths(void) {
+	setup();
+
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -209,16 +199,18 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 				break;
 			}
 		}
-		ASSERT_TRUE(expectedPathFound);
+		TEST_CHECK(expectedPathFound);
 		pathsCount++;
 	}
-	ASSERT_EQ(pathsCount, 12);
+	TEST_CHECK(pathsCount == 12);
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
 
-TEST_F(AllPathsTest, TwoLegPaths) {
+void test_TwoLegPaths(void) {
+	setup();
+
 	Graph *g = BuildGraph();
 
 	NodeID srcNodeID = 0;
@@ -246,8 +238,8 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 	NodeID *expectedPaths[4] = {p0, p1, p2, p3};
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
-		ASSERT_LT(pathsCount, 4);
-		ASSERT_EQ(Path_Len(path), 2);
+		TEST_CHECK(pathsCount < 4);
+		TEST_CHECK(Path_Len(path) == 2);
 		bool expectedPathFound = false;
 
 		for(int i = 0; i < 4; i++) {
@@ -261,18 +253,20 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 			if(expectedPathFound) break;
 		}
 
-		ASSERT_TRUE(expectedPathFound);
+		TEST_CHECK(expectedPathFound);
 		pathsCount++;
 	}
 
-	ASSERT_EQ(pathsCount, 4);
+	TEST_CHECK(pathsCount == 4);
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
 
 // Test all paths from source to a specific destination node.
-TEST_F(AllPathsTest, DestinationSpecificPaths) {
+void test_DestinationSpecificPaths(void) {
+	setup();
+
 	NodeID p00_0[2] = {1, 0};
 	NodeID p00_1[4] = {3, 0, 1, 0};
 	NodeID p00_2[6] = {5, 0, 1, 2, 1, 0};
@@ -296,14 +290,22 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 									   minLen, maxLen, NULL, NULL, 0);
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
-		ASSERT_LT(pathsCount, 5);
-		ASSERT_TRUE(pathArrayContainsPath(p00, 6, path));
+		TEST_CHECK(pathsCount < 5);
+		TEST_CHECK(pathArrayContainsPath(p00, 6, path));
 		pathsCount++;
 	}
 
-	ASSERT_EQ(pathsCount, 5);
+	TEST_CHECK(pathsCount == 5);
 
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
+
+TEST_LIST = {
+	{ "test_DestinationSpecificPaths", test_DestinationSpecificPaths },
+	{ "test_LongestPaths", test_LongestPaths },
+	{ "test_NoPaths", test_NoPaths },
+	{ "test_TwoLegPaths", test_TwoLegPaths },
+	{ "test_UpToThreeLegsPaths", test_UpToThreeLegsPaths },
+};
 

@@ -1,42 +1,27 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "gtest.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include "./acutest.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/datatypes/map.h"
 
-#ifdef __cplusplus
-}
-#endif
-
-class MapTest: public ::testing::Test {
-  protected:
-	static void SetUpTestCase() { // Use the malloc family for allocations
-		Alloc_Reset();
-	}
-};
-
-TEST_F(MapTest, empty_map) {
+void test_empty_map(void) {
+	Alloc_Reset();
 	SIValue map = Map_New(2);
 
 	//--------------------------------------------------------------------------
 	// map should be empty
 	//--------------------------------------------------------------------------
 
-	ASSERT_EQ(0, Map_KeyCount(map));
+	TEST_CHECK(0 == Map_KeyCount(map));
 
 	SIValue *keys = Map_Keys(map);
-	ASSERT_EQ(0, array_len(keys));
+	TEST_CHECK(0 == array_len(keys));
 	array_free(keys);
 
 	//--------------------------------------------------------------------------
@@ -45,8 +30,8 @@ TEST_F(MapTest, empty_map) {
 
 	SIValue key = SI_ConstStringVal("k");
 	SIValue v;
-	ASSERT_FALSE(Map_Contains(map, key));
-	ASSERT_FALSE(Map_Get(map, key, &v));
+	TEST_CHECK(!Map_Contains(map, key));
+	TEST_CHECK(!Map_Get(map, key, &v));
 
 	//--------------------------------------------------------------------------
 	// try removing a none existing key
@@ -58,7 +43,8 @@ TEST_F(MapTest, empty_map) {
 	Map_Free(map);
 }
 
-TEST_F(MapTest, map_add) {
+void test_map_add(void) {
+	Alloc_Reset();
 	SIValue map = Map_New(2);
 
 	SIValue  k0  =  SI_ConstStringVal("key0");
@@ -81,26 +67,26 @@ TEST_F(MapTest, map_add) {
 
 	// try to get none existing keys
 	SIValue v = SI_NullVal();
-	ASSERT_FALSE(Map_Get(map, none_existing, &v));
+	TEST_CHECK(!Map_Get(map, none_existing, &v));
 
 	// expecting 3 keys
-	ASSERT_EQ(Map_KeyCount(map), 3);
+	TEST_CHECK(Map_KeyCount(map) == 3);
 
 	// verify map content
 	for(int i = 0; i < 3; i++) {
 		SIValue v = SI_NullVal();
 
-		ASSERT_TRUE(Map_Contains(map, keys[i]));
+		TEST_CHECK(Map_Contains(map, keys[i]));
 
 		Map_Get(map, keys[i], &v);
-		ASSERT_EQ(SI_TYPE(v), SI_TYPE(values[i]));
+		TEST_CHECK(SI_TYPE(v) == SI_TYPE(values[i]));
 	}
 
 	// verify keys
 	SIValue *stored_keys = Map_Keys(map);
-	ASSERT_EQ(array_len(stored_keys), 3);
+	TEST_CHECK(array_len(stored_keys) == 3);
 	for(int i = 0; i < 3; i++) {
-		ASSERT_TRUE(strcmp(keys[i].stringval, stored_keys[i].stringval) == 0);
+		TEST_CHECK(!strcmp(keys[i].stringval, stored_keys[i].stringval));
 	}
 
 	// clean up
@@ -108,7 +94,8 @@ TEST_F(MapTest, map_add) {
 	Map_Free(map);
 }
 
-TEST_F(MapTest, map_remove) {
+void test_map_remove(void) {
+	Alloc_Reset();
 	SIValue map = Map_New(2);
 
 	SIValue  k0  =  SI_ConstStringVal("key0");
@@ -133,29 +120,30 @@ TEST_F(MapTest, map_remove) {
 		SIValue v = SI_NullVal();
 
 		// remove key
-		ASSERT_TRUE(Map_Contains(map, keys[i]));
+		TEST_CHECK(Map_Contains(map, keys[i]));
 		Map_Remove(map, keys[i]);
 
 		// try removing removed key
 		Map_Remove(map, keys[i]);
 
 		// validate key count
-		ASSERT_EQ(3 - i - 1, Map_KeyCount(map));
+		TEST_CHECK(3 - i - 1 == Map_KeyCount(map));
 
 		// get removed key
-		ASSERT_FALSE(Map_Contains(map, keys[i]));
-		ASSERT_FALSE(Map_Get(map, keys[0], &v));
+		TEST_CHECK(!Map_Contains(map, keys[i]));
+		TEST_CHECK(!Map_Get(map, keys[0], &v));
 	}
 
 	SIValue *stored_keys = Map_Keys(map);
-	ASSERT_EQ(0, array_len(stored_keys));
+	TEST_CHECK(0 == array_len(stored_keys));
 
 	// clean up
 	array_free(stored_keys);
 	Map_Free(map);
 }
 
-TEST_F(MapTest, map_tostring) {
+void test_map_tostring(void) {
+	Alloc_Reset();
 	SIValue  k;
 	SIValue  v;
 	SIValue map = Map_New(3);
@@ -185,9 +173,18 @@ TEST_F(MapTest, map_tostring) {
 	char *buf = (char *)rm_malloc(sizeof(char) * 256);
 	Map_ToString(map, &buf, &buf_len, &bytes_written);
 
-	ASSERT_STREQ(buf, "{key0: 0, key1: 1.000000, key2: val0, key3: {inner_key: NULL}}");
+	TEST_CHECK(!strcmp(buf, "{key0: 0, key1: 1.000000, key2: val0, key3: {inner_key: NULL}}"));
 
 	rm_free(buf);
 	SIValue_Free(map);
 	SIValue_Free(inner_map);
 }
+
+TEST_LIST = {
+	{ "test_empty_map", test_empty_map },
+	{ "test_map_add", test_map_add },
+	{ "test_map_remove", test_map_remove },
+	{ "test_map_tostring", test_map_tostring },
+	{ NULL, NULL }     // zeroed record marking the end of the list
+};
+
