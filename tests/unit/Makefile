@@ -8,51 +8,27 @@ XXHASH_DIR = ../../deps/xxHash
 REDISEARCH_DIR = ../../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
 
-# Flags passed to the preprocessor.
-# Set Google Test's header directory as a system directory, such that
-# the compiler doesn't generate warnings in Google Test headers.
-CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
-LDFLAGS += -ldl
+LDFLAGS += -ldl -lm
 
-# Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -fopenmp
-CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
+# Flags passed to the C compiler.
+CFLAGS += -g -Wall -Wextra -pthread -fopenmp
+C_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
 
 ifeq ($(COV),1)
-CXXFLAGS += --coverage
+CFLAGS += --coverage
 LDFLAGS += --coverage
 endif
 
-REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
+# REDISGRAPH_CC=$(QUIET_CC)$(CC)
+REDISGRAPH_CC=$(CC)
 
 CCCOLOR="\033[34m"
 SRCCOLOR="\033[33m"
 ENDCOLOR="\033[0m"
 
 ifndef V
-QUIET_CXX = @printf '    %b %b\n' $(CCCOLOR)CXX$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
+QUIET_CC = @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
 endif
-
-# Google Test headers - do not modify
-GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
-                $(GTEST_DIR)/include/gtest/internal/*.h
-
-# Google Test compiler targets
-GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
-
-gtest-all.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest-all.cc
-
-gtest_main.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest_main.cc
-
-gtest.a : gtest-all.o
-	@$(AR) $(ARFLAGS) $@ $^
-
-gtest_main.a : gtest-all.o gtest_main.o
-	@$(AR) $(ARFLAGS) $@ $^
 
 # RedisGraph flags and libraries
 CC_OBJECTS:=$(CC_OBJECTS)
@@ -66,20 +42,20 @@ LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory
-TEST_SOURCES = $(wildcard *.cpp)
-TEST_OBJECTS = $(patsubst %.cpp, %.o, $(TEST_SOURCES))
-TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
+TEST_SOURCES = $(wildcard *.c)
+TEST_OBJECTS = $(patsubst %.c, %.o, $(TEST_SOURCES))
+TEST_EXECUTABLES = $(patsubst %.c, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
-%.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
+%.o: %.c
+	@$(REDISGRAPH_CC) $(CPPFLAGS) $(CFLAGS) $(C_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
 
 # Build '*.run' binaries for each source
-%.run: %.o gtest_main.a $(DEPS)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ $(LDFLAGS) -o $@
+%.run: %.o $(DEPS)
+	@$(REDISGRAPH_CC) $(CPPFLAGS) $(CFLAGS) $(C_SUPPRESS) $^ $(LDFLAGS) -o $@
 
 
-.PHONY: all build test test_valgrind clean
+.PHONY: all build test clean
 
 all: build test
 
