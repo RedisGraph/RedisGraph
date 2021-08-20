@@ -72,7 +72,7 @@ commands:
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
-          - GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
+          - v2-GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Load libcypher-parser from cache if possible.
       - restore_cache:
@@ -85,7 +85,7 @@ commands:
       - save_cache:
           paths:
             - deps/GraphBLAS
-          key: GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
+          key: v2-GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Save libcypher-parser to cache.
       - save_cache:
