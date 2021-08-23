@@ -231,6 +231,7 @@ void Index_Construct(Index *idx) {
 
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
+	idx_options->lang = RSLanguage_Find(idx->language);
 	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
 	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
 
@@ -313,6 +314,14 @@ bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
 	}
 
 	return false;
+}
+
+const char *Index_GetLanguage(const Index *idx) {
+	return RediSearch_IndexGetLanguage(idx->idx);
+}
+
+char **Index_GetStopwords(const Index *idx, size_t *size) {
+	return RediSearch_IndexGetStopwords(idx->idx, size);
 }
 
 // Free index.

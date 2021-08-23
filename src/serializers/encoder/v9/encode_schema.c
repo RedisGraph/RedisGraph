@@ -28,14 +28,15 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 
 	if(idx->type == IDX_FULLTEXT) {
 		// Index language
-		char *language = idx->language ? idx->language : "english";
+		const char *language = Index_GetLanguage(idx);
 		RedisModule_SaveStringBuffer(rdb, language, strlen(language));
 
-		uint stopwords_count = idx->stopwords ? array_len(idx->stopwords) : 0;
+		size_t stopwords_count;
+		char **stopwords = Index_GetStopwords(idx, &stopwords_count);
 		// Index stopwords count
 		RedisModule_SaveUnsigned(rdb, stopwords_count);
-		for (uint i = 0; i < stopwords_count; i++) {
-			char *stopword = idx->stopwords[i];
+		for (size_t i = 0; i < stopwords_count; i++) {
+			char *stopword = stopwords[i];
 			// Index stopword
 			RedisModule_SaveStringBuffer(rdb, stopword, strlen(stopword));
 		}

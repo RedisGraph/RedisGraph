@@ -117,17 +117,17 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 
 	if(ctx->yield_language) {
 		*ctx->yield_language = 
-			SI_ConstStringVal(idx->language ? idx->language : "English");
+			SI_ConstStringVal((char *)Index_GetLanguage(idx));
 	}
 
 	if(ctx->yield_stopwords) {
-		if(idx->stopwords) {
-			const char **stopwords  = (const char **)idx->stopwords;
-			uint stopwords_count    = array_len(stopwords);
-			*ctx->yield_stopwords   = SI_Array(stopwords_count);
-			for (uint i = 0; i < stopwords_count; i++){
-				SIArray_Append(ctx->yield_stopwords,
-					SI_ConstStringVal((char *)stopwords[i]));
+		size_t stopwords_count;
+		char **stopwords = Index_GetStopwords(idx, &stopwords_count);
+		if(stopwords) {
+			*ctx->yield_stopwords = SI_Array(stopwords_count);
+			for (size_t i = 0; i < stopwords_count; i++) {
+				SIValue value = SI_ConstStringVal(stopwords[i]);
+				SIArray_Append(ctx->yield_stopwords, value);
 			}
 		} else {
 			*ctx->yield_stopwords = SI_Array(0);

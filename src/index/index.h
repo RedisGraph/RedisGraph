@@ -113,6 +113,22 @@ const char **Index_GetFields(const Index *idx);
 bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id);
 
 /**
+ * @brief  Returns indexed language.
+ * @note   Returns a shallow copy.
+ * @param  *idx: Index to extract fields from.
+ * @retval Language of indexed fields.
+ */
+const char *Index_GetLanguage(const Index *idx);
+
+/**
+ * @brief  Returns indexed stopwords.
+ * @note   Returns a shallow copy.
+ * @param  *idx: Index to extract fields from.
+ * @retval Array with the indexed stopwords.
+ */
+char **Index_GetStopwords(const Index *idx, size_t *size);
+
+/**
  * @brief  Free fulltext index.
  * @param  *idx: Index to drop.
  */
