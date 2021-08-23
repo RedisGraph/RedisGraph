@@ -33,26 +33,26 @@ static void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
 	 * Value */
 	RedisModule_SaveUnsigned(rdb, v->type);
 	switch(v->type) {
-	case T_BOOL:
-	case T_INT64:
-		RedisModule_SaveSigned(rdb, v->longval);
-		return;
-	case T_DOUBLE:
-		RedisModule_SaveDouble(rdb, v->doubleval);
-		return;
-	case T_STRING:
-		RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
-		return;
-	case T_ARRAY:
-		_RdbSaveSIArray(rdb, *v);
-		return;
-	case T_POINT:
-		RedisModule_SaveDouble(rdb, Point_lat(*v));
-		RedisModule_SaveDouble(rdb, Point_lon(*v));
-	case T_NULL:
-		return; // No data beyond the type needs to be encoded for a NULL value.
-	default:
-		ASSERT(0 && "Attempted to serialize value of invalid type.");
+		case T_BOOL:
+		case T_INT64:
+			RedisModule_SaveSigned(rdb, v->longval);
+			return;
+		case T_DOUBLE:
+			RedisModule_SaveDouble(rdb, v->doubleval);
+			return;
+		case T_STRING:
+			RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
+			return;
+		case T_ARRAY:
+			_RdbSaveSIArray(rdb, *v);
+			return;
+		case T_POINT:
+			RedisModule_SaveDouble(rdb, Point_lat(*v));
+			RedisModule_SaveDouble(rdb, Point_lon(*v));
+		case T_NULL:
+			return; // No data beyond the type needs to be encoded for a NULL value.
+		default:
+			ASSERT(0 && "Attempted to serialize value of invalid type.");
 	}
 }
 
@@ -230,6 +230,9 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 	 *  edge properties
 	 * */
 
+	GrB_Info res;
+	UNUSED(res);
+
 	if(edges_to_encode == 0) return;
 	// Get graph's edge count.
 	uint64_t graph_edges = Graph_EdgeCount(gc->g);
@@ -249,8 +252,8 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 
 	// First, see if the last edges encoding stopped at multiple edges array
 	EdgeID *multiple_edges_array = GraphEncodeContext_GetMultipleEdgesArray(gc->encoding_context);
-	NodeID src = GraphEncodeContext_GetMultipleEdgesSourceNode(gc->encoding_context);;
-	NodeID dest = GraphEncodeContext_GetMultipleEdgesDestinationNode(gc->encoding_context);;
+	NodeID src = GraphEncodeContext_GetMultipleEdgesSourceNode(gc->encoding_context);
+	NodeID dest = GraphEncodeContext_GetMultipleEdgesDestinationNode(gc->encoding_context);
 	uint multiple_edges_current_index = GraphEncodeContext_GetMultipleEdgesCurrentIndex(
 											gc->encoding_context);
 	if(multiple_edges_array) {
@@ -274,12 +277,10 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 		EdgeID edgeID;
 		bool depleted = false;
 		// Try to get next tuple.
-		RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+		res = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+		ASSERT(res == GrB_SUCCESS);
 		// If iterator is depleted, get new tuple from different matrix or finish encode.
 		while(depleted && r < relation_count) {
-			// Free iterator
-			RG_MatrixTupleIter_free(&iter);
-			iter = NULL;
 			depleted = false;
 			// Proceed to next relation matrix.
 			r++;
@@ -287,8 +288,10 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 			if(r == relation_count) goto finish;
 			// Get matrix and set iterator.
 			M = Graph_GetRelationMatrix(gc->g, r, false);
-			RG_MatrixTupleIter_reuse(iter, M);
-			RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+			res = RG_MatrixTupleIter_reuse(iter, M);
+			ASSERT(res == GrB_SUCCESS);
+			res = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+			ASSERT(res == GrB_SUCCESS);
 		}
 
 		e.srcNodeID = src;
