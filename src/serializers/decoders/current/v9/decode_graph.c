@@ -36,6 +36,7 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 	Graph_AllocateEdges(g, edge_count);
 	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
+	Graph_ApplyAllPending(g, true);
 }
 
 static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
@@ -68,12 +69,12 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
 	Graph *g = gc->g;
-	
+
 	// If it is the first key of this graph, allocate all the data structures,
 	// with the appropriate dimensions
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(g, node_count, edge_count, label_count, relation_count);
-		
+
 		gc->decoding_context->multi_edge = array_new(uint64_t, relation_count);
 		for(uint i = 0; i < relation_count; i++) {
 			// Enable/Disable support for multi-edge
@@ -146,25 +147,26 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 	for(uint i = 0; i < payloads_count; i++) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
-		case ENCODE_STATE_NODES:
-			RdbLoadNodes_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_NODES:
-			RdbLoadDeletedNodes_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_EDGES:
-			Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-			RdbLoadEdges_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_EDGES:
-			RdbLoadDeletedEdges_v9(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbLoadGraphSchema_v9(rdb, gc);
-			break;
-		default:
-			ASSERT(false && "Unknown encoding");
-			break;
+			case ENCODE_STATE_NODES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+				RdbLoadNodes_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_NODES:
+				RdbLoadDeletedNodes_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_EDGES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+				RdbLoadEdges_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_EDGES:
+				RdbLoadDeletedEdges_v9(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_GRAPH_SCHEMA:
+				RdbLoadGraphSchema_v9(rdb, gc);
+				break;
+			default:
+				ASSERT(false && "Unknown encoding");
+				break;
 		}
 	}
 	array_free(key_schema);
@@ -187,7 +189,7 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
 
-    // set the thread-local GraphContext
+		// set the thread-local GraphContext
 		// as it will be accessed when creating indexes
 		QueryCtx_SetGraphCtx(gc);
 
