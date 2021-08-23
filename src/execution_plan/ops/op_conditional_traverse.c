@@ -31,10 +31,18 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *ae) {
 				false, plan);
 
 	const char *dest = AlgebraicExpression_Destination(ae);
+	OpBase_Modifies((OpBase *)op, dest);
 	// Check the QueryGraph node and retrieve label data if possible.
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(plan->query_graph, dest);
 	op->dest_label = dest_node->label;
 	op->dest_label_id = dest_node->labelID;
+
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
+		OpBase_Modifies((OpBase *)op, edge);
+	}
 
 	return (OpBase *)op;
 }

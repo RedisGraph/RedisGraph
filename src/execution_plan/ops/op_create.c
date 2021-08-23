@@ -31,9 +31,9 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateC
 		e->edge_idx = OpBase_Modifies((OpBase *)op, e->alias);
 		bool aware;
 		UNUSED(aware);
-		aware = RT_OpBase_Aware((OpBase *)op, e->src, &e->src_idx);
+		aware = OpBase_Aware((OpBase *)op, e->src, &e->src_idx);
 		ASSERT(aware == true);
-		aware = RT_OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx);
+		aware = OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx);
 		ASSERT(aware == true);
 	}
 

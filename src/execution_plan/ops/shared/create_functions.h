@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../execution_plan.h"
+#include "../../runtimes/interpreted/runtime_execution_plan.h"
 #include "../../../ast/ast_shared.h"
 #include "../../../resultset/resultset_statistics.h"
 
@@ -33,7 +33,7 @@ typedef struct {
 PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCtx *edges);
 
 // Lock the graph and commit all changes introduced by the operation.
-void CommitNewEntities(OpBase *op, PendingCreations *pending);
+void CommitNewEntities(RT_OpBase *op, PendingCreations *pending);
 
 // Resolve the properties specified in the query into constant values.
 PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_null);

@@ -170,7 +170,7 @@ PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCt
 }
 
 // Lock the graph and commit all changes introduced by the operation.
-void CommitNewEntities(OpBase *op, PendingCreations *pending) {
+void CommitNewEntities(RT_OpBase *op, PendingCreations *pending) {
 	Graph *g = QueryCtx_GetGraph();
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);

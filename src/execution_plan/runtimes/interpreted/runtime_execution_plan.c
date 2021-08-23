@@ -20,8 +20,13 @@
 
 #include <setjmp.h>
 
+// Allocate a new ExecutionPlan segment.
+inline RT_ExecutionPlan *RT_ExecutionPlan_NewEmptyExecutionPlan(void) {
+	return rm_calloc(1, sizeof(RT_ExecutionPlan));
+}
+
 static RT_OpBase *_ExecutionPlan_FindLastWriter(RT_OpBase *root) {
-	if(OpBase_IsWriter(root)) return root;
+	if(RT_OpBase_IsWriter(root)) return root;
 	for(int i = root->childCount - 1; i >= 0; i--) {
 		RT_OpBase *child = root->children[i];
 		RT_OpBase *res = _ExecutionPlan_FindLastWriter(child);

@@ -22,6 +22,9 @@ typedef struct RT_ExecutionPlan {
 	const ExecutionPlan *plan_desc;     // Plan description
 } RT_ExecutionPlan;
 
+// Allocate a new ExecutionPlan segment.
+RT_ExecutionPlan *RT_ExecutionPlan_NewEmptyExecutionPlan(void);
+
 // Creates a new execution plan from AST
 RT_ExecutionPlan *RT_NewExecutionPlan(const ExecutionPlan *plan);
 

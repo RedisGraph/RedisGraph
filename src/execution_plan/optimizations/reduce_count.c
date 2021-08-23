@@ -5,7 +5,7 @@
 */
 
 #include "../ops/ops.h"
-#include "../runtimes/interpreted/ops/ops.h"
+#include "../ops/ops.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../arithmetic/aggregate_funcs/agg_funcs.h"
@@ -125,8 +125,8 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 }
 
 /* Checks if execution plan solely performs edge count */
-static bool _identifyEdgeCountPattern(RT_OpBase *root, RT_OpResult **opResult,
-		RT_OpAggregate **opAggregate, RT_OpBase **opTraverse, RT_OpBase **opScan) {
+static bool _identifyEdgeCountPattern(OpBase *root, RT_OpResult **opResult,
+		OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
 
 	// reset
 	*opScan = NULL;
@@ -155,70 +155,70 @@ static bool _identifyEdgeCountPattern(RT_OpBase *root, RT_OpResult **opResult,
 	return true;
 }
 
-void _reduceEdgeCount(RT_ExecutionPlan *plan) {
-	// we'll only modify execution plan if it is structured as follows:
-	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
-	RT_OpBase *opScan;
-	RT_OpBase *opTraverse;
-	RT_OpResult *opResult;
-	RT_OpAggregate *opAggregate;
+void _reduceEdgeCount(ExecutionPlan *plan) {
+	// // we'll only modify execution plan if it is structured as follows:
+	// // "Full Scan -> Conditional Traverse -> Aggregate -> Results"
+	// OpBase *opScan;
+	// OpBase *opTraverse;
+	// RT_OpResult *opResult;
+	// OpAggregate *opAggregate;
 
-	// see if execution-plan matches the pattern:
-	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
-	// if that's not the case, simply return without making any modifications
-	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate,
-				&opTraverse, &opScan)) return;
+	// // see if execution-plan matches the pattern:
+	// // "Full Scan -> Conditional Traverse -> Aggregate -> Results"
+	// // if that's not the case, simply return without making any modifications
+	// if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate,
+	// 			&opTraverse, &opScan)) return;
 
-	// user is trying to count edges (either in total or of specific types)
-	// in the graph. optimize by skipping Scan, Traverse and Aggregate
-	Graph *g = QueryCtx_GetGraph();
-	SIValue edgeCount = SI_LongVal(0);
+	// // user is trying to count edges (either in total or of specific types)
+	// // in the graph. optimize by skipping Scan, Traverse and Aggregate
+	// Graph *g = QueryCtx_GetGraph();
+	// SIValue edgeCount = SI_LongVal(0);
 
-	// if type is specified, count only labeled entities
-	RT_OpCondTraverse *condTraverse = (RT_OpCondTraverse *)opTraverse;
-	// the traversal op doesn't contain information about the traversed edge,
-	// cannot apply optimization
-	if(!condTraverse->edge_ctx) return;
+	// // if type is specified, count only labeled entities
+	// OpCondTraverse *condTraverse = (OpCondTraverse *)opTraverse;
+	// // the traversal op doesn't contain information about the traversed edge,
+	// // cannot apply optimization
+	// if(!condTraverse->edge_ctx) return;
 
-	uint relationCount = array_len(condTraverse->edge_ctx->edgeRelationTypes);
+	// uint relationCount = array_len(condTraverse->edge_ctx->edgeRelationTypes);
 
-	uint64_t edges = 0;
-	for(uint i = 0; i < relationCount; i++) {
-		int relType = condTraverse->edge_ctx->edgeRelationTypes[i];
-		switch(relType) {
-			case GRAPH_NO_RELATION:
-				// should be the only relationship type mentioned, -[]->
-				edges = Graph_EdgeCount(g);
-				break;
-			case GRAPH_UNKNOWN_RELATION:
-				// no change to current count, -[:none_existing]->
-				break;
-			default:
-				edges += Graph_RelationEdgeCount(g, relType);
-		}
-	}
-	edgeCount = SI_LongVal(edges);
+	// uint64_t edges = 0;
+	// for(uint i = 0; i < relationCount; i++) {
+	// 	int relType = condTraverse->edge_ctx->edgeRelationTypes[i];
+	// 	switch(relType) {
+	// 		case GRAPH_NO_RELATION:
+	// 			// should be the only relationship type mentioned, -[]->
+	// 			edges = Graph_EdgeCount(g);
+	// 			break;
+	// 		case GRAPH_UNKNOWN_RELATION:
+	// 			// no change to current count, -[:none_existing]->
+	// 			break;
+	// 		default:
+	// 			edges += Graph_RelationEdgeCount(g, relType);
+	// 	}
+	// }
+	// edgeCount = SI_LongVal(edges);
 
-	// construct a constant expression, used by a new projection operation
-	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-	// the new expression must be aliased to populate the Record
-	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
-	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
-	array_append(exps, exp);
+	// // construct a constant expression, used by a new projection operation
+	// AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
+	// // the new expression must be aliased to populate the Record
+	// exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
+	// AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
+	// array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
+	// OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
-	// new execution plan: "Project -> Results"
-	ExecutionPlan_RemoveOp(plan, opScan);
-	OpBase_Free(opScan);
+	// // new execution plan: "Project -> Results"
+	// ExecutionPlan_RemoveOp(plan, opScan);
+	// OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
-	OpBase_Free(opTraverse);
+	// ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
+	// OpBase_Free(opTraverse);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
-	OpBase_Free((OpBase *)opAggregate);
+	// ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
+	// OpBase_Free((OpBase *)opAggregate);
 
-	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
+	// ExecutionPlan_AddOp((OpBase *)opResult, opProject);
 }
 
 void reduceCount(ExecutionPlan *plan) {
@@ -226,4 +226,3 @@ void reduceCount(ExecutionPlan *plan) {
 	// if unsuccessful try edge count pattern
 	if(!_reduceNodeCount(plan)) _reduceEdgeCount(plan);
 }
-

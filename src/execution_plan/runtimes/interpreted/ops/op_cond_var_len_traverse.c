@@ -91,6 +91,7 @@ RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, Graph *g, in
 				CondVarLenTraverseFree, false, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	UNUSED(aware);
 	ASSERT(aware);
 	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
 	ASSERT(aware);

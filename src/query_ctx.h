@@ -12,7 +12,7 @@
 #include "graph/graphcontext.h"
 #include "commands/cmd_context.h"
 #include "resultset/resultset.h"
-#include "execution_plan/ops/op.h"
+#include "execution_plan/runtimes/interpreted/ops/op.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -28,7 +28,7 @@ typedef struct {
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
-	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
+	RT_OpBase *last_writer;        // The last writer operation which indicates the need for commit.
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
@@ -69,7 +69,7 @@ void QueryCtx_SetGraphCtx(GraphContext *gc);
 /* Set the resultset. */
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the last writer which needs to commit */
-void QueryCtx_SetLastWriter(OpBase *op);
+void QueryCtx_SetLastWriter(RT_OpBase *op);
 
 /* Getters */
 /* Retrieve the AST. */
@@ -104,14 +104,14 @@ bool QueryCtx_LockForCommit(void);
 
 /* Starts an ulocking flow and notifies Redis after commiting changes in the graph and Redis keyspace.
  * The only writer which allow to perform the unlock and commit(replicate) is the last_writer.
- * The method get an OpBase and compares it to the last writer, if they are equal then the commit
+ * The method get an RT_OpBase and compares it to the last writer, if they are equal then the commit
  * and unlock flow will start.
  * Unlocking flow is:
  * 1. Replicate.
  * 2. Unlock graph R/W lock
  * 3. Close key
  * 4. Unlock GIL */
-void QueryCtx_UnlockCommit(OpBase *writer_op);
+void QueryCtx_UnlockCommit(RT_OpBase *writer_op);
 
 /*
  * -------------------------FOR SAFETY ONLY---------------------------

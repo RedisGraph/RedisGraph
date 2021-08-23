@@ -69,7 +69,7 @@ void _traverse(RT_OpCondTraverse *op) {
 	RG_Matrix_clear(op->F);
 }
 
-RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, int dest_label_id, const char *dest_label) {
 	RT_OpCondTraverse *op = rm_malloc(sizeof(RT_OpCondTraverse));
 	op->graph = g;
 	op->ae = ae;
@@ -94,20 +94,21 @@ RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, Algebrai
 	ASSERT(aware == true);
 
 	const char *dest = AlgebraicExpression_Destination(ae);
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
-	// Check the QueryGraph node and retrieve label data if possible.
-	// QGNode *dest_node = QueryGraph_GetNodeByAlias(plan->query_graph, dest);
-	// op->dest_label = dest_node->label;
-	// op->dest_label_id = dest_node->labelID;
+	aware = RT_OpBase_Aware((RT_OpBase *)op, dest, &op->destNodeIdx);
+	ASSERT(aware);
 
-	// const char *edge = AlgebraicExpression_Edge(ae);
-	// if(edge) {
-	// 	/* This operation will populate an edge in the Record.
-	// 	 * Prepare all necessary information for collecting matching edges. */
-	// 	uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
-	// 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-	// 	op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
-	// }
+	op->dest_label_id = dest_label_id;
+	op->dest_label = dest_label;
+
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
+		int edge_idx;
+		aware = RT_OpBase_Aware((RT_OpBase *)op, edge, &edge_idx);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, edge);
+		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+	}
 
 	return (RT_OpBase *)op;
 }
@@ -215,7 +216,7 @@ static RT_OpResult CondTraverseReset(RT_OpBase *ctx) {
 static inline RT_OpBase *CondTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	RT_OpCondTraverse *op = (RT_OpCondTraverse *)opBase;
-	return RT_NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
+	return RT_NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae), op->dest_label_id, op->dest_label);
 }
 
 /* Frees CondTraverse */

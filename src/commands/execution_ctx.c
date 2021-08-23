@@ -8,6 +8,7 @@
 #include "RG.h"
 #include "../errors.h"
 #include "../query_ctx.h"
+#include "../execution_plan/optimizations/optimizer.h"
 #include "../execution_plan/runtimes/interpreted/runtime_execution_plan_clone.h"
 
 static ExecutionType _GetExecutionTypeFromAST(AST *ast) {

@@ -76,7 +76,7 @@ void QueryCtx_SetResultSet(ResultSet *result_set) {
 	ctx->internal_exec_ctx.result_set = result_set;
 }
 
-void QueryCtx_SetLastWriter(OpBase *last_writer) {
+void QueryCtx_SetLastWriter(RT_OpBase *last_writer) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->internal_exec_ctx.last_writer = last_writer;
 }
@@ -197,7 +197,7 @@ static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
 
-void QueryCtx_UnlockCommit(OpBase *writer_op) {
+void QueryCtx_UnlockCommit(RT_OpBase *writer_op) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 
 	// check that the writer_op is entitled to release the lock.

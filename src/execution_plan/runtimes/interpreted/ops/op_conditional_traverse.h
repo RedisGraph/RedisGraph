@@ -20,7 +20,7 @@ typedef struct {
 	AlgebraicExpression *ae;
 	RG_Matrix F;                // Filter matrix.
 	RG_Matrix M;                // Algebraic expression result.
-	NodeID dest_label_id;       // ID of destination node label if known.
+	int dest_label_id;          // ID of destination node label if known.
 	const char *dest_label;     // Label of destination node if known.
 	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
@@ -33,4 +33,4 @@ typedef struct {
 } RT_OpCondTraverse;
 
 // Creates a new Traverse operation
-RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
+RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, int dest_label_id, const char *dest_label);
