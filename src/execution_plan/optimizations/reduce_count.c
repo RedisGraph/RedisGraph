@@ -5,6 +5,7 @@
 */
 
 #include "../ops/ops.h"
+#include "../runtimes/interpreted/ops/ops.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../arithmetic/aggregate_funcs/agg_funcs.h"
@@ -16,13 +17,13 @@
  * In which case we can avoid performing both SCAN* and AGGREGATE
  * operations by simply returning a precomputed count */
 
-static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
+static int _identifyResultAndAggregateOps(OpBase *root, RT_OpResult **opResult,
 										  OpAggregate **opAggregate) {
 	OpBase *op = root;
 	// Op Results.
 	if(op->type != OPType_RESULTS || op->childCount != 1) return 0;
 
-	*opResult = (OpResult *)op;
+	*opResult = (RT_OpResult *)op;
 	op = op->children[0];
 
 	// Op Aggregate.
@@ -49,7 +50,7 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 }
 
 /* Checks if execution plan solely performs node count */
-static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
+static int _identifyNodeCountPattern(OpBase *root, RT_OpResult **opResult, OpAggregate **opAggregate,
 									 OpBase **opScan, const char **label) {
 	// Reset.
 	*label = NULL;
@@ -81,7 +82,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	 * "Scan -> Aggregate -> Results" */
 	const char *label;
 	OpBase *opScan;
-	OpResult *opResult;
+	RT_OpResult *opResult;
 	OpAggregate *opAggregate;
 
 	/* See if execution-plan matches the pattern:
@@ -124,8 +125,8 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 }
 
 /* Checks if execution plan solely performs edge count */
-static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult,
-		OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
+static bool _identifyEdgeCountPattern(RT_OpBase *root, RT_OpResult **opResult,
+		RT_OpAggregate **opAggregate, RT_OpBase **opTraverse, RT_OpBase **opScan) {
 
 	// reset
 	*opScan = NULL;
@@ -154,13 +155,13 @@ static bool _identifyEdgeCountPattern(OpBase *root, OpResult **opResult,
 	return true;
 }
 
-void _reduceEdgeCount(ExecutionPlan *plan) {
+void _reduceEdgeCount(RT_ExecutionPlan *plan) {
 	// we'll only modify execution plan if it is structured as follows:
 	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
-	OpBase *opScan;
-	OpBase *opTraverse;
-	OpResult *opResult;
-	OpAggregate *opAggregate;
+	RT_OpBase *opScan;
+	RT_OpBase *opTraverse;
+	RT_OpResult *opResult;
+	RT_OpAggregate *opAggregate;
 
 	// see if execution-plan matches the pattern:
 	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
@@ -174,7 +175,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	SIValue edgeCount = SI_LongVal(0);
 
 	// if type is specified, count only labeled entities
-	OpCondTraverse *condTraverse = (OpCondTraverse *)opTraverse;
+	RT_OpCondTraverse *condTraverse = (RT_OpCondTraverse *)opTraverse;
 	// the traversal op doesn't contain information about the traversed edge,
 	// cannot apply optimization
 	if(!condTraverse->edge_ctx) return;

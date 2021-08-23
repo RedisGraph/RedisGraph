@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../ast/ast.h"
-#include "../execution_plan/execution_plan.h"
+#include "../execution_plan/runtimes/interpreted/runtime_execution_plan.h"
 
 /**
  * @brief  Execution type derived from a query
@@ -24,7 +24,7 @@ typedef enum {
 typedef struct {
 	AST *ast;                   // AST
 	bool cached;                // cache hit/miss
-	ExecutionPlan *plan;        // execution plan
+	RT_ExecutionPlan *plan;     // execution plan
 	ExecutionType exec_type;    // execution type: query, index create/delete
 } ExecutionCtx;
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -22,16 +22,12 @@ typedef struct {
 /* OpProcCall, */
 typedef struct {
 	OpBase op;                  // Base op.
-    Record r;                   // Current record.
     uint arg_count;             // Number of arguments.
     AR_ExpNode **arg_exps;      // Expression representing arguments to procedure.
-    SIValue *args;              // Computed arguments.
 	const char **output;        // Procedure output.
 	const char *proc_name;      // Procedure name.
     AR_ExpNode **yield_exps;    // Yield expressions.
 	ProcedureCtx *procedure;    // Procedure to call.
-	OutputMap *yield_map;       // Maps between yield to procedure output and record idx.
-    bool first_call;            // Indicate first call.
 } OpProcCall;
 
 OpBase *NewProcCallOp(

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,8 +17,8 @@
 
 typedef struct {
 	OpBase op;                 // The base operation.
-	Record *records;           // Array of Records created by this operation.
-	PendingCreations pending;  // Container struct for all graph changes to be committed.
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
 } OpCreate;
 
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges);

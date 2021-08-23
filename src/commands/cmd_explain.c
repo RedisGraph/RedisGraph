@@ -18,7 +18,6 @@
  * argv[1] graph name
  * argv[2] query */
 void Graph_Explain(void *args) {
-	bool lock_acquired = false;
 	CommandCtx     *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
@@ -37,8 +36,8 @@ void Graph_Explain(void *args) {
 	/* Retrieve the required execution items and information:
 	 * 1. Execution plan
 	 * 2. Whether these items were cached or not */
-	bool           cached     =  false;
-	ExecutionPlan  *plan      =  NULL;
+	bool              cached     =  false;
+	RT_ExecutionPlan  *plan      =  NULL;
 	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
 
@@ -53,20 +52,13 @@ void Graph_Explain(void *args) {
 		goto cleanup;
 	}
 
-	Graph_AcquireReadLock(gc->g);
-	lock_acquired = true;
-
-	ExecutionPlan_PreparePlan(plan);
-	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
-	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
+	ExecutionPlan_Print(plan->plan_desc, ctx); // Print the execution plan.
 
 cleanup:
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
-	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
-

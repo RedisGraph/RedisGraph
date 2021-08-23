@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -22,7 +22,6 @@
 
 typedef struct OpSemiApply {
 	OpBase op;
-	Record r;                       // Bound branch record.
 	OpBase *bound_branch;           // Bound branch root;
 	OpBase *match_branch;           // Match branch root;
 	Argument *op_arg;               // Match branch tap.

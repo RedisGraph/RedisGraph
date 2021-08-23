@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,9 +13,6 @@
 
 typedef struct {
 	OpBase op;
-	uint *record_offsets;       // All Record offsets containing values to sort by.
-	heap_t *heap;               // Holds top n records.
-	Record *buffer;             // Holds all records.
 	uint skip;                  // Total number of records to skip
 	uint limit;                 // Total number of records to produce
 	int *directions;            // Array of sort directions(ascending / desending) for each item.

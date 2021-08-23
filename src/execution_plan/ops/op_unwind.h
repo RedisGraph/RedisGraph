@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,9 +16,6 @@ typedef struct {
 	OpBase op;
 	SIValue list;         // List which the unwind operation is performed on.
 	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
-	uint listIdx;         // Current list index.
-	int unwindRecIdx;     // Update record at this index.
-	Record currentRecord; // record to clone and add a value extracted from the list.
 } OpUnwind;
 
 /* Creates a new Unwind operation */

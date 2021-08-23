@@ -8,7 +8,7 @@
 #include "RG.h"
 #include "../errors.h"
 #include "../query_ctx.h"
-#include "../execution_plan/execution_plan_clone.h"
+#include "../execution_plan/runtimes/interpreted/runtime_execution_plan_clone.h"
 
 static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -19,7 +19,7 @@ static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	return 0;
 }
 
-static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan,
+static ExecutionCtx *_ExecutionCtx_New(AST *ast, RT_ExecutionPlan *plan,
 									   ExecutionType exec_type) {
 	ExecutionCtx *exec_ctx = rm_malloc(sizeof(ExecutionCtx));
 
@@ -38,7 +38,7 @@ ExecutionCtx *ExecutionCtx_Clone(ExecutionCtx *orig) {
 	// set the AST copy in thread local storage
 	QueryCtx_SetAST(execution_ctx->ast);
 
-	execution_ctx->plan      = ExecutionPlan_Clone(orig->plan);
+	execution_ctx->plan      = RT_ExecutionPlan_Clone(orig->plan);
 	execution_ctx->cached    = orig->cached;
 	execution_ctx->exec_type = orig->exec_type;
 
@@ -95,7 +95,7 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
 	// In case of valid query, create execution plan, and cache it and the AST.
 	if(exec_type == EXECUTION_TYPE_QUERY) {
-		ExecutionPlan *plan = NewExecutionPlan();
+		ExecutionPlan *plan_desc = NewExecutionPlan();
 
 		// TODO: there must be a better way to understand if the execution-plan
 		// was constructed correctly,
@@ -105,13 +105,16 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 			// Encountered an error in ExecutionPlan construction,
 			// clean up and return NULL.
 			AST_Free(ast);
-			ExecutionPlan_Free(plan);
+			ExecutionPlan_Free(plan_desc);
 			return NULL;
 		}
+		optimizePlan(plan_desc);
+		RT_ExecutionPlan *plan = RT_NewExecutionPlan((const ExecutionPlan *)plan_desc);
 		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan,
 															exec_type);
 		ExecutionCtx *exec_ctx_from_cache = Cache_SetGetValue(cache,
 															  query_string, exec_ctx_to_cache);
+		
 		return exec_ctx_from_cache;
 	} else {
 		return _ExecutionCtx_New(ast, NULL, exec_type);
@@ -120,7 +123,7 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 void ExecutionCtx_Free(ExecutionCtx *ctx) {
 	if(ctx == NULL) return;
-	if(ctx->plan != NULL) ExecutionPlan_Free(ctx->plan);
+	if(ctx->plan != NULL) RT_ExecutionPlan_Free(ctx->plan);
 	if(ctx->ast != NULL) AST_Free(ctx->ast);
 
 	rm_free(ctx);

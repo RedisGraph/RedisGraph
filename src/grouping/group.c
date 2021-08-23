@@ -6,10 +6,11 @@
 
 #include <stdio.h>
 #include "group.h"
-#include "../redismodule.h"
 #include "../util/arr.h"
+#include "../redismodule.h"
 #include "../util/rmalloc.h"
 #include "../execution_plan/ops/op.h"
+#include "../execution_plan/runtimes/interpreted/runtime_execution_plan.h"
 
 // Creates a new group
 // arguments specify group's key.
@@ -19,7 +20,7 @@ Group *NewGroup(SIValue *keys, uint key_count, AR_ExpNode **funcs, uint func_cou
 	g->aggregationFunctions = funcs;
 	g->key_count = key_count;
 	g->func_count = func_count;
-	g->r = (r) ? OpBase_CloneRecord(r) : NULL;
+	g->r = (r) ? RT_OpBase_CloneRecord(r) : NULL;
 	return g;
 }
 

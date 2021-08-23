@@ -318,168 +318,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 	return plan;
 }
 
-void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
-	// Plan should be prepared only once.
-	ASSERT(!plan->prepared);
-	optimizePlan(plan);
-	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
-	plan->prepared = true;
-}
-
-inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
-	ASSERT(plan && plan->record_map);
-	return plan->record_map;
-}
-
-Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
-	rax *mapping = ExecutionPlan_GetMappings(plan);
-	ASSERT(plan->record_pool);
-
-	// Get a Record from the pool and set its owner and mapping.
-	Record r = ObjectPool_NewItem(plan->record_pool);
-	r->owner = plan;
-	r->mapping = mapping;
-	return r;
-}
-
-void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r) {
-	ASSERT(plan && r);
-	ObjectPool_DeleteItem(plan->record_pool, r);
-}
-
-//------------------------------------------------------------------------------
-// Execution plan initialization
-//------------------------------------------------------------------------------
-
-static inline void _ExecutionPlan_InitRecordPool(ExecutionPlan *plan) {
-	if(plan->record_pool) return;
-	/* Initialize record pool.
-	 * Determine Record size to inform ObjectPool allocation. */
-	uint entries_count = raxSize(plan->record_map);
-	uint rec_size = sizeof(_Record) + (sizeof(Entry) * entries_count);
-
-	// Create a data block with initial capacity of 256 records.
-	plan->record_pool = ObjectPool_New(256, rec_size, (fpDestructor)Record_FreeEntries);
-}
-
-static void _ExecutionPlanInit(OpBase *root) {
-	// If the ExecutionPlan associated with this op hasn't built a record pool yet, do so now.
-	_ExecutionPlan_InitRecordPool((ExecutionPlan *)root->plan);
-
-	// Initialize the operation if necessary.
-	if(root->init) root->init(root);
-
-	// Continue initializing downstream operations.
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlanInit(root->children[i]);
-	}
-}
-
-void ExecutionPlan_Init(ExecutionPlan *plan) {
-	_ExecutionPlanInit(plan->root);
-}
-
-ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	ASSERT(plan->prepared)
-	/* Set an exception-handling breakpoint to capture run-time errors.
-	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
-	 * a downstream exception returns us to this breakpoint. */
-	int encountered_error = SET_EXCEPTION_HANDLER();
-
-	// Encountered a run-time error - return immediately.
-	if(encountered_error) return QueryCtx_GetResultSet();
-
-	ExecutionPlan_Init(plan);
-
-	Record r = NULL;
-	// Execute the root operation and free the processed Record until the data stream is depleted.
-	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
-
-	return QueryCtx_GetResultSet();
-}
-
-//------------------------------------------------------------------------------
-// Execution plan draining
-//------------------------------------------------------------------------------
-
-// NOP operation consume routine for immediately terminating execution.
-static Record deplete_consume(struct OpBase *op) {
-	return NULL;
-}
-
-// return true if execution plan been drained
-// false otherwise
-bool ExecutionPlan_Drained(ExecutionPlan *plan) {
-	ASSERT(plan != NULL);
-	ASSERT(plan->root != NULL);
-	return (plan->root->consume == deplete_consume);
-}
-
-static void _ExecutionPlan_Drain(OpBase *root) {
-	root->consume = deplete_consume;
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_Drain(root->children[i]);
-	}
-}
-
-// Resets each operation consume function to simply return NULL
-// this will cause the execution-plan to quickly deplete
-void ExecutionPlan_Drain(ExecutionPlan *plan) {
-	ASSERT(plan && plan->root);
-	_ExecutionPlan_Drain(plan->root);
-}
-
-//------------------------------------------------------------------------------
-// Execution plan ref count
-//------------------------------------------------------------------------------
-
-void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-//------------------------------------------------------------------------------
-// Execution plan profiling
-//------------------------------------------------------------------------------
-
-static void _ExecutionPlan_InitProfiling(OpBase *root) {
-	root->profile = root->consume;
-	root->consume = OpBase_Profile;
-	root->stats = rm_malloc(sizeof(OpStats));
-	root->stats->profileExecTime = 0;
-	root->stats->profileRecordCount = 0;
-
-	if(root->childCount) {
-		for(int i = 0; i < root->childCount; i++) {
-			OpBase *child = root->children[i];
-			_ExecutionPlan_InitProfiling(child);
-		}
-	}
-}
-
-static void _ExecutionPlan_FinalizeProfiling(OpBase *root) {
-	if(root->childCount) {
-		for(int i = 0; i < root->childCount; i++) {
-			OpBase *child = root->children[i];
-			root->stats->profileExecTime -= child->stats->profileExecTime;
-			_ExecutionPlan_FinalizeProfiling(child);
-		}
-	}
-	root->stats->profileExecTime *= 1000;   // Milliseconds.
-}
-
-ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
-	_ExecutionPlan_InitProfiling(plan->root);
-	ResultSet *rs = ExecutionPlan_Execute(plan);
-	_ExecutionPlan_FinalizeProfiling(plan->root);
-	return rs;
-}
-
 //------------------------------------------------------------------------------
 // Execution plan free functions
 //------------------------------------------------------------------------------
@@ -495,7 +333,6 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
-	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
 	if(plan->ast_segment) AST_Free(plan->ast_segment);
 	rm_free(plan);
 }
@@ -528,7 +365,6 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
 
 	// Free all ops and ExecutionPlan segments.
 	_ExecutionPlan_FreeOpTree(plan->root);
@@ -536,4 +372,3 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	// Free the final ExecutionPlan segment.
 	_ExecutionPlan_FreeInternals(plan);
 }
-

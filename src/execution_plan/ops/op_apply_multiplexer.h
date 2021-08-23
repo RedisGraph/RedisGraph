@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -46,7 +46,6 @@
 
 typedef struct OpApplyMultiplexer {
 	OpBase op;
-	Record r;                       // Bound branch record.
 	OpBase *bound_branch;           // Bound branch root;
 	Argument **branch_arguments;    // Branches taps.
 	AST_Operator boolean_operator;  // Defines the operation logic - OR/AND.

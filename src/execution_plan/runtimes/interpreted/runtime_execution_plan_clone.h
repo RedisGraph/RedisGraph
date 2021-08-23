@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "execution_plan.h"
+#include "runtime_execution_plan.h"
 
 /* Clones an execution plan */
-ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *plan);
-
+RT_ExecutionPlan *RT_ExecutionPlan_Clone(const RT_ExecutionPlan *plan);

@@ -35,12 +35,12 @@ static void notify_limit(OpBase *op, uint limit) {
 		case OPType_SORT:
 			((OpSort *)op)->limit = limit;
 			break;
-		case OPType_EXPAND_INTO:
-			((OpExpandInto *)op)->record_cap = limit;
-			break;
-		case OPType_CONDITIONAL_TRAVERSE:
-			((OpCondTraverse *)op)->record_cap = limit;
-			break;
+		// case OPType_EXPAND_INTO:
+		// 	((OpExpandInto *)op)->record_cap = limit;
+		// 	break;
+		// case OPType_CONDITIONAL_TRAVERSE:
+		// 	((OpCondTraverse *)op)->record_cap = limit;
+		// 	break;
 		default:
 			break;
 	}

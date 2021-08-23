@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,13 +16,8 @@
 
 typedef struct {
 	OpBase op;
-	GraphContext *gc;
 	AR_ExpNode **exps;      // Expressions evaluated to an entity about to be deleted.
 	uint exp_count;         // Number of expressions.
-	Node *deleted_nodes;    // Array of nodes to be removed.
-	Edge *deleted_edges;    // Array of edges to be removed.
-
-	ResultSetStatistics *stats;
 } OpDelete;
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps);

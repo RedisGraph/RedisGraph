@@ -285,8 +285,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	if(filters_count == 0) goto cleanup;
 
 	FT_FilterNode *root = _Concat_Filters(filters);
-	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx,
-			root);
+	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->n, root);
 
 	// replace the redundant scan op with the newly-constructed Index Scan
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);

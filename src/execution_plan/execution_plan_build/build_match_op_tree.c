@@ -82,9 +82,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
 																					   AlgebraicExpression_Edge(exp));
 				if(edge && QGEdge_VariableLength(edge)) {
-					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
+					root = NewCondVarLenTraverseOp(plan, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp);
+					root = NewCondTraverseOp(plan, exp);
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);

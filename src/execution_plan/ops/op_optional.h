@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -48,9 +48,7 @@
  * representing the elements of the failed traversal. */
 typedef struct {
 	OpBase op;
-	bool emitted_record; // True if this operation has returned at least one Record.
 } Optional;
 
 /* Creates a new Optional operation. */
 OpBase *NewOptionalOp(const ExecutionPlan *plan);
-

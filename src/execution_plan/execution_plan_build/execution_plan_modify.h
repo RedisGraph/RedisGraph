@@ -7,6 +7,9 @@
 #pragma once
 
 #include "../ops/op.h"
+#include "rax.h"
+#include "cypher-parser.h"
+
 typedef struct ExecutionPlan ExecutionPlan;
 
 //------------------------------------------------------------------------------

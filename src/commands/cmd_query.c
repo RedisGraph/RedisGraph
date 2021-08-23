@@ -16,6 +16,7 @@
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
 #include "../execution_plan/execution_plan.h"
+#include "../execution_plan/runtimes/interpreted/runtime_execution_plan.h"
 #include "execution_ctx.h"
 
 // GraphQueryCtx stores the allocations required to execute a query.
@@ -100,8 +101,8 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 // timeout handler
 void QueryTimedOut(void *pdata) {
 	ASSERT(pdata);
-	ExecutionPlan *plan = (ExecutionPlan *)pdata;
-	ExecutionPlan_Drain(plan);
+	RT_ExecutionPlan *plan = (RT_ExecutionPlan *)pdata;
+	RT_ExecutionPlan_Drain(plan);
 
 	/* Timer may have triggered after execution-plan ran to completion
 	 * in which case the original query thread had called ExecutionPlan_Free
@@ -110,13 +111,13 @@ void QueryTimedOut(void *pdata) {
 	 *
 	 * In case execution-plan timedout we'll call ExecutionPlan_Free
 	 * to drop plan's ref count. */
-	ExecutionPlan_Free(plan);
+	RT_ExecutionPlan_Free(plan);
 }
 
 // set timeout for query execution
-void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
+void Query_SetTimeOut(uint timeout, RT_ExecutionPlan *plan) {
 	// increase execution plan ref count
-	ExecutionPlan_IncreaseRefCount(plan);
+	RT_ExecutionPlan_IncreaseRefCount(plan);
 	Cron_AddTask(timeout, QueryTimedOut, plan);
 }
 
@@ -130,17 +131,17 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
-	GraphQueryCtx   *gq_ctx       =  args;
-	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
-	GraphContext    *gc           =  gq_ctx->graph_ctx;
-	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
-	bool            profile       =  gq_ctx->profile;
-	bool            readonly      =  gq_ctx->readonly_query;
-	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
-	CommandCtx      *command_ctx  =  gq_ctx->command_ctx;
-	AST             *ast          =  exec_ctx->ast;
-	ExecutionPlan   *plan         =  exec_ctx->plan;
-	ExecutionType   exec_type     =  exec_ctx->exec_type;
+	GraphQueryCtx    *gq_ctx       =  args;
+	QueryCtx         *query_ctx    =  gq_ctx->query_ctx;
+	GraphContext     *gc           =  gq_ctx->graph_ctx;
+	RedisModuleCtx   *rm_ctx       =  gq_ctx->rm_ctx;
+	bool             profile       =  gq_ctx->profile;
+	bool             readonly      =  gq_ctx->readonly_query;
+	ExecutionCtx     *exec_ctx     =  gq_ctx->exec_ctx;
+	CommandCtx       *command_ctx  =  gq_ctx->command_ctx;
+	AST              *ast          =  exec_ctx->ast;
+	RT_ExecutionPlan *plan    =  exec_ctx->plan;
+	ExecutionType    exec_type     =  exec_ctx->exec_type;
 
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
@@ -180,19 +181,19 @@ static void _ExecuteQuery(void *args) {
 		// avoid resetting policies between readers and writers
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
 
-		ExecutionPlan_PreparePlan(plan);
+		RT_ExecutionPlan_PreparePlan(plan);
 		if(profile) {
-			ExecutionPlan_Profile(plan);
-			ExecutionPlan_Print(plan, rm_ctx);
+			RT_ExecutionPlan_Profile(plan);
+			ExecutionPlan_Print(plan->plan_desc, rm_ctx);
 		}
 		else {
-			result_set = ExecutionPlan_Execute(plan);
+			result_set = RT_ExecutionPlan_Execute(plan);
 		}
 
 		// Emit error if query timed out.
-		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
+		if(RT_ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
 
-		ExecutionPlan_Free(plan);
+		RT_ExecutionPlan_Free(plan);
 		exec_ctx->plan = NULL;
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
 			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
