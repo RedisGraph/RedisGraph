@@ -26,5 +26,5 @@ typedef struct {
 } RT_IndexScan;
 
 // creates a new IndexScan operation
-RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, Graph *g, NodeScanCtx n,
+RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, NodeScanCtx n,
 		RSIndex *idx, FT_FilterNode *filter);

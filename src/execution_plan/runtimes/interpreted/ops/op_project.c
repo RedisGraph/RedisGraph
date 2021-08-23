@@ -32,7 +32,9 @@ RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps) {
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		int record_idx;
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->exps[i]->resolved_name, &record_idx);
+		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
 

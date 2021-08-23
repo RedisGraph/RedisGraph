@@ -13,5 +13,10 @@ OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT, "Argument", NULL, NULL, false, plan);
 
+	uint variable_count = array_len(variables);
+	for(uint i = 0; i < variable_count; i ++) {
+		OpBase_Modifies((OpBase *)op, variables[i]);
+	}
+
 	return (OpBase *)op;
 }

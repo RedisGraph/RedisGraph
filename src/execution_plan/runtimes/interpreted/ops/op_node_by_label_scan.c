@@ -33,7 +33,8 @@ RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, NodeScanCtx n) 
 				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanClone,
 				NodeByLabelScanFree, false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, n.alias, &op->nodeRecIdx);
+	ASSERT(aware);
 
 	return (RT_OpBase *)op;
 }

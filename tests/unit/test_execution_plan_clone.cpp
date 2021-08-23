@@ -17,7 +17,7 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/procedures/procedure.h"
-#include "../../src/execution_plan/execution_plan_clone.h"
+#include "../../src/execution_plan/runtimes/interpreted/runtime_execution_plan_clone.h"
 
 #ifdef __cplusplus
 }
@@ -41,10 +41,11 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		_fake_graph_context();
 	}
 
-	static void build_ast_and_plan(const char *query, AST **ast, ExecutionPlan **plan) {
+	static void build_ast_and_plan(const char *query, AST **ast, RT_ExecutionPlan **plan) {
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		*ast = AST_Build(parse_result);
-		*plan = NewExecutionPlan();
+		ExecutionPlan *plan_desc = NewExecutionPlan();
+		*plan = RT_NewExecutionPlan(plan_desc);
 	}
 
 	static void _fake_graph_context() {
@@ -61,8 +62,8 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		QueryCtx_SetGraphCtx(gc);
 	}
 
-	static void ExecutionPlan_OpsEqual(const ExecutionPlan *plan_a, const ExecutionPlan *plan_b,
-									   const OpBase *op_a, const OpBase *op_b) {
+	static void ExecutionPlan_OpsEqual(const RT_ExecutionPlan *plan_a, const RT_ExecutionPlan *plan_b,
+									   const RT_OpBase *op_a, const RT_OpBase *op_b) {
 		// If both ops are NULL, there is nothing to compare.
 		if(op_a == NULL && op_b == NULL) return;
 		// In case one of the ops is NULL.
@@ -82,15 +83,15 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		for(uint i = 0; i < query_count; i++) {
 			const char *query = queries[i];
 			AST *ast = NULL;
-			ExecutionPlan *plan = NULL;
+			RT_ExecutionPlan *plan = NULL;
 			build_ast_and_plan(query, &ast, &plan);
 			ASSERT_TRUE(ast);
 			ASSERT_TRUE(plan);
-			ExecutionPlan *clone = ExecutionPlan_Clone(plan);
+			RT_ExecutionPlan *clone = RT_ExecutionPlan_Clone(plan);
 			ExecutionPlan_OpsEqual(plan, clone, plan->root, clone->root);
 			AST_Free(ast);
-			ExecutionPlan_Free(clone);
-			ExecutionPlan_Free(plan);
+			RT_ExecutionPlan_Free(clone);
+			RT_ExecutionPlan_Free(plan);
 		}
 	}
 };

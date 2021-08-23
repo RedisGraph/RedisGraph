@@ -19,5 +19,8 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan",
 				AllNodeScanToString, NULL, false, plan);
+
+	OpBase_Modifies((OpBase *)op, alias);
+	
 	return (OpBase *)op;
 }

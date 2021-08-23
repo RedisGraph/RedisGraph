@@ -37,5 +37,4 @@ static void DistinctFree(OpBase *ctx) {
 		rm_free(op->aliases);
 		op->aliases = NULL;
 	}
-
 }

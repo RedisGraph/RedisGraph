@@ -28,6 +28,8 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan",
 				NodeByLabelScanToString, NodeByLabelScanFree, false, plan);
 
+	OpBase_Modifies((OpBase *)op, n.alias);
+
 	return (OpBase *)op;
 }
 

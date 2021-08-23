@@ -16,7 +16,7 @@ static Record IndexScanConsumeFromChild(RT_OpBase *opBase);
 static RT_OpResult IndexScanReset(RT_OpBase *opBase);
 static void IndexScanFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, Graph *g, NodeScanCtx n,
+RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, NodeScanCtx n,
 		RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
 	ASSERT(g      != NULL);
@@ -25,7 +25,6 @@ RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, Graph *g, NodeScanCtx
 	ASSERT(filter != NULL);
 
 	RT_IndexScan *op = rm_malloc(sizeof(RT_IndexScan));
-	op->g                    =  g;
 	op->n                    =  n;
 	op->idx                  =  idx;
 	op->iter                 =  NULL;
@@ -44,6 +43,9 @@ RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, Graph *g, NodeScanCtx
 
 static RT_OpResult IndexScanInit(RT_OpBase *opBase) {
 	RT_IndexScan *op = (RT_IndexScan *)opBase;
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	op->g            =  gc->g;
 
 	if(opBase->childCount > 0) {
 		// find out how many different entities are refered to 

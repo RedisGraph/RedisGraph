@@ -25,7 +25,9 @@ RT_OpBase *RT_NewAllNodeScanOp(const RT_ExecutionPlan *plan, const char *alias) 
 	RT_OpBase_Init((RT_OpBase *)op, OPType_ALL_NODE_SCAN, AllNodeScanInit,
 				AllNodeScanConsume, AllNodeScanReset, AllNodeScanClone, AllNodeScanFree, false,
 				plan);
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, alias, &op->nodeRecIdx);
+	ASSERT(aware);
+
 	return (RT_OpBase *)op;
 }
 

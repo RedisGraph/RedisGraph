@@ -15,6 +15,6 @@ typedef struct {
 	Record r;
 } RT_Argument;
 
-RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan, const char **variables);
+RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan);
 
 void Argument_AddRecord(RT_Argument *arg, Record r);

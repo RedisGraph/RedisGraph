@@ -23,6 +23,12 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL,
 				ProjectFree, false, plan);
 
+	for(uint i = 0; i < op->exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+	}
+
 	return (OpBase *)op;
 }
 

@@ -13,18 +13,13 @@ static RT_OpResult ArgumentReset(RT_OpBase *opBase);
 static RT_OpBase *ArgumentClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ArgumentFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan, const char **variables) {
+RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan) {
 	RT_Argument *op = rm_malloc(sizeof(RT_Argument));
 	op->r = NULL;
 
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_ARGUMENT, NULL,
 				ArgumentConsume, ArgumentReset, ArgumentClone, ArgumentFree, false, plan);
-
-	uint variable_count = array_len(variables);
-	for(uint i = 0; i < variable_count; i ++) {
-		OpBase_Modifies((OpBase *)op, variables[i]);
-	}
 
 	return (RT_OpBase *)op;
 }
@@ -58,7 +53,7 @@ void Argument_AddRecord(RT_Argument *arg, Record r) {
 
 static inline RT_OpBase *ArgumentClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_ARGUMENT);
-	return RT_NewArgumentOp(plan, opBase->modifies);
+	return RT_NewArgumentOp(plan);
 }
 
 static void ArgumentFree(RT_OpBase *opBase) {
