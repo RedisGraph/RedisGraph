@@ -95,7 +95,7 @@ RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExp
 	ASSERT(aware);
 
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, AlgebraicExpression_Edge(op->ae));
-	if(RT_OpBase_Aware((RT_OpBase *)op, e->alias, &op->edgesIdx)) {
+	if(!RT_OpBase_Aware((RT_OpBase *)op, e->alias, &op->edgesIdx)) {
 		op->edgesIdx = -1;
 	};
 
