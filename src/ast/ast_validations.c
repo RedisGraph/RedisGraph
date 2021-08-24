@@ -1400,12 +1400,18 @@ static AST_Validation _Validate_SET_Clauses(const AST *ast) {
 	uint set_count = array_len(set_clauses);
 	for(uint i = 0; i < set_count; i++) {
 		AST_Validation res = _Validate_SETItems(set_clauses[i]);
-		if(res != AST_VALID) return res;
+		if(res != AST_VALID) {
+			array_free(set_clauses);
+			return res;
+		}
 
 		// Validate function calls within the SET clause.
 		bool include_aggregates = false;
 		res = _ValidateFunctionCalls(set_clauses[i], include_aggregates);
-		if(res != AST_VALID) return res;
+		if(res != AST_VALID) {
+			array_free(set_clauses);
+			return res;
+		}
 	}
 
 	array_free(set_clauses);
