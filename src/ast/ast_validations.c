@@ -1379,11 +1379,14 @@ static AST_Validation _Validate_SETItems(const cypher_astnode_t *set_clause) {
 	for(uint i = 0; i < nitems; i++) {
 		// Get the SET directive at this index.
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
-		const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-		if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
-			ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions (e.g.: SET foo(x).prop = 1)");
-			return AST_INVALID;
+		const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+		if(type == CYPHER_AST_SET_PROPERTY) {
+			const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+			const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
+			if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
+				ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions (e.g.: SET foo(x).prop = 1)");
+				return AST_INVALID;
+			}
 		}
 	}
 	return AST_VALID;
