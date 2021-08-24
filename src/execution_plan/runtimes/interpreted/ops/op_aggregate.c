@@ -183,6 +183,7 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **key_exps
 	op->should_cache_records = should_cache_records;
 	op->key_exps = key_exps;
 	op->aggregate_exps = aggregate_exps;
+	op->aggregate_count = aggregate_count;
 
 	// Allocate memory for group keys if we have any non-aggregate expressions.
 	if(key_count) op->group_keys = rm_malloc(key_count * sizeof(SIValue));
@@ -196,13 +197,15 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **key_exps
 	for(uint i = 0; i < op->key_count; i ++) {
 		// Store the index of each key expression.
 		int record_idx;
-		bool aware = RT_OpBase_Aware((OpBase *)op, op->key_exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->key_exps[i]->resolved_name, &record_idx);
+		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
 		int record_idx;
-		bool aware = RT_OpBase_Aware((OpBase *)op, op->aggregate_exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->aggregate_exps[i]->resolved_name, &record_idx);
+		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
 

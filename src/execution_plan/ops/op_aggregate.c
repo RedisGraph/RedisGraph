@@ -43,6 +43,14 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
 		AggregateFree, false, plan);
 
+	for(uint i = 0; i < op->key_count; i ++) {
+		// Store the index of each key expression.
+		OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+	}
+	for(uint i = 0; i < op->aggregate_count; i ++) {
+		// Store the index of each aggregating expression.
+		OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
+	}
 	return (OpBase *)op;
 }
 
