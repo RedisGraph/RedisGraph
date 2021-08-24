@@ -70,9 +70,20 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 	case OPType_EXPAND_INTO:
+	{
+		OpExpandInto *op = (OpExpandInto *)op_desc;
+		result = RT_NewExpandIntoOp(plan, op->ae);
+		break;
+	}
 	case OPType_CONDITIONAL_TRAVERSE:
+	{
+		OpCondTraverse *op = (OpCondTraverse *)op_desc;
+		result = RT_NewCondTraverseOp(plan, op->ae, op->dest_label_id, op->dest_label);
+		break;
+	}
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE:
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
+		break;
 	case OPType_RESULTS:
 	{
 		Results *op = (Results *)op_desc;
@@ -140,8 +151,17 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 	case OPType_UPDATE:
-	case OPType_DELETE:
+	{
+		OpUpdate *op = (OpUpdate *)op_desc;
+		result = RT_NewUpdateOp(plan, op->update_ctxs);
 		break;
+	}
+	case OPType_DELETE:
+	{
+		OpDelete *op = (OpDelete *)op_desc;
+		result = RT_NewDeleteOp(plan, op->exps);
+		break;
+	}
 	case OPType_UNWIND:
 	{
 		OpUnwind *op = (OpUnwind *)op_desc;
@@ -149,7 +169,11 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 	case OPType_PROC_CALL:
+	{
+		OpProcCall *op = (OpProcCall *)op_desc;
+		result = RT_NewProcCallOp(plan, op->proc_name, op->arg_exps, op->yield_exps);
 		break;
+	}
 	case OPType_ARGUMENT:
 	{
 		Argument *op = (Argument *)op_desc;
@@ -183,7 +207,9 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 
 	if(result) {
 		for (int i = 0; i < op_desc->childCount; i++) {
-			RT_ExecutionPlan_AddOp(result, _convert(plan, op_desc->children[i]));
+			RT_OpBase *child = _convert(plan, op_desc->children[i]);
+			ASSERT(child);
+			RT_ExecutionPlan_AddOp(result, child);
 		}
 	}
 
@@ -192,6 +218,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 
 RT_ExecutionPlan *RT_NewExecutionPlan(const ExecutionPlan *plan_desc) {
 	RT_ExecutionPlan *plan = rm_malloc(sizeof(RT_ExecutionPlan));
+	plan->prepared = false;
 	plan->plan_desc = plan_desc;
 	plan->record_map = plan_desc->record_map;
 	plan->root = _convert(plan, plan_desc->root);

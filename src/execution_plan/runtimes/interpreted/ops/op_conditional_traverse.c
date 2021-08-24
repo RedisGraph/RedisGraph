@@ -69,9 +69,8 @@ void _traverse(RT_OpCondTraverse *op) {
 	RG_Matrix_clear(op->F);
 }
 
-RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, int dest_label_id, const char *dest_label) {
+RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae, int dest_label_id, const char *dest_label) {
 	RT_OpCondTraverse *op = rm_malloc(sizeof(RT_OpCondTraverse));
-	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
 	op->iter = NULL;
@@ -115,6 +114,7 @@ RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, Algebrai
 
 static RT_OpResult CondTraverseInit(RT_OpBase *opBase) {
 	RT_OpCondTraverse *op = (RT_OpCondTraverse *)opBase;
+	op->graph = QueryCtx_GetGraph();
 	// Create 'records' with this Init function as 'record_cap'
 	// might be set during optimization time (applyLimit)
 	// If cap greater than BATCH_SIZE is specified,
@@ -216,7 +216,7 @@ static RT_OpResult CondTraverseReset(RT_OpBase *ctx) {
 static inline RT_OpBase *CondTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	RT_OpCondTraverse *op = (RT_OpCondTraverse *)opBase;
-	return RT_NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae), op->dest_label_id, op->dest_label);
+	return RT_NewCondTraverseOp(plan, AlgebraicExpression_Clone(op->ae), op->dest_label_id, op->dest_label);
 }
 
 /* Frees CondTraverse */

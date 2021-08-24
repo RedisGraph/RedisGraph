@@ -63,9 +63,8 @@ static void _traverse(RT_OpExpandInto *op) {
 	RG_Matrix_clear(op->F);
 }
 
-RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae) {
 	RT_OpExpandInto *op = rm_malloc(sizeof(RT_OpExpandInto));
-	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
 	op->F = NULL;
@@ -101,6 +100,7 @@ RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicE
 
 static RT_OpResult ExpandIntoInit(RT_OpBase *opBase) {
 	RT_OpExpandInto *op = (RT_OpExpandInto *)opBase;
+	op->graph = QueryCtx_GetGraph();
 	// Create 'records' with this Init function as 'record_cap'
 	// might be set during optimization time (applyLimit)
 	// If cap greater than BATCH_SIZE is specified,
@@ -213,7 +213,7 @@ static RT_OpResult ExpandIntoReset(RT_OpBase *ctx) {
 static inline RT_OpBase *ExpandIntoClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_EXPAND_INTO);
 	RT_OpExpandInto *op = (RT_OpExpandInto *)opBase;
-	return RT_NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
+	return RT_NewExpandIntoOp(plan, AlgebraicExpression_Clone(op->ae));
 }
 
 /* Frees ExpandInto */

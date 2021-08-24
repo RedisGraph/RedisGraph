@@ -33,4 +33,4 @@ typedef struct {
 } RT_OpCondTraverse;
 
 // Creates a new Traverse operation
-RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, int dest_label_id, const char *dest_label);
+RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae, int dest_label_id, const char *dest_label);

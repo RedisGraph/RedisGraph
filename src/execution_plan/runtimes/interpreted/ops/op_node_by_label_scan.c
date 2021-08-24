@@ -20,8 +20,7 @@ static void NodeByLabelScanFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, NodeScanCtx n) {
 	RT_NodeByLabelScan *op = rm_malloc(sizeof(RT_NodeByLabelScan));
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	op->g = gc->g;
+	op->g = QueryCtx_GetGraph();
 	op->n = n;
 	op->iter = NULL;
 	op->child_record = NULL;

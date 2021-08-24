@@ -28,4 +28,4 @@ typedef struct {
 	Record r;                   // Currently selected record.
 } RT_OpExpandInto;
 
-RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
+RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae);
