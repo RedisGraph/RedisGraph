@@ -25,6 +25,17 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", NULL, UpdateFree, true,
 		plan);
 
+	raxIterator it;
+	// iterate over all update expressions
+	// set the record index for every entity modified by this operation
+	raxStart(&it, update_exps);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		EntityUpdateEvalCtx *ctx = it.data;
+		OpBase_Modifies((OpBase *)op, ctx->alias);
+	}
+	raxStop(&it);
+
 	return (OpBase *)op;
 }
 

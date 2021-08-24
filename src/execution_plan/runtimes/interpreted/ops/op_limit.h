@@ -17,4 +17,4 @@ typedef struct {
 } RT_OpLimit;
 
 // Limits number of produced records
-RT_OpBase *RT_NewLimitOp(const RT_ExecutionPlan *plan, AR_ExpNode *limit_exp);
+RT_OpBase *RT_NewLimitOp(const RT_ExecutionPlan *plan, uint limit, AR_ExpNode *limit_exp);

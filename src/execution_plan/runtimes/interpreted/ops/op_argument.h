@@ -11,7 +11,7 @@
 
 // The Argument operation holds an internal Record that it will emit exactly once
 typedef struct {
-	OpBase op;
+	RT_OpBase op;
 	Record r;
 } RT_Argument;
 

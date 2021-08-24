@@ -48,18 +48,6 @@ static inline Record _pullFromStream(RT_OpBase *branch) {
 	return RT_OpBase_Consume(branch);
 }
 
-static void _InitializeUpdates(RT_OpMerge *op, rax *updates, raxIterator *it) {
-	// if we have ON MATCH / ON CREATE directives, set the appropriate record IDs of entities to be updated
-	raxStart(it, updates);
-	raxSeek(it, "^", NULL, 0);
-	// iterate over all expressions
-	while(raxNext(it)) {
-		EntityUpdateEvalCtx *ctx = it->data;
-		// set the record index for every entity modified by this operation
-		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
-	}
-
-}
 
 RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, rax *on_match, rax *on_create) {
 
@@ -74,9 +62,6 @@ RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, rax *on_match, rax *on_cr
 	// set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_MERGE, MergeInit, MergeConsume, NULL, MergeClone,
 				MergeFree, true, plan);
-
-	if(op->on_match) _InitializeUpdates(op, op->on_match, &op->on_match_it);
-	if(op->on_create) _InitializeUpdates(op, op->on_create, &op->on_create_it);
 
 	return (RT_OpBase *)op;
 }

@@ -90,8 +90,8 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 			RT_ExecutionPlan *clone = RT_ExecutionPlan_Clone(plan);
 			ExecutionPlan_OpsEqual(plan, clone, plan->root, clone->root);
 			AST_Free(ast);
-			RT_ExecutionPlan_Free(clone);
-			RT_ExecutionPlan_Free(plan);
+			// RT_ExecutionPlan_Free(clone);
+			// RT_ExecutionPlan_Free(plan);
 		}
 	}
 };

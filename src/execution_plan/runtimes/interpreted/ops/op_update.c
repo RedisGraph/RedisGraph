@@ -47,7 +47,9 @@ RT_OpBase *RT_NewUpdateOp(const RT_ExecutionPlan *plan, rax *update_exps) {
 	raxSeek(&op->it, "^", NULL, 0);
 	while(raxNext(&op->it)) {
 		EntityUpdateEvalCtx *ctx = op->it.data;
-		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, ctx->alias, &ctx->record_idx);
+		UNUSED(aware);
+		ASSERT(aware);
 	}
 
 	return (RT_OpBase *)op;

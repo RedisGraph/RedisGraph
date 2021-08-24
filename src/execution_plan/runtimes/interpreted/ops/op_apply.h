@@ -11,7 +11,7 @@
 #include "../runtime_execution_plan.h"
 
 typedef struct {
-	OpBase op;
+	RT_OpBase op;
 	Record r;                       // Bound branch record.
 	RT_OpBase *bound_branch;        // Bound branch.
 	RT_OpBase *rhs_branch;          // Right-hand branch.

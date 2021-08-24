@@ -121,13 +121,13 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_SKIP:
 	{
 		OpSkip *op = (OpSkip *)op_desc;
-		result = RT_NewSkipOp(plan, op->skip_exp);
+		result = RT_NewSkipOp(plan, op->skip, op->skip_exp);
 		break;
 	}
 	case OPType_LIMIT:
 	{
 		OpLimit *op = (OpLimit *)op_desc;
-		result = RT_NewLimitOp(plan, op->limit_exp);
+		result = RT_NewLimitOp(plan, op->limit, op->limit_exp);
 		break;
 	}
 	case OPType_DISTINCT:
@@ -144,8 +144,8 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	}
 	case OPType_MERGE_CREATE:
 	{
-		// OpMergeCreate *op = (OpMergeCreate *)op_desc;
-		// result = RT_NewMergeCreateOp(plan, op->nodes, op->edges);
+		OpMergeCreate *op = (OpMergeCreate *)op_desc;
+		result = RT_NewMergeCreateOp(plan, op->nodes, op->edges);
 		break;
 	}
 	case OPType_FILTER:

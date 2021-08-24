@@ -17,4 +17,4 @@ typedef struct {
 } RT_OpSkip;
 
 // Skips 'n' records.
-RT_OpBase *RT_NewSkipOp(const RT_ExecutionPlan *plan, AR_ExpNode *skip_exp);
+RT_OpBase *RT_NewSkipOp(const RT_ExecutionPlan *plan, uint skips, AR_ExpNode *skip_exp);

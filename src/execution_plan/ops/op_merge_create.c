@@ -11,6 +11,8 @@
 
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpMergeCreate *op = rm_calloc(1, sizeof(OpMergeCreate));
+	op->nodes = nodes;
+	op->edges = edges;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, NULL,

@@ -16,6 +16,8 @@
 /* Create new graph entities without introducing any non-unique patterns. */
 typedef struct {
 	OpBase op;    // The base operation.
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
 } OpMergeCreate;
 
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges);

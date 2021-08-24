@@ -101,16 +101,6 @@ RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const char *proc_name,
 	  	NULL, ProcCallConsume, ProcCallReset, ProcCallClone,
 	  	ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
 
-	// Set modifiers
-	for(uint i = 0; i < yield_count; i ++) {
-		const char *alias = yield_exps[i]->resolved_name;
-		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
-
-		array_append(op->output, yield);
-		OpBase_Modifies((OpBase *)op, yield);
-		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
-	}
-
 	return (RT_OpBase*)op;
 }
 
