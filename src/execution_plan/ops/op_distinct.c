@@ -18,9 +18,9 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alia
 	ASSERT(aliases != NULL);
 	ASSERT(alias_count > 0);
 
-	OpDistinct *op = rm_malloc(sizeof(OpDistinct));
-
-	op->aliases         =  rm_malloc(alias_count * sizeof(const char *));
+	OpDistinct *op  = rm_malloc(sizeof(OpDistinct));
+	op->aliases     = rm_malloc(alias_count * sizeof(const char *));
+	op->alias_count = alias_count;
 
 	// Copy aliases into heap array managed by this op
 	memcpy(op->aliases, aliases, alias_count * sizeof(const char *));

@@ -13,6 +13,7 @@
 typedef struct {
 	OpBase op;
 	const char **aliases;  // expression aliases to distinct by
+	uint alias_count;
 
 } OpDistinct;
 

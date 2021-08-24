@@ -37,6 +37,10 @@ static RT_OpBase *_ExecutionPlan_FindLastWriter(RT_OpBase *root) {
 
 static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) {
 	RT_OpBase *result = NULL;
+	if(plan->plan_desc != op_desc->plan) {
+		plan = RT_NewExecutionPlan(op_desc->plan);
+		return plan->root;
+	}
 	switch (op_desc->type)
 	{
 	case OPType_ALL_NODE_SCAN:
@@ -132,8 +136,8 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	}
 	case OPType_DISTINCT:
 	{
-		// OpDistinct *op = (OpDistinct *)op_desc;
-		// result = RT_NewDistinctOp(plan, op->aliases, );
+		OpDistinct *op = (OpDistinct *)op_desc;
+		result = RT_NewDistinctOp(plan, op->aliases, op->alias_count);
 		break;
 	}
 	case OPType_MERGE:
@@ -244,12 +248,9 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	}
 
 	ASSERT(result);
-	if(result) {
-		for (int i = 0; i < op_desc->childCount; i++) {
-			RT_OpBase *child = _convert(plan, op_desc->children[i]);
-			ASSERT(child);
-			RT_ExecutionPlan_AddOp(result, child);
-		}
+	for (int i = 0; i < op_desc->childCount; i++) {
+		RT_OpBase *child = _convert(plan, op_desc->children[i]);
+		RT_ExecutionPlan_AddOp(result, child);
 	}
 
 	return result;
