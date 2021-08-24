@@ -36,6 +36,7 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 	Graph_AllocateEdges(g, edge_count);
 	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
+	// flush all matrices, guarantee matrix dimensions matches graph's nodes count
 	Graph_ApplyAllPending(g, true);
 }
 
