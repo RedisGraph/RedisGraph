@@ -112,8 +112,8 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	}
 	case OPType_AGGREGATE:
 	{
-		// OpAggregate *op = (OpAggregate *)op_desc;
-		// result = RT_NewAggregateOp(plan, op->exps, op->key_count, op->should_cache_records);
+		OpAggregate *op = (OpAggregate *)op_desc;
+		result = RT_NewAggregateOp(plan, op->key_exps, op->key_count, op->aggregate_exps, op->aggregate_count, op->should_cache_records);
 		break;
 	}
 	case OPType_SORT:
@@ -247,7 +247,10 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 
-	ASSERT(result);
+	if(!result) {
+		printf("%s", op_desc->name);
+		ASSERT(result);
+	}
 	for (int i = 0; i < op_desc->childCount; i++) {
 		RT_OpBase *child = _convert(plan, op_desc->children[i]);
 		RT_ExecutionPlan_AddOp(result, child);

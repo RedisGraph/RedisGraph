@@ -174,13 +174,15 @@ static Record _handoff(RT_OpAggregate *op) {
 	return r;
 }
 
-RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps, uint key_count, bool should_cache_records) {
+RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **key_exps, uint key_count, AR_ExpNode **aggregate_exps, uint aggregate_count, bool should_cache_records) {
 	RT_OpAggregate *op = rm_malloc(sizeof(RT_OpAggregate));
 	op->group = NULL;
 	op->group_iter = NULL;
 	op->group_keys = NULL;
 	op->groups = CacheGroupNew();
 	op->should_cache_records = should_cache_records;
+	op->key_exps = key_exps;
+	op->aggregate_exps = aggregate_exps;
 
 	// Allocate memory for group keys if we have any non-aggregate expressions.
 	if(key_count) op->group_keys = rm_malloc(key_count * sizeof(SIValue));
@@ -193,12 +195,14 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps, ui
 	op->record_offsets = array_new(uint, op->aggregate_count + op->key_count);
 	for(uint i = 0; i < op->key_count; i ++) {
 		// Store the index of each key expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+		int record_idx;
+		bool aware = RT_OpBase_Aware((OpBase *)op, op->key_exps[i]->resolved_name, &record_idx);
 		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
+		int record_idx;
+		bool aware = RT_OpBase_Aware((OpBase *)op, op->aggregate_exps[i]->resolved_name, &record_idx);
 		array_append(op->record_offsets, record_idx);
 	}
 
@@ -245,12 +249,13 @@ static RT_OpBase *AggregateClone(const RT_ExecutionPlan *plan, const RT_OpBase *
 	RT_OpAggregate *op = (RT_OpAggregate *)opBase;
 	uint key_count = op->key_count;
 	uint aggregate_count = op->aggregate_count;
-	AR_ExpNode **exps = array_new(AR_ExpNode *, aggregate_count + key_count);
+	AR_ExpNode **key_exps = array_new(AR_ExpNode *, key_count);
+	AR_ExpNode **aggregate_exps = array_new(AR_ExpNode *, aggregate_count);
 
-	for(uint i = 0; i < key_count; i++) array_append(exps, AR_EXP_Clone(op->key_exps[i]));
+	for(uint i = 0; i < key_count; i++) array_append(key_exps, AR_EXP_Clone(op->key_exps[i]));
 	for(uint i = 0; i < aggregate_count; i++)
-		array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
-	return RT_NewAggregateOp(plan, exps, op->key_count, op->should_cache_records);
+		array_append(aggregate_exps, AR_EXP_Clone(op->aggregate_exps[i]));
+	return RT_NewAggregateOp(plan, key_exps, key_count, aggregate_exps, aggregate_count, op->should_cache_records);
 }
 
 static void AggregateFree(RT_OpBase *opBase) {

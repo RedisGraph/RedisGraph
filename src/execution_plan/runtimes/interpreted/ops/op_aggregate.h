@@ -25,4 +25,4 @@ typedef struct {
 	bool should_cache_records;          // records should be cached if we're sorting after aggregation
 } RT_OpAggregate;
 
-RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps, uint key_count, bool should_cache_records);
+RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **key_exps, uint key_count, AR_ExpNode **aggregate_exps, uint aggregate_count, bool should_cache_records);
