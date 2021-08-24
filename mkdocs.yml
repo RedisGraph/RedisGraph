@@ -70,5 +70,6 @@ plugins:
 
         - name: 'Gears'
           link: '/redisgears'
-  - versions-menu
-
+  - versions-menu:
+      exclude-regexes:
+        - '2\.6'
