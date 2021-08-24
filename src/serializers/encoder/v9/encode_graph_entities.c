@@ -230,8 +230,8 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 	 *  edge properties
 	 * */
 
-	GrB_Info res;
-	UNUSED(res);
+	GrB_Info info;
+	UNUSED(info);
 
 	if(edges_to_encode == 0) return;
 	// Get graph's edge count.
@@ -277,8 +277,8 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 		EdgeID edgeID;
 		bool depleted = false;
 		// Try to get next tuple.
-		res = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
-		ASSERT(res == GrB_SUCCESS);
+		info = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+		ASSERT(info == GrB_SUCCESS);
 		// If iterator is depleted, get new tuple from different matrix or finish encode.
 		while(depleted && r < relation_count) {
 			depleted = false;
@@ -288,10 +288,10 @@ void RdbSaveEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_enc
 			if(r == relation_count) goto finish;
 			// Get matrix and set iterator.
 			M = Graph_GetRelationMatrix(gc->g, r, false);
-			res = RG_MatrixTupleIter_reuse(iter, M);
-			ASSERT(res == GrB_SUCCESS);
-			res = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
-			ASSERT(res == GrB_SUCCESS);
+			info = RG_MatrixTupleIter_reuse(iter, M);
+			ASSERT(info == GrB_SUCCESS);
+			info = RG_MatrixTupleIter_next(iter, &src, &dest, &edgeID, &depleted);
+			ASSERT(info == GrB_SUCCESS);
 		}
 
 		e.srcNodeID = src;
