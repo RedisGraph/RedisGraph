@@ -182,6 +182,7 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **key_exps
 	op->groups = CacheGroupNew();
 	op->should_cache_records = should_cache_records;
 	op->key_exps = key_exps;
+	op->key_count = key_count;
 	op->aggregate_exps = aggregate_exps;
 	op->aggregate_count = aggregate_count;
 
