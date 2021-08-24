@@ -88,7 +88,7 @@ RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpressio
 				CondTraverseConsume, CondTraverseReset, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
-	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
 	UNUSED(aware);
 	ASSERT(aware == true);
 

@@ -68,12 +68,13 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *
 				"Conditional Variable Length Traverse", CondVarLenTraverseToString,
 				CondVarLenTraverseFree, false, plan);
 
+	OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
+
 	// populate edge value in record only if it is referenced
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
+	AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
 	_setTraverseDirection(op, e);
-
-	OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
 	return (OpBase *)op;
 }

@@ -69,12 +69,10 @@ inline void RT_CondVarLenTraverseOp_SetFilter(RT_CondVarLenTraverse *op,
 	op->ft = ft;
 }
 
-RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, Graph *g, int edgeIdx, AlgebraicExpression *ae) {
-	ASSERT(g != NULL);
+RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae) {
 	ASSERT(ae != NULL);
 
 	RT_CondVarLenTraverse *op = rm_malloc(sizeof(RT_CondVarLenTraverse));
-	op->g                  =  g;
 	op->r                  =  NULL;
 	op->M                  =  NULL;
 	op->ae                 =  ae;
@@ -96,13 +94,18 @@ RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, Graph *g, in
 	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
 	ASSERT(aware);
 
-	op->edgesIdx = edgeIdx;
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, AlgebraicExpression_Edge(op->ae));
+	if(RT_OpBase_Aware((RT_OpBase *)op, e->alias, &op->edgesIdx)) {
+		op->edgesIdx = -1;
+	};
 
 	return (RT_OpBase *)op;
 }
 
 static RT_OpResult CondVarLenTraverseInit(RT_OpBase *opBase) {
 	RT_CondVarLenTraverse *op = (RT_CondVarLenTraverse *)opBase;
+
+	op->g =  QueryCtx_GetGraph();
 
 	// check if variable length traversal doesn't require path construction
 	// in which case we only care for reachable destination nodes
@@ -298,8 +301,7 @@ static RT_OpResult CondVarLenTraverseReset(RT_OpBase *ctx) {
 static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
 	RT_CondVarLenTraverse *op = (RT_CondVarLenTraverse *) opBase;
-	RT_OpBase *op_clone = RT_NewCondVarLenTraverseOp(plan, QueryCtx_GetGraph(),
-											   op->edgesIdx, AlgebraicExpression_Clone(op->ae));
+	RT_OpBase *op_clone = RT_NewCondVarLenTraverseOp(plan, AlgebraicExpression_Clone(op->ae));
 	return op_clone;
 }
 

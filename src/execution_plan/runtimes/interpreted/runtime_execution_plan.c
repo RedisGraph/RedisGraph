@@ -82,8 +82,18 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE:
-	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
+	{
+		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
+		result = RT_NewCondVarLenTraverseOp(plan, op->ae);
 		break;
+	}
+	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
+	{
+		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
+		result = RT_NewCondVarLenTraverseOp(plan, op->ae);
+		RT_CondVarLenTraverseOp_ExpandInto((RT_CondVarLenTraverse *)result);
+		break;
+	}
 	case OPType_RESULTS:
 	{
 		Results *op = (Results *)op_desc;
@@ -181,10 +191,29 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 	case OPType_CARTESIAN_PRODUCT:
-	case OPType_VALUE_HASH_JOIN:
-	case OPType_APPLY:
-	case OPType_JOIN:
+	{
+		CartesianProduct *op = (CartesianProduct *)op_desc;
+		result = RT_NewCartesianProductOp(plan);
 		break;
+	}
+	case OPType_VALUE_HASH_JOIN:
+	{
+		OpValueHashJoin *op = (OpValueHashJoin *)op_desc;
+		result = RT_NewValueHashJoin(plan, op->lhs_exp, op->rhs_exp);
+		break;
+	}
+	case OPType_APPLY:
+	{
+		Apply *op = (Apply *)op_desc;
+		result = RT_NewApplyOp(plan);
+		break;
+	}
+	case OPType_JOIN:
+	{
+		OpJoin *op = (OpJoin *)op_desc;
+		result = RT_NewJoinOp(plan);
+		break;
+	}
 	case OPType_SEMI_APPLY:
 	{
 		OpSemiApply *op = (OpSemiApply *)op_desc;
@@ -199,12 +228,22 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	}
 	case OPType_OR_APPLY_MULTIPLEXER:
 	case OPType_AND_APPLY_MULTIPLEXER:
-	case OPType_OPTIONAL:
+	{
+		OpApplyMultiplexer *op = (OpApplyMultiplexer *)op_desc;
+		result = RT_NewApplyMultiplexerOp(plan, op->boolean_operator);
 		break;
+	}
+	case OPType_OPTIONAL:
+	{
+		Optional *op = (Optional *)op_desc;
+		result = RT_NewOptionalOp(plan);
+		break;
+	}
 	default:
 		break;
 	}
 
+	ASSERT(result);
 	if(result) {
 		for (int i = 0; i < op_desc->childCount; i++) {
 			RT_OpBase *child = _convert(plan, op_desc->children[i]);
