@@ -17,8 +17,9 @@ typedef struct {
 	OpBase op;
 	NodeScanCtx n;                      // label data of node being scanned
 	FT_FilterNode *filter;              // filter from which to compose index query
+	RSIndex *idx;                       // index to query
 } IndexScan;
 
 // creates a new IndexScan operation
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, NodeScanCtx n,
-	FT_FilterNode *filter);
+	RSIndex *idx, FT_FilterNode *filter);

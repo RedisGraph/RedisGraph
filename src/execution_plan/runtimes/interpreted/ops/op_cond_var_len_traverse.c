@@ -54,8 +54,6 @@ static void _setupTraversedRelations(RT_CondVarLenTraverse *op) {
 }
 
 void RT_CondVarLenTraverseOp_ExpandInto(RT_CondVarLenTraverse *op) {
-	// Expand into doesn't performs any modifications.
-	array_clear(op->op.modifies);
 	op->expandInto = true;
 	op->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO;
 }
@@ -299,9 +297,11 @@ static RT_OpResult CondVarLenTraverseReset(RT_OpBase *ctx) {
 }
 
 static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
 	RT_CondVarLenTraverse *op = (RT_CondVarLenTraverse *) opBase;
 	RT_OpBase *op_clone = RT_NewCondVarLenTraverseOp(plan, AlgebraicExpression_Clone(op->ae));
+	if(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO) {
+		RT_CondVarLenTraverseOp_ExpandInto(op_clone);
+	}
 	return op_clone;
 }
 

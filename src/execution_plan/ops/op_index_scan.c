@@ -18,18 +18,21 @@ static void IndexScanToString(const OpBase *ctx, sds *buf) {
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, NodeScanCtx n,
-		FT_FilterNode *filter) {
+		RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
 	ASSERT(plan   != NULL);
 	ASSERT(filter != NULL);
 
 	IndexScan *op = rm_malloc(sizeof(IndexScan));
 	op->n                    =  n;
+	op->idx                  =  idx;
 	op->filter               =  filter;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan",
 		IndexScanToString, IndexScanFree, false, plan);
+
+	OpBase_Modifies((OpBase *)op, n.alias);
 
 	return (OpBase *)op;
 }
