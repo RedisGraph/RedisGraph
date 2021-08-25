@@ -38,8 +38,10 @@ static RT_OpBase *_ExecutionPlan_FindLastWriter(RT_OpBase *root) {
 static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) {
 	RT_OpBase *result = NULL;
 	if(plan->plan_desc != op_desc->plan) {
-		plan = RT_NewExecutionPlan(op_desc->plan);
-		return plan->root;
+		RT_ExecutionPlan *new_plan = RT_ExecutionPlan_NewEmptyExecutionPlan();
+		new_plan->plan_desc = op_desc->plan;
+		new_plan->record_map = op_desc->plan->record_map;
+		plan = new_plan;
 	}
 	switch (op_desc->type)
 	{
