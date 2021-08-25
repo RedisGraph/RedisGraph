@@ -67,7 +67,7 @@ inline void RT_CondVarLenTraverseOp_SetFilter(RT_CondVarLenTraverse *op,
 	op->ft = ft;
 }
 
-RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae) {
+RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae, GRAPH_EDGE_DIR traverseDir) {
 	ASSERT(ae != NULL);
 
 	RT_CondVarLenTraverse *op = rm_malloc(sizeof(RT_CondVarLenTraverse));
@@ -77,6 +77,7 @@ RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExp
 	op->ft                 =  NULL;
 	op->expandInto         =  false;
 	op->allPathsCtx        =  NULL;
+	op->traverseDir        =  traverseDir;
 	op->collect_paths      =  true;
 	op->allNeighborsCtx    =  NULL;
 	op->edgeRelationTypes  =  NULL;
@@ -298,7 +299,7 @@ static RT_OpResult CondVarLenTraverseReset(RT_OpBase *ctx) {
 
 static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	RT_CondVarLenTraverse *op = (RT_CondVarLenTraverse *) opBase;
-	RT_OpBase *op_clone = RT_NewCondVarLenTraverseOp(plan, AlgebraicExpression_Clone(op->ae));
+	RT_OpBase *op_clone = RT_NewCondVarLenTraverseOp(plan, AlgebraicExpression_Clone(op->ae), op->traverseDir);
 	if(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO) {
 		RT_CondVarLenTraverseOp_ExpandInto(op_clone);
 	}

@@ -90,14 +90,14 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE:
 	{
 		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
-		result = RT_NewCondVarLenTraverseOp(plan, op->ae);
+		result = RT_NewCondVarLenTraverseOp(plan, op->ae, op->traverseDir);
 		if(op->ft) RT_CondVarLenTraverseOp_SetFilter(result, op->ft);
 		break;
 	}
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
 	{
 		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
-		result = RT_NewCondVarLenTraverseOp(plan, op->ae);
+		result = RT_NewCondVarLenTraverseOp(plan, op->ae, op->traverseDir);
 		RT_CondVarLenTraverseOp_ExpandInto((RT_CondVarLenTraverse *)result);
 		if(op->ft) RT_CondVarLenTraverseOp_SetFilter(result, op->ft);
 		break;
