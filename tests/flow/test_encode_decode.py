@@ -157,3 +157,23 @@ class test_v7_encode_decode(FlowTestsBase):
         expected = [[1]]
         actual = graph1.query(query)
         self.env.assertEquals(actual.result_set, expected)
+
+    def test08_multiple_reltypes(self):
+        graph_name = "multiple_reltypes"
+        redis_graph = Graph(graph_name, redis_con)
+        # Create 10 nodes
+        redis_graph.query("UNWIND range(0,10) as v CREATE (:L {v: v})")
+        # Create 3 edges of different relation types connecting 6 different nodes
+        redis_graph.query("MATCH (a:L {v: 1}), (b:L {v: 2}) CREATE (a)-[:R1]->(b)")
+        redis_graph.query("MATCH (a:L {v: 3}), (b:L {v: 4}) CREATE (a)-[:R2]->(b)")
+        redis_graph.query("MATCH (a:L {v: 5}), (b:L {v: 6}) CREATE (a)-[:R3]->(b)")
+
+        # Retrieve all the edges before and after saving & loading the RDB to check equality
+        query = "MATCH (:L)-[e]->(:L) RETURN ID(e), type(e) ORDER BY ID(e)"
+        expected = redis_graph.query(query)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        actual = redis_graph.query(query)
+        self.env.assertEquals(expected.result_set, actual.result_set)
