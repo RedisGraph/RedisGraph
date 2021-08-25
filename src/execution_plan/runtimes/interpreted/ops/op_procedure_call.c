@@ -32,7 +32,7 @@ static void _construct_output_mappings(RT_OpProcCall *op, SIValue *outputs) {
 			char *key = (outputs + j)->stringval;
 			if(strcmp(output, key) == 0) {
 				int idx;
-				bool aware = OpBase_Aware((OpBase *)op, key, &idx);
+				bool aware = RT_OpBase_Aware((RT_OpBase *)op, key, &idx);
 				UNUSED(aware);
 				ASSERT(aware == true);
 				op->yield_map[i].proc_out_idx = j + 1;
@@ -100,6 +100,14 @@ RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const char *proc_name,
 	RT_OpBase_Init((RT_OpBase *)op, OPType_PROC_CALL,
 	  	NULL, ProcCallConsume, ProcCallReset, ProcCallClone,
 	  	ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
+
+	// Set modifiers
+	for(uint i = 0; i < yield_count; i ++) {
+		const char *alias = yield_exps[i]->resolved_name;
+		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
+
+		array_append(op->output, yield);
+	}
 
 	return (RT_OpBase*)op;
 }
