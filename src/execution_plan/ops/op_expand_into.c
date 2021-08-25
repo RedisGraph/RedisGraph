@@ -27,6 +27,21 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, AlgebraicExpression *ae) {
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into",
 		ExpandIntoToString, ExpandIntoFree, false, plan);
 
+	// Make sure that all entities are represented in Record
+	bool aware;
+	UNUSED(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), NULL);
+	ASSERT(aware);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), NULL);
+	ASSERT(aware);
+
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
+		OpBase_Modifies((OpBase *)op, edge);
+	}
+
 	return (OpBase *)op;
 }
 

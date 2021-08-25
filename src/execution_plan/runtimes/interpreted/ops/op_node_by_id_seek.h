@@ -25,4 +25,4 @@ typedef struct {
 	int nodeRecIdx;         // Position of entity within record.
 } RT_NodeByIdSeek;
 
-RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const char *alias, UnsignedRange *id_range);
+RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const char *alias, uint64_t min, uint64_t max);

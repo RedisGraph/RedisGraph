@@ -81,19 +81,21 @@ RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, AlgebraicExpression 
 	// Make sure that all entities are represented in Record
 	bool aware;
 	UNUSED(aware);
-	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
 	ASSERT(aware);
-	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
+	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
 	ASSERT(aware);
 
-	// const char *edge = AlgebraicExpression_Edge(ae);
-	// if(edge) {
-	// 	/* This operation will populate an edge in the Record.
-	// 	 * Prepare all necessary information for collecting matching edges. */
-	// 	uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
-	// 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-	// 	op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
-	// }
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
+		uint edge_idx;
+		aware = RT_OpBase_Aware((RT_OpBase *)op, edge, &edge_idx);
+		ASSERT(aware);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, edge);
+		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+	}
 
 	return (RT_OpBase *)op;
 }

@@ -63,14 +63,14 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	}
 	case OPType_NODE_BY_ID_SEEK:
 	{
-		// NodeByIdSeek *op = (NodeByIdSeek *)op_desc;
-		// result = RT_NewNodeByIdSeekOp(plan, op->alias, );
+		NodeByIdSeek *op = (NodeByIdSeek *)op_desc;
+		result = RT_NewNodeByIdSeekOp(plan, op->alias, op->minId, op->maxId);
 		break;
 	}
 	case OPType_NODE_BY_LABEL_AND_ID_SCAN:
 	{
-		// NodeByLabelScan *op = (NodeByLabelScan *)op_desc;
-		// result = RT_NewNodeByLabelScanOp(plan, op->n);
+		NodeByLabelScan *op = (NodeByLabelScan *)op_desc;
+		result = RT_NewNodeByLabelScanOp(plan, op->n);
 		break;
 	}
 	case OPType_EXPAND_INTO:
@@ -89,6 +89,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	{
 		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
 		result = RT_NewCondVarLenTraverseOp(plan, op->ae);
+		RT_CondVarLenTraverseOp_SetFilter(result, op->ft);
 		break;
 	}
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
@@ -96,6 +97,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
 		result = RT_NewCondVarLenTraverseOp(plan, op->ae);
 		RT_CondVarLenTraverseOp_ExpandInto((RT_CondVarLenTraverse *)result);
+		RT_CondVarLenTraverseOp_SetFilter(result, op->ft);
 		break;
 	}
 	case OPType_RESULTS:

@@ -23,34 +23,34 @@ static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT
 static void CondVarLenTraverseFree(RT_OpBase *opBase);
 
 static void _setupTraversedRelations(RT_CondVarLenTraverse *op) {
-	// QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph, AlgebraicExpression_Edge(op->ae));
-	// ASSERT(e->minHops <= e->maxHops);
-	// op->minHops = e->minHops;
-	// op->maxHops = e->maxHops;
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->plan_desc->query_graph, AlgebraicExpression_Edge(op->ae));
+	ASSERT(e->minHops <= e->maxHops);
+	op->minHops = e->minHops;
+	op->maxHops = e->maxHops;
 
-	// uint reltype_count = QGEdge_RelationCount(e);
-	// if(reltype_count == 0) {
-	// 	op->edgeRelationCount = 1;
-	// 	op->edgeRelationTypes = array_new(int, 1);
-	// 	array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
-	// } else {
-	// 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	// 	op->edgeRelationCount = 0;
-	// 	op->edgeRelationTypes = array_new(int, reltype_count);
+	uint reltype_count = QGEdge_RelationCount(e);
+	if(reltype_count == 0) {
+		op->edgeRelationCount = 1;
+		op->edgeRelationTypes = array_new(int, 1);
+		array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
+	} else {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		op->edgeRelationCount = 0;
+		op->edgeRelationTypes = array_new(int, reltype_count);
 
-	// 	for(int i = 0; i < reltype_count; i++) {
-	// 		int rel_id = e->reltypeIDs[i];
-	// 		if(rel_id != GRAPH_UNKNOWN_RELATION) {
-	// 			array_append(op->edgeRelationTypes, rel_id);
-	// 		} else {
-	// 			const char *rel_type = e->reltypes[i];
-	// 			Schema *s = GraphContext_GetSchema(gc, rel_type, SCHEMA_EDGE);
-	// 			if(s) array_append(op->edgeRelationTypes, s->id);
-	// 		}
-	// 	}
+		for(int i = 0; i < reltype_count; i++) {
+			int rel_id = e->reltypeIDs[i];
+			if(rel_id != GRAPH_UNKNOWN_RELATION) {
+				array_append(op->edgeRelationTypes, rel_id);
+			} else {
+				const char *rel_type = e->reltypes[i];
+				Schema *s = GraphContext_GetSchema(gc, rel_type, SCHEMA_EDGE);
+				if(s) array_append(op->edgeRelationTypes, s->id);
+			}
+		}
 
-	// 	op->edgeRelationCount = array_len(op->edgeRelationTypes);
-	// }
+		op->edgeRelationCount = array_len(op->edgeRelationTypes);
+	}
 }
 
 void RT_CondVarLenTraverseOp_ExpandInto(RT_CondVarLenTraverse *op) {
@@ -123,32 +123,32 @@ static RT_OpResult CondVarLenTraverseInit(RT_OpBase *opBase) {
 	//
 	// in which case we can use a faster consume function
 
-	// QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph,
-	// 		AlgebraicExpression_Edge(op->ae));
-	// uint reltype_count = QGEdge_RelationCount(e);
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->plan_desc->query_graph,
+			AlgebraicExpression_Edge(op->ae));
+	uint reltype_count = QGEdge_RelationCount(e);
 
-	// bool  multi_edge  =  true;
-	// bool  transpose   =  op->traverseDir != GRAPH_EDGE_DIR_OUTGOING;
-	// if(reltype_count == 1) {
-	// 	int rel_id = QGEdge_RelationID(e, 0);
-	// 	if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
-	// 		multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id,
-	// 				transpose);
-	// 	}
-	// }
+	bool  multi_edge  =  true;
+	bool  transpose   =  op->traverseDir != GRAPH_EDGE_DIR_OUTGOING;
+	if(reltype_count == 1) {
+		int rel_id = QGEdge_RelationID(e, 0);
+		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
+			multi_edge = Graph_RelationshipContainsMultiEdge(op->g, rel_id,
+					transpose);
+		}
+	}
 
-	// if(op->ft          == NULL                && // no filter on path
-	//    op->edgesIdx    == -1                  && // edge isn't required
-	//    op->expandInto  == false               && // destination unknown
-	//    reltype_count   == 1                   && // single relationship
-	//    multi_edge      == false               && // no multi edge entries
-	//    op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
-	// ) {
-	// 	AlgebraicExpression_Optimize(&op->ae);
-	// 	ASSERT(op->ae->type == AL_OPERAND);
-	// 	op->collect_paths = false;
-	// 	RT_OpBase_UpdateConsume(opBase, CondVarLenTraverseOptimizedConsume);
-	// }
+	if(op->ft          == NULL                && // no filter on path
+	   op->edgesIdx    == -1                  && // edge isn't required
+	   op->expandInto  == false               && // destination unknown
+	   reltype_count   == 1                   && // single relationship
+	   multi_edge      == false               && // no multi edge entries
+	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
+	) {
+		AlgebraicExpression_Optimize(&op->ae);
+		ASSERT(op->ae->type == AL_OPERAND);
+		op->collect_paths = false;
+		RT_OpBase_UpdateConsume(opBase, CondVarLenTraverseOptimizedConsume);
+	}
 
 	return OP_OK;
 }

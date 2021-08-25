@@ -24,18 +24,18 @@ static inline bool _outOfBounds(RT_NodeByIdSeek *op) {
 	return false;
 }
 
-RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const char *alias, UnsignedRange *id_range) {
+RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const char *alias, uint64_t min, uint64_t max) {
 
 	RT_NodeByIdSeek *op = rm_malloc(sizeof(RT_NodeByIdSeek));
 	op->g = QueryCtx_GetGraph();
 	op->child_record = NULL;
 	op->alias = alias;
 
-	op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
+	op->minId = min;
 	/* The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	 * This value will be set on Init, to allow operation clone be independent
 	 * on the current graph size.*/
-	op->maxId = id_range->include_max ? id_range->max : id_range->max - 1;
+	op->maxId = max;
 
 	op->currentId = op->minId;
 
@@ -130,18 +130,7 @@ static RT_OpResult NodeByIdSeekReset(RT_OpBase *ctx) {
 static RT_OpBase *NodeByIdSeekClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	RT_NodeByIdSeek *op = (RT_NodeByIdSeek *)opBase;
-	UnsignedRange range;
-	range.min = op->minId;
-	range.max = op->maxId;
-	/* In order to clone the range set at the original op, the range must be inclusive so the clone will set the exact range as the original.
-	 * During the call to NewNodeByIdSeekOp with the range, the following lines are executed:
-	 * op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
-	 * op->maxId = id_range->include_max ? id_range->max : id_range->max - 1;
-	 * Since the range object min equals to the origin minId, and so is the max equals to the origin maxId, and the range is inclusive
-	 * the clone will set its values to be the same as in the origin. */
-	range.include_min = true;
-	range.include_max = true;
-	return RT_NewNodeByIdSeekOp(plan, op->alias, &range);
+	return RT_NewNodeByIdSeekOp(plan, op->alias, op->minId, op->maxId);
 }
 
 static void NodeByIdSeekFree(RT_OpBase *opBase) {
