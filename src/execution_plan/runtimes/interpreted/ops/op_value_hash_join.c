@@ -183,7 +183,10 @@ RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, AR_ExpNode *lhs_exp
 				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinClone,
 				ValueHashJoinFree, false, plan);
 
-	op->join_value_rec_idx = OpBase_Modifies((OpBase *)op, "pivot");
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, "pivot", &op->join_value_rec_idx);
+	UNUSED(aware);
+	ASSERT(aware);
+	
 	return (RT_OpBase *)op;
 }
 

@@ -47,6 +47,8 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join",
 		ValueHashJoinToString, ValueHashJoinFree, false, plan);
 
+	OpBase_Modifies((OpBase *)op, "pivot");
+
 	return (OpBase *)op;
 }
 

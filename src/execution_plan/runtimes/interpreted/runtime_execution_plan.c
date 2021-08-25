@@ -57,8 +57,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	}
 	case OPType_INDEX_SCAN:
 	{
-		// IndexScan *op = (IndexScan *)op_desc;
-		// result = RT_NewIndexScanOp(plan, op->n, , op->filter);
+		ASSERT(false);
 		break;
 	}
 	case OPType_NODE_BY_ID_SEEK:
