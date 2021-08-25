@@ -168,3 +168,13 @@ void ThreadPools_SetMaxPendingWork(uint64_t val) {
 	if(_writers_thpool != NULL) thpool_set_jobqueue_cap(_writers_thpool, val);
 }
 
+void ThreadPools_Destroy
+(
+	void
+) {
+	ASSERT(_readers_thpool != NULL);
+	ASSERT(_writers_thpool != NULL);
+
+	thpool_destroy(_readers_thpool);
+	thpool_destroy(_writers_thpool);
+}

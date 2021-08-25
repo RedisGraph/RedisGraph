@@ -1,6 +1,6 @@
-import threading
 from RLTest import Env
 from redisgraph import Graph
+from pathos.pools import ProcessPool as Pool
 
 # 1.test getting and setting config
 # 2. test overflowing the server when there's a limit
@@ -8,22 +8,23 @@ from redisgraph import Graph
 # 3. test overflowing the server when there's no limit
 #    expect not to get any exceptions
 
-error_encountered = False
-
 GRAPH_NAME = "max_pending_queries"
-SLOW_QUERY = "UNWIND range (0, 100000) AS x WITH x WHERE (x / 2) = 50  RETURN x"
+SLOW_QUERY = "UNWIND range (0, 1000000) AS x WITH x WHERE (x / 2) = 50  RETURN x"
 
 def issue_query(conn, q):
-    global error_encountered
-
     try:
         conn.execute_command("GRAPH.QUERY", GRAPH_NAME, q)
+        return False
     except Exception as e:
         assert "Max pending queries exceeded" in str(e)
-        error_encountered = True
+        return True
 
 class testPendingQueryLimit():
     def __init__(self):
+        # skip test if we're running under Valgrind
+        if Env().envRunner.debugger is not None:
+            Env().skip() # valgrind is not working correctly with multi process
+
         self.env = Env(decodeResponses=True)
         self.conn = self.env.getConnection()
 
@@ -42,48 +43,36 @@ class testPendingQueryLimit():
         self.env.assertEquals(max_queued_queries, 10)
 
     def stress_server(self):
-        threads = []
-        connections = []
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
         thread_count = threadpool_size * 5
+        qs = [SLOW_QUERY] * thread_count
+        connections = []
+        pool = Pool(nodes=thread_count)
 
         # init connections
         for i in range(thread_count):
             connections.append(self.env.getConnection())
 
         # invoke queries
-        for i in range(thread_count):
-            con = connections.pop()
-            t = threading.Thread(target=issue_query, args=(con, SLOW_QUERY))
-            t.setDaemon(True)
-            threads.append(t)
-            t.start()
+        result = pool.map(issue_query, connections, qs)
 
-        # wait for threads to return
-        for i in range(thread_count):
-            t = threads[i]
-            t.join()
+        # return if error encountered
+        return any(result)
 
     def test_02_overflow_no_limit(self):
-        global error_encountered
-        error_encountered = False
-
         # no limit on number of pending queries
         limit = 4294967295
         self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", limit)
 
-        self.stress_server()
+        error_encountered = self.stress_server()
 
         self.env.assertFalse(error_encountered)
 
     def test_03_overflow_with_limit(self):
-        global error_encountered
-        error_encountered = False
-
         # limit number of pending queries
         limit = 1
         self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", limit)
 
-        self.stress_server()
+        error_encountered = self.stress_server()
 
         self.env.assertTrue(error_encountered)

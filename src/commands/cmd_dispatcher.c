@@ -140,6 +140,21 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 	return CMD_UNKNOWN;
 }
 
+static bool should_command_create_graph(GRAPH_Commands cmd) {
+	switch(cmd) {
+		case CMD_QUERY:
+		case CMD_RO_QUERY:
+		case CMD_EXPLAIN:
+		case CMD_PROFILE:
+			return true;
+		case CMD_SLOWLOG:
+			return false;
+		default:
+			ASSERT(false);
+	}
+	return false;
+}
+
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	char *errmsg;
 	bool compact;
@@ -164,7 +179,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		return REDISMODULE_OK;
 	}
 
-	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
+	bool shouldCreate = should_command_create_graph(cmd);
+	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, shouldCreate);
 	// if GraphContext is null, key access failed and an error been emitted
 	if(!gc) return REDISMODULE_ERR;
 
