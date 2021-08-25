@@ -214,8 +214,15 @@ class testGraphPersistency(FlowTestsBase):
         self.env.assertEquals(actual_result.relationships_created, 50_000)
 
         redis_con.execute_command("DEBUG", "RELOAD")
-
-        q = """MATCH (:L)-[r:R {v: 50000}]->(:L) RETURN r.v"""
+        
         expected_result = [[50000]]
-        actual_result = graph.query(q)
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        
+        queries = [
+            """MATCH (:L)-[r {v: 50000}]->(:L) RETURN r.v""",
+            """MATCH (:L)-[r:R {v: 50000}]->(:L) RETURN r.v""",
+            """MATCH ()-[r:R {v: 50000}]->() RETURN r.v"""
+        ]
+
+        for q in queries:
+            actual_result = graph.query(q)
+            self.env.assertEquals(actual_result.result_set, expected_result)
