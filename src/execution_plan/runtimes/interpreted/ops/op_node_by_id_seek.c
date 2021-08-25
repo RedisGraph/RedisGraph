@@ -43,7 +43,9 @@ RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const char *alias,
 				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekClone, NodeByIdSeekFree,
 				false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, alias, &op->nodeRecIdx);
+	UNUSED(aware);
+	ASSERT(aware);
 
 	return (RT_OpBase *)op;
 }

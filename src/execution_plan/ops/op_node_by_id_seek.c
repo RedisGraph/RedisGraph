@@ -27,5 +27,7 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, Unsigned
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek",
 				NodeByIdSeekToString, NULL, false, plan);
 
+	OpBase_Modifies((OpBase *)op, alias);
+
 	return (OpBase *)op;
 }
