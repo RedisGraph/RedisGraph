@@ -12,12 +12,16 @@
 
 static RT_ExecutionPlan *_ClonePlanInternals(const RT_ExecutionPlan *template) {
 	RT_ExecutionPlan *clone = RT_ExecutionPlan_NewEmptyExecutionPlan();
-
+	// TODO check
+	ExecutionPlan *plan_desc = (ExecutionPlan *)template->plan_desc;
+	clone->plan_desc = plan_desc;
 	clone->record_map = raxClone(template->record_map);
-	clone->plan_desc = template->plan_desc;
+	if(plan_desc->query_graph) {
+		QueryGraph_ResolveUnknownRelIDs(plan_desc->query_graph);
+	}
 
 	// Temporarily set the thread-local AST to be the one referenced by this ExecutionPlan segment.
-	QueryCtx_SetAST(clone->plan_desc->ast_segment);
+	QueryCtx_SetAST(plan_desc->ast_segment);
 
 	return clone;
 }
@@ -70,4 +74,3 @@ RT_ExecutionPlan *RT_ExecutionPlan_Clone(const RT_ExecutionPlan *template) {
 	QueryCtx_SetAST(master_ast);
 	return clone;
 }
-
