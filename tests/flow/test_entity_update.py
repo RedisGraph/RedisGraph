@@ -118,4 +118,4 @@ class testEntityUpdate(FlowTestsBase):
             graph.query("MATCH P=() SET nodes(P).prop = 1 RETURN nodes(P)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions (e.g.: SET foo(x).prop = 1)", str(e))
+            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
