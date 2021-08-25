@@ -1373,21 +1373,45 @@ static AST_Validation _validateSubscriptOps(const cypher_astnode_t *root) {
 	return AST_VALID;
 }
 
+// checks if set items contains non-alias referenes in lhs
+static AST_Validation _Validate_SETItems(const cypher_astnode_t *set_clause) {
+	uint nitems = cypher_ast_set_nitems(set_clause);
+	for(uint i = 0; i < nitems; i++) {
+		// Get the SET directive at this index.
+		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
+		const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+		if(type == CYPHER_AST_SET_PROPERTY) {
+			const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+			const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
+			if(cypher_astnode_type(ast_entity) != CYPHER_AST_IDENTIFIER) {
+				ErrorCtx_SetError("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions");
+				return AST_INVALID;
+			}
+		}
+	}
+	return AST_VALID;
+}
+
 // checks if SET cluase contains aggregation function
 static AST_Validation _Validate_SET_Clauses(const AST *ast) {
 	const cypher_astnode_t **set_clauses = AST_GetClauses(ast, CYPHER_AST_SET);
 	if(set_clauses == NULL) return AST_VALID;
 
+	AST_Validation res = AST_VALID;
 	uint set_count = array_len(set_clauses);
-	for(uint i = 0; i < set_count; i ++) {
-		// Validate function calls within the SET clause.
+
+	for(uint i = 0; i < set_count; i++) {
+		res = _Validate_SETItems(set_clauses[i]);
+		if(res != AST_VALID) break;
+
+		// validate function calls within the SET clause
 		bool include_aggregates = false;
-		AST_Validation res = _ValidateFunctionCalls(ast->root, include_aggregates);
-		if(res != AST_VALID) return res;
+		res = _ValidateFunctionCalls(set_clauses[i], include_aggregates);
+		if(res != AST_VALID) break;
 	}
 
 	array_free(set_clauses);
-	return AST_VALID;
+	return res;
 }
 
 static AST_Validation _ValidateClauses(const AST *ast) {
