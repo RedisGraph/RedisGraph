@@ -156,69 +156,73 @@ static bool _identifyEdgeCountPattern(OpBase *root, RT_OpResult **opResult,
 }
 
 void _reduceEdgeCount(ExecutionPlan *plan) {
-	// // we'll only modify execution plan if it is structured as follows:
-	// // "Full Scan -> Conditional Traverse -> Aggregate -> Results"
-	// OpBase *opScan;
-	// OpBase *opTraverse;
-	// RT_OpResult *opResult;
-	// OpAggregate *opAggregate;
+	// we'll only modify execution plan if it is structured as follows:
+	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
+	OpBase *opScan;
+	OpBase *opTraverse;
+	RT_OpResult *opResult;
+	OpAggregate *opAggregate;
 
-	// // see if execution-plan matches the pattern:
-	// // "Full Scan -> Conditional Traverse -> Aggregate -> Results"
-	// // if that's not the case, simply return without making any modifications
-	// if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate,
-	// 			&opTraverse, &opScan)) return;
+	// see if execution-plan matches the pattern:
+	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
+	// if that's not the case, simply return without making any modifications
+	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate,
+				&opTraverse, &opScan)) return;
 
-	// // user is trying to count edges (either in total or of specific types)
-	// // in the graph. optimize by skipping Scan, Traverse and Aggregate
-	// Graph *g = QueryCtx_GetGraph();
-	// SIValue edgeCount = SI_LongVal(0);
+	// user is trying to count edges (either in total or of specific types)
+	// in the graph. optimize by skipping Scan, Traverse and Aggregate
+	Graph *g = QueryCtx_GetGraph();
+	SIValue edgeCount = SI_LongVal(0);
 
-	// // if type is specified, count only labeled entities
-	// OpCondTraverse *condTraverse = (OpCondTraverse *)opTraverse;
-	// // the traversal op doesn't contain information about the traversed edge,
-	// // cannot apply optimization
-	// if(!condTraverse->edge_ctx) return;
+	// if type is specified, count only labeled entities
+	OpCondTraverse *condTraverse = (OpCondTraverse *)opTraverse;
 
-	// uint relationCount = array_len(condTraverse->edge_ctx->edgeRelationTypes);
+	const char *edge = AlgebraicExpression_Edge(condTraverse->ae);
+	// the traversal op doesn't contain information about the traversed edge,
+	// cannot apply optimization
+	if(!edge) return;
 
-	// uint64_t edges = 0;
-	// for(uint i = 0; i < relationCount; i++) {
-	// 	int relType = condTraverse->edge_ctx->edgeRelationTypes[i];
-	// 	switch(relType) {
-	// 		case GRAPH_NO_RELATION:
-	// 			// should be the only relationship type mentioned, -[]->
-	// 			edges = Graph_EdgeCount(g);
-	// 			break;
-	// 		case GRAPH_UNKNOWN_RELATION:
-	// 			// no change to current count, -[:none_existing]->
-	// 			break;
-	// 		default:
-	// 			edges += Graph_RelationEdgeCount(g, relType);
-	// 	}
-	// }
-	// edgeCount = SI_LongVal(edges);
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
+	
+	uint relationCount = array_len(e->reltypeIDs);
 
-	// // construct a constant expression, used by a new projection operation
-	// AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-	// // the new expression must be aliased to populate the Record
-	// exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
-	// AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
-	// array_append(exps, exp);
+	uint64_t edges = 0;
+	for(uint i = 0; i < relationCount; i++) {
+		int relType = e->reltypeIDs[i];
+		switch(relType) {
+			case GRAPH_NO_RELATION:
+				// should be the only relationship type mentioned, -[]->
+				edges = Graph_EdgeCount(g);
+				break;
+			case GRAPH_UNKNOWN_RELATION:
+				// no change to current count, -[:none_existing]->
+				break;
+			default:
+				edges += Graph_RelationEdgeCount(g, relType);
+		}
+	}
+	edgeCount = SI_LongVal(edges);
 
-	// OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
+	// construct a constant expression, used by a new projection operation
+	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
+	// the new expression must be aliased to populate the Record
+	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
+	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
+	array_append(exps, exp);
 
-	// // new execution plan: "Project -> Results"
-	// ExecutionPlan_RemoveOp(plan, opScan);
-	// OpBase_Free(opScan);
+	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
-	// ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
-	// OpBase_Free(opTraverse);
+	// new execution plan: "Project -> Results"
+	ExecutionPlan_RemoveOp(plan, opScan);
+	OpBase_Free(opScan);
 
-	// ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
-	// OpBase_Free((OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
+	OpBase_Free(opTraverse);
 
-	// ExecutionPlan_AddOp((OpBase *)opResult, opProject);
+	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
+	OpBase_Free((OpBase *)opAggregate);
+
+	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
 }
 
 void reduceCount(ExecutionPlan *plan) {
