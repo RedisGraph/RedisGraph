@@ -104,7 +104,7 @@ int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias);
 // Returns true if op is aware of alias
 // an operation is aware of all aliases it modifies and all aliases
 // modified by prior operation within its segment
-bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
+bool OpBase_Aware(OpBase *op, const char *alias, uint *idx);
 
 // Indicates if the operation is a writer operation
 bool OpBase_IsWriter(OpBase *op);

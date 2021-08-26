@@ -103,7 +103,7 @@ RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpressio
 	if(edge) {
 		/* This operation will populate an edge in the Record.
 		 * Prepare all necessary information for collecting matching edges. */
-		int edge_idx;
+		uint edge_idx;
 		aware = RT_OpBase_Aware((RT_OpBase *)op, edge, &edge_idx);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, edge);
 		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);

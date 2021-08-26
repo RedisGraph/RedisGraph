@@ -66,15 +66,15 @@ typedef struct {
 // Context describing an update expression.
 typedef struct {
 	PropertySetCtx *properties; // properties to set
-	int record_idx;             // record offset this entity is stored at
+	uint record_idx;            // record offset this entity is stored at
 	UPDATE_MODE mode;           // Whether the entity's property map should be updated or replaced
 	const char *alias;          // Access-safe alias of the entity being updated
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause
 typedef struct {
-	int src_idx;                // source node record index
-	int dest_idx;               // destination node record index
+	uint src_idx;               // source node record index
+	uint dest_idx;              // destination node record index
 	int edge_idx;               // edge record index
 	int reltypeId;              // edge relationship type id
 	const char *src;            // source node alias

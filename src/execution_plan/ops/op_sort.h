@@ -7,7 +7,6 @@
 #pragma once
 
 #include "op.h"
-#include "../../util/heap.h"
 #include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
@@ -21,4 +20,3 @@ typedef struct {
 
 /* Creates a new Sort operation */
 OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions);
-

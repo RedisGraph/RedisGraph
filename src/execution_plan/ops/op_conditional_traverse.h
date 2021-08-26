@@ -8,10 +8,7 @@
 
 #include "op.h"
 #include "../execution_plan.h"
-#include "shared/traverse_functions.h"
-#include "../../graph/rg_matrix/rg_matrix_iter.h"
 #include "../../arithmetic/algebraic_expression.h"
-#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // OP Traverse
 typedef struct {

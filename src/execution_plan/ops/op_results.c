@@ -6,10 +6,6 @@
 
 #include "op_results.h"
 #include "RG.h"
-#include "../../util/arr.h"
-#include "../../query_ctx.h"
-#include "../../configuration/config.h"
-#include "../../arithmetic/arithmetic_expression.h"
 
 OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));

@@ -67,7 +67,7 @@ OPType RT_OpBase_Type(const RT_OpBase *op);
 // returns true if op is aware of alias
 // an operation is aware of all aliases it modifies and all aliases
 // modified by prior operation within its segment
-bool RT_OpBase_Aware(RT_OpBase *op, const char *alias, int *idx);
+bool RT_OpBase_Aware(RT_OpBase *op, const char *alias, uint *idx);
 
 // sends free request to each operation up the chain
 void RT_OpBase_PropagateFree(RT_OpBase *op);

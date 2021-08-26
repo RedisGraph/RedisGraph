@@ -7,7 +7,6 @@
 #pragma once
 
 #include "op.h"
-#include "rax.h"
 #include "../execution_plan.h"
 
 typedef struct {

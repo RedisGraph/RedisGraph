@@ -9,7 +9,6 @@
 #include "op.h"
 #include "op_argument.h"
 #include "../execution_plan.h"
-#include "shared/update_functions.h"
 #include "../../resultset/resultset_statistics.h"
 
 /* The Merge operation accepts exactly one path in the query and attempts to match it.
@@ -27,4 +26,3 @@ typedef struct {
 } OpMerge;
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create);
-

@@ -39,10 +39,10 @@ inline Record RT_OpBase_Consume(RT_OpBase *op) {
 	return op->consume(op);
 }
 
-bool RT_OpBase_Aware(RT_OpBase *op, const char *alias, int *idx) {
+bool RT_OpBase_Aware(RT_OpBase *op, const char *alias, uint *idx) {
 	rax *mapping = RT_ExecutionPlan_GetMappings(op->plan);
 	void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));
-	if(idx) *idx = (intptr_t)rec_idx;
+	if(idx) *idx = (uintptr_t)rec_idx;
 	return (rec_idx != raxNotFound);
 }
 

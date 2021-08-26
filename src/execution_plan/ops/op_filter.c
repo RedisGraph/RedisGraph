@@ -29,4 +29,3 @@ static void FilterFree(OpBase *ctx) {
 		filter->filterTree = NULL;
 	}
 }
-

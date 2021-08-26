@@ -33,4 +33,3 @@ static void OpApplyMultiplexerFree(OpBase *opBase) {
 		op->branch_arguments = NULL;
 	}
 }
-

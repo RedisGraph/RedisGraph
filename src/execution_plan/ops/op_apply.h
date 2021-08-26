@@ -18,4 +18,3 @@ typedef struct {
 } Apply;
 
 OpBase *NewApplyOp(const ExecutionPlan *plan);
-

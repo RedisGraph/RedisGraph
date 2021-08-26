@@ -22,7 +22,7 @@ typedef struct {
 	NodeID currentId;       // Current ID fetched.
 	NodeID minId;           // Min ID to fetch.
 	NodeID maxId;           // Max ID to fetch.
-	int nodeRecIdx;         // Position of entity within record.
+	uint nodeRecIdx;        // Position of entity within record.
 } RT_NodeByIdSeek;
 
 RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const char *alias, uint64_t min, uint64_t max);

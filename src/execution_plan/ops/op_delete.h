@@ -8,12 +8,8 @@
 
 #include "op.h"
 #include "../execution_plan.h"
-#include "../../graph/entities/node.h"
-#include "../../resultset/resultset_statistics.h"
-#include "rax.h"
+
 /* Deletes entities specified within the DELETE clause. */
-
-
 typedef struct {
 	OpBase op;
 	AR_ExpNode **exps;      // Expressions evaluated to an entity about to be deleted.

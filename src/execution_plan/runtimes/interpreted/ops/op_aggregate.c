@@ -197,14 +197,14 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, AR_ExpNode **key_exps
 	op->record_offsets = array_new(uint, op->aggregate_count + op->key_count);
 	for(uint i = 0; i < op->key_count; i ++) {
 		// Store the index of each key expression.
-		int record_idx;
+		uint record_idx;
 		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->key_exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
-		int record_idx;
+		uint record_idx;
 		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->aggregate_exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);

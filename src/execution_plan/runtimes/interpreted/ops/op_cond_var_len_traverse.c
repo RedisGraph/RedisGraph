@@ -302,10 +302,10 @@ static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT
 	RT_OpBase *op_clone = RT_NewCondVarLenTraverseOp(plan, AlgebraicExpression_Clone(op->ae), op->traverseDir);
 	if(op->ft) {
 		FT_FilterNode *clone_ft = FilterTree_Clone(op->ft);
-		RT_CondVarLenTraverseOp_SetFilter(op_clone, clone_ft);
+		RT_CondVarLenTraverseOp_SetFilter((RT_CondVarLenTraverse *)op_clone, clone_ft);
 	}
 	if(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO) {
-		RT_CondVarLenTraverseOp_ExpandInto(op_clone);
+		RT_CondVarLenTraverseOp_ExpandInto((RT_CondVarLenTraverse *)op_clone);
 	}
 	return op_clone;
 }

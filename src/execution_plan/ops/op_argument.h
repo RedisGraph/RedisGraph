@@ -15,4 +15,3 @@ typedef struct {
 } Argument;
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables);
-

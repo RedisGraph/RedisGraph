@@ -31,7 +31,7 @@ static void _construct_output_mappings(RT_OpProcCall *op, SIValue *outputs) {
 		for(; j < m; j += 2) {
 			char *key = (outputs + j)->stringval;
 			if(strcmp(output, key) == 0) {
-				int idx;
+				uint idx;
 				bool aware = RT_OpBase_Aware((RT_OpBase *)op, key, &idx);
 				UNUSED(aware);
 				ASSERT(aware == true);

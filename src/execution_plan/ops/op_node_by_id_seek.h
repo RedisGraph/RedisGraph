@@ -8,7 +8,6 @@
 
 #include "op.h"
 #include "../execution_plan.h"
-#include "../../graph/graph.h"
 #include "../../util/range/unsigned_range.h"
 
 #define ID_RANGE_UNBOUND -1
@@ -22,4 +21,3 @@ typedef struct {
 } NodeByIdSeek;
 
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, UnsignedRange *id_range);
-

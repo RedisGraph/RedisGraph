@@ -20,8 +20,8 @@ typedef struct {
 	RG_Matrix F;                // Filter matrix.
 	RG_Matrix M;                // Algebraic expression result.
 	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
-	int srcNodeIdx;             // Source node index into record.
-	int destNodeIdx;            // Destination node index into record.
+	uint srcNodeIdx;            // Source node index into record.
+	uint destNodeIdx;           // Destination node index into record.
 	uint record_count;          // Number of held records.
 	uint record_cap;            // Max number of records to process.
 	Record *records;            // Array of records.

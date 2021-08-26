@@ -92,7 +92,7 @@ RT_OpBase *RT_NewSortOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps, int *di
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);
 	for(uint i = 0; i < comparison_count; i ++) {
-		int record_idx;
+		uint record_idx;
 		bool aware = RT_OpBase_Aware((RT_OpBase *)op, exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);

@@ -9,8 +9,6 @@
 #include "op.h"
 #include "shared/traverse_functions.h"
 #include "../execution_plan.h"
-#include "../../graph/graph.h"
-#include "../../graph/entities/edge.h"
 #include "../../arithmetic/algebraic_expression.h"
 
 typedef struct {
@@ -19,4 +17,3 @@ typedef struct {
 } OpExpandInto;
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, AlgebraicExpression *ae);
-
