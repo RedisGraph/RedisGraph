@@ -223,6 +223,8 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 // Perform clean-up upon server shutdown.
 static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 		void *data) {
+	// Stop threads before finalize GraphBLAS.
+	ThreadPools_Destroy();
 	// Server is shutting down, finalize GraphBLAS.
 	GrB_finalize();
 }
