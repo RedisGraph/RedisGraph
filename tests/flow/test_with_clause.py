@@ -1,4 +1,5 @@
 import re
+import redis
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -241,3 +242,13 @@ class testWithClause(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected = [['projected']] # The projected string should be returned
         self.env.assertTrue(re.search('Filter\s+Project', plan))
+
+    def test11_valid_order_by_aliases(self):
+        # Verify that ORDER BY aliases match previously defined references
+        query = """UNWIND [1,2,3] AS a WITH a ORDER BY nonexistent RETURN a"""
+        try:
+            redis_graph.query(query)
+            self.env.assertFalse(1)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertIn("nonexistent not defined", str(e))
