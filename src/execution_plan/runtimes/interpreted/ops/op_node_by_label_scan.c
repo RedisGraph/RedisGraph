@@ -202,9 +202,11 @@ static RT_OpResult NodeByLabelScanReset(RT_OpBase *ctx) {
 }
 
 static RT_OpBase *NodeByLabelScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_NODE_BY_LABEL_SCAN);
 	RT_NodeByLabelScan *op = (RT_NodeByLabelScan *)opBase;
 	RT_OpBase *clone = RT_NewNodeByLabelScanOp(plan, op->n);
+	if(opBase->type == OPType_NODE_BY_LABEL_AND_ID_SCAN) {
+		RT_NodeByLabelScanOp_SetIDRange(clone, op->id_range);
+	}
 	return clone;
 }
 

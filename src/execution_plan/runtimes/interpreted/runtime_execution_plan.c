@@ -73,6 +73,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	{
 		NodeByLabelScan *op = (NodeByLabelScan *)op_desc;
 		result = RT_NewNodeByLabelScanOp(plan, op->n);
+		RT_NodeByLabelScanOp_SetIDRange(result, op->id_range);
 		break;
 	}
 	case OPType_EXPAND_INTO:
@@ -251,10 +252,9 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 
-	if(!result) {
-		printf("%s", op_desc->name);
-		ASSERT(result);
-	}
+	ASSERT(result);
+	ASSERT(op_desc->type == result->type);
+	
 	for (int i = 0; i < op_desc->childCount; i++) {
 		RT_OpBase *child = _convert(plan, op_desc->children[i]);
 		RT_ExecutionPlan_AddOp(result, child);
