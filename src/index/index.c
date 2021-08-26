@@ -128,8 +128,8 @@ void Index_IndexNode(Index *idx, const Node *n) {
 	const char *none_indexable_fields[field_count]; // none indexed fields
 
 	// create a document out of node
-	RSDoc *doc = RediSearch_CreateDocument(&node_id, sizeof(EntityID), score, 
-										   idx->language);
+	RSDoc *doc = RediSearch_CreateDocument2(&node_id, sizeof(EntityID), rsIdx,
+											score, NULL);
 
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
