@@ -14,8 +14,9 @@ static RT_OpResult CartesianProductReset(RT_OpBase *opBase);
 static RT_OpBase *CartesianProductClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void CartesianProductFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewCartesianProductOp(const RT_ExecutionPlan *plan) {
+RT_OpBase *RT_NewCartesianProductOp(const RT_ExecutionPlan *plan, const CartesianProduct *op_desc) {
 	RT_CartesianProduct *op = rm_malloc(sizeof(RT_CartesianProduct));
+	op->op_desc = op_desc;
 	op->init = true;
 	op->r = NULL;
 
@@ -114,7 +115,7 @@ static RT_OpResult CartesianProductReset(RT_OpBase *opBase) {
 
 static RT_OpBase *CartesianProductClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_CARTESIAN_PRODUCT);
-	return RT_NewCartesianProductOp(plan);
+	return RT_NewCartesianProductOp(plan, ((RT_CartesianProduct *)opBase)->op_desc);
 }
 
 static void CartesianProductFree(RT_OpBase *opBase) {

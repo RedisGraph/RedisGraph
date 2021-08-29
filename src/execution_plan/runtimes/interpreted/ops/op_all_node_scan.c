@@ -15,17 +15,17 @@ static RT_OpResult AllNodeScanReset(RT_OpBase *opBase);
 static RT_OpBase *AllNodeScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void AllNodeScanFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewAllNodeScanOp(const RT_ExecutionPlan *plan, const char *alias) {
+RT_OpBase *RT_NewAllNodeScanOp(const RT_ExecutionPlan *plan, const AllNodeScan *op_desc) {
 	RT_AllNodeScan *op = rm_malloc(sizeof(RT_AllNodeScan));
+	op->op_desc = op_desc;
 	op->iter = NULL;
-	op->alias = alias;
 	op->child_record = NULL;
 
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_ALL_NODE_SCAN, AllNodeScanInit,
 				AllNodeScanConsume, AllNodeScanReset, AllNodeScanClone, AllNodeScanFree, false,
 				plan);
-	bool aware = RT_OpBase_Aware((RT_OpBase *)op, alias, &op->nodeRecIdx);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->alias, &op->nodeRecIdx);
 	ASSERT(aware);
 
 	return (RT_OpBase *)op;
@@ -94,7 +94,7 @@ static RT_OpResult AllNodeScanReset(RT_OpBase *op) {
 
 static inline RT_OpBase *AllNodeScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_ALL_NODE_SCAN);
-	return RT_NewAllNodeScanOp(plan, ((RT_AllNodeScan *)opBase)->alias);
+	return RT_NewAllNodeScanOp(plan, ((RT_AllNodeScan *)opBase)->op_desc);
 }
 
 static void AllNodeScanFree(RT_OpBase *ctx) {

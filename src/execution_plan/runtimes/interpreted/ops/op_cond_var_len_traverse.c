@@ -53,48 +53,30 @@ static void _setupTraversedRelations(RT_CondVarLenTraverse *op) {
 	}
 }
 
-void RT_CondVarLenTraverseOp_ExpandInto(RT_CondVarLenTraverse *op) {
-	op->expandInto = true;
-	op->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO;
-}
-
-inline void RT_CondVarLenTraverseOp_SetFilter(RT_CondVarLenTraverse *op,
-										   FT_FilterNode *ft) {
-	ASSERT(op != NULL);
-	ASSERT(ft != NULL);
-	ASSERT(op->ft == NULL);
-
-	op->ft = ft;
-}
-
-RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae, GRAPH_EDGE_DIR traverseDir) {
-	ASSERT(ae != NULL);
-
+RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, const CondVarLenTraverse *op_desc) {
 	RT_CondVarLenTraverse *op = rm_malloc(sizeof(RT_CondVarLenTraverse));
+	op->op_desc            =  op_desc;
 	op->r                  =  NULL;
 	op->M                  =  NULL;
-	op->ae                 =  ae;
-	op->ft                 =  NULL;
-	op->expandInto         =  false;
+	op->ae                 =  AlgebraicExpression_Clone(op_desc->ae);
 	op->allPathsCtx        =  NULL;
-	op->traverseDir        =  traverseDir;
 	op->collect_paths      =  true;
 	op->allNeighborsCtx    =  NULL;
 	op->edgeRelationTypes  =  NULL;
 
-	RT_OpBase_Init((RT_OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
+	RT_OpBase_Init((RT_OpBase *)op, op_desc->op.type,
 				CondVarLenTraverseInit, CondVarLenTraverseConsume, 
 				CondVarLenTraverseReset, CondVarLenTraverseClone,
 				CondVarLenTraverseFree, false, plan);
 
-	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(op->ae), &op->srcNodeIdx);
 	UNUSED(aware);
 	ASSERT(aware);
-	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
+	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Destination(op->ae), &op->destNodeIdx);
 	ASSERT(aware);
 
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, AlgebraicExpression_Edge(op->ae));
-	if(!RT_OpBase_Aware((RT_OpBase *)op, e->alias, &op->edgesIdx)) {
+	if(!RT_OpBase_Aware((RT_OpBase *)op, e->alias, (uint *)&op->edgesIdx)) {
 		op->edgesIdx = -1;
 	};
 
@@ -127,7 +109,7 @@ static RT_OpResult CondVarLenTraverseInit(RT_OpBase *opBase) {
 	uint reltype_count = QGEdge_RelationCount(e);
 
 	bool  multi_edge  =  true;
-	bool  transpose   =  op->traverseDir != GRAPH_EDGE_DIR_OUTGOING;
+	bool  transpose   =  op->op_desc->traverseDir != GRAPH_EDGE_DIR_OUTGOING;
 	if(reltype_count == 1) {
 		int rel_id = QGEdge_RelationID(e, 0);
 		if(rel_id != GRAPH_NO_RELATION && rel_id != GRAPH_UNKNOWN_RELATION) {
@@ -136,12 +118,12 @@ static RT_OpResult CondVarLenTraverseInit(RT_OpBase *opBase) {
 		}
 	}
 
-	if(op->ft          == NULL                && // no filter on path
-	   op->edgesIdx    == -1                  && // edge isn't required
-	   op->expandInto  == false               && // destination unknown
-	   reltype_count   == 1                   && // single relationship
-	   multi_edge      == false               && // no multi edge entries
-	   op->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
+	if(op->op_desc->ft          == NULL                && // no filter on path
+	   op->edgesIdx             == -1                  && // edge isn't required
+	   op->op_desc->expandInto  == false               && // destination unknown
+	   reltype_count            == 1                   && // single relationship
+	   multi_edge               == false               && // no multi edge entries
+	   op->op_desc->traverseDir != GRAPH_EDGE_DIR_BOTH    // directed
 	) {
 		AlgebraicExpression_Optimize(&op->ae);
 		ASSERT(op->ae->type == AL_OPERAND);
@@ -250,12 +232,12 @@ static Record CondVarLenTraverseConsume(RT_OpBase *opBase) {
 
 		Node *destNode = NULL;
 		// The destination node is known in advance if we're performing an ExpandInto.
-		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
+		if(op->op_desc->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
 		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
-										  op->edgeRelationCount, op->traverseDir, op->minHops,
-										  op->maxHops, op->r, op->ft, op->edgesIdx);
+										  op->edgeRelationCount, op->op_desc->traverseDir, op->minHops,
+										  op->maxHops, op->r, op->op_desc->ft, op->edgesIdx);
 
 	}
 
@@ -267,7 +249,7 @@ static Record CondVarLenTraverseConsume(RT_OpBase *opBase) {
 	Record r = RT_OpBase_CloneRecord(op->r);
 
 	// add destination node to record
-	if(!op->expandInto) Record_AddNode(r, op->destNodeIdx, Path_Head(p));
+	if(!op->op_desc->expandInto) Record_AddNode(r, op->destNodeIdx, Path_Head(p));
 
 	// add new path to record
 	if(op->edgesIdx >= 0) Record_AddScalar(r, op->edgesIdx, SI_Path(p));
@@ -299,15 +281,7 @@ static RT_OpResult CondVarLenTraverseReset(RT_OpBase *ctx) {
 
 static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	RT_CondVarLenTraverse *op = (RT_CondVarLenTraverse *) opBase;
-	RT_OpBase *op_clone = RT_NewCondVarLenTraverseOp(plan, AlgebraicExpression_Clone(op->ae), op->traverseDir);
-	if(op->ft) {
-		FT_FilterNode *clone_ft = FilterTree_Clone(op->ft);
-		RT_CondVarLenTraverseOp_SetFilter((RT_CondVarLenTraverse *)op_clone, clone_ft);
-	}
-	if(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO) {
-		RT_CondVarLenTraverseOp_ExpandInto((RT_CondVarLenTraverse *)op_clone);
-	}
-	return op_clone;
+	return RT_NewCondVarLenTraverseOp(plan, op->op_desc);
 }
 
 static void CondVarLenTraverseFree(RT_OpBase *ctx) {
@@ -338,10 +312,5 @@ static void CondVarLenTraverseFree(RT_OpBase *ctx) {
 			AllNeighborsCtx_Free(op->allNeighborsCtx);
 			op->allNeighborsCtx = NULL;
 		}
-	}
-
-	if(op->ft) {
-		FilterTree_Free(op->ft);
-		op->ft = NULL;
 	}
 }

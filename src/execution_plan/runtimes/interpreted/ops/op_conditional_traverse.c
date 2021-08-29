@@ -69,9 +69,10 @@ void _traverse(RT_OpCondTraverse *op) {
 	RG_Matrix_clear(op->F);
 }
 
-RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae, int dest_label_id, const char *dest_label) {
+RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, const OpCondTraverse *op_desc) {
 	RT_OpCondTraverse *op = rm_malloc(sizeof(RT_OpCondTraverse));
-	op->ae = ae;
+	op->op_desc = op_desc;
+	op->ae = AlgebraicExpression_Clone(op_desc->ae);
 	op->r = NULL;
 	op->iter = NULL;
 	op->F = NULL;
@@ -79,34 +80,29 @@ RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, AlgebraicExpressio
 	op->records = NULL;
 	op->record_count = 0;
 	op->edge_ctx = NULL;
-	op->dest_label = NULL;
 	op->record_cap = BATCH_SIZE;
-	op->dest_label_id = GRAPH_NO_LABEL;
 
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_CONDITIONAL_TRAVERSE, CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
-	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(op->ae), &op->srcNodeIdx);
 	UNUSED(aware);
 	ASSERT(aware == true);
 
-	const char *dest = AlgebraicExpression_Destination(ae);
+	const char *dest = AlgebraicExpression_Destination(op->ae);
 	aware = RT_OpBase_Aware((RT_OpBase *)op, dest, &op->destNodeIdx);
 	ASSERT(aware);
 
-	op->dest_label_id = dest_label_id;
-	op->dest_label = dest_label;
-
-	const char *edge = AlgebraicExpression_Edge(ae);
+	const char *edge = AlgebraicExpression_Edge(op->ae);
 	if(edge) {
 		/* This operation will populate an edge in the Record.
 		 * Prepare all necessary information for collecting matching edges. */
 		uint edge_idx;
 		aware = RT_OpBase_Aware((RT_OpBase *)op, edge, &edge_idx);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, edge);
-		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+		op->edge_ctx = Traverse_NewEdgeCtx(op->ae, e, edge_idx);
 	}
 
 	return (RT_OpBase *)op;
@@ -180,7 +176,7 @@ static Record CondTraverseConsume(RT_OpBase *opBase) {
 	/* Populate the destination node and add it to the Record.
 	 * Note that if the node's label is unknown, this will correctly
 	 * create an unlabeled node. */
-	Node destNode = GE_NEW_LABELED_NODE(op->dest_label, op->dest_label_id);
+	Node destNode = GE_NEW_LABELED_NODE(op->op_desc->dest_label, op->op_desc->dest_label_id);
 	Graph_GetNode(op->graph, dest_id, &destNode);
 	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
@@ -216,7 +212,7 @@ static RT_OpResult CondTraverseReset(RT_OpBase *ctx) {
 static inline RT_OpBase *CondTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	RT_OpCondTraverse *op = (RT_OpCondTraverse *)opBase;
-	return RT_NewCondTraverseOp(plan, AlgebraicExpression_Clone(op->ae), op->dest_label_id, op->dest_label);
+	return RT_NewCondTraverseOp(plan, op->op_desc);
 }
 
 /* Frees CondTraverse */

@@ -13,8 +13,9 @@ static RT_OpResult ArgumentReset(RT_OpBase *opBase);
 static RT_OpBase *ArgumentClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ArgumentFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan) {
+RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan, const Argument *op_desc) {
 	RT_Argument *op = rm_malloc(sizeof(RT_Argument));
+	op->op_desc = op_desc;
 	op->r = NULL;
 
 	// Set our Op operations
@@ -53,7 +54,7 @@ void Argument_AddRecord(RT_Argument *arg, Record r) {
 
 static inline RT_OpBase *ArgumentClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_ARGUMENT);
-	return RT_NewArgumentOp(plan);
+	return RT_NewArgumentOp(plan, ((RT_Argument *)opBase)->op_desc);
 }
 
 static void ArgumentFree(RT_OpBase *opBase) {

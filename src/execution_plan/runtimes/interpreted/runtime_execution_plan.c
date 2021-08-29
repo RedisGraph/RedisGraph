@@ -48,7 +48,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_ALL_NODE_SCAN:
 	{
 		AllNodeScan *op = (AllNodeScan *)op_desc;
-		result = RT_NewAllNodeScanOp(plan, op->alias);
+		result = RT_NewAllNodeScanOp(plan, op);
 		break;
 	}
 	case OPType_NODE_BY_LABEL_SCAN:
@@ -85,22 +85,19 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_CONDITIONAL_TRAVERSE:
 	{
 		OpCondTraverse *op = (OpCondTraverse *)op_desc;
-		result = RT_NewCondTraverseOp(plan, op->ae, op->dest_label_id, op->dest_label);
+		result = RT_NewCondTraverseOp(plan, op);
 		break;
 	}
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE:
 	{
 		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
-		result = RT_NewCondVarLenTraverseOp(plan, op->ae, op->traverseDir);
-		if(op->ft) RT_CondVarLenTraverseOp_SetFilter((RT_CondVarLenTraverse *)result, op->ft);
+		result = RT_NewCondVarLenTraverseOp(plan, op);
 		break;
 	}
 	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
 	{
 		CondVarLenTraverse *op = (CondVarLenTraverse *)op_desc;
-		result = RT_NewCondVarLenTraverseOp(plan, op->ae, op->traverseDir);
-		RT_CondVarLenTraverseOp_ExpandInto((RT_CondVarLenTraverse *)result);
-		if(op->ft) RT_CondVarLenTraverseOp_SetFilter((RT_CondVarLenTraverse *)result, op->ft);
+		result = RT_NewCondVarLenTraverseOp(plan, op);
 		break;
 	}
 	case OPType_RESULTS:
@@ -118,7 +115,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_AGGREGATE:
 	{
 		OpAggregate *op = (OpAggregate *)op_desc;
-		result = RT_NewAggregateOp(plan, op->key_exps, op->key_count, op->aggregate_exps, op->aggregate_count, op->should_cache_records);
+		result = RT_NewAggregateOp(plan, op);
 		break;
 	}
 	case OPType_SORT:
@@ -166,7 +163,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_CREATE:
 	{
 		OpCreate *op = (OpCreate *)op_desc;
-		result = RT_NewCreateOp(plan, op->nodes, op->edges);
+		result = RT_NewCreateOp(plan, op);
 		break;
 	}
 	case OPType_UPDATE:
@@ -196,13 +193,13 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_ARGUMENT:
 	{
 		Argument *op = (Argument *)op_desc;
-		result = RT_NewArgumentOp(plan);
+		result = RT_NewArgumentOp(plan, op);
 		break;
 	}
 	case OPType_CARTESIAN_PRODUCT:
 	{
 		CartesianProduct *op = (CartesianProduct *)op_desc;
-		result = RT_NewCartesianProductOp(plan);
+		result = RT_NewCartesianProductOp(plan, op);
 		break;
 	}
 	case OPType_VALUE_HASH_JOIN:
@@ -214,7 +211,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_APPLY:
 	{
 		Apply *op = (Apply *)op_desc;
-		result = RT_NewApplyOp(plan);
+		result = RT_NewApplyOp(plan, op);
 		break;
 	}
 	case OPType_JOIN:
@@ -239,7 +236,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_AND_APPLY_MULTIPLEXER:
 	{
 		OpApplyMultiplexer *op = (OpApplyMultiplexer *)op_desc;
-		result = RT_NewApplyMultiplexerOp(plan, op->boolean_operator);
+		result = RT_NewApplyMultiplexerOp(plan, op);
 		break;
 	}
 	case OPType_OPTIONAL:

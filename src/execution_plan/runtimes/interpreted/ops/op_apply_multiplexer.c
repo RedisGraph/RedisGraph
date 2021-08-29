@@ -20,16 +20,16 @@ static Record _pullFromBranchStream(RT_OpApplyMultiplexer *op, int branch_index)
 	return RT_OpBase_Consume(op->op.children[branch_index]);
 }
 
-RT_OpBase *RT_NewApplyMultiplexerOp(const RT_ExecutionPlan *plan, AST_Operator boolean_operator) {
+RT_OpBase *RT_NewApplyMultiplexerOp(const RT_ExecutionPlan *plan, const OpApplyMultiplexer *op_desc) {
 
 	RT_OpApplyMultiplexer *op = rm_calloc(1, sizeof(RT_OpApplyMultiplexer));
-	op->boolean_operator = boolean_operator;
+	op->op_desc = op_desc;
 	// Set our Op operations
-	if(boolean_operator == OP_OR) {
+	if(op_desc->boolean_operator == OP_OR) {
 		RT_OpBase_Init((RT_OpBase *)op, OPType_OR_APPLY_MULTIPLEXER,
 					OpApplyMultiplexerInit, OrMultiplexer_Consume, OpApplyMultiplexerReset,
 					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
-	} else if(boolean_operator == OP_AND) {
+	} else if(op_desc->boolean_operator == OP_AND) {
 		RT_OpBase_Init((RT_OpBase *)op, OPType_AND_APPLY_MULTIPLEXER,
 					OpApplyMultiplexerInit, AndMultiplexer_Consume, OpApplyMultiplexerReset,
 					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
@@ -151,7 +151,7 @@ static RT_OpResult OpApplyMultiplexerReset(RT_OpBase *opBase) {
 static inline RT_OpBase *OpApplyMultiplexerClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_OR_APPLY_MULTIPLEXER || opBase->type == OPType_AND_APPLY_MULTIPLEXER);
 	RT_OpApplyMultiplexer *op = (RT_OpApplyMultiplexer *)opBase;
-	return RT_NewApplyMultiplexerOp(plan, op->boolean_operator);
+	return RT_NewApplyMultiplexerOp(plan, op->op_desc);
 }
 
 static void OpApplyMultiplexerFree(RT_OpBase *opBase) {

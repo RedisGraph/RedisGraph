@@ -9,6 +9,7 @@
 #include "op.h"
 #include "op_argument.h"
 #include "../runtime_execution_plan.h"
+#include "../../../ops/op_apply_multiplexer.h"
 
 /* ApplyMultiplexer operation tests for condition satisfaction over multiple execution plan
  * branches. The branches can be a simple filter operation, SemiApply operations,
@@ -46,10 +47,10 @@
 
 typedef struct RT_OpApplyMultiplexer {
 	RT_OpBase op;
-	Record r;                       // Bound branch record.
+	const OpApplyMultiplexer *op_desc;
+	Record r;                          // Bound branch record.
 	RT_OpBase *bound_branch;           // Bound branch root;
 	RT_Argument **branch_arguments;    // Branches taps.
-	AST_Operator boolean_operator;  // Defines the operation logic - OR/AND.
 } RT_OpApplyMultiplexer;
 
-RT_OpBase *RT_NewApplyMultiplexerOp(const RT_ExecutionPlan *plan, AST_Operator boolean_operator);
+RT_OpBase *RT_NewApplyMultiplexerOp(const RT_ExecutionPlan *plan, const OpApplyMultiplexer *op_desc);

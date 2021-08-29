@@ -13,8 +13,9 @@ static RT_OpResult ApplyReset(RT_OpBase *opBase);
 static RT_OpBase *ApplyClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ApplyFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewApplyOp(const RT_ExecutionPlan *plan) {
+RT_OpBase *RT_NewApplyOp(const RT_ExecutionPlan *plan, const Apply *op_desc) {
 	RT_Apply *op = rm_malloc(sizeof(RT_Apply));
+	op->op_desc = op_desc;
 	op->r = NULL;
 	op->op_arg = NULL;
 	op->bound_branch = NULL;
@@ -91,7 +92,7 @@ static RT_OpResult ApplyReset(RT_OpBase *opBase) {
 }
 
 static RT_OpBase *ApplyClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	return RT_NewApplyOp(plan);
+	return RT_NewApplyOp(plan, ((RT_Apply *)opBase)->op_desc);
 }
 
 static void ApplyFree(RT_OpBase *opBase) {

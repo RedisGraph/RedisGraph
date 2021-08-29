@@ -15,9 +15,14 @@ static Record CreateConsume(RT_OpBase *opBase);
 static RT_OpBase *CreateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void CreateFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewCreateOp(const RT_ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+RT_OpBase *RT_NewCreateOp(const RT_ExecutionPlan *plan, const OpCreate *op_desc) {
 	RT_OpCreate *op = rm_calloc(1, sizeof(RT_OpCreate));
+	op->op_desc = op_desc;
 	op->records = NULL;
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
+	array_clone_with_cb(nodes, op_desc->nodes, NodeCreateCtx_Clone);
+	array_clone_with_cb(edges, op_desc->edges, EdgeCreateCtx_Clone);
 	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_CREATE, NULL, CreateConsume,
@@ -146,11 +151,7 @@ static Record CreateConsume(RT_OpBase *opBase) {
 static RT_OpBase *CreateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_CREATE);
 	RT_OpCreate *op = (RT_OpCreate *)opBase;
-	NodeCreateCtx *nodes;
-	EdgeCreateCtx *edges;
-	array_clone_with_cb(nodes, op->pending.nodes_to_create, NodeCreateCtx_Clone);
-	array_clone_with_cb(edges, op->pending.edges_to_create, EdgeCreateCtx_Clone);
-	return RT_NewCreateOp(plan, nodes, edges);
+	return RT_NewCreateOp(plan, op->op_desc);
 }
 
 static void CreateFree(RT_OpBase *ctx) {
