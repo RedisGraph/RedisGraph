@@ -14,8 +14,9 @@ static RT_OpResult JoinReset(RT_OpBase *opBase);
 static RT_OpResult JoinInit(RT_OpBase *opBase);
 static RT_OpBase *JoinClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
-RT_OpBase *RT_NewJoinOp(const RT_ExecutionPlan *plan) {
+RT_OpBase *RT_NewJoinOp(const RT_ExecutionPlan *plan, const OpJoin *op_desc) {
 	RT_OpJoin *op = rm_malloc(sizeof(RT_OpJoin));
+	op->op_desc = op_desc;
 	op->stream = NULL;
 
 	// Set our Op operations
@@ -72,5 +73,5 @@ static RT_OpResult JoinReset(RT_OpBase *opBase) {
 
 static inline RT_OpBase *JoinClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_JOIN);
-	return RT_NewJoinOp(plan);
+	return RT_NewJoinOp(plan, ((RT_OpJoin *)opBase)->op_desc);
 }

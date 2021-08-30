@@ -59,11 +59,15 @@ static void _RollbackPendingCreations(RT_OpMergeCreate *op) {
 	}
 }
 
-RT_OpBase *RT_NewMergeCreateOp(const RT_ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+RT_OpBase *RT_NewMergeCreateOp(const RT_ExecutionPlan *plan, const OpMergeCreate *op_desc) {
 	RT_OpMergeCreate *op = rm_calloc(1, sizeof(RT_OpMergeCreate));
+	op->op_desc = op_desc;
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
 	op->hash_state = XXH64_createState(); // Create a hash state.
-
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
+	array_clone_with_cb(nodes, op_desc->nodes, NodeCreateCtx_Clone);
+	array_clone_with_cb(edges, op_desc->edges, EdgeCreateCtx_Clone);
 	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	op->handoff_mode = false;
 	op->records = array_new(Record, 32);
@@ -233,11 +237,7 @@ void MergeCreate_Commit(RT_OpBase *opBase) {
 static RT_OpBase *MergeCreateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_MERGE_CREATE);
 	RT_OpMergeCreate *op = (RT_OpMergeCreate *)opBase;
-	NodeCreateCtx *nodes;
-	EdgeCreateCtx *edges;
-	array_clone_with_cb(nodes, op->pending.nodes_to_create, NodeCreateCtx_Clone);
-	array_clone_with_cb(edges, op->pending.edges_to_create, EdgeCreateCtx_Clone);
-	return RT_NewMergeCreateOp(plan, nodes, edges);
+	return RT_NewMergeCreateOp(plan, op->op_desc);
 }
 
 static void MergeCreateFree(RT_OpBase *ctx) {

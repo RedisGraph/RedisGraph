@@ -39,7 +39,6 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_exp) {
 	ASSERT(limit_exp != NULL);
 
 	OpLimit *op = rm_malloc(sizeof(OpLimit));
-	op->limit = 0;
 	op->limit_exp = NULL;
 
 	_eval_limit(op, limit_exp);
