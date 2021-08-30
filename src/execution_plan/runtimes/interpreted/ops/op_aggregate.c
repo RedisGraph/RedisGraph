@@ -184,7 +184,7 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, const OpAggregate *op
 	// Allocate memory for group keys if we have any non-aggregate expressions.
 	if(op_desc->key_count) op->group_keys = rm_malloc(op_desc->key_count * sizeof(SIValue));
 
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		AggregateConsume, AggregateReset, AggregateFree, plan);
 
 	// The projected record will associate values with their resolved name

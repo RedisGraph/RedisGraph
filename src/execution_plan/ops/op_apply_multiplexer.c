@@ -14,11 +14,11 @@ OpBase *NewApplyMultiplexerOp(const ExecutionPlan *plan, AST_Operator boolean_op
 	op->boolean_operator = boolean_operator;
 	// Set our Op operations
 	if(boolean_operator == OP_OR) {
-		OpBase_Init((OpBase *)op, OPType_OR_APPLY_MULTIPLEXER, "OR Apply Multiplexer",
-					NULL, OpApplyMultiplexerFree, false, plan);
+		OpBase_Init((OpBase *)op, OPType_OR_APPLY_MULTIPLEXER,
+			"OR Apply Multiplexer", OpApplyMultiplexerFree, false, plan);
 	} else if(boolean_operator == OP_AND) {
-		OpBase_Init((OpBase *)op, OPType_AND_APPLY_MULTIPLEXER, "AND Apply Multiplexer",
-					NULL, OpApplyMultiplexerFree, false, plan);
+		OpBase_Init((OpBase *)op, OPType_AND_APPLY_MULTIPLEXER,
+			"AND Apply Multiplexer", OpApplyMultiplexerFree, false, plan);
 	} else {
 		ASSERT("apply multiplexer boolean operator should be AND or OR only" && false);
 	}

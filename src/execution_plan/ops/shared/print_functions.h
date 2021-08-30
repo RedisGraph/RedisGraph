@@ -7,9 +7,10 @@
 #pragma once
 
 #include "../op.h"
+#include "../../runtimes/interpreted/ops/op.h"
 #include "../../../arithmetic/algebraic_expression.h"
 
-void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae);
+void TraversalToString(const RT_OpBase *op, sds *buf, AlgebraicExpression *ae);
 
-void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label);
+void ScanToString(const RT_OpBase *op, sds *buf, const char *alias, const char *label);
 

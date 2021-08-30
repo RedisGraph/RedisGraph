@@ -167,6 +167,30 @@ void _cache_records(RT_OpValueHashJoin *op) {
 	} while((r = left_child->consume(left_child)));
 }
 
+/* String representation of operation */
+static void ValueHashJoinToString(const RT_OpBase *ctx, sds *buff) {
+	const RT_OpValueHashJoin *op = (const RT_OpValueHashJoin *)ctx;
+
+	char *exp_str = NULL;
+
+	*buff = sdscatprintf(*buff, "%s | ", op->op_desc->op.name);
+
+	/* Return early if we don't have arithmetic expressions to print.
+	 * This can occur when an upstream op like MERGE has
+	 * already freed this operation with PropagateFree. */
+	if(!(op->op_desc->lhs_exp && op->op_desc->rhs_exp)) return;
+
+	AR_EXP_ToString(op->op_desc->lhs_exp, &exp_str);
+	*buff = sdscatprintf(*buff, "%s", exp_str);
+	rm_free(exp_str);
+
+	*buff = sdscatprintf(*buff, " = ");
+
+	AR_EXP_ToString(op->op_desc->rhs_exp, &exp_str);
+	*buff = sdscatprintf(*buff, "%s", exp_str);
+	rm_free(exp_str);
+}
+
 /* Creates a new valueHashJoin operation */
 RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, const OpValueHashJoin *op_desc) {
 	RT_OpValueHashJoin *op = rm_malloc(sizeof(RT_OpValueHashJoin));
@@ -178,8 +202,8 @@ RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, const OpValueHashJo
 
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
-		ValueHashJoinInit, ValueHashJoinConsume, ValueHashJoinReset,
-		ValueHashJoinFree, plan);
+		ValueHashJoinToString, ValueHashJoinInit, ValueHashJoinConsume,
+		ValueHashJoinReset, ValueHashJoinFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, "pivot", &op->join_value_rec_idx);
 	UNUSED(aware);

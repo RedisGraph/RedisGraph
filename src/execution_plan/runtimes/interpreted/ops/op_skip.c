@@ -33,7 +33,7 @@ RT_OpBase *RT_NewSkipOp(const RT_ExecutionPlan *plan, const OpSkip *op_desc) {
 	_eval_skip(op);
 
 	// set operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		SkipConsume, SkipReset, NULL, plan);
 
 	return (RT_OpBase *)op;

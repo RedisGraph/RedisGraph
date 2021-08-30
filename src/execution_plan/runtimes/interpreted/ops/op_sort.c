@@ -84,8 +84,8 @@ RT_OpBase *RT_NewSortOp(const RT_ExecutionPlan *plan, const OpSort *op_desc) {
 	op->buffer = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, SortInit,
-		SortConsume, SortReset, SortFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		SortInit, SortConsume, SortReset, SortFree, plan);
 
 	uint comparison_count = array_len(op_desc->exps);
 	op->record_offsets = array_new(uint, comparison_count);

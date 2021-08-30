@@ -31,8 +31,8 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 	uint yield_count = array_len(yield_exps);
 
 	// Set operations
-	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall",
-	  	NULL, ProcCallFree, !Procedure_IsReadOnly(procedure), plan);
+	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", ProcCallFree,
+		!Procedure_IsReadOnly(procedure), plan);
 
 	// Set modifiers
 	for(uint i = 0; i < yield_count; i ++) {

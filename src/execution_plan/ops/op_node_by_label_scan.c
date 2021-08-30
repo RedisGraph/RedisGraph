@@ -13,11 +13,6 @@
 /* Forward declarations. */
 static void NodeByLabelScanFree(OpBase *opBase);
 
-static inline void NodeByLabelScanToString(const OpBase *ctx, sds *buf) {
-	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
-	ScanToString(ctx, buf, op->n.alias, op->n.label);
-}
-
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 	NodeByLabelScan *op = rm_malloc(sizeof(NodeByLabelScan));
 	op->n = n;
@@ -26,7 +21,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan",
-				NodeByLabelScanToString, NodeByLabelScanFree, false, plan);
+		NodeByLabelScanFree, false, plan);
 
 	OpBase_Modifies((OpBase *)op, n.alias);
 

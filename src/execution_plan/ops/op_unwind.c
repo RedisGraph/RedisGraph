@@ -22,8 +22,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	op->exp = exp;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", NULL, UnwindFree, false,
-		plan);
+	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindFree, false, plan);
 
 	OpBase_Modifies((OpBase *)op, exp->resolved_name);
 

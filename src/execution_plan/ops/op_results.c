@@ -11,8 +11,7 @@ OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, NULL, false,
-		plan);
+	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, false, plan);
 
 	return (OpBase *)op;
 }

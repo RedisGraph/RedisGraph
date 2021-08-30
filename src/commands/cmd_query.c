@@ -184,7 +184,7 @@ static void _ExecuteQuery(void *args) {
 		RT_ExecutionPlan_PreparePlan(plan);
 		if(profile) {
 			RT_ExecutionPlan_Profile(plan);
-			ExecutionPlan_Print(plan->plan_desc, rm_ctx);
+			RT_ExecutionPlan_Print(plan, rm_ctx);
 		}
 		else {
 			result_set = RT_ExecutionPlan_Execute(plan);

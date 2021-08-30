@@ -31,12 +31,6 @@ static inline void _setTraverseDirection(CondVarLenTraverse *op, const QGEdge *e
 	}
 }
 
-static inline void CondVarLenTraverseToString(const OpBase *ctx, sds *buf) {
-	// TODO: tmp, improve TraversalToString
-	AlgebraicExpression_Optimize(&((CondVarLenTraverse *)ctx)->ae);
-	return TraversalToString(ctx, buf, ((const CondVarLenTraverse *)ctx)->ae);
-}
-
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	// Expand into doesn't performs any modifications.
 	array_clear(op->op.modifies);
@@ -65,8 +59,8 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *
 	op->edgeRelationTypes  =  NULL;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-				"Conditional Variable Length Traverse", CondVarLenTraverseToString,
-				CondVarLenTraverseFree, false, plan);
+		"Conditional Variable Length Traverse", CondVarLenTraverseFree, false,
+		plan);
 
 	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), NULL);
 	ASSERT(aware);

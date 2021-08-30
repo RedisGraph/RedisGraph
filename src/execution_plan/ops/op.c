@@ -12,7 +12,7 @@
 #include "../../util/rmalloc.h"
 #include "../../util/simple_timer.h"
 
-void OpBase_Init(OpBase *op, OPType type, const char *name, fpToString toString,
+void OpBase_Init(OpBase *op, OPType type, const char *name,
 				 fpFree free, bool writer,
 				 const struct ExecutionPlan *plan) {
 
@@ -27,7 +27,6 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpToString toString,
 	op->writer = writer;
 
 	// Function pointers.
-	op->toString = toString;
 	op->free = free;
 }
 
@@ -76,13 +75,6 @@ bool OpBase_Aware(OpBase *op, const char *alias, uint *idx) {
 void OpBase_PropagateFree(OpBase *op) {
 	if(op->free) op->free(op);
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateFree(op->children[i]);
-}
-
-void OpBase_ToString(const OpBase *op, sds *buff) {
-	int bytes_written = 0;
-
-	if(op->toString) op->toString(op, buff);
-	else *buff = sdscatprintf(*buff, "%s", op->name);
 }
 
 bool OpBase_IsWriter(OpBase *op) {

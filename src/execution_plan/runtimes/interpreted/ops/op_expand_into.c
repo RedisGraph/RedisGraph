@@ -62,6 +62,11 @@ static void _traverse(RT_OpExpandInto *op) {
 	RG_Matrix_clear(op->F);
 }
 
+// String representation of operation.
+static inline void ExpandIntoToString(const RT_OpBase *ctx, sds *buf) {
+	TraversalToString(ctx, buf, ((const RT_OpExpandInto *)ctx)->ae);
+}
+
 RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, const OpExpandInto *op_desc) {
 	RT_OpExpandInto *op = rm_malloc(sizeof(RT_OpExpandInto));
 	op->op_desc = op_desc;
@@ -75,8 +80,9 @@ RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, const OpExpandInto *
 	op->edge_ctx = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, ExpandIntoInit, ExpandIntoConsume,
-				ExpandIntoReset, ExpandIntoFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		ExpandIntoToString, ExpandIntoInit, ExpandIntoConsume, ExpandIntoReset,
+		ExpandIntoFree, plan);
 
 	// Make sure that all entities are represented in Record
 	bool aware;

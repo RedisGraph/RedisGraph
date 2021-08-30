@@ -17,6 +17,11 @@ static Record NodeByLabelScanNoOp(RT_OpBase *opBase);
 static RT_OpResult NodeByLabelScanReset(RT_OpBase *opBase);
 static void NodeByLabelScanFree(RT_OpBase *opBase);
 
+static inline void NodeByLabelScanToString(const RT_OpBase *ctx, sds *buf) {
+	RT_NodeByLabelScan *op = (RT_NodeByLabelScan *)ctx;
+	ScanToString(ctx, buf, op->op_desc->n.alias, op->op_desc->n.label);
+}
+
 RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, const NodeByLabelScan *op_desc) {
 	RT_NodeByLabelScan *op = rm_malloc(sizeof(RT_NodeByLabelScan));
 	op->op_desc = op_desc;
@@ -26,8 +31,8 @@ RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, const NodeByLab
 
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
-		NodeByLabelScanInit, NodeByLabelScanConsume, NodeByLabelScanReset,
-		NodeByLabelScanFree, plan);
+		NodeByLabelScanToString, NodeByLabelScanInit, NodeByLabelScanConsume,
+		NodeByLabelScanReset, NodeByLabelScanFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->n.alias, &op->nodeRecIdx);
 	ASSERT(aware);

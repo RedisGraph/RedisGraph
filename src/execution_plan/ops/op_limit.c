@@ -44,8 +44,7 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_exp) {
 	_eval_limit(op, limit_exp);
 
 	// set operations
-	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitFree, false,
-		plan);
+	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", LimitFree, false, plan);
 
 	return (OpBase *)op;
 }

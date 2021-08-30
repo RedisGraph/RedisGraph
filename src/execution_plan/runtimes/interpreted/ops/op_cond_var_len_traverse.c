@@ -52,6 +52,12 @@ static void _setupTraversedRelations(RT_CondVarLenTraverse *op) {
 	}
 }
 
+static inline void CondVarLenTraverseToString(const RT_OpBase *ctx, sds *buf) {
+	// TODO: tmp, improve TraversalToString
+	AlgebraicExpression_Optimize(&((RT_CondVarLenTraverse *)ctx)->ae);
+	return TraversalToString(ctx, buf, ((const RT_CondVarLenTraverse *)ctx)->ae);
+}
+
 RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, const CondVarLenTraverse *op_desc) {
 	RT_CondVarLenTraverse *op = rm_malloc(sizeof(RT_CondVarLenTraverse));
 	op->op_desc            =  op_desc;
@@ -64,8 +70,9 @@ RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, const CondVa
 	op->edgeRelationTypes  =  NULL;
 
 	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
-				CondVarLenTraverseInit, CondVarLenTraverseConsume, 
-				CondVarLenTraverseReset, CondVarLenTraverseFree, plan);
+		CondVarLenTraverseToString, CondVarLenTraverseInit,
+		CondVarLenTraverseConsume, CondVarLenTraverseReset, 
+		CondVarLenTraverseFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(op->ae), &op->srcNodeIdx);
 	UNUSED(aware);

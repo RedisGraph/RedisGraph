@@ -12,7 +12,7 @@ OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpJoin *op = rm_malloc(sizeof(OpJoin));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", NULL, NULL, false, plan);
+	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", NULL, false, plan);
 
 	return (OpBase *)op;
 }

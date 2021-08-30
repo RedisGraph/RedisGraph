@@ -27,8 +27,8 @@ RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, const OpUnwind *op_desc)
 	op->listIdx = INDEX_NOT_SET;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, UnwindInit,
-		UnwindConsume, UnwindReset, UnwindFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		UnwindInit, UnwindConsume, UnwindReset, UnwindFree, plan);
 
 	RT_OpBase_Aware((RT_OpBase *)op, op_desc->exp->resolved_name, &op->unwindRecIdx);
 	

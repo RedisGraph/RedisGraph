@@ -67,8 +67,8 @@ RT_OpBase *RT_NewDeleteOp(const RT_ExecutionPlan *plan, const OpDelete *op_desc)
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, DeleteInit,
-		DeleteConsume, NULL, DeleteFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		DeleteInit, DeleteConsume, NULL, DeleteFree, plan);
 
 	return (RT_OpBase *)op;
 }

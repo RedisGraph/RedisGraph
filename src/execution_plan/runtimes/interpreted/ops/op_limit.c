@@ -37,7 +37,7 @@ RT_OpBase *RT_NewLimitOp(const RT_ExecutionPlan *plan, const OpLimit *op_desc) {
 	_eval_limit(op);
 
 	// set operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		LimitConsume, LimitReset, NULL, plan);
 
 	return (RT_OpBase *)op;

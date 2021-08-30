@@ -16,6 +16,11 @@ static Record IndexScanConsumeFromChild(RT_OpBase *opBase);
 static RT_OpResult IndexScanReset(RT_OpBase *opBase);
 static void IndexScanFree(RT_OpBase *opBase);
 
+static void IndexScanToString(const RT_OpBase *ctx, sds *buf) {
+	RT_IndexScan *op = (RT_IndexScan *)ctx;
+	return ScanToString(ctx, buf, op->op_desc->n.alias, op->op_desc->n.label);
+}
+
 RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, const IndexScan *op_desc) {
 	// validate inputs
 	ASSERT(plan   != NULL);
@@ -29,8 +34,9 @@ RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, const IndexScan *op_d
 	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, IndexScanInit,
-		IndexScanConsume, IndexScanReset, IndexScanFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		IndexScanToString, IndexScanInit, IndexScanConsume, IndexScanReset,
+		IndexScanFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->n.alias, &op->nodeRecIdx);
 	UNUSED(aware);

@@ -68,6 +68,10 @@ void _traverse(RT_OpCondTraverse *op) {
 	RG_Matrix_clear(op->F);
 }
 
+static void CondTraverseToString(const RT_OpBase *ctx, sds *buf) {
+	TraversalToString(ctx, buf, ((const RT_OpCondTraverse *)ctx)->ae);
+}
+
 RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, const OpCondTraverse *op_desc) {
 	RT_OpCondTraverse *op = rm_malloc(sizeof(RT_OpCondTraverse));
 	op->op_desc = op_desc;
@@ -82,8 +86,9 @@ RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, const OpCondTraver
 	op->record_cap = BATCH_SIZE;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, CondTraverseInit,
-				CondTraverseConsume, CondTraverseReset, CondTraverseFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		CondTraverseToString, CondTraverseInit, CondTraverseConsume,
+		CondTraverseReset, CondTraverseFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(op->ae), &op->srcNodeIdx);
 	UNUSED(aware);

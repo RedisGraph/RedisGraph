@@ -9,10 +9,6 @@
 #include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
-static inline void NodeByIdSeekToString(const OpBase *ctx, sds *buf) {
-	ScanToString(ctx, buf, ((NodeByIdSeek *)ctx)->alias, NULL);
-}
-
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, UnsignedRange *id_range) {
 
 	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
@@ -24,8 +20,8 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, Unsigned
 	 * on the current graph size.*/
 	op->maxId = id_range->include_max ? id_range->max : id_range->max - 1;
 
-	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek",
-				NodeByIdSeekToString, NULL, false, plan);
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NULL,
+		false, plan);
 
 	OpBase_Modifies((OpBase *)op, alias);
 

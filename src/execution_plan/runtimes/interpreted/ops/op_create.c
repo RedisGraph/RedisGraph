@@ -24,7 +24,7 @@ RT_OpBase *RT_NewCreateOp(const RT_ExecutionPlan *plan, const OpCreate *op_desc)
 	array_clone_with_cb(edges, op_desc->edges, EdgeCreateCtx_Clone);
 	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		CreateConsume, NULL, CreateFree, plan);
 
 	return (RT_OpBase *)op;

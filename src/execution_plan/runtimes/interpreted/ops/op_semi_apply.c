@@ -26,11 +26,13 @@ RT_OpBase *RT_NewSemiApplyOp(const RT_ExecutionPlan *plan, const OpSemiApply *op
 	op->match_branch = NULL;
 	// Set our Op operations
 	if(op_desc->op.type == OPType_ANTI_SEMI_APPLY) {
-		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, SemiApplyInit,
-					AntiSemiApplyConsume, SemiApplyReset, SemiApplyFree, plan);
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+			SemiApplyInit, AntiSemiApplyConsume, SemiApplyReset, SemiApplyFree,
+			plan);
 	} else {
-		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, SemiApplyInit, SemiApplyConsume,
-					SemiApplyReset, SemiApplyFree, plan);
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+			SemiApplyInit, SemiApplyConsume, SemiApplyReset, SemiApplyFree,
+			plan);
 	}
 	return (RT_OpBase *) op;
 }

@@ -23,6 +23,10 @@ static inline bool _outOfBounds(RT_NodeByIdSeek *op) {
 	return false;
 }
 
+static inline void NodeByIdSeekToString(const RT_OpBase *ctx, sds *buf) {
+	ScanToString(ctx, buf, ((RT_NodeByIdSeek *)ctx)->op_desc->alias, NULL);
+}
+
 RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const NodeByIdSeek *op_desc) {
 	RT_NodeByIdSeek *op = rm_malloc(sizeof(RT_NodeByIdSeek));
 	op->op_desc = op_desc;
@@ -37,8 +41,8 @@ RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const NodeByIdSeek
 	op->currentId = op_desc->minId;
 
 	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
-		NodeByIdSeekInit, NodeByIdSeekConsume, NodeByIdSeekReset,
-		NodeByIdSeekFree, plan);
+		NodeByIdSeekToString, NodeByIdSeekInit, NodeByIdSeekConsume,
+		NodeByIdSeekReset, NodeByIdSeekFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->alias, &op->nodeRecIdx);
 	UNUSED(aware);

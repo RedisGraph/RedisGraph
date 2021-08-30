@@ -23,7 +23,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 	op->exps = exps;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL, SortFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", SortFree, false, plan);
 
 	return (OpBase *)op;
 }

@@ -92,7 +92,7 @@ RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_d
 	op->output = array_new(const char *, yield_count);
 
 	// Set operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		ProcCallConsume, ProcCallReset, ProcCallFree, plan);
 
 	// Set modifiers

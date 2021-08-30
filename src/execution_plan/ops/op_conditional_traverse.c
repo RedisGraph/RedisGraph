@@ -15,10 +15,6 @@
 /* Forward declarations. */
 static void CondTraverseFree(OpBase *opBase);
 
-static void CondTraverseToString(const OpBase *ctx, sds *buf) {
-	TraversalToString(ctx, buf, ((const OpCondTraverse *)ctx)->ae);
-}
-
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *ae) {
 	OpCondTraverse *op = rm_malloc(sizeof(OpCondTraverse));
 	op->ae = ae;
@@ -26,9 +22,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *ae) {
 	op->dest_label_id = GRAPH_NO_LABEL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse",
-				CondTraverseToString, CondTraverseFree,
-				false, plan);
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE,
+		"Conditional Traverse", CondTraverseFree, false, plan);
 
 	const char *dest = AlgebraicExpression_Destination(ae);
 	OpBase_Modifies((OpBase *)op, dest);

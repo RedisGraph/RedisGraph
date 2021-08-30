@@ -20,7 +20,7 @@ RT_OpBase *RT_NewCartesianProductOp(const RT_ExecutionPlan *plan, const Cartesia
 	op->r = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
 		CartesianProductInit, CartesianProductConsume, CartesianProductReset,
 		CartesianProductFree, plan);
 	return (RT_OpBase *)op;

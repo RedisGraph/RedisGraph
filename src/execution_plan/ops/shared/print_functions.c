@@ -15,19 +15,19 @@ static inline void _NodeToString(sds *buf, const char *alias, const char *label)
 	*buf = sdscatprintf(*buf, ")");
 }
 
-void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
-	if(!ae) *buf = sdscatprintf(*buf, "%s", op->name);
+void TraversalToString(const RT_OpBase *op, sds *buf, AlgebraicExpression *ae) {
+	if(!ae) *buf = sdscatprintf(*buf, "%s", op->op_desc->name);
 
-	*buf = sdscatprintf(*buf, "%s | ", op->name);
+	*buf = sdscatprintf(*buf, "%s | ", op->op_desc->name);
 	// This edge should be printed right-to-left if the edge matrix is transposed.
 	const char *edge = AlgebraicExpression_Edge(ae);
 	bool transpose = (edge && AlgebraicExpression_Transposed(ae));
 
 	// Retrieve QueryGraph entities.
-	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, AlgebraicExpression_Source(ae));
-	QGNode *dest = QueryGraph_GetNodeByAlias(op->plan->query_graph,
+	QGNode *src = QueryGraph_GetNodeByAlias(op->op_desc->plan->query_graph, AlgebraicExpression_Source(ae));
+	QGNode *dest = QueryGraph_GetNodeByAlias(op->op_desc->plan->query_graph,
 											 AlgebraicExpression_Destination(ae));
-	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
+	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->op_desc->plan->query_graph, edge) : NULL;
 
 	QGNode_ToString(src, buf);
 	if(e) {
@@ -46,8 +46,8 @@ void TraversalToString(const OpBase *op, sds *buf, AlgebraicExpression *ae) {
 	QGNode_ToString(dest, buf);
 }
 
-void ScanToString(const OpBase *op, sds *buf, const char *alias, const char *label) {
-	*buf = sdscatprintf(*buf, "%s | ", op->name);
+void ScanToString(const RT_OpBase *op, sds *buf, const char *alias, const char *label) {
+	*buf = sdscatprintf(*buf, "%s | ", op->op_desc->name);
 	_NodeToString(buf, alias, label);
 }
 

@@ -40,8 +40,8 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	_migrate_expressions(op, exps);
 	array_free(exps);
 
-	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
-		AggregateFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateFree,
+		false, plan);
 
 	for(uint i = 0; i < op->key_count; i ++) {
 		// Store the index of each key expression.

@@ -20,7 +20,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->exp_count = array_len(exps);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteFree, true,
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteFree, true,
 		plan);
 
 	return (OpBase *)op;

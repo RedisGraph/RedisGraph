@@ -72,7 +72,7 @@ RT_OpBase *RT_NewMergeCreateOp(const RT_ExecutionPlan *plan, const OpMergeCreate
 	op->records = array_new(Record, 32);
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		MergeCreateConsume, NULL, MergeCreateFree, plan);
 
 	return (RT_OpBase *)op;

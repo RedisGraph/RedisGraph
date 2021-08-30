@@ -69,8 +69,8 @@ RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, const OpMerge *op_desc) {
 	op->stats            =  NULL;
 	op->pending_updates  =  NULL;
 	// set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, MergeInit,
-		MergeConsume, NULL, MergeFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		MergeInit, MergeConsume, NULL, MergeFree, plan);
 
 	if(op_desc->on_match) _InitializeUpdates(op, op_desc->on_match, &op->on_match_it);
 	if(op_desc->on_create) _InitializeUpdates(op, op_desc->on_create, &op->on_create_it);

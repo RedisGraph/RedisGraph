@@ -13,7 +13,7 @@
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, NULL, true, plan);
+	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, true, plan);
 
 	op->nodes = nodes;
 	op->edges = edges;

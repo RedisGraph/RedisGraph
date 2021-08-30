@@ -36,6 +36,7 @@ struct RT_OpBase {
 	const OpBase *op_desc;       // Type of operation
 	RT_fpInit init;              // Called once before execution
 	RT_fpFree free;              // Free operation
+	RT_fpToString toString;      // Operation string representation
 	RT_fpReset reset;            // Reset operation state
 	RT_fpConsume consume;        // Produce next record
 	RT_fpConsume profile;        // Profiled version of consume
@@ -50,9 +51,10 @@ struct RT_OpBase {
 typedef struct RT_OpBase RT_OpBase;
 
 // Initialize op.
-void RT_OpBase_Init(RT_OpBase *op, const OpBase *op_desc, RT_fpInit init,
+void RT_OpBase_Init(RT_OpBase *op, const OpBase *op_desc, RT_fpToString toString, RT_fpInit init,
 				RT_fpConsume consume, RT_fpReset reset, RT_fpFree free,
 				const struct RT_ExecutionPlan *plan);
+void RT_OpBase_ToString(const RT_OpBase *op, sds *buff);
 void RT_OpBase_Free(RT_OpBase *op);       // Free op
 Record RT_OpBase_Consume(RT_OpBase *op);  // Consume op
 Record RT_OpBase_Profile(RT_OpBase *op);  // Profile op

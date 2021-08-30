@@ -52,7 +52,7 @@ void Graph_Explain(void *args) {
 		goto cleanup;
 	}
 
-	ExecutionPlan_Print(plan->plan_desc, ctx); // Print the execution plan.
+	RT_ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();

@@ -4,11 +4,11 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "execution_plan.h"
-#include "../RG.h"
+#include "../../../RG.h"
 #include "./ops/ops.h"
+#include "runtime_execution_plan.h"
 
-void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, sds *buffer,
+void _ExecutionPlan_Print(const RT_OpBase *op, RedisModuleCtx *ctx, sds *buffer,
 						  int ident, int *op_count) {
 	if(!op) return;
 
@@ -17,7 +17,7 @@ void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, sds *buffer,
 	// Construct operation string representation.
 	sdsclear(*buffer);
 	*buffer = sdscatprintf(*buffer, "%*s", ident, "");
-	OpBase_ToString(op, buffer);
+	RT_OpBase_ToString(op, buffer);
 
 	RedisModule_ReplyWithStringBuffer(ctx, *buffer, sdslen(*buffer));
 
@@ -28,7 +28,7 @@ void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, sds *buffer,
 }
 
 // Reply with a string representation of given execution plan.
-void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
+void RT_ExecutionPlan_Print(const RT_ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	ASSERT(plan && ctx);
 
 	int op_count = 0;   // Number of operations printed.

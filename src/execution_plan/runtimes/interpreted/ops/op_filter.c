@@ -15,7 +15,7 @@ RT_OpBase *RT_NewFilterOp(const RT_ExecutionPlan *plan, const OpFilter *op_desc)
 	op->op_desc = op_desc;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		FilterConsume, NULL, NULL, plan);
 
 	return (RT_OpBase *)op;

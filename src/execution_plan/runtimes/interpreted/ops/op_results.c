@@ -20,8 +20,8 @@ RT_OpBase *RT_NewResultsOp(const RT_ExecutionPlan *plan, const Results *op_desc)
 	op->op_desc = op_desc;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, ResultsInit,
-		ResultsConsume, NULL, NULL, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		ResultsInit, ResultsConsume, NULL, NULL, plan);
 
 	return (RT_OpBase *)op;
 }

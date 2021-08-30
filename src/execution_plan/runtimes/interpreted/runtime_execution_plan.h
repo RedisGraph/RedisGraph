@@ -74,5 +74,8 @@ ResultSet *RT_ExecutionPlan_Profile(RT_ExecutionPlan *plan);
 // Increase execution plan reference count
 void RT_ExecutionPlan_IncreaseRefCount(RT_ExecutionPlan *plan);
 
+// Prints execution plan
+void RT_ExecutionPlan_Print(const RT_ExecutionPlan *plan, RedisModuleCtx *ctx);
+
 // Free execution plan
 void RT_ExecutionPlan_Free(RT_ExecutionPlan *plan);

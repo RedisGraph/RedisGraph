@@ -25,7 +25,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alia
 	// Copy aliases into heap array managed by this op
 	memcpy(op->aliases, aliases, alias_count * sizeof(const char *));
 
-	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctFree, 
+	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", DistinctFree, 
 		false, plan);
 
 	return (OpBase *)op;

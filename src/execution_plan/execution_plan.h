@@ -33,9 +33,6 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter);
 
-// Prints execution plan
-void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
-
 // Increase execution plan reference count
 // Free execution plan
 void ExecutionPlan_Free(ExecutionPlan *plan);

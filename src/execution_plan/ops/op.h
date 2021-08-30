@@ -69,12 +69,11 @@ struct OpBase;
 struct ExecutionPlan;
 
 typedef void (*fpFree)(struct OpBase *);
-typedef void (*fpToString)(const struct OpBase *, sds *);
+
 
 struct OpBase {
 	OPType type;                // Type of operation
 	fpFree free;                // Free operation
-	fpToString toString;        // Operation string representation
 	const char *name;           // Operation name
 	int childCount;             // Number of children
 	struct OpBase **children;   // Child operations
@@ -86,11 +85,9 @@ struct OpBase {
 typedef struct OpBase OpBase;
 
 // Initialize op
-void OpBase_Init(OpBase *op, OPType type, const char *name, fpToString toString,
+void OpBase_Init(OpBase *op, OPType type, const char *name,
 	fpFree free, bool writer, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op
-
-void OpBase_ToString(const OpBase *op, sds *buff);
 
 // returns operation type
 OPType OpBase_Type(const OpBase *op);

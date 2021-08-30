@@ -25,11 +25,11 @@ RT_OpBase *RT_NewApplyMultiplexerOp(const RT_ExecutionPlan *plan, const OpApplyM
 	op->op_desc = op_desc;
 	// Set our Op operations
 	if(op_desc->boolean_operator == OP_OR) {
-		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
 					OpApplyMultiplexerInit, OrMultiplexer_Consume, OpApplyMultiplexerReset,
 					OpApplyMultiplexerFree, plan);
 	} else if(op_desc->boolean_operator == OP_AND) {
-		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
 					OpApplyMultiplexerInit, AndMultiplexer_Consume, OpApplyMultiplexerReset,
 					OpApplyMultiplexerFree, plan);
 	} else {

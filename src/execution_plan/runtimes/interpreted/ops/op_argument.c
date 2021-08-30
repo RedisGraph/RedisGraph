@@ -18,8 +18,8 @@ RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan, const Argument *op_des
 	op->r = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
-				ArgumentConsume, ArgumentReset, ArgumentFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
+		ArgumentConsume, ArgumentReset, ArgumentFree, plan);
 
 	return (RT_OpBase *)op;
 }

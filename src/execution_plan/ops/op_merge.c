@@ -38,7 +38,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	op->on_match         =  on_match;
 	op->on_create        =  on_create;
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, NULL, true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, true, plan);
 
 	if(op->on_match) _InitializeUpdates(op, op->on_match);
 	if(op->on_create) _InitializeUpdates(op, op->on_create);

@@ -22,8 +22,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	op->update_ctxs  =  update_exps;
 
 	// set our op operations
-	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", NULL, UpdateFree, true,
-		plan);
+	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateFree, true, plan);
 
 	raxIterator it;
 	// iterate over all update expressions

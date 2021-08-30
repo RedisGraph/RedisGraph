@@ -21,7 +21,7 @@ RT_OpBase *RT_NewApplyOp(const RT_ExecutionPlan *plan, const Apply *op_desc) {
 	op->rhs_branch = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, ApplyInit,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, ApplyInit,
 		ApplyConsume, ApplyReset, ApplyFree, plan);
 
 	return (RT_OpBase *)op;

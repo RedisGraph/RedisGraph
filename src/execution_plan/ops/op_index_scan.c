@@ -12,11 +12,6 @@
 // forward declarations
 static void IndexScanFree(OpBase *opBase);
 
-static void IndexScanToString(const OpBase *ctx, sds *buf) {
-	IndexScan *op = (IndexScan *)ctx;
-	return ScanToString(ctx, buf, op->n.alias, op->n.label);
-}
-
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, NodeScanCtx n,
 		RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
@@ -29,8 +24,8 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, NodeScanCtx n,
 	op->filter               =  filter;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan",
-		IndexScanToString, IndexScanFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanFree,
+		false, plan);
 
 	OpBase_Modifies((OpBase *)op, n.alias);
 

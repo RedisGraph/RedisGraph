@@ -20,8 +20,8 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->exp_count = array_len(exps);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL,
-				ProjectFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectFree, false,
+		plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name

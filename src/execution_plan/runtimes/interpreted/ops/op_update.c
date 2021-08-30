@@ -37,8 +37,8 @@ RT_OpBase *RT_NewUpdateOp(const RT_ExecutionPlan *plan, const OpUpdate *op_desc)
 	op->gc                 =  QueryCtx_GetGraphCtx();
 
 	// set our op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, UpdateInit,
-		UpdateConsume, UpdateReset, UpdateFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		UpdateInit, UpdateConsume, UpdateReset, UpdateFree, plan);
 
 	// iterate over all update expressions
 	// set the record index for every entity modified by this operation

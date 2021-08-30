@@ -49,9 +49,9 @@ static RT_fpNew new_funcs[] = {
 	(RT_fpNew)RT_NewOptionalOp               // OPType_OPTIONAL
 };
 
-void RT_OpBase_Init(RT_OpBase *op, const OpBase *op_desc, RT_fpInit init,
-				RT_fpConsume consume, RT_fpReset reset, RT_fpFree free,
-				const struct RT_ExecutionPlan *plan) {
+void RT_OpBase_Init(RT_OpBase *op, const OpBase *op_desc, RT_fpToString toString, 
+	RT_fpInit init, RT_fpConsume consume, RT_fpReset reset, RT_fpFree free,
+	const struct RT_ExecutionPlan *plan) {
 
 	op->op_desc = op_desc;
 	op->plan = plan;
@@ -68,6 +68,8 @@ void RT_OpBase_Init(RT_OpBase *op, const OpBase *op_desc, RT_fpInit init,
 	op->consume = consume;
 	op->reset = reset;
 	op->free = free;
+	op->toString = toString;
+
 	op->profile = NULL;
 }
 
@@ -111,6 +113,15 @@ Record RT_OpBase_Profile(RT_OpBase *op) {
 	op->stats->profileExecTime += simple_toc(tic);
 	if(r) op->stats->profileRecordCount++;
 	return r;
+}
+
+void RT_OpBase_ToString(const RT_OpBase *op, sds *buff) {
+	int bytes_written = 0;
+
+	if(op->toString) op->toString(op, buff);
+	else *buff = sdscatprintf(*buff, "%s", op->op_desc->name);
+
+	if(op->stats) _OpBase_StatsToString(op, buff);
 }
 
 bool RT_OpBase_IsWriter(RT_OpBase *op) {

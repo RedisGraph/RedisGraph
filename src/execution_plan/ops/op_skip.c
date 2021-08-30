@@ -41,7 +41,7 @@ OpBase *NewSkipOp(const ExecutionPlan *plan, AR_ExpNode *skip_exp) {
 	_eval_skip(op, skip_exp);
 
 	// set operations
-	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", NULL, SkipFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", SkipFree, false, plan);
 
 	return (OpBase *)op;
 }

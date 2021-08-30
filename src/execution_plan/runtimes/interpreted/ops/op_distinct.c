@@ -60,7 +60,7 @@ RT_OpBase *RT_NewDistinctOp(const RT_ExecutionPlan *plan, const OpDistinct *op_d
 	op->mapping         =  NULL;
 	op->offsets         =  rm_calloc(op_desc->alias_count, sizeof(uint));
 
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		DistinctConsume, NULL, DistinctFree, plan);
 
 	return (RT_OpBase *)op;

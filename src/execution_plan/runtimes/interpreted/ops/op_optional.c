@@ -16,7 +16,7 @@ RT_OpBase *RT_NewOptionalOp(const RT_ExecutionPlan *plan, const Optional *op_des
 	op->emitted_record = false;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		OptionalConsume, OptionalReset, NULL, plan);
 
 	return (RT_OpBase *)op;

@@ -13,7 +13,7 @@ OpBase *NewApplyOp(const ExecutionPlan *plan) {
 	op->rhs_branch = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, NULL, false, plan);
+	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, false, plan);
 
 	return (OpBase *)op;
 }

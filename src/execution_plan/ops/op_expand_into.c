@@ -14,18 +14,13 @@
 /* Forward declarations. */
 static void ExpandIntoFree(OpBase *opBase);
 
-// String representation of operation.
-static inline void ExpandIntoToString(const OpBase *ctx, sds *buf) {
-	TraversalToString(ctx, buf, ((const OpExpandInto *)ctx)->ae);
-}
-
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, AlgebraicExpression *ae) {
 	OpExpandInto *op = rm_malloc(sizeof(OpExpandInto));
 	op->ae = ae;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into",
-		ExpandIntoToString, ExpandIntoFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoFree,
+		false, plan);
 
 	// Make sure that all entities are represented in Record
 	bool aware;

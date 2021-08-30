@@ -4,8 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "op_all_node_scan.h"
 #include "query_ctx.h"
+#include "op_all_node_scan.h"
+#include "../../../ops/shared/print_functions.h"
 
 /* Forward declarations. */
 static RT_OpResult AllNodeScanInit(RT_OpBase *opBase);
@@ -14,6 +15,10 @@ static Record AllNodeScanConsumeFromChild(RT_OpBase *opBase);
 static RT_OpResult AllNodeScanReset(RT_OpBase *opBase);
 static void AllNodeScanFree(RT_OpBase *opBase);
 
+static inline void AllNodeScanToString(const RT_OpBase *ctx, sds *buf) {
+	return ScanToString(ctx, buf, ((RT_AllNodeScan *)ctx)->op_desc->alias, NULL);
+}
+
 RT_OpBase *RT_NewAllNodeScanOp(const RT_ExecutionPlan *plan, const AllNodeScan *op_desc) {
 	RT_AllNodeScan *op = rm_malloc(sizeof(RT_AllNodeScan));
 	op->op_desc = op_desc;
@@ -21,8 +26,9 @@ RT_OpBase *RT_NewAllNodeScanOp(const RT_ExecutionPlan *plan, const AllNodeScan *
 	op->child_record = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, AllNodeScanInit,
-				AllNodeScanConsume, AllNodeScanReset, AllNodeScanFree, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		AllNodeScanToString, AllNodeScanInit, AllNodeScanConsume,
+		AllNodeScanReset, AllNodeScanFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->alias, &op->nodeRecIdx);
 	ASSERT(aware);

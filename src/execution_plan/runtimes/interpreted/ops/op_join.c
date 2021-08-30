@@ -19,8 +19,8 @@ RT_OpBase *RT_NewJoinOp(const RT_ExecutionPlan *plan, const OpJoin *op_desc) {
 	op->stream = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, JoinInit,
-		JoinConsume, NULL, NULL, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		JoinInit, JoinConsume, NULL, NULL, plan);
 
 	return (RT_OpBase *)op;
 }

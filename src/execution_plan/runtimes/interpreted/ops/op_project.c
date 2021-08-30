@@ -24,7 +24,7 @@ RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, const OpProject *op_des
 	op->projection = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
 		ProjectConsume, NULL, ProjectFree, plan);
 
 	for(uint i = 0; i < op_desc->exp_count; i ++) {
