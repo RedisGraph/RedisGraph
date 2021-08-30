@@ -18,7 +18,6 @@
 static RT_OpResult UpdateInit(RT_OpBase *opBase);
 static Record UpdateConsume(RT_OpBase *opBase);
 static RT_OpResult UpdateReset(RT_OpBase *opBase);
-static RT_OpBase *UpdateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void UpdateFree(RT_OpBase *opBase);
 
 static Record _handoff(RT_OpUpdate *op) {
@@ -38,8 +37,8 @@ RT_OpBase *RT_NewUpdateOp(const RT_ExecutionPlan *plan, const OpUpdate *op_desc)
 	op->gc                 =  QueryCtx_GetGraphCtx();
 
 	// set our op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_UPDATE, UpdateInit, UpdateConsume,
-				UpdateReset, UpdateClone, UpdateFree, true, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, UpdateInit,
+		UpdateConsume, UpdateReset, UpdateFree, plan);
 
 	// iterate over all update expressions
 	// set the record index for every entity modified by this operation
@@ -102,12 +101,6 @@ static Record UpdateConsume(RT_OpBase *opBase) {
 	op->updates_committed = true;
 
 	return _handoff(op);
-}
-
-static RT_OpBase *UpdateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_UPDATE);
-	RT_OpUpdate *op = (RT_OpUpdate *)opBase;
-	return RT_NewUpdateOp(plan, op->op_desc);
 }
 
 static RT_OpResult UpdateReset(RT_OpBase *ctx) {

@@ -12,7 +12,6 @@
 /* Forward declarations. */
 static Record SkipConsume(RT_OpBase *opBase);
 static RT_OpResult SkipReset(RT_OpBase *opBase);
-static RT_OpBase *SkipClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
 static void _eval_skip(RT_OpSkip *op) {
 	// Evaluate using the input expression, leaving the stored expression untouched.
@@ -34,8 +33,8 @@ RT_OpBase *RT_NewSkipOp(const RT_ExecutionPlan *plan, const OpSkip *op_desc) {
 	_eval_skip(op);
 
 	// set operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_SKIP, NULL, SkipConsume, SkipReset, SkipClone,
-				NULL, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		SkipConsume, SkipReset, NULL, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -65,10 +64,4 @@ static RT_OpResult SkipReset(RT_OpBase *ctx) {
 	RT_OpSkip *skip = (RT_OpSkip *)ctx;
 	skip->skipped = 0;
 	return OP_OK;
-}
-
-static inline RT_OpBase *SkipClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_SKIP);
-	RT_OpSkip *op = (RT_OpSkip *)opBase;
-	return RT_NewSkipOp(plan, op->op_desc);
 }

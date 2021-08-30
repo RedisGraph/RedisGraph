@@ -12,7 +12,6 @@
 
 /* Forward declarations. */
 static Record CreateConsume(RT_OpBase *opBase);
-static RT_OpBase *CreateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void CreateFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewCreateOp(const RT_ExecutionPlan *plan, const OpCreate *op_desc) {
@@ -25,8 +24,8 @@ RT_OpBase *RT_NewCreateOp(const RT_ExecutionPlan *plan, const OpCreate *op_desc)
 	array_clone_with_cb(edges, op_desc->edges, EdgeCreateCtx_Clone);
 	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_CREATE, NULL, CreateConsume,
-				NULL, CreateClone, CreateFree, true, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		CreateConsume, NULL, CreateFree, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -146,12 +145,6 @@ static Record CreateConsume(RT_OpBase *opBase) {
 
 	// Return record.
 	return _handoff(op);
-}
-
-static RT_OpBase *CreateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_CREATE);
-	RT_OpCreate *op = (RT_OpCreate *)opBase;
-	return RT_NewCreateOp(plan, op->op_desc);
 }
 
 static void CreateFree(RT_OpBase *ctx) {

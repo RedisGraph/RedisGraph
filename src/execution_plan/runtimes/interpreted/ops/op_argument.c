@@ -10,7 +10,6 @@
 // Forward declarations
 static Record ArgumentConsume(RT_OpBase *opBase);
 static RT_OpResult ArgumentReset(RT_OpBase *opBase);
-static RT_OpBase *ArgumentClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ArgumentFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan, const Argument *op_desc) {
@@ -19,8 +18,8 @@ RT_OpBase *RT_NewArgumentOp(const RT_ExecutionPlan *plan, const Argument *op_des
 	op->r = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_ARGUMENT, NULL,
-				ArgumentConsume, ArgumentReset, ArgumentClone, ArgumentFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+				ArgumentConsume, ArgumentReset, ArgumentFree, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -50,11 +49,6 @@ static RT_OpResult ArgumentReset(RT_OpBase *opBase) {
 void Argument_AddRecord(RT_Argument *arg, Record r) {
 	ASSERT(!arg->r && "tried to insert into a populated Argument op");
 	arg->r = r;
-}
-
-static inline RT_OpBase *ArgumentClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_ARGUMENT);
-	return RT_NewArgumentOp(plan, ((RT_Argument *)opBase)->op_desc);
 }
 
 static void ArgumentFree(RT_OpBase *opBase) {

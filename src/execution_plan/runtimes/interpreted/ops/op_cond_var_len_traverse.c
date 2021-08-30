@@ -19,7 +19,6 @@ static RT_OpResult CondVarLenTraverseInit(RT_OpBase *opBase);
 static RT_OpResult CondVarLenTraverseReset(RT_OpBase *opBase);
 static Record CondVarLenTraverseConsume(RT_OpBase *opBase);
 static Record CondVarLenTraverseOptimizedConsume(RT_OpBase *opBase);
-static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void CondVarLenTraverseFree(RT_OpBase *opBase);
 
 static void _setupTraversedRelations(RT_CondVarLenTraverse *op) {
@@ -64,10 +63,9 @@ RT_OpBase *RT_NewCondVarLenTraverseOp(const RT_ExecutionPlan *plan, const CondVa
 	op->allNeighborsCtx    =  NULL;
 	op->edgeRelationTypes  =  NULL;
 
-	RT_OpBase_Init((RT_OpBase *)op, op_desc->op.type,
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
 				CondVarLenTraverseInit, CondVarLenTraverseConsume, 
-				CondVarLenTraverseReset, CondVarLenTraverseClone,
-				CondVarLenTraverseFree, false, plan);
+				CondVarLenTraverseReset, CondVarLenTraverseFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(op->ae), &op->srcNodeIdx);
 	UNUSED(aware);
@@ -277,11 +275,6 @@ static RT_OpResult CondVarLenTraverseReset(RT_OpBase *ctx) {
 	}
 
 	return OP_OK;
-}
-
-static RT_OpBase *CondVarLenTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	RT_CondVarLenTraverse *op = (RT_CondVarLenTraverse *) opBase;
-	return RT_NewCondVarLenTraverseOp(plan, op->op_desc);
 }
 
 static void CondVarLenTraverseFree(RT_OpBase *ctx) {

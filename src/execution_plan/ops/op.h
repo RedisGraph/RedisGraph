@@ -48,6 +48,7 @@ typedef enum {
 
 // Macro for checking whether an operation is an Apply variant.
 #define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OPType_ANTI_SEMI_APPLY)
+#define RT_OP_IS_APPLY(op) ((op)->op_desc->type == OPType_OR_APPLY_MULTIPLEXER || (op)->op_desc->type == OPType_AND_APPLY_MULTIPLEXER || (op)->op_desc->type == OPType_SEMI_APPLY || (op)->op_desc->type == OPType_ANTI_SEMI_APPLY)
 
 #define PROJECT_OP_COUNT 2
 static const OPType PROJECT_OPS[] = {OPType_PROJECT, OPType_AGGREGATE};

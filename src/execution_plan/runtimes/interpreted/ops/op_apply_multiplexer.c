@@ -11,7 +11,6 @@ static RT_OpResult OpApplyMultiplexerInit(RT_OpBase *opBase);
 static Record OrMultiplexer_Consume(RT_OpBase *opBase);
 static Record AndMultiplexer_Consume(RT_OpBase *opBase);
 static RT_OpResult OpApplyMultiplexerReset(RT_OpBase *opBase);
-static RT_OpBase *OpApplyMultiplexerClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void OpApplyMultiplexerFree(RT_OpBase *opBase);
 
 static Record _pullFromBranchStream(RT_OpApplyMultiplexer *op, int branch_index) {
@@ -26,13 +25,13 @@ RT_OpBase *RT_NewApplyMultiplexerOp(const RT_ExecutionPlan *plan, const OpApplyM
 	op->op_desc = op_desc;
 	// Set our Op operations
 	if(op_desc->boolean_operator == OP_OR) {
-		RT_OpBase_Init((RT_OpBase *)op, OPType_OR_APPLY_MULTIPLEXER,
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
 					OpApplyMultiplexerInit, OrMultiplexer_Consume, OpApplyMultiplexerReset,
-					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
+					OpApplyMultiplexerFree, plan);
 	} else if(op_desc->boolean_operator == OP_AND) {
-		RT_OpBase_Init((RT_OpBase *)op, OPType_AND_APPLY_MULTIPLEXER,
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
 					OpApplyMultiplexerInit, AndMultiplexer_Consume, OpApplyMultiplexerReset,
-					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
+					OpApplyMultiplexerFree, plan);
 	} else {
 		ASSERT("apply multiplexer boolean operator should be AND or OR only" && false);
 	}
@@ -47,12 +46,12 @@ static void _OpApplyMultiplexer_SortChildren(RT_OpBase *op) {
 	for(int i = 1; i < op->childCount; i++) {
 		RT_OpBase *child = op->children[i];
 		// Push apply ops to the end.
-		if(OP_IS_APPLY(child)) {
+		if(RT_OP_IS_APPLY(child)) {
 			// From current position to the end, search for filter op.
 			bool swapped = false;
 			for(int j = i + 1; j < op->childCount; j++) {
 				RT_OpBase *candidate = op->children[j];
-				if(candidate->type == OPType_FILTER) {
+				if(candidate->op_desc->type == OPType_FILTER) {
 					op->children[i] = candidate;
 					op->children[j] = child;
 					swapped = true;
@@ -146,12 +145,6 @@ static RT_OpResult OpApplyMultiplexerReset(RT_OpBase *opBase) {
 		op->r = NULL;
 	}
 	return OP_OK;
-}
-
-static inline RT_OpBase *OpApplyMultiplexerClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_OR_APPLY_MULTIPLEXER || opBase->type == OPType_AND_APPLY_MULTIPLEXER);
-	RT_OpApplyMultiplexer *op = (RT_OpApplyMultiplexer *)opBase;
-	return RT_NewApplyMultiplexerOp(plan, op->op_desc);
 }
 
 static void OpApplyMultiplexerFree(RT_OpBase *opBase) {

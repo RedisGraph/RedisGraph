@@ -13,7 +13,6 @@
 /* Forward declarations. */
 static Record DeleteConsume(RT_OpBase *opBase);
 static RT_OpResult DeleteInit(RT_OpBase *opBase);
-static RT_OpBase *DeleteClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void DeleteFree(RT_OpBase *opBase);
 
 void _DeleteEntities(RT_OpDelete *op) {
@@ -68,8 +67,8 @@ RT_OpBase *RT_NewDeleteOp(const RT_ExecutionPlan *plan, const OpDelete *op_desc)
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_DELETE, DeleteInit, DeleteConsume,
-				NULL, DeleteClone, DeleteFree, true, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, DeleteInit,
+		DeleteConsume, NULL, DeleteFree, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -117,12 +116,6 @@ static Record DeleteConsume(RT_OpBase *opBase) {
 	}
 
 	return r;
-}
-
-static RT_OpBase *DeleteClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_DELETE);
-	RT_OpDelete *op = (RT_OpDelete *)opBase;
-	return RT_NewDeleteOp(plan, op->op_desc);
 }
 
 static void DeleteFree(RT_OpBase *ctx) {

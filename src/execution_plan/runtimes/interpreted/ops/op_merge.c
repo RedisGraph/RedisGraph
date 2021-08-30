@@ -17,7 +17,6 @@
 // forward declarations
 static RT_OpResult MergeInit(RT_OpBase *opBase);
 static Record MergeConsume(RT_OpBase *opBase);
-static RT_OpBase *MergeClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void MergeFree(RT_OpBase *opBase);
 
 //------------------------------------------------------------------------------
@@ -70,8 +69,8 @@ RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, const OpMerge *op_desc) {
 	op->stats            =  NULL;
 	op->pending_updates  =  NULL;
 	// set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_MERGE, MergeInit, MergeConsume, NULL, MergeClone,
-				MergeFree, true, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, MergeInit,
+		MergeConsume, NULL, MergeFree, plan);
 
 	if(op_desc->on_match) _InitializeUpdates(op, op_desc->on_match, &op->on_match_it);
 	if(op_desc->on_create) _InitializeUpdates(op, op_desc->on_create, &op->on_create_it);
@@ -84,7 +83,7 @@ RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, const OpMerge *op_desc) {
 // Match and Create streams are always guaranteed to not branch (have any ops with multiple children).
 static RT_OpBase *_LocateOp(RT_OpBase *root, OPType type) {
 	if(!root) return NULL;
-	if(root->type == type) return root;
+	if(root->op_desc->type == type) return root;
 	if(root->childCount > 0) return _LocateOp(root->children[0], type);
 	return NULL;
 }
@@ -311,12 +310,6 @@ static Record MergeConsume(RT_OpBase *opBase) {
 	op->pending_updates = NULL;
 
 	return _handoff(op);
-}
-
-static RT_OpBase *MergeClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_MERGE);
-	RT_OpMerge *op = (RT_OpMerge *)opBase;
-	return RT_NewMergeOp(plan, op->op_desc);
 }
 
 static void MergeFree(RT_OpBase *opBase) {

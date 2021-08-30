@@ -24,7 +24,7 @@ typedef RT_OpResult(*RT_fpInit)(struct RT_OpBase *);
 typedef Record(*RT_fpConsume)(struct RT_OpBase *);
 typedef RT_OpResult(*RT_fpReset)(struct RT_OpBase *);
 typedef void (*RT_fpToString)(const struct RT_OpBase *, sds *);
-typedef struct RT_OpBase *(*RT_fpClone)(const struct RT_ExecutionPlan *, const struct RT_OpBase *);
+typedef struct RT_OpBase *(*RT_fpNew)(const struct RT_ExecutionPlan *, const struct OpBase *);
 
 // Execution plan operation statistics.
 typedef struct {
@@ -33,11 +33,10 @@ typedef struct {
 }  OpStats;
 
 struct RT_OpBase {
-	OPType type;                 // Type of operation
+	const OpBase *op_desc;       // Type of operation
 	RT_fpInit init;              // Called once before execution
 	RT_fpFree free;              // Free operation
 	RT_fpReset reset;            // Reset operation state
-	RT_fpClone clone;            // Operation clone
 	RT_fpConsume consume;        // Produce next record
 	RT_fpConsume profile;        // Profiled version of consume
 	int childCount;              // Number of children
@@ -47,18 +46,18 @@ struct RT_OpBase {
 	OpStats *stats;              // Profiling statistics
 	struct RT_OpBase *parent;    // Parent operations
 	const struct RT_ExecutionPlan *plan; // ExecutionPlan this operation is part of
-	bool writer;                 // Indicates this is a writer operation
 };
 typedef struct RT_OpBase RT_OpBase;
 
 // Initialize op.
-void RT_OpBase_Init(RT_OpBase *op, OPType type, RT_fpInit init, RT_fpConsume consume,
-				 RT_fpReset reset, RT_fpClone, RT_fpFree free, bool writer,
-				 const struct RT_ExecutionPlan *plan);
+void RT_OpBase_Init(RT_OpBase *op, const OpBase *op_desc, RT_fpInit init,
+				RT_fpConsume consume, RT_fpReset reset, RT_fpFree free,
+				const struct RT_ExecutionPlan *plan);
 void RT_OpBase_Free(RT_OpBase *op);       // Free op
 Record RT_OpBase_Consume(RT_OpBase *op);  // Consume op
 Record RT_OpBase_Profile(RT_OpBase *op);  // Profile op
 
+RT_OpBase *RT_OpBase_New(const struct RT_ExecutionPlan *plan, const OpBase *op_desc);
 RT_OpBase *RT_OpBase_Clone(const struct RT_ExecutionPlan *plan, const RT_OpBase *op);
 
 // returns operation type

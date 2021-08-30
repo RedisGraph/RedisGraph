@@ -14,7 +14,6 @@
 static RT_OpResult ValueHashJoinInit(RT_OpBase *opBase);
 static Record ValueHashJoinConsume(RT_OpBase *opBase);
 static RT_OpResult ValueHashJoinReset(RT_OpBase *opBase);
-static RT_OpBase *ValueHashJoinClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ValueHashJoinFree(RT_OpBase *opBase);
 
 /* Determins order between two records by inspecting
@@ -178,9 +177,9 @@ RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, const OpValueHashJo
 	op->number_of_intersections = 0;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_VALUE_HASH_JOIN, ValueHashJoinInit,
-				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinClone,
-				ValueHashJoinFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		ValueHashJoinInit, ValueHashJoinConsume, ValueHashJoinReset,
+		ValueHashJoinFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, "pivot", &op->join_value_rec_idx);
 	UNUSED(aware);
@@ -283,12 +282,6 @@ static RT_OpResult ValueHashJoinReset(RT_OpBase *ctx) {
 	}
 
 	return OP_OK;
-}
-
-static inline RT_OpBase *ValueHashJoinClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_VALUE_HASH_JOIN);
-	RT_OpValueHashJoin *op = (RT_OpValueHashJoin *)opBase;
-	return RT_NewValueHashJoin(plan, op->op_desc);
 }
 
 /* Frees ValueHashJoin */

@@ -9,7 +9,6 @@
 /* Forward declarations. */
 static Record OptionalConsume(RT_OpBase *opBase);
 static RT_OpResult OptionalReset(RT_OpBase *opBase);
-static RT_OpBase *OptionalClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
 RT_OpBase *RT_NewOptionalOp(const RT_ExecutionPlan *plan, const Optional *op_desc) {
 	RT_Optional *op = rm_malloc(sizeof(RT_Optional));
@@ -17,8 +16,8 @@ RT_OpBase *RT_NewOptionalOp(const RT_ExecutionPlan *plan, const Optional *op_des
 	op->emitted_record = false;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_OPTIONAL, NULL, OptionalConsume,
-				OptionalReset, OptionalClone, NULL, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		OptionalConsume, OptionalReset, NULL, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -41,8 +40,4 @@ static RT_OpResult OptionalReset(RT_OpBase *opBase) {
 	RT_Optional *op = (RT_Optional *)opBase;
 	op->emitted_record = false;
 	return OP_OK;
-}
-
-static inline RT_OpBase *OptionalClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	return RT_NewOptionalOp(plan, ((RT_Optional *)opBase)->op_desc);
 }

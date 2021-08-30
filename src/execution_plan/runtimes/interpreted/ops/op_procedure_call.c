@@ -13,7 +13,6 @@
 /* Forward declarations. */
 static Record ProcCallConsume(RT_OpBase *opBase);
 static RT_OpResult ProcCallReset(RT_OpBase *opBase);
-static RT_OpBase *ProcCallClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ProcCallFree(RT_OpBase *opBase);
 
 static void _construct_output_mappings(RT_OpProcCall *op, SIValue *outputs) {
@@ -93,9 +92,8 @@ RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_d
 	op->output = array_new(const char *, yield_count);
 
 	// Set operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_PROC_CALL,
-	  	NULL, ProcCallConsume, ProcCallReset, ProcCallClone,
-	  	ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		ProcCallConsume, ProcCallReset, ProcCallFree, plan);
 
 	// Set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
@@ -166,12 +164,6 @@ static RT_OpResult ProcCallReset(RT_OpBase *ctx) {
 	RT_OpProcCall *op = (RT_OpProcCall *)ctx;
 	op->first_call = true;
 	return OP_OK;
-}
-
-static RT_OpBase *ProcCallClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_PROC_CALL);
-	RT_OpProcCall *op = (RT_OpProcCall *)opBase;
-	return RT_NewProcCallOp(plan, op->op_desc);
 }
 
 static void ProcCallFree(RT_OpBase *ctx) {

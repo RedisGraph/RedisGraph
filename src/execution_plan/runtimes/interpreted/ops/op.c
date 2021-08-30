@@ -5,17 +5,55 @@
 */
 
 #include "op.h"
+#include "ops.h"
 #include "RG.h"
 #include "../runtime_execution_plan.h"
 #include "../../../../util/arr.h"
 #include "../../../../util/rmalloc.h"
 #include "../../../../util/simple_timer.h"
 
-void RT_OpBase_Init(RT_OpBase *op, OPType type, RT_fpInit init, RT_fpConsume consume,
-				 RT_fpReset reset, RT_fpClone clone, RT_fpFree free, bool writer,
-				 const struct RT_ExecutionPlan *plan) {
+static RT_fpNew new_funcs[] = {
+	(RT_fpNew)RT_NewAllNodeScanOp,           // OPType_ALL_NODE_SCAN
+	(RT_fpNew)RT_NewNodeByLabelScanOp,       // OPType_NODE_BY_LABEL_SCAN
+	(RT_fpNew)RT_NewIndexScanOp,             // OPType_INDEX_SCAN
+	(RT_fpNew)RT_NewNodeByIdSeekOp,          // OPType_NODE_BY_ID_SEEK
+	(RT_fpNew)RT_NewNodeByLabelScanOp,       // OPType_NODE_BY_LABEL_AND_ID_SCAN
+	(RT_fpNew)RT_NewExpandIntoOp,            // OPType_EXPAND_INTO
+	(RT_fpNew)RT_NewCondTraverseOp,          // OPType_CONDITIONAL_TRAVERSE
+	(RT_fpNew)RT_NewCondVarLenTraverseOp,    // OPType_CONDITIONAL_VAR_LEN_TRAVERSE
+	(RT_fpNew)RT_NewCondVarLenTraverseOp,    // OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO
+	(RT_fpNew)RT_NewResultsOp,               // OPType_RESULTS
+	(RT_fpNew)RT_NewProjectOp,               // OPType_PROJECT
+	(RT_fpNew)RT_NewAggregateOp,             // OPType_AGGREGATE
+	(RT_fpNew)RT_NewSortOp,                  // OPType_SORT
+	(RT_fpNew)RT_NewSkipOp,                  // OPType_SKIP
+	(RT_fpNew)RT_NewLimitOp,                 // OPType_LIMIT
+	(RT_fpNew)RT_NewDistinctOp,              // OPType_DISTINCT
+	(RT_fpNew)RT_NewMergeOp,                 // OPType_MERGE
+	(RT_fpNew)RT_NewMergeCreateOp,           // OPType_MERGE_CREATE
+	(RT_fpNew)RT_NewFilterOp,                // OPType_FILTER
+	(RT_fpNew)RT_NewCreateOp,                // OPType_CREATE
+	(RT_fpNew)RT_NewUpdateOp,                // OPType_UPDATE
+	(RT_fpNew)RT_NewDeleteOp,                // OPType_DELETE
+	(RT_fpNew)RT_NewUnwindOp,                // OPType_UNWIND
+	(RT_fpNew)RT_NewProcCallOp,              // OPType_PROC_CALL
+	(RT_fpNew)RT_NewArgumentOp,              // OPType_ARGUMENT
+	(RT_fpNew)RT_NewCartesianProductOp,      // OPType_CARTESIAN_PRODUCT
+	(RT_fpNew)RT_NewValueHashJoin,           // OPType_VALUE_HASH_JOIN
+	(RT_fpNew)RT_NewApplyOp,                 // OPType_APPLY
+	(RT_fpNew)RT_NewJoinOp,                  // OPType_JOIN
+	(RT_fpNew)RT_NewSemiApplyOp,             // OPType_SEMI_APPLY
+	(RT_fpNew)RT_NewSemiApplyOp,             // OPType_ANTI_SEMI_APPLY
+	(RT_fpNew)RT_NewApplyMultiplexerOp,      // OPType_OR_APPLY_MULTIPLEXER
+	(RT_fpNew)RT_NewApplyMultiplexerOp,      // OPType_AND_APPLY_MULTIPLEXER
+	(RT_fpNew)RT_NewOptionalOp               // OPType_OPTIONAL
+};
 
-	op->type = type;
+void RT_OpBase_Init(RT_OpBase *op, const OpBase *op_desc, RT_fpInit init,
+				RT_fpConsume consume, RT_fpReset reset, RT_fpFree free,
+				const struct RT_ExecutionPlan *plan) {
+
+	op->op_desc = op_desc;
 	op->plan = plan;
 	op->parent = NULL;
 	op->childCount = 0;
@@ -24,13 +62,11 @@ void RT_OpBase_Init(RT_OpBase *op, OPType type, RT_fpInit init, RT_fpConsume con
 	op->stats = NULL;
 	op->op_initialized = false;
 	op->modifies = NULL;
-	op->writer = writer;
 
 	// Function pointers.
 	op->init = init;
 	op->consume = consume;
 	op->reset = reset;
-	op->clone = clone;
 	op->free = free;
 	op->profile = NULL;
 }
@@ -78,7 +114,7 @@ Record RT_OpBase_Profile(RT_OpBase *op) {
 }
 
 bool RT_OpBase_IsWriter(RT_OpBase *op) {
-	return op->writer;
+	return op->op_desc->writer;
 }
 
 void RT_OpBase_UpdateConsume(RT_OpBase *op, RT_fpConsume consume) {
@@ -101,16 +137,19 @@ Record RT_OpBase_CloneRecord(Record r) {
 
 inline OPType RT_OpBase_Type(const RT_OpBase *op) {
 	ASSERT(op != NULL);
-	return op->type;
+	return op->op_desc->type;
 }
 
 inline void RT_OpBase_DeleteRecord(Record r) {
 	RT_ExecutionPlan_ReturnRecord(r->owner, r);
 }
 
+RT_OpBase *RT_OpBase_New(const struct RT_ExecutionPlan *plan, const OpBase *op_desc) {
+	return new_funcs[op_desc->type](plan, op_desc);
+}
+
 RT_OpBase *RT_OpBase_Clone(const struct RT_ExecutionPlan *plan, const RT_OpBase *op) {
-	if(op->clone) return op->clone(plan, op);
-	return NULL;
+	return new_funcs[op->op_desc->type](plan, op->op_desc);
 }
 
 void RT_OpBase_Free(RT_OpBase *op) {

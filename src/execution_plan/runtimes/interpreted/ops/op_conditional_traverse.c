@@ -16,7 +16,6 @@
 static RT_OpResult CondTraverseInit(RT_OpBase *opBase);
 static Record CondTraverseConsume(RT_OpBase *opBase);
 static RT_OpResult CondTraverseReset(RT_OpBase *opBase);
-static RT_OpBase *CondTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void CondTraverseFree(RT_OpBase *opBase);
 
 static void _populate_filter_matrix(RT_OpCondTraverse *op) {
@@ -83,9 +82,8 @@ RT_OpBase *RT_NewCondTraverseOp(const RT_ExecutionPlan *plan, const OpCondTraver
 	op->record_cap = BATCH_SIZE;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_CONDITIONAL_TRAVERSE, CondTraverseInit,
-				CondTraverseConsume, CondTraverseReset, CondTraverseClone, CondTraverseFree,
-				false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, CondTraverseInit,
+				CondTraverseConsume, CondTraverseReset, CondTraverseFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(op->ae), &op->srcNodeIdx);
 	UNUSED(aware);
@@ -207,12 +205,6 @@ static RT_OpResult CondTraverseReset(RT_OpBase *ctx) {
 	}
 	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
-}
-
-static inline RT_OpBase *CondTraverseClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_CONDITIONAL_TRAVERSE);
-	RT_OpCondTraverse *op = (RT_OpCondTraverse *)opBase;
-	return RT_NewCondTraverseOp(plan, op->op_desc);
 }
 
 /* Frees CondTraverse */

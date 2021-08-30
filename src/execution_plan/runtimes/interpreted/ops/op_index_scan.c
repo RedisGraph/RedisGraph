@@ -15,7 +15,6 @@ static Record IndexScanConsume(RT_OpBase *opBase);
 static Record IndexScanConsumeFromChild(RT_OpBase *opBase);
 static RT_OpResult IndexScanReset(RT_OpBase *opBase);
 static void IndexScanFree(RT_OpBase *opBase);
-static RT_OpBase *IndexScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
 RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, const IndexScan *op_desc) {
 	// validate inputs
@@ -30,8 +29,8 @@ RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, const IndexScan *op_d
 	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_INDEX_SCAN, IndexScanInit, IndexScanConsume,
-				IndexScanReset, IndexScanClone, IndexScanFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, IndexScanInit,
+		IndexScanConsume, IndexScanReset, IndexScanFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->n.alias, &op->nodeRecIdx);
 	UNUSED(aware);
@@ -226,9 +225,4 @@ static void IndexScanFree(RT_OpBase *opBase) {
 		FilterTree_Free(op->unresolved_filters);
 		op->unresolved_filters = NULL;
 	}
-}
-
-static RT_OpBase *IndexScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	RT_IndexScan *op = (RT_IndexScan *)opBase;
-	return RT_NewIndexScanOp(plan, op->op_desc);
 }

@@ -14,15 +14,14 @@
 /* Forward declarations. */
 static Record ResultsConsume(RT_OpBase *opBase);
 static RT_OpResult ResultsInit(RT_OpBase *opBase);
-static RT_OpBase *ResultsClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
 RT_OpBase *RT_NewResultsOp(const RT_ExecutionPlan *plan, const Results *op_desc) {
 	RT_Results *op = rm_malloc(sizeof(RT_Results));
 	op->op_desc = op_desc;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_RESULTS, ResultsInit, ResultsConsume,
-				NULL, ResultsClone, NULL, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, ResultsInit,
+		ResultsConsume, NULL, NULL, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -51,9 +50,4 @@ static Record ResultsConsume(RT_OpBase *opBase) {
 	// append to final result set
 	ResultSet_AddRecord(op->result_set, r);
 	return r;
-}
-
-static inline RT_OpBase *ResultsClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_RESULTS);
-	return RT_NewResultsOp(plan, ((RT_Results *)opBase)->op_desc);
 }

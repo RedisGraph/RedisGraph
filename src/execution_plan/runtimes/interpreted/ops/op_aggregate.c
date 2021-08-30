@@ -16,7 +16,6 @@
 /* Forward declarations. */
 static Record AggregateConsume(RT_OpBase *opBase);
 static RT_OpResult AggregateReset(RT_OpBase *opBase);
-static RT_OpBase *AggregateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void AggregateFree(RT_OpBase *opBase);
 
 /* Clone all aggregate expression templates to associate with a new Group. */
@@ -185,8 +184,8 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, const OpAggregate *op
 	// Allocate memory for group keys if we have any non-aggregate expressions.
 	if(op_desc->key_count) op->group_keys = rm_malloc(op_desc->key_count * sizeof(SIValue));
 
-	RT_OpBase_Init((RT_OpBase *)op, OPType_AGGREGATE, NULL, AggregateConsume,
-				AggregateReset, AggregateClone, AggregateFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		AggregateConsume, AggregateReset, AggregateFree, plan);
 
 	// The projected record will associate values with their resolved name
 	// to ensure that space is allocated for each entry.
@@ -242,12 +241,6 @@ static RT_OpResult AggregateReset(RT_OpBase *opBase) {
 	op->group = NULL;
 
 	return OP_OK;
-}
-
-static RT_OpBase *AggregateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_AGGREGATE);
-	RT_OpAggregate *op = (RT_OpAggregate *)opBase;
-	return RT_NewAggregateOp(plan, op->op_desc);
 }
 
 static void AggregateFree(RT_OpBase *opBase) {

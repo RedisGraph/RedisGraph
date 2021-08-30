@@ -16,7 +16,6 @@
 static RT_OpResult SortInit(RT_OpBase *opBase);
 static Record SortConsume(RT_OpBase *opBase);
 static RT_OpResult SortReset(RT_OpBase *opBase);
-static RT_OpBase *SortClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void SortFree(RT_OpBase *opBase);
 
 // Heapsort function to compare two records on a subset of fields.
@@ -85,8 +84,8 @@ RT_OpBase *RT_NewSortOp(const RT_ExecutionPlan *plan, const OpSort *op_desc) {
 	op->buffer = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_SORT, SortInit, SortConsume, SortReset, SortClone,
-				SortFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, SortInit,
+		SortConsume, SortReset, SortFree, plan);
 
 	uint comparison_count = array_len(op_desc->exps);
 	op->record_offsets = array_new(uint, comparison_count);
@@ -180,12 +179,6 @@ static RT_OpResult SortReset(RT_OpBase *ctx) {
 	}
 
 	return OP_OK;
-}
-
-static RT_OpBase *SortClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_SORT);
-	RT_OpSort *op = (RT_OpSort *)opBase;
-	return RT_NewSortOp(plan, op->op_desc);
 }
 
 /* Frees Sort */

@@ -10,7 +10,6 @@
 static RT_OpResult ApplyInit(RT_OpBase *opBase);
 static Record ApplyConsume(RT_OpBase *opBase);
 static RT_OpResult ApplyReset(RT_OpBase *opBase);
-static RT_OpBase *ApplyClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ApplyFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewApplyOp(const RT_ExecutionPlan *plan, const Apply *op_desc) {
@@ -22,8 +21,8 @@ RT_OpBase *RT_NewApplyOp(const RT_ExecutionPlan *plan, const Apply *op_desc) {
 	op->rhs_branch = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_APPLY, ApplyInit, ApplyConsume, ApplyReset,
-				ApplyClone, ApplyFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, ApplyInit,
+		ApplyConsume, ApplyReset, ApplyFree, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -89,10 +88,6 @@ static RT_OpResult ApplyReset(RT_OpBase *opBase) {
 		op->r = NULL;
 	}
 	return OP_OK;
-}
-
-static RT_OpBase *ApplyClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	return RT_NewApplyOp(plan, ((RT_Apply *)opBase)->op_desc);
 }
 
 static void ApplyFree(RT_OpBase *opBase) {

@@ -15,7 +15,6 @@
 static RT_OpResult ExpandIntoInit(RT_OpBase *opBase);
 static Record ExpandIntoConsume(RT_OpBase *opBase);
 static RT_OpResult ExpandIntoReset(RT_OpBase *opBase);
-static RT_OpBase *ExpandIntoClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ExpandIntoFree(RT_OpBase *opBase);
 
 static void _populate_filter_matrix(RT_OpExpandInto *op) {
@@ -76,8 +75,8 @@ RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, const OpExpandInto *
 	op->edge_ctx = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_EXPAND_INTO, ExpandIntoInit, ExpandIntoConsume,
-				ExpandIntoReset, ExpandIntoClone, ExpandIntoFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, ExpandIntoInit, ExpandIntoConsume,
+				ExpandIntoReset, ExpandIntoFree, plan);
 
 	// Make sure that all entities are represented in Record
 	bool aware;
@@ -211,12 +210,6 @@ static RT_OpResult ExpandIntoReset(RT_OpBase *ctx) {
 	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
 	if(op->F != NULL) RG_Matrix_clear(op->F);
 	return OP_OK;
-}
-
-static inline RT_OpBase *ExpandIntoClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_EXPAND_INTO);
-	RT_OpExpandInto *op = (RT_OpExpandInto *)opBase;
-	return RT_NewExpandIntoOp(plan, op->op_desc);
 }
 
 /* Frees ExpandInto */

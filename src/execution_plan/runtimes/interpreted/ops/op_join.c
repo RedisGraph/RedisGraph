@@ -12,7 +12,6 @@
 static Record JoinConsume(RT_OpBase *opBase);
 static RT_OpResult JoinReset(RT_OpBase *opBase);
 static RT_OpResult JoinInit(RT_OpBase *opBase);
-static RT_OpBase *JoinClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
 RT_OpBase *RT_NewJoinOp(const RT_ExecutionPlan *plan, const OpJoin *op_desc) {
 	RT_OpJoin *op = rm_malloc(sizeof(RT_OpJoin));
@@ -20,8 +19,8 @@ RT_OpBase *RT_NewJoinOp(const RT_ExecutionPlan *plan, const OpJoin *op_desc) {
 	op->stream = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_JOIN, JoinInit, JoinConsume, NULL, JoinClone, NULL,
-				false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, JoinInit,
+		JoinConsume, NULL, NULL, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -69,9 +68,4 @@ static RT_OpResult JoinReset(RT_OpBase *opBase) {
 	op->streamIdx = 0;
 	op->stream = op->op.children[op->streamIdx];
 	return OP_OK;
-}
-
-static inline RT_OpBase *JoinClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_JOIN);
-	return RT_NewJoinOp(plan, ((RT_OpJoin *)opBase)->op_desc);
 }

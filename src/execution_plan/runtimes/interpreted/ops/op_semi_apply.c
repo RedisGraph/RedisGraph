@@ -11,7 +11,6 @@ static RT_OpResult SemiApplyInit(RT_OpBase *opBase);
 static Record SemiApplyConsume(RT_OpBase *opBase);
 static Record AntiSemiApplyConsume(RT_OpBase *opBase);
 static RT_OpResult SemiApplyReset(RT_OpBase *opBase);
-static RT_OpBase *SemiApplyClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void SemiApplyFree(RT_OpBase *opBase);
 
 static inline Record _pullFromMatchStream(RT_OpSemiApply *op) {
@@ -27,11 +26,11 @@ RT_OpBase *RT_NewSemiApplyOp(const RT_ExecutionPlan *plan, const OpSemiApply *op
 	op->match_branch = NULL;
 	// Set our Op operations
 	if(op_desc->op.type == OPType_ANTI_SEMI_APPLY) {
-		RT_OpBase_Init((RT_OpBase *)op, OPType_ANTI_SEMI_APPLY, SemiApplyInit,
-					AntiSemiApplyConsume, SemiApplyReset, SemiApplyClone, SemiApplyFree, false, plan);
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, SemiApplyInit,
+					AntiSemiApplyConsume, SemiApplyReset, SemiApplyFree, plan);
 	} else {
-		RT_OpBase_Init((RT_OpBase *)op, OPType_SEMI_APPLY, SemiApplyInit, SemiApplyConsume,
-					SemiApplyReset, SemiApplyClone, SemiApplyFree, false, plan);
+		RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, SemiApplyInit, SemiApplyConsume,
+					SemiApplyReset, SemiApplyFree, plan);
 	}
 	return (RT_OpBase *) op;
 }
@@ -119,10 +118,6 @@ static RT_OpResult SemiApplyReset(RT_OpBase *opBase) {
 		op->r = NULL;
 	}
 	return OP_OK;
-}
-
-static inline RT_OpBase *SemiApplyClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	return RT_NewSemiApplyOp(plan, ((RT_OpSemiApply *)opBase)->op_desc);
 }
 
 static void SemiApplyFree(RT_OpBase *opBase) {

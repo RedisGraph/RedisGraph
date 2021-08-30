@@ -15,7 +15,6 @@ static Record NodeByLabelScanConsume(RT_OpBase *opBase);
 static Record NodeByLabelScanConsumeFromChild(RT_OpBase *opBase);
 static Record NodeByLabelScanNoOp(RT_OpBase *opBase);
 static RT_OpResult NodeByLabelScanReset(RT_OpBase *opBase);
-static RT_OpBase *NodeByLabelScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void NodeByLabelScanFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, const NodeByLabelScan *op_desc) {
@@ -26,9 +25,9 @@ RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, const NodeByLab
 	op->child_record = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, op_desc->op.type, NodeByLabelScanInit,
-				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanClone,
-				NodeByLabelScanFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		NodeByLabelScanInit, NodeByLabelScanConsume, NodeByLabelScanReset,
+		NodeByLabelScanFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->n.alias, &op->nodeRecIdx);
 	ASSERT(aware);
@@ -190,11 +189,6 @@ static RT_OpResult NodeByLabelScanReset(RT_OpBase *ctx) {
 	}
 	_ResetIterator(op);
 	return OP_OK;
-}
-
-static RT_OpBase *NodeByLabelScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	RT_NodeByLabelScan *op = (RT_NodeByLabelScan *)opBase;
-	return RT_NewNodeByLabelScanOp(plan, op->op_desc);
 }
 
 static void NodeByLabelScanFree(RT_OpBase *op) {

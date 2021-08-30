@@ -12,7 +12,6 @@ static RT_OpResult AllNodeScanInit(RT_OpBase *opBase);
 static Record AllNodeScanConsume(RT_OpBase *opBase);
 static Record AllNodeScanConsumeFromChild(RT_OpBase *opBase);
 static RT_OpResult AllNodeScanReset(RT_OpBase *opBase);
-static RT_OpBase *AllNodeScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void AllNodeScanFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewAllNodeScanOp(const RT_ExecutionPlan *plan, const AllNodeScan *op_desc) {
@@ -22,9 +21,9 @@ RT_OpBase *RT_NewAllNodeScanOp(const RT_ExecutionPlan *plan, const AllNodeScan *
 	op->child_record = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_ALL_NODE_SCAN, AllNodeScanInit,
-				AllNodeScanConsume, AllNodeScanReset, AllNodeScanClone, AllNodeScanFree, false,
-				plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, AllNodeScanInit,
+				AllNodeScanConsume, AllNodeScanReset, AllNodeScanFree, plan);
+
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->alias, &op->nodeRecIdx);
 	ASSERT(aware);
 
@@ -90,11 +89,6 @@ static RT_OpResult AllNodeScanReset(RT_OpBase *op) {
 	RT_AllNodeScan *allNodeScan = (RT_AllNodeScan *)op;
 	if(allNodeScan->iter) DataBlockIterator_Reset(allNodeScan->iter);
 	return OP_OK;
-}
-
-static inline RT_OpBase *AllNodeScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_ALL_NODE_SCAN);
-	return RT_NewAllNodeScanOp(plan, ((RT_AllNodeScan *)opBase)->op_desc);
 }
 
 static void AllNodeScanFree(RT_OpBase *ctx) {

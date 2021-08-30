@@ -13,7 +13,6 @@
 
 /* Forward declarations. */
 static Record ProjectConsume(RT_OpBase *opBase);
-static RT_OpBase *ProjectClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ProjectFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, const OpProject *op_desc) {
@@ -25,8 +24,8 @@ RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, const OpProject *op_des
 	op->projection = NULL;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_PROJECT, NULL, ProjectConsume,
-				NULL, ProjectClone, ProjectFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		ProjectConsume, NULL, ProjectFree, plan);
 
 	for(uint i = 0; i < op_desc->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -81,12 +80,6 @@ static Record ProjectConsume(RT_OpBase *opBase) {
 	Record projection = op->projection;
 	op->projection = NULL;
 	return projection;
-}
-
-static RT_OpBase *ProjectClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_PROJECT);
-	RT_OpProject *op = (RT_OpProject *)opBase;
-	return RT_NewProjectOp(plan, op->op_desc);
 }
 
 static void ProjectFree(RT_OpBase *ctx) {

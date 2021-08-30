@@ -13,7 +13,6 @@ static RT_OpResult NodeByIdSeekInit(RT_OpBase *opBase);
 static Record NodeByIdSeekConsume(RT_OpBase *opBase);
 static Record NodeByIdSeekConsumeFromChild(RT_OpBase *opBase);
 static RT_OpResult NodeByIdSeekReset(RT_OpBase *opBase);
-static RT_OpBase *NodeByIdSeekClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void NodeByIdSeekFree(RT_OpBase *opBase);
 
 // Checks to see if operation index is within its bounds.
@@ -37,9 +36,9 @@ RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const NodeByIdSeek
 
 	op->currentId = op_desc->minId;
 
-	RT_OpBase_Init((RT_OpBase *)op, OPType_NODE_BY_ID_SEEK, NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekClone, NodeByIdSeekFree,
-				false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op,
+		NodeByIdSeekInit, NodeByIdSeekConsume, NodeByIdSeekReset,
+		NodeByIdSeekFree, plan);
 
 	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->alias, &op->nodeRecIdx);
 	UNUSED(aware);
@@ -125,12 +124,6 @@ static RT_OpResult NodeByIdSeekReset(RT_OpBase *ctx) {
 	RT_NodeByIdSeek *op = (RT_NodeByIdSeek *)ctx;
 	op->currentId = op->op_desc->minId;
 	return OP_OK;
-}
-
-static RT_OpBase *NodeByIdSeekClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
-	RT_NodeByIdSeek *op = (RT_NodeByIdSeek *)opBase;
-	return RT_NewNodeByIdSeekOp(plan, op->op_desc);
 }
 
 static void NodeByIdSeekFree(RT_OpBase *opBase) {

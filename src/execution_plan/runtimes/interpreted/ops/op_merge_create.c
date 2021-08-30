@@ -11,7 +11,6 @@
 
 /* Forward declarations. */
 static Record MergeCreateConsume(RT_OpBase *opBase);
-static RT_OpBase *MergeCreateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void MergeCreateFree(RT_OpBase *opBase);
 
 // Convert a graph entity's components into an identifying hash code.
@@ -73,8 +72,8 @@ RT_OpBase *RT_NewMergeCreateOp(const RT_ExecutionPlan *plan, const OpMergeCreate
 	op->records = array_new(Record, 32);
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_MERGE_CREATE, NULL, MergeCreateConsume,
-				NULL, MergeCreateClone, MergeCreateFree, true, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		MergeCreateConsume, NULL, MergeCreateFree, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -232,12 +231,6 @@ void MergeCreate_Commit(RT_OpBase *opBase) {
 	if(opBase->childCount > 0) RT_OpBase_PropagateFree(opBase->children[0]);
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);
-}
-
-static RT_OpBase *MergeCreateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_MERGE_CREATE);
-	RT_OpMergeCreate *op = (RT_OpMergeCreate *)opBase;
-	return RT_NewMergeCreateOp(plan, op->op_desc);
 }
 
 static void MergeCreateFree(RT_OpBase *ctx) {

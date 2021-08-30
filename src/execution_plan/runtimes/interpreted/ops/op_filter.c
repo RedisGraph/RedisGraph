@@ -9,15 +9,14 @@
 
 /* Forward declarations. */
 static Record FilterConsume(RT_OpBase *opBase);
-static RT_OpBase *FilterClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
 RT_OpBase *RT_NewFilterOp(const RT_ExecutionPlan *plan, const OpFilter *op_desc) {
 	RT_OpFilter *op = rm_malloc(sizeof(RT_OpFilter));
 	op->op_desc = op_desc;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_FILTER, NULL, FilterConsume,
-				NULL, FilterClone, NULL, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		FilterConsume, NULL, NULL, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -39,10 +38,4 @@ static Record FilterConsume(RT_OpBase *opBase) {
 	}
 
 	return r;
-}
-
-static inline RT_OpBase *FilterClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_FILTER);
-	RT_OpFilter *op = (RT_OpFilter *)opBase;
-	return RT_NewFilterOp(plan, op->op_desc);
 }

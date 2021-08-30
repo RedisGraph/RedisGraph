@@ -12,7 +12,6 @@
 /* Forward declarations. */
 static Record LimitConsume(RT_OpBase *opBase);
 static RT_OpResult LimitReset(RT_OpBase *opBase);
-static RT_OpBase *LimitClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
 static void _eval_limit(RT_OpLimit *op) {
 	// Evaluate using the input expression, leaving the stored expression untouched.
@@ -38,8 +37,8 @@ RT_OpBase *RT_NewLimitOp(const RT_ExecutionPlan *plan, const OpLimit *op_desc) {
 	_eval_limit(op);
 
 	// set operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_LIMIT, NULL, LimitConsume, LimitReset,
-				LimitClone, NULL, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		LimitConsume, LimitReset, NULL, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -60,11 +59,4 @@ static RT_OpResult LimitReset(RT_OpBase *ctx) {
 	RT_OpLimit *limit = (RT_OpLimit *)ctx;
 	limit->consumed = 0;
 	return OP_OK;
-}
-
-static inline RT_OpBase *LimitClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_LIMIT);
-
-	RT_OpLimit *op = (RT_OpLimit *)opBase;
-	return RT_NewLimitOp(plan, op->op_desc);
 }

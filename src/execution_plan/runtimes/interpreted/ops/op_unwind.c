@@ -17,7 +17,6 @@
 static RT_OpResult UnwindInit(RT_OpBase *opBase);
 static Record UnwindConsume(RT_OpBase *opBase);
 static RT_OpResult UnwindReset(RT_OpBase *opBase);
-static RT_OpBase *UnwindClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void UnwindFree(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, const OpUnwind *op_desc) {
@@ -28,8 +27,8 @@ RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, const OpUnwind *op_desc)
 	op->listIdx = INDEX_NOT_SET;
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_UNWIND, UnwindInit, UnwindConsume,
-				UnwindReset, UnwindClone, UnwindFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, UnwindInit,
+		UnwindConsume, UnwindReset, UnwindFree, plan);
 
 	RT_OpBase_Aware((RT_OpBase *)op, op_desc->exp->resolved_name, &op->unwindRecIdx);
 	
@@ -115,12 +114,6 @@ static RT_OpResult UnwindReset(RT_OpBase *ctx) {
 	// Dynamic should set index to UINT_MAX, to force refetching of data.
 	else op->listIdx = INDEX_NOT_SET;
 	return OP_OK;
-}
-
-static inline RT_OpBase *UnwindClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_UNWIND);
-	RT_OpUnwind *op = (RT_OpUnwind *)opBase;
-	return RT_NewUnwindOp(plan, op->op_desc);
 }
 
 static void UnwindFree(RT_OpBase *ctx) {

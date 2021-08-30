@@ -13,7 +13,6 @@
 
 /* Forward declarations. */
 static Record DistinctConsume(RT_OpBase *opBase);
-static RT_OpBase *DistinctClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void DistinctFree(RT_OpBase *opBase);
 
 // compute hash on distinct values
@@ -61,8 +60,8 @@ RT_OpBase *RT_NewDistinctOp(const RT_ExecutionPlan *plan, const OpDistinct *op_d
 	op->mapping         =  NULL;
 	op->offsets         =  rm_calloc(op_desc->alias_count, sizeof(uint));
 
-	RT_OpBase_Init((RT_OpBase *)op, OPType_DISTINCT, NULL, DistinctConsume,
-				NULL, DistinctClone, DistinctFree, false, plan);
+	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
+		DistinctConsume, NULL, DistinctFree, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -94,12 +93,6 @@ static Record DistinctConsume(RT_OpBase *opBase) {
 		if(is_new) return r;
 		RT_OpBase_DeleteRecord(r);
 	}
-}
-
-static inline RT_OpBase *DistinctClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_DISTINCT);
-	RT_OpDistinct *op = (RT_OpDistinct *)opBase;
-	return RT_NewDistinctOp(plan, op->op_desc);
 }
 
 static void DistinctFree(RT_OpBase *ctx) {
