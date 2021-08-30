@@ -122,21 +122,15 @@ class testEntityUpdate(FlowTestsBase):
 
     # Fail when a property is a complex type nested within an array type
     def test13_invalid_complex_type_in_array(self):
-        # Skip this test if running under Valgrind, as it causes a memory leak.
-        if Env().envRunner.debugger is not None:
-            Env().skip()
-
-        # Test setting an array property containing a node
-        try:
-            graph.query("MATCH (a) SET a.v = [a]")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
-
-        # Test updating all properties to a map with a
-        # nested array property containing NULL
-        try:
-            graph.query("MATCH (a) SET a = {v: ['str', [1, NULL]]}")
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
+        # Test combinations of invalid types with nested and top-level arrays
+        # Invalid types are NULL, maps, nodes, edges, and paths
+        queries = ["MATCH (a) SET a.v = [a]",
+                   "MATCH (a) SET a = {v: ['str', [1, NULL]]}",
+                   "MATCH (a) SET a += [[{k: 'v'}]]",
+                   "CREATE (a:L)-[e:R]->(:L) SET a.v = e"]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
