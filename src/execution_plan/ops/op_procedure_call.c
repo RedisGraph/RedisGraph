@@ -25,45 +25,35 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 	op->arg_count = array_len(arg_exps);
 
 	// Procedure must exist
-	op->procedure = Proc_Get(proc_name);
+	ProcedureCtx *procedure = Proc_Get(proc_name);
 	ASSERT(op->procedure != NULL);
 
 	uint yield_count = array_len(yield_exps);
-	op->output = array_new(const char *, yield_count);
 
 	// Set operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall",
-	  	NULL, ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
+	  	NULL, ProcCallFree, !Procedure_IsReadOnly(procedure), plan);
 
 	// Set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
 		const char *alias = yield_exps[i]->resolved_name;
 		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
 
-		array_append(op->output, yield);
 		OpBase_Modifies((OpBase *)op, yield);
 		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
 	}
+
+	Proc_Free(procedure);
 
 	return (OpBase*)op;
 }
 
 static void ProcCallFree(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
-	if(op->procedure) {
-		Proc_Free(op->procedure);
-		op->procedure = NULL;
-	}
-
 	if(op->arg_exps) {
 		for(uint i = 0; i < op->arg_count; i++) AR_EXP_Free(op->arg_exps[i]);
 		array_free(op->arg_exps);
 		op->arg_exps = NULL;
-	}
-
-	if(op->output) {
-		array_free(op->output);
-		op->output = NULL;
 	}
 
 	if(op->yield_exps) {

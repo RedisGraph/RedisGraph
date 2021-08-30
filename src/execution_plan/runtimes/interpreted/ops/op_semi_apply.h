@@ -9,6 +9,7 @@
 #include "op.h"
 #include "op_argument.h"
 #include "../runtime_execution_plan.h"
+#include "../../../ops/op_semi_apply.h"
 
 /* SemiApply operation tests for the presence of a pattern
  * Normal Semi Apply: Starts by pulling on the main execution plan branch,
@@ -22,10 +23,11 @@
 
 typedef struct RT_OpSemiApply {
 	RT_OpBase op;
+	const OpSemiApply *op_desc;
 	Record r;                       // Bound branch record.
 	RT_OpBase *bound_branch;        // Bound branch root;
 	RT_OpBase *match_branch;        // Match branch root;
 	RT_Argument *op_arg;            // Match branch tap.
 } RT_OpSemiApply;
 
-RT_OpBase *RT_NewSemiApplyOp(const RT_ExecutionPlan *plan, bool anti);
+RT_OpBase *RT_NewSemiApplyOp(const RT_ExecutionPlan *plan, const OpSemiApply *op_desc);

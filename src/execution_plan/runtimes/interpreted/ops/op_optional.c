@@ -11,8 +11,9 @@ static Record OptionalConsume(RT_OpBase *opBase);
 static RT_OpResult OptionalReset(RT_OpBase *opBase);
 static RT_OpBase *OptionalClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
-RT_OpBase *RT_NewOptionalOp(const RT_ExecutionPlan *plan) {
+RT_OpBase *RT_NewOptionalOp(const RT_ExecutionPlan *plan, const Optional *op_desc) {
 	RT_Optional *op = rm_malloc(sizeof(RT_Optional));
+	op->op_desc = op_desc;
 	op->emitted_record = false;
 
 	// Set our Op operations
@@ -43,5 +44,5 @@ static RT_OpResult OptionalReset(RT_OpBase *opBase) {
 }
 
 static inline RT_OpBase *OptionalClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	return RT_NewOptionalOp(plan);
+	return RT_NewOptionalOp(plan, ((RT_Optional *)opBase)->op_desc);
 }

@@ -102,13 +102,13 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_RESULTS:
 	{
 		Results *op = (Results *)op_desc;
-		result = RT_NewResultsOp(plan);
+		result = RT_NewResultsOp(plan, op);
 		break;
 	}
 	case OPType_PROJECT:
 	{
 		OpProject *op = (OpProject *)op_desc;
-		result = RT_NewProjectOp(plan, op->exps);
+		result = RT_NewProjectOp(plan, op);
 		break;
 	}
 	case OPType_AGGREGATE:
@@ -126,7 +126,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_SKIP:
 	{
 		OpSkip *op = (OpSkip *)op_desc;
-		result = RT_NewSkipOp(plan, op->skip, op->skip_exp);
+		result = RT_NewSkipOp(plan, op);
 		break;
 	}
 	case OPType_LIMIT:
@@ -186,7 +186,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_PROC_CALL:
 	{
 		OpProcCall *op = (OpProcCall *)op_desc;
-		result = RT_NewProcCallOp(plan, op->proc_name, op->arg_exps, op->yield_exps);
+		result = RT_NewProcCallOp(plan, op);
 		break;
 	}
 	case OPType_ARGUMENT:
@@ -220,15 +220,10 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 		break;
 	}
 	case OPType_SEMI_APPLY:
-	{
-		OpSemiApply *op = (OpSemiApply *)op_desc;
-		result = RT_NewSemiApplyOp(plan, false);
-		break;
-	}
 	case OPType_ANTI_SEMI_APPLY:
 	{
 		OpSemiApply *op = (OpSemiApply *)op_desc;
-		result = RT_NewSemiApplyOp(plan, true);
+		result = RT_NewSemiApplyOp(plan, op);
 		break;
 	}
 	case OPType_OR_APPLY_MULTIPLEXER:
@@ -241,7 +236,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_OPTIONAL:
 	{
 		Optional *op = (Optional *)op_desc;
-		result = RT_NewOptionalOp(plan);
+		result = RT_NewOptionalOp(plan, op);
 		break;
 	}
 	default:

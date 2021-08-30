@@ -18,14 +18,15 @@ static inline Record _pullFromMatchStream(RT_OpSemiApply *op) {
 	return RT_OpBase_Consume(op->match_branch);
 }
 
-RT_OpBase *RT_NewSemiApplyOp(const RT_ExecutionPlan *plan, bool anti) {
+RT_OpBase *RT_NewSemiApplyOp(const RT_ExecutionPlan *plan, const OpSemiApply *op_desc) {
 	RT_OpSemiApply *op = rm_malloc(sizeof(RT_OpSemiApply));
+	op->op_desc = op_desc;
 	op->r = NULL;
 	op->op_arg = NULL;
 	op->bound_branch = NULL;
 	op->match_branch = NULL;
 	// Set our Op operations
-	if(anti) {
+	if(op_desc->op.type == OPType_ANTI_SEMI_APPLY) {
 		RT_OpBase_Init((RT_OpBase *)op, OPType_ANTI_SEMI_APPLY, SemiApplyInit,
 					AntiSemiApplyConsume, SemiApplyReset, SemiApplyClone, SemiApplyFree, false, plan);
 	} else {
@@ -121,9 +122,7 @@ static RT_OpResult SemiApplyReset(RT_OpBase *opBase) {
 }
 
 static inline RT_OpBase *SemiApplyClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_SEMI_APPLY || opBase->type == OPType_ANTI_SEMI_APPLY);
-	bool anti = opBase->type == OPType_ANTI_SEMI_APPLY;
-	return RT_NewSemiApplyOp(plan, anti);
+	return RT_NewSemiApplyOp(plan, ((RT_OpSemiApply *)opBase)->op_desc);
 }
 
 static void SemiApplyFree(RT_OpBase *opBase) {

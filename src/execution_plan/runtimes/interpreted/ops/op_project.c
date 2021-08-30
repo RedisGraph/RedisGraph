@@ -16,12 +16,11 @@ static Record ProjectConsume(RT_OpBase *opBase);
 static RT_OpBase *ProjectClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void ProjectFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps) {
+RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, const OpProject *op_desc) {
 	RT_OpProject *op = rm_malloc(sizeof(RT_OpProject));
-	op->exps = exps;
+	op->op_desc = op_desc;
 	op->singleResponse = false;
-	op->exp_count = array_len(exps);
-	op->record_offsets = array_new(uint, op->exp_count);
+	op->record_offsets = array_new(uint, op_desc->exp_count);
 	op->r = NULL;
 	op->projection = NULL;
 
@@ -29,11 +28,11 @@ RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps) {
 	RT_OpBase_Init((RT_OpBase *)op, OPType_PROJECT, NULL, ProjectConsume,
 				NULL, ProjectClone, ProjectFree, false, plan);
 
-	for(uint i = 0; i < op->exp_count; i ++) {
+	for(uint i = 0; i < op_desc->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
 		uint record_idx;
-		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
@@ -58,8 +57,8 @@ static Record ProjectConsume(RT_OpBase *opBase) {
 
 	op->projection = RT_OpBase_CreateRecord(opBase);
 
-	for(uint i = 0; i < op->exp_count; i++) {
-		AR_ExpNode *exp = op->exps[i];
+	for(uint i = 0; i < op->op_desc->exp_count; i++) {
+		AR_ExpNode *exp = op->op_desc->exps[i];
 		SIValue v = AR_EXP_Evaluate(exp, op->r);
 		int rec_idx = op->record_offsets[i];
 		/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
@@ -87,20 +86,11 @@ static Record ProjectConsume(RT_OpBase *opBase) {
 static RT_OpBase *ProjectClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_PROJECT);
 	RT_OpProject *op = (RT_OpProject *)opBase;
-	AR_ExpNode **exps;
-	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
-	return RT_NewProjectOp(plan, exps);
+	return RT_NewProjectOp(plan, op->op_desc);
 }
 
 static void ProjectFree(RT_OpBase *ctx) {
 	RT_OpProject *op = (RT_OpProject *)ctx;
-
-	if(op->exps) {
-		for(uint i = 0; i < op->exp_count; i ++) AR_EXP_Free(op->exps[i]);
-		array_free(op->exps);
-		op->exps = NULL;
-	}
-
 	if(op->record_offsets) {
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;

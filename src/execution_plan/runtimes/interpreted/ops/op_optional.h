@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../../../ops/op_optional.h"
 #include "../runtime_execution_plan.h"
 
 /* Optional is an operation that manages the output of its child op tree rather
@@ -48,8 +49,9 @@
  * representing the elements of the failed traversal. */
 typedef struct {
 	RT_OpBase op;
+	const Optional *op_desc;
 	bool emitted_record; // True if this operation has returned at least one Record.
 } RT_Optional;
 
 // Creates a new Optional operation
-RT_OpBase *RT_NewOptionalOp(const RT_ExecutionPlan *plan);
+RT_OpBase *RT_NewOptionalOp(const RT_ExecutionPlan *plan, const Optional *op_desc);

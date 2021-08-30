@@ -20,7 +20,7 @@ static void _construct_output_mappings(RT_OpProcCall *op, SIValue *outputs) {
 	// Map procedure outputs to record indices.
 	uint n = array_len(op->output);
 	uint m = array_len(outputs);
-	op->yield_map = rm_malloc(sizeof(RT_OutputMap) * n);
+	op->yield_map = rm_malloc(sizeof(OutputMap) * n);
 
 	for(uint i = 0; i < n; i++) {
 		const char *output = op->output[i];
@@ -69,31 +69,27 @@ static void _evaluate_proc_args(RT_OpProcCall *op) {
 
 	array_clear(op->args);
 
-	for(uint i = 0; i < op->arg_count; i++) {
-		array_append(op->args, AR_EXP_Evaluate(op->arg_exps[i], op->r));
+	for(uint i = 0; i < op->op_desc->arg_count; i++) {
+		array_append(op->args, AR_EXP_Evaluate(op->op_desc->arg_exps[i], op->r));
 	}
 }
 
-RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const char *proc_name, AR_ExpNode **arg_exps,
-					  AR_ExpNode **yield_exps) {
+RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_desc) {
 
 	ASSERT(proc_name != NULL);
 
 	RT_OpProcCall *op = rm_malloc(sizeof(RT_OpProcCall));
+	op->op_desc = op_desc;
 	op->r = NULL;
 	op->yield_map = NULL;
 	op->first_call = true;
-	op->arg_exps = arg_exps;
-	op->proc_name = proc_name;
-	op->yield_exps = yield_exps;
-	op->arg_count = array_len(arg_exps);
-	op->args = array_new(SIValue, op->arg_count);
+	op->args = array_new(SIValue, op_desc->arg_count);
 
 	// Procedure must exist
-	op->procedure = Proc_Get(proc_name);
+	op->procedure = Proc_Get(op_desc->proc_name);
 	ASSERT(op->procedure != NULL);
 
-	uint yield_count = array_len(yield_exps);
+	uint yield_count = array_len(op_desc->yield_exps);
 	op->output = array_new(const char *, yield_count);
 
 	// Set operations
@@ -103,8 +99,8 @@ RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const char *proc_name,
 
 	// Set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
-		const char *alias = yield_exps[i]->resolved_name;
-		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
+		const char *alias = op_desc->yield_exps[i]->resolved_name;
+		const char *yield = op_desc->yield_exps[i]->operand.variadic.entity_alias;
 
 		array_append(op->output, yield);
 	}
@@ -139,7 +135,7 @@ static Record ProcCallConsume(RT_OpBase *opBase) {
 		/* Free previous invocation.
 		 * TODO: replace with Proc_Reset */
 		Proc_Free(op->procedure);
-		op->procedure = Proc_Get(op->proc_name);
+		op->procedure = Proc_Get(op->op_desc->proc_name);
 
 		// at the moment the only two procedures that can modify the graph are:
 		// proc_fulltext_create_index
@@ -175,11 +171,7 @@ static RT_OpResult ProcCallReset(RT_OpBase *ctx) {
 static RT_OpBase *ProcCallClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_PROC_CALL);
 	RT_OpProcCall *op = (RT_OpProcCall *)opBase;
-	AR_ExpNode **args_exp;
-	AR_ExpNode **yield_exps;
-	array_clone_with_cb(args_exp, op->arg_exps, AR_EXP_Clone);
-	array_clone_with_cb(yield_exps, op->yield_exps, AR_EXP_Clone);
-	return RT_NewProcCallOp(plan, op->proc_name, args_exp, yield_exps);
+	return RT_NewProcCallOp(plan, op->op_desc);
 }
 
 static void ProcCallFree(RT_OpBase *ctx) {
@@ -207,21 +199,8 @@ static void ProcCallFree(RT_OpBase *ctx) {
 		op->args = NULL;
 	}
 
-	if(op->arg_exps) {
-		for(uint i = 0; i < op->arg_count; i++) AR_EXP_Free(op->arg_exps[i]);
-		array_free(op->arg_exps);
-		op->arg_exps = NULL;
-	}
-
 	if(op->output) {
 		array_free(op->output);
 		op->output = NULL;
-	}
-
-	if(op->yield_exps) {
-		uint yield_count = array_len(op->yield_exps);
-		for(uint i = 0; i < yield_count; i ++) AR_EXP_Free(op->yield_exps[i]);
-		array_free(op->yield_exps);
-		op->yield_exps = NULL;
 	}
 }

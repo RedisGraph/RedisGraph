@@ -12,18 +12,30 @@
 /* Forward declarations. */
 static Record SkipConsume(RT_OpBase *opBase);
 static RT_OpResult SkipReset(RT_OpBase *opBase);
-static void SkipFree(RT_OpBase *opBase);
 static RT_OpBase *SkipClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
-RT_OpBase *RT_NewSkipOp(const RT_ExecutionPlan *plan, uint skip, AR_ExpNode *skip_exp) {
+static void _eval_skip(RT_OpSkip *op) {
+	// Evaluate using the input expression, leaving the stored expression untouched.
+	SIValue s = AR_EXP_Evaluate(op->op_desc->skip_exp, NULL);
+
+	// Validate that the skip value is numeric and non-negative.
+	if(SI_TYPE(s) != T_INT64 || SI_GET_NUMERIC(s) < 0) {
+		ErrorCtx_SetError("Skip operates only on non-negative integers");
+	}
+
+	op->skip = SI_GET_NUMERIC(s);
+}
+
+RT_OpBase *RT_NewSkipOp(const RT_ExecutionPlan *plan, const OpSkip *op_desc) {
 	RT_OpSkip *op = rm_malloc(sizeof(RT_OpSkip));
-	op->skip = skip;
+	op->op_desc = op_desc;
 	op->skipped = 0;
-	op->skip_exp = skip_exp;
+
+	_eval_skip(op);
 
 	// set operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_SKIP, NULL, SkipConsume, SkipReset, SkipClone,
-				SkipFree, false, plan);
+				NULL, false, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -57,20 +69,6 @@ static RT_OpResult SkipReset(RT_OpBase *ctx) {
 
 static inline RT_OpBase *SkipClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_SKIP);
-
 	RT_OpSkip *op = (RT_OpSkip *)opBase;
-	/* Clone the skip expression stored on the ExecutionPlan,
-	 * as we don't want to modify the templated ExecutionPlan
-	 * (which may occur if this expression is a parameter). */
-	AR_ExpNode *skip_exp = AR_EXP_Clone(op->skip_exp);
-	return RT_NewSkipOp(plan, op->skip, skip_exp);
-}
-
-static void SkipFree(RT_OpBase *opBase) {
-	RT_OpSkip *op = (RT_OpSkip *)opBase;
-
-	if(op->skip_exp != NULL) {
-		AR_EXP_Free(op->skip_exp);
-		op->skip_exp = NULL;
-	}
+	return RT_NewSkipOp(plan, op->op_desc);
 }

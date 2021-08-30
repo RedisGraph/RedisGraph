@@ -9,6 +9,7 @@
 #include "op.h"
 #include "../../../../ast/ast.h"
 #include "../runtime_execution_plan.h"
+#include "../../../ops/op_procedure_call.h"
 #include "../../../../procedures/procedure.h"
 
 /* Maps procedure output to record index.
@@ -17,26 +18,18 @@
 typedef struct {
 	uint proc_out_idx;  // Index into procedure output.
 	uint rec_idx;       // Index into record.
-} RT_OutputMap;
+} OutputMap;
 
 /* OpProcCall, */
 typedef struct {
 	RT_OpBase op;               // Base op.
+	const OpProcCall *op_desc;
     Record r;                   // Current record.
-    uint arg_count;             // Number of arguments.
-    AR_ExpNode **arg_exps;      // Expression representing arguments to procedure.
     SIValue *args;              // Computed arguments.
 	const char **output;        // Procedure output.
-	const char *proc_name;      // Procedure name.
-    AR_ExpNode **yield_exps;    // Yield expressions.
 	ProcedureCtx *procedure;    // Procedure to call.
-	RT_OutputMap *yield_map;       // Maps between yield to procedure output and record idx.
+	OutputMap *yield_map;       // Maps between yield to procedure output and record idx.
     bool first_call;            // Indicate first call.
 } RT_OpProcCall;
 
-RT_OpBase *RT_NewProcCallOp(
-	const RT_ExecutionPlan *plan,  // Execution plan this operation belongs to.
-	const char *proc_name,      // Procedure name.
-    AR_ExpNode **arg_exps,      // Arguments passed to procedure invocation.
-	AR_ExpNode **yield_exps     // Procedure output.
-);
+RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_desc);
