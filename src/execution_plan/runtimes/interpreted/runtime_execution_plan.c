@@ -54,7 +54,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_NODE_BY_LABEL_SCAN:
 	{
 		NodeByLabelScan *op = (NodeByLabelScan *)op_desc;
-		result = RT_NewNodeByLabelScanOp(plan, op->n);
+		result = RT_NewNodeByLabelScanOp(plan, op);
 		break;
 	}
 	case OPType_INDEX_SCAN:
@@ -66,14 +66,13 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_NODE_BY_ID_SEEK:
 	{
 		NodeByIdSeek *op = (NodeByIdSeek *)op_desc;
-		result = RT_NewNodeByIdSeekOp(plan, op->alias, op->minId, op->maxId);
+		result = RT_NewNodeByIdSeekOp(plan, op);
 		break;
 	}
 	case OPType_NODE_BY_LABEL_AND_ID_SCAN:
 	{
 		NodeByLabelScan *op = (NodeByLabelScan *)op_desc;
-		result = RT_NewNodeByLabelScanOp(plan, op->n);
-		RT_NodeByLabelScanOp_SetIDRange((RT_NodeByLabelScan *)result, op->id_range);
+		result = RT_NewNodeByLabelScanOp(plan, op);
 		break;
 	}
 	case OPType_EXPAND_INTO:
@@ -145,7 +144,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_MERGE:
 	{
 		OpMerge *op = (OpMerge *)op_desc;
-		result = RT_NewMergeOp(plan, op->on_match, op->on_create);
+		result = RT_NewMergeOp(plan, op);
 		break;
 	}
 	case OPType_MERGE_CREATE:

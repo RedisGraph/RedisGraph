@@ -18,31 +18,22 @@ static RT_OpResult NodeByLabelScanReset(RT_OpBase *opBase);
 static RT_OpBase *NodeByLabelScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 static void NodeByLabelScanFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, NodeScanCtx n) {
+RT_OpBase *RT_NewNodeByLabelScanOp(const RT_ExecutionPlan *plan, const NodeByLabelScan *op_desc) {
 	RT_NodeByLabelScan *op = rm_malloc(sizeof(RT_NodeByLabelScan));
+	op->op_desc = op_desc;
 	op->g = QueryCtx_GetGraph();
-	op->n = n;
 	op->iter = NULL;
 	op->child_record = NULL;
-	// Defaults to [0...UINT64_MAX].
-	op->id_range = UnsignedRange_New();
 
 	// Set our Op operations
-	RT_OpBase_Init((RT_OpBase *)op, OPType_NODE_BY_LABEL_SCAN, NodeByLabelScanInit,
+	RT_OpBase_Init((RT_OpBase *)op, op_desc->op.type, NodeByLabelScanInit,
 				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanClone,
 				NodeByLabelScanFree, false, plan);
 
-	bool aware = RT_OpBase_Aware((RT_OpBase *)op, n.alias, &op->nodeRecIdx);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->n.alias, &op->nodeRecIdx);
 	ASSERT(aware);
 
 	return (RT_OpBase *)op;
-}
-
-void RT_NodeByLabelScanOp_SetIDRange(RT_NodeByLabelScan *op, UnsignedRange *id_range) {
-	UnsignedRange_Free(op->id_range);
-	op->id_range = UnsignedRange_Clone(id_range);
-
-	op->op.type = OPType_NODE_BY_LABEL_AND_ID_SCAN;
 }
 
 static GrB_Info _ConstructIterator(RT_NodeByLabelScan *op, Schema *schema) {
@@ -58,16 +49,16 @@ static GrB_Info _ConstructIterator(RT_NodeByLabelScan *op, Schema *schema) {
 	ASSERT(info == GrB_SUCCESS);
 
 	// make sure range is within matrix bounds
-	UnsignedRange_TightenRange(op->id_range, OP_GE, 0);
-	UnsignedRange_TightenRange(op->id_range, OP_LT, nrows);
+	UnsignedRange_TightenRange(op->op_desc->id_range, OP_GE, 0);
+	UnsignedRange_TightenRange(op->op_desc->id_range, OP_LT, nrows);
 
-	if(!UnsignedRange_IsValid(op->id_range)) return GrB_DIMENSION_MISMATCH;
+	if(!UnsignedRange_IsValid(op->op_desc->id_range)) return GrB_DIMENSION_MISMATCH;
 
-	if(op->id_range->include_min) minId = op->id_range->min;
-	else minId = op->id_range->min + 1;
+	if(op->op_desc->id_range->include_min) minId = op->op_desc->id_range->min;
+	else minId = op->op_desc->id_range->min + 1;
 
-	if(op->id_range->include_max) maxId = op->id_range->max;
-	else maxId = op->id_range->max - 1;
+	if(op->op_desc->id_range->include_max) maxId = op->op_desc->id_range->max;
+	else maxId = op->op_desc->id_range->max - 1;
 
 	info = RG_MatrixTupleIter_new(&(op->iter), L);
 	ASSERT(info == GrB_SUCCESS);
@@ -92,14 +83,14 @@ static RT_OpResult NodeByLabelScanInit(RT_OpBase *opBase) {
 
 	// If we have no children, we can build the iterator now.
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
+	Schema *schema = GraphContext_GetSchema(gc, op->op_desc->n.label, SCHEMA_NODE);
 	if(!schema) {
 		// Missing schema, use the NOP consume function.
 		RT_OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
 	}
-	// Resolve label ID at runtime.
-	op->n.label_id = schema->id;
+	// // Resolve label ID at runtime.
+	// op->op_desc->n.label_id = schema->id;
 
 	// The iterator build may fail if the ID range does not match the matrix dimensions.
 	GrB_Info iterator_built = _ConstructIterator(op, schema);
@@ -114,14 +105,14 @@ static RT_OpResult NodeByLabelScanInit(RT_OpBase *opBase) {
 
 static inline void _UpdateRecord(RT_NodeByLabelScan *op, Record r, GrB_Index node_id) {
 	// Populate the Record with the graph entity data.
-	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
+	Node n = GE_NEW_LABELED_NODE(op->op_desc->n.label, op->op_desc->n.label_id);
 	Graph_GetNode(op->g, node_id, &n);
 	Record_AddNode(r, op->nodeRecIdx, n);
 }
 
 static inline void _ResetIterator(RT_NodeByLabelScan *op) {
-	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
-	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
+	NodeID minId = op->op_desc->id_range->include_min ? op->op_desc->id_range->min : op->op_desc->id_range->min + 1;
+	NodeID maxId = op->op_desc->id_range->include_max ? op->op_desc->id_range->max : op->op_desc->id_range->max - 1 ;
 	RG_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
 }
 
@@ -148,7 +139,7 @@ static Record NodeByLabelScanConsumeFromChild(RT_OpBase *opBase) {
 		if(!op->iter) {
 			// Iterator wasn't set up until now.
 			GraphContext *gc = QueryCtx_GetGraphCtx();
-			Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
+			Schema *schema = GraphContext_GetSchema(gc, op->op_desc->n.label, SCHEMA_NODE);
 			// No label matrix, it might be created in the next iteration.
 			if(!schema) continue;
 			if(_ConstructIterator(op, schema) != GrB_SUCCESS) continue;
@@ -203,11 +194,7 @@ static RT_OpResult NodeByLabelScanReset(RT_OpBase *ctx) {
 
 static RT_OpBase *NodeByLabelScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	RT_NodeByLabelScan *op = (RT_NodeByLabelScan *)opBase;
-	RT_OpBase *clone = RT_NewNodeByLabelScanOp(plan, op->n);
-	if(opBase->type == OPType_NODE_BY_LABEL_AND_ID_SCAN) {
-		RT_NodeByLabelScanOp_SetIDRange((RT_NodeByLabelScan *)clone, op->id_range);
-	}
-	return clone;
+	return RT_NewNodeByLabelScanOp(plan, op->op_desc);
 }
 
 static void NodeByLabelScanFree(RT_OpBase *op) {
@@ -221,10 +208,5 @@ static void NodeByLabelScanFree(RT_OpBase *op) {
 	if(nodeByLabelScan->child_record) {
 		RT_OpBase_DeleteRecord(nodeByLabelScan->child_record);
 		nodeByLabelScan->child_record = NULL;
-	}
-
-	if(nodeByLabelScan->id_range) {
-		UnsignedRange_Free(nodeByLabelScan->id_range);
-		nodeByLabelScan->id_range = NULL;
 	}
 }

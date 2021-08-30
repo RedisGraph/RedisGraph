@@ -60,22 +60,21 @@ static void _InitializeUpdates(RT_OpMerge *op, rax *updates, raxIterator *it) {
 	}
 }
 
-RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, rax *on_match, rax *on_create) {
+RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, const OpMerge *op_desc) {
 
 	/* merge is an operator with two or three children
 	 * they will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin) */
 	RT_OpMerge *op = rm_calloc(1, sizeof(RT_OpMerge));
+	op->op_desc          =  op_desc;
 	op->stats            =  NULL;
-	op->on_match         =  on_match;
-	op->on_create        =  on_create;
 	op->pending_updates  =  NULL;
 	// set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_MERGE, MergeInit, MergeConsume, NULL, MergeClone,
 				MergeFree, true, plan);
 
-	if(op->on_match) _InitializeUpdates(op, op->on_match, &op->on_match_it);
-	if(op->on_create) _InitializeUpdates(op, op->on_create, &op->on_create_it);
+	if(op_desc->on_match) _InitializeUpdates(op, op_desc->on_match, &op->on_match_it);
+	if(op_desc->on_create) _InitializeUpdates(op, op_desc->on_create, &op->on_create_it);
 
 	return (RT_OpBase *)op;
 }
@@ -265,7 +264,7 @@ static Record MergeConsume(RT_OpBase *opBase) {
 	op->pending_updates = array_new(PendingUpdateCtx, 0);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
-	if(op->on_match && match_count > 0)
+	if(op->op_desc->on_match && match_count > 0)
 		_UpdateProperties(&op->pending_updates, op->stats, op->on_match_it,
 						  op->output_records, match_count);
 
@@ -276,7 +275,7 @@ static Record MergeConsume(RT_OpBase *opBase) {
 		MergeCreate_Commit(op->create_stream);
 		// we only need to pull the created records if we're returning results
 		// or performing updates on creation
-		if(op->stats || op->on_create) {
+		if(op->stats || op->op_desc->on_create) {
 			// pull all records from the Create stream
 			uint create_count = 0;
 			Record created_record;
@@ -287,7 +286,7 @@ static Record MergeConsume(RT_OpBase *opBase) {
 			}
 			// if we are setting properties with ON CREATE
 			// compute all pending updates
-			if(op->on_create) {
+			if(op->op_desc->on_create) {
 				_UpdateProperties(&op->pending_updates, op->stats,
 						op->on_create_it, op->output_records + match_count,
 						create_count);
@@ -317,13 +316,7 @@ static Record MergeConsume(RT_OpBase *opBase) {
 static RT_OpBase *MergeClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_MERGE);
 	RT_OpMerge *op = (RT_OpMerge *)opBase;
-	rax *on_match = NULL;
-	rax *on_create = NULL;
-	if(op->on_match) on_match = raxCloneWithCallback(op->on_match,
-														 (void *(*)(void *))UpdateCtx_Clone);
-	if(op->on_create) on_create = raxCloneWithCallback(op->on_create,
-														   (void *(*)(void *))UpdateCtx_Clone);
-	return RT_NewMergeOp(plan, on_match, on_create);
+	return RT_NewMergeOp(plan, op->op_desc);
 }
 
 static void MergeFree(RT_OpBase *opBase) {
@@ -354,17 +347,5 @@ static void MergeFree(RT_OpBase *opBase) {
 		}
 		array_free(op->pending_updates);
 		op->pending_updates  =  NULL;
-	}
-
-	if(op->on_match) {
-		raxFreeWithCallback(op->on_match, (void(*)(void *))UpdateCtx_Free);
-		op->on_match = NULL;
-		raxStop(&op->on_match_it);
-	}
-
-	if(op->on_create) {
-		raxFreeWithCallback(op->on_create, (void(*)(void *))UpdateCtx_Free);
-		op->on_create = NULL;
-		raxStop(&op->on_create_it);
 	}
 }

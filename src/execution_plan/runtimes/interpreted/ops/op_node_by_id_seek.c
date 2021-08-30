@@ -24,26 +24,24 @@ static inline bool _outOfBounds(RT_NodeByIdSeek *op) {
 	return false;
 }
 
-RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const char *alias, uint64_t min, uint64_t max) {
-
+RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const NodeByIdSeek *op_desc) {
 	RT_NodeByIdSeek *op = rm_malloc(sizeof(RT_NodeByIdSeek));
+	op->op_desc = op_desc;
 	op->g = QueryCtx_GetGraph();
 	op->child_record = NULL;
-	op->alias = alias;
 
-	op->minId = min;
 	/* The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	 * This value will be set on Init, to allow operation clone be independent
 	 * on the current graph size.*/
-	op->maxId = max;
+	op->maxId = op_desc->maxId;
 
-	op->currentId = op->minId;
+	op->currentId = op_desc->minId;
 
 	RT_OpBase_Init((RT_OpBase *)op, OPType_NODE_BY_ID_SEEK, NodeByIdSeekInit,
 				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekClone, NodeByIdSeekFree,
 				false, plan);
 
-	bool aware = RT_OpBase_Aware((RT_OpBase *)op, alias, &op->nodeRecIdx);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->alias, &op->nodeRecIdx);
 	UNUSED(aware);
 	ASSERT(aware);
 
@@ -125,14 +123,14 @@ static Record NodeByIdSeekConsume(RT_OpBase *opBase) {
 
 static RT_OpResult NodeByIdSeekReset(RT_OpBase *ctx) {
 	RT_NodeByIdSeek *op = (RT_NodeByIdSeek *)ctx;
-	op->currentId = op->minId;
+	op->currentId = op->op_desc->minId;
 	return OP_OK;
 }
 
 static RT_OpBase *NodeByIdSeekClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
 	RT_NodeByIdSeek *op = (RT_NodeByIdSeek *)opBase;
-	return RT_NewNodeByIdSeekOp(plan, op->alias, op->minId, op->maxId);
+	return RT_NewNodeByIdSeekOp(plan, op->op_desc);
 }
 
 static void NodeByIdSeekFree(RT_OpBase *opBase) {
