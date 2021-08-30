@@ -14,7 +14,6 @@
 
 typedef struct {
 	OpBase op;
-	SIValue list;         // List which the unwind operation is performed on.
 	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
 } OpUnwind;
 

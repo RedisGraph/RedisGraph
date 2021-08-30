@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../../../ops/op_unwind.h"
 #include "../runtime_execution_plan.h"
 #include "../../../../arithmetic/arithmetic_expression.h"
 
@@ -14,12 +15,12 @@
 
 typedef struct {
 	RT_OpBase op;
+	const OpUnwind *op_desc;
 	SIValue list;         // List which the unwind operation is performed on
-	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray)
 	uint listIdx;         // Current list index
 	uint unwindRecIdx;    // Update record at this index
 	Record currentRecord; // record to clone and add a value extracted from the list
 } RT_OpUnwind;
 
 // Creates a new Unwind operation
-RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, AR_ExpNode *exp);
+RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, const OpUnwind *op_desc);

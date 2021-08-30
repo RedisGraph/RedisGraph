@@ -155,7 +155,7 @@ void _cache_records(RT_OpValueHashJoin *op) {
 	// As long as there's data coming in from left branch.
 	do {
 		// Evaluate joined expression.
-		SIValue v = AR_EXP_Evaluate(op->lhs_exp, r);
+		SIValue v = AR_EXP_Evaluate(op->op_desc->lhs_exp, r);
 
 		// If the joined value is NULL, it cannot be compared to other values - skip this record.
 		if(SIValue_IsNull(v)) continue;
@@ -169,11 +169,10 @@ void _cache_records(RT_OpValueHashJoin *op) {
 }
 
 /* Creates a new valueHashJoin operation */
-RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp) {
+RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, const OpValueHashJoin *op_desc) {
 	RT_OpValueHashJoin *op = rm_malloc(sizeof(RT_OpValueHashJoin));
+	op->op_desc = op_desc;
 	op->rhs_rec = NULL;
-	op->lhs_exp = lhs_exp;
-	op->rhs_exp = rhs_exp;
 	op->intersect_idx = -1;
 	op->cached_records = NULL;
 	op->number_of_intersections = 0;
@@ -241,7 +240,7 @@ static Record ValueHashJoinConsume(RT_OpBase *opBase) {
 		if(!op->rhs_rec) return NULL;
 
 		// Get value on which we're intersecting.
-		SIValue v = AR_EXP_Evaluate(op->rhs_exp, op->rhs_rec);
+		SIValue v = AR_EXP_Evaluate(op->op_desc->rhs_exp, op->rhs_rec);
 
 		bool found_intersection = _set_intersection_idx(op, v);
 		SIValue_Free(v);
@@ -289,7 +288,7 @@ static RT_OpResult ValueHashJoinReset(RT_OpBase *ctx) {
 static inline RT_OpBase *ValueHashJoinClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_VALUE_HASH_JOIN);
 	RT_OpValueHashJoin *op = (RT_OpValueHashJoin *)opBase;
-	return RT_NewValueHashJoin(plan, AR_EXP_Clone(op->lhs_exp), AR_EXP_Clone(op->rhs_exp));
+	return RT_NewValueHashJoin(plan, op->op_desc);
 }
 
 /* Frees ValueHashJoin */
@@ -310,15 +309,4 @@ static void ValueHashJoinFree(RT_OpBase *ctx) {
 		array_free(op->cached_records);
 		op->cached_records = NULL;
 	}
-
-	if(op->lhs_exp) {
-		AR_EXP_Free(op->lhs_exp);
-		op->lhs_exp = NULL;
-	}
-
-	if(op->rhs_exp) {
-		AR_EXP_Free(op->rhs_exp);
-		op->rhs_exp = NULL;
-	}
 }
-

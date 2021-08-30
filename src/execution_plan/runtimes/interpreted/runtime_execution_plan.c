@@ -120,7 +120,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_SORT:
 	{
 		OpSort *op = (OpSort *)op_desc;
-		result = RT_NewSortOp(plan, op->exps, op->directions);
+		result = RT_NewSortOp(plan, op);
 		break;
 	}
 	case OPType_SKIP:
@@ -168,7 +168,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_UPDATE:
 	{
 		OpUpdate *op = (OpUpdate *)op_desc;
-		result = RT_NewUpdateOp(plan, op->update_ctxs);
+		result = RT_NewUpdateOp(plan, op);
 		break;
 	}
 	case OPType_DELETE:
@@ -180,7 +180,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_UNWIND:
 	{
 		OpUnwind *op = (OpUnwind *)op_desc;
-		result = RT_NewUnwindOp(plan, op->exp);
+		result = RT_NewUnwindOp(plan, op);
 		break;
 	}
 	case OPType_PROC_CALL:
@@ -204,7 +204,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_VALUE_HASH_JOIN:
 	{
 		OpValueHashJoin *op = (OpValueHashJoin *)op_desc;
-		result = RT_NewValueHashJoin(plan, op->lhs_exp, op->rhs_exp);
+		result = RT_NewValueHashJoin(plan, op);
 		break;
 	}
 	case OPType_APPLY:

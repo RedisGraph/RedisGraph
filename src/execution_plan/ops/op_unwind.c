@@ -20,7 +20,6 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
 	op->exp = exp;
-	op->list = SI_NullVal();
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", NULL, UnwindFree, false,
@@ -33,8 +32,6 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 
 static void UnwindFree(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	SIValue_Free(op->list);
-	op->list = SI_NullVal();
 
 	if(op->exp) {
 		AR_EXP_Free(op->exp);

@@ -8,13 +8,13 @@
 
 #include "op.h"
 #include "../runtime_execution_plan.h"
+#include "../../../ops/op_value_hash_join.h"
 #include "../../../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
 	RT_OpBase op;
+	const OpValueHashJoin *op_desc;
 	Record rhs_rec;                     // Right hand side record.
-	AR_ExpNode *lhs_exp;                // Left hand side expression to join on.
-	AR_ExpNode *rhs_exp;                // Right hand side expression to join on.
 	int64_t intersect_idx;              // Current intersection, < number_of_intersections
 	Record *cached_records;             // Cached left hand side records.
 	uint join_value_rec_idx;            // position on joined expression within record.
@@ -22,4 +22,4 @@ typedef struct {
 } RT_OpValueHashJoin;
 
 // Creates a new ValueHashJoin operation
-RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp);
+RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, const OpValueHashJoin *op_desc);

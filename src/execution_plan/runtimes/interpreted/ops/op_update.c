@@ -29,12 +29,12 @@ static Record _handoff(RT_OpUpdate *op) {
 	return NULL;
 }
 
-RT_OpBase *RT_NewUpdateOp(const RT_ExecutionPlan *plan, rax *update_exps) {
+RT_OpBase *RT_NewUpdateOp(const RT_ExecutionPlan *plan, const OpUpdate *op_desc) {
 	RT_OpUpdate *op = rm_calloc(1, sizeof(RT_OpUpdate));
+	op->op_desc            =  op_desc;
 	op->records            =  NULL;
 	op->updates            =  NULL;
 	op->updates_committed  =  false;
-	op->update_ctxs        =  update_exps;
 	op->gc                 =  QueryCtx_GetGraphCtx();
 
 	// set our op operations
@@ -43,7 +43,7 @@ RT_OpBase *RT_NewUpdateOp(const RT_ExecutionPlan *plan, rax *update_exps) {
 
 	// iterate over all update expressions
 	// set the record index for every entity modified by this operation
-	raxStart(&op->it, update_exps);
+	raxStart(&op->it, op_desc->update_ctxs);
 	raxSeek(&op->it, "^", NULL, 0);
 	while(raxNext(&op->it)) {
 		EntityUpdateEvalCtx *ctx = op->it.data;
@@ -60,7 +60,7 @@ static RT_OpResult UpdateInit(RT_OpBase *opBase) {
 
 	op->stats    =    QueryCtx_GetResultSetStatistics();
 	op->records  =    array_new(Record, 64);
-	op->updates  =    array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+	op->updates  =    array_new(PendingUpdateCtx, raxSize(op->op_desc->update_ctxs));
 
 	return OP_OK;
 }
@@ -107,9 +107,7 @@ static Record UpdateConsume(RT_OpBase *opBase) {
 static RT_OpBase *UpdateClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_UPDATE);
 	RT_OpUpdate *op = (RT_OpUpdate *)opBase;
-
-	rax *update_ctxs = raxCloneWithCallback(op->update_ctxs, (void *(*)(void *))UpdateCtx_Clone);
-	return RT_NewUpdateOp(plan, update_ctxs);
+	return RT_NewUpdateOp(plan, op->op_desc);
 }
 
 static RT_OpResult UpdateReset(RT_OpBase *ctx) {
@@ -128,12 +126,6 @@ static void UpdateFree(RT_OpBase *ctx) {
 		op->updates = NULL;
 	}
 
-	// Free each update context.
-	if(op->update_ctxs) {
-		raxFreeWithCallback(op->update_ctxs, (void(*)(void *))UpdateCtx_Free);
-		op->update_ctxs = NULL;
-	}
-
 	if(op->records) {
 		uint records_count = array_len(op->records);
 		for(uint i = 0; i < records_count; i++) RT_OpBase_DeleteRecord(op->records[i]);
@@ -143,4 +135,3 @@ static void UpdateFree(RT_OpBase *ctx) {
 
 	raxStop(&op->it);
 }
-

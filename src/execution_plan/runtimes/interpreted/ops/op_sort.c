@@ -28,7 +28,7 @@ static int _record_compare(Record a, Record b, const RT_OpSort *op) {
 		SIValue bVal = Record_Get(b, op->record_offsets[i]);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
 		if(rel == 0) continue;      // Elements are equal; try next ORDER BY element.
-		rel *= op->directions[i];   // Flip value for descending order.
+		rel *= op->op_desc->directions[i];   // Flip value for descending order.
 		return rel;
 	}
 	return 0;
@@ -76,24 +76,23 @@ static inline Record _handoff(RT_OpSort *op) {
 	return NULL;
 }
 
-RT_OpBase *RT_NewSortOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps, int *directions) {
+RT_OpBase *RT_NewSortOp(const RT_ExecutionPlan *plan, const OpSort *op_desc) {
 	RT_OpSort *op = rm_malloc(sizeof(RT_OpSort));
+	op->op_desc = op_desc;
 	op->heap = NULL;
-	op->skip = 0;
-	op->limit = UNLIMITED;
+	op->skip = op_desc->skip;
+	op->limit = op_desc->limit;
 	op->buffer = NULL;
-	op->directions = directions;
-	op->exps = exps;
 
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_SORT, SortInit, SortConsume, SortReset, SortClone,
 				SortFree, false, plan);
 
-	uint comparison_count = array_len(exps);
+	uint comparison_count = array_len(op_desc->exps);
 	op->record_offsets = array_new(uint, comparison_count);
 	for(uint i = 0; i < comparison_count; i ++) {
 		uint record_idx;
-		bool aware = RT_OpBase_Aware((RT_OpBase *)op, exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
@@ -186,11 +185,7 @@ static RT_OpResult SortReset(RT_OpBase *ctx) {
 static RT_OpBase *SortClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_SORT);
 	RT_OpSort *op = (RT_OpSort *)opBase;
-	int *directions;
-	AR_ExpNode **exps;
-	array_clone(directions, op->directions);
-	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
-	return RT_NewSortOp(plan, exps, directions);
+	return RT_NewSortOp(plan, op->op_desc);
 }
 
 /* Frees Sort */
@@ -221,17 +216,4 @@ static void SortFree(RT_OpBase *ctx) {
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;
 	}
-
-	if(op->directions) {
-		array_free(op->directions);
-		op->directions = NULL;
-	}
-
-	if(op->exps) {
-		uint exps_count = array_len(op->exps);
-		for(uint i = 0; i < exps_count; i++) AR_EXP_Free(op->exps[i]);
-		array_free(op->exps);
-		op->exps = NULL;
-	}
 }
-
