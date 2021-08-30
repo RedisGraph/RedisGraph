@@ -63,9 +63,10 @@ static void _traverse(RT_OpExpandInto *op) {
 	RG_Matrix_clear(op->F);
 }
 
-RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae) {
+RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, const OpExpandInto *op_desc) {
 	RT_OpExpandInto *op = rm_malloc(sizeof(RT_OpExpandInto));
-	op->ae = ae;
+	op->op_desc = op_desc;
+	op->ae = AlgebraicExpression_Clone(op_desc->ae);
 	op->r = NULL;
 	op->F = NULL;
 	op->M = NULL;
@@ -81,12 +82,12 @@ RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, AlgebraicExpression 
 	// Make sure that all entities are represented in Record
 	bool aware;
 	UNUSED(aware);
-	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Source(op->ae), &op->srcNodeIdx);
 	ASSERT(aware);
-	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
+	aware = RT_OpBase_Aware((RT_OpBase *)op, AlgebraicExpression_Destination(op->ae), &op->destNodeIdx);
 	ASSERT(aware);
 
-	const char *edge = AlgebraicExpression_Edge(ae);
+	const char *edge = AlgebraicExpression_Edge(op->ae);
 	if(edge) {
 		/* This operation will populate an edge in the Record.
 		 * Prepare all necessary information for collecting matching edges. */
@@ -94,7 +95,7 @@ RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, AlgebraicExpression 
 		aware = RT_OpBase_Aware((RT_OpBase *)op, edge, &edge_idx);
 		ASSERT(aware);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, edge);
-		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+		op->edge_ctx = Traverse_NewEdgeCtx(op->ae, e, edge_idx);
 	}
 
 	return (RT_OpBase *)op;
@@ -215,7 +216,7 @@ static RT_OpResult ExpandIntoReset(RT_OpBase *ctx) {
 static inline RT_OpBase *ExpandIntoClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_EXPAND_INTO);
 	RT_OpExpandInto *op = (RT_OpExpandInto *)opBase;
-	return RT_NewExpandIntoOp(plan, AlgebraicExpression_Clone(op->ae));
+	return RT_NewExpandIntoOp(plan, op->op_desc);
 }
 
 /* Frees ExpandInto */

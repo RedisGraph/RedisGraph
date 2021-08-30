@@ -60,7 +60,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_INDEX_SCAN:
 	{
 		IndexScan *op = (IndexScan *)op_desc;
-		result = RT_NewIndexScanOp(plan, op->n, op->idx, op->filter);
+		result = RT_NewIndexScanOp(plan, op);
 		break;
 	}
 	case OPType_NODE_BY_ID_SEEK:
@@ -79,7 +79,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_EXPAND_INTO:
 	{
 		OpExpandInto *op = (OpExpandInto *)op_desc;
-		result = RT_NewExpandIntoOp(plan, op->ae);
+		result = RT_NewExpandIntoOp(plan, op);
 		break;
 	}
 	case OPType_CONDITIONAL_TRAVERSE:
@@ -139,7 +139,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_DISTINCT:
 	{
 		OpDistinct *op = (OpDistinct *)op_desc;
-		result = RT_NewDistinctOp(plan, op->aliases, op->alias_count);
+		result = RT_NewDistinctOp(plan, op);
 		break;
 	}
 	case OPType_MERGE:
@@ -157,7 +157,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_FILTER:
 	{
 		OpFilter *op = (OpFilter *)op_desc;
-		result = RT_NewFilterOp(plan, op->filterTree);
+		result = RT_NewFilterOp(plan, op);
 		break;
 	}
 	case OPType_CREATE:
@@ -175,7 +175,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	case OPType_DELETE:
 	{
 		OpDelete *op = (OpDelete *)op_desc;
-		result = RT_NewDeleteOp(plan, op->exps);
+		result = RT_NewDeleteOp(plan, op);
 		break;
 	}
 	case OPType_UNWIND:

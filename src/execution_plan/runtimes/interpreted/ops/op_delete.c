@@ -58,13 +58,12 @@ cleanup:
 	QueryCtx_UnlockCommit(&op->op);
 }
 
-RT_OpBase *RT_NewDeleteOp(const RT_ExecutionPlan *plan, AR_ExpNode **exps) {
+RT_OpBase *RT_NewDeleteOp(const RT_ExecutionPlan *plan, const OpDelete *op_desc) {
 	RT_OpDelete *op = rm_malloc(sizeof(RT_OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
-	op->exps = exps;
+	op->op_desc = op_desc;
 	op->stats = NULL;
-	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
 
@@ -91,8 +90,8 @@ static Record DeleteConsume(RT_OpBase *opBase) {
 	/* Expression should be evaluated to either a node or an edge
 	 * which will be marked for deletion, if an expression is evaluated
 	 * to a different value type e.g. Numeric a run-time expection is thrown. */
-	for(int i = 0; i < op->exp_count; i++) {
-		AR_ExpNode *exp = op->exps[i];
+	for(int i = 0; i < op->op_desc->exp_count; i++) {
+		AR_ExpNode *exp = op->op_desc->exps[i];
 		SIValue value = AR_EXP_Evaluate(exp, r);
 		SIType type = SI_TYPE(value);
 		/* Enqueue entities for deletion. */
@@ -123,9 +122,7 @@ static Record DeleteConsume(RT_OpBase *opBase) {
 static RT_OpBase *DeleteClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_DELETE);
 	RT_OpDelete *op = (RT_OpDelete *)opBase;
-	AR_ExpNode **exps;
-	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
-	return RT_NewDeleteOp(plan, exps);
+	return RT_NewDeleteOp(plan, op->op_desc);
 }
 
 static void DeleteFree(RT_OpBase *ctx) {
@@ -141,11 +138,5 @@ static void DeleteFree(RT_OpBase *ctx) {
 	if(op->deleted_edges) {
 		array_free(op->deleted_edges);
 		op->deleted_edges = NULL;
-	}
-
-	if(op->exps) {
-		for(int i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]);
-		array_free(op->exps);
-		op->exps = NULL;
 	}
 }

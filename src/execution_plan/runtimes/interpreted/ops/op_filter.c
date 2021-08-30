@@ -10,15 +10,14 @@
 /* Forward declarations. */
 static Record FilterConsume(RT_OpBase *opBase);
 static RT_OpBase *FilterClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
-static void FilterFree(RT_OpBase *opBase);
 
-RT_OpBase *RT_NewFilterOp(const RT_ExecutionPlan *plan, FT_FilterNode *filterTree) {
+RT_OpBase *RT_NewFilterOp(const RT_ExecutionPlan *plan, const OpFilter *op_desc) {
 	RT_OpFilter *op = rm_malloc(sizeof(RT_OpFilter));
-	op->filterTree = filterTree;
+	op->op_desc = op_desc;
 
 	// Set our Op operations
 	RT_OpBase_Init((RT_OpBase *)op, OPType_FILTER, NULL, FilterConsume,
-				NULL, FilterClone, FilterFree, false, plan);
+				NULL, FilterClone, NULL, false, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -35,7 +34,7 @@ static Record FilterConsume(RT_OpBase *opBase) {
 		if(!r) break;
 
 		/* Pass record through filter tree */
-		if(FilterTree_applyFilters(filter->filterTree, r) == FILTER_PASS) break;
+		if(FilterTree_applyFilters(filter->op_desc->filterTree, r) == FILTER_PASS) break;
 		else RT_OpBase_DeleteRecord(r);
 	}
 
@@ -45,14 +44,5 @@ static Record FilterConsume(RT_OpBase *opBase) {
 static inline RT_OpBase *FilterClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_FILTER);
 	RT_OpFilter *op = (RT_OpFilter *)opBase;
-	return RT_NewFilterOp(plan, FilterTree_Clone(op->filterTree));
-}
-
-/* Frees OpFilter*/
-static void FilterFree(RT_OpBase *ctx) {
-	RT_OpFilter *filter = (RT_OpFilter *)ctx;
-	if(filter->filterTree) {
-		FilterTree_Free(filter->filterTree);
-		filter->filterTree = NULL;
-	}
+	return RT_NewFilterOp(plan, op->op_desc);
 }

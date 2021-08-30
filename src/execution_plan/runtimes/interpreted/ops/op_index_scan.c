@@ -17,18 +17,14 @@ static RT_OpResult IndexScanReset(RT_OpBase *opBase);
 static void IndexScanFree(RT_OpBase *opBase);
 static RT_OpBase *IndexScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase);
 
-RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, NodeScanCtx n,
-		RSIndex *idx, FT_FilterNode *filter) {
+RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, const IndexScan *op_desc) {
 	// validate inputs
-	ASSERT(idx    != NULL);
 	ASSERT(plan   != NULL);
-	ASSERT(filter != NULL);
 
 	RT_IndexScan *op = rm_malloc(sizeof(RT_IndexScan));
-	op->n                    =  n;
-	op->idx                  =  idx;
+	op->op_desc              =  op_desc;
+	op->idx                  =  op_desc->idx;
 	op->iter                 =  NULL;
-	op->filter               =  filter;
 	op->child_record         =  NULL;
 	op->unresolved_filters   =  NULL;
 	op->rebuild_index_query  =  false;
@@ -37,7 +33,7 @@ RT_OpBase *RT_NewIndexScanOp(const RT_ExecutionPlan *plan, NodeScanCtx n,
 	RT_OpBase_Init((RT_OpBase *)op, OPType_INDEX_SCAN, IndexScanInit, IndexScanConsume,
 				IndexScanReset, IndexScanClone, IndexScanFree, false, plan);
 
-	bool aware = RT_OpBase_Aware((RT_OpBase *)op, n.alias, &op->nodeRecIdx);
+	bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->n.alias, &op->nodeRecIdx);
 	UNUSED(aware);
 	ASSERT(aware);
 
@@ -53,19 +49,11 @@ static RT_OpResult IndexScanInit(RT_OpBase *opBase) {
 		// within the filter tree, if number of entities equals 1
 		// (current node being scanned) there's no need to re-build the index
 		// query for every input record
-		rax *entities = FilterTree_CollectModified(op->filter);
+		rax *entities = FilterTree_CollectModified(op->op_desc->filter);
 		op->rebuild_index_query = raxSize(entities) > 1; // this is us
 		raxFree(entities);
 
 		RT_OpBase_UpdateConsume(opBase, IndexScanConsumeFromChild);
-	}
-
-	// resolve label ID now if it is still unknown
-	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
-		ASSERT(schema != NULL);
-		op->n.label_id = schema->id;
 	}
 
 	return OP_OK;
@@ -73,7 +61,7 @@ static RT_OpResult IndexScanInit(RT_OpBase *opBase) {
 
 static inline void _UpdateRecord(RT_IndexScan *op, Record r, EntityID node_id) {
 	// Populate the Record with the graph entity data.
-	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
+	Node n = GE_NEW_LABELED_NODE(op->op_desc->n.label, op->op_desc->n.label_id);
 	int res = Graph_GetNode(op->g, node_id, &n);
 	ASSERT(res != 0);
 	Record_AddNode(r, op->nodeRecIdx, n);
@@ -143,7 +131,7 @@ pull_index:
 
 		// rebuild index query, probably relies on runtime values
 		// resolve runtime variables within filter
-		FT_FilterNode *filter = FilterTree_Clone(op->filter);
+		FT_FilterNode *filter = FilterTree_Clone(op->op_desc->filter);
 		FilterTree_ResolveVariables(filter, op->child_record);
 
 		// make sure there's only one unresolve entity in filter
@@ -168,7 +156,7 @@ pull_index:
 		// reset it if already initialized
 		if(op->iter == NULL) {
 			// first call to consume, create query and iterator
-			RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters, op->filter, op->idx);
+			RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters, op->op_desc->filter, op->idx);
 			ASSERT(rs_query_node != NULL);
 			ASSERT(op->unresolved_filters == NULL);
 			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
@@ -188,7 +176,7 @@ static Record IndexScanConsume(RT_OpBase *opBase) {
 	// create iterator on first call
 	if(op->iter == NULL) {
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
-				op->filter, op->idx);
+				op->op_desc->filter, op->idx);
 		ASSERT(op->unresolved_filters == NULL);
 
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
@@ -234,11 +222,6 @@ static void IndexScanFree(RT_OpBase *opBase) {
 		op->child_record = NULL;
 	}
 
-	if(op->filter) {
-		FilterTree_Free(op->filter);
-		op->filter = NULL;
-	}
-
 	if(op->unresolved_filters) {
 		FilterTree_Free(op->unresolved_filters);
 		op->unresolved_filters = NULL;
@@ -247,5 +230,5 @@ static void IndexScanFree(RT_OpBase *opBase) {
 
 static RT_OpBase *IndexScanClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	RT_IndexScan *op = (RT_IndexScan *)opBase;
-	return RT_NewIndexScanOp(plan, op->n, op->idx, FilterTree_Clone(op->filter));
+	return RT_NewIndexScanOp(plan, op->op_desc);
 }

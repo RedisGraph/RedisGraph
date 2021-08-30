@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../../../ops/op_filter.h"
 #include "../runtime_execution_plan.h"
 #include "../../../../filter_tree/filter_tree.h"
 
@@ -14,8 +15,8 @@
  * filters graph according to where cluase */
 typedef struct {
 	RT_OpBase op;
-	FT_FilterNode *filterTree;
+	const OpFilter *op_desc;
 } RT_OpFilter;
 
 /* Creates a new Filter operation */
-RT_OpBase *RT_NewFilterOp(const RT_ExecutionPlan *plan, FT_FilterNode *filterTree);
+RT_OpBase *RT_NewFilterOp(const RT_ExecutionPlan *plan, const OpFilter *op_desc);

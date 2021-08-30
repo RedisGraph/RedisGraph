@@ -7,14 +7,16 @@
 #pragma once
 
 #include "op.h"
-#include "../runtime_execution_plan.h"
 #include "../../../../graph/graph.h"
+#include "../runtime_execution_plan.h"
+#include "../../../ops/op_expand_into.h"
 #include "../../../../graph/entities/edge.h"
 #include "../../../ops/shared/traverse_functions.h"
 #include "../../../../arithmetic/algebraic_expression.h"
 
 typedef struct {
 	RT_OpBase op;
+	const OpExpandInto *op_desc;
 	Graph *graph;
 	AlgebraicExpression *ae;
 	RG_Matrix F;                // Filter matrix.
@@ -28,4 +30,4 @@ typedef struct {
 	Record r;                   // Currently selected record.
 } RT_OpExpandInto;
 
-RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, AlgebraicExpression *ae);
+RT_OpBase *RT_NewExpandIntoOp(const RT_ExecutionPlan *plan, const OpExpandInto *op_desc);

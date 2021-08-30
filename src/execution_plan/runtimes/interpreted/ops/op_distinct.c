@@ -25,7 +25,7 @@ static unsigned long long _compute_hash(RT_OpDistinct *op, Record r) {
 	XXH_errorcode res = XXH64_reset(&state, 0);
 	ASSERT(res != XXH_ERROR);
 
-	for(uint i = 0; i < op->offset_count; i++) {
+	for(uint i = 0; i < op->op_desc->alias_count; i++) {
 		// retrieve the entry at 'idx' as an SIValue
 		uint idx = op->offsets[i];
 		SIValue v = Record_Get(r, idx);
@@ -43,27 +43,23 @@ static void _updateOffsets(RT_OpDistinct *op, Record r) {
 	ASSERT(op->aliases != NULL);
 	ASSERT(op->offsets != NULL);
 
-	for(uint i = 0; i < op->offset_count; i++) {
-		uint offset = Record_GetEntryIdx(r, op->aliases[i]);
+	for(uint i = 0; i < op->op_desc->alias_count; i++) {
+		uint offset = Record_GetEntryIdx(r, op->op_desc->aliases[i]);
 		ASSERT(offset != INVALID_INDEX);
 		op->offsets[i] = offset;
 	}
 }
 
-RT_OpBase *RT_NewDistinctOp(const RT_ExecutionPlan *plan, const char **aliases, uint alias_count) {
+RT_OpBase *RT_NewDistinctOp(const RT_ExecutionPlan *plan, const OpDistinct *op_desc) {
 	ASSERT(aliases != NULL);
 	ASSERT(alias_count > 0);
 
 	RT_OpDistinct *op = rm_malloc(sizeof(RT_OpDistinct));
 
+	op->op_desc         =  op_desc;
 	op->found           =  raxNew();
 	op->mapping         =  NULL;
-	op->aliases         =  rm_malloc(alias_count * sizeof(const char *));
-	op->offset_count    =  alias_count;
-	op->offsets         =  rm_calloc(op->offset_count, sizeof(uint));
-
-	// Copy aliases into heap array managed by this op
-	memcpy(op->aliases, aliases, alias_count * sizeof(const char *));
+	op->offsets         =  rm_calloc(op_desc->alias_count, sizeof(uint));
 
 	RT_OpBase_Init((RT_OpBase *)op, OPType_DISTINCT, NULL, DistinctConsume,
 				NULL, DistinctClone, DistinctFree, false, plan);
@@ -103,7 +99,7 @@ static Record DistinctConsume(RT_OpBase *opBase) {
 static inline RT_OpBase *DistinctClone(const RT_ExecutionPlan *plan, const RT_OpBase *opBase) {
 	ASSERT(opBase->type == OPType_DISTINCT);
 	RT_OpDistinct *op = (RT_OpDistinct *)opBase;
-	return RT_NewDistinctOp(plan, op->aliases, op->offset_count);
+	return RT_NewDistinctOp(plan, op->op_desc);
 }
 
 static void DistinctFree(RT_OpBase *ctx) {
@@ -111,11 +107,6 @@ static void DistinctFree(RT_OpBase *ctx) {
 	if(op->found) {
 		raxFree(op->found);
 		op->found = NULL;
-	}
-
-	if(op->aliases) {
-		rm_free(op->aliases);
-		op->aliases = NULL;
 	}
 
 	if(op->offsets) {
