@@ -55,6 +55,8 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("-r tests/requirements.txt")
 
     def install_peg(self):
+        self.run("mkdir -p /usr/local/man", sudo=True)
+        self.run("chown -R %s /usr/local/man" % os.getuid(), sudo=True)
         self.run(r"""
             cd /tmp
             build_dir=$(mktemp -d)
