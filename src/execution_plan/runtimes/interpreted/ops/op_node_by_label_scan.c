@@ -4,10 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "op_node_by_label_scan.h"
 #include "RG.h"
 #include "../../../../ast/ast.h"
+#include "op_node_by_label_scan.h"
 #include "../../../../query_ctx.h"
+#include "../../../ops/shared/print_functions.h"
 
 /* Forward declarations. */
 static RT_OpResult NodeByLabelScanInit(RT_OpBase *opBase);

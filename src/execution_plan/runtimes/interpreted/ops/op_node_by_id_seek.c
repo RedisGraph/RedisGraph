@@ -4,9 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "op_node_by_id_seek.h"
 #include "RG.h"
+#include "op_node_by_id_seek.h"
 #include "../../../../query_ctx.h"
+#include "../../../ops/shared/print_functions.h"
 
 /* Forward declarations. */
 static RT_OpResult NodeByIdSeekInit(RT_OpBase *opBase);
@@ -52,7 +53,7 @@ RT_OpBase *RT_NewNodeByIdSeekOp(const RT_ExecutionPlan *plan, const NodeByIdSeek
 }
 
 static RT_OpResult NodeByIdSeekInit(RT_OpBase *opBase) {
-	ASSERT(opBase->type == OPType_NODE_BY_ID_SEEK);
+	ASSERT(opBase->op_desc->type == OPType_NODE_BY_ID_SEEK);
 	RT_NodeByIdSeek *op = (RT_NodeByIdSeek *)opBase;
 	// The largest possible entity ID is the number of nodes - deleted and real - in the DataBlock.
 	size_t node_count = Graph_UncompactedNodeCount(op->g);

@@ -39,7 +39,6 @@ static unsigned long long _compute_hash(RT_OpDistinct *op, Record r) {
 
 // compute record offset to distinct values
 static void _updateOffsets(RT_OpDistinct *op, Record r) {
-	ASSERT(op->aliases != NULL);
 	ASSERT(op->offsets != NULL);
 
 	for(uint i = 0; i < op->op_desc->alias_count; i++) {
@@ -50,9 +49,6 @@ static void _updateOffsets(RT_OpDistinct *op, Record r) {
 }
 
 RT_OpBase *RT_NewDistinctOp(const RT_ExecutionPlan *plan, const OpDistinct *op_desc) {
-	ASSERT(aliases != NULL);
-	ASSERT(alias_count > 0);
-
 	RT_OpDistinct *op = rm_malloc(sizeof(RT_OpDistinct));
 
 	op->op_desc         =  op_desc;

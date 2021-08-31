@@ -26,7 +26,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Procedure must exist
 	ProcedureCtx *procedure = Proc_Get(proc_name);
-	ASSERT(op->procedure != NULL);
+	ASSERT(procedure != NULL);
 
 	uint yield_count = array_len(yield_exps);
 

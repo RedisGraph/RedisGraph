@@ -28,7 +28,7 @@ static void _eval_limit(RT_OpLimit *op) {
 RT_OpBase *RT_NewLimitOp(const RT_ExecutionPlan *plan, const OpLimit *op_desc) {
 	// validate inputs
 	ASSERT(plan != NULL);
-	ASSERT(limit_exp != NULL);
+	ASSERT(op_desc != NULL);
 
 	RT_OpLimit *op = rm_malloc(sizeof(RT_OpLimit));
 	op->op_desc = op_desc;

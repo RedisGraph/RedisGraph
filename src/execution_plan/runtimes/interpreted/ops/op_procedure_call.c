@@ -74,9 +74,6 @@ static void _evaluate_proc_args(RT_OpProcCall *op) {
 }
 
 RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_desc) {
-
-	ASSERT(proc_name != NULL);
-
 	RT_OpProcCall *op = rm_malloc(sizeof(RT_OpProcCall));
 	op->op_desc = op_desc;
 	op->r = NULL;
