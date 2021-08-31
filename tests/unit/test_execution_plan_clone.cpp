@@ -71,7 +71,7 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		// In case both ops are not in their respective segment, there is nothing to compare.
 		if(op_a->plan != plan_a && op_b->plan != plan_b) return;
 		ASSERT_TRUE(op_a->plan == plan_a && op_b->plan == plan_b);
-		ASSERT_EQ(op_a->type, op_b->type);
+		ASSERT_EQ(op_a->op_desc->type, op_b->op_desc->type);
 		ASSERT_EQ(op_a->childCount, op_b->childCount);
 		for(uint i = 0; i < op_a->childCount; i++) {
 			ExecutionPlan_OpsEqual(plan_a, plan_b, op_a->children[i], op_b->children[i]);
