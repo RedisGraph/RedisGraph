@@ -55,8 +55,6 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("-r tests/requirements.txt")
 
     def install_peg(self):
-        self.run("mkdir -p /usr/local/man", sudo=True)
-        self.run("chown -R %s /usr/local/man" % os.getuid(), sudo=True)
         self.run(r"""
             cd /tmp
             build_dir=$(mktemp -d)
@@ -65,9 +63,9 @@ class RedisGraphSetup(paella.Setup):
             tar xzf peg-0.1.18.tar.gz
             cd peg-0.1.18
             make
-            make install
+            make install MANDIR=/tmp/pegman
             cd /tmp
-            rm -rf $build_dir
+            rm -rf $build_dir /tmp/pegman
             """)
 
 #----------------------------------------------------------------------------------------------
