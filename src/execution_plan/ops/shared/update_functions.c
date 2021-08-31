@@ -10,25 +10,6 @@
 #include "../../../datatypes/map.h"
 #include "../../../datatypes/array.h"
 
-// recursively validate that an array property does not contain
-// a non-array, non-primitive type
-// returns true if property is valid
-static bool _ValidateArrayProperty(SIValue arr) {
-	ASSERT(SI_TYPE(arr) == T_ARRAY);
-
-	uint array_len = SIArray_Length(arr);
-	for(uint i = 0; i < array_len; i++) {
-		SIValue elem = SIArray_Get(arr, i);
-		// each element must be a primitive or an array
-		if(!(SI_TYPE(elem) & SI_VALID_PROPERTY_VALUE)) return false;
-
-		// recursively check nested arrays
-		if(SI_TYPE(elem) == T_ARRAY) return _ValidateArrayProperty(elem);
-	}
-
-	return true;
-}
-
 /* set a property on a graph entity
  * for non-NULL values, the property will be added or updated
  * if it is already present
@@ -77,8 +58,9 @@ static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, SIType accepted_
 	// emit an error and exit if we're trying to add
 	// an array containing an invalid type
 	if(SI_TYPE(new_value) == T_ARRAY) {
-		bool res = _ValidateArrayProperty(new_value);
-		if(!res) {
+		SIType invalid_properties = ~SI_VALID_PROPERTY_VALUE;
+		bool res = SIArray_ContainsType(new_value, invalid_properties);
+		if(res) {
 			// validation failed
 			SIValue_Free(new_value);
 			Error_InvalidPropertyValue();

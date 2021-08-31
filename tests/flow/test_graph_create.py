@@ -102,3 +102,18 @@ class testGraphCreationFlow(FlowTestsBase):
 
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.result_set, expected_result)
+
+    # Fail when a property is a complex type nested within an array type
+    def test13_invalid_complex_type_in_array(self):
+        # Test combinations of invalid types with nested and top-level arrays
+        # Invalid types are NULL, maps, nodes, edges, and paths
+        queries = ["CREATE (a), (b) SET a.v = [b]",
+                   "CREATE (a {v: ['str', [1, NULL]]})",
+                   "CREATE (a {v: [[{k: 'v'}]]})",
+                   "CREATE (a:L {v: [e]})-[e:R]->(:L)"]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))

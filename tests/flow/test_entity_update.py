@@ -127,7 +127,7 @@ class testEntityUpdate(FlowTestsBase):
         queries = ["MATCH (a) SET a.v = [a]",
                    "MATCH (a) SET a = {v: ['str', [1, NULL]]}",
                    "MATCH (a) SET a += [[{k: 'v'}]]",
-                   "CREATE (a:L)-[e:R]->(:L) SET a.v = e"]
+                   "CREATE (a:L)-[e:R]->(:L) SET a.v = [e]"]
         for query in queries:
             try:
                 graph.query(query)
