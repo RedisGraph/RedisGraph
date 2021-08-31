@@ -1169,6 +1169,15 @@ TEST_F(ArithmeticTest, CaseTest) {
 	result = AR_EXP_Evaluate(arExp, NULL);
 	AR_EXP_Free(arExp);
 	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* None of the alternatives evaluates to a none null value.
+	 * Default specified, expecting default. */
+	query = "RETURN CASE NULL WHEN NULL THEN 1 ELSE 2 END AS result";
+	expected = SI_LongVal(1);
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_EQ(result.longval, expected.longval);
 }
 
 TEST_F(ArithmeticTest, AND) {
