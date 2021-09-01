@@ -97,7 +97,7 @@ class testConfig(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Field can not be re-configured" in str(e))
-        
+
         try:
             # Set multiple configuration values, FAKE_CONFIG_NAME is NOT a valid
             # configuration, expecting this command to fail
@@ -178,3 +178,39 @@ class testConfig(FlowTestsBase):
         # Issue long-running query to validate the reconfiguration
         result = redis_graph.query(query)
         self.env.assertEqual(result.result_set[0][0], 1000000)
+
+    def test09_set_invalid_values(self):
+        # The run-time configurations supported by RedisGraph are:
+        # MAX_QUEUED_QUERIES
+        # TIMEOUT
+        # QUERY_MEM_CAPACITY
+        # DELTA_MAX_PENDING_CHANGES
+        # RESULTSET_SIZE
+
+        # Validate that attempting to set these configurations to
+        # invalid values fails
+        try:
+            # MAX_QUEUED_QUERIES must be a positive value
+            redis_con.execute_command("GRAPH.CONFIG SET MAX_QUEUED_QUERIES 0")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            assert("Failed to set config value MAX_QUEUED_QUERIES to 0" in str(e))
+            pass
+
+        # TIMEOUT, QUERY_MEM_CAPACITY, and DELTA_MAX_PENDING_CHANGES must be
+        # non-negative values, 0 resets to default
+        for config in ["TIMEOUT", "QUERY_MEM_CAPACITY", "DELTA_MAX_PENDING_CHANGES"]:
+            try:
+                redis_con.execute_command("GRAPH.CONFIG SET %s -1" % config)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                assert("Failed to set config value %s to -1" % config in str(e))
+                pass
+
+        # RESULTSET_SIZE can be any integer, negative values reset to default
+        try:
+            redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE invalid")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            assert("Failed to set config value RESULTSET_SIZE to invalid" in str(e))
+            pass
