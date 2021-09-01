@@ -94,6 +94,14 @@ static inline bool _Config_ParsePositiveInteger(const char *integer_str, long lo
 	return (res == true && *value > 0);
 }
 
+// parse non-negative integer
+// return true if string represents an integer >= 0
+static inline bool _Config_ParseNonNegativeInteger(const char *integer_str, long long *value) {
+	bool res = _Config_ParseInteger(integer_str, value);
+	// Return an error code if integer parsing fails or value is negative.
+	return (res == true && *value >= 0);
+}
+
 // return true if 'str' is either "yes" or "no" otherwise returns false
 // sets 'value' to true if 'str' is "yes"
 // sets 'value to false if 'str' is "no"
@@ -439,7 +447,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_TIMEOUT:
 			{
 				long long timeout;
-				if(!_Config_ParsePositiveInteger(val, &timeout)) return false;
+				if(!_Config_ParseNonNegativeInteger(val, &timeout)) return false;
 				Config_timeout_set(timeout);
 			}
 			break;
@@ -541,7 +549,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_QUERY_MEM_CAPACITY:
 			{
 				long long query_mem_capacity;
-				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
+				if (!_Config_ParseNonNegativeInteger(val, &query_mem_capacity)) return false;
 
 				Config_query_mem_capacity_set(query_mem_capacity);
 			}
