@@ -67,7 +67,7 @@ class RedisGraphSetup(paella.Setup):
             make
             make install MANDIR=.
             cd /tmp
-            rm -rf $build_dir
+            rm -rf $build_dir /tmp/pegman
             """)
 
 #----------------------------------------------------------------------------------------------
