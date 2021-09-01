@@ -27,8 +27,7 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 		for(int i = 1; i < alternatives; i += 2) {
 			SIValue a = argv[i];
 			int disjointOrNull;
-			if((SIValue_Compare(v, a, &disjointOrNull) == 0) &&
-			   (disjointOrNull != COMPARED_NULL || SIValue_IsNull(v))) {
+			if(SIValue_Compare(v, a, &disjointOrNull) == 0) {
 				// Return Result i.
 				// The value's ownership must be transferred to avoid a double free if it is an allocated value.
 				SIValue retval = argv[i + 1];
