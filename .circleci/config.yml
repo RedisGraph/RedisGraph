@@ -258,6 +258,8 @@ jobs:
           # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
+      - store_artifacts:
+          path: ~/project/tests/flow/logs
 
   build_macos:
     macos:
@@ -273,6 +275,8 @@ jobs:
       - run:
           name: Test
           command: bash -l -c "make test"
+      - store_artifacts:
+          path: ~/project/tests/flow/logs
       - persist-artifacts
 
   platform_build:
