@@ -1,10 +1,9 @@
 version: 2.1
 
 commands:
-
   # If this build is from a fork, stop executing the current job and return success.
   # This is useful to avoid steps that will fail due to missing credentials.
-  early_return_for_forked_pull_requests:
+  early-return-for-forked-pull-requests:
     steps:
       - run:
           name: Early return if this build is from a forked PR
@@ -14,7 +13,7 @@ commands:
               circleci step halt
             fi
 
-  early_returns:
+  early-returns:
     steps:
       - run:
           name: Early return if this is a docs build
@@ -38,9 +37,17 @@ commands:
           command: |
             apt-get -qq update
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
-            bash <(curl -fsSL https://get.docker.com)
+            bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
+          version: 20.10.2
           docker_layer_caching: true
+
+  checkout-all:
+    steps:
+      - checkout
+      - run:
+          name: Checkout submodules
+          command: git submodule update --init --recursive
 
   setup-automation:
     steps:
@@ -50,12 +57,22 @@ commands:
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
 
+  persist-artifacts:
+    steps:
+      - persist_to_workspace:
+          root: bin/artifacts
+          paths:
+            - 'snapshots/*.zip'
+            - 'snapshots/*.tgz'
+            - '*.zip'
+            - '*.tgz'
+
   load-cached-deps:
     steps:
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
-          - GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
+          - v3-GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Load libcypher-parser from cache if possible.
       - restore_cache:
@@ -68,7 +85,7 @@ commands:
       - save_cache:
           paths:
             - deps/GraphBLAS
-          key: GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
+          key: v3-GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Save libcypher-parser to cache.
       - save_cache:
@@ -78,22 +95,10 @@ commands:
 
   setup-prerequisits:
     steps:
-      - run:
-          name: Fetch submodules
-          command: |
-            git submodule update --init --recursive
       - setup-automation
       - run:
           name: Install prerequisites
-          command: |
-            ./sbin/system-setup.py
-      - run:
-          name: Setup locale
-          command: |
-              if command -v apt-get &> /dev/null; then
-                locale-gen --purge en_US.UTF-8
-                dpkg-reconfigure -f noninteractive locales
-              fi
+          command: ./sbin/system-setup.py
 
   benchmark-automation:
     parameters:
@@ -138,79 +143,104 @@ commands:
       platform:
         type: string
     steps:
-      - early_returns
+      - early-returns
       - setup-executor
-      - checkout
-      - run:
-          name: Checkout submodules
-          command: |
-            git submodule update --init --recursive
+      - checkout-all
       - setup-automation
       - run:
           name: Build for platform
           command: |
             cd build/docker
             make build OSNICK=<<parameters.platform>> ARTIFACTS=1 TEST=1 SHOW=1
-      - early_return_for_forked_pull_requests
+      - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (publish)
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
             make publish OSNICK=<<parameters.platform>> OFFICIAL=0 SHOW=1 VERBOSE=1
-      - persist_to_workspace:
-          root: bin/artifacts
-          paths:
-            - 'snapshots/*.zip'
-            - 'snapshots/*.tgz'
-            - '*.zip'
-            - '*.tgz'
+      - persist-artifacts
+
+  vm-build-platforms-steps:
+    parameters:
+      platform:
+        type: string
+    steps:
+      - early-returns
+      - checkout-all
+      - setup-automation
+      - run:
+          name: Install Docker
+          command: bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
+      - run:
+          name: Build for platform
+          command: |
+            cd build/docker
+            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH ARTIFACTS=1 TEST=1 SHOW=1
+          no_output_timeout: 30m
+      - early-return-for-forked-pull-requests
+      - run:
+          name: Build for platform (publish)
+          command: |
+            docker login -u redisfab -p $DOCKER_REDISFAB_PWD
+            cd build/docker
+            make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=0 SHOW=1 VERBOSE=1
+      - persist-artifacts
+
+#----------------------------------------------------------------------------------------------------------------------------------
 
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-bionic
-        environment:
-          LANG: en_US.UTF-8
-          LANGUAGE: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
-      - early_returns
-      - checkout
+      - early-returns
+      - checkout-all
       - setup-prerequisits
       - load-cached-deps
       - run:
           name: Build
-          command: |
-            make
-            make package
+          command: bash -l -c "make all package"
       - save-deps-cache
       - run:
           name: Test
-          command: make test
-      - early_return_for_forked_pull_requests
+          command: bash -l -c "make test"
+      - early-return-for-forked-pull-requests
       - run:
           name: Persist Artifact for CI benchmarks
           command: |
             strip src/$MODULE_ARTIFACT
             mkdir -p /workspace
             cp src/$MODULE_ARTIFACT /workspace
-
       - persist_to_workspace:
           root: /workspace
           paths:
             - '*.so'
 
+  coverage:
+    docker:
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+    steps:
+      - early-returns
+      - checkout-all
+      - setup-prerequisits
+      - load-cached-deps
+      - run:
+          name: Build for coverage
+          command: bash -l -c "make COV=1"
+      - run:
+          name: Test with coverage
+          command: |
+            bash -l -c "make test COV=1"
+            bash -l -c "make cov-upload"
+          no_output_timeout: 30m
+
   build_memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-bionic
-        environment:
-            LANG: en_US.UTF-8
-            LANGUAGE: en_US.UTF-8
-            LC_ALL: en_US.UTF-8
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
-      - early_returns
-      - checkout
+      - early-returns
+      - checkout-all
       - setup-prerequisits
       - load-cached-deps
       - attach_workspace:
@@ -218,39 +248,29 @@ jobs:
       - run:
           name: Test for memory leaks
           command: |
-              # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
-              python3 ./deps/readies/bin/getredis --force --valgrind
-              make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
-          # Allow RediSearch global destructors.
+            # Replace the default Redis server with one linked to libc malloc rather than jemalloc
+            python3 ./deps/readies/bin/getredis --force --valgrind
+            # Re-run the test suite, failing if definite memory leaks have been introduced
+            bash -l -c "make memcheck"
+          # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
 
   build_macos:
     macos:
       xcode: 12.4.0
-    environment:
-      LANG: en_US.UTF-8
-      LANGUAGE: en_US.UTF-8
-      LC_ALL: en_US.UTF-8
     steps:
-      - early_returns
-      - checkout
+      - early-returns
+      - checkout-all
       - setup-prerequisits
       - run:
           name: Build
           command: |
-            make
-            make package
+            bash -l -c "make all package"
       - run:
           name: Test
-          command: make test
-      - persist_to_workspace:
-          root: bin/artifacts
-          paths:
-            - 'snapshots/*.zip'
-            - 'snapshots/*.tgz'
-            - '*.zip'
-            - '*.tgz'
+          command: bash -l -c "make test"
+      - persist-artifacts
 
   platform_build:
     parameters:
@@ -264,7 +284,7 @@ jobs:
 
   deploy_branch:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -272,13 +292,13 @@ jobs:
           name: Deploy to S3
           command: |
             du -ah --apparent-size artifacts/snapshots/*
-            for f in artifacts/snapshots/*.zip artifacts/snapshots/*.tgz; do
+            for f in `ls artifacts/snapshots/*.zip artifacts/snapshots/*.tgz`; do
               aws s3 cp $f s3://redismodules/$PACKAGE_NAME/snapshots/ --acl public-read
             done
 
   deploy_release:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
       - attach_workspace:
           at: artifacts
@@ -286,13 +306,13 @@ jobs:
           name: Deploy to S3
           command: |
             du -ah --apparent-size artifacts/*
-            for f in artifacts/*.zip artifacts/*.tgz; do
+            for f in `ls artifacts/*.zip artifacts/*.tgz`; do
               aws s3 cp $f s3://redismodules/$PACKAGE_NAME/ --acl public-read
             done
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -302,7 +322,7 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - checkout
       - setup-automation
@@ -312,9 +332,9 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: 'redisfab/rmbuilder:6.2.4-x64-bionic'
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
-      - early_returns
+      - early-returns
       - checkout
       - setup-prerequisits
       - attach_workspace:
@@ -323,37 +343,36 @@ jobs:
 
   performance_ci_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
-      - early_returns
+      - early-returns
       - checkout
       - setup-prerequisits
       - attach_workspace:
           at: /workspace
       - run:
           name: Unzip module artifact
-          command: unzip /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip -d /workspace/
+          command: |
+            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip |grep -v rce` -d /workspace/
       - benchmark-automation
 
   nightly_performance_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.4-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-bionic
     steps:
-      - early_returns
-      - checkout
+      - early-returns
+      - checkout-all
       - setup-prerequisits
       - attach_workspace:
           at: /workspace
-      - load-cached-deps
-
       - run:
           name: Build artifact
-          command: make
-
+          command: bash -l -c make
       - benchmark-automation:
           github_actor: "ci.nightly"
           module_path: "/root/project/src/$PACKAGE_NAME.so"
 
+#----------------------------------------------------------------------------------------------------------------------------------
 
 on-any-branch: &on-any-branch
   filters:
@@ -382,6 +401,7 @@ on-integ-branch: &on-integ-branch
       only:
         - master
         - /^\d+\.\d+.*$/
+        - /^feature-.*$/
     tags:
       ignore: /.*/
 
@@ -391,6 +411,7 @@ not-on-integ-branch: &not-on-integ-branch
       ignore:
         - master
         - /^\d+\.\d+.*$/
+        - /^feature-.*$/
     tags:
       ignore: /.*/
 
@@ -407,6 +428,7 @@ on-integ-and-version-tags: &on-integ-and-version-tags
       only:
         - master
         - /^\d+\.\d+.*$/
+        - /^feature-.*$/
     tags:
       only: /^v[0-9].*/
 
@@ -414,23 +436,30 @@ context: &context
   context:
     - common
 
+#----------------------------------------------------------------------------------------------------------------------------------
+
 workflows:
   version: 2
   build_and_package:
     jobs:
       - build:
+          <<: *context
           <<: *not-on-integ-branch
+      - coverage:
+          <<: *context
+          <<: *on-any-branch
       - build_memcheck:
+          <<: *context
           <<: *on-any-branch
       - build_macos:
-          # <<: *on-any-branch
+          <<: *context
           <<: *on-integ-and-version-tags
       - platform_build:
           <<: *context
           <<: *on-integ-and-version-tags
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7]
+              platform: [bionic, xenial, centos7, centos8]
       - deploy_branch:
           <<: *context
           <<: *on-integ-branch
@@ -467,6 +496,5 @@ workflows:
             branches:
               only: master
     jobs:
-      - nightly_automation
       - nightly_performance_automation:
           <<: *context
