@@ -1170,14 +1170,29 @@ TEST_F(ArithmeticTest, CaseTest) {
 	AR_EXP_Free(arExp);
 	ASSERT_TRUE(SIValue_IsNull(result));
 
-	/* None of the alternatives evaluates to a none null value.
-	 * Default specified, expecting default. */
-	query = "RETURN CASE NULL WHEN NULL THEN 1 ELSE 2 END AS result";
-	expected = SI_LongVal(1);
+	/* Test null.
+	 * Match the null alternative. */
+	query = "RETURN CASE NULL WHEN NULL THEN NULL ELSE 'else' END AS result";
 	arExp = _exp_from_query(query);
 	result = AR_EXP_Evaluate(arExp, NULL);
 	AR_EXP_Free(arExp);
-	ASSERT_EQ(result.longval, expected.longval);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Match the null alternative. */
+	query = "RETURN CASE NULL WHEN 'NULL' THEN 'NULL' WHEN NULL THEN NULL ELSE 'else' END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Do not match any of the alternatives, return default. */
+	query = "RETURN CASE NULL WHEN 'when' THEN 'then' ELSE NULL END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
 }
 
 TEST_F(ArithmeticTest, AND) {
