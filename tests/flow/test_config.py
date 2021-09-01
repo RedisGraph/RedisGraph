@@ -144,7 +144,7 @@ class testConfig(FlowTestsBase):
             assert("Unknown subcommand for GRAPH.CONFIG" in str(e))
             pass
 
-    def test08_config_restore_timeout_to_default(self):
+    def test08_config_reset_to_defaults(self):
         # Revert memory limit to default
         response = redis_con.execute_command("GRAPH.CONFIG SET QUERY_MEM_CAPACITY 0")
         self.env.assertEqual(response, "OK")
@@ -158,6 +158,14 @@ class testConfig(FlowTestsBase):
         expected_response = ["TIMEOUT", 10]
         self.env.assertEqual(response, expected_response)
 
+        query = """UNWIND range(1,1000000) AS v RETURN COUNT(v)"""
+        # Ensure long-running query triggers a timeout
+        try:
+            result = redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("Query timed out", str(e))
+
         # Revert timeout to unlimited
         response = redis_con.execute_command("GRAPH.CONFIG SET TIMEOUT 0")
         self.env.assertEqual(response, "OK")
@@ -168,5 +176,5 @@ class testConfig(FlowTestsBase):
         self.env.assertEqual(response, expected_response)
 
         # Issue long-running query to validate the reconfiguration
-        result = redis_graph.query("UNWIND range(1,1000000) AS v RETURN COUNT(v)")
+        result = redis_graph.query(query)
         self.env.assertEqual(result.result_set[0][0], 1000000)

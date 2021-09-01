@@ -686,7 +686,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_VKEY_MAX_ENTITY_COUNT:
 			{
 				long long vkey_max_entity_count;
-				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
+				if(!_Config_ParseNonNegativeInteger(val, &vkey_max_entity_count)) return false;
 
 				Config_virtual_key_entity_count_set(vkey_max_entity_count);
 			}
