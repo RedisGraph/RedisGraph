@@ -238,18 +238,18 @@ void Cron_AbortTask(CronTaskHandle t) {
 	if(Heap_contains_item(cron->tasks, task)) {
 		// as long as we're holding the cron's mutex it is safe to access task
 
-		if(task->state != TASK_COMPLETED) {
+		CRON_TASK_STATE state = task->state;
+		if(state != TASK_COMPLETED && state != TASK_ABORT) {
 			// try marking task as aborted
 			bool abort = CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT);
 			if(!abort) {
 				// task is executing, wait for it to finish
-				// should happen often and shouldn't take long
-				while(task->state != TASK_COMPLETED);
+				// shouldn't happen often and shouldn't take long
+				while(state != TASK_COMPLETED) state = task->state;
 			}
 		}
 
-		CRON_TASK_STATE state = task->state;
-		UNUSED(state);
+		state = task->state;
 		ASSERT(state == TASK_COMPLETED || state == TASK_ABORT);
 	}
 
