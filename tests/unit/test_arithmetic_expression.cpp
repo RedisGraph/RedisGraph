@@ -1169,6 +1169,46 @@ TEST_F(ArithmeticTest, CaseTest) {
 	result = AR_EXP_Evaluate(arExp, NULL);
 	AR_EXP_Free(arExp);
 	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Match the null alternative. */
+	query = "RETURN CASE NULL WHEN NULL THEN NULL ELSE 'else' END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Match the null alternative. */
+	query = "RETURN CASE NULL WHEN 'value' THEN 'value' WHEN NULL THEN NULL ELSE 'else' END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Do not match any of the alternatives, return default. */
+	query = "RETURN CASE NULL WHEN 'when' THEN 'then' ELSE NULL END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test 'value' is not null.
+	 * Do not match any of the alternatives, return default. */
+	query = "RETURN CASE 'value' WHEN NULL THEN NULL ELSE true END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsTrue(result));
+
+	/* Test 'value' is not null.
+	 * Match the 'value' alternative. */
+	query = "RETURN CASE 'value' WHEN NULL THEN NULL WHEN 'value' THEN true ELSE false END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsTrue(result));
 }
 
 TEST_F(ArithmeticTest, AND) {
