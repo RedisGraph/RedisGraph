@@ -48,6 +48,7 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 		for(uint32_t i = 0; i < neighborsCount; i++) {
 			Edge e = ctx->neighbors[i];
 
+			ASSERT(ctx->edge_idx < Record_length(ctx->r));
 			// update the record with the current edge
 			Record_AddEdge(ctx->r, ctx->edge_idx, e);
 
@@ -102,7 +103,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, i
 	ctx->maxLen         =  maxLen + 1;
 	ctx->relationIDs    =  relationIDs;
 	ctx->relationCount  =  relationCount;
-	ctx->levels         =  array_new(LevelConnection*, 1);
+	ctx->levels         =  array_new(LevelConnection *, 1);
 	ctx->path           =  Path_New(1);
 	ctx->neighbors      =  array_new(Edge, 32);
 	ctx->dst            =  dst;
