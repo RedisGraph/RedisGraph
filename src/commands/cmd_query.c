@@ -182,13 +182,11 @@ static void _ExecuteQuery(void *args) {
 			result_set = ExecutionPlan_Execute(plan);
 		}
 
+		// abort timeout if set
+		if(gq_ctx->timeout != 0) Cron_AbortTask(gq_ctx->timeout);
+
 		// emit error if query timed out
-		if(ExecutionPlan_Drained(plan)) {
-			ErrorCtx_SetError("Query timed out");
-		} else {
-			// abort timeout if set
-			if(gq_ctx->timeout != 0) Cron_AbortTask(gq_ctx->timeout);
-		}
+		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
 		exec_ctx->plan = NULL;

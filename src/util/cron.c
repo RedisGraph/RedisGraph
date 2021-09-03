@@ -80,7 +80,7 @@ static void CRON_WakeUp(void) {
 
 // determines if task is due
 static bool CRON_TaskDue(const CRON_TASK *t) {
-	ASSERT(t);
+	ASSERT(t != NULL);
 
 	struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
@@ -94,14 +94,15 @@ static CRON_TASK *CRON_Peek() {
 	return task;
 }
 
-static CRON_TASK *CRON_RemoveTask(void) {
+static void CRON_RemoveTask(const CRON_TASK *t) {
+	ASSERT(t != NULL);
 	pthread_mutex_lock(&cron->mutex);
-	CRON_TASK *task = (CRON_TASK*)Heap_poll(cron->tasks);
+	Heap_remove_item(cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
-	return task;
 }
 
 static void CRON_InsertTask(CRON_TASK *t) {
+	ASSERT(t != NULL);
 	pthread_mutex_lock(&cron->mutex);
 	Heap_offer(&cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
@@ -114,6 +115,8 @@ static void CRON_PerformTask(CRON_TASK *t) {
 	t->cb(t->pdata);
 }
 
+// try to advance task state from current_state to next_state
+// operation will fails if task's state differs from current_state
 static bool CRON_TaskAdvanceState
 (
 	CRON_TASK *t,
@@ -128,7 +131,7 @@ static bool CRON_TaskAdvanceState
 
 	// excange task's state to 'next_state' if task's state = current_state
 	return __atomic_compare_exchange(&t->state, &current_state, &next_state,
-			false, 0, 0);
+			false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
 }
 
 static void CRON_FreeTask(CRON_TASK *t) {
@@ -138,7 +141,7 @@ static void CRON_FreeTask(CRON_TASK *t) {
 
 static void clear_tasks() {
 	CRON_TASK *task = NULL;
-	while((task = CRON_RemoveTask())) {
+	while((task = Heap_poll(cron->tasks))) {
 		CRON_FreeTask(task);
 	}
 }
@@ -164,7 +167,7 @@ static void *Cron_Run(void *arg) {
 				task->state = TASK_COMPLETED;
 			}
 
-			task = CRON_RemoveTask();
+			CRON_RemoveTask(task);
 			CRON_FreeTask(task);
 		}
 
@@ -245,7 +248,8 @@ void Cron_AbortTask(CronTaskHandle t) {
 			if(!abort) {
 				// task is executing, wait for it to finish
 				// shouldn't happen often and shouldn't take long
-				while(state != TASK_COMPLETED) state = task->state;
+				volatile CRON_TASK *task_pending = task;
+				while(task_pending->state != TASK_COMPLETED);
 			}
 		}
 
