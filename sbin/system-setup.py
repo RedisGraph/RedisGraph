@@ -21,7 +21,8 @@ class RedisGraphSetup(paella.Setup):
         self.pip_install("wheel virtualenv")
         self.pip_install("setuptools --upgrade")
 
-        self.install("git automake libtool autoconf astyle")
+        self.run("%s/bin/enable-utf8" % READIES)
+        self.install("git automake libtool autoconf")
 
     def debian_compat(self):
         self.install("locales")
@@ -30,6 +31,7 @@ class RedisGraphSetup(paella.Setup):
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
+        self.run("%s/bin/getepel" % READIES)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
         self.install_peg()
@@ -48,8 +50,8 @@ class RedisGraphSetup(paella.Setup):
         self.install("valgrind")
 
     def common_last(self):
+        self.install("astyle", _try=True) # fails for centos7
         self.run("%s/bin/getcmake" % READIES)
-        self.run("rm -rf /usr/local/lib/python3.6/dist-packages/redis_py_cluster*")  # circleci environment issue TODO better fix
         self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
 
         self.pip_install("-r tests/requirements.txt")
@@ -59,11 +61,11 @@ class RedisGraphSetup(paella.Setup):
             cd /tmp
             build_dir=$(mktemp -d)
             cd $build_dir
-            wget https://www.piumarta.com/software/peg/peg-0.1.18.tar.gz
-            tar xzf peg-0.1.18.tar.gz
+            wget -q -O peg.tar.gz https://github.com/gpakosz/peg/archive/0.1.18.tar.gz
+            tar xzf peg.tar.gz
             cd peg-0.1.18
             make
-            make install MANDIR=/tmp/pegman
+            make install MANDIR=.
             cd /tmp
             rm -rf $build_dir /tmp/pegman
             """)

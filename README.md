@@ -2,6 +2,7 @@
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
 [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/redislabs/redisgraph.svg)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
+[![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
 
@@ -19,13 +20,19 @@ Primary features:
   * Cypher queries translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
+To read the docs, visit [redisgraph.io](http://redisgraph.io).
 
 ## Quickstart
 
-1. [Docker](#docker)
-2. [Build](#building)
-3. [Start](#loading-redisgraph-into-redis)
-4. [Use from any client](#using-redisgraph)
+1. [Trying RedisGraph](#trying-redisgraph)
+2. [Docker](#docker)
+3. [Build](#building)
+4. [Start](#loading-redisgraph-into-redis)
+5. [Use from any client](#using-redisgraph)
+
+## Trying RedisGraph
+
+To try RedisGraph, either use the RedisGraph Docker image, or [create a free Redis Cloud Essentials account](https://redislabs.com/try-free/) to get a RedisGraph instance in the cloud.
 
 ## Docker
 
@@ -169,7 +176,7 @@ This code snippet shows how to use RedisGraph with raw Redis commands from Pytho
 import redis
 
 r = redis.StrictRedis()
-reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:33, gender:'male', status:'married')")
+reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:33, gender:'male', status:'married'})")
 ```
 
 ### Client libraries
