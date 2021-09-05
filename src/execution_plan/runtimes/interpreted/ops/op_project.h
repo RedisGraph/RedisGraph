@@ -14,6 +14,7 @@
 typedef struct {
 	RT_OpBase op;
 	const OpProject *op_desc;
+	AR_ExpNode **exps;              // Projected expressions (including order exps).
 	Record r;                       // Input Record being read from (stored to free if we encounter an error).
 	Record projection;              // Record projected by this operation (stored to free if we encounter an error).
 	uint *record_offsets;           // Record IDs corresponding to each projection (including order exps).

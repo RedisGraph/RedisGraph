@@ -13,6 +13,7 @@
 typedef struct {
 	RT_OpBase op;
 	const OpSkip *op_desc;
+	AR_ExpNode *skip_exp; // expression evaluated to 'skip'
 	unsigned int skip;    // number of records to skip
 	unsigned int skipped; // number of records already skipped
 } RT_OpSkip;

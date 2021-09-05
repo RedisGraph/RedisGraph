@@ -22,6 +22,7 @@ static void UnwindFree(RT_OpBase *opBase);
 RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, const OpUnwind *op_desc) {
 	RT_OpUnwind *op = rm_malloc(sizeof(RT_OpUnwind));
 	op->op_desc = op_desc;
+	op->exp = AR_EXP_Clone(op_desc->exp);
 	op->list = SI_NullVal();
 	op->currentRecord = NULL;
 	op->listIdx = INDEX_NOT_SET;
@@ -30,7 +31,7 @@ RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, const OpUnwind *op_desc)
 	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
 		UnwindInit, UnwindConsume, UnwindReset, UnwindFree, plan);
 
-	RT_OpBase_Aware((RT_OpBase *)op, op_desc->exp->resolved_name, &op->unwindRecIdx);
+	RT_OpBase_Aware((RT_OpBase *)op, op->exp->resolved_name, &op->unwindRecIdx);
 	
 	return (RT_OpBase *)op;
 }
@@ -39,7 +40,7 @@ RT_OpBase *RT_NewUnwindOp(const RT_ExecutionPlan *plan, const OpUnwind *op_desc)
  * if expression did not returned a list type value. */
 static void _initList(RT_OpUnwind *op) {
 	op->list = SI_NullVal(); // Null-set the list value to avoid memory errors if evaluation fails.
-	SIValue new_list = AR_EXP_Evaluate(op->op_desc->exp, op->currentRecord);
+	SIValue new_list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 	if(SI_TYPE(new_list) != T_ARRAY) {
 		Error_SITypeMismatch(new_list, T_ARRAY);
 		SIValue_Free(new_list);
@@ -124,5 +125,10 @@ static void UnwindFree(RT_OpBase *ctx) {
 	if(op->currentRecord) {
 		RT_OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = NULL;
+	}
+
+	if(op->exp) {
+		AR_EXP_Free(op->exp);
+		op->exp = NULL;
 	}
 }

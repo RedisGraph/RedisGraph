@@ -15,6 +15,7 @@
 typedef struct {
 	RT_OpBase op;
 	const OpSort *op_desc;
+	AR_ExpNode **exps;          // Projected expressons.
 	uint *record_offsets;       // All Record offsets containing values to sort by
 	heap_t *heap;               // Holds top n records
 	Record *buffer;             // Holds all records

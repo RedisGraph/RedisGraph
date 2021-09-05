@@ -111,6 +111,7 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 		}
 		optimizePlan(plan_desc);
 		RT_ExecutionPlan *plan = RT_NewExecutionPlan((const ExecutionPlan *)plan_desc);
+		optimize_RTPlan(plan);
 		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan,
 															exec_type);
 		ExecutionCtx *exec_ctx_from_cache = Cache_SetGetValue(cache,

@@ -4,9 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../ops/op.h"
-#include "../ops/op_sort.h"
-#include "../ops/op_skip.h"
+#include "../runtimes/interpreted/ops/op.h"
+#include "../runtimes/interpreted/ops/op_sort.h"
+#include "../runtimes/interpreted/ops/op_skip.h"
 
 /* applySkip will traverse the given execution plan looking for Skip operations.
  * Once one is found, all relevant child operations (e.g. Sort) will be
@@ -14,16 +14,16 @@
  * This is beneficial as a number of different optimizations can be applied
  * once a skip is known */
 
-static void notify_skip(OpBase *op, uint skip) {
-	OPType t = op->type;
+static void notify_skip(RT_OpBase *op, uint skip) {
+	OPType t = op->op_desc->type;
 
 	switch(t) {
 		case OPType_SKIP:
 			// update skip
-			skip = ((OpSkip *)op)->skip;
+			skip = ((RT_OpSkip *)op)->skip;
 			break;
 		case OPType_SORT:
-			((OpSort *)op)->skip = skip;
+			((RT_OpSort *)op)->skip = skip;
 			break;
 		default:
 			break;
@@ -34,7 +34,7 @@ static void notify_skip(OpBase *op, uint skip) {
 	}
 }
 
-void applySkip(ExecutionPlan *plan) {
+void applySkip(RT_ExecutionPlan *plan) {
 	notify_skip(plan->root, 0);
 }
 

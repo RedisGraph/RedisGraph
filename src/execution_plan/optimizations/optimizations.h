@@ -9,6 +9,7 @@
 #include "../execution_plan.h"
 #include "../../filter_tree/filter_tree.h"
 #include "../../arithmetic/algebraic_expression.h"
+#include "../runtimes/interpreted/runtime_execution_plan.h"
 
 /* Reorders exps such that exp[i] is the ith expression to evaluate. */
 void orderExpressions(
@@ -30,6 +31,6 @@ void reduceFilters(ExecutionPlan *plan);
 void reduceTraversal(ExecutionPlan *plan);
 void reduceDistinct(ExecutionPlan *plan);
 void reduceCount(ExecutionPlan *plan);
-void applyLimit(ExecutionPlan *plan);
-void applySkip(ExecutionPlan *plan);
 
+void applyLimit(RT_ExecutionPlan *plan);
+void applySkip(RT_ExecutionPlan *plan);

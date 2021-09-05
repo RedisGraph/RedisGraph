@@ -7,7 +7,8 @@
 #pragma once
 
 #include "../execution_plan.h"
+#include "../runtimes/interpreted/runtime_execution_plan.h"
 
 /* Try to optimize an execution plan segment. */
 void optimizePlan(ExecutionPlan *plan);
-
+void optimize_RTPlan(RT_ExecutionPlan *plan);

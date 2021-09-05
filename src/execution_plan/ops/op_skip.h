@@ -11,7 +11,6 @@
 
 typedef struct {
 	OpBase op;
-	unsigned int skip;    // number of records to skip
 	AR_ExpNode *skip_exp; // expression evaluated to 'skip'
 } OpSkip;
 

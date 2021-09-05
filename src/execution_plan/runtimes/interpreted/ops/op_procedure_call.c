@@ -69,13 +69,15 @@ static void _evaluate_proc_args(RT_OpProcCall *op) {
 	array_clear(op->args);
 
 	for(uint i = 0; i < op->op_desc->arg_count; i++) {
-		array_append(op->args, AR_EXP_Evaluate(op->op_desc->arg_exps[i], op->r));
+		array_append(op->args, AR_EXP_Evaluate(op->arg_exps[i], op->r));
 	}
 }
 
 RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_desc) {
 	RT_OpProcCall *op = rm_malloc(sizeof(RT_OpProcCall));
 	op->op_desc = op_desc;
+	array_clone_with_cb(op->arg_exps, op_desc->arg_exps, AR_EXP_Clone);
+	array_clone_with_cb(op->yield_exps, op_desc->yield_exps, AR_EXP_Clone);
 	op->r = NULL;
 	op->yield_map = NULL;
 	op->first_call = true;
@@ -85,7 +87,7 @@ RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_d
 	op->procedure = Proc_Get(op_desc->proc_name);
 	ASSERT(op->procedure != NULL);
 
-	uint yield_count = array_len(op_desc->yield_exps);
+	uint yield_count = array_len(op->yield_exps);
 	op->output = array_new(const char *, yield_count);
 
 	// Set operations
@@ -94,8 +96,8 @@ RT_OpBase *RT_NewProcCallOp(const RT_ExecutionPlan *plan, const OpProcCall *op_d
 
 	// Set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
-		const char *alias = op_desc->yield_exps[i]->resolved_name;
-		const char *yield = op_desc->yield_exps[i]->operand.variadic.entity_alias;
+		const char *alias = op->yield_exps[i]->resolved_name;
+		const char *yield = op->yield_exps[i]->operand.variadic.entity_alias;
 
 		array_append(op->output, yield);
 	}
@@ -191,5 +193,18 @@ static void ProcCallFree(RT_OpBase *ctx) {
 	if(op->output) {
 		array_free(op->output);
 		op->output = NULL;
+	}
+
+	if(op->arg_exps) {
+		for(uint i = 0; i < op->op_desc->arg_count; i++) AR_EXP_Free(op->arg_exps[i]);
+		array_free(op->arg_exps);
+		op->arg_exps = NULL;
+	}
+
+	if(op->yield_exps) {
+		uint yield_count = array_len(op->yield_exps);
+		for(uint i = 0; i < yield_count; i ++) AR_EXP_Free(op->yield_exps[i]);
+		array_free(op->yield_exps);
+		op->yield_exps = NULL;
 	}
 }

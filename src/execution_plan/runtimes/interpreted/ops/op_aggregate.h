@@ -15,6 +15,8 @@
 typedef struct {
 	RT_OpBase op;
 	const OpAggregate *op_desc;
+	AR_ExpNode **key_exps;              // array of expressions used to calculate the group key
+	AR_ExpNode **aggregate_exps;        // array of expressions that aggregate data for each key
 	uint *record_offsets;               // record IDs for key and aggregate exps
 	rax *groups;                        // map of all groups built by this operation
 	Group *group;                       // last accessed group

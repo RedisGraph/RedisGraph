@@ -14,6 +14,8 @@
 typedef struct {
 	RT_OpBase op;
 	const OpValueHashJoin *op_desc;
+	AR_ExpNode *lhs_exp;                // Left hand side expression to join on.
+	AR_ExpNode *rhs_exp;                // Right hand side expression to join on.
 	Record rhs_rec;                     // Right hand side record.
 	int64_t intersect_idx;              // Current intersection, < number_of_intersections
 	Record *cached_records;             // Cached left hand side records.

@@ -24,6 +24,8 @@ typedef struct {
 typedef struct {
 	RT_OpBase op;               // Base op.
 	const OpProcCall *op_desc;
+	AR_ExpNode **arg_exps;      // Expression representing arguments to procedure.
+    AR_ExpNode **yield_exps;    // Yield expressions.
     Record r;                   // Current record.
     SIValue *args;              // Computed arguments.
 	const char **output;        // Procedure output.

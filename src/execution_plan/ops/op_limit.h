@@ -11,7 +11,6 @@
 
 typedef struct {
 	OpBase op;
-	uint limit;             // Max number of records to consume.
 	AR_ExpNode *limit_exp;  // Expression evaluated to limit.
 } OpLimit;
 

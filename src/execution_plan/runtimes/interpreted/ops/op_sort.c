@@ -78,6 +78,7 @@ static inline Record _handoff(RT_OpSort *op) {
 RT_OpBase *RT_NewSortOp(const RT_ExecutionPlan *plan, const OpSort *op_desc) {
 	RT_OpSort *op = rm_malloc(sizeof(RT_OpSort));
 	op->op_desc = op_desc;
+	array_clone_with_cb(op->exps, op_desc->exps, AR_EXP_Clone);
 	op->heap = NULL;
 	op->skip = op_desc->skip;
 	op->limit = op_desc->limit;
@@ -87,11 +88,11 @@ RT_OpBase *RT_NewSortOp(const RT_ExecutionPlan *plan, const OpSort *op_desc) {
 	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL,
 		SortInit, SortConsume, SortReset, SortFree, plan);
 
-	uint comparison_count = array_len(op_desc->exps);
+	uint comparison_count = array_len(op->exps);
 	op->record_offsets = array_new(uint, comparison_count);
 	for(uint i = 0; i < comparison_count; i ++) {
 		uint record_idx;
-		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
@@ -208,5 +209,12 @@ static void SortFree(RT_OpBase *ctx) {
 	if(op->record_offsets) {
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;
+	}
+
+	if(op->exps) {
+		uint exps_count = array_len(op->exps);
+		for(uint i = 0; i < exps_count; i++) AR_EXP_Free(op->exps[i]);
+		array_free(op->exps);
+		op->exps = NULL;
 	}
 }

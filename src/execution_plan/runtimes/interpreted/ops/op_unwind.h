@@ -16,6 +16,7 @@
 typedef struct {
 	RT_OpBase op;
 	const OpUnwind *op_desc;
+	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
 	SIValue list;         // List which the unwind operation is performed on
 	uint listIdx;         // Current list index
 	uint unwindRecIdx;    // Update record at this index

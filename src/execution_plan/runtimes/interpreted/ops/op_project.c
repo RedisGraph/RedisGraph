@@ -18,6 +18,7 @@ static void ProjectFree(RT_OpBase *opBase);
 RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, const OpProject *op_desc) {
 	RT_OpProject *op = rm_malloc(sizeof(RT_OpProject));
 	op->op_desc = op_desc;
+	array_clone_with_cb(op->exps, op_desc->exps, AR_EXP_Clone);
 	op->singleResponse = false;
 	op->record_offsets = array_new(uint, op_desc->exp_count);
 	op->r = NULL;
@@ -31,7 +32,7 @@ RT_OpBase *RT_NewProjectOp(const RT_ExecutionPlan *plan, const OpProject *op_des
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
 		uint record_idx;
-		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
@@ -57,7 +58,7 @@ static Record ProjectConsume(RT_OpBase *opBase) {
 	op->projection = RT_OpBase_CreateRecord(opBase);
 
 	for(uint i = 0; i < op->op_desc->exp_count; i++) {
-		AR_ExpNode *exp = op->op_desc->exps[i];
+		AR_ExpNode *exp = op->exps[i];
 		SIValue v = AR_EXP_Evaluate(exp, op->r);
 		int rec_idx = op->record_offsets[i];
 		/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
@@ -97,5 +98,11 @@ static void ProjectFree(RT_OpBase *ctx) {
 	if(op->projection) {
 		RT_OpBase_DeleteRecord(op->projection);
 		op->projection = NULL;
+	}
+
+	if(op->exps) {
+		for(uint i = 0; i < op->op_desc->exp_count; i ++) AR_EXP_Free(op->exps[i]);
+		array_free(op->exps);
+		op->exps = NULL;
 	}
 }

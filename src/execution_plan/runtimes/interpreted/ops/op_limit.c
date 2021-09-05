@@ -12,10 +12,11 @@
 /* Forward declarations. */
 static Record LimitConsume(RT_OpBase *opBase);
 static RT_OpResult LimitReset(RT_OpBase *opBase);
+static void LimitFree(RT_OpBase *opBase);
 
 static void _eval_limit(RT_OpLimit *op) {
 	// Evaluate using the input expression, leaving the stored expression untouched.
-	SIValue l = AR_EXP_Evaluate(op->op_desc->limit_exp, NULL);
+	SIValue l = AR_EXP_Evaluate(op->limit_exp, NULL);
 
 	// Validate that the limit value is numeric and non-negative.
 	if(SI_TYPE(l) != T_INT64 || SI_GET_NUMERIC(l) < 0) {
@@ -31,6 +32,7 @@ RT_OpBase *RT_NewLimitOp(const RT_ExecutionPlan *plan, const OpLimit *op_desc) {
 	ASSERT(op_desc != NULL);
 
 	RT_OpLimit *op = rm_malloc(sizeof(RT_OpLimit));
+	op->limit_exp = AR_EXP_Clone(op_desc->limit_exp);
 	op->op_desc = op_desc;
 	op->consumed = 0;
 
@@ -38,7 +40,7 @@ RT_OpBase *RT_NewLimitOp(const RT_ExecutionPlan *plan, const OpLimit *op_desc) {
 
 	// set operations
 	RT_OpBase_Init((RT_OpBase *)op, (const OpBase *)&op_desc->op, NULL, NULL,
-		LimitConsume, LimitReset, NULL, plan);
+		LimitConsume, LimitReset, LimitFree, plan);
 
 	return (RT_OpBase *)op;
 }
@@ -59,4 +61,13 @@ static RT_OpResult LimitReset(RT_OpBase *ctx) {
 	RT_OpLimit *limit = (RT_OpLimit *)ctx;
 	limit->consumed = 0;
 	return OP_OK;
+}
+
+static void LimitFree(RT_OpBase *opBase) {
+	RT_OpLimit *op = (RT_OpLimit *)opBase;
+
+	if(op->limit_exp) {
+		AR_EXP_Free(op->limit_exp);
+		op->limit_exp = NULL;
+	}
 }

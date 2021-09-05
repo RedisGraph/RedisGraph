@@ -154,7 +154,7 @@ void _cache_records(RT_OpValueHashJoin *op) {
 	// As long as there's data coming in from left branch.
 	do {
 		// Evaluate joined expression.
-		SIValue v = AR_EXP_Evaluate(op->op_desc->lhs_exp, r);
+		SIValue v = AR_EXP_Evaluate(op->lhs_exp, r);
 
 		// If the joined value is NULL, it cannot be compared to other values - skip this record.
 		if(SIValue_IsNull(v)) continue;
@@ -178,15 +178,15 @@ static void ValueHashJoinToString(const RT_OpBase *ctx, sds *buff) {
 	/* Return early if we don't have arithmetic expressions to print.
 	 * This can occur when an upstream op like MERGE has
 	 * already freed this operation with PropagateFree. */
-	if(!(op->op_desc->lhs_exp && op->op_desc->rhs_exp)) return;
+	if(!(op->lhs_exp && op->rhs_exp)) return;
 
-	AR_EXP_ToString(op->op_desc->lhs_exp, &exp_str);
+	AR_EXP_ToString(op->lhs_exp, &exp_str);
 	*buff = sdscatprintf(*buff, "%s", exp_str);
 	rm_free(exp_str);
 
 	*buff = sdscatprintf(*buff, " = ");
 
-	AR_EXP_ToString(op->op_desc->rhs_exp, &exp_str);
+	AR_EXP_ToString(op->rhs_exp, &exp_str);
 	*buff = sdscatprintf(*buff, "%s", exp_str);
 	rm_free(exp_str);
 }
@@ -195,6 +195,8 @@ static void ValueHashJoinToString(const RT_OpBase *ctx, sds *buff) {
 RT_OpBase *RT_NewValueHashJoin(const RT_ExecutionPlan *plan, const OpValueHashJoin *op_desc) {
 	RT_OpValueHashJoin *op = rm_malloc(sizeof(RT_OpValueHashJoin));
 	op->op_desc = op_desc;
+	op->lhs_exp = AR_EXP_Clone(op_desc->lhs_exp);
+	op->rhs_exp = AR_EXP_Clone(op_desc->rhs_exp);
 	op->rhs_rec = NULL;
 	op->intersect_idx = -1;
 	op->cached_records = NULL;
@@ -263,7 +265,7 @@ static Record ValueHashJoinConsume(RT_OpBase *opBase) {
 		if(!op->rhs_rec) return NULL;
 
 		// Get value on which we're intersecting.
-		SIValue v = AR_EXP_Evaluate(op->op_desc->rhs_exp, op->rhs_rec);
+		SIValue v = AR_EXP_Evaluate(op->rhs_exp, op->rhs_rec);
 
 		bool found_intersection = _set_intersection_idx(op, v);
 		SIValue_Free(v);
@@ -325,5 +327,15 @@ static void ValueHashJoinFree(RT_OpBase *ctx) {
 		}
 		array_free(op->cached_records);
 		op->cached_records = NULL;
+	}
+
+	if(op->lhs_exp) {
+		AR_EXP_Free(op->lhs_exp);
+		op->lhs_exp = NULL;
+	}
+
+	if(op->rhs_exp) {
+		AR_EXP_Free(op->rhs_exp);
+		op->rhs_exp = NULL;
 	}
 }

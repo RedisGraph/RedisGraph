@@ -23,7 +23,7 @@ static inline AR_ExpNode **_build_aggregate_exps(RT_OpAggregate *op) {
 	AR_ExpNode **agg_exps = rm_malloc(op->op_desc->aggregate_count * sizeof(AR_ExpNode *));
 
 	for(uint i = 0; i < op->op_desc->aggregate_count; i++) {
-		agg_exps[i] = AR_EXP_Clone(op->op_desc->aggregate_exps[i]);
+		agg_exps[i] = AR_EXP_Clone(op->aggregate_exps[i]);
 	}
 
 	return agg_exps;
@@ -60,7 +60,7 @@ static Group *_CreateGroup(RT_OpAggregate *op, Record r) {
 
 static void _ComputeGroupKey(RT_OpAggregate *op, Record r) {
 	for(uint i = 0; i < op->op_desc->key_count; i++) {
-		AR_ExpNode *exp = op->op_desc->key_exps[i];
+		AR_ExpNode *exp = op->key_exps[i];
 		op->group_keys[i] = AR_EXP_Evaluate(exp, r);
 	}
 }
@@ -176,6 +176,8 @@ static Record _handoff(RT_OpAggregate *op) {
 RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, const OpAggregate *op_desc) {
 	RT_OpAggregate *op = rm_malloc(sizeof(RT_OpAggregate));
 	op->op_desc = op_desc;
+	array_clone_with_cb(op->key_exps, op_desc->key_exps, AR_EXP_Clone);
+	array_clone_with_cb(op->aggregate_exps, op_desc->aggregate_exps, AR_EXP_Clone);
 	op->group = NULL;
 	op->group_iter = NULL;
 	op->group_keys = NULL;
@@ -193,14 +195,14 @@ RT_OpBase *RT_NewAggregateOp(const RT_ExecutionPlan *plan, const OpAggregate *op
 	for(uint i = 0; i < op_desc->key_count; i ++) {
 		// Store the index of each key expression.
 		uint record_idx;
-		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->key_exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->key_exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
 	for(uint i = 0; i < op_desc->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
 		uint record_idx;
-		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op_desc->aggregate_exps[i]->resolved_name, &record_idx);
+		bool aware = RT_OpBase_Aware((RT_OpBase *)op, op->aggregate_exps[i]->resolved_name, &record_idx);
 		ASSERT(aware);
 		array_append(op->record_offsets, record_idx);
 	}
@@ -265,6 +267,18 @@ static void AggregateFree(RT_OpBase *opBase) {
 	if(op->record_offsets) {
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;
+	}
+
+	if(op->key_exps) {
+		for(uint i = 0; i < op->op_desc->key_count; i ++) AR_EXP_Free(op->key_exps[i]);
+		array_free(op->key_exps);
+		op->key_exps = NULL;
+	}
+
+	if(op->aggregate_exps) {
+		for(uint i = 0; i < op->op_desc->aggregate_count; i ++) AR_EXP_Free(op->aggregate_exps[i]);
+		array_free(op->aggregate_exps);
+		op->aggregate_exps = NULL;
 	}
 
 	op->group = NULL;
