@@ -17,6 +17,7 @@
 #include "../../../ast/ast_build_filter_tree.h"
 #include "../../execution_plan_build/execution_plan_modify.h"
 #include "../../execution_plan_build/execution_plan_construct.h"
+#include "../../../util/rax_extensions.h"
 
 #include <setjmp.h>
 
@@ -40,7 +41,7 @@ static RT_OpBase *_convert(const RT_ExecutionPlan *plan, const OpBase *op_desc) 
 	if(plan->plan_desc != op_desc->plan) {
 		RT_ExecutionPlan *new_plan = RT_ExecutionPlan_NewEmptyExecutionPlan();
 		new_plan->plan_desc = op_desc->plan;
-		new_plan->record_map = op_desc->plan->record_map;
+		new_plan->record_map = raxClone(op_desc->plan->record_map);
 		plan = new_plan;
 	}
 	result = RT_OpBase_New(plan, op_desc);
@@ -57,7 +58,7 @@ RT_ExecutionPlan *RT_NewExecutionPlan(const ExecutionPlan *plan_desc) {
 	RT_ExecutionPlan *plan = rm_malloc(sizeof(RT_ExecutionPlan));
 	plan->prepared = false;
 	plan->plan_desc = plan_desc;
-	plan->record_map = plan_desc->record_map;
+	plan->record_map = raxClone(plan_desc->record_map);
 	plan->root = _convert(plan, plan_desc->root);
 	plan->record_pool = NULL;
 	return plan;

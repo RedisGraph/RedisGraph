@@ -20,12 +20,13 @@ static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	return 0;
 }
 
-static ExecutionCtx *_ExecutionCtx_New(AST *ast, RT_ExecutionPlan *plan,
+static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan_desc,
 									   ExecutionType exec_type) {
 	ExecutionCtx *exec_ctx = rm_malloc(sizeof(ExecutionCtx));
 
 	exec_ctx->ast       = ast;
-	exec_ctx->plan      = plan;
+	exec_ctx->plan_desc = plan_desc;
+	exec_ctx->plan      = NULL;
 	exec_ctx->cached    = false;
 	exec_ctx->exec_type = exec_type;
 
@@ -39,7 +40,8 @@ ExecutionCtx *ExecutionCtx_Clone(ExecutionCtx *orig) {
 	// set the AST copy in thread local storage
 	QueryCtx_SetAST(execution_ctx->ast);
 
-	execution_ctx->plan      = RT_ExecutionPlan_Clone(orig->plan);
+	execution_ctx->plan_desc = orig->plan_desc;
+	execution_ctx->plan      = NULL;
 	execution_ctx->cached    = orig->cached;
 	execution_ctx->exec_type = orig->exec_type;
 
@@ -85,6 +87,8 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 		// Set parameters parse result in the execution ast.
 		AST_SetParamsParseResult(ret->ast, params_parse_result);
 		ret->cached = true;
+		ret->plan = RT_NewExecutionPlan(ret->plan_desc);
+		optimize_RTPlan(ret->plan);
 		return ret;
 	}
 
@@ -110,12 +114,12 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 			return NULL;
 		}
 		optimizePlan(plan_desc);
-		RT_ExecutionPlan *plan = RT_NewExecutionPlan((const ExecutionPlan *)plan_desc);
-		optimize_RTPlan(plan);
-		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan,
+		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan_desc,
 															exec_type);
 		ExecutionCtx *exec_ctx_from_cache = Cache_SetGetValue(cache,
 															  query_string, exec_ctx_to_cache);
+		exec_ctx_from_cache->plan = RT_NewExecutionPlan(exec_ctx_from_cache->plan_desc);
+		optimize_RTPlan(exec_ctx_from_cache->plan);
 		
 		return exec_ctx_from_cache;
 	} else {

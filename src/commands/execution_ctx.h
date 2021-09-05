@@ -24,6 +24,7 @@ typedef enum {
 typedef struct {
 	AST *ast;                   // AST
 	bool cached;                // cache hit/miss
+	ExecutionPlan *plan_desc;   // execution plan
 	RT_ExecutionPlan *plan;     // execution plan
 	ExecutionType exec_type;    // execution type: query, index create/delete
 } ExecutionCtx;
