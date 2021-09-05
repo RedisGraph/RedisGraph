@@ -12,11 +12,19 @@
 // Data structures
 //------------------------------------------------------------------------------
 
+typedef enum {
+	TASK_PENDING   = 0,  // task is waiting for executing
+	TASK_EXECUTING = 1,  // task is being executed
+	TASK_COMPLETED = 2,  // task run to completion
+	TASK_ABORT     = 3   // task is aborted
+} CRON_TASK_STATE;
+
 // CRON task
 typedef struct {
 	struct timespec due;    // absolute time for when task should run
 	CronTaskCB cb;          // callback to call when task is due
 	void *pdata;            // [optional] private data passed to callback
+	CRON_TASK_STATE state;  // state in which task is at
 } CRON_TASK;
 
 // CRON object
@@ -72,7 +80,7 @@ static void CRON_WakeUp(void) {
 
 // determines if task is due
 static bool CRON_TaskDue(const CRON_TASK *t) {
-	ASSERT(t);
+	ASSERT(t != NULL);
 
 	struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
@@ -86,14 +94,15 @@ static CRON_TASK *CRON_Peek() {
 	return task;
 }
 
-static CRON_TASK *CRON_RemoveTask(void) {
+static void CRON_RemoveTask(const CRON_TASK *t) {
+	ASSERT(t != NULL);
 	pthread_mutex_lock(&cron->mutex);
-	CRON_TASK *task = (CRON_TASK*)Heap_poll(cron->tasks);
+	Heap_remove_item(cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
-	return task;
 }
 
 static void CRON_InsertTask(CRON_TASK *t) {
+	ASSERT(t != NULL);
 	pthread_mutex_lock(&cron->mutex);
 	Heap_offer(&cron->tasks, t);
 	pthread_mutex_unlock(&cron->mutex);
@@ -106,6 +115,25 @@ static void CRON_PerformTask(CRON_TASK *t) {
 	t->cb(t->pdata);
 }
 
+// try to advance task state from current_state to next_state
+// operation will fails if task's state differs from current_state
+static bool CRON_TaskAdvanceState
+(
+	CRON_TASK *t,
+	CRON_TASK_STATE current_state,
+	CRON_TASK_STATE next_state
+) {
+	// valid arguments:
+	// 1. next state follows current state
+	// 2. current state is pending and next state is abort
+	ASSERT((current_state + 1 == next_state) ||
+		   (current_state == TASK_PENDING && next_state == TASK_ABORT));
+
+	// excange task's state to 'next_state' if task's state = current_state
+	return __atomic_compare_exchange(&t->state, &current_state, &next_state,
+			false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+}
+
 static void CRON_FreeTask(CRON_TASK *t) {
 	ASSERT(t);
 	rm_free(t);
@@ -113,7 +141,7 @@ static void CRON_FreeTask(CRON_TASK *t) {
 
 static void clear_tasks() {
 	CRON_TASK *task = NULL;
-	while((task = CRON_RemoveTask())) {
+	while((task = Heap_poll(cron->tasks))) {
 		CRON_FreeTask(task);
 	}
 }
@@ -127,11 +155,23 @@ static void *Cron_Run(void *arg) {
 		// execute due tasks
 		CRON_TASK *task = NULL;
 		while((task = CRON_Peek()) && CRON_TaskDue(task)) {
-			task = CRON_RemoveTask();
-			CRON_PerformTask(task);
+			CRON_TASK_STATE state = task->state;
+			// task state should be either pending or aborted
+			ASSERT(state == TASK_ABORT || state == TASK_PENDING);
+
+			// advance from pending to executing
+			if(CRON_TaskAdvanceState(task, TASK_PENDING, TASK_EXECUTING)) {
+				CRON_PerformTask(task);
+				// set state to completed
+				// frees any threads waiting on task to complete
+				task->state = TASK_COMPLETED;
+			}
+
+			CRON_RemoveTask(task);
 			CRON_FreeTask(task);
 		}
 
+		// sleep
 		struct timespec timeout = (task) ? task->due : due_in_ms(1000);
 		pthread_mutex_lock(&cron->condv_mutex);
 		pthread_cond_timedwait(&cron->condv, &cron->condv_mutex, &timeout);
@@ -177,15 +217,46 @@ void Cron_Stop(void) {
 	cron = NULL;
 }
 
-void Cron_AddTask(uint when, CronTaskCB cb, void *pdata) {
+CronTaskHandle Cron_AddTask(uint when, CronTaskCB cb, void *pdata) {
 	ASSERT(cron != NULL);
-	ASSERT(cb != NULL);
+	ASSERT(cb   != NULL);
 
 	CRON_TASK *task = rm_malloc(sizeof(CRON_TASK));
 	task->cb     =  cb;
 	task->pdata  =  pdata;
 	task->due    =  due_in_ms(when);
+	task->state  =  TASK_PENDING;
 
 	CRON_InsertTask(task);
+
+	return (uintptr_t)task;
+}
+
+void Cron_AbortTask(CronTaskHandle t) {
+	ASSERT(cron != NULL);
+
+	CRON_TASK *task = (CRON_TASK *)t;
+
+	pthread_mutex_lock(&cron->mutex);
+	if(Heap_contains_item(cron->tasks, task)) {
+		// as long as we're holding the cron's mutex it is safe to access task
+
+		CRON_TASK_STATE state = task->state;
+		if(state != TASK_COMPLETED && state != TASK_ABORT) {
+			// try marking task as aborted
+			bool abort = CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT);
+			if(!abort) {
+				// task is executing, wait for it to finish
+				// shouldn't happen often and shouldn't take long
+				volatile CRON_TASK *task_pending = task;
+				while(task_pending->state != TASK_COMPLETED);
+			}
+		}
+
+		state = task->state;
+		ASSERT(state == TASK_COMPLETED || state == TASK_ABORT);
+	}
+
+	pthread_mutex_unlock(&cron->mutex);
 }
 

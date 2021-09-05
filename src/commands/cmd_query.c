@@ -26,6 +26,7 @@ typedef struct {
 	ExecutionCtx *exec_ctx;   // execution context
 	CommandCtx *command_ctx;  // command context
 	bool readonly_query;      // read only query
+	CronTaskHandle timeout;   // timeout cron task
 } GraphQueryCtx;
 
 static GraphQueryCtx *GraphQueryCtx_New
@@ -34,7 +35,8 @@ static GraphQueryCtx *GraphQueryCtx_New
 	RedisModuleCtx *rm_ctx,
 	ExecutionCtx *exec_ctx,
 	CommandCtx *command_ctx,
-	bool readonly_query
+	bool readonly_query,
+	CronTaskHandle timeout
 ) {
 	GraphQueryCtx *ctx = rm_malloc(sizeof(GraphQueryCtx));
 
@@ -44,6 +46,7 @@ static GraphQueryCtx *GraphQueryCtx_New
 	ctx->query_ctx       =  QueryCtx_GetQueryCtx();
 	ctx->command_ctx     =  command_ctx;
 	ctx->readonly_query  =  readonly_query;
+	ctx->timeout         =  timeout;
 
 	return ctx;
 }
@@ -89,25 +92,15 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 
 // timeout handler
 void QueryTimedOut(void *pdata) {
-	ASSERT(pdata);
+	ASSERT(pdata != NULL);
 	ExecutionPlan *plan = (ExecutionPlan *)pdata;
 	ExecutionPlan_Drain(plan);
-
-	/* Timer may have triggered after execution-plan ran to completion
-	 * in which case the original query thread had called ExecutionPlan_Free
-	 * decreasing the plan's ref count, but did not free the execution-plan
-	 * it is our responsibility to call ExecutionPlan_Free
-	 *
-	 * In case execution-plan timedout we'll call ExecutionPlan_Free
-	 * to drop plan's ref count. */
-	ExecutionPlan_Free(plan);
 }
 
 // set timeout for query execution
-void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
+CronTaskHandle Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 	// increase execution plan ref count
-	ExecutionPlan_IncreaseRefCount(plan);
-	Cron_AddTask(timeout, QueryTimedOut, plan);
+	return Cron_AddTask(timeout, QueryTimedOut, plan);
 }
 
 inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
@@ -169,7 +162,10 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
 
-		// Emit error if query timed out.
+		// abort timeout if set
+		if(gq_ctx->timeout != 0) Cron_AbortTask(gq_ctx->timeout);
+
+		// emit error if query timed out
 		if(ExecutionPlan_Drained(plan)) ErrorCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
@@ -249,15 +245,20 @@ void Graph_Query(void *args) {
 		goto cleanup;
 	}
 
+	CronTaskHandle timeout_task = 0;
+
 	// set the query timeout if one was specified
 	if(command_ctx->timeout != 0) {
 		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
-		if(readonly) Query_SetTimeOut(command_ctx->timeout, exec_ctx->plan);
+		if(readonly) {
+			timeout_task = Query_SetTimeOut(command_ctx->timeout,
+					exec_ctx->plan);
+		}
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
-											  readonly);
+											  readonly, timeout_task);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
