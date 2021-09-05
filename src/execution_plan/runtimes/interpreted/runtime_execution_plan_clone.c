@@ -19,9 +19,6 @@ static RT_ExecutionPlan *_ClonePlanInternals(const RT_ExecutionPlan *template) {
 		QueryGraph_ResolveUnknownRelIDs(plan_desc->query_graph);
 	}
 
-	// Temporarily set the thread-local AST to be the one referenced by this ExecutionPlan segment.
-	QueryCtx_SetAST(plan_desc->ast_segment);
-
 	return clone;
 }
 
@@ -36,6 +33,9 @@ static RT_OpBase *_CloneOpTree(RT_OpBase *template_parent, RT_OpBase *template_c
 		// This op was built as part of the same segment as its parent, don't change ExecutionPlans.
 		plan_segment = clone_parent->plan;
 	}
+
+	// Temporarily set the thread-local AST to be the one referenced by this ExecutionPlan segment.
+	QueryCtx_SetAST(plan_segment->plan_desc->ast_segment);
 
 	// Clone the current operation.
 	RT_OpBase *clone_current = RT_OpBase_Clone(plan_segment, template_current);

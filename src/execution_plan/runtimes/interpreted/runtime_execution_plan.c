@@ -177,20 +177,6 @@ void RT_ExecutionPlan_Drain(RT_ExecutionPlan *plan) {
 }
 
 //------------------------------------------------------------------------------
-// Execution plan ref count
-//------------------------------------------------------------------------------
-
-void RT_ExecutionPlan_IncreaseRefCount(RT_ExecutionPlan *plan) {
-	ASSERT(plan);
-	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-int RT_ExecutionPlan_DecRefCount(RT_ExecutionPlan *plan) {
-	ASSERT(plan);
-	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-//------------------------------------------------------------------------------
 // Execution plan profiling
 //------------------------------------------------------------------------------
 
@@ -267,7 +253,6 @@ static RT_ExecutionPlan *_ExecutionPlan_FreeOpTree(RT_OpBase *op) {
 
 void RT_ExecutionPlan_Free(RT_ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	if(RT_ExecutionPlan_DecRefCount(plan) >= 0) return;
 
 	// Free all ops and ExecutionPlan segments.
 	_ExecutionPlan_FreeOpTree(plan->root);

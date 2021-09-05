@@ -1,4 +1,5 @@
 from RLTest import Env
+from redis import ResponseError
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -110,3 +111,11 @@ class testEntityUpdate(FlowTestsBase):
         result = graph.query("CYPHER props={v1: true} MATCH (n) SET n += $props RETURN n")
         expected_result = [[node]]
         self.env.assertEqual(result.result_set, expected_result)
+
+    # Fail update an entity property when left hand side is not alias
+    def test12_fail_update_property_of_non_alias_enetity(self):
+        try:
+            graph.query("MATCH P=() SET nodes(P).prop = 1 RETURN nodes(P)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))

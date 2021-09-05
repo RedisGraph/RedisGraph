@@ -145,7 +145,6 @@ static bool _find_maximal_row_in_Ah_smaller_or_equal_to_rowIdx
 	} else {
 		// not found
 		if(Ah[left] < i) {
-			GxB_print(A, GxB_COMPLETE_VERBOSE);
 			// i not found, look for the maximal value which is smaller than i
 			// this can be located in Ah[left] or Ah[left-1]
 			*result = left ;

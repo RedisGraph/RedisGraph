@@ -18,7 +18,6 @@ typedef struct RT_ExecutionPlan {
 	rax *record_map;                    // Mapping between identifiers and record indices.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
-	int ref_count;                      // Number of active references.
 	const ExecutionPlan *plan_desc;     // Plan description
 } RT_ExecutionPlan;
 
@@ -61,9 +60,6 @@ void RT_ExecutionPlan_Drain(RT_ExecutionPlan *plan);
 
 // Profile executes plan
 ResultSet *RT_ExecutionPlan_Profile(RT_ExecutionPlan *plan);
-
-// Increase execution plan reference count
-void RT_ExecutionPlan_IncreaseRefCount(RT_ExecutionPlan *plan);
 
 // Prints execution plan
 void RT_ExecutionPlan_Print(const RT_ExecutionPlan *plan, RedisModuleCtx *ctx);
