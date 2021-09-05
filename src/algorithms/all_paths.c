@@ -109,6 +109,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, i
 
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 
+	// in case we have filter tree validate that we can add edge to record 
 	ASSERT(!ctx->ft || ctx->edge_idx < Record_length(ctx->r));
 	return ctx;
 }
