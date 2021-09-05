@@ -4,12 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../ops/ops.h"
-#include "../ops/ops.h"
+#include "../runtimes/interpreted/ops/ops.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../arithmetic/aggregate_funcs/agg_funcs.h"
-#include "../execution_plan_build/execution_plan_modify.h"
+#include "../runtimes/interpreted/execution_plan_build/runtime_execution_plan_modify.h"
 
 /* The reduceCount optimization will look for execution plan
  * performing solely node/edge counting: total number of nodes/edges
@@ -17,21 +16,21 @@
  * In which case we can avoid performing both SCAN* and AGGREGATE
  * operations by simply returning a precomputed count */
 
-static int _identifyResultAndAggregateOps(OpBase *root, RT_OpResult **opResult,
-										  OpAggregate **opAggregate) {
-	OpBase *op = root;
+static int _identifyResultAndAggregateOps(RT_OpBase *root, RT_OpResult **opResult,
+										  RT_OpAggregate **opAggregate) {
+	RT_OpBase *op = root;
 	// Op Results.
-	if(op->type != OPType_RESULTS || op->childCount != 1) return 0;
+	if(op->op_desc->type != OPType_RESULTS || op->childCount != 1) return 0;
 
 	*opResult = (RT_OpResult *)op;
 	op = op->children[0];
 
 	// Op Aggregate.
-	if(op->type != OPType_AGGREGATE || op->childCount != 1) return 0;
+	if(op->op_desc->type != OPType_AGGREGATE || op->childCount != 1) return 0;
 
 	// Expecting a single aggregation, without ordering.
-	*opAggregate = (OpAggregate *)op;
-	if((*opAggregate)->aggregate_count != 1 || (*opAggregate)->key_count != 0) return 0;
+	*opAggregate = (RT_OpAggregate *)op;
+	if((*opAggregate)->op_desc->aggregate_count != 1 || (*opAggregate)->op_desc->key_count != 0) return 0;
 
 	AR_ExpNode *exp = (*opAggregate)->aggregate_exps[0];
 
@@ -50,8 +49,8 @@ static int _identifyResultAndAggregateOps(OpBase *root, RT_OpResult **opResult,
 }
 
 /* Checks if execution plan solely performs node count */
-static int _identifyNodeCountPattern(OpBase *root, RT_OpResult **opResult, OpAggregate **opAggregate,
-									 OpBase **opScan, const char **label) {
+static int _identifyNodeCountPattern(RT_OpBase *root, RT_OpResult **opResult, RT_OpAggregate **opAggregate,
+									 RT_OpBase **opScan, const char **label) {
 	// Reset.
 	*label = NULL;
 	*opScan = NULL;
@@ -59,31 +58,31 @@ static int _identifyNodeCountPattern(OpBase *root, RT_OpResult **opResult, OpAgg
 	*opAggregate = NULL;
 
 	if(!_identifyResultAndAggregateOps(root, opResult, opAggregate)) return 0;
-	OpBase *op = ((OpBase *)*opAggregate)->children[0];
+	RT_OpBase *op = ((RT_OpBase *)*opAggregate)->children[0];
 
 	// Scan, either a full node or label scan.
-	if((op->type != OPType_ALL_NODE_SCAN &&
-		op->type != OPType_NODE_BY_LABEL_SCAN) ||
-	   op->childCount != 0) {
+	if((op->op_desc->type != OPType_ALL_NODE_SCAN &&
+		op->op_desc->type != OPType_NODE_BY_LABEL_SCAN) ||
+	    op->childCount != 0) {
 		return 0;
 	}
 
 	*opScan = op;
-	if(op->type == OPType_NODE_BY_LABEL_SCAN) {
-		NodeByLabelScan *labelScan = (NodeByLabelScan *)op;
-		*label = labelScan->n.label;
+	if(op->op_desc->type == OPType_NODE_BY_LABEL_SCAN) {
+		RT_NodeByLabelScan *labelScan = (RT_NodeByLabelScan *)op;
+		*label = labelScan->op_desc->n.label;
 	}
 
 	return 1;
 }
 
-bool _reduceNodeCount(ExecutionPlan *plan) {
+bool _reduceNodeCount(RT_ExecutionPlan *plan) {
 	/* We'll only modify execution plan if it is structured as follows:
 	 * "Scan -> Aggregate -> Results" */
 	const char *label;
-	OpBase *opScan;
+	RT_OpBase *opScan;
 	RT_OpResult *opResult;
-	OpAggregate *opAggregate;
+	RT_OpAggregate *opAggregate;
 
 	/* See if execution-plan matches the pattern:
 	 * "Scan -> Aggregate -> Results".
@@ -111,22 +110,23 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
+	OpProject *opProject = (OpProject *)NewProjectOp(opAggregate->op_desc->op.plan, exps);
+	RT_OpBase *rt_opProject = RT_NewProjectOp(opAggregate->op.plan, opProject);
 
 	// New execution plan: "Project -> Results"
-	ExecutionPlan_RemoveOp(plan, opScan);
-	OpBase_Free(opScan);
+	RT_ExecutionPlan_RemoveOp(plan, opScan);
+	RT_OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
-	OpBase_Free((OpBase *)opAggregate);
+	RT_ExecutionPlan_RemoveOp(plan, (RT_OpBase *)opAggregate);
+	RT_OpBase_Free((RT_OpBase *)opAggregate);
 
-	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
+	RT_ExecutionPlan_AddOp((RT_OpBase *)opResult, rt_opProject);
 	return true;
 }
 
 /* Checks if execution plan solely performs edge count */
-static bool _identifyEdgeCountPattern(OpBase *root, RT_OpResult **opResult,
-		OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
+static bool _identifyEdgeCountPattern(RT_OpBase *root, RT_OpResult **opResult,
+		RT_OpAggregate **opAggregate, RT_OpBase **opTraverse, RT_OpBase **opScan) {
 
 	// reset
 	*opScan = NULL;
@@ -138,9 +138,9 @@ static bool _identifyEdgeCountPattern(OpBase *root, RT_OpResult **opResult,
 		return false;
 	}
 
-	OpBase *op = ((OpBase *)*opAggregate)->children[0];
+	RT_OpBase *op = ((RT_OpBase *)*opAggregate)->children[0];
 
-	if(op->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) {
+	if(op->op_desc->type != OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) {
 		return false;
 	}
 
@@ -149,19 +149,19 @@ static bool _identifyEdgeCountPattern(OpBase *root, RT_OpResult **opResult,
 
 	// only a full node scan can be converted, as a labeled source acts as a
 	// filter that may invalidate some of the edges
-	if(op->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return false;
+	if(op->op_desc->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return false;
 	*opScan = op;
 
 	return true;
 }
 
-void _reduceEdgeCount(ExecutionPlan *plan) {
+void _reduceEdgeCount(RT_ExecutionPlan *plan) {
 	// we'll only modify execution plan if it is structured as follows:
 	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
-	OpBase *opScan;
-	OpBase *opTraverse;
+	RT_OpBase *opScan;
+	RT_OpBase *opTraverse;
 	RT_OpResult *opResult;
-	OpAggregate *opAggregate;
+	RT_OpAggregate *opAggregate;
 
 	// see if execution-plan matches the pattern:
 	// "Full Scan -> Conditional Traverse -> Aggregate -> Results"
@@ -175,18 +175,22 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	SIValue edgeCount = SI_LongVal(0);
 
 	// if type is specified, count only labeled entities
-	OpCondTraverse *condTraverse = (OpCondTraverse *)opTraverse;
+	RT_OpCondTraverse *condTraverse = (RT_OpCondTraverse *)opTraverse;
 
 	const char *edge = AlgebraicExpression_Edge(condTraverse->ae);
 	// the traversal op doesn't contain information about the traversed edge,
 	// cannot apply optimization
 	if(!edge) return;
 
-	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->plan_desc->query_graph, edge);
 	
 	uint relationCount = array_len(e->reltypeIDs);
 
 	uint64_t edges = 0;
+	if(relationCount == 0) {
+		// should be the only relationship type mentioned, -[]->
+		edges = Graph_EdgeCount(g);
+	}
 	for(uint i = 0; i < relationCount; i++) {
 		int relType = e->reltypeIDs[i];
 		switch(relType) {
@@ -210,22 +214,23 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
+	OpProject *opProject = (OpProject *)NewProjectOp(opAggregate->op_desc->op.plan, exps);
+	RT_OpBase *rt_opProject = RT_NewProjectOp(opAggregate->op.plan, opProject);
 
 	// new execution plan: "Project -> Results"
-	ExecutionPlan_RemoveOp(plan, opScan);
-	OpBase_Free(opScan);
+	RT_ExecutionPlan_RemoveOp(plan, opScan);
+	RT_OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
-	OpBase_Free(opTraverse);
+	RT_ExecutionPlan_RemoveOp(plan, (RT_OpBase *)opTraverse);
+	RT_OpBase_Free(opTraverse);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
-	OpBase_Free((OpBase *)opAggregate);
+	RT_ExecutionPlan_RemoveOp(plan, (RT_OpBase *)opAggregate);
+	RT_OpBase_Free((RT_OpBase *)opAggregate);
 
-	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
+	RT_ExecutionPlan_AddOp((RT_OpBase *)opResult, rt_opProject);
 }
 
-void reduceCount(ExecutionPlan *plan) {
+void reduceCount(RT_ExecutionPlan *plan) {
 	// start by trying to identify node count pattern
 	// if unsuccessful try edge count pattern
 	if(!_reduceNodeCount(plan)) _reduceEdgeCount(plan);

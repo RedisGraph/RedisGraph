@@ -43,12 +43,12 @@ void optimizePlan(ExecutionPlan *plan) {
 
 	// Try to reduce distinct if it follows aggregation.
 	reduceDistinct(plan);
-
-	// Try to reduce execution plan incase it perform node or edge counting.
-	reduceCount(plan);
 }
 
 void optimize_RTPlan(RT_ExecutionPlan *plan) {
+	// Try to reduce execution plan incase it perform node or edge counting.
+	reduceCount(plan);
+	
 	// Let operations know about specified limit(s)
 	applyLimit(plan);
 

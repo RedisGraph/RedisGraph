@@ -12,7 +12,7 @@
 #include "../../../util/arr.h"
 #include "../../../query_ctx.h"
 #include "../../../util/rmalloc.h"
-#include "runtime_execution_plan_modify.h"
+#include "execution_plan_build/runtime_execution_plan_modify.h"
 #include "./../../optimizations/optimizer.h"
 #include "../../../ast/ast_build_filter_tree.h"
 #include "../../execution_plan_build/execution_plan_modify.h"
@@ -92,28 +92,6 @@ Record RT_ExecutionPlan_BorrowRecord(RT_ExecutionPlan *plan) {
 void RT_ExecutionPlan_ReturnRecord(RT_ExecutionPlan *plan, Record r) {
 	ASSERT(plan && r);
 	ObjectPool_DeleteItem(plan->record_pool, r);
-}
-
-RT_OpBase *RT_ExecutionPlan_LocateOpMatchingType(RT_OpBase *root, const OPType *types, uint type_count) {
-	for(int i = 0; i < type_count; i++) {
-		// Return the current op if it matches any of the types we're searching for.
-		if(root->op_desc->type == types[i]) return root;
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		// Recursively visit children.
-		RT_OpBase *op = RT_ExecutionPlan_LocateOpMatchingType(root->children[i], types, type_count);
-		if(op) return op;
-	}
-
-	return NULL;
-}
-
-RT_OpBase *RT_ExecutionPlan_LocateOp(RT_OpBase *root, OPType type) {
-	if(!root) return NULL;
-
-	const OPType type_arr[1] = {type};
-	return RT_ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
 //------------------------------------------------------------------------------

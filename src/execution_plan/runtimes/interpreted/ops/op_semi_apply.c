@@ -5,6 +5,7 @@
  */
 
 #include "op_semi_apply.h"
+#include "../execution_plan_build/runtime_execution_plan_modify.h"
 
 // Forward declarations.
 static RT_OpResult SemiApplyInit(RT_OpBase *opBase);

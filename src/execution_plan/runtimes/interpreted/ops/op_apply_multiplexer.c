@@ -5,6 +5,7 @@
  */
 
 #include "op_apply_multiplexer.h"
+#include "../execution_plan_build/runtime_execution_plan_modify.h"
 
 // Forward declerations.
 static RT_OpResult OpApplyMultiplexerInit(RT_OpBase *opBase);

@@ -13,6 +13,7 @@
 #include "../../../../util/rax_extensions.h"
 #include "../../../../arithmetic/arithmetic_expression.h"
 #include "../../../execution_plan_build/execution_plan_modify.h"
+#include "../execution_plan_build/runtime_execution_plan_modify.h"
 
 // forward declarations
 static RT_OpResult MergeInit(RT_OpBase *opBase);

@@ -44,15 +44,6 @@ Record RT_ExecutionPlan_BorrowRecord(RT_ExecutionPlan *plan);
 // Free Record contents and return it to the Record pool
 void RT_ExecutionPlan_ReturnRecord(RT_ExecutionPlan *plan, Record r);
 
-/* Locate the first operation matching one of the given types in the op tree by performing DFS.
- * Returns NULL if no matching operation was found. */
-RT_OpBase *RT_ExecutionPlan_LocateOpMatchingType(RT_OpBase *root, const OPType *types, uint type_count);
-
-/* Convenience wrapper around RT_ExecutionPlan_LocateOpMatchingType for lookups of a single type.
- * Locate the first operation of a given type within execution plan by performing DFS.
- * Returns NULL if operation wasn't found. */
-RT_OpBase *RT_ExecutionPlan_LocateOp(RT_OpBase *root, OPType type);
-
 // Prints execution plan
 void RT_ExecutionPlan_Print(const RT_ExecutionPlan *plan, RedisModuleCtx *ctx);
 

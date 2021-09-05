@@ -5,6 +5,7 @@
  */
 
 #include "op_apply.h"
+#include "../execution_plan_build/runtime_execution_plan_modify.h"
 
 /* Forward declarations. */
 static RT_OpResult ApplyInit(RT_OpBase *opBase);

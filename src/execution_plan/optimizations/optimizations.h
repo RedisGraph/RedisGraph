@@ -30,7 +30,7 @@ void applyJoin(ExecutionPlan *plan);
 void reduceFilters(ExecutionPlan *plan);
 void reduceTraversal(ExecutionPlan *plan);
 void reduceDistinct(ExecutionPlan *plan);
-void reduceCount(ExecutionPlan *plan);
 
+void reduceCount(RT_ExecutionPlan *plan);
 void applyLimit(RT_ExecutionPlan *plan);
 void applySkip(RT_ExecutionPlan *plan);

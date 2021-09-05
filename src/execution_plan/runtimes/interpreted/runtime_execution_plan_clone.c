@@ -8,11 +8,10 @@
 #include "../../../RG.h"
 #include "../../../query_ctx.h"
 #include "../../../util/rax_extensions.h"
-#include "runtime_execution_plan_modify.h"
+#include "execution_plan_build/runtime_execution_plan_modify.h"
 
 static RT_ExecutionPlan *_ClonePlanInternals(const RT_ExecutionPlan *template) {
 	RT_ExecutionPlan *clone = RT_ExecutionPlan_NewEmptyExecutionPlan();
-	// TODO check
 	ExecutionPlan *plan_desc = (ExecutionPlan *)template->plan_desc;
 	clone->plan_desc = plan_desc;
 	clone->record_map = raxClone(template->record_map);
