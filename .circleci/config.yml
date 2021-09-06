@@ -457,12 +457,10 @@ workflows:
           <<: *on-integ-and-version-tags
       - platform_build:
           <<: *context
-          #@@ <<: *on-integ-and-version-tags
-          <<: *on-any-branch
+          <<: *on-integ-and-version-tags
           matrix:
             parameters:
-              #@@platform: [bionic, xenial, centos7, centos8]
-              platform: [centos8]
+              platform: [bionic, xenial, centos7, centos8]
       - deploy_branch:
           <<: *context
           <<: *on-integ-branch
