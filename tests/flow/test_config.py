@@ -179,6 +179,23 @@ class testConfig(FlowTestsBase):
         result = redis_graph.query(query)
         self.env.assertEqual(result.result_set[0][0], 1000000)
 
+        # Change resultset_size from default
+        response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE 2")
+        self.env.assertEqual(response, "OK")
+
+        # Validate modified resultset_size
+        result = redis_graph.query("UNWIND range(1, 10) AS v RETURN v")
+        self.env.assertEqual(len(result.result_set), 2)
+
+        # Revert resultset_size to unlimited with a negative argument
+        response = redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE -100")
+        self.env.assertEqual(response, "OK")
+
+        # Make sure resultset_size has been updated to unlimited.
+        response = redis_con.execute_command("GRAPH.CONFIG GET RESULTSET_SIZE")
+        expected_response = ["RESULTSET_SIZE", -1]
+        self.env.assertEqual(response, expected_response)
+
     def test09_set_invalid_values(self):
         # The run-time configurations supported by RedisGraph are:
         # MAX_QUEUED_QUERIES
@@ -207,10 +224,11 @@ class testConfig(FlowTestsBase):
                 assert("Failed to set config value %s to -1" % config in str(e))
                 pass
 
-        # RESULTSET_SIZE can be any integer, negative values reset to default
-        try:
-            redis_con.execute_command("GRAPH.CONFIG SET RESULTSET_SIZE invalid")
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            assert("Failed to set config value RESULTSET_SIZE to invalid" in str(e))
-            pass
+        # No configuration can be set to a string
+        for config in ["MAX_QUEUED_QUERIES", "TIMEOUT", "QUERY_MEM_CAPACITY",
+                       "DELTA_MAX_PENDING_CHANGES", "RESULTSET_SIZE"]:
+            try:
+                redis_con.execute_command("GRAPH.CONFIG SET %s invalid" % config)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                assert(("Failed to set config value %s to invalid" % config) in str(e))
