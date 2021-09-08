@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,17 +12,22 @@
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
 
-// Sets node label and label ID
-static void _QueryGraphSetNodeLabel(QGNode *n, const cypher_astnode_t *ast_entity) {
+// sets node label and label ID
+static void _QueryGraphSetNodeLabel
+(
+	QGNode *n,
+	const cypher_astnode_t *ast_entity
+) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	// Retrieve node labels from the AST entity.
+	// retrieve node labels from the AST entity
 	uint nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
 
 	for(uint i = 0; i < nlabels; i++) {
-		const char *l = cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(ast_entity, i));
+		const char *l = cypher_ast_label_get_name(
+				cypher_ast_node_pattern_get_label(ast_entity, i));
 
-		// If a schema is found, the AST refers to an existing label.
+		// if a schema is found, the AST refers to an existing label
 		Schema *s = GraphContext_GetSchema(gc, l, SCHEMA_NODE);
 		int l_id = (s) ? Schema_GetID(s) : GRAPH_UNKNOWN_LABEL;
 		QGNode_AddLabel(n, l, l_id);
@@ -94,39 +99,47 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 }
 
 // Extracts node from 'qg' and places a copy of into 'graph'
-static void _QueryGraph_ExtractNode(const QueryGraph *qg, QueryGraph *graph,
-									AST *ast, const cypher_astnode_t *ast_node) {
+static void _QueryGraph_ExtractNode
+(
+	const QueryGraph *qg,
+	QueryGraph *graph,
+	AST *ast,
+	const cypher_astnode_t *ast_node
+) {
 
-	// Validate inputs.
-	ASSERT(qg != NULL && graph != NULL && ast != NULL && ast_node != NULL);
+	// validate inputs
+	ASSERT(qg       != NULL);
+	ASSERT(ast      != NULL);
+	ASSERT(graph    != NULL);
+	ASSERT(ast_node != NULL);
 
-	// See if node is already in 'graph'.
+	// see if node is already in 'graph'
 	const char *alias = AST_GetEntityName(ast, ast_node);
 	QGNode *n = QueryGraph_GetNodeByAlias(graph, alias);
 
 	if(n == NULL) {
-		// Node is missing from 'graph', try getting it from 'qg'.
+		// node is missing from 'graph', try getting it from 'qg'
 		n = QueryGraph_GetNodeByAlias(qg, alias);
 		if(n == NULL) {
-			/* Node is missing from 'qg', create it.
-			 * It is possible to get into a situation where we try to extract
-			 * a path which contains entities that are missing from the
-			 * "holistic" query graph consider:
-			 * MATCH (a) WITH a WHERE (a)-[]->(:L1) in this case due to
-			 * clause scoping only node 'a' is in 'qg' the filtered pattern
-			 * which is being extracted from 'qg' has additional entities:
-			 * an anonymous edge and node. */
+			// node is missing from 'qg', create it
+			// it is possible to get into a situation where we try to extract
+			// a path which contains entities that are missing from the
+			// "holistic" query graph consider:
+			// MATCH (a) WITH a WHERE (a)-[]->(:L1) in this case due to
+			// clause scoping only node 'a' is in 'qg' the filtered pattern
+			// which is being extracted from 'qg' has additional entities:
+			// an anonymous edge and node
 			_QueryGraphAddNode(graph, ast_node);
 		} else {
-			// Add a clone of the original node.
+			// add a clone of the original node
 			n = QGNode_Clone(n);
 
-			// Clear node label information.
+			// clear node label information
 			array_clear(n->labels);
 			array_clear(n->labelsID);
 
 			QueryGraph_AddNode(graph, n);
-			// Set node label information.
+			// set node label information
 			_QueryGraphSetNodeLabel(n, ast_node);
 		}
 	}
@@ -563,13 +576,16 @@ uint QueryGraph_EdgeCount(const QueryGraph *qg) {
 	return array_len(qg->edges);
 }
 
-GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
+GrB_Matrix QueryGraph_MatrixRepresentation
+(
+	const QueryGraph *qg
+) {
 	ASSERT(qg != NULL);
 
-	// Make a clone of the given graph as we're about to modify it.
+	// make a clone of the given graph as we're about to modify it
 	QueryGraph *qg_clone = QueryGraph_Clone(qg);
 
-	// Give an ID for each node, abuse of `labelID`.
+	// give an ID for each node, abuse of `labelID`
 	uint node_count = QueryGraph_NodeCount(qg_clone);
 	for(uint i = 0; i < node_count; i++) {
 		QGNode *n = qg_clone->nodes[i];
@@ -577,12 +593,12 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 		else n->labelsID[0] = i;
 	}
 
-	GrB_Matrix m;   // Matrix representation of QueryGraph.
+	GrB_Matrix m;   // matrix representation of QueryGraph
 	GrB_Info res = GrB_Matrix_new(&m, GrB_BOOL, node_count, node_count);
 	UNUSED(res);
 	ASSERT(res == GrB_SUCCESS);
 
-	// Build matrix representation of query graph.
+	// build matrix representation of query graph
 	for(uint i = 0; i < node_count; i++) {
 		const QGNode *n = qg_clone->nodes[i];
 		GrB_Index src = QGNode_GetLabelID(n, 0);
@@ -592,7 +608,7 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 			const QGEdge *e = n->outgoing_edges[j];
 			GrB_Index dest = QGNode_GetLabelID(e->dest, 0);
 
-			// Populate `m`.
+			// populate `m`
 			res = GrB_Matrix_setElement_BOOL(m, true, src, dest);
 			ASSERT(res == GrB_SUCCESS);
 		}

@@ -949,7 +949,7 @@ static void _BulkDeleteNodes
 		Node *n = distinct_nodes + i;
 		NodeID entity_id = ENTITY_GET_ID(n);
 		uint label_count;
-		NODE_GET_LABELS(g, n, labels, label_count);
+		NODE_GET_LABELS(g, n, label_count);
 
 		for(int i = 0; i < label_count; i++) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);

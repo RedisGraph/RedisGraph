@@ -15,7 +15,7 @@
 static bool _highly_connected_node(const QueryGraph *qg, const char *alias) {
 	// Look up node in qg.
 	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
-	return n->highly_connected;
+	return QGNode_HighlyConnected(n);
 }
 
 static inline bool _referred_entity(const char *alias) {

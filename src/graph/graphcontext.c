@@ -414,15 +414,22 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
 	return res;
 }
 
-// Delete all references to a node from any indices built upon its properties
-void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
-	Schema *s = NULL;
-	Graph *g = gc->g;
-	EntityID node_id = ENTITY_GET_ID(n);
+// delete all references to a node from any indices built upon its properties
+void GraphContext_DeleteNodeFromIndices
+(
+	GraphContext *gc,
+	Node *n
+) {
+	ASSERT(n  != NULL);
+	ASSERT(gc != NULL);
 
-	// Retrieve node labels
+	Schema    *s       =  NULL;
+	Graph     *g       =  gc->g;
+	EntityID  node_id  =  ENTITY_GET_ID(n);
+
+	// retrieve node labels
 	uint label_count;
-	NODE_GET_LABELS(g, n, labels, label_count);
+	NODE_GET_LABELS(g, n, label_count);
 
 	for(uint i = 0; i < label_count; i++) {
 		int label_id = labels[i];

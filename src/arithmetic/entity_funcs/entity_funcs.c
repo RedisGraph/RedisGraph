@@ -30,7 +30,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Retrieve node labels
 	uint label_count;
-	NODE_GET_LABELS(gc->g, node, labels, label_count);
+	NODE_GET_LABELS(gc->g, node, label_count);
 	SIValue res = SI_Array(label_count);
 
 	for(uint i = 0; i < label_count; i++) {

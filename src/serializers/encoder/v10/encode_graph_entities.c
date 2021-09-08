@@ -107,11 +107,11 @@ static void _RdbSaveNode_v10(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *
 	RedisModule_SaveUnsigned(rdb, id);
 	// Retrieve node labels
 	uint l_count;
-	NODE_GET_LABELS(gc->g, (Node *)n, lbls, l_count);
+	NODE_GET_LABELS(gc->g, (Node *)n, l_count);
 	RedisModule_SaveUnsigned(rdb, l_count);
 
 	// Save labels
-	for(uint i = 0; i < l_count; i++) RedisModule_SaveUnsigned(rdb, lbls[i]);
+	for(uint i = 0; i < l_count; i++) RedisModule_SaveUnsigned(rdb, labels[i]);
 
 	// properties N
 	// (name, value type, value) X N

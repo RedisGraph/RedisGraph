@@ -44,7 +44,7 @@ static sds _JsonEncoder_Node(const Node *n, sds s) {
 	// Retrieve node labels
 	uint label_count;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	NODE_GET_LABELS(gc->g, n, labels, label_count);
+	NODE_GET_LABELS(gc->g, n, label_count);
 	for(uint i = 0; i < label_count; i ++) {
 		Schema *schema = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		ASSERT(schema);

@@ -60,7 +60,7 @@ static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc,
 	bool update_index = false;
 	// determine whether we must update the index for this update
 	uint label_count;
-	NODE_GET_LABELS(gc->g, (Node *)entity, labels, label_count);
+	NODE_GET_LABELS(gc->g, (Node *)entity, label_count);
 	for(uint i = 0; i < label_count; i ++) {
 		update_index = GraphContext_GetIndexByID(gc, labels[i], &attr_id,
 													IDX_ANY) != NULL;
@@ -103,7 +103,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 				Node *n = (Node *)updates[i - 1].ge;
 				// Retrieve node labels
 				uint label_count;
-				NODE_GET_LABELS(gc->g, n, labels, label_count);
+				NODE_GET_LABELS(gc->g, n, label_count);
 				for(uint i = 0; i < label_count; i ++) {
 					Schema *s = GraphContext_GetSchemaByID(gc, labels[i],
 														   SCHEMA_NODE);
@@ -133,7 +133,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		Node *n = (Node *)updates[i - 1].ge;
 		// Retrieve node labels
 		uint label_count;
-		NODE_GET_LABELS(gc->g, n, labels, label_count);
+		NODE_GET_LABELS(gc->g, n, label_count);
 		for(uint i = 0; i < label_count; i ++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 			ASSERT(s != NULL);
@@ -174,7 +174,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 	if(node_update) {
 		Node *n = (Node *)entity;
 		uint label_count;
-		NODE_GET_LABELS(gc->g, n, labels, label_count);
+		NODE_GET_LABELS(gc->g, n, label_count);
 		node_is_labeled = (label_count > 0);
 	}
 

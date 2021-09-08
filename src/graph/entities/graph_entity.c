@@ -198,7 +198,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 
 				// Retrieve node labels
 				uint label_count;
-				NODE_GET_LABELS(gc->g, n, labels, label_count);
+				NODE_GET_LABELS(gc->g, n, label_count);
 				for(uint i = 0; i < label_count; i ++) {
 					const char *name = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE)->name;
 					// allocate space if needed

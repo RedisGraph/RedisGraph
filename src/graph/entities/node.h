@@ -13,7 +13,7 @@ typedef GrB_Index LabelID;
 
 // helper macro that instantiates 'labels' as a stack array
 // and updates 'label_count'
-#define NODE_GET_LABELS(g, n, labels, label_count)                      \
+#define NODE_GET_LABELS(g, n, label_count)                              \
     LabelID labels[(label_count) = Graph_LabelTypeCount((g))];          \
     label_count = Graph_GetNodeLabels((g), (n), labels, (label_count))
 
