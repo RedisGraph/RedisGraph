@@ -22,7 +22,7 @@ static void IndexScanToString(const OpBase *ctx, sds *buf) {
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
-		RSIndex *idx, FT_FilterNode *filter) {
+					   RSIndex *idx, FT_FilterNode *filter) {
 	// validate inputs
 	ASSERT(g      != NULL);
 	ASSERT(idx    != NULL);
@@ -51,7 +51,7 @@ static OpResult IndexScanInit(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 
 	if(opBase->childCount > 0) {
-		// find out how many different entities are refered to 
+		// find out how many different entities are referred to
 		// within the filter tree, if number of entities equals 1
 		// (current node being scanned) there's no need to re-build the index
 		// query for every input record
@@ -98,7 +98,7 @@ pull_index:
 
 	if(op->iter != NULL) {
 		while((nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
-				!= NULL) {
+			  != NULL) {
 			// populate record with node
 			_UpdateRecord(op, op->child_record, *nodeId);
 			// apply unresolved filters
@@ -159,7 +159,7 @@ pull_index:
 
 		// convert filter into a RediSearch query
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
-				filter, op->idx);
+													   filter, op->idx);
 		FilterTree_Free(filter);
 
 		// create iterator
@@ -190,14 +190,14 @@ static Record IndexScanConsume(OpBase *opBase) {
 	// create iterator on first call
 	if(op->iter == NULL) {
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
-				op->filter, op->idx);
+													   op->filter, op->idx);
 		ASSERT(op->unresolved_filters == NULL);
 
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	}
 
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx,
-			NULL);
+															NULL);
 	if(!nodeId) return NULL;
 
 	// populate the Record with the actual node
@@ -211,10 +211,10 @@ static OpResult IndexScanReset(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 
 	if(op->rebuild_index_query) {
-		RediSearch_ResultsIteratorFree(op->iter);
+		if(op->iter) RediSearch_ResultsIteratorFree(op->iter);
 		op->iter = NULL;
 	} else {
-		RediSearch_ResultsIteratorReset(op->iter);
+		if(op->iter) RediSearch_ResultsIteratorReset(op->iter);
 	}
 
 	return OP_OK;

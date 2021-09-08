@@ -575,3 +575,22 @@ class testGraphMergeFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             self.env.assertIn("undefined property", str(e))
+
+    def test28_merge_under_cartesian_product(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("O", redis_con)
+
+        # Create a graph with 2 nodes.
+        query = """CREATE (:L {v: 1}), (:L {v: 2})"""
+        result = graph.query(query)
+
+        # Use MERGE to create a new node, then access it repeatedly under a Cartesian product.
+        query = """MERGE (a:M) ON CREATE SET a.v = 'created' ON MATCH SET a.v = 'matched' WITH a MATCH (a), (b) RETURN a.v, b.v ORDER BY b.v"""
+        result = graph.query(query)
+        # The new node should have the property value 'created'
+        expected_result = [['created', 1],
+                           ['created', 2]]
+        self.env.assertEquals(result.result_set, expected_result)
+        # Verify that 1 node was created and 1 property was set.
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 1)

@@ -89,7 +89,8 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	_OpBase_AddChild(b, a);
 }
 
-void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
+OpBase *ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
+	if(old_root == NULL) return new_root;
 	/* The new root should have no parent, but may have children if we've constructed
 	 * a chain of traversals/scans. */
 	ASSERT(!old_root->parent && !new_root->parent);
@@ -102,13 +103,20 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	ASSERT(tail->childCount <= 1);
 	while(tail->childCount > 0) tail = tail->children[0];
 
-	// Append the old root to the tail of the new root's chain.
-	_OpBase_AddChild(tail, old_root);
+	if(OP_IS_TAP(tail) && old_root->type != OPType_ARGUMENT) {
+		OpBase *apply = NewApplyOp(tail->plan);
+		_OpBase_AddChild(apply, old_root);
+		_OpBase_AddChild(apply, new_root);
+		return apply;
+	} else {
+		// Append the old root to the tail of the new root's chain.
+		_OpBase_AddChild(tail, old_root);
+		return new_root;
+	}
 }
 
 inline void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
-	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
-	plan->root = new_root;
+	plan->root = ExecutionPlan_NewRoot(plan->root, new_root);
 }
 
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {

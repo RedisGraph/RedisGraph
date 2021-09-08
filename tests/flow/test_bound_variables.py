@@ -91,3 +91,13 @@ class testBoundVariables(FlowTestsBase):
         expected_result = [['v1', 'v2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        query = """MERGE (a:L {val: 'v1'}) WITH a MATCH (a)-[e]->(b), (c:L) RETURN DISTINCT a.val, b.val"""
+        actual_result = redis_graph.query(query)
+
+        # Verify that this query generates exactly 2 scan ops.
+        execution_plan = redis_graph.execution_plan(query)
+        self.env.assertEquals(2, execution_plan.count('Scan'))
+
+        # Verify results.
+        expected_result = [['v1', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

@@ -14,7 +14,6 @@
 static OpResult NodeByLabelScanInit(OpBase *opBase);
 static Record NodeByLabelScanConsume(OpBase *opBase);
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase);
-static Record NodeByLabelScanNoOp(OpBase *opBase);
 static OpResult NodeByLabelScanReset(OpBase *opBase);
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
@@ -89,31 +88,10 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
-	OpBase_UpdateConsume(opBase, NodeByLabelScanConsume); // Default consume function.
 
-	// Operation has children, consume from child.
 	if(opBase->childCount > 0) {
+		// Operation has children, consume from child.
 		OpBase_UpdateConsume(opBase, NodeByLabelScanConsumeFromChild);
-		return OP_OK;
-	}
-
-	// If we have no children, we can build the iterator now.
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
-	if(!schema) {
-		// Missing schema, use the NOP consume function.
-		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
-		return OP_OK;
-	}
-	// Resolve label ID at runtime.
-	op->n.label_id = schema->id;
-
-	// The iterator build may fail if the ID range does not match the matrix dimensions.
-	GrB_Info iterator_built = _ConstructIterator(op, schema);
-	if(iterator_built != GrB_SUCCESS) {
-		// Invalid range, use the NOP consume function.
-		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
-		return OP_OK;
 	}
 
 	return OP_OK;
@@ -179,6 +157,21 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 static Record NodeByLabelScanConsume(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 
+	// Create iterator on first invocation
+	if(!op->iter) {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *schema = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
+		// Missing schema, return NULL
+		if(!schema) return NULL;
+
+		// Resolve label ID
+		op->n.label_id = schema->id;
+
+		// The iterator build may fail if the ID range does not match the matrix dimensions.
+		GrB_Info iterator_built = _ConstructIterator(op, schema);
+		if(iterator_built != GrB_SUCCESS) return NULL;
+	}
+
 	GrB_Index nodeId;
 	bool depleted = false;
 	RG_MatrixTupleIter_next(op->iter, NULL, &nodeId, NULL, &depleted);
@@ -192,19 +185,13 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 	return r;
 }
 
-/* This function is invoked when the op has no children and no valid label is requested (either no label, or non existing label).
- * The op simply needs to return NULL */
-static Record NodeByLabelScanNoOp(OpBase *opBase) {
-	return NULL;
-}
-
 static OpResult NodeByLabelScanReset(OpBase *ctx) {
 	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
 	if(op->child_record) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		op->child_record = NULL;
 	}
-	_ResetIterator(op);
+	if(op->iter) _ResetIterator(op);
 	return OP_OK;
 }
 
