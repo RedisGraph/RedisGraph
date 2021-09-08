@@ -245,10 +245,20 @@ class testWithClause(FlowTestsBase):
 
     def test11_valid_order_by_aliases(self):
         # Verify that ORDER BY aliases match previously defined references
-        query = """UNWIND [1,2,3] AS a WITH a ORDER BY nonexistent RETURN a"""
-        try:
-            redis_graph.query(query)
-            self.env.assertFalse(1)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            self.env.assertIn("nonexistent not defined", str(e))
+        query = """UNWIND [1,2,3] AS a WITH a ORDER BY a RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1],
+                           [2],
+                           [3]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
+
+        invalid_queries = ["UNWIND [1,2,3] AS a WITH a ORDER BY nonexistent RETURN a",
+                           "UNWIND [1,2,3] AS a WITH a ORDER BY a, nonexistent RETURN a",
+                           "UNWIND [1,2,3] AS a WITH a AS b UNWIND [1,2,3] AS c WITH c ORDER BY a RETURN c"]
+        for query in invalid_queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                self.env.assertIn("not defined", str(e))
