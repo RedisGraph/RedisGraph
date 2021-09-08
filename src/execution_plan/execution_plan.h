@@ -22,7 +22,6 @@ struct ExecutionPlan {
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
-	int ref_count;                      // Number of active references.
 };
 
 /* Creates a new execution plan from AST */
@@ -67,9 +66,6 @@ void ExecutionPlan_Drain(ExecutionPlan *plan);
 
 /* Profile executes plan */
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
-
-/* Increase execution plan reference count */
-void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);

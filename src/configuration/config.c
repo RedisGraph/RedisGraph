@@ -61,7 +61,7 @@ typedef struct {
 	uint64_t cache_size;               // The cache size for each thread, per graph.
 	uint thread_pool_size;             // Thread count for thread pool.
 	uint omp_thread_count;             // Maximum number of OpenMP threads.
-	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
+	uint64_t resultset_size;           // resultset maximum size, UINT64_MAX unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	uint64_t max_queued_queries;       // max number of queued queries
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
@@ -92,6 +92,14 @@ static inline bool _Config_ParsePositiveInteger(const char *integer_str, long lo
 	bool res = _Config_ParseInteger(integer_str, value);
 	// Return an error code if integer parsing fails or value is not positive.
 	return (res == true && *value > 0);
+}
+
+// parse non-negative integer
+// return true if string represents an integer >= 0
+static inline bool _Config_ParseNonNegativeInteger(const char *integer_str, long long *value) {
+	bool res = _Config_ParseInteger(integer_str, value);
+	// Return an error code if integer parsing fails or value is negative.
+	return (res == true && *value >= 0);
 }
 
 // return true if 'str' is either "yes" or "no" otherwise returns false
@@ -615,7 +623,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_TIMEOUT:
 			{
 				long long timeout;
-				if(!_Config_ParsePositiveInteger(val, &timeout)) return false;
+				if(!_Config_ParseNonNegativeInteger(val, &timeout)) return false;
 				Config_timeout_set(timeout);
 			}
 			break;
@@ -678,7 +686,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_VKEY_MAX_ENTITY_COUNT:
 			{
 				long long vkey_max_entity_count;
-				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
+				if(!_Config_ParseNonNegativeInteger(val, &vkey_max_entity_count)) return false;
 
 				Config_virtual_key_entity_count_set(vkey_max_entity_count);
 			}
@@ -704,7 +712,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_QUERY_MEM_CAPACITY:
 			{
 				long long query_mem_capacity;
-				if (!_Config_ParseInteger(val, &query_mem_capacity)) return false;
+				if (!_Config_ParseNonNegativeInteger(val, &query_mem_capacity)) return false;
 
 				Config_query_mem_capacity_set(query_mem_capacity);
 			}
@@ -717,7 +725,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_DELTA_MAX_PENDING_CHANGES:
 			{
 				long long delta_max_pending_changes;
-				if (!_Config_ParsePositiveInteger(val, &delta_max_pending_changes)) return false;
+				if (!_Config_ParseNonNegativeInteger(val, &delta_max_pending_changes)) return false;
 
 				Config_delta_max_pending_changes_set(delta_max_pending_changes);
 			}
