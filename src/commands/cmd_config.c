@@ -95,7 +95,10 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// make sure value is valid
 		const char *val_str = RedisModule_StringPtrLen(val, NULL);
 		if(!Config_Option_dryrun(config_field, val_str)) {
-			RedisModule_ReplyWithError(ctx, "Failed to set config value");
+			char *errmsg;
+			asprintf(&errmsg, "Failed to set config value %s to %s", config_name, val_str);
+			RedisModule_ReplyWithError(ctx, errmsg);
+			free(errmsg);
 			return;
 		}
 	}

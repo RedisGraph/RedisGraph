@@ -61,7 +61,7 @@ typedef struct {
 	uint64_t cache_size;               // The cache size for each thread, per graph.
 	uint thread_pool_size;             // Thread count for thread pool.
 	uint omp_thread_count;             // Maximum number of OpenMP threads.
-	uint64_t resultset_size;           // resultset maximum size, (-1) unlimited
+	uint64_t resultset_size;           // resultset maximum size, UINT64_MAX unlimited
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	uint64_t max_queued_queries;       // max number of queued queries
 	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
@@ -686,7 +686,7 @@ bool Config_Option_set(Config_Option_Field field, const char *val) {
 		case Config_VKEY_MAX_ENTITY_COUNT:
 			{
 				long long vkey_max_entity_count;
-				if(!_Config_ParsePositiveInteger(val, &vkey_max_entity_count)) return false;
+				if(!_Config_ParseNonNegativeInteger(val, &vkey_max_entity_count)) return false;
 
 				Config_virtual_key_entity_count_set(vkey_max_entity_count);
 			}
