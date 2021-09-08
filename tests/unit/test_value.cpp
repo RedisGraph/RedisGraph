@@ -210,6 +210,10 @@ TEST_F(ValueTest, TestArray) {
 
 	bool contains_string = SIArray_ContainsType(arr, T_STRING);
 	ASSERT_FALSE(contains_string);
+
+	// Checking for multiple types should return true if any match is found
+	bool contains = SIArray_ContainsType(arr, (SIType)(T_DOUBLE | T_STRING));
+	ASSERT_TRUE(contains);
 }
 
 /* Test for difference in hash code for the same binary representation
