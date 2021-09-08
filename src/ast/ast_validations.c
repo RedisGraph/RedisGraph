@@ -75,7 +75,11 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		_AST_GetIdentifiers(child, identifiers);
 	}
 
-	if(type == CYPHER_AST_LIST_COMPREHENSION || type == CYPHER_AST_ANY || type == CYPHER_AST_ALL) {
+	if(type == CYPHER_AST_LIST_COMPREHENSION ||
+	   type == CYPHER_AST_ANY ||
+	   type == CYPHER_AST_ALL ||
+	   type == CYPHER_AST_SINGLE ||
+	   type == CYPHER_AST_NONE) {
 		// A list comprehension has a local variable that should only be accessed within its scope;
 		// do not leave it in the identifiers map.
 		const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(node);
@@ -117,6 +121,9 @@ static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifier
 		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
 		_AST_GetIdentifiers(child, identifiers);
 	}
+
+	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(node);
+	if(order_by) _AST_GetIdentifiers(order_by, identifiers);
 }
 
 // Extract identifiers / aliases from a procedure call.
@@ -550,7 +557,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 
 				// make sure each yield output is mentioned only once
 				if(!raxInsert(identifiers, (unsigned char *)identifier,
-							strlen(identifier), NULL, NULL)) {
+							  strlen(identifier), NULL, NULL)) {
 					ErrorCtx_SetError("Variable `%s` already declared", identifier);
 					res = AST_INVALID;
 					goto cleanup;
@@ -559,7 +566,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 				// make sure procedure is aware of output
 				if(!Procedure_ContainsOutput(proc, identifier)) {
 					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
-							proc_name, identifier);
+									  proc_name, identifier);
 					res = AST_INVALID;
 					goto cleanup;
 				}
