@@ -104,7 +104,7 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.result_set, expected_result)
 
     # Fail when a property is a complex type nested within an array type
-    def test13_invalid_complex_type_in_array(self):
+    def test07_create_invalid_complex_type_in_array(self):
         # Test combinations of invalid types with nested and top-level arrays
         # Invalid types are NULL, maps, nodes, edges, and paths
         queries = ["CREATE (a), (b) SET a.v = [b]",

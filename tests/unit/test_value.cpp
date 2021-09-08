@@ -203,6 +203,13 @@ TEST_F(ValueTest, TestArray) {
 	SIArray_Append(&arrOther, nestedArr);
 	otherHashCode = SIValue_HashCode(arrOther);
 	ASSERT_EQ(origHashCode, otherHashCode);
+
+	// Test logic for nested type-checking
+	bool contains_double = SIArray_ContainsType(arr, T_DOUBLE);
+	ASSERT_TRUE(contains_double);
+
+	bool contains_string = SIArray_ContainsType(arr, T_STRING);
+	ASSERT_FALSE(contains_string);
 }
 
 /* Test for difference in hash code for the same binary representation
