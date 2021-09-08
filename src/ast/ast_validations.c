@@ -1717,11 +1717,12 @@ AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
-	// In case of no parameters.
+	// in case of no parameters
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
-	if(_ValidateParamsOnly(root) != AST_VALID) return AST_INVALID;
-	if(_ValidateDuplicateParameters(root) != AST_VALID) return AST_INVALID;
+	if(_ValidateParamsOnly(root)            != AST_VALID)  return AST_INVALID;
+	if(_ValidateDuplicateParameters(root)   != AST_VALID)  return AST_INVALID;
+	if(_ValidateFunctionCalls(root, false)  != AST_VALID)  return AST_INVALID;
 
 	return AST_VALID;
 }
