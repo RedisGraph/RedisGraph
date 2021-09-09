@@ -62,11 +62,11 @@ static int *_BulkInsert_ReadHeaderLabels(GraphContext *gc, SchemaType t,
 		}
 
 		// Try to retrieve the label's schema
-		Schema *schema = GraphContext_GetSchema(gc, label, t);
+		Schema *s = GraphContext_GetSchema(gc, label, t);
 		// Create the schema if it does not already exist
-		if(schema == NULL) schema = GraphContext_AddSchema(gc, label, t);
+		if(s == NULL) s = GraphContext_AddSchema(gc, label, t);
 		// Store the label ID
-		array_append(label_ids, schema->id);
+		array_append(label_ids, Schema_GetID(s));
 
 		// Break if we've exhausted all labels
 		if(!found) break;
