@@ -43,6 +43,9 @@ extern "C" {
 #define array_free_fn rm_free
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 typedef struct {
 	uint32_t len;
 	// TODO: optimize memory by making cap a 16-bit delta from len, and elem_sz 16 bit as well. This
@@ -310,6 +313,8 @@ static void array_free(array_t arr) {
             arr[j] = tmp;                       \
         }                                       \
     })                                          \
+
+#pragma GCC diagnostic pop
 
 #ifdef __cplusplus
 }
