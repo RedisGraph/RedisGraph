@@ -20,17 +20,17 @@ void orderExpressions(
 	rax *bound_vars                 // Previously-bound variables.
 );
 
-void compactFilters(ExecutionPlan *plan);
 void reduceScans(ExecutionPlan *plan);
 void utilizeIndices(ExecutionPlan *plan);
 void seekByID(ExecutionPlan *plan);
 void filterVariableLengthEdges(ExecutionPlan *plan);
 void reduceCartesianProductStreamCount(ExecutionPlan *plan);
 void applyJoin(ExecutionPlan *plan);
-void reduceFilters(ExecutionPlan *plan);
 void reduceTraversal(ExecutionPlan *plan);
 void reduceDistinct(ExecutionPlan *plan);
 
+void reduceFilters(RT_ExecutionPlan *plan);
+void compactFilters(RT_ExecutionPlan *plan);
 void reduceCount(RT_ExecutionPlan *plan);
 void applyLimit(RT_ExecutionPlan *plan);
 void applySkip(RT_ExecutionPlan *plan);

@@ -7,25 +7,25 @@
 #include "../../RG.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
-#include "../ops/op_filter.h"
+#include "../runtimes/interpreted/ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
-#include "../execution_plan_build/execution_plan_modify.h"
+#include "../runtimes/interpreted/execution_plan_build/runtime_execution_plan_modify.h"
 
 /* The compact filters optimizer scans an execution plan for filters that can be
  * compressed. In case the filter is compressed into a final constant 'true' value,
  * the filter operation will be removed from the execution plan. */
 
 // Try to compact a filter.
-static inline bool _compactFilter(OpBase *op) {
-	ASSERT(op->type == OPType_FILTER);
-	OpFilter *filter_op = (OpFilter *)op;
+static inline bool _compactFilter(RT_OpBase *op) {
+	ASSERT(op->op_desc->type == OPType_FILTER);
+	RT_OpFilter *filter_op = (RT_OpFilter *)op;
 	return FilterTree_Compact(filter_op->filterTree);
 }
 
 // In case the compacted filter resolved to 'true', remove it from the execution plan.
-static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
-	ASSERT(op->type == OPType_FILTER);
-	OpFilter *filter_op = (OpFilter *)op;
+static void _removeTrueFilter(RT_ExecutionPlan *plan, RT_OpBase *op) {
+	ASSERT(op->op_desc->type == OPType_FILTER);
+	RT_OpFilter *filter_op = (RT_OpFilter *)op;
 	FT_FilterNode *root = filter_op->filterTree;
 	// We can only have a contant expression in this point (after compaction).
 	ASSERT(root->t == FT_N_EXP);
@@ -38,17 +38,17 @@ static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
 		return;
 	}
 	if(SIValue_IsTrue(bool_val)) {
-		ExecutionPlan_RemoveOp(plan, op);
-		OpBase_Free(op);
+		RT_ExecutionPlan_RemoveOp(plan, op);
+		RT_OpBase_Free(op);
 	}
 }
 
-static void _compactFilters(ExecutionPlan *plan, OpBase *op) {
+static void _compactFilters(RT_ExecutionPlan *plan, RT_OpBase *op) {
 	if(op == NULL) return;
 
 	// Try to compact the filter.
 	bool compact = false;
-	if(op->type == OPType_FILTER) {
+	if(op->op_desc->type == OPType_FILTER) {
 		compact = _compactFilter(op);
 	}
 
@@ -61,7 +61,7 @@ static void _compactFilters(ExecutionPlan *plan, OpBase *op) {
 	if(compact) _removeTrueFilter(plan, op);
 }
 
-void compactFilters(ExecutionPlan *plan) {
+void compactFilters(RT_ExecutionPlan *plan) {
 	_compactFilters(plan, plan->root);
 }
 

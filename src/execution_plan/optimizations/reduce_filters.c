@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../ops/op_filter.h"
+#include "../runtimes/interpreted/ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
 #include "../../ast/ast_build_filter_tree.h"
 
@@ -14,18 +14,18 @@
  * Reducing the overall number of operations is expected to produce
  * faster execution time. */
 
-void _reduceFilter(OpBase *op) {
-	OpBase *parent = op;
-	OpFilter *filter = (OpFilter *)parent;
+void _reduceFilter(RT_OpBase *op) {
+	RT_OpBase *parent = op;
+	RT_OpFilter *filter = (RT_OpFilter *)parent;
 	FT_FilterNode *tree = filter->filterTree;
-	OpBase *child = NULL;
+	RT_OpBase *child = NULL;
 
 	/* Filter operation is promised to have only one child. */
 	while(parent->childCount == 1) {
 		child = parent->children[0];
-		if(child->type != OPType_FILTER) break;
+		if(child->op_desc->type != OPType_FILTER) break;
 
-		OpFilter *childFilter = (OpFilter *)child;
+		RT_OpFilter *childFilter = (RT_OpFilter *)child;
 
 		/* Create a new root for the tree, merge trees using an AND. */
 		FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
@@ -41,12 +41,12 @@ void _reduceFilter(OpBase *op) {
 	if(filter->filterTree != tree) {
 		filter->filterTree = tree;
 		// Remove intermidate filter ops.
-		OpBase *intermidateChild = child->parent;
+		RT_OpBase *intermidateChild = child->parent;
 		while(intermidateChild != op) {
 			parent = intermidateChild->parent;
 			// Remove the filter tree pointer from the intermediate op, as it should not be freed
-			((OpFilter *)intermidateChild)->filterTree = NULL;
-			OpBase_Free(intermidateChild);
+			((RT_OpFilter *)intermidateChild)->filterTree = NULL;
+			RT_OpBase_Free(intermidateChild);
 			intermidateChild = parent;
 		}
 
@@ -58,10 +58,10 @@ void _reduceFilter(OpBase *op) {
 	}
 }
 
-void _reduceFilters(OpBase *op) {
+void _reduceFilters(RT_OpBase *op) {
 	if(op == NULL) return;
 
-	if(op->type == OPType_FILTER) {
+	if(op->op_desc->type == OPType_FILTER) {
 		_reduceFilter(op);
 	}
 
@@ -70,7 +70,7 @@ void _reduceFilters(OpBase *op) {
 	}
 }
 
-void reduceFilters(ExecutionPlan *plan) {
+void reduceFilters(RT_ExecutionPlan *plan) {
 	return _reduceFilters(plan->root);
 }
 

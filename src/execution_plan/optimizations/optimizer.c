@@ -8,9 +8,6 @@
 #include "./optimizations.h"
 
 void optimizePlan(ExecutionPlan *plan) {
-	// Tries to compact filter trees, and remove redundant filters.
-	compactFilters(plan);
-
 	/* Scan optimizations order:
 	 * 1. Remove redundant scans which checks for the same node.
 	 * 2. Try to use the indices. Given a label scan and an indexed property, apply index scan.
@@ -35,9 +32,6 @@ void optimizePlan(ExecutionPlan *plan) {
 	// Try to match disjoint entities by applying a join.
 	applyJoin(plan);
 
-	// Try to reduce a number of filters into a single filter op.
-	reduceFilters(plan);
-
 	// Reduce traversals where both src and dest nodes are already resolved into an expand into operation.
 	reduceTraversal(plan);
 
@@ -46,6 +40,12 @@ void optimizePlan(ExecutionPlan *plan) {
 }
 
 void optimize_RTPlan(RT_ExecutionPlan *plan) {
+	// Tries to compact filter trees, and remove redundant filters.
+	compactFilters(plan);
+
+	// Try to reduce a number of filters into a single filter op.
+	reduceFilters(plan);
+
 	// Try to reduce execution plan incase it perform node or edge counting.
 	reduceCount(plan);
 	

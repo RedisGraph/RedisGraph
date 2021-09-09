@@ -16,6 +16,7 @@
 typedef struct {
 	RT_OpBase op;
 	const OpFilter *op_desc;
+	FT_FilterNode *filterTree;
 } RT_OpFilter;
 
 /* Creates a new Filter operation */
