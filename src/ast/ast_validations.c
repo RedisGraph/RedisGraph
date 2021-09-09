@@ -1281,46 +1281,6 @@ static void _AST_ReportErrors(const cypher_parse_result_t *result) {
 	}
 }
 
-/* validate list usage in subscript is correct */
-static AST_Validation _validateList(const cypher_astnode_t *root) {
-
-	const cypher_astnode_type_t type = cypher_astnode_type(root);
-	// check that the operation returns a list - ragne function
-	if(type == CYPHER_AST_APPLY_OPERATOR) {
-		const cypher_astnode_t *funcNode =  cypher_ast_apply_operator_get_func_name(root);
-		const char *funcName = cypher_ast_function_name_get_value(funcNode);
-		// function name is NOT range
-		if(strcasecmp(funcName, "range")) {
-			ErrorCtx_SetError("subscript index access expects range function; encountered '%s'", funcName);
-			return AST_INVALID;
-		}
-		// validate the number of arguments in range function 2-3
-		uint narguments = cypher_ast_apply_operator_narguments(root);
-		if(narguments < 2 || narguments > 3) {
-			ErrorCtx_SetError("range function expects 2 or 3 arguments; encountered %d", narguments);
-			return AST_INVALID;
-		}
-		// validate that all the arguments are integers
-		for(uint i = 0; i < narguments; i ++) {
-			const cypher_astnode_t *argument = cypher_ast_apply_operator_get_argument(root, i);
-			const cypher_astnode_type_t argument_type = cypher_astnode_type(argument);
-			if(argument_type != CYPHER_AST_INTEGER || argument_type != CYPHER_AST_IDENTIFIER) {
-				ErrorCtx_SetError("expected integer or identifier; encountered %s",
-								  cypher_astnode_typestr(argument_type));
-				return AST_INVALID;
-			}
-		}
-	} else if(type != CYPHER_AST_COLLECTION && type != CYPHER_AST_IDENTIFIER) {
-		// list is a collection or identifier
-		// TODO: in current state, the identifier type is evluated in query runtime
-		// check if possible to evluate during ast validation
-		ErrorCtx_SetError("subscript index access expects a list or an identifier; encountered %s",
-						  cypher_astnode_typestr(type));
-		return AST_INVALID;
-	}
-	return AST_VALID;
-}
-
 // checks if set items contains non-alias referenes in lhs
 static AST_Validation _Validate_SETItems(const cypher_astnode_t *set_clause) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
