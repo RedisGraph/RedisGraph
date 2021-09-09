@@ -223,9 +223,9 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 	MATRIX_POLICY policy = SYNC_POLICY_UNKNOWN;
 	SyncMatrixFunc f = g->SynchronizeMatrix;
 
-	if(f == _MatrixSynchronize)      policy = SYNC_POLICY_FLUSH_RESIZE;
-	else if(f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
-	else if(f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
+	if      (f == _MatrixSynchronize)      policy = SYNC_POLICY_FLUSH_RESIZE;
+	else if (f == _MatrixResizeToCapacity) policy = SYNC_POLICY_RESIZE;
+	else if (f == _MatrixNOP)              policy = SYNC_POLICY_NOP;
 	else ASSERT(false);
 
 	return policy;
@@ -553,19 +553,33 @@ void Graph_GetEdgesConnectingNodes
 	}
 }
 
-static void _Graph_LabelNode(Graph *g, NodeID id, int *lbls, uint lbl_count) {
-	RG_Matrix l = Graph_GetNodeLabelMatrix(g);
+// label node id with each label in 'lbls'
+static void _Graph_LabelNode
+(
+	Graph *g,
+	NodeID id,
+	int *lbls,
+	uint lbl_count
+) {
+	ASSERT(g != NULL);
+	ASSERT(lbls != NULL);
+	ASSERT(lbl_count > 0);
+	ASSERT(id != INVALID_ENTITY_ID);
+
+	GrB_Info info;
+	UNUSED(info);
+
+	RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < lbl_count; i++) {
-		int label = lbls[i];
+		int l = lbls[i];
 		// set matrix at position [id, id]
-		RG_Matrix m = Graph_GetLabelMatrix(g, label);
-		GrB_Info res = RG_Matrix_setElement_BOOL(m, id, id);
-		UNUSED(res);
-		ASSERT(res == GrB_SUCCESS);
+		RG_Matrix m = Graph_GetLabelMatrix(g, l);
+		info = RG_Matrix_setElement_BOOL(m, id, id);
+		ASSERT(info == GrB_SUCCESS);
 
 		// map this label in this node's set of labels
-		res = RG_Matrix_setElement_BOOL(l, id, label);
-		ASSERT(res == GrB_SUCCESS);
+		info = RG_Matrix_setElement_BOOL(nl, id, l);
+		ASSERT(info == GrB_SUCCESS);
 	}
 }
 
@@ -578,6 +592,7 @@ void Graph_CreateNode
 ) {
 	ASSERT(g);
 	ASSERT(n);
+	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 
 	NodeID id;
 	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
@@ -724,18 +739,19 @@ void Graph_GetNodeEdges
 	}
 }
 
+// populate array of node's label IDs, return number of labels on node
 uint Graph_GetNodeLabels
 (
-	const Graph *g,
-	const Node *n,
-	LabelID *labels,
-	LabelID label_count
+	const Graph *g,   // graph the node belongs to
+	const Node *n,    // node to extract labels from
+	LabelID *labels,  // array to populate with labels
+	uint label_count  // size of labels array
 ) {
-	if(label_count == 0) return 0;
 	// validate inputs
-	ASSERT(g != NULL);
-	ASSERT(n != NULL);
+	ASSERT(g      != NULL);
+	ASSERT(n      != NULL);
 	ASSERT(labels != NULL);
+
 	GrB_Info res;
 	UNUSED(res);
 
@@ -745,22 +761,22 @@ uint Graph_GetNodeLabels
 	RG_MatrixTupleIter iter;
 	res = RG_MatrixTupleIter_reuse(&iter, M);
 	ASSERT(res == GrB_SUCCESS);
-	res = RG_MatrixTupleIter_iterate_row(&iter, n->id);
+
+	EntityID id = ENTITY_GET_ID(n);
+	res = RG_MatrixTupleIter_iterate_row(&iter, id);
 	ASSERT(res == GrB_SUCCESS);
 
-	GrB_Index col = 0;
+	uint i = 0;
 	bool depleted = false;
-	label_count = 0;
-	res = RG_MatrixTupleIter_next(&iter, NULL, &col, NULL, &depleted);
-	ASSERT(res == GrB_SUCCESS);
-	while(!depleted) {
-		labels[label_count] = col;
-		label_count++;
-		res = RG_MatrixTupleIter_next(&iter, NULL, &col, NULL, &depleted);
+
+	for(; i < label_count; i++) {
+		res = RG_MatrixTupleIter_next(&iter, NULL, labels+i, NULL, &depleted);
 		ASSERT(res == GrB_SUCCESS);
+
+		if(depleted) break;
 	}
 
-	return label_count;
+	return i;
 }
 
 // removes an edge from Graph and updates graph relevent matrices
@@ -944,6 +960,7 @@ static void _BulkDeleteNodes
 
 	uint _node_deleted = Graph_NodeCount(g);
 	// all nodes marked for deleteion are detected (no incoming/outgoing edges)
+	RG_Matrix M = Graph_GetNodeLabelMatrix(g);
 	int node_type_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < node_count; i++) {
 		Node *n = distinct_nodes + i;
@@ -954,6 +971,7 @@ static void _BulkDeleteNodes
 		for(int i = 0; i < label_count; i++) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, labels[i]);
 			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
+			RG_Matrix_removeElement_BOOL(M, entity_id, i);
 		}
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
@@ -1173,7 +1191,6 @@ RG_Matrix Graph_GetNodeLabelMatrix(const Graph *g) {
 
 	RG_Matrix m = g->node_labels;
 
-	// event thet the values are set on values
 	g->SynchronizeMatrix(g, m);
 
 	return m;
