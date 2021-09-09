@@ -164,3 +164,22 @@ class testVariableLengthTraversals(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['B', 'D']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test traversals with filters on variable-length edges in WITH...OPTIONAL MATCH constructs
+    def test10_filtered_edges_after_segment_change(self):
+        # Test a query that produces the subtree:
+        #   Project
+        #       Filter
+        #           All Node Scan | (a)
+        #   Optional
+        #       Conditional Variable Length Traverse | (a)-[anon_0*1..INF]->(b)
+        #           Argument
+        #
+        # The scan op and the variable-length traversal and its filter are
+        # built in different ExecutionPlan segments. The segments must be
+        # updated before cloning the Optional subtree,
+        # or else the variable-length edge reference will be lost.
+        query = """MATCH (a {name: 'A'}) WITH a OPTIONAL MATCH (a)-[* {connects: 'AB'}]->(b) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['A', 'B']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

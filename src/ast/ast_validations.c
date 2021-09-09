@@ -77,10 +77,10 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		_AST_GetIdentifiers(child, identifiers);
 	}
 
-	if(type == CYPHER_AST_LIST_COMPREHENSION || 
-	   type == CYPHER_AST_ANY || 
-	   type == CYPHER_AST_ALL || 
-	   type == CYPHER_AST_SINGLE || 
+	if(type == CYPHER_AST_LIST_COMPREHENSION ||
+	   type == CYPHER_AST_ANY ||
+	   type == CYPHER_AST_ALL ||
+	   type == CYPHER_AST_SINGLE ||
 	   type == CYPHER_AST_NONE) {
 		// A list comprehension has a local variable that should only be accessed within its scope;
 		// do not leave it in the identifiers map.
@@ -123,6 +123,9 @@ static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifier
 		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
 		_AST_GetIdentifiers(child, identifiers);
 	}
+
+	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(node);
+	if(order_by) _AST_GetIdentifiers(order_by, identifiers);
 }
 
 // Extract identifiers / aliases from a procedure call.
@@ -1701,11 +1704,12 @@ AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
-	// In case of no parameters.
+	// in case of no parameters
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
-	if(_ValidateParamsOnly(root) != AST_VALID) return AST_INVALID;
-	if(_ValidateDuplicateParameters(root) != AST_VALID) return AST_INVALID;
+	if(_ValidateParamsOnly(root)            != AST_VALID)  return AST_INVALID;
+	if(_ValidateDuplicateParameters(root)   != AST_VALID)  return AST_INVALID;
+	if(_ValidateFunctionCalls(root, false)  != AST_VALID)  return AST_INVALID;
 
 	return AST_VALID;
 }
