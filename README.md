@@ -176,7 +176,7 @@ This code snippet shows how to use RedisGraph with raw Redis commands from Pytho
 import redis
 
 r = redis.StrictRedis()
-reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:33, gender:'male', status:'married')")
+reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:33, gender:'male', status:'married'})")
 ```
 
 ### Client libraries

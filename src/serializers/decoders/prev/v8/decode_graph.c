@@ -36,6 +36,8 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 	DataBlock_Accommodate(g->edges, edge_count);
 	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
+	// flush all matrices, guarantee matrix dimensions matches graph's nodes count
+	Graph_ApplyAllPending(g, true);
 }
 
 static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
@@ -58,7 +60,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	uint64_t label_count = RedisModule_LoadUnsigned(rdb);
 	uint64_t relation_count = RedisModule_LoadUnsigned(rdb);
 	uint64_t multi_edge[relation_count];
-	
+
 	for(uint i = 0; i < relation_count; i++) {
 		multi_edge[i] = RedisModule_LoadUnsigned(rdb);
 	}
@@ -71,7 +73,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	// If it is the first key of this graph, allocate all the data structures, with the appropriate dimensions.
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
-		
+
 		gc->decoding_context->multi_edge = array_new(uint64_t, relation_count);
 		for(uint i = 0; i < relation_count; i++) {
 			// Enable/Disable support for multi-edge
@@ -134,25 +136,26 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	for(uint i = 0; i < payloads_count; i++) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
-		case ENCODE_STATE_NODES:
-			RdbLoadNodes_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_NODES:
-			RdbLoadDeletedNodes_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_EDGES:
-			Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-			RdbLoadEdges_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_DELETED_EDGES:
-			RdbLoadDeletedEdges_v8(rdb, gc, payload.entities_count);
-			break;
-		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbLoadGraphSchema_v8(rdb, gc);
-			break;
-		default:
-			ASSERT(false && "Unknown encoding");
-			break;
+			case ENCODE_STATE_NODES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+				RdbLoadNodes_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_NODES:
+				RdbLoadDeletedNodes_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_EDGES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+				RdbLoadEdges_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_DELETED_EDGES:
+				RdbLoadDeletedEdges_v8(rdb, gc, payload.entities_count);
+				break;
+			case ENCODE_STATE_GRAPH_SCHEMA:
+				RdbLoadGraphSchema_v8(rdb, gc);
+				break;
+			default:
+				ASSERT(false && "Unknown encoding");
+				break;
 		}
 	}
 	array_free(key_schema);
@@ -194,3 +197,4 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	}
 	return gc;
 }
+

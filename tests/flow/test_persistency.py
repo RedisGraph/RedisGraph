@@ -203,3 +203,26 @@ class testGraphPersistency(FlowTestsBase):
             actual_result = graph.query(q)
             self.env.assertEquals(actual_result.result_set, expected_result)
 
+    # Verify that graphs larger than the
+    # default capacity are persisted correctly.
+    def test05_load_large_graph(self):
+        graph_name = "LARGE_GRAPH"
+        graph = Graph(graph_name, redis_con)
+        q = """UNWIND range(1, 50000) AS v CREATE (:L)-[:R {v: v}]->(:L)"""
+        actual_result = graph.query(q)
+        self.env.assertEquals(actual_result.nodes_created, 100_000)
+        self.env.assertEquals(actual_result.relationships_created, 50_000)
+
+        redis_con.execute_command("DEBUG", "RELOAD")
+        
+        expected_result = [[50000]]
+        
+        queries = [
+            """MATCH (:L)-[r {v: 50000}]->(:L) RETURN r.v""",
+            """MATCH (:L)-[r:R {v: 50000}]->(:L) RETURN r.v""",
+            """MATCH ()-[r:R {v: 50000}]->() RETURN r.v"""
+        ]
+
+        for q in queries:
+            actual_result = graph.query(q)
+            self.env.assertEquals(actual_result.result_set, expected_result)

@@ -142,6 +142,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 + exists
 + any
 + all
++ single
++ none
 
 ### Expression functions
 + case...when

@@ -216,6 +216,8 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 		} else if(root->cond.op == OP_OR && pass == 0) {
 			/* Visit right subtree. */
 			pass = FilterTree_applyFilters(RightChild(root), r);
+		} else if (root->cond.op == OP_NOT) {
+			pass = pass == FILTER_PASS ? FILTER_FAIL : FILTER_PASS;
 		}
 
 		return pass;
