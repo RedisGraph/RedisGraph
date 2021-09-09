@@ -33,3 +33,60 @@ class test_prev_rdb_decode(FlowTestsBase):
         self.env.assertIn("Index Scan", plan)
         results = redis_graph.query("MATCH (n:L1 {val:1}) RETURN n")
         self.env.assertEqual(results.result_set, [[node0]])
+    
+    def test_v7_decode(self):
+        graph_name = "v7_rdb_restore"
+        # dump created with the following query (v6 supported property value: integer, double, boolean, string, null, array)
+        #  graph.query g "CREATE (:L1 {val:1, strval: 'str', numval: 5.5, nullval: NULL, boolval: true, array: [1,2,3]})-[:E{val:2}]->(:L2{val:3})"
+        #  graph.query g "CREATE INDEX ON :L1(val)"
+        #  dump g
+        v6_rdb = b"\a\x81\x82\xb6\xa9\x85\xd6\xadh\a\x05\x02g\x00\x02\x02\x02\x01\x02\x02\x02\x01\x02\x01\x02\x05\x02\x01\x02\x02\x02\x02\x02\x00\x02\x03\x02\x01\x02\x04\x02\x00\x02\x05\x02\x01\x02\x00\x02\x01\x02\x00\x02\x06\x02\x00\x02`\x00\x02\x01\x02\x01\x02H\x00\x05\x04str\x00\x02\x02\x02\x80\x00\x00@\x00\x04\x00\x00\x00\x00\x00\x00\x16@\x02\x03\x02\x80\x00\x00\x80\x00\x02\x04\x02P\x00\x02\x01\x02\x05\x02\b\x02\x03\x02`\x00\x02\x01\x02`\x00\x02\x02\x02`\x00\x02\x03\x02\x01\x02\x01\x02\x01\x02\x01\x02\x00\x02`\x00\x02\x03\x02\x00\x02\x00\x02\x01\x02\x00\x02\x01\x02\x00\x02`\x00\x02\x02\x02\x06\x05\x04val\x00\x05\astrval\x00\x05\anumval\x00\x05\bnullval\x00\x05\bboolval\x00\x05\x06array\x00\x02\x02\x02\x00\x05\x03L1\x00\x02\x01\x02\x01\x05\x04val\x00\x02\x01\x05\x03L2\x00\x02\x00\x02\x01\x02\x00\x05\x02E\x00\x02\x00\x00\t\x00{Y\xb7\xe2A^2\xd3"
+        redis_con.restore(graph_name, 0, v6_rdb, True)
+        redis_graph = Graph(graph_name, redis_con)
+        node0 = Node(node_id=0, label='L1', properties={'val': 1, 'strval': 'str', 'numval': 5.5, 'boolval': True, 'array': [1,2,3]})
+        node1 = Node(node_id=1, label='L2', properties={'val': 3})
+        edge01 = Edge(src_node=0, relation='E', dest_node=1, edge_id=0, properties={'val':2})
+        results = redis_graph.query("MATCH (n)-[e]->(m) RETURN n, e, m")
+        self.env.assertEqual(results.result_set, [[node0, edge01, node1]])
+        plan = redis_graph.execution_plan("MATCH (n:L1 {val:1}) RETURN n")
+        self.env.assertIn("Index Scan", plan)
+        results = redis_graph.query("MATCH (n:L1 {val:1}) RETURN n")
+        self.env.assertEqual(results.result_set, [[node0]])
+
+    def test_v8_decode(self):
+        graph_name = "v8_rdb_restore"
+        # dump created with the following query (v6 supported property value: integer, double, boolean, string, null, array)
+        #  graph.query g "CREATE (:L1 {val:1, strval: 'str', numval: 5.5, nullval: NULL, boolval: true, array: [1,2,3]})-[:E{val:2}]->(:L2{val:3})"
+        #  graph.query g "CREATE INDEX ON :L1(val)"
+        #  dump g
+        v6_rdb = b"\a\x81\x82\xb6\xa9\x85\xd6\xadh\b\x05\x02g\x00\x02\x02\x02\x01\x02\x02\x02\x01\x02\x00\x02\x01\x02\x05\x02\x01\x02\x02\x02\x02\x02\x00\x02\x03\x02\x01\x02\x04\x02\x00\x02\x05\x02\x01\x02\x00\x02\x01\x02\x00\x02\x05\x02\x00\x02`\x00\x02\x01\x02\x01\x02H\x00\x05\x04str\x00\x02\x02\x02\x80\x00\x00@\x00\x04\x00\x00\x00\x00\x00\x00\x16@\x02\x04\x02P\x00\x02\x01\x02\x05\x02\b\x02\x03\x02`\x00\x02\x01\x02`\x00\x02\x02\x02`\x00\x02\x03\x02\x01\x02\x01\x02\x01\x02\x01\x02\x00\x02`\x00\x02\x03\x02\x00\x02\x00\x02\x01\x02\x00\x02\x01\x02\x00\x02`\x00\x02\x02\x02\x06\x05\x04val\x00\x05\astrval\x00\x05\anumval\x00\x05\bnullval\x00\x05\bboolval\x00\x05\x06array\x00\x02\x02\x02\x00\x05\x03L1\x00\x02\x01\x02\x01\x05\x04val\x00\x02\x01\x05\x03L2\x00\x02\x00\x02\x01\x02\x00\x05\x02E\x00\x02\x00\x00\t\x00 l\xff\x14\x9f\x04S\xb1"
+        redis_con.restore(graph_name, 0, v6_rdb, True)
+        redis_graph = Graph(graph_name, redis_con)
+        node0 = Node(node_id=0, label='L1', properties={'val': 1, 'strval': 'str', 'numval': 5.5, 'boolval': True, 'array': [1,2,3]})
+        node1 = Node(node_id=1, label='L2', properties={'val': 3})
+        edge01 = Edge(src_node=0, relation='E', dest_node=1, edge_id=0, properties={'val':2})
+        results = redis_graph.query("MATCH (n)-[e]->(m) RETURN n, e, m")
+        self.env.assertEqual(results.result_set, [[node0, edge01, node1]])
+        plan = redis_graph.execution_plan("MATCH (n:L1 {val:1}) RETURN n")
+        self.env.assertIn("Index Scan", plan)
+        results = redis_graph.query("MATCH (n:L1 {val:1}) RETURN n")
+        self.env.assertEqual(results.result_set, [[node0]])
+
+    def test_v9_decode(self):
+        graph_name = "v9_rdb_restore"
+        # dump created with the following query (v6 supported property value: integer, double, boolean, string, null, array)
+        #  graph.query g "CREATE (:L1 {val:1, strval: 'str', numval: 5.5, nullval: NULL, boolval: true, array: [1,2,3]})-[:E{val:2}]->(:L2{val:3})"
+        #  graph.query g "CREATE INDEX ON :L1(val)"
+        #  dump g
+        v6_rdb = b"\a\x81\x82\xb6\xa9\x85\xd6\xadh\t\x05\x02g\x00\x02\x02\x02\x01\x02\x02\x02\x01\x02\x00\x02\x01\x02\x05\x02\x01\x02\x02\x02\x02\x02\x00\x02\x03\x02\x01\x02\x04\x02\x00\x02\x05\x02\x01\x02\x00\x02\x01\x02\x00\x02\x05\x02\x00\x02`\x00\x02\x01\x02\x01\x02H\x00\x05\x04str\x00\x02\x02\x02\x80\x00\x00@\x00\x04\x00\x00\x00\x00\x00\x00\x16@\x02\x04\x02P\x00\x02\x01\x02\x05\x02\b\x02\x03\x02`\x00\x02\x01\x02`\x00\x02\x02\x02`\x00\x02\x03\x02\x01\x02\x01\x02\x01\x02\x01\x02\x00\x02`\x00\x02\x03\x02\x00\x02\x00\x02\x01\x02\x00\x02\x01\x02\x00\x02`\x00\x02\x02\x02\x06\x05\x04val\x00\x05\astrval\x00\x05\anumval\x00\x05\bnullval\x00\x05\bboolval\x00\x05\x06array\x00\x02\x02\x02\x00\x05\x03L1\x00\x02\x01\x02\x01\x05\x04val\x00\x02\x01\x05\x03L2\x00\x02\x00\x02\x01\x02\x00\x05\x02E\x00\x02\x00\x00\t\x00J\xfd\x88E\xee\x10sT"
+        redis_con.restore(graph_name, 0, v6_rdb, True)
+        redis_graph = Graph(graph_name, redis_con)
+        node0 = Node(node_id=0, label='L1', properties={'val': 1, 'strval': 'str', 'numval': 5.5, 'boolval': True, 'array': [1,2,3]})
+        node1 = Node(node_id=1, label='L2', properties={'val': 3})
+        edge01 = Edge(src_node=0, relation='E', dest_node=1, edge_id=0, properties={'val':2})
+        results = redis_graph.query("MATCH (n)-[e]->(m) RETURN n, e, m")
+        self.env.assertEqual(results.result_set, [[node0, edge01, node1]])
+        plan = redis_graph.execution_plan("MATCH (n:L1 {val:1}) RETURN n")
+        self.env.assertIn("Index Scan", plan)
+        results = redis_graph.query("MATCH (n:L1 {val:1}) RETURN n")
+        self.env.assertEqual(results.result_set, [[node0]])
