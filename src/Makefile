@@ -61,7 +61,8 @@ COV_DIR=$(ROOT)/cov
 COV_EXCLUDE += \
     '/Applications/*' \
     '/usr/*' \
-	'$(ROOT)/deps/*'
+	'$(ROOT)/deps/*' \
+	'$(ROOT)/src/util/sds/*'
 
 define COVERAGE_RESET
 $(SHOW)set -e ;\
