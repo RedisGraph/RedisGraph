@@ -37,7 +37,9 @@ def set_params(context):
     global params
 
     params = "CYPHER "
-    for row in context.table.rows:
+    params += '='.join(context.table.headings) + ' '
+
+    for row in context.table:
         params += '='.join(row) + ' '
 
 @given(u'having executed')
