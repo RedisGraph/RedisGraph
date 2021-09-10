@@ -166,6 +166,11 @@ int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 		return (op == OP_NEQUAL);
 	}
 
+	if(disjointOrNull == COMPARED_NAN) {
+		/* The filter passes if we're testing for inequality, and fails otherwise. */
+		return (op == OP_NEQUAL);
+	}
+
 	switch(op) {
 	case OP_EQUAL:
 		return rel == 0;

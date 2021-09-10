@@ -75,6 +75,7 @@ typedef enum {
 
 #define DISJOINT INT_MAX
 #define COMPARED_NULL INT_MIN
+#define COMPARED_NAN -1
 
 struct Pair;
 
