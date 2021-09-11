@@ -125,6 +125,19 @@ class testParams(FlowTestsBase):
             # Expecting an error.
             pass
 
+    def test_security_vulnrability(self):
+        # On old implementation this query which contains parameter injection:
+        # GRAPH.QUERY g “CYPHER a = 1 MATCH (p:A {n:1}) RETURN count(p)” “1 <ORIGINAL QUERY>”
+        # would have cause the wrong query to execute, instead of the ORIGINAL QUERY
+        # This is a try to replicate it:
+        query = "CYPHER a = 1 MATCH (p:A {n:1}) RETURN count(p),1 <ORIGINAL QUERY>"
+        try:
+            redis_graph.redis_con.execute_command("GRAPH.QUERY", "G", *query.split(',')) #"CYPHER a = 1 MATCH (p:A {n:1}) RETURN count(p)", "1 <ORIGINAL QUERY>")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertIn("Unknown argument: 1 <ORIGINAL QUERY>", str(e))
+
     def test_id_scan(self):
         redis_graph.query("CREATE ({val:1})")
         expected_results=[[1]]
@@ -132,7 +145,26 @@ class testParams(FlowTestsBase):
         query = "MATCH (n) WHERE id(n)=$id return n.val"
         query_info = QueryInfo(query = query, description="Test id scan with params", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
-        query = redis_graph.build_params_header(params) + query
-        plan = redis_graph.execution_plan(query)
+        plan = redis_graph.execution_plan(query, params)
         self.env.assertIn('NodeByIdSeek', plan)
 
+    def test_large_params_query(self):
+        params = {}
+        for i in range(2000):
+            params[str(i)] = 'abba'
+
+        try:
+            expected = [[1],[2],[3]]
+            res = redis_graph.query("UNWIND [1,2,3] AS x RETURN x", params)
+            self.env.assertEqual(res.result_set, expected)
+        except redis.exceptions.ResponseError as e:
+            print(str(e))
+            self.env.assertFalse(True)
+
+    def test_multi_params(self):
+        redis_con = self.env.getConnection()
+        try:
+            redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "UNWIND [1,2,3] AS x RETURN x", "query_params", "CYPHER $i=1", "query_params", "CYPHER $b=3")
+            self.env.assertFalse(True)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("Multiple query_params args", str(e))

@@ -430,8 +430,8 @@ class testQueryValidationFlow(FlowTestsBase):
             pass
 
         try:
-            query = """CYPHER p=3 WITH 1 AS a WHERE $p RETURN a"""
-            redis_graph.query(query)
+            query = """WITH 1 AS a WHERE $p RETURN a"""
+            redis_graph.query(query, {'p':3})
             assert(False)
         except redis.exceptions.ResponseError as e:
             assert("expected Boolean but was Integer" in str(e))
@@ -502,8 +502,9 @@ class testQueryValidationFlow(FlowTestsBase):
     # Parameters cannot reference aliases.
     def test33_alias_reference_in_param(self):
         try:
-            query = """CYPHER A=[a] RETURN 5"""
-            redis_graph.query(query)
+            params = """CYPHER A=[a]"""
+            query = """RETURN 5"""
+            redis_graph.query(query, params)
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.

@@ -39,7 +39,7 @@ void Graph_Explain(void *args) {
 	 * 2. Whether these items were cached or not */
 	bool           cached     =  false;
 	ExecutionPlan  *plan      =  NULL;
-	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
+	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query, command_ctx->query_params);
 	if(exec_ctx == NULL) goto cleanup;
 
 	plan = exec_ctx->plan;

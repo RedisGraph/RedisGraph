@@ -32,9 +32,10 @@ typedef struct {
  * @brief  Returns the objects and information required for query execution.
  * @note   If the query contains error, a ExecutionCtx struct with the AST and Execution plan objects will be NULL and EXECUTION_TYPE_INVALID is returned.
  * @param  *query: String representing the query.
+ * @param  *query_params: String representing the query params.
  * @retval ExecutionCtx populated with the current execution relevant objects.
  */
-ExecutionCtx *ExecutionCtx_FromQuery(const char *query);
+ExecutionCtx *ExecutionCtx_FromQuery(const char *query, const char *query_params);
 
 /**
  * @brief  Clone the execution ctx and return it (shallow copy for the ast, deep copy for the execution plan).

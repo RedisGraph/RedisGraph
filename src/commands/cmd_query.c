@@ -261,7 +261,7 @@ void _query(bool profile, void *args) {
 	QueryCtx_BeginTimer(); // Start query timing.
 
 	// parse query parameters and build an execution plan or retrieve it from the cache
-	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query, command_ctx->query_params);
 	if(exec_ctx == NULL) goto cleanup;
 
 	ExecutionType exec_type = exec_ctx->exec_type;

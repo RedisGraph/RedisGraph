@@ -26,7 +26,8 @@ CommandCtx *CommandCtx_New
 	ExecutorThread thread,
 	bool replicated_command,
 	bool compact,
-	long long timeout
+	long long timeout,
+	RedisModuleString *query_params
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc = bc;
@@ -36,6 +37,7 @@ CommandCtx *CommandCtx_New
 	context->compact = compact;
 	context->timeout = timeout;
 	context->command_name = NULL;
+	context->query_params = NULL;
 	context->graph_ctx = graph_ctx;
 	context->replicated_command = replicated_command;
 
@@ -49,6 +51,12 @@ CommandCtx *CommandCtx_New
 		// Make a copy of query.
 		const char *q = RedisModule_StringPtrLen(query, NULL);
 		context->query = rm_strdup(q);
+	}
+
+	if(query_params) {
+		// make a copy of query params.
+		const char *q_params = RedisModule_StringPtrLen(query_params, NULL);
+		context->query_params = rm_strdup(q_params);
 	}
 
 	return context;
@@ -142,6 +150,7 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 	CommandCtx_UntrackCtx(command_ctx);
 
 	if(command_ctx->query) rm_free(command_ctx->query);
+	if(command_ctx->query_params) rm_free(command_ctx->query_params);
 	rm_free(command_ctx->command_name);
 	rm_free(command_ctx);
 }

@@ -61,25 +61,24 @@ static AST *_ExecutionCtx_ParseAST(const char *query_string,
 	return ast;
 }
 
-ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
+ExecutionCtx *ExecutionCtx_FromQuery(const char *query, const char *query_params) {
 	ASSERT(query != NULL);
 
 	ExecutionCtx *ret;
 	const char *query_string;
 
-	// Parse and validate parameters only. Extract query string.
+	// Parse and validate parameters only.
 	// Return invalid execution context if there isn't a parser result.
-	cypher_parse_result_t *params_parse_result = parse_params(query,
-															  &query_string);
+	cypher_parse_result_t *params_parse_result = (query_params) ? parse_params(query_params) : NULL;
 
 	// Parameter parsing failed, return NULL.
-	if(params_parse_result == NULL) return NULL;
+	if(query_params && params_parse_result == NULL) return NULL;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Cache *cache = GraphContext_GetCache(gc);
 
 	// Check the cache to see if we already have a cached context for this query.
-	ret = Cache_GetValue(cache, query_string);
+	ret = Cache_GetValue(cache, query);
 	if(ret) {
 		// Set parameters parse result in the execution ast.
 		AST_SetParamsParseResult(ret->ast, params_parse_result);
@@ -88,7 +87,7 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 	}
 
 	// No cached execution plan, try to parse the query.
-	AST *ast = _ExecutionCtx_ParseAST(query_string, params_parse_result);
+	AST *ast = _ExecutionCtx_ParseAST(query, params_parse_result);
 	// If query parsing failed, return NULL.
 	if(!ast) return NULL;
 
@@ -111,7 +110,7 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan,
 															exec_type);
 		ExecutionCtx *exec_ctx_from_cache = Cache_SetGetValue(cache,
-															  query_string, exec_ctx_to_cache);
+															  query, exec_ctx_to_cache);
 		return exec_ctx_from_cache;
 	} else {
 		return _ExecutionCtx_New(ast, NULL, exec_type);
