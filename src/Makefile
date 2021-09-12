@@ -31,7 +31,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = \
-	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
+	-Wall -Wno-unused-variable -Wno-unused-result \
 	-fPIC -fcommon -fopenmp \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
@@ -61,7 +61,8 @@ COV_DIR=$(ROOT)/cov
 COV_EXCLUDE += \
     '/Applications/*' \
     '/usr/*' \
-	'$(ROOT)/deps/*'
+	'$(ROOT)/deps/*' \
+	'$(ROOT)/src/util/sds/*'
 
 define COVERAGE_RESET
 $(SHOW)set -e ;\
