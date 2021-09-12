@@ -152,6 +152,7 @@ static int _BulkInsert_ProcessNodeFile(GraphContext *gc, const char *data,
 
 	
 	// sync matrix once
+	ASSERT(Graph_GetMatrixPolicy(gc->g) == SYNC_POLICY_RESIZE);
 	Graph_GetLabelMatrix(gc->g, label_id);
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 
@@ -191,6 +192,7 @@ static int _BulkInsert_ProcessEdgeFile(GraphContext *gc, const char *data,
 			&data_idx, &relation_id, &prop_count);
 
 	// sync matrix once
+	ASSERT(Graph_GetMatrixPolicy(gc->g) == SYNC_POLICY_RESIZE);
 	Graph_GetRelationMatrix(gc->g, relation_id, false);
 	Graph_GetAdjacencyMatrix(gc->g, false);
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
@@ -233,7 +235,7 @@ static int _BulkInsert_ProcessTokens(GraphContext *gc, int token_count,
 		size_t len;
 		// retrieve a pointer to the next binary stream and record its length
 		const char *data = RedisModule_StringPtrLen(argv[i], &len);
-		int rc = type == SCHEMA_NODE
+		int rc = (type == SCHEMA_NODE)
 			? _BulkInsert_ProcessNodeFile(gc, data, len)
 			: _BulkInsert_ProcessEdgeFile(gc, data, len);
 		UNUSED(rc);
@@ -279,8 +281,8 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 	// lock graph under write lock
 	// allocate space for new nodes and edges
 	// set graph sync policy to resize only
-	Graph_SetMatrixPolicy(g, SYNC_POLICY_RESIZE);
 	Graph_AcquireWriteLock(g);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_RESIZE);
 	Graph_AllocateNodes(g, node_count);
 	Graph_AllocateEdges(g, edge_count);
 
