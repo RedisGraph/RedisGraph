@@ -84,6 +84,9 @@ class testStressFlow(FlowTestsBase):
             graphs.append(Graph(GRAPH_ID, self.env.getConnection()))
 
     def __del__(self):
+        if Env().envRunner.debugger is not None:
+            return
+
         for i in range(0, self.client_count):
             g = graphs[0]
             g.redis_con.close()
