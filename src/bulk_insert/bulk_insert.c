@@ -139,7 +139,7 @@ static SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_idx) {
 }
 
 static int _BulkInsert_ProcessNodeFile(GraphContext *gc, const char *data,
-								   size_t data_len, SchemaType type) {
+								   size_t data_len) {
 
 	int label_id;
 	uint prop_count;
@@ -147,7 +147,7 @@ static int _BulkInsert_ProcessNodeFile(GraphContext *gc, const char *data,
 
 	// read the CSV file header
 	// and commit all labels and properties it introduces
-	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data,
+	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, SCHEMA_NODE, data,
 			&data_idx, &label_id, &prop_count);
 
 	
@@ -179,19 +179,19 @@ static int _BulkInsert_ProcessNodeFile(GraphContext *gc, const char *data,
 }
 
 static int _BulkInsert_ProcessEdgeFile(GraphContext *gc, const char *data,
-								   size_t data_len, SchemaType type) {
+								   size_t data_len) {
 
-	int label_id;
+	int relation_id;
 	uint prop_count;
 	size_t data_idx = 0;
 
 	// read the CSV file header
 	// and commit all labels and properties it introduces
-	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, type, data,
-			&data_idx, &label_id, &prop_count);
+	Attribute_ID *prop_indices = _BulkInsert_ReadHeader(gc, SCHEMA_EDGE, data,
+			&data_idx, &relation_id, &prop_count);
 
 	// sync matrix once
-	Graph_GetRelationMatrix(gc->g, label_id, false);
+	Graph_GetRelationMatrix(gc->g, relation_id, false);
 	Graph_GetAdjacencyMatrix(gc->g, false);
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 
@@ -210,7 +210,7 @@ static int _BulkInsert_ProcessEdgeFile(GraphContext *gc, const char *data,
 		NodeID dest = *(NodeID *)&data[data_idx];
 		data_idx += sizeof(NodeID);
 
-		Graph_CreateEdge(gc->g, src, dest, label_id, &e);
+		Graph_CreateEdge(gc->g, src, dest, relation_id, &e);
 		ge = (GraphEntity *)&e;
 
 		// process entity attributes
@@ -227,27 +227,15 @@ static int _BulkInsert_ProcessEdgeFile(GraphContext *gc, const char *data,
 	return BULK_OK;
 }
 
-static int _BulkInsert_ProcessNodeTokens(GraphContext *gc, int token_count,
+static int _BulkInsert_ProcessTokens(GraphContext *gc, int token_count,
 		RedisModuleString **argv, SchemaType type) {
 	for(int i = 0; i < token_count; i ++) {
 		size_t len;
 		// retrieve a pointer to the next binary stream and record its length
 		const char *data = RedisModule_StringPtrLen(argv[i], &len);
-		int rc = _BulkInsert_ProcessNodeFile(gc, data, len, type);
-		UNUSED(rc);
-		ASSERT(rc == BULK_OK);
-	}
-
-	return BULK_OK;
-}
-
-static int _BulkInsert_ProcessEdgeTokens(GraphContext *gc, int token_count,
-		RedisModuleString **argv, SchemaType type) {
-	for(int i = 0; i < token_count; i ++) {
-		size_t len;
-		// retrieve a pointer to the next binary stream and record its length
-		const char *data = RedisModule_StringPtrLen(argv[i], &len);
-		int rc = _BulkInsert_ProcessEdgeFile(gc, data, len, type);
+		int rc = type == SCHEMA_NODE
+			? _BulkInsert_ProcessNodeFile(gc, data, len)
+			: _BulkInsert_ProcessEdgeFile(gc, data, len);
 		UNUSED(rc);
 		ASSERT(rc == BULK_OK);
 	}
@@ -301,7 +289,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 	if(node_token_count > 0) {
 		ASSERT(argc >= node_token_count);
 		// process all node files
-		if(_BulkInsert_ProcessNodeTokens(gc, node_token_count, argv,
+		if(_BulkInsert_ProcessTokens(gc, node_token_count, argv,
 					SCHEMA_NODE) != BULK_OK) {
 			res = BULK_FAIL;
 			goto cleanup;
@@ -313,7 +301,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
 	if(relation_token_count > 0) {
 		ASSERT(argc >= relation_token_count);
 		// Process all relationship files
-		if(_BulkInsert_ProcessEdgeTokens(gc, relation_token_count, argv,
+		if(_BulkInsert_ProcessTokens(gc, relation_token_count, argv,
 					SCHEMA_EDGE) != BULK_OK) {
 			res = BULK_FAIL;
 			goto cleanup;
