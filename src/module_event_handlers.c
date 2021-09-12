@@ -251,7 +251,8 @@ static void RG_ForkPrepare() {
 	// modified, otherwise the child process might inherit a malformed matrix
 	//
 	// on BGSAVE: acquire read lock
-	// release immediately once forked
+	// flush all matrices such that child won't inherit locked matrix
+	// release read lock immediately once forked
 	//
 	// in the case of RediSearch GC fork, quickly return
 
@@ -261,7 +262,15 @@ static void RG_ForkPrepare() {
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		// acquire read lock, guarantee graph isn't modified
-		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
+		Graph *g = graphs_in_keyspace[i]->g;
+		Graph_AcquireReadLock(g);
+
+		// set matrix synchronization policy to default
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+
+		// synchronize all matrices, make sure they're in a consistent state
+		// do not force-flush as this can take awhile
+		Graph_ApplyAllPending(g, false);
 	}
 }
 
@@ -290,14 +299,6 @@ static void RG_AfterForkChild() {
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		Graph *g = graphs_in_keyspace[i]->g;
-
-		// set matrix synchronization policy to default
-		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-
-		// synchronize all matrices, make sure they're in a consistent state
-		// do not force-flush as this can double memory consumption
-		// constructing M from DP and DM on forked process
-		Graph_ApplyAllPending(g, false);
 
 		// all matrices should be synced, set synchronization policy to NOP
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
