@@ -1,23 +1,18 @@
 #!/bin/bash
 
-# Collect name of each flow log that contains leaks.
-if FLOW_FILES_WITH_LEAKS=$(grep -l "definitely lost: [1-9][0-9,]* bytes" flow/logs/*.valgrind.log); then
-	echo "Memory leaks introduced in flow tests."
-	# Print the full Valgrind output for each leaking file.
-	for file in $FLOW_FILES_WITH_LEAKS; do
-		cat "$file"
+rc=0
+# For each Valgrind log in the flow and TCK tests,
+# print contents if memory has definitely been lost
+dirs=("flow" "tck")
+for testdir in "${dirs[@]}"; do
+	for file in $(ls $testdir/logs/*.valgrind.log); do
+		# If the last "definitely lost: " line of a logfile
+		# has a nonzero value, print the file contents.
+		if tac "$file" | grep -a -m 1 "definitely lost: " | grep "definitely lost: [1-9][0-9,]* bytes"; then
+			cat "$file"
+			rc=1
+		fi
 	done
-	exit 1
-fi
+done
 
-# Collect name of each TCK log that contains leaks.
-if TCK_FILES_WITH_LEAKS=$(grep -l "definitely lost: [1-9][0-9,]* bytes" tck/logs/*.valgrind.log); then
-	echo "Memory leaks introduced in TCK tests:"
-	# Print the full Valgrind output for each leaking file.
-	for file in $TCK_FILES_WITH_LEAKS; do
-		cat "$file"
-	done
-	exit 1
-fi
-
-exit 0
+exit $rc
