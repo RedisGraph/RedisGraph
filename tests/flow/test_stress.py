@@ -26,24 +26,24 @@ def query_crud(graph, query_id):
             return False
 
 # run n_iterations and create n node in each iteration
-def create_nodes(graph, n_iterations, n):
+def create_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("UNWIND range(0, %d) AS x CREATE (:Node {val: x})" % n)
+        graph.query("CREATE (:Node {val: %d})-[:R]->()" % i)
 
 # run n_iterations and delete n in each iteration
-def delete_nodes(graph, n_iterations, n):
+def delete_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) WITH n LIMIT %d DELETE n" % n)
+        graph.query("MATCH (n:Node) WITH n LIMIT 1 DELETE n")
 
 # run n_iterations and update all nodes in each iteration
 def update_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) SET n.v = 1")
+        graph.query("MATCH (n:Node) WITH n LIMIT 1 SET n.v = 1")
 
 # run n_iterations and execute a read query in each iteration
 def read_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) return n")
+        graph.query("MATCH (n:Node)-[:R]->() RETURN n LIMIT 1")
 
 # calls BGSAVE every 0.2 second
 def BGSAVE_loop(env, conn, n_iterations):
@@ -105,22 +105,25 @@ class testStressFlow(FlowTestsBase):
         conn.close()
 
     def test01_bgsave_stress(self):
-        n_nodes = 1000
-        n_iterations = 10
+        n_reads = 50000
+        n_creations = 50000
+        n_updates = n_creations/10
+        n_deletions = n_creations/2
+
         conn = self.env.getConnection()
         graphs[0].query("CREATE INDEX ON :Node(val)")
 
         pool = Pool(nodes=5)
 
-        t1 = pool.apipe(create_nodes, graphs[0], n_iterations, n_nodes)
+        t1 = pool.apipe(create_nodes, graphs[0], n_creations)
 
-        t2 = pool.apipe(delete_nodes, graphs[1], n_iterations, n_nodes/2)
+        t2 = pool.apipe(delete_nodes, graphs[1], n_deletions)
 
-        t3 = pool.apipe(read_nodes, graphs[2], n_iterations)
+        t3 = pool.apipe(read_nodes, graphs[2], n_reads)
 
-        t4 = pool.apipe(update_nodes, graphs[3], n_iterations)
+        t4 = pool.apipe(update_nodes, graphs[3], n_updates)
 
-        t5 = pool.apipe(BGSAVE_loop, self.env, conn, 3)
+        t5 = pool.apipe(BGSAVE_loop, self.env, conn, 10000)
 
         # wait for processes to join
         t1.wait()
@@ -154,3 +157,4 @@ class testStressFlow(FlowTestsBase):
         m.wait()
 
         self.env.assertTrue(self.env.checkExitCode())
+

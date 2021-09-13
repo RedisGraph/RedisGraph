@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,36 +16,36 @@
 #include "serializers/graphmeta_type.h"
 #include "serializers/graphcontext_type.h"
 
-// Global array tracking all extant GraphContexts.
+// global array tracking all extant GraphContexts
 extern GraphContext **graphs_in_keyspace;
-// Flag indicating whether the running process is a child.
+// flag indicating whether the running process is a child
 extern bool process_is_child;
-// GraphContext type as it is registered at Redis.
+// graphContext type as it is registered at Redis
 extern RedisModuleType *GraphContextRedisModuleType;
-// Graph meta keys type as it is registered at Redis.
+// graph meta keys type as it is registered at Redis
 extern RedisModuleType *GraphMetaRedisModuleType;
 
-/* Both of the following fields are required to verify that the module is replicated
- * in a successful manner. In a sharded environment, there could be a race condition between the decoding of
- * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
- * that the module replicated properly.*/
+// both of the following fields are required to verify that the module is replicated
+// in a successful manner. In a sharded environment, there could be a race condition between the decoding of
+// the last key, and the last aux_fields, so both counters should be zeroed in order to verify
+// that the module replicated properly.*/
 
-/* Holds the number of aux fields encountered during decoding of RDB file.
- * This field is used to represent when the module is replicating its graphs. */
+// holds the number of aux fields encountered during decoding of RDB file
+// this field is used to represent when the module is replicating its graphs
 uint aux_field_counter = 0 ;
 
-/* Holds the number of graphs encountered during decoding of RDB file.
- * This field is used to represent when the module is replicating its graphs. */
+// holds the number of graphs encountered during decoding of RDB file
+// this field is used to represent when the module is replicating its graphs
 uint currently_decoding_graphs = 0;
 
-/* Holds the id of the Redis Main thread in order to figure out the context the fork is running on */
+// holds the id of the Redis Main thread in order to figure out the context the fork is running on
 static pthread_t redis_main_thread_id;
 
-/* This callback invokes once rename for a graph is done. Since the key value is a graph context
- * which saves the name of the graph for later key accesses, this data must be consistent with the key name,
- * otherwise, the graph context will remain with the previous graph name, and a key access to this name might
- * yield an empty key or wrong value. This method changes the graph name value at the graph context to be
- * consistent with the key name. */
+// this callback invokes once rename for a graph is done. Since the key value is a graph context
+// which saves the name of the graph for later key accesses, this data must be consistent with the key name,
+// otherwise, the graph context will remain with the previous graph name, and a key access to this name might
+// yield an empty key or wrong value. This method changes the graph name value at the graph context to be
+// consistent with the key name
 static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
 							   RedisModuleString *key_name) {
 	if(type != REDISMODULE_NOTIFY_GENERIC) return REDISMODULE_OK;
@@ -251,7 +251,8 @@ static void RG_ForkPrepare() {
 	// modified, otherwise the child process might inherit a malformed matrix
 	//
 	// on BGSAVE: acquire read lock
-	// release immediately once forked
+	// flush all matrices such that child won't inherit locked matrix
+	// release read lock immediately once forked
 	//
 	// in the case of RediSearch GC fork, quickly return
 
@@ -261,7 +262,15 @@ static void RG_ForkPrepare() {
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		// acquire read lock, guarantee graph isn't modified
-		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
+		Graph *g = graphs_in_keyspace[i]->g;
+		Graph_AcquireReadLock(g);
+
+		// set matrix synchronization policy to default
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+
+		// synchronize all matrices, make sure they're in a consistent state
+		// do not force-flush as this can take awhile
+		Graph_ApplyAllPending(g, false);
 	}
 }
 
@@ -290,14 +299,6 @@ static void RG_AfterForkChild() {
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		Graph *g = graphs_in_keyspace[i]->g;
-
-		// set matrix synchronization policy to default
-		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-
-		// synchronize all matrices, make sure they're in a consistent state
-		// do not force-flush as this can double memory consumption
-		// constructing M from DP and DM on forked process
-		Graph_ApplyAllPending(g, false);
 
 		// all matrices should be synced, set synchronization policy to NOP
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
