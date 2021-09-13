@@ -11,27 +11,30 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 											 AST *ast) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	// Build the full FilterTree for this AST so that we can order traversals properly.
+	// build the full FilterTree for this AST
+	// so that we can order traversals properly
 	FT_FilterNode *ft = AST_BuildFilterTree(ast);
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
 	plan->connected_components = connectedComponents;
-	// If we have already constructed any ops, the plan's record map contains all variables bound at this time.
+	// if we have already constructed any ops
+	// the plan's record map contains all variables bound at this time
 	rax *bound_vars = plan->record_map;
 
-	/* If we have multiple graph components, the root operation is a Cartesian Product.
-	 * Each chain of traversals will be a child of this op. */
+	// if we have multiple graph components
+	// the root operation is a cartesian product
+	// each chain of traversals will be a child of this op
 	OpBase *cartesianProduct = NULL;
 	if(connectedComponentsCount > 1) {
 		cartesianProduct = NewCartesianProductOp(plan);
 		ExecutionPlan_UpdateRoot(plan, cartesianProduct);
 	}
 
-	// Keep track after all traversal operations along a pattern.
+	// keep track after all traversal operations along a pattern
 	for(uint i = 0; i < connectedComponentsCount; i++) {
 		QueryGraph *cc = connectedComponents[i];
 		uint edge_count = array_len(cc->edges);
-		OpBase *root = NULL; // The root of the traversal chain will be added to the ExecutionPlan.
+		OpBase *root = NULL; // the root of the traversal chain will be added to the ExecutionPlan
 		OpBase *tail = NULL;
 
 		if(edge_count == 0) {
@@ -149,8 +152,8 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 		return;
 	}
 
-	/* Only add at most one set of traversals per plan.
-	 * TODO Revisit and improve this logic. */
+	// only add at most one set of traversals per plan
+	// TODO Revisit and improve this logic
 	if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
 		return;
 	}
@@ -168,14 +171,15 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	for(uint i = 0; i < match_clause_count; i++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
 		if(cypher_ast_match_is_optional(match_clause)) continue;
-		mandatory_matches[mandatory_match_count] = match_clauses[i];
+		mandatory_matches[mandatory_match_count] = match_clause;
 		patterns[mandatory_match_count] = cypher_ast_match_get_pattern(match_clause);
 		mandatory_match_count++;
 	}
 
-	// Collect the QueryGraph entities referenced in the clauses being converted.
+	// collect the QueryGraph entities referenced in the clauses being converted
 	QueryGraph *qg = plan->query_graph;
-	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns, mandatory_match_count);
+	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns,
+			mandatory_match_count);
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 
