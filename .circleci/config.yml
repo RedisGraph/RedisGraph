@@ -258,6 +258,15 @@ jobs:
           # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
+      - run:
+          name: Cleanup test log dir
+          command: |
+            if [[ -d tests/flow/logs ]]; then
+              cd tests/flow/logs
+              rm -f *.aof *.rdb
+            fi
+      - store_artifacts:
+          path: ~/project/tests/flow/logs
 
   build_macos:
     macos:
@@ -273,6 +282,8 @@ jobs:
       - run:
           name: Test
           command: bash -l -c "make test"
+      - store_artifacts:
+          path: ~/project/tests/flow/logs
       - persist-artifacts
 
   platform_build:
