@@ -359,12 +359,12 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-		Attribute_ID *attribute_id, IndexType type) {
+								 Attribute_ID *attribute_id, IndexType type) {
 
 	ASSERT(gc     !=  NULL);
 
 	// Retrieve the schema for given id
-	Schema *s= GraphContext_GetSchemaByID(gc, id, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchemaByID(gc, id, SCHEMA_NODE);
 	if(s == NULL) return NULL;
 
 	return Schema_GetIndex(s, attribute_id, type);
@@ -566,5 +566,12 @@ static void _GraphContext_Free(void *arg) {
 	GraphDecodeContext_Free(gc->decoding_context);
 	rm_free(gc->graph_name);
 	rm_free(gc);
+
+	//--------------------------------------------------------------------------
+	// Free thread-local data
+	//--------------------------------------------------------------------------
+	// a QueryCtx may have been instantiated during a free routine triggered
+	// by Cache_Free (such as in OpDelete); ensure it is released
+	QueryCtx_Free();
 }
 
