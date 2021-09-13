@@ -281,6 +281,7 @@ static void _AlgebraicExpression_ExpandNodeOperands
 ) {
 	ASSERT(qg  != NULL);
 	ASSERT(exp != NULL);
+	uint child_count;
 
 	switch(exp->type) {
 		case AL_OPERAND:
@@ -289,7 +290,7 @@ static void _AlgebraicExpression_ExpandNodeOperands
 			}
 			break;
 		case AL_OPERATION:
-			uint child_count = AlgebraicExpression_ChildCount(exp);
+			child_count = AlgebraicExpression_ChildCount(exp);
 			for(uint i = 0; i < child_count; i++) {
 				AlgebraicExpression *child = exp->operation.children[i];
 				_AlgebraicExpression_ExpandNodeOperands(qg, child); 
