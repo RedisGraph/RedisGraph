@@ -27,24 +27,24 @@ def query_crud(graph, threadID):
             return
 
 # run n_iterations and create n node in each iteration
-def create_nodes(graph, n_iterations, n):
+def create_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("UNWIND range(0, %d) AS x CREATE (:Node {val: x})" % n)
+        graph.query("CREATE (:Node {val: %d})-[:R]->()" % i)
 
 # run n_iterations and delete n in each iteration
-def delete_nodes(graph, n_iterations, n):
+def delete_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) WITH n LIMIT %d DELETE n" % n)
+        graph.query("MATCH (n:Node) WITH n LIMIT 1 DELETE n")
 
 # run n_iterations and update all nodes in each iteration
 def update_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) SET n.v = 1")
+        graph.query("MATCH (n:Node) WITH n LIMIT 1 SET n.v = 1")
 
 # run n_iterations and execute a read query in each iteration
 def read_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("MATCH (n) return n")
+        graph.query("MATCH (n:Node)-[:R]->() RETURN n LIMIT 1")
 
 # calls BGSAVE every 0.2 second
 def BGSAVE_loop(env, conn, n_iterations):
@@ -104,28 +104,27 @@ class testStressFlow(FlowTestsBase):
         conn.close()
 
     def test01_bgsave_stress(self):
-        # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
-            Env().skip() # fork doesn't free memory, so valgrind will complain
+        n_reads = 50000
+        n_creations = 50000
+        n_updates = n_creations/10
+        n_deletions = n_creations/2
 
-        n_nodes = 1000
-        n_iterations = 10
         conn = self.env.getConnection()
         graphs[0].query("CREATE INDEX ON :Node(val)")
 
-        t1 = threading.Thread(target=create_nodes, args=(graphs[0], n_iterations, n_nodes))
+        t1 = threading.Thread(target=create_nodes, args=(graphs[0], n_creations))
         t1.setDaemon(True)
 
-        t2 = threading.Thread(target=delete_nodes, args=(graphs[1], n_iterations, n_nodes/2))
+        t2 = threading.Thread(target=delete_nodes, args=(graphs[1], n_deletions))
         t2.setDaemon(True)
 
-        t3 = threading.Thread(target=read_nodes, args=(graphs[2], n_iterations))
+        t3 = threading.Thread(target=read_nodes, args=(graphs[2], n_reads))
         t3.setDaemon(True)
 
-        t4 = threading.Thread(target=update_nodes(graphs[3], n_iterations))
+        t4 = threading.Thread(target=update_nodes(graphs[3], n_updates))
         t4.setDaemon(True)
 
-        t5 = threading.Thread(target=BGSAVE_loop, args=(self.env, conn, 3))
+        t5 = threading.Thread(target=BGSAVE_loop, args=(self.env, conn, 10000))
         t5.setDaemon(True)
 
         t1.start()
