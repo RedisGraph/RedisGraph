@@ -18,7 +18,7 @@ void Serializer_Graph_SetNode
 	Node *n                 // pointer to node
 );
 
-// set the node labels in the graph
+// sets graph's node labels matrix
 void Serializer_Graph_SetNodeLabels
 (
 	Graph *g

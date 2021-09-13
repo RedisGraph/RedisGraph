@@ -163,9 +163,15 @@ size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_
 	return *bytesWritten;
 }
 
-void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-						  size_t *bytesWritten,
-						  GraphEntityStringFromat format, GraphEntityType entityType) {
+void GraphEntity_ToString
+(
+	const GraphEntity *e,
+	char **buffer,
+	size_t *bufferLen,
+	size_t *bytesWritten,
+	GraphEntityStringFromat format,
+	GraphEntityType entityType
+) {
 	// space allocation
 	if(*bufferLen - *bytesWritten < 64)  {
 		*bufferLen += 64;
@@ -196,11 +202,13 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 				Node *n = (Node *)e;
 				GraphContext *gc = QueryCtx_GetGraphCtx();
 
-				// Retrieve node labels
+				// retrieve node labels
 				uint label_count;
 				NODE_GET_LABELS(gc->g, n, label_count);
 				for(uint i = 0; i < label_count; i ++) {
-					const char *name = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE)->name;
+					Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
+					const char *name = Schema_GetName(s);
+
 					// allocate space if needed
 					size_t labelLen = strlen(name);
 					if(*bufferLen - *bytesWritten < labelLen) {

@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 redis_con = None
 
-class testGraphPersistency(FlowTestsBase):
+class testGraphPersistency():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_con
@@ -231,13 +231,13 @@ class testGraphPersistency(FlowTestsBase):
     def test06_persist_multiple_labels(self):
         graph_id = "multiple_labels"
         g = Graph(graph_id, redis_con)
-        q = """CREATE (a:L0:L1:L2)"""
+        q = "CREATE (a:L0:L1:L2)"
         actual_result = g.query(q)
         self.env.assertEquals(actual_result.nodes_created, 1)
         self.env.assertEquals(actual_result.labels_added, 3)
 
         # Verify the new node
-        q = """MATCH (a) RETURN LABELS(a)"""
+        q = "MATCH (a) RETURN LABELS(a)"
         actual_result = g.query(q)
         expected_result = [[["L0", "L1", "L2"]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -248,3 +248,23 @@ class testGraphPersistency(FlowTestsBase):
         # Verify that the graph was properly saved and loaded
         actual_result = g.query(q)
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+        queries = [
+        "MATCH (a:L0) RETURN count(a)",
+        "MATCH (a:L1) RETURN count(a)",
+        "MATCH (a:L2) RETURN count(a)",
+        "MATCH (a:L0:L0) RETURN count(a)",
+        "MATCH (a:L0:L1) RETURN count(a)",
+        "MATCH (a:L0:L2) RETURN count(a)",
+        "MATCH (a:L1:L0) RETURN count(a)",
+        "MATCH (a:L1:L1) RETURN count(a)",
+        "MATCH (a:L1:L2) RETURN count(a)",
+        "MATCH (a:L2:L0) RETURN count(a)",
+        "MATCH (a:L2:L1) RETURN count(a)",
+        "MATCH (a:L2:L2) RETURN count(a)",
+        "MATCH (a:L0:L1:L2) RETURN count(a)"]
+
+        for q in queries:
+            actual_result = g.query(q)
+            self.env.assertEquals(actual_result.result_set, [1])
+
