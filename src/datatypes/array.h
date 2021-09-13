@@ -35,6 +35,15 @@ SIValue SIArray_Get(SIValue siarray, u_int32_t index);
 u_int32_t SIArray_Length(SIValue siarray);
 
 /**
+  * @brief  Returns true if any of the types in 't' are contained in the array
+            or its nested array children, if any
+  * @param  siarray: array
+  * @param  t: bitmap of types to search for
+  * @retval a boolean indicating whether any types were matched
+  */
+bool SIArray_ContainsType(SIValue siarray, SIType t);
+
+/**
   * @brief  Returns a copy of the array
   * @note   The caller needs to free the array
   * @param  siarray:
