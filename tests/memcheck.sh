@@ -3,8 +3,7 @@
 rc=0
 # For each Valgrind log in the flow and TCK tests,
 # print contents if memory has definitely been lost
-dirs=("flow" "tck")
-for testdir in "${dirs[@]}"; do
+for testdir in flow tck; do
 	for file in $(ls $testdir/logs/*.valgrind.log); do
 		# If the last "definitely lost: " line of a logfile
 		# has a nonzero value, print the file contents.
