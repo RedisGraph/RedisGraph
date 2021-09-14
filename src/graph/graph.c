@@ -99,6 +99,7 @@ static RG_Matrix RG_Matrix_New(const Graph *g, GrB_Type data_type) {
 
 	GrB_Index n = Graph_RequiredMatrixDim(g);
 	GrB_Info info = GrB_Matrix_new(&matrix->grb_matrix, data_type, n, n);
+	UNUSED(info);
 	ASSERT(info == GrB_SUCCESS);
 
     info = GxB_set(matrix->grb_matrix, GxB_HYPER, GxB_NEVER_HYPER);
@@ -389,6 +390,8 @@ void Graph_ApplyAllPending(Graph *g) {
 		g->SynchronizeMatrix(g, M);
 	}
 
+	g->SynchronizeMatrix(g, g->adjacency_matrix);
+
 	for(int i = 0; i < array_len(g->relations); i ++) {
 		M = g->relations[i];
 		g->SynchronizeMatrix(g, M);
@@ -398,6 +401,8 @@ void Graph_ApplyAllPending(Graph *g) {
 	Config_Option_get(Config_MAINTAIN_TRANSPOSE, &maintain_transpose);
 
 	if(maintain_transpose) {
+		g->SynchronizeMatrix(g, g->_t_adjacency_matrix);
+
 		for(int i = 0; i < array_len(g->t_relations); i ++) {
 			M = g->t_relations[i];
 			g->SynchronizeMatrix(g, M);
