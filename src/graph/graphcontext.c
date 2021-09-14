@@ -570,8 +570,12 @@ static void _GraphContext_Free(void *arg) {
 	//--------------------------------------------------------------------------
 	// Free thread-local data
 	//--------------------------------------------------------------------------
-	// a QueryCtx may have been instantiated during a free routine triggered
-	// by Cache_Free (such as in OpDelete); ensure it is released
+	// a QueryCtx may have been instantiated during cache eviction.
+	// for example, the query "MATCH (a) DELETE a" will populate the cache with
+	// an ExecutionPlan. when this plan is freed, DeleteFree will check whether
+	// there are entities to delete, and - finding none - will call 
+	// QueryCtx_UnlockCommit. this instantiates a new QueryCtx object that
+	// should be freed here.
 	QueryCtx_Free();
 }
 
