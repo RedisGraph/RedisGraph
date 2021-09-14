@@ -259,14 +259,20 @@ jobs:
           environment:
             RS_GLOBAL_DTORS: 1
       - run:
-          name: Cleanup test log dir
+          name: Cleanup test log dirs
           command: |
             if [[ -d tests/flow/logs ]]; then
               cd tests/flow/logs
               rm -f *.aof *.rdb
             fi
+            if [[ -d tests/tck/logs ]]; then
+              cd tests/tck/logs
+              rm -f *.aof *.rdb
+            fi
       - store_artifacts:
           path: ~/project/tests/flow/logs
+      - store_artifacts:
+          path: ~/project/tests/tck/logs
 
   build_macos:
     macos:
@@ -284,6 +290,8 @@ jobs:
           command: bash -l -c "make test"
       - store_artifacts:
           path: ~/project/tests/flow/logs
+      - store_artifacts:
+          path: ~/project/tests/tck/logs
       - persist-artifacts
 
   platform_build:
