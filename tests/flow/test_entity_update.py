@@ -1,6 +1,6 @@
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
-
+from redis import ResponseError
 from base import FlowTestsBase
 
 graph = None
