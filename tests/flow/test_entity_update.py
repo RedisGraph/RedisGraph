@@ -113,9 +113,24 @@ class testEntityUpdate(FlowTestsBase):
         self.env.assertEqual(result.result_set, expected_result)
 
     # Fail update an entity property when left hand side is not alias
-    def test12_fail_update_property_of_non_alias_enetity(self):
+    def test12_fail_update_property_of_non_alias_entity(self):
         try:
             graph.query("MATCH P=() SET nodes(P).prop = 1 RETURN nodes(P)")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("RedisGraph does not currently support non-alias references on the left-hand side of SET expressions", str(e))
+
+    # Fail when a property is a complex type nested within an array type
+    def test13_invalid_complex_type_in_array(self):
+        # Test combinations of invalid types with nested and top-level arrays
+        # Invalid types are NULL, maps, nodes, edges, and paths
+        queries = ["MATCH (a) SET a.v = [a]",
+                   "MATCH (a) SET a = {v: ['str', [1, NULL]]}",
+                   "MATCH (a) SET a += [[{k: 'v'}]]",
+                   "CREATE (a:L)-[e:R]->(:L) SET a.v = [e]"]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
