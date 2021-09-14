@@ -41,11 +41,14 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 	return res;
 }
 
-static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, 
-											  SIType accepted_properties,
-											  GraphEntity *entity,
-											  Attribute_ID attr_id,
-											  SIValue new_value) {
+static PendingUpdateCtx _PreparePendingUpdate
+(
+	GraphContext *gc,
+	SIType accepted_properties,
+	GraphEntity *entity,
+	Attribute_ID attr_id,
+	SIValue new_value
+) {
 	//--------------------------------------------------------------------------
 	// validate value type
 	//--------------------------------------------------------------------------
@@ -100,8 +103,8 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		// index previous entity if we're required to
 		if(ge != updates[i].ge) {
 			if(reindex) {
-				Node *n = (Node *)updates[i - 1].ge;
-				// Retrieve node labels
+				Node *n = (Node *)ge;
+				// retrieve node labels
 				uint label_count;
 				NODE_GET_LABELS(gc->g, n, label_count);
 				for(uint i = 0; i < label_count; i ++) {
@@ -119,7 +122,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		}
 
 		// if entity has been deleted, perform no updates
-		if(GraphEntity_IsDeleted(updates[i].ge)) continue;
+		if(GraphEntity_IsDeleted(ge)) continue;
 
 		// update the property on the graph entity
 		int updated = _UpdateEntity(update);

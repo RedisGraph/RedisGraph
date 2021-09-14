@@ -34,6 +34,12 @@ class testMultiLabel():
         expected_result = [[['L0','L1']]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+        # Issue a query that matches the single (:L1:L0) node.
+        query = "MATCH (a:L1:L0) RETURN LABELS(a)"
+        query_result = redis_graph.query(query)
+        expected_result = [[['L0','L1']]]
+        self.env.assertEquals(query_result.result_set, expected_result)
+
         # Issue a query that matches all 3 nodes with the label :L1.
         query = "MATCH (a:L1) RETURN LABELS(a) ORDER BY LABELS(a)"
         query_result = redis_graph.query(query)
@@ -89,12 +95,17 @@ class testMultiLabel():
         self.env.assertEquals(query_result.result_set, expected_result)
 
         # Query the explicitly created index on a multi-labeled node
-        query = """MATCH (a:L1:L2) WHERE a.v > 0 RETURN a.v ORDER BY a.v"""
-        plan = redis_graph.execution_plan(query)
-        self.env.assertContains("Index Scan", plan)
-        query_result = redis_graph.query(query)
-        expected_result = [[3]]
-        self.env.assertEquals(query_result.result_set, expected_result)
+        queries = [
+            "MATCH (a:L1:L2) WHERE a.v > 0 RETURN a.v ORDER BY a.v",
+            "MATCH (a:L2:L1) WHERE a.v > 0 RETURN a.v ORDER BY a.v"
+        ]
+
+        for q in queries:
+            plan = redis_graph.execution_plan(q)
+            self.env.assertContains("Index Scan", plan)
+            query_result = redis_graph.query(q)
+            expected_result = [[3]]
+            self.env.assertEquals(query_result.result_set, expected_result)
 
     # Validate the creation of multi-labeled nodes with the MERGE clause
     def test05_multi_label_merge(self):
