@@ -460,7 +460,9 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
+		for(uint i = 0; i < connected_component_count; i ++) {
+			QueryGraph_Free(plan->connected_components[i]);
+		}
 		array_free(plan->connected_components);
 	}
 

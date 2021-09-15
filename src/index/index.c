@@ -14,34 +14,35 @@
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
 
-static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
-							 double *doubleVal) {
-	Node n = GE_NEW_NODE();
-	NodeID nId = *(NodeID *)id;
-	GraphContext *gc = (GraphContext *)ctx;
-	Graph *g = gc->g;
+// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
+// static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
+// 							 double *doubleVal) {
+// 	Node n = GE_NEW_NODE();
+// 	NodeID nId = *(NodeID *)id;
+// 	GraphContext *gc = (GraphContext *)ctx;
+// 	Graph *g = gc->g;
 
-	int node_found = Graph_GetNode(g, nId, &n);
-	UNUSED(node_found);
-	ASSERT(node_found != 0);
+// 	int node_found = Graph_GetNode(g, nId, &n);
+// 	UNUSED(node_found);
+// 	ASSERT(node_found != 0);
 
-	Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
-	SIValue *v = GraphEntity_GetProperty((GraphEntity *)&n, attrId);
-	int ret;
-	if(v == PROPERTY_NOTFOUND) {
-		ret = RSVALTYPE_NOTFOUND;
-	} else if(v->type & T_STRING) {
-		*strVal = v->stringval;
-		ret = RSVALTYPE_STRING;
-	} else if(v->type & SI_NUMERIC) {
-		*doubleVal = SI_GET_NUMERIC(*v);
-		ret = RSVALTYPE_DOUBLE;
-	} else {
-		// Skiping booleans.
-		ret = RSVALTYPE_NOTFOUND;
-	}
-	return ret;
-}
+// 	Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
+// 	SIValue *v = GraphEntity_GetProperty((GraphEntity *)&n, attrId);
+// 	int ret;
+// 	if(v == PROPERTY_NOTFOUND) {
+// 		ret = RSVALTYPE_NOTFOUND;
+// 	} else if(v->type & T_STRING) {
+// 		*strVal = v->stringval;
+// 		ret = RSVALTYPE_STRING;
+// 	} else if(v->type & SI_NUMERIC) {
+// 		*doubleVal = SI_GET_NUMERIC(*v);
+// 		ret = RSVALTYPE_DOUBLE;
+// 	} else {
+// 		// Skiping booleans.
+// 		ret = RSVALTYPE_NOTFOUND;
+// 	}
+// 	return ret;
+// }
 
 static void _populateIndex(Index *idx) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
