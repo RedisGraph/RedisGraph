@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -83,6 +83,11 @@ void QueryCtx_SetResultSet(ResultSet *result_set) {
 	ctx->internal_exec_ctx.result_set = result_set;
 }
 
+void QueryCtx_SetParams(rax *params) {
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
+	ctx->query_data.params = params;
+}
+
 void QueryCtx_SetLastWriter(OpBase *last_writer) {
 	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->internal_exec_ctx.last_writer = last_writer;
@@ -95,8 +100,8 @@ AST *QueryCtx_GetAST(void) {
 }
 
 rax *QueryCtx_GetParams(void) {
-	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
-	if(!ctx->query_data.params) ctx->query_data.params = raxNew();
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
 	return ctx->query_data.params;
 }
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -68,6 +68,8 @@ void QueryCtx_SetAST(AST *ast);
 void QueryCtx_SetGraphCtx(GraphContext *gc);
 /* Set the resultset. */
 void QueryCtx_SetResultSet(ResultSet *result_set);
+/* Set the parameters map. */
+void QueryCtx_SetParams(rax *params);
 /* Set the last writer which needs to commit */
 void QueryCtx_SetLastWriter(OpBase *op);
 
