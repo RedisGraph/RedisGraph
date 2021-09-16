@@ -30,7 +30,6 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 // retrieve QueryCtx, return NULL if one does not exist
 static inline QueryCtx *_QueryCtx_GetCtx(void) {
 	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
-	if(!ctx) return NULL;
 	return ctx;
 }
 
