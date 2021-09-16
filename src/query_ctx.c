@@ -90,8 +90,8 @@ void QueryCtx_SetLastWriter(OpBase *last_writer) {
 
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(ctx) return ctx->query_data.ast;
-	return NULL;
+	ASSERT(ctx != NULL);
+	return ctx->query_data.ast;
 }
 
 rax *QueryCtx_GetParams(void) {
@@ -102,7 +102,7 @@ rax *QueryCtx_GetParams(void) {
 
 GraphContext *QueryCtx_GetGraphCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ASSERT(ctx->gc);
+	ASSERT(ctx && ctx->gc);
 	return ctx->gc;
 }
 
@@ -113,14 +113,14 @@ Graph *QueryCtx_GetGraph(void) {
 
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(ctx) return ctx->global_exec_ctx.redis_ctx;
-	return NULL;
+	ASSERT(ctx != NULL);
+	return ctx->global_exec_ctx.redis_ctx;
 }
 
 ResultSet *QueryCtx_GetResultSet(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(ctx) return ctx->internal_exec_ctx.result_set;
-	return NULL;
+	ASSERT(ctx != NULL);
+	return ctx->internal_exec_ctx.result_set;
 }
 
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
@@ -237,12 +237,13 @@ void QueryCtx_ForceUnlockCommit() {
 
 double QueryCtx_GetExecutionTime(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
 	return simple_toc(ctx->internal_exec_ctx.timer) * 1000;
 }
 
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(!ctx) return;
+	ASSERT(ctx != NULL);
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);

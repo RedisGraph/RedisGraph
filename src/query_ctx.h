@@ -74,7 +74,7 @@ void QueryCtx_SetLastWriter(OpBase *op);
 /* Getters */
 /* Retrieve the AST. */
 AST *QueryCtx_GetAST(void);
-/* Retrive the query parameters values map. */
+/* Retrieve the query parameters values map. */
 rax *QueryCtx_GetParams(void);
 /* Retrieve the Graph object. */
 Graph *QueryCtx_GetGraph(void);
