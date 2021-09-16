@@ -396,16 +396,12 @@ size_t Graph_UncompactedNodeCount(const Graph *g) {
 	return Graph_NodeCount(g) + Graph_DeletedNodeCount(g);
 }
 
-size_t Graph_LabeledNodeCount
+uint64_t Graph_LabeledNodeCount
 (
-	const Graph *g, int label
+	const Graph *g,
+	int label_idx
 ) {
-	RG_Matrix m = Graph_GetLabelMatrix(g, label);
-	ASSERT(m);
-
-	GrB_Index nvals = 0;
-	RG_Matrix_nvals(&nvals, m);
-	return nvals;
+	return GraphStatistics_NodeCount(&g->stats, label_idx);
 }
 
 size_t Graph_EdgeCount(const Graph *g) {
@@ -598,6 +594,9 @@ void Graph_CreateNode
 		RG_Matrix  m    =  Graph_GetLabelMatrix(g, label);
 		GrB_Info   res  =  RG_Matrix_setElement_BOOL(m, id, id);
 		ASSERT(res == GrB_SUCCESS);
+
+		// a node with 'label' has just been created, update statistics
+		GraphStatistics_IncNodeCount(&g->stats, label, 1);
 	}
 }
 
@@ -812,7 +811,12 @@ void Graph_DeleteNode
 	uint32_t label_count = array_len(g->labels);
 	for(int i = 0; i < label_count; i++) {
 		RG_Matrix M = Graph_GetLabelMatrix(g, i);
-		RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
+		GrB_Info res = RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n),
+				ENTITY_GET_ID(n));
+		if(res == GrB_SUCCESS) {
+			// a node with this label has just been deleted, update statistics
+			GraphStatistics_DecNodeCount(&g->stats, i, 1);
+		}
 	}
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
@@ -915,7 +919,7 @@ static void _BulkDeleteNodes
 	//--------------------------------------------------------------------------
 
 	uint _node_deleted = Graph_NodeCount(g);
-	// all nodes marked for deleteion are detected (no incoming/outgoing edges)
+	// all nodes marked for deletion are detected (no incoming/outgoing edges)
 	int node_type_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < node_count; i++) {
 		Node *n = distinct_nodes + i;
@@ -926,6 +930,8 @@ static void _BulkDeleteNodes
 		if(label_id != GRAPH_NO_LABEL) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
 			RG_Matrix_removeElement_BOOL(L, entity_id, entity_id);
+			// update statistics for label of deleted node
+			GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 		}
 
 		DataBlock_DeleteItem(g->nodes, entity_id);
@@ -1057,7 +1063,12 @@ int Graph_AddLabel
 	RG_Matrix_new(&m, GrB_BOOL, n, n);
 
 	array_append(g->labels, m);
-	return array_len(g->labels) - 1;
+
+	// adding a new label, update the stats structures to support it
+	GraphStatistics_IntroduceLabel(&g->stats);
+
+	int labelID = Graph_LabelTypeCount(g) - 1;
+	return labelID;
 }
 
 int Graph_AddRelationType
