@@ -9,7 +9,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../ops/op_filter.h"
-#include "../ops/op_index_scan.h"
+#include "../ops/op_node_by_index_scan.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../../ast/ast_shared.h"
 #include "../../datatypes/array.h"

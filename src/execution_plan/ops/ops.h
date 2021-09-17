@@ -13,7 +13,7 @@
 #include "op_delete.h"
 #include "op_filter.h"
 #include "op_node_by_label_scan.h"
-#include "op_index_scan.h"
+#include "op_node_by_index_scan.h"
 #include "op_update.h"
 #include "op_conditional_traverse.h"
 #include "op_cartesian_product.h"

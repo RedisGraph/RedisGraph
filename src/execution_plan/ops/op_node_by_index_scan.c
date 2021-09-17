@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "op_index_scan.h"
+#include "op_node_by_index_scan.h"
 #include "../../query_ctx.h"
 #include "shared/print_functions.h"
 #include "../../filter_tree/ft_to_rsq.h"
