@@ -885,6 +885,7 @@ TEST_F(GraphTest, GraphStatistics) {
 
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 0);
 	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 0);
+	ASSERT_EQ(Graph_LabeledNodeCount(g, l), 0);
 
 	for(int i = 0; i < node_count; i++) Graph_CreateNode(g, l, &n[i]);
 	ASSERT_EQ(g->stats.node_count[l], 4);
@@ -982,6 +983,12 @@ TEST_F(GraphTest, GraphStatistics) {
 	ASSERT_EQ(g->stats.node_count[l], 3);
 	ASSERT_EQ(node_deleted, 1);
 	ASSERT_EQ(edge_deleted, 3);
+
+	// delete disconnected node
+	Graph_DeleteNode(g, &n[3]);
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r0), 1);
+	ASSERT_EQ(Graph_RelationEdgeCount(g, r1), 2);
+	ASSERT_EQ(g->stats.node_count[l], 2);
 
 	// Clean up.
 	Graph_Free(g);

@@ -807,16 +807,16 @@ void Graph_DeleteNode
 	// leading to / from node
 	ASSERT(g && n);
 
-	// clear label matrix at position node ID
-	uint32_t label_count = array_len(g->labels);
-	for(int i = 0; i < label_count; i++) {
-		RG_Matrix M = Graph_GetLabelMatrix(g, i);
+	// retrieve the appropriate label matrix if node is labeled
+	// TODO update this logic when introducing multi-label
+	int label_id = NODE_GET_LABEL_ID(n, g);
+	if(label_id != GRAPH_NO_LABEL) {
+		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
+		// clear label matrix at position node ID
 		GrB_Info res = RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n),
 				ENTITY_GET_ID(n));
-		if(res == GrB_SUCCESS) {
-			// a node with this label has just been deleted, update statistics
-			GraphStatistics_DecNodeCount(&g->stats, i, 1);
-		}
+		// update statistics
+		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));

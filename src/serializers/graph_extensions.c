@@ -34,9 +34,6 @@ void Serializer_Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 		
 		// Optimize set only for decoder
 		GrB_Matrix_setElement_BOOL(m, true, id, id);
-
-		// a node with 'label' has just been created, update statistics
-		GraphStatistics_IncNodeCount(&g->stats, label, 1);
 	}
 }
 

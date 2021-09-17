@@ -25,12 +25,14 @@ void GraphStatistics_IntroduceLabel(GraphStatistics *stats) {
 
 uint64_t GraphStatistics_EdgeCount(const GraphStatistics *stats,
 								   int relation_idx) {
+	ASSERT(stats);
 	ASSERT(relation_idx < array_len(stats->edge_count));
 	return stats->edge_count[relation_idx];
 }
 
 uint64_t GraphStatistics_NodeCount(const GraphStatistics *stats,
 								   int label_idx) {
+	ASSERT(stats);
 	ASSERT(label_idx < array_len(stats->node_count));
 	return stats->node_count[label_idx];
 }
