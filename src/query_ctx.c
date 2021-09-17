@@ -84,6 +84,7 @@ void QueryCtx_SetResultSet(ResultSet *result_set) {
 }
 
 void QueryCtx_SetParams(rax *params) {
+	ASSERT(params != NULL);
 	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->query_data.params = params;
 }
