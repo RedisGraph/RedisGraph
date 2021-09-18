@@ -171,38 +171,37 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 	}
 
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
+		Graph *g = gc->g;
+
 		// revert to default synchronization behavior
-		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(gc->g, true);
-
-		uint node_schemas_count = array_len(gc->node_schemas);
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+		Graph_ApplyAllPending(g, true);
+		
+		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
-		for(uint i = 0; i < node_schemas_count; i++) {
+		// index the nodes
+		for(uint i = 0; i < label_count; i++) {
 			GrB_Index nvals;
-			RG_Matrix L = gc->g->labels[i];
+			RG_Matrix L = Graph_GetLabelMatrix(g, i);
 			RG_Matrix_nvals(&nvals, L);
-			GraphStatistics_IncNodeCount(&gc->g->stats, i, nvals);
-		}
+			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
-		// set the thread-local GraphContext, as it will be accessed when creating indexes
-		QueryCtx_SetGraphCtx(gc);
-		// Index the nodes when decoding ends.
-		for(uint i = 0; i < node_schemas_count; i++) {
-			Schema *s = gc->node_schemas[i];
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
 		// make sure graph doesn't contains may pending changes
-		ASSERT(Graph_Pending(gc->g) == false);
+		ASSERT(Graph_Pending(g) == false);
 
 		QueryCtx_Free(); // Release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// graph has finished decoding, inform the module
 		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
-		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
+		RedisModule_Log(ctx, "notice", "Done decoding graph %s", GraphContext_GetName(gc));
 	}
+
 	return gc;
 }
 
