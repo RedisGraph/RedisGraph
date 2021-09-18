@@ -1,0 +1,4 @@
+redisgraph:
+    path: /opt/view/RedisGraph/bin/artifacts/redisgraph.Linux-ubuntu18.04-x86_64.99.99.99.zip
+    # args:
+    modules_v2_api: yes

@@ -1,6 +1,8 @@
 
 MAKEFLAGS += --no-builtin-rules
 
+ROOT:=$(realpath $(shell pwd)/..)
+
 .PHONY: test unit flow tck memcheck benchmark fuzz clean
 
 TEST_ARGS+=--clear-logs
@@ -16,8 +18,7 @@ else
 	BENCHMARK_ARGS = redisbench-admin run-local 
 endif
 
-BENCHMARK_ARGS += --module_path $(shell pwd)/../src/redisgraph.so \
-	--required-module graph
+BENCHMARK_ARGS += --module_path $(ROOT)/src/redisgraph.so --required-module graph
 ifneq ($(BENCHMARK),)
 	BENCHMARK_ARGS += --test $(BENCHMARK)
 endif
@@ -29,11 +30,11 @@ endif
 
 # If the Valgrind flag is set, check for memory access errors.
 ifneq ($(VALGRIND),)
-	TEST_ARGS += --vg --vg-no-leakcheck --vg-verbose --vg-suppressions=$(shell pwd)/../src/valgrind.supp
+	TEST_ARGS += --vg --vg-no-leakcheck --vg-verbose --vg-suppressions=$(ROOT)/src/valgrind.supp
 endif
 
 # Set the RLTest arguments to check for memory leaks.
-MEMCHECK_ARGS = $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(shell pwd)/../src/valgrind.supp
+MEMCHECK_ARGS = $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(ROOT)/src/valgrind.supp
 
 ifeq ($(UNIT),1)
 TESTS += unit
@@ -53,13 +54,14 @@ unit:
 
 flow:
 	### flow tests
-	@$(MAKE) -C flow TEST_ARGS="$(TEST_ARGS)"
+	MODULE=$(ROOT)/src/redisgraph.so ./flow/tests.sh
+#	@$(MAKE) -C flow TEST_ARGS="$(TEST_ARGS)"
 
 tck:
 	### Cypher Technology Compatibility Kit (TCK)
 	@$(MAKE) -C tck TEST_ARGS="$(TEST_ARGS)"
 
-memcheck: export RS_GLOBAL_DTORS = 1
+memcheck: export RS_GLOBAL_DTORS=1
 memcheck:
 	@$(MAKE) -C flow TEST_ARGS="$(MEMCHECK_ARGS)"
 	@$(MAKE) -C tck TEST_ARGS="$(MEMCHECK_ARGS)"
