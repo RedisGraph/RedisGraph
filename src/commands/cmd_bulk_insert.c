@@ -110,7 +110,6 @@ int Graph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
-	QueryCtx_Free();
 	if(gc) GraphContext_Release(gc);
 
 	return REDISMODULE_OK;
