@@ -183,7 +183,7 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 		// Graph has finished decoding, inform the module.
 		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
-		RedisModule_Log(ctx, "notice", "Done decoding graph %s", *GraphContext_GetName(gc));
+		RedisModule_Log(ctx, "notice", "Done decoding graph %s", GraphContext_GetName(gc));
 	}
 
 	return gc;
