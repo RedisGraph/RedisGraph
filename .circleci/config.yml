@@ -378,7 +378,7 @@ jobs:
           command: |
             sudo python3 -m pip list
             sudo mkdir -p ~/workspace/tests
-            sudo bash -l -c "make test RLEC=1 SHOW=1"
+            sudo bash -l -c "make test FLOW=1 RLEC=1 SHOW=1"
       - save-tests-logs
 
   deploy_branch:
