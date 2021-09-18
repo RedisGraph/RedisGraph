@@ -805,7 +805,8 @@ void Graph_DeleteNode
 	// assumption, node is completely detected,
 	// there are no incoming nor outgoing edges
 	// leading to / from node
-	ASSERT(g && n);
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
 
 	// retrieve the appropriate label matrix if node is labeled
 	// TODO update this logic when introducing multi-label
@@ -813,8 +814,8 @@ void Graph_DeleteNode
 	if(label_id != GRAPH_NO_LABEL) {
 		RG_Matrix M = Graph_GetLabelMatrix(g, label_id);
 		// clear label matrix at position node ID
-		GrB_Info res = RG_Matrix_removeElement_BOOL(M, ENTITY_GET_ID(n),
-				ENTITY_GET_ID(n));
+		EntityID id = ENTITY_GET_ID(n);
+		RG_Matrix_removeElement_BOOL(M, id, id);
 		// update statistics
 		GraphStatistics_DecNodeCount(&g->stats, label_id, 1);
 	}
