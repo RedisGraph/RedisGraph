@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -78,7 +78,7 @@ static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
 	uint noptions = cypher_ast_statement_noptions(statement);
 	if(noptions == 0) return;
-	rax *params = QueryCtx_GetParams();
+	rax *params = raxNew();
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
@@ -90,6 +90,8 @@ static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)exp, NULL);
 		}
 	}
+	// Add the parameters map to the QueryCtx.
+	QueryCtx_SetParams(params);
 }
 
 static void AST_IncreaseRefCount(AST *ast) {
