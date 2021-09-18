@@ -280,7 +280,7 @@ package: redisgraph.so
 
 #----------------------------------------------------------------------------------------------
 
-test: redisgraph.so
+test: # redisgraph.so
 	# check valgrind flag is not empty
 ifneq ($(VALGRIND),)
 	# valgrind is requested, check that host's os is not Linux

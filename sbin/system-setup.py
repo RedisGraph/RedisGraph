@@ -52,7 +52,7 @@ class RedisGraphSetup(paella.Setup):
     def common_last(self):
         self.install("astyle", _try=True) # fails for centos7
         self.run("%s/bin/getcmake" % READIES)
-        self.run("{PYTHON} {READIES}/bin/getrmpytools".format(PYTHON=self.python, READIES=READIES))
+        self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall".format(PYTHON=self.python, READIES=READIES))
 
         self.pip_install("-r tests/requirements.txt")
 

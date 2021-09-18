@@ -123,7 +123,9 @@ commands:
       - setup-automation
       - run:
           name: Install prerequisites
-          command: ./sbin/system-setup.py
+          command: |
+            ./sbin/system-setup.py
+            python3 -m pip list
 
   benchmark-automation:
     parameters:
@@ -544,7 +546,8 @@ workflows:
     jobs:
       - build:
           <<: *context
-          <<: *not-on-integ-branch
+          #@@<<: *not-on-integ-branch
+          <<: *never
       - coverage:
           <<: *context
           #@@<<: *on-any-branch
