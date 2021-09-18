@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,13 +16,20 @@ extern RedisModuleType *GraphContextRedisModuleType;
 
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
-static inline QueryCtx *_QueryCtx_GetCtx(void) {
+// retrieve or instantiate new QueryCtx
+static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
 	if(!ctx) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
+	return ctx;
+}
+
+// retrieve QueryCtx, return NULL if one does not exist
+static inline QueryCtx *_QueryCtx_GetCtx(void) {
+	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
 	return ctx;
 }
 
@@ -36,7 +43,7 @@ bool QueryCtx_Init(void) {
 }
 
 inline QueryCtx *QueryCtx_GetQueryCtx() {
-	return _QueryCtx_GetCtx();
+	return _QueryCtx_GetCreateCtx();
 }
 
 inline void QueryCtx_SetTLS(QueryCtx *query_ctx) {
@@ -48,12 +55,12 @@ inline void QueryCtx_RemoveFromTLS() {
 }
 
 void QueryCtx_BeginTimer(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx(); // Attempt to retrieve the QueryCtx.
 	simple_tic(ctx->internal_exec_ctx.timer); // Start the execution timer.
 }
 
 void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->gc = CommandCtx_GetGraphContext(cmd_ctx);
 	ctx->query_data.query = CommandCtx_GetQuery(cmd_ctx);
 	ctx->global_exec_ctx.bc = CommandCtx_GetBlockingClient(cmd_ctx);
@@ -62,39 +69,46 @@ void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx) {
 }
 
 void QueryCtx_SetAST(AST *ast) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->query_data.ast = ast;
 }
 
 void QueryCtx_SetGraphCtx(GraphContext *gc) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->gc = gc;
 }
 
 void QueryCtx_SetResultSet(ResultSet *result_set) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->internal_exec_ctx.result_set = result_set;
 }
 
+void QueryCtx_SetParams(rax *params) {
+	ASSERT(params != NULL);
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
+	ctx->query_data.params = params;
+}
+
 void QueryCtx_SetLastWriter(OpBase *last_writer) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->internal_exec_ctx.last_writer = last_writer;
 }
 
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
 	return ctx->query_data.ast;
 }
 
 rax *QueryCtx_GetParams(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(!ctx->query_data.params) ctx->query_data.params = raxNew();
+	ASSERT(ctx != NULL);
 	return ctx->query_data.params;
 }
 
 GraphContext *QueryCtx_GetGraphCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ASSERT(ctx->gc);
+	ASSERT(ctx && ctx->gc);
 	return ctx->gc;
 }
 
@@ -105,11 +119,13 @@ Graph *QueryCtx_GetGraph(void) {
 
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
 	return ctx->global_exec_ctx.redis_ctx;
 }
 
 ResultSet *QueryCtx_GetResultSet(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
 	return ctx->internal_exec_ctx.result_set;
 }
 
@@ -121,7 +137,7 @@ ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
 }
 
 void QueryCtx_PrintQuery(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	printf("%s\n", ctx->query_data.query);
 }
 
@@ -134,7 +150,7 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 }
 
 bool QueryCtx_LockForCommit(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
+	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	if(ctx->internal_exec_ctx.locked_for_commit) return true;
 	// Lock GIL.
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
@@ -199,6 +215,7 @@ static void _QueryCtx_UnlockCommit(QueryCtx *ctx) {
 
 void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	if(!ctx) return;
 
 	// check that the writer_op is entitled to release the lock.
 	if(ctx->internal_exec_ctx.last_writer != writer_op) return;
@@ -211,6 +228,7 @@ void QueryCtx_UnlockCommit(OpBase *writer_op) {
 
 void QueryCtx_ForceUnlockCommit() {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	if(!ctx) return;
 
 	// already unlocked?
 	if(!ctx->internal_exec_ctx.locked_for_commit) return;
@@ -225,11 +243,13 @@ void QueryCtx_ForceUnlockCommit() {
 
 double QueryCtx_GetExecutionTime(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
 	return simple_toc(ctx->internal_exec_ctx.timer) * 1000;
 }
 
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL);
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);
