@@ -14,6 +14,8 @@
 #include "../../util/rax_extensions.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
+static void MergeFree(OpBase *opBase);
+
 static void _InitializeUpdates(OpMerge *op, rax *updates) {
 	raxIterator it;
 	// if we have ON MATCH / ON CREATE directives, set the appropriate record IDs of entities to be updated
@@ -38,10 +40,23 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	op->on_match         =  on_match;
 	op->on_create        =  on_create;
 	// set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeFree, true, plan);
 
 	if(op->on_match) _InitializeUpdates(op, op->on_match);
 	if(op->on_create) _InitializeUpdates(op, op->on_create);
 
 	return (OpBase *)op;
+}
+
+static void MergeFree(OpBase *opBase) {
+	OpMerge *op = (OpMerge *)opBase;
+	if(op->on_match) {
+		raxFreeWithCallback(op->on_match, (void(*)(void *))UpdateCtx_Free);
+		op->on_match = NULL;
+	}
+
+	if(op->on_create) {
+		raxFreeWithCallback(op->on_create, (void(*)(void *))UpdateCtx_Free);
+		op->on_create = NULL;
+	}
 }

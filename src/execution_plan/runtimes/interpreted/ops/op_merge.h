@@ -30,6 +30,8 @@ typedef struct {
 	raxIterator on_create_it;           // Iterator for traversing ON CREATE update contexts.
 	PendingUpdateCtx *pending_updates;  // Pending updates to apply, generated 
 	ResultSetStatistics *stats;         // Required for tracking statistics updates in ON MATCH.
+	rax *on_match;                      // Updates to be performed on a successful match.
+	rax *on_create;                     // Updates to be performed on creation.
 } RT_OpMerge;
 
 RT_OpBase *RT_NewMergeOp(const RT_ExecutionPlan *plan, const OpMerge *op_desc);

@@ -28,7 +28,7 @@ typedef struct {
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
-	RT_OpBase *last_writer;        // The last writer operation which indicates the need for commit.
+	RT_OpBase *last_writer;     // The last writer operation which indicates the need for commit.
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
