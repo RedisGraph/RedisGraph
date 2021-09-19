@@ -165,11 +165,8 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 		RG_Matrix L = Graph_GetLabelMatrix(g, i);
 		RG_Matrix_nvals(&nvals, L);
 		GraphStatistics_IncNodeCount(&g->stats, i, nvals);
-
-		Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 	}
 
 	// make sure graph doesn't contains may pending changes
 	ASSERT(Graph_Pending(g) == false);
 }
-
