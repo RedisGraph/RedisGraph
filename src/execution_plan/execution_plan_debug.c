@@ -7,7 +7,6 @@
 #include "execution_plan.h"
 #include "../RG.h"
 #include "./ops/ops.h"
-#include "../errors.h"
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, sds *buffer,
 						  int ident, int *op_count) {
@@ -31,8 +30,6 @@ void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, sds *buffer,
 // Reply with a string representation of given execution plan.
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	ASSERT(plan && ctx);
-
-	if(ErrorCtx_EncounteredError()) return;
 
 	int op_count = 0;   // Number of operations printed.
 	sds buffer = sdsempty();
