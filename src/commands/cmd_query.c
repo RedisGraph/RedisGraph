@@ -61,7 +61,10 @@ void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 							 ExecutionType exec_type) {
-	Index *idx = NULL;
+	Index       *idx         =  NULL;
+	SchemaType  schema_type  =  SCHEMA_EDGE;
+	IndexType   idx_type     =  IDX_EXACT_MATCH;
+
 	const cypher_astnode_t *index_op = ast->root;
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		// retrieve strings from AST node
@@ -69,23 +72,47 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		unsigned int nprops = cypher_ast_create_node_props_index_nprops(index_op);
 		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(index_op));
 
+		// determine if index is created over node label or edge relationship
+		// default to edge
+		// TODO: support new index create syntax
+		// CREATE INDEX FOR (n:L) ON (n.v)
+		// CREATE INDEX FOR ()-[e:R]-() ON (r.v)
+		if(GraphContext_GetSchema(gc, label, schema_type) == NULL) {
+			schema_type = SCHEMA_NODE;
+		}
+
 		// add index for each property
 		QueryCtx_LockForCommit();
 		for(unsigned int i = 0; i < nprops; i++) {
-			const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
-																index_op, i));
-			index_added |= (GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK);
+			const char *prop = cypher_ast_prop_name_get_value(
+					cypher_ast_create_node_props_index_get_prop_name(index_op,
+						i));
+
+			index_added |= (GraphContext_AddIndex(&idx, gc, schema_type, label,
+						prop, idx_type) == INDEX_OK);
 		}
+
 		// populate the index only when at least one attribute was introduced
 		if(index_added) Index_Construct(idx);
+
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
-		// Retrieve strings from AST node
-		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_props_index_get_prop_name(
-															  index_op, 0));
+		// retrieve strings from AST node
+		const char *label = cypher_ast_label_get_name(
+				cypher_ast_drop_node_props_index_get_label(index_op));
+		const char *prop = cypher_ast_prop_name_get_value(
+				cypher_ast_drop_node_props_index_get_prop_name(index_op, 0));
+
+		// determine if schema type from which index is removed
+		// default to edge
+		// TODO: support index name
+		if(GraphContext_GetSchema(gc, label, schema_type) == NULL) {
+			schema_type = SCHEMA_NODE;
+		}
+
 		QueryCtx_LockForCommit();
-		int res = GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH);
+		int res = GraphContext_DeleteIndex(gc, schema_type, label, prop,
+				idx_type);
 		QueryCtx_UnlockCommit(NULL);
 
 		if(res != INDEX_OK) {

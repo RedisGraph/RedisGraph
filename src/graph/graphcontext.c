@@ -383,30 +383,45 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
-						  const char *field, IndexType type) {
-
-	ASSERT(idx && gc && label && field);
+int GraphContext_AddIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	IndexType index_type
+) {
+	ASSERT(idx    !=  NULL);
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
+	ASSERT(field  !=  NULL);
 
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
-	int res = Schema_AddIndex(idx, s, field, type);
+	int res = Schema_AddIndex(idx, s, field, index_type);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
 
 	return res;
 }
 
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
-							 const char *field, IndexType type) {
-	ASSERT(gc != NULL);
-	ASSERT(label != NULL);
+int GraphContext_DeleteIndex
+(
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	IndexType type
+) {
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
 
-	// Retrieve the schema for this label
+	// retrieve the schema for this label
 	int res = INDEX_FAIL;
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s != NULL) {
 		res = Schema_RemoveIndex(s, field, type);

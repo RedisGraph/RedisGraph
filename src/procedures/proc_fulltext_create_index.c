@@ -39,7 +39,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	// introduce fields to index
 	for(int i = 0; i < fields_count; i++) {
 		const char *field = fields[i].stringval;
-		if(GraphContext_AddIndex(&idx, gc, label, field, IDX_FULLTEXT) == INDEX_OK) {
+		if(GraphContext_AddIndex(&idx, gc, SCHEMA_NODE, label, field,
+					IDX_FULLTEXT) == INDEX_OK) {
 			res = INDEX_OK;
 		}
 	}
