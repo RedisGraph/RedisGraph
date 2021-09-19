@@ -19,6 +19,15 @@ Schema *Schema_New(const char *name, int id) {
 	return schema;
 }
 
+int Schema_ID
+(
+	const Schema *s
+) {
+	ASSERT(s != NULL);
+
+	return s->id;
+}
+
 const char *Schema_GetName(const Schema *s) {
 	ASSERT(s);
 	return s->name;

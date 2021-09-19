@@ -27,6 +27,9 @@ typedef struct {
 /* Creates a new node. */
 QGNode *QGNode_New(const char *alias);
 
+// returns node alias
+const char *QGNode_Alias(const QGNode *n);
+
 // returns number of labels attached to node
 uint QGNode_LabelCount(const QGNode *n);
 

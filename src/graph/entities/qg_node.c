@@ -39,6 +39,15 @@ QGNode *QGNode_New
 	return n;
 }
 
+const char *QGNode_Alias
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
+	return n->alias;
+}
+
 uint QGNode_LabelCount
 (
 	const QGNode *n

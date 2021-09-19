@@ -30,6 +30,9 @@ typedef struct {
 /* Creates a new schema. */
 Schema *Schema_New(const char *label, int id);
 
+// return schema ID
+int Schema_ID(const Schema *s);
+
 const char *Schema_GetName(const Schema *s);
 
 /* Returns true if schema has either a full-text or exact-match index. */
