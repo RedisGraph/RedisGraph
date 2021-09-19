@@ -292,7 +292,6 @@ jobs:
         type: string
     docker:
       - image: debian:buster
-    resource_class: large
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
@@ -489,7 +488,7 @@ workflows:
             #<<: *on-integ-and-version-tags
           matrix:
             parameters:
-              platform: [bionic] #, xenial, centos7, centos8]
+              platform: [bionic, xenial] #, xenial, centos7, centos8]
 #      - build-arm-platforms:
 #          <<: *on-integ-and-version-tags
 #          context: common
