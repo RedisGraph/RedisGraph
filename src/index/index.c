@@ -73,15 +73,23 @@ static void _populateIndex(Index *idx) {
 	}
 }
 
-// Create a new index.
-Index *Index_New(const char *label, IndexType type) {
+// create a new index
+Index *Index_New
+(
+	const char *label,           // indexed label
+	IndexType type,              // exact match or full text
+	GraphEntityType entity_type  // entity type been indexed
+) {
 	Index *idx = rm_malloc(sizeof(Index));
-	idx->idx = NULL;
-	idx->fields_count = 0;
-	idx->type = type;
-	idx->label = rm_strdup(label);
-	idx->fields = array_new(char *, 0);
-	idx->fields_ids = array_new(Attribute_ID, 0);
+
+	idx->idx           =  NULL;
+	idx->type          =  type;
+	idx->label         =  rm_strdup(label);
+	idx->fields        =  array_new(char *, 0);
+	idx->fields_ids    =  array_new(Attribute_ID, 0);
+	idx->entity_type   =  entity_type;
+	idx->fields_count  =  0;
+
 	return idx;
 }
 
@@ -218,7 +226,7 @@ void Index_RemoveNode(Index *idx, const Node *n) {
 	RediSearch_DeleteDocument(idx->idx, &node_id, sizeof(EntityID));
 }
 
-// Constructs index.
+// constructs index
 void Index_Construct(Index *idx) {
 	ASSERT(idx != NULL);
 

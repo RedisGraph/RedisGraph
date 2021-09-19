@@ -256,11 +256,11 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 
 	if(t == SCHEMA_NODE) {
 		label_id = Graph_AddLabel(gc->g);
-		schema = Schema_New(label, label_id);
+		schema = Schema_New(SCHEMA_NODE, label_id, label);
 		array_append(gc->node_schemas, schema);
 	} else {
 		label_id = Graph_AddRelationType(gc->g);
-		schema = Schema_New(label, label_id);
+		schema = Schema_New(SCHEMA_EDGE, label_id, label);
 		array_append(gc->relation_schemas, schema);
 	}
 

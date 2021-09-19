@@ -15,7 +15,7 @@ Schema *RdbLoadSchema_v6(RedisModuleIO *rdb, SchemaType type) {
 
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
-	Schema *s = Schema_New(name, id);
+	Schema *s = Schema_New(SCHEMA_NODE, id, name);
 	RedisModule_Free(name);
 
 	Index *idx = NULL;
