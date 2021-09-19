@@ -8,6 +8,7 @@
 #include "RG.h"
 #include "../../../errors.h"
 #include "../../../query_ctx.h"
+#include "../../../datatypes/array.h"
 
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
@@ -79,7 +80,7 @@ static void _CommitNodes(PendingCreations *pending) {
 
 		if(pending->node_properties[i]) {
 			_AddProperties(pending->stats, (GraphEntity *)n,
-					pending->node_properties[i]);
+						   pending->node_properties[i]);
 		}
 
 		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
@@ -141,7 +142,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
 		Schema *schema = GraphContext_GetSchema(gc, e->relationship,
-				SCHEMA_EDGE);
+												SCHEMA_EDGE);
 		// all schemas have been created in the edge blueprint loop or earlier
 		ASSERT(schema);
 		int relation_id = schema->id;
@@ -150,7 +151,7 @@ static void _CommitEdges(PendingCreations *pending) {
 
 		if(pending->edge_properties[i]) {
 			_AddProperties(pending->stats, (GraphEntity *)e,
-					pending->edge_properties[i]);
+						   pending->edge_properties[i]);
 		}
 	}
 }
@@ -242,6 +243,21 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 				converted->property_count = i;
 				PendingPropertiesFree(converted);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
+			}
+		}
+
+		// emit an error and exit if we're trying to add
+		// an array containing an invalid type
+		if(SI_TYPE(val) == T_ARRAY) {
+			SIType invalid_properties = ~SI_VALID_PROPERTY_VALUE;
+			bool res = SIArray_ContainsType(val, invalid_properties);
+			if(res) {
+				// validation failed
+				SIValue_Free(val);
+				converted->property_count = i;
+				PendingPropertiesFree(converted);
+				Error_InvalidPropertyValue();
+				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 		}
 		// Set the converted property.

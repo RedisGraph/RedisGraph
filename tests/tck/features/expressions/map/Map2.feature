@@ -31,7 +31,6 @@
 Feature: Map2 - Dynamic Value Access
 # Dynamic value access refers to the bracket-operator – <expression resulting in a map>'['<expression resulting in a string>']' – irrespectively of whether the map key – i.e. <expression resulting in a string> – could be evaluated statically in a given scenario.
 
-  @skip
   Scenario: [1] Use dynamic property lookup based on parameters when there is no type information
     Given any graph
     And parameters are:
@@ -47,7 +46,6 @@ Feature: Map2 - Dynamic Value Access
       | 'Apa' |
     And no side effects
 
-  @skip
   Scenario: [2] Use dynamic property lookup based on parameters when there is rhs type information
     Given any graph
     And parameters are:
@@ -64,7 +62,6 @@ Feature: Map2 - Dynamic Value Access
     And no side effects
 
   @NegativeTest
-  @skip
   Scenario: [3] Fail at runtime when attempting to index with an Int into a Map
     Given any graph
     And parameters are:
@@ -78,7 +75,6 @@ Feature: Map2 - Dynamic Value Access
     Then a TypeError should be raised at runtime: MapElementAccessByNonString
 
   @NegativeTest
-  @skip
   Scenario: [4] Fail at runtime when trying to index into a map with a non-string
     Given any graph
     And parameters are:
@@ -92,7 +88,6 @@ Feature: Map2 - Dynamic Value Access
     Then a TypeError should be raised at runtime: MapElementAccessByNonString
 
   @NegativeTest
-  @skip
   Scenario: [5] Fail at runtime when trying to index something which is not a map
     Given any graph
     And parameters are:
