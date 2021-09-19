@@ -130,16 +130,6 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	return plan;
 }
 
-static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
-	if(OpBase_IsWriter(root)) return root;
-	for(int i = root->childCount - 1; i >= 0; i--) {
-		OpBase *child = root->children[i];
-		OpBase *res = _ExecutionPlan_FindLastWriter(child);
-		if(res) return res;
-	}
-	return NULL;
-}
-
 static ExecutionPlan *_process_segment(AST *ast, uint segment_start_idx,
 									   uint segment_end_idx) {
 	ASSERT(ast != NULL);

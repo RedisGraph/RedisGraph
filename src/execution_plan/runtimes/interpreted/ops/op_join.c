@@ -10,7 +10,6 @@
 
 /* Forward declarations. */
 static Record JoinConsume(RT_OpBase *opBase);
-static RT_OpResult JoinReset(RT_OpBase *opBase);
 static RT_OpResult JoinInit(RT_OpBase *opBase);
 
 RT_OpBase *RT_NewJoinOp(const RT_ExecutionPlan *plan, const OpJoin *op_desc) {
@@ -61,11 +60,4 @@ static Record JoinConsume(RT_OpBase *opBase) {
 	}
 
 	return r;
-}
-
-static RT_OpResult JoinReset(RT_OpBase *opBase) {
-	RT_OpJoin *op = (RT_OpJoin *)opBase;
-	op->streamIdx = 0;
-	op->stream = op->op.children[op->streamIdx];
-	return OP_OK;
 }
