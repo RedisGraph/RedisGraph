@@ -8,15 +8,15 @@
 #include "../../value.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include "../ops/op_filter.h"
-#include "../ops/op_index_scan.h"
-#include "../ops/op_node_by_label_scan.h"
+#include "../runtimes/interpreted/ops/op_filter.h"
+#include "../runtimes/interpreted/ops/op_index_scan.h"
+#include "../runtimes/interpreted/ops/op_node_by_label_scan.h"
 #include "../../ast/ast_shared.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/point.h"
 #include "../../arithmetic/arithmetic_op.h"
 #include "../../filter_tree/filter_tree_utils.h"
-#include "../execution_plan_build/execution_plan_modify.h"
+#include "../runtimes/interpreted/execution_plan_build/runtime_execution_plan_modify.h"
 
 //------------------------------------------------------------------------------
 // Filter normalization
@@ -222,15 +222,15 @@ cleanup:
 
 // returns an array of filter operation which can be
 // reduced into a single index scan operation
-OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
-	OpFilter **filters = array_new(OpFilter *, 0);
-	const char* filtered_entity = scanOp->n.alias; // entity being filtered
+RT_OpFilter **_applicableFilters(RT_NodeByLabelScan *scanOp, Index *idx) {
+	RT_OpFilter **filters = array_new(RT_OpFilter *, 0);
+	const char* filtered_entity = scanOp->op_desc->n.alias; // entity being filtered
 
 	// we begin with a LabelScan, and want to find predicate filters that modify
 	// the active entity
-	OpBase *current = scanOp->op.parent;
-	while(current->type == OPType_FILTER) {
-		OpFilter *filter = (OpFilter *)current;
+	RT_OpBase *current = scanOp->op.parent;
+	while(current->op_desc->type == OPType_FILTER) {
+		RT_OpFilter *filter = (RT_OpFilter *)current;
 
 		if(_applicableFilter(filtered_entity, idx, &filter->filterTree)) {
 			array_append(filters, filter);
@@ -243,7 +243,7 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 	return filters;
 }
 
-static FT_FilterNode *_Concat_Filters(OpFilter **filter_ops) {
+static FT_FilterNode *_Concat_Filters(RT_OpFilter **filter_ops) {
 	uint count = array_len(filter_ops);
 	ASSERT(count >= 1);
 	if(count == 1) return FilterTree_Clone(filter_ops[0]->filterTree);
@@ -269,54 +269,55 @@ static FT_FilterNode *_Concat_Filters(OpFilter **filter_ops) {
 
 // try to replace given Label Scan operation and a set of Filter operations with
 // a single Index Scan operation
-void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
+void reduce_scan_op(RT_ExecutionPlan *plan, RT_NodeByLabelScan *scan) {
 	// make sure there's an index for scanned label
-	const char *label = scan->n.label;
+	const char *label = scan->op_desc->n.label;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
 	if(idx == NULL) return;
 
 	// get all applicable filter for index
 	RSIndex *rs_idx = idx->idx;
-	OpFilter **filters = _applicableFilters(scan, idx);
+	RT_OpFilter **filters = _applicableFilters(scan, idx);
 
 	// no filters, return
 	uint filters_count = array_len(filters);
 	if(filters_count == 0) goto cleanup;
 
 	FT_FilterNode *root = _Concat_Filters(filters);
-	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->n, rs_idx, root);
+	IndexScan *indexOp_desc = (IndexScan *)NewIndexScanOp(scan->op_desc->op.plan, scan->op_desc->n, rs_idx, root);
+	RT_OpBase *indexOp = RT_NewIndexScanOp(scan->op.plan, indexOp_desc);
 
 	// replace the redundant scan op with the newly-constructed Index Scan
-	ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
-	OpBase_Free((OpBase *)scan);
+	RT_ExecutionPlan_ReplaceOp(plan, (RT_OpBase *)scan, indexOp);
+	RT_OpBase_Free((RT_OpBase *)scan);
 
 	// remove and free all redundant filter ops
 	// since this is a chain of single-child operations
 	// all operations are replaced in-place
 	// avoiding problems with stream-sensitive ops like SemiApply
 	for(uint i = 0; i < filters_count; i++) {
-		OpFilter *filter = filters[i];
-		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-		OpBase_Free((OpBase *)filter);
+		RT_OpFilter *filter = filters[i];
+		RT_ExecutionPlan_RemoveOp(plan, (RT_OpBase *)filter);
+		RT_OpBase_Free((RT_OpBase *)filter);
 	}
 
 cleanup:
 	array_free(filters);
 }
 
-void utilizeIndices(ExecutionPlan *plan) {
+void utilizeIndices(RT_ExecutionPlan *plan) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// return immediately if the graph has no indices
 	if(!GraphContext_HasIndices(gc)) return;
 
 	// collect all label scans
-	OpBase **scanOps = ExecutionPlan_CollectOps(plan->root,
+	RT_OpBase **scanOps = RT_ExecutionPlan_CollectOps(plan->root,
 			OPType_NODE_BY_LABEL_SCAN);
 
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {
-		NodeByLabelScan *scanOp = (NodeByLabelScan *)scanOps[i];
+		RT_NodeByLabelScan *scanOp = (RT_NodeByLabelScan *)scanOps[i];
 		// try to reduce label scan + filter(s) to a single IndexScan operation
 		reduce_scan_op(plan, scanOp);
 	}

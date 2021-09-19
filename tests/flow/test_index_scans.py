@@ -227,7 +227,7 @@ class testIndexScanFlow(FlowTestsBase):
         query = """MATCH (n:person) WHERE id(n)>=7 AND n.age<9 RETURN n ORDER BY n.age"""
         plan = redis_graph.execution_plan(query)
         query_result = redis_graph.query(query)
-        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Node By Label and ID Scan', plan)
         self.env.assertIn('Filter', plan)
         query_result = redis_graph.query(query)
 

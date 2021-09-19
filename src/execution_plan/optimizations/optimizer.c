@@ -17,9 +17,6 @@ void optimizePlan(ExecutionPlan *plan) {
 	// Remove redundant SCAN operations.
 	reduceScans(plan);
 
-	// When possible, replace label scan and filter ops with index scans.
-	utilizeIndices(plan);
-
 	// Try to reduce SCAN + FILTER to a node seek operation.
 	seekByID(plan);
 
@@ -42,6 +39,9 @@ void optimizePlan(ExecutionPlan *plan) {
 void optimize_RTPlan(RT_ExecutionPlan *plan) {
 	// Tries to compact filter trees, and remove redundant filters.
 	compactFilters(plan);
+
+	// When possible, replace label scan and filter ops with index scans.
+	utilizeIndices(plan);
 
 	// Try to reduce a number of filters into a single filter op.
 	reduceFilters(plan);

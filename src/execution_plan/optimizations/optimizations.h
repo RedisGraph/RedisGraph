@@ -21,7 +21,6 @@ void orderExpressions(
 );
 
 void reduceScans(ExecutionPlan *plan);
-void utilizeIndices(ExecutionPlan *plan);
 void seekByID(ExecutionPlan *plan);
 void filterVariableLengthEdges(ExecutionPlan *plan);
 void reduceCartesianProductStreamCount(ExecutionPlan *plan);
@@ -30,6 +29,7 @@ void reduceTraversal(ExecutionPlan *plan);
 void reduceDistinct(ExecutionPlan *plan);
 
 void reduceFilters(RT_ExecutionPlan *plan);
+void utilizeIndices(RT_ExecutionPlan *plan);
 void compactFilters(RT_ExecutionPlan *plan);
 void reduceCount(RT_ExecutionPlan *plan);
 void applyLimit(RT_ExecutionPlan *plan);
