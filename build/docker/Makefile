@@ -3,8 +3,8 @@ ROOT=../..
 MK.pyver:=3
 include $(ROOT)/deps/readies/mk/main
 
-# OSNICK=buster|stretch|bionic|xenial|centos7
-OSNICK ?= buster
+# OSNICK=bullseye|bionic|xenial|centos7|centos8
+OSNICK ?= bullseye
 
 REPO=redisgraph
 
