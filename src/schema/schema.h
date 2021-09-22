@@ -86,11 +86,18 @@ int Schema_RemoveIndex
 	IndexType type
 );
 
-// introduce node schema indicies
+// introduce node to schema indicies
 void Schema_AddNodeToIndices
 (
 	const Schema *s,
 	const Node *n
+);
+
+// introduce edge to schema indicies
+void Schema_AddEdgeToIndices
+(
+	const Schema *s,
+	const Edge *e
 );
 
 // Free schema

@@ -209,7 +209,9 @@ void Schema_AddNodeToIndices
 	const Schema *s,
 	const Node *n
 ) {
-	if(!s) return;
+	ASSERT(s != NULL);
+	ASSERT(n != NULL);
+
 	Index *idx = NULL;
 
 	idx = s->fulltextIdx;
@@ -217,6 +219,24 @@ void Schema_AddNodeToIndices
 
 	idx = s->index;
 	if(idx) Index_IndexNode(idx, n);
+}
+
+// index edge under all schema indices
+void Schema_AddEdgeToIndices
+(
+	const Schema *s,
+	const Edge *e
+) {
+	ASSERT(s != NULL);
+	ASSERT(e != NULL);
+
+	Index *idx = NULL;
+
+	idx = s->fulltextIdx;
+	if(idx) Index_IndexEdge(idx, e);
+
+	idx = s->index;
+	if(idx) Index_IndexEdge(idx, e);
 }
 
 void Schema_Free
