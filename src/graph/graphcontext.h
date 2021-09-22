@@ -235,6 +235,13 @@ void GraphContext_DeleteNodeFromIndices
 	Node *n
 );
 
+// remove a single edge from all indices that refer to it
+void GraphContext_DeleteEdgeFromIndices
+(
+	GraphContext *gc,
+	Edge *e
+);
+
 // add GraphContext to global array
 void GraphContext_RegisterWithModule
 (
