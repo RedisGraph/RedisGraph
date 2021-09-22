@@ -24,6 +24,7 @@ typedef enum {
 
 typedef struct {
 	char *label;                  // indexed label
+	int label_id;                 // indexed label ID
 	char **fields;                // indexed fields
 	Attribute_ID *fields_ids;     // indexed field IDs
 	uint fields_count;            // number of fields
@@ -37,8 +38,15 @@ typedef struct {
 Index *Index_New
 (
 	const char *label,           // indexed label
+	int label_id,                // indexed label id
 	IndexType type,              // exact match or full text
 	GraphEntityType entity_type  // entity type been indexed
+);
+
+// constructs index
+void Index_Construct
+(
+	Index *idx
 );
 
 // adds field to index
@@ -81,24 +89,12 @@ void Index_RemoveEdge
 	const Edge *e  // edge to remove from index
 );
 
-// constructs index
-void Index_Construct
-(
-	Index *idx
-);
-
 // query an index
 RSResultsIterator *Index_Query
 (
 	const Index *idx,
 	const char *query,  // query to execute
 	char **err          // [optional] report back error
-);
-
-// return indexed label
-const char *Index_GetLabel
-(
-	const Index *idx
 );
 
 // returns number of fields indexed

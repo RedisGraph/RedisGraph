@@ -72,12 +72,9 @@ class IndexTest: public ::testing::Test {
 
 TEST_F(IndexTest, Index_New) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
+	int l_id = 0;
 	const char *l = "Person";
-	Index *idx = Index_New(l, IDX_EXACT_MATCH);
-
-	// Return indexed label.
-	const char *label = Index_GetLabel(idx);
-	ASSERT_STREQ(label, l);
+	Index *idx = Index_New(l, l_id, IDX_EXACT_MATCH, GETYPE_NODE);
 
 	const char *field = "name";
 	Attribute_ID name_attribute_id = GraphContext_GetAttributeID(gc, "name");

@@ -132,7 +132,7 @@ int Schema_AddIndex
 		if(s->type == SCHEMA_NODE) entity_type = GETYPE_NODE;
 		else entity_type = GETYPE_EDGE;
 
-		_idx = Index_New(s->name, type, entity_type);
+		_idx = Index_New(s->name, s->id, type, entity_type);
 		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
 		else s->index = _idx;
 	}

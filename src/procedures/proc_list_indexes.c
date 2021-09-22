@@ -85,7 +85,7 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 	}
 
 	if(ctx->yield_label) {
-		*ctx->yield_label = SI_ConstStringVal((char *)Index_GetLabel(idx));
+		*ctx->yield_label = SI_ConstStringVal((char *)Schema_GetName(s));
 	}
 
 	if(ctx->yield_properties) {
