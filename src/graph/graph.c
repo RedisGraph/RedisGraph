@@ -1131,8 +1131,12 @@ RG_Matrix Graph_GetLabelMatrix
 	const Graph *g,
 	int label_idx
 ) {
-	ASSERT(g);
-	ASSERT(label_idx < array_len(g->labels));
+	ASSERT(g != NULL);
+
+	// return zero matrix if label_idx is out of range
+	if(label_idx >= array_len(g->labels)) {
+		return Graph_GetZeroMatrix(g);
+	}
 
 	RG_Matrix m = g->labels[label_idx];
 	g->SynchronizeMatrix(g, m);
