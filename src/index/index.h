@@ -23,6 +23,12 @@ typedef enum {
 } IndexType;
 
 typedef struct {
+	EntityID src_id;
+	EntityID dest_id;
+	EntityID edge_id;
+} EdgeIndexKey;
+
+typedef struct {
 	char *label;                  // indexed label
 	int label_id;                 // indexed label ID
 	char **fields;                // indexed fields
@@ -32,7 +38,6 @@ typedef struct {
 	IndexType type;               // index type exact-match / fulltext
 	GraphEntityType entity_type;  // entity type (node/edge) indexed
 } Index;
-
 
 // create a new index
 Index *Index_New
@@ -114,6 +119,12 @@ bool Index_ContainsAttribute
 (
 	const Index *idx,
 	Attribute_ID attribute_id  // attribute id to search
+);
+
+// returns indexed label ID
+int Index_GetLabelID
+(
+	const Index *idx
 );
 
 // free fulltext index

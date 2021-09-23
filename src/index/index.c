@@ -319,6 +319,15 @@ bool Index_ContainsAttribute
 	return false;
 }
 
+int Index_GetLabelID
+(
+	const Index *idx
+) {
+	ASSERT(idx != NULL);
+
+	return idx->label_id;
+}
+
 // free index
 void Index_Free
 (

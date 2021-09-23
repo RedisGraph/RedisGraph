@@ -14,6 +14,44 @@
 
 #define EDGE_LENGTH_INF UINT_MAX - 2
 
+// instantiate a new unpopulated edge
+#define GE_NEW_EDGE()                 \
+(Edge) {                              \
+    .entity = NULL,                   \
+    .id = INVALID_ENTITY_ID,          \
+    .relationship = NULL,             \
+    .relationID = GRAPH_NO_RELATION,  \
+	.src = NULL,                      \
+	.dest = NULL,                     \
+	.srcNodeID = INVALID_ENTITY_ID,   \
+	.destNodeID = INVALID_ENTITY_ID,  \
+	.mat = NULL                       \
+}
+
+// instantiate a new edge with relation data
+#define GE_NEW_LABELED_EDGE(r_str, r_id)    \
+(Edge) {                                    \
+    .entity = NULL,                         \
+    .id = INVALID_ENTITY_ID,                \
+    .relationship = (r_str),                \
+    .relationID = (r_id)                    \
+	.src = NULL,                            \
+	.dest = NULL,                           \
+	.srcNodeID = INVALID_ENTITY_ID,         \
+	.destNodeID = INVALID_ENTITY_ID,        \
+	.mat = NULL                             \
+}
+
+// resolves to the label ID of the given Node.
+// we first attempt to retrieve it from the local entity, then check the graph if not found.
+// if the Node is unlabeled, the return value will be GRAPH_NO_LABEL. */
+#define EDGE_GET_RELATION_ID(e, g)                                                         \
+({                                                                                         \
+    if ((e)->relationID == GRAPH_UNKNOWN_RELATION || (e)->relationID == GRAPH_NO_RELATION) \
+         (e)->relationID = Graph_GetEdgeRelation((g), (e));                   \
+    (e)->relationID;                                                                       \
+})
+
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
 struct Edge {

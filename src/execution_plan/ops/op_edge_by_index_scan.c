@@ -71,10 +71,19 @@ OpBase *NewEdgeIndexScanOp
 			false,
 			plan);
 
-	// TODO: src/dest node might already be resolved
 	op->edgeRecIdx = OpBase_Modifies((OpBase *)op, QGEdge_Alias(e));
-	op->edgeRecIdx = OpBase_Modifies((OpBase *)op, QGNode_Alias(QGEdge_Src(e)));
-	op->edgeRecIdx = OpBase_Modifies((OpBase *)op, QGNode_Alias(QGEdge_Dest(e)));
+
+	const char *src_alias = QGNode_Alias(QGEdge_Src(e));
+	op->srcAware = OpBase_Aware((OpBase *)op, src_alias, &op->srcRecIdx);
+	if(!op->srcAware) {
+		op->srcRecIdx = OpBase_Modifies((OpBase *)op, QGNode_Alias(QGEdge_Src(e)));
+	}
+
+	const char *dest_alias = QGNode_Alias(QGEdge_Dest(e));
+	op->destAware = OpBase_Aware((OpBase *)op, dest_alias, &op->destRecIdx);
+	if(!op->destAware) {
+		op->destRecIdx = OpBase_Modifies((OpBase *)op, dest_alias);
+	}
 
 	return (OpBase *)op;
 }
@@ -97,7 +106,7 @@ static OpResult EdgeIndexScanInit
 		OpBase_UpdateConsume(opBase, EdgeIndexScanConsumeFromChild);
 	}
 
-	// resolve label ID now if it is still unknown
+	// resolve relation ID now if it is still unknown
 	if(QGEdge_RelationID(op->edge, 0) == GRAPH_UNKNOWN_RELATION) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Schema *s = GraphContext_GetSchema(gc, QGEdge_Relation(op->edge, 0),
@@ -114,16 +123,31 @@ static inline void _UpdateRecord
 (
 	OpEdgeIndexScan *op,
 	Record r,
-	EntityID edge_id
+	const EdgeIndexKey *edge_key
 ) {
-	// populate Record with the graph entity data
-	// TODO: set edge relation, src and dest nodes
-	Edge e;
+	// populate Record with edge, src and destination node
+	int res;
 
-	int res = Graph_GetEdge(op->g, edge_id, &e);
+	Edge  *e     =  Record_GetEdge(r,  op->edgeRecIdx);
+	Node  *src   =  Record_GetNode(r,  op->srcRecIdx);
+	Node  *dest  =  Record_GetNode(r,  op->destRecIdx);
+
+	EntityID  src_id   =  edge_key->src_id;
+	EntityID  dest_id  =  edge_key->dest_id;
+	EntityID  edge_id  =  edge_key->edge_id;
+
+	res = Graph_GetNode(op->g, src_id, src);
 	ASSERT(res != 0);
 
-	Record_AddEdge(r, op->edgeRecIdx, e);
+	res = Graph_GetNode(op->g, dest_id, dest);
+	ASSERT(res != 0);
+
+	res = Graph_GetEdge(op->g, edge_id, e);
+	ASSERT(res != 0);
+
+	Edge_SetSrcNode(e, src);
+	Edge_SetDestNode(e, dest);
+	Edge_SetRelationID(e, QGEdge_RelationID(op->edge, 0));
 }
 
 static inline bool _PassUnresolvedFilters
@@ -142,7 +166,7 @@ static Record EdgeIndexScanConsumeFromChild
 	OpBase *opBase
 ) {
 	OpEdgeIndexScan	*op = (OpEdgeIndexScan*)opBase;
-	const EntityID *edgeId = NULL;
+	const EdgeIndexKey *edgeKey = NULL;
 
 pull_index:
 	//--------------------------------------------------------------------------
@@ -150,10 +174,10 @@ pull_index:
 	//--------------------------------------------------------------------------
 
 	if(op->iter != NULL) {
-		while((edgeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
+		while((edgeKey = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
 				!= NULL) {
 			// populate record with edge
-			_UpdateRecord(op, op->child_record, *edgeId);
+			_UpdateRecord(op, op->child_record, edgeKey);
 			// apply unresolved filters
 			if(_PassUnresolvedFilters(op, op->child_record)) {
 				// clone the held Record, as it will be freed upstream
@@ -215,6 +239,8 @@ pull_index:
 				filter, op->idx);
 		FilterTree_Free(filter);
 
+		// if src =
+
 		// create iterator
 		ASSERT(rs_query_node != NULL);
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
@@ -253,13 +279,13 @@ static Record EdgeIndexScanConsume
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	}
 
-	const EntityID *edgeId = RediSearch_ResultsIteratorNext(op->iter, op->idx,
-			NULL);
-	if(!edgeId) return NULL;
+	const EdgeIndexKey *edgeKey = RediSearch_ResultsIteratorNext(op->iter,
+			op->idx, NULL);
+	if(!edgeKey) return NULL;
 
 	// populate the Record with the actual edge
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	_UpdateRecord(op, r, *edgeId);
+	_UpdateRecord(op, r, edgeKey);
 
 	return r;
 }

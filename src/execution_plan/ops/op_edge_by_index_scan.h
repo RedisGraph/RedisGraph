@@ -17,9 +17,11 @@ typedef struct {
 	bool rebuild_index_query;           // should we rebuild RediSearch index query for each input record
 	RSIndex *idx;                       // index to query
 	QGEdge *edge;                       // edge scanned
-	uint edgeRecIdx;                    // record index of source node
-	uint srcNodeRecIdx;                 // record index of destination node 
-	uint destNodeRecIdx;                // record index of edge
+	int edgeRecIdx;                     // record index of source node
+	int srcRecIdx;                      // record index of destination node
+	int destRecIdx;                     // record index of edge
+	bool srcAware;                      // src node already resolved
+	bool destAware;                     // dest node already resolved
 	RSResultsIterator *iter;            // iterator over an index
 	FT_FilterNode *filter;              // index query
 	FT_FilterNode *unresolved_filters;  // subset of filter, contains filters that couldn't be resolved by index

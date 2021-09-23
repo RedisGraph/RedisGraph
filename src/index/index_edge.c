@@ -14,12 +14,6 @@
 extern RSDoc *Index_IndexGraphEntity(Index *idx,const GraphEntity *e,
 		const void *key, size_t key_len, uint *doc_field_count);
 
-typedef struct {
-	EntityID src_id;
-	EntityID dest_id;
-	EntityID edge_id;
-} EdgeIndexKey;
-
 void Index_IndexEdge
 (
 	Index *idx,
