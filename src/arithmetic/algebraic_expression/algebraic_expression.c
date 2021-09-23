@@ -448,7 +448,8 @@ bool _AlgebraicExpression_LocateOperand
 	AlgebraicExpression **parent,   // [output] set to operand parent
 	const char *row_domain,         // operand row domain
 	const char *column_domain,      // operand column domain
-	const char *edge                // operand edge name
+	const char *edge,               // operand edge name
+	const char *label               // operand label name
 ) {
 	if(root == NULL) return false;
 
@@ -480,6 +481,15 @@ bool _AlgebraicExpression_LocateOperand
 			return false;
 		}
 
+		// check label
+		if(label != NULL && root->operand.label != NULL) {
+			if(strcmp(label, root->operand.label) != 0) {
+				return false;
+			}
+		} else if (label != root->operand.label) {
+			return false;
+		}
+
 		// found seeked operand
 		*operand = root;
 		if(parent != NULL) *parent = proot;
@@ -491,7 +501,7 @@ bool _AlgebraicExpression_LocateOperand
 		for(uint i = 0; i < child_count; i++) {
 			AlgebraicExpression *child = CHILD_AT(root, i);
 			if(_AlgebraicExpression_LocateOperand(child, root, operand, parent,
-						row_domain, column_domain, edge)) {
+						row_domain, column_domain, edge, label)) {
 				return true;
 			}
 		}
@@ -507,16 +517,18 @@ bool AlgebraicExpression_LocateOperand
 	AlgebraicExpression **parent,    // [output] set to operand parent
 	const char *row_domain,          // operand row domain
 	const char *column_domain,       // operand column domain
-	const char *edge                 // operand edge name
+	const char *edge,                // operand edge name
+	const char *label                // operand label name
 ) {
 	ASSERT(root != NULL);
 	ASSERT(operand != NULL);
+	ASSERT(!(edge && label));
 
 	*operand = NULL;
 	if(parent) *parent = NULL;
 
 	return _AlgebraicExpression_LocateOperand(root, NULL, operand, parent,
-			row_domain, column_domain, edge);
+			row_domain, column_domain, edge, label);
 }
 
 //------------------------------------------------------------------------------

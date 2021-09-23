@@ -219,8 +219,8 @@ RG_Matrix AlgebraicExpression_Eval
 	RG_Matrix res                   // Result output
 );
 
-// Locates operand based on row,column domain and edge
-// sets 'operand' to if found otherwise set it to NULL
+// locates operand based on row,column domain and edge or label
+// sets 'operand' if found otherwise set it to NULL
 // sets 'parent' if requested, parent can still be set to NULL
 // if 'root' is the seeked operand
 bool AlgebraicExpression_LocateOperand
@@ -230,7 +230,8 @@ bool AlgebraicExpression_LocateOperand
 	AlgebraicExpression **parent,    // [output] set to operand parent
 	const char *row_domain,          // operand row domain
 	const char *column_domain,       // operand column domain
-	const char *edge                 // operand edge name
+	const char *edge,                // operand edge name
+	const char *label                // operand label name
 );
 
 //------------------------------------------------------------------------------

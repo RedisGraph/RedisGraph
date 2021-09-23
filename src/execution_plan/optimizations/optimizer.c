@@ -23,6 +23,9 @@ void optimizePlan(ExecutionPlan *plan) {
 	// When possible, replace label scan and filter ops with index scans.
 	utilizeIndices(plan);
 
+	// scan label with least entities
+	optimizeLabelScan(plan);
+
 	// Try to reduce SCAN + FILTER to a node seek operation.
 	seekByID(plan);
 

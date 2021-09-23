@@ -49,12 +49,15 @@ typedef struct {
 
 // Creates and initializes a graph context struct.
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap);
+
 /* Retrive the graph context according to the graph name
  * readOnly is the access mode to the graph key */
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
 									bool shouldCreate);
+
 // GraphContext_Retrieve counterpart, releases a retrieved GraphContext.
 void GraphContext_Release(GraphContext *gc);
+
 // Mark graph key as "dirty" for Redis to pick up on.
 void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc);
 

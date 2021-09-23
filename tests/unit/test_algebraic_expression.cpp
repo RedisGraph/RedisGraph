@@ -1706,15 +1706,15 @@ TEST_F(AlgebraicExpressionTest, LocateOperand) {
 	AlgebraicExpression  *p       =  NULL;
 
 	// ( T(A) * B )
-	A = AlgebraicExpression_NewOperand(mat, false, "a", "b", "e0", "E");
-	B = AlgebraicExpression_NewOperand(mat, false, "b", "c", "e1", "E");
+	A = AlgebraicExpression_NewOperand(mat, false, "a", "b", "e0", NULL);
+	B = AlgebraicExpression_NewOperand(mat, false, "b", "c", "e1", NULL);
 	AlgebraicExpression_Transpose(&A);
 	r = AlgebraicExpression_NewOperation(AL_EXP_MUL);
 	AlgebraicExpression_AddChild(r, A);
 	AlgebraicExpression_AddChild(r, B);
 
 	// search for A operand
-	located = AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "e0");
+	located = AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "e0", NULL);
 
 	// validate located operand
 	ASSERT_TRUE(located);
@@ -1727,12 +1727,12 @@ TEST_F(AlgebraicExpressionTest, LocateOperand) {
 	ASSERT_EQ(p->operation.op, AL_EXP_TRANSPOSE);
 
 	// search for none existing operand
-	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "x", "b", "e0"));
-	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "x", "e0"));
-	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "x"));
-	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, NULL, "b", "e0"));
-	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", NULL, "e0"));
-	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", NULL));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "x", "b", "e0", NULL));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "x", "e0", NULL));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", "x", NULL));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, NULL, "b", "e0", NULL));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", NULL, "e0", NULL));
+	ASSERT_FALSE(AlgebraicExpression_LocateOperand(r, &op, &p, "a", "b", NULL, NULL));
 
 	AlgebraicExpression_Free(r);
 }

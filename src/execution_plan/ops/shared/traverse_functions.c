@@ -53,7 +53,7 @@ static GRAPH_EDGE_DIR _Traverse_SetDirection(AlgebraicExpression *ae, const QGEd
 
 	// locate operand representing the referenced edge
 	bool located = AlgebraicExpression_LocateOperand(ae, &operand, &parent,
-			e->src->alias, e->dest->alias, e->alias);
+			e->src->alias, e->dest->alias, e->alias, NULL);
 	ASSERT(located == true);
 
 	// if parent exists and it is a transpose operation, edge is reversed
