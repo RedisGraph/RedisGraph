@@ -9,6 +9,7 @@
 #include "../../../errors.h"
 #include "../../../query_ctx.h"
 #include "../../../ast/ast_shared.h"
+#include "../../../datatypes/array.h"
 
 // Add properties to the GraphEntity.
 static inline void _AddProperties(ResultSetStatistics *stats, GraphEntity *ge,
@@ -249,6 +250,21 @@ PendingProperties *ConvertPropertyMap(Record r, PropertyMap *map, bool fail_on_n
 				converted->property_count = i;
 				PendingPropertiesFree(converted);
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
+			}
+		}
+
+		// emit an error and exit if we're trying to add
+		// an array containing an invalid type
+		if(SI_TYPE(val) == T_ARRAY) {
+			SIType invalid_properties = ~SI_VALID_PROPERTY_VALUE;
+			bool res = SIArray_ContainsType(val, invalid_properties);
+			if(res) {
+				// validation failed
+				SIValue_Free(val);
+				converted->property_count = i;
+				PendingPropertiesFree(converted);
+				Error_InvalidPropertyValue();
+				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 		}
 		// Set the converted property.

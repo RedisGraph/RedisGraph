@@ -8,6 +8,7 @@
 #include "../../../errors.h"
 #include "../../../query_ctx.h"
 #include "../../../datatypes/map.h"
+#include "../../../datatypes/array.h"
 
 /* set a property on a graph entity
  * for non-NULL values, the property will be added or updated
@@ -57,8 +58,21 @@ static PendingUpdateCtx _PreparePendingUpdate
 	if(!(SI_TYPE(new_value) & accepted_properties)) {
 		Error_InvalidPropertyValue();
 		ErrorCtx_RaiseRuntimeException(NULL);
-		return (PendingUpdateCtx) {};
 	}
+
+	// emit an error and exit if we're trying to add
+	// an array containing an invalid type
+	if(SI_TYPE(new_value) == T_ARRAY) {
+		SIType invalid_properties = ~SI_VALID_PROPERTY_VALUE;
+		bool res = SIArray_ContainsType(new_value, invalid_properties);
+		if(res) {
+			// validation failed
+			SIValue_Free(new_value);
+			Error_InvalidPropertyValue();
+			ErrorCtx_RaiseRuntimeException(NULL);
+		}
+	}
+
 
 	bool update_index = false;
 	// determine whether we must update the index for this update
@@ -149,7 +163,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 }
 
 void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
-		const Record r, const EntityUpdateEvalCtx *ctx, bool allow_null) {
+					   const Record r, const EntityUpdateEvalCtx *ctx, bool allow_null) {
 	Schema *s             = NULL;
 	bool node_update      = false;
 	bool node_is_labeled  = false;
@@ -220,7 +234,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 				SIValue value;
 				Map_GetIdx(m, j, &key, &value);
 				Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc,
-						key.stringval);
+																	   key.stringval);
 
 				update = _PreparePendingUpdate(gc, accepted_properties,
 						entity, attr_id, value);
@@ -230,8 +244,8 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 			continue;
 		}
 
-		update = _PreparePendingUpdate(gc, accepted_properties,
-				entity, attr_id, new_value);
+		update = _PreparePendingUpdate(gc, accepted_properties, entity,
+			                           attr_id, new_value);
 		// enqueue the current update
 		array_append(*updates, update);
 	}

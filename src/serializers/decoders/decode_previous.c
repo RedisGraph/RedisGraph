@@ -9,8 +9,6 @@
 
 GraphContext *Decode_Previous(RedisModuleIO *rdb, int encver) {
 	switch(encver) {
-	case 5:
-		return RdbLoadGraphContext_v5(rdb);
 	case 6:
 		return RdbLoadGraphContext_v6(rdb);
 	case 7:
