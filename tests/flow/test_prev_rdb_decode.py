@@ -49,7 +49,7 @@ class test_prev_rdb_decode(FlowTestsBase):
         redis_graph = Graph(graph_name, redis_con)
         node0 = Node(node_id=0, label='L1', properties={'val': 1, 'strval': 'str', 'numval': 5.5, 'boolval': True, 'array': [1,2,3]})
         node1 = Node(node_id=1, label='L2', properties={'val': 3})
-        edge01 = Edge(src_node=0, relation='E', dest_node=1, edge_id=0, properties={'val':2})
+        edge01 = Edge(src_node=0, relation='E', dest_node=1, edge_id=0, properties={'val': 2})
         results = redis_graph.query("MATCH (n)-[e]->(m) RETURN n, e, m")
         self.env.assertEqual(results.result_set, [[node0, edge01, node1]])
         plan = redis_graph.execution_plan("MATCH (n:L1 {val:1}) RETURN n")

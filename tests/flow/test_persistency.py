@@ -213,9 +213,9 @@ class testGraphPersistency():
         self.env.assertEquals(actual_result.relationships_created, 50_000)
 
         redis_con.execute_command("DEBUG", "RELOAD")
-        
+
         expected_result = [[50000]]
-        
+
         queries = [
             """MATCH (:L)-[r {v: 50000}]->(:L) RETURN r.v""",
             """MATCH (:L)-[r:R {v: 50000}]->(:L) RETURN r.v""",
@@ -249,21 +249,20 @@ class testGraphPersistency():
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         queries = [
-        "MATCH (a:L0) RETURN count(a)",
-        "MATCH (a:L1) RETURN count(a)",
-        "MATCH (a:L2) RETURN count(a)",
-        "MATCH (a:L0:L0) RETURN count(a)",
-        "MATCH (a:L0:L1) RETURN count(a)",
-        "MATCH (a:L0:L2) RETURN count(a)",
-        "MATCH (a:L1:L0) RETURN count(a)",
-        "MATCH (a:L1:L1) RETURN count(a)",
-        "MATCH (a:L1:L2) RETURN count(a)",
-        "MATCH (a:L2:L0) RETURN count(a)",
-        "MATCH (a:L2:L1) RETURN count(a)",
-        "MATCH (a:L2:L2) RETURN count(a)",
-        "MATCH (a:L0:L1:L2) RETURN count(a)"]
+                "MATCH (a:L0) RETURN count(a)",
+                "MATCH (a:L1) RETURN count(a)",
+                "MATCH (a:L2) RETURN count(a)",
+                "MATCH (a:L0:L0) RETURN count(a)",
+                "MATCH (a:L0:L1) RETURN count(a)",
+                "MATCH (a:L0:L2) RETURN count(a)",
+                "MATCH (a:L1:L0) RETURN count(a)",
+                "MATCH (a:L1:L1) RETURN count(a)",
+                "MATCH (a:L1:L2) RETURN count(a)",
+                "MATCH (a:L2:L0) RETURN count(a)",
+                "MATCH (a:L2:L1) RETURN count(a)",
+                "MATCH (a:L2:L2) RETURN count(a)",
+                "MATCH (a:L0:L1:L2) RETURN count(a)"]
 
         for q in queries:
             actual_result = g.query(q)
-            self.env.assertEquals(actual_result.result_set, [1])
-
+            self.env.assertEquals(actual_result.result_set[0], [1])

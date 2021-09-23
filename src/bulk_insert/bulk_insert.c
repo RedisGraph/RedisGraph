@@ -194,6 +194,8 @@ static int _BulkInsert_ProcessNodeFile(GraphContext *gc, const char *data,
 	for(uint i = 0; i < label_count; i++) {
 		Graph_GetLabelMatrix(gc->g, label_ids[i]);
 	}
+    // sync node-label matrix
+    Graph_GetNodeLabelMatrix(gc->g);
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 
 	//--------------------------------------------------------------------------

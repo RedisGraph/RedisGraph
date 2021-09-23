@@ -42,13 +42,21 @@ void Serializer_Graph_SetNode
 	en->properties  =  NULL;
 	n->id           =  id;
 	n->entity       =  en;
+    GrB_Info info;
+    UNUSED(info);
 
+    RG_Matrix nl = Graph_GetNodeLabelMatrix(g);
 	for(uint i = 0; i < label_count; i ++) {
 		LabelID label = labels[i];
 		// set label matrix at position [id, id]
 		RG_Matrix  M  =  Graph_GetLabelMatrix(g, label);
 		GrB_Matrix m  =  RG_MATRIX_M(M);
-		GrB_Matrix_setElement_BOOL(m, true, id, id);
+		info = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		ASSERT(info == GrB_SUCCESS);
+
+		// map this label in this node's set of labels
+		info = RG_Matrix_setElement_BOOL(nl, id, label);
+		ASSERT(info == GrB_SUCCESS);
 	}
 }
 

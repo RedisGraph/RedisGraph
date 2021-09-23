@@ -451,6 +451,7 @@ bool _AlgebraicExpression_LocateOperand
 	const char *edge,               // operand edge name
 	const char *label               // operand label name
 ) {
+	ASSERT(!(edge && label));
 	if(root == NULL) return false;
 
 	if(root->type == AL_OPERAND) {
@@ -479,15 +480,11 @@ bool _AlgebraicExpression_LocateOperand
 			}
 		} else if (edge != root->operand.edge) {
 			return false;
-		}
-
-		// check label
-		if(label != NULL && root->operand.label != NULL) {
+		} else if(label != NULL && root->operand.label != NULL) {
+			// check label
 			if(strcmp(label, root->operand.label) != 0) {
 				return false;
 			}
-		} else if (label != root->operand.label) {
-			return false;
 		}
 
 		// found seeked operand
