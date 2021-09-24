@@ -8,52 +8,57 @@
 #include "./optimizations.h"
 
 void optimizePlan(ExecutionPlan *plan) {
-	// Tries to compact filter trees, and remove redundant filters.
+	// tries to compact filter trees, and remove redundant filters
 	compactFilters(plan);
 
-	/* Scan optimizations order:
-	 * 1. Remove redundant scans which checks for the same node.
-	 * 2. Try to use the indices. Given a label scan and an indexed property, apply index scan.
-	 * 3. Given a filter which checks id condition, and full or label scan, reduce it to id scan or label with id scan.
-	 *    Note: Due to the scan optimization order, label scan will be replaced with index scan when possible, so the id filter remains. */
+	// scan optimizations order:
+	// 1. remove redundant scans which checks for the same node
+	// 2. try to use the indices
+	//    given a label scan and an indexed property, apply index scan
+	// 3. given a filter which checks id condition, and full or label scan
+	//    reduce it to id scan or label with id scan
+	//    note: due to the scan optimization order
+	//          label scan will be replaced with index scan when possible
+	//          so the id filter remains
 
-	// Remove redundant SCAN operations.
+	// remove redundant SCAN operations
 	reduceScans(plan);
 
-	// When possible, replace label scan and filter ops with index scans.
+	// when possible, replace label scan and filter ops with index scans
 	utilizeIndices(plan);
 
 	// scan label with least entities
 	optimizeLabelScan(plan);
 
-	// Try to reduce SCAN + FILTER to a node seek operation.
+	// try to reduce SCAN + FILTER to a node seek operation
 	seekByID(plan);
 
-	// Migrate filters on variable-length edges into the traversal operations.
+	// migrate filters on variable-length edges into the traversal operations
 	filterVariableLengthEdges(plan);
 
-	// Try to optimize cartesian product.
+	// try to optimize cartesian product
 	reduceCartesianProductStreamCount(plan);
 
-	// Try to match disjoint entities by applying a join.
+	// try to match disjoint entities by applying a join
 	applyJoin(plan);
 
-	// Try to reduce a number of filters into a single filter op.
+	// try to reduce a number of filters into a single filter op
 	reduceFilters(plan);
 
-	// Reduce traversals where both src and dest nodes are already resolved into an expand into operation.
+	// reduce traversals where both src and dest nodes are already resolved
+	// into an expand into operation
 	reduceTraversal(plan);
 
-	// Try to reduce distinct if it follows aggregation.
+	// try to reduce distinct if it follows aggregation
 	reduceDistinct(plan);
 
-	// Try to reduce execution plan incase it perform node or edge counting.
+	// try to reduce execution plan incase it perform node or edge counting
 	reduceCount(plan);
 
-	// Let operations know about specified limit(s)
+	// let operations know about specified limit(s)
 	applyLimit(plan);
 
-	// Let operations know about specified skip(s)
+	// let operations know about specified skip(s)
 	applySkip(plan);
 }
 
