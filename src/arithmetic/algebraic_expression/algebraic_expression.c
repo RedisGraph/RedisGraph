@@ -440,6 +440,29 @@ bool AlgebraicExpression_DiagonalOperand
 	return op->operand.diagonal;
 }
 
+// checks to see if all operands in the expression are diagonal matrices
+bool AlgebraicExpression_AllDiagonalOperands
+(
+       const AlgebraicExpression *root     // Root of expression.
+) {
+       ASSERT(root != NULL);
+
+       // expression is operand, return true if diagonal
+       if(root->type == AL_OPERAND) return root->operand.diagonal;
+
+       // expression is operation, recurse into children
+       uint child_count = AlgebraicExpression_ChildCount(root);
+       for(uint i = 0; i < child_count; i ++) {
+               const AlgebraicExpression *child = _AlgebraicExpression_GetOperand(root, i);
+               bool child_is_diag = AlgebraicExpression_AllDiagonalOperands(child);
+               // return false if child is or contains non-diagonal operand
+               if(!child_is_diag) return false;
+       }
+
+       // all operands were diagonal, return true
+       return true;
+}
+
 bool _AlgebraicExpression_LocateOperand
 (
 	AlgebraicExpression *root,      // Root to search

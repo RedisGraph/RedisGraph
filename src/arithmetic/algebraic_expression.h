@@ -150,6 +150,12 @@ bool AlgebraicExpression_DiagonalOperand
 	uint operand_idx                    // Operand position (LTR, zero based).
 );
 
+// checks to see if all operands in the expression are diagonal matrices
+bool AlgebraicExpression_AllDiagonalOperands
+(
+       const AlgebraicExpression *root     // Root of expression.
+);
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression modification functions.
 //------------------------------------------------------------------------------

@@ -11,11 +11,14 @@
 #include "../ops/op_filter.h"
 #include "../ops/op_index_scan.h"
 #include "../ops/op_node_by_label_scan.h"
+#include "../ops/op_conditional_traverse.h"
 #include "../../ast/ast_shared.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/point.h"
 #include "../../arithmetic/arithmetic_op.h"
 #include "../../filter_tree/filter_tree_utils.h"
+#include "../../arithmetic/algebraic_expression.h"
+#include "../../arithmetic/algebraic_expression/utils.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 //------------------------------------------------------------------------------
@@ -226,9 +229,23 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 	OpFilter **filters = array_new(OpFilter *, 0);
 	const char* filtered_entity = scanOp->n.alias; // entity being filtered
 
+	OpBase *current = scanOp->op.parent;
+	// the immediate parent can be a CondTraverse if it
+	// only applies labels (all diagonal operands)
+	if(current->type == OPType_CONDITIONAL_TRAVERSE) {
+		OpCondTraverse *parent = (OpCondTraverse *)scanOp->op.parent;
+		AlgebraicExpression *ae = parent->ae;
+		if(!AlgebraicExpression_AllDiagonalOperands(ae)) {
+			// the scan op had a CondTraverse parent that performed
+			// traversal instead of just applying labels, no index can
+			// be placed here
+			return filters;
+		}
+		current = parent->op.parent;
+	}
+
 	// we begin with a LabelScan, and want to find predicate filters that modify
 	// the active entity
-	OpBase *current = scanOp->op.parent;
 	while(current->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
 
@@ -270,19 +287,99 @@ static FT_FilterNode *_Concat_Filters(OpFilter **filter_ops) {
 // try to replace given Label Scan operation and a set of Filter operations with
 // a single Index Scan operation
 void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
+	// in the multi-label case, we may have a label scan followed by a
+	// conditional traversal over N diagonal matrices.
+	// in this case, we want to check for the scanned label and each
+	// traversed label
 	// make sure there's an index for scanned label
-	const char *label = scan->n.label;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
-	if(idx == NULL) return;
+	Graph       *g   =  QueryCtx_GetGraph();
+	QueryGraph  *qg  =  scan->op.plan->query_graph;
 
-	// get all applicable filter for index
-	RSIndex *rs_idx = idx->idx;
-	OpFilter **filters = _applicableFilters(scan, idx);
+	// find label with filtered and indexed properties
+	// that has the lowest NNZ value
+	uint64_t    min_nnz = UINT64_MAX;  // tracks min entries
+	int         min_label_id;          // tracks min label ID
+	const char *min_label_str = NULL;  // tracks min label name
+	OpFilter    **filters = NULL;      // tracks indexed filters to apply
+	uint        filters_count = 0;     // number of matching filters
+	RSIndex     *rs_idx = NULL;        // the index to be applied
+	// see if scanned node has multiple labels
+	const char *node_alias = scan->n.alias;
+	QGNode *qn = QueryGraph_GetNodeByAlias(qg, node_alias);
+	ASSERT(qn != NULL);
 
-	// no filters, return
-	uint filters_count = array_len(filters);
-	if(filters_count == 0) goto cleanup;
+	uint label_count = QGNode_LabelCount(qn);
+	for(uint i = 0; i < label_count; i++) {
+		uint64_t nnz;
+		const char *label = QGNode_GetLabel(qn, i);
+		Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
+		if(idx == NULL) continue;
+
+		// get all applicable filter for index
+		RSIndex *cur_idx = idx->idx;
+		// TODO switch to reusable array
+		OpFilter **cur_filters = _applicableFilters(scan, idx);
+
+		// TODO consider heuristic which combines max
+		// number / restrictiveness of applicable filters
+		// vs. the label's NNZ?
+		uint cur_filters_count = array_len(cur_filters);
+		if(cur_filters_count == 0) {
+			// no filters, return
+			array_free(filters);
+			continue;
+		}
+
+		int label_id = QGNode_GetLabelID(qn, i);
+		nnz = Graph_LabeledNodeCount(g, label_id);
+		if(min_nnz > nnz) {
+			min_nnz = nnz;
+			min_label_str = label;
+			min_label_id = label_id;
+			// swap previously stored index and
+			// filters array (if any) with current filters
+			rs_idx = cur_idx;
+			array_free(filters);
+			filters = cur_filters;
+			filters_count = cur_filters_count;
+		}
+	}
+
+	// no label possessed indexed and filtered attributes, return early
+	if(rs_idx == NULL) goto cleanup;
+
+	if(scan->n.label_id != min_label_id) {
+		// the scanned label does not match the one we will build an
+		// index scan over, update the traversal expression to
+		// remove the indexed label and insert the previously-scanned label
+		OpBase *parent = scan->op.parent;
+		while(OpBase_Type(parent) == OPType_FILTER) parent = parent->parent;
+		// TODO TODO Roi:
+		// this assertion is invalidated by the query:
+		// MATCH (a:L0:L1 {v: 1})-[*]->(b:L2 {v: 3}) RETURN labels(a), labels(b) 
+		// in the variable-length traversal test. in this case, though,
+		// how do we enforce both labels?
+		// ASSERT(OpBase_Type(parent) == OPType_CONDITIONAL_TRAVERSE);
+		if(OpBase_Type(parent) == OPType_CONDITIONAL_TRAVERSE) {
+			OpCondTraverse *op_traverse = (OpCondTraverse*)parent;
+			AlgebraicExpression *ae = op_traverse->ae;
+			AlgebraicExpression *operand;
+
+			const char *row_domain = scan->n.alias;
+			const char *column_domain = scan->n.alias;
+
+			bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
+					row_domain, column_domain, NULL, min_label_str);
+			ASSERT(found == true);
+
+			AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
+					true, AlgebraicExpression_Source(operand),
+					AlgebraicExpression_Destination(operand), NULL, scan->n.label);
+
+			_AlgebraicExpression_InplaceRepurpose(operand, replacement);
+		}
+	}
 
 	FT_FilterNode *root = _Concat_Filters(filters);
 	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx,
