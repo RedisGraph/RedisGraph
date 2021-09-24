@@ -58,9 +58,7 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	for(uint i = 0; i < label_count; i++) {
 		uint64_t nnz;
 		int label_id = QGNode_GetLabelID(qn, i);
-		// TODO: switch to graph statistics
-		RG_Matrix L = Graph_GetLabelMatrix(g, label_id);
-		RG_Matrix_nvals(&nnz, L); 
+		nnz = Graph_LabeledNodeCount(g, label_id);
 		if(min_nnz > nnz) {
 			min_nnz = nnz;
 			min_label_id = label_id;

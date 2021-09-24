@@ -249,7 +249,7 @@ size_t Graph_UncompactedNodeCount
 );
 
 // returns number of nodes with given label
-size_t Graph_LabeledNodeCount
+uint64_t Graph_LabeledNodeCount
 (
 	const Graph *g,
 	int label
