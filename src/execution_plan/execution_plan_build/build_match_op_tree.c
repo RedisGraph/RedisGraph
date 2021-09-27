@@ -55,10 +55,15 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		// Create the SCAN operation that will be the tail of the traversal chain.
 		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
 
-		if(QGNode_LabelCount(src) > 0) {
+		uint label_count = QGNode_LabelCount(src);
+		if(label_count > 0) {
+			// if the expression is transposed, convert the last label,
+			// as this matches the operand that will be removed
+			uint label_to_remove =
+				AlgebraicExpression_Transposed(exps[0]) ? label_count - 1 : 0;
 			// resolve source node by performing label scan
-			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_GetLabel(src, 0),
-					QGNode_GetLabelID(src, 0));
+			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_GetLabel(src, label_to_remove),
+					QGNode_GetLabelID(src, label_to_remove));
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
 			// first operand has been converted into a label scan op
 			// remove it

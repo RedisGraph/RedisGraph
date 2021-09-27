@@ -353,33 +353,31 @@ void reduce_scan_op
 	// did we found a better label to utilize?
 	// if so swap
 	if(scan->n.label_id != min_label_id) {
-		scan->n.label = min_label_str;
-		scan->n.label_id = min_label_id;
-
 		// the scanned label does not match the one we will build an
 		// index scan over, update the traversal expression to
 		// remove the indexed label and insert the previously-scanned label
 		OpBase *parent = scan->op.parent;
 		while(OpBase_Type(parent) == OPType_FILTER) parent = parent->parent;
 		ASSERT(OpBase_Type(parent) == OPType_CONDITIONAL_TRAVERSE);
-		if(OpBase_Type(parent) == OPType_CONDITIONAL_TRAVERSE) {
-			OpCondTraverse *op_traverse = (OpCondTraverse*)parent;
-			AlgebraicExpression *ae = op_traverse->ae;
-			AlgebraicExpression *operand;
+		OpCondTraverse *op_traverse = (OpCondTraverse*)parent;
+		AlgebraicExpression *ae = op_traverse->ae;
+		AlgebraicExpression *operand;
 
-			const char *row_domain = scan->n.alias;
-			const char *column_domain = scan->n.alias;
+		const char *row_domain = scan->n.alias;
+		const char *column_domain = scan->n.alias;
 
-			bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
-					row_domain, column_domain, NULL, min_label_str);
-			ASSERT(found == true);
+		bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
+				row_domain, column_domain, NULL, min_label_str);
+		ASSERT(found == true);
 
-			AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
-					true, AlgebraicExpression_Source(operand),
-					AlgebraicExpression_Destination(operand), NULL, scan->n.label);
+		AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
+				true, AlgebraicExpression_Source(operand),
+				AlgebraicExpression_Destination(operand), NULL, scan->n.label);
 
-			_AlgebraicExpression_InplaceRepurpose(operand, replacement);
-		}
+		_AlgebraicExpression_InplaceRepurpose(operand, replacement);
+
+		scan->n.label = min_label_str;
+		scan->n.label_id = min_label_id;
 	}
 
 	FT_FilterNode *root = _Concat_Filters(filters);
