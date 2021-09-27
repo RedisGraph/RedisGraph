@@ -56,18 +56,23 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
 
 		if(QGNode_LabelCount(src) > 0) {
-			// Resolve source node by performing label scan.
+			// resolve source node by performing label scan
 			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_GetLabel(src, 0),
 					QGNode_GetLabelID(src, 0));
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
-			// The first operand has been converted into a scan op; remove it.
-			if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
-				AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
-			}
+			// first operand has been converted into a label scan op
+			// remove it
+			AlgebraicExpression *src = AlgebraicExpression_RemoveSource(&exps[0]);
+			ASSERT(AlgebraicExpression_DiagonalOperand(src, 0));
+			AlgebraicExpression_Free(src);
 		} else {
 			root = tail = NewAllNodeScanOp(plan, src->alias);
-			// Free the expression source if it has been converted into an AllNodeScan.
-			if(array_len(cc->edges) == 0) AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
+			// free expression source
+			// in-case there are additional patterns to traverse
+			if(array_len(cc->edges) == 0) {
+				AlgebraicExpression_Free(
+						AlgebraicExpression_RemoveSource(&exps[0]));
+			}
 		}
 
 		/* For each expression, build the appropriate traversal operation. */

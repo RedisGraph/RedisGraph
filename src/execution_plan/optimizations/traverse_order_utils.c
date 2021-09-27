@@ -9,13 +9,40 @@
 #include "../../util/strcmp.h"
 #include "traverse_order_utils.h"
 
+static bool _AlgebraicExpression_IsVarLen
+(
+	const AlgebraicExpression *exp,
+	const QueryGraph *qg
+) {
+	ASSERT(qg  != NULL);
+	ASSERT(exp != NULL);
+
+	// variable length expression contains a single edge operand
+	if(AlgebraicExpression_OperandCount(exp) != 1  ||
+	   AlgebraicExpression_OperationCount(exp, AL_EXP_ALL) > 0) return false;
+
+	// is this an "edge" operand, traversing a relationship matrix
+	const char *edge_alias = AlgebraicExpression_Edge(exp);
+	if(edge_alias == NULL) return false;
+
+	// return true if query edge is marked as variable length
+	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, edge_alias);
+	ASSERT(e != NULL);
+
+	return QGEdge_VariableLength(e);
+}
+
 //------------------------------------------------------------------------------
 // Scoring functions
 //------------------------------------------------------------------------------
 
 // score expression based on its source and destination labels
 // score = src label count + dest label count
-int TraverseOrder_LabelsScore(AlgebraicExpression *exp, const QueryGraph *qg) {
+int TraverseOrder_LabelsScore
+(
+	AlgebraicExpression *exp,
+	const QueryGraph *qg
+) {
 	ASSERT(exp != NULL);
 	ASSERT(qg  != NULL);
 
@@ -34,13 +61,31 @@ int TraverseOrder_LabelsScore(AlgebraicExpression *exp, const QueryGraph *qg) {
 	//	score += QGNode_LabelCount(dest_node);
 	//}
 
+	// if expression represents a variable length traversal
+	// zero label score as these are performed by dedicated expressions
+	//
+	// MATCH (a:A)-[e:R*]->(b:B)
+	// is performed by 3 expressions:
+	// 1. [A] - label matrix
+	// 2. [R] - relationship matrix
+	// 3. [B] - label matrix
+	//
+	// we don't want to score expression [R] as if it resolves labels
+	if(_AlgebraicExpression_IsVarLen(exp, qg)) {
+		score = 0;
+	}
+
 	return score;
 }
 
 // score expression based on the existence of filters applied to entities
 // in the expression, adding additional score for independent filtered entities
-int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
-									   rax *filtered_entities) {
+int TraverseOrder_FilterExistenceScore
+(
+	AlgebraicExpression *exp,
+	const QueryGraph *qg,
+	rax *filtered_entities
+) {
 	ASSERT(exp != NULL);
 
 	if(!filtered_entities) return 0;
@@ -51,18 +96,22 @@ int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
 	const  char  *dest          =  AlgebraicExpression_Destination(exp);
 	const  char  *edge          =  AlgebraicExpression_Edge(exp);
 
-	frequency = raxFind(filtered_entities, (unsigned char *)src, strlen(src));
-	if(frequency != raxNotFound) {
-		score += 2;
-		score += (int64_t)frequency * 2;
-	}
-
-	// consider 'dest' only if different than 'src'
-	if(RG_STRCMP(src, dest) != 0) {
-		frequency = raxFind(filtered_entities, (unsigned char *)dest, strlen(dest));
+	// varible length expression shouldn't be scored on its source or destination
+	// as these are usually (if labeled) represented via seperated expressions
+	if(!_AlgebraicExpression_IsVarLen(exp, qg)) {
+		frequency = raxFind(filtered_entities, (unsigned char *)src, strlen(src));
 		if(frequency != raxNotFound) {
 			score += 2;
 			score += (int64_t)frequency * 2;
+		}
+
+		// consider 'dest' only if different than 'src'
+		if(RG_STRCMP(src, dest) != 0) {
+			frequency = raxFind(filtered_entities, (unsigned char *)dest, strlen(dest));
+			if(frequency != raxNotFound) {
+				score += 2;
+				score += (int64_t)frequency * 2;
+			}
 		}
 	}
 
@@ -80,8 +129,11 @@ int TraverseOrder_FilterExistenceScore(AlgebraicExpression *exp,
 }
 
 // score expression based on bounded nodes
-int TraverseOrder_BoundVariableScore(AlgebraicExpression *exp,
-									 rax *bound_vars) {
+int TraverseOrder_BoundVariableScore
+(
+	AlgebraicExpression *exp,
+	rax *bound_vars
+) {
 	ASSERT(exp != NULL);
 
 	if(!bound_vars) return 0;
@@ -224,7 +276,8 @@ void TraverseOrder_ScoreExpressions
 			scored_exp = scored_exps + i;
 			exp = scored_exp->exp;
 
-			score = TraverseOrder_FilterExistenceScore(exp, filtered_entities);
+			score = TraverseOrder_FilterExistenceScore(exp, qg,
+					filtered_entities);
 			if(score > 0) {
 				score += currmax;
 				scored_exp->score += score;
