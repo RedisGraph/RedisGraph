@@ -110,5 +110,6 @@ void optimizeLabelScan(ExecutionPlan *plan) {
 		NodeByLabelScan *label_scan = (NodeByLabelScan*)label_scan_ops[i];
 		_optimizeLabelScan(label_scan);
 	}
+	array_free(label_scan_ops);
 }
 
