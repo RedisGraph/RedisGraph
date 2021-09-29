@@ -159,7 +159,6 @@ commands:
             make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
       - save-deps-cache:
           cache_platform: x64-<<parameters.platform>>
->>>>>>> origin/master
       - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (docker publish)
