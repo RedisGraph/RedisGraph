@@ -849,7 +849,8 @@ void Graph_DeleteNode
 	// assumption, node is completely detected,
 	// there are no incoming nor outgoing edges
 	// leading to / from node
-	ASSERT(g && n);
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
 
 	uint label_count;
 	NODE_GET_LABELS(g, n, label_count);

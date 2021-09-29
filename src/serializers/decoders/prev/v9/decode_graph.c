@@ -202,10 +202,17 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 		// set the thread-local GraphContext
 		// as it will be accessed when creating indexes
 		QueryCtx_SetGraphCtx(gc);
-
+		
+		uint label_count = Graph_LabelTypeCount(g);
+		// update the node statistics
 		// index the nodes
-		for(uint i = 0; i < node_schemas_count; i++) {
-			Schema *s = gc->node_schemas[i];
+		for(uint i = 0; i < label_count; i++) {
+			GrB_Index nvals;
+			RG_Matrix L = Graph_GetLabelMatrix(g, i);
+			RG_Matrix_nvals(&nvals, L);
+			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
+
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}

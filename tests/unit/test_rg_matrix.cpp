@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -1449,6 +1449,88 @@ TEST_F(RGMatrixTest, RGMatrix_mxm) {
 	ASSERT_TRUE(C == NULL);
 	RG_Matrix_free(&D);
 	ASSERT_TRUE(C == NULL);
+}
+
+TEST_F(RGMatrixTest, RGMatrix_resize) {
+	RG_Matrix  A        =  NULL;
+	RG_Matrix  T        =  NULL;
+	GrB_Info   info     =  GrB_SUCCESS;
+	GrB_Type   t        =  GrB_UINT64;
+	GrB_Index  nrows    =  10;
+	GrB_Index  ncols    =  20;
+
+	info = RG_Matrix_new(&A, t, nrows, ncols);
+	T = RG_Matrix_getTranspose(A);
+
+	GrB_Index  A_nrows;
+	GrB_Index  A_ncols;
+	GrB_Index  T_nrows;
+	GrB_Index  T_ncols;
+
+	// verify A and T dimensions
+	RG_Matrix_nrows(&A_nrows, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&A_ncols, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(A_nrows, nrows);
+	ASSERT_EQ(A_ncols, ncols);
+
+	RG_Matrix_nrows(&T_nrows, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&T_ncols, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(T_nrows, ncols);
+	ASSERT_EQ(T_ncols, nrows);
+
+	// resize matrix, increase size by 2
+	nrows *= 2;
+	ncols *= 2;
+
+	info = RG_Matrix_resize(A, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// verify A and T dimensions
+	RG_Matrix_nrows(&A_nrows, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&A_ncols, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(A_nrows, nrows);
+	ASSERT_EQ(A_ncols, ncols);
+
+	RG_Matrix_nrows(&T_nrows, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&T_ncols, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(T_nrows, ncols);
+	ASSERT_EQ(T_ncols, nrows);
+
+	// resize matrix decrease size by 2
+	nrows /= 2;
+	ncols /= 2;
+
+	info = RG_Matrix_resize(A, nrows, ncols);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	// verify A and T dimensions
+	RG_Matrix_nrows(&A_nrows, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&A_ncols, A);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(A_nrows, nrows);
+	ASSERT_EQ(A_ncols, ncols);
+
+	RG_Matrix_nrows(&T_nrows, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+	RG_Matrix_ncols(&T_ncols, T);
+	ASSERT_EQ(info, GrB_SUCCESS);
+
+	ASSERT_EQ(T_nrows, ncols);
+	ASSERT_EQ(T_ncols, nrows);
 }
 
 //#ifndef RG_DEBUG
