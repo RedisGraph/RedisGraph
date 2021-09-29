@@ -10,6 +10,7 @@
 #include "../errors.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../datatypes/array.h"
 #include "../configuration/config.h"
 #include "../ast/ast_build_filter_tree.h"
 
@@ -634,6 +635,34 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpLabelsOperatorFromFunction(const cypher_astnode_t *exp) {
+	const char *func_name = "has_labels";
+
+	// create node expression
+	const cypher_astnode_t *node = cypher_ast_labels_operator_get_expression(exp);
+	AR_ExpNode *node_exp = _AR_EXP_FromASTNode(node);
+
+	// create lables expressions
+	uint nlabels = cypher_ast_labels_operator_nlabels(exp);
+	SIValue labels = SI_Array(nlabels);
+	for (uint i = 0; i < nlabels; i++)
+	{
+		const cypher_astnode_t *label = cypher_ast_labels_operator_get_label(exp, 0);
+		const char *lablel_str = cypher_ast_label_get_name(label);
+		SIArray_Append(&labels, SI_ConstStringVal(lablel_str));
+	}
+	AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
+
+	// create func expression
+	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
+
+	// set function arguments
+	op->op.children[0] = node_exp;
+	op->op.children[1] = labels_exp;
+
+	return op;
+}
+
 static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t t = cypher_astnode_type(expr);
@@ -696,10 +725,11 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpFromMapExpression(expr);
 	} else if(t == CYPHER_AST_MAP_PROJECTION) {
 		return _AR_ExpFromMapProjection(expr);
+	} else if(t == CYPHER_AST_LABELS_OPERATOR) {
+		return _AR_ExpLabelsOperatorFromFunction(expr);
 	} else {
 		/*
 		   Unhandled types:
-		   CYPHER_AST_LABELS_OPERATOR
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
 		*/

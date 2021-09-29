@@ -10,6 +10,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/map.h"
+#include "../../datatypes/array.h"
 #include "../../graph/graphcontext.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
@@ -32,6 +33,22 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 	int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
 	if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
 	return SI_ConstStringVal(label);
+}
+
+/* returns true if node contains header, otherwise false. */
+SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+
+	char *label = "";
+	Node *node = argv[0].ptrval;
+	SIValue labels = argv[1];
+	if(SIArray_Length(labels) > 1) return SI_BoolVal(false);
+	
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = gc->g;
+	int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
+	if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
+	return SI_BoolVal(strcmp(SIArray_Get(labels, 0).stringval, label) == 0);
 }
 
 /* returns a string representation of the type of a relation. */
@@ -189,6 +206,12 @@ void Register_EntityFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_NODE);
 	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_NULL | T_NODE);
+	array_append(types, T_ARRAY);
+	func_desc = AR_FuncDescNew("has_labels", AR_HAS_LABELS, 2, 2, types, true, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

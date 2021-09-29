@@ -30,8 +30,7 @@
 
 Feature: MatchWhere1 - Filter single variable
 
-  @skip
-  Scenario: [1] Filter node with node label predicate on multi variables with multiple bindings
+=  Scenario: [1] Filter node with node label predicate on multi variables with multiple bindings
     Given an empty graph
     And having executed:
       """
@@ -48,7 +47,6 @@ Feature: MatchWhere1 - Filter single variable
       | 0    | 1    |
     And no side effects
 
-  @skip
   Scenario: [2] Filter node with node label predicate on multi variables without any bindings
     Given an empty graph
     And having executed:
