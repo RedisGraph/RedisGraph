@@ -49,7 +49,7 @@ def delete_graph(graph_id):
         # Graph deletion failed.
         return False
 
-def run_concurrent(env, queries, f):
+def run_concurrent(queries, f):
     pool = Pool(nodes=CLIENT_COUNT)
 
     # invoke queries
@@ -88,7 +88,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def test01_concurrent_aggregation(self):
         q = """MATCH (p:person) RETURN count(p)"""
         queries = [q] * CLIENT_COUNT
-        results = run_concurrent(self.env, queries, query_aggregate)
+        results = run_concurrent(queries, query_aggregate)
         for result in results:
             person_count = result.result_set[0][0]
             self.env.assertEqual(person_count, len(people))
@@ -97,7 +97,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def test02_retrieve_neighbors(self):
         q = """MATCH (p:person)-[know]->(n:person) RETURN n.name"""
         queries = [q] * CLIENT_COUNT
-        results = run_concurrent(self.env, queries, query_neighbors)
+        results = run_concurrent(queries, query_neighbors)
         # Fully connected graph + header row.
         expected_resultset_size = len(people) * (len(people)-1)
         for result in results:
@@ -106,7 +106,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     # Concurrent writes
     def test_03_concurrent_write(self):        
         queries = ["""CREATE (c:country {id:"%d"})""" % i for i in range(CLIENT_COUNT)]
-        results = run_concurrent(self.env, queries, query_write)
+        results = run_concurrent(queries, query_write)
         for result in results:
             self.env.assertEqual(result.nodes_created, 1)
             self.env.assertEqual(result.properties_set, 1)
@@ -127,20 +127,10 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # Delete graph via Redis DEL key.
         ##############################################################################################
         self.populate_graph()
-        pool = Pool(nodes=CLIENT_COUNT)
 
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
-        # invoke queries
-        m = pool.amap(thread_run_query, queries)
-
-        self.conn.delete(GRAPH_ID)
-
-        # wait for processes to return
-        m.wait()
-
-        # get the results
-        results = m.get()
+        results = run_concurrent(queries, thread_run_query)
 
         # validate result.
         self.env.assertTrue(all([r.result_set[0][0] == 900 for r in results]))
@@ -155,16 +145,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.populate_graph()
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
-        # invoke queries
-        m = pool.amap(thread_run_query, queries)
-
-        self.conn.flushall()
-
-        # wait for processes to return
-        m.wait()
-
-        # get the results
-        results = m.get()
+        results = run_concurrent(queries, thread_run_query)
 
         # validate result.
         self.env.assertTrue(all([r.result_set[0][0] == 900 for r in results]))
@@ -179,16 +160,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.populate_graph()
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
-        # invoke queries
-        m = pool.amap(thread_run_query, queries)
-
-        self.graph.delete()
-
-        # wait for processes to return
-        m.wait()
-
-        # get the results
-        results = m.get()
+        results = run_concurrent(queries, thread_run_query)
 
         # validate result.
         self.env.assertTrue(all([r.result_set[0][0] == 900 for r in results]))
@@ -262,30 +234,20 @@ class testConcurrentQueryFlow(FlowTestsBase):
             self.env.assertEquals(1000000, result.result_set[0][0])
             self.env.assertEquals(set_result, True)
 
+        # Delete the key
+        self.conn.delete(GRAPH_ID)
+
     def test_09_concurrent_multiple_readers_after_big_write(self):
         # Test issue #890
-        global GRAPH_ID
-        GRAPH_ID = "G890"
         self.graph = Graph(GRAPH_ID, self.conn)
         self.graph.query("""UNWIND(range(0,999)) as x CREATE()-[:R]->()""")
         read_query = """MATCH (n)-[r:R]->(m) RETURN count(r) AS res UNION RETURN 0 AS res"""
 
         queries = [read_query] * CLIENT_COUNT
-        pool = Pool(nodes=CLIENT_COUNT)
+        results = run_concurrent(queries, thread_run_query)
 
-        # invoke queries
-        pool.clear()
-        m = pool.amap(thread_run_query, queries)
-
-        # wait for processes to return
-        m.wait()
-
-        # get the results
-        result = m.get()
-
-        for i in range(CLIENT_COUNT):
-            if isinstance(result[i], str):
-                self.env.assertEquals(0, result[i])
+        for result in results:
+            if isinstance(result, str):
+                self.env.assertEquals(0, result)
             else:
-                self.env.assertEquals(1000, result[i].result_set[0][0])
-
+                self.env.assertEquals(1000, result.result_set[0][0])
