@@ -201,6 +201,7 @@ static void _ExecuteQuery(void *args) {
 
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// send result-set back to client
+		// in case of error return the error 
 		ResultSet_Reply(result_set);
 	}
 
