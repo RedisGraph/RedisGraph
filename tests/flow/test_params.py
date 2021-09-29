@@ -109,6 +109,20 @@ class testParams(FlowTestsBase):
             # Expecting an error.
             pass
 
+        try:
+            redis_graph.profile(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
+        try:
+            redis_graph.execution_plan(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
         query = "MATCH (a) WHERE a.v = $missing RETURN a"
         try:
             redis_graph.query(query)
