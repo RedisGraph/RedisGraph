@@ -204,7 +204,8 @@ Index *GraphContext_GetIndex
 	const GraphContext *gc,
 	const char *label,
 	Attribute_ID *attribute_id,
-	IndexType type
+	IndexType type,
+	SchemaType schema_type
 );
 
 // create an index for the given label and attribute

@@ -34,7 +34,7 @@
     .entity = NULL,                         \
     .id = INVALID_ENTITY_ID,                \
     .relationship = (r_str),                \
-    .relationID = (r_id)                    \
+    .relationID = (r_id),                   \
 	.src = NULL,                            \
 	.dest = NULL,                           \
 	.srcNodeID = INVALID_ENTITY_ID,         \

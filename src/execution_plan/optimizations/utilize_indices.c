@@ -11,6 +11,8 @@
 #include "../ops/op_filter.h"
 #include "../ops/op_node_by_index_scan.h"
 #include "../ops/op_node_by_label_scan.h"
+#include "../ops/op_edge_by_index_scan.h"
+#include "../ops/op_conditional_traverse.h"
 #include "../../ast/ast_shared.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/point.h"
@@ -222,13 +224,12 @@ cleanup:
 
 // returns an array of filter operation which can be
 // reduced into a single index scan operation
-OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
+OpFilter **_applicableFilters(OpBase *op, const char* filtered_entity, Index *idx) {
 	OpFilter **filters = array_new(OpFilter *, 0);
-	const char* filtered_entity = scanOp->n.alias; // entity being filtered
 
 	// we begin with a LabelScan, and want to find predicate filters that modify
 	// the active entity
-	OpBase *current = scanOp->op.parent;
+	OpBase *current = op->parent;
 	while(current->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
 
@@ -273,12 +274,12 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	// make sure there's an index for scanned label
 	const char *label = scan->n.label;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
+	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH, SCHEMA_NODE);
 	if(idx == NULL) return;
 
 	// get all applicable filter for index
 	RSIndex *rs_idx = idx->idx;
-	OpFilter **filters = _applicableFilters(scan, idx);
+	OpFilter **filters = _applicableFilters((OpBase *)scan, scan->n.alias, idx);
 
 	// no filters, return
 	uint filters_count = array_len(filters);
@@ -291,6 +292,55 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	// replace the redundant scan op with the newly-constructed Index Scan
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 	OpBase_Free((OpBase *)scan);
+
+	// remove and free all redundant filter ops
+	// since this is a chain of single-child operations
+	// all operations are replaced in-place
+	// avoiding problems with stream-sensitive ops like SemiApply
+	for(uint i = 0; i < filters_count; i++) {
+		OpFilter *filter = filters[i];
+		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+		OpBase_Free((OpBase *)filter);
+	}
+
+cleanup:
+	array_free(filters);
+}
+
+// try to replace given Conditional Traverse operation and a set of Filter operations with
+// a single Index Scan operation
+void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
+	// make sure there's an index for scanned label
+	const char *edge = AlgebraicExpression_Edge(cond->ae);
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
+	if(QGEdge_RelationCount(e) != 1) return;
+
+	const char *label = QGEdge_Relation(e, 0);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH, SCHEMA_EDGE);
+	if(idx == NULL) return;
+
+	// get all applicable filter for index
+	RSIndex *rs_idx = idx->idx;
+	OpFilter **filters = _applicableFilters((OpBase *)cond, edge, idx);
+
+	// no filters, return
+	uint filters_count = array_len(filters);
+	if(filters_count == 0) goto cleanup;
+
+	FT_FilterNode *root = _Concat_Filters(filters);
+	OpBase *indexOp = NewEdgeIndexScanOp(cond->op.plan, cond->graph, e, rs_idx,
+			root);
+
+	if(cond->op.children[0]->type == OPType_ALL_NODE_SCAN) {
+		OpBase *allNodeScan = cond->op.children[0];
+		// replace the redundant scan op with the newly-constructed Index Scan
+		ExecutionPlan_RemoveOp(plan, allNodeScan);
+		OpBase_Free(allNodeScan);
+	}
+	// replace the redundant scan op with the newly-constructed Index Scan
+	ExecutionPlan_ReplaceOp(plan, (OpBase *)cond, indexOp);
+	OpBase_Free((OpBase *)cond);
 
 	// remove and free all redundant filter ops
 	// since this is a chain of single-child operations
@@ -322,6 +372,18 @@ void utilizeIndices(ExecutionPlan *plan) {
 		reduce_scan_op(plan, scanOp);
 	}
 
+	// collect all conditional traverse
+	OpBase **condOps = ExecutionPlan_CollectOps(plan->root,
+			OPType_CONDITIONAL_TRAVERSE);
+
+	int condOpCount = array_len(condOps);
+	for(int i = 0; i < condOpCount; i++) {
+		OpCondTraverse *condOp = (OpCondTraverse *)condOps[i];
+		// try to reduce conditional travers + filter(s) to a single IndexScan operation
+		reduce_cond_op(plan, condOp);
+	}
+
 	// cleanup
 	array_free(scanOps);
+	array_free(condOps);
 }

@@ -79,8 +79,11 @@ OpBase *NewEdgeIndexScanOp
 	const  char  *src_alias   =  QGNode_Alias(QGEdge_Src(e));
 	const  char  *dest_alias  =  QGNode_Alias(QGEdge_Dest(e));
 
-	op->srcAware   =  OpBase_Aware((OpBase *)op, src_alias, &op->srcRecIdx);
-	op->destAware  =  OpBase_Aware((OpBase *)op, dest_alias, &op->destRecIdx);
+	// TODO: currently all node scan resolve the src need to find solution
+	// op->srcAware   =  OpBase_Aware((OpBase *)op, src_alias, &op->srcRecIdx);
+	// op->destAware  =  OpBase_Aware((OpBase *)op, dest_alias, &op->destRecIdx);
+	op->srcAware   =  false;
+	op->destAware  =  false;
 
 	if(!op->srcAware) {
 		op->srcRecIdx = OpBase_Modifies((OpBase *)op, QGNode_Alias(QGEdge_Src(e)));
@@ -122,29 +125,38 @@ static inline void _UpdateRecord
 ) {
 	// populate Record with edge, src and destination node
 	int res;
-
-	Edge  *e     =  Record_GetEdge(r,  op->edgeRecIdx);
-	Node  *src   =  Record_GetNode(r,  op->srcRecIdx);
-	Node  *dest  =  Record_GetNode(r,  op->destRecIdx);
+	UNUSED(res);
+	
+	Edge  e     = GE_NEW_LABELED_EDGE(op->edge->reltypes[0], op->edge->reltypeIDs[0]);
 
 	EntityID  src_id   =  edge_key->src_id;
 	EntityID  dest_id  =  edge_key->dest_id;
 	EntityID  edge_id  =  edge_key->edge_id;
 
-	res = Graph_GetEdge(op->g, edge_id, e);
+	res = Graph_GetEdge(op->g, edge_id, &e);
 	ASSERT(res != 0);
-	Edge_SetRelationID(e, QGEdge_RelationID(op->edge, 0));
+	Record_AddEdge(r, op->edgeRecIdx, e);
 
 	if(!op->srcAware) {
-		res = Graph_GetNode(op->g, src_id, src);
+		Node src = GE_NEW_NODE();
+		res = Graph_GetNode(op->g, src_id, &src);
 		ASSERT(res != 0);
-		Edge_SetSrcNode(e, src);
+		Record_AddNode(r, op->srcRecIdx, src);
+		Edge_SetSrcNode(&e, &src);
+	} else {
+		Node *src = Record_GetNode(r,  op->srcRecIdx);
+		Edge_SetSrcNode(&e, src);
 	}
 
 	if(!op->destAware) {
-		res = Graph_GetNode(op->g, dest_id, dest);
+		Node dest = GE_NEW_NODE();
+		res = Graph_GetNode(op->g, dest_id, &dest);
 		ASSERT(res != 0);
-		Edge_SetDestNode(e, dest);
+		Record_AddNode(r, op->destRecIdx, dest);
+		Edge_SetDestNode(&e, &dest);
+	} else {
+		Node *dest = Record_GetNode(r,  op->destRecIdx);
+		Edge_SetDestNode(&e, dest);
 	}
 }
 
