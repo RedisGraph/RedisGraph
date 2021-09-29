@@ -58,6 +58,9 @@ void Graph_Explain(void *args) {
 
 	ExecutionPlan_PreparePlan(plan);
 	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
+
+	if(ErrorCtx_EncounteredError()) goto cleanup;
+
 	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
