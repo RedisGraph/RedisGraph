@@ -176,7 +176,7 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_PreparePlan(plan);
 		if(profile) {
 			ExecutionPlan_Profile(plan);
-			ExecutionPlan_Print(plan, rm_ctx);
+			if(!ErrorCtx_EncounteredError()) ExecutionPlan_Print(plan, rm_ctx);
 		}
 		else {
 			result_set = ExecutionPlan_Execute(plan);
@@ -199,7 +199,7 @@ static void _ExecuteQuery(void *args) {
 
 	QueryCtx_ForceUnlockCommit();
 
-	if(!profile) {
+	if(!profile || ErrorCtx_EncounteredError()) {
 		// send result-set back to client
 		ResultSet_Reply(result_set);
 	}
