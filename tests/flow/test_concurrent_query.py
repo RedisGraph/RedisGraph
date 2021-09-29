@@ -12,37 +12,19 @@ def query_aggregate(query):
     env = Env(decodeResponses=True)
     conn = env.getConnection()
     graph = Graph(GRAPH_ID, conn)
-
-    actual_result = graph.query(query)
-    person_count = actual_result.result_set[0][0]
-    if person_count != len(people):
-        return False
-    
-    return True
+    return graph.query(query)
 
 def query_neighbors(query):
     env = Env(decodeResponses=True)
     conn = env.getConnection()
     graph = Graph(GRAPH_ID, conn)
-
-    # Fully connected graph + header row.
-    expected_resultset_size = len(people) * (len(people)-1)
-
-    actual_result = graph.query(query)
-    if len(actual_result.result_set) is not expected_resultset_size:
-        return False
-    
-    return True
+    return graph.query(query)
 
 def query_write(query):
     env = Env(decodeResponses=True)
     conn = env.getConnection()
     graph = Graph(GRAPH_ID, conn)
-    actual_result = graph.query(query)
-    if actual_result.nodes_created != 1 or actual_result.properties_set != 1:
-        return False
-
-    return True
+    return graph.query(query)
 
 def thread_run_query(query):
     env = Env(decodeResponses=True)
@@ -50,7 +32,7 @@ def thread_run_query(query):
     graph = Graph(GRAPH_ID, conn)
 
     try:
-        return graph.query(query).result_set[0][0]
+        return graph.query(query)
     except ResponseError as e:
         return str(e)
 
@@ -71,10 +53,7 @@ def run_concurrent(env, queries, f):
     pool = Pool(nodes=CLIENT_COUNT)
 
     # invoke queries
-    result = pool.map(f, queries)
-
-    # validate all process return true
-    env.assertTrue(all(result))
+    return pool.map(f, queries)
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
@@ -109,18 +88,28 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def test01_concurrent_aggregation(self):
         q = """MATCH (p:person) RETURN count(p)"""
         queries = [q] * CLIENT_COUNT
-        run_concurrent(self.env, queries, query_aggregate)
+        results = run_concurrent(self.env, queries, query_aggregate)
+        for result in results:
+            person_count = result.result_set[0][0]
+            self.env.assertEqual(person_count, len(people))
     
     # Concurrently get neighbors of every node.
     def test02_retrieve_neighbors(self):
         q = """MATCH (p:person)-[know]->(n:person) RETURN n.name"""
         queries = [q] * CLIENT_COUNT
-        run_concurrent(self.env, queries, query_neighbors)
+        results = run_concurrent(self.env, queries, query_neighbors)
+        # Fully connected graph + header row.
+        expected_resultset_size = len(people) * (len(people)-1)
+        for result in results:
+            self.env.assertEqual(len(result.result_set), expected_resultset_size)
 
     # Concurrent writes
     def test_03_concurrent_write(self):        
         queries = ["""CREATE (c:country {id:"%d"})""" % i for i in range(CLIENT_COUNT)]
-        run_concurrent(self.env, queries, query_write)
+        results = run_concurrent(self.env, queries, query_write)
+        for result in results:
+            self.env.assertEqual(result.nodes_created, 1)
+            self.env.assertEqual(result.properties_set, 1)
     
     # Try to delete graph multiple times.
     def test_04_concurrent_delete(self):
@@ -154,7 +143,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         results = m.get()
 
         # validate result.
-        self.env.assertTrue(all([r == 900 for r in results]))
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in results]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = self.graph.query("MATCH (n) RETURN count(n)").result_set
@@ -178,7 +167,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         results = m.get()
 
         # validate result.
-        self.env.assertTrue(all([r == 900 for r in results]))
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in results]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = self.graph.query("MATCH (n) RETURN count(n)").result_set
@@ -202,7 +191,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         results = m.get()
 
         # validate result.
-        self.env.assertTrue(all([r == 900 for r in results]))
+        self.env.assertTrue(all([r.result_set[0][0] == 900 for r in results]))
 
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = self.graph.query("MATCH (n) RETURN count(n)").result_set
@@ -223,7 +212,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         if isinstance(result, str):
             self.env.assertContains(result, possible_exceptions)
         else:
-            self.env.assertEquals(1000000, result)
+            self.env.assertEquals(1000000, result.result_set[0][0])
     
     def test_07_concurrent_write_rename(self):
         # Test setup - validate that graph exists and possible results are None
@@ -249,7 +238,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         if isinstance(result, str):
             self.env.assertContains(result, possible_exceptions)
         else:
-            self.env.assertEquals(1000000, result)
+            self.env.assertEquals(1000000, result.result_set[0][0])
         
     def test_08_concurrent_write_replace(self):
         # Test setup - validate that graph exists and possible results are None
@@ -270,7 +259,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
             self.env.assertContains(result, possible_exceptions)
         else:
             # Otherwise, both the CREATE query and the SET command should have succeeded.
-            self.env.assertEquals(1000000, result)
+            self.env.assertEquals(1000000, result.result_set[0][0])
             self.env.assertEquals(set_result, True)
 
     def test_09_concurrent_multiple_readers_after_big_write(self):
@@ -298,5 +287,5 @@ class testConcurrentQueryFlow(FlowTestsBase):
             if isinstance(result[i], str):
                 self.env.assertEquals(0, result[i])
             else:
-                self.env.assertEquals(1000, result[i])
+                self.env.assertEquals(1000, result[i].result_set[0][0])
 
