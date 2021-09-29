@@ -26,6 +26,7 @@ static void EdgeIndexScanToString
 
 	OpEdgeIndexScan *op = (OpEdgeIndexScan *)ctx;
 
+	// Edge By Index Scan | [e:R]
 	*buf = sdscatprintf(*buf, "%s | ", ctx->name);
 	QGEdge_ToString(op->edge, buf);
 }
@@ -73,14 +74,18 @@ OpBase *NewEdgeIndexScanOp
 
 	op->edgeRecIdx = OpBase_Modifies((OpBase *)op, QGEdge_Alias(e));
 
-	const char *src_alias = QGNode_Alias(QGEdge_Src(e));
-	op->srcAware = OpBase_Aware((OpBase *)op, src_alias, &op->srcRecIdx);
+	// source and destination nodes may or may not already be resolved
+	// missing nodes will be resolved by this operation
+	const  char  *src_alias   =  QGNode_Alias(QGEdge_Src(e));
+	const  char  *dest_alias  =  QGNode_Alias(QGEdge_Dest(e));
+
+	op->srcAware   =  OpBase_Aware((OpBase *)op, src_alias, &op->srcRecIdx);
+	op->destAware  =  OpBase_Aware((OpBase *)op, dest_alias, &op->destRecIdx);
+
 	if(!op->srcAware) {
 		op->srcRecIdx = OpBase_Modifies((OpBase *)op, QGNode_Alias(QGEdge_Src(e)));
 	}
 
-	const char *dest_alias = QGNode_Alias(QGEdge_Dest(e));
-	op->destAware = OpBase_Aware((OpBase *)op, dest_alias, &op->destRecIdx);
 	if(!op->destAware) {
 		op->destRecIdx = OpBase_Modifies((OpBase *)op, dest_alias);
 	}
@@ -106,24 +111,14 @@ static OpResult EdgeIndexScanInit
 		OpBase_UpdateConsume(opBase, EdgeIndexScanConsumeFromChild);
 	}
 
-	// resolve relation ID now if it is still unknown
-	if(QGEdge_RelationID(op->edge, 0) == GRAPH_UNKNOWN_RELATION) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Schema *s = GraphContext_GetSchema(gc, QGEdge_Relation(op->edge, 0),
-				SCHEMA_EDGE);
-		ASSERT(s != NULL);
-
-		op->edge->reltypeIDs[0] = Schema_ID(s);
-	}
-
 	return OP_OK;
 }
 
 static inline void _UpdateRecord
 (
-	OpEdgeIndexScan *op,
-	Record r,
-	const EdgeIndexKey *edge_key
+	OpEdgeIndexScan *op,          // executing operation
+	Record r,                     // record to update
+	const EdgeIndexKey *edge_key  // value retrieved from the index
 ) {
 	// populate Record with edge, src and destination node
 	int res;
@@ -136,18 +131,21 @@ static inline void _UpdateRecord
 	EntityID  dest_id  =  edge_key->dest_id;
 	EntityID  edge_id  =  edge_key->edge_id;
 
-	res = Graph_GetNode(op->g, src_id, src);
-	ASSERT(res != 0);
-
-	res = Graph_GetNode(op->g, dest_id, dest);
-	ASSERT(res != 0);
-
 	res = Graph_GetEdge(op->g, edge_id, e);
 	ASSERT(res != 0);
-
-	Edge_SetSrcNode(e, src);
-	Edge_SetDestNode(e, dest);
 	Edge_SetRelationID(e, QGEdge_RelationID(op->edge, 0));
+
+	if(!op->srcAware) {
+		res = Graph_GetNode(op->g, src_id, src);
+		ASSERT(res != 0);
+		Edge_SetSrcNode(e, src);
+	}
+
+	if(!op->destAware) {
+		res = Graph_GetNode(op->g, dest_id, dest);
+		ASSERT(res != 0);
+		Edge_SetDestNode(e, dest);
+	}
 }
 
 static inline bool _PassUnresolvedFilters
