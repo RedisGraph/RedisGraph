@@ -287,23 +287,20 @@ void reduce_scan_op
 	ExecutionPlan *plan,
 	NodeByLabelScan *scan
 ) {
-	// in the multi-label case, we may have a label scan followed by a
-	// conditional traversal over N diagonal matrices.
-	// in this case, we want to check for the scanned label and each
-	// traversed label
-	// make sure there's an index for scanned label
+	// in the multi-label case, we want to pick the label which will allow us to
+	// maximize the number of filters converted
 	GraphContext *gc  = QueryCtx_GetGraphCtx();
 	Graph        *g   =  QueryCtx_GetGraph();
 	QueryGraph   *qg  =  scan->op.plan->query_graph;
 
-	// find label with filtered and indexed properties
-	// that has the lowest NNZ value
-	uint64_t    min_nnz = UINT64_MAX;   // tracks min entries
-	int         min_label_id;           // tracks min label ID
-	const char  *min_label_str = NULL;  // tracks min label name
-	OpFilter    **filters = NULL;       // tracks indexed filters to apply
-	uint        filters_count = 0;      // number of matching filters
-	RSIndex     *rs_idx = NULL;         // the index to be applied
+	// find label with filtered indexed properties
+	// that has the minimum NNZ entries
+	int         min_label_id;                 // tracks min label ID
+	uint64_t    min_nnz        = UINT64_MAX;  // tracks min entries
+	RSIndex     *rs_idx        = NULL;        // the index to be applied
+	OpFilter    **filters      = NULL;        // tracks indexed filters to apply
+	uint        filters_count  = 0;           // number of matching filters
+	const char  *min_label_str = NULL;        // tracks min label name
 
 	// see if scanned node has multiple labels
 	const char *node_alias = scan->n.alias;
@@ -312,9 +309,17 @@ void reduce_scan_op
 
 	uint label_count = QGNode_LabelCount(qn);
 	for(uint i = 0; i < label_count; i++) {
+		Index *idx;
 		uint64_t nnz;
+		int label_id = QGNode_GetLabelID(qn, i);
 		const char *label = QGNode_GetLabel(qn, i);
-		Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
+
+		// unknown label
+		if(label_id == GRAPH_UNKNOWN_LABEL) continue;
+
+		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH);
+
+		// no index for current label
 		if(idx == NULL) continue;
 
 		// get all applicable filter for index
@@ -332,15 +337,15 @@ void reduce_scan_op
 			continue;
 		}
 
-		int label_id = QGNode_GetLabelID(qn, i);
 		nnz = Graph_LabeledNodeCount(g, label_id);
 		if(min_nnz > nnz) {
-			min_nnz = nnz;
-			min_label_str = label;
-			min_label_id = label_id;
+			rs_idx         =  cur_idx;
+			min_nnz        =  nnz;
+			min_label_str  =  label;
+			min_label_id   =  label_id;
+
 			// swap previously stored index and
 			// filters array (if any) with current filters
-			rs_idx = cur_idx;
 			array_free(filters);
 			filters = cur_filters;
 			filters_count = cur_filters_count;
@@ -350,31 +355,32 @@ void reduce_scan_op
 	// no label possessed indexed and filtered attributes, return early
 	if(rs_idx == NULL) goto cleanup;
 
-	// did we found a better label to utilize?
-	// if so swap
+	// did we found a better label to utilize? if so swap
 	if(scan->n.label_id != min_label_id) {
 		// the scanned label does not match the one we will build an
 		// index scan over, update the traversal expression to
 		// remove the indexed label and insert the previously-scanned label
 		OpBase *parent = scan->op.parent;
+		// skip filters
 		while(OpBase_Type(parent) == OPType_FILTER) parent = parent->parent;
-		ASSERT(OpBase_Type(parent) == OPType_CONDITIONAL_TRAVERSE);
-		OpCondTraverse *op_traverse = (OpCondTraverse*)parent;
-		AlgebraicExpression *ae = op_traverse->ae;
-		AlgebraicExpression *operand;
+		if(OpBase_Type(parent) == OPType_CONDITIONAL_TRAVERSE) {
+			OpCondTraverse *op_traverse = (OpCondTraverse*)parent;
+			AlgebraicExpression *ae = op_traverse->ae;
+			AlgebraicExpression *operand;
 
-		const char *row_domain = scan->n.alias;
-		const char *column_domain = scan->n.alias;
+			const char *row_domain = scan->n.alias;
+			const char *column_domain = scan->n.alias;
 
-		bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
-				row_domain, column_domain, NULL, min_label_str);
-		ASSERT(found == true);
+			bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
+					row_domain, column_domain, NULL, min_label_str);
+			ASSERT(found == true);
 
-		AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
-				true, AlgebraicExpression_Source(operand),
-				AlgebraicExpression_Destination(operand), NULL, scan->n.label);
+			AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
+					true, AlgebraicExpression_Source(operand),
+					AlgebraicExpression_Destination(operand), NULL, scan->n.label);
 
-		_AlgebraicExpression_InplaceRepurpose(operand, replacement);
+			_AlgebraicExpression_InplaceRepurpose(operand, replacement);
+		}
 
 		scan->n.label = min_label_str;
 		scan->n.label_id = min_label_id;

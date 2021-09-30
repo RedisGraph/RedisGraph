@@ -14,7 +14,7 @@
 // this optimization scans through each label-scan operation
 // in case the node being scaned is associated with multiple labels
 // e.g. MATCH (n:A:B) RETURN n
-// we will prefer to scan through the label with the least number of nodes
+// we will prefer to scan through the label with the least amount of nodes
 // for the above example if NNZ(A) < NNZ(B) we will want to iterate over A
 //
 // in-case this optimization changed the label scanned e.g. from A to B
@@ -51,34 +51,36 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 
 	// node has multiple labels
 	// find label with minimum entities
-	uint64_t    min_nnz = UINT64_MAX;  // tracks min entries
-	int         min_label_id;          // tracks min label ID
-	const char *min_label_str = NULL;  // tracks min label name
+	uint64_t    min_nnz       = UINT64_MAX; // tracks min entries
+	int         min_label_id  = 0;          // tracks min label ID
+	const char *min_label_str = NULL;       // tracks min label name
 
 	for(uint i = 0; i < label_count; i++) {
 		uint64_t nnz;
 		int label_id = QGNode_GetLabelID(qn, i);
 		nnz = Graph_LabeledNodeCount(g, label_id);
 		if(min_nnz > nnz) {
-			min_nnz = nnz;
-			min_label_id = label_id;
-			min_label_str = QGNode_GetLabel(qn, i);
+			// update minimum
+			min_nnz        =  nnz;
+			min_label_id   =  label_id;
+			min_label_str  =  QGNode_GetLabel(qn, i);
 		}
 	}
 
-	// scanned label has the minimum number of entries, no switching required
+	// scanned label has the minimum number of entries
+	// no switching required
 	if(min_label_id == scan->n.label_id) return;
 
 	// swap current label with minimum label
-	scan->n.label = min_label_str;
-	scan->n.label_id = min_label_id;
+	scan->n.label     =  min_label_str;
+	scan->n.label_id  =  min_label_id;
 
 	// patch following traversal, skip filters
 	OpBase *parent = op->parent;
 	while(OpBase_Type(parent) == OPType_FILTER) parent = parent->parent;
-	if(OpBase_Type(op->parent) != OPType_CONDITIONAL_TRAVERSE) return;
+	ASSERT(OpBase_Type(parent) == OPType_CONDITIONAL_TRAVERSE);
 
-	OpCondTraverse *op_traverse = (OpCondTraverse*)op->parent;
+	OpCondTraverse *op_traverse = (OpCondTraverse*)parent;
 	AlgebraicExpression *ae = op_traverse->ae;
 	AlgebraicExpression *operand;
 

@@ -57,19 +57,24 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 
 		uint label_count = QGNode_LabelCount(src);
 		if(label_count > 0) {
-			// if the expression is transposed, convert the last label,
-			// as this matches the operand that will be removed
-			uint label_to_remove =
-				AlgebraicExpression_Transposed(exps[0]) ? label_count - 1 : 0;
+			AlgebraicExpression *ae_src = AlgebraicExpression_RemoveSource(&exps[0]);
+			ASSERT(AlgebraicExpression_DiagonalOperand(ae_src, 0));
+
+			const char *label = AlgebraicExpression_Label(ae_src);
+			const char *alias = AlgebraicExpression_Source(ae_src);
+			ASSERT(label != NULL);
+			ASSERT(alias != NULL);
+
+			int label_id = GRAPH_UNKNOWN_LABEL;
+			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(s != NULL) label_id = Schema_GetID(s);
+
 			// resolve source node by performing label scan
-			NodeScanCtx ctx = NODE_CTX_NEW(src->alias, QGNode_GetLabel(src, label_to_remove),
-					QGNode_GetLabelID(src, label_to_remove));
+			NodeScanCtx ctx = NODE_CTX_NEW(alias, label, label_id);
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
+
 			// first operand has been converted into a label scan op
-			// remove it
-			AlgebraicExpression *src = AlgebraicExpression_RemoveSource(&exps[0]);
-			ASSERT(AlgebraicExpression_DiagonalOperand(src, 0));
-			AlgebraicExpression_Free(src);
+			AlgebraicExpression_Free(ae_src);
 		} else {
 			root = tail = NewAllNodeScanOp(plan, src->alias);
 			// free expression source
@@ -80,7 +85,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			}
 		}
 
-		/* For each expression, build the appropriate traversal operation. */
+		// for each expression, build the appropriate traversal operation
 		for(int j = 0; j < expCount; j++) {
 			AlgebraicExpression *exp = exps[j];
 			// Empty expression, already freed.
