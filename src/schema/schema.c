@@ -135,6 +135,8 @@ int Schema_AddIndex
 		_idx = Index_New(s->name, s->id, type, entity_type);
 		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
 		else s->index = _idx;
+		Index_AddField(_idx, "_src_id");
+		Index_AddField(_idx, "_dest_id");
 	}
 
 	Index_AddField(_idx, field);

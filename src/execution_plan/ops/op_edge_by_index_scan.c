@@ -55,6 +55,7 @@ OpBase *NewEdgeIndexScanOp
 	op->iter                 =  NULL;
 	op->filter               =  filter;
 	op->child_record         =  NULL;
+	op->current_node         =  NULL;
 	op->unresolved_filters   =  NULL;
 	op->rebuild_index_query  =  false;
 
@@ -103,6 +104,15 @@ static OpResult EdgeIndexScanInit
 	OpEdgeIndexScan *op = (OpEdgeIndexScan *)opBase;
 
 	if(opBase->childCount > 0) {
+		const char *alias =  QGEdge_Alias(op->edge);
+		op->current_node  = AR_EXP_NewConstOperandNode(SI_NullVal());
+		FT_FilterNode *ft = FilterTree_CreatePredicateFilter(OP_EQUAL, 
+			AR_EXP_NewAttributeAccessNode(AR_EXP_NewVariableOperandNode(alias), "_src_id"), 
+			op->current_node);
+		FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
+		FilterTree_AppendLeftChild(root, op->filter);
+		FilterTree_AppendRightChild(root, ft);
+		op->filter = root;
 		// find out how many different entities are refered to 
 		// within the filter tree, if number of entities equals 1
 		// (current edge being scanned) there's no need to re-build the index
@@ -169,6 +179,13 @@ static inline bool _PassUnresolvedFilters
 	if(unresolved_filters == NULL) return true; // no filters
 
 	return FilterTree_applyFilters(unresolved_filters, r) == FILTER_PASS;
+}
+
+static void UpdateCurrentSrcId(const OpEdgeIndexScan *op) {
+	if(op->current_node) {
+		Node *n = Record_GetNode(op->child_record, op->srcRecIdx);
+		op->current_node->operand.constant = SI_LongVal(ENTITY_GET_ID(n));
+	}
 }
 
 static Record EdgeIndexScanConsumeFromChild
@@ -244,12 +261,12 @@ pull_index:
 		}
 		#endif
 
+		UpdateCurrentSrcId(op);
+
 		// convert filter into a RediSearch query
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
 				filter, op->idx);
 		FilterTree_Free(filter);
-
-		// if src =
 
 		// create iterator
 		ASSERT(rs_query_node != NULL);
@@ -258,6 +275,8 @@ pull_index:
 		// build index query only once (first call)
 		// reset it if already initialized
 		if(op->iter == NULL) {
+			UpdateCurrentSrcId(op);
+
 			// first call to consume, create query and iterator
 			RSQNode *rs_query_node = FilterTreeToQueryNode(
 					&op->unresolved_filters, op->filter, op->idx);
@@ -282,6 +301,8 @@ static Record EdgeIndexScanConsume
 
 	// create iterator on first call
 	if(op->iter == NULL) {
+		UpdateCurrentSrcId(op);
+
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
 				op->filter, op->idx);
 		ASSERT(op->unresolved_filters == NULL);
