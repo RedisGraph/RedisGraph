@@ -35,36 +35,41 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 	return SI_ConstStringVal(label);
 }
 
-/* returns true if node has labels, otherwise false. */
+// returns true if input node contains all specified labels, otherwise false
 SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 
-	Node *node = argv[0].ptrval;
-	EntityID id = ENTITY_GET_ID(node);
-	SIValue labels = argv[1];
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = gc->g;
+	bool         res       =  true;
+	Node         *node     =  argv[0].ptrval;
+	SIValue      labels    =  argv[1];
+	EntityID     id        =  ENTITY_GET_ID(node);
+	GraphContext *gc       =  QueryCtx_GetGraphCtx();
+	Graph        *g        =  gc->g;
 
 	// iterate over given labels
 	uint32_t labels_length = SIArray_Length(labels);
-	for (uint32_t i = 0; i < labels_length; i++)
-	{
+	for (uint32_t i = 0; i < labels_length; i++) {
 		char *label = SIArray_Get(labels, 0).stringval;
-		Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 
 		// validate schema exists
-		if(!schema) return SI_BoolVal(false);
+		if(!s) {
+			res = false;
+			break;
+		}
 
 		// validate label is set
-		RG_Matrix M = Graph_GetLabelMatrix(g, schema->id);
 		bool x;
+		RG_Matrix M = Graph_GetLabelMatrix(g, Schema_GetID(s));
+		ASSERT(M != NULL);
+
 		if(RG_Matrix_extractElement_BOOL(&x, M, id, id) == GrB_NO_VALUE) {
-			return SI_BoolVal(false);
+			res = false;
+			break;
 		}
 	}
 	
-	return SI_BoolVal(true);
+	return SI_BoolVal(res);
 }
 
 /* returns a string representation of the type of a relation. */
