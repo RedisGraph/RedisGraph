@@ -10,7 +10,7 @@ Primary features:
 
 * Based on the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
   * Nodes (vertices) and Relationships (edges) that may have attributes
-  * Nodes that can be labeled
+  * Nodes that can have any number of labels
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
 * [Cypher](http://www.opencypher.org/) as query language

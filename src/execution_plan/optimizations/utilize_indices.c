@@ -227,7 +227,7 @@ cleanup:
 	return res;
 }
 
-// returns an array of filter operation which can be
+// returns an array of filter operations which can be
 // reduced into a single index scan operation
 OpFilter **_applicableFilters
 (
@@ -288,7 +288,7 @@ void reduce_scan_op
 	NodeByLabelScan *scan
 ) {
 	// in the multi-label case, we want to pick the label which will allow us to
-	// maximize the number of filters converted
+	// both utilize an index and iterate over the fewest values
 	GraphContext *gc  = QueryCtx_GetGraphCtx();
 	Graph        *g   =  QueryCtx_GetGraph();
 	QueryGraph   *qg  =  scan->op.plan->query_graph;
