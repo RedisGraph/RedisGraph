@@ -260,6 +260,14 @@ Pattern predicates can be also negated and combined with the logical operators A
 MATCH (p:President), (s:State) WHERE NOT (p)-[:WON]->(s) AND (p)->[:governor]->(s) RETURN p, s
 ```
 
+It is also possible to filter node by label
+
+```sh
+MATCH (n)-[:R]->() WHERE n:L1 OR n:L2 RETURN n 
+```
+
+If it possible prefer filtering the label in the pattern that was matched
+
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
