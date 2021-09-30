@@ -154,19 +154,17 @@ commands:
       - load-deps-cache:
           cache_platform: x64-<<parameters.platform>>
       - run:
-          name: Build for platform
+          name: Build for platform (docker build)
           command: |
-            cd build/docker
-            make build OSNICK=<<parameters.platform>> ARTIFACTS=1 TEST=1 SHOW=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
       - save-deps-cache:
           cache_platform: x64-<<parameters.platform>>
       - early-return-for-forked-pull-requests
       - run:
-          name: Build for platform (publish)
+          name: Build for platform (docker publish)
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
-            cd build/docker
-            make publish OSNICK=<<parameters.platform>> OFFICIAL=0 SHOW=1 VERBOSE=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1 PUBLISH=1 DOCKERWRAPPER_EXTRA_VARS="DOCKER_PUSH_ONLY=1"
       - persist-artifacts
 
   vm-build-platforms-steps:
