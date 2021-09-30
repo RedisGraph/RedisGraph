@@ -395,3 +395,28 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [['STR1', [1, 2, 3]],
                            ['STR2', [1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test19_has_labels(self):
+        # Test existing label 
+        query = """MATCH (n) WHERE n:person RETURN n.name"""
+        actual_result = graph.query(query)
+        expected_result = [['Roi'], ['Alon'], ['Ailon'], ['Boaz']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test not existing label 
+        query = """MATCH (n) WHERE n:L RETURN n.name"""
+        actual_result = graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test multi label 
+        query = """MATCH (n) WHERE n:person:L RETURN n.name"""
+        actual_result = graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test or between different labels label 
+        query = """MATCH (n) WHERE n:person OR n:L RETURN n.name"""
+        actual_result = graph.query(query)
+        expected_result = [['Roi'], ['Alon'], ['Ailon'], ['Boaz']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
