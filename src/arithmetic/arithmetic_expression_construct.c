@@ -642,7 +642,7 @@ static AR_ExpNode *_AR_ExpFromLabelsOperatorFunction(const cypher_astnode_t *exp
 	const cypher_astnode_t *node = cypher_ast_labels_operator_get_expression(exp);
 	AR_ExpNode *node_exp = _AR_EXP_FromASTNode(node);
 
-	// create lables expressions
+	// create lables expression
 	uint nlabels = cypher_ast_labels_operator_nlabels(exp);
 	SIValue labels = SI_Array(nlabels);
 	for (uint i = 0; i < nlabels; i++)
