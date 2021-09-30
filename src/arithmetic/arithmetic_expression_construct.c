@@ -636,7 +636,7 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 }
 
 static AR_ExpNode *_AR_ExpFromLabelsOperatorFunction(const cypher_astnode_t *exp) {
-	const char *func_name = "has_labels";
+	const char *func_name = "hasLabels";
 
 	// create node expression
 	const cypher_astnode_t *node = cypher_ast_labels_operator_get_expression(exp);

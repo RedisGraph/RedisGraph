@@ -261,7 +261,7 @@ MATCH (p:President), (s:State) WHERE NOT (p)-[:WON]->(s) AND (p)->[:governor]->(
 ```
 
 It is also possible to filter node by label
-
+ƒ
 ```sh
 MATCH (n)-[:R]->() WHERE n:L1 OR n:L2 RETURN n 
 ```
@@ -630,6 +630,7 @@ This section contains information on all supported functions from the Cypher que
 | -------             | :-----------                                                                |
 | endNode()           | Returns the destination node of a relationship.                             |
 | id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
+| hasLabels()         | Returns true if input node contains all specified labels, otherwise false.  |
 | labels()            | Returns a string representation of the label of a node.                     |
 | startNode()         | Returns the source node of a relationship.                                  |
 | timestamp()         | Returns the the amount of milliseconds since epoch.                         |

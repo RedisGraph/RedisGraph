@@ -232,7 +232,7 @@ void Register_EntityFuncs() {
 	types = array_new(SIType, 2);
 	array_append(types, T_NULL | T_NODE);
 	array_append(types, T_ARRAY);
-	func_desc = AR_FuncDescNew("has_labels", AR_HAS_LABELS, 2, 2, types, false, false);
+	func_desc = AR_FuncDescNew("hasLabels", AR_HAS_LABELS, 2, 2, types, false, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
