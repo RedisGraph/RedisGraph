@@ -635,7 +635,7 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	return op;
 }
 
-static AR_ExpNode *_AR_ExpLabelsOperatorFromFunction(const cypher_astnode_t *exp) {
+static AR_ExpNode *_AR_ExpFromLabelsOperatorFunction(const cypher_astnode_t *exp) {
 	const char *func_name = "has_labels";
 
 	// create node expression
@@ -647,9 +647,9 @@ static AR_ExpNode *_AR_ExpLabelsOperatorFromFunction(const cypher_astnode_t *exp
 	SIValue labels = SI_Array(nlabels);
 	for (uint i = 0; i < nlabels; i++)
 	{
-		const cypher_astnode_t *label = cypher_ast_labels_operator_get_label(exp, 0);
+		const cypher_astnode_t *label = cypher_ast_labels_operator_get_label(exp, i);
 		const char *lablel_str = cypher_ast_label_get_name(label);
-		SIArray_Append(&labels, SI_ConstStringVal(lablel_str));
+		SIArray_Append(&labels, SI_ConstStringVal((char *)lablel_str));
 	}
 	AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
 
@@ -726,7 +726,7 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	} else if(t == CYPHER_AST_MAP_PROJECTION) {
 		return _AR_ExpFromMapProjection(expr);
 	} else if(t == CYPHER_AST_LABELS_OPERATOR) {
-		return _AR_ExpLabelsOperatorFromFunction(expr);
+		return _AR_ExpFromLabelsOperatorFunction(expr);
 	} else {
 		/*
 		   Unhandled types:
