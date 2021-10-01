@@ -13,7 +13,7 @@ Primary features:
   * Nodes that can have any number of labels
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as query language
+* [Cypher](http://www.opencypher.org/) as the query language
   * Cypher queries translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
@@ -95,7 +95,7 @@ How many riders represent team Ducati?
 
 ## Download
 
-A pre-compiled version can be downloaded from [redis download center](https://redis.com/download-center/modules/).
+A pre-compiled version can be downloaded from the [Redis download center](https://redis.com/download-center/modules/).
 
 ## Building
 
@@ -152,7 +152,7 @@ The system is missing the run-time dependency OpenMP. This can be installed on U
 ## Using RedisGraph
 
 Before using RedisGraph, you should familiarize yourself with its commands and syntax as detailed in the
-[commands reference](commands.md).
+[command reference](commands.md).
 
 You can call RedisGraph's commands from any Redis client.
 
