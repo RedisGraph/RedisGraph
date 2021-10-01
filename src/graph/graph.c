@@ -271,6 +271,9 @@ void Graph_ApplyAllPending
 	M = Graph_GetAdjacencyMatrix(g, false);
 	RG_Matrix_wait(M, force_flush);
 
+    M = Graph_GetNodeLabelMatrix(g);
+    RG_Matrix_wait(M, force_flush);
+
 	n = array_len(g->labels);
 	for(int i = 0; i < n; i ++) {
 		M = Graph_GetLabelMatrix(g, i);
