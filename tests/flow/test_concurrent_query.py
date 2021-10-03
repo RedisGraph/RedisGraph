@@ -3,16 +3,21 @@ from base import FlowTestsBase
 from redis import ResponseError
 from redisgraph import Graph, Node, Edge
 from pathos.pools import ProcessPool as Pool
+from pathos.helpers import mp as pathos_multiprocess
+from multiprocessing import Barrier
 
 GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def thread_run_query(query):
+def thread_run_query(query, barrier):
     env = Env(decodeResponses=True)
     conn = env.getConnection()
     graph = Graph(GRAPH_ID, conn)
 
+    if barrier is not None:
+        barrier.wait()
+    
     try:
         result = graph.query(query)
         return { "result_set": result.result_set, 
@@ -36,9 +41,13 @@ def delete_graph(graph_id):
 
 def run_concurrent(queries, f):
     pool = Pool(nodes=CLIENT_COUNT)
+    manager = pathos_multiprocess.Manager()
+    
+    barrier = manager.Barrier(CLIENT_COUNT)
+    barriers = [barrier] * CLIENT_COUNT
 
     # invoke queries
-    return pool.map(f, queries)
+    return pool.map(f, queries, barriers)
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
@@ -113,11 +122,14 @@ class testConcurrentQueryFlow(FlowTestsBase):
         ##############################################################################################
         self.populate_graph()
         pool = Pool(nodes=CLIENT_COUNT)
+        manager = pathos_multiprocess.Manager()
+        barrier = manager.Barrier(CLIENT_COUNT)
+        barriers = [barrier] * CLIENT_COUNT
 
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
         # invoke queries
-        m = pool.amap(thread_run_query, queries)
+        m = pool.amap(thread_run_query, queries, barriers)
 
         self.conn.delete(GRAPH_ID)
 
@@ -139,8 +151,10 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.populate_graph()
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
+        barrier = manager.Barrier(CLIENT_COUNT)
+        barriers = [barrier] * CLIENT_COUNT
         # invoke queries
-        m = pool.amap(thread_run_query, queries)
+        m = pool.amap(thread_run_query, queries, barriers)
 
         self.conn.flushall()
 
@@ -162,8 +176,10 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.populate_graph()
         q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
         queries = [q] * CLIENT_COUNT
+        barrier = manager.Barrier(CLIENT_COUNT)
+        barriers = [barrier] * CLIENT_COUNT
         # invoke queries
-        m = pool.amap(thread_run_query, queries)
+        m = pool.amap(thread_run_query, queries, barriers)
 
         self.graph.delete()
 
@@ -186,7 +202,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         pool = Pool(nodes=1)
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n) RETURN count(n)"""
-        writer = pool.apipe(thread_run_query, heavy_write_query)
+        writer = pool.apipe(thread_run_query, heavy_write_query, None)
         self.conn.delete(GRAPH_ID)
         writer.wait()
         possible_exceptions = ["Encountered different graph value when opened key " + GRAPH_ID,
@@ -206,7 +222,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # Create new empty graph with id GRAPH_ID + "2"
         self.conn.execute_command("GRAPH.QUERY",new_graph, """MATCH (n) return n""", "--compact")
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n) RETURN count(n)"""
-        writer = pool.apipe(thread_run_query, heavy_write_query)
+        writer = pool.apipe(thread_run_query, heavy_write_query, None)
         self.conn.rename(GRAPH_ID, new_graph)
         writer.wait()
         # Possible scenarios:
@@ -229,7 +245,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         pool = Pool(nodes=1)
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n) RETURN count(n)"""
-        writer = pool.apipe(thread_run_query, heavy_write_query)
+        writer = pool.apipe(thread_run_query, heavy_write_query, None)
         set_result = self.conn.set(GRAPH_ID, "1")
         writer.wait()
         possible_exceptions = ["Encountered a non-graph value type when opened key " + GRAPH_ID,
