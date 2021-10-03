@@ -149,7 +149,6 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         # get the results
         results = m.get()
-        results = run_concurrent(queries, thread_run_query)
 
         # validate result.
         self.env.assertTrue(all([r["result_set"][0][0] == 900 for r in results]))
