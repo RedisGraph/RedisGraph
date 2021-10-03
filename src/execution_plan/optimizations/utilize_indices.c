@@ -312,6 +312,8 @@ cleanup:
 void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	// make sure there's an index for scanned label
 	const char *edge = AlgebraicExpression_Edge(cond->ae);
+	if(!edge) return;
+	
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 	if(QGEdge_RelationCount(e) != 1) return;
 
