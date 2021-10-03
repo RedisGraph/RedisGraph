@@ -313,7 +313,7 @@ jobs:
       platform:
         type: string
     docker:
-      - image: debian:buster
+      - image: debian:bullseye
     steps:
       - platform-build-steps:
           platform: <<parameters.platform>>
@@ -359,7 +359,7 @@ jobs:
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
       - checkout
       - setup-automation
@@ -369,7 +369,7 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-buster
+      - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
       - checkout
       - setup-automation
