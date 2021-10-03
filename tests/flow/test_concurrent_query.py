@@ -4,7 +4,6 @@ from redis import ResponseError
 from redisgraph import Graph, Node, Edge
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import mp as pathos_multiprocess
-from multiprocessing import Barrier
 
 GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
