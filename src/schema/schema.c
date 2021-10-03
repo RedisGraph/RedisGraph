@@ -135,8 +135,13 @@ int Schema_AddIndex
 		_idx = Index_New(s->name, s->id, type, entity_type);
 		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
 		else s->index = _idx;
-		Index_AddField(_idx, "_src_id");
-		Index_AddField(_idx, "_dest_id");
+
+		// introduce edge src and dest node ids
+		// as additional index fields
+		if(entity_type == GETYPE_EDGE) {
+			Index_AddField(_idx, "_src_id");
+			Index_AddField(_idx, "_dest_id");
+		}
 	}
 
 	Index_AddField(_idx, field);
