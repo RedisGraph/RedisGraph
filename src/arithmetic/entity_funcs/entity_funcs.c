@@ -49,7 +49,12 @@ SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
 	// iterate over given labels
 	uint32_t labels_length = SIArray_Length(labels);
 	for (uint32_t i = 0; i < labels_length; i++) {
-		char *label = SIArray_Get(labels, i).stringval;
+		SIValue label_value = SIArray_Get(labels, i);
+		if(SI_TYPE(label_value) != T_STRING) {
+			Error_SITypeMismatch(label_value, T_STRING);
+			return SI_NullVal();
+		}
+		char *label = label_value.stringval;
 		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 
 		// validate schema exists

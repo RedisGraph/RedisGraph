@@ -420,3 +420,16 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [['Roi'], ['Alon'], ['Ailon'], ['Boaz']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test multi label using functions
+        query = """MATCH (n) WHERE hasLabels(n, ['person', 'L']) RETURN n.name"""
+        actual_result = graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test has labels using functions mismatch type
+        query = """MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name"""
+        try:
+            graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
