@@ -88,7 +88,7 @@ static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, SIType accepted_
 
 // commits delayed updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-				   PendingUpdateCtx *updates) {
+				   PendingUpdateCtx *updates, SchemaType type) {
 	ASSERT(gc != NULL);
 	ASSERT(stats != NULL);
 	ASSERT(updates != NULL);
@@ -112,10 +112,14 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		if(ge != updates[i].ge) {
 			if(reindex) {
 				s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id,
-											   SCHEMA_NODE);
+											   type);
 				ASSERT(s != NULL);
 				// introduce updated entity to index
-				Schema_AddNodeToIndices(s, (Node *)ge);
+				if(type == SCHEMA_NODE) {
+					Schema_AddNodeToIndices(s, (Node *)ge);
+				} else {
+					Schema_AddEdgeToIndices(s, (Edge *)ge);
+				}
 			}
 
 			// update state
@@ -138,14 +142,19 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id, SCHEMA_NODE);
 		ASSERT(s != NULL);
 		// introduce updated entity to index
-		Schema_AddNodeToIndices(s, (Node *)ge);
+		if(type == SCHEMA_NODE) {
+			Schema_AddNodeToIndices(s, (Node *)ge);
+		} else {
+			Schema_AddEdgeToIndices(s, (Edge *)ge);
+		}
 	}
 
 	if(stats) stats->properties_set += properties_set;
 }
 
-void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
-					   const Record r, const EntityUpdateEvalCtx *ctx, bool allow_null) {
+void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
+		PendingUpdateCtx **edge_updates, const Record r,
+		const EntityUpdateEvalCtx *ctx, bool allow_null) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
 	bool node_update  = false;
@@ -165,6 +174,10 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **updates,
 			"Update error: alias '%s' did not resolve to a graph entity",
 			ctx->alias);
 	}
+
+	PendingUpdateCtx **updates = t == REC_TYPE_NODE
+		? node_updates
+		: edge_updates;
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 	node_update = (t == REC_TYPE_NODE);
