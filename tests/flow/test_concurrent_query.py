@@ -8,24 +8,6 @@ GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def query_aggregate(query):
-    env = Env(decodeResponses=True)
-    conn = env.getConnection()
-    graph = Graph(GRAPH_ID, conn)
-    return graph.query(query)
-
-def query_neighbors(query):
-    env = Env(decodeResponses=True)
-    conn = env.getConnection()
-    graph = Graph(GRAPH_ID, conn)
-    return graph.query(query)
-
-def query_write(query):
-    env = Env(decodeResponses=True)
-    conn = env.getConnection()
-    graph = Graph(GRAPH_ID, conn)
-    return graph.query(query)
-
 def thread_run_query(query):
     env = Env(decodeResponses=True)
     conn = env.getConnection()
@@ -88,7 +70,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def test01_concurrent_aggregation(self):
         q = """MATCH (p:person) RETURN count(p)"""
         queries = [q] * CLIENT_COUNT
-        results = run_concurrent(queries, query_aggregate)
+        results = run_concurrent(queries, thread_run_query)
         for result in results:
             person_count = result.result_set[0][0]
             self.env.assertEqual(person_count, len(people))
@@ -97,7 +79,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     def test02_retrieve_neighbors(self):
         q = """MATCH (p:person)-[know]->(n:person) RETURN n.name"""
         queries = [q] * CLIENT_COUNT
-        results = run_concurrent(queries, query_neighbors)
+        results = run_concurrent(queries, thread_run_query)
         # Fully connected graph + header row.
         expected_resultset_size = len(people) * (len(people)-1)
         for result in results:
@@ -106,7 +88,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
     # Concurrent writes
     def test_03_concurrent_write(self):        
         queries = ["""CREATE (c:country {id:"%d"})""" % i for i in range(CLIENT_COUNT)]
-        results = run_concurrent(queries, query_write)
+        results = run_concurrent(queries, thread_run_query)
         for result in results:
             self.env.assertEqual(result.nodes_created, 1)
             self.env.assertEqual(result.properties_set, 1)
