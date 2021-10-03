@@ -24,6 +24,11 @@ const char *Schema_GetName(const Schema *s) {
 	return s->name;
 }
 
+int Schema_GetID(const Schema *s) {
+ 	ASSERT(s);
+ 	return s->id;
+ }
+
 bool Schema_HasIndices(const Schema *s) {
 	ASSERT(s);
 	return (s->fulltextIdx || s->index);
