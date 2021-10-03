@@ -25,8 +25,9 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 
 // apply a set of updates to the given records
-static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStatistics *stats,
-							  raxIterator updates, Record *records, uint record_count) {
+static void _UpdateProperties(PendingUpdateCtx **node_pending_updates,
+		PendingUpdateCtx **edge_pending_updates, ResultSetStatistics *stats,
+		raxIterator updates, Record *records, uint record_count) {
 	ASSERT(record_count > 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
@@ -36,7 +37,7 @@ static void _UpdateProperties(PendingUpdateCtx **pending_updates, ResultSetStati
 		raxSeek(&updates, "^", NULL, 0);
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
-			EvalEntityUpdates(gc, pending_updates, r, ctx, false);
+			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates, r, ctx, false);
 		}
 	}
 }
@@ -67,10 +68,12 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create) {
 	 * they will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin) */
 	OpMerge *op = rm_calloc(1, sizeof(OpMerge));
-	op->stats            =  NULL;
-	op->on_match         =  on_match;
-	op->on_create        =  on_create;
-	op->pending_updates  =  NULL;
+	op->stats                 =  NULL;
+	op->on_match              =  on_match;
+	op->on_create             =  on_create;
+	op->node_pending_updates  =  NULL;
+	op->edge_pending_updates  =  NULL;
+	
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
 				MergeFree, true, plan);
@@ -263,12 +266,13 @@ static Record MergeConsume(OpBase *opBase) {
 	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
 	OpBase_PropagateFree(op->match_stream);
 
-	op->pending_updates = array_new(PendingUpdateCtx, 0);
+	op->node_pending_updates = array_new(PendingUpdateCtx, 0);
+	op->edge_pending_updates = array_new(PendingUpdateCtx, 0);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
 	if(op->on_match && match_count > 0)
-		_UpdateProperties(&op->pending_updates, op->stats, op->on_match_it,
-						  op->output_records, match_count);
+		_UpdateProperties(&op->node_pending_updates, &op->edge_pending_updates,
+			op->stats, op->on_match_it, op->output_records, match_count);
 
 	if(must_create_records) {
 		// commit all pending changes on the Create stream
@@ -289,9 +293,9 @@ static Record MergeConsume(OpBase *opBase) {
 			// if we are setting properties with ON CREATE
 			// compute all pending updates
 			if(op->on_create) {
-				_UpdateProperties(&op->pending_updates, op->stats,
-						op->on_create_it, op->output_records + match_count,
-						create_count);
+				_UpdateProperties(&op->node_pending_updates,
+					&op->edge_pending_updates, op->stats, op->on_create_it,
+					op->output_records + match_count, create_count);
 			}
 		}
 	}
@@ -300,17 +304,20 @@ static Record MergeConsume(OpBase *opBase) {
 	// update
 	//--------------------------------------------------------------------------
 
-	if(array_len(op->pending_updates) > 0) {
+	if(array_len(op->node_pending_updates) > 0 || array_len(op->edge_pending_updates) > 0) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
 		QueryCtx_LockForCommit();
-		CommitUpdates(gc, op->stats, op->pending_updates);
+		CommitUpdates(gc, op->stats, op->node_pending_updates, SCHEMA_NODE);
+		CommitUpdates(gc, op->stats, op->node_pending_updates, SCHEMA_EDGE);
 	}
 
 	// release the lock
 	QueryCtx_UnlockCommit(&op->op);
-	array_free(op->pending_updates);
-	op->pending_updates = NULL;
+	array_free(op->node_pending_updates);
+	op->node_pending_updates = NULL;
+	array_free(op->edge_pending_updates);
+	op->edge_pending_updates = NULL;
 
 	return _handoff(op);
 }
@@ -347,14 +354,24 @@ static void MergeFree(OpBase *opBase) {
 		op->output_records = NULL;
 	}
 
-	if(op->pending_updates) {
-		uint pending_updates_count = array_len(op->pending_updates);
+	if(op->node_pending_updates) {
+		uint pending_updates_count = array_len(op->node_pending_updates);
 		for(uint i = 0; i < pending_updates_count; i ++) {
-			PendingUpdateCtx pending_update = op->pending_updates[i];
+			PendingUpdateCtx pending_update = op->node_pending_updates[i];
 			SIValue_Free(pending_update.new_value);
 		}
-		array_free(op->pending_updates);
-		op->pending_updates  =  NULL;
+		array_free(op->node_pending_updates);
+		op->node_pending_updates  =  NULL;
+	}
+
+	if(op->edge_pending_updates) {
+		uint pending_updates_count = array_len(op->edge_pending_updates);
+		for(uint i = 0; i < pending_updates_count; i ++) {
+			PendingUpdateCtx pending_update = op->edge_pending_updates[i];
+			SIValue_Free(pending_update.new_value);
+		}
+		array_free(op->edge_pending_updates);
+		op->edge_pending_updates  =  NULL;
 	}
 
 	if(op->on_match) {
