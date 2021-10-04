@@ -35,6 +35,7 @@ OpBase *NewEdgeIndexScanOp
 (
 	const ExecutionPlan *plan,
 	Graph *g,
+	bool isTransposed,
 	QGEdge *e,
 	RSIndex *idx,
 	FT_FilterNode *filter
@@ -55,7 +56,8 @@ OpBase *NewEdgeIndexScanOp
 	op->iter                 =  NULL;
 	op->filter               =  filter;
 	op->child_record         =  NULL;
-	op->current_node         =  NULL;
+	op->current_src_node_id  =  NULL;
+	op->current_dest_node_id =  NULL;
 	op->unresolved_filters   =  NULL;
 	op->rebuild_index_query  =  false;
 
@@ -79,15 +81,17 @@ OpBase *NewEdgeIndexScanOp
 	// missing nodes will be resolved by this operation
 	const  char  *src_alias   =  QGNode_Alias(QGEdge_Src(e));
 	const  char  *dest_alias  =  QGNode_Alias(QGEdge_Dest(e));
+	if(isTransposed) {
+		const  char  *tmp = src_alias;
+		src_alias = dest_alias;
+		dest_alias = tmp;
+	}
 
-	// TODO: currently all node scan resolve the src need to find solution
-	// op->srcAware   =  OpBase_Aware((OpBase *)op, src_alias, &op->srcRecIdx);
-	// op->destAware  =  OpBase_Aware((OpBase *)op, dest_alias, &op->destRecIdx);
-	op->srcAware   =  false;
-	op->destAware  =  false;
+	op->srcAware   =  OpBase_ChildrenAware((OpBase *)op, src_alias, &op->srcRecIdx);
+	op->destAware  =  OpBase_ChildrenAware((OpBase *)op, dest_alias, &op->destRecIdx);
 
 	if(!op->srcAware) {
-		op->srcRecIdx = OpBase_Modifies((OpBase *)op, QGNode_Alias(QGEdge_Src(e)));
+		op->srcRecIdx = OpBase_Modifies((OpBase *)op, src_alias);
 	}
 
 	if(!op->destAware) {
@@ -105,14 +109,27 @@ static OpResult EdgeIndexScanInit
 
 	if(opBase->childCount > 0) {
 		const char *alias =  QGEdge_Alias(op->edge);
-		op->current_node  = AR_EXP_NewConstOperandNode(SI_NullVal());
-		FT_FilterNode *ft = FilterTree_CreatePredicateFilter(OP_EQUAL, 
-			AR_EXP_NewAttributeAccessNode(AR_EXP_NewVariableOperandNode(alias), "_src_id"), 
-			op->current_node);
-		FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
-		FilterTree_AppendLeftChild(root, op->filter);
-		FilterTree_AppendRightChild(root, ft);
-		op->filter = root;
+		if(op->srcAware) {
+			op->current_src_node_id  = AR_EXP_NewConstOperandNode(SI_NullVal());
+			FT_FilterNode *ft = FilterTree_CreatePredicateFilter(OP_EQUAL, 
+				AR_EXP_NewAttributeAccessNode(AR_EXP_NewVariableOperandNode(alias), "_src_id"), 
+				op->current_src_node_id);
+			FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
+			FilterTree_AppendLeftChild(root, op->filter);
+			FilterTree_AppendRightChild(root, ft);
+			op->filter = root;
+		}
+
+		if(op->destAware) {
+			op->current_dest_node_id  = AR_EXP_NewConstOperandNode(SI_NullVal());
+			FT_FilterNode *ft = FilterTree_CreatePredicateFilter(OP_EQUAL, 
+				AR_EXP_NewAttributeAccessNode(AR_EXP_NewVariableOperandNode(alias), "_dest_id"), 
+				op->current_dest_node_id);
+			FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
+			FilterTree_AppendLeftChild(root, op->filter);
+			FilterTree_AppendRightChild(root, ft);
+			op->filter = root;
+		}
 		// find out how many different entities are refered to 
 		// within the filter tree, if number of entities equals 1
 		// (current edge being scanned) there's no need to re-build the index
@@ -167,7 +184,7 @@ static inline void _UpdateRecord
 		Node *dest = Record_GetNode(r,  op->destRecIdx);
 		Edge_SetDestNode(&e, dest);
 	}
-	
+
 	Record_AddEdge(r, op->edgeRecIdx, e);
 }
 
@@ -182,10 +199,15 @@ static inline bool _PassUnresolvedFilters
 	return FilterTree_applyFilters(unresolved_filters, r) == FILTER_PASS;
 }
 
-static void UpdateCurrentSrcId(const OpEdgeIndexScan *op) {
-	if(op->current_node) {
+static void UpdateCurrentAwareIds(const OpEdgeIndexScan *op) {
+	if(op->current_src_node_id) {
 		Node *n = Record_GetNode(op->child_record, op->srcRecIdx);
-		op->current_node->operand.constant = SI_LongVal(ENTITY_GET_ID(n));
+		op->current_src_node_id->operand.constant = SI_LongVal(ENTITY_GET_ID(n));
+	}
+
+	if(op->current_dest_node_id) {
+		Node *n = Record_GetNode(op->child_record, op->destRecIdx);
+		op->current_dest_node_id->operand.constant = SI_LongVal(ENTITY_GET_ID(n));
 	}
 }
 
@@ -262,7 +284,7 @@ pull_index:
 		}
 		#endif
 
-		UpdateCurrentSrcId(op);
+		UpdateCurrentAwareIds(op);
 
 		// convert filter into a RediSearch query
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
@@ -276,7 +298,7 @@ pull_index:
 		// build index query only once (first call)
 		// reset it if already initialized
 		if(op->iter == NULL) {
-			UpdateCurrentSrcId(op);
+			UpdateCurrentAwareIds(op);
 
 			// first call to consume, create query and iterator
 			RSQNode *rs_query_node = FilterTreeToQueryNode(
@@ -302,7 +324,7 @@ static Record EdgeIndexScanConsume
 
 	// create iterator on first call
 	if(op->iter == NULL) {
-		UpdateCurrentSrcId(op);
+		UpdateCurrentAwareIds(op);
 
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
 				op->filter, op->idx);

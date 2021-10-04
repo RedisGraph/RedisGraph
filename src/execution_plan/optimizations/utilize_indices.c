@@ -312,6 +312,8 @@ cleanup:
 void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	// make sure there's an index for scanned label
 	const char *edge = AlgebraicExpression_Edge(cond->ae);
+	bool isTransposed = AlgebraicExpression_Transposed(cond->ae);
+
 	if(!edge) return;
 	
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
@@ -331,15 +333,16 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	if(filters_count == 0) goto cleanup;
 
 	FT_FilterNode *root = _Concat_Filters(filters);
-	OpBase *indexOp = NewEdgeIndexScanOp(cond->op.plan, cond->graph, e, rs_idx,
+	OpBase *indexOp = NewEdgeIndexScanOp(cond->op.plan, cond->graph, isTransposed, e, rs_idx,
 			root);
 
 	if(cond->op.children[0]->type == OPType_ALL_NODE_SCAN) {
 		OpBase *allNodeScan = cond->op.children[0];
-		// replace the redundant scan op with the newly-constructed Index Scan
+		// remove all node scan op
 		ExecutionPlan_RemoveOp(plan, allNodeScan);
 		OpBase_Free(allNodeScan);
 	}
+
 	// replace the redundant scan op with the newly-constructed Index Scan
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)cond, indexOp);
 	OpBase_Free((OpBase *)cond);
