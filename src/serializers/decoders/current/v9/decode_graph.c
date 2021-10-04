@@ -208,6 +208,13 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
+		uint relation_count = Graph_RelationTypeCount(g);
+		for(uint i = 0; i < relation_count; i++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
+			if(s->index) Index_Construct(s->index);
+			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+		}
+
 		// make sure graph doesn't contains may pending changes
 		ASSERT(Graph_Pending(g) == false);
 
