@@ -190,7 +190,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - early-returns
       - checkout-all
@@ -220,7 +220,7 @@ jobs:
 
   coverage:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - early-returns
       - checkout-all
@@ -238,7 +238,7 @@ jobs:
 
   build_memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - early-returns
       - checkout-all
@@ -307,7 +307,7 @@ jobs:
 
   deploy_branch:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - attach_workspace:
           at: artifacts
@@ -321,7 +321,7 @@ jobs:
 
   deploy_release:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - attach_workspace:
           at: artifacts
@@ -358,7 +358,7 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - early-returns
       - checkout
@@ -369,7 +369,7 @@ jobs:
 
   performance_ci_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - early-returns
       - checkout
@@ -384,7 +384,7 @@ jobs:
 
   nightly_performance_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.5-x64-buster
     steps:
       - early-returns
       - checkout-all
@@ -485,13 +485,13 @@ workflows:
           <<: *on-integ-and-version-tags
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7, centos8]
+              platform: [buster, xenial, centos7, centos8]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
-              platform: [bionic]
+              platform: [buster]
       - deploy_branch:
           <<: *context
           <<: *on-integ-branch

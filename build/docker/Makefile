@@ -1,8 +1,8 @@
 REDIS_VERSION=6.2.4
 PRODUCT=redisgraph
-DOCKER_ORG=redislabs
 
 OSNICK ?= buster
+OSNICK_OFFICIAL = buster
 
 ROOT=../../
 READIES=${ROOT}/deps/readies
