@@ -129,7 +129,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			for(uint i = 0; i < ctx->reltype_count; i ++) {
 				Schema *s = GraphContext_GetSchema(gc, ctx->reltype_names[i], SCHEMA_EDGE);
 				// Skip missing schemas
-				if(s) array_append(ctx->reltypes, Schema_ID(s));
+				if(s) array_append(ctx->reltypes, Schema_GetID(s));
 			}
 
 			// Update the reltype count, as it may have changed due to missing schemas

@@ -47,7 +47,7 @@ static void _CommitNodesBlueprint(PendingCreations *pending) {
 			}
 
 			// sync matrix, make sure label matrix is of the right dimensions
-			Graph_GetLabelMatrix(g, Schema_ID(s));
+			Graph_GetLabelMatrix(g, Schema_GetID(s));
 		}
 	}
 }
@@ -72,7 +72,7 @@ static void _CommitNodes(PendingCreations *pending) {
 			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 			ASSERT(s != NULL);
 
-			labelID = Schema_ID(s);
+			labelID = Schema_GetID(s);
 			n->labelID = labelID; // update the label ID within the node
 		}
 
@@ -110,7 +110,7 @@ static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
 
 		// calling Graph_GetRelationMatrix will make sure relationship matrix
 		// is of the right dimensions
-		Graph_GetRelationMatrix(g, Schema_ID(s), false);
+		Graph_GetRelationMatrix(g, Schema_GetID(s), false);
 	}
 
 	// call Graph_GetAdjacencyMatrix will make sure the adjacency matrix
@@ -145,7 +145,7 @@ static void _CommitEdges(PendingCreations *pending) {
 		Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 		// all schemas have been created in the edge blueprint loop or earlier
 		ASSERT(s != NULL);
-		int relation_id = Schema_ID(s);
+		int relation_id = Schema_GetID(s);
 
 		Graph_CreateEdge(g, srcNodeID, destNodeID, relation_id, e);
 
