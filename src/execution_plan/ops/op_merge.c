@@ -309,7 +309,7 @@ static Record MergeConsume(OpBase *opBase) {
 		// lock everything
 		QueryCtx_LockForCommit();
 		CommitUpdates(gc, op->stats, op->node_pending_updates, SCHEMA_NODE);
-		CommitUpdates(gc, op->stats, op->node_pending_updates, SCHEMA_EDGE);
+		CommitUpdates(gc, op->stats, op->edge_pending_updates, SCHEMA_EDGE);
 	}
 
 	// release the lock
