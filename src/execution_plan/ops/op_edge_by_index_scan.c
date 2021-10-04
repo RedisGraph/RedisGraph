@@ -145,7 +145,6 @@ static inline void _UpdateRecord
 
 	res = Graph_GetEdge(op->g, edge_id, &e);
 	ASSERT(res != 0);
-	Record_AddEdge(r, op->edgeRecIdx, e);
 
 	if(!op->srcAware) {
 		Node src = GE_NEW_NODE();
@@ -168,6 +167,8 @@ static inline void _UpdateRecord
 		Node *dest = Record_GetNode(r,  op->destRecIdx);
 		Edge_SetDestNode(&e, dest);
 	}
+	
+	Record_AddEdge(r, op->edgeRecIdx, e);
 }
 
 static inline bool _PassUnresolvedFilters
