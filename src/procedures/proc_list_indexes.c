@@ -15,7 +15,8 @@
 
 typedef struct {
 	SIValue *out;               // outputs
-	int schema_id;              // current schema ID
+	int node_schema_id;         // current node schema ID
+	int edge_schema_id;         // current edge schema ID
 	IndexType type;             // current index type to retrieve
 	GraphContext *gc;           // graph context
 	SIValue *yield_type;        // yield index type
@@ -40,7 +41,8 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 	pdata->gc               = gc;
 	pdata->out              = array_new(SIValue, 6);
 	pdata->type             = IDX_EXACT_MATCH;
-	pdata->schema_id        = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
+	pdata->node_schema_id   = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
+	pdata->edge_schema_id   = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
 	pdata->yield_type       = NULL;
 	pdata->yield_label      = NULL;
 	pdata->yield_properties = NULL;
@@ -102,18 +104,15 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 	return true;
 }
 
-SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
-	ASSERT(ctx->privateData != NULL);
-
+static SIValue *Schema_Step(int *schema_id, SchemaType t, IndexesContext *pdata) {
 	Schema *s = NULL;
-	IndexesContext *pdata = ctx->privateData;
 
 	// loop over all schemas from last to first
-	while(pdata->schema_id >= 0) {
-		s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id, SCHEMA_NODE);
+	while(*schema_id >= 0) {
+		s = GraphContext_GetSchemaByID(pdata->gc, *schema_id, t);
 		if(!Schema_HasIndices(s)) {
 			// no indexes found, continue to the next schema
-			pdata->schema_id--;
+			(*schema_id)--;
 			continue;
 		}
 
@@ -122,7 +121,7 @@ SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
 
 		if(pdata->type == IDX_FULLTEXT) {
 			// all indexes retrieved; update schema_id, reset schema type
-			pdata->schema_id--;
+			(*schema_id)--;
 			pdata->type = IDX_EXACT_MATCH;
 		} else {
 			// next iteration will check the same schema for a full-text index
@@ -133,6 +132,18 @@ SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
 	}
 
 	return NULL;
+}
+
+SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
+	ASSERT(ctx->privateData != NULL);
+
+	SIValue *res;
+	IndexesContext *pdata = ctx->privateData;
+
+	res = Schema_Step(&pdata->node_schema_id, SCHEMA_NODE, pdata);
+	if(res != NULL) return res;
+
+	return Schema_Step(&pdata->edge_schema_id, SCHEMA_EDGE, pdata);
 }
 
 ProcedureResult Proc_IndexesFree(ProcedureCtx *ctx) {
