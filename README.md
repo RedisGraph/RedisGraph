@@ -111,6 +111,10 @@ Otherwise, invoke ```REDIS_SERVER=<redis-server-location> make test```.
 
 For more verbose output, run ```make test V=1```.
 
+### Building in a docker
+
+The RedisGraph build system runs within docker. For detailed instructions on building, please [see here](docs/docker-examples/README.md).
+
 ## Loading RedisGraph into Redis
 
 RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server: running [Redis v5.0.7 or above](https://redis.io/download).

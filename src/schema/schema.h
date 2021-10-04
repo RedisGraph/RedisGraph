@@ -36,11 +36,11 @@ Schema *Schema_New
 	const char *name
 );
 
-// return schema ID
-int Schema_ID
-(
-	const Schema *s
-);
+/* Return the given schema's name. */
+ const char *Schema_GetName(const Schema *s);
+
+ /* Return the given schema's ID. */
+ int Schema_GetID(const Schema *s);
 
 const char *Schema_GetName
 (
