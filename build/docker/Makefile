@@ -1,8 +1,8 @@
 REDIS_VERSION=6.2.5
 PRODUCT=redisgraph
-DOCKER_ORG=redislabs
 
 OSNICK ?= bullseye
+OSNICK_OFFICIAL = bullseye
 
 ROOT=../../
 READIES=${ROOT}/deps/readies
