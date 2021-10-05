@@ -241,6 +241,83 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 	return SI_BoolVal(true);
 }
 
+/* returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string. */
+SIValue AR_REPLACE(SIValue *argv, int argc) {
+	// No string contains null.
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+
+	char *str = strdup(argv[0].stringval);
+	const char *old_string = argv[1].stringval;
+	const char *new_string = argv[2].stringval;
+	size_t old_string_len = strlen(old_string);
+	size_t new_string_len = strlen(new_string);
+
+	if(old_string_len == 0) {
+		ErrorCtx_RaiseRuntimeException("ArgumentError: search string can't be length 0");
+		// Incase expection handler wasn't set, return NULL.
+		return SI_NullVal();
+	}
+
+	char *ptr = str;
+
+	char **arr = array_new(char *, 0);
+
+	while(true) {
+        // find pointer to next substring
+        ptr = strstr(ptr, old_string);
+
+        // if no substring found, then break from the loop
+        if(ptr == NULL) { break; }
+
+		// store ptr for replace use
+		array_append(arr, ptr);
+
+        // increment our string pointer
+        ptr += old_string_len;
+    }
+
+	int occurances = array_len(arr);
+	if(occurances == 0) return argv[0];
+
+	// calculate new buffer size
+	size_t buffer_size = strlen(str) + occurances * new_string_len - occurances * old_string_len;
+
+	// allocate buffer
+	char *buffer = (char*) malloc(buffer_size*sizeof(char) + 1);
+
+	// set pointers to start point
+	ptr = str;
+	char *buffer_ptr = buffer;
+
+	// iterate occurances
+	for (int i = 0; i < occurances; i++) {
+		// calculate len to copy from last to current occurance
+		int len = arr[i] - ptr;
+
+		// copy part from original string
+		strncpy(buffer_ptr, ptr, len);
+
+		// move forward to copy more data to the buffer
+		buffer_ptr += len;
+
+		// copy new string instead of old string
+		strcpy(buffer_ptr, new_string);
+
+		// move forward to copy more data to the buffer
+		buffer_ptr += new_string_len;
+
+		// move forwart to copy more data from the original string
+		ptr = arr[i] + old_string_len;
+	}
+
+	// copy rest of the string from the original string
+	strcpy(buffer_ptr, ptr);
+
+	buffer[buffer_size] = '\0';
+
+	return SI_ConstStringVal(buffer);
+}
+
 //==============================================================================
 //=== Scalar functions =========================================================
 //==============================================================================
@@ -333,6 +410,13 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 0);
 	func_desc = AR_FuncDescNew("randomuuid", AR_RANDOMUUID, 0, 0, types, false, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 3);
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("replace", AR_REPLACE, 3, 3, types, true, false);
 	AR_RegFunc(func_desc);
 }
 
