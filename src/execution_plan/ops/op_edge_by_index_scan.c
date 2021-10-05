@@ -56,6 +56,7 @@ OpBase *NewEdgeIndexScanOp
 	op->iter                 =  NULL;
 	op->filter               =  filter;
 	op->child_record         =  NULL;
+	op->isTransposed         = isTransposed;
 	op->current_src_node_id  =  NULL;
 	op->current_dest_node_id =  NULL;
 	op->unresolved_filters   =  NULL;
@@ -77,11 +78,20 @@ OpBase *NewEdgeIndexScanOp
 
 	op->edgeRecIdx = OpBase_Modifies((OpBase *)op, QGEdge_Alias(e));
 
+	return (OpBase *)op;
+}
+
+static OpResult EdgeIndexScanInit
+(
+	OpBase *opBase
+) {
+	OpEdgeIndexScan *op = (OpEdgeIndexScan *)opBase;
+
 	// source and destination nodes may or may not already be resolved
 	// missing nodes will be resolved by this operation
-	const  char  *src_alias   =  QGNode_Alias(QGEdge_Src(e));
-	const  char  *dest_alias  =  QGNode_Alias(QGEdge_Dest(e));
-	if(isTransposed) {
+	const  char  *src_alias   =  QGNode_Alias(QGEdge_Src(op->edge));
+	const  char  *dest_alias  =  QGNode_Alias(QGEdge_Dest(op->edge));
+	if(op->isTransposed) {
 		const  char  *tmp = src_alias;
 		src_alias = dest_alias;
 		dest_alias = tmp;
@@ -97,15 +107,6 @@ OpBase *NewEdgeIndexScanOp
 	if(!op->destAware) {
 		op->destRecIdx = OpBase_Modifies((OpBase *)op, dest_alias);
 	}
-
-	return (OpBase *)op;
-}
-
-static OpResult EdgeIndexScanInit
-(
-	OpBase *opBase
-) {
-	OpEdgeIndexScan *op = (OpEdgeIndexScan *)opBase;
 
 	if(opBase->childCount > 0) {
 		const char *alias =  QGEdge_Alias(op->edge);

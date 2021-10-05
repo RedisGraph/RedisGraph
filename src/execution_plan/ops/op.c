@@ -82,7 +82,7 @@ bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx) {
 		if(op->plan == child->plan) {
 			int count = array_len(op->modifies);
 			for (int i = 0; i < count; i++) {
-				if(strcmp(alias, op->modifies[i]) == 0) {
+				if(strcmp(alias, child->modifies[i]) == 0) {
 					rax *mapping = ExecutionPlan_GetMappings(op->plan);
 					void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));
 					if(idx) *idx = (intptr_t)rec_idx;
