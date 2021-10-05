@@ -113,7 +113,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	   type == CYPHER_AST_DELETE                 ||
 	   type == CYPHER_AST_SET                    ||
 	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
-	   type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
+	   type == CYPHER_AST_DROP_PROPS_INDEX) {
 		return false;
 	}
 	// In case of procedure call which modifies the graph/indices.

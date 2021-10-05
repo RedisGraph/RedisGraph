@@ -99,9 +99,9 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(
-				cypher_ast_drop_node_props_index_get_label(index_op));
+				cypher_ast_drop_props_index_get_label(index_op));
 		const char *prop = cypher_ast_prop_name_get_value(
-				cypher_ast_drop_node_props_index_get_prop_name(index_op, 0));
+				cypher_ast_drop_props_index_get_prop_name(index_op, 0));
 
 		// determine if schema type from which index is removed
 		// default to edge
