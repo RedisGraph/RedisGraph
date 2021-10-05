@@ -67,32 +67,6 @@ commands:
             - '*.zip'
             - '*.tgz'
 
-  load-cached-deps:
-    steps:
-      # Load GraphBLAS from cache if possible.
-      - restore_cache:
-          keys:
-          - v3-GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
-
-      # Load libcypher-parser from cache if possible.
-      - restore_cache:
-          keys:
-          - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
-
-  save-deps-cache:
-    steps:
-      # Save GraphBLAS to cache.
-      - save_cache:
-          paths:
-            - deps/GraphBLAS
-          key: v3-GraphBLAS4.0-{{checksum "./deps/GraphBLAS/README.md"}}
-
-      # Save libcypher-parser to cache.
-      - save_cache:
-          paths:
-            - deps/libcypher-parser
-          key: libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
-
   setup-prerequisits:
     steps:
       - setup-automation
@@ -195,11 +169,16 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-cached-deps
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: bash -l -c "make all package"
-      - save-deps-cache
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
           command: bash -l -c "make test"
@@ -225,7 +204,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-cached-deps
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build for coverage
           command: bash -l -c "make COV=1"
@@ -243,7 +224,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-cached-deps
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - attach_workspace:
           at: /workspace
       - run:
@@ -273,10 +256,17 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
+      - restore_cache:
+          keys:
+            - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: |
             bash -l -c "make all package"
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
           command: bash -l -c "make test"
