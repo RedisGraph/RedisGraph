@@ -67,29 +67,6 @@ commands:
             - '*.zip'
             - '*.tgz'
 
-  load-deps-cache:
-    parameters:
-      cache_platform:
-        type: string
-        default: ''
-    steps:
-      # Load GraphBLAS from cache if possible.
-      - restore_cache:
-          keys:
-          - v1-GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
-
-  save-deps-cache:
-    parameters:
-      cache_platform:
-        type: string
-        default: ''
-    steps:
-      # Save GraphBLAS to cache.
-      - save_cache:
-          paths:
-            - deps/GraphBLAS/build
-          key: v1-GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
-
   setup-prerequisits:
     steps:
       - setup-automation
@@ -144,14 +121,10 @@ commands:
       - setup-executor
       - checkout-all
       - setup-automation
-      - load-deps-cache:
-          cache_platform: x64-<<parameters.platform>>
       - run:
           name: Build for platform (docker build)
           command: |
             make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
-      - save-deps-cache:
-          cache_platform: x64-<<parameters.platform>>
       - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (docker publish)
@@ -171,16 +144,12 @@ commands:
       - run:
           name: Install Docker
           command: bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
-      - load-deps-cache:
-          cache_platform: arm-<<parameters.platform>>
       - run:
           name: Build for platform
           command: |
             cd build/docker
             make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH ARTIFACTS=1 TEST=1 SHOW=1
           no_output_timeout: 30m
-      - save-deps-cache:
-          cache_platform: arm-<<parameters.platform>>
       - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (publish)
@@ -235,7 +204,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build for coverage
           command: bash -l -c "make COV=1"
@@ -253,7 +224,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - attach_workspace:
           at: /workspace
       - run:
@@ -494,58 +467,56 @@ workflows:
   build_and_package:
     jobs:
       - build:
-          <<: *on-any-branch
-#          <<: *context
-#          <<: *not-on-integ-branch
-#      - coverage:
-#          <<: *context
-#          <<: *on-any-branch
-#      - build_memcheck:
-#          <<: *context
-#          <<: *on-any-branch
-      - build_macos:
+          <<: *context
+          <<: *not-on-integ-branch
+      - coverage:
           <<: *context
           <<: *on-any-branch
-#          <<: *on-integ-and-version-tags
-#      - platform_build:
-#          <<: *context
-#          <<: *on-integ-and-version-tags
-#          matrix:
-#            parameters:
-#              platform: [bionic, xenial, centos7, centos8]
-#      - build-arm-platforms:
-#          <<: *on-integ-and-version-tags
-#          context: common
-#          matrix:
-#            parameters:
-#              platform: [bionic]
-#      - deploy_branch:
-#          <<: *context
-#          <<: *on-integ-branch
-#          requires:
-#            - platform_build
-#            - build_macos
-#      - release_automation:
-#          <<: *context
-#          <<: *on-version-tags
-#          requires:
-#            - deploy_release
-#      - deploy_release:
-#          <<: *context
-#          <<: *on-version-tags
-#          requires:
-#            - platform_build
-#            - build_macos
-#      - performance_ci_automation_not_integ:
-#          <<: *context
-#          <<: *not-on-integ-branch
-#          requires:
-#            - build
-#      - performance_ci_automation:
-#          <<: *context
-#          <<: *on-integ-and-version-tags
-#          requires:
-#            - platform_build
+      - build_memcheck:
+          <<: *context
+          <<: *on-any-branch
+      - build_macos:
+          <<: *context
+          <<: *on-integ-and-version-tags
+      - platform_build:
+          <<: *context
+          <<: *on-integ-and-version-tags
+          matrix:
+            parameters:
+              platform: [bionic, xenial, centos7, centos8]
+      - build-arm-platforms:
+          <<: *on-integ-and-version-tags
+          context: common
+          matrix:
+            parameters:
+              platform: [bionic]
+      - deploy_branch:
+          <<: *context
+          <<: *on-integ-branch
+          requires:
+            - platform_build
+            - build_macos
+      - release_automation:
+          <<: *context
+          <<: *on-version-tags
+          requires:
+            - deploy_release
+      - deploy_release:
+          <<: *context
+          <<: *on-version-tags
+          requires:
+            - platform_build
+            - build_macos
+      - performance_ci_automation_not_integ:
+          <<: *context
+          <<: *not-on-integ-branch
+          requires:
+            - build
+      - performance_ci_automation:
+          <<: *context
+          <<: *on-integ-and-version-tags
+          requires:
+            - platform_build
 
   nightly:
     triggers:
