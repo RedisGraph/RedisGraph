@@ -1719,3 +1719,21 @@ TEST_F(ArithmeticTest, CoalesceTest) {
 	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
 }
 
+TEST_F(ArithmeticTest, ReplaceTest) {
+	const char *query;
+	AR_ExpNode *arExp;
+
+	// Test replace in start of the string.
+	query = "RETURN replace('abcabc', 'a', '00')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("00bc00bc"), arExp->operand.constant, NULL));
+
+	// Test replace in end of the string.
+	query = "RETURN replace('abcabc', 'bc', '0')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("a0a0"), arExp->operand.constant, NULL));
+}
