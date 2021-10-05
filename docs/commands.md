@@ -679,6 +679,7 @@ This section contains information on all supported functions from the Cypher que
 | -------     | :-----------                                                                                    |
 | left()      | Returns a string containing the specified number of leftmost characters of the original string  |
 | lTrim()     | Returns the original string with leading whitespace removed                                     |
+| replace()   | Returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string |
 | reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
 | right()     | Returns a string containing the specified number of rightmost characters of the original string |
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
