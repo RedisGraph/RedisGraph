@@ -77,7 +77,7 @@ commands:
       - restore_cache:
           keys:
           - GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
-          - libcypher-{{ checksum "deps/libcypher-parser/README.md" }}<<parameters.cache_platform>>
+            #          - libcypher-{{ checksum "deps/libcypher-parser/README.md" }}<<parameters.cache_platform>>
 
   save-deps-cache:
     parameters:
@@ -90,12 +90,6 @@ commands:
           paths:
             - deps/GraphBLAS/build
           key: GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
-
-      # Save libcypher-parser to cache.
-      - save_cache:
-          paths:
-            - deps/libcypher-parser/build
-          key: libcypher-{{checksum "./deps/libcypher-parser/README.md"}}<<parameters.cache_platform>>
 
   setup-prerequisits:
     steps:
@@ -291,8 +285,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache:
-          cache_platform: mac
+      - restore_cache:
+          keys:
+            - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: |
@@ -300,8 +295,10 @@ jobs:
       - run:
           name: Test
           command: bash -l -c "make test"
-      - save-deps-cache:
-          cache_platform: mac
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - store_artifacts:
           path: ~/project/tests/flow/logs
       - store_artifacts:
@@ -493,56 +490,58 @@ workflows:
   build_and_package:
     jobs:
       - build:
-          <<: *context
-          <<: *not-on-integ-branch
-      - coverage:
-          <<: *context
           <<: *on-any-branch
-      - build_memcheck:
-          <<: *context
-          <<: *on-any-branch
+#          <<: *context
+#          <<: *not-on-integ-branch
+#      - coverage:
+#          <<: *context
+#          <<: *on-any-branch
+#      - build_memcheck:
+#          <<: *context
+#          <<: *on-any-branch
       - build_macos:
           <<: *context
-          <<: *on-integ-and-version-tags
-      - platform_build:
-          <<: *context
-          <<: *on-integ-and-version-tags
-          matrix:
-            parameters:
-              platform: [bionic, xenial, centos7, centos8]
-      - build-arm-platforms:
-          <<: *on-integ-and-version-tags
-          context: common
-          matrix:
-            parameters:
-              platform: [bionic]
-      - deploy_branch:
-          <<: *context
-          <<: *on-integ-branch
-          requires:
-            - platform_build
-            - build_macos
-      - release_automation:
-          <<: *context
-          <<: *on-version-tags
-          requires:
-            - deploy_release
-      - deploy_release:
-          <<: *context
-          <<: *on-version-tags
-          requires:
-            - platform_build
-            - build_macos
-      - performance_ci_automation_not_integ:
-          <<: *context
-          <<: *not-on-integ-branch
-          requires:
-            - build
-      - performance_ci_automation:
-          <<: *context
-          <<: *on-integ-and-version-tags
-          requires:
-            - platform_build
+          <<: *on-any-branch
+#          <<: *on-integ-and-version-tags
+#      - platform_build:
+#          <<: *context
+#          <<: *on-integ-and-version-tags
+#          matrix:
+#            parameters:
+#              platform: [bionic, xenial, centos7, centos8]
+#      - build-arm-platforms:
+#          <<: *on-integ-and-version-tags
+#          context: common
+#          matrix:
+#            parameters:
+#              platform: [bionic]
+#      - deploy_branch:
+#          <<: *context
+#          <<: *on-integ-branch
+#          requires:
+#            - platform_build
+#            - build_macos
+#      - release_automation:
+#          <<: *context
+#          <<: *on-version-tags
+#          requires:
+#            - deploy_release
+#      - deploy_release:
+#          <<: *context
+#          <<: *on-version-tags
+#          requires:
+#            - platform_build
+#            - build_macos
+#      - performance_ci_automation_not_integ:
+#          <<: *context
+#          <<: *not-on-integ-branch
+#          requires:
+#            - build
+#      - performance_ci_automation:
+#          <<: *context
+#          <<: *on-integ-and-version-tags
+#          requires:
+#            - platform_build
 
   nightly:
     triggers:
