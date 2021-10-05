@@ -76,8 +76,7 @@ int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
 }
 
 bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx) {
-	for (int i = 0; i < op->childCount; i++)
-	{
+	for (int i = 0; i < op->childCount; i++) {
 		OpBase *child = op->children[i];
 		if(op->plan == child->plan) {
 			int count = array_len(op->modifies);

@@ -88,15 +88,17 @@ static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, SIType accepted_
 
 // commits delayed updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-				   PendingUpdateCtx *updates, SchemaType type) {
-	ASSERT(gc != NULL);
-	ASSERT(stats != NULL);
+				   PendingUpdateCtx *updates, EntityType type) {
+	ASSERT(gc      != NULL);
+	ASSERT(stats   != NULL);
 	ASSERT(updates != NULL);
+	ASSERT(type    != ENTITY_UNKNOWN);
 
-	uint    properties_set  =  0;
-	Schema  *s              =  NULL;
-	bool    reindex         =  false;
-	uint    update_count    =  array_len(updates);
+	uint       properties_set = 0;
+	Schema     *s             = NULL;
+	bool       reindex        = false;
+	uint       update_count   = array_len(updates);
+	SchemaType t              = type == ENTITY_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
 
 	// return early if no updates are enqueued
 	if(update_count == 0) return;
@@ -111,11 +113,10 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 		// index previous entity if we're required to
 		if(ge != updates[i].ge) {
 			if(reindex) {
-				s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id,
-											   type);
+				s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id, t);
 				ASSERT(s != NULL);
 				// introduce updated entity to index
-				if(type == SCHEMA_NODE) {
+				if(t == SCHEMA_NODE) {
 					Schema_AddNodeToIndices(s, (Node *)ge);
 				} else {
 					Schema_AddEdgeToIndices(s, (Edge *)ge);
@@ -139,10 +140,10 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 
 	// handle last updated entity
 	if(reindex) {
-		s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id, SCHEMA_NODE);
+		s = GraphContext_GetSchemaByID(gc, updates[i - 1].label_id, t);
 		ASSERT(s != NULL);
 		// introduce updated entity to index
-		if(type == SCHEMA_NODE) {
+		if(t == SCHEMA_NODE) {
 			Schema_AddNodeToIndices(s, (Node *)ge);
 		} else {
 			Schema_AddEdgeToIndices(s, (Edge *)ge);

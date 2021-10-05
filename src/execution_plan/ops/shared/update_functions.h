@@ -19,7 +19,7 @@ typedef struct {
 
 // commit all updates described in the array of pending updates
 void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
-		PendingUpdateCtx *updates, SchemaType type);
+		PendingUpdateCtx *updates, EntityType type);
 
 /* build pending updates in the 'updates' array to match all
  * AST-level updates described in the context
