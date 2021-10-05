@@ -76,8 +76,7 @@ commands:
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
-          - GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
-            #          - libcypher-{{ checksum "deps/libcypher-parser/README.md" }}<<parameters.cache_platform>>
+          - v1-GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
 
   save-deps-cache:
     parameters:
@@ -89,7 +88,7 @@ commands:
       - save_cache:
           paths:
             - deps/GraphBLAS/build
-          key: GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
+          key: v1-GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
 
   setup-prerequisits:
     steps:
@@ -201,11 +200,16 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: bash -l -c "make all package"
-      - save-deps-cache
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
           command: bash -l -c "make test"
@@ -292,13 +296,13 @@ jobs:
           name: Build
           command: |
             bash -l -c "make all package"
-      - run:
-          name: Test
-          command: bash -l -c "make test"
       - save_cache:
           paths:
             - deps/GraphBLAS/build
           key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
+      - run:
+          name: Test
+          command: bash -l -c "make test"
       - store_artifacts:
           path: ~/project/tests/flow/logs
       - store_artifacts:
