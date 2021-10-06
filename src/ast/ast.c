@@ -108,11 +108,12 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 	// Check for empty query
 	if(root == NULL) return true;
 	cypher_astnode_type_t type = cypher_astnode_type(root);
-	if(type == CYPHER_AST_CREATE                      ||
-	   type == CYPHER_AST_MERGE                  ||
-	   type == CYPHER_AST_DELETE                 ||
-	   type == CYPHER_AST_SET                    ||
-	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
+	if(type == CYPHER_AST_CREATE                     ||
+	   type == CYPHER_AST_MERGE                      ||
+	   type == CYPHER_AST_DELETE                     ||
+	   type == CYPHER_AST_SET                        ||
+	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
+	   type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
 	   type == CYPHER_AST_DROP_PROPS_INDEX) {
 		return false;
 	}
