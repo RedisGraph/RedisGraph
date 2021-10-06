@@ -90,9 +90,10 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		// add index for each property
 		QueryCtx_LockForCommit();
 		for(unsigned int i = 0; i < nprops; i++) {
-			const char *prop = t == CYPHER_AST_CREATE_NODE_PROPS_INDEX
-				? cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(index_op, i))
-				: cypher_ast_identifier_get_name(cypher_ast_property_operator_get_expression(cypher_ast_create_pattern_props_index_get_property_operator(index_op, i)));
+			const cypher_astnode_t *prop_name = t == CYPHER_AST_CREATE_NODE_PROPS_INDEX
+				? cypher_ast_create_node_props_index_get_prop_name(index_op, i)
+				: cypher_ast_property_operator_get_prop_name(cypher_ast_create_pattern_props_index_get_property_operator(index_op, i));
+			const char *prop = cypher_ast_prop_name_get_value(prop_name);
 
 			index_added |= (GraphContext_AddIndex(&idx, gc, schema_type, label,
 						prop, idx_type) == INDEX_OK);
