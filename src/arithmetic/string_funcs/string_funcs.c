@@ -247,25 +247,22 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 // the result is Well I wish I was in the land of the free
 SIValue AR_REPLACE(SIValue *argv, int argc) {
 	// No string contains null.
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1]) || SIValue_IsNull(argv[2])) return SI_NullVal();
+	if(SIValue_IsNull(argv[0]) ||
+	   SIValue_IsNull(argv[1]) ||
+	   SIValue_IsNull(argv[2])) return SI_NullVal();
 
 	// argv[0] is the original string to be manipulated
 	// argv[1] is the search sub string to be replaced
 	// argv[2] is the string to be replaced with
-	const char *str = argv[0].stringval;
-	const char *old_string = argv[1].stringval;
-	const char *new_string = argv[2].stringval;
-	size_t old_string_len = strlen(old_string);
-	size_t new_string_len = strlen(new_string);
+	const char *str            =  argv[0].stringval;
+	const char *old_string     =  argv[1].stringval;
+	const char *new_string     =  argv[2].stringval;
+	size_t      old_string_len =  strlen(old_string);
+	size_t      new_string_len =  strlen(new_string);
 
-	if(old_string_len == 0) {
-		ErrorCtx_RaiseRuntimeException("ArgumentError: search string can't be length 0");
-		// Incase expection handler wasn't set, return NULL.
-		return SI_NullVal();
-	}
+	if(old_string_len == 0) assert("implement");
 
-	const char *ptr = str;
-
+	const char *ptr  = str;
 	const char **arr = array_new(const char *, 0);
 
 	while(true) {
@@ -285,7 +282,10 @@ SIValue AR_REPLACE(SIValue *argv, int argc) {
 	int occurrences = array_len(arr);
 
 	// if sub string not found return original string
-	if(occurrences == 0) return SI_DuplicateStringVal(str);
+	if(occurrences == 0) {
+		array_free(arr);
+		return SI_DuplicateStringVal(str);
+	}
 
 	// calculate new buffer size
 	size_t buffer_size = strlen(str) + (occurrences * new_string_len) - (occurrences * old_string_len);
