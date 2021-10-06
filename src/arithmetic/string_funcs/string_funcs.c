@@ -257,15 +257,14 @@ SIValue AR_REPLACE(SIValue *argv, int argc) {
 	const char *str            =  argv[0].stringval;
 	const char *old_string     =  argv[1].stringval;
 	const char *new_string     =  argv[2].stringval;
+	size_t      str_len        =  strlen(str);
 	size_t      old_string_len =  strlen(old_string);
 	size_t      new_string_len =  strlen(new_string);
-
-	if(old_string_len == 0) assert("implement");
 
 	const char *ptr  = str;
 	const char **arr = array_new(const char *, 0);
 
-	while(true) {
+	while(ptr <= str + str_len) {
 		// find pointer to next substring
 		ptr = strstr(ptr, old_string);
 
@@ -275,8 +274,8 @@ SIValue AR_REPLACE(SIValue *argv, int argc) {
 		// store ptr for replace use
 		array_append(arr, ptr);
 
-		// increment our string pointer
-		ptr += old_string_len;
+		// increment our string pointer in case search string is empty move one char
+		ptr += old_string_len == 0 ? 1 : old_string_len;
 	}
 
 	int occurrences = array_len(arr);

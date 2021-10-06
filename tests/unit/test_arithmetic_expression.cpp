@@ -1750,4 +1750,11 @@ TEST_F(ArithmeticTest, ReplaceTest) {
 	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
 	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
 	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("cc"), arExp->operand.constant, NULL));
+
+	// Test replace empty string.
+	query = "RETURN replace('abcabc', '', '0')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("0a0b0c0a0b0c0"), arExp->operand.constant, NULL));
 }
