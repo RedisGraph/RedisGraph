@@ -1736,4 +1736,18 @@ TEST_F(ArithmeticTest, ReplaceTest) {
 	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
 	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
 	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("a0a0"), arExp->operand.constant, NULL));
+
+	// Test replace with empty string.
+	query = "RETURN replace('abcabc', 'abc', '')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal(""), arExp->operand.constant, NULL));
+
+	// Test replace with empty string.
+	query = "RETURN replace('abcabc', 'ab', '')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("cc"), arExp->operand.constant, NULL));
 }

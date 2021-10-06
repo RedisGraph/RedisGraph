@@ -6,6 +6,7 @@
 
 #include "string_funcs.h"
 #include "../func_desc.h"
+#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
@@ -241,12 +242,17 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 	return SI_BoolVal(true);
 }
 
-/* returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string. */
+// returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string.
+// for example: RETURN replace('Well I wish I was in the land of cotton', 'cotton', 'the free')
+// the result is Well I wish I was in the land of the free
 SIValue AR_REPLACE(SIValue *argv, int argc) {
 	// No string contains null.
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1]) || SIValue_IsNull(argv[2])) return SI_NullVal();
 
-	char *str = strdup(argv[0].stringval);
+	// argv[0] is the original string to be manipulated
+	// argv[1] is the search sub string to be replaced
+	// argv[2] is the string to be replaced with
+	const char *str = argv[0].stringval;
 	const char *old_string = argv[1].stringval;
 	const char *new_string = argv[2].stringval;
 	size_t old_string_len = strlen(old_string);
@@ -258,39 +264,41 @@ SIValue AR_REPLACE(SIValue *argv, int argc) {
 		return SI_NullVal();
 	}
 
-	char *ptr = str;
+	const char *ptr = str;
 
-	char **arr = array_new(char *, 0);
+	const char **arr = array_new(const char *, 0);
 
 	while(true) {
-        // find pointer to next substring
-        ptr = strstr(ptr, old_string);
+		// find pointer to next substring
+		ptr = strstr(ptr, old_string);
 
-        // if no substring found, then break from the loop
-        if(ptr == NULL) { break; }
+		// if no substring found, then break from the loop
+		if(ptr == NULL) break;
 
 		// store ptr for replace use
 		array_append(arr, ptr);
 
-        // increment our string pointer
-        ptr += old_string_len;
-    }
+		// increment our string pointer
+		ptr += old_string_len;
+	}
 
-	int occurances = array_len(arr);
-	if(occurances == 0) return argv[0];
+	int occurrences = array_len(arr);
+
+	// if sub string not found return original string
+	if(occurrences == 0) return SI_DuplicateStringVal(str);
 
 	// calculate new buffer size
-	size_t buffer_size = strlen(str) + occurances * new_string_len - occurances * old_string_len;
+	size_t buffer_size = strlen(str) + (occurrences * new_string_len) - (occurrences * old_string_len);
 
 	// allocate buffer
-	char *buffer = (char*) malloc(buffer_size*sizeof(char) + 1);
+	char *buffer = (char*) rm_malloc(sizeof(char) * buffer_size + 1);
 
 	// set pointers to start point
 	ptr = str;
 	char *buffer_ptr = buffer;
 
-	// iterate occurances
-	for (int i = 0; i < occurances; i++) {
+	// iterate occurrences
+	for (int i = 0; i < occurrences; i++) {
 		// calculate len to copy from last to current occurance
 		int len = arr[i] - ptr;
 
@@ -315,7 +323,9 @@ SIValue AR_REPLACE(SIValue *argv, int argc) {
 
 	buffer[buffer_size] = '\0';
 
-	return SI_ConstStringVal(buffer);
+	array_free(arr);
+
+	return SI_TransferStringVal(buffer);
 }
 
 //==============================================================================
