@@ -67,36 +67,6 @@ commands:
             - '*.zip'
             - '*.tgz'
 
-  load-deps-cache:
-    parameters:
-      cache_platform:
-        type: string
-        default: ''
-    steps:
-      # Load GraphBLAS from cache if possible.
-      - restore_cache:
-          keys:
-          - GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
-          - libcypher-{{ checksum "deps/libcypher-parser/README.md" }}<<parameters.cache_platform>>
-
-  save-deps-cache:
-    parameters:
-      cache_platform:
-        type: string
-        default: ''
-    steps:
-      # Save GraphBLAS to cache.
-      - save_cache:
-          paths:
-            - deps/GraphBLAS/build
-          key: GraphBLAS-{{ checksum "deps/GraphBLAS/README.md" }}<<parameters.cache_platform>>
-
-      # Save libcypher-parser to cache.
-      - save_cache:
-          paths:
-            - deps/libcypher-parser/build
-          key: libcypher-{{checksum "./deps/libcypher-parser/README.md"}}<<parameters.cache_platform>>
-
   setup-prerequisits:
     steps:
       - setup-automation
@@ -151,14 +121,10 @@ commands:
       - setup-executor
       - checkout-all
       - setup-automation
-      - load-deps-cache:
-          cache_platform: x64-<<parameters.platform>>
       - run:
           name: Build for platform (docker build)
           command: |
             make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
-      - save-deps-cache:
-          cache_platform: x64-<<parameters.platform>>
       - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (docker publish)
@@ -178,23 +144,19 @@ commands:
       - run:
           name: Install Docker
           command: bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
-      - load-deps-cache:
-          cache_platform: arm-<<parameters.platform>>
       - run:
           name: Build for platform
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH ARTIFACTS=1 TEST=1 SHOW=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
           no_output_timeout: 30m
-      - save-deps-cache:
-          cache_platform: arm-<<parameters.platform>>
       - early-return-for-forked-pull-requests
       - run:
           name: Build for platform (publish)
           command: |
             docker login -u redisfab -p $DOCKER_REDISFAB_PWD
             cd build/docker
-            make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=0 SHOW=1 VERBOSE=1
+            make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1 PUBLISH=1 DOCKERWRAPPER_EXTRA_VARS="DOCKER_PUSH_ONLY=1"
       - persist-artifacts
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -207,11 +169,16 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: bash -l -c "make all package"
-      - save-deps-cache
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
           command: bash -l -c "make test"
@@ -237,7 +204,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build for coverage
           command: bash -l -c "make COV=1"
@@ -255,7 +224,9 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache
+      - restore_cache:
+          keys:
+            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - attach_workspace:
           at: /workspace
       - run:
@@ -291,17 +262,20 @@ jobs:
       - early-returns
       - checkout-all
       - setup-prerequisits
-      - load-deps-cache:
-          cache_platform: mac
+      - restore_cache:
+          keys:
+            - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
           command: |
             bash -l -c "make all package"
+      - save_cache:
+          paths:
+            - deps/GraphBLAS/build
+          key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
           command: bash -l -c "make test"
-      - save-deps-cache:
-          cache_platform: mac
       - store_artifacts:
           path: ~/project/tests/flow/logs
       - store_artifacts:
