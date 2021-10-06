@@ -89,8 +89,14 @@ ExecutionCtx *ExecutionCtx_FromQuery(const char *query) {
 
 	// No cached execution plan, try to parse the query.
 	AST *ast = _ExecutionCtx_ParseAST(query_string, params_parse_result);
-	// If query parsing failed, return NULL.
-	if(!ast) return NULL;
+	// if query parsing failed, return NULL
+	if(!ast) {
+		// if no error has been set, emit one now
+		if(!ErrorCtx_EncounteredError()) {
+			ErrorCtx_SetError("Error: could not parse query");
+		}
+		return NULL;
+	}
 
 	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
 	// In case of valid query, create execution plan, and cache it and the AST.
