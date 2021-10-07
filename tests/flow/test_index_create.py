@@ -10,11 +10,13 @@ from base import FlowTestsBase
 
 GRAPH_ID = "index"
 redis_graph = None
+redis_con = None
 
 class testIndexCreationFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
+        global redis_con
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
 
@@ -60,3 +62,12 @@ class testIndexCreationFlow(FlowTestsBase):
         # try to create an index over person:gender and person:name and person:height, index for gender should be created as the rest already exist
         result = redis_graph.query("CREATE INDEX ON :person(gender, gender, name, height)")
         self.env.assertEquals(result.indices_created, 1)
+
+    def test03_index_creation_pattern_syntax(self):
+        # create an index over user:age and user:name
+        result = redis_graph.query("CREATE INDEX FOR (p:user) ON (p.age, p.name)")
+        self.env.assertEquals(result.indices_created, 2)
+
+        # create an index over follow:prop1 and follow:prop2
+        result = redis_graph.query("CREATE INDEX FOR ()-[r:follow]-() ON (r.prop1, r.prop2)")
+        self.env.assertEquals(result.indices_created, 2)
