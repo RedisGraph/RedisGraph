@@ -44,6 +44,8 @@ static void _populate_filter_matrix(OpExpandInto *op) {
  * removed filter matrix from original expression
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
+	if(op->ae->type == AL_OPERAND && op->M) return;
+
 	// If op->F is null, this is the first time we are traversing.
 	if(op->F == NULL) {
 		// Create both filter and result matrices.
@@ -106,6 +108,10 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
+
+	AlgebraicExpression_Optimize(&op->ae);
+	if(op->ae->type == AL_OPERAND) op->M = op->ae->operand.matrix;
+
 	// Create 'records' with this Init function as 'record_cap'
 	// might be set during optimization time (applyLimit)
 	// If cap greater than BATCH_SIZE is specified,
@@ -132,7 +138,7 @@ static Record _handoff(OpExpandInto *op) {
 		Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
 		NodeID destId = ENTITY_GET_ID(destNode);
 		bool x;
-		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, RG_MATRIX_M(op->M), rowIdx, destId);
+		GrB_Info res = RG_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
 		// Src is not connected to dest, free the current record and continue.
 		if(res != GrB_SUCCESS) {
 			OpBase_DeleteRecord(op->r);
@@ -229,12 +235,12 @@ static void ExpandIntoFree(OpBase *ctx) {
 		op->F = NULL;
 	}
 
-	if(op->M != NULL) {
-		RG_Matrix_free(&op->M);
-		op->M = NULL;
-	}
-
 	if(op->ae) {
+		if(op->M != NULL && op->ae->type != AL_OPERAND) {
+			RG_Matrix_free(&op->M);
+			op->M = NULL;
+		}
+
 		AlgebraicExpression_Free(op->ae);
 		op->ae = NULL;
 	}
