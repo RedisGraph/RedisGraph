@@ -39,15 +39,15 @@ Feature: With3 - Forward multiple expressions
              ()-[:T2 {id: 2}]->()
       """
     When executing query:
-      """
-      MATCH (a)-[r]->(b:X)
-      WITH a, r, b
-      MATCH (a)-[r]->(b)
-      RETURN r AS rel
-        ORDER BY rel.id
-      """
+	"""
+	MATCH (a)-[r]->(b:X)
+	WITH a, r, b
+	MATCH (a)-[r]->(b)
+	RETURN r
+	ORDER BY r.id
+	"""
     Then the result should be, in order:
-      | rel           |
+      | r             |
       | [:T1 {id: 0}] |
       | [:T2 {id: 1}] |
     And no side effects

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -11,26 +11,38 @@
 // default number of records to accumulate before traversing
 #define BATCH_SIZE 16
 
-/* Forward declarations. */
+// forward declarations
 static OpResult ExpandIntoInit(OpBase *opBase);
 static Record ExpandIntoConsume(OpBase *opBase);
-static Record ExpandIntoSimpleConsume(OpBase *opBase);
 static OpResult ExpandIntoReset(OpBase *opBase);
 static OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
 
-// String representation of operation.
-static inline void ExpandIntoToString(const OpBase *ctx, sds *buf) {
+// string representation of operation
+static inline void ExpandIntoToString
+(
+	const OpBase *ctx,
+	sds *buf
+) {
 	TraversalToString(ctx, buf, ((const OpExpandInto *)ctx)->ae);
 }
 
-static void _populate_filter_matrix(OpExpandInto *op) {
+// construct filter matrix F
+// F[i,j] = 1 if row the ith record ID(src) = j
+static void _populate_filter_matrix
+(
+	OpExpandInto *op
+) {
 	GrB_Matrix FM = RG_MATRIX_M(op->F);
+
+	// clear filter matrix
+	GrB_Matrix_clear(FM);
 
 	for(uint i = 0; i < op->record_count; i++) {
 		Record r = op->records[i];
-		/* Update filter matrix F, set row i at position srcId
-		 * F[i, srcId] = true. */
+		// update filter matrix F
+		// set row i at position srcId
+		// F[i, srcId] = true
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
 		NodeID srcId = ENTITY_GET_ID(n);
 		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
@@ -39,275 +51,295 @@ static void _populate_filter_matrix(OpExpandInto *op) {
 	GrB_Matrix_wait(&FM);
 }
 
-/* Evaluate algebraic expression:
- * appends filter matrix as the left most operand
- * perform multiplications.
- * removed filter matrix from original expression
- * clears filter matrix. */
-static void _traverse(OpExpandInto *op) {
-	// If op->F is null, this is the first time we are traversing.
+// evaluate algebraic expression:
+// appends filter matrix as the left most operand
+// perform multiplications
+// removed filter matrix from original expression
+// clears filter matrix
+static void _traverse
+(
+	OpExpandInto *op
+) {
+	// if op->F is null, this is the first time we are traversing
 	if(op->F == NULL) {
-		// Create both filter and result matrices.
+		// create both filter matrix F and result matrix M
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		RG_Matrix_new(&op->M, GrB_BOOL, op->record_cap, required_dim);
 		RG_Matrix_new(&op->F, GrB_BOOL, op->record_cap, required_dim);
 
-		// Prepend the filter matrix to algebraic expression as the leftmost operand.
+		// prepend the filter matrix to algebraic expression
+		// as the leftmost operand
 		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
-
-		// Optimize the expression tree.
 		AlgebraicExpression_Optimize(&op->ae);
 	}
 
-	// Populate filter matrix.
+	// populate filter matrix
 	_populate_filter_matrix(op);
 
-	// Evaluate expression.
+	// evaluate expression
 	AlgebraicExpression_Eval(op->ae, op->M);
-
-	// Clear filter matrix.
-	RG_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+OpBase *NewExpandIntoOp
+(
+	const ExecutionPlan *plan,
+	Graph *g,
+	AlgebraicExpression *ae
+) {
 	OpExpandInto *op = rm_malloc(sizeof(OpExpandInto));
-	op->graph = g;
-	op->ae = ae;
-	op->r = NULL;
-	op->F = NULL;
-	op->M = NULL;
-	op->records = NULL;
-	op->record_cap = BATCH_SIZE;
-	op->record_count = 0;
-	op->edge_ctx = NULL;
 
-	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
-				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
+	op->r               =  NULL;
+	op->F               =  NULL;
+	op->M               =  NULL;
+	op->ae              =  ae;
+	op->graph           =  g;
+	op->records         =  NULL;
+	op->edge_ctx        =  NULL;
+	op->record_cap      =  BATCH_SIZE;
+	op->record_count    =  0;
+	op->single_operand  =  false;
 
-	// Make sure that all entities are represented in Record
+	// set our Op operations
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit,
+			ExpandIntoConsume, ExpandIntoReset, ExpandIntoToString,
+			ExpandIntoClone, ExpandIntoFree, false, plan);
+
+	// make sure that all entities are represented in record
 	bool aware;
 	UNUSED(aware);
+
 	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
 	ASSERT(aware);
+
 	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
 	ASSERT(aware);
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		/* This operation will populate an edge in the Record.
-		 * Prepare all necessary information for collecting matching edges. */
+		// this operation will populate an edge in the record
+		// prepare all necessary information for collecting matching edges
 		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+		op->edge_ctx = EdgeTraverseCtx_New(ae, e, edge_idx);
 	}
 
 	return (OpBase *)op;
 }
 
-static OpResult ExpandIntoInit(OpBase *opBase) {
+static OpResult ExpandIntoInit
+(
+	OpBase *opBase
+) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
 
 	if(op->ae->type == AL_OPERAND) {
-		// if our expression is a single operand, use the simple consume routine
-		OpBase_UpdateConsume(opBase, ExpandIntoSimpleConsume);
+		// if traversed expression is a single operand e.g. [R]
+		// stream records as they enter
+		op->record_cap      =  1;     // record buffer size will be set to 1
+		op->single_operand  =  true;
 	}
 
-	// Create 'records' with this Init function as 'record_cap'
+	// create 'records' within this Init function as 'record_cap'
 	// might be set during optimization time (applyLimit)
 	// If cap greater than BATCH_SIZE is specified,
 	// use BATCH_SIZE as the value.
 	if(op->record_cap > BATCH_SIZE) op->record_cap = BATCH_SIZE;
+
 	op->records = rm_calloc(op->record_cap, sizeof(Record));
+
 	return OP_OK;
 }
 
-/* Emits a record when possible,
- * Returns NULL when we've got no more records. */
-static Record _handoff(OpExpandInto *op) {
-	/* If we're required to update an edge and have one queued, we can return early.
-	 * Otherwise, try to get a new pair of source and destination nodes. */
-	if(op->edge_ctx && Traverse_SetEdge(op->edge_ctx, op->r)) return OpBase_CloneRecord(op->r);
+// emits a record returns NULL when depleted
+static Record _handoff
+(
+	OpExpandInto *op
+) {
+	Record r;
 
-	/* Find a record where both record's source and destination
-	 * nodes are connected. */
+	// if we're required to update an edge and have one queued
+	// we can return early
+	// otherwise, try to get a new pair of source and destination nodes
+	if(op->edge_ctx != NULL && op->r != NULL) {
+		emit_edge:
+		if(EdgeTraverseCtx_SetEdge(op->edge_ctx, op->r)) {
+			if(EdgeTraverseCtx_EdgeCount(op->edge_ctx) == 0) {
+				// single edge, no need to clone op->r
+				r = op->r;
+				op->r = NULL;
+				return r;
+			} else {
+				// multiple edges, clone op->r
+				return OpBase_CloneRecord(op->r);
+			}
+		} else {
+			// failed to produce edge, free record
+			OpBase_DeleteRecord(op->r);
+			op->r = NULL;
+		}
+	}
+
+	// find a record where both record's source and destination
+	// nodes are connected M[i,j] is set
 	while(op->record_count) {
 		op->record_count--;
-		// Current record resides at row record_count.
-		uint rowIdx = op->record_count;
-		op->r = op->records[op->record_count];
-		Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
-		NodeID destId = ENTITY_GET_ID(destNode);
+		r = op->records[op->record_count];
+
 		bool x;
-		GrB_Info res = RG_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
-		// Src is not connected to dest, free the current record and continue.
+		uint row;
+
+		// resolve row index
+		if(op->single_operand) {
+			// row idx = src node ID
+			Node *srcNode = Record_GetNode(r, op->srcNodeIdx);
+			row = ENTITY_GET_ID(srcNode);
+		} else {
+			// row idx = record idx
+			row = op->record_count;
+		}
+
+		Node *destNode  =  Record_GetNode(r, op->destNodeIdx);
+		NodeID col      =  ENTITY_GET_ID(destNode);
+		GrB_Info res    =  RG_Matrix_extractElement_BOOL(&x, op->M, row, col);
+
+		// src is not connected to dest, free the current record and continue
 		if(res != GrB_SUCCESS) {
-			OpBase_DeleteRecord(op->r);
-			continue;
-		}
-
-		// If we're here, src is connected to dest. Update the edge if necessary.
-		if(op->edge_ctx) {
-			Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
-			// Collect all appropriate edges connecting the current pair of endpoints.
-			Traverse_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), destId);
-			// Add an edge to the Record.
-			Traverse_SetEdge(op->edge_ctx, op->r);
-			return OpBase_CloneRecord(op->r);
-		}
-
-		// Mark as NULL to avoid double free.
-		op->records[op->record_count] = NULL;
-		return op->r;
-	}
-
-	// Didn't manage to emit record.
-	return NULL;
-}
-
-/* ExpandIntoConsume next operation
- * returns OP_DEPLETED when no additional updates are available */
-static Record ExpandIntoConsume(OpBase *opBase) {
-	Record r;
-	OpExpandInto *op = (OpExpandInto *)opBase;
-	OpBase *child = op->op.children[0];
-
-	// As long as we don't have a record to emit.
-	while((r = _handoff(op)) == NULL) {
-		/* If we're here, we didn't manage to emit a record.
-		 * Clean up and try to get new data points. */
-		op->r = NULL;
-		for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
-
-		// Ask child operations for data.
-		for(op->record_count = 0; op->record_count < op->record_cap; op->record_count++) {
-			Record childRecord = OpBase_Consume(child);
-			// Did not manage to get new data, break.
-			if(!childRecord) break;
-			if(!Record_GetNode(childRecord, op->srcNodeIdx) ||
-			   !Record_GetNode(childRecord, op->destNodeIdx)) {
-				/* The child Record may not contain the source node in scenarios like
-				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
-				OpBase_DeleteRecord(childRecord);
-				op->record_count--;
-				continue;
-			}
-
-			// Store received record.
-			Record_PersistScalars(childRecord);
-			op->records[op->record_count] = childRecord;
-		}
-
-		// Depleted.
-		if(op->record_count == 0) return NULL;
-		_traverse(op);
-	}
-
-	return r;
-}
-
-// consume routine for the case when a single matrix is being examined
-static Record ExpandIntoSimpleConsume(OpBase *opBase) {
-	Record r = NULL;
-	OpExpandInto *op = (OpExpandInto *)opBase;
-	OpBase *child = op->op.children[0];
-
-	if(op->r) {
-		// if we're required to update an edge and have one queued,
-		// we can return early
-		if(Traverse_SetEdge(op->edge_ctx, op->r)) {
-			return OpBase_CloneRecord(op->r);
-		}
-		// edge array depleted, delete the record
-		OpBase_DeleteRecord(op->r);
-		op->r = NULL;
-	}
-
-	// try to find a connected src-dest pair in an infinite loop
-	// return when a connection is made or the child op is depleted
-	while(true) {
-		Record r = OpBase_Consume(child);
-		if(r == NULL) return NULL; // child op depleted
-
-		if(op->M == NULL) {
-			// set the matrix on first invocation
-			AlgebraicExpression_Optimize(&op->ae);
-			op->M = op->ae->operand.matrix;
-		}
-
-		Node *src = Record_GetNode(r, op->srcNodeIdx);
-		Node *dest = Record_GetNode(r, op->destNodeIdx);
-		if(!src || !dest) {
-			// the child Record may not contain the source node in scenarios
-			// like a failed OPTIONAL MATCH
-			// in this case, delete the Record and try again
 			OpBase_DeleteRecord(r);
 			continue;
 		}
 
-		EntityID src_id = ENTITY_GET_ID(src);
-		EntityID dest_id = ENTITY_GET_ID(dest);
-		bool x;
-		GrB_Info res = RG_Matrix_extractElement_BOOL(&x, op->M, src_id,
-													 dest_id);
-		if(res != GrB_SUCCESS) {
-			// src is not connected to dest,
-			// free the current record and continue.
-			OpBase_DeleteRecord(r);
-			continue;
-		}
-
-		// if we're here, src is connected to dest
+		// src is connected to dest
 		// update the edge if necessary
-		if(op->edge_ctx) {
-			// collect all appropriate edges connecting
-			// the current pair of endpoints
-			Traverse_CollectEdges(op->edge_ctx, src_id, dest_id);
-			// store the record, as there may be multiple edges to emit
+		if(op->edge_ctx != NULL) {
 			op->r = r;
-			// add an edge to the record
-			Traverse_SetEdge(op->edge_ctx, op->r);
-			return OpBase_CloneRecord(op->r);
+
+			Node      *srcNode  =  Record_GetNode(r, op->srcNodeIdx);
+			EntityID  row       =  ENTITY_GET_ID(srcNode);
+
+			// collect all edges connecting the current pair of endpoints
+			EdgeTraverseCtx_CollectEdges(op->edge_ctx, row, col);
+			goto emit_edge;
 		}
 
 		return r;
 	}
 
+	// didn't manage to emit record
 	return NULL;
 }
 
-static OpResult ExpandIntoReset(OpBase *ctx) {
-	OpExpandInto *op = (OpExpandInto *)ctx;
-	op->r = NULL;
-	for(uint i = 0; i < op->record_count; i++) {
-		if(op->records[i]) {
-			OpBase_DeleteRecord(op->records[i]);
-			op->records[i] = NULL;
+// ExpandIntoConsume next operation
+// returns OP_DEPLETED when no additional updates are available
+static Record ExpandIntoConsume
+(
+	OpBase *opBase
+) {
+	Record r;
+	OpExpandInto *op = (OpExpandInto *)opBase;
+	OpBase *child = op->op.children[0];
+
+	// as long as we don't have a record to emit
+	while((r = _handoff(op)) == NULL) {
+		// if we're here, we didn't manage to emit a record
+		// clean up and try to get new data points
+
+		// validate depleted
+		ASSERT(op->r == NULL);
+		ASSERT(op->record_count == 0);
+
+		//----------------------------------------------------------------------
+		// get data
+		//----------------------------------------------------------------------
+
+		// ask child operation for at most 'record_cap' records
+		int i = 0;
+		for(; i < op->record_cap; i++) {
+			r = OpBase_Consume(child);
+			// did not manage to get new data, break
+			if(r == NULL) break;
+
+			// set the matrix on first invocation
+			if(op->M == NULL && op->single_operand) {
+				// set M to only operand
+				AlgebraicExpression_Optimize(&op->ae);
+				op->M = op->ae->operand.matrix;
+			}
+
+			// check if both src and destination nodes are set
+			if(!Record_GetNode(r, op->srcNodeIdx) ||
+			   !Record_GetNode(r, op->destNodeIdx)) {
+				// the child Record may not contain eithe
+				// source or destination nodes in scenarios like a failed
+				// OPTIONAL MATCH in this case, delete the Record and try again
+				OpBase_DeleteRecord(r);
+				i--;
+				continue;
+			}
+
+			// store received record
+			// TODO: not sure if necessary when we're streaming records
+			Record_PersistScalars(r);
+			op->records[i] = r;
 		}
+		op->record_count = i;
+
+		// did not managed to produce data, depleted
+		if(op->record_count == 0) return NULL;
+
+		if(!op->single_operand) _traverse(op);
+	}
+
+	return r;
+}
+
+static OpResult ExpandIntoReset
+(
+	OpBase *ctx
+) {
+	OpExpandInto *op = (OpExpandInto *)ctx;
+
+	if(op->r != NULL) {
+		OpBase_DeleteRecord(op->r);
+		op->r = NULL;
+	}
+
+	for(uint i = 0; i < op->record_count; i++) {
+		OpBase_DeleteRecord(op->records[i]);
 	}
 	op->record_count = 0;
 
-	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
-	if(op->F != NULL) RG_Matrix_clear(op->F);
+	if(op->edge_ctx != NULL) EdgeTraverseCtx_Reset(op->edge_ctx);
+
 	return OP_OK;
 }
 
-static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase) {
+static inline OpBase *ExpandIntoClone
+(
+	const ExecutionPlan *plan,
+	const OpBase *opBase
+) {
 	ASSERT(opBase->type == OPType_EXPAND_INTO);
+
 	OpExpandInto *op = (OpExpandInto *)opBase;
-	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
+
+	return NewExpandIntoOp(plan, op->graph, AlgebraicExpression_Clone(op->ae));
 }
 
-/* Frees ExpandInto */
-static void ExpandIntoFree(OpBase *ctx) {
+// frees ExpandInto
+static void ExpandIntoFree
+(
+	OpBase *ctx
+) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
+
 	if(op->F != NULL) {
 		RG_Matrix_free(&op->F);
 		op->F = NULL;
 	}
 
-	if(op->ae) {
-		if(op->M != NULL && op->ae->type != AL_OPERAND) {
+	if(op->ae != NULL) {
+		// M was allocated by us
+		if(op->M != NULL && !op->single_operand) {
 			RG_Matrix_free(&op->M);
 			op->M = NULL;
 		}
@@ -316,17 +348,22 @@ static void ExpandIntoFree(OpBase *ctx) {
 		op->ae = NULL;
 	}
 
-	if(op->edge_ctx) {
-		Traverse_FreeEdgeCtx(op->edge_ctx);
+	if(op->edge_ctx != NULL) {
+		EdgeTraverseCtx_Free(op->edge_ctx);
 		op->edge_ctx = NULL;
 	}
 
-	if(op->records) {
+	if(op->records != NULL) {
 		for(uint i = 0; i < op->record_count; i++) {
-			if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
+			OpBase_DeleteRecord(op->records[i]);
 		}
 		rm_free(op->records);
 		op->records = NULL;
+	}
+
+	if(op->r != NULL) {
+		OpBase_DeleteRecord(op->r);
+		op->r = NULL;
 	}
 }
 
