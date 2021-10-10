@@ -343,8 +343,36 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 		OpBase_Free(allNodeScan);
 	}
 
-	// replace the redundant scan op with the newly-constructed Index Scan
-	ExecutionPlan_ReplaceOp(plan, (OpBase *)cond, indexOp);
+	QGNode *dest = QGEdge_Dest(e);
+	if(QGNode_LabelCount(dest) > 0) {
+		const char *func_name = "hasLabels";
+
+		// create node expression
+		AR_ExpNode *node_exp = AR_EXP_NewVariableOperandNode(QGNode_Alias(dest));
+
+		// create labels expression
+		SIValue labels = SI_Array(1);
+		SIArray_Append(&labels, SI_ConstStringVal((char *)dest->label));
+		AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
+
+		// create func expression
+		AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
+
+		// set function arguments
+		op->op.children[0] = node_exp;
+		op->op.children[1] = labels_exp;
+
+		FT_FilterNode *ft = FilterTree_CreateExpressionFilter(op);
+		OpBase *filter = NewFilterOp(plan, ft);
+
+		// replace the redundant scan op with the newly-constructed filter op and add Index Scan as child
+		ExecutionPlan_ReplaceOp(plan, (OpBase *)cond, indexOp);
+		ExecutionPlan_PushBelow(indexOp, filter);
+	} else {
+		// replace the redundant scan op with the newly-constructed Index Scan
+		ExecutionPlan_ReplaceOp(plan, (OpBase *)cond, indexOp);
+	}
+
 	OpBase_Free((OpBase *)cond);
 
 	// remove and free all redundant filter ops

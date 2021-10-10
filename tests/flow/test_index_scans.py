@@ -25,8 +25,8 @@ class testIndexScanFlow(FlowTestsBase):
 
     def build_indices(self):
         global redis_graph
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :person(age)")
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :country(name)")
+        redis_graph.query("CREATE INDEX ON :person(age)")
+        redis_graph.query("CREATE INDEX ON :country(name)")
 
     # Validate that Cartesian products using index and label scans succeed
     def test01_cartesian_product_mixed_scans(self):
@@ -63,7 +63,7 @@ class testIndexScanFlow(FlowTestsBase):
 
     # Validate that the appropriate bounds are respected when a Cartesian product uses the same index in two streams
     def test03_cartesian_product_reused_index(self):
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :person(name)")
+        redis_graph.query("CREATE INDEX ON :person(name)")
         query = "MATCH (a:person {name: 'Omri Traub'}), (b:person) WHERE b.age <= 30 RETURN a.name, b.name ORDER BY a.name, b.name"
         plan = redis_graph.execution_plan(query)
         # The two streams should both use index scans
@@ -138,7 +138,7 @@ class testIndexScanFlow(FlowTestsBase):
     # Validate index utilization when filtering on string fields with the `IN` keyword.
     def test05_test_in_operator_string_props(self):
         # Build an index on the name property.
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :person(name)")
+        redis_graph.query("CREATE INDEX ON :person(name)")
         # Validate the transformation of IN to multiple OR expressions over string properties.
         query = "MATCH (p:person) WHERE p.name IN ['Gal Derriere', 'Lucy Yanfital'] RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
