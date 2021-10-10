@@ -147,7 +147,6 @@ commands:
       - run:
           name: Build for platform
           command: |
-            cd build/docker
             make -C build/docker build DOCKER_SUFFIX=".<<parameters.platform>>" OSNICK=<<parameters.platform>> PACK=1 TEST=1 VERBOSE=1
           no_output_timeout: 30m
       - early-return-for-forked-pull-requests
