@@ -132,11 +132,34 @@ static OpResult ExpandIntoInit
 ) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
 
+	// see if we can optimize by avoiding matrix multiplication
+	// if the algebraic expression passed in is just a single operand
+	// there's no need to compute F and perform F*X, we can simply inspect X
 	if(op->ae->type == AL_OPERAND) {
 		// if traversed expression is a single operand e.g. [R]
-		// stream records as they enter
-		op->record_cap      =  1;     // record buffer size will be set to 1
-		op->single_operand  =  true;
+		// check if specified operand R exists
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		const char *label = AlgebraicExpression_Label(op->ae);
+		if(label == NULL) {
+			// matrix isn't associated with a label, use the adjacency matrix
+			op->M = Graph_GetAdjacencyMatrix(op->graph, false);
+		} else {
+			// try to retrieve relationship matrix
+			// it is OK if the relationship doesn't exists, in this case
+			// we won't use this single operand optimization
+			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+			if(s != NULL) {
+				// stream records as they enter
+				op->M = Graph_GetRelationMatrix(op->graph, Schema_GetID(s), false);
+			}
+		}
+
+		// if we've managed to set M, restrict record cap to 1
+		// and note the optimization
+		if(op->M) {
+			op->record_cap      =  1;     // record buffer size will be set to 1
+			op->single_operand  =  true;
+		}
 	}
 
 	// create 'records' within this Init function as 'record_cap'
@@ -164,7 +187,7 @@ static Record _handoff
 		emit_edge:
 		if(EdgeTraverseCtx_SetEdge(op->edge_ctx, op->r)) {
 			if(EdgeTraverseCtx_EdgeCount(op->edge_ctx) == 0) {
-				// single edge, no need to clone op->r
+				// processing last edge, no need to clone op->r
 				r = op->r;
 				op->r = NULL;
 				return r;
@@ -200,6 +223,10 @@ static Record _handoff
 
 		Node *destNode  =  Record_GetNode(r, op->destNodeIdx);
 		NodeID col      =  ENTITY_GET_ID(destNode);
+		// TODO: in the case of multiple operands ()-[:A]->()-[:B]->()
+		// M is the result of F*A*B, in which case we can switch from
+		// M being a RG_Matrix to a GrB_Matrix, making the extract element
+		// operation a bit cheaper to compute
 		GrB_Info res    =  RG_Matrix_extractElement_BOOL(&x, op->M, row, col);
 
 		// src is not connected to dest, free the current record and continue
@@ -257,13 +284,6 @@ static Record ExpandIntoConsume
 			r = OpBase_Consume(child);
 			// did not manage to get new data, break
 			if(r == NULL) break;
-
-			// set the matrix on first invocation
-			if(op->M == NULL && op->single_operand) {
-				// set M to only operand
-				AlgebraicExpression_Optimize(&op->ae);
-				op->M = op->ae->operand.matrix;
-			}
 
 			// check if both src and destination nodes are set
 			if(!Record_GetNode(r, op->srcNodeIdx) ||
