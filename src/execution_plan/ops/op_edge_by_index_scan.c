@@ -136,7 +136,7 @@ static OpResult EdgeIndexScanInit
 		// (current edge being scanned) there's no need to re-build the index
 		// query for every input record
 		rax *entities = FilterTree_CollectModified(op->filter);
-		op->rebuild_index_query = raxSize(entities) > 1;
+		op->rebuild_index_query = raxSize(entities) > 1 || op->srcAware || op->destAware;
 		raxFree(entities);
 
 		OpBase_UpdateConsume(opBase, EdgeIndexScanConsumeFromChild);
@@ -299,8 +299,6 @@ pull_index:
 		// build index query only once (first call)
 		// reset it if already initialized
 		if(op->iter == NULL) {
-			UpdateCurrentAwareIds(op);
-
 			// first call to consume, create query and iterator
 			RSQNode *rs_query_node = FilterTreeToQueryNode(
 					&op->unresolved_filters, op->filter, op->idx);

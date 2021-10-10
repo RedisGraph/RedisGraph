@@ -22,6 +22,7 @@ typedef struct {
 	SIValue *yield_type;        // yield index type
 	SIValue *yield_label;       // yield index label
 	SIValue *yield_properties;  // yield index properties
+	SIValue *yield_entity_type; // yield index entity type
 } IndexesContext;
 
 // CALL db.indexes()
@@ -67,6 +68,12 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 			pdata->yield_properties = pdata->out + (i * 2 + 1);
 			continue;
 		}
+		if(strcasecmp("entitytype", yield[i]) == 0) {
+			array_append(pdata->out, SI_ConstStringVal("entitytype"));
+			array_append(pdata->out, SI_NullVal());
+			pdata->yield_entity_type = pdata->out + (i * 2 + 1);
+			continue;
+		}
 	}
 
 	ctx->privateData = pdata;
@@ -77,6 +84,14 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 	Index *idx = Schema_GetIndex(s, NULL, type);
 	if(idx == NULL) return false;
+
+	if(ctx->yield_entity_type != NULL) {
+		if(s->type == SCHEMA_NODE) {
+			*ctx->yield_entity_type = SI_ConstStringVal("NODE");
+		} else {
+			*ctx->yield_entity_type = SI_ConstStringVal("RELATIONSHIP");
+		}
+	}
 
 	if(ctx->yield_type != NULL) {
 		if(type == IDX_EXACT_MATCH) {
@@ -160,7 +175,7 @@ ProcedureResult Proc_IndexesFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_IndexesCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 3);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 4);
 
 	// index type (exact-match / fulltext)
 	output  = (ProcedureOutput) {
@@ -177,6 +192,12 @@ ProcedureCtx *Proc_IndexesCtx() {
 	// indexed properties
 	output  = (ProcedureOutput) {
 		.name = "properties", .type = T_ARRAY
+	};
+	array_append(outputs, output);
+
+	// index entity type (node / relationship)
+	output  = (ProcedureOutput) {
+		.name = "entitytype", .type = T_STRING
 	};
 	array_append(outputs, output);
 

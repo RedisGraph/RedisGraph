@@ -60,6 +60,8 @@ class testGraphPersistency(FlowTestsBase):
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name, height)")
         actual_result = redis_con.execute_command(
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name, population)")
+        actual_result = redis_con.execute_command(
+            "GRAPH.QUERY", graph_name, "CREATE INDEX FOR ()-[r:visit]-() ON (r.purpose)")
 
         return redis_graph
 
@@ -122,7 +124,7 @@ class testGraphPersistency(FlowTestsBase):
                 self.env.assertEquals(edgeCount, 2)
 
                 # Verify indices exists
-                expected_indices = [["exact-match", "country", ["name", "population"]], ["exact-match", "person", ["name", "height"]]]
+                expected_indices = [['exact-match', 'country', ['name', 'population'], 'NODE'], ['exact-match', 'person', ['name', 'height'], 'NODE'], ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'RELATIONSHIP']]
                 indices = graph.query("""CALL db.indexes()""").result_set
                 self.env.assertEquals(indices, expected_indices)
 
