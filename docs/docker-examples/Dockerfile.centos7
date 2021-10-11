@@ -1,31 +1,14 @@
-# BUILD redisfab/redisgraph:${VERSION}-${ARCH}-${OSNICK}
-
-ARG REDIS_VER=6.2.5
-
-# OSNICK=bionic|stretch|buster
-ARG OSNICK=buster
-
-# OS=debian:buster-slim|debian:stretch-slim|ubuntu:bionic
-ARG OS=debian:buster-slim
-
-# ARCH=x64|arm64v8|arm32v7
-ARG ARCH=x64
+# BUILD redisfab/redisgraph:6.2.5-x64-centos7
 
 ARG PACK=0
 ARG TEST=0
 
 #----------------------------------------------------------------------------------------------
-FROM redisfab/redis:${REDIS_VER}-${ARCH}-${OSNICK} AS redis
-# Build based on ${OS} (i.e., 'builder'), redis files are copies from 'redis'
-FROM ${OS} AS builder
+FROM redisfab/redis:6.2.5-x64-centos7 AS redis
+# Build based on centos:7 (i.e., 'builder'), redis files are copies from 'redis'
+FROM centos:7 AS builder
 
-# Re-introducude arguments to this image
-ARG OSNICK
-ARG OS
-ARG ARCH
-ARG REDIS_VER
-
-RUN echo "Building for ${OSNICK} (${OS}) for ${ARCH} [with Redis ${REDIS_VER}]"
+RUN echo "Building for centos7 (centos:7) for x64 [with Redis 6.2.5]"
 
 WORKDIR /build
 
@@ -35,17 +18,8 @@ ADD ./ /build
 
 # Set up a build environment
 RUN ./deps/readies/bin/getpy3
+RUN ./deps/readies/bin/getupdates
 RUN ./sbin/system-setup.py
-RUN set -ex ;\
-    if [ -e /usr/bin/apt-get ]; then \
-        apt-get update -qq; \
-        apt-get upgrade -yqq; \
-        rm -rf /var/cache/apt; \
-    fi
-RUN if [ -e /usr/bin/yum ]; then \
-        yum update -y; \
-        rm -rf /var/cache/yum; \
-    fi
 
 RUN if [ ! -z $(command -v apt-get) ]; then \
         locale-gen --purge en_US.UTF-8 ;\
@@ -68,12 +42,8 @@ RUN set -ex ;\
     if [ "$PACK" = "1" ]; then bash -l -c "make package"; fi
 
 #----------------------------------------------------------------------------------------------
-FROM redisfab/redis:${REDIS_VER}-${ARCH}-${OSNICK}
+FROM redisfab/redis:6.2.5-x64-centos7
 
-ARG OSNICK
-ARG OS
-ARG ARCH
-ARG REDIS_VER
 ARG PACK
 
 ENV LIBDIR /usr/lib/redis/modules

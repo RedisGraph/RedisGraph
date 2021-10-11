@@ -37,10 +37,10 @@ package: all
 	@$(MAKE) -C ./src package
 
 docker:
-	@docker build . -t redislabs/redisgraph
+	@$(MAKE) -C ./build/docker
 
 docker_alpine:
-	@docker build . -f Dockerfile.alpine -t redislabs/redisgraph:alpine
+	@$(MAKE) -C ./build/docker OSNICK=alpine3
 
 docker_push: docker
 	@docker push redislabs/redisgraph:latest

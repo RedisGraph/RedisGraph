@@ -1,0 +1,70 @@
+# BUILD redisfab/redisgraph:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}}
+
+ARG PACK={{REDIS_PACK}}
+ARG TEST={{REDIS_TEST}}
+
+#----------------------------------------------------------------------------------------------
+FROM redisfab/redis:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}} AS redis
+# Build based on {{REDIS_OS}} (i.e., 'builder'), redis files are copies from 'redis'
+FROM {{REDIS_OS}} AS builder
+
+RUN echo "Building for {{REDIS_OSNICK}} ({{REDIS_OS}}) for {{REDIS_ARCH}} [with Redis {{REDIS_VERSION}}]"
+
+WORKDIR /build
+
+COPY --from=redis /usr/local/ /usr/local/
+
+ADD ./ /build
+
+# Set up a build environment
+{% if REDIS_OSNICK == "alpine3" %}
+RUN ./deps/readies/bin/getbash
+{% endif %}
+RUN ./deps/readies/bin/getpy3
+RUN ./deps/readies/bin/getupdates
+RUN ./sbin/system-setup.py
+
+RUN if [ ! -z $(command -v apt-get) ]; then \
+        locale-gen --purge en_US.UTF-8 ;\
+        dpkg-reconfigure -f noninteractive locales ;\
+    fi
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+RUN bash -l -c make -j`nproc`
+
+ARG PACK
+ARG TEST
+
+RUN set -ex ;\
+    if [ "$TEST" = "1" ]; then bash -l -c "TEST= make test"; fi
+RUN set -ex ;\
+    mkdir -p bin/artifacts ;\
+    if [ "$PACK" = "1" ]; then bash -l -c "make package"; fi
+
+#----------------------------------------------------------------------------------------------
+{% if REDIS_OSNICK == "alpine3" %}
+FROM redis:6-alpine
+{% else %}
+FROM redisfab/redis:{{REDIS_VERSION}}-{{REDIS_ARCH}}-{{REDIS_OSNICK}}
+{% endif %}
+
+ARG PACK
+
+ENV LIBDIR /usr/lib/redis/modules
+
+WORKDIR /data
+
+RUN mkdir -p $LIBDIR
+
+COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts
+COPY --from=builder /build/src/redisgraph.so $LIBDIR
+
+RUN if [ -f /usr/bin/apt-get ]; then apt-get -qq update; apt-get -q install -y libgomp1; fi
+RUN if [ -f /usr/bin/yum ]; then yum install -y libgomp; fi
+RUN if [ -f /sbin/apk ]; then apk add libgomp; fi
+
+EXPOSE 6379
+CMD ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisgraph.so"]
