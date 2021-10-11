@@ -92,14 +92,14 @@ AlgebraicExpression *AlgebraicExpression_Clone
 
 // Returns the source entity alias represented by the left-most operand
 // row domain
-const char *AlgebraicExpression_Source
+const char *AlgebraicExpression_Src
 (
 	AlgebraicExpression *root   // Root of expression.
 );
 
 // Returns the destination entity alias represented by the right-most operand
 // column domain
-const char *AlgebraicExpression_Destination
+const char *AlgebraicExpression_Dest
 (
 	AlgebraicExpression *root   // Root of expression.
 );
@@ -239,6 +239,16 @@ bool AlgebraicExpression_LocateOperand
 	const char *column_domain,       // operand column domain
 	const char *edge,                // operand edge name
 	const char *label                // operand label name
+);
+
+const AlgebraicExpression *AlgebraicExpression_SrcOperand
+(
+	const AlgebraicExpression *root   // Root of expression.
+);
+
+const AlgebraicExpression *AlgebraicExpression_DestOperand
+(
+	const AlgebraicExpression *root   // Root of expression.
 );
 
 //------------------------------------------------------------------------------

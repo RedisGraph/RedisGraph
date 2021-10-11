@@ -1,13 +1,13 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "utils.h"
 #include "../algebraic_expression.h"
 #include "../arithmetic_expression.h"
-#include "../../RG.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
@@ -215,91 +215,6 @@ AlgebraicExpression *AlgebraicExpression_Clone
 //------------------------------------------------------------------------------
 // AlgebraicExpression attributes.
 //------------------------------------------------------------------------------
-
-// Forward declaration.
-static const char *_AlgebraicExpression_Source(AlgebraicExpression *root,
-		bool transposed);
-
-// Returns the source entity alias (row domain)
-// Taking into consideration transpose
-static const char *_AlgebraicExpression_Operation_Source
-(
-	AlgebraicExpression *root,  // Root of expression.
-	bool transposed             // Is root transposed
-) {
-	switch(root->operation.op) {
-	case AL_EXP_ADD:
-		// Src (A+B) = Src(A)
-		// Src (Transpose(A+B)) = Src (Transpose(A)+Transpose(B)) = Src (Transpose(A))
-		return _AlgebraicExpression_Source(FIRST_CHILD(root), transposed);
-	case AL_EXP_MUL:
-		// Src (A*B) = Src(A)
-		// Src (Transpose(A*B)) = Src (Transpose(B)*Transpose(A)) = Src (Transpose(B))
-		if(transposed) {
-			return _AlgebraicExpression_Source(LAST_CHILD(root), transposed);
-		} else {
-			return _AlgebraicExpression_Source(FIRST_CHILD(root), transposed);
-		}
-	case AL_EXP_TRANSPOSE:
-		// Src (Transpose(Transpose(A))) = Src(A)
-		// Negate transpose.
-		return _AlgebraicExpression_Source(FIRST_CHILD(root), !transposed);
-	default:
-		ASSERT("Unknown algebraic expression operation" && false);
-		return NULL;
-	}
-}
-
-// Returns the source entity alias (row domain)
-// Taking into consideration transpose
-static const char *_AlgebraicExpression_Operand_Source
-(
-	AlgebraicExpression *root,  // Root of expression.
-	bool transposed             // Is root transposed
-) {
-	return (transposed) ? root->operand.dest : root->operand.src;
-}
-
-// Returns the source entity alias (row domain)
-// Taking into consideration transpose
-static const char *_AlgebraicExpression_Source
-(
-	AlgebraicExpression *root,  // Root of expression.
-	bool transposed             // Is root transposed
-) {
-	ASSERT(root);
-	switch(root->type) {
-	case AL_OPERATION:
-		return _AlgebraicExpression_Operation_Source(root, transposed);
-	case AL_OPERAND:
-		return _AlgebraicExpression_Operand_Source(root, transposed);
-	default:
-		ASSERT("Unknown algebraic expression node type" && false);
-		return NULL;
-	}
-}
-
-// Returns the source entity alias, row domain.
-const char *AlgebraicExpression_Source
-(
-	AlgebraicExpression *root   // Root of expression.
-) {
-	ASSERT(root);
-	return _AlgebraicExpression_Source(root, false);
-
-}
-
-// Returns the destination entity alias represented by the right-most operand
-// column domain
-const char *AlgebraicExpression_Destination
-(
-	AlgebraicExpression *root   // Root of expression.
-) {
-	ASSERT(root);
-	// Dest(exp) = Src(Transpose(exp))
-	// Gotta love it!
-	return _AlgebraicExpression_Source(root, true);
-}
 
 // Returns the first edge alias encountered.
 // if no edge alias is found NULL is returned

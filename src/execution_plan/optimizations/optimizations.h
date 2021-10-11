@@ -14,7 +14,7 @@
 void orderExpressions(
 	QueryGraph *qg,                 // queryGraph containing expression entity data
 	AlgebraicExpression **exps,     // expressions to order
-	uint exps_count,                // number of expressions
+	uint *exps_count,               // number of expressions
 	const FT_FilterNode *filters,   // filters
 	rax *bound_vars                 // previously-bound variables
 );

@@ -122,11 +122,11 @@ static inline bool _should_divide_expression
 			_referred_entity(e->dest->alias));              // destination node is referenced
 }
 
-// variable length expression must contain only a single operand, the edge being
-// traversed multiple times
-// in cases such as (:labelA)-[e*]->(:labelB) both label A and B
+// variable length expression must contain only a single operand: the edge being
+// traversed, in cases such as (:labelA)-[e*]->(:labelB) both label A and B
 // are applied via a label matrix operand, this function migrates A and B from a
-// variable length expression to other expressions
+// variable length expression to new expressions
+// or completely discards them when possible
 static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps
 (
 	const QueryGraph *qg,
@@ -149,38 +149,57 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps
 			continue;
 		}
 
+		//----------------------------------------------------------------------
+		// handle source
+		//----------------------------------------------------------------------
+
 		// expression contains a variable length edge
 		QGNode *src = QueryGraph_GetNodeByAlias(qg,
-				AlgebraicExpression_Source(exp));
+				AlgebraicExpression_Src(exp));
 
 		// a variable length expression with a labeled source node
 		// we only care about the source label matrix, when it comes to
 		// the first expression, as in the following expressions
 		// src is the destination of the previous expression
 		AlgebraicExpression *op = NULL;
-		if(expIdx == 0) {
-			if(QGNode_Labeled(src)) {
-				// remove src node matrix from expression
-				op = AlgebraicExpression_RemoveSource(&exp);
+		if(QGNode_Labeled(src)) {
+			// remove src node matrix from expression
+			op = AlgebraicExpression_RemoveSource(&exp);
+		}
+
+		if(op != NULL) {
+			if(expIdx == 0) {
+				array_append(res, op);
+			} else {
+				AlgebraicExpression_Free(op);
 			}
-			if(op != NULL) array_append(res, op);
 		}
 
 		array_append(res, exp);
 
-		// If the expression has a labeled destination, separate it into its own expression.
+		// if the expression has a labeled destination,
+		// separate it into its own expression
 		op = NULL;
-		QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(exp));
+
+		//----------------------------------------------------------------------
+		// handle destination
+		//----------------------------------------------------------------------
+
+		QGNode *dest = QueryGraph_GetNodeByAlias(qg,
+				AlgebraicExpression_Dest(exp));
+
 		if(QGNode_Labeled(dest)) {
 			// remove dest node matrix from expression
 			op = AlgebraicExpression_RemoveDest(&exp);
 		}
+
 		if(op != NULL) {
-			// see if dest exp can be prepended to the following expression
-			// if not create a new expression
+			// remove destination if following expression isn't a
+			// variable length edge (src/dest sharing) otherwise introduce a new
+			// label expression
 			if(expIdx < expCount - 1 &&
 			   !_AlgebraicExpression_ContainsVariableLengthEdge(qg, expressions[expIdx + 1])) {
-				expressions[expIdx + 1] = _AlgebraicExpression_MultiplyToTheLeft(op, expressions[expIdx + 1]);
+				AlgebraicExpression_Free(op);
 			} else {
 				array_append(res, op);
 			}
@@ -251,7 +270,7 @@ static void _AlgebraicExpression_ExpandNodeOperand
 	ASSERT(exp->operand.diagonal == true);
 
 	const  char  *l      =  NULL;
-	const  char  *alias  =  AlgebraicExpression_Source(exp);
+	const  char  *alias  =  AlgebraicExpression_Src(exp);
 
 	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
 	ASSERT(n != NULL);
@@ -636,16 +655,16 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 			if(i > 0) {
 				AlgebraicExpression *prev_exp = sub_exps[i-1];
 				// make sure expression i follows previous expression
-				QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
-				QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(prev_exp));
+				QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Src(exp));
+				QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Dest(prev_exp));
 				ASSERT(src == dest);
 
 				// exp[i] shares a label matrix with exp[i-1]
 				// remove redundancy
-				if(QGNode_Labeled(src)) {
-					AlgebraicExpression *redundent = AlgebraicExpression_RemoveSource(&exp);
-					AlgebraicExpression_Free(redundent);
-				}
+				//if(QGNode_Labeled(src)) {
+				//	AlgebraicExpression *redundent = AlgebraicExpression_RemoveSource(&exp);
+				//	AlgebraicExpression_Free(redundent);
+				//}
 			}
 			// expression can not be empty
 			ASSERT(AlgebraicExpression_OperandCount(exp) > 0);

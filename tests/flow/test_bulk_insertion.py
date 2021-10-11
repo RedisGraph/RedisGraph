@@ -437,65 +437,101 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         self.env.assertIn('5 relations created', res.output)
 
         graph = Graph(graphname, redis_con)
+
+        #-----------------------------------------------------------------------
         expected_result = [["Binghamton"],
                            ["Connecticut"],
                            ["Geneseo"],
                            ["New York"],
                            ["Stamford"],
                            ["US"]]
-        query_result = graph.query('MATCH (a) RETURN a.name ORDER BY a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Place) RETURN a.name ORDER BY a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
+        queries = [
+                'MATCH (a) RETURN a.name ORDER BY a.name',
+                'MATCH (a:Place) RETURN a.name ORDER BY a.name']
+        for q in queries:
+            query_result = graph.query(q)
+            self.env.assertEquals(query_result.result_set, expected_result)
 
+        #-----------------------------------------------------------------------
         expected_result = [["Binghamton"],
                            ["Geneseo"],
                            ["Stamford"]]
-        query_result = graph.query('MATCH (a:Place:City) RETURN a.name ORDER BY a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:City:Place) RETURN a.name ORDER BY a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
+        queries = [
+                'MATCH (a:City) RETURN a.name ORDER BY a.name',
+                'MATCH (a:Place:City) RETURN a.name ORDER BY a.name',
+                'MATCH (a:City:Place) RETURN a.name ORDER BY a.name']
+
+        for q in queries:
+            query_result = graph.query(q)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
 
         expected_result = [["Connecticut"],
                            ["New York"]]
-        query_result = graph.query('MATCH (a:Place:State) RETURN a.name ORDER BY a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:State:Place) RETURN a.name ORDER BY a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
+        queries = [
+                'MATCH (a:State) RETURN a.name ORDER BY a.name',
+                'MATCH (a:Place:State) RETURN a.name ORDER BY a.name',
+                'MATCH (a:State:Place) RETURN a.name ORDER BY a.name']
 
+        for q in queries:
+            query_result = graph.query(q)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
+        #-----------------------------------------------------------------------
         expected_result = [["Stamford", "Connecticut"],
                            ["Binghamton", "New York"],
                            ["Geneseo", "New York"],
                            ["Connecticut", "US"],
                            ["New York", "US"]]
-        query_result = graph.query('MATCH (a:Place)-[:PART_OF]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Place)-[]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a)-[]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Place)-[]->(b) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
+        queries = [
+                'MATCH (a)-[{rel}]->(b) RETURN a.name, b.name ORDER BY b.name, a.name',
+                'MATCH (a)-[{rel}]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+                'MATCH (a:Place)-[{rel}]->(b) RETURN a.name, b.name ORDER BY b.name, a.name',
+                'MATCH (a:Place)-[{rel}]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name']
 
+        relations = ['', ':PART_OF']
+        for r in relations:
+            for q in queries:
+                query_result = graph.query(q.format(rel=r))
+                self.env.assertEquals(query_result.result_set, expected_result)
+
+        #-----------------------------------------------------------------------
         expected_result = [["Connecticut", "US"],
                            ["New York", "US"]]
-        query_result = graph.query('MATCH (a:Place:State)-[:PART_OF]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Place)-[]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:State)-[]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Place:State)-[]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a)-[]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:State:Place)-[]->(b) RETURN a.name, b.name ORDER BY b.name, a.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
+        queries = [
+            'MATCH (a)-[{rel}]->(b:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a)-[{rel}]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a)-[{rel}]->(b:Country:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:Place)-[{rel}]->(b:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:Place)-[{rel}]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:Place)-[{rel}]->(b:Country:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State)-[{rel}]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State)-[{rel}]->(b:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State)-[{rel}]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State)-[{rel}]->(b:Country:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:Place:State)-[{rel}]->(b) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:Place:State)-[{rel}]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:Place:State)-[{rel}]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:Place:State)-[{rel}]->(b:Country:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State:Place)-[{rel}]->(b) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State:Place)-[{rel}]->(b:Place) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State:Place)-[{rel}]->(b:Place:Country) RETURN a.name, b.name ORDER BY b.name, a.name',
+            'MATCH (a:State:Place)-[{rel}]->(b:Country:Place) RETURN a.name, b.name ORDER BY b.name, a.name']
 
+        relations = ['', ':PART_OF']
+        for r in relations:
+            for q in queries:
+                query_result = graph.query(q.format(rel=r))
+                self.env.assertEquals(query_result.result_set, expected_result)
+
+    # Verify that nodes with multiple labels are created correctly
+    def test11_social_multiple_labels(self):
         # Create the social graph with multi-labeled nodes
         graphname = "multilabel_social"
         graph = Graph(graphname, redis_con)
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
+
+        runner = CliRunner()
         res = runner.invoke(bulk_insert, ['--port', port,
                                           '--nodes-with-label', "Person:Visitor", csv_path + 'Person.csv',
                                           '--nodes-with-label', "Country:Place", csv_path + 'Country.csv',
@@ -508,6 +544,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         self.env.assertIn('27 nodes created', res.output)
         self.env.assertIn('56 relations created', res.output)
 
+        #-----------------------------------------------------------------------
         # Verify that the Person and Visitor labels both exist and produce the same results when queried
         expected_result = [['Ailon Velger', 32, 'male', 'married', 2],
                            ['Alon Fital', 32, 'male', 'married', 1],
@@ -523,13 +560,17 @@ class testGraphBulkInsertFlow(FlowTestsBase):
                            ['Shelly Laslo Rooz', 31, 'female', 'married', 9],
                            ['Tal Doron', 32, 'male', 'single', 6],
                            ['Valerie Abigail Arad', 31, 'female', 'married', 10]]
-        query_result = graph.query('MATCH (p:Person) RETURN p.name, p.age, p.gender, p.status, ID(p) ORDER BY p.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (p:Visitor) RETURN p.name, p.age, p.gender, p.status, ID(p) ORDER BY p.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (p:Person:Visitor) RETURN p.name, p.age, p.gender, p.status, ID(p) ORDER BY p.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
 
+        queries = [
+                'MATCH (p:Person) RETURN p.name, p.age, p.gender, p.status, ID(p) ORDER BY p.name',
+                'MATCH (p:Visitor) RETURN p.name, p.age, p.gender, p.status, ID(p) ORDER BY p.name',
+                'MATCH (p:Person:Visitor) RETURN p.name, p.age, p.gender, p.status, ID(p) ORDER BY p.name']
+
+        for q in queries:
+            query_result = graph.query(q)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
+        #-----------------------------------------------------------------------
         # Verify that the Country and Place labels both exist and produce the same results when queried
         expected_result = [['Andora', 21],
                            ['Canada', 18],
@@ -544,13 +585,17 @@ class testGraphBulkInsertFlow(FlowTestsBase):
                            ['Russia', 23],
                            ['Thailand', 26],
                            ['USA', 14]]
-        query_result = graph.query('MATCH (c:Country) RETURN c.name, ID(c) ORDER BY c.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (c:Place) RETURN c.name, ID(c) ORDER BY c.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (c:Country:Place) RETURN c.name, ID(c) ORDER BY c.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
 
+        queries = [
+                'MATCH (c:Country) RETURN c.name, ID(c) ORDER BY c.name',
+                'MATCH (c:Place) RETURN c.name, ID(c) ORDER BY c.name',
+                'MATCH (c:Country:Place) RETURN c.name, ID(c) ORDER BY c.name']
+
+        for q in queries:
+            query_result = graph.query(q)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
+        #-----------------------------------------------------------------------
         # Validate results when performing traversals using all combinations of labels
         expected_result = [['Ailon Velger', 'friend', 'Noam Nativ'],
                            ['Alon Fital', 'friend', 'Gal Derriere'],
@@ -565,25 +610,37 @@ class testGraphBulkInsertFlow(FlowTestsBase):
                            ['Ailon Velger', 'married', 'Jane Chernomorin'],
                            ['Alon Fital', 'married', 'Lucy Yanfital'],
                            ['Ori Laslo', 'married', 'Shelly Laslo Rooz']]
-        query_result = graph.query('MATCH (a:Person)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Person:Visitor)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a)-[e:KNOWS]->(b:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a)-[e:KNOWS]->(b:Visitor:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Person)-[e:KNOWS]->(b:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor)-[e:KNOWS]->(b:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Person:Visitor)-[e:KNOWS]->(b:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e:KNOWS]->(b:Person:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e]->(b:Person:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
+        queries = [
+                'MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a)-[e:KNOWS]->(b:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a)-[e:KNOWS]->(b:Visitor:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a)-[e:KNOWS]->(b:Person:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person)-[e:KNOWS]->(b:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person)-[e:KNOWS]->(b:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person)-[e:KNOWS]->(b:Person:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person)-[e:KNOWS]->(b:Visitor:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor)-[e:KNOWS]->(b:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor)-[e:KNOWS]->(b:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor)-[e:KNOWS]->(b:Person:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor)-[e:KNOWS]->(b:Visitor:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:KNOWS]->(b:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:KNOWS]->(b:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:KNOWS]->(b:Person:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:KNOWS]->(b:Visitor:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:KNOWS]->(b) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:KNOWS]->(b:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:KNOWS]->(b:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:KNOWS]->(b:Person:Visitor) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:KNOWS]->(b:Visitor:Person) RETURN a.name, e.relation, b.name ORDER BY e.relation, a.name, b.name']
 
+        for q in queries:
+            query_result = graph.query(q)
+            self.env.assertEquals(query_result.result_set, expected_result)
+
+        #-----------------------------------------------------------------------
         expected_result = [['Alon Fital', 'business', 'Prague'],
                            ['Alon Fital', 'business', 'USA'],
                            ['Boaz Arad', 'business', 'Netherlands'],
@@ -627,25 +684,38 @@ class testGraphBulkInsertFlow(FlowTestsBase):
                            ['Tal Doron', 'pleasure', 'USA'],
                            ['Valerie Abigail Arad', 'pleasure', 'Netherlands'],
                            ['Valerie Abigail Arad', 'pleasure', 'Russia']]
-        query_result = graph.query('MATCH (a:Person)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e:VISITED]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e:VISITED]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e]->(b:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor:Person)-[e]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Visitor)-[e:VISITED]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a:Person)-[e:VISITED]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a)-[e]->(b:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
-        query_result = graph.query('MATCH (a)-[e]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        self.env.assertEquals(query_result.result_set, expected_result)
+
+        queries = [
+                'MATCH (a)-[e]->(b:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a)-[e]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a)-[e]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a)-[e]->(b:Country:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person)-[e:VISITED]->(b:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person)-[e:VISITED]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person)-[e:VISITED]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person)-[e:VISITED]->(b:Country:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor)-[e:VISITED]->(b:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor)-[e:VISITED]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor)-[e:VISITED]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor)-[e:VISITED]->(b:Country:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e]->(b:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:VISITED]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:VISITED]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Person:Visitor)-[e:VISITED]->(b:Country:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e]->(b:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:VISITED]->(b:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:VISITED]->(b:Place:Country) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name',
+                'MATCH (a:Visitor:Person)-[e:VISITED]->(b:Country:Place) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name']
+
+        for q in queries:
+            query_result = graph.query(q)
+            self.env.assertEquals(query_result.result_set, expected_result)
+

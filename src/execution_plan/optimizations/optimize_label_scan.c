@@ -92,8 +92,8 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	ASSERT(found == true);
 
 	AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
-			true, AlgebraicExpression_Source(operand),
-			AlgebraicExpression_Destination(operand), NULL, min_label_str);
+			true, AlgebraicExpression_Src(operand),
+			AlgebraicExpression_Dest(operand), NULL, min_label_str);
 
 	_AlgebraicExpression_InplaceRepurpose(operand, replacement);
 }

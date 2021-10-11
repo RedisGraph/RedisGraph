@@ -47,8 +47,8 @@ int TraverseOrder_LabelsScore
 	ASSERT(qg  != NULL);
 
 	int         score       =  0;
-	const char  *src        =  AlgebraicExpression_Source(exp);
-	const char  *dest       =  AlgebraicExpression_Destination(exp);
+	const char  *src        =  AlgebraicExpression_Src(exp);
+	const char  *dest       =  AlgebraicExpression_Dest(exp);
 	QGNode      *src_node   =  QueryGraph_GetNodeByAlias(qg, src);
 	QGNode      *dest_node  =  QueryGraph_GetNodeByAlias(qg, dest);
 
@@ -92,8 +92,8 @@ int TraverseOrder_FilterExistenceScore
 
 	int          score          =  0;
 	void         *frequency     =  NULL;  // independent occurrences
-	const  char  *src           =  AlgebraicExpression_Source(exp);
-	const  char  *dest          =  AlgebraicExpression_Destination(exp);
+	const  char  *src           =  AlgebraicExpression_Src(exp);
+	const  char  *dest          =  AlgebraicExpression_Dest(exp);
 	const  char  *edge          =  AlgebraicExpression_Edge(exp);
 
 	// varible length expression shouldn't be scored on its source or destination
@@ -141,8 +141,8 @@ int TraverseOrder_BoundVariableScore
 	int         score       =  0;
 	bool        src_bound   =  false;
 	bool        dest_bound  =  false;
-	const char* src         =  AlgebraicExpression_Source(exp);
-	const char* dest        =  AlgebraicExpression_Destination(exp);
+	const char* src         =  AlgebraicExpression_Src(exp);
+	const char* dest        =  AlgebraicExpression_Dest(exp);
 
 	src_bound = raxFind(bound_vars, (unsigned char *)src,
 			strlen(src)) != raxNotFound;
@@ -279,7 +279,13 @@ void TraverseOrder_ScoreExpressions
 			score = TraverseOrder_FilterExistenceScore(exp, qg,
 					filtered_entities);
 			if(score > 0) {
-				score += currmax;
+				if(_AlgebraicExpression_IsVarLen(exp, qg)) {
+					// variable length traversal should always "lose" to its
+					// direct prev and next expressions
+					score = currmax/2;
+				} else {
+					score += currmax;
+				}
 				scored_exp->score += score;
 				max = MAX(max, scored_exp->score);
 			}

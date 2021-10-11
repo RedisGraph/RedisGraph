@@ -376,8 +376,8 @@ void reduce_scan_op
 			ASSERT(found == true);
 
 			AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
-					true, AlgebraicExpression_Source(operand),
-					AlgebraicExpression_Destination(operand), NULL, scan->n.label);
+					true, AlgebraicExpression_Src(operand),
+					AlgebraicExpression_Dest(operand), NULL, scan->n.label);
 
 			_AlgebraicExpression_InplaceRepurpose(operand, replacement);
 		}

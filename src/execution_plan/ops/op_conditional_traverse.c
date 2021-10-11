@@ -91,11 +91,11 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
-	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae), &op->srcNodeIdx);
 	UNUSED(aware);
 	ASSERT(aware == true);
 
-	const char *dest = AlgebraicExpression_Destination(ae);
+	const char *dest = AlgebraicExpression_Dest(ae);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
 
 	const char *edge = AlgebraicExpression_Edge(ae);

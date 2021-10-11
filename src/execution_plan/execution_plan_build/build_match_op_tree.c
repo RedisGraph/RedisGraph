@@ -50,10 +50,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		uint expCount = array_len(exps);
 
 		// Reorder exps, to the most performant arrangement of evaluation.
-		orderExpressions(qg, exps, expCount, ft, bound_vars);
+		orderExpressions(qg, exps, &expCount, ft, bound_vars);
 
 		// Create the SCAN operation that will be the tail of the traversal chain.
-		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
+		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Src(exps[0]));
 
 		uint label_count = QGNode_LabelCount(src);
 		if(label_count > 0) {
@@ -61,7 +61,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			ASSERT(AlgebraicExpression_DiagonalOperand(ae_src, 0));
 
 			const char *label = AlgebraicExpression_Label(ae_src);
-			const char *alias = AlgebraicExpression_Source(ae_src);
+			const char *alias = AlgebraicExpression_Src(ae_src);
 			ASSERT(label != NULL);
 			ASSERT(alias != NULL);
 

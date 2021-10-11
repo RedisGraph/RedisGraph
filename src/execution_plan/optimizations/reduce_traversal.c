@@ -34,7 +34,7 @@ static inline bool _isInSubExecutionPlan(OpBase *op) {
 static void _removeRedundantTraversal(ExecutionPlan *plan, OpCondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
 	if(AlgebraicExpression_OperandCount(ae) == 1 &&
-	   !RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae))) {
+	   !RG_STRCMP(AlgebraicExpression_Src(ae), AlgebraicExpression_Dest(ae))) {
 		ExecutionPlan_RemoveOp(plan, (OpBase *)traverse);
 		OpBase_Free((OpBase *)traverse);
 	}
@@ -74,7 +74,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		 * in this case there will be a traverse operation which will
 		 * filter our dest nodes (b) which aren't of type B. */
 
-		if(!RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae)) &&
+		if(!RG_STRCMP(AlgebraicExpression_Src(ae), AlgebraicExpression_Dest(ae)) &&
 		   AlgebraicExpression_OperandCount(ae) == 1 &&
 		   AlgebraicExpression_DiagonalOperand(ae, 0)) continue;
 
@@ -84,7 +84,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			ExecutionPlan_BoundVariables(op->children[i], bound_vars);
 		}
 
-		const char *dest = AlgebraicExpression_Destination(ae);
+		const char *dest = AlgebraicExpression_Dest(ae);
 		if(raxFind(bound_vars, (unsigned char *)dest, strlen(dest)) == raxNotFound) {
 			// The destination could not be resolved, cannot optimize.
 			raxFree(bound_vars);
@@ -112,7 +112,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			 * to perform label filtering, but in case a node is already
 			 * resolved this filtering is redundent and should be removed. */
 			OpBase *t;
-			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, AlgebraicExpression_Source(ae));
+			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, AlgebraicExpression_Src(ae));
 			if(QGNode_Labeled(src)) {
 				t = op->children[0];
 				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
@@ -121,7 +121,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 				}
 			}
 			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph,
-													 AlgebraicExpression_Destination(ae));
+													 AlgebraicExpression_Dest(ae));
 			if(QGNode_Labeled(dest)) {
 				t = op->parent;
 				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
