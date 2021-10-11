@@ -270,6 +270,8 @@ pull_index:
 			FilterTree_Free(op->unresolved_filters);
 			op->unresolved_filters = NULL;
 		}
+		
+		UpdateCurrentAwareIds(op);
 
 		// rebuild index query, probably relies on runtime values
 		// resolve runtime variables within filter
@@ -284,8 +286,6 @@ pull_index:
 			raxFree(entities);
 		}
 		#endif
-
-		UpdateCurrentAwareIds(op);
 
 		// convert filter into a RediSearch query
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
