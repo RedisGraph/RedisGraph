@@ -38,15 +38,16 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	IndexesContext *pdata   = rm_malloc(sizeof(IndexesContext));
-	pdata->gc               = gc;
-	pdata->out              = array_new(SIValue, 6);
-	pdata->type             = IDX_EXACT_MATCH;
-	pdata->node_schema_id   = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
-	pdata->edge_schema_id   = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
-	pdata->yield_type       = NULL;
-	pdata->yield_label      = NULL;
-	pdata->yield_properties = NULL;
+	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
+	pdata->gc                = gc;
+	pdata->out               = array_new(SIValue, 6);
+	pdata->type              = IDX_EXACT_MATCH;
+	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
+	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
+	pdata->yield_type        = NULL;
+	pdata->yield_label       = NULL;
+	pdata->yield_properties  = NULL;
+	pdata->yield_entity_type = NULL;
 
 	uint yield_count = array_len(yield);
 	for(uint i = 0; i < yield_count; i++) {
