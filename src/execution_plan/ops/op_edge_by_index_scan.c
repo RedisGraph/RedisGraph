@@ -35,7 +35,6 @@ OpBase *NewEdgeIndexScanOp
 (
 	const ExecutionPlan *plan,
 	Graph *g,
-	bool isTransposed,
 	QGEdge *e,
 	RSIndex *idx,
 	FT_FilterNode *filter
@@ -56,7 +55,6 @@ OpBase *NewEdgeIndexScanOp
 	op->iter                 =  NULL;
 	op->filter               =  filter;
 	op->child_record         =  NULL;
-	op->isTransposed         = isTransposed;
 	op->current_src_node_id  =  NULL;
 	op->current_dest_node_id =  NULL;
 	op->unresolved_filters   =  NULL;
@@ -91,11 +89,6 @@ static OpResult EdgeIndexScanInit
 	// missing nodes will be resolved by this operation
 	const  char  *src_alias   =  QGNode_Alias(QGEdge_Src(op->edge));
 	const  char  *dest_alias  =  QGNode_Alias(QGEdge_Dest(op->edge));
-	if(op->isTransposed) {
-		const  char  *tmp = src_alias;
-		src_alias = dest_alias;
-		dest_alias = tmp;
-	}
 
 	op->srcAware   =  OpBase_ChildrenAware((OpBase *)op, src_alias, &op->srcRecIdx);
 	op->destAware  =  OpBase_ChildrenAware((OpBase *)op, dest_alias, &op->destRecIdx);
@@ -270,7 +263,7 @@ pull_index:
 			FilterTree_Free(op->unresolved_filters);
 			op->unresolved_filters = NULL;
 		}
-		
+
 		UpdateCurrentAwareIds(op);
 
 		// rebuild index query, probably relies on runtime values

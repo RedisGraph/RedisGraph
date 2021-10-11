@@ -528,3 +528,62 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         query_result = redis_graph.query(query)
         expected_result = ["Roi"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
+
+        query = "MATCH (n:person {name: 'Roi'})-[f:friend]->(m:person) WHERE f.created_at = 1 RETURN n.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Edge By Index Scan', plan)
+        self.env.assertIn('Node By Label Scan', plan)
+        self.env.assertIn('Filter', plan)
+        query_result = redis_graph.query(query)
+        expected_result = ["Roi"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)
+
+        query = "MATCH (n:person {name: 'Alon'})-[f:friend]->(m:person) WHERE f.created_at = 1 RETURN n.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Edge By Index Scan', plan)
+        self.env.assertIn('Node By Label Scan', plan)
+        self.env.assertIn('Filter', plan)
+        query_result = redis_graph.query(query)
+        self.env.assertEquals(query_result.result_set, [])
+
+        query = "MATCH (n)<-[f:friend]-(m) WHERE f.created_at = 1 RETURN n.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Edge By Index Scan', plan)
+        self.env.assertNotIn('All Node Scan', plan)
+        query_result = redis_graph.query(query)
+        expected_result = ["Alon"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)
+
+        query = "MATCH (n:person)<-[f:friend]-(m) WHERE f.created_at = 1 RETURN n.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Edge By Index Scan', plan)
+        self.env.assertIn('Node By Label Scan', plan)
+        query_result = redis_graph.query(query)
+        expected_result = ["Alon"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)
+
+        query = "MATCH (n:person)<-[f:friend]-(m:person) WHERE f.created_at = 1 RETURN n.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Edge By Index Scan', plan)
+        self.env.assertIn('Node By Label Scan', plan)
+        self.env.assertIn('Filter', plan)
+        query_result = redis_graph.query(query)
+        expected_result = ["Alon"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)
+
+        query = "MATCH (n:person {name: 'Roi'})<-[f:friend]-(m:person) WHERE f.created_at = 1 RETURN n.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Edge By Index Scan', plan)
+        self.env.assertIn('Node By Label Scan', plan)
+        self.env.assertIn('Filter', plan)
+        query_result = redis_graph.query(query)
+        self.env.assertEquals(query_result.result_set, [])
+
+        query = "MATCH (n:person {name: 'Alon'})<-[f:friend]-(m:person) WHERE f.created_at = 1 RETURN n.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Edge By Index Scan', plan)
+        self.env.assertIn('Node By Label Scan', plan)
+        self.env.assertIn('Filter', plan)
+        query_result = redis_graph.query(query)
+        expected_result = ["Alon"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)

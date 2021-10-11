@@ -17,7 +17,6 @@ typedef struct {
 	bool rebuild_index_query;           // should we rebuild RediSearch index query for each input record
 	RSIndex *idx;                       // index to query
 	QGEdge *edge;                       // edge scanned
-	bool isTransposed;
 	int edgeRecIdx;                     // record index of source node
 	int srcRecIdx;                      // record index of destination node
 	int destRecIdx;                     // record index of edge
@@ -36,7 +35,6 @@ OpBase *NewEdgeIndexScanOp
 (
 	const ExecutionPlan *plan,
 	Graph *g,
-	bool isTransposed,
 	QGEdge *e,
 	RSIndex *idx,
 	FT_FilterNode *filter

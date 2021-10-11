@@ -79,7 +79,7 @@ bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx) {
 	for (int i = 0; i < op->childCount; i++) {
 		OpBase *child = op->children[i];
 		if(op->plan == child->plan && child->modifies != NULL) {
-			int count = array_len(op->modifies);
+			int count = array_len(child->modifies);
 			for (int i = 0; i < count; i++) {
 				if(strcmp(alias, child->modifies[i]) == 0) {
 					rax *mapping = ExecutionPlan_GetMappings(op->plan);
@@ -88,8 +88,8 @@ bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx) {
 					return true;				
 				}
 			}
-			if(OpBase_ChildrenAware(child, alias, idx)) return true;
 		}
+		if(OpBase_ChildrenAware(child, alias, idx)) return true;
 	}
 	
 	return false;
