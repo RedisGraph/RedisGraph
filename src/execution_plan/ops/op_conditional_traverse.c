@@ -110,7 +110,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 		 * Prepare all necessary information for collecting matching edges. */
 		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
+		op->edge_ctx = EdgeTraverseCtx_New(ae, e, edge_idx);
 	}
 
 	return (OpBase *)op;
@@ -136,7 +136,11 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* If we're required to update an edge and have one queued, we can return early.
 	 * Otherwise, try to get a new pair of source and destination nodes. */
-	if(op->edge_ctx && Traverse_SetEdge(op->edge_ctx, op->r)) return OpBase_CloneRecord(op->r);
+	if(op->r         != NULL  &&
+	   op->edge_ctx  != NULL  &&
+	   EdgeTraverseCtx_SetEdge(op->edge_ctx, op->r)) {
+		return OpBase_CloneRecord(op->r);
+	}
 
 	bool depleted = true;
 	NodeID src_id = INVALID_ENTITY_ID;
@@ -190,9 +194,9 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	if(op->edge_ctx) {
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		// Collect all appropriate edges connecting the current pair of endpoints.
-		Traverse_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), ENTITY_GET_ID(&destNode));
+		EdgeTraverseCtx_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), ENTITY_GET_ID(&destNode));
 		// We're guaranteed to have at least one edge.
-		Traverse_SetEdge(op->edge_ctx, op->r);
+		EdgeTraverseCtx_SetEdge(op->edge_ctx, op->r);
 	}
 
 	return OpBase_CloneRecord(op->r);
@@ -207,7 +211,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
 	op->record_count = 0;
 
-	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
+	if(op->edge_ctx) EdgeTraverseCtx_Reset(op->edge_ctx);
 
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(&op->iter);
@@ -245,7 +249,7 @@ static void CondTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->edge_ctx) {
-		Traverse_FreeEdgeCtx(op->edge_ctx);
+		EdgeTraverseCtx_Free(op->edge_ctx);
 		op->edge_ctx = NULL;
 	}
 

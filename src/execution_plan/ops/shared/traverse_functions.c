@@ -7,8 +7,13 @@
 #include "traverse_functions.h"
 #include "../../../query_ctx.h"
 
-// Collect edges between the source and destination nodes.
-static void _Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest) {
+// collect edges between the source and destination nodes
+static void _Traverse_CollectEdges
+(
+	EdgeTraverseCtx *edge_ctx,
+	NodeID src,
+	NodeID dest
+) {
 	Graph *g = QueryCtx_GetGraph();
 	uint count = array_len(edge_ctx->edgeRelationTypes);
 	for(uint i = 0; i < count; i++) {
@@ -20,12 +25,16 @@ static void _Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID
 	}
 }
 
-/* Collects traversed edge relations.
- * e.g. [e:R0|R1]
- * edge_ctx->edgeRelationTypes will hold both R0 and R1 IDs.
- * in the case where no relationship types are specified
- * edge_ctx->edgeRelationTypes will contain GRAPH_NO_RELATION. */
-static void _Traverse_SetRelationTypes(EdgeTraverseCtx *edge_ctx, QGEdge *e) {
+// collects traversed edge relations.
+// e.g. [e:R0|R1]
+// edge_ctx->edgeRelationTypes will hold both R0 and R1 IDs.
+// in the case where no relationship types are specified
+// edge_ctx->edgeRelationTypes will contain GRAPH_NO_RELATION
+static void _Traverse_SetRelationTypes
+(
+	EdgeTraverseCtx *edge_ctx,
+	QGEdge *e
+) {
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count > 0) {
 		array_clone(edge_ctx->edgeRelationTypes, e->reltypeIDs);
@@ -35,8 +44,12 @@ static void _Traverse_SetRelationTypes(EdgeTraverseCtx *edge_ctx, QGEdge *e) {
 	}
 }
 
-// Determine the edge directions we need to collect.
-static GRAPH_EDGE_DIR _Traverse_SetDirection(AlgebraicExpression *ae, const QGEdge *e) {
+// determine the edge directions we need to collect
+static GRAPH_EDGE_DIR _Traverse_SetDirection
+(
+	AlgebraicExpression *ae,
+	const QGEdge *e
+) {
 	// the default traversal direction is outgoing
 	GRAPH_EDGE_DIR dir = GRAPH_EDGE_DIR_OUTGOING;
 
@@ -67,7 +80,15 @@ static GRAPH_EDGE_DIR _Traverse_SetDirection(AlgebraicExpression *ae, const QGEd
 	return dir;
 }
 
-EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx) {
+EdgeTraverseCtx *EdgeTraverseCtx_New
+(
+	AlgebraicExpression *ae,
+	QGEdge *e,
+	int idx
+) {
+	ASSERT(e != NULL);
+	ASSERT(ae != NULL);
+
 	EdgeTraverseCtx *edge_ctx = rm_malloc(sizeof(EdgeTraverseCtx));
 	edge_ctx->edges = array_new(Edge, 32); // Instantiate array to collect matching edges.
 	_Traverse_SetRelationTypes(edge_ctx, e); // Build the array of relation type IDs.
@@ -76,9 +97,16 @@ EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx
 	return edge_ctx;
 }
 
-/* Populate the traverse context's edges array with all edges of the appropriate
- * direction connecting the source and destination nodes. */
-void Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest) {
+// populate the traverse context's edges array with all edges of the appropriate
+// direction connecting the source and destination nodes
+void EdgeTraverseCtx_CollectEdges
+(
+	EdgeTraverseCtx *edge_ctx,
+	NodeID src,
+	NodeID dest
+) {
+	ASSERT(edge_ctx != NULL);
+
 	switch(edge_ctx->direction) {
 	case GRAPH_EDGE_DIR_OUTGOING:
 		_Traverse_CollectEdges(edge_ctx, src, dest);
@@ -95,21 +123,45 @@ void Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest) {
 	}
 }
 
-bool Traverse_SetEdge(EdgeTraverseCtx *edge_ctx, Record r) {
-	// Return false if all edges have been consumed.
-	if(!array_len(edge_ctx->edges)) return false;
+bool EdgeTraverseCtx_SetEdge
+(
+	EdgeTraverseCtx *edge_ctx,
+	Record r
+) {
+	ASSERT(r != NULL);
+	ASSERT(edge_ctx != NULL);
 
-	// Pop an edge and add it to the Record.
+	// return false if all edges have been consumed
+	if(array_len(edge_ctx->edges) == 0) return false;
+
+	// pop an edge and add it to the Record
 	Edge e = array_pop(edge_ctx->edges);
 	Record_AddEdge(r, edge_ctx->edgeRecIdx, e);
+
 	return true;
 }
 
-void Traverse_ResetEdgeCtx(EdgeTraverseCtx *edge_ctx) {
+int EdgeTraverseCtx_EdgeCount
+(
+	const EdgeTraverseCtx *edge_ctx
+) {
+	ASSERT(edge_ctx != NULL);
+	return array_len(edge_ctx->edges);
+}
+
+void EdgeTraverseCtx_Reset
+(
+	EdgeTraverseCtx *edge_ctx
+) {
+	ASSERT(edge_ctx != NULL);
+
 	array_clear(edge_ctx->edges);
 }
 
-void Traverse_FreeEdgeCtx(EdgeTraverseCtx *edge_ctx) {
+void EdgeTraverseCtx_Free
+(
+	EdgeTraverseCtx *edge_ctx
+) {
 	if(!edge_ctx) return;
 
 	array_free(edge_ctx->edges);
