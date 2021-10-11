@@ -40,7 +40,7 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 
 	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
 	pdata->gc                = gc;
-	pdata->out               = array_new(SIValue, 6);
+	pdata->out               = array_new(SIValue, 8);
 	pdata->type              = IDX_EXACT_MATCH;
 	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
 	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
