@@ -524,7 +524,8 @@ void Graph_GetEdgesConnectingNodes
 	NodeID srcID,
 	NodeID destID,
 	int r,
-	Edge **edges) {
+	Edge **edges
+) {
 	ASSERT(g);
 	ASSERT(edges);
 	ASSERT(r < Graph_RelationTypeCount(g));

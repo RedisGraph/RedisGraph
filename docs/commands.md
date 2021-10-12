@@ -260,6 +260,14 @@ Pattern predicates can be also negated and combined with the logical operators A
 MATCH (p:President), (s:State) WHERE NOT (p)-[:WON]->(s) AND (p)->[:governor]->(s) RETURN p, s
 ```
 
+Nodes can also be filtered by label:
+
+```sh
+MATCH (n)-[:R]->() WHERE n:L1 OR n:L2 RETURN n 
+```
+
+When possible, it is preferable to specify the label in the node pattern of the MATCH clause.
+
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
@@ -622,6 +630,7 @@ This section contains information on all supported functions from the Cypher que
 | -------             | :-----------                                                                |
 | endNode()           | Returns the destination node of a relationship.                             |
 | id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
+| hasLabels()         | Returns true if input node contains all specified labels, otherwise false.  |
 | labels()            | Returns a string representation of the label of a node.                     |
 | startNode()         | Returns the source node of a relationship.                                  |
 | timestamp()         | Returns the the amount of milliseconds since epoch.                         |
@@ -670,6 +679,7 @@ This section contains information on all supported functions from the Cypher que
 | -------     | :-----------                                                                                    |
 | left()      | Returns a string containing the specified number of leftmost characters of the original string  |
 | lTrim()     | Returns the original string with leading whitespace removed                                     |
+| replace()   | Returns a string in which all occurrences of a specified substring are replaced with the specified replacement string |
 | reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
 | right()     | Returns a string containing the specified number of rightmost characters of the original string |
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |

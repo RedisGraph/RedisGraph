@@ -304,4 +304,3 @@ void AlgebraicExpression_Free
 (
 	AlgebraicExpression *root  // Root node.
 );
-

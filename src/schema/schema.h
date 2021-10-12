@@ -58,4 +58,3 @@ void Schema_AddNodeToIndices(const Schema *s, const Node *n);
 
 /* Free schema. */
 void Schema_Free(Schema *s);
-
