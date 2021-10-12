@@ -525,5 +525,5 @@ class testIndexScanFlow(FlowTestsBase):
         redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: v})")
         result = redis_graph.query("UNWIND range(1, 5) AS id OPTIONAL MATCH (u:L1{id: 5}) RETURN u.id")
 
-        expected_result = [[1, True], [2, False], [5, False], [4, False], [3, False]]
+        expected_result = [[5], [5], [5], [5], [5]]
         self.env.assertEquals(result.result_set, expected_result)
