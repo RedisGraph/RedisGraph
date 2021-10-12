@@ -132,6 +132,7 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 		} else {
 			*ctx->yield_stopwords = SI_Array(0);
 		}
+		rm_free(stopwords);
 	}
 
 	return true;
