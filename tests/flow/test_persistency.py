@@ -7,7 +7,6 @@ from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-
 redis_con = None
 
 class testGraphPersistency(FlowTestsBase):

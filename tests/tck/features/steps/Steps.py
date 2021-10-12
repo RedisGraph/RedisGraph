@@ -37,7 +37,12 @@ def set_params(context):
     global params
 
     params = "CYPHER "
-    for row in context.table.rows:
+    heading_row = context.table.headings
+    if context.active_outline is not None:
+        heading_row = [item if item[0] != "<" else context.active_outline[item[1:-1]] for item in heading_row]
+    params += '='.join(heading_row) + ' '
+
+    for row in context.table:
         params += '='.join(row) + ' '
 
 @given(u'having executed')

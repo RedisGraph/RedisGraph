@@ -30,7 +30,6 @@
 
 Feature: Return2 - Return single expression (correctly projecting an expression)
 
-  @skip
   Scenario: [1] Arithmetic expressions should propagate null values
     Given any graph
     When executing query:

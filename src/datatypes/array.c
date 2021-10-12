@@ -35,6 +35,22 @@ uint32_t SIArray_Length(SIValue siarray) {
 	return array_len(siarray.array);
 }
 
+bool SIArray_ContainsType(SIValue siarray, SIType t) {
+	uint array_len = SIArray_Length(siarray);
+	for(uint i = 0; i < array_len; i++) {
+		SIValue elem = SIArray_Get(siarray, i);
+		if(SI_TYPE(elem) & t) return true;
+
+		// recursively check nested arrays
+		if(SI_TYPE(elem) == T_ARRAY) {
+			bool type_is_nested = SIArray_ContainsType(elem, t);
+			if(type_is_nested) return true;
+		}
+	}
+
+	return false;
+}
+
 SIValue SIArray_Clone(SIValue siarray) {
 	uint arrayLen = SIArray_Length(siarray);
 	SIValue newArray = SIArray_New(arrayLen);

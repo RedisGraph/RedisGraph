@@ -1,17 +1,17 @@
 # RedisGraph Client Libraries
 
-The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redislabs.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.  
+The full functionality of RedisGraph is available through `redis-cli` and the Redis API.  [RedisInsight](https://redis.com/redis-enterprise/redis-insight/) is a visual tool that provides capabilities to design, develop and optimize into a single easy-to-use environment, and has built-in support for RedisGraph.  
 In addition there are severeal client libraries to improve abstractions and allow for a more natural experience in a project's native language. Additionally, these clients take advantage of some RedisGraph features that may reduce network throughput in some circumstances.
 
 ## Currently available Libraries
 
 | Project                                                   | Language   | License | Author                                      | Stars                                                             | 
 | --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ----------------------------------------------------------------- |
-| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis Labs][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |  
-| [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis Labs][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           |
-| [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
-| [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis Labs][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                       |
-| [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis Labs][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                       |
+| [redisgraph-py][redisgraph-py-url]                        | Python     | BSD     | [Redis][redisgraph-py-author]          | [![redisgraph-py-stars]][redisgraph-py-url]                       |  
+| [JRedisGraph][JRedisGraph-url]                            | Java       | BSD     | [Redis][JRedisGraph-author]            | [![JRedisGraph-stars]][JRedisGraph-url]                           |
+| [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
+| [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                       |
+| [redisgraph.js][redisgraph.js-url]                        | JavaScript | BSD     | [Redis][redisgraph.js-author]          | [![redisgraph.js-stars]][redisgraph.js-url]                       |
 | [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                         |
 | [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                     |
 | [redis-modules-sdk][redis-modules-sdk-url] | TypeScript | BSD-3-Clause | [Dani Tseitlin][redis-modules-sdk-author] | [![redis-modules-sdk-stars]][redis-modules-sdk-url]                           |
@@ -26,23 +26,23 @@ In addition there are severeal client libraries to improve abstractions and allo
 | [RedisGraph.jl][RedisGraph.jl-url]                        | Julia      | MIT     | [xyxel][RedisGraph.jl-author]               | [![RedisGraph.jl-stars]][RedisGraph.jl-url]                       |
 
 
-[redisgraph-py-author]: https://redislabs.com
+[redisgraph-py-author]: https://redis.com
 [redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
 [redisgraph-py-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-py.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-[JRedisGraph-author]: https://redislabs.com
+[JRedisGraph-author]: https://redis.com
 [JRedisGraph-url]: https://github.com/RedisGraph/JRedisGraph
 [JRedisGraph-stars]: https://img.shields.io/github/stars/RedisGraph/JRedisGraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-[redisgraph-rb-author]: https://redislabs.com
+[redisgraph-rb-author]: https://redis.com
 [redisgraph-rb-url]: https://github.com/RedisGraph/redisgraph-rb
 [redisgraph-rb-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-rb.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-[redisgraph-go-author]: https://redislabs.com
+[redisgraph-go-author]: https://redis.com
 [redisgraph-go-url]: https://github.com/RedisGraph/redisgraph-go
 [redisgraph-go-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-go.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-[redisgraph.js-author]: https://redislabs.com
+[redisgraph.js-author]: https://redis.com
 [redisgraph.js-url]: https://github.com/RedisGraph/redisgraph.js
 [redisgraph.js-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph.js.svg?style=social&amp;label=Star&amp;maxAge=2592000
 

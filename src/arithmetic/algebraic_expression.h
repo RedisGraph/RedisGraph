@@ -111,6 +111,12 @@ const char *AlgebraicExpression_Edge
 	const AlgebraicExpression *root   // Root of expression.
 );
 
+// retrieves label from expression, note expression must be an operand
+const char *AlgebraicExpression_Label
+(
+	const AlgebraicExpression *operand  // operand from which to retrieve label
+);
+
 // Returns the number of child nodes directly under root
 uint AlgebraicExpression_ChildCount
 (

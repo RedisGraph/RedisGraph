@@ -326,6 +326,16 @@ const char *AlgebraicExpression_Edge
 	return NULL;
 }
 
+const char *AlgebraicExpression_Label
+(
+	const AlgebraicExpression *operand  // operand from which to retrieve label
+) {
+	ASSERT(operand != NULL);
+	ASSERT(operand->type == AL_OPERAND);
+
+	return operand->operand.label;
+}
+
 // Returns the number of child nodes directly under root
 uint AlgebraicExpression_ChildCount
 (
