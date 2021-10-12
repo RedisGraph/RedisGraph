@@ -522,9 +522,8 @@ class testIndexScanFlow(FlowTestsBase):
         redis_graph = Graph('g', self.env.getConnection())
 
         redis_graph.query("CREATE INDEX ON :L1(id)")
-        redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: v})-[:R1]->(:L2)")
-        redis_graph.query("MATCH (u:L1 {id: 5}), (fr:L1 {id: 1}) CREATE (u)-[fw:R2{v: 1}]->(fr)")
-        result = redis_graph.query("MATCH (fr)-[:R1]->(f:L2) WITH collect(fr.id) as Ids UNWIND (Ids) as id OPTIONAL MATCH (u:L1{id: 5})-[fw:R2{v: 1}]->(fr:L1 {id: id}) RETURN DISTINCT id, exists(fw) as friends ORDER BY friends DESC")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: v})")
+        result = redis_graph.query("UNWIND range(1, 5) AS id OPTIONAL MATCH (u:L1{id: 5}) RETURN u.id")
 
         expected_result = [[1, True], [2, False], [5, False], [4, False], [3, False]]
         self.env.assertEquals(result.result_set, expected_result)
