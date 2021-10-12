@@ -41,7 +41,6 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 					array_append(stopwords, rm_strdup(stopword));
 					RedisModule_Free(stopword);
 				}
-				
 			}
 		}
 
