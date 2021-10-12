@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v9.h"
+#include "encode_v10.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -139,7 +139,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	return payloads;
 }
 
-void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
+void RdbSaveGraph_v10(RedisModuleIO *rdb, void *value) {
 	/* Encoding format for graph context and graph meta key:
 	 *  Header
 	 *  Payload(s) count: N
@@ -188,19 +188,19 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v9(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v9(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v9(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v9(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v9(rdb, gc);
+			RdbSaveGraphSchema_v10(rdb, gc);
 			break;
 		default:
 			ASSERT(false && "Unknown encoding phase");
