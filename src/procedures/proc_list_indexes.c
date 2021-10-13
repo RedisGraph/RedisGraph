@@ -126,8 +126,9 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 		if(stopwords) {
 			*ctx->yield_stopwords = SI_Array(stopwords_count);
 			for (size_t i = 0; i < stopwords_count; i++) {
-				SIValue value = SI_TransferStringVal(stopwords[i]);
+				SIValue value = SI_ConstStringVal(stopwords[i]);
 				SIArray_Append(ctx->yield_stopwords, value);
+				rm_free(stopwords[i]);
 			}
 		} else {
 			*ctx->yield_stopwords = SI_Array(0);
