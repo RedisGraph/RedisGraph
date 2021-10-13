@@ -96,7 +96,7 @@ pull_index:
 	// pull from index
 	//--------------------------------------------------------------------------
 
-	if(op->iter != NULL) {
+	if(op->iter != NULL && op->child_record != NULL) {
 		while((nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
 				!= NULL) {
 			// populate record with node

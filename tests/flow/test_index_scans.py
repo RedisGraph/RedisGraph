@@ -517,3 +517,13 @@ class testIndexScanFlow(FlowTestsBase):
         expected_result = [["leonard"]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+    # test for https://github.com/RedisGraph/RedisGraph/issues/1980
+    def test18_index_scan_inside_apply(self):
+        redis_graph = Graph('g', self.env.getConnection())
+
+        redis_graph.query("CREATE INDEX ON :L1(id)")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: v})")
+        result = redis_graph.query("UNWIND range(1, 5) AS id OPTIONAL MATCH (u:L1{id: 5}) RETURN u.id")
+
+        expected_result = [[5], [5], [5], [5], [5]]
+        self.env.assertEquals(result.result_set, expected_result)
