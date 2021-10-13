@@ -195,7 +195,8 @@ Index *GraphContext_GetIndexByID
 	const GraphContext *gc,
 	int id,
 	Attribute_ID *attribute_id,
-	IndexType type
+	IndexType type,
+	SchemaType t
 );
 
 // attempt to retrieve an index on the given label and attribute

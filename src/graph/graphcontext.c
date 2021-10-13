@@ -365,12 +365,12 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-								 Attribute_ID *attribute_id, IndexType type) {
+					Attribute_ID *attribute_id, IndexType type, SchemaType t) {
 
 	ASSERT(gc     !=  NULL);
 
 	// Retrieve the schema for given id
-	Schema *s = GraphContext_GetSchemaByID(gc, id, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchemaByID(gc, id, t);
 	if(s == NULL) return NULL;
 
 	return Schema_GetIndex(s, attribute_id, type);

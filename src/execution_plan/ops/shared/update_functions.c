@@ -44,7 +44,7 @@ static int _UpdateEntity(PendingUpdateCtx *update) {
 
 static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, SIType accepted_properties,
 											  int label_id, GraphEntity *entity,
-											  Attribute_ID attr_id, SIValue new_value) {
+											  Attribute_ID attr_id, SIValue new_value, SchemaType t) {
 	//--------------------------------------------------------------------------
 	// validate value type
 	//--------------------------------------------------------------------------
@@ -74,7 +74,7 @@ static PendingUpdateCtx _PreparePendingUpdate(GraphContext *gc, SIType accepted_
 	if(label_id != GRAPH_NO_LABEL) {
 		// if the (label:attribute) combination has an index, take note
 		update_index = GraphContext_GetIndexByID(gc, label_id, &attr_id,
-												 IDX_ANY) != NULL;
+												 IDX_ANY, t) != NULL;
 	}
 
 	return (PendingUpdateCtx) {
@@ -158,7 +158,6 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 		const EntityUpdateEvalCtx *ctx, bool allow_null) {
 	Schema *s         = NULL;
 	int label_id      = GRAPH_NO_LABEL;
-	bool node_update  = false;
 
 	//--------------------------------------------------------------------------
 	// validate entity type
@@ -176,18 +175,22 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 			ctx->alias);
 	}
 
+	SchemaType st = t == REC_TYPE_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
+
 	PendingUpdateCtx **updates = t == REC_TYPE_NODE
 		? node_updates
 		: edge_updates;
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
-	node_update = (t == REC_TYPE_NODE);
 
 	// if the entity is a node
-	if(node_update) {
+	if(t == REC_TYPE_NODE) {
 		Node *n = (Node *)entity;
 		// retrieve the node's Label ID from a local member or the graph
 		label_id = NODE_GET_LABEL_ID(n, gc->g);
+	} else {
+		Edge *e = (Edge *)entity;
+		label_id = EDGE_GET_RELATION_ID(e, gc->g);
 	}
 
 	// if this update replaces all existing properties
@@ -233,7 +236,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 																	   key.stringval);
 
 				update = _PreparePendingUpdate(gc, accepted_properties,
-											   label_id, entity, attr_id, value);
+											   label_id, entity, attr_id, value, st);
 				// enqueue the current update
 				array_append(*updates, update);
 			}
@@ -241,7 +244,7 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 		}
 
 		update = _PreparePendingUpdate(gc, accepted_properties, label_id,
-									   entity, attr_id, new_value);
+									   entity, attr_id, new_value, st);
 		// enqueue the current update
 		array_append(*updates, update);
 	}
