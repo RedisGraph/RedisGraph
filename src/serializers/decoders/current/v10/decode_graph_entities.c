@@ -63,7 +63,9 @@ static SIValue _RdbLoadSIArray
 	uint arrayLen = RedisModule_LoadUnsigned(rdb);
 	SIValue list = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		SIArray_Append(&list, _RdbLoadSIValue(rdb));
+		SIValue elem = _RdbLoadSIValue(rdb);
+		SIArray_Append(&list, elem);
+		SIValue_Free(elem);
 	}
 	return list;
 }
@@ -178,4 +180,3 @@ void RdbLoadDeletedEdges_v10
 		Serializer_Graph_MarkEdgeDeleted(gc->g, id);
 	}
 }
-

@@ -159,12 +159,14 @@ GraphContext *RdbLoadGraphContext_v10
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 			case ENCODE_STATE_NODES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 				RdbLoadNodes_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_NODES:
 				RdbLoadDeletedNodes_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_EDGES:
+				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 				RdbLoadEdges_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_EDGES:
@@ -196,27 +198,29 @@ GraphContext *RdbLoadGraphContext_v10
 		Graph *g = gc->g;
 
 		// revert to default synchronization behavior
-		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
-		Graph_ApplyAllPending(gc->g, true);
+		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+		Graph_ApplyAllPending(g, true);
 
-		uint node_schemas_count = array_len(gc->node_schemas);
+		// set the thread-local GraphContext
+		// as it will be accessed when creating indexes
+		QueryCtx_SetGraphCtx(gc);
+		
+		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
-		for(uint i = 0; i < node_schemas_count; i++) {
+		// index the nodes
+		for(uint i = 0; i < label_count; i++) {
 			GrB_Index nvals;
-			RG_Matrix L = g->labels[i];
+			RG_Matrix L = Graph_GetLabelMatrix(g, i);
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
-		}
 
-		// set the thread-local GraphContext, as it will be accessed when creating indexes
-		QueryCtx_SetGraphCtx(gc);
-
-		// index the nodes when decoding ends
-		for(uint i = 0; i < node_schemas_count; i++) {
-			Schema *s = gc->node_schemas[i];
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
+
+		// make sure graph doesn't contains may pending changes
+		ASSERT(Graph_Pending(g) == false);
 
 		QueryCtx_Free(); // release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
@@ -228,4 +232,3 @@ GraphContext *RdbLoadGraphContext_v10
 	}
 	return gc;
 }
-
