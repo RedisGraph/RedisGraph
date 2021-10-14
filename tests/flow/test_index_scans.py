@@ -249,21 +249,19 @@ class testIndexScanFlow(FlowTestsBase):
 
     def test09_index_scan_with_params(self):
         query = "MATCH (p:person) WHERE p.age = $age RETURN p.name"
-        params = {'age':30}
-        query = redis_graph.build_params_header(params) + query
-        plan = redis_graph.execution_plan(query)
+        params = {'age': 30}
+        plan = redis_graph.execution_plan(query, params=params)
         self.env.assertIn('Index Scan', plan)
-        query_result = redis_graph.query(query)
+        query_result = redis_graph.query(query, params=params)
         expected_result = ["Lucy Yanfital"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
     def test10_index_scan_with_param_array(self):
         query = "MATCH (p:person) WHERE p.age in $ages RETURN p.name"
-        params = {'ages':[30]}
-        query = redis_graph.build_params_header(params) + query
-        plan = redis_graph.execution_plan(query)
+        params = {'ages': [30]}
+        plan = redis_graph.execution_plan(query, params=params)
         self.env.assertIn('Index Scan', plan)
-        query_result = redis_graph.query(query)
+        query_result = redis_graph.query(query, params=params)
         expected_result = ["Lucy Yanfital"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
@@ -519,3 +517,13 @@ class testIndexScanFlow(FlowTestsBase):
         expected_result = [["leonard"]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
+    # test for https://github.com/RedisGraph/RedisGraph/issues/1980
+    def test18_index_scan_inside_apply(self):
+        redis_graph = Graph('g', self.env.getConnection())
+
+        redis_graph.query("CREATE INDEX ON :L1(id)")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: v})")
+        result = redis_graph.query("UNWIND range(1, 5) AS id OPTIONAL MATCH (u:L1{id: 5}) RETURN u.id")
+
+        expected_result = [[5], [5], [5], [5], [5]]
+        self.env.assertEquals(result.result_set, expected_result)

@@ -1,7 +1,7 @@
 <img src="images/logo.svg" alt="logo" width="200"/>
 
 # RedisGraph
-[![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
+[![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redis.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
@@ -13,7 +13,7 @@ Primary features:
   * Nodes that can be labeled
   * Relationships have a relationship type
 * Graphs represented as sparse adjacency matrices
-* [Cypher](http://www.opencypher.org/) as query language
+* [Cypher](http://www.opencypher.org/) as the query language
   * Cypher queries translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
@@ -22,13 +22,13 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 <a href="https://www.ibm.com"><img src="images/logo-ibm.jpg" alt="IBM" height="100"/></a>
 <a href="https://www.fiverr.com"><img src="images/logo-fiverr.jpg" alt="Fiverr" height="100"/></a>
-<a href="https://redislabs.com/case-studies/thinkdata-works/"><img src="images/logo-thinkdata.jpg" alt="thinkdata" height="100"/></a> 
+<a href="https://redis.com/case-studies/thinkdata-works/"><img src="images/logo-thinkdata.jpg" alt="thinkdata" height="100"/></a> 
 <a href="https://sidy.fr/"><img src="images/logo-sidy.jpg" alt="sidy" height="100"/></a>
 
 <a href="https://www.youtube.com/watch?v=6FYYn-9fPXE"><img src="images/logo-mdmetrix.jpg" alt="mdmetrix" height="100"/></a> 
 <a href="https://linkirous.us/"><img src="images/logo-linkurious.jpg" alt="linkirous" height="100"/></a>
 <a href="https://medium.com/@tomzeppenfeldt/graphileon-and-redis-labs-become-partners-35bafe6790fa"><img src="images/logo-graphileon.jpg" alt="graphileon" height="100"/></a>
-<a href="https://redislabs.com/blog/graphxr-read-modify-and-write-ontologies-with-redisgraph/"><img src="images/logo-kineviz-graphxr.jpg" alt="kineviz" height="100"/></a>
+<a href="https://redis.com/blog/graphxr-read-modify-and-write-ontologies-with-redisgraph/"><img src="images/logo-kineviz-graphxr.jpg" alt="kineviz" height="100"/></a>
 
 
 ## Quickstart
@@ -43,7 +43,7 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 RedisGraph is available on all Redis Cloud managed services, including a completely free managed database up to 30MB.
 
-[Select your plan here](https://redislabs.com/redis-enterprise-cloud/pricing/)
+[Select your plan here](https://redis.com/redis-enterprise-cloud/pricing/)
 
 ## Docker
 
@@ -95,7 +95,7 @@ How many riders represent team Ducati?
 
 ## Download
 
-A pre-compiled version can be downloaded from [RedisLabs download center](https://redislabs.com/download-center/modules/).
+A pre-compiled version can be downloaded from the [Redis download center](https://redis.com/download-center/modules/).
 
 ## Building
 
@@ -152,7 +152,7 @@ The system is missing the run-time dependency OpenMP. This can be installed on U
 ## Using RedisGraph
 
 Before using RedisGraph, you should familiarize yourself with its commands and syntax as detailed in the
-[commands reference](commands.md).
+[command reference](commands.md).
 
 You can call RedisGraph's commands from any Redis client.
 
@@ -194,7 +194,7 @@ The data format used by this tool is described in the [GRAPH.BULK implementation
 
 ## Mailing List / Forum
 
-Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redislabs.com/c/modules/redisgraph).
+Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redis.com/c/modules/redisgraph).
 
 ## License
 

@@ -238,7 +238,7 @@ size_t Graph_UncompactedNodeCount
 );
 
 // returns number of nodes with given label
-size_t Graph_LabeledNodeCount
+uint64_t Graph_LabeledNodeCount
 (
 	const Graph *g,
 	int label
@@ -371,19 +371,6 @@ bool Graph_RelationshipContainsMultiEdge
 RG_Matrix Graph_GetZeroMatrix
 (
 	const Graph *g
-);
-
-RG_Matrix Graph_GetLabelRGMatrix
-(
-	const Graph *g,
-	int label_idx
-);
-
-RG_Matrix Graph_GetRelationRGMatrix
-(
-	const Graph *g,
-	int relation,
-	bool transpose
 );
 
 // free graph

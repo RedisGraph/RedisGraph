@@ -17,7 +17,7 @@ GrB_Info RG_Matrix_resize       // change the size of a matrix
 	GrB_Info info;
 
 	if(RG_MATRIX_MAINTAIN_TRANSPOSE(C)) {
-		info = RG_Matrix_resize(C->transposed, nrows_new, ncols_new);
+		info = RG_Matrix_resize(C->transposed, ncols_new, nrows_new);
 		ASSERT(info == GrB_SUCCESS);
 	}
 

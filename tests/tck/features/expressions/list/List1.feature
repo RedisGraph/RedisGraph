@@ -53,7 +53,6 @@ Feature: List1 - Dynamic Element Access
       | 1           |
     And no side effects
 
-  @skip
   Scenario: [3] Use list lookup based on parameters when there is no type information
     Given any graph
     And parameters are:
@@ -69,7 +68,6 @@ Feature: List1 - Dynamic Element Access
       | 'Apa' |
     And no side effects
 
-  @skip
   Scenario: [4] Use list lookup based on parameters when there is lhs type information
     Given any graph
     And parameters are:
@@ -84,7 +82,6 @@ Feature: List1 - Dynamic Element Access
       | 'Apa' |
     And no side effects
 
-  @skip
   Scenario: [5] Use list lookup based on parameters when there is rhs type information
     Given any graph
     And parameters are:
@@ -101,7 +98,6 @@ Feature: List1 - Dynamic Element Access
     And no side effects
 
   @NegativeTest
-  @skip
   Scenario: [6] Fail at runtime when attempting to index with a String into a List
     Given any graph
     And parameters are:
@@ -115,7 +111,6 @@ Feature: List1 - Dynamic Element Access
     Then a TypeError should be raised at runtime: ListElementAccessByNonInteger
 
   @NegativeTest
-  @skip
   Scenario: [7] Fail at runtime when trying to index into a list with a list
     Given any graph
     And parameters are:
@@ -139,7 +134,6 @@ Feature: List1 - Dynamic Element Access
     Then a SyntaxError should be raised at compile time: ListElementAccessByNonInteger
 
   @NegativeTest
-  @skip
   Scenario: [9] Fail at runtime when trying to index something which is not a list
     Given any graph
     And parameters are:

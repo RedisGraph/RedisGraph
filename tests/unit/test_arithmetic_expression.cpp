@@ -1169,6 +1169,46 @@ TEST_F(ArithmeticTest, CaseTest) {
 	result = AR_EXP_Evaluate(arExp, NULL);
 	AR_EXP_Free(arExp);
 	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Match the null alternative. */
+	query = "RETURN CASE NULL WHEN NULL THEN NULL ELSE 'else' END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Match the null alternative. */
+	query = "RETURN CASE NULL WHEN 'value' THEN 'value' WHEN NULL THEN NULL ELSE 'else' END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test null.
+	 * Do not match any of the alternatives, return default. */
+	query = "RETURN CASE NULL WHEN 'when' THEN 'then' ELSE NULL END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsNull(result));
+
+	/* Test 'value' is not null.
+	 * Do not match any of the alternatives, return default. */
+	query = "RETURN CASE 'value' WHEN NULL THEN NULL ELSE true END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsTrue(result));
+
+	/* Test 'value' is not null.
+	 * Match the 'value' alternative. */
+	query = "RETURN CASE 'value' WHEN NULL THEN NULL WHEN 'value' THEN true ELSE false END AS result";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	AR_EXP_Free(arExp);
+	ASSERT_TRUE(SIValue_IsTrue(result));
 }
 
 TEST_F(ArithmeticTest, AND) {
@@ -1679,3 +1719,42 @@ TEST_F(ArithmeticTest, CoalesceTest) {
 	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
 }
 
+TEST_F(ArithmeticTest, ReplaceTest) {
+	const char *query;
+	AR_ExpNode *arExp;
+
+	// Test replace in start of the string.
+	query = "RETURN replace('abcabc', 'a', '00')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("00bc00bc"), arExp->operand.constant, NULL));
+
+	// Test replace in end of the string.
+	query = "RETURN replace('abcabc', 'bc', '0')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("a0a0"), arExp->operand.constant, NULL));
+
+	// Test replace with empty string.
+	query = "RETURN replace('abcabc', 'abc', '')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal(""), arExp->operand.constant, NULL));
+
+	// Test replace with empty string.
+	query = "RETURN replace('abcabc', 'ab', '')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("cc"), arExp->operand.constant, NULL));
+
+	// Test replace empty string.
+	query = "RETURN replace('abcabc', '', '0')";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_ConstStringVal("0a0b0c0a0b0c0"), arExp->operand.constant, NULL));
+}

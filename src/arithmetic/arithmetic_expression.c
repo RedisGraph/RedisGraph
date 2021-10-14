@@ -469,9 +469,10 @@ static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, 
 
 static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
 	rax *params = QueryCtx_GetParams();
-	AR_ExpNode *param_node = raxFind(params, (unsigned char *)node->operand.param_name,
-									 strlen(node->operand.param_name));
-	if(param_node == raxNotFound) {
+	AR_ExpNode *param_node;
+	if(params) param_node = raxFind(params, (unsigned char *)node->operand.param_name,
+										strlen(node->operand.param_name));
+	if(params == NULL || param_node == raxNotFound) {
 		// Set the query-level error.
 		ErrorCtx_SetError("Missing parameters");
 		return EVAL_ERR;
