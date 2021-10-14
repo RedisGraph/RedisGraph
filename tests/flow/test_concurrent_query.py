@@ -30,7 +30,6 @@ def delete_graph(graph_id):
     conn = env.getConnection()
     graph = Graph(graph_id, conn)
 
-def delete_graph(graph):
     # Try to delete graph.
     try:
         graph.delete()
