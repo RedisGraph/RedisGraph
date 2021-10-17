@@ -322,7 +322,10 @@ const char *Index_GetLanguage(const Index *idx) {
 }
 
 char **Index_GetStopwords(const Index *idx, size_t *size) {
-	return RediSearch_IndexGetStopwords(idx->idx, size);
+	if(idx->type == IDX_FULLTEXT)
+		return RediSearch_IndexGetStopwords(idx->idx, size);
+	
+	return NULL;
 }
 
 // Free index.

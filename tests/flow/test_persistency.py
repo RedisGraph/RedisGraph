@@ -60,6 +60,8 @@ class testGraphPersistency():
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name, height)")
         actual_result = redis_con.execute_command(
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name, population)")
+        actual_result = redis_con.execute_command(
+            "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, 'text')")
 
         return redis_graph
 
@@ -122,7 +124,7 @@ class testGraphPersistency():
                 self.env.assertEquals(edgeCount, 2)
 
                 # Verify indices exists
-                expected_indices = [["exact-match", "country", ["name", "population"], 'english', ['a', 'an', 'and', 'are', 'as', 'at', 'is', 'if', 'in', 'into', 'it', 'the', 'their', 'then', 'there', 'these', 'they', 'that', 'this', 'to', 'be', 'but', 'by', 'for', 'no', 'not', 'of', 'on', 'or', 'such', 'was', 'will', 'with']], ["exact-match", "person", ["name", "height"], 'english', ['a', 'an', 'and', 'are', 'as', 'at', 'is', 'if', 'in', 'into', 'it', 'the', 'their', 'then', 'there', 'these', 'they', 'that', 'this', 'to', 'be', 'but', 'by', 'for', 'no', 'not', 'of', 'on', 'or', 'such', 'was', 'will', 'with']]]
+                expected_indices = [['exact-match', 'country', ['name', 'population'], 'english', []], ['exact-match', 'person', ['name', 'height'], 'english', []], ['full-text', 'person', ['text'], 'english', ['a', 'b']]]
                 indices = graph.query("""CALL db.indexes()""").result_set
                 self.env.assertEquals(indices, expected_indices)
 
