@@ -111,7 +111,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 				cypher_ast_drop_props_index_get_prop_name(index_op, 0));
 
 		// determine if schema type from which index is removed
-		// default to edge
+		// default to node
 		// TODO: support index name
 		if(GraphContext_GetSchema(gc, label, schema_type) == NULL) {
 			schema_type = SCHEMA_EDGE;
