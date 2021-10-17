@@ -114,7 +114,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		// default to edge
 		// TODO: support index name
 		if(GraphContext_GetSchema(gc, label, schema_type) == NULL) {
-			schema_type = SCHEMA_NODE;
+			schema_type = SCHEMA_EDGE;
 		}
 
 		QueryCtx_LockForCommit();
