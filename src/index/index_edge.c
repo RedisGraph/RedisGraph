@@ -45,7 +45,7 @@ void Index_IndexEdge
 
 		RediSearch_SpecAddDocument(rsIdx, doc);
 	} else {
-		// entity doesn't poses any attributes which are indexed
+		// entity doesn't possess any attributes which are indexed
 		// remove entity from index and delete document
 		Index_RemoveEdge(idx, e);
 		RediSearch_FreeDocument(doc);

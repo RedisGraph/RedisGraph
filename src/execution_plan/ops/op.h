@@ -160,7 +160,7 @@ int OpBase_Modifies(OpBase *op, const char *alias);
 /* Adds an alias to an existing modifier, such that record[modifier] = record[alias]. */
 int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias);
 
-/* Returns true if op children is aware of alias. */
+/* Returns true if any of an op's children are aware of the given alias. */
 bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx);
 
 /* Returns true if op is aware of alias.

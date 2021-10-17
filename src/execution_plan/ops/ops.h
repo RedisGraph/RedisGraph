@@ -11,6 +11,7 @@
 #include "op_all_node_scan.h"
 #include "op_create.h"
 #include "op_delete.h"
+#include "op_edge_by_index_scan.h"
 #include "op_filter.h"
 #include "op_node_by_label_scan.h"
 #include "op_node_by_index_scan.h"

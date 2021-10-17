@@ -112,6 +112,7 @@ static OpResult EdgeIndexScanInit
 			FilterTree_AppendLeftChild(root, op->filter);
 			FilterTree_AppendRightChild(root, ft);
 			op->filter = root;
+			op->rebuild_index_query = true;
 		}
 
 		if(op->destAware) {
@@ -123,14 +124,18 @@ static OpResult EdgeIndexScanInit
 			FilterTree_AppendLeftChild(root, op->filter);
 			FilterTree_AppendRightChild(root, ft);
 			op->filter = root;
+			op->rebuild_index_query = true;
 		}
-		// find out how many different entities are refered to 
-		// within the filter tree, if number of entities equals 1
-		// (current edge being scanned) there's no need to re-build the index
-		// query for every input record
-		rax *entities = FilterTree_CollectModified(op->filter);
-		op->rebuild_index_query = raxSize(entities) > 1 || op->srcAware || op->destAware;
-		raxFree(entities);
+
+		if(!op->rebuild_index_query) {
+			// find out how many different entities are refered to 
+			// within the filter tree, if number of entities equals 1
+			// (current edge being scanned) there's no need to re-build the index
+			// query for every input record
+			rax *entities = FilterTree_CollectModified(op->filter);
+			op->rebuild_index_query = raxSize(entities) > 1;
+			raxFree(entities);
+		}
 
 		OpBase_UpdateConsume(opBase, EdgeIndexScanConsumeFromChild);
 	}

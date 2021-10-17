@@ -224,7 +224,7 @@ cleanup:
 
 // returns an array of filter operation which can be
 // reduced into a single index scan operation
-OpFilter **_applicableFilters(OpBase *op, const char* filtered_entity, Index *idx) {
+OpFilter **_applicableFilters(OpBase *op, const char *filtered_entity, Index *idx) {
 	OpFilter **filters = array_new(OpFilter *, 0);
 
 	// we begin with a LabelScan, and want to find predicate filters that modify
@@ -407,8 +407,8 @@ void utilizeIndices(ExecutionPlan *plan) {
 	OpBase **condOps = ExecutionPlan_CollectOps(plan->root,
 			OPType_CONDITIONAL_TRAVERSE);
 
-	int condOpCount = array_len(condOps);
-	for(int i = 0; i < condOpCount; i++) {
+	uint condOpCount = array_len(condOps);
+	for(uint i = 0; i < condOpCount; i++) {
 		OpCondTraverse *condOp = (OpCondTraverse *)condOps[i];
 		// try to reduce conditional travers + filter(s) to a single IndexScan operation
 		reduce_cond_op(plan, condOp);

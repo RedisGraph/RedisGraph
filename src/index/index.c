@@ -200,7 +200,8 @@ void Index_RemoveField
 	ASSERT(idx != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, field);
+	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
+	ASSERT(attribute_id != ATTRIBUTE_NOTFOUND);
 	if(!Index_ContainsAttribute(idx, attribute_id)) return;
 
 	for(uint i = 0; i < idx->fields_count; i++) {
