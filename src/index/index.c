@@ -302,6 +302,17 @@ bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
 	return false;
 }
 
+const char *Index_GetLanguage(const Index *idx) {
+	return RediSearch_IndexGetLanguage(idx->idx);
+}
+
+char **Index_GetStopwords(const Index *idx, size_t *size) {
+	if(idx->type == IDX_FULLTEXT)
+		return RediSearch_IndexGetStopwords(idx->idx, size);
+	
+	return NULL;
+}
+
 // Free index.
 void Index_Free(Index *idx) {
 	ASSERT(idx != NULL);

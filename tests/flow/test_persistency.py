@@ -15,48 +15,53 @@ class testGraphPersistency(FlowTestsBase):
         redis_con = self.env.getConnection()
 
     def populate_graph(self, graph_name):
-        people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
-        countries = ["Israel", "USA", "Japan", "United Kingdom"]
-        visits = [("Roi", "USA"), ("Alon", "Israel"),
-          ("Ailon", "Japan"), ("Boaz", "United Kingdom")]
+        # quick return if graph already exists
+        if redis_con.exists(graph_name):
+            return redis_graph
 
-        redis_graph = Graph(graph_name, redis_con)
-        if not redis_con.exists(graph_name):
-            personNodes = {}
-            countryNodes = {}
-            # Create entities
+        people       = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
+        visits       = [("Roi", "USA"), ("Alon", "Israel"), ("Ailon", "Japan"), ("Boaz", "United Kingdom")]
+        countries    = ["Israel", "USA", "Japan", "United Kingdom"]
+        redis_graph  = Graph(graph_name, redis_con)
+        personNodes  = {}
+        countryNodes = {}
 
-            for p in people:
-                person = Node(label="person", properties={"name": p})
-                redis_graph.add_node(person)
-                personNodes[p] = person
+        # create nodes
+        for p in people:
+            person = Node(label="person", properties={"name": p, "height": random.randint(160, 200)})
+            redis_graph.add_node(person)
+            personNodes[p] = person
 
-            for p in countries:
-                country = Node(label="country", properties={"name": p})
-                redis_graph.add_node(country)
-                countryNodes[p] = country
+        for p in countries:
+            country = Node(label="country", properties={"name": p, "population": random.randint(100, 400)})
+            redis_graph.add_node(country)
+            countryNodes[p] = country
 
-            for v in visits:
-                person = v[0]
-                country = v[1]
-                edge = Edge(personNodes[person], 'visit', countryNodes[country], properties={
-                            'purpose': 'pleasure'})
-                redis_graph.add_edge(edge)
+        # create edges
+        for v in visits:
+            person  = v[0]
+            country = v[1]
+            edge = Edge(personNodes[person], 'visit', countryNodes[country], properties={
+                        'purpose': 'pleasure'})
+            redis_graph.add_edge(edge)
 
-            redis_graph.commit()
+        redis_graph.commit()
 
-            # Delete nodes, to introduce deleted item within our datablock
-            query = """MATCH (n:person) WHERE n.name = 'Roi' or n.name = 'Ailon' DELETE n"""
-            redis_graph.query(query)
+        # delete nodes, to introduce deleted item within our datablock
+        query = """MATCH (n:person) WHERE n.name = 'Roi' or n.name = 'Ailon' DELETE n"""
+        redis_graph.query(query)
 
-            query = """MATCH (n:country) WHERE n.name = 'USA' DELETE n"""
-            redis_graph.query(query)
+        query = """MATCH (n:country) WHERE n.name = 'USA' DELETE n"""
+        redis_graph.query(query)
 
-            # Create index.
-            actual_result = redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name)")
-            actual_result = redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name)")
+        # create indices
+        actual_result = redis_con.execute_command(
+            "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name, height)")
+        actual_result = redis_con.execute_command(
+            "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name, population)")
+        actual_result = redis_con.execute_command(
+            "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, 'text')")
+
         return redis_graph
 
     def populate_dense_graph(self, dense_graph_name):
@@ -114,14 +119,10 @@ class testGraphPersistency(FlowTestsBase):
                 edgeCount = actual_result.result_set[0][0]
                 self.env.assertEquals(edgeCount, 2)
 
-                # Verify indices exists.
-                plan = redis_graph.execution_plan(
-                    "MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
-                self.env.assertIn("Index Scan", plan)
-
-                plan = redis_graph.execution_plan(
-                    "MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
-                self.env.assertIn("Index Scan", plan)
+                # Verify indices exists
+                expected_indices = [['exact-match', 'country', ['name', 'population'], 'english', []], ['exact-match', 'person', ['name', 'height'], 'english', []], ['full-text', 'person', ['text'], 'english', ['a', 'b']]]
+                indices = graph.query("""CALL db.indexes()""").result_set
+                self.env.assertEquals(indices, expected_indices)
 
     # Verify that edges are not modified after entity deletion
     def test02_deleted_entity_migration(self):
