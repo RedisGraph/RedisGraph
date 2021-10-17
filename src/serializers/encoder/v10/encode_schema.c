@@ -39,7 +39,9 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 			char *stopword = stopwords[i];
 			// Index stopword
 			RedisModule_SaveStringBuffer(rdb, stopword, strlen(stopword) + 1);
+			rm_free(stopword);
 		}
+		rm_free(stopwords);
 	}
 
 	uint fields_count = Index_FieldsCount(idx);
