@@ -312,6 +312,7 @@ cleanup:
 void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	// make sure there's an index for scanned label
 	const char *edge = AlgebraicExpression_Edge(cond->ae);
+	bool isTransposed = AlgebraicExpression_Transposed(cond->ae);
 	if(!edge) return;
 	
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
@@ -341,16 +342,25 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 		OpBase_Free(allNodeScan);
 	}
 
-	QGNode *dest = QGEdge_Dest(e);
-	if(QGNode_LabelCount(dest) > 0) {
+	QGNode     *other_node  =  QGEdge_Dest(e);
+	const char *other_alias  =  QGNode_Alias(other_node);
+	if(OpBase_ChildrenAware((OpBase *)cond, other_alias, NULL)) {
+		other_node = QGEdge_Src(e);
+		other_alias  =  QGNode_Alias(other_node);
+		if(OpBase_ChildrenAware((OpBase *)cond, other_alias, NULL)) {
+			other_node  = NULL;
+			other_alias = NULL;
+		}
+	}
+	if(other_node && QGNode_LabelCount(other_node) > 0) {
 		const char *func_name = "hasLabels";
 
 		// create node expression
-		AR_ExpNode *node_exp = AR_EXP_NewVariableOperandNode(QGNode_Alias(dest));
+		AR_ExpNode *node_exp = AR_EXP_NewVariableOperandNode(other_alias);
 
 		// create labels expression
 		SIValue labels = SI_Array(1);
-		SIArray_Append(&labels, SI_ConstStringVal((char *)dest->label));
+		SIArray_Append(&labels, SI_ConstStringVal((char *)other_node->label));
 		AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
 
 		// create func expression

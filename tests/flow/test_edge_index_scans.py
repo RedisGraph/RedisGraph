@@ -508,6 +508,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Edge By Index Scan', plan)
         self.env.assertNotIn('All Node Scan', plan)
+        self.env.assertNotIn('Filter', plan)
         query_result = redis_graph.query(query)
         expected_result = ["Roi"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
@@ -516,6 +517,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Edge By Index Scan', plan)
         self.env.assertIn('Node By Label Scan', plan)
+        self.env.assertNotIn('Filter', plan)
         query_result = redis_graph.query(query)
         expected_result = ["Roi"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
@@ -550,6 +552,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Edge By Index Scan', plan)
         self.env.assertNotIn('All Node Scan', plan)
+        self.env.assertNotIn('Filter', plan)
         query_result = redis_graph.query(query)
         expected_result = ["Alon"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
@@ -558,6 +561,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Edge By Index Scan', plan)
         self.env.assertIn('Node By Label Scan', plan)
+        self.env.assertNotIn('Filter', plan)
         query_result = redis_graph.query(query)
         expected_result = ["Alon"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
