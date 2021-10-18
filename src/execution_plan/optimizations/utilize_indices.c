@@ -312,7 +312,6 @@ cleanup:
 void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	// make sure there's an index for scanned label
 	const char *edge = AlgebraicExpression_Edge(cond->ae);
-	bool isTransposed = AlgebraicExpression_Transposed(cond->ae);
 	if(!edge) return;
 	
 	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
@@ -335,6 +334,7 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	OpBase *indexOp = NewEdgeIndexScanOp(cond->op.plan, cond->graph, e, rs_idx,
 			root);
 
+	// all node scan is redundant bucause edge index scan can resolve the nodes
 	if(cond->op.children[0]->type == OPType_ALL_NODE_SCAN) {
 		OpBase *allNodeScan = cond->op.children[0];
 		// remove all node scan op
@@ -342,16 +342,9 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 		OpBase_Free(allNodeScan);
 	}
 
-	QGNode     *other_node  =  QGEdge_Dest(e);
-	const char *other_alias  =  QGNode_Alias(other_node);
-	if(OpBase_ChildrenAware((OpBase *)cond, other_alias, NULL)) {
-		other_node = QGEdge_Src(e);
-		other_alias  =  QGNode_Alias(other_node);
-		if(OpBase_ChildrenAware((OpBase *)cond, other_alias, NULL)) {
-			other_node  = NULL;
-			other_alias = NULL;
-		}
-	}
+	
+	const char *other_alias  =  AlgebraicExpression_Destination(cond->ae);
+	QGNode     *other_node   =  QueryGraph_GetNodeByAlias(plan->query_graph, other_alias);
 	if(other_node && QGNode_LabelCount(other_node) > 0) {
 		const char *func_name = "hasLabels";
 
