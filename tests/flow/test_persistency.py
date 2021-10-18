@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 redis_con = None
 
-class testGraphPersistency(FlowTestsBase):
+class testGraphPersistency():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_con
@@ -62,6 +62,8 @@ class testGraphPersistency(FlowTestsBase):
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name, population)")
         actual_result = redis_con.execute_command(
             "GRAPH.QUERY", graph_name, "CREATE INDEX FOR ()-[r:visit]-() ON (r.purpose)")
+        actual_result = redis_con.execute_command(
+            "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, 'text')")
 
         return redis_graph
 
@@ -124,7 +126,7 @@ class testGraphPersistency(FlowTestsBase):
                 self.env.assertEquals(edgeCount, 2)
 
                 # Verify indices exists
-                expected_indices = [['exact-match', 'country', ['name', 'population'], 'NODE'], ['exact-match', 'person', ['name', 'height'], 'NODE'], ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'RELATIONSHIP']]
+                expected_indices = [['exact-match', 'country', ['name', 'population'], 'english', [], 'NODE'], ['exact-match', 'person', ['name', 'height'], 'english', [], 'NODE'], ['full-text', 'person', ['text'], 'english', ['a', 'b'], 'NODE'], ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'english', [], 'RELATIONSHIP']]
                 indices = graph.query("""CALL db.indexes()""").result_set
                 self.env.assertEquals(indices, expected_indices)
 
@@ -142,7 +144,7 @@ class testGraphPersistency(FlowTestsBase):
             first_result = graph.query(query)
 
             # Save RDB & Load from RDB
-            redis_con.execute_command("DEBUG", "RELOAD")
+            self.env.dumpAndReload()
 
             second_result = graph.query(query)
             self.env.assertEquals(first_result.result_set,
@@ -162,7 +164,7 @@ class testGraphPersistency(FlowTestsBase):
             self.env.assertEquals(result.properties_set, 5)
 
             # Save RDB & Load from RDB
-            redis_con.execute_command("DEBUG", "RELOAD")
+            self.env.dumpAndReload()
 
             query = """MATCH (p) RETURN p.boolval, p.numval, p.strval, p.array, p.pointval"""
             actual_result = graph.query(query)
@@ -198,7 +200,7 @@ class testGraphPersistency(FlowTestsBase):
             self.env.assertEquals(actual_result.result_set, expected_result)
 
             # Save RDB & Load from RDB
-            redis_con.execute_command("DEBUG", "RELOAD")
+            self.env.dumpAndReload()
 
             # Verify that the latest edge was properly saved and loaded
             actual_result = graph.query(q)
@@ -214,10 +216,11 @@ class testGraphPersistency(FlowTestsBase):
         self.env.assertEquals(actual_result.nodes_created, 100_000)
         self.env.assertEquals(actual_result.relationships_created, 50_000)
 
-        redis_con.execute_command("DEBUG", "RELOAD")
-        
+        # Save RDB & Load from RDB
+        self.env.dumpAndReload()
+
         expected_result = [[50000]]
-        
+
         queries = [
             """MATCH (:L)-[r {v: 50000}]->(:L) RETURN r.v""",
             """MATCH (:L)-[r:R {v: 50000}]->(:L) RETURN r.v""",
@@ -227,3 +230,44 @@ class testGraphPersistency(FlowTestsBase):
         for q in queries:
             actual_result = graph.query(q)
             self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Verify that nodes with multiple labels are saved and restored correctly.
+    def test06_persist_multiple_labels(self):
+        graph_id = "multiple_labels"
+        g = Graph(graph_id, redis_con)
+        q = "CREATE (a:L0:L1:L2)"
+        actual_result = g.query(q)
+        self.env.assertEquals(actual_result.nodes_created, 1)
+        self.env.assertEquals(actual_result.labels_added, 3)
+
+        # Verify the new node
+        q = "MATCH (a) RETURN LABELS(a)"
+        actual_result = g.query(q)
+        expected_result = [[["L0", "L1", "L2"]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Save RDB & Load from RDB
+        self.env.dumpAndReload()
+
+        # Verify that the graph was properly saved and loaded
+        actual_result = g.query(q)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        queries = [
+                "MATCH (a:L0) RETURN count(a)",
+                "MATCH (a:L1) RETURN count(a)",
+                "MATCH (a:L2) RETURN count(a)",
+                "MATCH (a:L0:L0) RETURN count(a)",
+                "MATCH (a:L0:L1) RETURN count(a)",
+                "MATCH (a:L0:L2) RETURN count(a)",
+                "MATCH (a:L1:L0) RETURN count(a)",
+                "MATCH (a:L1:L1) RETURN count(a)",
+                "MATCH (a:L1:L2) RETURN count(a)",
+                "MATCH (a:L2:L0) RETURN count(a)",
+                "MATCH (a:L2:L1) RETURN count(a)",
+                "MATCH (a:L2:L2) RETURN count(a)",
+                "MATCH (a:L0:L1:L2) RETURN count(a)"]
+
+        for q in queries:
+            actual_result = g.query(q)
+            self.env.assertEquals(actual_result.result_set[0], [1])

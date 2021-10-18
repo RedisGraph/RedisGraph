@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v9.h"
+#include "encode_v10.h"
 
 static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
@@ -23,9 +23,31 @@ static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 	if(!idx) return;
 
-	for(uint i = 0; i < idx->fields_count; i++) {
-		// Index type
-		RedisModule_SaveUnsigned(rdb, idx->type);
+	// Index type
+	RedisModule_SaveUnsigned(rdb, idx->type);
+
+	if(idx->type == IDX_FULLTEXT) {
+		// Index language
+		const char *language = Index_GetLanguage(idx);
+		RedisModule_SaveStringBuffer(rdb, language, strlen(language) + 1);
+
+		size_t stopwords_count;
+		char **stopwords = Index_GetStopwords(idx, &stopwords_count);
+		// Index stopwords count
+		RedisModule_SaveUnsigned(rdb, stopwords_count);
+		for (size_t i = 0; i < stopwords_count; i++) {
+			char *stopword = stopwords[i];
+			// Index stopword
+			RedisModule_SaveStringBuffer(rdb, stopword, strlen(stopword) + 1);
+			rm_free(stopword);
+		}
+		rm_free(stopwords);
+	}
+
+	uint fields_count = Index_FieldsCount(idx);
+	// Indexed fields count
+	RedisModule_SaveUnsigned(rdb, fields_count);
+	for(uint i = 0; i < fields_count; i++) {
 		// Indexed property
 		RedisModule_SaveStringBuffer(rdb, idx->fields[i], strlen(idx->fields[i]) + 1);
 	}
@@ -54,7 +76,7 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	_RdbSaveIndexData(rdb, s->fulltextIdx);
 }
 
-void RdbSaveGraphSchema_v9(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas

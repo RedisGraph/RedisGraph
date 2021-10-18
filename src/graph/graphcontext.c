@@ -270,12 +270,6 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 	return schema;
 }
 
-const char *GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
-	int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
-	if(label_id == GRAPH_NO_LABEL) return NULL;
-	return gc->node_schemas[label_id]->name;
-}
-
 const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 	int reltype_id = Graph_GetEdgeRelation(gc->g, e);
 	ASSERT(reltype_id != GRAPH_NO_RELATION);
@@ -442,22 +436,35 @@ int GraphContext_DeleteIndex
 	return res;
 }
 
-// Delete all references to a node from any indices built upon its properties
-void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
-	Schema  *s  =  NULL;
-	Graph   *g  =  gc->g;
+// delete all references to a node from any indices built upon its properties
+void GraphContext_DeleteNodeFromIndices
+(
+	GraphContext *gc,
+	Node *n
+) {
+	ASSERT(n  != NULL);
+	ASSERT(gc != NULL);
 
-	int label_id = NODE_GET_LABEL_ID(n, g);
-	if(label_id == GRAPH_NO_LABEL) return;
+	Schema    *s       =  NULL;
+	Graph     *g       =  gc->g;
+	EntityID  node_id  =  ENTITY_GET_ID(n);
 
-	s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(g, n, label_count);
 
-	// update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(idx) Index_RemoveNode(idx, n);
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		ASSERT(s != NULL);
 
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
-	if(idx) Index_RemoveNode(idx, n);
+		// Update any indices this entity is represented in
+		Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		if(idx) Index_RemoveNode(idx, n);
+
+		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+		if(idx) Index_RemoveNode(idx, n);
+	}
 }
 
 void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {

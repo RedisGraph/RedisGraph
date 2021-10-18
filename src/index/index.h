@@ -33,10 +33,11 @@ typedef struct {
 	int label_id;                 // indexed label ID
 	char **fields;                // indexed fields
 	Attribute_ID *fields_ids;     // indexed field IDs
-	uint fields_count;            // number of fields
-	RSIndex *idx;                 // rediSearch index
-	IndexType type;               // index type exact-match / fulltext
+	char *language;               // language
+	char **stopwords;             // stopwords
 	GraphEntityType entity_type;  // entity type (node/edge) indexed
+	IndexType type;               // index type exact-match / fulltext
+	RSIndex *idx;                 // rediSearch index
 } Index;
 
 // create a new index
@@ -127,9 +128,21 @@ int Index_GetLabelID
 	const Index *idx
 );
 
+// returns indexed language
+const char *Index_GetLanguage
+(
+	const Index *idx
+);
+
+// returns indexed stopwords
+char **Index_GetStopwords
+(
+	const Index *idx,
+	size_t *size
+);
+
 // free fulltext index
 void Index_Free
 (
 	Index *idx
 );
-

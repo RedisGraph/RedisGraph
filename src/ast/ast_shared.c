@@ -106,8 +106,16 @@ void PropertyMap_Free(PropertyMap *map) {
 
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
 	NodeCreateCtx clone = ctx;
+	array_clone(clone.labels, ctx.labels);
+	array_clone(clone.labelsId, ctx.labelsId);
 	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
+}
+
+void NodeCreateCtx_Free(NodeCreateCtx ctx) {
+	array_free(ctx.labels);
+	array_free(ctx.labelsId);
+	PropertyMap_Free(ctx.properties);
 }
 
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {

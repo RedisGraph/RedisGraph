@@ -272,7 +272,10 @@ SlowLog *GraphContext_GetSlowLog
 	const GraphContext *gc
 );
 
-// cache API
+//------------------------------------------------------------------------------
+// Cache API
+//------------------------------------------------------------------------------
+
 // return cache associated with graph context and current thread id
 Cache *GraphContext_GetCache
 (
