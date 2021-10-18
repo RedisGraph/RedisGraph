@@ -501,7 +501,7 @@ GRAPH.QUERY DEMO_GRAPH "MERGE (charlie { name: 'Charlie Sheen', age: 10 })"
 To merge a single node, specifying both label and property:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })""
+GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })"
 ```
 
 **Merging paths**
@@ -1048,4 +1048,4 @@ Lists all graph keys in the keyspace.
 2) G
 3) resources
 4) players
-
+```
