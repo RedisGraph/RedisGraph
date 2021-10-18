@@ -142,7 +142,7 @@ class testGraphPersistency():
             first_result = graph.query(query)
 
             # Save RDB & Load from RDB
-            redis_con.execute_command("DEBUG", "RELOAD")
+            self.env.dumpAndReload()
 
             second_result = graph.query(query)
             self.env.assertEquals(first_result.result_set,
@@ -162,7 +162,7 @@ class testGraphPersistency():
             self.env.assertEquals(result.properties_set, 5)
 
             # Save RDB & Load from RDB
-            redis_con.execute_command("DEBUG", "RELOAD")
+            self.env.dumpAndReload()
 
             query = """MATCH (p) RETURN p.boolval, p.numval, p.strval, p.array, p.pointval"""
             actual_result = graph.query(query)
@@ -198,7 +198,7 @@ class testGraphPersistency():
             self.env.assertEquals(actual_result.result_set, expected_result)
 
             # Save RDB & Load from RDB
-            redis_con.execute_command("DEBUG", "RELOAD")
+            self.env.dumpAndReload()
 
             # Verify that the latest edge was properly saved and loaded
             actual_result = graph.query(q)
@@ -214,7 +214,8 @@ class testGraphPersistency():
         self.env.assertEquals(actual_result.nodes_created, 100_000)
         self.env.assertEquals(actual_result.relationships_created, 50_000)
 
-        redis_con.execute_command("DEBUG", "RELOAD")
+        # Save RDB & Load from RDB
+        self.env.dumpAndReload()
 
         expected_result = [[50000]]
 
@@ -244,7 +245,7 @@ class testGraphPersistency():
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Save RDB & Load from RDB
-        redis_con.execute_command("DEBUG", "RELOAD")
+        self.env.dumpAndReload()
 
         # Verify that the graph was properly saved and loaded
         actual_result = g.query(q)

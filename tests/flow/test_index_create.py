@@ -80,7 +80,7 @@ class testIndexCreationFlow(FlowTestsBase):
             self.env.assertIn("Index already exists configuration can't be changed", str(e))
 
         try:
-            # create an index over L1:v4 with stopwords should failed
+            # create an index over L1:v4 with language should failed
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L1', language: 'english' }, 'v4')")
             assert(False)
         except ResponseError as e:
@@ -90,7 +90,7 @@ class testIndexCreationFlow(FlowTestsBase):
         result = redis_graph.query("CALL db.idx.fulltext.drop('L1')")
         self.env.assertEquals(result.indices_deleted, 1)
 
-        # create an index over L1:v4 with stopwords
+        # create an index over L1:v4 with language
         result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L1', language: 'english' }, 'v4')")
         self.env.assertEquals(result.indices_created, 1)
 
@@ -102,7 +102,7 @@ class testIndexCreationFlow(FlowTestsBase):
             self.env.assertIn("Stopwords must be array", str(e))
 
         try:
-            # create an index over L3:v1 with stopwords should failed
+            # create an index over L3:v1 with language should failed
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L3', language: ['english'] }, 'v1')")
             assert(False)
         except ResponseError as e:
@@ -116,6 +116,10 @@ class testIndexCreationFlow(FlowTestsBase):
 
         # try to create an index over person:age and person:name, index shouldn't be created as it already exist
         result = redis_graph.query("CREATE INDEX ON :person(age, name)")
+        self.env.assertEquals(result.indices_created, 0)
+
+        # try to create an index over person:name and person:age, index shouldn't be created as it already exist
+        result = redis_graph.query("CREATE INDEX ON :person(name, age)")
         self.env.assertEquals(result.indices_created, 0)
 
         # try to create an index over person:age and person:name and person:height, index for height should be created as the rest already exist
