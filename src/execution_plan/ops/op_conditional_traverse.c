@@ -84,25 +84,19 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->records = NULL;
 	op->record_count = 0;
 	op->edge_ctx = NULL;
-	op->dest_label = NULL;
 	op->record_cap = BATCH_SIZE;
-	op->dest_label_id = GRAPH_NO_LABEL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
-	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+	bool aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae), &op->srcNodeIdx);
 	UNUSED(aware);
 	ASSERT(aware == true);
 
-	const char *dest = AlgebraicExpression_Destination(ae);
+	const char *dest = AlgebraicExpression_Dest(ae);
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
-	// Check the QueryGraph node and retrieve label data if possible.
-	QGNode *dest_node = QueryGraph_GetNodeByAlias(plan->query_graph, dest);
-	op->dest_label = dest_node->label;
-	op->dest_label_id = dest_node->labelID;
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
@@ -124,6 +118,7 @@ static OpResult CondTraverseInit(OpBase *opBase) {
 	// use BATCH_SIZE as the value.
 	if(op->record_cap > BATCH_SIZE) op->record_cap = BATCH_SIZE;
 	op->records = rm_calloc(op->record_cap, sizeof(Record));
+
 	return OP_OK;
 }
 
@@ -184,10 +179,8 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* Get node from current column. */
 	op->r = op->records[src_id];
-	/* Populate the destination node and add it to the Record.
-	 * Note that if the node's label is unknown, this will correctly
-	 * create an unlabeled node. */
-	Node destNode = GE_NEW_LABELED_NODE(op->dest_label, op->dest_label_id);
+	// Populate the destination node and add it to the Record.
+	Node destNode = GE_NEW_NODE();
 	Graph_GetNode(op->graph, dest_id, &destNode);
 	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
@@ -229,6 +222,7 @@ static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase 
 /* Frees CondTraverse */
 static void CondTraverseFree(OpBase *ctx) {
 	OpCondTraverse *op = (OpCondTraverse *)ctx;
+
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(&op->iter);
 	}

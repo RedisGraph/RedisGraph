@@ -22,12 +22,13 @@ typedef enum {
 } IndexType;
 
 typedef struct {
-	char *label;                // Indexed label.
-	char **fields;              // Indexed fields.
-	Attribute_ID *fields_ids;   // Indexed field IDs.
-	uint fields_count;          // Number of fields.
-	RSIndex *idx;               // RediSearch index.
-	IndexType type;             // Index type exact-match / fulltext.
+	char *label;                // indexed label
+	RSIndex *idx;               // rediSearch index
+	char **fields;              // indexed fields
+	char *language;             // language
+	char **stopwords;           // stopwords
+	IndexType type;             // index type exact-match / fulltext
+	Attribute_ID *fields_ids;   // indexed field IDs
 } Index;
 
 /**
@@ -110,6 +111,22 @@ const char **Index_GetFields(const Index *idx);
  * @retval True if the attribute is indexed.
  */
 bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id);
+
+/**
+ * @brief  Returns indexed language.
+ * @note   Returns a shallow copy.
+ * @param  *idx: Index to extract fields from.
+ * @retval Language of indexed fields.
+ */
+const char *Index_GetLanguage(const Index *idx);
+
+/**
+ * @brief  Returns indexed stopwords.
+ * @note   Returns a shallow copy.
+ * @param  *idx: Index to extract fields from.
+ * @retval Array with the indexed stopwords.
+ */
+char **Index_GetStopwords(const Index *idx, size_t *size);
 
 /**
  * @brief  Free fulltext index.

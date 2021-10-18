@@ -47,16 +47,17 @@ typedef struct Graph Graph;
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 struct Graph {
-	DataBlock *nodes;                   // Graph nodes stored in blocks.
-	DataBlock *edges;                   // Graph edges stored in blocks.
-	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
-	RG_Matrix *labels;                  // Label matrices.
-	RG_Matrix *relations;               // Relation matrices.
-	RG_Matrix _zero_matrix;             // Zero matrix.
-	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
+	DataBlock *nodes;                   // graph nodes stored in blocks
+	DataBlock *edges;                   // graph edges stored in blocks
+	RG_Matrix adjacency_matrix;         // adjacency matrix, holds all graph connections
+	RG_Matrix *labels;                  // label matrices
+	RG_Matrix node_labels;              // mapping of all node IDs to all labels possessed by each node
+	RG_Matrix *relations;               // relation matrices
+	RG_Matrix _zero_matrix;             // zero matrix
+	pthread_rwlock_t _rwlock;           // read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
-	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
-	GraphStatistics stats;              // Graph related statistics.
+	SyncMatrixFunc SynchronizeMatrix;   // function pointer to matrix synchronization routine
+	GraphStatistics stats;              // graph related statistics
 };
 
 // graph synchronization functions
@@ -97,15 +98,15 @@ void Graph_ApplyAllPending
 // Retrieve graph matrix synchronization policy
 MATRIX_POLICY Graph_GetMatrixPolicy
 (
-  const Graph *g
+	const Graph *g
 );
 
 // choose the current matrix synchronization policy
 void Graph_SetMatrixPolicy
 (
-  Graph *g,
-  MATRIX_POLICY policy
-);
+	Graph *g,
+	MATRIX_POLICY policy
+ );
 
 // checks to see if graph has pending operations
 bool Graph_Pending
@@ -124,6 +125,15 @@ Graph *Graph_New
 int Graph_AddLabel
 (
 	Graph *g
+);
+
+// Associate node with labels by setting label matrix L to 1 at position [id,id]
+void Graph_LabelNode
+(
+	Graph *g,
+	NodeID id,
+	int *labels,
+	uint label_count
 );
 
 // creates a new relation matrix, returns id given to relation
@@ -151,8 +161,9 @@ void Graph_AllocateEdges
 void Graph_CreateNode
 (
 	Graph *g,
-	int label,
-	Node *n
+	Node *n,
+	int *labels,
+	uint label_count
 );
 
 // connects source node to destination node
@@ -275,6 +286,15 @@ int Graph_LabelTypeCount
 	const Graph *g
 );
 
+// returns true if relationship matrix 'r' contains multi-edge entries
+// false otherwise
+bool Graph_RelationshipContainsMultiEdge
+(
+	const Graph *g, // Graph containing matrix to inspect
+	int r,          // Relationship ID
+	bool transpose  // false for R, true for transpose R
+);
+
 // retrieves node with given id from graph,
 // returns NULL if node wasn't found
 int Graph_GetNode
@@ -282,14 +302,6 @@ int Graph_GetNode
 	const Graph *g,
 	NodeID id,
 	Node *n
-);
-
-// retrieves node label
-// returns GRAPH_NO_LABEL if node has no label
-int Graph_GetNodeLabel
-(
-	const Graph *g,
-	NodeID nodeID
 );
 
 // retrieves edge with given id from graph,
@@ -331,6 +343,15 @@ void Graph_GetNodeEdges
 	Edge **edges            // array_t incoming/outgoing edges.
 );
 
+// populate array of node's label IDs, return number of labels on node.
+uint Graph_GetNodeLabels
+(
+	const Graph *g,         // graph the node belongs to
+	const Node *n,          // node to extract labels from
+	LabelID *labels,        // array to populate with labels
+	uint label_count        // size of labels array
+);
+
 // retrieves the adjacency matrix
 // matrix is resized if its size doesn't match graph's node count
 RG_Matrix Graph_GetAdjacencyMatrix
@@ -356,13 +377,11 @@ RG_Matrix Graph_GetRelationMatrix
 	bool transposed
 );
 
-// returns true if relationship matrix 'r' contains multi-edge entries
-// false otherwise
-bool Graph_RelationshipContainsMultiEdge
+// retrieves the node-label mapping matrix,
+// matrix is resized if its size doesn't match graph's node count.
+RG_Matrix Graph_GetNodeLabelMatrix
 (
-	const Graph *g, // Graph containing matrix to inspect
-	int r,          // Relationship ID
-	bool transpose  // false for R, true for transpose R
+	const Graph *g
 );
 
 // retrieves the zero matrix
@@ -373,8 +392,15 @@ RG_Matrix Graph_GetZeroMatrix
 	const Graph *g
 );
 
+RG_Matrix Graph_GetLabelRGMatrix
+(
+	const Graph *g,
+	int label_idx
+);
+
 // free graph
 void Graph_Free
 (
 	Graph *g
 );
+

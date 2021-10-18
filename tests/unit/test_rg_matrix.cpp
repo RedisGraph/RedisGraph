@@ -13,6 +13,7 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../src/configuration/config.h"
 #include "../../src/graph/rg_matrix/rg_matrix.h"
+#include <time.h>
 
 #ifdef __cplusplus
 }
@@ -226,7 +227,6 @@ TEST_F(RGMatrixTest, RGMatrix_new) {
 }
 
 // setting an empty entry
-// M[i,j] = 1
 // M[i,j] = 1
 TEST_F(RGMatrixTest, RGMatrix_simple_set) {
 	GrB_Type    t                   =  GrB_UINT64;
@@ -494,6 +494,10 @@ TEST_F(RGMatrixTest, RGMatrix_del) {
 	//--------------------------------------------------------------------------
 	// M[i,j] = 2, DP[i,j] = 0, DM[i,j] = 0
 	//--------------------------------------------------------------------------
+
+	info = RG_Matrix_extractElement_UINT64(&x, A, i, j);
+	ASSERT_TRUE(info == GrB_SUCCESS);
+	ASSERT_EQ(2, x);
 
 	M_NOT_EMPTY();
 	DP_EMPTY();
@@ -1057,11 +1061,13 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	// create RGMatrix
 	//--------------------------------------------------------------------------
 
+	srand(time(0));
+
 	I = (GrB_Index*) malloc(sizeof(GrB_Index) * operations);
 	J = (GrB_Index*) malloc(sizeof(GrB_Index) * operations);
 
 	info = RG_Matrix_new(&A, t, nrows, ncols);
-	info = RG_Matrix_new(&A->transposed, t, nrows, ncols);
+	info = RG_Matrix_new(&A->transposed, t, ncols, nrows);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	// make sure transposed was created
@@ -1076,7 +1082,7 @@ TEST_F(RGMatrixTest, RGMatrix_fuzzy) {
 	info = GrB_Matrix_new(&N, t, nrows, ncols);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
-	info = GrB_Matrix_new(&NT, t, nrows, ncols);
+	info = GrB_Matrix_new(&NT, t, ncols, nrows);
 	ASSERT_EQ(info, GrB_SUCCESS);
 
 	uint additions = 0;

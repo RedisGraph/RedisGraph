@@ -111,7 +111,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
@@ -189,6 +189,15 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
+
+		uint node_schemas_count = array_len(gc->node_schemas);
+		// update the node statistics
+		for(uint i = 0; i < node_schemas_count; i++) {
+			GrB_Index nvals;
+			RG_Matrix L = g->labels[i];
+			RG_Matrix_nvals(&nvals, L);
+			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
+		}
 
 		// set the thread-local GraphContext
 		// as it will be accessed when creating indexes

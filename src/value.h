@@ -114,7 +114,7 @@ SIValue SI_Point(float latitude, float longitude);
 SIValue SI_DuplicateStringVal(const char *s);
 
 // Neither duplicate nor assume ownership of input string.
-SIValue SI_ConstStringVal(char *s);
+SIValue SI_ConstStringVal(const char *s);
 
 // Don't duplicate input string, but assume ownership.
 SIValue SI_TransferStringVal(char *s);
