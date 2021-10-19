@@ -37,7 +37,7 @@ class testIndexDeletionFlow(FlowTestsBase):
         result = redis_graph.query("DROP INDEX ON :person(age)")
         self.env.assertEquals(result.indices_deleted, 1)
 
-        # create an index over edge follow:created_at and person:name
+        # create an index over edge follow:created_at
         result = redis_graph.query("CREATE INDEX FOR ()-[r:follow]-() ON (r.created_at)")
         self.env.assertEquals(result.indices_created, 1)
 
