@@ -298,7 +298,7 @@ class testRelationPattern(FlowTestsBase):
         g.query(q)
 
         labels = ['X', 'Y', 'Z']
-        expected_result = [['B'], ['C'], ['D']]
+        expected_result = [[['B']], [['C']], [['D']]]
 
         q = "MATCH (a)-[:{L0}|:{L1}|:{L2}]->(b) RETURN labels(b) AS label ORDER BY label"
         import itertools

@@ -30,7 +30,11 @@ typedef struct {
 /* Creates a new schema. */
 Schema *Schema_New(const char *label, int id);
 
+/* Return the given schema's name. */
 const char *Schema_GetName(const Schema *s);
+
+/* Return the given schema's ID. */
+int Schema_GetID(const Schema *s);
 
 /* Returns true if schema has either a full-text or exact-match index. */
 bool Schema_HasIndices(const Schema *s);
@@ -54,4 +58,3 @@ void Schema_AddNodeToIndices(const Schema *s, const Node *n);
 
 /* Free schema. */
 void Schema_Free(Schema *s);
-

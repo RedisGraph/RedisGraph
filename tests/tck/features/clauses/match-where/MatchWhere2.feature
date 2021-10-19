@@ -55,7 +55,6 @@ Feature: MatchWhere2 - Filter multiple variables
       | (:D) |
     And no side effects
 
-  @skip
   Scenario: [2] Filter node with conjunctive multi-part property predicates on multi variables with multiple bindings
     Given an empty graph
     And having executed:

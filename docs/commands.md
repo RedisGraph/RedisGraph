@@ -260,6 +260,14 @@ Pattern predicates can be also negated and combined with the logical operators A
 MATCH (p:President), (s:State) WHERE NOT (p)-[:WON]->(s) AND (p)->[:governor]->(s) RETURN p, s
 ```
 
+Nodes can also be filtered by label:
+
+```sh
+MATCH (n)-[:R]->() WHERE n:L1 OR n:L2 RETURN n 
+```
+
+When possible, it is preferable to specify the label in the node pattern of the MATCH clause.
+
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
@@ -493,7 +501,7 @@ GRAPH.QUERY DEMO_GRAPH "MERGE (charlie { name: 'Charlie Sheen', age: 10 })"
 To merge a single node, specifying both label and property:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })""
+GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })"
 ```
 
 **Merging paths**
@@ -622,6 +630,7 @@ This section contains information on all supported functions from the Cypher que
 | -------             | :-----------                                                                |
 | endNode()           | Returns the destination node of a relationship.                             |
 | id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
+| hasLabels()         | Returns true if input node contains all specified labels, otherwise false.  |
 | labels()            | Returns a string representation of the label of a node.                     |
 | startNode()         | Returns the source node of a relationship.                                  |
 | timestamp()         | Returns the the amount of milliseconds since epoch.                         |
@@ -670,6 +679,7 @@ This section contains information on all supported functions from the Cypher que
 | -------     | :-----------                                                                                    |
 | left()      | Returns a string containing the specified number of leftmost characters of the original string  |
 | lTrim()     | Returns the original string with leading whitespace removed                                     |
+| replace()   | Returns a string in which all occurrences of a specified substring are replaced with the specified replacement string |
 | reverse()   | Returns a string in which the order of all characters in the original string are reversed       |
 | right()     | Returns a string containing the specified number of rightmost characters of the original string |
 | rTrim()     | Returns the original string with trailing whitespace removed                                    |
@@ -869,7 +879,7 @@ GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redis.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
@@ -913,7 +923,7 @@ RETURN m ORDER BY m.rating"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
 ```
 
-In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redislabs.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
+In addition to yielding matching nodes, full-text index scans will return the score of each node. This is the [TF-IDF](https://oss.redis.com/redisearch/Scoring/#tfidf_default) score of the node, which is informed by how many times the search terms appear in the node and how closely grouped they are. This can be observed in the example:
 ```sh
 GRAPH.QUERY DEMO_GRAPH
 "CALL db.idx.fulltext.queryNodes('Node', 'hello world') YIELD node, score RETURN score, node.val"
@@ -925,6 +935,16 @@ GRAPH.QUERY DEMO_GRAPH
       2) "hello to a different world"
 3) 1) "Cached execution: 1"
    2) "Query internal execution time: 0.335401 milliseconds"
+```
+
+RediSearch provide 2 additional index configuration options:
+1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
+2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+
+To construct a full-text index on the `title` using `German` using custom stopwords property of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'], 'title')"
 ```
 
 ## GRAPH.PROFILE
@@ -1028,4 +1048,4 @@ Lists all graph keys in the keyspace.
 2) G
 3) resources
 4) players
-
+```

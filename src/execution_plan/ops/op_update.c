@@ -54,7 +54,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 }
 
 static OpResult UpdateInit(OpBase *opBase) {
-	OpUpdate *op = (OpUpdate*)opBase;
+	OpUpdate *op = (OpUpdate *)opBase;
 
 	op->stats    =    QueryCtx_GetResultSetStatistics();
 	op->records  =    array_new(Record, 64);

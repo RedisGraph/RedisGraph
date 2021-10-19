@@ -75,7 +75,7 @@ static OpResult IndexScanInit(OpBase *opBase) {
 
 static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 	// Populate the Record with the graph entity data.
-	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
+	Node n = GE_NEW_NODE();
 	int res = Graph_GetNode(op->g, node_id, &n);
 	ASSERT(res != 0);
 	Record_AddNode(r, op->nodeRecIdx, n);
@@ -96,7 +96,7 @@ pull_index:
 	// pull from index
 	//--------------------------------------------------------------------------
 
-	if(op->iter != NULL) {
+	if(op->iter != NULL && op->child_record != NULL) {
 		while((nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
 				!= NULL) {
 			// populate record with node

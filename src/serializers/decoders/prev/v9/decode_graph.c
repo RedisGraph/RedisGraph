@@ -111,7 +111,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
@@ -190,14 +190,29 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
 
+		uint node_schemas_count = array_len(gc->node_schemas);
+		// update the node statistics
+		for(uint i = 0; i < node_schemas_count; i++) {
+			GrB_Index nvals;
+			RG_Matrix L = g->labels[i];
+			RG_Matrix_nvals(&nvals, L);
+			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
+		}
+
 		// set the thread-local GraphContext
 		// as it will be accessed when creating indexes
 		QueryCtx_SetGraphCtx(gc);
-
+		
+		uint label_count = Graph_LabelTypeCount(g);
+		// update the node statistics
 		// index the nodes
-		uint node_schemas_count = array_len(gc->node_schemas);
-		for(uint i = 0; i < node_schemas_count; i++) {
-			Schema *s = gc->node_schemas[i];
+		for(uint i = 0; i < label_count; i++) {
+			GrB_Index nvals;
+			RG_Matrix L = Graph_GetLabelMatrix(g, i);
+			RG_Matrix_nvals(&nvals, L);
+			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
+
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
