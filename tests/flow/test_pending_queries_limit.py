@@ -25,6 +25,10 @@ def issue_query(conn, q):
 class testPendingQueryLimit():
     def __init__(self):
         self.env = Env(decodeResponses=True)
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            self.env.skip() # valgrind is not working correctly with multi process
+
         self.conn = self.env.getConnection()
 
     def test_01_query_limit_config(self):
