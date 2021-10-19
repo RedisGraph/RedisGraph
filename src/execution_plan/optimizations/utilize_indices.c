@@ -447,16 +447,19 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	
 	const char *other_alias  =  AlgebraicExpression_Dest(cond->ae);
 	QGNode     *other_node   =  QueryGraph_GetNodeByAlias(plan->query_graph, other_alias);
-	if(other_node && QGNode_LabelCount(other_node) > 0) {
+	uint other_label_count   =  QGNode_LabelCount(other_node);
+	if(other_node && other_label_count > 0) {
 		const char *func_name = "hasLabels";
 
 		// create node expression
 		AR_ExpNode *node_exp = AR_EXP_NewVariableOperandNode(other_alias);
 
 		// create labels expression
-		SIValue labels = SI_Array(1);
-		// TODO: multi label
-		SIArray_Append(&labels, SI_ConstStringVal((char *)other_node->labels[0]));
+		SIValue labels = SI_Array(other_label_count);
+		for (uint i = 0; i < other_label_count; i++) {
+			SIArray_Append(&labels, SI_ConstStringVal((char *)other_node->labels[i]));
+		}
+		
 		AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
 
 		// create func expression
