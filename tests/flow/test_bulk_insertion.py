@@ -361,8 +361,8 @@ class testGraphBulkInsertFlow(FlowTestsBase):
     # Verify that the bulk loader does not block the server
     def test09_large_bulk_insert(self):
         # Skip this test if running under Valgrind, (too slow)
-        if Env().envRunner.debugger is not None:
-            Env().skip()
+        if self.env.envRunner.debugger is not None:
+            self.env.skip()
 
         graphname = "tmpgraph5"
         prop_str = "Property value to be repeated 1 million generating a multi-megabyte CSV"
