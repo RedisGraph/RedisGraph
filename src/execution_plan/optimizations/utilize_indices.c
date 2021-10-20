@@ -289,7 +289,7 @@ void reduce_scan_op
 ) {
 	// in the multi-label case, we want to pick the label which will allow us to
 	// both utilize an index and iterate over the fewest values
-	GraphContext *gc  = QueryCtx_GetGraphCtx();
+	GraphContext *gc  =  QueryCtx_GetGraphCtx();
 	Graph        *g   =  QueryCtx_GetGraph();
 	QueryGraph   *qg  =  scan->op.plan->query_graph;
 
