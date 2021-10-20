@@ -163,9 +163,15 @@ size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_
 	return *bytesWritten;
 }
 
-void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-						  size_t *bytesWritten,
-						  GraphEntityStringFromat format, GraphEntityType entityType) {
+void GraphEntity_ToString
+(
+	const GraphEntity *e,
+	char **buffer,
+	size_t *bufferLen,
+	size_t *bytesWritten,
+	GraphEntityStringFromat format,
+	GraphEntityType entityType
+) {
 	// space allocation
 	if(*bufferLen - *bytesWritten < 64)  {
 		*bufferLen += 64;
@@ -194,14 +200,22 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 		switch(entityType) {
 			case GETYPE_NODE: {
 				Node *n = (Node *)e;
-				if(n->label) {
+				GraphContext *gc = QueryCtx_GetGraphCtx();
+
+				// retrieve node labels
+				uint label_count;
+				NODE_GET_LABELS(gc->g, n, label_count);
+				for(uint i = 0; i < label_count; i ++) {
+					Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
+					const char *name = Schema_GetName(s);
+
 					// allocate space if needed
-					size_t labelLen = strlen(n->label);
+					size_t labelLen = strlen(name);
 					if(*bufferLen - *bytesWritten < labelLen) {
 						*bufferLen += labelLen;
 						*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
 					}
-					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", n->label);
+					*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", name);
 				}
 				break;
 			}

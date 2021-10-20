@@ -82,8 +82,6 @@ GrB_Info RG_Matrix_removeElement_BOOL
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	RG_Matrix_validateState(C, i, j);
-
 	RG_Matrix_setDirty(C);
 	return info;
 }
@@ -173,8 +171,6 @@ GrB_Info RG_Matrix_removeElement_UINT64
 		info = GrB_Matrix_removeElement(dp, i, j);
 		ASSERT(info == GrB_SUCCESS);
 	}
-
-	RG_Matrix_validateState(C, i, j);
 
 	RG_Matrix_setDirty(C);
 	return info;

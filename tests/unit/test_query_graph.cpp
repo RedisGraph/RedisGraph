@@ -34,9 +34,12 @@ class QueryGraphTest: public ::testing::Test {
 	}
 
 	void compare_nodes(const QGNode *a, const QGNode *b) {
-		ASSERT_STREQ(a->alias, b->alias);
-		ASSERT_STREQ(a->label, b->label);
-		ASSERT_EQ(a->labelID, b->labelID);
+		uint a_lbl_count = QGNode_LabelCount(a);
+		uint b_lbl_count = QGNode_LabelCount(b);
+		ASSERT_EQ(a_lbl_count, b_lbl_count);
+		for(uint i = 0; i < a_lbl_count; i++) {
+			ASSERT_EQ(a->labelsID[i], b->labelsID[i]);
+		}
 		ASSERT_EQ(array_len(a->incoming_edges), array_len(b->incoming_edges));
 		ASSERT_EQ(array_len(a->outgoing_edges), array_len(b->outgoing_edges));
 	}
@@ -379,7 +382,8 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	// Extract portions of the original query graph
 	//--------------------------------------------------------------------------
 
-	const char *query = "MATCH (A)-[AB]->(B), (B)-[BC]->(C) MATCH (C)-[CD]->(D) MATCH (D)-[DE]->(E)RETURN D";
+	const char *query =
+		"MATCH (A)-[AB]->(B), (B)-[BC]->(C) MATCH (C)-[CD]->(D) MATCH (D)-[DE]->(E) RETURN D";
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	AST *ast = AST_Build(parse_result);
 	ast->referenced_entities = raxNew();

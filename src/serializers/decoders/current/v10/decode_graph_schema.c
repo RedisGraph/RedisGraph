@@ -4,28 +4,60 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v9.h"
+#include "decode_v10.h"
 
 static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	/* Format:
 	 * id
 	 * name
 	 * #indices
-	 * (index type, indexed property) X M */
+	 * index type
+	 * language if fulltext index
+	 * stopword if fullext index
+	 * #properties
+	 * indexed property X M */
 
+	char *language = NULL;
+	char **stopwords = NULL;
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
-	Schema *s = Schema_New(name, id);
+	Schema *s = Schema_New(type, id, name);
 	RedisModule_Free(name);
 
-	Index *idx = NULL;
-	uint index_count = RedisModule_LoadUnsigned(rdb);
-	for(uint i = 0; i < index_count; i++) {
-		IndexType type = RedisModule_LoadUnsigned(rdb);
-		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
+	uint index_count     = RedisModule_LoadUnsigned(rdb);
+	while (index_count > 0) {
+		IndexType index_type = RedisModule_LoadUnsigned(rdb);
 
-		Schema_AddIndex(&idx, s, field, type);
-		RedisModule_Free(field);
+		if(index_type == IDX_FULLTEXT) {
+			char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
+			language = rm_strdup(lang);
+			RedisModule_Free(lang);
+			
+			uint stopwords_count = RedisModule_LoadUnsigned(rdb);
+			if(stopwords_count > 0) {
+				stopwords = array_new(char *, stopwords_count);
+				for (uint i = 0; i < stopwords_count; i++) {
+					char *stopword = RedisModule_LoadStringBuffer(rdb, NULL);
+					array_append(stopwords, rm_strdup(stopword));
+					RedisModule_Free(stopword);
+				}
+			}
+		}
+
+		Index *idx = NULL;
+		uint fields_count = RedisModule_LoadUnsigned(rdb);
+		for(uint i = 0; i < fields_count; i++) {
+			char *field = RedisModule_LoadStringBuffer(rdb, NULL);
+			Schema_AddIndex(&idx, s, field, index_type);
+			RedisModule_Free(field);
+		}
+
+		if(index_type == IDX_FULLTEXT) {
+			idx->language = language;
+			idx->stopwords = stopwords;
+		}
+
+		index_count -= fields_count;
 	}
 
 	return s;
@@ -45,7 +77,7 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadGraphSchema_v9(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas

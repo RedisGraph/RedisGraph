@@ -107,11 +107,10 @@ OpBase *NewExpandIntoOp
 	// make sure that all entities are represented in record
 	bool aware;
 	UNUSED(aware);
-
-	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx);
+ 
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Src(ae), &op->srcNodeIdx);
 	ASSERT(aware);
-
-	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx);
+	aware = OpBase_Aware((OpBase *)op, AlgebraicExpression_Dest(ae), &op->destNodeIdx);
 	ASSERT(aware);
 
 	const char *edge = AlgebraicExpression_Edge(ae);
@@ -386,4 +385,3 @@ static void ExpandIntoFree
 		op->r = NULL;
 	}
 }
-

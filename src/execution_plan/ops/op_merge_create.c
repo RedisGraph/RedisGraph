@@ -14,10 +14,10 @@ static Record MergeCreateConsume(OpBase *opBase);
 static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeCreateFree(OpBase *opBase);
 
-// Convert a graph entity's components into an identifying hash code.
+// convert a graph entity's components into an identifying hash code
 static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
 								   PendingProperties *props) {
-	// Update hash with label if one is provided.
+	// update hash with label if one is provided
 	XXH_errorcode res;
 	UNUSED(res);
 	if(label) {
@@ -26,15 +26,15 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
 	}
 
 	if(props) {
-		// Update hash with attribute count.
+		// update hash with attribute count
 		res = XXH64_update(state, &props->property_count, sizeof(props->property_count));
 		ASSERT(res != XXH_ERROR);
 		for(int i = 0; i < props->property_count; i++) {
-			// Update hash with attribute ID.
+			// update hash with attribute ID
 			res = XXH64_update(state, &props->attr_keys[i], sizeof(props->attr_keys[i]));
 			ASSERT(res != XXH_ERROR);
 
-			// Update hash with the hashval of the associated SIValue.
+			// update hash with the hashval of the associated SIValue
 			XXH64_hash_t value_hash = SIValue_HashCode(props->values[i]);
 			res = XXH64_update(state, &value_hash, sizeof(value_hash));
 			ASSERT(res != XXH_ERROR);
@@ -94,38 +94,45 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	return (OpBase *)op;
 }
 
-/* Prepare all creations associated with the current Record.
- * Returns false and does not buffer data if every entity to create for this Record
- * has been created in a previous call. */
+// prepare all creations associated with the current Record
+// returns false and do not buffer data if every entity to create for this Record
+// has been created in a previous call
 static bool _CreateEntities(OpMergeCreate *op, Record r) {
-	XXH_errorcode res = XXH64_reset(op->hash_state, 0); // Reset hash state
+	XXH_errorcode res = XXH64_reset(op->hash_state, 0); // reset hash state
 	UNUSED(res);
 	ASSERT(res != XXH_ERROR);
 
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
-		/* Get specified node to create. */
+		// get specified node to create
 		NodeCreateCtx *n = op->pending.nodes_to_create + i;
 
-		/* Create a new node. */
-		Node newNode = GE_NEW_LABELED_NODE(n->label, n->labelId);
+		// create a new node
+		Node newNode = GE_NEW_NODE();
 
-		/* Add new node to Record and save a reference to it. */
+		// add new node to Record and save a reference to it
 		Node *node_ref = Record_AddNode(r, n->node_idx, newNode);
 
-		/* Convert query-level properties. */
+		// convert query-level properties
 		PropertyMap *map = n->properties;
 		PendingProperties *converted_properties = NULL;
 		if(map) converted_properties = ConvertPropertyMap(r, map, true);
 
-		/* Update the hash code with this entity. */
-		_IncrementalHashEntity(op->hash_state, n->label, converted_properties);
+		// update the hash code with this entity
+		uint label_count = array_len(n->labels);
+		if(label_count == 0) _IncrementalHashEntity(op->hash_state, NULL, converted_properties);
+		for(uint i = 0; i < label_count; i ++) {
+			_IncrementalHashEntity(op->hash_state, n->labels[i], converted_properties);
+		}
 
-		/* Save node for later insertion. */
+		// Save node for later insertion
 		array_append(op->pending.created_nodes, node_ref);
 
-		/* Save properties to insert with node. */
+		// Save properties to insert with node
 		array_append(op->pending.node_properties, converted_properties);
+
+		// save labels to assigned to node
+		array_append(op->pending.node_labels, n->labelsId);
 	}
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);

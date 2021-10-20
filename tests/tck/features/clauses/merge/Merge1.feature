@@ -43,7 +43,6 @@ Feature: Merge1 - Merge node
     And the side effects should be:
       | +nodes | 1 |
 
-  @skip
   Scenario: [2] Merge node with label
     Given an empty graph
     When executing query:
@@ -190,7 +189,6 @@ Feature: Merge1 - Merge node
       | +labels     | 1  |
       | +properties | 30 |
 
-  @skip
   Scenario: [10] Merge must properly handle multiple labels
     Given an empty graph
     And having executed:

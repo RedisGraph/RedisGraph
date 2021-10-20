@@ -29,11 +29,11 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QGNode *n,
 											  const cypher_astnode_t *ast_node) {
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
 
-	NodeCreateCtx new_node = {  .alias = n->alias,
-								.label = n->label,
-								.labelId = n->labelID,
-								.properties = PropertyMap_New(gc, ast_props)
-							 };
+	NodeCreateCtx new_node;
+	new_node.alias = n->alias;
+	new_node.properties = PropertyMap_New(gc, ast_props);
+	array_clone(new_node.labels, n->labels);
+	array_clone(new_node.labelsId, n->labelsID);
 
 	return new_node;
 }
