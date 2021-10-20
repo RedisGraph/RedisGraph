@@ -13,7 +13,6 @@
 #include "commands/cmd_context.h"
 #include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
-#include "execution_plan/execution_plan.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -27,7 +26,6 @@ typedef struct {
 typedef struct {
 	double timer[2];            // Query execution time tracking.
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
-	ExecutionPlan *plan;        // Execution plan this query operates on.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
 	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
@@ -68,8 +66,6 @@ void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx);
 void QueryCtx_SetAST(AST *ast);
 /* Set the provided GraphCtx for access through the QueryCtx. */
 void QueryCtx_SetGraphCtx(GraphContext *gc);
-/* Set the execution plan. */
-void QueryCtx_SetExecutionPlan(ExecutionPlan *plan);
 /* Set the resultset. */
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the parameters map. */
@@ -88,8 +84,6 @@ Graph *QueryCtx_GetGraph(void);
 GraphContext *QueryCtx_GetGraphCtx(void);
 /* Retrieve the Redis module context. */
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
-/* Retrieve the execution plan. */
-ExecutionPlan *QueryCtx_GetExecutionPlan(void);
 /* Retrive the resultset. */
 ResultSet *QueryCtx_GetResultSet(void);
 /* Retrive the resultset statistics. */

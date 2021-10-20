@@ -12,7 +12,7 @@
 #include "execution_plan_build/execution_plan_modify.h"
 
 OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp,
-							   AR_ExpNode *path_exp) {
+							   AR_ExpNode *path_exp, const char **arguments) {
 	ASSERT(plan != NULL);
 	ASSERT(exp != NULL);
 	ASSERT(path_exp != NULL);
@@ -26,44 +26,6 @@ OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp,
 	if(comprehension_exp) {
 		AR_EXP_RemoveChild(comprehension_exp, 0);
 	}
-	// Retrieve or build the identifier for this path projection
-	/*
-	const char *identifier = path_exp->resolved_name;
-	if(identifier == NULL) {
-	    // Build an identifier for the path expression
-	    identifier = AR_EXP_BuildResolvedName(path_exp);
-	    path_exp->resolved_name = identifier;
-	    // Ensure the new alias will be freed
-	    AST *ast = QueryCtx_GetAST();
-	    raxInsert(ast->canonical_entity_names, (unsigned char *)identifier,
-	              strlen(identifier), (char *)identifier, NULL);
-	}
-	*/
-
-	// collect the variables that are bound at this point
-	const char **arguments = NULL;
-	if(plan->root) {
-		// Collect the variables that are bound at this point.
-		rax *bound_vars = raxNew();
-		// Rather than cloning the record map, collect the bound variables along with their
-		// parser-generated constant strings.
-		ExecutionPlan_BoundVariables(plan->root, bound_vars);
-		// Collect the variable names from bound_vars to populate the Argument op we will build.
-		arguments = (const char **)raxValues(bound_vars);
-		raxFree(bound_vars);
-	}
-	/*
-	const char **arguments = array_new(const char *, 1);
-	for(uint i = 1; i < exp->op.child_count; i ++) {
-	    AR_ExpNode *child = exp->op.children[i];
-	    ASSERT(child->type == AR_EXP_OPERAND);
-	    ASSERT(child->operand.type == AR_EXP_VARIADIC);
-	    const char *entity_alias = child->operand.variadic.entity_alias;
-	    if(strncmp(entity_alias, "anon", 4)) {
-	        arguments = array_append(arguments, entity_alias);
-	    }
-	}
-	*/
 
 	// build the new Match stream
 	QueryCtx_SetAST(plan->ast_segment);
@@ -139,9 +101,20 @@ void ExecutionPlan_PostBuild(ExecutionPlan *plan) {
 			ExecutionPlan *child_plan = (ExecutionPlan *)child_op->plan;
 			ASSERT(child_plan != NULL);
 
-			// OpBase *rollup = buildRollUpMatchStream(child_plan, AR_EXP_Clone(path_exp));
+			const char **arguments = NULL;
+			if(plan->root) {
+				// Collect the variables that are bound at this point.
+				rax *bound_vars = raxNew();
+				// Rather than cloning the record map, collect the bound variables along with their
+				// parser-generated constant strings.
+				ExecutionPlan_BoundVariables(plan->root, bound_vars);
+				ExecutionPlan_BoundVariables(child_op, bound_vars);
+				// Collect the variable names from bound_vars to populate the Argument op we will build.
+				arguments = (const char **)raxValues(bound_vars);
+				raxFree(bound_vars);
+			}
 			const char *alias = exp->resolved_name;
-			OpBase *rollup = buildRollUpMatchStream(child_plan, exp, path_exp);
+			OpBase *rollup = buildRollUpMatchStream(child_plan, exp, path_exp, arguments);
 			// connect rollup operation as the only child of project
 			ExecutionPlan_PushBelow(child_op, rollup);
 

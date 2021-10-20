@@ -78,11 +78,6 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	ctx->gc = gc;
 }
 
-void QueryCtx_SetExecutionPlan(ExecutionPlan *plan) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->internal_exec_ctx.plan = plan;
-}
-
 void QueryCtx_SetResultSet(ResultSet *result_set) {
 	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->internal_exec_ctx.result_set = result_set;
@@ -126,11 +121,6 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
 	return ctx->global_exec_ctx.redis_ctx;
-}
-
-ExecutionPlan *QueryCtx_GetExecutionPlan(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.plan;
 }
 
 ResultSet *QueryCtx_GetResultSet(void) {

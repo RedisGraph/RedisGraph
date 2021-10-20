@@ -11,9 +11,7 @@
 /* Forward declarations. */
 static OpResult RollUpApplyInit(OpBase *opBase);
 static Record RollUpApplyConsume(OpBase *opBase);
-static OpResult RollUpApplyReset(OpBase *opBase);
 static OpBase *RollUpApplyClone(const ExecutionPlan *plan, const OpBase *opBase);
-static void RollUpApplyFree(OpBase *opBase);
 
 OpBase *NewRollUpApplyOp(const ExecutionPlan *plan, const char *alias) {
 	RollUpApply *op = rm_malloc(sizeof(RollUpApply));
@@ -87,4 +85,3 @@ static OpBase *RollUpApplyClone(const ExecutionPlan *plan, const OpBase *opBase)
 	RollUpApply *op = (RollUpApply *)opBase;
 	return NewRollUpApplyOp(plan, op->alias);
 }
-

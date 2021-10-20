@@ -668,15 +668,12 @@ static AR_ExpNode *_AR_ExpFromPatternComprehension(const cypher_astnode_t *comp_
 	/* Retrieve the variable name introduced in this context to iterate over pattern elements.
 	 * In the above query, this is 'val'. */
 	const cypher_astnode_t *variable_node = cypher_ast_pattern_comprehension_get_identifier(comp_exp);
-	ASSERT(variable_node == NULL);
-	/*
 	if(variable_node) {
 	    ASSERT(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
 
 	    // retrieve the variable string for the local variable
 	    ctx->variable_str = cypher_ast_identifier_get_name(variable_node);
 	}
-	*/
 
 	// the predicate node is the set of WHERE conditions in the comprehension
 	// if any
@@ -692,7 +689,10 @@ static AR_ExpNode *_AR_ExpFromPatternComprehension(const cypher_astnode_t *comp_
 	// in the above query, this will be an operation node representing "val * 2"
 	// this will always be NULL for comprehensions like any() and all()
 	const cypher_astnode_t *eval_node = cypher_ast_pattern_comprehension_get_eval(comp_exp);
-	if(eval_node) ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
+	if(eval_node) {
+		ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
+		AR_EXP_RemovePlaceholderFuncs(NULL, &ctx->eval_exp);
+	}
 	ASSERT(eval_node != NULL); // TODO
 
 	// build an operation node to represent the pattern comprehension

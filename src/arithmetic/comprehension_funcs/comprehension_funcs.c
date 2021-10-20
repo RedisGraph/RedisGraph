@@ -250,15 +250,23 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 
 SIValue AR_PATTERN_COMPREHENSION(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	/* List comprehensions are invoked with three children:
-	 * The list to iterate over.
+	/* List comprehensions are invoked with two children:
 	 * The current Record.
 	 * The function context. */
-	/*
-	SIValue list = argv[0];
-	Record r = argv[1].ptrval;
-	ListComprehensionCtx *ctx = argv[2].ptrval;
+	Record outer_record = argv[0].ptrval;
+	ListComprehensionCtx *ctx = argv[1].ptrval;
 
+	// On the first invocation, build the local Record.
+	if(ctx->local_record == NULL && ctx->variable_str) {
+		_PopulateComprehensionCtx(ctx, outer_record);
+	} else {
+		ctx->local_record = Record_New(raxClone(outer_record->mapping));
+	}
+
+	Record r = ctx->local_record;
+	// Populate the local Record with the contents of the outer Record.
+	Record_Clone(outer_record, r);
+	/*
 	// Instantiate the array to be returned.
 	SIValue retval = SI_Array(1);
 
@@ -276,8 +284,8 @@ SIValue AR_PATTERN_COMPREHENSION(SIValue *argv, int argc) {
 	    }
 	}
 	*/
-	Record r = argv[0].ptrval;
-	ListComprehensionCtx *ctx = argv[1].ptrval;
+	// Record r = argv[0].ptrval;
+	// ListComprehensionCtx *ctx = argv[1].ptrval;
 	// If the comprehension has a filter tree, run the current element through it.
 	// If it does not pass, skip this element.
 	if(ctx->ft && !(FilterTree_applyFilters(ctx->ft, r))) return SI_NullVal();
