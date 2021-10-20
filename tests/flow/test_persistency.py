@@ -61,6 +61,8 @@ class testGraphPersistency():
         actual_result = redis_con.execute_command(
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :country(name, population)")
         actual_result = redis_con.execute_command(
+            "GRAPH.QUERY", graph_name, "CREATE INDEX FOR ()-[r:visit]-() ON (r.purpose)")
+        actual_result = redis_con.execute_command(
             "GRAPH.QUERY", graph_name, "CALL db.idx.fulltext.createNodeIndex({label: 'person', stopwords: ['A', 'B'], language: 'english'}, 'text')")
 
         return redis_graph
@@ -124,7 +126,7 @@ class testGraphPersistency():
                 self.env.assertEquals(edgeCount, 2)
 
                 # Verify indices exists
-                expected_indices = [['exact-match', 'country', ['name', 'population'], 'english', []], ['exact-match', 'person', ['name', 'height'], 'english', []], ['full-text', 'person', ['text'], 'english', ['a', 'b']]]
+                expected_indices = [['exact-match', 'country', ['name', 'population'], 'english', [], 'NODE'], ['exact-match', 'person', ['name', 'height'], 'english', [], 'NODE'], ['full-text', 'person', ['text'], 'english', ['a', 'b'], 'NODE'], ['exact-match', 'visit', ['_src_id', '_dest_id', 'purpose'], 'english', [], 'RELATIONSHIP']]
                 indices = graph.query("""CALL db.indexes()""").result_set
                 self.env.assertEquals(indices, expected_indices)
 

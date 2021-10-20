@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../graph/entities/node.h"
+#include "../graph/entities/edge.h"
 #include "../graph/entities/graph_entity.h"
 #include "redisearch_api.h"
 
@@ -22,114 +23,126 @@ typedef enum {
 } IndexType;
 
 typedef struct {
-	char *label;                // indexed label
-	RSIndex *idx;               // rediSearch index
-	char **fields;              // indexed fields
-	char *language;             // language
-	char **stopwords;           // stopwords
-	IndexType type;             // index type exact-match / fulltext
-	Attribute_ID *fields_ids;   // indexed field IDs
+	EntityID src_id;
+	EntityID dest_id;
+	EntityID edge_id;
+} EdgeIndexKey;
+
+typedef struct {
+	char *label;                  // indexed label
+	int label_id;                 // indexed label ID
+	char **fields;                // indexed fields
+	Attribute_ID *fields_ids;     // indexed field IDs
+	char *language;               // language
+	char **stopwords;             // stopwords
+	GraphEntityType entity_type;  // entity type (node/edge) indexed
+	IndexType type;               // index type exact-match / fulltext
+	RSIndex *idx;                 // rediSearch index
 } Index;
 
-/**
- * @brief  Create a new index.
- * @param  *label: Indexed label
- * @param  type: Index type - exact match or full text.
- * @retval New constructed index for the label.
- */
-Index *Index_New(const char *label, IndexType type);
+// create a new index
+Index *Index_New
+(
+	const char *label,           // indexed label
+	int label_id,                // indexed label id
+	IndexType type,              // exact match or full text
+	GraphEntityType entity_type  // entity type been indexed
+);
 
-/**
- * @brief  Adds field to index.
- * @param  *idx: Index
- * @param  *field: Field to add.
- */
-void Index_AddField(Index *idx, const char *field);
+// constructs index
+void Index_Construct
+(
+	Index *idx
+);
 
-/**
- * @brief  Removes field from index.
- * @param  *idx: Index
- * @param  *field: Field to remove.
- */
-void Index_RemoveField(Index *idx, const char *field);
+// adds field to index
+void Index_AddField
+(
+	Index *idx,
+	const char *field  // field to add
+);
 
-/**
- * @brief  Index node.
- * @param  *idx: Index
- * @param  *n :Node
- */
-void Index_IndexNode(Index *idx, const Node *n);
+// removes field from index
+void Index_RemoveField
+(
+	Index *idx,
+	const char *field  // field to remove
+);
 
-/**
- * @brief  Remove node from index.
- * @param  *idx: Index to remove the node from.
- * @param  *n: Node to remove.
- */
-void Index_RemoveNode(Index *idx, const Node *n);
+// index node
+void Index_IndexNode
+(
+	Index *idx,
+	const Node *n  // node to index
+);
 
-/**
- * @brief  Constructs index.
- * @param  *idx:
- */
-void Index_Construct(Index *idx);
+// index edge
+void Index_IndexEdge
+(
+	Index *idx,
+	const Edge *e  // edge to index
+);
 
-/**
- * @brief  Query an index.
- * @param  *idx: Index.
- * @param  *query: Query to execute.
- * @param  **err: Optional, report back error
- * @retval RedisSearch results iterator.
- */
-RSResultsIterator *Index_Query(const Index *idx, const char *query, char **err);
+void Index_RemoveNode
+(
+	Index *idx,    // index to update
+	const Node *n  // node to remove from index
+);
 
-/**
- * @brief Return indexed label.
- * @param  *idx: Index.
- * @retval Index's label.
- */
-const char *Index_GetLabel(const Index *idx);
+void Index_RemoveEdge
+(
+	Index *idx,    // index to update
+	const Edge *e  // edge to remove from index
+);
 
-/**
- * @brief  Returns number of fields indexed.
- * @param  *idx: Index.
- * @retval Number of indexed fields.
- */
-uint Index_FieldsCount(const Index *idx);
+// query an index
+RSResultsIterator *Index_Query
+(
+	const Index *idx,
+	const char *query,  // query to execute
+	char **err          // [optional] report back error
+);
 
-/**
- * @brief  Returns indexed fields.
- * @note   Returns a shallow copy.
- * @param  *idx: Index to extract fields from.
- * @retval Array with the indexed fields.
- */
-const char **Index_GetFields(const Index *idx);
+// returns number of fields indexed
+uint Index_FieldsCount
+(
+	const Index *idx
+);
 
-/**
- * @brief  Checks if given attribute is indexed.
- * @param  *idx: Index to perform the check.
- * @param  attribute_id: Attribute id to search.
- * @retval True if the attribute is indexed.
- */
-bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id);
+// returns a shallow copy of indexed fields
+const char **Index_GetFields
+(
+	const Index *idx
+);
 
-/**
- * @brief  Returns indexed language.
- * @note   Returns a shallow copy.
- * @param  *idx: Index to extract fields from.
- * @retval Language of indexed fields.
- */
-const char *Index_GetLanguage(const Index *idx);
+// checks if given attribute is indexed
+bool Index_ContainsAttribute
+(
+	const Index *idx,
+	Attribute_ID attribute_id  // attribute id to search
+);
 
-/**
- * @brief  Returns indexed stopwords.
- * @note   Returns a shallow copy.
- * @param  *idx: Index to extract fields from.
- * @retval Array with the indexed stopwords.
- */
-char **Index_GetStopwords(const Index *idx, size_t *size);
+// returns indexed label ID
+int Index_GetLabelID
+(
+	const Index *idx
+);
 
-/**
- * @brief  Free fulltext index.
- * @param  *idx: Index to drop.
- */
-void Index_Free(Index *idx);
+// returns indexed language
+const char *Index_GetLanguage
+(
+	const Index *idx
+);
+
+// returns indexed stopwords
+char **Index_GetStopwords
+(
+	const Index *idx,
+	size_t *size
+);
+
+// free fulltext index
+void Index_Free
+(
+	Index *idx
+);

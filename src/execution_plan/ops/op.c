@@ -75,6 +75,28 @@ int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
 	return (intptr_t)id;
 }
 
+bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx) {
+	for (int i = 0; i < op->childCount; i++) {
+		OpBase *child = op->children[i];
+		if(op->plan == child->plan && child->modifies != NULL) {
+			uint count = array_len(child->modifies);
+			for (uint i = 0; i < count; i++) {
+				if(strcmp(alias, child->modifies[i]) == 0) {
+					if(idx) {
+						rax *mapping = ExecutionPlan_GetMappings(op->plan);
+						void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));
+						*idx = (intptr_t)rec_idx;
+					}
+					return true;				
+				}
+			}
+		}
+		if(OpBase_ChildrenAware(child, alias, idx)) return true;
+	}
+	
+	return false;
+}
+
 bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
 	void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));

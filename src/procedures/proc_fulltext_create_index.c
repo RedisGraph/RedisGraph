@@ -123,7 +123,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	// introduce fields to index
 	for(uint i = 0; i < fields_count; i++) {
 		const char *field = fields[i].stringval;
-		res = GraphContext_AddIndex(&idx, gc, label, field, IDX_FULLTEXT);
+		res = GraphContext_AddIndex(&idx, gc, SCHEMA_NODE, label, field,
+			IDX_FULLTEXT);
 	}
 
 	if(SI_TYPE(label_config) == T_MAP) {

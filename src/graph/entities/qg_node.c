@@ -46,6 +46,15 @@ QGNode *QGNode_New
 	return n;
 }
 
+const char *QGNode_Alias
+(
+	const QGNode *n
+) {
+	ASSERT(n != NULL);
+
+	return n->alias;
+}
+
 inline bool QGNode_Labeled
 (
 	const QGNode *n

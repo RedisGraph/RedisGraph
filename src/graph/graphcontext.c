@@ -256,11 +256,11 @@ Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
 
 	if(t == SCHEMA_NODE) {
 		label_id = Graph_AddLabel(gc->g);
-		schema = Schema_New(label, label_id);
+		schema = Schema_New(SCHEMA_NODE, label_id, label);
 		array_append(gc->node_schemas, schema);
 	} else {
 		label_id = Graph_AddRelationType(gc->g);
-		schema = Schema_New(label, label_id);
+		schema = Schema_New(SCHEMA_EDGE, label_id, label);
 		array_append(gc->relation_schemas, schema);
 	}
 
@@ -350,57 +350,79 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	for(uint i = 0; i < schema_count; i++) {
 		if(Schema_HasIndices(gc->node_schemas[i])) return true;
 	}
+
+	schema_count = array_len(gc->relation_schemas);
+	for(uint i = 0; i < schema_count; i++) {
+		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
+	}
+	
 	return false;
 }
 Index *GraphContext_GetIndexByID(const GraphContext *gc, int id,
-								 Attribute_ID *attribute_id, IndexType type) {
+					Attribute_ID *attribute_id, IndexType type, SchemaType t) {
 
 	ASSERT(gc     !=  NULL);
 
 	// Retrieve the schema for given id
-	Schema *s = GraphContext_GetSchemaByID(gc, id, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchemaByID(gc, id, t);
 	if(s == NULL) return NULL;
 
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
 Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
-							 Attribute_ID *attribute_id, IndexType type) {
+							 Attribute_ID *attribute_id, IndexType type,
+							 SchemaType schema_type) {
 
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
 
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) return NULL;
 
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label,
-						  const char *field, IndexType type) {
-
-	ASSERT(idx && gc && label && field);
+int GraphContext_AddIndex
+(
+	Index **idx,
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	IndexType index_type
+) {
+	ASSERT(idx    !=  NULL);
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
+	ASSERT(field  !=  NULL);
 
 	// Retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
-	int res = Schema_AddIndex(idx, s, field, type);
+	int res = Schema_AddIndex(idx, s, field, index_type);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
 
 	return res;
 }
 
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
-							 const char *field, IndexType type) {
-	ASSERT(gc != NULL);
-	ASSERT(label != NULL);
+int GraphContext_DeleteIndex
+(
+	GraphContext *gc,
+	SchemaType schema_type,
+	const char *label,
+	const char *field,
+	IndexType type
+) {
+	ASSERT(gc     !=  NULL);
+	ASSERT(label  !=  NULL);
 
-	// Retrieve the schema for this label
+	// retrieve the schema for this label
 	int res = INDEX_FAIL;
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s != NULL) {
 		res = Schema_RemoveIndex(s, field, type);
@@ -443,6 +465,22 @@ void GraphContext_DeleteNodeFromIndices
 		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
 		if(idx) Index_RemoveNode(idx, n);
 	}
+}
+
+void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
+	Schema  *s  =  NULL;
+	Graph   *g  =  gc->g;
+
+	int relation_id = EDGE_GET_RELATION_ID(e, g);
+
+	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
+
+	// update any indices this entity is represented in
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(idx) Index_RemoveEdge(idx, e);
+
+	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+	if(idx) Index_RemoveEdge(idx, e);
 }
 
 //------------------------------------------------------------------------------
