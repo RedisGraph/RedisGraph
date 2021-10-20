@@ -92,14 +92,14 @@ AlgebraicExpression *AlgebraicExpression_Clone
 
 // Returns the source entity alias represented by the left-most operand
 // row domain
-const char *AlgebraicExpression_Source
+const char *AlgebraicExpression_Src
 (
 	AlgebraicExpression *root   // Root of expression.
 );
 
 // Returns the destination entity alias represented by the right-most operand
 // column domain
-const char *AlgebraicExpression_Destination
+const char *AlgebraicExpression_Dest
 (
 	AlgebraicExpression *root   // Root of expression.
 );
@@ -109,6 +109,13 @@ const char *AlgebraicExpression_Destination
 const char *AlgebraicExpression_Edge
 (
 	const AlgebraicExpression *root   // Root of expression.
+);
+
+// returns expression label
+// exp must be an operand
+const char *AlgebraicExpression_Label
+(
+	const AlgebraicExpression *exp
 );
 
 // Returns the number of child nodes directly under root
@@ -219,8 +226,8 @@ RG_Matrix AlgebraicExpression_Eval
 	RG_Matrix res                   // Result output
 );
 
-// Locates operand based on row,column domain and edge
-// sets 'operand' to if found otherwise set it to NULL
+// locates operand based on row,column domain and edge or label
+// sets 'operand' if found otherwise set it to NULL
 // sets 'parent' if requested, parent can still be set to NULL
 // if 'root' is the seeked operand
 bool AlgebraicExpression_LocateOperand
@@ -230,7 +237,18 @@ bool AlgebraicExpression_LocateOperand
 	AlgebraicExpression **parent,    // [output] set to operand parent
 	const char *row_domain,          // operand row domain
 	const char *column_domain,       // operand column domain
-	const char *edge                 // operand edge name
+	const char *edge,                // operand edge name
+	const char *label                // operand label name
+);
+
+const AlgebraicExpression *AlgebraicExpression_SrcOperand
+(
+	const AlgebraicExpression *root   // Root of expression.
+);
+
+const AlgebraicExpression *AlgebraicExpression_DestOperand
+(
+	const AlgebraicExpression *root   // Root of expression.
 );
 
 //------------------------------------------------------------------------------
@@ -286,4 +304,3 @@ void AlgebraicExpression_Free
 (
 	AlgebraicExpression *root  // Root node.
 );
-

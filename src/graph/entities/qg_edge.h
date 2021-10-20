@@ -25,27 +25,79 @@ struct QGEdge {
 
 typedef struct QGEdge QGEdge;
 
-/* Creates a new edge without forming connections. */
-QGEdge *QGEdge_New(const char *relationship, const char *alias);
+// creates a new edge without forming connections
+QGEdge *QGEdge_New
+(
+	const char *relationship,
+	const char *alias
+);
 
-/* Create a duplicate of an edge containing all of the original's data. */
-QGEdge *QGEdge_Clone(const QGEdge *orig);
+// returns edge alias
+const char *QGEdge_Alias
+(
+	const QGEdge *e
+);
 
-/* Determine whether this is a variable length edge. */
-bool QGEdge_VariableLength(const QGEdge *e);
+// returns edge source node
+QGNode *QGEdge_Src
+(
+	const QGEdge *e
+);
 
-/* Number of relationships associated with edge. */
-int QGEdge_RelationCount(const QGEdge *e);
+// returns edge destination node
+QGNode *QGEdge_Dest
+(
+	const QGEdge *e
+);
 
-// Return relationship id for relation at position 'idx'
-int QGEdge_RelationID(const QGEdge *e, int idx);
+// create a duplicate of an edge containing all of the original's data
+QGEdge *QGEdge_Clone
+(
+	const QGEdge *orig
+);
 
-/* Reverse edge direction. */
-void QGEdge_Reverse(QGEdge *e);
+// determine whether this is a variable length edge
+bool QGEdge_VariableLength
+(
+	const QGEdge *e
+);
 
-/* Gets a string representation of given edge. */
-void QGEdge_ToString(const QGEdge *e, sds *buff);
+// number of relationships associated with edge
+int QGEdge_RelationCount
+(
+	const QGEdge *e
+);
 
-/* Free allocations associated with the given edge. */
-void QGEdge_Free(QGEdge *e);
+// return relationship for relation at position 'idx'
+const char *QGEdge_Relation
+(
+	const QGEdge *e,
+	int idx
+);
+
+// return relationship id for relation at position 'idx'
+int QGEdge_RelationID
+(
+	const QGEdge *e,
+	int idx
+);
+
+// reverse edge direction
+void QGEdge_Reverse
+(
+	QGEdge *e
+);
+
+// gets a string representation of given edge
+void QGEdge_ToString
+(
+	const QGEdge *e,
+	sds *buff
+);
+
+// free allocations associated with the given edge
+void QGEdge_Free
+(
+	QGEdge *e
+);
 

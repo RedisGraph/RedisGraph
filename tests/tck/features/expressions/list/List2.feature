@@ -146,7 +146,6 @@ Feature: List2 - List Slicing
       |       | null  |
       | null  |       |
 
-  @skip
   Scenario: [10] List slice with parameterised range
     Given any graph
     And parameters are:
@@ -162,7 +161,6 @@ Feature: List2 - List Slicing
       | [2, 3] |
     And no side effects
 
-  @skip
   Scenario: [11] List slice with parameterised invalid range
     Given any graph
     And parameters are:

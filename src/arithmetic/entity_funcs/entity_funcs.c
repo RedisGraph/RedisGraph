@@ -10,28 +10,81 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/map.h"
+#include "../../datatypes/array.h"
 #include "../../graph/graphcontext.h"
+#include "../../datatypes/datatypes.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../graph/entities/graph_entity.h"
 
-/* returns the id of a relationship or node. */
+// returns the id of a relationship or node
 SIValue AR_ID(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
 	return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
-/* returns a string representations the label of a node. */
+// returns an array of string representations of each label of a node
 SIValue AR_LABELS(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	char *label = "";
+
 	Node *node = argv[0].ptrval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = gc->g;
-	int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
-	if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
-	return SI_ConstStringVal(label);
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(gc->g, node, label_count);
+	SIValue res = SI_Array(label_count);
+
+	for(uint i = 0; i < label_count; i++) {
+		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+		ASSERT(s != NULL);
+		const char *name = Schema_GetName(s);
+		SIArray_Append(&res, SI_ConstStringVal(name));
+	}
+
+	return res;
+}
+
+// returns true if input node contains all specified labels, otherwise false
+SIValue AR_HAS_LABELS(SIValue *argv, int argc) {
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+
+	bool         res       =  true;
+	Node         *node     =  argv[0].ptrval;
+	SIValue      labels    =  argv[1];
+	EntityID     id        =  ENTITY_GET_ID(node);
+	GraphContext *gc       =  QueryCtx_GetGraphCtx();
+	Graph        *g        =  gc->g;
+
+	// iterate over given labels
+	uint32_t labels_length = SIArray_Length(labels);
+	for (uint32_t i = 0; i < labels_length; i++) {
+		SIValue label_value = SIArray_Get(labels, i);
+		if(SI_TYPE(label_value) != T_STRING) {
+			Error_SITypeMismatch(label_value, T_STRING);
+			return SI_NullVal();
+		}
+		char *label = label_value.stringval;
+		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+
+		// validate schema exists
+		if(!s) {
+			res = false;
+			break;
+		}
+
+		// validate label is set
+		bool x;
+		RG_Matrix M = Graph_GetLabelMatrix(g, Schema_GetID(s));
+		ASSERT(M != NULL);
+
+		if(RG_Matrix_extractElement_BOOL(&x, M, id, id) == GrB_NO_VALUE) {
+			res = false;
+			break;
+		}
+	}
+	
+	return SI_BoolVal(res);
 }
 
 /* returns a string representation of the type of a relation. */
@@ -189,6 +242,12 @@ void Register_EntityFuncs() {
 	types = array_new(SIType, 1);
 	array_append(types, T_NULL | T_NODE);
 	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, T_NULL | T_NODE);
+	array_append(types, T_ARRAY);
+	func_desc = AR_FuncDescNew("hasLabels", AR_HAS_LABELS, 2, 2, types, false, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "op_index_scan.h"
+#include "op_node_by_index_scan.h"
 #include "../../query_ctx.h"
 #include "shared/print_functions.h"
 #include "../../filter_tree/ft_to_rsq.h"
@@ -40,7 +40,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_INDEX_SCAN, "Node By Index Scan", IndexScanInit, IndexScanConsume,
 				IndexScanReset, IndexScanToString, NULL, IndexScanFree, false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
@@ -75,7 +75,7 @@ static OpResult IndexScanInit(OpBase *opBase) {
 
 static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 	// Populate the Record with the graph entity data.
-	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
+	Node n = GE_NEW_NODE();
 	int res = Graph_GetNode(op->g, node_id, &n);
 	ASSERT(res != 0);
 	Record_AddNode(r, op->nodeRecIdx, n);
@@ -96,7 +96,7 @@ pull_index:
 	// pull from index
 	//--------------------------------------------------------------------------
 
-	if(op->iter != NULL) {
+	if(op->iter != NULL && op->child_record != NULL) {
 		while((nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
 				!= NULL) {
 			// populate record with node

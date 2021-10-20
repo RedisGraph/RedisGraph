@@ -92,7 +92,7 @@ static void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 		// * (labels) x M
 		// M will currently always be 0 or 1
 		uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
-		Graph_CreateNode(gc->g, l, &n);
+		Graph_CreateNode(gc->g, &n, (int *)&l, nodeLabelCount);
 
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
 	}
@@ -141,8 +141,10 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	 *      (name, value type, value) X N
 	 */
 
+	Graph *g = gc->g;
+
 	// While loading the graph, minimize matrix realloc and synchronization calls.
-	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_RESIZE);
 
 	// Load nodes.
 	_RdbLoadNodes(rdb, gc);
@@ -151,12 +153,20 @@ void RdbLoadGraph_v6(RedisModuleIO *rdb, GraphContext *gc) {
 	_RdbLoadEdges(rdb, gc);
 
 	// Revert to default synchronization behavior
-	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_FLUSH_RESIZE);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
 	// Resize and flush all pending changes to matrices.
-	Graph_ApplyAllPending(gc->g, true);
+	Graph_ApplyAllPending(g, true);
+
+	uint label_count = Graph_LabelTypeCount(g);
+	// update the node statistics
+	for(uint i = 0; i < label_count; i++) {
+		GrB_Index nvals;
+		RG_Matrix L = Graph_GetLabelMatrix(g, i);
+		RG_Matrix_nvals(&nvals, L);
+		GraphStatistics_IncNodeCount(&g->stats, i, nvals);
+	}
 
 	// make sure graph doesn't contains may pending changes
-	ASSERT(Graph_Pending(gc->g) == false);
+	ASSERT(Graph_Pending(g) == false);
 }
-

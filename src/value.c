@@ -98,9 +98,9 @@ SIValue SI_DuplicateStringVal(const char *s) {
 	};
 }
 
-SIValue SI_ConstStringVal(char *s) {
+SIValue SI_ConstStringVal(const char *s) {
 	return (SIValue) {
-		.stringval = s, .type = T_STRING, .allocation = M_CONST
+		.stringval = (char*)s, .type = T_STRING, .allocation = M_CONST
 	};
 }
 
