@@ -2,7 +2,7 @@
 
 * Blog - [RedisGraph Elixir client](https://flynn.gg/blog/redisgraph-elixir/). [Christopher Flynn](https://flynn.gg/)
 
-* Slides - [RedisGraph A Low Latency Graph DB](https://www.slideshare.net/RedisLabs/redisgraph-a-low-latency-graph-db-pieter-cailliau). [Pieter Cailliau](https://redislabs.com/author/pcailliau/).
+* Slides - [RedisGraph A Low Latency Graph DB](https://www.slideshare.net/RedisLabs/redisgraph-a-low-latency-graph-db-pieter-cailliau). [Pieter Cailliau](https://redis.com/author/pcailliau/).
 
 * Article - [RedisGraph GraphBLAS Enabled Graph Database](https://arxiv.org/abs/1905.01294).
 Cailliau, Pieter & Davis, Tim & Gadepally, Vijay & Kepner, Jeremy & Lipman, Roi & Lovitz, Jeffrey & Ouaknine, Keren (IEEE IPDPS 2019 GrAPL workshop).
