@@ -275,9 +275,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         expected_result = [["Ailon"]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
-        # same idea as previous query only we've switched the position of the
-        # operands, queried entity (p.age) is now on the right hand side of the
-        # filter, expecting the same behavior
+        # make sure all node scan not removed because we need to filter
         q = """MATCH (a)-[e:friend]->()
         WHERE a.created_at > 5 AND e.created_at > a.created_at
         RETURN DISTINCT a.name"""
