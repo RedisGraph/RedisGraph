@@ -240,8 +240,7 @@ OpFilter **_applicableFilters
 ) {
 	OpFilter **filters = array_new(OpFilter *, 0);
 
-	// we begin with a LabelScan, and want to find predicate filters that modify
-	// the active entity
+	// we want to find predicate filters that modify the active entity
 	OpBase *current = op->parent;
 	while(current->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
@@ -436,7 +435,8 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	OpBase *indexOp = NewEdgeIndexScanOp(cond->op.plan, cond->graph, e, rs_idx,
 			root);
 
-	// all node scan is redundant bucause edge index scan can resolve the nodes
+	// The OPType_ALL_NODE_SCAN operation is redundant
+	// because OPType_EDGE_BY_INDEX_SCAN will resolve source nodes
 	if(cond->op.children[0]->type == OPType_ALL_NODE_SCAN) {
 		OpBase *allNodeScan = cond->op.children[0];
 		// remove all node scan op
@@ -447,9 +447,12 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	
 	const char *other_alias  =  AlgebraicExpression_Dest(cond->ae);
 	QGNode     *other_node   =  QueryGraph_GetNodeByAlias(plan->query_graph, other_alias);
+	ASSERT(other_node != NULL);
 	uint other_label_count   =  QGNode_LabelCount(other_node);
-	if(other_node && other_label_count > 0) {
+	if(other_label_count > 0) {
+		// create func expression
 		const char *func_name = "hasLabels";
+		AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
 
 		// create node expression
 		AR_ExpNode *node_exp = AR_EXP_NewVariableOperandNode(other_alias);
@@ -459,16 +462,13 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 		for (uint i = 0; i < other_label_count; i++) {
 			SIArray_Append(&labels, SI_ConstStringVal((char *)other_node->labels[i]));
 		}
-		
 		AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
-
-		// create func expression
-		AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
 
 		// set function arguments
 		op->op.children[0] = node_exp;
 		op->op.children[1] = labels_exp;
 
+		// create filter operation
 		FT_FilterNode *ft = FilterTree_CreateExpressionFilter(op);
 		OpBase *filter = NewFilterOp(plan, ft);
 

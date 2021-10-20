@@ -163,7 +163,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 	// handle last updated entity
 	if(reindex) {
 		if(t == SCHEMA_NODE) {
-			Node *n = (Node *)updates[i - 1].ge;
+			Node *n = (Node *)ge;
 			// Retrieve node labels
 			uint label_count;
 			NODE_GET_LABELS(gc->g, n, label_count);
@@ -175,7 +175,7 @@ void CommitUpdates(GraphContext *gc, ResultSetStatistics *stats,
 				Schema_AddNodeToIndices(s, n);
 			}
 		} else {
-			Edge *e = (Edge *)updates[i - 1].ge;
+			Edge *e = (Edge *)ge;
 			Schema *s = GraphContext_GetSchemaByID(gc, EDGE_GET_RELATION_ID(e, gc->g),
 				SCHEMA_EDGE);
 			Schema_AddEdgeToIndices(s, e);

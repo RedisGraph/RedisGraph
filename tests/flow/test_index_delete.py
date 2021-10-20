@@ -4,22 +4,17 @@ from RLTest import Env
 from redis import ResponseError
 from redisgraph import Graph
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from base import FlowTestsBase
-
 GRAPH_ID = "index"
 redis_graph = None
 redis_con = None
 
-class testIndexDeletionFlow(FlowTestsBase):
+class testIndexDeletionFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
-
 
     def test01_drop_index(self):
         # drop not existed index
