@@ -415,7 +415,7 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	const char *edge = AlgebraicExpression_Edge(cond->ae);
 	if(!edge) return;
 	
-	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
+	QGEdge *e = QueryGraph_GetEdgeByAlias(cond->op.plan->query_graph, edge);
 	if(QGEdge_RelationCount(e) != 1) return;
 
 	const char *label = QGEdge_Relation(e, 0);
@@ -446,7 +446,7 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 
 	
 	const char *other_alias  =  AlgebraicExpression_Dest(cond->ae);
-	QGNode     *other_node   =  QueryGraph_GetNodeByAlias(plan->query_graph, other_alias);
+	QGNode     *other_node   =  QueryGraph_GetNodeByAlias(cond->op.plan->query_graph, other_alias);
 	ASSERT(other_node != NULL);
 	uint other_label_count   =  QGNode_LabelCount(other_node);
 	if(other_label_count > 0) {
