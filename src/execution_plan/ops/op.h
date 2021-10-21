@@ -19,7 +19,8 @@
 typedef enum {
 	OPType_ALL_NODE_SCAN,
 	OPType_NODE_BY_LABEL_SCAN,
-	OPType_INDEX_SCAN,
+	OPType_NODE_BY_INDEX_SCAN,
+	OPType_EDGE_BY_INDEX_SCAN,
 	OPType_NODE_BY_ID_SEEK,
 	OPType_NODE_BY_LABEL_AND_ID_SCAN,
 	OPType_EXPAND_INTO,
@@ -65,19 +66,41 @@ typedef enum {
 #define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OPType_ANTI_SEMI_APPLY)
 
 #define PROJECT_OP_COUNT 2
-static const OPType PROJECT_OPS[] = {OPType_PROJECT, OPType_AGGREGATE};
+static const OPType PROJECT_OPS[] = {
+	OPType_PROJECT,
+	OPType_AGGREGATE
+};
 
 #define TRAVERSE_OP_COUNT 2
-static const OPType TRAVERSE_OPS[] = {OPType_CONDITIONAL_TRAVERSE, OPType_CONDITIONAL_VAR_LEN_TRAVERSE};
+static const OPType TRAVERSE_OPS[] = {
+	OPType_CONDITIONAL_TRAVERSE,
+	OPType_CONDITIONAL_VAR_LEN_TRAVERSE
+};
 
 #define SCAN_OP_COUNT 5
-static const OPType SCAN_OPS[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN, OPType_INDEX_SCAN, OPType_NODE_BY_ID_SEEK, OPType_NODE_BY_LABEL_AND_ID_SCAN};
+static const OPType SCAN_OPS[] = {
+	OPType_ALL_NODE_SCAN,
+	OPType_NODE_BY_LABEL_SCAN,
+	OPType_NODE_BY_INDEX_SCAN,
+	OPType_EDGE_BY_INDEX_SCAN,
+	OPType_NODE_BY_ID_SEEK,
+	OPType_NODE_BY_LABEL_AND_ID_SCAN
+};
 
 #define BLACKLIST_OP_COUNT 2
-static const OPType FILTER_RECURSE_BLACKLIST[] = {OPType_APPLY, OPType_MERGE};
+static const OPType FILTER_RECURSE_BLACKLIST[] = {
+	OPType_APPLY,
+	OPType_MERGE
+};
 
 #define EAGER_OP_COUNT 5
-static const OPType EAGER_OPERATIONS[] = {OPType_AGGREGATE, OPType_CREATE, OPType_UPDATE, OPType_DELETE, OPType_MERGE};
+static const OPType EAGER_OPERATIONS[] = {
+	OPType_AGGREGATE,
+	OPType_CREATE,
+	OPType_UPDATE,
+	OPType_DELETE,
+	OPType_MERGE
+};
 
 struct OpBase;
 struct ExecutionPlan;
@@ -137,6 +160,9 @@ int OpBase_Modifies(OpBase *op, const char *alias);
 
 /* Adds an alias to an existing modifier, such that record[modifier] = record[alias]. */
 int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias);
+
+/* Returns true if any of an op's children are aware of the given alias. */
+bool OpBase_ChildrenAware(OpBase *op, const char *alias, int *idx);
 
 /* Returns true if op is aware of alias.
  * an operation is aware of all aliases it modifies and all aliases

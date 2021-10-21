@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "op_index_scan.h"
+#include "op_node_by_index_scan.h"
 #include "../../query_ctx.h"
 #include "shared/print_functions.h"
 #include "../../filter_tree/ft_to_rsq.h"
@@ -40,7 +40,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
 	op->rebuild_index_query  =  false;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_INDEX_SCAN, "Node By Index Scan", IndexScanInit, IndexScanConsume,
 				IndexScanReset, IndexScanToString, NULL, IndexScanFree, false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);

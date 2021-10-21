@@ -30,6 +30,12 @@ QGNode *QGNode_New
 	const char *alias
 );
 
+// returns the alias of the node
+const char *QGNode_Alias
+(
+	const QGNode *n
+);
+
 // returns true if the node is labeled
 bool QGNode_Labeled
 (

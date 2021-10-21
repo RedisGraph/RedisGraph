@@ -21,7 +21,7 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	char **stopwords = NULL;
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
-	Schema *s = Schema_New(name, id);
+	Schema *s = Schema_New(type, id, name);
 	RedisModule_Free(name);
 
 	uint index_count     = RedisModule_LoadUnsigned(rdb);

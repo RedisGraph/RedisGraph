@@ -9,11 +9,14 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../ops/op_filter.h"
-#include "../ops/op_index_scan.h"
 #include "../../ast/ast_shared.h"
 #include "../../datatypes/array.h"
 #include "../../datatypes/point.h"
 #include "../ops/op_node_by_label_scan.h"
+#include "../ops/op_node_by_index_scan.h"
+#include "../ops/op_node_by_label_scan.h"
+#include "../ops/op_edge_by_index_scan.h"
+#include "../ops/op_conditional_traverse.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../../arithmetic/arithmetic_op.h"
 #include "../../filter_tree/filter_tree_utils.h"
@@ -231,17 +234,14 @@ cleanup:
 // reduced into a single index scan operation
 OpFilter **_applicableFilters
 (
-	const NodeByLabelScan *scanOp,
+	const OpBase *op,
+	const char *filtered_entity,
 	const Index *idx
 ) {
 	OpFilter **filters = array_new(OpFilter *, 0);
-	const char* filtered_entity = scanOp->n.alias; // entity being filtered
 
-	OpBase *current = scanOp->op.parent;
-	ASSERT(current->type == OPType_FILTER);
-
-	// we begin with a LabelScan, and want to find predicate filters that modify
-	// the active entity
+	// we want to find predicate filters that modify the active entity
+	OpBase *current = op->parent;
 	while(current->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
 
@@ -289,7 +289,7 @@ void reduce_scan_op
 ) {
 	// in the multi-label case, we want to pick the label which will allow us to
 	// both utilize an index and iterate over the fewest values
-	GraphContext *gc  = QueryCtx_GetGraphCtx();
+	GraphContext *gc  =  QueryCtx_GetGraphCtx();
 	Graph        *g   =  QueryCtx_GetGraph();
 	QueryGraph   *qg  =  scan->op.plan->query_graph;
 
@@ -317,7 +317,7 @@ void reduce_scan_op
 		// unknown label
 		if(label_id == GRAPH_UNKNOWN_LABEL) continue;
 
-		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH);
+		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH, SCHEMA_NODE);
 
 		// no index for current label
 		if(idx == NULL) continue;
@@ -325,7 +325,7 @@ void reduce_scan_op
 		// get all applicable filter for index
 		RSIndex *cur_idx = idx->idx;
 		// TODO switch to reusable array
-		OpFilter **cur_filters = _applicableFilters(scan, idx);
+		OpFilter **cur_filters = _applicableFilters((OpBase *)scan, scan->n.alias, idx);
 
 		// TODO consider heuristic which combines max
 		// number / restrictiveness of applicable filters
@@ -408,6 +408,94 @@ cleanup:
 	array_free(filters);
 }
 
+// try to replace given Conditional Traverse operation and a set of Filter operations with
+// a single Index Scan operation
+void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
+	// make sure there's an index for scanned label
+	const char *edge = AlgebraicExpression_Edge(cond->ae);
+	if(!edge) return;
+	
+	QGEdge *e = QueryGraph_GetEdgeByAlias(cond->op.plan->query_graph, edge);
+	if(QGEdge_RelationCount(e) != 1) return;
+
+	const char *label = QGEdge_Relation(e, 0);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH, SCHEMA_EDGE);
+	if(idx == NULL) return;
+
+	// get all applicable filter for index
+	RSIndex *rs_idx = idx->idx;
+	OpFilter **filters = _applicableFilters((OpBase *)cond, edge, idx);
+
+	// no filters, return
+	uint filters_count = array_len(filters);
+	if(filters_count == 0) goto cleanup;
+
+	FT_FilterNode *root = _Concat_Filters(filters);
+	OpBase *indexOp = NewEdgeIndexScanOp(cond->op.plan, cond->graph, e, rs_idx,
+			root);
+
+	// The OPType_ALL_NODE_SCAN operation is redundant
+	// because OPType_EDGE_BY_INDEX_SCAN will resolve source nodes
+	if(cond->op.children[0]->type == OPType_ALL_NODE_SCAN) {
+		OpBase *allNodeScan = cond->op.children[0];
+		// remove all node scan op
+		ExecutionPlan_RemoveOp(plan, allNodeScan);
+		OpBase_Free(allNodeScan);
+	}
+
+	
+	const char *other_alias  =  AlgebraicExpression_Dest(cond->ae);
+	QGNode     *other_node   =  QueryGraph_GetNodeByAlias(cond->op.plan->query_graph, other_alias);
+	ASSERT(other_node != NULL);
+	uint other_label_count   =  QGNode_LabelCount(other_node);
+	if(other_label_count > 0) {
+		// create func expression
+		const char *func_name = "hasLabels";
+		AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
+
+		// create node expression
+		AR_ExpNode *node_exp = AR_EXP_NewVariableOperandNode(other_alias);
+
+		// create labels expression
+		SIValue labels = SI_Array(other_label_count);
+		for (uint i = 0; i < other_label_count; i++) {
+			SIArray_Append(&labels, SI_ConstStringVal((char *)other_node->labels[i]));
+		}
+		AR_ExpNode *labels_exp = AR_EXP_NewConstOperandNode(labels);
+
+		// set function arguments
+		op->op.children[0] = node_exp;
+		op->op.children[1] = labels_exp;
+
+		// create filter operation
+		FT_FilterNode *ft = FilterTree_CreateExpressionFilter(op);
+		OpBase *filter = NewFilterOp(plan, ft);
+
+		// replace the redundant scan op with the newly-constructed filter op and add Index Scan as child
+		ExecutionPlan_ReplaceOp(plan, (OpBase *)cond, indexOp);
+		ExecutionPlan_PushBelow(indexOp, filter);
+	} else {
+		// replace the redundant scan op with the newly-constructed Index Scan
+		ExecutionPlan_ReplaceOp(plan, (OpBase *)cond, indexOp);
+	}
+
+	OpBase_Free((OpBase *)cond);
+
+	// remove and free all redundant filter ops
+	// since this is a chain of single-child operations
+	// all operations are replaced in-place
+	// avoiding problems with stream-sensitive ops like SemiApply
+	for(uint i = 0; i < filters_count; i++) {
+		OpFilter *filter = filters[i];
+		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+		OpBase_Free((OpBase *)filter);
+	}
+
+cleanup:
+	array_free(filters);
+}
+
 void utilizeIndices
 (
 	ExecutionPlan *plan
@@ -435,7 +523,19 @@ void utilizeIndices
 		reduce_scan_op(plan, scanOp);
 	}
 
+	// collect all conditional traverse
+	OpBase **condOps = ExecutionPlan_CollectOps(plan->root,
+			OPType_CONDITIONAL_TRAVERSE);
+
+	uint condOpCount = array_len(condOps);
+	for(uint i = 0; i < condOpCount; i++) {
+		OpCondTraverse *condOp = (OpCondTraverse *)condOps[i];
+		// try to reduce conditional travers + filter(s) to a single IndexScan operation
+		reduce_cond_op(plan, condOp);
+	}
+
 	// cleanup
 	array_free(scanOps);
+	array_free(condOps);
 }
 

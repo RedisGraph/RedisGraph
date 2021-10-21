@@ -53,7 +53,7 @@ static void _CommitNodesBlueprint(PendingCreations *pending) {
 			pending->node_labels[i][j] = s->id;
 
 			// sync matrix, make sure label matrix is of the right dimensions
-			Graph_GetLabelMatrix(g, s->id);
+			Graph_GetLabelMatrix(g, Schema_GetID(s));
 		}
 		// sync matrix, make sure mapping matrix is of the right dimensions
 		if(label_count > 0) Graph_GetNodeLabelMatrix(g);
@@ -115,7 +115,7 @@ static void _CommitEdgesBlueprint(EdgeCreateCtx *blueprints) {
 
 		// calling Graph_GetRelationMatrix will make sure relationship matrix
 		// is of the right dimensions
-		Graph_GetRelationMatrix(g, s->id, false);
+		Graph_GetRelationMatrix(g, Schema_GetID(s), false);
 	}
 
 	// call Graph_GetAdjacencyMatrix will make sure the adjacency matrix
@@ -147,11 +147,10 @@ static void _CommitEdges(PendingCreations *pending) {
 		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
-		Schema *schema = GraphContext_GetSchema(gc, e->relationship,
-												SCHEMA_EDGE);
+		Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 		// all schemas have been created in the edge blueprint loop or earlier
-		ASSERT(schema);
-		int relation_id = schema->id;
+		ASSERT(s != NULL);
+		int relation_id = Schema_GetID(s);
 
 		Graph_CreateEdge(g, srcNodeID, destNodeID, relation_id, e);
 
@@ -159,6 +158,8 @@ static void _CommitEdges(PendingCreations *pending) {
 			_AddProperties(pending->stats, (GraphEntity *)e,
 						   pending->edge_properties[i]);
 		}
+
+		if(s && Schema_HasIndices(s)) Schema_AddEdgeToIndices(s, e);
 	}
 }
 
