@@ -250,7 +250,9 @@ objcopy --add-gnu-debuglink $1.debug $1
 endef
 
 # Build the module...
-redisgraph.so: $(MODULE)
+libs: $(LIBS)
+objs: libs $(CC_OBJECTS)
+redisgraph.so: objs $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 ifeq ($(uname_S),Linux)
 ifneq ($(DEBUG),1)
