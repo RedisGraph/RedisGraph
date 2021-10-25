@@ -30,7 +30,6 @@
 
 Feature: Pattern3 - Pattern Comprehension
 
-  @skip
   Scenario: [1] Returning a pattern comprehension
     Given an empty graph
     And having executed:
@@ -46,12 +45,11 @@ Feature: Pattern3 - Pattern Comprehension
       """
     Then the result should be, in any order:
       | ps                                     |
-      | [<(:A)-[:T]->(:C)>, <(:A)-[:T]->(:B)>] |
+      | [<(:A)-[:T]->(:B)>, <(:A)-[:T]->(:C)>] |
       | []                                     |
       | []                                     |
     And no side effects
 
-  @skip
   Scenario: [2] Returning a pattern comprehension with label predicate
     Given an empty graph
     And having executed:
@@ -71,7 +69,6 @@ Feature: Pattern3 - Pattern Comprehension
       | [<(:A)-[:T]->(:B)>]   |
     And no side effects
 
-  @skip
   Scenario: [3] Returning a pattern comprehension with bound nodes
     Given an empty graph
     And having executed:
@@ -89,7 +86,6 @@ Feature: Pattern3 - Pattern Comprehension
       | [<(:A)-[:T]->(:B)>] |
     And no side effects
 
-  @skip
   Scenario: [4] Using pattern comprehension to test existence
     Given an empty graph
     And having executed:
@@ -108,7 +104,6 @@ Feature: Pattern3 - Pattern Comprehension
       | (:X {num: 43}) | false |
     And no side effects
 
-  @skip
   Scenario: [5] Introducing new node variable in pattern comprehension
     Given an empty graph
     And having executed:
@@ -127,7 +122,6 @@ Feature: Pattern3 - Pattern Comprehension
       | []      |
     And no side effects
 
-  @skip
   Scenario: [6] Introducing new relationship variable in pattern comprehension
     Given an empty graph
     And having executed:
@@ -146,7 +140,6 @@ Feature: Pattern3 - Pattern Comprehension
       | []      |
     And no side effects
 
-  @skip
   Scenario: [7] Get node degree via size of pattern comprehension
     Given an empty graph
     And having executed:
@@ -166,7 +159,6 @@ Feature: Pattern3 - Pattern Comprehension
       | 3      |
     And no side effects
 
-  @skip
   Scenario: [8] Get node degree via size of pattern comprehension that specifies a relationship type
     Given an empty graph
     And having executed:
@@ -187,7 +179,6 @@ Feature: Pattern3 - Pattern Comprehension
       | 3      |
     And no side effects
 
-  @skip
   Scenario: [9] Get node degree via size of pattern comprehension that specifies multiple relationship types
     Given an empty graph
     And having executed:
@@ -208,7 +199,6 @@ Feature: Pattern3 - Pattern Comprehension
       | 4      |
     And no side effects
 
-  @skip
   Scenario: [10] Aggregating on pattern comprehension
     Given an empty graph
     And having executed:
@@ -251,7 +241,6 @@ Feature: Pattern3 - Pattern Comprehension
       | (:X {n: 2}) | [0, 1] |
     And no side effects
 
-  @skip
   Scenario: [12] Using a pattern comprehension in a WITH
     Given an empty graph
     And having executed:
@@ -268,10 +257,9 @@ Feature: Pattern3 - Pattern Comprehension
       """
     Then the result should be, in any order:
       | ps                                     | c |
-      | [<(:A)-[:T]->(:C)>, <(:A)-[:T]->(:B)>] | 2 |
+      | [<(:A)-[:T]->(:B)>, <(:A)-[:T]->(:C)>] | 2 |
     And no side effects
 
-  @skip
   Scenario: [13] Using a variable-length pattern comprehension in a WITH
     Given an empty graph
     And having executed:
@@ -289,7 +277,6 @@ Feature: Pattern3 - Pattern Comprehension
       | [<(:A)-[:T]->(:B)>] | 1 |
     And no side effects
 
-  @skip
   Scenario: [14] Using pattern comprehension in RETURN
     Given an empty graph
     And having executed:
@@ -309,7 +296,6 @@ Feature: Pattern3 - Pattern Comprehension
       | []                  |
     And no side effects
 
-  @skip
   Scenario: [15] Pattern comprehension and ORDER BY
     Given an empty graph
     And having executed:

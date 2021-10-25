@@ -28,6 +28,30 @@ static void _attach_identifier(rax *identifier_map,
 			cypher_astnode_attach_annotation(named_paths_ctx, exp_arr[i], (void *)path, NULL);
 	}
 }
+
+static void _annotate_named_paths_in_expression(AST *ast, rax *identifier_map,
+	   	AnnotationCtx *named_paths_ctx, const cypher_astnode_t *exp) {
+	if(cypher_astnode_type(exp) == CYPHER_AST_PATTERN_COMPREHENSION) {
+		const cypher_astnode_t *path_identifier =
+		   	cypher_ast_pattern_comprehension_get_identifier(exp);
+		if(path_identifier != NULL) {
+			const cypher_astnode_t *path =
+			   	cypher_ast_pattern_comprehension_get_pattern(exp);
+			_attach_identifier(identifier_map, named_paths_ctx,
+					path_identifier, path);
+		}
+	}
+
+	// recursively visit children
+	uint child_count = cypher_astnode_nchildren(exp);
+	for(uint i = 0; i < child_count; i++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(exp, i);
+		_annotate_named_paths_in_expression(ast, identifier_map,
+				named_paths_ctx, child);
+	}
+}
+
+
 static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 															   rax *identifier_map, uint scope_start, uint scope_end) {
 	AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
@@ -60,30 +84,14 @@ static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 			for(uint i = 0; i < return_projection_count; i++) {
 				const cypher_astnode_t *projection = cypher_ast_return_get_projection(clause, i);
 				const cypher_astnode_t *exp = cypher_ast_projection_get_expression(projection);
-				// TODO nested and multiple comprehensions
-				if(cypher_astnode_type(exp) == CYPHER_AST_PATTERN_COMPREHENSION) {
-					const cypher_astnode_t *path_identifier = cypher_ast_pattern_comprehension_get_identifier(exp);
-					if(path_identifier == NULL) continue;
-					const cypher_astnode_t *path = cypher_ast_pattern_comprehension_get_pattern(exp);
-					_attach_identifier(identifier_map, named_paths_ctx,
-						   	path_identifier, path);
-
-				}
+				_annotate_named_paths_in_expression(ast, identifier_map, named_paths_ctx, exp);
 			}
 		} else if(clause_type == CYPHER_AST_WITH) {
 			uint with_projection_count = cypher_ast_with_nprojections(clause);
 			for(uint i = 0; i < with_projection_count; i++) {
 				const cypher_astnode_t *projection = cypher_ast_with_get_projection(clause, i);
 				const cypher_astnode_t *exp = cypher_ast_projection_get_expression(projection);
-				// TODO nested and multiple comprehensions
-				if(cypher_astnode_type(exp) == CYPHER_AST_PATTERN_COMPREHENSION) {
-					const cypher_astnode_t *path_identifier = cypher_ast_pattern_comprehension_get_identifier(exp);
-					if(path_identifier == NULL) continue;
-					const cypher_astnode_t *path = cypher_ast_pattern_comprehension_get_pattern(exp);
-					_attach_identifier(identifier_map, named_paths_ctx,
-						   	path_identifier, path);
-
-				}
+				_annotate_named_paths_in_expression(ast, identifier_map, named_paths_ctx, exp);
 			}
 		}
 	}
