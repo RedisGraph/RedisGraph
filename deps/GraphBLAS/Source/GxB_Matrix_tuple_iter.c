@@ -69,6 +69,7 @@ GrB_Info GxB_MatrixTupleIter_new
 
 	size_t size_allocated;
 	*iter = GB_MALLOC(1, GxB_MatrixTupleIter, &size_allocated) ;
+	(*iter)->size_allocated = size_allocated;
 	return _init(*iter, A) ;
 }
 
@@ -432,7 +433,7 @@ GrB_Info GxB_MatrixTupleIter_free
 ) {
 	GB_WHERE1("GxB_MatrixTupleIter_free (iter)") ;
 	GB_RETURN_IF_NULL(*iter) ;
-	GB_FREE(iter, (*iter)->size) ;
+	GB_FREE(iter, (*iter)->size_allocated) ;
 	*iter = NULL;
 	return (GrB_SUCCESS) ;
 }
