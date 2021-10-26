@@ -13,7 +13,12 @@
 /* The RollUpApply op has a bound left-hand branch
  * and a right-hand branch that projects a single alias.
  * RollUpApply collects these expressions into an array
- * that is merged into the Record from the left-hand side. */
+ * that is merged into the Record from the left-hand side.
+ * This is unlike the standard Apply op in that for every record 
+ * retrieved from the left-hand branch, the results of the right-hand
+ * branch are concatenated into a list, rather than each record
+ * from the right-hand branch being merged into the left-hand record
+ * and passed upward once. */
 typedef struct {
 	OpBase op;
 	OpBase *bound_branch;           // Bound branch.

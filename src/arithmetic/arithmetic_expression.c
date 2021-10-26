@@ -159,12 +159,6 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	return node;
 }
 
-AR_ExpNode *AR_EXP_NewPlaceholderOpNode(const char *func_name, uint child_count) {
-	AR_ExpNode *node = _AR_EXP_NewOpNode(func_name, child_count);
-	node->op.f = AR_GetPlaceholderFunc();
-	return node;
-}
-
 static inline AR_ExpNode *_AR_EXP_InitializeOperand(AR_OperandNodeType type) {
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OPERAND;
@@ -645,12 +639,12 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
 	return false;
 }
 
-AR_ExpNode *AR_EXP_ContainsFunc(AR_ExpNode *root, const char *func) {
+AR_ExpNode *AR_EXP_TryGetFunc(AR_ExpNode *root, const char *func) {
 	if(root == NULL) return NULL;
 	if(AR_EXP_IsOperation(root)) {
 		if(strcasecmp(root->op.func_name, func) == 0) return root;
 		for(int i = 0; i < root->op.child_count; i++) {
-			AR_ExpNode *ret = AR_EXP_ContainsFunc(root->op.children[i], func);
+			AR_ExpNode *ret = AR_EXP_TryGetFunc(root->op.children[i], func);
 			if(ret) return ret;
 		}
 	}
@@ -670,44 +664,6 @@ void AR_EXP_ReplaceFunc(AR_ExpNode **root, const char *func,
 		for(uint i = 0; i < exp->op.child_count; i++) {
 			AR_EXP_ReplaceFunc(&exp->op.children[i], func, replacement);
 		}
-	}
-}
-
-void AR_EXP_RemovePlaceholderFuncs(AR_ExpNode *parent, AR_ExpNode **root) {
-	AR_ExpNode *exp = *root;
-	ASSERT(exp != NULL);
-	if(!AR_EXP_IsOperation(exp)) return;
-	if(exp->op.f == AR_GetPlaceholderFunc()) {
-		ASSERT(exp->op.child_count == 1);
-		const char *alias = exp->resolved_name;
-		// Replace the placeholder with its child.
-		AR_ExpNode *replacement = exp->op.children[0];
-		// Detach the placeholder from its parent if it was not the root.
-		/*
-		if(parent) {
-		    for(uint i = 0; i < parent->op.child_count - 1; i ++) {
-		        if(parent->op.children[i] == exp) {
-		            memmove(&parent->op.children[i], &parent->op.children[i + 1],
-		                    (parent->op.child_count - i - 1) * sizeof(AR_ExpNode *));
-		        }
-		    }
-		}
-		*/
-		// Detach the placeholder from its child.
-		exp->op.children[0] = NULL;
-		exp->op.child_count = 0;
-		// Free the detached placeholder.
-		AR_EXP_Free(exp);
-		// Restore the resolved name if one had been set.
-		replacement->resolved_name = alias;
-		*root = replacement;
-		exp = replacement;
-
-	}
-
-	// Recursively visit all children.
-	for(uint i = 0; i < exp->op.child_count; i++) {
-		AR_EXP_RemovePlaceholderFuncs(exp, &exp->op.children[i]);
 	}
 }
 

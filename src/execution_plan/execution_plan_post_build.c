@@ -19,6 +19,8 @@ static OpBase *buildRollUpMatchStream(ExecutionPlan *plan, AR_ExpNode *exp,
 
 	// extract pattern path
 	SIValue val = AR_EXP_Evaluate(path_exp->op.children[0], NULL);
+	// free the path expression if it is not the expression being projected
+	if(path_exp != exp) AR_EXP_Free(path_exp);
 	ASSERT(SI_TYPE(val) & T_PTR);
 	const cypher_astnode_t *path = (const cypher_astnode_t *)val.ptrval;
 
@@ -48,11 +50,10 @@ static void replaceProjectionExps(ExecutionPlan *plan, OpBase *op,
 								  AR_ExpNode **exps) {
 	uint exp_count = array_len(exps);
 	for(uint i = 0; i < exp_count; i++) {
-		AR_ExpNode *path_exp = AR_EXP_ContainsFunc(exps[i], "pattern_path");
+		AR_ExpNode *path_exp = AR_EXP_TryGetFunc(exps[i], "pattern_path");
 		if(path_exp == NULL) continue;
-		ASSERT(path_exp->op.child_count == 1);
-		path_exp = path_exp->op.children[0];
-		AR_EXP_RemovePlaceholderFuncs(NULL, &exps[i]);
+		// revert the altered function name to its original
+		path_exp->op.func_name = "topath";
 
 		// convert topath call into a RollUp_Apply operation
 		ASSERT(op->childCount > 0);
@@ -62,8 +63,8 @@ static void replaceProjectionExps(ExecutionPlan *plan, OpBase *op,
 		ASSERT(child_plan != NULL);
 
 		// replace path expression with variable lookup in the current projection
-		AR_ExpNode *comprehension_exp = AR_EXP_ContainsFunc(exps[i],
-															"pattern_comprehension");
+		AR_ExpNode *comprehension_exp = AR_EXP_TryGetFunc(exps[i],
+														  "pattern_comprehension");
 		AR_ExpNode *container_exp = NULL;
 		if(comprehension_exp == NULL) {
 			// if we're replacing a path projection,
@@ -85,9 +86,9 @@ static void replaceProjectionExps(ExecutionPlan *plan, OpBase *op,
 			// with a variable lookup,
 			// and place just the pattern comprehension into the RollUp's
 			// Project child.
-			comprehension_exp = AR_EXP_Clone(comprehension_exp);
 			path_exp = comprehension_exp->op.children[0];
 			AR_EXP_RemoveChild(comprehension_exp, 0);
+			comprehension_exp = AR_EXP_Clone(comprehension_exp);
 			const char *identifier = comprehension_exp->resolved_name;
 			if(identifier == NULL) {
 				// Build an identifier for the path expression
@@ -120,7 +121,7 @@ static void replaceProjectionExps(ExecutionPlan *plan, OpBase *op,
 		}
 
 		OpBase *rollup = buildRollUpMatchStream(child_plan, container_exp,
-			   	path_exp, arguments);
+												path_exp, arguments);
 		// connect rollup operation as the only child of project
 		ExecutionPlan_PushBelow(child_op, rollup);
 

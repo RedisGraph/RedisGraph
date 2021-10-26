@@ -451,7 +451,6 @@ static AR_ExpNode *_AR_ExpFromPath(const cypher_astnode_t *path) {
 		// Set graph entities as parameters, ordered according to the path AST.
 		const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
 		const char *alias = AST_GetEntityName(ast, entity);
-		// TODO: skip anonymous entities
 		op->op.children[i + 1] = _AR_EXP_FromASTNode(entity);
 	}
 
@@ -645,18 +644,19 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 }
 
 static AR_ExpNode *_AR_ExpFromPatternPath(const cypher_astnode_t *expr) {
-	// Build a placeholder operation node to contain the toPath call.
-	AR_ExpNode *op = AR_EXP_NewPlaceholderOpNode("pattern_path", 1);
-	op->op.children[0] = _AR_ExpFromPath(expr);
+	// build a toPath function call and rename to "pattern_path" so that it
+	// will be captured in the post-build stage
+	AR_ExpNode *op = _AR_ExpFromPath(expr);
+	op->op.func_name = "pattern_path";
 	return op;
 }
 
 static AR_ExpNode *_AR_ExpFromPatternComprehension(const cypher_astnode_t *comp_exp) {
 	/* Using the sample query:
-	 * WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
+	 * MATCH (a) RETURN [p=(a)-[]->(b) | b.name] AS dest_names
 	 */
 
-	/* The comprehension's local variable, WHERE expression, and eval routine
+	/* the comprehension's local variable, WHERE expression, and eval routine
 	 * do not change for each invocation, so are bundled together in the function's context. */
 	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
 	ctx->ft            =  NULL;
@@ -665,8 +665,8 @@ static AR_ExpNode *_AR_ExpFromPatternComprehension(const cypher_astnode_t *comp_
 	ctx->variable_str  =  NULL;
 	ctx->variable_idx  =  INVALID_INDEX;
 
-	/* Retrieve the variable name introduced in this context to iterate over pattern elements.
-	 * In the above query, this is 'val'. */
+	/* retrieve the variable name introduced in this context to name the path.
+	 * In the above query, this is 'p'. This element is optional. */
 	const cypher_astnode_t *variable_node = cypher_ast_pattern_comprehension_get_identifier(comp_exp);
 	if(variable_node) {
 	    ASSERT(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
@@ -683,17 +683,11 @@ static AR_ExpNode *_AR_ExpFromPatternComprehension(const cypher_astnode_t *comp_
 	// build a FilterTree to represent this predicate
 	if(predicate_node) AST_ConvertFilters(&ctx->ft, predicate_node);
 
-	// construct the operator node that will generate updated values,
-	// if one is provided
+	// construct the operator node that will generate values
 	//
-	// in the above query, this will be an operation node representing "val * 2"
-	// this will always be NULL for comprehensions like any() and all()
+	// in the above query, this will be an operation node representing "v.name"
 	const cypher_astnode_t *eval_node = cypher_ast_pattern_comprehension_get_eval(comp_exp);
-	if(eval_node) {
-		ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
-		AR_EXP_RemovePlaceholderFuncs(NULL, &ctx->eval_exp);
-	}
-	ASSERT(eval_node != NULL); // TODO
+	ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
 
 	// build an operation node to represent the pattern comprehension
 	AR_ExpNode *op = AR_EXP_NewOpNode("PATTERN_COMPREHENSION", 2);
@@ -701,7 +695,7 @@ static AR_ExpNode *_AR_ExpFromPatternComprehension(const cypher_astnode_t *comp_
 	// add the context to the function descriptor as the function's private data
 	op->op.f = AR_SetPrivateData(op->op.f, ctx);
 
-	// 'arr' is the pattern expression
+	// '(a)-[]->(b)' is the pattern expression
 	const cypher_astnode_t *pattern_node = cypher_ast_pattern_comprehension_get_pattern(comp_exp);
 	AR_ExpNode *pattern = _AR_EXP_FromASTNode(pattern_node);
 

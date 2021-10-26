@@ -75,9 +75,6 @@ typedef struct AR_ExpNode {
 /* Creates a new Arithmetic expression operation node */
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
-/* Creates a new arithmetic expression operation node without associating a function. */
-AR_ExpNode *AR_EXP_NewPlaceholderOpNode(const char *func_name, uint child_count);
-
 /* Creates a new Arithmetic expression variable operand node */
 AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias);
 
@@ -131,18 +128,15 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
-/* Checks to see if expression contains given function.
+/* retrieve function node from expression if it can be found in tree
  * root - expression root to traverse.
  * func - function name to lookup. */
-AR_ExpNode *AR_EXP_ContainsFunc(AR_ExpNode *root, const char *func);
+AR_ExpNode *AR_EXP_TryGetFunc(AR_ExpNode *root, const char *func);
 
 /* Find a function node in an expression tree and replace it
  * with the given expression node. */
 void AR_EXP_ReplaceFunc(AR_ExpNode **root, const char *func,
 						AR_ExpNode *replacement);
-
-// Remove all placeholder functions in the tree.
-void AR_EXP_RemovePlaceholderFuncs(AR_ExpNode *parent, AR_ExpNode **root);
 
 // Remove the child at the given index.
 void AR_EXP_RemoveChild(AR_ExpNode *root, uint child_idx);

@@ -374,14 +374,14 @@ bool _FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_Fi
 			   FilterTree_ContainsFunc(root->cond.right, func, node);
 	}
 	case FT_N_PRED: {
-		if(AR_EXP_ContainsFunc(root->pred.lhs, func) || AR_EXP_ContainsFunc(root->pred.rhs, func)) {
+		if(AR_EXP_TryGetFunc(root->pred.lhs, func) || AR_EXP_TryGetFunc(root->pred.rhs, func)) {
 			*node = (FT_FilterNode *)root;
 			return true;
 		}
 		return false;
 	}
 	case FT_N_EXP: {
-		if(AR_EXP_ContainsFunc(root->exp.exp, func)) {
+		if(AR_EXP_TryGetFunc(root->exp.exp, func)) {
 			*node = (FT_FilterNode *) root;
 			return true;
 		}

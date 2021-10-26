@@ -55,12 +55,19 @@ void *ListComprehension_Clone(void *orig) {
 static void _PopulateComprehensionCtx(ListComprehensionCtx *ctx, Record outer_record) {
 	rax *local_record_map = raxClone(outer_record->mapping);
 	intptr_t id = raxSize(local_record_map);
+	if(ctx->variable_str == NULL) {
+		// if we don't have a variable string (possible in pattern
+		// comprehensions), simply create a record and return
+		ctx->local_record = Record_New(local_record_map);
+		return;
+	}
+
 	int rc = raxTryInsert(local_record_map, (unsigned char *)ctx->variable_str,
-						  strlen(ctx->variable_str), (void *)id, NULL);
+			strlen(ctx->variable_str), (void *)id, NULL);
 	if(rc == 0) {
 		// The local variable's name shadows an outer variable, emit an error.
 		ErrorCtx_RaiseRuntimeException("Variable '%s' redefined inside of list comprehension",
-									   (unsigned char *)ctx->variable_str);
+				(unsigned char *)ctx->variable_str);
 	}
 
 	ctx->local_record = Record_New(local_record_map);
@@ -257,35 +264,13 @@ SIValue AR_PATTERN_COMPREHENSION(SIValue *argv, int argc) {
 	ListComprehensionCtx *ctx = argv[1].ptrval;
 
 	// On the first invocation, build the local Record.
-	if(ctx->local_record == NULL && ctx->variable_str) {
-		_PopulateComprehensionCtx(ctx, outer_record);
-	} else {
-		ctx->local_record = Record_New(raxClone(outer_record->mapping));
-	}
+	if(ctx->local_record == NULL) _PopulateComprehensionCtx(ctx, outer_record);
 
 	Record r = ctx->local_record;
+
 	// Populate the local Record with the contents of the outer Record.
 	Record_Clone(outer_record, r);
-	/*
-	// Instantiate the array to be returned.
-	SIValue retval = SI_Array(1);
 
-	uint len = SIArray_Length(list);
-	for(uint i = 0; i < len; i++) {
-	    // If the comprehension has a filter tree, run the current element through it.
-	    // If it does not pass, skip this element.
-	    if(ctx->ft && !(FilterTree_applyFilters(ctx->ft, r))) continue;
-
-	    if(ctx->eval_exp) {
-	        // Compute the current element to append to the return list.
-	        SIValue newval = AR_EXP_Evaluate(ctx->eval_exp, r);
-	        SIArray_Append(&retval, newval);
-	        SIValue_Free(newval);
-	    }
-	}
-	*/
-	// Record r = argv[0].ptrval;
-	// ListComprehensionCtx *ctx = argv[1].ptrval;
 	// If the comprehension has a filter tree, run the current element through it.
 	// If it does not pass, skip this element.
 	if(ctx->ft && !(FilterTree_applyFilters(ctx->ft, r))) return SI_NullVal();
@@ -339,7 +324,6 @@ void Register_ComprehensionFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	// array_append(types, T_ARRAY | T_NULL);
 	array_append(types, T_PTR);
 	array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("pattern_comprehension", AR_PATTERN_COMPREHENSION,
