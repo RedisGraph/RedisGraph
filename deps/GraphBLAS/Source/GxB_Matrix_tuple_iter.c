@@ -67,9 +67,9 @@ GrB_Info GxB_MatrixTupleIter_new
 		GB_ERROR(GrB_INVALID_VALUE, "Invalid sparsity type: %d", sparsity) ;
 	}
 
-	size_t size_allocated;
+	size_t size_allocated ;
 	*iter = GB_MALLOC(1, GxB_MatrixTupleIter, &size_allocated) ;
-	(*iter)->size_allocated = size_allocated;
+	(*iter)->size_allocated = size_allocated ;
 	return _init(*iter, A) ;
 }
 
