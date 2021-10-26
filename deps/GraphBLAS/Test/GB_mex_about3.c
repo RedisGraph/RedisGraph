@@ -25,6 +25,7 @@ int myprintf (const char *restrict format, ...)
     vprintf (format, ap) ;
     va_end (ap) ;
     printf ("]]") ;
+    return (1) ;
 }
 
 int myflush (void) ;
@@ -33,6 +34,7 @@ int myflush (void)
 {
     printf ("myflush\n") ;
     fflush (stdout) ;
+    return (0) ;
 }
 
 typedef int (* printf_func_t) (const char *restrict format, ...) ;

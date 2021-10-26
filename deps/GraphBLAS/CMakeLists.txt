@@ -11,8 +11,7 @@
 # get the version
 #-------------------------------------------------------------------------------
 
-# cmake 3.13 is preferred.
-cmake_minimum_required ( VERSION 2.8.12 )
+cmake_minimum_required ( VERSION 3.13 )
 
 message ( STATUS "CMake version: " ${CMAKE_VERSION} )
 
@@ -24,10 +23,10 @@ endif ( )
 set ( CMAKE_MACOSX_RPATH TRUE )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "July 6, 2021")
+set ( GraphBLAS_DATE "Oct 5, 2021")
 set ( GraphBLAS_VERSION_MAJOR 5 )
 set ( GraphBLAS_VERSION_MINOR 1 )
-set ( GraphBLAS_VERSION_SUB   4 )
+set ( GraphBLAS_VERSION_SUB   8 )
 
 message ( STATUS "Building SuiteSparse:GraphBLAS version: v" ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}  " date: " ${GraphBLAS_DATE} )
 
@@ -37,12 +36,8 @@ set ( GraphBLAS_API_VERSION_MAJOR 1 )
 set ( GraphBLAS_API_VERSION_MINOR 3 )
 set ( GraphBLAS_API_VERSION_SUB   0 )
 
-if ( CMAKE_MAJOR_VERSION GREATER 2 )
-    project ( graphblas
+project ( graphblas
         VERSION "${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}" LANGUAGES C )
-else ( )
-    project ( graphblas C )
-endif ( )
 
 #-------------------------------------------------------------------------------
 # determine build type
@@ -100,7 +95,8 @@ configure_file (
 # determine what user threading model to use
 #-------------------------------------------------------------------------------
 
-include ( FindOpenMP  )
+# include ( FindOpenMP  )
+find_package ( OpenMP )
 
 # enable_language ( CUDA )
 # for nvcc, add -DGBCUDA
@@ -329,11 +325,14 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 if ( USE_OPENMP )
+    message ( STATUS "CMAKE OpenMP libraries:    " ${OpenMP_C_LIBRARIES} )
+    message ( STATUS "CMAKE OpenMP include:      " ${OpenMP_C_INCLUDE_DIRS} )
     target_link_libraries ( graphblas PUBLIC ${OpenMP_C_LIBRARIES} )
     if ( BUILD_GRB_STATIC_LIBRARY )
         target_link_libraries ( graphblas_static PUBLIC ${OpenMP_C_LIBRARIES} )
     endif ( )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} " )
+    include_directories ( ${OpenMP_C_INCLUDE_DIRS} )
 endif ( )
 
 if ( CMAKE_CUDA )

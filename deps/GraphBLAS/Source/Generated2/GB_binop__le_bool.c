@@ -23,9 +23,9 @@
 // C=binop(A,B) is defined by the following types and operators:
 
 // A+B function (eWiseAdd):         GB (_AaddB__le_bool)
-// A.*B function (eWiseMult):       GB (_AemultB_01__le_bool)
+// A.*B function (eWiseMult):       GB (_AemultB_08__le_bool)
 // A.*B function (eWiseMult):       GB (_AemultB_02__le_bool)
-// A.*B function (eWiseMult):       GB (_AemultB_03__le_bool)
+// A.*B function (eWiseMult):       GB (_AemultB_04__le_bool)
 // A.*B function (eWiseMult):       GB (_AemultB_bitmap__le_bool)
 // A*D function (colscale):         GB (_AxD__le_bool)
 // D*A function (rowscale):         GB (_DxB__le_bool)
@@ -249,7 +249,7 @@ GrB_Info GB (_DxB__le_bool)
 
 
 //------------------------------------------------------------------------------
-// eWiseAdd: C = A+B or C<M> = A+B
+// eWiseAdd: C=A+B, C<M>=A+B, C<!M>=A+B
 //------------------------------------------------------------------------------
 
 GrB_Info GB (_AaddB__le_bool)
@@ -284,12 +284,12 @@ GrB_Info GB (_AaddB__le_bool)
 }
 
 //------------------------------------------------------------------------------
-// eWiseMult: C = A.*B or C<M> = A.*B
+// eWiseMult: C=A.*B, C<M>=A.*B, or C<M!>=A.*B where C is sparse/hyper
 //------------------------------------------------------------------------------
 
 
 
-GrB_Info GB (_AemultB_01__le_bool)
+GrB_Info GB (_AemultB_08__le_bool)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -311,7 +311,7 @@ GrB_Info GB (_AemultB_01__le_bool)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_01_meta.c"
+    #include "GB_emult_08_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
@@ -376,7 +376,7 @@ GrB_Info GB (_AemultB_02__le_bool)
 
 
 
-GrB_Info GB (_AemultB_03__le_bool)
+GrB_Info GB (_AemultB_04__le_bool)
 (
     GrB_Matrix C,
     const GrB_Matrix M,
@@ -390,7 +390,7 @@ GrB_Info GB (_AemultB_03__le_bool)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_03_template.c"
+    #include "GB_emult_04_template.c"
     return (GrB_SUCCESS) ;
     #endif
 }

@@ -759,7 +759,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     GB_phbix_free (AT) ;
     GB_phbix_free (BT) ;
     // do not free MT; return it to the caller
+    #ifdef GB_DEBUG
     if (*M_transposed) ASSERT_MATRIX_OK (MT, "MT computed", GB0) ;
+    #endif
     return (GrB_SUCCESS) ;
 }
 

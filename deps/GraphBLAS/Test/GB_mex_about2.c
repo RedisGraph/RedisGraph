@@ -149,7 +149,7 @@ void mexFunction
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
     OK (GxB_Matrix_Option_set_(A, GxB_BITMAP_SWITCH, 0.125)) ;
     OK (GxB_Matrix_Option_get_(A, GxB_BITMAP_SWITCH, &bswitch)) ;
-    CHECK (fabsf (bswitch - 0.125) < 1e-5) ;
+    CHECK (fabs (bswitch - 0.125) < 1e-5) ;
 
     OK (GxB_Matrix_Option_set_(A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
     OK (GrB_Matrix_assign_INT32 (A, NULL, NULL, 3, GrB_ALL, n, GrB_ALL, n,

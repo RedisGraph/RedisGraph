@@ -508,7 +508,7 @@ GB_PUBLIC
 void GB_Global_memtable_dump (void)
 {
     #ifdef GB_DEBUG
-    printf ("\nmemtable dump: %d nmalloc %ld\n", GB_Global.nmemtable,
+    printf ("\nmemtable dump: %d nmalloc " GBd "\n", GB_Global.nmemtable,
         GB_Global.nmalloc) ;
     for (int k = 0 ; k < GB_Global.nmemtable ; k++)
     {
@@ -1237,7 +1237,7 @@ void GB_Global_free_pool_dump (int pr)
             int64_t limit   = GB_Global.free_pool_limit [k] ;
             if (nblocks != 0 && pr > 0)
             {
-                printf ("pool %2d: %8ld blocks, %8ld limit\n",
+                printf ("pool %2d: " GBd " blocks, " GBd " limit\n",
                     k, nblocks, limit) ;
             }
             int64_t nblocks_actual = 0 ;
@@ -1254,7 +1254,7 @@ void GB_Global_free_pool_dump (int pr)
             }
             if (nblocks_actual != nblocks)
             {
-                if (pr > 0) printf ("fail: # blocks %ld %ld\n",
+                if (pr > 0) printf ("fail: # blocks " GBd " " GBd " \n",
                     nblocks_actual, nblocks) ;
                 fail = true ;
             }

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_01_meta:  phase1 and phase2 for C=A.*B, C<M>=A.*B, C<!M>=A.*B
+// GB_emult_08_meta:  phase1 and phase2 for C=A.*B, C<M>=A.*B, C<!M>=A.*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -9,9 +9,9 @@
 
 // Computes C=A.*B, C<M>=A.*B, or C<!M>=A.*B. 
 
-// C is sparse, hypersparse, or bitmap.  M, A, and B can have any sparsity
-// structure.  If both A and B are full, then GB_add is used instead (this is
-// the only case where C can be full).
+// C is sparse or hypersparse.  M, A, and B can have any sparsity structure.
+// If both A and B are full, then GB_add is used instead (this is the only case
+// where C can be full).
 
 // phase1: does not compute C itself, but just counts the # of entries in each
 // vector of C.  Fine tasks compute the # of entries in their slice of a
@@ -92,13 +92,13 @@
     #if defined ( GB_PHASE_1_OF_2 )
 
         // phase1: symbolic phase
-        #include "GB_emult_01_template.c"
+        #include "GB_emult_08_template.c"
 
     #else
 
         // phase2: numerical phase
         ASSERT (C_sparsity == GxB_SPARSE || C_sparsity == GxB_HYPERSPARSE) ;
-        #include "GB_emult_01_template.c"
+        #include "GB_emult_08_template.c"
 
     #endif
 }

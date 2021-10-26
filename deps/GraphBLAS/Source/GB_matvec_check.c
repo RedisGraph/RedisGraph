@@ -422,7 +422,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     #define K (1024L)
     if (memsize < K)
     { 
-        GBPR0 (", memory: " GBu " bytes\n", memsize) ;
+        GBPR0 (", memory: " GBd " bytes\n", (int64_t) memsize) ;
     }
     else if (memsize < K*K)
     { 

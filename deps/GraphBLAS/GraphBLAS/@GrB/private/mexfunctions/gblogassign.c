@@ -184,7 +184,7 @@ void mexFunction
     // extract the values and pattern of A; handle iso case
     //--------------------------------------------------------------------------
 
-    // TODO: use a shallow variant of GxB*export to access content of M and A
+    // Tim: use a shallow variant of GxB*export to access content of M and A
     GrB_Index *Ai =            							
         (GrB_Index *) A->i ;   	             	 	                 	
     void *Ax = A->x ;          		 	 	 	 	 	
@@ -271,6 +271,7 @@ void mexFunction
             ERROR ("unsupported type") ;
         }
         OK1 (S, GxB_Matrix_build_Scalar (S, Si, Sj, s, anz)) ;
+        OK (GxB_Scalar_free (&s)) ;
     }
     else if (atype == GrB_BOOL)
     { 
