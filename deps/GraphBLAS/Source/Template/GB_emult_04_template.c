@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_03_template: C<M>= A.*B, M sparse/hyper, A and B bitmap/full
+// GB_emult_04_template: C<M>= A.*B, M sparse/hyper, A and B bitmap/full
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -46,7 +46,7 @@
     const int64_t *restrict pstart_Mslice = M_ek_slicing + M_ntasks * 2 ;
 
     //--------------------------------------------------------------------------
-    // C<M>=A.*B where M is sparse/hyper, A and B are bitmap/full
+    // Method4: C<M>=A.*B where M is sparse/hyper, A and B are bitmap/full
     //--------------------------------------------------------------------------
 
     int tid ;

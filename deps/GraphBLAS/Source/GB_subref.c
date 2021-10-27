@@ -188,13 +188,13 @@ GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
         A, I, ni, J, nj, Context)) ;
 
     //--------------------------------------------------------------------------
-    // phase0b: split C=A(I,J) into tasks for phase1 and phase2
+    // phase1: split C=A(I,J) into tasks for phase2 and phase3
     //--------------------------------------------------------------------------
 
     // This phase also inverts I if needed.
 
     GB_OK (GB_subref_slice (
-        // computed by phase0b:
+        // computed by phase1:
         &TaskList, &TaskList_size, &ntasks, &nthreads, &post_sort,
         &Mark, &Mark_size, &Inext, &Inext_size, &ndupl,
         // computed by phase0:
@@ -203,13 +203,13 @@ GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
         A->vlen, GB_nnz (A), I, Context)) ;
 
     //--------------------------------------------------------------------------
-    // phase1: count the number of entries in each vector of C
+    // phase2: count the number of entries in each vector of C
     //--------------------------------------------------------------------------
 
-    GB_OK (GB_subref_phase1 (
-        // computed by phase1:
+    GB_OK (GB_subref_phase2 (
+        // computed by phase2:
         &Cp, &Cp_size, &Cnvec_nonempty,
-        // computed by phase0b:
+        // computed by phase1:
         TaskList, ntasks, nthreads, Mark, Inext, ndupl,
         // computed by phase0:
         Ap_start, Ap_end, Cnvec, need_qsort, Ikind, nI, Icolon,
@@ -217,15 +217,15 @@ GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
         A, I, symbolic, Context)) ;
 
     //--------------------------------------------------------------------------
-    // phase2: compute the entries (indices and values) in each vector of C
+    // phase3: compute the entries (indices and values) in each vector of C
     //--------------------------------------------------------------------------
 
-    GB_OK (GB_subref_phase2 (
-        // computed by phase2:
+    GB_OK (GB_subref_phase3 (
+        // computed by phase3:
         C,
-        // from phase1:
+        // from phase2:
         &Cp, Cp_size, Cnvec_nonempty,
-        // from phase0b:
+        // from phase1:
         TaskList, ntasks, nthreads, post_sort, Mark, Inext, ndupl,
         // from phase0:
         &Ch, Ch_size, Ap_start, Ap_end, Cnvec, need_qsort,
@@ -235,7 +235,7 @@ GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
         // original input:
         C_is_csc, A, I, symbolic, Context)) ;
 
-    // Cp and Ch have been imported into C->p and C->h, or freed if phase2
+    // Cp and Ch have been imported into C->p and C->h, or freed if phase3
     // fails.  Either way, Cp and Ch are set to NULL so that they cannot be
     // freed here (except by freeing C itself).
 

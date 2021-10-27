@@ -238,7 +238,7 @@ void GB_AxB_saxpy_sparsity          // determine C_sparsity and method to use
         // hypersparse.  Otherwise C must be sparse.  This is a requirement of
         // GB_AxB_saxpy3, and is also asserted there.
         ASSERT ((*C_sparsity) ==
-            (B_sparsity == GxB_HYPERSPARSE) ? GxB_HYPERSPARSE : GxB_SPARSE) ;
+            ((B_sparsity == GxB_HYPERSPARSE) ? GxB_HYPERSPARSE : GxB_SPARSE)) ;
     }
 }
 

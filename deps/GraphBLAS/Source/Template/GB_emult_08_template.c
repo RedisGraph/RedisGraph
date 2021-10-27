@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_01_template: C=A.*B, C<M or !M>=A.*B when C is sparse/hyper
+// GB_emult_08_template: C=A.*B, C<M or !M>=A.*B when C is sparse/hyper
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -22,29 +22,29 @@
         //      ------------------------------------------
         //      C       =           A       .*      B
         //      ------------------------------------------
-        //      sparse  .           sparse          sparse  (method: 01)
+        //      sparse  .           sparse          sparse  (method: 8)
 
         //      ------------------------------------------
         //      C       <M>=        A       .*      B
         //      ------------------------------------------
-        //      sparse  sparse      sparse          sparse  (method: 01)
-        //      sparse  bitmap      sparse          sparse  (method: 01)
-        //      sparse  full        sparse          sparse  (method: 01)
-        //      sparse  sparse      sparse          bitmap  (04a or 02a)
-        //      sparse  sparse      sparse          full    (04a or 02a)
-        //      sparse  sparse      bitmap          sparse  (04b or 02b)
-        //      sparse  sparse      full            sparse  (04b or 02b)
+        //      sparse  sparse      sparse          sparse  (method: 8)
+        //      sparse  bitmap      sparse          sparse  (method: 8)
+        //      sparse  full        sparse          sparse  (method: 8)
+        //      sparse  sparse      sparse          bitmap  (9 or 2)
+        //      sparse  sparse      sparse          full    (9 or 2)
+        //      sparse  sparse      bitmap          sparse  (10 or 3)
+        //      sparse  sparse      full            sparse  (10 or 3)
 
         //      ------------------------------------------
         //      C       <!M>=       A       .*      B
         //      ------------------------------------------
-        //      sparse  sparse      sparse          sparse  (01: M later)
-        //      sparse  bitmap      sparse          sparse  (method: 01)
-        //      sparse  full        sparse          sparse  (method: 01)
+        //      sparse  sparse      sparse          sparse  (8: M later)
+        //      sparse  bitmap      sparse          sparse  (method: 8)
+        //      sparse  full        sparse          sparse  (method: 8)
 
-// The 04a and 04b methods are not yet implemented.  This method handles
-// those cases.  Methods 02a and 02b can be used as well, but only if M is
-// applied later.  See GB_emult_sparsity for this decision.
+// Methods 9 and 10 are not yet implemented, and are currently handled by this
+// Method 8 instead.  those cases.  Methods 2 and 3 can be used as well, but
+// only if M is applied later.  See GB_emult_sparsity for this decision.
 
 {
 
@@ -236,7 +236,7 @@
             { 
 
                 //--------------------------------------------------------------
-                // A(:,j) and/or B(:,j) are empty
+                // Method8(a): A(:,j) and/or B(:,j) are empty
                 //--------------------------------------------------------------
 
                 ;
@@ -246,7 +246,7 @@
             { 
 
                 //--------------------------------------------------------------
-                // intersection of A(:,j) and B(:,j) is empty
+                // Method8(a): intersection of A(:,j) and B(:,j) is empty
                 //--------------------------------------------------------------
 
                 // the last entry of A(:,j) comes before the first entry
@@ -262,14 +262,14 @@
             {
 
                 //--------------------------------------------------------------
-                // C = A.*B
+                // Method8(b,c,d): C = A.*B, no mask
                 //--------------------------------------------------------------
 
                 //      ------------------------------------------
                 //      C       =           A       .*      B
                 //      ------------------------------------------
-                //      sparse  .           sparse          sparse  (method: 01)
-                //      sparse  sparse      sparse          sparse  (01 M later)
+                //      sparse  .           sparse          sparse  (method: 8)
+                //      sparse  sparse      sparse          sparse  (8, M later)
 
                 // both A and B are sparse/hyper
                 ASSERT (A_is_sparse || A_is_hyper) ;
@@ -279,7 +279,7 @@
                 {
 
                     //----------------------------------------------------------
-                    // A(:,j) is much denser than B(:,j)
+                    // Method8(b): A(:,j) is much denser than B(:,j)
                     //----------------------------------------------------------
 
                     for ( ; pB < pB_end ; pB++)
@@ -315,7 +315,7 @@
                 {
 
                     //----------------------------------------------------------
-                    // B(:,j) is much denser than A(:,j)
+                    // Method8(c): B(:,j) is much denser than A(:,j)
                     //----------------------------------------------------------
 
                     for ( ; pA < pA_end ; pA++)
@@ -351,7 +351,7 @@
                 {
 
                     //----------------------------------------------------------
-                    // A(:,j) and B(:,j) about the sparsity
+                    // Method8(d): A(:,j) and B(:,j) about the sparsity
                     //----------------------------------------------------------
 
                     // linear-time scan of A(:,j) and B(:,j)
@@ -401,20 +401,20 @@
             {
 
                 //--------------------------------------------------------------
-                // C and M are sparse or hypersparse
+                // Method8(e): C and M are sparse or hypersparse
                 //--------------------------------------------------------------
 
                 //      ------------------------------------------
                 //      C       <M>=        A       .*      B
                 //      ------------------------------------------
-                //      sparse  sparse      sparse          sparse  (method: 01)
-                //      sparse  sparse      sparse          bitmap  (04a or 02a)
-                //      sparse  sparse      sparse          full    (04a or 02a)
-                //      sparse  sparse      bitmap          sparse  (04b or 02b)
-                //      sparse  sparse      full            sparse  (04b or 02b)
+                //      sparse  sparse      sparse          sparse  (method: 8)
+                //      sparse  sparse      sparse          bitmap  (9 or 2)
+                //      sparse  sparse      sparse          full    (9 or 2)
+                //      sparse  sparse      bitmap          sparse  (10 or 3)
+                //      sparse  sparse      full            sparse  (10 or 3)
 
-                // Method 04 is not yet implemented; using this method
-                // (GB_emult_01) instead.
+                // Methods 9 and 10 are not yet implemented; using Method 8
+                // (GB_emult_08) instead.
 
                 // ether A or B are sparse/hyper
                 ASSERT (A_is_sparse || A_is_hyper || B_is_sparse || B_is_hyper);
@@ -503,14 +503,14 @@
                 //      ------------------------------------------
                 //      C       <M>=        A       .*      B
                 //      ------------------------------------------
-                //      sparse  bitmap      sparse          sparse  (method: 01)
-                //      sparse  full        sparse          sparse  (method: 01)
+                //      sparse  bitmap      sparse          sparse  (method: 8)
+                //      sparse  full        sparse          sparse  (method: 8)
 
                 //      ------------------------------------------
                 //      C       <!M>=       A       .*      B
                 //      ------------------------------------------
-                //      sparse  bitmap      sparse          sparse  (method: 01)
-                //      sparse  full        sparse          sparse  (method: 01)
+                //      sparse  bitmap      sparse          sparse  (method: 8)
+                //      sparse  full        sparse          sparse  (method: 8)
 
                 // GB_GET_MIJ: get M(i,j) where M is bitmap or full
                 #undef  GB_GET_MIJ
@@ -529,7 +529,7 @@
                 {
 
                     //----------------------------------------------------------
-                    // A(:,j) much denser than B(:,j), M bitmap/full
+                    // Method8(f): A(:,j) much denser than B(:,j), M bitmap/full
                     //----------------------------------------------------------
 
                     for ( ; pB < pB_end ; pB++)
@@ -570,7 +570,7 @@
                 {
 
                     //----------------------------------------------------------
-                    // B(:,j) much denser than A(:,j), M bitmap/full
+                    // Method8(g): B(:,j) much denser than A(:,j), M bitmap/full
                     //----------------------------------------------------------
 
                     for ( ; pA < pA_end ; pA++)
@@ -612,7 +612,7 @@
                 {
 
                     //----------------------------------------------------------
-                    // A(:,j) and B(:,j) about the same, M bitmap/full
+                    // Method8(h): A(:,j) and B(:,j) about same, M bitmap/full
                     //----------------------------------------------------------
 
                     // linear-time scan of A(:,j) and B(:,j)

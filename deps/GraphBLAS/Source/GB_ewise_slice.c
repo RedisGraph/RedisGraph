@@ -248,9 +248,9 @@ GrB_Info GB_ewise_slice
 
         ASSERT (kA >= -1 && kA < A->nvec) ;
         ASSERT (kB >= -1 && kB < B->nvec) ;
-        int64_t aknz = (kA < 0) ? 0 :
+        const int64_t aknz = (kA < 0) ? 0 :
             ((Ap == NULL) ? vlen : (Ap [kA+1] - Ap [kA])) ;
-        int64_t bknz = (kB < 0) ? 0 :
+        const int64_t bknz = (kB < 0) ? 0 :
             ((Bp == NULL) ? vlen : (Bp [kB+1] - Bp [kB])) ;
 
         Cwork [k] = aknz + bknz + 1 ;

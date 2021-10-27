@@ -238,8 +238,10 @@ GB_Global_struct GB_Global =
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 
     // default limits on the number of free blocks in each list:
-    .free_pool_limit = {
-        0,      // size 2^0 = 1 byte   none
+    .free_pool_limit =
+
+    #ifdef _OPENMP
+    {   0,      // size 2^0 = 1 byte   none
         0,      // size 2^1 = 2        none
         0,      // size 2^2 = 4        none
 
@@ -319,6 +321,15 @@ GB_Global_struct GB_Global =
         0,      // size 2^61
         0,      // size 2^62
         0 },    // size 2^63 (4 exabytes!)
+
+#else
+    // the free pool requires an OpenMP critical section,
+    // so disable it if OpenMP is not available.
+      { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+#endif
 
     // CUDA environment (DRAFT: in progress)
     .gpu_count = 0,                     // # of GPUs in the system
@@ -508,7 +519,7 @@ GB_PUBLIC
 void GB_Global_memtable_dump (void)
 {
     #ifdef GB_DEBUG
-    printf ("\nmemtable dump: %d nmalloc %ld\n", GB_Global.nmemtable,
+    printf ("\nmemtable dump: %d nmalloc " GBd "\n", GB_Global.nmemtable,
         GB_Global.nmalloc) ;
     for (int k = 0 ; k < GB_Global.nmemtable ; k++)
     {
@@ -536,7 +547,6 @@ GB_PUBLIC
 void GB_Global_memtable_add (void *p, size_t size)
 {
     #ifdef GB_DEBUG
-    ASSERT ((p == NULL) == (size == 0)) ;
     if (p == NULL) return ;
     bool fail = false ;
     #ifdef GB_MEMDUMP
@@ -1132,33 +1142,42 @@ double GB_Global_timing_get (int k)
 GB_PUBLIC
 void GB_Global_free_pool_init (bool clear)
 { 
-    #pragma omp critical(GB_free_pool)
-    {
-        if (clear)
+    #ifdef _OPENMP
+        #pragma omp critical(GB_free_pool)
         {
-            // clear the free pool
+            if (clear)
+            {
+                // clear the free pool
+                for (int k = 0 ; k < 64 ; k++)
+                {
+                    GB_Global.free_pool [k] = NULL ;
+                    GB_Global.free_pool_nblocks [k] = 0 ;
+                }
+            }
+            // set the default free_pool_limit
             for (int k = 0 ; k < 64 ; k++)
             {
-                GB_Global.free_pool [k] = NULL ;
-                GB_Global.free_pool_nblocks [k] = 0 ;
+                GB_Global.free_pool_limit [k] = 0 ;
+            }
+            int64_t n = 16384 ;
+            for (int k = 3 ; k <= 8 ; k++)
+            {
+                GB_Global.free_pool_limit [k] = n ;
+            }
+            for (int k = 9 ; k <= 19 ; k++)
+            {
+                n = n/2 ;
+                GB_Global.free_pool_limit [k] = n ;
             }
         }
-        // set the default free_pool_limit
+    #else
+        // OpenMP not available: disable the free pool
         for (int k = 0 ; k < 64 ; k++)
         {
-            GB_Global.free_pool_limit [k] = 0 ;
+            GB_Global.free_pool [k] = NULL ;
+            GB_Global.free_pool_nblocks [k] = 0 ;
         }
-        int64_t n = 16384 ;
-        for (int k = 3 ; k <= 8 ; k++)
-        {
-            GB_Global.free_pool_limit [k] = n ;
-        }
-        for (int k = 9 ; k <= 19 ; k++)
-        {
-            n = n/2 ;
-            GB_Global.free_pool_limit [k] = n ;
-        }
-    }
+    #endif
 }
 
 #ifdef GB_DEBUG
@@ -1176,57 +1195,68 @@ static inline void GB_Global_free_pool_check (void *p, int k, char *where)
 // free_pool_get: get a block from the free_pool, or return NULL if none
 GB_PUBLIC
 void *GB_Global_free_pool_get (int k)
-{
-    void *p = NULL ;
-    ASSERT (k >= 3 && k < 64) ;
-    #pragma omp critical(GB_free_pool)
-    {
-        p = GB_Global.free_pool [k] ;
+{ 
+    #ifdef _OPENMP
+        void *p = NULL ;
+        ASSERT (k >= 3 && k < 64) ;
+        #pragma omp critical(GB_free_pool)
+        {
+            p = GB_Global.free_pool [k] ;
+            if (p != NULL)
+            {
+                // remove the block from the kth free_pool
+                GB_Global.free_pool_nblocks [k]-- ;
+                GB_Global.free_pool [k] = GB_NEXT (p) ;
+            }
+        }
         if (p != NULL)
         {
-            // remove the block from the kth free_pool
-            GB_Global.free_pool_nblocks [k]-- ;
-            GB_Global.free_pool [k] = GB_NEXT (p) ;
+            // clear the next pointer inside the block, since the block needs
+            // to be all zero
+            #ifdef GB_DEBUG
+            GB_Global_free_pool_check (p, k, "get") ;
+            #endif
         }
-    }
-    if (p != NULL)
-    { 
-        // clear the next pointer inside the block, since the block needs
-        // to be all zero
-        #ifdef GB_DEBUG
-        GB_Global_free_pool_check (p, k, "get") ;
-        #endif
-    }
-    return (p) ;
+        return (p) ;
+    #else
+        // OpenMP not available: free pool not in use
+        return (NULL) ;
+    #endif
 }
 
 // free_pool_put: put a block in the free_pool, unless it is full
 GB_PUBLIC
 bool GB_Global_free_pool_put (void *p, int k)
 { 
-    #ifdef GB_DEBUG
-    GB_Global_free_pool_check (p, k, "put") ;
-    #endif
-    bool returned_to_pool = false ;
-    #pragma omp critical(GB_free_pool)
-    {
-        returned_to_pool =
-            (GB_Global.free_pool_nblocks [k] < GB_Global.free_pool_limit [k]) ;
-        if (returned_to_pool)
+    #ifdef _OPENMP
+        #ifdef GB_DEBUG
+        GB_Global_free_pool_check (p, k, "put") ;
+        #endif
+        bool returned_to_pool = false ;
+        #pragma omp critical(GB_free_pool)
         {
-            // add the block to the head of the free_pool list
-            GB_Global.free_pool_nblocks [k]++ ;
-            GB_NEXT (p) = GB_Global.free_pool [k] ;
-            GB_Global.free_pool [k] = p ;
+            returned_to_pool =
+                (GB_Global.free_pool_nblocks [k] <
+                 GB_Global.free_pool_limit [k]) ;
+            if (returned_to_pool)
+            {
+                // add the block to the head of the free_pool list
+                GB_Global.free_pool_nblocks [k]++ ;
+                GB_NEXT (p) = GB_Global.free_pool [k] ;
+                GB_Global.free_pool [k] = p ;
+            }
         }
-    }
-    return (returned_to_pool) ;
+        return (returned_to_pool) ;
+    #else
+        return (false) ;
+    #endif
 }
 
 // free_pool_dump: check the validity of the free_pool
 GB_PUBLIC
 void GB_Global_free_pool_dump (int pr)
 {
+    #ifdef _OPENMP
     #ifdef GB_DEBUG
     bool fail = false ;
     #pragma omp critical(GB_free_pool)
@@ -1237,7 +1267,7 @@ void GB_Global_free_pool_dump (int pr)
             int64_t limit   = GB_Global.free_pool_limit [k] ;
             if (nblocks != 0 && pr > 0)
             {
-                printf ("pool %2d: %8ld blocks, %8ld limit\n",
+                printf ("pool %2d: " GBd " blocks, " GBd " limit\n",
                     k, nblocks, limit) ;
             }
             int64_t nblocks_actual = 0 ;
@@ -1254,7 +1284,7 @@ void GB_Global_free_pool_dump (int pr)
             }
             if (nblocks_actual != nblocks)
             {
-                if (pr > 0) printf ("fail: # blocks %ld %ld\n",
+                if (pr > 0) printf ("fail: # blocks " GBd " " GBd " \n",
                     nblocks_actual, nblocks) ;
                 fail = true ;
             }
@@ -1262,33 +1292,44 @@ void GB_Global_free_pool_dump (int pr)
     }
     ASSERT (!fail) ;
     #endif
+    #endif
 }
 
 // free_pool_limit_get: get the limit on the # of blocks in the kth pool
 GB_PUBLIC
 int64_t GB_Global_free_pool_limit_get (int k)
-{
-    int64_t nblocks = 0 ;
-    if (k >= 3 && k < 64)
-    { 
-        #pragma omp critical(GB_free_pool)
+{ 
+    #ifdef _OPENMP
+        int64_t nblocks = 0 ;
+        if (k >= 3 && k < 64)
         {
-            nblocks = GB_Global.free_pool_limit [k] ;
+            #pragma omp critical(GB_free_pool)
+            {
+                nblocks = GB_Global.free_pool_limit [k] ;
+            }
         }
-    }
-    return (nblocks) ;
+        return (nblocks) ;
+    #else
+        return (0) ;
+    #endif
 }
 
 // free_pool_limit_set: set the limit on the # of blocks in the kth pool
 GB_PUBLIC
 void GB_Global_free_pool_limit_set (int k, int64_t nblocks)
-{
+{ 
     if (k >= 3 && k < 64)
-    { 
-        #pragma omp critical(GB_free_pool)
-        {
-            GB_Global.free_pool_limit [k] = nblocks ;
-        }
+    {
+        #ifdef _OPENMP
+            #pragma omp critical(GB_free_pool)
+            {
+                GB_Global.free_pool_limit [k] = nblocks ;
+            }
+        #else
+            {
+                GB_Global.free_pool_limit [k] = 0 ;
+            }
+        #endif
     }
 }
 
@@ -1297,6 +1338,7 @@ GB_PUBLIC
 int64_t GB_Global_free_pool_nblocks_total (void)
 {
     int64_t nblocks = 0 ;
+    #ifdef _OPENMP
     #pragma omp critical(GB_free_pool)
     {
         for (int k = 0 ; k < 64 ; k++)
@@ -1304,6 +1346,7 @@ int64_t GB_Global_free_pool_nblocks_total (void)
             nblocks += GB_Global.free_pool_nblocks [k] ;
         }
     }
+    #endif
     return (nblocks) ;
 }
 

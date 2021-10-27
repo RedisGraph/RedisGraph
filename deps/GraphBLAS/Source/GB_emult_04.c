@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult_03: C<M>= A.*B, M sparse/hyper, A and B bitmap/full
+// GB_emult_04: C<M>= A.*B, M sparse/hyper, A and B bitmap/full
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -13,13 +13,13 @@
             //      ------------------------------------------
             //      C       <M>=        A       .*      B
             //      ------------------------------------------
-            //      sparse  sparse      bitmap          bitmap  (method: 03)
-            //      sparse  sparse      bitmap          full    (method: 03)
-            //      sparse  sparse      full            bitmap  (method: 03)
-            //      sparse  sparse      full            full    (method: 03)
+            //      sparse  sparse      bitmap          bitmap  (method: 04)
+            //      sparse  sparse      bitmap          full    (method: 04)
+            //      sparse  sparse      full            bitmap  (method: 04)
+            //      sparse  sparse      full            full    (method: 04)
 
 // TODO: this function can also do eWiseAdd, just as easily.
-// Just change the "&&" to "||" in the GB_emult_03_template. 
+// Just change the "&&" to "||" in the GB_emult_04_template. 
 // If A and B are both full, eadd and emult are identical.
 
 #include "GB_ewise.h"
@@ -42,7 +42,7 @@
     GB_phbix_free (C) ;                     \
 }
 
-GrB_Info GB_emult_03        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
+GrB_Info GB_emult_04        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
 (
     GrB_Matrix C,           // output matrix, static header
     const GrB_Type ctype,   // type of output matrix C
@@ -64,10 +64,10 @@ GrB_Info GB_emult_03        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
     GrB_Info info ;
     ASSERT (C != NULL && C->static_header) ;
 
-    ASSERT_MATRIX_OK (M, "M for emult_03", GB0) ;
-    ASSERT_MATRIX_OK (A, "A for emult_03", GB0) ;
-    ASSERT_MATRIX_OK (B, "B for emult_03", GB0) ;
-    ASSERT_BINARYOP_OK (op, "op for emult_03", GB0) ;
+    ASSERT_MATRIX_OK (M, "M for emult_04", GB0) ;
+    ASSERT_MATRIX_OK (A, "A for emult_04", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for emult_04", GB0) ;
+    ASSERT_BINARYOP_OK (op, "op for emult_04", GB0) ;
 
     ASSERT (GB_IS_SPARSE (M) || GB_IS_HYPERSPARSE (M)) ;
     ASSERT (!GB_PENDING (M)) ;
@@ -78,7 +78,7 @@ GrB_Info GB_emult_03        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
 
     int C_sparsity = GB_sparsity (M) ;
 
-    GBURBLE ("emult_03:(%s<%s>=%s.*%s) ",
+    GBURBLE ("emult_04:(%s<%s>=%s.*%s) ",
         GB_sparsity_char (C_sparsity),
         GB_sparsity_char_matrix (M),
         GB_sparsity_char_matrix (A),
@@ -280,7 +280,7 @@ GrB_Info GB_emult_03        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
 
         // pattern of C = set intersection of pattern of A and B
         #define GB_ISO_EMULT
-        #include "GB_emult_03_template.c"
+        #include "GB_emult_04_template.c"
 
     }
     else
@@ -298,11 +298,11 @@ GrB_Info GB_emult_03        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
             // define the worker for the switch factory
             //------------------------------------------------------------------
 
-            #define GB_AemultB_03(mult,xname) GB (_AemultB_03_ ## mult ## xname)
+            #define GB_AemultB_04(mult,xname) GB (_AemultB_04_ ## mult ## xname)
 
             #define GB_BINOP_WORKER(mult,xname)                             \
             {                                                               \
-                info = GB_AemultB_03(mult,xname) (C, M, Mask_struct, A, B,  \
+                info = GB_AemultB_04(mult,xname) (C, M, Mask_struct, A, B,  \
                     Cp_kfirst, M_ek_slicing, M_ntasks, M_nthreads) ;        \
                 done = (info != GrB_NO_VALUE) ;                             \
             }                                                               \
@@ -329,9 +329,9 @@ GrB_Info GB_emult_03        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
 
         if (!done)
         { 
-            GB_BURBLE_MATRIX (C, "(generic emult_03: %s) ", op->name) ;
+            GB_BURBLE_MATRIX (C, "(generic emult_04: %s) ", op->name) ;
             GB_ewise_generic (C, op, NULL, 0, 0,
-                NULL, NULL, NULL, C_sparsity, GB_EMULT_METHOD_03, Cp_kfirst,
+                NULL, NULL, NULL, C_sparsity, GB_EMULT_METHOD4, Cp_kfirst,
                 M_ek_slicing, M_ntasks, M_nthreads, NULL, 0, 0, NULL, 0, 0,
                 M, Mask_struct, false, A, B, Context) ;
         }
@@ -348,7 +348,7 @@ GrB_Info GB_emult_03        // C<M>=A.*B, M sparse/hyper, A and B bitmap/full
     //--------------------------------------------------------------------------
 
     GB_FREE_WORK ;
-    ASSERT_MATRIX_OK (C, "C output for emult_03", GB0) ;
+    ASSERT_MATRIX_OK (C, "C output for emult_04", GB0) ;
     (*mask_applied) = true ;
     return (GrB_SUCCESS) ;
 }

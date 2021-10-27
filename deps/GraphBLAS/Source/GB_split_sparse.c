@@ -154,8 +154,8 @@ GrB_Info GB_split_sparse            // split a sparse matrix
             for (k = akstart ; k < akend ; k++)
             {
                 int64_t pA = Wp [k] ;
-                int64_t pA_end = Ap [k+1] ;
-                int64_t aknz = pA_end - pA ;
+                const int64_t pA_end = Ap [k+1] ;
+                const int64_t aknz = pA_end - pA ;
                 if (aknz == 0 || Ai [pA] >= aiend)
                 { 
                     // this vector of C is empty

@@ -301,23 +301,29 @@ GrB_Info GB_AxB_saxpy_generic
         #undef  GB_GETA
         #define GB_GETA(aik,Ax,pA,A_iso)                                    \
             GB_void aik [GB_VLA(aik_size)] ;                                \
-            if (!A_is_pattern) cast_A (aik, Ax +((A_iso) ? 0:(pA)*asize), asize)
+            if (!A_is_pattern)                                              \
+            {                                                               \
+                cast_A (aik, Ax +((A_iso) ? 0:((pA)*asize)), asize) ;       \
+            }
 
         // bkj = B(k,j), located in Bx [B_iso ? 0:pB]
         #undef  GB_GETB
         #define GB_GETB(bkj,Bx,pB,B_iso)                                    \
             GB_void bkj [GB_VLA(bkj_size)] ;                                \
-            if (!B_is_pattern) cast_B (bkj, Bx +((B_iso) ? 0:(pB)*bsize), bsize)
+            if (!B_is_pattern)                                              \
+            {                                                               \
+                cast_B (bkj, Bx +((B_iso) ? 0:((pB)*bsize)), bsize) ;       \
+            }
 
         // Gx [pG] = A(i,k), located in Ax [A_iso ? 0:pA], no typecasting
         #undef  GB_LOADA
         #define GB_LOADA(Gx,pG,Ax,pA,A_iso)                                 \
-            memcpy (Gx + ((pG)*asize), Ax +((A_iso) ? 0:(pA)*asize), asize)
+            memcpy (Gx + ((pG)*asize), Ax +((A_iso) ? 0:((pA)*asize)), asize)
 
         // Gx [pG] = B(k,j), located in Bx [B_iso ? 0:pB], no typecasting
         #undef  GB_LOADB
         #define GB_LOADB(Gx,pG,Bx,pB,B_iso)                                 \
-            memcpy (Gx + ((pG)*bsize), Bx +((B_iso) ? 0:(pB)*bsize), bsize)
+            memcpy (Gx + ((pG)*bsize), Bx +((B_iso) ? 0:((pB)*bsize)), bsize)
 
         // define t for each task
         #undef  GB_CIJ_DECLARE

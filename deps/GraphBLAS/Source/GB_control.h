@@ -176,18 +176,18 @@
 // slower.
 
 // #define GxB_NO_BOOL      1
-	#define GxB_NO_FP32      1
-	#define GxB_NO_FP64      1
-	#define GxB_NO_FC32      1
-	#define GxB_NO_FC64      1
-	#define GxB_NO_INT16     1
-	#define GxB_NO_INT32     1
-	#define GxB_NO_INT64     1
-	#define GxB_NO_INT8      1
-	#define GxB_NO_UINT16    1
-	#define GxB_NO_UINT32    1
+#define GxB_NO_FP32      1
+#define GxB_NO_FP64      1
+#define GxB_NO_FC32      1
+#define GxB_NO_FC64      1
+#define GxB_NO_INT16     1
+#define GxB_NO_INT32     1
+#define GxB_NO_INT64     1
+#define GxB_NO_INT8      1
+#define GxB_NO_UINT16    1
+#define GxB_NO_UINT32    1
 // #define GxB_NO_UINT64    1
-	#define GxB_NO_UINT8     1
+#define GxB_NO_UINT8     1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the unary operators
@@ -202,11 +202,11 @@
 
 #define GxB_NO_ABS       1
 #define GxB_NO_AINV      1
-#define GxB_NO_IDENTITY  1
+// #define GxB_NO_IDENTITY  1
 #define GxB_NO_LNOT      1
 #define GxB_NO_MINV      1
-#define GxB_NO_ONE       1
-#define GxB_NO_BNOT      1
+// #define GxB_NO_ONE       1
+ #define GxB_NO_BNOT      1
 
 #define GxB_NO_SQRT      1
 #define GxB_NO_LOG       1
@@ -282,8 +282,8 @@
 // #define GxB_NO_TIMES     1
 #define GxB_NO_DIV       1
 #define GxB_NO_RDIV      1
-#define GxB_NO_ISEQ      1
-#define GxB_NO_ISNE      1
+// #define GxB_NO_ISEQ      1
+// #define GxB_NO_ISNE      1
 #define GxB_NO_ISGT      1
 #define GxB_NO_ISGE      1
 #define GxB_NO_ISLT      1
@@ -317,14 +317,14 @@
 #define GxB_NO_CMPLX     1
 #define GxB_NO_POW       1
 
-#define GxB_NO_FIRSTI    1
-#define GxB_NO_FIRSTI1   1
-#define GxB_NO_FIRSTJ    1
-#define GxB_NO_FIRSTJ1   1
-#define GxB_NO_SECONDI   1
-#define GxB_NO_SECONDI1  1
-#define GxB_NO_SECONDJ   1
-#define GxB_NO_SECONDJ1  1
+// #define GxB_NO_FIRSTI    1
+// #define GxB_NO_FIRSTI1   1
+// #define GxB_NO_FIRSTJ    1
+// #define GxB_NO_FIRSTJ1   1
+// #define GxB_NO_SECONDI   1
+// #define GxB_NO_SECONDI1  1
+// #define GxB_NO_SECONDJ   1
+// #define GxB_NO_SECONDJ1  1
 
 //------------------------------------------------------------------------------
 // uncomment any of these lines to disable the binary operators for each type

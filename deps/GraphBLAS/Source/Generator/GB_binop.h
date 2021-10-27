@@ -68,7 +68,7 @@ GrB_Info GB (_AaddB)
 ) ;
 
 if_binop_emult_is_enabled
-GrB_Info GB (_AemultB_01)
+GrB_Info GB (_AemultB_08)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -98,7 +98,7 @@ GrB_Info GB (_AemultB_02)
     const int64_t *restrict Cp_kfirst,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 ) ;
-GrB_Info GB (_AemultB_03)
+GrB_Info GB (_AemultB_04)
 (
     GrB_Matrix C,
     const GrB_Matrix M,

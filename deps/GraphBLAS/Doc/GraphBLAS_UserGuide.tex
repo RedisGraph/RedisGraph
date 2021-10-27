@@ -148,6 +148,35 @@ are extensions to the v1.3 GraphBLAS C API.
 
 \begin{itemize}
 
+\item Version 5.1.8 (Oct 5, 2021)
+
+    \begin{packed_itemize}
+    \item (31) bug fix: C=A*B when A is sparse and B is iso and bitmap.
+        Caught by Mark Blanco, CMU.
+    \end{packed_itemize}
+
+\item Version 5.1.7 (Aug 23, 2021)
+
+    \begin{packed_itemize}
+    \item (30) bug fix:  \verb'GrB_apply', when done in-place and matrix starts
+        non-iso and becomes iso, gave the wrong iso result.
+        Caught by Fabian Murariu.
+    \end{packed_itemize}
+
+\item Version 5.1.6 (Aug 16, 2021)
+
+    \begin{packed_itemize}
+    \item one-line change to \verb'C=A*B': faster symbolic analysis when a
+        vector \verb'C(:,j)' is dense (for CSC) or \verb'C(i,:)' for CSR.
+    \end{packed_itemize}
+
+\item Version 5.1.5 (July 15, 2021)
+
+    \begin{packed_itemize}
+    \item submission to ACM Transactions on Mathematical Software as
+        a Collected Algorithm of the ACM.
+    \end{packed_itemize}
+
 \item Version 5.1.4 (July 6, 2021)
 
     \begin{packed_itemize}
@@ -13382,6 +13411,92 @@ to use 32 parallel jobs and the \verb'gcc' compiler, do the following:
 If you do not have \verb'cmake', refer to Section~\ref{altmake}.
 
 %----------------------------------------
+\subsection{More details on the Mac}
+%----------------------------------------
+
+SuiteSparse:GraphBLAS requires OpenMP for its internal parallelism, but
+OpenMP is not on the Mac by default.
+
+If you have the Intel compiler and OpenMP library, then use the following
+in the top-level \verb'GraphBLAS' folder.  OpenMP will be found automatically:
+
+    {\small
+    \begin{verbatim}
+    make CC=icc CXX=icc \end{verbatim} }
+
+The following instructions work on MacOS Big Sur (v11.3), using
+cmake 3.13 or later:
+
+First install Xcode (see \url{https://developer.apple.com/xcode},
+and then install the command line tools for Xcode:
+
+    {\small
+    \begin{verbatim}
+    cd /Applications/Utilities
+    xcode-select —install \end{verbatim} }
+
+Next, install brew, at \url{https://brew.sh}.
+
+If not used for the MATLAB mexFunction interface,
+Clang now works with \verb'libomp' and the \verb'GraphBLAS/CMakeLists.txt'.
+To use the MATLAB mexFunction, however, you must use \verb'gcc-11'.
+
+With MacOSx Big Sur install \verb'gcc-11', \verb'cmake', and OpenMP, and then
+compile GraphBLAS.  cmake 3.13 or later is required.
+For the MATLAB mexFunctions, you must use \verb'gcc-11'; the
+\verb'libomp' from \verb'brew' will allow you to compile the mexFunctions
+but they will not work properly.
+
+    {\small
+    \begin{verbatim}
+    brew install cmake
+    brew install libomp
+    brew install gcc
+    cd GraphBLAS/GraphBLAS
+    make CC=gcc-11 CXX=g++-11 JOBS=8 \end{verbatim} }
+
+The above instructions assume MATLAB R2021a, using
+\verb'libgraphblas_renamed.dylib', since that version of MATLAB includes its
+own copy of SuiteSparse:GraphBLAS (\verb'libmwgraphblas.dylib') but at version
+v3.3.3, not the latest version.
+
+Next, compile the MATLAB mexFunctions.  I had to edit this file first:
+
+{\small
+\begin{verbatim}
+/Users/davis/Library/Application Support/MathWorks/MATLAB/R2021a/mex_C_maci64.xml \end{verbatim} }
+
+where you would replace \verb'davis' with your MacOS user name.
+Change lines 4 and 18, where both cases of \verb'MACOSX_DEPLOYMENT_TARGET=10.14'
+must become \verb"MACOSX_DEPLOYMENT_TARGET=11.3".  Otherwise, MATLAB
+complains that the \verb'libgraphblas_renamed.dylib' was built for 11.3 but
+linked for 10.14.
+
+Next, type the following in the MATLAB Command
+Window:
+
+    {\small
+    \begin{verbatim}
+    cd GraphBLAS/GraphBLAS/@GrB/private
+    gbmake \end{verbatim} }
+
+Then add the paths to your \verb'startup.m' file
+(usually in \verb'~/Documents/MATLAB/startup.m').
+For example, my path is:
+
+    {\small
+    \begin{verbatim}
+    addpath ('/Users/davis/GraphBLAS/GraphBLAS') ;
+    addpath ('/Users/davis/GraphBLAS/GraphBLAS/build') ; \end{verbatim} }
+
+Finally, you can run the tests to see if your installation works:
+
+    {\small
+    \begin{verbatim}
+    cd ../../test
+    gbtest \end{verbatim} }
+
+%----------------------------------------
 \subsection{On Microsoft Windows}
 \label{sec:windows}
 %----------------------------------------
@@ -13802,7 +13917,7 @@ database module for Redis.  Based on SuiteSparse:GraphBLAS, RedisGraph is up
 
 SuiteSparse:GraphBLAS was developed with support from
 NVIDIA, Intel, MIT Lincoln Lab, Redis Labs, IBM,
-and the National Science Foundation (1514406, 1835499).
+the National Science Foundation (1514406, 1835499), and Julia Computing.
 
 %-------------------------------------------------------------------------------
 \section{Additional Resources}
