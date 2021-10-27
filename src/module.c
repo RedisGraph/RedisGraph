@@ -70,16 +70,6 @@ static int GraphBLAS_Init(RedisModuleCtx *ctx) {
 		return REDISMODULE_ERR;
 	}
 
-	// TODO: remove this once GraphBLAS v5.2.0.alpha14 or v6.0.0.alpha14
-	// are released and integrated
-	//
-	// missing OpenMP, disable GraphBLAS memory pool
-#ifndef _OPENMP
-	int64_t limits [64];
-	memset(limits, 0, 64 * sizeof (int64_t));
-	GxB_Global_Option_set(GxB_MEMORY_POOL, limits);
-#endif
-
 	// all matrices in CSR format
 	GxB_set(GxB_FORMAT, GxB_BY_ROW);
 
