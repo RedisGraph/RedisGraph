@@ -16,6 +16,7 @@ static AnnotationCtx *_AST_NewProjectNamedPathContext(void) {
 	return project_all_ctx;
 }
 
+// annotate identifier expression with a pointer to its referenced path
 static void _attach_identifier(rax *identifier_map,
 	   	AnnotationCtx *named_paths_ctx, const cypher_astnode_t *path_identifier,
 	   	const cypher_astnode_t *path) {
@@ -29,6 +30,7 @@ static void _attach_identifier(rax *identifier_map,
 	}
 }
 
+// recursively annotate all named paths in pattern comprehension nodes
 static void _annotate_named_paths_in_expression(AST *ast, rax *identifier_map,
 	   	AnnotationCtx *named_paths_ctx, const cypher_astnode_t *exp) {
 	if(cypher_astnode_type(exp) == CYPHER_AST_PATTERN_COMPREHENSION) {
