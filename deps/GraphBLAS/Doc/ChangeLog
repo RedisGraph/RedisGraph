@@ -1,3 +1,8 @@
+Version 5.1.9, Oct 26, 2021
+
+    * (33) bug fix: in-place test incorrect for C+=A'*B using dot4
+    * (32) bug fix: disable free pool if OpenMP not available
+
 Version 5.1.8, Oct 5, 2021
 
     * (31) bug fix: C=A*B when A is sparse and B is iso and bitmap.
