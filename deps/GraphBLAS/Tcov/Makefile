@@ -17,7 +17,7 @@ UNAME := $(shell uname)
 # CC = gcc-8
 # CC = icc
 ifeq ($(UNAME),Darwin)
-    CC = gcc-8
+    CC = gcc-11
 else
     CC = gcc
 endif

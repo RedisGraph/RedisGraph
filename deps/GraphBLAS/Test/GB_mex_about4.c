@@ -230,6 +230,29 @@ void mexFunction
     OK (GrB_Matrix_free (&S)) ;
 
     //--------------------------------------------------------------------------
+    // check for bug in v5.1.6, fixed in v5.1.7
+    //--------------------------------------------------------------------------
+
+    OK (GrB_Matrix_new (&A, GrB_INT32, 1, 3)) ;
+    OK (GrB_Matrix_setElement_INT32 (A, -3, 0, 0)) ;
+    OK (GrB_Matrix_setElement_INT32 (A, -4, 0, 2)) ;
+    OK (GrB_Matrix_setElement_INT32 (A, 10, 0, 1)) ;
+    OK (GxB_Matrix_fprint (A, "A for v5.1.7 test: initial", 3, NULL)) ;
+    OK (GrB_Matrix_wait (&A)) ;
+    OK (GrB_apply (A, NULL, NULL, GxB_ONE_INT32, A, NULL)) ;
+    OK (GxB_Matrix_fprint (A, "A for v5.1.7 test: spones(A)", 3, NULL)) ;
+    int32_t result = 42 ;
+    OK (GrB_Matrix_extractElement_INT32 (&result, A, 0, 0)) ;
+    CHECK (result == 1) ;
+    result = 99 ;
+    OK (GrB_Matrix_extractElement_INT32 (&result, A, 0, 2)) ;
+    CHECK (result == 1) ;
+    result = 101 ;
+    OK (GrB_Matrix_extractElement_INT32 (&result, A, 0, 1)) ;
+    CHECK (result == 1) ;
+    OK (GrB_Matrix_free (&A)) ;
+
+    //--------------------------------------------------------------------------
     // wrapup
     //--------------------------------------------------------------------------
 
