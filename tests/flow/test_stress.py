@@ -45,6 +45,16 @@ def read_nodes(graph, n_iterations):
     for i in range(n_iterations):
         graph.query("MATCH (n:Node)-[:R]->() RETURN n LIMIT 1")
 
+# run n_iterations and merge 2 nodes and 1 edge in each iteration
+def merge_nodes_and_edges(graph, n_iterations):
+    for i in range(n_iterations):
+        graph.query("MERGE (a:Node {v: %d}) MERGE (b:Node {v: %d}) MERGE (a)-[:R]->(b)" % (i, i * 10))
+
+# run n_iterations and delete 1 edge in each iteration
+def delete_edges(graph, n_iterations):
+    for i in range(n_iterations):
+        graph.query("MATCH (:Node)-[r]->() WITH r LIMIT 1 DELETE r")
+
 # calls BGSAVE every 0.2 second
 def BGSAVE_loop(env, conn, n_iterations):
     results = conn.execute_command("INFO", "persistence")
@@ -136,7 +146,31 @@ class testStressFlow(FlowTestsBase):
         conn.ping()
         conn.close()
 
-    def test02_clean_shutdown(self):
+    def test02_write_only_workload(self):
+        n_creations = 20000
+        n_node_deletions = 10000
+        n_edge_deletions = 10000
+        pool = Pool(nodes=3)
+
+        self.env.start()
+        # invoke queries
+        t1 = pool.apipe(merge_nodes_and_edges, graphs[0], n_creations)
+
+        t2 = pool.apipe(delete_nodes, graphs[1], n_node_deletions)
+
+        t3 = pool.apipe(delete_edges, graphs[2], n_edge_deletions)
+
+        # wait for processes to join
+        t1.wait()
+        t2.wait()
+        t3.wait()
+
+        # make sure we did not crash
+        conn = self.env.getConnection()
+        conn.ping()
+        conn.close()
+
+    def test03_clean_shutdown(self):
         # skip test if we're running under COV=1
         if os.getenv('COV') == '1':
             self.env.skip() # valgrind is not working correctly with multi process
