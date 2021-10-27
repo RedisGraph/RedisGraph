@@ -442,6 +442,7 @@ GrB_Info GB_selector
             // free the old A->p and transplant in Cp as the new A->p
             GB_FREE (&Ap, Ap_size) ;
             A->p = Cp ; Cp = NULL ; A->p_size = Cp_size ;
+            A->plen = anvec ;
         }
 
         ASSERT (Cp == NULL) ;
