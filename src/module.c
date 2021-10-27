@@ -61,12 +61,7 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 	process_is_child = false;
 }
 
-int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
-						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
-		return REDISMODULE_ERR;
-	}
-
+static int GraphBLAS_Init(RedisModuleCtx *ctx) {
 	// GraphBLAS should use Redis allocator
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc,
 			RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free, true);
@@ -75,7 +70,21 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
+	// all matrices in CSR format
+	GxB_set(GxB_FORMAT, GxB_BY_ROW);
+
+	return REDISMODULE_OK;
+}
+
+int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
+						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	// initialize GraphBLAS
+	int res = GraphBLAS_Init(ctx);
+	if(res != REDISMODULE_OK) return res;
 
 	// validate minimum redis-server version
 	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR,

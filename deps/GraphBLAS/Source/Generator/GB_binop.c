@@ -23,9 +23,9 @@
 // C=binop(A,B) is defined by the following types and operators:
 
 // A+B function (eWiseAdd):         GB (_AaddB)
-// A.*B function (eWiseMult):       GB (_AemultB_01)
+// A.*B function (eWiseMult):       GB (_AemultB_08)
 // A.*B function (eWiseMult):       GB (_AemultB_02)
-// A.*B function (eWiseMult):       GB (_AemultB_03)
+// A.*B function (eWiseMult):       GB (_AemultB_04)
 // A.*B function (eWiseMult):       GB (_AemultB_bitmap)
 // A*D function (colscale):         GB (_AxD)
 // D*A function (rowscale):         GB (_DxB)
@@ -249,7 +249,7 @@ GrB_Info GB (_DxB)
 endif_binop_is_semiring_multiplier
 
 //------------------------------------------------------------------------------
-// eWiseAdd: C = A+B or C<M> = A+B
+// eWiseAdd: C=A+B, C<M>=A+B, C<!M>=A+B
 //------------------------------------------------------------------------------
 
 GrB_Info GB (_AaddB)
@@ -284,12 +284,12 @@ GrB_Info GB (_AaddB)
 }
 
 //------------------------------------------------------------------------------
-// eWiseMult: C = A.*B or C<M> = A.*B
+// eWiseMult: C=A.*B, C<M>=A.*B, or C<M!>=A.*B where C is sparse/hyper
 //------------------------------------------------------------------------------
 
 if_binop_emult_is_enabled
 
-GrB_Info GB (_AemultB_01)
+GrB_Info GB (_AemultB_08)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -311,7 +311,7 @@ GrB_Info GB (_AemultB_01)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_01_meta.c"
+    #include "GB_emult_08_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
@@ -376,7 +376,7 @@ endif_binop_emult_is_enabled
 
 if_binop_emult_is_enabled
 
-GrB_Info GB (_AemultB_03)
+GrB_Info GB (_AemultB_04)
 (
     GrB_Matrix C,
     const GrB_Matrix M,
@@ -390,7 +390,7 @@ GrB_Info GB (_AemultB_03)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_03_template.c"
+    #include "GB_emult_04_template.c"
     return (GrB_SUCCESS) ;
     #endif
 }

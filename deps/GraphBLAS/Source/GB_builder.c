@@ -184,7 +184,6 @@ GrB_Info GB_builder                 // build a matrix from tuples
     ASSERT (GB_IMPLIES (nvals > 0, Sx != NULL)) ;
     ASSERT (GB_IMPLIES (S_iso, ttype == stype)) ;
     ASSERT (GB_IMPLIES (S_iso, dup == NULL)) ;
-    ASSERT (GB_IMPLIES (S_iso, nvals > 0)) ;
 
     //==========================================================================
     // symbolic phase of the build =============================================

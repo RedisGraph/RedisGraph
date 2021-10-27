@@ -45,7 +45,7 @@
 
 #include "GB_subref.h"
 
-GrB_Info GB_subref_slice
+GrB_Info GB_subref_slice    // phase 1 of GB_subref
 (
     // output:
     GB_task_struct **p_TaskList,    // array of structs

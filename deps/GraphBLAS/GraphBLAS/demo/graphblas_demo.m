@@ -392,7 +392,7 @@ err = norm (H-G,1)
 % vectors, but not huge matrices (when n is huge).
 
 clear
-huge = 2^48 ;
+huge = 2^48 - 1 ;
 C = sparse (huge, 1)    % MATLAB can create a huge-by-1 sparse column
 try
     C = sparse (huge, huge)     % but this fails
@@ -405,7 +405,7 @@ end
 % O(nnz(A)) space.  The difference can be huge if nnz (A) << n.
 
 clear
-huge = 2^48 ;
+huge = 2^48 - 1 ;
 G = GrB (huge, 1)            % no problem for GraphBLAS
 H = GrB (huge, huge)         % this works in GraphBLAS too
 

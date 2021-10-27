@@ -46,7 +46,7 @@ void GB_ewise_generic       // generic ewise
     const int C_sparsity,
     // from GB_emult_sparsity or GB_add_sparsity:
     const int ewise_method,
-    // from GB_emult_03 and GB_emult_02:
+    // from GB_emult_04 and GB_emult_02:
     const int64_t *restrict Cp_kfirst,
     // to slice M, A, and/or B,
     const int64_t *M_ek_slicing, const int M_ntasks, const int M_nthreads,

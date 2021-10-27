@@ -87,16 +87,16 @@ end
 switch (binop)
     case { 'pair' }
         % no emult for these operators
-        fprintf (f, 'define(`_AemultB_01'', `(none)'')\n') ;
+        fprintf (f, 'define(`_AemultB_08'', `(none)'')\n') ;
         fprintf (f, 'define(`_AemultB_02'', `(none)'')\n') ;
-        fprintf (f, 'define(`_AemultB_03'', `(none)'')\n') ;
+        fprintf (f, 'define(`_AemultB_04'', `(none)'')\n') ;
         fprintf (f, 'define(`_AemultB_bitmap'', `(none)'')\n') ;
         fprintf (f, 'define(`if_binop_emult_is_enabled'', `#if 0'')\n') ;
         fprintf (f, 'define(`endif_binop_emult_is_enabled'', `#endif'')\n') ;
     otherwise
-        fprintf (f, 'define(`_AemultB_01'', `_AemultB_01__%s'')\n', name) ;
+        fprintf (f, 'define(`_AemultB_08'', `_AemultB_08__%s'')\n', name) ;
         fprintf (f, 'define(`_AemultB_02'', `_AemultB_02__%s'')\n', name) ;
-        fprintf (f, 'define(`_AemultB_03'', `_AemultB_03__%s'')\n', name) ;
+        fprintf (f, 'define(`_AemultB_04'', `_AemultB_04__%s'')\n', name) ;
         fprintf (f, 'define(`_AemultB_bitmap'', `_AemultB_bitmap__%s'')\n', name) ;
         fprintf (f, 'define(`if_binop_emult_is_enabled'', `'')\n') ;
         fprintf (f, 'define(`endif_binop_emult_is_enabled'', `'')\n') ;
