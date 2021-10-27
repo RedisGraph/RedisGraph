@@ -169,9 +169,10 @@ void mexFunction
     bool G_iso = G->iso  ;            	
 
     //--------------------------------------------------------------------------
-    // change G to boolean (all true and iso) TODO: use G as structural instead
+    // change G to boolean (all true and iso)
     //--------------------------------------------------------------------------
 
+    // Tim: use G as structural instead
     bool Gbool = true ;        							
     G->type = GrB_BOOL ;       	             	 	                 	
     G->x = &Gbool ;            		 	 	 	 	 	

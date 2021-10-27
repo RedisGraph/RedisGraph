@@ -188,7 +188,7 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
             && (A->type->code != GB_UDT_code)
             && (B->type->code != GB_UDT_code)
             && !GB_IS_BITMAP (A) && !GB_IS_BITMAP (B)
-            && !C_iso)
+            && !C_iso && !A->iso && !B->iso)
 // to here ... ]
         {
             // use "the" GPU (TODO for GPU: could use multiple GPUs too)

@@ -130,15 +130,20 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     if (C_in != NULL)
     {
+        #if 0
+        // disabled: this will work for most methods in the future is too
+        // aggressive for dot4
         if (GB_IS_BITMAP (C_in))
-        { 
+        {
             // C is bitmap
             ASSERT (!GB_PENDING (C_in)) ; // no pending tuples in bitmap
             ASSERT (!GB_ZOMBIES (C_in)) ; // bitmap never has zombies
             can_do_in_place = (C_in->type == semiring->add->op->ztype)
                 && ((accum == NULL) || (accum == semiring->add->op)) ;
         }
-        else if (accum != NULL)
+        else
+        #endif
+        if (accum != NULL)
         { 
             // C is hypersparse, sparse, or full, and accum is present.
             // check if C_in is competely dense:  no pending work.
@@ -759,7 +764,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     GB_phbix_free (AT) ;
     GB_phbix_free (BT) ;
     // do not free MT; return it to the caller
+    #ifdef GB_DEBUG
     if (*M_transposed) ASSERT_MATRIX_OK (MT, "MT computed", GB0) ;
+    #endif
     return (GrB_SUCCESS) ;
 }
 

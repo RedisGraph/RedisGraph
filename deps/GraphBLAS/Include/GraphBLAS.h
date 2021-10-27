@@ -204,10 +204,10 @@
 
 // The version of this implementation, and the GraphBLAS API version:
 #define GxB_IMPLEMENTATION_NAME "SuiteSparse:GraphBLAS"
-#define GxB_IMPLEMENTATION_DATE "July 6, 2021"
+#define GxB_IMPLEMENTATION_DATE "Oct 26, 2021"
 #define GxB_IMPLEMENTATION_MAJOR 5
 #define GxB_IMPLEMENTATION_MINOR 1
-#define GxB_IMPLEMENTATION_SUB   4
+#define GxB_IMPLEMENTATION_SUB   9
 #define GxB_SPEC_DATE "Sept 25, 2019"
 #define GxB_SPEC_MAJOR 1
 #define GxB_SPEC_MINOR 3
@@ -8066,7 +8066,8 @@ typedef struct
     GrB_Index row_idx ;        // Index of current row
     GrB_Index nrows ;          // Total number of rows in matrix
     size_t size ;              // Size of an entry in A
-    bool iso ;                 // is the matrix isomorphic
+    bool iso ;                 // Is the matrix isomorphic
+    size_t size_allocated ;    // Struct allocated size
 } GxB_MatrixTupleIter ;
 
 // Create a new list of matrix iterators

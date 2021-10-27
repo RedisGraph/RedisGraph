@@ -20,7 +20,7 @@ default: library
 
 VER1 = 5
 VER2 = 1
-VER3 = 4
+VER3 = 6
 
 # pick your compiler:
   CC = gcc

@@ -233,8 +233,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
             if (info == GrB_SUCCESS && C_code_iso != GB_NON_ISO)
             { 
                 // compact the iso values of C
-                ASSERT (C->iso) ;
-                // set C->iso = true    OK
+                C->iso = true ; // OK
                 info = GB_convert_any_to_iso (C, NULL, true, Context) ;
             }
         }

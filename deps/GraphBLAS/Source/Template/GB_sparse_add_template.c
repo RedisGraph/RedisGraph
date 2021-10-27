@@ -797,7 +797,7 @@
                 // if they are bitmap or full.
 
                 // (+) TODO: if C and M are sparse/hyper, and A and B are
-                // both bitmap/full, then use GB_emult_03_template instead,
+                // both bitmap/full, then use GB_emult_04_template instead,
                 // but with (Ab [p] || Bb [p]) instead of (Ab [p] && Bb [p]).
 
                 // A and B can have any sparsity pattern (hypersparse,

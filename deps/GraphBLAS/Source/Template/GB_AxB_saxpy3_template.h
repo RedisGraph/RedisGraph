@@ -26,14 +26,14 @@
     int64_t pM_start, pM_end ;                                  \
     GB_lookup (M_is_hyper, Mh, Mp, mvlen, &mpleft, mpright,     \
         GBH (Bh, kk), &pM_start, &pM_end) ;                     \
-    int64_t mjnz = pM_end - pM_start ;
+    const int64_t mjnz = pM_end - pM_start ;
 
 //------------------------------------------------------------------------------
 // GB_GET_M_j_RANGE
 //------------------------------------------------------------------------------
 
 #define GB_GET_M_j_RANGE(gamma)                                 \
-    int64_t mjnz_much = mjnz * gamma
+    const int64_t mjnz_much = mjnz * gamma
 
 //------------------------------------------------------------------------------
 // GB_SCATTER_Mj_t: scatter M(:,j) of the given type into Gus. workspace
@@ -127,7 +127,7 @@ break ;
     {                                                       \
         GB_GET_M_ij (pM) ;      /* get M(i,j) */            \
         if (!mij) continue ;    /* skip if M(i,j)=0 */      \
-        int64_t i = GBI (Mi, pM, mvlen) ;                   \
+        const int64_t i = GBI (Mi, pM, mvlen) ;             \
         for (GB_HASH (i))       /* find i in hash */        \
         {                                                   \
             if (Hf [hash] < mark)                           \
@@ -160,11 +160,12 @@ break ;
 #define GB_GET_B_j_FOR_ALL_FORMATS(A_is_hyper,B_is_sparse,B_is_hyper)       \
     int64_t pleft = 0 ;                                                     \
     int64_t pright = anvec-1 ;                                              \
-    int64_t j = (B_is_hyper) ? Bh [kk] : kk ;                               \
+    const int64_t j = (B_is_hyper) ? Bh [kk] : kk ;                         \
     GB_GET_T_FOR_SECONDJ ;  /* t = j for SECONDJ, or j+1 for SECONDJ1 */    \
     int64_t pB = (B_is_sparse || B_is_hyper) ? Bp [kk] : (kk * bvlen) ;     \
-    int64_t pB_end = (B_is_sparse || B_is_hyper) ? Bp [kk+1] : (pB+bvlen) ; \
-    int64_t bjnz = pB_end - pB ;  /* nnz (B (:,j) */                        \
+    const int64_t pB_end =                                                  \
+        (B_is_sparse || B_is_hyper) ? Bp [kk+1] : (pB+bvlen) ;              \
+    const int64_t bjnz = pB_end - pB ;  /* nnz (B (:,j) */                  \
     /* FUTURE::: can skip if mjnz == 0 for C<M>=A*B tasks */                \
     if (A_is_hyper && (B_is_sparse || B_is_hyper) && bjnz > 2 && !B_jumbled)\
     {                                                                       \
@@ -202,7 +203,7 @@ break ;
     int64_t pA_start, pA_end ;                                              \
     GB_lookup (A_is_hyper, Ah, Ap, avlen, &pleft, pright, k,                \
         &pA_start, &pA_end) ;                                               \
-    int64_t aknz = pA_end - pA_start
+    const int64_t aknz = pA_end - pA_start
 
 //------------------------------------------------------------------------------
 // GB_GET_M_ij: get the numeric value of M(i,j)
@@ -311,7 +312,7 @@ break ;
         /* gather the values into C(:,j) */                     \
         for (int64_t pC = Cp [kk] ; pC < Cp [kk+1] ; pC++)      \
         {                                                       \
-            int64_t i = Ci [pC] ;                               \
+            const int64_t i = Ci [pC] ;                         \
             GB_CIJ_GATHER (pC, i) ;   /* Cx [pC] = Hx [i] */    \
         }
 
@@ -334,7 +335,7 @@ break ;
         GB_SORT_C_j_PATTERN ;                                           \
         for (int64_t pC = Cp [kk] ; pC < Cp [kk+1] ; pC++)              \
         {                                                               \
-            int64_t i = Ci [pC] ;                                       \
+            const int64_t i = Ci [pC] ;                                 \
             for (GB_HASH (i))           /* find i in hash table */      \
             {                                                           \
                 if (Hf [hash] == (hash_mark) && (Hi [hash] == i))       \
