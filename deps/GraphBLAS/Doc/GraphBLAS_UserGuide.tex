@@ -148,6 +148,20 @@ are extensions to the v1.3 GraphBLAS C API.
 
 \begin{itemize}
 
+\item Version 5.1.10 (Oct 27, 2021)
+
+    \begin{packed_itemize}
+    \item  (35) bug fix: \verb'GB_selector'; \verb'A->plen' and \verb'C->plen'
+        not updated correctly.  Caught by Jeffry Lovitz, Redis.
+    \end{packed_itemize}
+
+\item Version 5.1.9 (Oct 26, 2021)
+
+    \begin{packed_itemize}
+    \item (33) bug fix: in-place test incorrect for \verb"C+=A'*B" using dot4
+    \item (32) bug fix: disable free pool if OpenMP not available
+    \end{packed_itemize}
+
 \item Version 5.1.8 (Oct 5, 2021)
 
     \begin{packed_itemize}
