@@ -208,3 +208,14 @@ class testMultiLabel():
         query_result = graph.query(query)
         self.env.assertEquals(query_result.result_set, expected_result)
 
+    def test09_test_query_graph_update_bug(self):
+        query = """CREATE (a:L1 {v:0})-[:R2]->()"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.nodes_created, 2)
+        self.env.assertEquals(query_result.relationships_created, 1)
+
+        query = """MERGE ()-[:R9]->(a:L1)-[:R2]->(a:L8) RETURN *"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.nodes_created, 2)
+        self.env.assertEquals(query_result.relationships_created, 2)
+
