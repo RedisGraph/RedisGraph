@@ -214,10 +214,10 @@ class testMultiLabel():
         self.env.assertEquals(query_result.nodes_created, 2)
         self.env.assertEquals(query_result.relationships_created, 1)
 
-        # testing that when populating query graph nodes
-        # we add all labels specified for the node
-        # notice he node a have 2 labels L1 nad L2
-        # that was specified in different part of the pattern
+        # node 'a' is mentioned twice in the following pattern
+        # each time with a different label, when extracting a sub query-graph
+        # we need to make sure all labels mentioned in the extracted pattern
+        # are extracted.
         query = """MERGE ()-[:R2]->(a:L1)-[:R1]->(a:L2) RETURN *"""
         query_result = graph.query(query)
         self.env.assertEquals(query_result.nodes_created, 2)
