@@ -29,10 +29,10 @@ endif ( )
 set ( CMAKE_MACOSX_RPATH TRUE )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Oct 26, 2021")
+set ( GraphBLAS_DATE "Oct 27, 2021")
 set ( GraphBLAS_VERSION_MAJOR 5 )
 set ( GraphBLAS_VERSION_MINOR 1 )
-set ( GraphBLAS_VERSION_SUB   9 )
+set ( GraphBLAS_VERSION_SUB  10 )
 
 # GraphBLAS C API Specification version, at graphblas.org
 set ( GraphBLAS_API_DATE "Sept 25, 2019" )
