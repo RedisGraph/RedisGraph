@@ -208,13 +208,17 @@ class testMultiLabel():
         query_result = graph.query(query)
         self.env.assertEquals(query_result.result_set, expected_result)
 
-    def test09_test_query_graph_update_bug(self):
-        query = """CREATE (a:L1 {v:0})-[:R2]->()"""
+    def test09_test_query_graph_populate_nodes_labels(self):
+        query = """CREATE (a:L1 {v:0})-[:R1]->()"""
         query_result = graph.query(query)
         self.env.assertEquals(query_result.nodes_created, 2)
         self.env.assertEquals(query_result.relationships_created, 1)
 
-        query = """MERGE ()-[:R9]->(a:L1)-[:R2]->(a:L8) RETURN *"""
+        # testing that when populating query graph nodes
+        # we add all labels specified for the node
+        # notice he node a have 2 labels L1 nad L2
+        # that was specified in different part of the pattern
+        query = """MERGE ()-[:R2]->(a:L1)-[:R1]->(a:L2) RETURN *"""
         query_result = graph.query(query)
         self.env.assertEquals(query_result.nodes_created, 2)
         self.env.assertEquals(query_result.relationships_created, 2)
