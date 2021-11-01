@@ -66,7 +66,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 
 // Handle projected entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
+AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause, rax *projected_aliases) {
 	uint count = 0;
 	bool project_all = false;
 	AR_ExpNode **expressions = NULL;
@@ -114,6 +114,7 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 			// The projection either has an alias (AS), is a function call,
 			// or is a property specification (e.name).
 			identifier = cypher_ast_identifier_get_name(alias_node);
+			raxInsert(projected_aliases, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 		} else {
 			// This expression did not have an alias,
 			// so it must be an identifier
@@ -155,6 +156,35 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 	*exps_ptr = project_exps;
 }
 
+// traverse expression operation checking if any variadic operand name found in the rax
+static bool _is_exp_use_aliases(AR_ExpNode *exp, rax *projected_aliases) {
+	switch (exp->type)
+	{
+	case AR_EXP_OP:
+		for (uint i = 0; i < exp->op.child_count; i++) {
+			if(_is_exp_use_aliases(exp->op.children[i], projected_aliases)) return true;
+		}
+		return false;
+	case AR_EXP_OPERAND:
+		if(exp->operand.type == AR_EXP_VARIADIC && 
+			raxFind(projected_aliases, (unsigned char *)exp->operand.variadic.entity_alias, strlen(exp->operand.variadic.entity_alias)) != raxNotFound)
+			return true;
+		return false;
+	default:
+		return false;
+	}
+}
+
+// check if any expression uses projected alias
+static bool _is_order_exps_use_projected_aliases(AR_ExpNode **order_exps, rax *projected_aliases) {
+	uint count = array_len(order_exps);
+	for (uint i = 0; i < count; i++) {
+		AR_ExpNode *exp = order_exps[i];
+		if(_is_exp_use_aliases(exp, projected_aliases)) return true;
+	}
+	return false;	
+}
+
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan,
@@ -171,11 +201,15 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	const cypher_astnode_t  *limit_clause     =  NULL  ;
 	const cypher_astnode_t  *order_clause     =  NULL  ;
 
+	rax                     *projected_aliases                  = raxNew();
+	AR_ExpNode              **order_projections                 =  NULL  ;
+	bool                    is_order_exps_use_projected_aliases = false;
+
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	ASSERT(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN);
 
 	aggregate = AST_ClauseContainsAggregation(clause);
-	projections = _BuildProjectionExpressions(clause);
+	projections = _BuildProjectionExpressions(clause, projected_aliases);
 
 	if(t == CYPHER_AST_WITH) {
 		distinct      =  cypher_ast_with_is_distinct(clause);
@@ -203,8 +237,20 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
-		// Merge order expressions into the projections array.
-		_combine_projection_arrays(&projections, order_exps);
+		is_order_exps_use_projected_aliases = _is_order_exps_use_projected_aliases(order_exps, projected_aliases);
+		if(!is_order_exps_use_projected_aliases) {
+			// Merge order expressions into the projections array.
+			_combine_projection_arrays(&projections, order_exps);
+		} else {
+			// Add another projection because order by uses expression from current record
+			array_clone_with_cb(order_projections, order_exps, AR_EXP_Clone);
+			uint count = array_len(projections);
+			for (uint i = 0; i < count; i++) {
+				AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(projections[i]->resolved_name);
+				exp->resolved_name = projections[i]->resolved_name;
+				array_append(order_projections, exp);
+			}
+		}
 	}
 
 	// Our fundamental operation will be a projection or aggregation.
@@ -225,6 +271,10 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	}
 
 	if(sort_directions) {
+		if(is_order_exps_use_projected_aliases) {		
+			op = NewProjectOp(plan, order_projections);
+			ExecutionPlan_UpdateRoot(plan, op);
+		}
 		// The sort operation will obey a specified limit, but must account for skipped records
 		op = NewSortOp(plan, order_exps, sort_directions);
 		ExecutionPlan_UpdateRoot(plan, op);
@@ -239,6 +289,8 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		op = buildLimitOp(plan, limit_clause);
 		ExecutionPlan_UpdateRoot(plan, op);
 	}
+
+	raxFree(projected_aliases);
 }
 
 // RETURN builds a subtree of projection ops with Results as the root.
