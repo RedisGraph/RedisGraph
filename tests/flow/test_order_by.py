@@ -35,3 +35,10 @@ class testOrderBy(FlowTestsBase):
         q = """MATCH (n:Person) RETURN n.id, n.name ORDER BY n.id DESC, n.name ASC LIMIT 10"""
         actual_result = redis_graph.query(q)
         self.env.assertEquals(actual_result.result_set, expected)
+
+    def test_order_by_with_alias_used_in_functions(self):
+        # Query with order bywith alias used in a function
+        q = """UNWIND [3, 1, 2] AS v RETURN v AS alias ORDER BY toInteger(alias) ASC"""
+        expected = [[1], [2], [3]]
+        actual_result = redis_graph.query(q)
+        self.env.assertEquals(actual_result.result_set, expected)

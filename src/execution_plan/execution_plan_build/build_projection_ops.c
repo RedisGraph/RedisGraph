@@ -157,12 +157,12 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 }
 
 // traverse expression operation checking if any variadic operand name found in the rax
-static bool _is_exp_use_aliases(AR_ExpNode *exp, rax *projected_aliases) {
+static bool _exp_uses_aliases(AR_ExpNode *exp, rax *projected_aliases) {
 	switch (exp->type)
 	{
 	case AR_EXP_OP:
 		for (uint i = 0; i < exp->op.child_count; i++) {
-			if(_is_exp_use_aliases(exp->op.children[i], projected_aliases)) return true;
+			if(_exp_uses_aliases(exp->op.children[i], projected_aliases)) return true;
 		}
 		return false;
 	case AR_EXP_OPERAND:
@@ -175,12 +175,12 @@ static bool _is_exp_use_aliases(AR_ExpNode *exp, rax *projected_aliases) {
 	}
 }
 
-// check if any expression uses projected alias
-static bool _is_order_exps_use_projected_aliases(AR_ExpNode **order_exps, rax *projected_aliases) {
+// check if any op expression uses projected alias
+static bool _order_exps_uses_projected_aliases(AR_ExpNode **order_exps, rax *projected_aliases) {
 	uint count = array_len(order_exps);
 	for (uint i = 0; i < count; i++) {
 		AR_ExpNode *exp = order_exps[i];
-		if(_is_exp_use_aliases(exp, projected_aliases)) return true;
+		if(exp->type == AR_EXP_OP && _exp_uses_aliases(exp, projected_aliases)) return true;
 	}
 	return false;	
 }
@@ -237,18 +237,25 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
-		is_order_exps_use_projected_aliases = _is_order_exps_use_projected_aliases(order_exps, projected_aliases);
+		is_order_exps_use_projected_aliases = _order_exps_uses_projected_aliases(order_exps, projected_aliases);
 		if(!is_order_exps_use_projected_aliases) {
 			// Merge order expressions into the projections array.
 			_combine_projection_arrays(&projections, order_exps);
 		} else {
 			// Add another projection because order by uses expression from current record
-			array_clone_with_cb(order_projections, order_exps, AR_EXP_Clone);
-			uint count = array_len(projections);
-			for (uint i = 0; i < count; i++) {
+			uint projections_count = array_len(projections);
+			uint order_exps_count = array_len(order_exps);
+			order_projections = array_new(AR_ExpNode *, projections_count + order_exps_count);
+			for (uint i = 0; i < projections_count; i++) {
 				AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(projections[i]->resolved_name);
 				exp->resolved_name = projections[i]->resolved_name;
 				array_append(order_projections, exp);
+			}
+			for (uint i = 0; i < order_exps_count; i++) {
+				AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(order_exps[i]->resolved_name);
+				exp->resolved_name = order_exps[i]->resolved_name;
+				array_append(order_projections, order_exps[i]);
+				order_exps[i] = exp;
 			}
 		}
 	}
