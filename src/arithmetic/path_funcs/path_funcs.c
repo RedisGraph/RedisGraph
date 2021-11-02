@@ -114,6 +114,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	Edge *edges = NULL;
 	GrB_Vector V = GrB_NULL;  // vector of results
 	GrB_Vector PI = GrB_NULL; // vector backtracking results to their parents
+	GrB_Vector PH = GrB_NULL; // vector tracking number of hops
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	/* The BFS algorithm uses a level of 1 to indicate the source node.
@@ -185,7 +186,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	// The length of the path is equal to the level of the destination node
 	GrB_Index path_len;
 	res = GrB_Vector_extractElement(&path_len, V, dest_id);
-	if(res == GrB_NO_VALUE) goto cleanup; // no path found
+	if(res == GrB_NO_VALUE || path_len == UINT64_MAX || path_len == 0) goto cleanup; // no path found
 
 	path_len -= 1; // Convert node count to edge count
 

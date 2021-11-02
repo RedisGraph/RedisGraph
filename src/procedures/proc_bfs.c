@@ -150,6 +150,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	bfs_ctx->nodes = V;
 	bfs_ctx->parents = PI;
 
+	// TODO delete?
 	// matrix iterator requires matrix format to be sparse
 	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
 	// we set matrix format at creation time
@@ -181,6 +182,8 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 	GrB_Info res;
 	bool depleted;
 	GxB_MatrixTupleIter iter;
+	// GxB_MatrixTupleIter *iter;
+	// GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)bfs_ctx->nodes);
 
 	UNUSED(res);
 	res = GxB_MatrixTupleIter_reuse(&iter, (GrB_Matrix)bfs_ctx->nodes);
