@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -12,7 +12,7 @@
 #include "../../util/rmalloc.h"
 #include "../../configuration/config.h"
 #include "../../datatypes/path/sipath_builder.h"
-#include "../../algorithms/LAGraph_bfs_pushpull.h"
+#include "../../algorithms/LAGraph/LAGraphX.h"
 
 /* Creates a path from a given sequence of graph entities.
  * The first argument is the ast node represents the path.
@@ -141,10 +141,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			// No edge types were specified, use the overall adjacency matrix.
 			ctx->free_matrices = true;
 			res = RG_Matrix_export(&ctx->R, Graph_GetAdjacencyMatrix(gc->g,
-						false));
-			ASSERT(res == GrB_SUCCESS);
-			res = RG_Matrix_export(&ctx->TR, Graph_GetAdjacencyMatrix(gc->g,
-						true));
+																	 false));
 			ASSERT(res == GrB_SUCCESS);
 		} else if(ctx->reltype_count == 0) {
 			// If edge types were specified but none were valid,
@@ -152,15 +149,10 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			ctx->free_matrices = true;
 			res = RG_Matrix_export(&ctx->R, Graph_GetZeroMatrix(gc->g));
 			ASSERT(res == GrB_SUCCESS);
-			res = RG_Matrix_export(&ctx->TR, Graph_GetZeroMatrix(gc->g));
-			ASSERT(res == GrB_SUCCESS);
 		} else if(ctx->reltype_count == 1) {
 			ctx->free_matrices = true;
 			res = RG_Matrix_export(&ctx->R, Graph_GetRelationMatrix(gc->g,
-						ctx->reltypes[0], false));
-			ASSERT(res == GrB_SUCCESS);
-			res = RG_Matrix_export(&ctx->TR, Graph_GetRelationMatrix(gc->g,
-						ctx->reltypes[0], true));
+																	ctx->reltypes[0], false));
 			ASSERT(res == GrB_SUCCESS);
 		} else {
 			// we have multiple edge types, combine them into a boolean matrix
@@ -172,28 +164,20 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 			for(uint i = 0; i < ctx->reltype_count; i ++) {
 				GrB_Matrix adj;
 				res = RG_Matrix_export(&adj, Graph_GetRelationMatrix(gc->g,
-							ctx->reltypes[i], false));
+																	 ctx->reltypes[i], false));
 				ASSERT(res == GrB_SUCCESS);
 				res = GrB_eWiseAdd(ctx->R, GrB_NULL, GrB_NULL,
-						GxB_ANY_PAIR_BOOL, ctx->R, adj, GrB_NULL);
+								   GxB_ANY_PAIR_BOOL, ctx->R, adj, GrB_NULL);
 				ASSERT(res == GrB_SUCCESS);
 				res = GrB_Matrix_free(&adj);
 				ASSERT(res == GrB_SUCCESS);
 			}
-
-			GrB_Index nrows;
-			res = GrB_Matrix_nrows(&nrows, ctx->R);
-			ASSERT(res == GrB_SUCCESS);
-			res = GrB_Matrix_new(&ctx->TR, GrB_BOOL, nrows, nrows);
-			ASSERT(res == GrB_SUCCESS);
-			res = GrB_transpose(ctx->TR, NULL, NULL, ctx->R, GrB_DESC_R);
-			ASSERT(res == GrB_SUCCESS);
 		}
 	}
 
 	// Invoke the BFS algorithm
-	res = LAGraph_bfs_pushpull(&V, &PI, ctx->R, ctx->TR, src_id,
-							   &dest_id, max_level, true);
+	res = LAGraph_BF_full1a(&V, &PI, &PH, ctx->R, src_id,
+							&dest_id, max_level);
 	ASSERT(res == GrB_SUCCESS);
 
 	SIValue p = SI_NullVal();
