@@ -10,8 +10,8 @@ class testMultiLabel():
     def __init__(self):
         global graph
         self.env = Env(decodeResponses=True)
-        redis_con = self.env.getConnection()
-        graph = Graph(GRAPH_ID, redis_con)
+        self.redis_con = self.env.getConnection()
+        graph = Graph(GRAPH_ID, self.redis_con)
         self.populate_graph()
 
     def populate_graph(self):
@@ -207,4 +207,27 @@ class testMultiLabel():
         query = """MATCH (a:L0:L1)-[*]->(b {v: 3}) RETURN labels(a), labels(b)"""
         query_result = graph.query(query)
         self.env.assertEquals(query_result.result_set, expected_result)
+
+    def test09_test_query_graph_populate_nodes_labels(self):
+        graph = Graph('G', self.redis_con)
+
+        # create node with label L1 for the test in the next query
+        # we need to make sure we replace the starting point of the traversal
+        # from all nodes with label L1 to all nodes with label L2
+        query = """CREATE (a:L1 {v:0})-[:R1]->()"""
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.labels_added, 1)
+        self.env.assertEquals(query_result.nodes_created, 2)
+        self.env.assertEquals(query_result.relationships_created, 1)
+
+        # node 'a' is mentioned twice in the following pattern
+        # each time with a different label, when extracting a sub query-graph
+        # we need to make sure all labels mentioned in the extracted pattern
+        # are extracted.
+        query = """MERGE ()-[:R2]->(a:L1)-[:R1]->(a:L2) RETURN *"""
+        plan = graph.execution_plan(query)
+        self.env.assertContains("Node By Label Scan | (a:L2)", plan)
+        query_result = graph.query(query)
+        self.env.assertEquals(query_result.nodes_created, 2)
+        self.env.assertEquals(query_result.relationships_created, 2)
 

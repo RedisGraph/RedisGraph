@@ -152,6 +152,9 @@ static void _QueryGraph_ExtractNode
 			// set node label information
 			_QueryGraphSetNodeLabel(n, ast_node);
 		}
+	} else {
+		// set node label information
+		_QueryGraphSetNodeLabel(n, ast_node);
 	}
 }
 

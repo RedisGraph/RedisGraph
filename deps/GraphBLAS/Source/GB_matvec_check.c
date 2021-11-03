@@ -334,6 +334,18 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     }
     #endif
 
+    if (A->p != NULL && (A->p_size < (A->plen + 1) * sizeof (int64_t)))
+    { 
+        GBPR0 ("  A->p is too small!\n") ;
+        return (GrB_INVALID_OBJECT) ;
+    }
+
+    if (A->h != NULL && (A->h_size < (A->plen) * sizeof (int64_t)))
+    { 
+        GBPR0 ("  A->h is too small!\n") ;
+        return (GrB_INVALID_OBJECT) ;
+    }
+
     //--------------------------------------------------------------------------
     // check p
     //--------------------------------------------------------------------------
