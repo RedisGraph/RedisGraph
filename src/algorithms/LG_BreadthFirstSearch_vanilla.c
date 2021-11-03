@@ -35,10 +35,12 @@ int LG_BreadthFirstSearch_vanilla
 (
     GrB_Vector    *level,
     GrB_Vector    *parent,
-    LAGraph_Graph  G,
-    GrB_Index      src,
-    bool           pushpull,
-    char          *msg
+	GrB_Matrix    A,
+	GrB_Matrix    AT,
+    GrB_Index     src,
+	GrB_Index     *dest,
+	GrB_Index     max_level,
+	char          *msg
 )
 {
     //--------------------------------------------------------------------------
@@ -56,8 +58,6 @@ int LG_BreadthFirstSearch_vanilla
     if (compute_level ) (*level ) = NULL;
     if (compute_parent) (*parent) = NULL;
 
-    LG_CHECK (LAGraph_CheckGraph (G, msg), -101, "graph is invalid") ;
-
     if (!(compute_level || compute_parent))
     {
         // nothing to do
@@ -67,28 +67,9 @@ int LG_BreadthFirstSearch_vanilla
     //--------------------------------------------------------------------------
     // get the problem size and properties
     //--------------------------------------------------------------------------
-    GrB_Matrix A = G->A ;
-
     GrB_Index n;
     GrB_TRY( GrB_Matrix_nrows (&n, A) );
     LG_CHECK( src >= n, -102, "src is out of range") ;
-
-    GrB_Matrix AT ;
-    GrB_Vector Degree = G->rowdegree ;
-    LAGraph_Kind kind = G->kind ;
-
-    if (kind == LAGRAPH_ADJACENCY_UNDIRECTED ||
-       (kind == LAGRAPH_ADJACENCY_DIRECTED &&
-        G->A_pattern_is_symmetric == LAGRAPH_TRUE))
-    {
-        // AT and A have the same pattern and can be used in both directions
-        AT = G->A ;
-    }
-    else
-    {
-        // AT = A' is different from A
-        AT = G->AT ;
-    }
 
     // determine the semiring type
     GrB_Type     int_type  = (n > INT32_MAX) ? GrB_INT64 : GrB_INT32 ;
@@ -133,6 +114,9 @@ int LG_BreadthFirstSearch_vanilla
         //GrB_TRY (GrB_Vector_setElement(l_level, 0, src)) ;
     }
 
+	// create a scalar to hold the destination value
+	GrB_Index dest_val ;
+
     //--------------------------------------------------------------------------
     // BFS traversal and label the nodes
     //--------------------------------------------------------------------------
@@ -152,8 +136,8 @@ int LG_BreadthFirstSearch_vanilla
             // assign levels: l_level<s(frontier)> = current_level
             GrB_TRY( GrB_assign(l_level, frontier, GrB_NULL,
                                 current_level, GrB_ALL, n, GrB_DESC_S) );
-            ++current_level;
         }
+		++current_level;
 
         if (compute_parent)
         {
@@ -168,6 +152,12 @@ int LG_BreadthFirstSearch_vanilla
                                    index_ramp, frontier, GrB_NULL) );
         }
 
+		// check if destination has been reached, if one is provided
+		if(dest) {
+			GrB_Info res = GrB_Vector_extractElement(&dest_val, frontier, *dest) ;
+			if(res != GrB_NO_VALUE) break ;
+		}
+
         // frontier = kth level of the BFS
         // mask is l_parent if computing parent, l_level if computing just level
         GrB_TRY( GrB_vxm(frontier, mask, GrB_NULL, semiring,
@@ -175,6 +165,9 @@ int LG_BreadthFirstSearch_vanilla
 
         // done if frontier is empty
         GrB_TRY( GrB_Vector_nvals(&nvals, frontier) );
+
+		// check if max level has been reached, if one is provided
+		if(max_level != 0 && current_level > max_level) break;
     } while (nvals > 0);
 
     //--------------------------------------------------------------------------
