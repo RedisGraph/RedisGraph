@@ -227,7 +227,7 @@ typedef unsigned char LG_void ;
 // LG_Multiply_size_t:  c = a*b but check for overflow
 //------------------------------------------------------------------------------
 
-static bool LG_Multiply_size_t  // true if ok, false if overflow
+inline static bool LG_Multiply_size_t  // true if ok, false if overflow
 (
     size_t *c,                  // c = a*b, or zero if overflow occurs
     const size_t a,
