@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,7 +13,7 @@
 #include "../datatypes/array.h"
 #include "../graph/graphcontext.h"
 #include "../configuration/config.h"
-#include "../algorithms/LAGraph/LAGraphX.h"
+#include "../algorithms/LAGraph_bfs_pushpull.h"
 
 // The BFS procedure performs a single source BFS scan
 // it's inputs are:
@@ -102,18 +102,16 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	int64_t max_level = args[1].longval;
 	const char *reltype = SIValue_IsNull(args[2]) ? NULL : args[2].stringval;
 
-	/* The BFS algorithm uses a level of 1 to indicate the source node.
-	* If this value is not zero (unlimited), increment it by 1
-	* to make level 1 indicate the source's direct neighbors. */
-	if(max_level > 0) max_level++;
 	GrB_Index src_id = ENTITY_GET_ID(source_node);
 
 	// Get edge matrix and transpose matrix, if available.
 	GrB_Matrix    R    =  NULL;
+	GrB_Matrix    TR   =  NULL;
 	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
 
 	if(reltype == NULL) {
 		RG_Matrix_export(&R, Graph_GetAdjacencyMatrix(gc->g, false));
+		RG_Matrix_export(&TR, Graph_GetAdjacencyMatrix(gc->g, true));
 	} else {
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		// failed to find schema, first step will return NULL
@@ -121,6 +119,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 
 		bfs_ctx->reltype_id = s->id;
 		RG_Matrix_export(&R, Graph_GetRelationMatrix(gc->g, s->id, false));
+		RG_Matrix_export(&TR, Graph_GetRelationMatrix(gc->g, s->id, true));
 	}
 
 	/* If we're not collecting edges, pass a NULL parent pointer
@@ -128,17 +127,14 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	GrB_Vector V = GrB_NULL;  // Vector of results
 	GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
 	GrB_Vector *pPI = &PI;
-	GrB_Vector PH = GrB_NULL; // Vector tracking number of hops.
-	GrB_Vector *pPH = &PH;
-	// if(!bfs_ctx->yield_edges) pPI = NULL; // TODO enable
-	GrB_Info res = LAGraph_BF_full1a(&V, pPI, pPH, R, src_id, NULL, max_level);
+	if(!bfs_ctx->yield_edges) pPI = NULL;
+	GrB_Info res = LG_BreadthFirstSearch_vanilla(&V, pPI, R, TR, src_id, NULL, max_level, NULL);
 	ASSERT(res == GrB_SUCCESS);
 
-	/* Remove all values with a level less than or equal to 1.
-	* Values of 0 are not connected to the source, and values of 1 are the source. */
+	// Remove values with a level of 0, as those represent the source
 	GxB_Scalar thunk;
 	GxB_Scalar_new(&thunk, GrB_UINT64);
-	GxB_Scalar_setElement_UINT64(thunk, 1);
+	GxB_Scalar_setElement_UINT64(thunk, 0);
 	GxB_Vector_select(V, GrB_NULL, GrB_NULL, GxB_GT_THUNK, V, thunk, GrB_NULL);
 	GxB_Scalar_free(&thunk);
 
@@ -150,7 +146,6 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	bfs_ctx->nodes = V;
 	bfs_ctx->parents = PI;
 
-	// TODO delete?
 	// matrix iterator requires matrix format to be sparse
 	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
 	// we set matrix format at creation time
@@ -158,6 +153,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	GxB_Vector_Option_set(bfs_ctx->parents, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 
 	GrB_Matrix_free(&R);
+	GrB_Matrix_free(&TR);
 
 	return PROCEDURE_OK;
 }
@@ -182,8 +178,6 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 	GrB_Info res;
 	bool depleted;
 	GxB_MatrixTupleIter iter;
-	// GxB_MatrixTupleIter *iter;
-	// GxB_MatrixTupleIter_new(&iter, (GrB_Matrix)bfs_ctx->nodes);
 
 	UNUSED(res);
 	res = GxB_MatrixTupleIter_reuse(&iter, (GrB_Matrix)bfs_ctx->nodes);
@@ -206,7 +200,6 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 			// Find the parent of the reached node.
 			GrB_Info res = GrB_Vector_extractElement(&parent_id, bfs_ctx->parents, id);
 			ASSERT(res == GrB_SUCCESS);
-			parent_id --; // Decrement the parent ID by 1 to correct 1-indexing.
 			// Retrieve edges connecting the parent node to the current node.
 			Graph_GetEdgesConnectingNodes(bfs_ctx->g, parent_id, id, bfs_ctx->reltype_id, &edge);
 			// Append one edge to the edges output array.
