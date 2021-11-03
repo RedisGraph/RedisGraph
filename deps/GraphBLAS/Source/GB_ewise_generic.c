@@ -45,7 +45,7 @@ void GB_ewise_generic       // generic ewise
     const int C_sparsity,
     // from GB_emult_sparsity or GB_add_sparsity:
     const int ewise_method,
-    // from GB_emult_03 and GB_emult_02:
+    // from GB_emult_04 and GB_emult_02:
     const int64_t *restrict Cp_kfirst,
     // to slice M, A, and/or B,
     const int64_t *M_ek_slicing, const int M_ntasks, const int M_nthreads,
@@ -96,7 +96,7 @@ void GB_ewise_generic       // generic ewise
 
     // if flipxy true use fop(y,x) else fop(x,y)
 //  const bool flipxy = (ewise_method < 0) ;        TODO
-    const bool flipxy = (ewise_method == GB_EMULT_METHOD_02B) ;
+    const bool flipxy = (ewise_method == GB_EMULT_METHOD3) ;
 
     const GxB_binary_function fop = op->function ; // NULL if op positional
     const size_t csize = ctype->size ;
@@ -171,14 +171,14 @@ void GB_ewise_generic       // generic ewise
             #define GB_BINOP(cij, aij, bij, i, j)                         \
                 int64_t z = ((index_is_i) ? i : j) + offset ;             \
                 cast_Z_to_C (cij, &z, csize) ;
-            if (ewise_method == GB_EMULT_METHOD_02A ||
-                ewise_method == GB_EMULT_METHOD_02B)
+            if (ewise_method == GB_EMULT_METHOD2 ||
+                ewise_method == GB_EMULT_METHOD3)
             {
                 #include "GB_emult_02_template.c"
             }
-            else if (ewise_method == GB_EMULT_METHOD_03)
+            else if (ewise_method == GB_EMULT_METHOD4)
             {
-                #include "GB_emult_03_template.c"
+                #include "GB_emult_04_template.c"
             }
             else if (C_sparsity == GxB_BITMAP)
             {
@@ -186,7 +186,7 @@ void GB_ewise_generic       // generic ewise
             }
             else
             {
-                #include "GB_emult_01_meta.c"
+                #include "GB_emult_08_meta.c"
             }
         }
         else
@@ -195,14 +195,14 @@ void GB_ewise_generic       // generic ewise
             #define GB_BINOP(cij, aij, bij, i, j)                         \
                 int32_t z = (int32_t) (((index_is_i) ? i : j) + offset) ; \
                 cast_Z_to_C (cij, &z, csize) ;
-            if (ewise_method == GB_EMULT_METHOD_02A ||
-                ewise_method == GB_EMULT_METHOD_02B)
+            if (ewise_method == GB_EMULT_METHOD2 ||
+                ewise_method == GB_EMULT_METHOD3)
             {
                 #include "GB_emult_02_template.c"
             }
-            else if (ewise_method == GB_EMULT_METHOD_03)
+            else if (ewise_method == GB_EMULT_METHOD4)
             {
-                #include "GB_emult_03_template.c"
+                #include "GB_emult_04_template.c"
             }
             else if (C_sparsity == GxB_BITMAP)
             {
@@ -210,7 +210,7 @@ void GB_ewise_generic       // generic ewise
             }
             else
             {
-                #include "GB_emult_01_meta.c"
+                #include "GB_emult_08_meta.c"
             }
         }
 
@@ -223,8 +223,8 @@ void GB_ewise_generic       // generic ewise
         //----------------------------------------------------------------------
 
         // C(i,j) = (ctype) (A(i,j) + B(i,j))
-        if (ewise_method == GB_EMULT_METHOD_02A ||
-            ewise_method == GB_EMULT_METHOD_02B)
+        if (ewise_method == GB_EMULT_METHOD2 ||
+            ewise_method == GB_EMULT_METHOD3)
         { 
             // handle flipxy
             #undef  GB_BINOP
@@ -241,14 +241,14 @@ void GB_ewise_generic       // generic ewise
                 cast_Z_to_C (cij, z, csize) ;
             #include "GB_emult_02_template.c"
         }
-        else if (ewise_method == GB_EMULT_METHOD_03)
+        else if (ewise_method == GB_EMULT_METHOD4)
         { 
             #undef  GB_BINOP
             #define GB_BINOP(cij, aij, bij, i, j)   \
                 GB_void z [GB_VLA(zsize)] ;         \
                 fop (z, aij, bij) ;                 \
                 cast_Z_to_C (cij, z, csize) ;
-            #include "GB_emult_03_template.c"
+            #include "GB_emult_04_template.c"
         }
         else if (C_sparsity == GxB_BITMAP)
         { 
@@ -256,7 +256,7 @@ void GB_ewise_generic       // generic ewise
         }
         else
         { 
-            #include "GB_emult_01_meta.c"
+            #include "GB_emult_08_meta.c"
         }
     }
 

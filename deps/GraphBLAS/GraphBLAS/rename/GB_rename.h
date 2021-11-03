@@ -3246,11 +3246,11 @@
 #define GB_ek_slice_merge1 GM_ek_slice_merge1
 #define GB_ek_slice_merge2 GM_ek_slice_merge2
 #define GB_emult GM_emult
-#define GB_emult_01_phase0 GM_emult_01_phase0
-#define GB_emult_01_phase1 GM_emult_01_phase1
-#define GB_emult_01_phase2 GM_emult_01_phase2
 #define GB_emult_02 GM_emult_02
-#define GB_emult_03 GM_emult_03
+#define GB_emult_04 GM_emult_04
+#define GB_emult_08_phase0 GM_emult_08_phase0
+#define GB_emult_08_phase1 GM_emult_08_phase1
+#define GB_emult_08_phase2 GM_emult_08_phase2
 #define GB_emult_sparsity GM_emult_sparsity
 #define GB_entry_check GM_entry_check
 #define GB_eslice GM_eslice
@@ -3507,8 +3507,8 @@
 #define GB_subassign_zombie GM_subassign_zombie
 #define GB_subref GM_subref
 #define GB_subref_phase0 GM_subref_phase0
-#define GB_subref_phase1 GM_subref_phase1
 #define GB_subref_phase2 GM_subref_phase2
+#define GB_subref_phase3 GM_subref_phase3
 #define GB_subref_slice GM_subref_slice
 #define GB_task_cumsum GM_task_cumsum
 #define GB_transplant GM_transplant

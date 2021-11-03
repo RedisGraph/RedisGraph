@@ -46,19 +46,19 @@
     // accum operator.
     int64_t cnvals = 0 ;
 
-    if (ewise_method == GB_EMULT_METHOD_05)
+    if (ewise_method == GB_EMULT_METHOD5)
     {
 
         //----------------------------------------------------------------------
-        // C is bitmap, M is not present
+        // Method5: C is bitmap, M is not present
         //----------------------------------------------------------------------
 
         //      ------------------------------------------
         //      C       =           A       .*      B
         //      ------------------------------------------
-        //      bitmap  .           bitmap          bitmap  (method: 05)
-        //      bitmap  .           bitmap          full    (method: 05)
-        //      bitmap  .           full            bitmap  (method: 05)
+        //      bitmap  .           bitmap          bitmap  (method: 5)
+        //      bitmap  .           bitmap          full    (method: 5)
+        //      bitmap  .           full            bitmap  (method: 5)
 
         int tid ;
         #pragma omp parallel for num_threads(C_nthreads) schedule(static) \
@@ -85,19 +85,19 @@
         }
 
     }
-    else if (ewise_method == GB_EMULT_METHOD_06)
+    else if (ewise_method == GB_EMULT_METHOD6)
     {
 
         //----------------------------------------------------------------------
-        // C is bitmap, !M is sparse or hyper
+        // Method6: C is bitmap, !M is sparse or hyper
         //----------------------------------------------------------------------
 
         //      ------------------------------------------
         //      C       <!M>=       A       .*      B
         //      ------------------------------------------
-        //      bitmap  sparse      bitmap          bitmap  (method: 06)
-        //      bitmap  sparse      bitmap          full    (method: 06)
-        //      bitmap  sparse      full            bitmap  (method: 06)
+        //      bitmap  sparse      bitmap          bitmap  (method: 6)
+        //      bitmap  sparse      bitmap          full    (method: 6)
+        //      bitmap  sparse      full            bitmap  (method: 6)
 
         // M is sparse and complemented.  If M is sparse and not
         // complemented, then C is constructed as sparse, not bitmap.
@@ -154,40 +154,40 @@
         }
 
     }
-    else // if (ewise_method == GB_EMULT_METHOD_07)
+    else // if (ewise_method == GB_EMULT_METHOD7)
     {
 
         //----------------------------------------------------------------------
-        // C is bitmap; M is bitmap or full
+        // Method7: C is bitmap; M is bitmap or full
         //----------------------------------------------------------------------
 
         //      ------------------------------------------
         //      C      <M> =        A       .*      B
         //      ------------------------------------------
-        //      bitmap  bitmap      bitmap          bitmap  (method: 07)
-        //      bitmap  bitmap      bitmap          full    (method: 07)
-        //      bitmap  bitmap      full            bitmap  (method: 07)
+        //      bitmap  bitmap      bitmap          bitmap  (method: 7)
+        //      bitmap  bitmap      bitmap          full    (method: 7)
+        //      bitmap  bitmap      full            bitmap  (method: 7)
 
         //      ------------------------------------------
         //      C      <M> =        A       .*      B
         //      ------------------------------------------
-        //      bitmap  full        bitmap          bitmap  (method: 07)
-        //      bitmap  full        bitmap          full    (method: 07)
-        //      bitmap  full        full            bitmap  (method: 07)
+        //      bitmap  full        bitmap          bitmap  (method: 7)
+        //      bitmap  full        bitmap          full    (method: 7)
+        //      bitmap  full        full            bitmap  (method: 7)
 
         //      ------------------------------------------
         //      C      <!M> =       A       .*      B
         //      ------------------------------------------
-        //      bitmap  bitmap      bitmap          bitmap  (method: 07)
-        //      bitmap  bitmap      bitmap          full    (method: 07)
-        //      bitmap  bitmap      full            bitmap  (method: 07)
+        //      bitmap  bitmap      bitmap          bitmap  (method: 7)
+        //      bitmap  bitmap      bitmap          full    (method: 7)
+        //      bitmap  bitmap      full            bitmap  (method: 7)
 
         //      ------------------------------------------
         //      C      <!M> =       A       .*      B
         //      ------------------------------------------
-        //      bitmap  full        bitmap          bitmap  (method: 07)
-        //      bitmap  full        bitmap          full    (method: 07)
-        //      bitmap  full        full            bitmap  (method: 07)
+        //      bitmap  full        bitmap          bitmap  (method: 7)
+        //      bitmap  full        bitmap          full    (method: 7)
+        //      bitmap  full        full            bitmap  (method: 7)
 
         ASSERT (GB_IS_BITMAP (M) || GB_IS_FULL (M)) ;
 

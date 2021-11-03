@@ -121,7 +121,7 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 
 static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_id) {
 	// Populate the Record with the graph entity data.
-	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
+	Node n = GE_NEW_NODE();
 	Graph_GetNode(op->g, node_id, &n);
 	Record_AddNode(r, op->nodeRecIdx, n);
 }

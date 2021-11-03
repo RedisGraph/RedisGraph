@@ -831,7 +831,7 @@ void mexFunction
     }
 
     info = GxB_Scalar_extractElement_INT32_(&i_scalar, a_scalar) ;
-    CHECK (i_scalar == (scalar_is_full) ? 42 : 33) ;
+    CHECK (i_scalar == ((scalar_is_full) ? 42 : 33)) ;
     CHECK (info == (scalar_is_full) ? GrB_SUCCESS : GrB_NO_VALUE) ;
 
     OK (GxB_Scalar_free_(&a_scalar)) ;

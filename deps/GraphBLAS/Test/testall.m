@@ -96,6 +96,7 @@ logstat ('test151b',t); % test bshift operator
 hack (2) = 0 ;
 GB_mex_hack (hack) ;
 
+logstat ('test233',t) ; % test bitmap saxpy C=A*B with A sparse and B bitmap
 logstat ('test227',t) ; % test kron
 logstat ('test226',t) ; % test kron with iso matrices
 logstat ('test225',t) ; % test mask operations (GB_masker)

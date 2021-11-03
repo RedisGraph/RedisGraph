@@ -272,7 +272,7 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
         {
 
             //------------------------------------------------------------------
-            // C = A.*B where A is sparse/hyper and B is bitmap
+            // Method2(a): C = A.*B where A is sparse/hyper and B is bitmap
             //------------------------------------------------------------------
 
             ASSERT (B_is_bitmap) ;
@@ -318,7 +318,7 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
         {
 
             //------------------------------------------------------------------
-            // C<#M> = A.*B where M and B are bitmap/full, A is sparse/hyper
+            // Method2(c): C<#M> = A.*B; M, B bitmap/full, A is sparse/hyper
             //------------------------------------------------------------------
 
             ASSERT (M != NULL) ;
@@ -395,8 +395,8 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
 
     if (C_has_pattern_of_A)
     { 
-        // B is full and no mask present, so the pattern of C is the same as
-        // the pattern of A
+        // Method2(b): B is full and no mask present, so the pattern of C is
+        // the same as the pattern of A
         GB_memcpy (Cp, Ap, (nvec+1) * sizeof (int64_t), A_nthreads) ;
         GB_memcpy (C->i, Ai, cnz * sizeof (int64_t), A_nthreads) ;
     }
@@ -502,7 +502,7 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
     if (!done)
     { 
         GB_BURBLE_MATRIX (C, "(generic emult_02: %s) ", op->name) ;
-        int ewise_method = flipxy ? GB_EMULT_METHOD_02B : GB_EMULT_METHOD_02A ;
+        int ewise_method = flipxy ? GB_EMULT_METHOD3 : GB_EMULT_METHOD2 ;
         GB_ewise_generic (C, op, NULL, 0, 0,
             NULL, NULL, NULL, C_sparsity, ewise_method, Cp_kfirst,
             NULL, 0, 0, A_ek_slicing, A_ntasks, A_nthreads, NULL, 0, 0,

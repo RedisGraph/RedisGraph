@@ -2,6 +2,52 @@
 
 RedisGraph supports a number of distinct data types, some of which can be persisted as property values and some of which are ephemeral.
 
+## Graph types
+
+All graph types are either structural elements of the graph or projections thereof. None can be stored as a property value.
+
+### Nodes
+
+Nodes are persistent graph elements that can be connected to each other via relationships.
+
+They can have any number of labels that describe their general type. For example, a node representing London may be created with the `Place` and `City` labels and retrieved by queries using either or both of them.
+
+Nodes have sets of properties to describe all of their salient characteristics. For example, our London node may have the property set: `{name: 'London', capital: True, elevation: 11}`.
+
+When querying nodes, multiple labels can be specified. Only nodes that hold all specified labels will be matched:
+
+```sh
+$ redis-cli GRAPH.QUERY G "MATCH (n:Place:Continent) RETURN n"
+```
+
+### Relationships
+
+Relationships are persistent graph elements that connect one node to another.
+
+They must have exactly one type that describes what they represent. For example, a `RESIDENT_OF` relationship may be used to connect a `Person` node to a `City` node.
+
+Relationships are always directed, connecting a source node to its destination.
+
+Like nodes, relationships have sets of properties to describe all of their salient characteristics.
+
+When querying relationships, multiple types can be specified when separated by types. Relationships that hold any of the specified types will be matched:
+
+```sh
+$ redis-cli GRAPH.QUERY G "MATCH (:Person)-[r:RESIDENT_OF|:VISITOR_TO]->(:Place {name: 'London'}) RETURN r"
+```
+
+### Paths
+
+Paths are alternating sequences of nodes and edges, starting and ending with a node.
+
+They are not structural elements in the graph, but can be created and returned by queries.
+
+For example, the following query returns all paths of any length connecting the node London to the node New York:
+
+```sh
+$ redis-cli GRAPH.QUERY G "MATCH p=(:City {name: 'London'})-[*]->(:City {name: 'New York'}) RETURN p"
+```
+
 ## Scalar types
 
 All scalar types may be provided by queries or stored as property values on node and relationship objects.

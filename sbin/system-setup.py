@@ -46,6 +46,11 @@ class RedisGraphSetup(paella.Setup):
         self.install("redis")
         self.install_peg()
 
+    def alpine(self):
+        self.install("automake make autoconf libtool m4")
+        self.run("%s/bin/getgcc" % READIES)
+        self.install_peg()
+
     def linux_last(self):
         self.install("valgrind")
 

@@ -37,12 +37,12 @@
         #endif
 
         //----------------------------------------------------------------------
-        // count nnz in C(:,j)
+        // count nnz in C(:,j), terminating early if C(:,j) becomes dense
         //----------------------------------------------------------------------
 
         const int64_t f = (++mark) ;
         int64_t cjnz = 0 ;
-        for ( ; pB < pB_end ; pB++)     // scan B(:,j)
+        for ( ; pB < pB_end && cjnz < cvlen ; pB++)     // scan B(:,j)
         {
             GB_GET_B_kj_INDEX ;         // get index k of entry B(k,j)
             GB_GET_A_k ;                // get A(:,k)

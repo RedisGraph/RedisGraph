@@ -35,6 +35,11 @@ void _DeleteEntities(OpDelete *op) {
 			Node *n = op->deleted_nodes + i;
 			GraphContext_DeleteNodeFromIndices(op->gc, n);
 		}
+
+		for(int i = 0; i < edge_count; i++) {
+			Edge *e = op->deleted_edges + i;
+			GraphContext_DeleteEdgeFromIndices(op->gc, e);
+		}
 	}
 
 	if(edge_count <= EDGE_BULK_DELETE_THRESHOLD) {

@@ -319,7 +319,7 @@ GrB_Info GB_AxB_saxpy3_flopcount
                     &pA, &pA_end) ;
 
                 // skip if A(:,k) empty
-                int64_t aknz = pA_end - pA ;
+                const int64_t aknz = pA_end - pA ;
                 if (aknz == 0) continue ;
 
                 double bkjflops ;

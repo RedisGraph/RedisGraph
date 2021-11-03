@@ -51,7 +51,6 @@ Feature: MatchWhere5 - Filter on predicate resulting in null
       | (:TextNode {var: 'text'}) |
     And no side effects
 
-  @skip
   Scenario: [2] Filter out on null if the AND'd predicate evaluates to false
     Given an empty graph
     And having executed:

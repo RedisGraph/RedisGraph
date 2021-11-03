@@ -18,3 +18,9 @@ class testEmptyQuery(FlowTestsBase):
             graph.query("")
         except ResponseError as e:
             self.env.assertIn("Error: empty query.", str(e))
+
+    #def test02_query_with_only_params(self):
+    #    try:
+    #        graph.query("CYPHER v=1")
+    #    except ResponseError as e:
+    #        self.env.assertIn("Error: could not parse query", str(e))

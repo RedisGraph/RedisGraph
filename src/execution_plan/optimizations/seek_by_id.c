@@ -6,7 +6,6 @@
 
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
-#include "../ops/op_index_scan.h"
 #include "../ops/op_all_node_scan.h"
 #include "../ops/op_node_by_id_seek.h"
 #include "../ops/op_node_by_label_scan.h"

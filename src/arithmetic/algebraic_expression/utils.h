@@ -118,3 +118,12 @@ void _AlgebraicExpression_PopulateOperands
 	const GraphContext *gc      // Graph context.
 );
 
+// given a list of algebraic expressions remove redundent label operands
+// a redundent label operand is one which is already resolved by a previoius
+// expression
+void _AlgebraicExpression_RemoveRedundentOperands
+(
+	AlgebraicExpression **exps,
+	const QueryGraph *qg
+);
+
