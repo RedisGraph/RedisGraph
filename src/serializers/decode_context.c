@@ -60,6 +60,11 @@ bool GraphDecodeContext_Finished(const GraphDecodeContext *ctx) {
 	return ctx->keys_processed == ctx->graph_keys_count;
 }
 
+bool GraphDecodeContext_Started(const GraphDecodeContext *ctx) {
+	ASSERT(ctx);
+	return ctx->keys_processed > 0;
+}
+
 void GraphDecodeContext_IncreaseProcessedKeyCount(GraphDecodeContext *ctx) {
 	ASSERT(ctx);
 	ctx->keys_processed++;

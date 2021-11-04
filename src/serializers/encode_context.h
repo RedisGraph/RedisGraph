@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "decode_context.h"
 #include "stdlib.h"
 #include "stdint.h"
 #include "stdbool.h"
@@ -60,7 +61,7 @@ GraphEncodeContext *GraphEncodeContext_New();
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx);
 
 // Populates graph encode context header.
-void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g);
+void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, GraphDecodeContext *decode_ctx, const char *graph_name, Graph *g);
 
 // Retrieve the graph current encoding phase.
 EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx);

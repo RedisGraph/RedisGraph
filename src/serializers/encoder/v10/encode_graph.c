@@ -193,7 +193,7 @@ void RdbSaveGraph_v10
 
 	if(current_state == ENCODE_STATE_INIT) {
 		// inital state, populate encoding context header
-		GraphEncodeContext_InitHeader(gc->encoding_context, gc->graph_name, gc->g);
+		GraphEncodeContext_InitHeader(gc->encoding_context, gc->decoding_context, gc->graph_name, gc->g);
 	}
 
 	// save header
