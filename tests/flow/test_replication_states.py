@@ -3,6 +3,13 @@ from RLTest import Env
 GRAPH_ID = "replication"
 
 class testReplicationState():
+    def __init__(self):
+        self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
+
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None:
+            self.env.skip() # valgrind is not working correctly with replication
+
     def test_replication(self):
         env = Env(testName="master", useSlaves=True, decodeResponses=True, env='oss', moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
         master = env.getConnection()
