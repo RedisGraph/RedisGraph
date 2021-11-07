@@ -35,7 +35,7 @@ class testReplicationState():
         expected = [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15], [16], [17], [18], [19], [20], [21], [22], [23], [24], [25], [26], [27], [28], [29], [30]]
         result = self.master.execute_command("GRAPH.QUERY", "x", "MATCH (n:N) RETURN n.v")
         self.env.assertEqual(result[1], expected)
-        result = self.slave.execute_command("GRAPH.QUERY", "x", "MATCH (n:N) RETURN n.v")
+        result = self.slave.execute_command("GRAPH.RO_QUERY", "x", "MATCH (n:N) RETURN n.v")
         self.env.assertEqual(result[1], expected)
 
     def test_replication(self):
