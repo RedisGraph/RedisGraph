@@ -184,9 +184,9 @@ static void _ResetDecodeStates() {
 static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		GraphDecodeContext *ctx = graphs_in_keyspace[i]->decoding_context;
-		if(!GraphDecodeContext_Started(ctx) || GraphDecodeContext_Finished(ctx))
-		{
+		GraphDecodeContext *decode_ctx = graphs_in_keyspace[i]->decoding_context;
+		if(!GraphDecodeContext_Started(decode_ctx) 
+		   || GraphDecodeContext_Finished(decode_ctx)) {
 			_DeleteGraphMetaKeys(ctx, graphs_in_keyspace[i], decode);
 		}
 	}
