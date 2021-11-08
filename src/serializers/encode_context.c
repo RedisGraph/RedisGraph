@@ -5,7 +5,6 @@
 */
 
 #include "encode_context.h"
-#include "decode_context.h"
 #include "../RG.h"
 #include "../util/rmalloc.h"
 #include "../util/rax_extensions.h"
@@ -61,7 +60,7 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	}
 }
 
-void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, GraphDecodeContext *decode_ctx, const char *graph_name, Graph *g) {
+void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, uint64_t key_count, const char *graph_name, Graph *g) {
 	ASSERT(g   != NULL);
 	ASSERT(ctx != NULL);
 
@@ -74,7 +73,7 @@ void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, GraphDecodeContext *
 	header->edge_count                 =  Graph_EdgeCount(g);
 	header->relationship_matrix_count  =  r_count;
 	header->label_matrix_count         =  Graph_LabelTypeCount(g);
-	header->key_count                  =  GraphDecodeContext_Finished(decode_ctx) ? GraphEncodeContext_GetKeyCount(ctx) : decode_ctx->graph_keys_count;
+	header->key_count                  =  key_count;
 	header->multi_edge                 =  rm_malloc(sizeof(bool) * r_count);
 
 	// denote for each relationship matrix Ri if it contains muti-edge entries

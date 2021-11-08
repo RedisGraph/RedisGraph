@@ -192,8 +192,11 @@ void RdbSaveGraph_v10
 	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
 
 	if(current_state == ENCODE_STATE_INIT) {
+		uint64_t key_count = GraphDecodeContext_Finished(gc->decoding_context) 
+			? GraphEncodeContext_GetKeyCount(gc->encoding_context) 
+			: gc->decoding_context->graph_keys_count;
 		// inital state, populate encoding context header
-		GraphEncodeContext_InitHeader(gc->encoding_context, gc->decoding_context, gc->graph_name, gc->g);
+		GraphEncodeContext_InitHeader(gc->encoding_context, key_count, gc->graph_name, gc->g);
 	}
 
 	// save header
