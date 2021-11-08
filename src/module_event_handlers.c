@@ -150,7 +150,9 @@ static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool dec
 static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		_CreateGraphMetaKeys(ctx, graphs_in_keyspace[i]);
+		if(GraphDecodeContext_Finished(graphs_in_keyspace[i]->decoding_context)) {
+			_CreateGraphMetaKeys(ctx, graphs_in_keyspace[i]);
+		}
 	}
 }
 
@@ -166,7 +168,11 @@ static void _ResetDecodeStates() {
 static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		_DeleteGraphMetaKeys(ctx, graphs_in_keyspace[i], decode);
+		GraphDecodeContext *decode_ctx = graphs_in_keyspace[i]->decoding_context;
+		if(!GraphDecodeContext_Started(decode_ctx) 
+		   || GraphDecodeContext_Finished(decode_ctx)) {
+ 			_DeleteGraphMetaKeys(ctx, graphs_in_keyspace[i], decode);
+		}
 	}
 }
 

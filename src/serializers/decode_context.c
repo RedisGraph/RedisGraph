@@ -20,6 +20,7 @@ GraphDecodeContext *GraphDecodeContext_New() {
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx) {
 	ASSERT(ctx);
 	ctx->keys_processed = 0;
+	ctx->graph_keys_count = 1;
 }
 
 void GraphDecodeContext_SetKeyCount(GraphDecodeContext *ctx, uint64_t key_count) {
@@ -52,6 +53,11 @@ void GraphDecodeContext_ClearMetaKeys(GraphDecodeContext *ctx) {
 bool GraphDecodeContext_Finished(const GraphDecodeContext *ctx) {
 	ASSERT(ctx);
 	return ctx->keys_processed == ctx->graph_keys_count;
+}
+
+bool GraphDecodeContext_Started(const GraphDecodeContext *ctx) {
+	ASSERT(ctx);
+	return ctx->keys_processed > 0;
 }
 
 void GraphDecodeContext_IncreaseProcessedKeyCount(GraphDecodeContext *ctx) {
