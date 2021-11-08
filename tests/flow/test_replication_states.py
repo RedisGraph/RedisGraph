@@ -15,6 +15,9 @@ class testReplicationState():
         self.env = Env(useSlaves=True, decodeResponses=True, env='oss', moduleArgs='VKEY_MAX_ENTITY_COUNT 10')
         self.master = self.env.getConnection()
         self.slave = self.env.getSlaveConnection()
+        info = self.slave.info("Replication")
+        self.master_host = info["master_host"]
+        self.master_port = info["master_port"]
 
         # skip test if we're running under Valgrind
         if self.env.envRunner.debugger is not None:
@@ -67,7 +70,7 @@ class testReplicationState():
         self._step('{x}x_dba3feaa-a949-402e-a102-280f797a479f', 1, None)
 
         # connect master and slave
-        self.slave.slaveof("localhost", 6379)
+        self.slave.slaveof(self.master_host, self.master_port)
 
         self._check(1, 1)
 
@@ -87,7 +90,7 @@ class testReplicationState():
         self._step('{x}x_6e357ef7-b3e2-442a-8cc2-eaa51ed9fe9b', 2, None)
 
         # connect master and slave
-        self.slave.slaveof("localhost", 6379)
+        self.slave.slaveof(self.master_host, self.master_port)
         
         self._check(2, 2)
 
@@ -107,7 +110,7 @@ class testReplicationState():
         self._step('x', 1, None)
 
         # connect master and slave
-        self.slave.slaveof("localhost", 6379)
+        self.slave.slaveof(self.master_host, self.master_port)
         
         self._check(1, 1)
 
