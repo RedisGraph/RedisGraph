@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -33,49 +33,29 @@ typedef struct {
 	bool depleted;                  // True if BFS has already been performed for this node.
 	int reltype_id;                 // ID of relationship matrix to traverse.
 	SIValue *output;                // Array with a maximum of 4 entries: ["nodes", nodes, "edges", edges].
-	bool yield_nodes;               // Return reachable nodes.
-	bool yield_edges;               // Return edges traversed.
+	SIValue *yield_nodes;           // yield reachable nodes
+	SIValue *yield_edges;           // yield edges traversed
 	GrB_Vector nodes;               // Vector of reachable nodes.
 	GrB_Vector parents;             // Vector associating each node in the BFS tree with its parent.
-	int nodes_output_idx;           // Offset of nodes array in outputs
-	int edges_output_idx;           // Offset of edges array in outputs
 } BFSCtx;
 
 static void _process_yield(BFSCtx *ctx, const char **yield) {
-	bool yield_nodes = false;
-	bool yield_edges = false;
+	ctx->yield_nodes = NULL;
+	ctx->yield_edges = NULL;
 
-	if(yield != NULL) {
-		for(uint i = 0; i < array_len(yield); i++) {
-			if(strcasecmp("nodes", yield[i]) == 0) {
-				yield_nodes = true;
-				continue;
-			}
-			if(strcasecmp("edges", yield[i]) == 0) {
-				yield_edges = true;
-				continue;
-			}
+	int idx = 0;
+	for(uint i = 0; i < array_len(yield); i++) {
+		if(strcasecmp("nodes", yield[i]) == 0) {
+			ctx->yield_nodes = ctx->output + idx;
+			idx ++;
+			continue;
 		}
-	} else {
-		/* User did not add an explicit YIELD
-		 * use the default yields - both nodes and edges. */
-		yield_nodes = true;
-		yield_edges = true;
-	}
 
-	ctx->yield_nodes = yield_nodes;
-	ctx->yield_edges = yield_edges;
-
-	if(yield_nodes) {
-		array_append(ctx->output, SI_ConstStringVal("nodes"));
-		ctx->nodes_output_idx = array_len(ctx->output);
-		array_append(ctx->output, SI_NullVal()); // Place holder.
-	}
-
-	if(yield_edges) {
-		array_append(ctx->output, SI_ConstStringVal("edges"));
-		ctx->edges_output_idx = array_len(ctx->output);
-		array_append(ctx->output, SI_NullVal()); // Place holder.
+		if(strcasecmp("edges", yield[i]) == 0) {
+			ctx->yield_edges = ctx->output + idx;
+			idx ++;
+			continue;
+		}
 	}
 }
 
@@ -87,8 +67,8 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 
 	if(array_len((SIValue *)args) != 3) return PROCEDURE_ERR;
 	if(SI_TYPE(args[0]) != T_NODE                 ||   // Source node.
-	  SI_TYPE(args[1]) != T_INT64                ||   // Max level to iterate to, unlimited if 0.
-	  !(SI_TYPE(args[2]) & (T_NULL | T_STRING)))      // Relationship type to traverse if not NULL.
+	   SI_TYPE(args[1]) != T_INT64                ||   // Max level to iterate to, unlimited if 0.
+	   !(SI_TYPE(args[2]) & (T_NULL | T_STRING)))      // Relationship type to traverse if not NULL.
 		return PROCEDURE_ERR;
 
 	BFSCtx *bfs_ctx = ctx->privateData;
@@ -119,7 +99,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	} else {
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		// failed to find schema, first step will return NULL
-		if(!s) return PROCEDURE_OK; 
+		if(!s) return PROCEDURE_OK;
 
 		bfs_ctx->reltype_id = s->id;
 		RG_Matrix_export(&R, Graph_GetRelationMatrix(gc->g, s->id, false));
@@ -219,8 +199,8 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 	bfs_ctx->depleted = depleted; // Mark that this node has been mapped.
 
 	// Populate output.
-	if(bfs_ctx->yield_nodes) bfs_ctx->output[bfs_ctx->nodes_output_idx] = nodes;
-	if(bfs_ctx->yield_edges) bfs_ctx->output[bfs_ctx->edges_output_idx] = edges;
+	if(bfs_ctx->yield_nodes) *bfs_ctx->yield_nodes = nodes;
+	if(bfs_ctx->yield_edges) *bfs_ctx->yield_edges = edges;
 
 	// Clean up.
 	array_free(edge);
@@ -247,10 +227,8 @@ static BFSCtx *_Build_Private_Data() {
 	pdata->nodes = GrB_NULL;
 	pdata->depleted = false;
 	pdata->parents = GrB_NULL;
-	pdata->yield_nodes = false;
-	pdata->yield_edges = false;
-	pdata->nodes_output_idx = -1;
-	pdata->edges_output_idx = -1;
+	pdata->yield_nodes = NULL;
+	pdata->yield_edges = NULL;
 	pdata->g = QueryCtx_GetGraph();
 	pdata->reltype_id = GRAPH_NO_RELATION;
 	pdata->output = array_new(SIValue, 4);

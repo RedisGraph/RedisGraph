@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -26,9 +26,7 @@ ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const SIValue *args, con
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
 	pdata->schema_id = 0;
 	pdata->gc = QueryCtx_GetGraphCtx();
-	pdata->output = array_new(SIValue, 2);
-	array_append(pdata->output, SI_ConstStringVal("relationshipType"));
-	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	pdata->output = array_new(SIValue, 1);
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -45,8 +43,7 @@ SIValue *Proc_RelationsStep(ProcedureCtx *ctx) {
 
 	// Get schema name.
 	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_EDGE);
-	char *name = (char *)Schema_GetName(s);
-	pdata->output[1] = SI_ConstStringVal(name);
+	pdata->output[0] = SI_ConstStringVal(Schema_GetName(s));
 	return pdata->output;
 }
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -26,9 +26,30 @@ typedef struct {
 	SIValue *output;
 	Index *idx;
 	RSResultsIterator *iter;
+	SIValue *yield_node;  // yield node
+	SIValue *yield_score;  // yield score
 } QueryNodeContext;
 
-ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *args, const char **yield) {
+static void _process_yield(QueryNodeContext *ctx, const char **yield) {
+	ctx->yield_node = NULL;
+	ctx->yield_score = NULL;
+	int idx = 0;
+	for(uint i = 0; i < array_len(yield); i++) {
+		if(strcasecmp("node", yield[i]) == 0) {
+			ctx->yield_node = ctx->output + idx;
+			idx++;
+			continue;
+		}
+		if(strcasecmp("score", yield[i]) == 0) {
+			ctx->yield_score = ctx->output + idx;
+			idx++;
+			continue;
+		}
+	}
+}
+
+ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *args,
+											 const char **yield) {
 	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
 	if(!(SI_TYPE(args[0]) & SI_TYPE(args[1]) & T_STRING)) return PROCEDURE_ERR;
 
@@ -51,11 +72,8 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	pdata->idx = idx;
 	pdata->g = gc->g;
 	pdata->n = GE_NEW_NODE();
-	pdata->output = array_new(SIValue, 4);
-	array_append(pdata->output, SI_ConstStringVal("node"));
-	array_append(pdata->output, SI_Node(&pdata->n));
-	array_append(pdata->output, SI_ConstStringVal("score"));
-	array_append(pdata->output, SI_DoubleVal(0.0));
+	pdata->output = array_new(SIValue, 2);
+	_process_yield(pdata, yield);
 
 	// Execute query
 	pdata->iter = Index_Query(pdata->idx, query, &err);
@@ -95,8 +113,8 @@ SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
 	Node *n = &pdata->n;
 	Graph_GetNode(pdata->g, *id, n);
 
-	pdata->output[1] = SI_Node(n);
-	pdata->output[3] = SI_DoubleVal(score);
+	if(pdata->yield_node) *pdata->yield_node = SI_Node(n);
+	if(pdata->yield_score) *pdata->yield_score = SI_DoubleVal(score);
 
 	return pdata->output;
 }

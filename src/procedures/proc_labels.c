@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -21,15 +21,14 @@ typedef struct {
 } LabelsContext;
 
 ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx,
-		const SIValue *args, const char **yield) {
+								  const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));
 	pdata->schema_id = 0;
 	pdata->gc = QueryCtx_GetGraphCtx();
-	pdata->output = array_new(SIValue, 2);
+	pdata->output = array_new(SIValue, 1);
 	array_append(pdata->output, SI_ConstStringVal("label"));
-	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -47,7 +46,7 @@ SIValue *Proc_LabelsStep(ProcedureCtx *ctx) {
 	// Get schema label.
 	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_NODE);
 	char *label = (char *)Schema_GetName(s);
-	pdata->output[1] = SI_ConstStringVal(label);
+	pdata->output[0] = SI_ConstStringVal(label);
 	return pdata->output;
 }
 

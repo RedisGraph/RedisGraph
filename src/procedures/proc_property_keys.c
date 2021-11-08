@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -26,9 +26,8 @@ ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const SIValue *args, cons
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
 	pdata->prop_id = 0;
 	pdata->gc = QueryCtx_GetGraphCtx();
-	pdata->output = array_new(SIValue, 2);
+	pdata->output = array_new(SIValue, 1);
 	array_append(pdata->output, SI_ConstStringVal("propertyKey"));
-	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -45,7 +44,7 @@ SIValue *Proc_PropKeysStep(ProcedureCtx *ctx) {
 
 	// Get attribute name.
 	char *name = (char *)GraphContext_GetAttributeString(pdata->gc, pdata->prop_id++);
-	pdata->output[1] = SI_ConstStringVal(name);
+	pdata->output[0] = SI_ConstStringVal(name);
 	return pdata->output;
 }
 

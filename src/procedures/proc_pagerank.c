@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -25,8 +25,27 @@ typedef struct {
 	Node node;                      // Node.
 	GrB_Index *mapping;             // Mapping between extracted matrix rows and node ids.
 	LAGraph_PageRank *ranking;      // Nodes ranking.
-	SIValue *output;                // Array with 4 entries ["node", node, "score", score].
+	SIValue *output;                // array with up to 2 entries [node, score]
+	SIValue *yield_node;            // yield node
+	SIValue *yield_score;           // yield score
 } PagerankContext;
+
+static void _process_yield(PagerankContext *ctx, const char **yield) {
+	int idx = 0;
+	for(uint i = 0; i < array_len(yield); i++) {
+		if(strcasecmp("node", yield[i]) == 0) {
+			ctx->yield_node = ctx->output + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("score", yield[i]) == 0) {
+			ctx->yield_score = ctx->output + idx;
+			idx++;
+			continue;
+		}
+	}
+}
 
 ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 									const SIValue *args, const char **yield) {
@@ -70,11 +89,9 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
 	pdata->node = GE_NEW_NODE();
 	pdata->mapping = mapping;
 	pdata->ranking = ranking;
-	pdata->output = array_new(SIValue, 4);
-	array_append(pdata->output, SI_ConstStringVal("node"));
-	array_append(pdata->output, SI_Node(NULL)); // Place holder.
-	array_append(pdata->output, SI_ConstStringVal("score"));
-	array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
+	pdata->output = array_new(SIValue, 2);
+	_process_yield(pdata, yield);
+
 	ctx->privateData = pdata;
 
 	// Get label matrix.
@@ -166,8 +183,8 @@ SIValue *Proc_PagerankStep(ProcedureCtx *ctx) {
 	NodeID node_id = (pdata->mapping) ? pdata->mapping[rank.page] : rank.page;
 
 	Graph_GetNode(pdata->g, node_id, &pdata->node);
-	pdata->output[1] = SI_Node(&pdata->node);
-	pdata->output[3] = SI_DoubleVal(rank.pagerank);
+	if(pdata->yield_node) *pdata->yield_node = SI_Node(&pdata->node);
+	if(pdata->yield_score) *pdata->yield_score = SI_DoubleVal(rank.pagerank);
 
 	return pdata->output;
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,10 +17,30 @@ extern rax *__procedures;
 typedef struct {
 	SIValue *output;      // Array with a maximum of 4 entries: ["name", name, "mode", mode].
 	raxIterator iter;     // Procedures iterator.
+	SIValue *yield_name;  // yield name
+	SIValue *yield_mode;  // yield mode
 } ProcProceduresPrivateData;
 
+static void _process_yield(ProcProceduresPrivateData *ctx, const char **yield) {
+	ctx->yield_name = NULL;
+	ctx->yield_mode = NULL;
+	int idx = 0;
+	for(uint i = 0; i < array_len(yield); i++) {
+		if(strcasecmp("name", yield[i]) == 0) {
+			ctx->yield_name = ctx->output + idx;
+			idx++;
+			continue;
+		}
+		if(strcasecmp("mode", yield[i]) == 0) {
+			ctx->yield_mode = ctx->output + idx;
+			idx++;
+			continue;
+		}
+	}
+}
+
 ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
-  		const SIValue *args, const char **yield) {
+									  const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	ProcProceduresPrivateData *pdata = rm_malloc(sizeof(ProcProceduresPrivateData));
@@ -29,11 +49,8 @@ ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
 	rax *procedures = __procedures;
 	raxStart(&pdata->iter, procedures);
 	raxSeek(&pdata->iter, "^", NULL, 0);
-	pdata->output = array_new(SIValue, 4);
-	array_append(pdata->output, SI_ConstStringVal("name"));
-	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
-	array_append(pdata->output, SI_ConstStringVal("mode"));
-	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	pdata->output = array_new(SIValue, 2);
+	_process_yield(pdata, yield);
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -50,9 +67,11 @@ SIValue *Proc_ProceduresStep(ProcedureCtx *ctx) {
 	// Returns the current procedure's name and mode.
 	ProcGenerator gen = pdata->iter.data;
 	ProcedureCtx *curr_proc_ctx = gen();
-	pdata->output[1] = SI_ConstStringVal((char *)Procedure_GetName(curr_proc_ctx));
-	pdata->output[3] = Procedure_IsReadOnly(curr_proc_ctx) ?
-	  SI_ConstStringVal("READ") : SI_ConstStringVal("WRITE");
+	if(pdata->yield_name) *pdata->yield_name =
+			SI_ConstStringVal(Procedure_GetName(curr_proc_ctx));
+	if(pdata->yield_mode) *pdata->yield_mode =
+			Procedure_IsReadOnly(curr_proc_ctx) ? SI_ConstStringVal("READ") :
+			SI_ConstStringVal("WRITE");
 	Proc_Free(curr_proc_ctx);
 	return pdata->output;
 }
@@ -78,12 +97,13 @@ ProcedureCtx *Proc_ProceduresCtx() {
 	array_append(outputs, out_mode);
 
 	ProcedureCtx *ctx = ProcCtxNew("dbms.procedures",
-	  0,
-	  outputs,
-	  Proc_ProceduresStep,
-	  Proc_ProceduresInvoke,
-	  Proc_ProceduresFree,
-	  privateData,
-	  true);
+								   0,
+								   outputs,
+								   Proc_ProceduresStep,
+								   Proc_ProceduresInvoke,
+								   Proc_ProceduresFree,
+								   privateData,
+								   true);
 	return ctx;
 }
+

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,40 +16,9 @@ static OpResult ProcCallReset(OpBase *opBase);
 static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProcCallFree(OpBase *opBase);
 
-static void _construct_output_mappings(OpProcCall *op, SIValue *outputs) {
-	// Map procedure outputs to record indices.
-	uint n = array_len(op->output);
-	uint m = array_len(outputs);
-	op->yield_map = rm_malloc(sizeof(OutputMap) * n);
-
-	for(uint i = 0; i < n; i++) {
-		const char *output = op->output[i];
-		/* Procedure output is a key/value pair
-		 * where the key is at even position and the value is at
-		 * an odd position. */
-		uint j = 0;
-		for(; j < m; j += 2) {
-			char *key = (outputs + j)->stringval;
-			if(strcmp(output, key) == 0) {
-				int idx;
-				bool aware = OpBase_Aware((OpBase *)op, key, &idx);
-				UNUSED(aware);
-				ASSERT(aware == true);
-				op->yield_map[i].proc_out_idx = j + 1;
-				op->yield_map[i].rec_idx = idx;
-				break;
-			}
-		}
-		// Make sure output was mapped.
-		ASSERT(j < m);
-	}
-}
-
 static Record _yield(OpProcCall *op) {
 	SIValue *outputs = Proc_Step(op->procedure);
 	if(outputs == NULL) return NULL;
-
-	if(!op->yield_map) _construct_output_mappings(op, outputs);
 
 	Record clone = OpBase_CloneRecord(op->r);
 	for(uint i = 0; i < array_len(op->output); i++) {
@@ -95,11 +64,12 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	uint yield_count = array_len(yield_exps);
 	op->output = array_new(const char *, yield_count);
+	op->yield_map = rm_malloc(sizeof(OutputMap) * yield_count);
 
 	// Set operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall",
-	  	NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
-	  	ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
+				NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
+				ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
 
 	// Set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
@@ -107,15 +77,16 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
 
 		array_append(op->output, yield);
-		OpBase_Modifies((OpBase *)op, yield);
-		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
+		int rec_idx = OpBase_Modifies((OpBase *)op, alias);
+		op->yield_map[i].rec_idx = rec_idx;
+		op->yield_map[i].proc_out_idx = i;
 	}
 
-	return (OpBase*)op;
+	return (OpBase *)op;
 }
 
 static Record ProcCallConsume(OpBase *opBase) {
-	OpProcCall *op = (OpProcCall*)opBase;
+	OpProcCall *op = (OpProcCall *)opBase;
 
 	Record yield_record = NULL;
 	while(!(yield_record = _yield(op))) {

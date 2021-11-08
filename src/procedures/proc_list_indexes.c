@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -27,6 +27,53 @@ typedef struct {
 	SIValue *yield_entity_type; // yield index entity type
 } IndexesContext;
 
+static void _process_yield(IndexesContext *ctx, const char **yield) {
+	ctx->yield_type        = NULL;
+	ctx->yield_label       = NULL;
+	ctx->yield_properties  = NULL;
+	ctx->yield_language    = NULL;
+	ctx->yield_stopwords   = NULL;
+	ctx->yield_entity_type = NULL;
+	int idx = 0;
+	for(uint i = 0; i < array_len(yield); i++) {
+		if(strcasecmp("type", yield[i]) == 0) {
+			ctx->yield_type = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("label", yield[i]) == 0) {
+			ctx->yield_label = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("properties", yield[i]) == 0) {
+			ctx->yield_properties = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("language", yield[i]) == 0) {
+			ctx->yield_language = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("stopwords", yield[i]) == 0) {
+			ctx->yield_stopwords = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("entitytype", yield[i]) == 0) {
+			ctx->yield_entity_type = ctx->out + idx;
+			idx++;
+			continue;
+		}
+	}
+}
+
 // CALL db.indexes()
 ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 								   const char **yield) {
@@ -42,56 +89,12 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 
 	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
 	pdata->gc                = gc;
-	pdata->out               = array_new(SIValue, 12);
+	pdata->out               = array_new(SIValue, 6);
 	pdata->type              = IDX_EXACT_MATCH;
 	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
 	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
-	pdata->yield_type        = NULL;
-	pdata->yield_label       = NULL;
-	pdata->yield_properties  = NULL;
-	pdata->yield_language    = NULL;
-	pdata->yield_stopwords   = NULL;
-	pdata->yield_entity_type = NULL;
 
-	uint yield_count = array_len(yield);
-	for(uint i = 0; i < yield_count; i++) {
-		if(strcasecmp("type", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("type"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_type = pdata->out + (i * 2 + 1);
-			continue;
-		}
-		if(strcasecmp("label", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("label"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_label = pdata->out + (i * 2 + 1);
-			continue;
-		}
-		if(strcasecmp("properties", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("properties"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_properties = pdata->out + (i * 2 + 1);
-			continue;
-		}
-		if(strcasecmp("language", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("language"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_language = pdata->out + (i * 2 + 1);
-			continue;
-		}
-		if(strcasecmp("stopwords", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("stopwords"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_stopwords = pdata->out + (i * 2 + 1);
-			continue;
-		}
-		if(strcasecmp("entitytype", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("entitytype"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_entity_type = pdata->out + (i * 2 + 1);
-			continue;
-		}
-	}
+	_process_yield(pdata, yield);
 
 	ctx->privateData = pdata;
 
@@ -129,12 +132,12 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 
 		for(uint i = 0; i < fields_count; i++) {
 			SIArray_Append(ctx->yield_properties,
-					SI_ConstStringVal((char *)fields[i]));
+						   SI_ConstStringVal((char *)fields[i]));
 		}
 	}
 
 	if(ctx->yield_language) {
-		*ctx->yield_language = 
+		*ctx->yield_language =
 			SI_ConstStringVal((char *)Index_GetLanguage(idx));
 	}
 
@@ -143,7 +146,7 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 		char **stopwords = Index_GetStopwords(idx, &stopwords_count);
 		if(stopwords) {
 			*ctx->yield_stopwords = SI_Array(stopwords_count);
-			for (size_t i = 0; i < stopwords_count; i++) {
+			for(size_t i = 0; i < stopwords_count; i++) {
 				SIValue value = SI_ConstStringVal(stopwords[i]);
 				SIArray_Append(ctx->yield_stopwords, value);
 				rm_free(stopwords[i]);
