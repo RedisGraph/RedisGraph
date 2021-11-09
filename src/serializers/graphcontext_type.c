@@ -16,6 +16,8 @@
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
 
+extern uint aux_field_counter;
+
 // declaration of the type for redis registration
 RedisModuleType *GraphContextRedisModuleType;
 
@@ -55,13 +57,16 @@ static void _GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *
 
 // Save an unsigned placeholder before and after the keyspace encoding.
 static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
-	RedisModule_SaveUnsigned(rdb, 0);
+	uint current_aux_field_counter = when == REDISMODULE_AUX_BEFORE_RDB 
+		? aux_field_counter 
+		: 0;
+	RedisModule_SaveUnsigned(rdb, current_aux_field_counter);
 }
 
 // Decode the unsigned placeholders saved before and after the keyspace values
 // and call the module event handler.
 static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
-	RedisModule_LoadUnsigned(rdb);
+	aux_field_counter += RedisModule_LoadUnsigned(rdb);
 	if(when == REDISMODULE_AUX_BEFORE_RDB) ModuleEventHandler_AUXBeforeKeyspaceEvent();
 	else ModuleEventHandler_AUXAfterKeyspaceEvent();
 	return REDISMODULE_OK;

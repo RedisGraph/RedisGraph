@@ -35,6 +35,7 @@ void Graph_Query(void *args);
 void Graph_Slowlog(void *args);
 void Graph_Profile(void *args);
 void Graph_Explain(void *args);
+int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
