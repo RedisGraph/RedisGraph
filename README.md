@@ -3,10 +3,11 @@
 [![Dockerhub](https://img.shields.io/badge/dockerhub-redislabs%2Fredisgraph-blue)](https://hub.docker.com/r/redislabs/redisgraph/tags/)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/RedisGraph/RedisGraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/RedisGraph/RedisGraph/alerts/)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
+
+# RedisGraph 
+## A graph database module for Redis
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
-
-# RedisGraph - A graph database module for Redis
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
