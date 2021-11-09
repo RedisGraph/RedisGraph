@@ -60,28 +60,42 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	}
 }
 
-void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, uint64_t key_count, const char *graph_name, Graph *g) {
+void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, GraphDecodeContext *decoding_ctx, const char *graph_name, Graph *g) {
 	ASSERT(g   != NULL);
 	ASSERT(ctx != NULL);
 
-	int r_count = Graph_RelationTypeCount(g);
 	GraphEncodeHeader *header = &(ctx->header);
 	ASSERT(header->multi_edge == NULL);
 
-	header->graph_name                 =  graph_name;
-	header->node_count                 =  Graph_NodeCount(g);
-	header->edge_count                 =  Graph_EdgeCount(g);
-	header->relationship_matrix_count  =  r_count;
-	header->label_matrix_count         =  Graph_LabelTypeCount(g);
-	header->key_count                  =  key_count;
-	header->multi_edge                 =  rm_malloc(sizeof(bool) * r_count);
+	header->graph_name                     =  graph_name;
+	if(!GraphDecodeContext_Finished(decoding_ctx)) {
+		header->node_count                 =  decoding_ctx->node_count;
+		header->edge_count                 =  decoding_ctx->edge_count;
+		header->relationship_matrix_count  =  decoding_ctx->relation_count;
+		header->label_matrix_count         =  decoding_ctx->label_count;
+		header->key_count                  =  decoding_ctx->graph_keys_count;
+		header->multi_edge                 =  rm_malloc(sizeof(bool) * decoding_ctx->relation_count);
 
-	// denote for each relationship matrix Ri if it contains muti-edge entries
-	// this information alows for an optimization when loading the data
-	// as construction of a matrix without multiple edge entry is cheaper
-	for(uint i = 0; i < r_count; i++) {
-		bool multi_edge = Graph_RelationshipContainsMultiEdge(g, i, false);
-		header->multi_edge[i] = multi_edge;
+		for(uint i = 0; i < decoding_ctx->relation_count; i++) {
+			bool multi_edge = (bool)decoding_ctx->multi_edge[i];
+			header->multi_edge[i] = multi_edge;
+		}
+	} else {
+		int r_count = Graph_RelationTypeCount(g);
+		header->node_count                 =  Graph_NodeCount(g);
+		header->edge_count                 =  Graph_EdgeCount(g);
+		header->relationship_matrix_count  =  r_count;
+		header->label_matrix_count         =  Graph_LabelTypeCount(g);
+		header->key_count                  =  GraphEncodeContext_GetKeyCount(ctx);
+		header->multi_edge                 =  rm_malloc(sizeof(bool) * r_count);
+
+		// denote for each relationship matrix Ri if it contains muti-edge entries
+		// this information alows for an optimization when loading the data
+		// as construction of a matrix without multiple edge entry is cheaper
+		for(uint i = 0; i < r_count; i++) {
+			bool multi_edge = Graph_RelationshipContainsMultiEdge(g, i, false);
+			header->multi_edge[i] = multi_edge;
+		}
 	}
 }
 

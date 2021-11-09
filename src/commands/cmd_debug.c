@@ -9,6 +9,9 @@
 #include "../graph/graphcontext.h"
 #include "../module_event_handlers.h"
 
+void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
+void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
+
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;

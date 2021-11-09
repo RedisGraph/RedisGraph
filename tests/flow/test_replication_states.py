@@ -52,20 +52,20 @@ class testReplicationState():
         result = self.slave.execute_command("GRAPH.RO_QUERY", "x", q)
         self.env.assertEqual(result[1], expected)
 
-    # # test replication when master and slave are always connected
-    # def test_replication(self):
-    #     for scenario in permutations(keys.keys()):
-    #         self.master.flushall()
-    #         self._check(0, 0)
-    #         self.master.execute_command("GRAPH.DEBUG", "AUX", "START")
+    # test replication when master and slave are always connected
+    def test_replication(self):
+        for scenario in permutations(keys.keys()):
+            self.master.flushall()
+            self._check(0, 0)
+            self.master.execute_command("GRAPH.DEBUG", "AUX", "START")
 
-    #         self._step(scenario[0], 1, 1)
-    #         self._step(scenario[1], 2, 2)
-    #         self._step(scenario[2], 3, 3)
+            self._step(scenario[0], 1, 1)
+            self._step(scenario[1], 2, 2)
+            self._step(scenario[2], 3, 3)
 
-    #         self.master.execute_command("GRAPH.DEBUG", "AUX", "END")
-    #         self._check(1, 1)
-    #         self._test_data()
+            self.master.execute_command("GRAPH.DEBUG", "AUX", "END")
+            self._check(1, 1)
+            self._test_data()
 
     # test replication when slave miss 1st restore
     def test_replication_after_import_1_key(self):
@@ -92,47 +92,47 @@ class testReplicationState():
             self._check(1, 1)
             self._test_data()
 
-    # # test replication when slave miss 1st and 2nd restore
-    # def test_replication_after_import_2_key(self):
-    #     self.master.flushall()
-    #     self._check(0, 0)
+    # test replication when slave miss 1st and 2nd restore
+    def test_replication_after_import_2_key(self):
+        self.master.flushall()
+        self._check(0, 0)
 
-    #     # disconnect slave from master
-    #     self.slave.slaveof()
+        # disconnect slave from master
+        self.slave.slaveof()
 
-    #     self._step('{x}x_dba3feaa-a949-402e-a102-280f797a479f', 1, None)
-    #     self._step('{x}x_6e357ef7-b3e2-442a-8cc2-eaa51ed9fe9b', 2, None)
+        self._step('{x}x_dba3feaa-a949-402e-a102-280f797a479f', 1, None)
+        self._step('{x}x_6e357ef7-b3e2-442a-8cc2-eaa51ed9fe9b', 2, None)
 
-    #     # connect slave to master
-    #     self.slave.slaveof(self.master_host, self.master_port)
+        # connect slave to master
+        self.slave.slaveof(self.master_host, self.master_port)
         
-    #     self._check(2, 2)
+        self._check(2, 2)
 
-    #     self._step('x', 1, 1)
+        self._step('x', 1, 1)
 
-    #     self._test_data()
+        self._test_data()
 
-    # # test replication when slave all restored keys
-    # def test_replication_after_import_3_key(self):
-    #     for scenario in permutations(keys.keys()):
-    #         self.master.flushall()
-    #         self._check(0, 0)
+    # test replication when slave all restored keys
+    def test_replication_after_import_3_key(self):
+        for scenario in permutations(keys.keys()):
+            self.master.flushall()
+            self._check(0, 0)
 
-    #         # disconnect slave from master
-    #         self.slave.slaveof()
+            # disconnect slave from master
+            self.slave.slaveof()
 
-    #         self.master.execute_command("GRAPH.DEBUG", "AUX", "START")
+            self.master.execute_command("GRAPH.DEBUG", "AUX", "START")
 
-    #         self._step(scenario[0], 1, None)
-    #         self._step(scenario[1], 2, None)
-    #         self._step(scenario[2], 3, None)
+            self._step(scenario[0], 1, None)
+            self._step(scenario[1], 2, None)
+            self._step(scenario[2], 3, None)
 
-    #         self.master.execute_command("GRAPH.DEBUG", "AUX", "END")
-    #         self._check(1, None)
+            self.master.execute_command("GRAPH.DEBUG", "AUX", "END")
+            self._check(1, None)
 
-    #         # connect slave to master
-    #         self.slave.slaveof(self.master_host, self.master_port)
+            # connect slave to master
+            self.slave.slaveof(self.master_host, self.master_port)
             
-    #         self._check(1, 1)
+            self._check(1, 1)
 
-    #         self._test_data()
+            self._test_data()

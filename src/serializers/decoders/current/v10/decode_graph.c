@@ -90,6 +90,10 @@ static GraphContext *_DecodeHeader
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
 
+		gc->decoding_context->node_count = node_count;
+		gc->decoding_context->edge_count = edge_count;
+		gc->decoding_context->label_count = label_count;
+		gc->decoding_context->relation_count = relation_count;
 		gc->decoding_context->multi_edge = array_new(uint64_t, relation_count);
 		for(uint i = 0; i < relation_count; i++) {
 			// enable/Disable support for multi-edge

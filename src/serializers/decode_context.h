@@ -15,8 +15,12 @@
 typedef struct {
 	uint64_t keys_processed;    // Count the number of procssed graph keys.
 	uint64_t graph_keys_count;  // The number of keys representing the graph.
-	rax *meta_keys;             // The meta keys encountered so far in the decode process.
+	rax      *meta_keys;        // The meta keys encountered so far in the decode process.
 	uint64_t *multi_edge;       // Is relation contains multi edge values.
+	uint64_t  node_count;
+	uint64_t  edge_count;
+	uint64_t  label_count;
+	uint64_t  relation_count;
 } GraphDecodeContext;
 
 // Creates a new graph decoding context.
