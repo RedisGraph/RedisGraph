@@ -154,7 +154,7 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	if(idx) *idx = pos;
 
 	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, pos);
-	MARK_HEADER_AS_NOT_DELETED(item_header);
+	item_header->state = ITEM_HEADER_INITIALIZED;
 
 	return ITEM_DATA(item_header);
 }

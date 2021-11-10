@@ -52,7 +52,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter, uint64_t *id) {
 			iter->_current_block = iter->_current_block->next;
 		}
 
-		if(!IS_ITEM_DELETED(item_header)) {
+		if(IS_ITEM_INITIALIZED(item_header)) {
 			item = ITEM_DATA(item_header);
 			if(id) *id = iter->_current_pos - iter->_step;
 			break;

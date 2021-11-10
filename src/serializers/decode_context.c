@@ -58,12 +58,7 @@ void GraphDecodeContext_ClearMetaKeys(GraphDecodeContext *ctx) {
 // Returns if the the number of processed keys is equal to the total number of graph keys.
 bool GraphDecodeContext_Finished(const GraphDecodeContext *ctx) {
 	ASSERT(ctx);
-	return ctx->keys_processed == ctx->graph_keys_count;
-}
-
-bool GraphDecodeContext_Started(const GraphDecodeContext *ctx) {
-	ASSERT(ctx);
-	return ctx->keys_processed > 0;
+	return ctx->keys_processed == ctx->graph_keys_count || ctx->keys_processed == 0;
 }
 
 void GraphDecodeContext_IncreaseProcessedKeyCount(GraphDecodeContext *ctx) {

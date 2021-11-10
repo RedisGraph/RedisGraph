@@ -20,6 +20,12 @@ typedef void (*fpDestructor)(void *);
 // Returns the item header size.
 #define ITEM_HEADER_SIZE 1
 
+#define ITEM_HEADER_UNINITIALIZED 0
+
+#define ITEM_HEADER_INITIALIZED 1
+
+#define ITEM_HEADER_DELETED 2
+
 // DataBlock item is stored as ||header|data||. This macro retrive the data pointer out of the header pointer.
 #define ITEM_DATA(header) ((void *)((header) + ITEM_HEADER_SIZE))
 
@@ -27,13 +33,15 @@ typedef void (*fpDestructor)(void *);
 #define GET_ITEM_HEADER(item) ((item) - ITEM_HEADER_SIZE)
 
 // Sets the deleted bit in the header to 1.
-#define MARK_HEADER_AS_DELETED(header) ((header)->deleted |= 1)
+#define MARK_HEADER_AS_DELETED(header) ((header)->state = ITEM_HEADER_DELETED)
 
 // Sets the deleted bit in the header to 0.
-#define MARK_HEADER_AS_NOT_DELETED(header) ((header)->deleted &= 0)
+#define MARK_HEADER_AS_NOT_DELETED(header) ((header)->state = 0)
 
 // Checks if the deleted bit in the header is 1 or not.
-#define IS_ITEM_DELETED(header) ((header)->deleted & 1)
+#define IS_ITEM_DELETED(header) ((header)->state == ITEM_HEADER_DELETED)
+
+#define IS_ITEM_INITIALIZED(header) ((header)->state == ITEM_HEADER_INITIALIZED)
 
 
 /* The DataBlock is a container structure for holding arbitrary items of a uniform type
@@ -54,7 +62,7 @@ typedef struct {
 // This struct is for data block item header data.
 // TODO: Consider using pragma pack/pop for tight memory/word alignment.
 typedef struct {
-	unsigned char deleted: 1;  // A bit indicate if the current item is deleted or not.
+	unsigned char state;  // A bit indicate if the current item is deleted or not.
 } DataBlockItemHeader;
 
 // Create a new DataBlock

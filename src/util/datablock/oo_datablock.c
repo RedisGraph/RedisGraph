@@ -30,7 +30,7 @@ inline void *DataBlock_AllocateItemOutOfOrder(DataBlock *dataBlock, uint64_t idx
 	// Check if idx<=data block's current capacity. If needed, allocate additional blocks.
 	DataBlock_Ensure(dataBlock, idx);
 	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, idx);
-	MARK_HEADER_AS_NOT_DELETED(item_header);
+	item_header->state = ITEM_HEADER_INITIALIZED;
 	dataBlock->itemCount++;
 	return ITEM_DATA(item_header);
 }
