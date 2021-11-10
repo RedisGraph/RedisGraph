@@ -75,7 +75,7 @@ static void _RdbSaveEntity
 ) {
 	// Format:
 	// #attributes N
-	// (name, value type, value) X N 
+	// (name, value type, value) X N
 
 	RedisModule_SaveUnsigned(rdb, e->prop_count);
 
@@ -217,15 +217,15 @@ void RdbSaveNodes_v10
 	// already set to offset by a previous encodeing of nodes, or create new one
 	DataBlockIterator *iter = GraphEncodeContext_GetDatablockIterator(gc->encoding_context);
 	if(!iter) {
-		iter = GraphDecodeContext_Finished(gc->	decoding_context) 
-			? Graph_ScanNodes(gc->g)
-			: DataBlockIterator_New(gc->g->nodes->blocks[0], 0, gc->decoding_context->node_count, 1);
+		iter = GraphDecodeContext_Finished(gc->decoding_context)
+			   ? Graph_ScanNodes(gc->g)
+			   : DataBlockIterator_New(gc->g->nodes->blocks[0], 0, gc->decoding_context->node_count, 1);
 		GraphEncodeContext_SetDatablockIterator(gc->encoding_context, iter);
 	}
 
 	for(uint64_t i = 0; i < nodes_to_encode; i++) {
 		GraphEntity e;
-		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);		
+		e.entity = (Entity *)DataBlockIterator_Next(iter, &e.id);
 		_RdbSaveNode_v10(rdb, gc, &e);
 	}
 

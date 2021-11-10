@@ -154,7 +154,7 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	if(idx) *idx = pos;
 
 	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, pos);
-	item_header->state = ITEM_HEADER_INITIALIZED;
+	MARK_HEADER_AS_INITIALIZED(item_header);
 
 	return ITEM_DATA(item_header);
 }
