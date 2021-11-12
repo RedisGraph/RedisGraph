@@ -451,6 +451,7 @@ on-integ-and-version-tags: &on-integ-and-version-tags
         - master
         - /^\d+\.\d+.*$/
         - /^feature-.*$/
+        - /^perf-.*$/
     tags:
       only: /^v[0-9].*/
 
@@ -505,11 +506,6 @@ workflows:
           requires:
             - platform_build
             - build_macos
-      - performance_ci_automation_not_integ:
-          <<: *context
-          <<: *not-on-integ-branch
-          requires:
-            - build
       - performance_ci_automation:
           <<: *context
           <<: *on-integ-and-version-tags
