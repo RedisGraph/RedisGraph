@@ -34,7 +34,7 @@ class testReplicationState():
             self.master.execute_command("WAIT", "1", "0")
             keys = self.slave.keys('*')
             self.env.assertEqual(len(keys), keys_slave)
-            if keys_master:
+            if keys_master is not None:
                 keys = self.master.keys('*')
                 self.env.assertEqual(len(keys), keys_master)
 
@@ -141,4 +141,35 @@ class testReplicationState():
             
             self._check(1, 1)
 
+            self._test_data()
+
+    # test replication when slave have disconnections
+    def test_replication_disconnections(self):
+        for scenario in permutations(keys.keys()):
+            self.master.flushall()
+            self._check(0, 0)
+            
+            # disconnect slave from master
+            self.slave.slaveof()
+
+            self.master.execute_command("GRAPH.DEBUG", "AUX", "START")
+
+            self._step(scenario[0], 1, None)
+
+            # connect slave to master
+            self.slave.slaveof(self.master_host, self.master_port)
+            self._check(1, 1)
+
+            # disconnect slave from master
+            self.slave.slaveof()
+
+            # connect slave to master
+            self.slave.slaveof(self.master_host, self.master_port)
+            self._check(1, 1)
+
+            self._step(scenario[1], 2, 2)
+            self._step(scenario[2], 3, 3)
+
+            self.master.execute_command("GRAPH.DEBUG", "AUX", "END")
+            self._check(1, 1)
             self._test_data()
