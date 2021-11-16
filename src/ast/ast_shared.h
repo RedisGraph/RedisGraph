@@ -86,10 +86,10 @@ typedef struct {
 
 // Context describing a relationship in a CREATE or MERGE clause
 typedef struct {
-	int labelId;                // node label id
 	int node_idx;               // node record index
+	int *labelsId;              // array of node labels id
 	const char *alias;          // node alias
-	const char *label;          // node label
+	const char **labels;        // node labels
 	PropertyMap *properties;    // node properties set
 } NodeCreateCtx;
 
@@ -100,6 +100,9 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props);
 
 // Clone NodeCreateCtx.
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
+
+// Free NodeCreateCtx.
+void NodeCreateCtx_Free(NodeCreateCtx ctx);
 
 // Clone EdgeCreateCtx.
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);

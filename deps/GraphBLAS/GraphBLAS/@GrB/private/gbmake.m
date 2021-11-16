@@ -224,6 +224,9 @@ here1 = cd ('../..') ;
 addpath (pwd) ;
 fprintf ('  addpath (''%s'') ;\n', pwd) ;
 cd ('..') ;
+if (need_rename)
+    cd ('GraphBLAS') ;
+end
 if ispc
     lib_path = sprintf ('%s/build/Release', pwd) ;
 else

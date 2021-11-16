@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,18 +10,45 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 
-Schema *Schema_New(const char *name, int id) {
-	Schema *schema = rm_malloc(sizeof(Schema));
-	schema->id = id;
-	schema->index = NULL;
-	schema->fulltextIdx = NULL;
-	schema->name = rm_strdup(name);
-	return schema;
+Schema *Schema_New
+(
+	SchemaType type,
+	int id,
+	const char *name
+) {
+	ASSERT(name != NULL);
+
+	Schema *s = rm_malloc(sizeof(Schema));
+
+	s->id           =  id;
+	s->type         =  type;
+	s->index        =  NULL;
+	s->fulltextIdx  =  NULL;
+	s->name         =  rm_strdup(name);
+
+	return s;
 }
 
-const char *Schema_GetName(const Schema *s) {
+int Schema_ID
+(
+	const Schema *s
+) {
+	ASSERT(s != NULL);
+
+	return s->id;
+}
+
+const char *Schema_GetName
+(
+	const Schema *s
+) {
 	ASSERT(s);
 	return s->name;
+}
+
+int Schema_GetID(const Schema *s) {
+  ASSERT(s);
+  return s->id;
 }
 
 bool Schema_HasIndices(const Schema *s) {
@@ -29,8 +56,11 @@ bool Schema_HasIndices(const Schema *s) {
 	return (s->fulltextIdx || s->index);
 }
 
-unsigned short Schema_IndexCount(const Schema *s) {
-	ASSERT(s);
+unsigned short Schema_IndexCount
+(
+	const Schema *s
+) {
+	ASSERT(s != NULL);
 	unsigned short n = 0;
 
 	if(s->index) n += Index_FieldsCount(s->index);
@@ -39,29 +69,41 @@ unsigned short Schema_IndexCount(const Schema *s) {
 	return n;
 }
 
-Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType type) {
+Index *Schema_GetIndex
+(
+	const Schema *s,
+	Attribute_ID *attribute_id,
+	IndexType type
+) {
+	ASSERT(s != NULL);
+
 	if(type == IDX_EXACT_MATCH) {
-		// Return NULL if the index does not exist, or an attribute was
-		// specified but does not reside on the index.
+		// return NULL if the index does not exist, or an attribute was
+		// specified but does not reside on the index
 		if(s->index == NULL ||
 		   (attribute_id && !Index_ContainsAttribute(s->index, *attribute_id))) {
 			return NULL;
 		}
 		return s->index;
 	} else if(type ==  IDX_FULLTEXT) {
-		// Return NULL if the index does not exist, or an attribute was
-		// specified but does not reside on the index.
+		// return NULL if the index does not exist, or an attribute was
+		// specified but does not reside on the index
 		if(s->fulltextIdx == NULL ||
 		   (attribute_id && !Index_ContainsAttribute(s->fulltextIdx, *attribute_id))) {
 			return NULL;
 		}
 		return s->fulltextIdx;
 	} else if(type == IDX_ANY && attribute_id) {
-		// If an attribute was specified, return the first index that contains it.
-		if(s->index && Index_ContainsAttribute(s->index, *attribute_id)) return s->index;
-		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attribute_id)) return s->fulltextIdx;
+		// if an attribute was specified
+		// return the first index that contains it
+		if(s->index && Index_ContainsAttribute(s->index, *attribute_id)) {
+			return s->index;
+		}
+		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attribute_id)) {
+			return s->fulltextIdx;
+		}
 	} else if(type == IDX_ANY && attribute_id == NULL) {
-		// If no attribute was specified, return the first extant index.
+		// if no attribute was specified, return the first extant index
 		if(s->index) return s->index;
 		if(s->fulltextIdx) return s->fulltextIdx;
 	}
@@ -69,21 +111,39 @@ Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType ty
 	return NULL;
 }
 
-int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
+int Schema_AddIndex
+(
+	Index **idx,
+	Schema *s,
+	const char *field,
+	IndexType type
+) {
 	ASSERT(field);
 
 	Index *_idx = Schema_GetIndex(s, NULL, type);
 
-	// Index exists, make sure attribute isn't already indexed.
+	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
 		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
 	} else {
-		// Index doesn't exist, create it.
-		_idx = Index_New(s->name, type);
+		// index doesn't exist, create it
+		// determine index graph entity type
+		GraphEntityType entity_type;
+		if(s->type == SCHEMA_NODE) entity_type = GETYPE_NODE;
+		else entity_type = GETYPE_EDGE;
+
+		_idx = Index_New(s->name, s->id, type, entity_type);
 		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
 		else s->index = _idx;
+
+		// introduce edge src and dest node ids
+		// as additional index fields
+		if(entity_type == GETYPE_EDGE) {
+			Index_AddField(_idx, "_src_id");
+			Index_AddField(_idx, "_dest_id");
+		}
 	}
 
 	Index_AddField(_idx, field);
@@ -92,8 +152,14 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	return INDEX_OK;
 }
 
-static int _Schema_RemoveExactMatchIndex(Schema *s, const char *field) {
+static int _Schema_RemoveExactMatchIndex
+(
+	Schema *s,
+	const char *field
+) {
+	ASSERT(s != NULL);
 	ASSERT(field != NULL);
+
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
 	if(attribute_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
@@ -112,7 +178,12 @@ static int _Schema_RemoveExactMatchIndex(Schema *s, const char *field) {
 	return INDEX_OK;
 }
 
-static int _Schema_RemoveFullTextIndex(Schema *s) {
+static int _Schema_RemoveFullTextIndex
+(
+	Schema *s
+) {
+	ASSERT(s != NULL);
+
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(idx == NULL) return INDEX_FAIL;
@@ -123,7 +194,14 @@ static int _Schema_RemoveFullTextIndex(Schema *s) {
 	return INDEX_OK;
 }
 
-int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
+int Schema_RemoveIndex
+(
+	Schema *s,
+	const char *field,
+	IndexType type
+) {
+	ASSERT(s != NULL);
+
 	switch(type) {
 		case IDX_FULLTEXT:
 			return _Schema_RemoveFullTextIndex(s);
@@ -134,9 +212,15 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 	}
 }
 
-// Index node under all schema indices.
-void Schema_AddNodeToIndices(const Schema *s, const Node *n) {
-	if(!s) return;
+// index node under all schema indices
+void Schema_AddNodeToIndices
+(
+	const Schema *s,
+	const Node *n
+) {
+	ASSERT(s != NULL);
+	ASSERT(n != NULL);
+
 	Index *idx = NULL;
 
 	idx = s->fulltextIdx;
@@ -146,12 +230,36 @@ void Schema_AddNodeToIndices(const Schema *s, const Node *n) {
 	if(idx) Index_IndexNode(idx, n);
 }
 
-void Schema_Free(Schema *schema) {
-	if(schema->name) rm_free(schema->name);
+// index edge under all schema indices
+void Schema_AddEdgeToIndices
+(
+	const Schema *s,
+	const Edge *e
+) {
+	ASSERT(s != NULL);
+	ASSERT(e != NULL);
+
+	Index *idx = NULL;
+
+	idx = s->fulltextIdx;
+	if(idx) Index_IndexEdge(idx, e);
+
+	idx = s->index;
+	if(idx) Index_IndexEdge(idx, e);
+}
+
+void Schema_Free
+(
+	Schema *s
+) {
+	ASSERT(s != NULL);
+
+	if(s->name) rm_free(s->name);
 
 	// Free indicies.
-	if(schema->index) Index_Free(schema->index);
-	if(schema->fulltextIdx) Index_Free(schema->fulltextIdx);
-	rm_free(schema);
+	if(s->index) Index_Free(s->index);
+	if(s->fulltextIdx) Index_Free(s->fulltextIdx);
+
+	rm_free(s);
 }
 

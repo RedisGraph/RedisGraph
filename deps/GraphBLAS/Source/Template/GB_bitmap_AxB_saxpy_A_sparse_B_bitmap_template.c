@@ -11,13 +11,18 @@
 
     if (use_coarse_tasks)
     {
-
         //----------------------------------------------------------------------
         // C<#M> += A*B using coarse tasks
         //----------------------------------------------------------------------
 
         // number of columns in the workspace for each task
         #define GB_PANEL_SIZE 4
+
+        if (B_iso)
+        { 
+            // Gb and Gx workspace is allocated below.  TODO: only Gb workspace
+            // is needed.  Use a single bx scalar for all threads, instead.
+        }
 
         //----------------------------------------------------------------------
         // allocate workspace for each task
@@ -45,7 +50,7 @@
             int64_t jpanel = GB_IMIN (jtask, GB_PANEL_SIZE) ;
             G_slice [tid] = gwork ;
             H_slice [tid] = hwork ;
-            if (jpanel > 1)
+            if (jpanel > 1 || B_iso)
             { 
                 // no need to allocate workspace for Gb and Gx if jpanel == 1
                 gwork += jpanel ;
@@ -159,7 +164,7 @@
                 #if ( !GB_IS_ANY_PAIR_SEMIRING )
                 if (!B_is_pattern)
                 {
-                    if (np == 1)
+                    if (np == 1 && !B_iso)
                     { 
                         // no need to load a single vector of B
                         GB_void *restrict Bx = (GB_void *) (B->x) ;
@@ -292,6 +297,9 @@
                                 for ( ; pA < pA_end ; pA++)
                                 {
                                     GB_LOAD_A_ij ;
+
+
+
                                     GB_HX_COMPUTE (0) ;
                                 }
                                 break ;
@@ -383,6 +391,12 @@
         //----------------------------------------------------------------------
         // C<#M> += A*B using fine tasks and atomics
         //----------------------------------------------------------------------
+
+        if (B_iso)
+        { 
+            // No special cases needed.  GB_GET_B_kj (bkj = B(k,j))
+            // handles the B iso case.
+        }
 
         int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
@@ -600,6 +614,12 @@
         // in the first phase, W(:,tid) = A(:,k1:k2) * B(k1:k2,j), where k1:k2
         // is defined by the fine_tid of the task.  The workspaces are then
         // summed into C in the second phase.
+
+        if (B_iso)
+        { 
+            // No special cases needed.  GB_GET_B_kj (bkj = B(k,j))
+            // handles the B iso case.
+        }
 
         //----------------------------------------------------------------------
         // allocate workspace

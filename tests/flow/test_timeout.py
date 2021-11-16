@@ -10,11 +10,11 @@ redis_graph = None
 
 class testQueryTimeout(FlowTestsBase):
     def __init__(self):
-        # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None or os.getenv('COV') == '1':
-            Env().skip() # queries will be much slower under Valgrind
-
         self.env = Env(decodeResponses=True)
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            self.env.skip() # queries will be much slower under Valgrind
+
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()

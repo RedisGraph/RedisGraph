@@ -158,8 +158,6 @@ GrB_Info RG_Matrix_removeEntry
 		}
 	}
 
-	RG_Matrix_validateState(C, i, j);
-
 	return info;
 }
 

@@ -15,11 +15,11 @@ GRAPH_ID = "replication"
 
 class testReplication(FlowTestsBase):
     def __init__(self):
-        # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
-            Env().skip() # valgrind is not working correctly with replication
-
         self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
+
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None:
+            self.env.skip() # valgrind is not working correctly with replication
 
     def test_CRUD_replication(self):
         # create a simple graph
@@ -54,6 +54,10 @@ class testReplication(FlowTestsBase):
 
         # add fields to existing index
         q = "CALL db.idx.fulltext.createNodeIndex('L', 'title', 'desc')"
+        graph.query(q)
+
+        # create full-text index with index config
+        q = "CALL db.idx.fulltext.createNodeIndex({label: 'L1', language: 'german', stopwords: ['a', 'b'] }, 'title', 'desc')"
         graph.query(q)
 
         # update entity

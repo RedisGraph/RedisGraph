@@ -220,15 +220,15 @@ GrB_Info GB_kroner                  // C = kron (A,B)
         #pragma omp parallel for num_threads(nthreads) schedule(guided)
         for (kC = 0 ; kC < cnvec ; kC++)
         {
-            int64_t kA = kC / bnvec ;
-            int64_t kB = kC % bnvec ;
+            const int64_t kA = kC / bnvec ;
+            const int64_t kB = kC % bnvec ;
 
             // get A(:,jA), the (kA)th vector of A
-            int64_t jA = GBH (Ah, kA) ;
-            int64_t aknz = (Ap == NULL) ? avlen : (Ap [kA+1] - Ap [kA]) ;
+            const int64_t jA = GBH (Ah, kA) ;
+            const int64_t aknz = (Ap == NULL) ? avlen : (Ap [kA+1] - Ap [kA]) ;
             // get B(:,jB), the (kB)th vector of B
-            int64_t jB = GBH (Bh, kB) ;
-            int64_t bknz = (Bp == NULL) ? bvlen : (Bp [kB+1] - Bp [kB]) ;
+            const int64_t jB = GBH (Bh, kB) ;
+            const int64_t bknz = (Bp == NULL) ? bvlen : (Bp [kB+1] - Bp [kB]) ;
             // determine # entries in C(:,jC), the (kC)th vector of C
             // int64_t kC = kA * bnvec + kB ;
             if (!C_is_full)
