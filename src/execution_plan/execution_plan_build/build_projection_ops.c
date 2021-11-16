@@ -131,31 +131,6 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause, rax *pr
 	return expressions;
 }
 
-// Merge all order expressions into the projections array without duplicates,
-static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
-	rax *projection_names = raxNew();
-	AR_ExpNode **project_exps = *exps_ptr;
-	uint order_count = array_len(order_exps);
-	uint project_count = array_len(project_exps);
-
-	// Add all WITH/RETURN projection names to rax.
-	for(uint i = 0; i < project_count; i ++) {
-		const char *name = project_exps[i]->resolved_name;
-		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
-	}
-
-	// Merge non-duplicate order expressions into projection array.
-	for(uint i = 0; i < order_count; i ++) {
-		const char *name = order_exps[i]->resolved_name;
-		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
-		// If it is a new projection, add a clone to the array.
-		if(new_name) array_append(project_exps, AR_EXP_Clone(order_exps[i]));
-	}
-
-	raxFree(projection_names);
-	*exps_ptr = project_exps;
-}
-
 // traverse expression operation checking if any variadic operand name found in the rax
 static bool _exp_uses_aliases(AR_ExpNode *exp, rax *projected_aliases) {
 	switch (exp->type)
@@ -175,14 +150,38 @@ static bool _exp_uses_aliases(AR_ExpNode *exp, rax *projected_aliases) {
 	}
 }
 
-// check if any op expression uses projected alias
-static bool _order_exps_uses_projected_aliases(AR_ExpNode **order_exps, rax *projected_aliases) {
-	uint count = array_len(order_exps);
-	for (uint i = 0; i < count; i++) {
-		AR_ExpNode *exp = order_exps[i];
-		if(exp->type == AR_EXP_OP && _exp_uses_aliases(exp, projected_aliases)) return true;
+// Merge all order expressions into the projections array without duplicates,
+static bool _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode ***order_exps_ptr, AR_ExpNode **order_exps, rax *projected_aliases) {
+	bool res = false;
+	rax *projection_names = raxNew();
+	AR_ExpNode **project_exps = *exps_ptr;
+	uint order_count = array_len(order_exps);
+	uint project_count = array_len(project_exps);
+
+	// Add all WITH/RETURN projection names to rax.
+	for(uint i = 0; i < project_count; i ++) {
+		const char *name = project_exps[i]->resolved_name;
+		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
 	}
-	return false;	
+
+	// Merge non-duplicate order expressions into projection array.
+	for(uint i = 0; i < order_count; i ++) {
+		const char *name = order_exps[i]->resolved_name;
+		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
+		// If it is a new projection, add a clone to the array.
+		if(new_name) {
+			if(order_exps[i]->type == AR_EXP_OP && _exp_uses_aliases(order_exps[i], projected_aliases)) {
+				res = res || true;
+				array_append(*order_exps_ptr, order_exps[i]);
+			}
+			array_append(project_exps, AR_EXP_Clone(order_exps[i]));
+		} 
+	}
+
+	raxFree(projection_names);
+	*exps_ptr = project_exps;
+
+	return res;
 }
 
 // Build an aggregate or project operation and any required modifying operations.
@@ -237,26 +236,21 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
-		is_order_exps_use_projected_aliases = _order_exps_uses_projected_aliases(order_exps, projected_aliases);
-		if(!is_order_exps_use_projected_aliases) {
-			// Merge order expressions into the projections array.
-			_combine_projection_arrays(&projections, order_exps);
-		} else {
+		uint projections_count = array_len(projections);
+		uint order_exps_count = array_len(order_exps);
+		order_projections = array_new(AR_ExpNode *, projections_count + order_exps_count);
+		// Merge order expressions into the projections array.
+		is_order_exps_use_projected_aliases = _combine_projection_arrays(&projections, &order_projections, order_exps, projected_aliases);
+		if(is_order_exps_use_projected_aliases) {
 			// Add another projection because order by uses expression from current record
-			uint projections_count = array_len(projections);
-			uint order_exps_count = array_len(order_exps);
-			order_projections = array_new(AR_ExpNode *, projections_count + order_exps_count);
 			for (uint i = 0; i < projections_count; i++) {
 				AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(projections[i]->resolved_name);
 				exp->resolved_name = projections[i]->resolved_name;
 				array_append(order_projections, exp);
 			}
-			for (uint i = 0; i < order_exps_count; i++) {
-				AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(order_exps[i]->resolved_name);
-				exp->resolved_name = order_exps[i]->resolved_name;
-				array_append(order_projections, order_exps[i]);
-				order_exps[i] = exp;
-			}
+		}
+		else {
+			array_free(order_projections);
 		}
 	}
 
