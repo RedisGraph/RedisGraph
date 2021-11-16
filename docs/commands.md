@@ -501,7 +501,7 @@ GRAPH.QUERY DEMO_GRAPH "MERGE (charlie { name: 'Charlie Sheen', age: 10 })"
 To merge a single node, specifying both label and property:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })""
+GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })"
 ```
 
 **Merging paths**
@@ -810,7 +810,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 | db.labels                       | none                                            | `label`                       | Yields all node labels in the graph.                                                                                                                                                   |
 | db.relationshipTypes            | none                                            | `relationshipType`            | Yields all relationship types in the graph.                                                                                                                                            |
 | db.propertyKeys                 | none                                            | `propertyKey`                 | Yields all property keys in the graph.                                                                                                                                                 |
-| db.indexes                      | none                                            | `type`, `label`, `properties` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers.                                                         |
+| db.indexes                      | none                                            | `type`, `label`, `properties`, `entityType` | Yield all indexes in the graph, denoting whether they are exact-match or full-text and which label and properties each covers and whether they are indexing node or relationship attributes.                                                         |
 | db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...]          | none                          | Builds a full-text searchable index on a label and the 1 or more specified properties.                                                                                                 |
 | db.idx.fulltext.drop            | `label`                                         | none                          | Deletes the full-text index associated with the given label.                                                                                                                           |
 | db.idx.fulltext.queryNodes      | `label`, `string`                               | `node`, `score`               | Retrieve all nodes that contain the specified string in the full-text indexes on the given label.                                                                                      |
@@ -843,13 +843,19 @@ String, numeric, and geospatial data types can be indexed.
 The creation syntax is:
 
 ```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR (p:Person) ON (p.age)"
+```
+
+The old syntax is depricated:
+
+```sh
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
 
 ```sh
-GRAPH.EXPLAIN G "MATCH (p:Person) WHERE p.age > 80 RETURN p"
+GRAPH.EXPLAIN DEMO_GRAPH "MATCH (p:Person) WHERE p.age > 80 RETURN p"
 1) "Results"
 2) "    Project"
 3) "        Index Scan | (p:Person)"
@@ -870,6 +876,26 @@ GRAPH.QUERY DEMO_GRAPH
 ```
 
 Geospatial indexes can currently only be leveraged with `<` and `<=` filters; matching nodes outside of the given radius is performed using conventional matching.
+
+Indexing relationship property
+
+The creation syntax is:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX FOR ()-[f:FOLLOW]-() ON (f.created_at)"
+```
+
+Then the execution plan for using the index:
+
+```sh
+GRAPH.EXPLAIN DEMO_GRAPH "MATCH (p:Person {id: 0})-[f:FOLLOW]->(fp) WHERE 0 < f.created_at AND f.created_at < 1000 RETURN fp"
+1) "Results"
+2) "    Project"
+3) "        Edge By Index Scan | [f:FOLLOW]"
+4) "            Node By Index Scan | (p:Person)"
+```
+
+This can significantly improve the runtime of queries that traverse super nodes or when we want to start traverse from relationships.
 
 Individual indexes can be deleted using the matching syntax:
 
@@ -935,6 +961,16 @@ GRAPH.QUERY DEMO_GRAPH
       2) "hello to a different world"
 3) 1) "Cached execution: 1"
    2) "Query internal execution time: 0.335401 milliseconds"
+```
+
+RediSearch provide 2 additional index configuration options:
+1. Language - Define which language to use for stemming text which is adding the base form of a word to the index. This allows the query for "going" to also return results for "go" and "gone", for example.
+2. Stopwords - These are words that are usually so common that they do not add much information to search, but take up a lot of space and CPU time in the index.
+
+To construct a full-text index on the `title` using `German` using custom stopwords property of all nodes with label `Movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex({ label: 'Movie', language: 'German', stopwords: ['a', 'ab'], 'title')"
 ```
 
 ## GRAPH.PROFILE
@@ -1038,4 +1074,4 @@ Lists all graph keys in the keyspace.
 2) G
 3) resources
 4) players
-
+```

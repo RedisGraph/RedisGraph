@@ -8,7 +8,7 @@
 
 #include "../../../serializers_include.h"
 
-GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb);
+GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb);
 void RdbLoadNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count);
 void RdbLoadDeletedNodes_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_node_count);
 void RdbLoadEdges_v9(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count);

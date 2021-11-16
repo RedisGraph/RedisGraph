@@ -137,7 +137,6 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       | [4, 5, 1, 2, 3] |
     And no side effects
 
-  @skip
   Scenario: [8] Returning label predicate expression
     Given an empty graph
     And having executed:

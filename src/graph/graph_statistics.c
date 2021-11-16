@@ -33,7 +33,9 @@ uint64_t GraphStatistics_EdgeCount(const GraphStatistics *stats,
 uint64_t GraphStatistics_NodeCount(const GraphStatistics *stats,
 								   int label_idx) {
 	ASSERT(stats);
-	ASSERT(label_idx < array_len(stats->node_count));
+	ASSERT(label_idx < (int)array_len(stats->node_count));
+
+	if(label_idx < 0) return 0;
 	return stats->node_count[label_idx];
 }
 

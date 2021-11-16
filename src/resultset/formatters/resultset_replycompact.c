@@ -57,7 +57,7 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 
 	switch(SI_TYPE(v)) {
 	case T_STRING:
-		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
+		RedisModule_ReplyWithSimpleString(ctx, v.stringval);
 		return;
 	case T_INT64:
 		RedisModule_ReplyWithLongLong(ctx, v.longval);
@@ -116,7 +116,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	/*  Compact node reply format:
 	 *  [
 	 *      Node ID (integer),
-	        [label string index (integer)],
+	        [label string index (integer) X N],
 	 *      [[name, value, value type] X N]
 	 *  ]
 	 */
@@ -127,15 +127,13 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	EntityID id = ENTITY_GET_ID(n);
 	RedisModule_ReplyWithLongLong(ctx, id);
 
-	// [label string index]
-	int label_id = NODE_GET_LABEL_ID(n, gc->g);
-	if(label_id == GRAPH_NO_LABEL) {
-		// Emit an empty array for unlabeled nodes.
-		RedisModule_ReplyWithArray(ctx, 0);
-	} else {
-		// Print label in nested array for multi-label support.
-		RedisModule_ReplyWithArray(ctx, 1);
-		RedisModule_ReplyWithLongLong(ctx, label_id);
+	// [label string index X N]
+	// Retrieve node labels
+	uint lbls_count;
+	NODE_GET_LABELS(gc->g, n, lbls_count);
+	RedisModule_ReplyWithArray(ctx, lbls_count);
+	for(int i = 0; i < lbls_count; i++) {
+		RedisModule_ReplyWithLongLong(ctx, labels[i]);
 	}
 
 	// [properties]
@@ -276,7 +274,7 @@ static void _ResultSet_CompactReplyWithPoint(RedisModuleCtx *ctx, GraphContext *
 }
 
 void ResultSet_EmitCompactRow(RedisModuleCtx *ctx, GraphContext *gc,
-		SIValue **row, uint numcols) {
+							  SIValue **row, uint numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -301,6 +299,6 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithLongLong(ctx, t);
 
 		// Second, emit the identifier string associated with the column
-		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
+		RedisModule_ReplyWithSimpleString(ctx, columns[i]);
 	}
 }

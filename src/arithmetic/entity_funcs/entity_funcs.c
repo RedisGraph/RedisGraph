@@ -12,27 +12,37 @@
 #include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 #include "../../graph/graphcontext.h"
+#include "../../datatypes/datatypes.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../graph/entities/graph_entity.h"
 
-/* returns the id of a relationship or node. */
+// returns the id of a relationship or node
 SIValue AR_ID(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
 	return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
-/* returns a string representations the label of a node. */
+// returns an array of string representations of each label of a node
 SIValue AR_LABELS(SIValue *argv, int argc) {
 	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
-	char *label = "";
+
 	Node *node = argv[0].ptrval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = gc->g;
-	int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
-	if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
-	return SI_ConstStringVal(label);
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(gc->g, node, label_count);
+	SIValue res = SI_Array(label_count);
+
+	for(uint i = 0; i < label_count; i++) {
+		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+		ASSERT(s != NULL);
+		const char *name = Schema_GetName(s);
+		SIArray_Append(&res, SI_ConstStringVal(name));
+	}
+
+	return res;
 }
 
 // returns true if input node contains all specified labels, otherwise false

@@ -9,7 +9,11 @@
 #include "../graph.h"
 #include "../../util/arr.h"
 
-QGEdge *QGEdge_New(const char *relationship, const char *alias) {
+QGEdge *QGEdge_New
+(
+	const char *relationship,
+	const char *alias
+) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
 	e->alias = alias;
 	e->reltypes = array_new(const char *, 1);
@@ -23,7 +27,37 @@ QGEdge *QGEdge_New(const char *relationship, const char *alias) {
 	return e;
 }
 
-QGEdge *QGEdge_Clone(const QGEdge *orig) {
+const char *QGEdge_Alias
+(
+	const QGEdge *e
+) {
+	ASSERT(e != NULL);
+
+	return e->alias;
+}
+
+QGNode *QGEdge_Src
+(
+	const QGEdge *e
+) {
+	ASSERT(e != NULL);
+
+	return e->src;
+}
+
+QGNode *QGEdge_Dest
+(
+	const QGEdge *e
+) {
+	ASSERT(e != NULL);
+
+	return e->dest;
+}
+
+QGEdge *QGEdge_Clone
+(
+	const QGEdge *orig
+) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
 	memcpy(e, orig, sizeof(QGEdge));
 	e->src = NULL;
@@ -34,22 +68,46 @@ QGEdge *QGEdge_Clone(const QGEdge *orig) {
 	return e;
 }
 
-bool QGEdge_VariableLength(const QGEdge *e) {
+bool QGEdge_VariableLength
+(
+	const QGEdge *e
+) {
 	ASSERT(e);
 	return (e->minHops != e->maxHops);
 }
 
-int QGEdge_RelationCount(const QGEdge *e) {
+int QGEdge_RelationCount
+(
+	const QGEdge *e
+) {
 	ASSERT(e);
 	return array_len(e->reltypes);
 }
 
-int QGEdge_RelationID(const QGEdge *e, int idx) {
+const char *QGEdge_Relation
+(
+	const QGEdge *e,
+	int idx
+) {
+	ASSERT(e != NULL);
+	ASSERT(idx < QGEdge_RelationCount(e));
+
+	return e->reltypes[idx];
+}
+
+int QGEdge_RelationID
+(
+	const QGEdge *e,
+	int idx
+) {
 	ASSERT(e != NULL && idx < QGEdge_RelationCount(e));
 	return e->reltypeIDs[idx];
 }
 
-void QGEdge_Reverse(QGEdge *e) {
+void QGEdge_Reverse
+(
+	QGEdge *e
+) {
 	QGNode *src = e->src;
 	QGNode *dest = e->dest;
 
@@ -63,7 +121,11 @@ void QGEdge_Reverse(QGEdge *e) {
 	QGNode_ConnectNode(e->src, e->dest, e);
 }
 
-void QGEdge_ToString(const QGEdge *e, sds *buff) {
+void QGEdge_ToString
+(
+	const QGEdge *e,
+	sds *buff
+) {
 	ASSERT(e && buff && *buff);
 
 	*buff = sdscatprintf(*buff, "[");
@@ -85,7 +147,10 @@ void QGEdge_ToString(const QGEdge *e, sds *buff) {
 	*buff = sdscatprintf(*buff, "]");
 }
 
-void QGEdge_Free(QGEdge *e) {
+void QGEdge_Free
+(
+	QGEdge *e
+) {
 	if(!e) return;
 
 	array_free(e->reltypes);

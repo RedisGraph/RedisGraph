@@ -338,3 +338,70 @@ void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const Grap
 	}
 }
 
+void _AlgebraicExpression_RemoveRedundentOperands
+(
+	AlgebraicExpression **exps,
+	const QueryGraph *qg
+) {
+	// remove redundent label(s) matrices
+	// MATCH (a:A)-[]->(b:B)-[]->(c:C) RETURN a,b,c
+	// will result in 2 algebraic expressions:
+	// 1. A * ADJ * B
+	// 2. B * ADJ * C
+	// as node 'b' is shared between the two expressions
+	// its operand(s) can be discarded in the later expression
+	// as a general rule for every expression I where a former expression J
+	// I > J resolves I's source we should remove I's source label operands
+
+	ASSERT(qg   !=  NULL);
+	ASSERT(exps !=  NULL);
+
+	int exp_count = array_len(exps);
+	if(exp_count < 2) return;
+
+	for(int i = 1; i < exp_count; i++) {
+		AlgebraicExpression *exp = exps[i];
+
+		// in case source operand isn't a label matrix continue
+		if(!AlgebraicExpression_DiagonalOperand(
+					AlgebraicExpression_SrcOperand(exp), 0)) continue;
+
+		const char *src_alias = AlgebraicExpression_Src(exp);
+		ASSERT(src_alias != NULL);
+		QGNode *src_node = QueryGraph_GetNodeByAlias(qg, src_alias);
+		ASSERT(src_node != NULL);
+
+		uint label_count = QGNode_LabelCount(src_node);
+		ASSERT(label_count > 0);
+
+		// see if source is resolved by a previous expression
+		bool resolved = false;
+		for(int j = i-1; j >= 0; j--) {
+			AlgebraicExpression *prev_exp = exps[j];
+			const char *dest_alias = AlgebraicExpression_Dest(prev_exp);
+			if(strcmp(src_alias, dest_alias)) continue;
+
+			resolved = (AlgebraicExpression_DiagonalOperand(
+			AlgebraicExpression_DestOperand(prev_exp), 0));
+			if(resolved) break;
+		}
+
+		if(!resolved) continue;
+
+		// remove source label matrices
+		for(int i = 0; i < label_count; i++) {
+			AlgebraicExpression *redundent =
+				AlgebraicExpression_RemoveSource(&exp);
+			AlgebraicExpression_Free(redundent);
+		}
+
+		if(AlgebraicExpression_OperandCount(exp) == 0) {
+			// reduced to an empty expression
+			// delete expression from list
+			array_del(exps, i);
+			exp_count--;
+			i--;
+		}
+	}
+}
+
