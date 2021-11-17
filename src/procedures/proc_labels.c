@@ -15,43 +15,55 @@
 // CALL db.labels()
 
 typedef struct {
-	uint schema_id;     // Current schema ID.
-	GraphContext *gc;   // Graph context.
-	SIValue *output;    // Output label.
+	uint schema_id;     // current schema id
+	GraphContext *gc;   // graph context
+	SIValue *output;    // output label
 } LabelsContext;
 
-ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx,
-								  const SIValue *args, const char **yield) {
+ProcedureResult Proc_LabelsInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));
-	pdata->schema_id = 0;
-	pdata->gc = QueryCtx_GetGraphCtx();
-	pdata->output = array_new(SIValue, 1);
+
+	pdata->schema_id  =  0;
+	pdata->gc         =  QueryCtx_GetGraphCtx();
+	pdata->output     =  array_new(SIValue, 1);
+
 	array_append(pdata->output, SI_ConstStringVal("label"));
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
 }
 
-SIValue *Proc_LabelsStep(ProcedureCtx *ctx) {
+SIValue *Proc_LabelsStep
+(
+	ProcedureCtx *ctx
+) {
 	ASSERT(ctx->privateData != NULL);
 
 	LabelsContext *pdata = (LabelsContext *)ctx->privateData;
 
-	// Depleted?
+	// depleted?
 	if(pdata->schema_id >= GraphContext_SchemaCount(pdata->gc, SCHEMA_NODE))
 		return NULL;
 
-	// Get schema label.
+	// get schema label
 	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_NODE);
 	char *label = (char *)Schema_GetName(s);
 	pdata->output[0] = SI_ConstStringVal(label);
 	return pdata->output;
 }
 
-ProcedureResult Proc_LabelsFree(ProcedureCtx *ctx) {
-	// Clean up.
+ProcedureResult Proc_LabelsFree
+(
+	ProcedureCtx *ctx
+) {
+	// clean up
 	if(ctx->privateData) {
 		LabelsContext *pdata = ctx->privateData;
 		array_free(pdata->output);

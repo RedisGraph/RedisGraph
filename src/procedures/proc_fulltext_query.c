@@ -26,13 +26,18 @@ typedef struct {
 	SIValue *output;
 	Index *idx;
 	RSResultsIterator *iter;
-	SIValue *yield_node;  // yield node
-	SIValue *yield_score;  // yield score
+	SIValue *yield_node;     // yield node
+	SIValue *yield_score;    // yield score
 } QueryNodeContext;
 
-static void _process_yield(QueryNodeContext *ctx, const char **yield) {
-	ctx->yield_node = NULL;
-	ctx->yield_score = NULL;
+static void _process_yield
+(
+	QueryNodeContext *ctx,
+	const char **yield
+) {
+	ctx->yield_node   =    NULL;
+	ctx->yield_score  =    NULL;
+
 	int idx = 0;
 	for(uint i = 0; i < array_len(yield); i++) {
 		if(strcasecmp("node", yield[i]) == 0) {
@@ -40,6 +45,7 @@ static void _process_yield(QueryNodeContext *ctx, const char **yield) {
 			idx++;
 			continue;
 		}
+
 		if(strcasecmp("score", yield[i]) == 0) {
 			ctx->yield_score = ctx->output + idx;
 			idx++;
@@ -48,78 +54,93 @@ static void _process_yield(QueryNodeContext *ctx, const char **yield) {
 	}
 }
 
-ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *args,
-											 const char **yield) {
+ProcedureResult Proc_FulltextQueryNodeInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
 	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
 	if(!(SI_TYPE(args[0]) & SI_TYPE(args[1]) & T_STRING)) return PROCEDURE_ERR;
 
 	ctx->privateData = NULL;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	// See if there's a full-text index for given label.
+	// see if there's a full-text index for given label
 	char *err = NULL;
 	const char *label = args[0].stringval;
 	const char *query = args[1].stringval;
 
-	// Get full-text index from schema.
+	// get full-text index from schema
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return PROCEDURE_OK;
+
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(!idx) return PROCEDURE_ERR; // TODO this should cause an error to be emitted.
+	if(!idx) return PROCEDURE_ERR; // TODO: this should cause an error to be emitted
 
 	ctx->privateData = rm_malloc(sizeof(QueryNodeContext));
 	QueryNodeContext *pdata = ctx->privateData;
-	pdata->idx = idx;
-	pdata->g = gc->g;
-	pdata->n = GE_NEW_NODE();
-	pdata->output = array_new(SIValue, 2);
+
+	pdata->g       =  gc->g;
+	pdata->n       =  GE_NEW_NODE();
+	pdata->idx     =  idx;
+	pdata->output  =  array_new(SIValue,  2);
+
 	_process_yield(pdata, yield);
 
-	// Execute query
+	// execute query
 	pdata->iter = Index_Query(pdata->idx, query, &err);
-	// Raise runtime exception if err != NULL.
+
+	// raise runtime exception if err != NULL
 	if(err) {
-		/* RediSearch error message is allocated using `rm_strdup`
-		 * QueryCtx is expecting to free `error` using `free`
-		 * in which case we have no option but to clone error. */
+		// RediSearch error message is allocated using `rm_strdup`
+		// QueryCtx is expecting to free `error` using `free`
+		// in which case we have no option but to clone error
 		ErrorCtx_SetError("RediSearch: %s", err);
 		rm_free(err);
-		/* Raise the exception, we expect an exception handler to be set.
-		 * as procedure invocation is done at runtime. */
+		// raise the exception, we expect an exception handler to be set
+		// as procedure invocation is done at runtime
 		ErrorCtx_RaiseRuntimeException(NULL);
 	}
+
 	ASSERT(pdata->iter != NULL);
 
 	return PROCEDURE_OK;
 }
 
-SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
-	if(!ctx->privateData) return NULL; // No index was attached to this procedure.
+SIValue *Proc_FulltextQueryNodeStep
+(
+	ProcedureCtx *ctx
+) {
+	if(!ctx->privateData) return NULL; // no index was attached to this procedure
 
 	QueryNodeContext *pdata = (QueryNodeContext *)ctx->privateData;
 	if(!pdata || !pdata->iter) return NULL;
 
-	/* Try to get a result out of the iterator.
-	 * NULL is returned if iterator id depleted. */
+	// try to get a result out of the iterator
+	// NULL is returned if iterator id depleted
 	size_t len = 0;
 	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter, pdata->idx->idx, &len);
 
-	// Depleted.
+	// depleted
 	if(!id) return NULL;
 
 	double score = RediSearch_ResultsIteratorGetScore(pdata->iter);
 
-	// Get Node.
+	// get node
 	Node *n = &pdata->n;
 	Graph_GetNode(pdata->g, *id, n);
 
-	if(pdata->yield_node) *pdata->yield_node = SI_Node(n);
+	if(pdata->yield_node)  *pdata->yield_node  = SI_Node(n);
 	if(pdata->yield_score) *pdata->yield_score = SI_DoubleVal(score);
 
 	return pdata->output;
 }
 
-ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
+ProcedureResult Proc_FulltextQueryNodeFree
+(
+	ProcedureCtx *ctx
+) {
 	// Clean up.
 	if(!ctx->privateData) return PROCEDURE_OK;
 

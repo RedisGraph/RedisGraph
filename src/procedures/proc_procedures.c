@@ -21,7 +21,11 @@ typedef struct {
 	SIValue *yield_mode;  // yield mode
 } ProcProceduresPrivateData;
 
-static void _process_yield(ProcProceduresPrivateData *ctx, const char **yield) {
+static void _process_yield
+(
+	ProcProceduresPrivateData *ctx,
+	const char **yield
+) {
 	ctx->yield_name = NULL;
 	ctx->yield_mode = NULL;
 	int idx = 0;
@@ -39,13 +43,17 @@ static void _process_yield(ProcProceduresPrivateData *ctx, const char **yield) {
 	}
 }
 
-ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
-									  const SIValue *args, const char **yield) {
+ProcedureResult Proc_ProceduresInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	ProcProceduresPrivateData *pdata = rm_malloc(sizeof(ProcProceduresPrivateData));
 
-	// Initialize an iterator to the rax that contains all procedures
+	// initialize an iterator to the rax that contains all procedures
 	rax *procedures = __procedures;
 	raxStart(&pdata->iter, procedures);
 	raxSeek(&pdata->iter, "^", NULL, 0);
@@ -56,28 +64,36 @@ ProcedureResult Proc_ProceduresInvoke(ProcedureCtx *ctx,
 	return PROCEDURE_OK;
 }
 
-// Promote the rax iterator to the next procedure and return its name and mode.
-SIValue *Proc_ProceduresStep(ProcedureCtx *ctx) {
+// promote the rax iterator to the next procedure and return its name and mode.
+SIValue *Proc_ProceduresStep
+(
+	ProcedureCtx *ctx
+) {
 	ASSERT(ctx->privateData);
 
 	ProcProceduresPrivateData *pdata = (ProcProceduresPrivateData *)ctx->privateData;
-	// Depleted?
+	// depleted?
 	if(!raxNext(&pdata->iter)) return NULL;
 
-	// Returns the current procedure's name and mode.
+	// returns the current procedure's name and mode
 	ProcGenerator gen = pdata->iter.data;
 	ProcedureCtx *curr_proc_ctx = gen();
+
 	if(pdata->yield_name) *pdata->yield_name =
 			SI_ConstStringVal(Procedure_GetName(curr_proc_ctx));
 	if(pdata->yield_mode) *pdata->yield_mode =
 			Procedure_IsReadOnly(curr_proc_ctx) ? SI_ConstStringVal("READ") :
 			SI_ConstStringVal("WRITE");
+
 	Proc_Free(curr_proc_ctx);
 	return pdata->output;
 }
 
-ProcedureResult Proc_ProceduresFree(ProcedureCtx *ctx) {
-	// Clean up.
+ProcedureResult Proc_ProceduresFree
+(
+	ProcedureCtx *ctx
+) {
+	// clean up
 	if(ctx->privateData) {
 		ProcProceduresPrivateData *pdata = ctx->privateData;
 		array_free(pdata->output);

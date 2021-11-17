@@ -32,7 +32,7 @@ static Record _yield(OpProcCall *op) {
 }
 
 static void _evaluate_proc_args(OpProcCall *op) {
-	// Evaluate arguments, free args from previous call.
+	// evaluate arguments, free args from previous call
 	uint arg_count = array_len(op->args);
 	for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args[i]);
 
@@ -43,22 +43,31 @@ static void _evaluate_proc_args(OpProcCall *op) {
 	}
 }
 
-OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNode **arg_exps,
-					  AR_ExpNode **yield_exps) {
+OpBase *NewProcCallOp
+(
+	const ExecutionPlan *plan,
+	const char *proc_name,
+	AR_ExpNode **arg_exps,
+	AR_ExpNode **yield_exps
+) {
 
-	ASSERT(proc_name != NULL);
+	ASSERT(plan        !=  NULL);
+	ASSERT(proc_name   !=  NULL);
+	ASSERT(arg_exps    !=  NULL);
+	ASSERT(yield_exps  !=  NULL);
 
 	OpProcCall *op = rm_malloc(sizeof(OpProcCall));
-	op->r = NULL;
-	op->yield_map = NULL;
-	op->first_call = true;
-	op->arg_exps = arg_exps;
-	op->proc_name = proc_name;
-	op->yield_exps = yield_exps;
-	op->arg_count = array_len(arg_exps);
-	op->args = array_new(SIValue, op->arg_count);
 
-	// Procedure must exist
+	op->r           =  NULL;
+	op->args        =  array_new(SIValue, op->arg_count);
+	op->arg_exps    =  arg_exps;
+	op->arg_count   =  array_len(arg_exps);
+	op->proc_name   =  proc_name;
+	op->yield_map   =  NULL;
+	op->first_call  =  true;
+	op->yield_exps  =  yield_exps;
+
+	// procedure must exist
 	op->procedure = Proc_Get(proc_name);
 	ASSERT(op->procedure != NULL);
 
@@ -66,12 +75,12 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 	op->output = array_new(const char *, yield_count);
 	op->yield_map = rm_malloc(sizeof(OutputMap) * yield_count);
 
-	// Set operations
+	// set callbacks
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall",
 				NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
 				ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
 
-	// Set modifiers
+	// set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
 		const char *alias = yield_exps[i]->resolved_name;
 		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
@@ -109,8 +118,8 @@ static Record ProcCallConsume(OpBase *opBase) {
 
 		_evaluate_proc_args(op);
 
-		/* Free previous invocation.
-		 * TODO: replace with Proc_Reset */
+		// free previous invocation
+		// TODO: replace with Proc_Reset
 		Proc_Free(op->procedure);
 		op->procedure = Proc_Get(op->proc_name);
 

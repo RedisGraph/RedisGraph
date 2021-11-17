@@ -27,13 +27,18 @@ typedef struct {
 	SIValue *yield_entity_type; // yield index entity type
 } IndexesContext;
 
-static void _process_yield(IndexesContext *ctx, const char **yield) {
+static void _process_yield
+(
+	IndexesContext *ctx,
+	const char **yield
+) {
 	ctx->yield_type        = NULL;
 	ctx->yield_label       = NULL;
 	ctx->yield_properties  = NULL;
 	ctx->yield_language    = NULL;
 	ctx->yield_stopwords   = NULL;
 	ctx->yield_entity_type = NULL;
+
 	int idx = 0;
 	for(uint i = 0; i < array_len(yield); i++) {
 		if(strcasecmp("type", yield[i]) == 0) {
@@ -75,10 +80,16 @@ static void _process_yield(IndexesContext *ctx, const char **yield) {
 }
 
 // CALL db.indexes()
-ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
-								   const char **yield) {
+ProcedureResult Proc_IndexesInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
 
-	ASSERT(ctx != NULL && args != NULL && yield != NULL);
+	ASSERT(ctx   != NULL);
+	ASSERT(args  != NULL);
+	ASSERT(yield != NULL);
 
 	// TODO: introduce invoke validation, similar to arithmetic expressions
 	// expecting no arguments
@@ -101,7 +112,12 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 	return PROCEDURE_OK;
 }
 
-static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
+static bool _EmitIndex
+(
+	IndexesContext *ctx,
+	const Schema *s,
+	IndexType type
+) {
 	Index *idx = Schema_GetIndex(s, NULL, type);
 	if(idx == NULL) return false;
 
@@ -160,7 +176,12 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 	return true;
 }
 
-static SIValue *Schema_Step(int *schema_id, SchemaType t, IndexesContext *pdata) {
+static SIValue *Schema_Step
+(
+	int *schema_id,
+	SchemaType t,
+	IndexesContext *pdata
+) {
 	Schema *s = NULL;
 
 	// loop over all schemas from last to first
@@ -190,7 +211,10 @@ static SIValue *Schema_Step(int *schema_id, SchemaType t, IndexesContext *pdata)
 	return NULL;
 }
 
-SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
+SIValue *Proc_IndexesStep
+(
+	ProcedureCtx *ctx
+) {
 	ASSERT(ctx->privateData != NULL);
 
 	SIValue *res;
@@ -202,7 +226,10 @@ SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
 	return Schema_Step(&pdata->edge_schema_id, SCHEMA_EDGE, pdata);
 }
 
-ProcedureResult Proc_IndexesFree(ProcedureCtx *ctx) {
+ProcedureResult Proc_IndexesFree
+(
+	ProcedureCtx *ctx
+) {
 	// clean up
 	if(ctx->privateData) {
 		IndexesContext *pdata = ctx->privateData;
@@ -219,37 +246,37 @@ ProcedureCtx *Proc_IndexesCtx() {
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 6);
 
 	// index type (exact-match / fulltext)
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "type", .type = T_STRING
 	};
 	array_append(outputs, output);
 
 	// indexed label
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "label", .type = T_STRING
 	};
 	array_append(outputs, output);
 
 	// indexed properties
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "properties", .type = T_ARRAY
 	};
 	array_append(outputs, output);
 
 	// indexed language
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "language", .type = T_STRING
 	};
 	array_append(outputs, output);
 
 	// indexed stopwords
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "stopwords", .type = T_ARRAY
 	};
 	array_append(outputs, output);
 
 	// index entity type (node / relationship)
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "entitytype", .type = T_STRING
 	};
 	array_append(outputs, output);

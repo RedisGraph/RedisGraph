@@ -15,41 +15,54 @@
 // CALL db.propertyKeys()
 
 typedef struct {
-	uint prop_id;       // Current property ID.
-	GraphContext *gc;   // Graph context.
-	SIValue *output;    // Output label.
+	uint prop_id;       // current property ID
+	GraphContext *gc;   // graph context
+	SIValue *output;    // output label
 } RelationsContext;
 
-ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const SIValue *args, const char **yield) {
+ProcedureResult Proc_PropKeysInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
-	pdata->prop_id = 0;
-	pdata->gc = QueryCtx_GetGraphCtx();
-	pdata->output = array_new(SIValue, 1);
+
+	pdata->prop_id  =  0;
+	pdata->gc       =  QueryCtx_GetGraphCtx();
+	pdata->output   =  array_new(SIValue, 1);
+
 	array_append(pdata->output, SI_ConstStringVal("propertyKey"));
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
 }
 
-SIValue *Proc_PropKeysStep(ProcedureCtx *ctx) {
+SIValue *Proc_PropKeysStep
+(
+	ProcedureCtx *ctx
+) {
 	ASSERT(ctx->privateData != NULL);
 
 	RelationsContext *pdata = (RelationsContext *)ctx->privateData;
 
-	// Depleted?
+	// depleted?
 	if(pdata->prop_id >= GraphContext_AttributeCount(pdata->gc))
 		return NULL;
 
-	// Get attribute name.
+	// get attribute name
 	char *name = (char *)GraphContext_GetAttributeString(pdata->gc, pdata->prop_id++);
 	pdata->output[0] = SI_ConstStringVal(name);
 	return pdata->output;
 }
 
-ProcedureResult Proc_PropKeysFree(ProcedureCtx *ctx) {
-	// Clean up.
+ProcedureResult Proc_PropKeysFree
+(
+	ProcedureCtx *ctx
+) {
+	// clean up
 	if(ctx->privateData) {
 		RelationsContext *pdata = ctx->privateData;
 		array_free(pdata->output);
