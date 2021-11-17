@@ -7,6 +7,8 @@ RAX_DIR = ../../deps/rax
 XXHASH_DIR = ../../deps/xxHash
 REDISEARCH_DIR = ../../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
+REDISGRAPH_DIR = ../../src
+GRAPHBLAS_DIR = ../../deps/GraphBLAS/build
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
@@ -54,16 +56,9 @@ gtest.a : gtest-all.o
 gtest_main.a : gtest-all.o gtest_main.o
 	@$(AR) $(ARFLAGS) $@ $^
 
-# RedisGraph flags and libraries
-CC_OBJECTS:=$(CC_OBJECTS)
-RAX=../../deps/rax/rax.o
-LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
-REDISEARCH=../../deps/RediSearch/build/libredisearch.a
-LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
-LIBCYPHER-PARSER=../../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
-
-LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
+# RedisGraph and dependency libraries
+REDISGRAPH=redisgraph.so
+LIBGRAPHBLAS=libgraphblas.a
 
 # Build and run a test for each cpp file in directory
 TEST_SOURCES = $(wildcard *.cpp)
@@ -75,15 +70,15 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
 
 # Build '*.run' binaries for each source
-%.run: %.o gtest_main.a $(DEPS)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ $(LDFLAGS) -o $@
+%.run: %.o gtest_main.a
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ -L $(REDISGRAPH_DIR) -l:$(REDISGRAPH) -L $(GRAPHBLAS_DIR) -l:$(LIBGRAPHBLAS) -Wl,-rpath=$(REDISGRAPH_DIR) $(LDFLAGS) -o $@
 
 
-.PHONY: all build test test_valgrind clean
+.PHONY: all build test clean
 
 all: build test
 
-build: $(TEST_OBJECTS) $(TEST_EXECUTABLES) $(DEPS)
+build: $(TEST_OBJECTS) $(TEST_EXECUTABLES)
 
 test: build
 ifeq ($(V),)
