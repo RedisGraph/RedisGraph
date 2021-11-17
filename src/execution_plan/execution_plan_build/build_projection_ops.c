@@ -151,10 +151,10 @@ static bool _exp_uses_aliases(AR_ExpNode *exp, rax *projected_aliases) {
 }
 
 // Merge all order expressions into the projections array without duplicates,
-static bool _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode ***order_exps_ptr, AR_ExpNode **order_exps, rax *projected_aliases) {
-	bool res = false;
+static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode ***order_exps_ptr, rax *projected_aliases) {
 	rax *projection_names = raxNew();
 	AR_ExpNode **project_exps = *exps_ptr;
+	AR_ExpNode **order_exps = *order_exps_ptr;
 	uint order_count = array_len(order_exps);
 	uint project_count = array_len(project_exps);
 
@@ -171,17 +171,17 @@ static bool _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode ***ord
 		// If it is a new projection, add a clone to the array.
 		if(new_name) {
 			if(order_exps[i]->type == AR_EXP_OP && _exp_uses_aliases(order_exps[i], projected_aliases)) {
-				res = res || true;
-				array_append(*order_exps_ptr, order_exps[i]);
+			} else {
+				array_append(project_exps, order_exps[i]);
+				order_exps[i] = AR_EXP_NewVariableOperandNode(name);
+				order_exps[i]->resolved_name = name;
 			}
-			array_append(project_exps, AR_EXP_Clone(order_exps[i]));
 		} 
 	}
 
 	raxFree(projection_names);
 	*exps_ptr = project_exps;
-
-	return res;
+	*order_exps_ptr = order_exps;
 }
 
 // Build an aggregate or project operation and any required modifying operations.
@@ -201,8 +201,6 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	const cypher_astnode_t  *order_clause     =  NULL  ;
 
 	rax                     *projected_aliases                  = raxNew();
-	AR_ExpNode              **order_projections                 =  NULL  ;
-	bool                    is_order_exps_use_projected_aliases = false;
 
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	ASSERT(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN);
@@ -236,22 +234,8 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	if(order_clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
-		uint projections_count = array_len(projections);
-		uint order_exps_count = array_len(order_exps);
-		order_projections = array_new(AR_ExpNode *, projections_count + order_exps_count);
 		// Merge order expressions into the projections array.
-		is_order_exps_use_projected_aliases = _combine_projection_arrays(&projections, &order_projections, order_exps, projected_aliases);
-		if(is_order_exps_use_projected_aliases) {
-			// Add another projection because order by uses expression from current record
-			for (uint i = 0; i < projections_count; i++) {
-				AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(projections[i]->resolved_name);
-				exp->resolved_name = projections[i]->resolved_name;
-				array_append(order_projections, exp);
-			}
-		}
-		else {
-			array_free(order_projections);
-		}
+		_combine_projection_arrays(&projections, &order_exps, projected_aliases);
 	}
 
 	// Our fundamental operation will be a projection or aggregation.
@@ -260,7 +244,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		bool sorting_after_aggregation = (order_exps != NULL);
 		op = NewAggregateOp(plan, projections, sorting_after_aggregation);
 	} else {
-		op = NewProjectOp(plan, projections);
+		op = NewProjectOp(plan, projections, order_exps);
 	}
 	ExecutionPlan_UpdateRoot(plan, op);
 
@@ -272,10 +256,6 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 	}
 
 	if(sort_directions) {
-		if(is_order_exps_use_projected_aliases) {		
-			op = NewProjectOp(plan, order_projections);
-			ExecutionPlan_UpdateRoot(plan, op);
-		}
 		// The sort operation will obey a specified limit, but must account for skipped records
 		op = NewSortOp(plan, order_exps, sort_directions);
 		ExecutionPlan_UpdateRoot(plan, op);

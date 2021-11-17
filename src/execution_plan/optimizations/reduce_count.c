@@ -110,7 +110,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
+	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps, NULL);
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, opScan);
@@ -205,7 +205,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
+	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps, NULL);
 
 	// new execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, opScan);

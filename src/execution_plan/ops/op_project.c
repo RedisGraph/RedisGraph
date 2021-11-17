@@ -16,11 +16,13 @@ static Record ProjectConsume(OpBase *opBase);
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
-OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps) {
 	OpProject *op = rm_malloc(sizeof(OpProject));
 	op->exps = exps;
+	op->order_exps = order_exps;
 	op->singleResponse = false;
 	op->exp_count = array_len(exps);
+	op->order_exp_count = array_len(order_exps);
 	op->record_offsets = array_new(uint, op->exp_count);
 	op->r = NULL;
 	op->projection = NULL;
@@ -33,6 +35,13 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
+	}
+
+	for(uint i = 0; i < op->order_exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
 		array_append(op->record_offsets, record_idx);
 	}
 
@@ -73,6 +82,77 @@ static Record ProjectConsume(OpBase *opBase) {
 		if((v.type & SI_GRAPHENTITY)) SIValue_Free(v);
 	}
 
+	if(op->order_exp_count > 0) {
+		rax *input_rax = op->r->mapping;
+		rax *output_rax = op->projection->mapping;
+		if(!op->intermidiate) {
+			op->intermidiate_rax = raxNew();
+			raxIterator it;
+
+			uint64_t id = 0;
+
+			raxStart(&it, output_rax);
+			raxSeek(&it, "^", NULL, 0);
+			printf("\noutput\n");
+			while(raxNext(&it)) {
+				char *key = rm_strndup((const char *)it.key, (int)it.key_len);
+				printf("\n%s\n", key);
+				rm_free(key);
+				raxInsert(op->intermidiate_rax, it.key, it.key_len, (void*)id++, NULL);
+			}
+			raxStop(&it);
+
+			raxStart(&it, input_rax);
+			raxSeek(&it, "^", NULL, 0);
+			printf("\ninput\n");
+			while(raxNext(&it)) {
+				char *key = rm_strndup((const char *)it.key, (int)it.key_len);
+				printf("\n%s\n", key);
+				rm_free(key);
+				if(raxTryInsert(op->intermidiate_rax, it.key, it.key_len, (void*)id, NULL) != 0){
+					id++;
+				}
+			}
+			raxStop(&it);
+
+			op->intermidiate = Record_New(op->intermidiate_rax);
+		}
+
+		raxIterator it;
+		raxStart(&it, op->intermidiate_rax);
+		raxSeek(&it, "^", NULL, 0);
+		while(raxNext(&it)) {
+			void *data = raxFind(output_rax, it.key, it.key_len);
+			Record r = op->projection;
+
+			if(data == raxNotFound) {
+				data = raxFind(input_rax, it.key, it.key_len);
+				r = op->r;
+			}
+			uint from_idx = (uint)(uint64_t)data;
+			uint to_idx = (uint)(uint64_t)it.data;
+			Record_Add(op->intermidiate, to_idx, Record_Get(r, from_idx));
+		}
+		raxStop(&it);
+
+		for(uint i = 0; i < op->order_exp_count; i++) {
+			AR_ExpNode *exp = op->order_exps[i];
+			SIValue v = AR_EXP_Evaluate(exp, op->intermidiate);
+			int rec_idx = op->record_offsets[op->exp_count + i];
+			/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
+			* Graph entities don't need to be persisted here as Record_Add will copy them internally.
+			* The RETURN projection here requires persistence:
+			* MATCH (a) WITH toUpper(a.name) AS e RETURN e
+			* TODO This is a rare case; the logic of when to persist can be improved.  */
+			if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
+			Record_Add(op->projection, rec_idx, v);
+			/* If the value was a graph entity with its own allocation, as with a query like:
+			* MATCH p = (src) RETURN nodes(p)[0]
+			* Ensure that the allocation is freed here. */
+			if((v.type & SI_GRAPHENTITY)) SIValue_Free(v);
+		}
+	}
+
 	OpBase_DeleteRecord(op->r);
 	op->r = NULL;
 
@@ -87,7 +167,9 @@ static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	AR_ExpNode **exps;
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
-	return NewProjectOp(plan, exps);
+	AR_ExpNode **order_exps;
+	array_clone_with_cb(order_exps, op->order_exps, AR_EXP_Clone);
+	return NewProjectOp(plan, exps, order_exps);
 }
 
 static void ProjectFree(OpBase *ctx) {
