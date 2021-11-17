@@ -15,8 +15,8 @@ extern rax *__procedures;
 // CALL dbms.procedures()
 
 typedef struct {
-	SIValue *output;      // Array with a maximum of 4 entries: ["name", name, "mode", mode].
-	raxIterator iter;     // Procedures iterator.
+	SIValue *output;      // array with a maximum of 2 entries: [name, mode]
+	raxIterator iter;     // procedures iterator
 	SIValue *yield_name;  // yield name
 	SIValue *yield_mode;  // yield mode
 } ProcProceduresPrivateData;

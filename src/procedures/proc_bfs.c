@@ -163,11 +163,14 @@ static SIValue *Proc_BFS_Step
 	// return NULL if the BFS for this source has already been emitted or there are no connected nodes
 	if(bfs_ctx->depleted || bfs_ctx->n == 0) return NULL;
 
+	bool yield_nodes = (bfs_ctx->yield_nodes != NULL);
+	bool yield_edges = (bfs_ctx->yield_edges != NULL);
+
 	// build arrays for the outputs the user has requested
 	uint n = bfs_ctx->n;
 	SIValue nodes, edges;
-	if(bfs_ctx->yield_nodes != NULL) nodes = SI_Array(n);
-	if(bfs_ctx->yield_edges != NULL) edges = SI_Array(n);
+	if(yield_nodes) nodes = SI_Array(n);
+	if(yield_edges) edges = SI_Array(n);
 	Edge *edge = array_new(Edge, 1);
 
 	// setup result iterator
@@ -184,7 +187,7 @@ static SIValue *Proc_BFS_Step
 
 	while(!depleted) {
 		// get the reached node
-		if(bfs_ctx->yield_nodes != NULL) {
+		if(yield_nodes) {
 			// append each reachable node to the nodes output array
 			Node n = GE_NEW_NODE();
 			Graph_GetNode(bfs_ctx->g, id, &n);
@@ -192,7 +195,7 @@ static SIValue *Proc_BFS_Step
 		}
 
 		array_clear(edge);
-		if(bfs_ctx->yield_edges != NULL) {
+		if(yield_edges) {
 			GrB_Index parent_id;
 			// find the parent of the reached node
 			GrB_Info res = GrB_Vector_extractElement(&parent_id, bfs_ctx->parents, id);
@@ -211,8 +214,8 @@ static SIValue *Proc_BFS_Step
 	bfs_ctx->depleted = depleted; // mark that this node has been mapped
 
 	// populate output
-	if(bfs_ctx->yield_nodes) *bfs_ctx->yield_nodes = nodes;
-	if(bfs_ctx->yield_edges) *bfs_ctx->yield_edges = edges;
+	if(yield_nodes) *bfs_ctx->yield_nodes = nodes;
+	if(yield_edges) *bfs_ctx->yield_edges = edges;
 
 	// clean up
 	array_free(edge);
@@ -245,7 +248,7 @@ static BFSCtx *_Build_Private_Data() {
 	pdata->n            =  0;
 	pdata->g            =  QueryCtx_GetGraph();
 	pdata->nodes        =  GrB_NULL;
-	pdata->output       =  array_new(SIValue, 4);
+	pdata->output       =  array_new(SIValue, 2);
 	pdata->parents      =  GrB_NULL;
 	pdata->depleted     =  false;
 	pdata->reltype_id   =  GRAPH_NO_RELATION;
