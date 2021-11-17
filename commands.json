@@ -26,7 +26,7 @@
 				"type": "string"
 			}
 		],
-		"since": "1.0.0",
+		"since": "2.2.8",
 		"group": "graph"
 	},
 	"GRAPH.DELETE": {
@@ -78,7 +78,7 @@
 				"type": "key"
 			}
 		],
-		"since": "2.0.0",
+		"since": "2.0.12",
 		"group": "graph"
 	},
 	"GRAPH.CONFIG GET": {
@@ -89,7 +89,7 @@
 				"type": "string"
 			}
 		],
-		"since": "2.0.0",
+		"since": "2.2.11",
 		"group": "graph"
 	},
 	"GRAPH.CONFIG SET": {
@@ -104,13 +104,13 @@
 				"type": "string"
 			}
 		],
-		"since": "2.0.0",
+		"since": "2.2.11",
 		"group": "graph"
 	},
 	"GRAPH.LIST": {
 		"summary": "Lists all graph keys in the keyspace",
 		"arguments": [],
-		"since": "2.0.0",
+		"since": "2.4.3",
 		"group": "graph"
 	}
 }
