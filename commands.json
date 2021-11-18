@@ -41,7 +41,7 @@
 		"group": "graph"
 	},
 	"GRAPH.EXPLAIN": {
-		"summary": "Constructs a query execution plan but does not run it",
+		"summary": "Returns a query execution plan without running the query",
 		"arguments": [
 			{
 				"name": "graph",
@@ -56,7 +56,7 @@
 		"group": "graph"
 	},
 	"GRAPH.PROFILE": {
-		"summary": "Executes a query and produces an execution plan augmented with metrics for each operation's execution",
+		"summary": "Executes a query and returns an execution plan augmented with metrics for each operation's execution",
 		"arguments": [
 			{
 				"name": "graph",
@@ -71,7 +71,7 @@
 		"group": "graph"
 	},
 	"GRAPH.SLOWLOG": {
-		"summary": "Returns a list containing up to 10 of the slowest queries issued against the given graph ID",
+		"summary": "Returns a list containing up to 10 of the slowest queries issued against the given graph",
 		"arguments": [
 			{
 				"name": "graph",
