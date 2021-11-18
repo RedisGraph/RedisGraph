@@ -59,7 +59,7 @@ OpBase *NewProcCallOp
 	OpProcCall *op = rm_malloc(sizeof(OpProcCall));
 
 	op->r           =  NULL;
-	op->args        =  array_new(SIValue, op->arg_count);
+	op->args        =  array_new(SIValue, array_len(arg_exps));
 	op->arg_exps    =  arg_exps;
 	op->arg_count   =  array_len(arg_exps);
 	op->proc_name   =  proc_name;
