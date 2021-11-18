@@ -450,6 +450,9 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 }
 
 static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
+	// allShortestPaths is handled separately
+	if(!cypher_ast_shortest_path_is_single(path)) return NULL;
+
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	if(path_len != 3) {
 		ErrorCtx_SetError("shortestPath requires a path containing a single relationship");
@@ -480,11 +483,6 @@ static AR_ExpNode *_AR_ExpFromShortestPath(const cypher_astnode_t *path) {
 			ErrorCtx_SetError("Maximum number of hops must be greater than or equal to minimum number of hops");
 			return AR_EXP_NewConstOperandNode(SI_NullVal());
 		}
-	}
-
-	if(!cypher_ast_shortest_path_is_single(path)) {
-		ErrorCtx_SetError("RedisGraph does not currently support allShortestPaths");
-		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
 	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(edge);

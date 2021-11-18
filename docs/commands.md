@@ -162,6 +162,22 @@ RETURN nodes(p) as actors"
 
 This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:Actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
 
+##### allShortestPaths()
+
+`allShortestPaths()` is a MATCH mode in which only the shortest paths matching all criteria are captured. Both endpoints must be bound in an earlier WITH-demarcated scope to invoke `allShortestPaths()`.
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (charlie:Actor {name: 'Charlie Sheen'}), (kevin:Actor {name: 'Kevin Bacon'})
+WITH charlie, kevin
+MATCH p=allShortestPaths((charlie)-[:PLAYED_WITH*]->(kevin))
+RETURN nodes(p) as actors"
+```
+
+This query will produce all paths of the minimum length connecting the actor node representing Charlie Sheen to the one representing Kevin Bacon. There are several 2-hop paths between the two actors, and all of these will be returned. The computation of paths then terminates, as we are not interested in any paths of length greater than 2.
+
 #### OPTIONAL MATCH
 
 The OPTIONAL MATCH clause is a MATCH variant that produces null values for elements that do not match successfully, rather than the all-or-nothing logic for patterns in MATCH clauses.

@@ -23,6 +23,7 @@ QGEdge *QGEdge_New
 	e->minHops = 1;
 	e->maxHops = 1;
 	e->bidirectional = false;
+	e->shortest_path = false;
 
 	return e;
 }
@@ -74,6 +75,14 @@ bool QGEdge_VariableLength
 ) {
 	ASSERT(e);
 	return (e->minHops != e->maxHops);
+}
+
+bool QGEdge_IsShortestPath
+(
+	const QGEdge *e
+) {
+	ASSERT(e);
+	return e->shortest_path;
 }
 
 int QGEdge_RelationCount

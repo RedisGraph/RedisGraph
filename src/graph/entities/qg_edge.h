@@ -21,6 +21,7 @@ struct QGEdge {
 	uint minHops;           /* Minimum number of hops this edge represents. */
 	uint maxHops;           /* Maximum number of hops this edge represents. */
 	bool bidirectional;     /* Edge doesn't have a direction. */
+	bool shortest_path;     /* Only edges in the shortest paths should be collected. */
 };
 
 typedef struct QGEdge QGEdge;
@@ -58,6 +59,12 @@ QGEdge *QGEdge_Clone
 
 // determine whether this is a variable length edge
 bool QGEdge_VariableLength
+(
+	const QGEdge *e
+);
+
+// determine whether this is part of an allShortestPaths query
+bool QGEdge_IsShortestPath
 (
 	const QGEdge *e
 );

@@ -82,9 +82,10 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 	array_clear(ctx->neighbors);
 }
 
-AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
-							 GRAPH_EDGE_DIR dir, uint minLen, uint maxLen,
-							 Record r, FT_FilterNode *ft, uint edge_idx) {
+AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
+							 int relationCount, GRAPH_EDGE_DIR dir, uint minLen,
+							 uint maxLen, Record r, FT_FilterNode *ft,
+							 uint edge_idx, bool shortest_paths) {
 	ASSERT(src != NULL);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
@@ -106,6 +107,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, i
 	ctx->path           =  Path_New(1);
 	ctx->neighbors      =  array_new(Edge, 32);
 	ctx->dst            =  dst;
+	ctx->shortest_paths =  shortest_paths;
 
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 
@@ -167,6 +169,10 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 				if(ctx->dst != NULL) {
 					Node dst = Path_Head(ctx->path);
 					if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) continue;
+					// if we're only collecting shortest paths,
+					// update the max level
+					if(ctx->shortest_paths && depth < ctx->maxLen)
+						ctx->maxLen = depth;
 				}
 				return ctx->path;
 			}

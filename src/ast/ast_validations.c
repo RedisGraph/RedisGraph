@@ -435,7 +435,8 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path, rax *projectio
 									rax *edge_aliases) {
 	AST_Validation res = AST_VALID;
 	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) path = cypher_ast_named_path_get_path(path);
-	if(cypher_astnode_type(path) == CYPHER_AST_SHORTEST_PATH) {
+	if(cypher_astnode_type(path) == CYPHER_AST_SHORTEST_PATH &&
+		   	cypher_ast_shortest_path_is_single(path)) {
 		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
 		return AST_INVALID;
 	}

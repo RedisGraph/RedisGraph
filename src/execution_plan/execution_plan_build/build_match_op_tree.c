@@ -1,8 +1,9 @@
 #include "execution_plan_construct.h"
 #include "execution_plan_modify.h"
-#include "../execution_plan.h"
 #include "../ops/ops.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
+#include "../execution_plan.h"
 #include "../../util/rax_extensions.h"
 #include "../optimizations/optimizations.h"
 #include "../../ast/ast_build_filter_tree.h"
@@ -38,10 +39,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		OpBase *tail = NULL;
 
 		if(edge_count == 0) {
- 			// if there are no edges in the component, we only need a node scan
- 			QGNode *n = cc->nodes[0];
+			// if there are no edges in the component, we only need a node scan
+			QGNode *n = cc->nodes[0];
 			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
-				!= raxNotFound) {
+			   != raxNotFound) {
 				continue;
 			}
 		}
@@ -81,7 +82,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			// in-case there are additional patterns to traverse
 			if(array_len(cc->edges) == 0) {
 				AlgebraicExpression_Free(
-						AlgebraicExpression_RemoveSource(&exps[0]));
+					AlgebraicExpression_RemoveSource(&exps[0]));
 			}
 		}
 
@@ -95,6 +96,16 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
 																				   AlgebraicExpression_Edge(exp));
 			if(edge && QGEdge_VariableLength(edge)) {
+				if(QGEdge_IsShortestPath(edge)) {
+					const char *src_alias = QGNode_Alias(QGEdge_Src(edge));
+					const char *dest_alias = QGNode_Alias(QGEdge_Dest(edge));
+					if(raxFind(bound_vars, (unsigned char *)src_alias, strlen(src_alias)) == raxNotFound ||
+					   raxFind(bound_vars, (unsigned char *)dest_alias,
+							   strlen(dest_alias)) == raxNotFound) {
+						ErrorCtx_SetError("Source and destination must already be resolved to call allShortestPaths");
+						break;
+					}
+				}
 				root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 			} else {
 				root = NewCondTraverseOp(plan, gc->g, exp);
@@ -188,9 +199,10 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	// collect the QueryGraph entities referenced in the clauses being converted
 	QueryGraph *qg = plan->query_graph;
 	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns,
-			mandatory_match_count);
+													mandatory_match_count);
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
+	if(ErrorCtx_EncounteredError()) goto cleanup;
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
 	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches,
@@ -198,6 +210,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 
 	// Clean up
+cleanup:
 	QueryGraph_Free(sub_qg);
 	array_free(match_clauses);
 }

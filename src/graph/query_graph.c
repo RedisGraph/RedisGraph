@@ -25,7 +25,7 @@ static void _QueryGraphSetNodeLabel
 
 	for(uint i = 0; i < nlabels; i++) {
 		const char *l = cypher_ast_label_get_name(
-				cypher_ast_node_pattern_get_label(ast_entity, i));
+							cypher_ast_node_pattern_get_label(ast_entity, i));
 
 		// if a schema is found, the AST refers to an existing label
 		Schema *s = GraphContext_GetSchema(gc, l, SCHEMA_NODE);
@@ -62,7 +62,8 @@ static void _QueryGraphAddEdge
 	QueryGraph *qg,
 	const cypher_astnode_t *ast_entity,
 	QGNode *src,
-	QGNode *dest
+	QGNode *dest,
+	bool only_shortest
 ) {
 
 	AST *ast = QueryCtx_GetAST();
@@ -75,6 +76,7 @@ static void _QueryGraphAddEdge
 
 	QGEdge *edge = QGEdge_New(NULL, alias);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
+	edge->shortest_path = only_shortest;
 
 	// add the IDs of all reltype matrixes
 	uint nreltypes = cypher_ast_rel_pattern_nreltypes(ast_entity);
@@ -173,12 +175,9 @@ static void _QueryGraph_ExtractEdge
 	// validate input, edge shouldn't be in graph
 	ASSERT(left != NULL && right != NULL);
 	ASSERT(QueryGraph_GetEdgeByAlias(graph, alias) == NULL);
-	// Unlike nodes that can show up multiple times within a pattern
-	// e.g. MATCH (a), (a:L)
-	// where each occurance might add an additional piece of information
-	// an edge can only be mentioned once, as such there's no value in
-	// cloning an edge. therefor we simply add it
-	_QueryGraphAddEdge(graph, ast_edge, left, right);
+	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
+	bool shortest_path = e ? e->shortest_path : false;
+	_QueryGraphAddEdge(graph, ast_edge, left, right, shortest_path);
 }
 
 // clones path from 'qg' into 'graph'
@@ -260,7 +259,8 @@ void QueryGraph_ConnectNodes
 void QueryGraph_AddPath
 (
 	QueryGraph *qg,
-	const cypher_astnode_t *path
+	const cypher_astnode_t *path,
+	bool only_shortest
 ) {
 	AST *ast = QueryCtx_GetAST();
 	uint nelems = cypher_ast_pattern_path_nelements(path);
@@ -285,7 +285,7 @@ void QueryGraph_AddPath
 
 		// retrieve the AST reference to this edge
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		_QueryGraphAddEdge(qg, edge, left, right);
+		_QueryGraphAddEdge(qg, edge, left, right, only_shortest);
 	}
 }
 
@@ -364,7 +364,7 @@ QueryGraph *BuildQueryGraph
 		const uint8_t clause_type = clause_types[i];
 		// collect all path objects
 		const cypher_astnode_t **clauses = AST_GetTypedNodes(ast->root,
-				clause_type);
+															 clause_type);
 		uint clause_count = array_len(clauses);
 
 		// for each clause of the current type
@@ -372,12 +372,34 @@ QueryGraph *BuildQueryGraph
 			const cypher_astnode_t *clause = clauses[j];
 			// collect path objects
 			const cypher_astnode_t **paths = AST_GetTypedNodes(clause,
-					CYPHER_AST_PATTERN_PATH);
+															   CYPHER_AST_PATTERN_PATH);
 
 			uint path_count = array_len(paths);
+
+			bool only_shortest[path_count];
+			memset(only_shortest, 0, path_count);
+			const cypher_astnode_t **shortest_paths = AST_GetTypedNodes(clause,
+																		CYPHER_AST_SHORTEST_PATH);
+			uint shortest_path_count = array_len(shortest_paths);
+			for(uint k = 0; k < shortest_path_count; k ++) {
+				const cypher_astnode_t *shortest = shortest_paths[k];
+				// single shortest paths are handled by a procedure
+				if(cypher_ast_shortest_path_is_single(shortest)) continue;
+				const cypher_astnode_t *path =
+					cypher_ast_shortest_path_get_path(shortest);
+				// seek the matching path in the paths array
+				for(uint l = 0; l < path_count; l ++) {
+					if(paths[l] == path) {
+						only_shortest[l] = true;
+						break;
+					}
+				}
+			}
+			array_free(shortest_paths);
+
 			// introduce each path object to the query graph
 			for(uint k = 0; k < path_count; k ++) {
-				QueryGraph_AddPath(qg, paths[k]);
+				QueryGraph_AddPath(qg, paths[k], only_shortest[k]);
 			}
 			array_free(paths);
 		}
@@ -599,7 +621,7 @@ QueryGraph **QueryGraph_ConnectedComponents
 
 			// mark n as visited
 			if(!raxInsert(visited, (unsigned char *)n->alias, strlen(n->alias),
-						NULL, NULL)) {
+						  NULL, NULL)) {
 				// we've already processed n
 				continue;
 			}
@@ -608,14 +630,14 @@ QueryGraph **QueryGraph_ConnectedComponents
 			for(int i = 0; i < array_len(n->outgoing_edges); i++) {
 				QGEdge *e = n->outgoing_edges[i];
 				seen = raxFind(visited, (unsigned char *)e->dest->alias,
-						strlen(e->dest->alias));
+							   strlen(e->dest->alias));
 				if(seen == raxNotFound) array_append(q, e->dest);
 			}
 
 			for(int i = 0; i < array_len(n->incoming_edges); i++) {
 				QGEdge *e = n->incoming_edges[i];
 				seen = raxFind(visited, (unsigned char *)e->src->alias,
-						strlen(e->src->alias));
+							   strlen(e->src->alias));
 				if(seen == raxNotFound) array_append(q, e->src);
 			}
 		}
@@ -629,7 +651,7 @@ QueryGraph **QueryGraph_ConnectedComponents
 			void *reachable;
 			n = g->nodes[i];
 			reachable = raxFind(visited, (unsigned char *)n->alias,
-					strlen(n->alias));
+								strlen(n->alias));
 
 			// if node is reachable, which means it is part of the
 			// connected component, then remove it from the graph,
