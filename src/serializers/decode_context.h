@@ -34,6 +34,13 @@ uint64_t GraphDecodeContext_GetKeyCount(const GraphDecodeContext *ctx);
 // Add a meta key name, required for encoding the graph.
 void GraphDecodeContext_AddMetaKey(GraphDecodeContext *ctx, const char *key);
 
+// Remove a meta key name from the list of meta keys
+void GraphDecodeContext_RemoveMetaKey
+(
+	GraphDecodeContext *ctx,
+	const char *key
+);
+
 // Returns a dynamic array with copies of the meta key names.
 unsigned char **GraphDecodeContext_GetMetaKeys(const GraphDecodeContext *ctx);
 

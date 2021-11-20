@@ -64,6 +64,14 @@ GraphContext *GraphContext_Retrieve
 	bool shouldCreate
 );
 
+// sets graph context under a key with given name
+// keyspace[name] = gc
+void GraphContext_Set
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+);
+
 // graphContext_Retrieve counterpart, releases a retrieved GraphContext
 void GraphContext_Release
 (

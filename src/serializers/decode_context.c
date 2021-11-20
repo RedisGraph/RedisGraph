@@ -20,8 +20,11 @@ GraphDecodeContext *GraphDecodeContext_New() {
 }
 
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx) {
-	ASSERT(ctx);
-	ctx->keys_processed = 0;
+	ASSERT(ctx != NULL);
+
+	ctx->keys_processed    =  0;
+	ctx->graph_keys_count  =  1;
+
 	if(ctx->multi_edge) {
 		array_free(ctx->multi_edge);
 		ctx->multi_edge = NULL;
@@ -43,6 +46,17 @@ void GraphDecodeContext_AddMetaKey(GraphDecodeContext *ctx, const char *key) {
 	raxInsert(ctx->meta_keys, (unsigned char *)key, strlen(key), NULL, NULL);
 }
 
+void GraphDecodeContext_RemoveMetaKey
+(
+	GraphDecodeContext *ctx,
+	const char *key
+) {
+	ASSERT(ctx != NULL);
+	ASSERT(key != NULL);
+
+	raxRemove(ctx->meta_keys, (unsigned char *)key, strlen(key), NULL);
+}
+
 unsigned char **GraphDecodeContext_GetMetaKeys(const GraphDecodeContext *ctx) {
 	ASSERT(ctx);
 	return raxKeys(ctx->meta_keys);
@@ -55,9 +69,13 @@ void GraphDecodeContext_ClearMetaKeys(GraphDecodeContext *ctx) {
 }
 
 // Returns if the the number of processed keys is equal to the total number of graph keys.
-bool GraphDecodeContext_Finished(const GraphDecodeContext *ctx) {
-	ASSERT(ctx);
-	return ctx->keys_processed == ctx->graph_keys_count;
+bool GraphDecodeContext_Finished
+(
+	const GraphDecodeContext *ctx
+) {
+	ASSERT(ctx != NULL);
+	return ctx->keys_processed == ctx->graph_keys_count ||
+		ctx->keys_processed == 0;
 }
 
 void GraphDecodeContext_IncreaseProcessedKeyCount(GraphDecodeContext *ctx) {

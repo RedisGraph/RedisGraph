@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -11,7 +11,10 @@
 #include "decoders/decode_graph.h"
 #include "decoders/decode_previous.h"
 
-/* Declaration of the type for redis registration. */
+// global array tracking all out-of-keyspace GraphContexts (defined in module.c)
+extern GraphContext **graphs_out_of_keyspace;
+
+// declaration of the type for redis registration
 RedisModuleType *GraphMetaRedisModuleType;
 
 static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
@@ -34,33 +37,45 @@ static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 		// Current version.
 		gc = RdbLoadGraph(rdb);
 	}
-	// Add GraphContext to global array of graphs.
-	GraphContext_RegisterWithModule(gc);
+
+	// add GraphContext to global out-of-keyspace container
+	if(GET_GRAPH_OUTOF_KEYSPACE(GraphContext_GetName(gc)) == NULL) {
+		ADD_GRAPH_OUTOF_KEYSPACE(gc);
+	}
+
 	return gc;
 }
 
-static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
+static void _GraphMetaType_RdbSave
+(
+	RedisModuleIO *rdb,
+	void *value
+) {
 	RdbSaveGraph(rdb, value);
 }
 
-static void _GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
+static void _GraphMetaType_Free
+(
+	void *value
+) {
 	// No-Op in this type.
 }
 
-static void _GraphMetaType_Free(void *value) {
-	// No-Op in this type.
-}
-
-int GraphMetaType_Register(RedisModuleCtx *ctx) {
-	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-								 .rdb_load = _GraphMetaType_RdbLoad,
-								 .rdb_save = _GraphMetaType_RdbSave,
-								 .aof_rewrite = _GraphMetaType_AofRewrite,
-								 .free = _GraphMetaType_Free
-								};
+int GraphMetaType_Register
+(
+	RedisModuleCtx *ctx
+) {
+	RedisModuleTypeMethods tm = {0};
+	
+	tm.free         =  _GraphMetaType_Free;
+	tm.version      =  REDISMODULE_TYPE_METHOD_VERSION;
+	tm.rdb_load     =  _GraphMetaType_RdbLoad;
+	tm.rdb_save     =  _GraphMetaType_RdbSave;
 
 	GraphMetaRedisModuleType = RedisModule_CreateDataType(ctx, "graphmeta",
-														  GRAPH_ENCODING_VERSION_LATEST, &tm);
+			GRAPH_ENCODING_VERSION_LATEST, &tm);
+
 	if(GraphMetaRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;
 }
+

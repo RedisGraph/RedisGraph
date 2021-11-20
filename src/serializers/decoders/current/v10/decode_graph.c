@@ -1,14 +1,10 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "decode_v10.h"
-
-// Module event handler functions declarations.
-void ModuleEventHandler_IncreaseDecodingGraphsCount(void);
-void ModuleEventHandler_DecreaseDecodingGraphsCount(void);
 
 static GraphContext *_GetOrCreateGraphContext
 (
@@ -16,16 +12,19 @@ static GraphContext *_GetOrCreateGraphContext
 ) {
 	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
-		// New graph is being decoded. Inform the module and create new graph context.
-		ModuleEventHandler_IncreaseDecodingGraphsCount();
-		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-		// While loading the graph, minimize matrix realloc and synchronization calls.
+		// new graph is being decoded
+		// inform the module and create new graph context
+		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP,
+				GRAPH_DEFAULT_EDGE_CAP);
+
+		// while loading the graph
+		// minimize matrix realloc and synchronization calls
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 	}
-	// Free the name string, as it either not in used or copied.
+	// free the name string, as it either not in used or copied
 	RedisModule_Free(graph_name);
 
-	// Set the GraphCtx in thread-local storage.
+	// set the GraphCtx in thread-local storage
 	QueryCtx_SetGraphCtx(gc);
 
 	return gc;
@@ -233,7 +232,6 @@ GraphContext *RdbLoadGraphContext_v10
 		GraphDecodeContext_Reset(gc->decoding_context);
 
 		// graph has finished decoding, inform the module
-		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}

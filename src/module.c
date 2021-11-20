@@ -38,8 +38,9 @@
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
-GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
-bool process_is_child;              // Flag indicating whether the running process is a child.
+bool process_is_child;                  // flag indicating whether the running process is a child
+GraphContext **graphs_in_keyspace;      // global array tracking all extant GraphContexts
+GraphContext **graphs_out_of_keyspace;  // global array tracking all extant GraphContexts
 
 extern CommandCtx **command_ctxs;
 
@@ -57,8 +58,9 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 }
 
 static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	graphs_in_keyspace = array_new(GraphContext *, 1);
-	process_is_child = false;
+	process_is_child        =  false;
+	graphs_in_keyspace      =  array_new(GraphContext *, 1);
+	graphs_out_of_keyspace  =  array_new(GraphContext *, 1);
 }
 
 static int GraphBLAS_Init(RedisModuleCtx *ctx) {

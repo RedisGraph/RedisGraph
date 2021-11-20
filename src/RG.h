@@ -63,3 +63,56 @@
 #undef UNUSED
 #define UNUSED(V) ((void)V)
 
+//------------------------------------------------------------------------------
+// OUT OF KEYSPACE GRAPHS HANDELING
+//------------------------------------------------------------------------------
+
+// Return number of out-of-keyspace graphs
+#define COUNT_GRAPH_OUTOF_KEYSPACE() ({                                \
+	ASSERT(graphs_out_of_keyspace != NULL);                            \
+                                                                       \
+	array_len(graphs_out_of_keyspace);                                 \
+})
+
+// Get graph from out-of-keyspace global array
+#define GET_GRAPH_OUTOF_KEYSPACE_IDX(i) ({                             \
+	ASSERT(graphs_out_of_keyspace != NULL);                            \
+                                                                       \
+	uint n = COUNT_GRAPH_OUTOF_KEYSPACE();                             \
+	ASSERT(i < n);                                                     \
+	graphs_out_of_keyspace[i];                                         \
+})
+
+// Add graph to out-of-keyspace global array
+#define ADD_GRAPH_OUTOF_KEYSPACE(g) {                                  \
+	ASSERT(g != NULL);                                                 \
+	ASSERT(graphs_out_of_keyspace != NULL);                            \
+                                                                       \
+	array_append(graphs_out_of_keyspace, g);                           \
+}
+
+// Get graph from out-of-keyspace global array
+#define GET_GRAPH_OUTOF_KEYSPACE(g) ({                                 \
+	ASSERT(g != NULL);                                                 \
+	ASSERT(graphs_out_of_keyspace != NULL);                            \
+                                                                       \
+	uint i = 0;                                                        \
+	uint n = array_len(graphs_out_of_keyspace);                        \
+	for(; i < n; i++) {                                                \
+		if(strcmp(g , graphs_out_of_keyspace[i]->graph_name) == 0) {   \
+			break;			                                           \
+		}                                                              \
+	}                                                                  \
+	(i < n) ? graphs_out_of_keyspace[i] : NULL;                        \
+})
+
+// Remove graph from out-of-keyspace global array
+#define REMOVE_GRAPH_OUTOF_KEYSPACE_IDX(i) ({                          \
+	ASSERT(graphs_out_of_keyspace != NULL);                            \
+                                                                       \
+	uint n = COUNT_GRAPH_OUTOF_KEYSPACE();                             \
+	ASSERT(i < n);                                                     \
+                                                                       \
+	array_del_fast(graphs_out_of_keyspace, i);                         \
+})
+

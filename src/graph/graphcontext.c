@@ -17,10 +17,10 @@
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-// Global array tracking all extant GraphContexts (defined in module.c)
+// global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
+extern GraphContext **graphs_out_of_keyspace;
 extern uint aux_field_counter;
-extern uint currently_decoding_graphs;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
 
@@ -52,8 +52,13 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 // GraphContext API
 //------------------------------------------------------------------------------
 
-// Creates and initializes a graph context struct.
-GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
+// creates and initializes a graph context struct
+GraphContext *GraphContext_New
+(
+	const char *graph_name,
+	size_t node_cap,
+	size_t edge_cap
+) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	gc->version          = 0;  // initial graph version
@@ -88,19 +93,26 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	return gc;
 }
 
-/* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
- * The try-get-create flow is done when module global lock is acquired, to enforce consistency
- * while BGSave is called. */
-static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph_name,
-										  size_t node_cap, size_t edge_cap) {
-	// Create and initialize a graph context.
+// _GraphContext_Create tries to get a graph context
+// and if it does not exists, create a new one
+// the try-get-create flow is done when module global lock is acquired
+// to enforce consistency
+// while BGSave is called
+static GraphContext *_GraphContext_Create
+(
+	RedisModuleCtx *ctx,
+	const char *graph_name,
+	size_t node_cap,
+	size_t edge_cap
+) {
+	// create and initialize a graph context
 	GraphContext *gc = GraphContext_New(graph_name, node_cap, edge_cap);
 	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
-	// Set value in key.
+	// set value in key
 	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
-	// Register graph context for BGSave.
+	// register graph context for BGSave
 	GraphContext_RegisterWithModule(gc);
 
 	RedisModule_FreeString(ctx, graphID);
@@ -108,15 +120,20 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
-/* In a sharded environment, there could be a race condition between the decoding of
- * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
- * that the module replicated properly. */
+// return true if server is under going replication
+// as long as our AUX counter is greater than 0 we determine that
+// we're still replicating
 static bool _GraphContext_IsModuleReplicating(void) {
-	return aux_field_counter > 0 || currently_decoding_graphs > 0;
+	return aux_field_counter > 0;
 }
 
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
-									bool shouldCreate) {
+GraphContext *GraphContext_Retrieve
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString *graphID,
+	bool readOnly,
+	bool shouldCreate
+) {
 	if(_GraphContext_IsModuleReplicating()) {
 		// The whole module is currently replicating, emit an error.
 		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
@@ -130,7 +147,8 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 		if(shouldCreate) {
 			// Key doesn't exist, create it.
 			const char *graphName = RedisModule_StringPtrLen(graphID, NULL);
-			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP,
+					GRAPH_DEFAULT_EDGE_CAP);
 		} else {
 			// Key does not exist and won't be created, emit an error.
 			RedisModule_ReplyWithError(ctx, "ERR Invalid graph operation on empty key");
@@ -147,6 +165,28 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 	if(gc) _GraphContext_IncreaseRefCount(gc);
 
 	return gc;
+}
+
+void GraphContext_Set
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+	ASSERT(gc  != NULL);
+	ASSERT(ctx != NULL);
+
+	// create graph key
+	const char *graph_name = GraphContext_GetName(gc);
+	RedisModuleString *keyname = RedisModule_CreateString(ctx,
+			graph_name, strlen(graph_name)); 
+
+	void *key = RedisModule_OpenKey(ctx, keyname, REDISMODULE_WRITE);
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
+		RedisModule_FreeString(ctx, keyname);
+	}
+
+	RedisModule_CloseKey(key);
 }
 
 void GraphContext_Release(GraphContext *gc) {
@@ -487,9 +527,10 @@ void GraphContext_DeleteEdgeFromIndices(GraphContext *gc, Edge *e) {
 // Functions for globally tracking GraphContexts
 //------------------------------------------------------------------------------
 
-// Register a new GraphContext for module-level tracking
+// register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
-	// See if the graph context is not already in the keyspace.
+	printf("!!!!NOTICEIN GraphContext_RegisterWithModule!!!!!\n");
+	// see if the graph context is not already in the keyspace
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i ++) {
 		if(graphs_in_keyspace[i] == gc) return;
@@ -497,15 +538,13 @@ void GraphContext_RegisterWithModule(GraphContext *gc) {
 	array_append(graphs_in_keyspace, gc);
 }
 
-GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name) {
-	GraphContext *gc = NULL;
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i ++) {
-		if(strcmp(graphs_in_keyspace[i]->graph_name, graph_name) == 0) {
-			gc = graphs_in_keyspace[i];
-			break;
-		}
-	}
+GraphContext *GraphContext_GetRegisteredGraphContext
+(
+	const char *graph_name
+) {
+	ASSERT(graph_name != NULL);
+
+	GraphContext *gc = GET_GRAPH_OUTOF_KEYSPACE(graph_name);
 	return gc;
 }
 

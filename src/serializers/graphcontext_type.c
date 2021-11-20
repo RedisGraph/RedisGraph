@@ -12,6 +12,9 @@
 #include "decoders/decode_previous.h"
 #include "../util/redis_version.h"
 
+// global array tracking all out-of-keyspace GraphContexts (defined in module.c)
+extern GraphContext **graphs_out_of_keyspace;
+
 // forward declerations of the module event handler functions
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
@@ -39,8 +42,14 @@ static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 		// Current version.
 		gc = RdbLoadGraph(rdb);
 	}
-	// Add GraphContext to global array of graphs.
-	GraphContext_RegisterWithModule(gc);
+
+	// add GraphContext to global out-of-keyspace container
+	// TODO: remove following line and introduce a MACRO
+	// GraphContext_RegisterWithModule(gc);
+	if(GET_GRAPH_OUTOF_KEYSPACE(GraphContext_GetName(gc)) == NULL) {
+		ADD_GRAPH_OUTOF_KEYSPACE(gc);
+	}
+
 	return gc;
 }
 
@@ -49,21 +58,40 @@ static void _GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 	RdbSaveGraph(rdb, value);
 }
 
-static void _GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
-	// TODO: implement.
-}
+// save an unsigned placeholder before and after the keyspace encoding.
+static void _GraphContextType_AuxSave
+(
+	RedisModuleIO *rdb,
+	int when
+) {
+	if(COUNT_GRAPH_OUTOF_KEYSPACE() > 0) {
+		// detected half-baked graph(s)
+		// in this case we can't allow keyspace encoding to succeed
+		// kill ourself
+		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING,
+				"detected graph in intermidate state, killing redis");
+		exit(1);
+	}
 
-// Save an unsigned placeholder before and after the keyspace encoding.
-static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
 	RedisModule_SaveUnsigned(rdb, 0);
 }
 
-// Decode the unsigned placeholders saved before and after the keyspace values
-// and call the module event handler.
-static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
+// decode the unsigned placeholders saved before and after the keyspace values
+// and call the module event handler
+static int _GraphContextType_AuxLoad
+(
+	RedisModuleIO *rdb,
+	int encver,
+	int when
+) {
 	RedisModule_LoadUnsigned(rdb);
-	if(when == REDISMODULE_AUX_BEFORE_RDB) ModuleEventHandler_AUXBeforeKeyspaceEvent();
-	else ModuleEventHandler_AUXAfterKeyspaceEvent();
+	if(when == REDISMODULE_AUX_BEFORE_RDB) {
+		ModuleEventHandler_AUXBeforeKeyspaceEvent();
+	}
+	else {
+		ModuleEventHandler_AUXAfterKeyspaceEvent();
+	}
 	return REDISMODULE_OK;
 };
 
@@ -73,16 +101,15 @@ static void _GraphContextType_Free(void *value) {
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {
-	RedisModuleTypeMethods tm = {
-		.version           = REDISMODULE_TYPE_METHOD_VERSION,
-		.rdb_load          = _GraphContextType_RdbLoad,
-		.rdb_save          = _GraphContextType_RdbSave,
-		.aof_rewrite       = _GraphContextType_AofRewrite,
-		.free              = _GraphContextType_Free,
-		.aux_save          = _GraphContextType_AuxSave,
-		.aux_load          = _GraphContextType_AuxLoad,
-		.aux_save_triggers = REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB
-	};
+	RedisModuleTypeMethods tm = {0};
+
+	tm.free              = _GraphContextType_Free;
+	tm.version           = REDISMODULE_TYPE_METHOD_VERSION;
+	tm.rdb_load          = _GraphContextType_RdbLoad;
+	tm.rdb_save          = _GraphContextType_RdbSave;
+	tm.aux_save          = _GraphContextType_AuxSave;
+	tm.aux_load          = _GraphContextType_AuxLoad;
+	tm.aux_save_triggers = REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB;
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
 			GRAPH_ENCODING_VERSION_LATEST, &tm);
