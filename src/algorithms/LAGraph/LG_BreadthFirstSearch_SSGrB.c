@@ -134,7 +134,6 @@ int LG_BreadthFirstSearch_SSGrB
 	// BFS traversal and label the nodes
 	//--------------------------------------------------------------------------
 
-	bool do_push = true ;       // start with push
 	int64_t edges_unexplored = nvals ;
 	bool any_pull = false ;     // true if any pull phase has been done
 
@@ -150,20 +149,11 @@ int LG_BreadthFirstSearch_SSGrB
 		// q = kth level of the BFS
 		//----------------------------------------------------------------------
 
-		int sparsity = do_push ? GxB_SPARSE : GxB_BITMAP ;
-		GrB_TRY (GxB_set (q, GxB_SPARSITY_CONTROL, sparsity)) ;
+		GrB_TRY (GxB_set (q, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
 
 		// mask is pi if computing parent, v if computing just level
-		if (do_push)
-		{
-			// q'{!mask} = q'*A
-			GrB_TRY (GrB_vxm (q, mask, NULL, semiring, q, A, GrB_DESC_RSC)) ;
-		}
-		else
-		{
-			// q{!mask} = AT*q
-			GrB_TRY (GrB_mxv (q, mask, NULL, semiring, AT, q, GrB_DESC_RSC)) ;
-		}
+		// q'{!mask} = q'*A
+		GrB_TRY (GrB_vxm (q, mask, NULL, semiring, q, A, GrB_DESC_RSC)) ;
 
 		//----------------------------------------------------------------------
 		// done if q is empty
