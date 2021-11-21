@@ -12,7 +12,7 @@
 #include "../../util/rmalloc.h"
 #include "../../configuration/config.h"
 #include "../../datatypes/path/sipath_builder.h"
-#include "../../algorithms/LAGraph_bfs_pushpull.h"
+#include "../../algorithms/LAGraph/LAGraph_bfs_pushpull.h"
 
 /* Creates a path from a given sequence of graph entities.
  * The first argument is the ast node represents the path.
@@ -189,8 +189,8 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	}
 
 	// Invoke the BFS algorithm
-	res = LG_BreadthFirstSearch_vanilla(&V, &PI, ctx->R, ctx->TR, src_id,
-							   &dest_id, max_level, NULL);
+	res = LG_BreadthFirstSearch_SSGrB(&V, &PI, ctx->R, ctx->TR, src_id,
+							   &dest_id, max_level);
 	ASSERT(res == GrB_SUCCESS);
 
 	SIValue p = SI_NullVal();

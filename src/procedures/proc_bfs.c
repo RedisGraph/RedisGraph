@@ -13,7 +13,7 @@
 #include "../datatypes/array.h"
 #include "../graph/graphcontext.h"
 #include "../configuration/config.h"
-#include "../algorithms/LAGraph_bfs_pushpull.h"
+#include "../algorithms/LAGraph/LAGraph_bfs_pushpull.h"
 
 // The BFS procedure performs a single source BFS scan
 // it's inputs are:
@@ -128,7 +128,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
 	GrB_Vector *pPI = &PI;
 	if(!bfs_ctx->yield_edges) pPI = NULL;
-	GrB_Info res = LG_BreadthFirstSearch_vanilla(&V, pPI, R, TR, src_id, NULL, max_level, NULL);
+	GrB_Info res = LG_BreadthFirstSearch_SSGrB(&V, pPI, R, TR, src_id, NULL, max_level);
 	ASSERT(res == GrB_SUCCESS);
 
 	// Remove values with a level of 0, as those represent the source
