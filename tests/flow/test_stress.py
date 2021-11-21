@@ -3,19 +3,19 @@ import time
 from time import sleep
 from RLTest import Env
 from redisgraph import Graph
-from base import FlowTestsBase
 from pathos.pools import ProcessPool as Pool
 
 graphs       = None  # one graph object per client
 GRAPH_ID     = "G"   # graph identifier
 
 def query_crud(graph, query_id):
-    for i in range(10):
-        create_query = "CREATE (n:node {v:'%s'}), (n)-[:have]->({value:'%s'}), (n)-[:have]->({value:'%s'})" % (query_id, query_id, query_id)
-        read_query   = "MATCH (n0:node {v:'%s'})<-[:have]-(n:node)-[:have]->(n1:node) return n1.v" % query_id
-        update_query = "MATCH (n:node {v: '%s'}) SET n.x = '%s'" % (query_id, query_id)
-        delete_query = "MATCH (n:node {v: '%s'})-[:have*]->(n1:node) DELETE n, n1" % query_id
+    query_id = int(query_id)
+    create_query = "CREATE (n:Node {v:%d}), (n)-[:HAVE]->(:Node {v:%d}), (n)-[:HAVE]->(:Node {v:%d})" % (query_id, query_id, query_id)
+    read_query   = "MATCH  (n:Node {v:%d})-[:HAVE]->(n1:Node) RETURN n1.v" % query_id
+    update_query = "MATCH  (n:Node {v:%d}) SET n.x = %d" % (query_id, query_id)
+    delete_query = "MATCH  (n:Node {v:%d})-[:HAVE*]->(n1:Node) DELETE n, n1" % query_id
 
+    for i in range(10):
         try:
             graph.query(create_query)
             graph.query(read_query)
@@ -28,7 +28,7 @@ def query_crud(graph, query_id):
 # run n_iterations and create n node in each iteration
 def create_nodes(graph, n_iterations):
     for i in range(n_iterations):
-        graph.query("CREATE (:Node {val: %d})-[:R]->()" % i)
+        graph.query("CREATE (:Node {v: %d})-[:R]->()" % i)
 
 # run n_iterations and delete n in each iteration
 def delete_nodes(graph, n_iterations):
@@ -78,7 +78,7 @@ def BGSAVE_loop(env, conn, n_iterations):
         prev_bgsave_time = cur_bgsave_time
         env.assertEqual(results['rdb_last_bgsave_status'], "ok")
 
-class testStressFlow(FlowTestsBase):
+class testStressFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         # skip test if we're running under Valgrind
@@ -101,6 +101,11 @@ class testStressFlow(FlowTestsBase):
             g = graphs[0]
             g.redis_con.close()
 
+    # called before each test function
+    def setUp(self):
+        # flush DB after each test
+        self.env.flush()
+
     # Count number of nodes in the graph
     def test00_stress(self):
         ids = range(self.client_count)
@@ -115,13 +120,13 @@ class testStressFlow(FlowTestsBase):
         conn.close()
 
     def test01_bgsave_stress(self):
-        n_reads = 50000
-        n_creations = 50000
-        n_updates = n_creations/10
-        n_deletions = n_creations/2
+        n_reads      =  50000
+        n_creations  =  50000
+        n_updates    =  n_creations/10
+        n_deletions  =  n_creations/2
 
         conn = self.env.getConnection()
-        graphs[0].query("CREATE INDEX ON :Node(val)")
+        graphs[0].query("CREATE INDEX FOR (n:Node) ON (n.v)")
 
         pool = Pool(nodes=5)
 
@@ -147,12 +152,13 @@ class testStressFlow(FlowTestsBase):
         conn.close()
 
     def test02_write_only_workload(self):
-        n_creations = 20000
-        n_node_deletions = 10000
-        n_edge_deletions = 10000
-        pool = Pool(nodes=3)
+        pool              =  Pool(nodes=3)
+        n_creations       =  20000
+        n_node_deletions  =  10000
+        n_edge_deletions  =  10000
 
         self.env.start()
+
         # invoke queries
         t1 = pool.apipe(merge_nodes_and_edges, graphs[0], n_creations)
 
