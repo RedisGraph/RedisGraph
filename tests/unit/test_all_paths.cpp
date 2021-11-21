@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -41,8 +41,9 @@ class AllPathsTest : public ::testing::Test {
 		size_t nodeCount = 4;
 		Graph *g = Graph_New(nodeCount, nodeCount);
 		int relation = Graph_AddRelationType(g);
-		for(int i = 0; i < 4; i++)
+		for(int i = 0; i < 4; i++) {
 			Graph_CreateNode(g, &n, NULL, 0);
+		}
 
 		/* Connections:
 		 * 0 -> 1
@@ -324,8 +325,8 @@ TEST_F(AllPathsTest, OnlyShortestPaths) {
 	unsigned int maxLen = UINT_MAX - 2;
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING,
-									   minLen, maxLen, NULL, NULL, 0, true);
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1,
+			GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, NULL, NULL, 0, true);
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
 		ASSERT_TRUE(pathArrayContainsPath(p, 1, path));
