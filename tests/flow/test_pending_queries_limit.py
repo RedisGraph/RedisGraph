@@ -1,3 +1,4 @@
+import os
 import threading
 from RLTest import Env
 from redisgraph import Graph

@@ -1,6 +1,7 @@
 from base import FlowTestsBase
 import os
 import sys
+import random
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
@@ -119,10 +120,14 @@ class testGraphPersistency(FlowTestsBase):
                 edgeCount = actual_result.result_set[0][0]
                 self.env.assertEquals(edgeCount, 2)
 
-                # Verify indices exists
-                expected_indices = [['exact-match', 'country', ['name', 'population'], 'english', []], ['exact-match', 'person', ['name', 'height'], 'english', []], ['full-text', 'person', ['text'], 'english', ['a', 'b']]]
-                indices = graph.query("""CALL db.indexes()""").result_set
-                self.env.assertEquals(indices, expected_indices)
+                # Verify indices exists.
+                plan = redis_graph.execution_plan(
+                    "MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
+                self.env.assertIn("Index Scan", plan)
+
+                plan = redis_graph.execution_plan(
+                    "MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
+                self.env.assertIn("Index Scan", plan)
 
     # Verify that edges are not modified after entity deletion
     def test02_deleted_entity_migration(self):
