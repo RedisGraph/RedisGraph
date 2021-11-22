@@ -33,7 +33,7 @@ int GB_sparsity_control     // revised sparsity_control
 
     if ((vdim == 0 || vdim == 1) && (sparsity_control & GxB_HYPERSPARSE))
     { 
-        // a GxB_Scalar, GrB_Vector, or a GrB_Matrix with a single vector,
+        // a GrB_Scalar, GrB_Vector, or a GrB_Matrix with a single vector,
         // cannot be converted to hypersparse.  If the sparsity_control allows
         // for the hypersparse case, disable it and enable the sparse case
         // instead.

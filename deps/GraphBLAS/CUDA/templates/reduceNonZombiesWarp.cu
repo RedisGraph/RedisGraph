@@ -19,7 +19,6 @@
 #include <limits>
 #include <cstdint>
 #include <cooperative_groups.h>
-#include "mySemiRing.h"
 
 using namespace cooperative_groups;
 

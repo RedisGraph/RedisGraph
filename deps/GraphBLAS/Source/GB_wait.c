@@ -30,6 +30,8 @@
 // If A is non-hypersparse, then O(n) is added in the worst case, to prune
 // zombies and to update the vector pointers for A.
 
+// If A->nvec_nonempty is unknown (-1) it is computed.
+
 // If the method is successful, it does an OpenMP flush just before returning.
 
 #include "GB_select.h"
@@ -40,7 +42,6 @@
 
 #define GB_FREE_ALL                     \
 {                                       \
-    GB_FREE (&W, W_size) ;              \
     GB_phbix_free (A) ;                 \
     GB_phbix_free (T) ;                 \
     GB_phbix_free (S) ;                 \
@@ -60,7 +61,6 @@ GrB_Info GB_wait                // finish all pending computations
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_void *W = NULL ; size_t W_size = 0 ;
     struct GB_Matrix_opaque T_header, A1_header, S_header ;
     GrB_Matrix T  = GB_clear_static_header (&T_header) ;
     GrB_Matrix A1 = NULL ;
@@ -75,6 +75,7 @@ GrB_Info GB_wait                // finish all pending computations
         ASSERT (!GB_ZOMBIES (A)) ;
         ASSERT (!GB_JUMBLED (A)) ;
         ASSERT (!GB_PENDING (A)) ;
+        ASSERT (A->nvec_nonempty >= 0) ;
         // ensure the matrix is written to memory
         #pragma omp flush
         return (GrB_SUCCESS) ;
@@ -93,12 +94,13 @@ GrB_Info GB_wait                // finish all pending computations
     int64_t nzombies = A->nzombies ;
     int64_t npending = GB_Pending_n (A) ;
     const bool A_iso = A->iso ;
-    if (nzombies > 0 || npending > 0 || A->jumbled)
+    if (nzombies > 0 || npending > 0 || A->jumbled || A->nvec_nonempty < 0)
     { 
-        GB_BURBLE_MATRIX (A, "(%swait:%s " GBd " %s, " GBd " pending%s) ",
+        GB_BURBLE_MATRIX (A, "(%swait:%s " GBd " %s, " GBd " pending%s%s) ",
             A_iso ? "iso " : "", name, nzombies,
             (nzombies == 1) ? "zombie" : "zombies", npending,
-            A->jumbled ? ", jumbled" : "") ;
+            A->jumbled ? ", jumbled" : "",
+            A->nvec_nonempty < 0 ? ", nvec" : "") ;
     }
 
     //--------------------------------------------------------------------------
@@ -106,6 +108,19 @@ GrB_Info GB_wait                // finish all pending computations
     //--------------------------------------------------------------------------
 
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+
+    //--------------------------------------------------------------------------
+    // check if only A->nvec_nonempty is needed
+    //--------------------------------------------------------------------------
+
+    if (npending == 0 && nzombies == 0 && !A->jumbled)
+    {
+        if (A->nvec_nonempty < 0)
+        {
+            A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+        }
+        return (GrB_SUCCESS) ;
+    }
 
     //--------------------------------------------------------------------------
     // ensure A is not shallow
@@ -125,6 +140,7 @@ GrB_Info GB_wait                // finish all pending computations
         // That is, if A has no pending tuples and no zombies, but is just
         // jumbled, then it stays sparse or hypersparse.
         GB_OK (GB_unjumble (A, Context)) ;
+        ASSERT (GB_IMPLIES (info == GrB_SUCCESS, A->nvec_nonempty >= 0)) ;
         return (info) ;
     }
 
@@ -232,8 +248,15 @@ GrB_Info GB_wait                // finish all pending computations
     if (nzombies > 0)
     { 
         // remove all zombies from A
-        GB_OK (GB_selector (NULL /* A in-place */, GB_NONZOMBIE_opcode, NULL,
-            false, A, 0, NULL, Context)) ;
+        GB_OK (GB_selector (
+            NULL,                       // A in-place
+            GB_NONZOMBIE_selop_code,    // use the opcode only
+            NULL,                       // no GB_Operator
+            false,                      // flipij is false
+            A,                          // input/output matrix
+            0,                          // ithunk is unused
+            NULL,                       // no GrB_Scalar Thunk
+            Context)) ;
         ASSERT (A->nzombies == (anz_orig - GB_nnz (A))) ;
         A->nzombies = 0 ;
     }
@@ -263,6 +286,7 @@ GrB_Info GB_wait                // finish all pending computations
     { 
         // conform A to its desired sparsity structure and return result
         info = GB_conform (A, Context) ;
+        ASSERT (GB_IMPLIES (info == GrB_SUCCESS, A->nvec_nonempty >= 0)) ;
         #pragma omp flush
         return (info) ;
     }
@@ -277,6 +301,7 @@ GrB_Info GB_wait                // finish all pending computations
         // A has no entries so just transplant T into A, then free T and
         // conform A to its desired hypersparsity.
         info = GB_transplant_conform (A, A->type, &T, Context) ;
+        ASSERT (GB_IMPLIES (info == GrB_SUCCESS, A->nvec_nonempty >= 0)) ;
         #pragma omp flush
         return (info) ;
     }
@@ -419,7 +444,7 @@ GrB_Info GB_wait                // finish all pending computations
             //------------------------------------------------------------------
 
             GB_OK (GB_add (S, A->type, A->is_csc, NULL, 0, 0, &ignore, A1, T,
-                NULL, Context)) ;
+                false, NULL, NULL, NULL, Context)) ;
 
             ASSERT_MATRIX_OK (S, "S = A1+T", GB0) ;
 
@@ -505,8 +530,8 @@ GrB_Info GB_wait                // finish all pending computations
         // FUTURE:: if GB_add could tolerate zombies in A, then the initial
         // prune of zombies can be skipped.
 
-        GB_OK (GB_add (S, A->type, A->is_csc, NULL, 0, 0, &ignore, A, T, NULL,
-            Context)) ;
+        GB_OK (GB_add (S, A->type, A->is_csc, NULL, 0, 0, &ignore, A, T,
+            false, NULL, NULL, NULL, Context)) ;
         GB_phbix_free (T) ;
         ASSERT_MATRIX_OK (S, "S after GB_wait:add", GB0) ;
         info = GB_transplant_conform (A, A->type, &S, Context) ;
@@ -516,6 +541,7 @@ GrB_Info GB_wait                // finish all pending computations
     // flush the matrix and return result
     //--------------------------------------------------------------------------
 
+    ASSERT (GB_IMPLIES (info == GrB_SUCCESS, A->nvec_nonempty >= 0)) ;
     #pragma omp flush
     return (info) ;
 }

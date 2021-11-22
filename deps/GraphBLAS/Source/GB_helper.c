@@ -29,15 +29,15 @@
 
 #define GB_ALLOCATE_WORK(work_type)                                         \
     size_t Work_size ;                                                      \
-    work_type *Work = GB_MALLOC (nthreads, work_type, &Work_size) ;         \
+    work_type *Work = GB_MALLOC_WORK (nthreads, work_type, &Work_size) ;    \
     if (Work == NULL) return (false) ;
 
 //------------------------------------------------------------------------------
-// GB_FREE_WORK: free per-thread workspace
+// GB_FREE_WORKSPACE: free per-thread workspace
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK(work_type)                                             \
-    GB_FREE (&Work, Work_size) ;
+#define GB_FREE_WORKSPACE                                                   \
+    GB_FREE_WORK (&Work, Work_size) ;
 
 //------------------------------------------------------------------------------
 // GB_helper1: convert 0-based indices to 1-based for gbextracttuples
@@ -134,7 +134,7 @@ bool GB_helper3              // return true if OK, false on error
         ok = ok && (Work [tid] != INT64_MIN) ;
     }
 
-    GB_FREE_WORK (int64_t) ;
+    GB_FREE_WORKSPACE ;
 
     (*List_max) = listmax ;
     return (ok) ;
@@ -180,7 +180,7 @@ bool GB_helper3i             // return true if OK, false on error
         listmax = GB_IMAX (listmax, Work [tid]) ;
     }
 
-    GB_FREE_WORK (int64_t) ;
+    GB_FREE_WORKSPACE ;
 
     (*List_max) = listmax ;
     return (true) ;
@@ -224,7 +224,7 @@ bool GB_helper4              // return true if OK, false on error
         listmax = GB_IMAX (listmax, Work [tid]) ;
     }
 
-    GB_FREE_WORK (GrB_Index) ;
+    GB_FREE_WORKSPACE ;
 
     if (len > 0) listmax++ ;
     (*List_max) = listmax ;
@@ -622,7 +622,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK (double) ;
+    GB_FREE_WORKSPACE ;
     return (s) ;
 }
 

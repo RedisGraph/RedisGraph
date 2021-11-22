@@ -29,6 +29,7 @@ GrB_Info GrB_Matrix_nrows   // get the number of rows of a matrix
     //--------------------------------------------------------------------------
 
     (*nrows) = GB_NROWS (A) ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

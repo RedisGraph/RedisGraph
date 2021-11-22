@@ -4,9 +4,6 @@ function test173
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
 
-% [~, ~, ~, types, ~, ~] = GB_spec_opsall ;
-% types = types.all ;
-
 types = { 'logical', 'double', 'double complex' } ;
 
 m = 10 ;

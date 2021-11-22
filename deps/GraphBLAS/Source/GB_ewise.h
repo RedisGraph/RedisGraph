@@ -26,6 +26,9 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     bool B_transpose,               // if true, use B' instead of B
     bool eWiseAdd,                  // if true, do set union (like A+B),
                                     // otherwise do intersection (like A.*B)
+    const bool is_eWiseUnion,       // if true, eWiseUnion, else eWiseAdd
+    const GrB_Scalar alpha,         // alpha and beta ignored for eWiseAdd,
+    const GrB_Scalar beta,          // nonempty scalars for GxB_eWiseUnion
     GB_Context Context
 ) ;
 

@@ -38,7 +38,7 @@
 #include "GB_build.h"
 #include "GB_apply.h"
 
-#define GB_FREE_WORK                    \
+#define GB_FREE_WORKSPACE               \
 {                                       \
     GB_FREE (&iwork, iwork_size) ;      \
     GB_FREE (&jwork, jwork_size) ;      \
@@ -48,7 +48,7 @@
 
 #define GB_FREE_ALL                     \
 {                                       \
-    GB_FREE_WORK ;                      \
+    GB_FREE_WORKSPACE ;                 \
     GB_phbix_free (T) ;                 \
     /* freeing C also frees A if transpose is done in-place */ \
     GB_phbix_free (C) ;                 \
@@ -65,11 +65,11 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
                                 // ignored if op is present (cast to op->ztype)
     const bool C_is_csc,        // desired CSR/CSC format of C
     const GrB_Matrix A,         // input matrix; C == A if done in place
-        // no operator is applied if both op1 and op2 are NULL
-        const GrB_UnaryOp op1_in,       // unary operator to apply
-        const GrB_BinaryOp op2_in,      // binary operator to apply
-        const GxB_Scalar scalar,        // scalar to bind to binary operator
-        bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
+        // no operator is applied if op is NULL
+        const GB_Operator op_in,    // unary/idxunop/binop to apply
+        const GrB_Scalar scalar,    // scalar to bind to binary operator
+        bool binop_bind1st,         // if true, binop(x,A) else binop(A,y)
+        bool flipij,                // if true, flip i,j for user idxunop
     GB_Context Context
 )
 {
@@ -91,8 +91,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
 
     ASSERT_MATRIX_OK (A, "A input for GB_transpose", GB0) ;
     ASSERT_TYPE_OK_OR_NULL (ctype, "ctype for GB_transpose", GB0) ;
-    ASSERT_UNARYOP_OK_OR_NULL (op1_in, "unop for GB_transpose", GB0) ;
-    ASSERT_BINARYOP_OK_OR_NULL (op2_in, "binop for GB_transpose", GB0) ;
+    ASSERT_OP_OK_OR_NULL (op_in, "unop/binop for GB_transpose", GB0) ;
     ASSERT_SCALAR_OK_OR_NULL (scalar, "scalar for GB_transpose", GB0) ;
 
     if (in_place)
@@ -140,86 +139,91 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
 
     //--------------------------------------------------------------------------
-    // determine the type of C and get the unary or binary operator
+    // determine the type of C and get the unary, idxunop, binary operator
     //--------------------------------------------------------------------------
 
-    // If a unary or binary operator is present, C is always returned as
-    // the ztype of the operator.  The input ctype is ignored.
+    // If a unary, idxunop, or binary operator is present, C is always returned
+    // as the ztype of the operator.  The input ctype is ignored.
 
-    GrB_UnaryOp  op1 = NULL ;
-    GrB_BinaryOp op2 = NULL ;
-    GB_Opcode opcode = GB_NOP_opcode ;
+    GB_Operator op = NULL ;
+    GB_Opcode opcode = GB_NOP_code ;
 
-    if (op1_in != NULL)
+    if (op_in == NULL)
     {
-        // get the unary operator
-        opcode = op1_in->opcode ;
-        if (atype == op1_in->xtype && opcode == GB_IDENTITY_opcode)
-        { 
-            // op1 is a built-in identity operator, with the same type as A, so
-            // do not apply the operator and do not typecast.  op1 is NULL.
-            ctype = atype ;
-        }
-        else
-        { 
-            // apply the operator, z=op1(x)
-            op1 = op1_in ;
-            ctype = op1->ztype ;
-        }
-    }
-    else if (op2_in != NULL)
-    { 
-        // get the binary operator
-        GrB_Type op2_intype = binop_bind1st ? op2_in->xtype : op2_in->ytype ;
-        opcode = op2_in->opcode ;
-        // only GB_apply calls GB_transpose with op2_in, and it ensures this
-        // condition holds: first(A,y), second(x,A) have been renamed to
-        // identity(A), and PAIR has been renamed one(A), so these cases do not
-        // occur here.
-        ASSERT (!((opcode == GB_PAIR_opcode) ||
-                  (opcode == GB_FIRST_opcode  && !binop_bind1st) ||
-                  (opcode == GB_SECOND_opcode &&  binop_bind1st))) ;
-        // apply the operator, z=op2(A,y) or op2(x,A)
-        op2 = op2_in ;
-        ctype = op2->ztype ;
-    }
-    else
-    {
-        // no operator.  both op1 and op2 are NULL
+        // no operator
         if (ctype == NULL)
         { 
             // no typecasting if ctype is NULL
             ctype = atype ;
         }
     }
+    else
+    {
+        opcode = op_in->opcode ;
+        if (GB_IS_UNARYOP_CODE (opcode))
+        {
+            // get the unary operator
+            if (atype == op_in->xtype && opcode == GB_IDENTITY_unop_code)
+            { 
+                // op is a built-in unary identity operator, with the same type
+                // as A, so do not apply the operator and do not typecast.  op
+                // is NULL.
+                ctype = atype ;
+            }
+            else
+            { 
+                // apply the operator, z=unop(x)
+                op = op_in ;
+                ctype = op->ztype ;
+            }
+        }
+        else // binary or idxunop
+        { 
+            // get the binary or idxunop operator: only GB_apply calls
+            // GB_transpose with op_in, and it ensures this condition holds:
+            // first(A,y), second(x,A) have been renamed to identity(A), and
+            // PAIR has been renamed one(A), so these cases do not occur here.
+            ASSERT (!((opcode == GB_PAIR_binop_code) ||
+                      (opcode == GB_FIRST_binop_code  && !binop_bind1st) ||
+                      (opcode == GB_SECOND_binop_code &&  binop_bind1st))) ;
+            // apply the operator, z=binop(A,y), binop(x,A), or idxunop(A,y)
+            op = op_in ;
+            ctype = op->ztype ;
+        }
+    }
 
-    GB_Type_code ccode = ctype->code ;
-    size_t csize = ctype->size ;
+    bool user_idxunop = (opcode == GB_USER_idxunop_code) ;
 
     //--------------------------------------------------------------------------
     // check for positional operators
     //--------------------------------------------------------------------------
 
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    GrB_UnaryOp  save_op1 = op1 ;
-    GrB_BinaryOp save_op2 = op2 ;
+    GB_Operator save_op = op ;
     if (op_is_positional)
     { 
-        // do not apply the op until after the transpose
-        op1 = NULL ;
-        op2 = NULL ;
-        // replace op1 with the ONE operator, as a placeholder.  C will be
+        // do not apply the positional op until after the transpose;
+        // replace op with the ONE operator, as a placeholder.  C will be
         // constructed as iso, and needs to be expanded to non-iso when done.
-        ASSERT (ctype == GrB_INT64 || ctype == GrB_INT32) ;
-        op1 = (ctype == GrB_INT64) ? GxB_ONE_INT64 : GxB_ONE_INT32 ;
+        ASSERT (ctype == GrB_INT64 || ctype == GrB_INT32 || ctype == GrB_BOOL) ;
+        op = (GB_Operator) GB_unop_one (ctype->code) ;
+    }
+    else if (user_idxunop)
+    {
+        // do not apply the user op until after the transpose; replace with
+        // no operator at all, with no typecast
+        op = NULL ;
+        ctype = atype ;
     }
 
     //--------------------------------------------------------------------------
     // determine the iso status of C
     //--------------------------------------------------------------------------
 
+    size_t csize = ctype->size ;
+
     ASSERT (GB_IMPLIES (avlen == 0 || avdim == 0, anz == 0)) ;
-    GB_iso_code C_code_iso = GB_iso_unop_code (A, op1, op2, binop_bind1st) ;
+    GB_iso_code C_code_iso = GB_iso_unop_code (A, op, binop_bind1st) ;
     bool C_iso = (C_code_iso != GB_NON_ISO) ;
 
     ASSERT (GB_IMPLIES (A->iso, C_iso)) ;
@@ -265,7 +269,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         int T_sparsity = (A_is_bitmap) ? GxB_BITMAP : GxB_FULL ;
         bool T_cheap =                  // T can be done quickly if:
             (avlen == 1 || avdim == 1)      // A is a row or column vector,
-            && op1 == NULL && op2 == NULL   // no operator to apply,
+            && op == NULL                   // no operator to apply,
             && atype == ctype ;             // and no typecasting
 
         // allocate T
@@ -319,7 +323,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
             }
             T->iso = A->iso ;   // OK
         }
-        else if (op1 == NULL && op2 == NULL)
+        else if (op == NULL)
         { 
             // do not apply an operator; optional typecast to T->type
             GB_transpose_ix (T, A, NULL, NULL, 0, nthreads) ;
@@ -327,7 +331,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         else
         { 
             // apply an operator, T has type op->ztype
-            GB_transpose_op (T, C_code_iso, op1, op2, scalar, binop_bind1st, A,
+            GB_transpose_op (T, C_code_iso, op, scalar, binop_bind1st, A,
                 NULL, NULL, 0, nthreads) ;
         }
 
@@ -363,8 +367,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         // allocate T->p, T->i, and optionally T->x, but not T->h
         T->p = GB_MALLOC (anz+1, int64_t, &(T->p_size)) ;
         T->i = GB_MALLOC (anz  , int64_t, &(T->i_size)) ;
-        bool allocate_Tx = (op1 != NULL || op2 != NULL || C_iso) ||
-                           (ctype != atype) ;
+        bool allocate_Tx = (op != NULL || C_iso) || (ctype != atype) ;
         if (allocate_Tx)
         { 
             // allocate new space for the new typecasted numerical values of T
@@ -382,12 +385,12 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         //----------------------------------------------------------------------
 
         // numerical values: apply the operator, typecast, or make shallow copy
-        if (op1 != NULL || op2 != NULL || C_iso)
+        if (op != NULL || C_iso)
         { 
-            // T->x = op1 (A), op2 (A,scalar), or op2 (scalar,A), or
+            // T->x = unop (A), binop (A,scalar), or binop (scalar,A), or
             // compute the iso value of T = 1, A, or scalar, without any op
-            info = GB_apply_op ((GB_void *) T->x, ctype, C_code_iso, op1, op2,
-                scalar, binop_bind1st, A, Context) ;
+            info = GB_apply_op ((GB_void *) T->x, ctype, C_code_iso, op,
+                scalar, binop_bind1st, flipij, A, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
         }
         else if (ctype != atype)
@@ -446,7 +449,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         }
         T->p [anz] = anz ;
 
-        T->iso = C_iso ;    // OK
+        T->iso = C_iso ;
         T->magic = GB_MAGIC ;
 
     }
@@ -498,8 +501,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
             // A is sparse, so new space is needed for T->i
             T->i = GB_MALLOC (anz, int64_t, &(T->i_size)) ;
         }
-        bool allocate_Tx = (op1 != NULL || op2 != NULL || C_iso) ||
-                           (ctype != atype) ;
+        bool allocate_Tx = (op != NULL || C_iso) || (ctype != atype) ;
         if (allocate_Tx)
         { 
             // allocate new space for the new typecasted numerical values of T
@@ -519,12 +521,12 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
         //----------------------------------------------------------------------
 
         // numerical values: apply the operator, typecast, or make shallow copy
-        if (op1 != NULL || op2 != NULL || C_iso)
+        if (op != NULL || C_iso)
         { 
-            // T->x = op1 (A), op2 (A,scalar), or op2 (scalar,A), or
+            // T->x = unop (A), binop (A,scalar), or binop (scalar,A), or
             // compute the iso value of T = 1, A, or scalar, without any op
-            info = GB_apply_op ((GB_void *) T->x, ctype, C_code_iso, op1, op2,
-                scalar, binop_bind1st, A, Context) ;
+            info = GB_apply_op ((GB_void *) T->x, ctype, C_code_iso, op,
+                scalar, binop_bind1st, flipij, A, Context) ;
             ASSERT (info == GrB_SUCCESS) ;
         }
         else if (ctype != atype)
@@ -749,7 +751,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
                 ok = ok && (jwork != NULL) ;
             }
 
-            if ((op1 != NULL || op2 != NULL) && !C_iso)
+            if (op != NULL && !C_iso)
             { 
                 Swork = (GB_void *) GB_XALLOC (C_iso, anz, csize, &Swork_size) ;
                 ok = ok && (Swork != NULL) ;
@@ -789,16 +791,16 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
             if (C_iso)
             { 
                 // apply the op to the iso scalar
-                GB_iso_unop (sscalar, ctype, C_code_iso, op1, op2, A, scalar) ;
+                GB_iso_unop (sscalar, ctype, C_code_iso, op, A, scalar) ;
                 S_input = sscalar ;     // S_input is used instead of Swork
                 Swork = NULL ;
                 stype = ctype ;
             }
-            else if (op1 != NULL || op2 != NULL)
+            else if (op != NULL)
             { 
                 // Swork = op (A)
-                info = GB_apply_op (Swork, ctype, C_code_iso, op1, op2, scalar,
-                    binop_bind1st, A, Context) ;
+                info = GB_apply_op (Swork, ctype, C_code_iso, op, scalar,
+                    binop_bind1st, flipij, A, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
                 // GB_builder will not need to typecast Swork to T->x, and it
                 // may choose to transplant it into T->x
@@ -868,7 +870,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
 
             // T = A' and typecast to ctype
             GB_OK (GB_transpose_bucket (T, C_code_iso, ctype, C_is_csc, A,
-                op1, op2, scalar, binop_bind1st,
+                op, scalar, binop_bind1st,
                 nworkspaces_bucket, nthreads_bucket, Context)) ;
 
             ASSERT_MATRIX_OK (T, "T from bucket", GB0) ;
@@ -880,23 +882,34 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
     // free workspace, apply positional op, and transplant/conform T into C
     //==========================================================================
 
-    GB_FREE_WORK ;
+    //--------------------------------------------------------------------------
+    // free workspace
+    //--------------------------------------------------------------------------
 
-    // free prior space of A, if transpose is done in-place
+    GB_FREE_WORKSPACE ;
     if (in_place)
-    {
+    { 
+        // free prior space of A, if transpose is done in-place
         GB_phbix_free (A) ;
     }
+
+    //--------------------------------------------------------------------------
+    // transplant T into the result C
+    //--------------------------------------------------------------------------
 
     // transplant the control settings from A to C
     C->hyper_switch = A_hyper_switch ;
     C->bitmap_switch = A_bitmap_switch ;
     C->sparsity_control = A_sparsity_control ;
-
-    // transplant T into the result C
     GB_OK (GB_transplant (C, ctype, &T, Context)) ;
+    ASSERT_MATRIX_OK (C, "C transplanted in GB_transpose", GB0) ;
+    ASSERT_TYPE_OK (ctype, "C type in GB_transpose", GB0) ;
 
-    // apply a positional operator, after transposing the matrix
+    //--------------------------------------------------------------------------
+    // apply a positional operator or user idxunop after transposing the matrix
+    //--------------------------------------------------------------------------
+
+    op = save_op ;
     if (op_is_positional)
     {
         if (C->iso)
@@ -908,13 +921,58 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A' or C=op(A')
             GB_OK (GB_convert_any_to_non_iso (C, false, Context)) ;
         }
 
-        // the positional operator is applied in-place to the values of C
-        // Cx = op (C)
-        GB_OK (GB_apply_op ((GB_void *) C->x, ctype, GB_NON_ISO, // positional
-            save_op1, save_op2, scalar, binop_bind1st, C, Context)) ;
+        // the positional unary op is applied in-place: C->x = op (C)
+        GB_OK (GB_apply_op ((GB_void *) C->x, ctype, GB_NON_ISO, op,
+            scalar, binop_bind1st, flipij, C, Context)) ;
+
+    }
+    else if (user_idxunop)
+    { 
+
+        if (C->iso)
+        { 
+            // If C was constructed as iso; it needs to be expanded and
+            // initialized first.
+            GB_OK (GB_convert_any_to_non_iso (C, true, Context)) ;
+        }
+
+        if (C->type == op->ztype)
+        { 
+            // the user-defined index unary op is applied in-place: C->x = op
+            // (C) where the type of C does not change
+            GB_OK (GB_apply_op ((GB_void *) C->x, ctype, GB_NON_ISO, op,
+                scalar, binop_bind1st, flipij, C, Context)) ;
+        }
+        else // op is a user-defined index unary operator
+        { 
+            // apply the operator to the transposed matrix:
+            // C = op (C), but not in-place since the type of C is changing
+            ctype = op->ztype ;
+            csize = ctype->size ;
+            size_t Cx_size = 0 ;
+            GB_void *Cx_final = GB_MALLOC (anz_held*csize, GB_void, &Cx_size) ;
+            if (Cx_final == NULL)
+            { 
+                // out of memory
+                GB_FREE_ALL ;
+                return (GrB_OUT_OF_MEMORY) ;
+            }
+            // Cx_final = op (C)
+            GB_OK (GB_apply_op (Cx_final, ctype, GB_NON_ISO, op,
+                scalar, false, flipij, C, Context)) ;
+            // transplant Cx_final as C->x and finalize the type of C
+            GB_FREE (&(C->x), C->x_size) ;
+            C->x = Cx_final ;
+            C->x_size = Cx_size ;
+            C->type = ctype ;
+            C->iso = false ;
+        }
     }
 
+    //--------------------------------------------------------------------------
     // conform the result to the desired sparsity structure of A
+    //--------------------------------------------------------------------------
+
     ASSERT_MATRIX_OK (C, "C to conform in GB_transpose", GB0) ;
     GB_OK (GB_conform (C, Context)) ;
     ASSERT_MATRIX_OK (C, "C output of GB_transpose", GB0) ;

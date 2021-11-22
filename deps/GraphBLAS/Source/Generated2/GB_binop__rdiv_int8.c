@@ -1,3 +1,4 @@
+
 //------------------------------------------------------------------------------
 // GB_binop:  hard-coded functions for each built-in binary operator
 //------------------------------------------------------------------------------
@@ -38,10 +39,13 @@
 // C=A+scalar                       GB (_bind2nd__rdiv_int8)
 // C=A'+scalar                      GB (_bind2nd_tran__rdiv_int8)
 
-// C type:   int8_t
-// A type:   int8_t
-// B,b type: int8_t
-// BinaryOp: cij = GB_IDIV_SIGNED (bij, aij, 8)
+// C type:     int8_t
+// A type:     int8_t
+// A pattern?  0
+// B type:     int8_t
+// B pattern?  0
+
+// BinaryOp:   cij = GB_IDIV_SIGNED (bij, aij, 8)
 
 #define GB_ATYPE \
     int8_t
@@ -68,9 +72,17 @@
 #define GB_GETA(aij,Ax,pA,A_iso)  \
     int8_t aij = GBX (Ax, pA, A_iso)
 
+// true if values of A are not used
+#define GB_A_IS_PATTERN \
+    0 \
+
 // bij = Bx [pB]
 #define GB_GETB(bij,Bx,pB,B_iso)  \
     int8_t bij = GBX (Bx, pB, B_iso)
+
+// true if values of B are not used
+#define GB_B_IS_PATTERN \
+    0 \
 
 // declare scalar of the same type as C
 #define GB_CTYPE_SCALAR(t)  \
@@ -133,7 +145,7 @@ void GB (_Cdense_ewise3_accum__rdiv_int8)
 // C = A+B, all 3 matrices dense
 //------------------------------------------------------------------------------
 
-GrB_Info GB (_Cdense_ewise3_noaccum__rdiv_int8)
+void GB (_Cdense_ewise3_noaccum__rdiv_int8)
 (
     GrB_Matrix C,
     const GrB_Matrix A,
@@ -141,12 +153,7 @@ GrB_Info GB (_Cdense_ewise3_noaccum__rdiv_int8)
     const int nthreads
 )
 { 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
     #include "GB_dense_ewise3_noaccum_template.c"
-    return (GrB_SUCCESS) ;
-    #endif
 }
 
 //------------------------------------------------------------------------------
@@ -207,8 +214,8 @@ GrB_Info GB (_Cdense_accumb__rdiv_int8)
 GrB_Info GB (_AxD__rdiv_int8)
 (
     GrB_Matrix C,
-    const GrB_Matrix A, bool A_is_pattern,
-    const GrB_Matrix D, bool D_is_pattern,
+    const GrB_Matrix A,
+    const GrB_Matrix D,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
@@ -232,8 +239,8 @@ GrB_Info GB (_AxD__rdiv_int8)
 GrB_Info GB (_DxB__rdiv_int8)
 (
     GrB_Matrix C,
-    const GrB_Matrix D, bool D_is_pattern,
-    const GrB_Matrix B, bool B_is_pattern,
+    const GrB_Matrix D,
+    const GrB_Matrix B,
     int nthreads
 )
 { 
@@ -261,6 +268,9 @@ GrB_Info GB (_AaddB__rdiv_int8)
     const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
+    const bool is_eWiseUnion,
+    const GB_void *alpha_scalar_in,
+    const GB_void *beta_scalar_in,
     const bool Ch_is_Mh,
     const int64_t *restrict C_to_M,
     const int64_t *restrict C_to_A,
@@ -277,8 +287,15 @@ GrB_Info GB (_AaddB__rdiv_int8)
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (B_ek_slicing, int64_t) ;
+    int8_t alpha_scalar ;
+    int8_t beta_scalar ;
+    if (is_eWiseUnion)
+    {
+        alpha_scalar = (*((int8_t *) alpha_scalar_in)) ;
+        beta_scalar  = (*((int8_t *) beta_scalar_in )) ;
+    }
     #include "GB_add_template.c"
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
     #endif
 }

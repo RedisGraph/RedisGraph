@@ -75,9 +75,11 @@
     int64_t mvlen = M->vlen ;
     #endif
 
-    #if ( !GB_IS_ANY_PAIR_SEMIRING )
-    const GB_ATYPE *restrict Ax = (GB_ATYPE *) (A_is_pattern ? NULL : A->x) ;
-    const GB_BTYPE *restrict Bx = (GB_BTYPE *) (B_is_pattern ? NULL : B->x) ;
+    #if !GB_A_IS_PATTERN
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
+    #endif
+    #if !GB_B_IS_PATTERN
+    const GB_BTYPE *restrict Bx = (GB_BTYPE *) B->x ;
     #endif
 
     //==========================================================================

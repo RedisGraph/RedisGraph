@@ -1,4 +1,4 @@
-function C = gbeadd (Cin, M, accum, semiring, A, B, desc)        %#ok
+function [C,k] = gbeadd (Cin, M, accum, semiring, A, B, desc) %#ok
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later

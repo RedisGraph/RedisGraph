@@ -17,7 +17,6 @@ GrB_Info GB_convert_any_to_iso // convert non-iso matrix to iso
 (
     GrB_Matrix A,           // input/output matrix
     GB_void *scalar,        // scalar value, of size A->type->size, or NULL
-    bool compact,           // if true, also reduce the space for A->x
     GB_Context Context
 )
 {
@@ -34,24 +33,17 @@ GrB_Info GB_convert_any_to_iso // convert non-iso matrix to iso
 
     size_t asize = A->type->size ;
     GB_void ascalar [GB_VLA(asize)] ;
-    if (scalar == NULL)
-    {
-        if (A->iso)
-        { 
-            memcpy (ascalar, A->x, asize) ;
-        }
-        else
-        { 
-            memset (ascalar, 0, asize) ;
-        }
+    memset (ascalar, 0, asize) ;
+    if (scalar == NULL && A->iso)
+    { 
+        memcpy (ascalar, A->x, asize) ;
     }
 
     //--------------------------------------------------------------------------
-    // compact the matrix if required or requested
+    // compact the matrix
     //--------------------------------------------------------------------------
 
-    if (A->x_size < asize || A->x_shallow || A->x == NULL
-        || (compact && A->x_size != asize))
+    if (A->x_size != asize || A->x_shallow || A->x == NULL)
     {
 
         //----------------------------------------------------------------------

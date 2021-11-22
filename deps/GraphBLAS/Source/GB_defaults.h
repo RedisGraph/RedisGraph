@@ -20,14 +20,6 @@
 // The default format is by row (CSR).
 #define GB_HYPER_SWITCH_DEFAULT (0.0625)
 
-// compile SuiteSparse:GraphBLAS with "-DBYCOL" to make GxB_BY_COL the default
-// format
-#ifdef BYCOL
-#define GB_FORMAT_DEFAULT GxB_BY_COL
-#else
-#define GB_FORMAT_DEFAULT GxB_BY_ROW
-#endif
-
 // by default, give each thread at least 64K units of work to do
 #define GB_CHUNK_DEFAULT (64*1024)
 

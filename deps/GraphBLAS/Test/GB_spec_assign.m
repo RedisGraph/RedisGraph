@@ -70,7 +70,7 @@ if (scalar)
     ni = length (I) ;
     nj = length (J) ;
     A.matrix  (1:ni, 1:nj) = A.matrix (1,1) ;
-    A.pattern (1:ni, 1:nj) = true ;
+    A.pattern (1:ni, 1:nj) = A.pattern (1,1) ;
 end
 
 %-------------------------------------------------------------------------------

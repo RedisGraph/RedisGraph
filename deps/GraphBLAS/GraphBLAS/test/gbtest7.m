@@ -17,6 +17,33 @@ G = GrB.build (i, j, x, m, n) ;
 S = sparse   (i, j, x, m, n) ;
 assert (gbtest_eq (S, G)) ;
 
+G = GrB.build (i, j, x, m, n, '') ;
+assert (gbtest_eq (S, G)) ;
+
+G = GrB.build (i, j, x, m, n, 'ignore') ;
+assert (gbtest_eq (S, G)) ;
+
+% add some duplicates
+ii = [i ; i] ;
+jj = [j ; j] ;
+xx = [x ; 2*x] ;
+ok = false ;
+try
+    % no duplicates are tolerated
+    G = GrB.build (ii, jj, xx, m, n, '') ;
+catch
+    ok = true ;
+end
+assert (ok) ;
+
+% duplicates are ignored
+G = GrB.build (ii, jj, xx, m, n, 'ignore') ;
+assert (gbtest_eq (2*S, G)) ;
+
+% duplicates are summed
+G = GrB.build (ii, jj, xx, m, n) ;
+assert (gbtest_eq (3*S, G)) ;
+
 d.kind = 'GrB' ;
 G = GrB.build (i, j, x, m, n, d) ;
 assert (gbtest_eq (S, G)) ;

@@ -46,7 +46,6 @@
 
 // C on input is empty, see GB_add_phase2.c.
 
-
 #include "GB_add.h"
 
 #define GB_FREE_ALL ;
@@ -62,6 +61,9 @@ GrB_Info GB_add             // C=A+B, C<M>=A+B, or C<!M>=A+B
     bool *mask_applied,     // if true, the mask was applied
     const GrB_Matrix A,     // input A matrix
     const GrB_Matrix B,     // input B matrix
+    const bool is_eWiseUnion,   // if true, eWiseUnion, else eWiseAdd
+    const GrB_Scalar alpha, // alpha and beta ignored for eWiseAdd,
+    const GrB_Scalar beta,  // nonempty scalars for GxB_eWiseUnion
     const GrB_BinaryOp op,  // op to perform C = op (A,B)
     GB_Context Context
 )
@@ -162,9 +164,9 @@ GrB_Info GB_add             // C=A+B, C<M>=A+B, or C<!M>=A+B
         { 
             // out of memory; free everything allocated by GB_add_phase0
             GB_FREE (&Ch, Ch_size) ;
-            GB_FREE_WERK (&C_to_M, C_to_M_size) ;
-            GB_FREE_WERK (&C_to_A, C_to_A_size) ;
-            GB_FREE_WERK (&C_to_B, C_to_B_size) ;
+            GB_FREE_WORK (&C_to_M, C_to_M_size) ;
+            GB_FREE_WORK (&C_to_A, C_to_A_size) ;
+            GB_FREE_WORK (&C_to_B, C_to_B_size) ;
             return (info) ;
         }
 
@@ -181,11 +183,11 @@ GrB_Info GB_add             // C=A+B, C<M>=A+B, or C<!M>=A+B
         if (info != GrB_SUCCESS)
         { 
             // out of memory; free everything allocated by GB_add_phase0
-            GB_FREE_WERK (&TaskList, TaskList_size) ;
+            GB_FREE_WORK (&TaskList, TaskList_size) ;
             GB_FREE (&Ch, Ch_size) ;
-            GB_FREE_WERK (&C_to_M, C_to_M_size) ;
-            GB_FREE_WERK (&C_to_A, C_to_A_size) ;
-            GB_FREE_WERK (&C_to_B, C_to_B_size) ;
+            GB_FREE_WORK (&C_to_M, C_to_M_size) ;
+            GB_FREE_WORK (&C_to_A, C_to_A_size) ;
+            GB_FREE_WORK (&C_to_B, C_to_B_size) ;
             return (info) ;
         }
 
@@ -218,16 +220,17 @@ GrB_Info GB_add             // C=A+B, C<M>=A+B, or C<!M>=A+B
         // from phase0:
         Cnvec, &Ch, Ch_size, C_to_M, C_to_A, C_to_B, Ch_is_Mh, C_sparsity,
         // original input:
-        (apply_mask) ? M : NULL, Mask_struct, Mask_comp, A, B, Context) ;
+        (apply_mask) ? M : NULL, Mask_struct, Mask_comp, A, B,
+        is_eWiseUnion, alpha, beta, Context) ;
 
     // Ch and Cp must not be freed; they are now C->h and C->p.
     // If the method failed, Cp and Ch have already been freed.
 
     // free workspace
-    GB_FREE_WERK (&TaskList, TaskList_size) ;
-    GB_FREE_WERK (&C_to_M, C_to_M_size) ;
-    GB_FREE_WERK (&C_to_A, C_to_A_size) ;
-    GB_FREE_WERK (&C_to_B, C_to_B_size) ;
+    GB_FREE_WORK (&TaskList, TaskList_size) ;
+    GB_FREE_WORK (&C_to_M, C_to_M_size) ;
+    GB_FREE_WORK (&C_to_A, C_to_A_size) ;
+    GB_FREE_WORK (&C_to_B, C_to_B_size) ;
 
     if (info != GrB_SUCCESS)
     { 

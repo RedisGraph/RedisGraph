@@ -26,14 +26,14 @@
 #include "GB_type__include.h"
 #endif
 
-#undef  GB_FREE_WORK
-#define GB_FREE_WORK                        \
+#undef  GB_FREE_WORKSPACE
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (M_ek_slicing, int64_t) ;   \
 }
 
 #undef  GB_FREE_ALL
-#define GB_FREE_ALL GB_FREE_WORK
+#define GB_FREE_ALL GB_FREE_WORKSPACE
 
 GrB_Info GB_dense_subassign_05d
 (
@@ -180,7 +180,7 @@ GrB_Info GB_dense_subassign_05d
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (C, "C output for subassign method_05d", GB0) ;
     return (GrB_SUCCESS) ;
 }

@@ -29,6 +29,7 @@ GrB_Info GxB_Matrix_pack_FullR  // pack a full matrix, held by row
     GB_BURBLE_START ("GxB_Matrix_pack_FullR") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6, xx7) ;
+    GB_GET_DESCRIPTOR_IMPORT (desc, fast_import) ;
 
     //--------------------------------------------------------------------------
     // pack the matrix
@@ -42,7 +43,7 @@ GrB_Info GxB_Matrix_pack_FullR  // pack a full matrix, held by row
         Ax,   Ax_size,  // Ax
         0, false, 0,
         GxB_FULL, false,                    // full by row
-        iso, Context) ;
+        iso, fast_import, true, Context) ;
 
     GB_BURBLE_END ;
     return (info) ;

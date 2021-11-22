@@ -48,7 +48,7 @@ static void _populate_filter_matrix
 		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
 	}
 
-	GrB_Matrix_wait(&FM);
+	GrB_Matrix_wait(FM, GrB_MATERIALIZE);
 }
 
 // evaluate algebraic expression:

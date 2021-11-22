@@ -198,21 +198,21 @@ for problem = 0:2
     end
 
     % default sparsity
-    C2 = GB_mex_assign (Corig, Work2) ;
+    C2 = GB_mex_assign (Corig, Work2) ; % WORK_ASSIGN
     GB_spec_compare (C2, C3) ;
 
     % with sparsity control
     for s = 0:15
-        C2 = GB_mex_assign (Corig, Work2, [s s]) ;
+        C2 = GB_mex_assign (Corig, Work2, [s s]) ;  % WORK_ASSIGN
         GB_spec_compare (C2, C3) ;
     end
 
     % default sparsity but both C and M sparse
-    C2 = GB_mex_assign (Corig, Work2, [2 2]) ;
+    C2 = GB_mex_assign (Corig, Work2, [2 2]) ;  % WORK_ASSIGN
     GB_spec_compare (C2, C3) ;
 
     % default sparsity but C sparse and M bitmap/full
-    C2 = GB_mex_assign (Corig, Work2, [2 8]) ;
+    C2 = GB_mex_assign (Corig, Work2, [2 8]) ;  % WORK_ASSIGN
     GB_spec_compare (C2, C3) ;
 
 end

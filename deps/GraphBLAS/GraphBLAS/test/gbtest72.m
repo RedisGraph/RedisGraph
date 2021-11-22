@@ -27,6 +27,10 @@ for n = [1 5 10 100 1000]
         end
         assert (c1_present == c2_present) ;
         assert (c1_present == c2) ;
+
+        c4 = GrB.mxm ('any.oneb', x, y, dt) ;
+        assert (isequal (c2, c4)) ;
+
     end
     fprintf ('n: %4d trials: %4d found: %4d\n', n, ntrials, nfound) ;
 end

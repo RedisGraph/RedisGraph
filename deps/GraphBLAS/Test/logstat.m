@@ -96,9 +96,9 @@ for trial = 1:ntrials
                     c - clast, n, (c-clast) / t) ;
             else
                 fprintf (   '%5d: %5d of %5d %5.1f%% %8.2f/sec', ...
-                    c - clast, c, n, 100 * (c/n), (c-clast) / t) ;
+                    c - clast, n-c, n, 100 * (c/n), (c-clast) / t) ;
                 fprintf (f, '%5d: %5d of %5d %5.1f%% %8.2f/sec', ...
-                    c - clast, c, n, 100 * (c/n), (c-clast) / t) ;
+                    c - clast, n-c, n, 100 * (c/n), (c-clast) / t) ;
             end
             if (debug)
                 fprintf (' [debug]') ;

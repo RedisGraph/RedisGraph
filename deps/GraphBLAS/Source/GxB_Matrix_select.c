@@ -19,7 +19,7 @@ GrB_Info GxB_Matrix_select  // C<M> = accum (C, select(A,k)) or select(A',k)
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GxB_SelectOp op,          // operator to select the entries
     const GrB_Matrix A,             // first input:  matrix A
-    const GxB_Scalar Thunk,         // optional input for select operator
+    const GrB_Scalar Thunk,         // optional input for select operator
     const GrB_Descriptor desc       // descriptor for C, M, and A
 )
 { 
@@ -49,7 +49,7 @@ GrB_Info GxB_Matrix_select  // C<M> = accum (C, select(A,k)) or select(A',k)
         C, C_replace,               // C and its descriptor
         M, Mask_comp, Mask_struct,  // mask and its descriptor
         accum,                      // optional accum for Z=accum(C,T)
-        op,                         // operator to select the entries
+        (GB_Operator) op,           // operator to select the entries
         A,                          // first input: A
         Thunk,                      // optional input for select operator
         A_transpose,                // descriptor for A
@@ -58,3 +58,4 @@ GrB_Info GxB_Matrix_select  // C<M> = accum (C, select(A,k)) or select(A',k)
     GB_BURBLE_END ;
     return (info) ;
 }
+

@@ -26,9 +26,9 @@ bool GB_binop_builtin               // true if binary operator is builtin
     GB_Type_code *zcode             // type code for z output
 ) ;
 
-GB_Opcode GB_flip_opcode    // flipped opcode, or -1 on error
+GB_Opcode GB_flip_binop_code    // flipped binary opcode, or -1 on error
 (
-    GB_Opcode opcode,       // opcode to flip
+    GB_Opcode opcode,       // binary opcode to flip
     bool *handled           // true if opcode is handled by flipping the opcode
 ) ;
 
@@ -56,7 +56,8 @@ void GB_binop_new
     GrB_Type ztype,                 // type of output z
     GrB_Type xtype,                 // type of input x
     GrB_Type ytype,                 // type of input y
-    const char *name,               // name of the function (may be NULL)
+    const char *binop_name,         // name of the user function
+    const char *binop_defn,         // definition of the user function
     const GB_Opcode opcode          // opcode for the function
 ) ;
 
@@ -67,8 +68,7 @@ GrB_Monoid GB_binop_to_monoid       // return the corresponding monoid, or NULL
 
 void GB_binop_rename            // rename a bound binary op
 (
-    GrB_UnaryOp *op1,           // set to new unary op, if op2 is renamed
-    GrB_BinaryOp *op2,          // set to NULL if op2 is renamed
+    GB_Operator *op,            // operator to rename
     bool binop_bind1st
 ) ;
 

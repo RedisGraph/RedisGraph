@@ -42,7 +42,7 @@ fprintf ('\n') ;
 GrB.semiringinfo
 
 fprintf ('number of semirings: %d\n', nsemirings) ;
-assert (nsemirings == 2518) ;
+assert (nsemirings == 2589) ;
 
 fprintf ('\ngbtest4: all tests passed\n') ;
 

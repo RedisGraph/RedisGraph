@@ -27,8 +27,8 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // true if z=fmult(y,x), flipping x and y
     // outputs:
-    GB_Opcode *mult_opcode,         // multiply opcode
-    GB_Opcode *add_opcode,          // add opcode
+    GB_Opcode *mult_binop_code,     // multiply opcode
+    GB_Opcode *add_binop_code,      // add opcode
     GB_Type_code *xcode,            // type code for x input
     GB_Type_code *ycode,            // type code for y input
     GB_Type_code *zcode             // type code for z output
@@ -55,7 +55,7 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     // or not this function handles the semiring as hard-coded.  Now return for
     // cases this function does not handle.
 
-    (*mult_opcode) = GB_NOP_opcode ;
+    (*mult_binop_code) = GB_NOP_code ;
     (*xcode) = GB_ignore_code ;
     (*ycode) = GB_ignore_code ;
     (*zcode) = GB_ignore_code ;
@@ -64,8 +64,9 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     // check the monoid
     //--------------------------------------------------------------------------
 
-    (*add_opcode) = add->opcode ;
-    if (*add_opcode >= GB_USER_opcode)
+    (*add_binop_code) = add->opcode ;
+    ASSERT (GB_IS_BINARYOP_CODE (*add_binop_code)) ;
+    if (*add_binop_code == GB_USER_binop_code)
     { 
         // semiring has a user-defined add operator for its monoid
         return (false) ;
@@ -79,7 +80,7 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     { 
         // Only the LAND, LOR, LXOR, and EQ monoids remain if z is
         // boolean.  MIN, MAX, PLUS, and TIMES are renamed.
-        (*add_opcode) = GB_boolean_rename (*add_opcode) ;
+        (*add_binop_code) = GB_boolean_rename (*add_binop_code) ;
     }
 
     //--------------------------------------------------------------------------
@@ -87,7 +88,7 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     //--------------------------------------------------------------------------
 
     if (!GB_binop_builtin (A->type, A_is_pattern, B->type, B_is_pattern,
-        mult, flipxy, mult_opcode, xcode, ycode, zcode))
+        mult, flipxy, mult_binop_code, xcode, ycode, zcode))
     { 
         return (false) ;
     }
@@ -96,18 +97,18 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     // rename to ANY_PAIR
     //--------------------------------------------------------------------------
 
-    if ((*mult_opcode) == GB_PAIR_opcode)
+    if ((*mult_binop_code) == GB_PAIR_binop_code)
     { 
-        if (((*add_opcode) == GB_EQ_opcode) ||
-            ((*add_opcode) == GB_LAND_opcode) ||
-            ((*add_opcode) == GB_BAND_opcode) ||
-            ((*add_opcode) == GB_LOR_opcode) ||
-            ((*add_opcode) == GB_BOR_opcode) ||
-            ((*add_opcode) == GB_MAX_opcode) ||
-            ((*add_opcode) == GB_MIN_opcode) ||
-            ((*add_opcode) == GB_TIMES_opcode))
+        if (((*add_binop_code) == GB_EQ_binop_code) ||
+            ((*add_binop_code) == GB_LAND_binop_code) ||
+            ((*add_binop_code) == GB_BAND_binop_code) ||
+            ((*add_binop_code) == GB_LOR_binop_code) ||
+            ((*add_binop_code) == GB_BOR_binop_code) ||
+            ((*add_binop_code) == GB_MAX_binop_code) ||
+            ((*add_binop_code) == GB_MIN_binop_code) ||
+            ((*add_binop_code) == GB_TIMES_binop_code))
         // rename to ANY_PAIR
-        (*add_opcode) = GB_ANY_opcode ;
+        (*add_binop_code) = GB_ANY_binop_code ;
     }
 
     return (true) ;

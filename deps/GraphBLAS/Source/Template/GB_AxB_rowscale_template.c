@@ -19,9 +19,6 @@
     // check inputs
     //--------------------------------------------------------------------------
 
-    // Bx is unused if the operator is FIRST or PAIR
-    #include "GB_unused.h"
-
     ASSERT (GB_JUMBLED_OK (C)) ;
     ASSERT (!GB_JUMBLED (D)) ;
     ASSERT (GB_JUMBLED_OK (B)) ;
@@ -31,10 +28,13 @@
     // get D and B
     //--------------------------------------------------------------------------
 
-    const GB_ATYPE *restrict Dx = (GB_ATYPE *) (D_is_pattern ? NULL : D->x) ;
+    #if !GB_A_IS_PATTERN
+    const GB_ATYPE *restrict Dx = (GB_ATYPE *) D->x ;
+    #endif
     const bool D_iso = D->iso ;
-
-    const GB_BTYPE *restrict Bx = (GB_BTYPE *) (B_is_pattern ? NULL : B->x) ;
+    #if !GB_B_IS_PATTERN
+    const GB_BTYPE *restrict Bx = (GB_BTYPE *) B->x ;
+    #endif
     const bool B_iso = B->iso ;
     const int64_t *restrict Bi = B->i ;
     const int64_t bnz = GB_nnz (B) ;

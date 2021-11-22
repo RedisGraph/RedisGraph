@@ -29,6 +29,7 @@ GrB_Info GxB_Type_size          // determine the size of the type
     //--------------------------------------------------------------------------
 
     (*size) = type->size ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

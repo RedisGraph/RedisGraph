@@ -25,9 +25,6 @@ function C = bitshift (A, B, assumedtype)
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
-% FUTURE: bitshift(A,B) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
-
 if (nargin < 3)
     assumedtype = 'uint64' ;
 end

@@ -60,6 +60,15 @@ void gbcov_put (void) ;
 
 #define OK(method) CHECK_ERROR ((method) != GrB_SUCCESS, "GrB:error") ;
 
+#define OK0(method)                                         \
+{                                                           \
+    GrB_Info info = method ;                                \
+    if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE))     \
+    {                                                       \
+        ERROR ("GrB:error") ;                               \
+    }                                                       \
+}
+
 #define OK1(C,method)                                       \
 {                                                           \
     if ((method) != GrB_SUCCESS)                            \
@@ -242,18 +251,33 @@ GrB_BinaryOp gb_mxstring_to_binop       // return binary operator from a string
     const GrB_Type btype                // type of B
 ) ;
 
-GrB_BinaryOp gb_string_to_binop         // return binary operator from a string
+void gb_mxstring_to_binop_or_idxunop    // binop or idxunop from a string
+(
+    const mxArray *mxstring,            // built-in string
+    const GrB_Type atype,               // type of A
+    const GrB_Type btype,               // type of B
+    // output:
+    GrB_BinaryOp *op2,                  // binary op
+    GrB_IndexUnaryOp *idxunop,          // idxunop
+    int64_t *ithunk                     // thunk for idxunop
+) ;
+
+GrB_BinaryOp gb_string_to_binop_or_idxunop
 (
     char *opstring,                     // string defining the operator
     const GrB_Type atype,               // type of A
-    const GrB_Type btype                // type of B
+    const GrB_Type btype,               // type of B
+    GrB_IndexUnaryOp *idxunop,          // idxunop from the string
+    int64_t *ithunk                     // thunk for idxunop
 ) ;
 
-GrB_BinaryOp gb_string_and_type_to_binop    // return op from string and type
+GrB_BinaryOp gb_string_and_type_to_binop_or_idxunop
 (
     const char *op_name,        // name of the operator, as a string
     const GrB_Type type,        // type of the x,y inputs to the operator
-    const bool type_not_given   // true if no type present in the string
+    const bool type_not_given,  // true if no type present in the string
+    GrB_IndexUnaryOp *idxunop,          // idxunop from the string
+    int64_t *ithunk                     // thunk for idxunop
 ) ;
 
 GrB_Semiring gb_mxstring_to_semiring    // return semiring from a string
@@ -317,14 +341,32 @@ mxArray *gb_export              // return the exported built-in matrix or struct
     kind_enum_t kind            // GrB, sparse, or full
 ) ;
 
-GxB_SelectOp gb_string_to_selectop      // return select operator from a string
+void gb_string_to_selectop
 (
-    char *opstring                      // string defining the operator
+    // outputs: one of the outputs is non-NULL and the other NULL
+    GrB_IndexUnaryOp *idxunop,          // GrB_IndexUnaryOp, if found
+    GxB_SelectOp *selop,                // GxB_SelectOp if found
+    bool *thunk_required,               // true if op requires a thunk scalar
+    bool *op_is_positional,             // true if op is positional
+    // input/output:
+    int64_t *ithunk,
+    // inputs:
+    char *opstring,                     // string defining the operator
+    const GrB_Type atype                // type of A, or NULL if not present
 ) ;
 
-GxB_SelectOp gb_mxstring_to_selectop    // return select operator from a string
+void gb_mxstring_to_selectop
 (
-    const mxArray *mxstring             // built-in string
+    // outputs: one of the outputs is non-NULL and the other NULL
+    GrB_IndexUnaryOp *idxunop,          // GrB_IndexUnaryOp, if found
+    GxB_SelectOp *selop,                // GxB_SelectOp if found
+    bool *thunk_required,               // true if op requires a thunk scalar
+    bool *op_is_positional,             // true if op is positional
+    // input/output:
+    int64_t *ithunk,
+    // inputs:
+    const mxArray *mxstring,            // built-in string
+    const GrB_Type atype                // type of A, or NULL if not present
 ) ;
 
 bool gb_mxarray_is_scalar   // true if built-in array is a scalar
@@ -391,20 +433,6 @@ bool gb_mxstring_to_format      // true if a valid format is found
     int *sparsity
 ) ;
 
-void gb_matrix_assign_scalar
-(
-    GrB_Matrix C,               // C can be of any type
-    const GrB_Matrix M,
-    const GrB_BinaryOp accum,
-    const GrB_Matrix A,
-    const GrB_Index *I,
-    const GrB_Index ni,
-    const GrB_Index *J,
-    const GrB_Index nj,
-    const GrB_Descriptor desc,
-    bool do_subassign           // true: use GxB_subassign, false: GrB_assign
-) ;
-
 void gb_assign                  // gbassign or gbsubassign mexFunctions
 (
     int nargout,                // # output arguments for mexFunction
@@ -461,14 +489,22 @@ bool gb_is_all              // true if op (A,B) is all true, false otherwise
     GrB_BinaryOp op
 ) ;
 
-bool gb_isnan32      (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnan64      (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnan32   (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnan64   (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnanfc32    (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnanfc64    (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnanfc32 (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
-bool gb_isnotnanfc64 (GrB_Index i, GrB_Index j, const void *x, const void *b) ;
+void gb_isnan32 (bool *z, const float *aij,
+                 int64_t i, int64_t j, const void *thunk) ;
+void gb_isnan64 (bool *z, const double *aij,
+                 int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnan32 (bool *z, const float *aij,
+                    int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnan64 (bool *z, const double *aij,
+                    int64_t i, int64_t j, const void *thunk) ;
+void gb_isnanfc32 (bool *z, const GxB_FC32_t *x,
+                   int64_t i, int64_t j, const void *thunk) ;
+void gb_isnanfc64 (bool *z, const GxB_FC64_t *aij,
+                   int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnanfc32 (bool *z, const GxB_FC32_t *aij,
+                      int64_t i, int64_t j, const void *thunk) ;
+void gb_isnotnanfc64 (bool *z, const GxB_FC64_t *aij,
+                      int64_t i, int64_t j, const void *thunk) ;
 
 void gb_get_mxargs
 (

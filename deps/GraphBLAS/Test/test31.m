@@ -43,6 +43,7 @@ ops = {
     'first',
     'second',
     'pair',
+    'oneb', % same as pair
     'min',
     'max',
     'plus',

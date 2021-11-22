@@ -35,13 +35,14 @@ GrB_Matrix gb_expand_to_full    // C = full (A), and typecast
     }
 
     //--------------------------------------------------------------------------
-    // get the identity, use zero if NULL
+    // get the identity, use full(0) if NULL
     //--------------------------------------------------------------------------
 
     GrB_Matrix id2 = NULL ;
     if (id == NULL)
     {
         OK (GrB_Matrix_new (&id2, type, 1, 1)) ;
+        OK (GrB_Matrix_setElement_INT32 (id2, 0, 0, 0)) ;
         id = id2 ;
     }
 
@@ -50,8 +51,8 @@ GrB_Matrix gb_expand_to_full    // C = full (A), and typecast
     //--------------------------------------------------------------------------
 
     GrB_Matrix B = gb_new (type, nrows, ncols, fmt, 0) ;
-    gb_matrix_assign_scalar (B, NULL, NULL, id, GrB_ALL, 0, GrB_ALL, 0, NULL,
-        false) ;
+    OK1 (B, GrB_Matrix_assign_Scalar (B, NULL, NULL, (GrB_Scalar) id,
+        GrB_ALL, 0, GrB_ALL, 0, NULL)) ;
 
     //--------------------------------------------------------------------------
     // typecast A from float to integer using the built-in rules

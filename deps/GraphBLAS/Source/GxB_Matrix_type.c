@@ -7,6 +7,8 @@
 
 //------------------------------------------------------------------------------
 
+// NOTE: this function is historical.  Use GxB_Matrix_type_name instead.
+
 #include "GB.h"
 
 GrB_Info GxB_Matrix_type    // get the type of a matrix
