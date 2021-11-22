@@ -38,7 +38,7 @@ for k1 = k1test
     if (fulltest)
         k2test = 1:length(binops) ;
     else
-        k2test = [44:51 44 4 7] ;
+        k2test = [45:52 45 4 7] ;
     end
 
     for k2 = k2test

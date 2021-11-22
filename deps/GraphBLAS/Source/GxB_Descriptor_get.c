@@ -51,13 +51,14 @@ GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
 
         case GxB_AxB_METHOD : 
 
-            (*val) = (desc == NULL) ? GxB_DEFAULT : desc->axb  ; break;
+            (*val) = (desc == NULL) ? GxB_DEFAULT : desc->axb  ; break ;
 
         default : 
 
             return (GrB_INVALID_VALUE) ;
     }
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

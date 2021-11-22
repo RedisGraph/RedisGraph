@@ -108,9 +108,9 @@ GrB_Info GB_emult_08_phase2             // C=A.*B or C<M>=A.*B
 
     GB_Opcode opcode = op->opcode ;
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
 
     ASSERT (GB_Type_compatible (ctype, op->ztype)) ;
     ASSERT (GB_IMPLIES (!(op_is_second || op_is_pair || op_is_positional),

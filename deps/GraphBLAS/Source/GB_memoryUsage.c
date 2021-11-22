@@ -37,6 +37,7 @@ GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
 
     if (A == NULL)
     { 
+        #pragma omp flush
         return (GrB_SUCCESS) ;
     }
 
@@ -137,6 +138,7 @@ GrB_Info GB_memoryUsage     // count # allocated blocks and their sizes
         (*mem_deep) += Pending->x_size ;
     }
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

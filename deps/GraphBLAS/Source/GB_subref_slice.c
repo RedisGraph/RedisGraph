@@ -29,18 +29,18 @@
 // Compare this function with GB_ewise_slice, which constructs coarse/fine
 // tasks for the eWise operations (C=A+B, C=A.*B, and C<M>=Z).
 
-#define GB_FREE_WORK                            \
+#define GB_FREE_WORKSPACE                       \
 {                                               \
     GB_WERK_POP (Coarse, int64_t) ;             \
-    GB_FREE_WERK (&Cwork, Cwork_size) ;         \
+    GB_FREE_WORK (&Cwork, Cwork_size) ;         \
 }
 
 #define GB_FREE_ALL                             \
 {                                               \
-    GB_FREE_WORK ;                              \
-    GB_FREE_WERK (&TaskList, TaskList_size) ;   \
-    GB_FREE_WERK (&Mark, Mark_size) ;           \
-    GB_FREE_WERK (&Inext, Inext_size) ;         \
+    GB_FREE_WORKSPACE ;                         \
+    GB_FREE_WORK (&TaskList, TaskList_size) ;   \
+    GB_FREE_WORK (&Mark, Mark_size) ;           \
+    GB_FREE_WORK (&Inext, Inext_size) ;         \
 }
 
 #include "GB_subref.h"
@@ -125,7 +125,7 @@ GrB_Info GB_subref_slice    // phase 1 of GB_subref
     GB_task_struct *restrict TaskList = NULL ; size_t TaskList_size = 0 ;
     int max_ntasks = 0 ;
     int ntasks0 = (nthreads_max == 1) ? 1 : (32 * nthreads_max) ;
-    GB_REALLOC_TASK_WERK (TaskList, ntasks0, max_ntasks) ;
+    GB_REALLOC_TASK_WORK (TaskList, ntasks0, max_ntasks) ;
 
     //--------------------------------------------------------------------------
     // determine if I_inverse can be constructed
@@ -152,7 +152,7 @@ GrB_Info GB_subref_slice    // phase 1 of GB_subref
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    Cwork = GB_MALLOC_WERK (Cnvec+1, int64_t, &Cwork_size) ;
+    Cwork = GB_MALLOC_WORK (Cnvec+1, int64_t, &Cwork_size) ;
     if (Cwork == NULL)
     { 
         // out of memory
@@ -236,7 +236,7 @@ GrB_Info GB_subref_slice    // phase 1 of GB_subref
         TaskList [0].klast  = Cnvec-1 ;
 
         // free workspace and return result
-        GB_FREE_WORK ;
+        GB_FREE_WORKSPACE ;
         (*p_TaskList   ) = TaskList ;
         (*p_TaskList_size) = TaskList_size ;
         (*p_ntasks     ) = (Cnvec == 0) ? 0 : 1 ;
@@ -298,7 +298,7 @@ GrB_Info GB_subref_slice    // phase 1 of GB_subref
 
             // This is a non-empty coarse-grain task that does two or more
             // entire vectors of C, vectors k:klast, inclusive.
-            GB_REALLOC_TASK_WERK (TaskList, ntasks + 1, max_ntasks) ;
+            GB_REALLOC_TASK_WORK (TaskList, ntasks + 1, max_ntasks) ;
             TaskList [ntasks].kfirst = k ;
             TaskList [ntasks].klast  = klast ;
             ntasks++ ;
@@ -340,7 +340,7 @@ GrB_Info GB_subref_slice    // phase 1 of GB_subref
             nfine = GB_IMAX (nfine, 1) ;
 
             // make the TaskList bigger, if needed
-            GB_REALLOC_TASK_WERK (TaskList, ntasks + nfine, max_ntasks) ;
+            GB_REALLOC_TASK_WORK (TaskList, ntasks + nfine, max_ntasks) ;
 
             //------------------------------------------------------------------
             // create the fine-grain tasks
@@ -457,7 +457,7 @@ GrB_Info GB_subref_slice    // phase 1 of GB_subref
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     (*p_TaskList   ) = TaskList ;
     (*p_TaskList_size) = TaskList_size ;
     (*p_ntasks     ) = ntasks ;

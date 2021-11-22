@@ -21,6 +21,7 @@ GrB_Monoid gb_string_to_monoid          // return monoid from a string
 { 
 
     // get the binary operator and convert to a monoid
-    return (gb_binop_to_monoid (gb_string_to_binop (opstring, type, type))) ;
+    return (gb_binop_to_monoid (gb_string_to_binop_or_idxunop (opstring,
+        type, type, NULL, NULL))) ;
 }
 

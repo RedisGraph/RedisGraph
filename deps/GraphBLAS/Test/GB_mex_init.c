@@ -25,8 +25,14 @@ void mexFunction
 {
     mexPrintf ("usage:\n%s\n", USAGE) ;
 
-    GxB_init (GrB_NONBLOCKING, mxMalloc, NULL    , NULL     , mxFree, false) ;
-//  GxB_init (GrB_NONBLOCKING, mxMalloc, mxCalloc, mxRealloc, mxFree, false) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
+    GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree, false) ;
+    #else
+    GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree) ;
+    #endif
+
+    // mxMalloc, mxCalloc, mxRealloc, and mxFree are not thread safe
+    GB_Global_malloc_is_thread_safe_set (false) ;
     GB_Global_abort_function_set (GB_mx_abort) ;
     GB_Global_malloc_tracking_set (true) ;
 

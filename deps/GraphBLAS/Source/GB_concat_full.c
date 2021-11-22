@@ -7,11 +7,11 @@
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK        \
+#define GB_FREE_WORKSPACE   \
     GB_phbix_free (T) ;
 
 #define GB_FREE_ALL         \
-    GB_FREE_WORK ;          \
+    GB_FREE_WORKSPACE ;     \
     GB_phbix_free (C) ;
 
 #include "GB_concat.h"
@@ -195,7 +195,7 @@ GrB_Info GB_concat_full             // concatenate into a full matrix
                 #include "GB_concat_full_template.c"
             }
 
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
         }
     }
 

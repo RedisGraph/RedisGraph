@@ -7,6 +7,8 @@
 
 //------------------------------------------------------------------------------
 
+// NOTE: this function is historical.  Use GxB_BinaryOp_xtype_name instead.
+
 #include "GB.h"
 
 GrB_Info GxB_BinaryOp_xtype         // type of x
@@ -30,6 +32,7 @@ GrB_Info GxB_BinaryOp_xtype         // type of x
     //--------------------------------------------------------------------------
 
     (*xtype) = binaryop->xtype ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

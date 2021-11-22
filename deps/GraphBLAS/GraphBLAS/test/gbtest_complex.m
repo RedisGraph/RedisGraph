@@ -9,6 +9,7 @@ complex_binaryops = {
     '1st'
     '2nd'
     'pair'
+    'oneb'  % identical to pair
     'any'
     '+'
     '-'

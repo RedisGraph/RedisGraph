@@ -21,22 +21,22 @@
 // free workspace
 //------------------------------------------------------------------------------
 
-#ifndef GB_FREE_WORK
-#define GB_FREE_WORK ;
+#ifndef GB_FREE_WORKSPACE
+#define GB_FREE_WORKSPACE ;
 #endif
 
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                             \
 {                                               \
-    GB_FREE_WORK ;                              \
+    GB_FREE_WORKSPACE ;                         \
     GB_WERK_POP (Npending, int64_t) ;           \
-    GB_FREE_WERK (&TaskList, TaskList_size) ;   \
+    GB_FREE_WORK (&TaskList, TaskList_size) ;   \
     GB_FREE (&Zh, Zh_size) ;                    \
-    GB_FREE_WERK (&Z_to_X, Z_to_X_size) ;       \
-    GB_FREE_WERK (&Z_to_S, Z_to_S_size) ;       \
-    GB_FREE_WERK (&Z_to_A, Z_to_A_size) ;       \
-    GB_FREE_WERK (&Z_to_M, Z_to_M_size) ;       \
-    GB_phbix_free (S);                          \
+    GB_FREE_WORK (&Z_to_X, Z_to_X_size) ;       \
+    GB_FREE_WORK (&Z_to_S, Z_to_S_size) ;       \
+    GB_FREE_WORK (&Z_to_A, Z_to_A_size) ;       \
+    GB_FREE_WORK (&Z_to_M, Z_to_M_size) ;       \
+    GB_phbix_free (S) ;                         \
 }
 
 //------------------------------------------------------------------------------
@@ -101,7 +101,7 @@
 #define GB_GET_ACCUM                                                        \
     ASSERT_BINARYOP_OK (accum, "accum for assign", GB0) ;                   \
     ASSERT (!GB_OP_IS_POSITIONAL (accum)) ;                                 \
-    const GxB_binary_function faccum = accum->function ;                    \
+    const GxB_binary_function faccum = accum->binop_function ;              \
     const GB_cast_function                                                  \
         cast_A_to_Y = GB_cast_factory (accum->ytype->code, acode),          \
         cast_C_to_X = GB_cast_factory (accum->xtype->code, ccode),          \
@@ -1838,8 +1838,7 @@ GrB_Info GB_subassign_08n_slice
     {                                                                       \
         /* no pending tuples, so skip phase 2 */                            \
         GB_FREE_ALL ;                                                       \
-        ASSERT_MATRIX_OK (C, "C, no pending tuples " __FILE__,              \
-            GB_FLIP (GB0)) ;                                                \
+        ASSERT_MATRIX_OK (C, "C, no pending tuples ", GB_FLIP (GB0)) ;      \
         return (GrB_SUCCESS) ;                                              \
     }                                                                       \
     /* ensure that C->Pending is large enough to handle nnew more tuples */ \
@@ -1914,7 +1913,7 @@ GrB_Info GB_subassign_08n_slice
     Pending->n += nnew ;                                                    \
     Pending->sorted = pending_sorted ;                                      \
     GB_FREE_ALL ;                                                           \
-    ASSERT_MATRIX_OK (C, "C with pending tuples :" __FILE__, GB_FLIP (GB0)) ;\
+    ASSERT_MATRIX_OK (C, "C with pending tuples", GB_FLIP (GB0)) ;          \
     return (GrB_SUCCESS) ;
 
 #endif

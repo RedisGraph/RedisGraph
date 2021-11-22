@@ -14,6 +14,7 @@
 #include "GB_binop.h"
 #ifndef GBCOMPACT
 #include "GB_binop__include.h"
+#endif
 
 #define GB_FREE_ALL ;
 
@@ -27,6 +28,7 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
     GB_Context Context
 )
 {
+#ifndef GBCOMPACT
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -106,7 +108,7 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
 
     #define GB_BINOP_WORKER(op,xname)                                       \
     {                                                                       \
-        info = GB_Cdense_ewise3_noaccum(op,xname) (C, A, B, nthreads) ;     \
+        GB_Cdense_ewise3_noaccum(op,xname) (C, A, B, nthreads) ;            \
     }                                                                       \
     break ;
 
@@ -133,7 +135,8 @@ GrB_Info GB_dense_ewise3_noaccum    // C = A+B
 
     ASSERT_MATRIX_OK (C, "C=A+B output", GB0) ;
     return (GrB_SUCCESS) ;
-}
-
+#else
+    return (GrB_NO_VALUE) ;
 #endif
+}
 

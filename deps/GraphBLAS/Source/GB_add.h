@@ -11,7 +11,6 @@
 #define GB_ADD_H
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_add             // C=A+B, C<M>=A+B, or C<!M>=A+B
 (
     GrB_Matrix C,           // output matrix, static header
@@ -23,6 +22,9 @@ GrB_Info GB_add             // C=A+B, C<M>=A+B, or C<!M>=A+B
     bool *mask_applied,     // if true, the mask was applied
     const GrB_Matrix A,     // input A matrix
     const GrB_Matrix B,     // input B matrix
+    const bool is_eWiseUnion,   // if true, eWiseUnion, else eWiseAdd
+    const GrB_Scalar alpha, // alpha and beta ignored for eWiseAdd,
+    const GrB_Scalar beta,  // nonempty scalars for GxB_eWiseUnion
     const GrB_BinaryOp op,  // op to perform C = op (A,B)
     GB_Context Context
 ) ;
@@ -101,6 +103,9 @@ GrB_Info GB_add_phase2      // C=A+B, C<M>=A+B, or C<!M>=A+B
     const bool Mask_comp,       // if true, use !M
     const GrB_Matrix A,
     const GrB_Matrix B,
+    const bool is_eWiseUnion,   // if true, eWiseUnion, else eWiseAdd
+    const GrB_Scalar alpha, // alpha and beta ignored for eWiseAdd,
+    const GrB_Scalar beta,  // nonempty scalars for GxB_eWiseUnion
     GB_Context Context
 ) ;
 
@@ -122,8 +127,11 @@ bool GB_iso_add             // c = op(a,b), return true if C is iso
     // input
     GrB_Type ctype,         // type of c
     GrB_Matrix A,           // input matrix
+    const GB_void *restrict alpha_scalar,   // of type op->xtype
     GrB_Matrix B,           // input matrix
-    GrB_BinaryOp op         // binary operator, if present
+    const GB_void *restrict beta_scalar,    // of type op->ytype
+    GrB_BinaryOp op,        // binary operator, if present
+    const bool is_eWiseUnion
 ) ;
 
 #endif

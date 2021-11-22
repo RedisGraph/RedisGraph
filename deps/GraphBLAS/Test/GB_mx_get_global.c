@@ -55,8 +55,13 @@ bool GB_mx_get_global       // true if doing malloc_debug
 
     bool burble = GB_Global_burble_get ( ) ;            // save current burble
     GB_Global_GrB_init_called_set (false) ;
-//  GxB_init (GrB_NONBLOCKING, mxMalloc, NULL, NULL, mxFree, false) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GxB_init (GrB_NONBLOCKING, mxMalloc, mxCalloc, mxRealloc, mxFree, false) ;
+    #else
+    GxB_init (GrB_NONBLOCKING, mxMalloc, mxCalloc, mxRealloc, mxFree) ;
+    #endif
+    // mxMalloc, mxCalloc, mxRealloc, and mxFree are not thread safe
+    GB_Global_malloc_is_thread_safe_set (false) ;
     ASSERT (GB_Global_nmalloc_get ( ) == 0) ;
     GB_Global_abort_function_set (GB_mx_abort) ;
     GB_Global_malloc_tracking_set (true) ;

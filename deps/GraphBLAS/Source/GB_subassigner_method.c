@@ -691,7 +691,7 @@ int GB_subassigner_method           // return method to use in GB_subassigner
                 else
                 { 
                     // C is iso and not empty; check the result of accum
-                    GxB_binary_function faccum = accum->function ;
+                    GxB_binary_function faccum = accum->binop_function ;
 
                     size_t xsize = accum->xtype->size ;
                     size_t ysize = accum->ytype->size ;

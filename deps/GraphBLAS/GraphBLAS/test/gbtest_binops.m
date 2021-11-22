@@ -16,6 +16,7 @@ binops = {
     '1st'
     '2nd'
     'pair'
+    'oneb'  % identical to pair
     'any'
     'min'
     'max'

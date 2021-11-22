@@ -102,7 +102,7 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
     // quick return if multop is positional
     //--------------------------------------------------------------------------
 
-    GB_Opcode add_opcode = semiring->add->op->opcode ;
+    GB_Opcode add_binop_code = semiring->add->op->opcode ;
     const GrB_BinaryOp multiply = semiring->multiply ;
 
     if (GB_OP_IS_POSITIONAL (multiply))
@@ -115,9 +115,9 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
     // get the binary operator and the types of C, A, and B
     //--------------------------------------------------------------------------
 
-    const GxB_binary_function fmult = multiply->function ;
-    GB_Opcode mult_opcode = multiply->opcode ;
-    ASSERT (GB_IMPLIES (fmult == NULL, mult_opcode == GB_FIRST_opcode)) ;
+    const GxB_binary_function fmult = multiply->binop_function ;
+    GB_Opcode mult_binop_code = multiply->opcode ;
+    ASSERT (GB_IMPLIES (fmult == NULL, mult_binop_code == GB_FIRST_binop_code));
 
     const GrB_Type xtype = multiply->xtype ;
     const GrB_Type ytype = multiply->ytype ;
@@ -140,7 +140,7 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
         // rename a boolean monoid:
         // MIN_BOOL and TIMES_BOOL monoids become LAND
         // MAX_BOOL and PLUS_BOOL monoids become LOR
-        add_opcode = GB_boolean_rename (add_opcode) ;
+        add_binop_code = GB_boolean_rename (add_binop_code) ;
     }
 
     if (xcode == GB_BOOL_code)
@@ -148,7 +148,7 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
         // rename a boolean multiply op:
         // DIV becomes FIRST, RDIV becomes SECOND; all other renaming has no
         // effect on this method. 
-        mult_opcode = GB_boolean_rename (mult_opcode) ;
+        mult_binop_code = GB_boolean_rename (mult_binop_code) ;
     }
 
     // "nice" monoids have the property that reducing a set of iso values to a
@@ -158,24 +158,30 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
     // are PLUS, TIMES, EQ (LXNOR), LXOR, BXOR, and BXNOR.  For row/col scaling,
     // all monoids are "nice" since they aren't used.
     const bool nice_monoid = ignore_monoid ||
-        add_opcode == GB_ANY_opcode  ||
-        add_opcode == GB_LAND_opcode || add_opcode == GB_LOR_opcode ||
-        add_opcode == GB_BAND_opcode || add_opcode == GB_BOR_opcode ||
-        add_opcode == GB_MAX_opcode  || add_opcode == GB_MIN_opcode ;
+        add_binop_code == GB_ANY_binop_code  ||
+        add_binop_code == GB_LAND_binop_code ||
+        add_binop_code == GB_LOR_binop_code  ||
+        add_binop_code == GB_BAND_binop_code ||
+        add_binop_code == GB_BOR_binop_code  ||
+        add_binop_code == GB_MAX_binop_code  ||
+        add_binop_code == GB_MIN_binop_code ;
 
     // Nearly all cases where C is iso require a "nice" monoid, with the
     // exception of the EQ_PAIR and TIMES_PAIR semirings, which are the same
     // as ANY_PAIR semirings.
     const bool nice_with_pair = nice_monoid ||
-        add_opcode == GB_EQ_opcode || add_opcode == GB_TIMES_opcode ;
+        add_binop_code == GB_EQ_binop_code  ||
+        add_binop_code == GB_TIMES_binop_code ;
 
     // the FIRST or ANY multiply ops can both produce a FIRST result
-    const bool first = (mult_opcode == GB_ANY_opcode) ||
-        (mult_opcode == (flipxy ? GB_SECOND_opcode : GB_FIRST_opcode)) ;
+    const bool first = (mult_binop_code == GB_ANY_binop_code) ||
+        (mult_binop_code ==
+            (flipxy ? GB_SECOND_binop_code : GB_FIRST_binop_code)) ;
 
     // the SECOND or ANY multiply ops can both produce a SECOND result
-    const bool second = (mult_opcode == GB_ANY_opcode) ||
-        (mult_opcode == (flipxy ? GB_FIRST_opcode : GB_SECOND_opcode)) ;
+    const bool second = (mult_binop_code == GB_ANY_binop_code) ||
+        (mult_binop_code ==
+            (flipxy ? GB_FIRST_binop_code : GB_SECOND_binop_code)) ;
 
     //--------------------------------------------------------------------------
     // determine if C is iso
@@ -185,7 +191,7 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
     const bool A_iso = A->iso || (GB_nnz (A) == 1 && !GB_IS_BITMAP (A)) ;
     const bool B_iso = B->iso || (GB_nnz (B) == 1 && !GB_IS_BITMAP (B)) ;
 
-    if (nice_with_pair && mult_opcode == GB_PAIR_opcode)
+    if (nice_with_pair && mult_binop_code == GB_PAIR_binop_code)
     {
 
         //----------------------------------------------------------------------
@@ -295,7 +301,7 @@ bool GB_iso_AxB             // C = A*B, return true if C is iso
                     fmult, flipxy, xcode, xsize, ycode, ysize, zcode, zsize) ;
 
                 // reduce n copies of t to the single scalar c, in O(log(n))
-                GxB_binary_function freduce = semiring->add->op->function ;
+                GxB_binary_function freduce = semiring->add->op->binop_function;
                 GB_iso_reduce_worker (c, freduce, t, n, zsize) ;
             }
 

@@ -32,7 +32,7 @@ void mexFunction
 
     GrB_Info info ;
     GrB_Matrix A = NULL, B = NULL, C = NULL ;
-    GxB_Scalar scalar = NULL ;
+    GrB_Scalar scalar = NULL ;
     GrB_Vector victor = NULL ;
     GrB_Descriptor desc = NULL ;
     GrB_Type Wild = NULL ;
@@ -53,7 +53,7 @@ void mexFunction
     OK (GrB_Matrix_new (&A, GrB_INT32, 10, 10)) ;
     OK (GrB_Vector_new (&victor, GrB_INT32, 10)) ;
     OK (GxB_Vector_Option_set_(victor, GxB_BITMAP_SWITCH, 2.0)) ;
-    OK (GxB_Scalar_new (&scalar, GrB_INT32)) ;
+    OK (GrB_Scalar_new (&scalar, GrB_INT32)) ;
 
     OK (GxB_Matrix_fprint (A, "A before set", 3, NULL)) ;
     OK (GrB_Matrix_setElement_INT32 (A, 314159, 0, 0)) ;
@@ -76,22 +76,26 @@ void mexFunction
     OK (GxB_Vector_fprint (victor, "victor after set again", 3, NULL)) ;
 
     OK (GxB_Scalar_fprint (scalar, "scalar before set", 3, NULL)) ;
-    OK (GxB_Scalar_setElement_INT32 (scalar, 404)) ;
+    OK (GrB_Scalar_setElement_INT32 (scalar, 404)) ;
     OK (GxB_Scalar_fprint (scalar, "scalar after set", 3, NULL)) ;
     int i = 0 ;
-    OK (GxB_Scalar_extractElement_INT32 (&i, scalar)) ;
+    OK (GrB_Scalar_extractElement_INT32 (&i, scalar)) ;
     CHECK (i == 404) ;
     OK (GxB_Scalar_fprint (scalar, "scalar after extract", 3, NULL)) ;
     OK (GrB_Matrix_removeElement ((GrB_Matrix) scalar, 0, 0)) ;
     OK (GxB_Scalar_fprint (scalar, "scalar after remove", 3, NULL)) ;
     i = 777 ;
     expected = GrB_NO_VALUE ;
-    ERR (GxB_Scalar_extractElement_INT32 (&i, scalar)) ;
+    ERR (GrB_Scalar_extractElement_INT32 (&i, scalar)) ;
     CHECK (i == 777) ;
 
     // force a zombie into the scalar
-    OK (GxB_Scalar_setElement_INT32 (scalar, 707)) ;
-    OK (GxB_Scalar_wait (&scalar)) ;
+    OK (GrB_Scalar_setElement_INT32 (scalar, 707)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
+    OK (GrB_Scalar_wait (&scalar)) ;
+    #else
+    OK (GrB_Scalar_wait (scalar, GrB_MATERIALIZE)) ;
+    #endif
     OK (GxB_Scalar_fprint (scalar, "scalar after wait", 3, NULL)) ;
     OK (GxB_Matrix_Option_set (scalar, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
     CHECK (scalar->i != NULL) ;
@@ -99,13 +103,13 @@ void mexFunction
     scalar->nzombies = 1 ;
     OK (GxB_Scalar_fprint (scalar, "scalar with zombie", 3, NULL)) ;
     expected = GrB_NO_VALUE ;
-    ERR (GxB_Scalar_extractElement_INT32 (&i, scalar)) ;
+    ERR (GrB_Scalar_extractElement_INT32 (&i, scalar)) ;
     OK (GxB_Scalar_fprint (scalar, "scalar after extract", 3, NULL)) ;
     CHECK (i == 777) ;
 
     GrB_Vector_free_(&victor) ;
     GrB_Matrix_free_(&A) ;
-    GxB_Scalar_free_(&scalar) ;
+    GrB_Scalar_free_(&scalar) ;
 
     //--------------------------------------------------------------------------
     // builtin comparators not defined for complex types
@@ -116,14 +120,14 @@ void mexFunction
     OK (GxB_Matrix_Option_set_(A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
 
     OK (GrB_Matrix_new (&C, GxB_FC32, n, n)) ;
-    OK (GxB_Scalar_new (&scalar, GxB_FC32)) ;
+    OK (GrB_Scalar_new (&scalar, GxB_FC32)) ;
     expected = GrB_DOMAIN_MISMATCH ;
     ERR (GxB_Matrix_select (C, NULL, NULL, GxB_LT_THUNK, A, scalar, NULL)) ;
     char *message = NULL ;
     OK (GrB_Matrix_error (&message, C)) ;
     printf ("expected error: %s\n", message) ;
     GrB_Matrix_free_(&C) ;
-    GxB_Scalar_free_(&scalar) ;
+    GrB_Scalar_free_(&scalar) ;
 
     //--------------------------------------------------------------------------
     // GB_pslice
@@ -154,7 +158,11 @@ void mexFunction
     OK (GxB_Matrix_Option_set_(A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
     OK (GrB_Matrix_assign_INT32 (A, NULL, NULL, 3, GrB_ALL, n, GrB_ALL, n,
         NULL)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait (&A)) ;
+    #else
+    OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
+    #endif
     OK (GxB_Matrix_fprint (A, "valid matrix", GxB_SHORT, NULL)) ;
     // mangle the matrix
     GB_FREE (&(A->p), A->p_size) ;
@@ -171,7 +179,11 @@ void mexFunction
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
     OK (GrB_Matrix_assign_INT32 (A, NULL, NULL, 3, GrB_ALL, n, GrB_ALL, n,
         NULL)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait (&A)) ;
+    #else
+    OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
+    #endif
 
     A->jumbled = true ;
     ERR (GxB_Matrix_fprint (A, "full matrix cannot be jumbled", GxB_SHORT,
@@ -272,17 +284,17 @@ void mexFunction
     // GrB_apply with empty scalar
     //--------------------------------------------------------------------------
 
-    OK (GxB_Scalar_new (&scalar, GrB_INT32)) ;
+    OK (GrB_Scalar_new (&scalar, GrB_INT32)) ;
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
     OK (GrB_Matrix_new (&C, GrB_INT32, n, n)) ;
-    expected = GrB_INVALID_VALUE ;
+    expected = GrB_EMPTY_OBJECT ;
     ERR (GxB_Matrix_apply_BinaryOp2nd (C, NULL, NULL, GrB_PLUS_INT32, A,
         scalar, NULL)) ;
     OK (GrB_Matrix_error (&message, C)) ;
     printf ("expected error: %s\n", message) ;
     GrB_Matrix_free_(&A) ;
     GrB_Matrix_free_(&C) ;
-    GxB_Scalar_free_(&scalar) ;
+    GrB_Scalar_free_(&scalar) ;
 
     //--------------------------------------------------------------------------
     // invalid descriptor
@@ -330,7 +342,7 @@ void mexFunction
     OK (GxB_Vector_Option_get_(victor, GxB_BITMAP_SWITCH, &bswitch)) ;
     printf ("vector bitmap switch: %g\n\n", bswitch) ;
 
-    expected = GrB_DOMAIN_MISMATCH ;
+    expected = GrB_NOT_IMPLEMENTED ;
     ERR (GrB_Matrix_reduce_BinaryOp (victor, NULL, NULL, GxB_FIRSTI_INT32,
         A, NULL)) ;
     OK (GrB_Matrix_error (&message, victor)) ;
@@ -366,7 +378,11 @@ void mexFunction
     OK (GxB_Matrix_fprint (C, "wild matrix jumbled", GxB_SHORT, NULL)) ;
 
     // unjumble the matrix
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait (&C)) ;
+    #else
+    OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
+    #endif
     OK (GxB_Matrix_fprint (C, "wild matrix unjumbled", GxB_SHORT, NULL)) ;
 
     GrB_Matrix_free_(&C) ;
@@ -382,7 +398,7 @@ void mexFunction
     p = GB_realloc_memory (1024*1024, sizeof (int), p, &nbytes, &ok, NULL) ;
     CHECK (p != NULL) ;
     CHECK (ok) ;
-    p = GB_realloc_memory (4, GxB_INDEX_MAX + 1, p, &nbytes, &ok, NULL) ;
+    p = GB_realloc_memory (4, GB_NMAX + 1, p, &nbytes, &ok, NULL) ;
     CHECK (!ok) ;
     GB_free_memory (&p, nbytes) ;
 
@@ -391,7 +407,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Matrix X = NULL ;
-    info = GxB_Matrix_import_FullC (&X, GrB_FP32, GxB_INDEX_MAX, GxB_INDEX_MAX,
+    info = GxB_Matrix_import_FullC (&X, GrB_FP32, GB_NMAX, GB_NMAX,
         NULL, UINT64_MAX, false, NULL) ;
     if (info != GrB_INVALID_VALUE || X != NULL) mexErrMsgTxt ("huge fail1") ;
 
@@ -411,9 +427,13 @@ void mexFunction
     // hypermatrix prune
     //--------------------------------------------------------------------------
 
-    OK (GrB_Matrix_new (&C, GrB_FP32, GxB_INDEX_MAX, GxB_INDEX_MAX)) ;
+    OK (GrB_Matrix_new (&C, GrB_FP32, GB_NMAX, GB_NMAX)) ;
     OK (GrB_Matrix_setElement_FP32 (C, (double) 3, 0, 0)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait (&C)) ;
+    #else
+    OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
+    #endif
     OK (GxB_Matrix_fprint (C, "huge matrix", GxB_SHORT, NULL)) ;
     C->nvec_nonempty = -1 ;
     OK (GB_hypermatrix_prune (C, NULL)) ;
@@ -575,7 +595,11 @@ void mexFunction
     {
         OK (GrB_Matrix_setElement_UDT (C, &ww, kk, kk)) ;
     }
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait (&C)) ;
+    #else
+    OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
+    #endif
     info = GrB_Matrix_assign_UDT (C, C, NULL, &w2, GrB_ALL, 20, GrB_ALL, 20,
         GrB_DESC_S) ;
     wild w3 ;

@@ -30,9 +30,8 @@
 
 void GB_stringify_semiring     // build a semiring (name and code)
 (
-    // output: (all of size at least GB_CUDA_STRLEN+1)
-    char *semiring_macros,  // List of types and macro defs
     // input:
+    FILE *fp,               // File to write macros, assumed open already
     GrB_Semiring semiring,  // the semiring to stringify
     bool flipxy,            // multiplier is: mult(a,b) or mult(b,a)
     GrB_Type ctype,         // the type of C
@@ -68,9 +67,8 @@ void GB_enumify_semiring   // enumerate a semiring
 
 void GB_macrofy_semiring   // construct all macros for a semiring
 (
-    // output:
-    char *semiring_macros,      // all macros that define the semiring
     // input:
+    FILE *fp,                   // target file to write, already open
     uint64_t scode
 ) ;
 
@@ -80,9 +78,8 @@ void GB_macrofy_semiring   // construct all macros for a semiring
 
 void GB_stringify_mask     // return string to define mask macros
 (
-    // output:
-    char **mask_macros,         // string that defines the mask macros
     // input:
+    FILE *fp,                   // File to write macros, assumed open already
     const GB_Type_code mcode,   // typecode of the mask matrix M,
                                 // or 0 if M is not present
     bool Mask_struct,           // true if M structural, false if valued
@@ -102,9 +99,8 @@ void GB_enumify_mask       // return enum to define mask macros
 
 void GB_macrofy_mask       // return enum to define mask macros
 (
-    // output:
-    char **mask_macros,         // string that defines the mask macros
     // input
+    FILE *fp,                   // File to write macros, assumed open already
     int mask_ecode              // enumified mask
 ) ;
 
@@ -125,15 +121,12 @@ void GB_enumify_monoid  // enumerate a monoid
 
 void GB_macrofy_monoid  // construct the macros for a monoid
 (
-    // outputs:
-    char *add_macro,                    // additive binary operator
-    char *identity_macro,               // identity value
-    char *terminal_expression_macro,    // terminal expr for "if (expr) ..."
-    char *terminal_statement_macro,     // break statement
     // inputs:
+    FILE *fp,           // File to write macros, assumed open already
     int add_ecode,      // binary op as an enum
     int id_ecode,       // identity value as an enum
-    int term_ecode      // terminal value as an enum (< 30 is terminal)
+    int term_ecode,     // terminal value as an enum (< 30 is terminal)
+    bool is_term
 ) ;
 
 //------------------------------------------------------------------------------
@@ -142,12 +135,11 @@ void GB_macrofy_monoid  // construct the macros for a monoid
 
 void GB_stringify_binop
 (
-    // output:
-    char *binop_macro,  // string with the #define macro
     // input:
+    FILE *fp,                 // File to write macros, assumed open already
     const char *macro_name,   // name of macro to construct
     GB_Opcode opcode,   // opcode of GraphBLAS operator to convert into a macro
-    GB_Type_code zcode, // op->xtype->code of the operator
+    GB_Type_code xcode, // op->xtype->code of the operator
     bool for_semiring,  // if true: op is a multiplier in a semiring
     bool flipxy         // if true, use mult(y,x) else mult(x,y)
 ) ;
@@ -165,18 +157,17 @@ void GB_enumify_binop
 void GB_charify_binop
 (
     // output:
-    char **op_string,   // string defining the operator (NULL if failure)
+    const char **op_string,   // string defining the operator (NULL if failure)
     // input:
     int ecode           // from GB_enumify_binop
 ) ;
 
 void GB_macrofy_binop
 (
-    // output:
-    char *binop_macro,          // string with the #define macro
     // input:
+    FILE *fp,                   // File to write macros, assumed open already
     const char *macro_name,     // name of macro to construct
-    char *op_string,            // string defining the operator
+    const char *op_string,            // string defining the operator
     bool flipxy                 // if true, use mult(y,x) else mult(x,y)
 ) ;
 
@@ -186,9 +177,8 @@ void GB_macrofy_binop
 
 void GB_stringify_identity     // return string for identity value
 (
-    // output:
-    char *identity_macro,    // string with the #define macro
     // input:
+    FILE *fp,               // File to write macros, assumed open already
     GB_Opcode opcode,       // must be a built-in binary operator from a monoid
     GB_Type_code zcode      // type code of the binary operator
 ) ;
@@ -212,9 +202,8 @@ void GB_charify_identity_or_terminal
 
 void GB_macrofy_identity
 (
-    // output:
-    char *identity_macro,       // string with #define macro
     // input:
+    FILE *fp,                   // File to write macros, assumed open already
     const char *value_string    // string defining the identity value
 ) ;
 
@@ -226,9 +215,8 @@ void GB_stringify_terminal         // return strings to check terminal
 (
     // outputs:
     bool *is_monoid_terminal,           // true if monoid is terminal
-    char *terminal_expression_macro,    // #define for terminal expression macro
-    char *terminal_statement_macro,     // #define for terminal statement macro
     // inputs:
+    FILE *fp,                           // File to write macros, assumed open
     const char *terminal_expression_macro_name,     // name of expression macro
     const char *terminal_statement_macro_name,      // name of statement macro
     GB_Opcode opcode,    // must be a built-in binary operator from a monoid
@@ -239,7 +227,7 @@ void GB_enumify_terminal       // return enum of terminal value
 (
     // output:
     bool *is_monoid_terminal,   // true if monoid is terminal
-    int *ecode,                 // enumerated terminal, 0 to 17 (-1 if fail)
+    int *ecode,                 // enumerated terminal, 0 to 31 (-1 if fail)
     // input:
     GB_Opcode opcode,           // built-in binary opcode of a monoid
     GB_Type_code zcode          // type code used in the opcode we want
@@ -267,18 +255,16 @@ void GB_charify_terminal_statement // string for terminal statement
 
 void GB_macrofy_terminal_expression    // macro for terminal expression
 (
-    // output:
-    char *terminal_expression_macro,
     // intput:
+    FILE *fp,                          // File to write macros, assumed open
     const char *terminal_expression_macro_name,
     const char *terminal_expression
 ) ;
 
 void GB_macrofy_terminal_statement     // macro for terminal statement
 (
-    // output:
-    char *terminal_statement_macro,
     // intput:
+    FILE *fp,                          // File to write macro, assumed open
     const char *terminal_statement_macro_name,
     const char *terminal_statement
 ) ;
@@ -289,9 +275,8 @@ void GB_macrofy_terminal_statement     // macro for terminal statement
 
 void GB_stringify_load         // return a string to load/typecast macro
 (
-    // output:
-    char *load_macro,               // string with #define macro to load value
     // input:
+    FILE *fp,                       // File to write macros, assumed open already
     const char *load_macro_name,    // name of macro to construct
     bool is_pattern                 // if true, load/cast does nothing
 ) ;
@@ -311,9 +296,9 @@ const char *GB_stringify_opcode    // name of unary/binary opcode
 
 void GB_stringify_sparsity  // construct macros for sparsity structure
 (
-    // output:
-    char *sparsity_macros,  // macros that define the sparsity structure
-    // intput:
+    // input:
+    FILE *fp,               // output file for macros that define the sparsity structure
+                            // assumed to be open already
     char *matrix_name,      // "C", "M", "A", or "B"
     int A_sparsity          // GxB_SPARSE, GxB_HYPERSPARSE, GxB_BITMAP, GxB_FULL
 ) ;
@@ -328,9 +313,8 @@ void GB_enumify_sparsity    // enumerate the sparsity structure of a matrix
 
 void GB_macrofy_sparsity    // construct macros for sparsity structure
 (
-    // output:
-    char *sparsity_macros,  // macros that define the sparsity structure
     // input:
+    FILE *fp,
     char *matrix_name,      // "C", "M", "A", or "B"
     int ecode
 ) ;

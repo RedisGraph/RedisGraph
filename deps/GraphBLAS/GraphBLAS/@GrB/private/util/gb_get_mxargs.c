@@ -24,7 +24,7 @@ void gb_get_mxargs
     const mxArray *pargin [ ],  // input arguments for mexFunction
     const char *usage,          // usage to print, if too many args appear
     // output:
-    const mxArray *Matrix [4],  // matrix arguments
+    const mxArray *Matrix [6],  // matrix arguments
     int *nmatrices,             // # of matrix arguments
     const mxArray *String [2],  // string arguments
     int *nstrings,              // # of string arguments
@@ -90,7 +90,7 @@ void gb_get_mxargs
         else
         {
             // a matrix argument is C, M, A, or B
-            if ((*nmatrices) >= 4)
+            if ((*nmatrices) >= 6)
             { 
                 // at most 4 matrix inputs are allowed
                 ERROR (usage) ;

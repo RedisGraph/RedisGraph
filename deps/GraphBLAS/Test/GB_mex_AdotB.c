@@ -42,6 +42,12 @@ GrB_Info adotb_complex (GB_Context Context)
 {
     GrB_Info info = GrB_Matrix_new (&Aconj, Complex, anrows, ancols) ;
     if (info != GrB_SUCCESS) return (info) ;
+    info = GxB_Matrix_Option_set (Aconj, GxB_FORMAT, GxB_BY_COL) ;
+    if (info != GrB_SUCCESS)
+    { 
+        GrB_Matrix_free_(&Aconj) ;
+        return (info) ;
+    }
     info = GrB_Matrix_apply_(Aconj, NULL, NULL, Complex_conj, A, NULL) ;
     if (info != GrB_SUCCESS)
     {
@@ -50,7 +56,11 @@ GrB_Info adotb_complex (GB_Context Context)
     }
 
     // force completion
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     info = GrB_Matrix_wait_(&Aconj) ;
+    #else
+    info = GrB_Matrix_wait_(Aconj, GrB_MATERIALIZE) ;
+    #endif
     if (info != GrB_SUCCESS)
     {
         GrB_Matrix_free_(&Aconj) ;
@@ -72,8 +82,8 @@ GrB_Info adotb_complex (GB_Context Context)
     {
         // C = A'*B using dot product method
         mask_applied = false ;  // no mask to apply
-        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false, Aconj, B,
-            semiring, flipxy, Context) ;
+        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false,
+            false, Aconj, B, semiring, flipxy, Context) ;
     }
 
     GrB_Matrix_free_(&Aconj) ;
@@ -107,8 +117,8 @@ GrB_Info adotb (GB_Context Context)
     else
     {
         mask_applied = false ;  // no mask to apply
-        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false, A, B,
-            semiring /* GxB_PLUS_TIMES_FP64 */, flipxy, Context) ;
+        info = GB_AxB_dot2 (C, false, NULL, NULL, false, false,
+            false, A, B, semiring /* GxB_PLUS_TIMES_FP64 */, flipxy, Context) ;
     }
 
     GrB_Monoid_free_(&add) ;

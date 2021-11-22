@@ -9,12 +9,14 @@ void GB (_sel_phase1)
     const GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_atype *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 ) ;
 endif_phase1
 
+if_phase2
 void GB (_sel_phase2)
 (
     int64_t *restrict Ci,
@@ -25,10 +27,12 @@ void GB (_sel_phase2)
     const GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_atype *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 ) ;
+endif_phase2
 
 if_bitmap
 void GB (_sel_bitmap)
@@ -39,8 +43,9 @@ void GB (_sel_bitmap)
     GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_atype *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int nthreads
 ) ;
 endif_bitmap

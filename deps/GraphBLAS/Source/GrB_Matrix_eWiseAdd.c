@@ -32,6 +32,7 @@
         A,              A_tran,     /* A matrix and its descriptor */       \
         B,              B_tran,     /* B matrix and its descriptor */       \
         true,                       /* eWiseAdd                    */       \
+        false, NULL, NULL,          /* not eWiseUnion              */       \
         Context) ;
 
 //------------------------------------------------------------------------------

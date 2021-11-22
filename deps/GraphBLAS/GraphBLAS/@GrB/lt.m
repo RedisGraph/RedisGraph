@@ -5,9 +5,6 @@ function C = lt (A, B)
 %
 % See also GrB/le, GrB/gt, GrB/ge, GrB/ne, GrB/eq.
 
-% FUTURE: lt(A,B) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
-
 % The pattern of C depends on the type of inputs:
 % A scalar, B scalar:  C is scalar.
 % A scalar, B matrix:  C is full if A<0, otherwise C is a subset of B.
@@ -34,7 +31,7 @@ ctype = gboptype (atype, btype) ;
 if (a_is_scalar)
     if (b_is_scalar)
         % both A and B are scalars
-        C = GrB (gb_union_op ('<', A, B)) ;
+        C = GrB (gbeunion (A, 0, '<', B, 0)) ;
     else
         % A is a scalar, B is a matrix
         if (gb_scalar (A) < 0)
@@ -75,7 +72,7 @@ else
         end
     else
         % both A and B are matrices.  C is the set union of A and B.
-        C = GrB (gb_union_op ('<', A, B)) ;
+        C = GrB (gbeunion (A, 0, '<', B, 0)) ;
     end
 end
 

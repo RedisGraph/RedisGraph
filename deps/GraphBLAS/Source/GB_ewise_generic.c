@@ -88,9 +88,9 @@ void GB_ewise_generic       // generic ewise
     // the following booleans are all false if flipxy is true, since flipxy has
     // already been handled in the caller, in this case.
     const bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    const bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    const bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    const bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+    const bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    const bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    const bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
     const bool A_is_pattern = (op_is_second || op_is_pair || op_is_positional) ;
     const bool B_is_pattern = (op_is_first  || op_is_pair || op_is_positional) ;
 
@@ -98,7 +98,7 @@ void GB_ewise_generic       // generic ewise
 //  const bool flipxy = (ewise_method < 0) ;        TODO
     const bool flipxy = (ewise_method == GB_EMULT_METHOD3) ;
 
-    const GxB_binary_function fop = op->function ; // NULL if op positional
+    const GxB_binary_function fop = op->binop_function ; // NULL if op positional
     const size_t csize = ctype->size ;
     const size_t asize = A->type->size ;
     const size_t bsize = B->type->size ;
@@ -160,10 +160,12 @@ void GB_ewise_generic       // generic ewise
         // C(i,j) = positional_op (aij, bij)
         //----------------------------------------------------------------------
 
-        const int64_t offset = GB_positional_offset (opcode) ;
+        const int64_t offset = GB_positional_offset (opcode, NULL) ;
         const bool index_is_i = 
-            (opcode == GB_FIRSTI_opcode  ) || (opcode == GB_FIRSTI1_opcode ) ||
-            (opcode == GB_SECONDI_opcode ) || (opcode == GB_SECONDI1_opcode) ;
+            (opcode == GB_FIRSTI_binop_code  ) ||
+            (opcode == GB_FIRSTI1_binop_code ) ||
+            (opcode == GB_SECONDI_binop_code ) ||
+            (opcode == GB_SECONDI1_binop_code) ;
 
         if (op->ztype == GrB_INT64)
         {

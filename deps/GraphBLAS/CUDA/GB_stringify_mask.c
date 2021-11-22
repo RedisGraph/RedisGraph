@@ -19,9 +19,8 @@
 
 void GB_stringify_mask     // return string to define mask macros
 (
-    // output:
-    char **mask_macros,         // string that defines the mask macros
     // input:
+    FILE *fp,                   // File to write macros, assumed open already
     const GB_Type_code mcode,   // typecode of the mask matrix M,
                                 // or 0 if M is not present
     bool Mask_struct,           // true if M structural, false if valued
@@ -35,7 +34,7 @@ void GB_stringify_mask     // return string to define mask macros
     GB_enumify_mask (&mask_ecode, mcode, Mask_struct, Mask_comp) ;
 
     // convert ecode to string containing mask macros
-    GB_macrofy_mask (mask_macros, mask_ecode) ;
+    GB_macrofy_mask ( fp, mask_ecode) ;
 }
 
 //------------------------------------------------------------------------------
@@ -148,9 +147,8 @@ void GB_enumify_mask       // return enum to define mask macros
 
 void GB_macrofy_mask       // return enum to define mask macros
 (
-    // output:
-    char **mask_macros,         // string that defines the mask macros
     // input
+    FILE *fp,                   // File to write macros, assumed open already
     int mask_ecode              // enumified mask
 )
 {
@@ -289,10 +287,10 @@ void GB_macrofy_mask       // return enum to define mask macros
         //----------------------------------------------------------------------
 
         default: ;
-            f = NULL ;
+            f = "#error undefined mask behavior" ;
             break ;
     }
 
-    (*mask_macros) = f ;
+    fprintf( fp, "%s\n", f ) ;
 }
 

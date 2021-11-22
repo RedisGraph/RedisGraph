@@ -51,7 +51,7 @@ bool GB_binop_builtin               // true if binary operator is builtin
     { 
         // implicit GB_SECOND_[TYPE] operator
         ASSERT (A_type == B_type) ;
-        (*opcode) = GB_SECOND_opcode ;
+        (*opcode) = GB_SECOND_binop_code ;
         op_xtype = A_type ;
         op_ytype = A_type ;
         op_ztype = A_type ;
@@ -64,7 +64,8 @@ bool GB_binop_builtin               // true if binary operator is builtin
         op_ztype = op->ztype ;
     }
 
-    if (*opcode >= GB_USER_opcode)
+    ASSERT (GB_IS_BINARYOP_CODE (*opcode)) ;
+    if (*opcode == GB_USER_binop_code)
     { 
         // the binary operator is user-defined
         return (false) ;
@@ -143,7 +144,7 @@ bool GB_binop_builtin               // true if binary operator is builtin
         // versions (DIV vs RDIV, ...).  Flipping the operator does not handle
         // ATAN2, BGET, and other built-in operators, but these do not
         // correspond to built-in semirings.
-        (*opcode) = GB_flip_opcode (*opcode, &handled) ; // for any opcode
+        (*opcode) = GB_flip_binop_code (*opcode, &handled) ; // for any opcode
     }
 
     return (handled) ;

@@ -30,6 +30,7 @@ GrB_Info GxB_Vector_iso     // return iso status of a vector
     //--------------------------------------------------------------------------
 
     (*iso) = v->iso ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

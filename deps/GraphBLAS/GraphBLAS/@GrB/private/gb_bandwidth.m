@@ -5,6 +5,9 @@ function [lo, hi] = gb_bandwidth (G)
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
+% FUTURE: this is slow; use gbselect with DIAGINDEX and then
+% find the min and max entries
+
 % compute the bandwidth
 if (gbnvals (G) == 0)
     % matrix is empty

@@ -16,7 +16,7 @@
 #include "GB_transpose.h"
 #include "GB_accum_mask.h"
 
-#define GB_FREE_WORK        \
+#define GB_FREE_WORKSPACE   \
 {                           \
     GB_phbix_free (AT) ;    \
     GB_phbix_free (BT) ;    \
@@ -24,7 +24,7 @@
 
 #define GB_FREE_ALL         \
 {                           \
-    GB_FREE_WORK ;          \
+    GB_FREE_WORKSPACE ;     \
     GB_phbix_free (T) ;     \
 }
 
@@ -92,9 +92,9 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     int64_t bnrows = (B_transpose) ? GB_NCOLS (B) : GB_NROWS (B) ;
     int64_t bncols = (B_transpose) ? GB_NROWS (B) : GB_NCOLS (B) ;
     GrB_Index cnrows, cncols, cnz = 0 ;
-    bool ok = GB_Index_multiply (&cnrows, anrows,  bnrows) ;
-    ok = ok && GB_Index_multiply (&cncols, ancols,  bncols) ;
-    ok = ok && GB_Index_multiply (&cnz, GB_nnz (A), GB_nnz (B)) ;
+    bool ok = GB_int64_multiply (&cnrows, anrows,  bnrows) ;
+    ok = ok && GB_int64_multiply (&cncols, ancols,  bncols) ;
+    ok = ok && GB_int64_multiply (&cnz, GB_nnz (A), GB_nnz (B)) ;
     if (!ok || GB_NROWS (C) != cnrows || GB_NCOLS (C) != cncols)
     { 
         GB_ERROR (GrB_DIMENSION_MISMATCH, "%s:\n"
@@ -163,7 +163,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
         A_transpose ? AT : A, A_is_pattern,
         B_transpose ? BT : B, B_is_pattern, Context)) ;
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (T, "T = kron(A,B)", GB0) ;
 
     //--------------------------------------------------------------------------

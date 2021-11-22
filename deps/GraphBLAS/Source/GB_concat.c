@@ -7,12 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK                    \
+#define GB_FREE_WORKSPACE               \
     GB_WERK_POP (Tile_cols, int64_t) ;  \
     GB_WERK_POP (Tile_rows, int64_t) ;
 
 #define GB_FREE_ALL                     \
-    GB_FREE_WORK ;                      \
+    GB_FREE_WORKSPACE ;                 \
     GB_phbix_free (C) ;
 
 #include "GB_concat.h"
@@ -118,7 +118,7 @@ GrB_Info GB_concat                  // concatenate a 2D array of matrices
             #define offset (GB_Global_print_one_based_get ( ) ? 1 : 0)
             if (!GB_Type_compatible (ctype, atype))
             { 
-                GB_FREE_WORK ;
+                GB_FREE_WORKSPACE ;
                 GB_ERROR (GrB_DOMAIN_MISMATCH,
                     "Input matrix Tiles{" GBd "," GBd "} of type [%s]\n"
                     "cannot be typecast to output of type [%s]\n",
@@ -127,7 +127,7 @@ GrB_Info GB_concat                  // concatenate a 2D array of matrices
             int64_t tile_rows = Tile_rows [i] ;
             if (tile_rows != nrows)
             { 
-                GB_FREE_WORK ;
+                GB_FREE_WORKSPACE ;
                 GB_ERROR (GrB_DIMENSION_MISMATCH,
                     "Input matrix Tiles{" GBd "," GBd "} is " GBd "-by-" GBd
                     "; its row\ndimension must match all other matrices Tiles{"
@@ -137,7 +137,7 @@ GrB_Info GB_concat                  // concatenate a 2D array of matrices
             int64_t tile_cols = Tile_cols [j] ;
             if (tile_cols != ncols)
             { 
-                GB_FREE_WORK ;
+                GB_FREE_WORKSPACE ;
                 GB_ERROR (GrB_DIMENSION_MISMATCH,
                     "Input matrix Tiles{" GBd "," GBd "} is " GBd "-by-" GBd
                     "; its column\ndimension must match all other matrices "
@@ -205,7 +205,7 @@ GrB_Info GB_concat                  // concatenate a 2D array of matrices
     int64_t cncols = Tile_cols [n] ;
     if (cnrows != GB_NROWS (C) || cncols != GB_NCOLS (C))
     { 
-        GB_FREE_WORK ;
+        GB_FREE_WORKSPACE ;
         GB_ERROR (GrB_DIMENSION_MISMATCH,
             "C is " GBd "-by-" GBd " but Tiles{:,:} is " GBd "-by-" GBd "\n",
             GB_NROWS (C), GB_NCOLS (C), cnrows, cncols) ;
@@ -256,7 +256,7 @@ GrB_Info GB_concat                  // concatenate a 2D array of matrices
     // conform C to its desired format and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (C, "C before conform for GB_concat", GB0) ;
     GB_OK (GB_conform (C, Context)) ;
     ASSERT_MATRIX_OK (C, "C output for GB_concat", GB0) ;

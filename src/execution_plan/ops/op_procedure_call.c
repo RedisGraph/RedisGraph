@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,40 +16,9 @@ static OpResult ProcCallReset(OpBase *opBase);
 static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProcCallFree(OpBase *opBase);
 
-static void _construct_output_mappings(OpProcCall *op, SIValue *outputs) {
-	// Map procedure outputs to record indices.
-	uint n = array_len(op->output);
-	uint m = array_len(outputs);
-	op->yield_map = rm_malloc(sizeof(OutputMap) * n);
-
-	for(uint i = 0; i < n; i++) {
-		const char *output = op->output[i];
-		/* Procedure output is a key/value pair
-		 * where the key is at even position and the value is at
-		 * an odd position. */
-		uint j = 0;
-		for(; j < m; j += 2) {
-			char *key = (outputs + j)->stringval;
-			if(strcmp(output, key) == 0) {
-				int idx;
-				bool aware = OpBase_Aware((OpBase *)op, key, &idx);
-				UNUSED(aware);
-				ASSERT(aware == true);
-				op->yield_map[i].proc_out_idx = j + 1;
-				op->yield_map[i].rec_idx = idx;
-				break;
-			}
-		}
-		// Make sure output was mapped.
-		ASSERT(j < m);
-	}
-}
-
 static Record _yield(OpProcCall *op) {
 	SIValue *outputs = Proc_Step(op->procedure);
 	if(outputs == NULL) return NULL;
-
-	if(!op->yield_map) _construct_output_mappings(op, outputs);
 
 	Record clone = OpBase_CloneRecord(op->r);
 	for(uint i = 0; i < array_len(op->output); i++) {
@@ -63,7 +32,7 @@ static Record _yield(OpProcCall *op) {
 }
 
 static void _evaluate_proc_args(OpProcCall *op) {
-	// Evaluate arguments, free args from previous call.
+	// evaluate arguments, free args from previous call
 	uint arg_count = array_len(op->args);
 	for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args[i]);
 
@@ -74,48 +43,59 @@ static void _evaluate_proc_args(OpProcCall *op) {
 	}
 }
 
-OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNode **arg_exps,
-					  AR_ExpNode **yield_exps) {
+OpBase *NewProcCallOp
+(
+	const ExecutionPlan *plan,
+	const char *proc_name,
+	AR_ExpNode **arg_exps,
+	AR_ExpNode **yield_exps
+) {
 
-	ASSERT(proc_name != NULL);
+	ASSERT(plan        !=  NULL);
+	ASSERT(proc_name   !=  NULL);
+	ASSERT(arg_exps    !=  NULL);
+	ASSERT(yield_exps  !=  NULL);
 
 	OpProcCall *op = rm_malloc(sizeof(OpProcCall));
-	op->r = NULL;
-	op->yield_map = NULL;
-	op->first_call = true;
-	op->arg_exps = arg_exps;
-	op->proc_name = proc_name;
-	op->yield_exps = yield_exps;
-	op->arg_count = array_len(arg_exps);
-	op->args = array_new(SIValue, op->arg_count);
 
-	// Procedure must exist
+	op->r           =  NULL;
+	op->args        =  array_new(SIValue, array_len(arg_exps));
+	op->arg_exps    =  arg_exps;
+	op->arg_count   =  array_len(arg_exps);
+	op->proc_name   =  proc_name;
+	op->yield_map   =  NULL;
+	op->first_call  =  true;
+	op->yield_exps  =  yield_exps;
+
+	// procedure must exist
 	op->procedure = Proc_Get(proc_name);
 	ASSERT(op->procedure != NULL);
 
 	uint yield_count = array_len(yield_exps);
 	op->output = array_new(const char *, yield_count);
+	op->yield_map = rm_malloc(sizeof(OutputMap) * yield_count);
 
-	// Set operations
+	// set callbacks
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall",
-	  	NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
-	  	ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
+				NULL, ProcCallConsume, ProcCallReset, NULL, ProcCallClone,
+				ProcCallFree, !Procedure_IsReadOnly(op->procedure), plan);
 
-	// Set modifiers
+	// set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
 		const char *alias = yield_exps[i]->resolved_name;
 		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
 
 		array_append(op->output, yield);
-		OpBase_Modifies((OpBase *)op, yield);
-		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
+		int rec_idx = OpBase_Modifies((OpBase *)op, alias);
+		op->yield_map[i].rec_idx = rec_idx;
+		op->yield_map[i].proc_out_idx = i;
 	}
 
-	return (OpBase*)op;
+	return (OpBase *)op;
 }
 
 static Record ProcCallConsume(OpBase *opBase) {
-	OpProcCall *op = (OpProcCall*)opBase;
+	OpProcCall *op = (OpProcCall *)opBase;
 
 	Record yield_record = NULL;
 	while(!(yield_record = _yield(op))) {
@@ -138,8 +118,8 @@ static Record ProcCallConsume(OpBase *opBase) {
 
 		_evaluate_proc_args(op);
 
-		/* Free previous invocation.
-		 * TODO: replace with Proc_Reset */
+		// free previous invocation
+		// TODO: replace with Proc_Reset
 		Proc_Free(op->procedure);
 		op->procedure = Proc_Get(op->proc_name);
 

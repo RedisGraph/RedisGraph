@@ -253,7 +253,6 @@
 %   testall3  - run testall with different # of threads
 %   tt        - test eWiseMult and A+B
 %   ttest     - test GrB_extractTuples
-%   ttt       - various tests
 %   xtest     - test GrB_extract
 %   ztest     - test zombie deletion
 %   testsort  - test qsort and msort

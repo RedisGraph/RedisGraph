@@ -78,6 +78,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
              if (MATCH (opname, "first"   )) { op = Complex_first  ; }
         else if (MATCH (opname, "second"  )) { op = Complex_second ; }
         else if (MATCH (opname, "pair"    )) { op = Complex_pair   ; }
+        else if (MATCH (opname, "oneb"    )) { op = Complex_pair   ; }
         else if (MATCH (opname, "any"     )) { op = Complex_second ; }
         else if (MATCH (opname, "min"     )) { op = Complex_min    ; }
         else if (MATCH (opname, "max"     )) { op = Complex_max    ; }
@@ -128,89 +129,91 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
         GB_Opcode opcode ; 
 
         // 12 binary operators z=f(x,y), all x,y,z of the same type
-             if (MATCH (opname, "first"   )) { opcode = GB_FIRST_opcode ; }
-        else if (MATCH (opname, "second"  )) { opcode = GB_SECOND_opcode ; }
-        else if (MATCH (opname, "pair"    )) { opcode = GB_PAIR_opcode ; }
-        else if (MATCH (opname, "any"     )) { opcode = GB_ANY_opcode ; }
-        else if (MATCH (opname, "min"     )) { opcode = GB_MIN_opcode ; }
-        else if (MATCH (opname, "max"     )) { opcode = GB_MAX_opcode ; }
-        else if (MATCH (opname, "plus"    )) { opcode = GB_PLUS_opcode ; }
-        else if (MATCH (opname, "minus"   )) { opcode = GB_MINUS_opcode ; }
-        else if (MATCH (opname, "rminus"  )) { opcode = GB_RMINUS_opcode ; }
-        else if (MATCH (opname, "times"   )) { opcode = GB_TIMES_opcode ; }
-        else if (MATCH (opname, "div"     )) { opcode = GB_DIV_opcode ; }
-        else if (MATCH (opname, "rdiv"    )) { opcode = GB_RDIV_opcode ; }
+        // (pair and oneb are identical)
+             if (MATCH (opname, "first"   )) { opcode = GB_FIRST_binop_code ; }
+        else if (MATCH (opname, "second"  )) { opcode = GB_SECOND_binop_code ; }
+        else if (MATCH (opname, "pair"    )) { opcode = GB_PAIR_binop_code ; }
+        else if (MATCH (opname, "oneb"    )) { opcode = GB_PAIR_binop_code ; }
+        else if (MATCH (opname, "any"     )) { opcode = GB_ANY_binop_code ; }
+        else if (MATCH (opname, "min"     )) { opcode = GB_MIN_binop_code ; }
+        else if (MATCH (opname, "max"     )) { opcode = GB_MAX_binop_code ; }
+        else if (MATCH (opname, "plus"    )) { opcode = GB_PLUS_binop_code ; }
+        else if (MATCH (opname, "minus"   )) { opcode = GB_MINUS_binop_code ; }
+        else if (MATCH (opname, "rminus"  )) { opcode = GB_RMINUS_binop_code ; }
+        else if (MATCH (opname, "times"   )) { opcode = GB_TIMES_binop_code ; }
+        else if (MATCH (opname, "div"     )) { opcode = GB_DIV_binop_code ; }
+        else if (MATCH (opname, "rdiv"    )) { opcode = GB_RDIV_binop_code ; }
 
         // 6 ops z=f(x,y), all x,y,z the same type
-        else if (MATCH (opname, "iseq"    )) { opcode = GB_ISEQ_opcode ; }
-        else if (MATCH (opname, "isne"    )) { opcode = GB_ISNE_opcode ; }
-        else if (MATCH (opname, "isgt"    )) { opcode = GB_ISGT_opcode ; }
-        else if (MATCH (opname, "islt"    )) { opcode = GB_ISLT_opcode ; }
-        else if (MATCH (opname, "isge"    )) { opcode = GB_ISGE_opcode ; }
-        else if (MATCH (opname, "isle"    )) { opcode = GB_ISLE_opcode ; }
+        else if (MATCH (opname, "iseq"    )) { opcode = GB_ISEQ_binop_code ; }
+        else if (MATCH (opname, "isne"    )) { opcode = GB_ISNE_binop_code ; }
+        else if (MATCH (opname, "isgt"    )) { opcode = GB_ISGT_binop_code ; }
+        else if (MATCH (opname, "islt"    )) { opcode = GB_ISLT_binop_code ; }
+        else if (MATCH (opname, "isge"    )) { opcode = GB_ISGE_binop_code ; }
+        else if (MATCH (opname, "isle"    )) { opcode = GB_ISLE_binop_code ; }
 
         // 3 binary operators z=f(x,y), all x,y,x the same type
         else if (MATCH (opname, "or"      ) ||
-                 MATCH (opname, "lor"     )) { opcode = GB_LOR_opcode ; }
+                 MATCH (opname, "lor"     )) { opcode = GB_LOR_binop_code ; }
         else if (MATCH (opname, "and"     ) ||
-                 MATCH (opname, "land"    )) { opcode = GB_LAND_opcode ; }
+                 MATCH (opname, "land"    )) { opcode = GB_LAND_binop_code ; }
         else if (MATCH (opname, "xor"     ) ||
-                 MATCH (opname, "lxor"    )) { opcode = GB_LXOR_opcode ; }
+                 MATCH (opname, "lxor"    )) { opcode = GB_LXOR_binop_code ; }
 
         // 6 ops z=f(x,y), where x,y are the requested type but z is boolean
-        else if (MATCH (opname, "eq"      )) { opcode = GB_EQ_opcode ; }
-        else if (MATCH (opname, "ne"      )) { opcode = GB_NE_opcode ; }
-        else if (MATCH (opname, "gt"      )) { opcode = GB_GT_opcode ; }
-        else if (MATCH (opname, "lt"      )) { opcode = GB_LT_opcode ; }
-        else if (MATCH (opname, "ge"      )) { opcode = GB_GE_opcode ; }
-        else if (MATCH (opname, "le"      )) { opcode = GB_LE_opcode ; }
+        else if (MATCH (opname, "eq"      )) { opcode = GB_EQ_binop_code ; }
+        else if (MATCH (opname, "ne"      )) { opcode = GB_NE_binop_code ; }
+        else if (MATCH (opname, "gt"      )) { opcode = GB_GT_binop_code ; }
+        else if (MATCH (opname, "lt"      )) { opcode = GB_LT_binop_code ; }
+        else if (MATCH (opname, "ge"      )) { opcode = GB_GE_binop_code ; }
+        else if (MATCH (opname, "le"      )) { opcode = GB_LE_binop_code ; }
 
-        else if (MATCH (opname, "atan2"   )) { opcode = GB_ATAN2_opcode ; }
-        else if (MATCH (opname, "hypot"   )) { opcode = GB_HYPOT_opcode ; }
-        else if (MATCH (opname, "fmod"    )) { opcode = GB_FMOD_opcode ; }
-        else if (MATCH (opname,"remainder")) { opcode = GB_REMAINDER_opcode ; }
-        else if (MATCH (opname, "copysign")) { opcode = GB_COPYSIGN_opcode ; }
-        else if (MATCH (opname, "ldexp"   )) { opcode = GB_LDEXP_opcode ; }
-        else if (MATCH (opname, "pow"     )) { opcode = GB_POW_opcode ; }
+        else if (MATCH (opname, "atan2"   )) { opcode = GB_ATAN2_binop_code ; }
+        else if (MATCH (opname, "hypot"   )) { opcode = GB_HYPOT_binop_code ; }
+        else if (MATCH (opname, "fmod"    )) { opcode = GB_FMOD_binop_code ; }
+        else if (MATCH (opname,"remainder")) { opcode = GB_REMAINDER_binop_code ; }
+        else if (MATCH (opname, "copysign")) { opcode = GB_COPYSIGN_binop_code ; }
+        else if (MATCH (opname, "ldexp"   )) { opcode = GB_LDEXP_binop_code ; }
+        else if (MATCH (opname, "pow"     )) { opcode = GB_POW_binop_code ; }
 
         // positional ops
         else if (MATCH (opname, "firsti"  ) ||
-                 MATCH (opname, "1sti"    )) { opcode = GB_FIRSTI_opcode ; }
+                 MATCH (opname, "1sti"    )) { opcode = GB_FIRSTI_binop_code ; }
         else if (MATCH (opname, "firsti1" ) ||
-                 MATCH (opname, "1sti1"   )) { opcode = GB_FIRSTI1_opcode ; }
+                 MATCH (opname, "1sti1"   )) { opcode = GB_FIRSTI1_binop_code ; }
         else if (MATCH (opname, "firstj"  ) ||
-                 MATCH (opname, "1stj"    )) { opcode = GB_FIRSTJ_opcode ; }
+                 MATCH (opname, "1stj"    )) { opcode = GB_FIRSTJ_binop_code ; }
         else if (MATCH (opname, "firstj1" ) ||
-                 MATCH (opname, "1stj1"   )) { opcode = GB_FIRSTJ1_opcode ; }
+                 MATCH (opname, "1stj1"   )) { opcode = GB_FIRSTJ1_binop_code ; }
         else if (MATCH (opname, "secondi" ) ||
-                 MATCH (opname, "2ndi"    )) { opcode = GB_SECONDI_opcode ; }
+                 MATCH (opname, "2ndi"    )) { opcode = GB_SECONDI_binop_code ; }
         else if (MATCH (opname, "secondi1") ||
-                 MATCH (opname, "2ndi1"   )) { opcode = GB_SECONDI1_opcode ; }
+                 MATCH (opname, "2ndi1"   )) { opcode = GB_SECONDI1_binop_code ; }
         else if (MATCH (opname, "secondj" ) ||
-                 MATCH (opname, "2ndj"    )) { opcode = GB_SECONDJ_opcode ; }
+                 MATCH (opname, "2ndj"    )) { opcode = GB_SECONDJ_binop_code ; }
         else if (MATCH (opname, "secondj1") ||
-                 MATCH (opname, "2ndj1"   )) { opcode = GB_SECONDJ1_opcode ; }
+                 MATCH (opname, "2ndj1"   )) { opcode = GB_SECONDJ1_binop_code ; }
 
         // z is complex, x and y are real
-        else if (cmplx_op                  ) { opcode = GB_CMPLX_opcode ; }
+        else if (cmplx_op                  ) { opcode = GB_CMPLX_binop_code ; }
 
         // bitwise operators
         else if (MATCH (opname, "bitor"   ) ||
-                 MATCH (opname, "bor"     )) { opcode = GB_BOR_opcode ; }
+                 MATCH (opname, "bor"     )) { opcode = GB_BOR_binop_code ; }
         else if (MATCH (opname, "bitand"  ) ||
-                 MATCH (opname, "band"    )) { opcode = GB_BAND_opcode ; }
+                 MATCH (opname, "band"    )) { opcode = GB_BAND_binop_code ; }
         else if (MATCH (opname, "bitxor"  ) ||
-                 MATCH (opname, "bxor"    )) { opcode = GB_BXOR_opcode ; }
+                 MATCH (opname, "bxor"    )) { opcode = GB_BXOR_binop_code ; }
         else if (MATCH (opname, "bitxnor" ) ||
-                 MATCH (opname, "bxnor"   )) { opcode = GB_BXNOR_opcode ; }
+                 MATCH (opname, "bxnor"   )) { opcode = GB_BXNOR_binop_code ; }
         else if (MATCH (opname, "bitget"  ) ||
-                 MATCH (opname, "bget"    )) { opcode = GB_BGET_opcode ; }
+                 MATCH (opname, "bget"    )) { opcode = GB_BGET_binop_code ; }
         else if (MATCH (opname, "bitset"  ) ||
-                 MATCH (opname, "bset"    )) { opcode = GB_BSET_opcode ; }
+                 MATCH (opname, "bset"    )) { opcode = GB_BSET_binop_code ; }
         else if (MATCH (opname, "bitclr"  ) ||
-                 MATCH (opname, "bclr"    )) { opcode = GB_BCLR_opcode ; }
+                 MATCH (opname, "bclr"    )) { opcode = GB_BCLR_binop_code ; }
         else if (MATCH (opname, "bitshift") ||
-                 MATCH (opname, "bshift"  )) { opcode = GB_BSHIFT_opcode ; }
+                 MATCH (opname, "bshift"  )) { opcode = GB_BSHIFT_binop_code ; }
 
         else
         {
@@ -233,7 +236,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
         switch (opcode)
         {
 
-            case GB_FIRST_opcode :
+            case GB_FIRST_binop_code :
 
                 switch (xcode)
                 {
@@ -256,7 +259,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_SECOND_opcode:
+            case GB_SECOND_binop_code:
 
                 switch (xcode)
                 {
@@ -279,7 +282,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ANY_opcode:
+            case GB_ANY_binop_code:
 
                 switch (xcode)
                 {
@@ -302,30 +305,31 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_PAIR_opcode:
+            case GB_PAIR_binop_code:
 
                 switch (xcode)
                 {
-                    case GB_BOOL_code    : op = GxB_PAIR_BOOL   ; break ;
-                    case GB_INT8_code    : op = GxB_PAIR_INT8   ; break ;
-                    case GB_INT16_code   : op = GxB_PAIR_INT16  ; break ;
-                    case GB_INT32_code   : op = GxB_PAIR_INT32  ; break ;
-                    case GB_INT64_code   : op = GxB_PAIR_INT64  ; break ;
-                    case GB_UINT8_code   : op = GxB_PAIR_UINT8  ; break ;
-                    case GB_UINT16_code  : op = GxB_PAIR_UINT16 ; break ;
-                    case GB_UINT32_code  : op = GxB_PAIR_UINT32 ; break ;
-                    case GB_UINT64_code  : op = GxB_PAIR_UINT64 ; break ;
-                    case GB_FP32_code    : op = GxB_PAIR_FP32   ; break ;
-                    case GB_FP64_code    : op = GxB_PAIR_FP64   ; break ;
-                    case GB_FC32_code    : op = GxB_PAIR_FC32   ; break ;
-                    case GB_FC64_code    : op = GxB_PAIR_FC64   ; break ;
+                    // GrB_ONEB_T is the new name for GxB_PAIR_T
+                    case GB_BOOL_code    : op = GrB_ONEB_BOOL   ; break ;
+                    case GB_INT8_code    : op = GrB_ONEB_INT8   ; break ;
+                    case GB_INT16_code   : op = GrB_ONEB_INT16  ; break ;
+                    case GB_INT32_code   : op = GrB_ONEB_INT32  ; break ;
+                    case GB_INT64_code   : op = GrB_ONEB_INT64  ; break ;
+                    case GB_UINT8_code   : op = GrB_ONEB_UINT8  ; break ;
+                    case GB_UINT16_code  : op = GrB_ONEB_UINT16 ; break ;
+                    case GB_UINT32_code  : op = GrB_ONEB_UINT32 ; break ;
+                    case GB_UINT64_code  : op = GrB_ONEB_UINT64 ; break ;
+                    case GB_FP32_code    : op = GrB_ONEB_FP32   ; break ;
+                    case GB_FP64_code    : op = GrB_ONEB_FP64   ; break ;
+                    case GB_FC32_code    : op = GxB_ONEB_FC32   ; break ;
+                    case GB_FC64_code    : op = GxB_ONEB_FC64   ; break ;
                     default              : 
                         mexWarnMsgIdAndTxt ("GB:warn","unknown operator") ;
                         return (false) ;
                 }
                 break ;
 
-            case GB_MIN_opcode   :
+            case GB_MIN_binop_code   :
 
                 switch (xcode)
                 {
@@ -346,7 +350,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_MAX_opcode   :
+            case GB_MAX_binop_code   :
 
                 switch (xcode)
                 {
@@ -367,7 +371,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_PLUS_opcode  :
+            case GB_PLUS_binop_code  :
 
                 switch (xcode)
                 {
@@ -390,7 +394,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_MINUS_opcode :
+            case GB_MINUS_binop_code :
 
                 switch (xcode)
                 {
@@ -413,7 +417,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_RMINUS_opcode :
+            case GB_RMINUS_binop_code :
 
                 switch (xcode)
                 {
@@ -436,7 +440,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_TIMES_opcode :
+            case GB_TIMES_binop_code :
 
                 switch (xcode)
                 {
@@ -459,7 +463,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_DIV_opcode   :
+            case GB_DIV_binop_code   :
 
                 switch (xcode)
                 {
@@ -482,7 +486,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_RDIV_opcode   :
+            case GB_RDIV_binop_code   :
 
                 switch (xcode)
                 {
@@ -505,7 +509,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_POW_opcode :     // z = pow (x,y)
+            case GB_POW_binop_code :     // z = pow (x,y)
 
                 switch (xcode)
                 {
@@ -528,7 +532,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISEQ_opcode :
+            case GB_ISEQ_binop_code :
 
                 switch (xcode)
                 {
@@ -551,7 +555,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISNE_opcode :
+            case GB_ISNE_binop_code :
 
                 switch (xcode)
                 {
@@ -574,7 +578,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISGT_opcode :
+            case GB_ISGT_binop_code :
 
                 switch (xcode)
                 {
@@ -595,7 +599,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISLT_opcode :
+            case GB_ISLT_binop_code :
 
                 switch (xcode)
                 {
@@ -616,7 +620,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISGE_opcode :
+            case GB_ISGE_binop_code :
 
                 switch (xcode)
                 {
@@ -637,7 +641,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ISLE_opcode :
+            case GB_ISLE_binop_code :
 
                 switch (xcode)
                 {
@@ -659,7 +663,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 break ;
 
 
-            case GB_EQ_opcode :
+            case GB_EQ_binop_code :
 
                 switch (xcode)
                 {
@@ -682,7 +686,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_NE_opcode :
+            case GB_NE_binop_code :
 
                 switch (xcode)
                 {
@@ -705,7 +709,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_GT_opcode :
+            case GB_GT_binop_code :
 
                 switch (xcode)
                 {
@@ -726,7 +730,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LT_opcode :
+            case GB_LT_binop_code :
 
                 switch (xcode)
                 {
@@ -747,7 +751,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_GE_opcode :
+            case GB_GE_binop_code :
 
                 switch (xcode)
                 {
@@ -768,7 +772,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LE_opcode :
+            case GB_LE_binop_code :
 
                 switch (xcode)
                 {
@@ -790,7 +794,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 break ;
 
 
-            case GB_LOR_opcode   :
+            case GB_LOR_binop_code   :
 
                 switch (xcode)
                 {
@@ -811,7 +815,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LAND_opcode   :
+            case GB_LAND_binop_code   :
 
                 switch (xcode)
                 {
@@ -832,7 +836,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LXOR_opcode   :
+            case GB_LXOR_binop_code   :
 
                 switch (xcode)
                 {
@@ -853,7 +857,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_ATAN2_opcode :       // z = atan2 (x,y)
+            case GB_ATAN2_binop_code :       // z = atan2 (x,y)
 
                 switch (xcode)
                 {
@@ -865,7 +869,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_HYPOT_opcode :       // z = hypot (x,y)
+            case GB_HYPOT_binop_code :       // z = hypot (x,y)
 
                 switch (xcode)
                 {
@@ -877,7 +881,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_FMOD_opcode :        // z = fmod (x,y)
+            case GB_FMOD_binop_code :        // z = fmod (x,y)
 
                 switch (xcode)
                 {
@@ -889,7 +893,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_REMAINDER_opcode :   // z = remainder (x,y)
+            case GB_REMAINDER_binop_code :   // z = remainder (x,y)
 
                 switch (xcode)
                 {
@@ -901,7 +905,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_COPYSIGN_opcode :    // z = copysign (x,y)
+            case GB_COPYSIGN_binop_code :    // z = copysign (x,y)
 
                 switch (xcode)
                 {
@@ -913,7 +917,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_LDEXP_opcode :       // z = ldexp (x,y)
+            case GB_LDEXP_binop_code :       // z = ldexp (x,y)
 
                 switch (xcode)
                 {
@@ -925,7 +929,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_CMPLX_opcode :       // z = cmplx (x,y)
+            case GB_CMPLX_binop_code :       // z = cmplx (x,y)
 
                 switch (xcode)
                 {
@@ -937,7 +941,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BOR_opcode :     // z = (x | y), bitwise or
+            case GB_BOR_binop_code :     // z = (x | y), bitwise or
 
                 switch (xcode)
                 {
@@ -955,7 +959,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BAND_opcode :    // z = (x & y), bitwise and
+            case GB_BAND_binop_code :    // z = (x & y), bitwise and
 
                 switch (xcode)
                 {
@@ -973,7 +977,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BXOR_opcode :    // z = (x ^ y), bitwise xor
+            case GB_BXOR_binop_code :    // z = (x ^ y), bitwise xor
 
                 switch (xcode)
                 {
@@ -991,7 +995,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BXNOR_opcode :   // z = ~(x ^ y), bitwise xnor
+            case GB_BXNOR_binop_code :   // z = ~(x ^ y), bitwise xnor
 
                 switch (xcode)
                 {
@@ -1009,7 +1013,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BGET_opcode :    // z = bitget (x,y)
+            case GB_BGET_binop_code :    // z = bitget (x,y)
 
                 switch (xcode)
                 {
@@ -1027,7 +1031,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BSET_opcode :    // z = bitset (x,y)
+            case GB_BSET_binop_code :    // z = bitset (x,y)
 
                 switch (xcode)
                 {
@@ -1045,7 +1049,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BCLR_opcode :    // z = bitclr (x,y)
+            case GB_BCLR_binop_code :    // z = bitclr (x,y)
 
                 switch (xcode)
                 {
@@ -1063,7 +1067,7 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_BSHIFT_opcode :  // z = bitshift (x,y)
+            case GB_BSHIFT_binop_code :  // z = bitshift (x,y)
 
                 switch (xcode)
                 {
@@ -1081,14 +1085,14 @@ bool GB_mx_string_to_BinaryOp       // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_FIRSTI_opcode   : op = is64 ? GxB_FIRSTI_INT64   : GxB_FIRSTI_INT32   ; break ;
-            case GB_FIRSTI1_opcode  : op = is64 ? GxB_FIRSTI1_INT64  : GxB_FIRSTI1_INT32  ; break ;
-            case GB_FIRSTJ_opcode   : op = is64 ? GxB_FIRSTJ_INT64   : GxB_FIRSTJ_INT32   ; break ;
-            case GB_FIRSTJ1_opcode  : op = is64 ? GxB_FIRSTJ1_INT64  : GxB_FIRSTJ1_INT32  ; break ;
-            case GB_SECONDI_opcode  : op = is64 ? GxB_SECONDI_INT64  : GxB_SECONDI_INT32  ; break ;
-            case GB_SECONDI1_opcode : op = is64 ? GxB_SECONDI1_INT64 : GxB_SECONDI1_INT32 ; break ;
-            case GB_SECONDJ_opcode  : op = is64 ? GxB_SECONDJ_INT64  : GxB_SECONDJ_INT32  ; break ;
-            case GB_SECONDJ1_opcode : op = is64 ? GxB_SECONDJ1_INT64 : GxB_SECONDJ1_INT32 ; break ;
+            case GB_FIRSTI_binop_code   : op = is64 ? GxB_FIRSTI_INT64   : GxB_FIRSTI_INT32   ; break ;
+            case GB_FIRSTI1_binop_code  : op = is64 ? GxB_FIRSTI1_INT64  : GxB_FIRSTI1_INT32  ; break ;
+            case GB_FIRSTJ_binop_code   : op = is64 ? GxB_FIRSTJ_INT64   : GxB_FIRSTJ_INT32   ; break ;
+            case GB_FIRSTJ1_binop_code  : op = is64 ? GxB_FIRSTJ1_INT64  : GxB_FIRSTJ1_INT32  ; break ;
+            case GB_SECONDI_binop_code  : op = is64 ? GxB_SECONDI_INT64  : GxB_SECONDI_INT32  ; break ;
+            case GB_SECONDI1_binop_code : op = is64 ? GxB_SECONDI1_INT64 : GxB_SECONDI1_INT32 ; break ;
+            case GB_SECONDJ_binop_code  : op = is64 ? GxB_SECONDJ_INT64  : GxB_SECONDJ_INT32  ; break ;
+            case GB_SECONDJ1_binop_code : op = is64 ? GxB_SECONDJ1_INT64 : GxB_SECONDJ1_INT32 ; break ;
 
             default : 
                 mexWarnMsgIdAndTxt ("GB:warn","unknown binary operator") ;

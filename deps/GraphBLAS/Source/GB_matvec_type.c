@@ -29,6 +29,7 @@ GrB_Info GB_matvec_type            // get the type of a matrix
     //--------------------------------------------------------------------------
 
     (*type) = A->type ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

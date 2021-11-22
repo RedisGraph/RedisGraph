@@ -87,7 +87,7 @@ GrB_Info GB_convert_bitmap_worker   // extract CSC/CSR or triplets from bitmap
         //----------------------------------------------------------------------
 
         // allocate one row of W per thread, each row of length avdim
-        W = GB_MALLOC_WERK (nthreads * avdim, int64_t, &W_size) ;
+        W = GB_MALLOC_WORK (nthreads * avdim, int64_t, &W_size) ;
         if (W == NULL)
         {
             // out of memory
@@ -233,7 +233,7 @@ GrB_Info GB_convert_bitmap_worker   // extract CSC/CSR or triplets from bitmap
     // free workspace return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&W, W_size) ;
+    GB_FREE_WORK (&W, W_size) ;
     return (GrB_SUCCESS) ;
 }
 

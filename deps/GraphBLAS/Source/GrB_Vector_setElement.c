@@ -42,3 +42,45 @@ GB_SET (GxB, GxB_FC32_t, FC32   , &)
 GB_SET (GxB, GxB_FC64_t, FC64   , &)
 GB_SET (GrB, void *    , UDT    ,  )
 
+//------------------------------------------------------------------------------
+// GrB_Vector_setElement_Scalar: set an entry in a vector from a GrB_Scalar
+//------------------------------------------------------------------------------
+
+// When the GrB_Scalar has a single entry, this method is just like the
+// setElement methods defined above.  If the GrB_Scalar has no entry, then it
+// acts like GrB_Vector_removeElement.
+
+GrB_Info GrB_Vector_setElement_Scalar
+(
+    GrB_Vector w,                       // vector to modify
+    GrB_Scalar scalar,                  // scalar to assign to w(row)
+    GrB_Index row                       // row index
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE (w, "GrB_Vector_setElement_Scalar (w, x, row)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (scalar) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+
+    //--------------------------------------------------------------------------
+    // set or remove the element
+    //--------------------------------------------------------------------------
+
+    if (GB_nnz ((GrB_Matrix) scalar) > 0)
+    { 
+        // set the element: w(row) = scalar
+        return (GB_setElement ((GrB_Matrix) w, scalar->x, row, 0,
+            scalar->type->code, Context)) ;
+    }
+    else
+    { 
+        // delete the w(row) element
+        return (GB_Vector_removeElement (w, row, Context)) ;
+    }
+}
+

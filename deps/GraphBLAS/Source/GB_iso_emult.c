@@ -49,7 +49,7 @@ bool GB_iso_emult           // c = op(a,b), return true if C is iso
     // get the binary operator and the types of C, A, and B
     //--------------------------------------------------------------------------
 
-    const GxB_binary_function femult = op->function ;
+    const GxB_binary_function femult = op->binop_function ;
     GB_Opcode opcode = op->opcode ;
 
     const GrB_Type xtype = op->xtype ;
@@ -74,7 +74,7 @@ bool GB_iso_emult           // c = op(a,b), return true if C is iso
     // determine if C is iso
     //--------------------------------------------------------------------------
 
-    if (opcode == GB_PAIR_opcode)
+    if (opcode == GB_PAIR_binop_code)
     { 
 
         //----------------------------------------------------------------------
@@ -85,7 +85,8 @@ bool GB_iso_emult           // c = op(a,b), return true if C is iso
         return (true) ;
 
     }
-    else if (B->iso && (opcode == GB_SECOND_opcode || opcode == GB_ANY_opcode))
+    else if (B->iso &&
+            (opcode == GB_SECOND_binop_code || opcode == GB_ANY_binop_code))
     { 
 
         //----------------------------------------------------------------------
@@ -107,7 +108,8 @@ bool GB_iso_emult           // c = op(a,b), return true if C is iso
         return (true) ;
 
     }
-    else if (A->iso && (opcode == GB_FIRST_opcode || opcode == GB_ANY_opcode))
+    else if (A->iso &&
+            (opcode == GB_FIRST_binop_code || opcode == GB_ANY_binop_code))
     { 
 
         //----------------------------------------------------------------------

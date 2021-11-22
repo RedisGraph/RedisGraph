@@ -1,7 +1,7 @@
-function [binops unary_ops add_ops types semirings selops] = GB_spec_opsall
+function [binops unary_ops add_ops types semirings selops idxunop] = GB_spec_opsall
 %GB_SPEC_OPSALL return a list of all operators, types, and semirings
 %
-% [binops unary_ops add_ops types semirings select_ops] = GB_spec_opsall
+% [binops unary_ops add_ops types semirings select_ops idxunop] = GB_spec_opsall
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
@@ -55,7 +55,8 @@ binops.alltypes = {
 'eq',        % z = (x == y)
 'ne',        % z = (x != y)
 'pow',       % z = x.^y
-'any'}' ;    % z = any(x,y)
+'any',       % z = any(x,y)
+'oneb'}' ;   % z = 1 (same as pair)
 
 % binary operators for 11 types (all but complex)
 binops.real = {
@@ -180,7 +181,7 @@ n = 0 ;
 % 1000: x,y,z all nonboolean:  20*5*10
 %-------------------------------------------------------------------------------
 
-for mult = {'first', 'second', 'pair', 'min', 'max', 'plus', 'minus', ...
+for mult = {'first', 'second', 'oneb', 'min', 'max', 'plus', 'minus', ...
             'rminus', 'times', 'div', 'rdiv', ...
             'iseq', 'isne', 'isgt', 'islt', 'isge', 'isle', ...
             'or', 'and', 'xor', }
@@ -213,7 +214,7 @@ end
 % 55: x,y,z all boolean: 11 * 5
 %-------------------------------------------------------------------------------
 
-for mult = { 'first', 'second', 'pair', 'or', 'and', 'xor', ...
+for mult = { 'first', 'second', 'oneb', 'or', 'and', 'xor', ...
     'eq', 'gt', 'lt', 'ge', 'le' }
     for add = { 'or', 'and', 'xor', 'eq', 'any' }
         n = n + 1 ;
@@ -242,7 +243,7 @@ end
 % 54: complex
 %-------------------------------------------------------------------------------
 
-for mult = {'first', 'second', 'pair', 'plus', 'minus', ...
+for mult = {'first', 'second', 'oneb', 'plus', 'minus', ...
             'rminus', 'times', 'div', 'rdiv' }
     for add = { 'plus', 'times', 'any' }
         for c = { 'single complex', 'double complex' }
@@ -277,4 +278,13 @@ selops = { 'tril', 'triu', 'diag', 'offdiag', ...
     'ne_thunk', 'eq_thunk', 'gt_thunk', 'ge_thunk', 'lt_thunk', 'le_thunk' }' ;
 
 % fprintf ('semirings: %d\n', n) ;
+
+%-------------------------------------------------------------------------------
+% idxunop
+%-------------------------------------------------------------------------------
+
+idxunop = { 'rowindex', 'colindex', 'diagindex', ...
+    'tril', 'triu', 'diag', 'offdiag', ...
+    'colle', 'colgt', 'rowle', 'rowgt', ...
+    'valuene', 'valueeq', 'valuelt', 'valuele', 'valuegt', 'valuege' } ;
 

@@ -26,7 +26,7 @@ switch op
         z = x ;
     case 'second'
         z = y ;
-    case 'pair'
+    case { 'pair', 'oneb' }
         z = GB_spec_ones (size (x), GB_spec_type (x)) ;
 %   case 'min'
 %       z = min (x,y,'includenan') ;
