@@ -13,7 +13,7 @@
 
 #define USAGE "C = GB_mex_apply1 (C, Mask, accum, op, how, x, A, desc)"
 
-// if how == 0: use the GxB_Scalar and GxB_Matrix/Vector_apply_BinaryOp1st
+// if how == 0: use the GrB_Scalar and GxB_Matrix/Vector_apply_BinaryOp1st
 // if how == 1: use the C scalar   and GrB_Matrix/Vector_apply_BinaryOp1st_T
 
 #define FREE_ALL                        \
@@ -27,7 +27,7 @@
 }
 
 GrB_Matrix C = NULL, S = NULL ;
-GxB_Scalar scalar = NULL ;
+GrB_Scalar scalar = NULL ;
 GrB_Matrix Mask = NULL ;
 GrB_Matrix A = NULL ;
 GrB_Descriptor desc = NULL ;
@@ -127,7 +127,7 @@ GrB_Info apply1 (bool is_matrix)
     }
     else if (is_matrix && how == 0)
     {
-        info = GxB_Matrix_apply_BinaryOp1st_
+        info = GrB_Matrix_apply_BinaryOp1st_Scalar_
             (C, Mask, accum, op, scalar, A, desc) ;
     }
     else if (!is_matrix && how == 1)
@@ -219,7 +219,7 @@ GrB_Info apply1 (bool is_matrix)
         GrB_Vector w = (GrB_Vector) C ;
         GrB_Vector m = (GrB_Vector) Mask ;
         GrB_Vector a = (GrB_Vector) A ;
-        info = GxB_Vector_apply_BinaryOp1st_
+        info = GrB_Vector_apply_BinaryOp1st_Scalar_
             (w, m, accum, op, scalar, a, desc) ;
     }
 
@@ -264,7 +264,7 @@ void mexFunction
         mexErrMsgTxt ("Mask failed") ;
     }
 
-    // get how.  0: use GxB_Scalar, 1: use bare C scalar
+    // get how.  0: use GrB_Scalar, 1: use bare C scalar
     GET_SCALAR (4, int, how, 0) ;
 
     // get scalar (shallow copy)
@@ -285,7 +285,7 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("scalar failed") ;
     }
-    scalar = (GxB_Scalar) S ;
+    scalar = (GrB_Scalar) S ;
     GrB_Info info = GxB_Scalar_fprint (scalar, "scalar", GxB_SILENT, NULL) ;
     if (info != GrB_SUCCESS)
     {

@@ -36,8 +36,8 @@
     GB_phbix_free (M2) ;            \
     GB_phbix_free (A2) ;            \
     GB_phbix_free (SubMask) ;       \
-    GB_FREE_WERK (&I2, I2_size) ;   \
-    GB_FREE_WERK (&J2, J2_size) ;   \
+    GB_FREE_WORK (&I2, I2_size) ;   \
+    GB_FREE_WORK (&J2, J2_size) ;   \
 }
 
 GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'

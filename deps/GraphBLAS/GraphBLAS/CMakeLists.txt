@@ -28,17 +28,32 @@ endif ( )
 # MacOS settings
 set ( CMAKE_MACOSX_RPATH TRUE )
 
-# version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Oct 27, 2021")
-set ( GraphBLAS_VERSION_MAJOR 5 )
-set ( GraphBLAS_VERSION_MINOR 1 )
-set ( GraphBLAS_VERSION_SUB  10 )
+# version of SuiteSparse:GraphBLAS (must match ../CMakeLists.txt)
+set ( GraphBLAS_DATE "Nov 15, 2021")
+set ( GraphBLAS_VERSION_MAJOR 6 )
+set ( GraphBLAS_VERSION_MINOR 0 )
+set ( GraphBLAS_VERSION_SUB   0 )
+
+message ( STATUS "Building SuiteSparse:GraphBLAS version: v" ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}  " date: " ${GraphBLAS_DATE} )
 
 # GraphBLAS C API Specification version, at graphblas.org
-set ( GraphBLAS_API_DATE "Sept 25, 2019" )
-set ( GraphBLAS_API_VERSION_MAJOR 1 )
-set ( GraphBLAS_API_VERSION_MINOR 3 )
-set ( GraphBLAS_API_VERSION_SUB   0 )
+if ( GraphBLAS_VERSION_MAJOR GREATER_EQUAL 6 )
+    # SuiteSparse:GraphBLAS v6.0.0 and later fully implment the v2 spec
+    set ( GraphBLAS_API_DATE "Nov 15, 2021" )
+    set ( GraphBLAS_API_VERSION_MAJOR 2 )
+    set ( GraphBLAS_API_VERSION_MINOR 0 )
+    set ( GraphBLAS_API_VERSION_SUB   0 )
+else ( )
+    # SuiteSparse:GraphBLAS v5.2.0 has much of the v2 spec but not all.
+    # It is backward compatible with all v5.x which have little of the new
+    # features of the v2 C API Specification.
+    set ( GraphBLAS_API_DATE "Sept 25, 2019" )
+    set ( GraphBLAS_API_VERSION_MAJOR 1 )
+    set ( GraphBLAS_API_VERSION_MINOR 3 )
+    set ( GraphBLAS_API_VERSION_SUB   0 )
+endif ( )
+
+message ( STATUS "GraphBLAS C API: v" "${GraphBLAS_API_VERSION_MAJOR}.${GraphBLAS_API_VERSION_MINOR}, date: ${GraphBLAS_API_DATE}" )
 
 project ( graphblas_renamed
     VERSION "${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}" LANGUAGES C )
@@ -49,7 +64,7 @@ project ( graphblas_renamed
 
 include ( GNUInstallDirs )
 
-# Uncomment this line for for development only, not for end-users:
+# Uncomment this line for development only, not for end-users:
 # set ( CMAKE_BUILD_TYPE Debug )
 
 if ( NOT CMAKE_BUILD_TYPE )
@@ -59,6 +74,7 @@ endif ( )
 set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGBRENAME=1 " )
 
 find_package ( OpenMP )
+# find_package ( IPP )
 
 message ( STATUS "CMAKE build type:          " ${CMAKE_BUILD_TYPE} )
 
@@ -85,9 +101,9 @@ endif ( )
 set ( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 if ( GBCOMPACT )
-    include_directories ( ../Source/Template ../Source ../Include rename ../Source/Generated1 )
+    include_directories ( ../Source/Template ../Source ../Include rename ../Source/Generated1 ../lz4 )
 else ( )
-    include_directories ( ../Source/Template ../Source ../Include rename ../Source/Generated1 ../Source/Generated2 )
+    include_directories ( ../Source/Template ../Source ../Include rename ../Source/Generated1 ../lz4 ../Source/Generated2 )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -178,6 +194,16 @@ if ( USE_OPENMP )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} " )
     include_directories ( ${OpenMP_C_INCLUDE_DIRS} )
 endif ( )
+
+# Intel(R) IPP not yet supported
+#   message ( STATUS "CMAKE have IPP:            " ${IPP_FOUND} )
+#   if ( IPP_FOUND )
+#       message ( STATUS "Intel(R) IPP variant:      " ${IPP_TL_VARIANT} )
+#       message ( STATUS "Intel(R) IPP arch:         " ${IPP_ARCH} )
+#       message ( STATUS "Intel(R) IPP version:      " ${IPP_VERSION} )
+#       set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGB_HAVE_IPP=1 " )
+#       target_link_libraries ( graphblas_renamed PUBLIC ippdc ippcore )
+#   endif ( )
 
 #-------------------------------------------------------------------------------
 # print final C flags

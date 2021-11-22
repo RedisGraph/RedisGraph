@@ -37,9 +37,11 @@ my_*.out
 .pyc
 *.tmp
 gunk*
+errlog*.txt
+fprint.txt
+log.txt
 
 Demo/bfs_demo.out
-Demo/mis_demo.out
 Demo/openmp_demo.out
 Demo/pagerank_demo.out
 Demo/pthread_demo.out

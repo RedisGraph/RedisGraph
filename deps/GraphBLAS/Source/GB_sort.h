@@ -228,5 +228,21 @@ static inline GrB_Index GB_rand (uint64_t *seed)
     return (i) ;
 }
 
+//------------------------------------------------------------------------------
+// matrix sorting (for GxB_Matrix_sort and GxB_Vector_sort)
+//------------------------------------------------------------------------------
+
+GrB_Info GB_sort
+(
+    // output:
+    GrB_Matrix C,               // matrix with sorted vectors on output
+    GrB_Matrix P,               // matrix with permutations on output
+    // input:
+    GrB_BinaryOp op,            // comparator for the sort
+    GrB_Matrix A,               // matrix to sort
+    const bool A_transpose,     // false: sort each row, true: sort each column
+    GB_Context Context
+) ;
+
 #endif
 

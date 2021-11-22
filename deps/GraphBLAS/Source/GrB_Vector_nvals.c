@@ -31,6 +31,7 @@ GrB_Info GrB_Vector_nvals   // get the number of entries in a vector
 
     GrB_Info info = GB_nvals (nvals, (GrB_Matrix) v, Context) ;
     GB_BURBLE_END ;
+    #pragma omp flush
     return (info) ;
 }
 

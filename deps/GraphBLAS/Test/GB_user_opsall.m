@@ -10,6 +10,7 @@ complex_binaryops = {
 'first',     % z = x
 'second',    % z = y
 'pair',      % z = 1
+'oneb',      % z = 1 (same as pair)
 'plus',      % z = x + y
 'minus',     % z = x - y
 'rminus',    % z = y - x

@@ -87,6 +87,22 @@ bool GB_mx_string_to_UnaryOp            // true if successful, false otherwise
     const bool user_complex             // true if X is complex
 ) ;
 
+bool GB_mx_mxArray_to_IndexUnaryOp      // true if successful, false otherwise
+(
+    GrB_IndexUnaryOp *op_handle,        // the binary op
+    const mxArray *op_builtin,          // built-in version of op
+    const char *name,                   // name of the argument
+    const GrB_Type default_optype       // default operator type
+) ;
+
+bool GB_mx_string_to_IndexUnaryOp       // true if successful, false otherwise
+(
+    GrB_IndexUnaryOp *op_handle,    // the op
+    const GrB_Type default_optype,  // default operator type
+    const mxArray *opname_mx,       // built-in string with operator name
+    const mxArray *optype_mx        // built-in string with operator type
+) ;
+
 mxArray *GB_mx_Vector_to_mxArray    // returns the built-in mxArray
 (
     GrB_Vector *handle,             // handle of GraphBLAS matrix to convert
@@ -287,28 +303,12 @@ GrB_Info GB_mx_random_matrix      // create a random double-precision matrix
     bool A_complex          // if true, create a Complex matrix
 ) ;
 
+GrB_Scalar GB_mx_get_Scalar
+(
+    const mxArray *mx_scalar
+) ;
+
 //------------------------------------------------------------------------------
-
-// remove a block that had been allocated from within GraphBLAS and then
-// exported.
-#define REMOVE(p)                                       \
-{                                                       \
-    if ((p) != NULL)                                    \
-    {                                                   \
-        GB_Global_nmalloc_decrement ( ) ;               \
-        if (GB_Global_memtable_find (p))                \
-        {                                               \
-            GB_Global_memtable_remove (p) ;             \
-        }                                               \
-    }                                                   \
-}
-
-#define GB_AS_IF_FREE(p)                \
-{                                       \
-    GB_Global_nmalloc_decrement ( ) ;   \
-    GB_Global_memtable_remove (p) ;     \
-    (p) = NULL ;                        \
-}
 
 #ifdef GB_PRINT_MALLOC
 

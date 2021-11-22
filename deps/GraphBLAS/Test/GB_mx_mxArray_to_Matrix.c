@@ -138,6 +138,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             mxArray *s = mxGetFieldByNumber (A_builtin, 0, fieldnumber) ;
             atype_out = GB_mx_string_to_Type (s, atype_in) ;
+            if (atype_out == NULL) mexErrMsgTxt ("unknown class") ;
         }
 
         // get the iso property (false if not present)
@@ -197,6 +198,11 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     }
 
     GB_void *Mx = mxGetData (Amatrix) ;
+    if (anz == 0)
+    {
+        // an empty matrix cannot be iso
+        A_iso = false ;
+    }
 
     //--------------------------------------------------------------------------
     // look for A.values
@@ -400,15 +406,14 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
             {
                 // use the first entry of A->x as the iso value of A
                 A->iso = true ;
-                GB_convert_any_to_iso (A, NULL, true, NULL) ;
             }
             else
             {
                 // A is converted to iso, but it doesn't have enough space in
                 // A->x for the iso value, so set it to zero
                 A->iso = false ;
-                GB_convert_any_to_iso (A, NULL, true, NULL) ;
             }
+            GB_convert_any_to_iso (A, NULL, NULL) ;
         }
         else
         {
@@ -537,7 +542,11 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     // return the GraphBLAS matrix
     //--------------------------------------------------------------------------
 
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     info = GrB_Matrix_wait (&A) ;
+    #else
+    info = GrB_Matrix_wait (A, GrB_MATERIALIZE) ;
+    #endif
     if (info != GrB_SUCCESS)
     {
         FREE_ALL ;

@@ -1,3 +1,72 @@
+Version 6.0.0, Nov 15, 2021
+
+    * v6.0.0: this release contains only a few changes that cause a
+        break with backward compatibility.  It is otherwise identical to v5.2.0.
+    * Fully compliant with the v2.0 C API Specification: three changes from the
+        v2.0 C API Spec are not backward compatible: (GrB_*wait, GrB_Info
+        enum, and GrB_SCMP).  GxB_init has also changed.
+        * GrB_wait (object, mode): was GrB_wait (&object).
+        * GrB_Info: changed enum values
+        * GrB_SCMP: removed
+        * GxB_init (mode, malloc, calloc, realloc, free, is_thread_safe): the
+            last parameter, is_thread_safe, is deleted.
+            The malloc/calloc/realloc/free functions must be thread-safe.
+
+Version 5.2.0, Nov 15, 2021
+
+    * Added for the v2.0 C API Specification: only features that are
+        backward compatible with SuiteSparse:GraphBLAS v5.x have been
+        added to v5.2.0.
+        * GrB_Scalar: replaces GxB_Scalar, GxB_Scalar_* functions renamed GrB
+        * GrB_IndexUnaryOp: new, free, fprint, wait
+        * GrB_select: selection via GrB_IndexUnaryOp
+        * GrB_apply: with GrB_IndexUnaryOp
+        * GrB_reduce: reduce matrix or vector to GrB_Scalar
+        * GrB_assign, GrB_subassion: with GrB_Scalar input
+        * GrB_*_extractElement_Scalar: get GrB_Scalar from a matrix or vector
+        * GrB*build: when dup is NULL, duplicates result in an error.
+        * GrB import/export: import/export from/to user-provided arrays
+        * GrB_EMPTY_OBJECT, GrB_NOT_IMPLEMENTED: error codes added
+        * GrB_*_setElement_Scalar: set an entry in a matrix or vector,
+            from a GrB_Scalar
+        * GrB_Matrix_diag: same as GxB_Matrix_diag (C, v, k, NULL)
+        * GrB_*_serialize/deserialize: with compression
+        * GrB_ONEB_T: binary operator, f(x,y)=1, the same as GxB_PAIR_T
+    * GxB*import* and GxB*export*: now historical; use GxB*pack/unpack*
+    * GxB_select: is now historical; use GrB_select instead.
+    * GxB_IGNORE_DUP: special operator for build methods only; if dup
+        is this operator, then duplicates are ignored (not an error)
+    * GxB_IndexUnaryOp_new: create a named index-unary operator
+    * GxB_BinaryOp_new: create a named binary operator
+    * GxB_UnaryOp_new: create a named unary operator
+    * GxB_Type_new: to create a named type
+    * GxB_Type_name: to query the name of a type
+    * added GxB_BinaryOp_xtype_name, GxB_BinaryOp_ytype_name,
+        GxB_BinaryOp_ztype_name, GxB_deserialize_type_name,
+        GxB_Matrix_type_name, GxB_Scalar_type_name, GxB_UnaryOp_xtype_name,
+        GxB_UnaryOp_ztype_name, GxB_IndexUnaryOp_xtype_name,
+        GxB_IndexUnaryOp_ytype_name, GxB_IndexUnaryOp_ztype_name,
+        GxB_Vector_type_name: to query the name of a type as a string
+    * GxB_BinaryOp_xtype, GxB_BinaryOp_ytype, GxB_BinaryOp_ztype,
+        GxB_Matrix_type, GxB_Scalar_type, GxB_SelectOp_ttype,
+        GxB_SelectOp_xtype, GxB_UnaryOp_xtype, GxB_UnaryOp_ztype,
+        GxB_Vector_type: declared historical; use *type_name methods.
+    * GxB_*_serialize/deserialize: with compression; optional descriptor
+    * GxB_Matrix_sort, GxB_Vector_sort: sort a matrix or vector
+    * GxB_eWiseUnion: like GrB_eWiseAdd except for how entries in A\B
+        and B/A are computed.
+    * added LZ4/LZ4HC: compression library, http://www.lz4.org (BSD 2),
+        v1.9.3, Copyright (c) 2011-2016, Yann Collet, All Rights Reserved.
+    * mis and pagerank demos: removed; mis added to LAGraph/experimental
+    * disabled free memory pool if OpenMP not available
+    * (36) bug fix: ewise C=A+B when all matrices are full, GBCOMPACT
+        not used, but GB_control.h disabled the operator or type.
+        Caught by Roi Lipman, Redis.
+    * (34) bug fix: C<M>=Z not returning C as iso if Z iso and C initialy
+        empty.  Caught by Erik Welch, Anaconda.
+    * performance improvements: C=A*B: sparse/hyper times bitmap/full,
+        and visa versa, including C += A*B when C is full
+
 Version 5.1.10, Oct 27, 2021
 
     * (35) bug fix: GB_selector; A->plen and C->plen not updated correctly.

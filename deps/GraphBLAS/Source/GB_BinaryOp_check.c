@@ -31,15 +31,25 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
         GBPR0 ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
+    else if (op == GxB_IGNORE_DUP)
+    { 
+        // this is a valid dup operator for build
+        GBPR0 ("ignore_dup\n") ;
+        return (GrB_SUCCESS) ;
+    }
 
     //--------------------------------------------------------------------------
     // check object
     //--------------------------------------------------------------------------
 
-    GB_CHECK_MAGIC (op, "BinaryOp") ;
-
+    GB_CHECK_MAGIC (op) ;
     GB_Opcode opcode = op->opcode ;
-    if (opcode >= GB_USER_opcode)
+    if (!GB_IS_BINARYOP_CODE (opcode))
+    { 
+        GBPR0 ("    BinaryOp has an invalid opcode\n") ;
+        return (GrB_INVALID_OBJECT) ;
+    }
+    if (opcode == GB_USER_binop_code)
     { 
         GBPR0 ("(user-defined) ") ;
     }
@@ -47,30 +57,21 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
     { 
         GBPR0 ("(built-in) ") ;
     }
-
     GBPR0 ("z=%s(x,y)\n", op->name) ;
 
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
 
     if (!(op_is_positional || op_is_first || op_is_second)
-       && op->function == NULL)
+       && op->binop_function == NULL)
     { 
         GBPR0 ("    BinaryOp has a NULL function pointer\n") ;
         return (GrB_INVALID_OBJECT) ;
     }
 
-    if (opcode < GB_FIRST_opcode || opcode > GB_USER_opcode)
-    { 
-        GBPR0 ("    BinaryOp has an invalid opcode\n") ;
-        return (GrB_INVALID_OBJECT) ;
-    }
-
-    GrB_Info info ;
-
-    info = GB_Type_check (op->ztype, "ztype", pr, f) ;
+    GrB_Info info = GB_Type_check (op->ztype, "ztype", pr, f) ;
     if (info != GrB_SUCCESS)
     { 
         GBPR0 ("    BinaryOp has an invalid ztype\n") ;

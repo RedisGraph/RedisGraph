@@ -16,7 +16,6 @@
 
 #include "GB.h"
 #include "GB_binop.h"
-#include <ctype.h>
 
 void GB_binop_new
 (
@@ -25,10 +24,11 @@ void GB_binop_new
     GrB_Type ztype,                 // type of output z
     GrB_Type xtype,                 // type of input x
     GrB_Type ytype,                 // type of input y
-    const char *name,               // name of the function (may be NULL)
+    const char *binop_name,         // name of the user function
+    const char *binop_defn,         // definition of the user function
     const GB_Opcode opcode          // opcode for the function
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -38,48 +38,29 @@ void GB_binop_new
     ASSERT (ztype != NULL) ;
     ASSERT (xtype != NULL) ;
     ASSERT (ytype != NULL) ;
+    ASSERT (GB_IS_BINARYOP_CODE (opcode)) ;
 
     //--------------------------------------------------------------------------
     // initialize the binary operator
     //--------------------------------------------------------------------------
 
     op->magic = GB_MAGIC ;
+    op->ztype = ztype ;
     op->xtype = xtype ;
     op->ytype = ytype ;
-    op->ztype = ztype ;
-    op->function = function ;       // may be NULL
+    op->unop_function = NULL ;
+    op->idxunop_function = NULL ;
+    op->binop_function = function ;       // may be NULL
+    op->selop_function = NULL ;
     op->opcode = opcode ;
-    op->name [0] = '\0' ;
-
-    //--------------------------------------------------------------------------
-    // find the name of the operator
-    //--------------------------------------------------------------------------
-
-    if (name != NULL)
-    {
-        // see if the typecast "(GxB_binary_function)" appears in the name
-        char *p = NULL ;
-        p = strstr ((char *) name, "GxB_binary_function") ;
-        if (p != NULL)
-        { 
-            // skip past the typecast, the left parenthesis, and any whitespace
-            p += 19 ;
-            while (isspace (*p)) p++ ;
-            if (*p == ')') p++ ;
-            while (isspace (*p)) p++ ;
-            strncpy (op->name, p, GB_LEN-1) ;
-        }
-        else
-        { 
-            // copy the entire name as-is
-            strncpy (op->name, name, GB_LEN-1) ;
-        }
-    }
+    // get the binary op name and defn
+    GB_op_name_and_defn (op->name, &(op->defn), binop_name, binop_defn,
+        "GxB_binary_function", 19) ;
 
     //--------------------------------------------------------------------------
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_BINARYOP_OK (op, "new binary op", GB0) ;
+    ASSERT_BINARYOP_OK (op, "new user-defined binary op", GB0) ;
 }
 

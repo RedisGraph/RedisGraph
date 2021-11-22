@@ -104,6 +104,8 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
 
             return (GrB_INVALID_VALUE) ;
     }
+
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

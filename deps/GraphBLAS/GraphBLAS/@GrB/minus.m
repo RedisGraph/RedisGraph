@@ -10,9 +10,6 @@ function C = minus (A, B)
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
-% FUTURE: minus(A,B) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
-
 if (isobject (A))
     A = A.opaque ;
 end
@@ -21,6 +18,5 @@ if (isobject (B))
     B = B.opaque ;
 end
 
-type = gboptype (gbtype (A), gbtype (B)) ;
-C = GrB (gb_eadd (A, '+', gbapply (['-.' type], B))) ;
+C = GrB (gb_eunion (A, '-', B)) ;
 

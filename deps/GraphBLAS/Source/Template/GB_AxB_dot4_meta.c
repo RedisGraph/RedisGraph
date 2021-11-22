@@ -55,16 +55,38 @@
     const bool A_is_bitmap = GB_IS_BITMAP (A) ;
     const bool A_is_sparse = GB_IS_SPARSE (A) ;
 
-    #if GB_IS_ANY_PAIR_SEMIRING
-    #error "any_pair_iso semiring not supported for the dot4 method"
+    #if GB_IS_ANY_MONOID
+    #error "dot4 not supported for ANY monoids"
     #endif
 
-    ASSERT (!C->iso) ; // C was iso on input, it has been expanded to non-iso
-    const GB_ATYPE *restrict Ax = (GB_ATYPE *) (A_is_pattern ? NULL : A->x) ;
-    const GB_BTYPE *restrict Bx = (GB_BTYPE *) (B_is_pattern ? NULL : B->x) ;
+    #if !GB_A_IS_PATTERN
+    const GB_ATYPE *restrict Ax = (GB_ATYPE *) A->x ;
+    #endif
+    #if !GB_B_IS_PATTERN
+    const GB_BTYPE *restrict Bx = (GB_BTYPE *) B->x ;
+    #endif
           GB_CTYPE *restrict Cx = (GB_CTYPE *) C->x ;
 
     int ntasks = naslice * nbslice ;
+
+    //--------------------------------------------------------------------------
+    // if C is iso on input: get the iso scalar and convert C to non-iso
+    //--------------------------------------------------------------------------
+
+    const bool C_in_iso = C->iso ;
+    const GB_CTYPE cinput = (C_in_iso) ? Cx [0] : GB_IDENTITY ;
+    if (C_in_iso)
+    { 
+        // allocate but do not initialize C->x
+        GrB_Info info = GB_convert_any_to_non_iso (C, false, Context) ;
+        if (info != GrB_SUCCESS)
+        { 
+            // out of memory
+            return (GrB_OUT_OF_MEMORY) ;
+        }
+        ASSERT (!C->iso) ;
+        Cx = (GB_CTYPE *) C->x ;
+    }
 
     //--------------------------------------------------------------------------
     // C += A'*B
@@ -74,6 +96,5 @@
 }
 
 #undef GB_DOT
-
 #undef GB_DOT4
 

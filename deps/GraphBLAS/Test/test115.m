@@ -24,16 +24,24 @@ rng ('default') ;
         Work (k).scalar = 0 ;
 
         % scalar expansion
-        Work (k+1).A = sparse (pi) ;
+        if (rand (1) > 0.5)
+            % use non-opaque scalar
+            Work (k+1).A = sparse (pi) ;
+            use_GrB_Scalar = 1 ;
+        else
+            % use GrB_Scalar
+            Work (k+1).A = sparse (pi * (rand(1) > 0.5)) ;
+            use_GrB_Scalar = 2 ;
+        end
         Work (k+1).I = uint64 (irand (1, n, n, 1) - 1) ;
         Work (k+1).J = uint64 (irand (1, n, n, 1) - 1) ;
         Work (k+1).Mask = sparse (ones (n)) ;
         Work (k+1).accum = [ ] ;
         Work (k+1).desc = [ ] ;
-        Work (k+1).scalar = 1 ;
+        Work (k+1).scalar = use_GrB_Scalar ;
     end
 
-    C1 = GB_mex_assign  (C, Work) ;
+    C1 = GB_mex_assign  (C, Work) ;     % WORK_ASSIGN
 
     C2 = C ;
     for k = 1:ntrials
@@ -49,7 +57,8 @@ rng ('default') ;
 
     for C_sparsity = [2 4]
         for M_sparsity = [2 4]
-            C1 = GB_mex_assign (C, Work, [C_sparsity M_sparsity]) ;
+            ctrl = [C_sparsity M_sparsity] ;
+            C1 = GB_mex_assign (C, Work, ctrl) ; % WORK_ASSIGN
             GB_spec_compare (C1, C2) ;
         end
     end

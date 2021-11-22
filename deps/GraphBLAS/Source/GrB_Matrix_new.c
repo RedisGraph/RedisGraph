@@ -32,7 +32,7 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
     (*A) = NULL ;
     GB_RETURN_IF_NULL_OR_FAULTY (type) ;
 
-    if (nrows > GxB_INDEX_MAX || ncols > GxB_INDEX_MAX)
+    if (nrows > GB_NMAX || ncols > GB_NMAX)
     { 
         // problem too large
         return (GrB_INVALID_VALUE) ;
@@ -45,7 +45,22 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
     GrB_Info info ;
     int64_t vlen, vdim ;
 
-    bool A_is_csc = GB_Global_is_csc_get ( ) ;
+    bool A_is_csc ;
+    if (ncols == 1)
+    { 
+        // n-by-1 matrices are always held by column, including 1-by-1
+        A_is_csc = true ;
+    }
+    else if (nrows == 1)
+    { 
+        // 1-by-n matrices (except 1-by-1) are always held by row
+        A_is_csc = false ;
+    }
+    else
+    { 
+        // m-by-n (including 0-by-0) with m != and n != use the global setting
+        A_is_csc = GB_Global_is_csc_get ( ) ;
+    }
 
     if (A_is_csc)
     { 

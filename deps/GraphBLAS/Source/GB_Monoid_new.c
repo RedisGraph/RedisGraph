@@ -177,7 +177,7 @@ GrB_Info GB_Monoid_new          // create a monoid
 
     switch (op->opcode)
     {
-        case GB_MIN_opcode : 
+        case GB_MIN_binop_code : 
 
             // MIN monoid:  identity is +inf, terminal is -inf
             // note there is no MIN monoid for complex types
@@ -198,7 +198,7 @@ GrB_Info GB_Monoid_new          // create a monoid
             }
             break ;
 
-        case GB_MAX_opcode : 
+        case GB_MAX_binop_code : 
 
             // MAX monoid:  identity is -inf, terminal is +inf
             // note there is no MAX monoid for complex types
@@ -219,7 +219,7 @@ GrB_Info GB_Monoid_new          // create a monoid
             }
             break ;
 
-        case GB_PLUS_opcode : 
+        case GB_PLUS_binop_code : 
 
             // PLUS monoid:  identity is zero, no terminal value
             switch (zcode)
@@ -240,7 +240,7 @@ GrB_Info GB_Monoid_new          // create a monoid
             }
             break ;
 
-        case GB_TIMES_opcode : 
+        case GB_TIMES_binop_code : 
 
             // TIMES monoid:  identity is 1, no terminal value
             switch (zcode)
@@ -261,7 +261,7 @@ GrB_Info GB_Monoid_new          // create a monoid
             }
             break ;
 
-        case GB_ANY_opcode : 
+        case GB_ANY_binop_code : 
 
             // ANY monoid:  identity is anything, terminal value is anything
             switch (zcode)
@@ -285,22 +285,22 @@ GrB_Info GB_Monoid_new          // create a monoid
             }
             break ;
 
-        case GB_LOR_opcode : 
+        case GB_LOR_binop_code : 
 
             // boolean OR monoid:  identity is false, terminal is true
             if (zcode == GB_BOOL_code) GB_IT (bool, false, true)
 
-        case GB_LAND_opcode : 
+        case GB_LAND_binop_code : 
 
             // boolean AND monoid:  identity is true, terminal is false
             if (zcode == GB_BOOL_code) GB_IT (bool, true, false)
 
-        case GB_LXOR_opcode : 
+        case GB_LXOR_binop_code : 
 
             // boolean XOR monoid:  identity is false, no terminal value
             if (zcode == GB_BOOL_code) GB_IN (bool, false)
 
-        case GB_EQ_opcode : 
+        case GB_EQ_binop_code : 
 
             // boolean EQ monoid:  identity is true, no terminal value
             if (zcode == GB_BOOL_code) GB_IN (bool, true)

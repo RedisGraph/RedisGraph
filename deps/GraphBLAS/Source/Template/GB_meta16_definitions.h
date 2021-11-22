@@ -8,6 +8,7 @@
 //------------------------------------------------------------------------------
 
 // Define macros that depend on the sparsity of A and B for GB_meta16_factory.
+// These macros are only used by saxpy3 methods.
 
 //------------------------------------------------------------------------------
 // GB_GET_B_j: prepare to iterate over B(:,j)
@@ -261,6 +262,7 @@
 
 // C(:,j)<M(:,j)>=A(:,k)*B(k,j) using one of two methods
 #undef  GB_SCAN_M_j_OR_A_k
+
 #define GB_SCAN_M_j_OR_A_k(A_ok_for_binary_search)                          \
 {                                                                           \
     if (A_ok_for_binary_search && aknz > 256 && mjnz_much < aknz &&         \

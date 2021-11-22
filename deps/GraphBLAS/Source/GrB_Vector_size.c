@@ -30,6 +30,7 @@ GrB_Info GrB_Vector_size    // get the dimension of a vector
     //--------------------------------------------------------------------------
 
     (*n) = v->vlen ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

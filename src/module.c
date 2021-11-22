@@ -64,7 +64,7 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 static int GraphBLAS_Init(RedisModuleCtx *ctx) {
 	// GraphBLAS should use Redis allocator
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc,
-			RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free, true);
+			RedisModule_Calloc, RedisModule_Realloc, RedisModule_Free);
 	if(res != GrB_SUCCESS) {
 		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS");
 		return REDISMODULE_ERR;

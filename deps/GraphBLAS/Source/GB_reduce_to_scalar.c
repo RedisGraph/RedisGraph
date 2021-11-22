@@ -216,7 +216,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
                     reduce->op->name) ;
 
                 // the switch factory didn't handle this case
-                GxB_binary_function freduce = reduce->op->function ;
+                GxB_binary_function freduce = reduce->op->binop_function ;
 
                 #define GB_ATYPE GB_void
 
@@ -260,7 +260,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
             GB_BURBLE_MATRIX (A, "(generic reduce to scalar, with typecast:"
                 " %s) ", reduce->op->name) ;
 
-            GxB_binary_function freduce = reduce->op->function ;
+            GxB_binary_function freduce = reduce->op->binop_function ;
             GB_cast_function
                 cast_A_to_Z = GB_cast_factory (ztype->code, A->type->code) ;
 
@@ -291,7 +291,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     }
     else
     { 
-        GxB_binary_function faccum = accum->function ;
+        GxB_binary_function faccum = accum->binop_function ;
 
         GB_cast_function cast_C_to_xaccum, cast_Z_to_yaccum, cast_zaccum_to_C ;
         cast_C_to_xaccum = GB_cast_factory (accum->xtype->code, ctype->code) ;
@@ -321,6 +321,7 @@ GrB_Info GB_reduce_to_scalar    // s = reduce_to_scalar (A)
     //--------------------------------------------------------------------------
 
     GB_FREE_ALL ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

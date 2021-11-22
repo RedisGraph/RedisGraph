@@ -1,5 +1,5 @@
 function test193
-%TEST193 test GxB_Matrix_diag
+%TEST193 test GxB_Matrix_diag and GrB_Matrix_diag
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0

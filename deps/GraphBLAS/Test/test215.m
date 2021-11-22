@@ -31,6 +31,11 @@ C1 = GB_mex_mxm  (Cin, M, [ ], semiring, A, B, desc) ;
 C2 = GB_spec_mxm (Cin, M, [ ], semiring, A, B, desc) ;
 GB_spec_compare (C1, C2) ;
 
+semiring.multiply = 'oneb' ;
+C1 = GB_mex_mxm  (Cin, M, [ ], semiring, A, B, desc) ;
+C2 = GB_spec_mxm (Cin, M, [ ], semiring, A, B, desc) ;
+GB_spec_compare (C1, C2) ;
+
 GrB.burble (0) ;
 fprintf ('\ntest215: all tests passed\n') ;
 

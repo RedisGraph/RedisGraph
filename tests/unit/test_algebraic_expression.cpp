@@ -265,8 +265,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		GrB_Index bJ[bvals];     // array for returning col indices of tuples
 		bool bX[bvals];          // array for returning values of tuples
 
-		GrB_Matrix_wait(&a);
-		GrB_Matrix_wait(&b);
+		GrB_Matrix_wait(a, GrB_MATERIALIZE);
+		GrB_Matrix_wait(b, GrB_MATERIALIZE);
 
 		GrB_Matrix_extractTuples_BOOL(aI, aJ, aX, &avals, a);
 		GrB_Matrix_extractTuples_BOOL(bI, bJ, bX, &bvals, b);

@@ -52,7 +52,7 @@ function binopinfo (op, optype)
 %   |   || or  lor   x | y          |   >=  ge            x >= y
 %   &   && and land  x & y          |   <=  le            x <= y
 %   xor lxor         xor(x,y)       |   .^  pow           x .^ y
-%   pair             1              |   any               pick x or y
+%   pair oneb        1              |   any               pick x or y
 %
 % All of the above operators are defined for logical operands, but many
 % are redundant. 'min.logical' is the same as 'and.logical', for example.
@@ -96,6 +96,22 @@ function binopinfo (op, optype)
 %
 % The bitwise ops bitor, bitand, bitxor, bitxnor, bitget, bitset, bitclr,
 % and bitshift are available for any signed or unsigned integer type.
+%
+% The following index_unary operators can be applied to a matrix A with
+% GrB.apply2 only, where the 2nd input is the thunk scalar.  When applied
+% to an entry A(i,j):
+%
+%   tril            j <= (i + thunk)
+%   triu            j >= (i + thunk)
+%   diag            j == (i + thunk)
+%   offdiag         j != (i + thunk)
+%   diagindex       j - (i + thunk)
+%   rowindex        i + thunk
+%   rowle           i <= thunk
+%   rowgt           i > thunk
+%   colindex        j + thunk
+%   colle           j <= thunk
+%   colgt           j > thunk
 %
 % Typecasting:  If the optype is omitted from the string (for example,
 % GrB.eadd (A, '+', B) or simply C = A+B), then the optype is inferred

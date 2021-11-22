@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GxB_Scalar_fprint: print and check a GxB_Scalar object
+// GxB_Scalar_fprint: print and check a GrB_Scalar object
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
@@ -9,9 +9,9 @@
 
 #include "GB.h"
 
-GrB_Info GxB_Scalar_fprint          // print and check a GxB_Scalar
+GrB_Info GxB_Scalar_fprint          // print and check a GrB_Scalar
 (
-    GxB_Scalar s,                   // object to print and check
+    GrB_Scalar s,                   // object to print and check
     const char *name,               // name of the object
     GxB_Print_Level pr,             // print level
     FILE *f                         // file for output

@@ -16,7 +16,7 @@ ctype = gbtype (C) ;
     [m, n] = gbsize (A) ;
     d = gbdegree (A, 'col') ;
     % d (j) is an explicit zero if A(:,j) has 1 to m-1 entries
-    d = gbselect (d, '<', m) ;
+    d = gbselect (d, '<', int64 (m)) ;
     zero = gbnew (0, ctype) ;
     if (gbnvals (d) == n)
         % all columns A(:,j) have between 1 and m-1 entries

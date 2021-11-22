@@ -35,7 +35,6 @@
 #include <cstdint>
 #include "matrix.h"
 #include <cooperative_groups.h>
-#include "mySemiRing.h"
 
 // Using tile size fixed at compile time, we don't need shared memory
 #define tile_sz 32 

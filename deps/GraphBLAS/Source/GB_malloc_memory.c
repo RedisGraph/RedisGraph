@@ -18,10 +18,8 @@
 static inline void *GB_malloc_helper
 (
     // input/output:
-    size_t *size,           // on input: # of bytes requested
+    size_t *size            // on input: # of bytes requested
                             // on output: # of bytes actually allocated
-    // input:
-    bool malloc_tracking
 )
 {
     void *p = NULL ;
@@ -44,21 +42,8 @@ static inline void *GB_malloc_helper
     if (p == NULL)
     {
         // no block in the free_pool, so allocate it
+        p = GB_Global_malloc_function (*size) ;
 
-//          if (GB_Global_rmm_get ( ))
-//          {
-//              p = GB_rmm_alloc (size) ;
-//          }
-//          else
-            {
-                p = GB_Global_malloc_function (*size) ;
-            }
-
-        if (p != NULL && malloc_tracking)
-        { 
-            // success
-            GB_Global_nmalloc_increment ( ) ;
-        }
         #ifdef GB_MEMDUMP
         printf ("hard malloc %p %ld\n", p, *size) ;
         #endif
@@ -100,7 +85,7 @@ void *GB_malloc_memory      // pointer to allocated block of memory
     size_of_item = GB_IMAX (1, size_of_item) ;
 
     bool ok = GB_size_t_multiply (&size, nitems, size_of_item) ;
-    if (!ok || nitems > GxB_INDEX_MAX || size_of_item > GxB_INDEX_MAX)
+    if (!ok || nitems > GB_NMAX || size_of_item > GB_NMAX)
     { 
         // overflow
         (*size_allocated) = 0 ;
@@ -132,7 +117,7 @@ void *GB_malloc_memory      // pointer to allocated block of memory
         }
         else
         { 
-            p = GB_malloc_helper (&size, true) ;
+            p = GB_malloc_helper (&size) ;
         }
 
     }
@@ -143,7 +128,7 @@ void *GB_malloc_memory      // pointer to allocated block of memory
         // normal use, in production
         //----------------------------------------------------------------------
 
-        p = GB_malloc_helper (&size, false) ;
+        p = GB_malloc_helper (&size) ;
     }
 
     //--------------------------------------------------------------------------

@@ -28,9 +28,8 @@ void GB_stringify_terminal         // return strings to check terminal
 (
     // outputs:
     bool *is_monoid_terminal,           // true if monoid is terminal
-    char *terminal_expression_macro,    // #define for terminal expression macro
-    char *terminal_statement_macro,     // #define for terminal statement macro
     // inputs:
+    FILE *fp,                           // File to write macros, assumed open
     const char *terminal_expression_macro_name,     // name of expression macro
     const char *terminal_statement_macro_name,      // name of statement macro
     GB_Opcode opcode,    // must be a built-in binary operator from a monoid
@@ -44,7 +43,7 @@ void GB_stringify_terminal         // return strings to check terminal
     int ecode ;
 
     // get ecode and bool (is_monoid_terminal) from the opcode and zcode
-    GB_enumify_terminal (&ecode, opcode, zcode) ;
+    GB_enumify_terminal ( is_monoid_terminal, &ecode, opcode, zcode) ;
     (*is_monoid_terminal) = (ecode <= 29) ;
 
     // convert ecode and is_monoid_terminal to strings
@@ -55,9 +54,9 @@ void GB_stringify_terminal         // return strings to check terminal
         terminal_value, is_monoid_terminal, ecode) ;
 
     // convert strings to macros
-    GB_macrofy_terminal_expression (terminal_expression_macro,
+    GB_macrofy_terminal_expression ( fp,
         terminal_expression_macro_name, terminal_expression) ;
-    GB_macrofy_terminal_statement (terminal_statement_macro,
+    GB_macrofy_terminal_statement ( fp,
         terminal_statement_macro_name, terminal_statement) ;
 }
 
@@ -68,6 +67,7 @@ void GB_stringify_terminal         // return strings to check terminal
 void GB_enumify_terminal       // return enum of terminal value
 (
     // output:
+    bool *is_monoid_terminal,   // true if monoid is terminal
     int *ecode,                 // enumerated terminal, 0 to 31 (-1 if fail)
     // input:
     GB_Opcode opcode,           // built-in binary opcode of a monoid
@@ -80,7 +80,7 @@ void GB_enumify_terminal       // return enum of terminal value
     switch (opcode)
     {
 
-        case GB_PLUS_opcode :
+        case GB_PLUS_binop_code :
 
             if (zcode == GB_BOOL_code)
             {
@@ -92,7 +92,7 @@ void GB_enumify_terminal       // return enum of terminal value
             }
             break ;
 
-        case GB_TIMES_opcode :
+        case GB_TIMES_binop_code :
 
             switch (zcode)
             {
@@ -115,17 +115,17 @@ void GB_enumify_terminal       // return enum of terminal value
             }
             break ;
 
-        case GB_LOR_opcode      : 
+        case GB_LOR_binop_code      : 
 
                 e = 2 ;                 // true
                 break ;
 
-        case GB_LAND_opcode     : 
+        case GB_LAND_binop_code     : 
 
                 e = 3 ;                 // false
                 break ;
 
-        case GB_MIN_opcode :
+        case GB_MIN_binop_code :
 
             switch (zcode)
             {
@@ -144,7 +144,7 @@ void GB_enumify_terminal       // return enum of terminal value
             }
             break ;
 
-        case GB_MAX_opcode :
+        case GB_MAX_binop_code :
 
             switch (zcode)
             {
@@ -163,20 +163,20 @@ void GB_enumify_terminal       // return enum of terminal value
             }
             break ;
 
-        case GB_ANY_opcode :
+        case GB_ANY_binop_code :
 
             e = 18 ;                    // no specific terminal value
             break ;
 
-        case GB_LXOR_opcode     :
-        // case GB_LXNOR_opcode :
-        case GB_EQ_opcode       :
+        case GB_LXOR_binop_code     :
+        // case GB_LXNOR_binop_code :
+        case GB_EQ_binop_code       :
         default                 :
 
             e = 31 ;                    // builtin with no terminal value
             break ;
 
-        case GB_USER_opcode :
+        //case GB_USER_binop_code :
 
     }
 
@@ -265,16 +265,15 @@ void GB_charify_terminal_statement // string for terminal statement
 
 void GB_macrofy_terminal_expression    // macro for terminal expression
 (
-    // output:
-    char *terminal_expression_macro,
     // intput:
+    FILE *fp,                          // File to write macros, assumed open
     const char *terminal_expression_macro_name,
     const char *terminal_expression
 )
 {
 
-    snprintf (terminal_expression_macro, GB_CUDA_STRLEN,
-        "#define %s(cij) %s",
+    fprintf ( fp,
+        "#define %s(cij) %s\n",
         terminal_expression_macro_name, terminal_expression) ;
 }
 
@@ -284,16 +283,15 @@ void GB_macrofy_terminal_expression    // macro for terminal expression
 
 void GB_macrofy_terminal_statement     // macro for terminal statement
 (
-    // output:
-    char *terminal_statement_macro,
     // intput:
+    FILE *fp,                          // File to write macro, assumed open
     const char *terminal_statement_macro_name,
     const char *terminal_statement
 )
 {
 
-    snprintf (terminal_statement_macro, GB_CUDA_STRLEN,
-        "#define %s %s",
+    fprintf ( fp,
+        "#define %s %s\n",
         terminal_statement_macro_name, terminal_statement) ;
 }
 

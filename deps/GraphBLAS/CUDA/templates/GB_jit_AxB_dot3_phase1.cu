@@ -13,7 +13,6 @@
 #include "matrix.h"
 #include "GB_cuda_buckets.h"
 #include "local_cub/block/block_scan.cuh"
-#include "mySemiRing.h"
 
 //------------------------------------------------------------------------------
 // GB_bucket_assignment
@@ -230,21 +229,21 @@ __global__ void GB_AxB_cuda_dot3_phase1
     const int64_t *__restrict__ Mi = M->i ;
     const Type_M *__restrict__ Mx = (Type_M*)M->x ;    // not accessed if M is structural
     const int64_t mnvec = M->nvec ;
-    const int64_t mnz =  GB_NNZ(M) ;
+    const int64_t mnz =  GB_nnz(M) ;
     const bool M_is_hyper = M->is_hyper ;
 
     const int64_t *__restrict__ Ah = A->h ;
     const int64_t *__restrict__ Ap = A->p ;
     const int64_t *__restrict__ Ai = A->i ;
     const int64_t avlen = A->vlen ;
-    const int64_t anz = GB_NNZ(A) ;
+    const int64_t anz = GB_nnz(A) ;
     const bool A_is_hyper = A->is_hyper ;
 
     const int64_t *__restrict__ Bh = B->h ;
     const int64_t *__restrict__ Bp = B->p ;
     const int64_t *__restrict__ Bi = B->i ;
     const int64_t bvlen = B->vlen ;
-    const int64_t bnz = GB_NNZ(B);
+    const int64_t bnz = GB_nnz(B);
     const bool B_is_hyper = B->is_hyper ;
 
     // int64_t *restrict Cp = C->p ;    // copy of Mp

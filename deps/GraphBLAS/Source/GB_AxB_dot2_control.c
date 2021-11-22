@@ -40,8 +40,18 @@ bool GB_AxB_dot2_control  // true: use dot2, false: use saxpy
 
     double anz = GB_nnz (A) ;       // # of entries in A
     double bnz = GB_nnz (B) ;       // # of entries in B
-    if (A->nvec_nonempty < 0) A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
-    if (B->nvec_nonempty < 0) B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
+
+    if (A->nvec_nonempty < 0)
+    { 
+        // A->nvec_nonempty is used to select the method 
+        A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+    }
+    if (B->nvec_nonempty < 0)
+    { 
+        // B->nvec_nonempty is used to select the method 
+        B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
+    }
+
     double anvec = A->nvec_nonempty ;
     double bnvec = B->nvec_nonempty ;
     double avlen = A->vlen ;

@@ -20,7 +20,7 @@ function C = apply2 (arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 % either accum or M is present, then Cin is a required input.  If B is the
 % scalar and desc.in0 is 'transpose' then A is transposed before applying
 % the operator.  If A is the scalar and desc.in1 is 'transpose.', then the
-% input matrix B is tranposed before applying the operator.
+% input matrix B is transposed before applying the operator.
 %
 % See also GrB/apply, GrB/spfun.
 

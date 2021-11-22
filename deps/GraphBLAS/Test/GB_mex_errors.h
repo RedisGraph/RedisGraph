@@ -30,7 +30,7 @@
 }
 
 // assert that a method should return a particular error code: with logger,
-// for a GrB_Matrix, GrB_Vector, or GxB_Scalar
+// for a GrB_Matrix, GrB_Vector, or GrB_Scalar
 #define ERR1(C,method)                                                      \
 {                                                                           \
     info = method ;                                                         \

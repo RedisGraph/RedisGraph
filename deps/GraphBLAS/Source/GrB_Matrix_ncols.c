@@ -29,6 +29,7 @@ GrB_Info GrB_Matrix_ncols   // get the number of columns of a matrix
     //--------------------------------------------------------------------------
 
     (*ncols) = GB_NCOLS (A) ;
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

@@ -61,7 +61,7 @@ void mexFunction
     CHECK_ERROR (s == GxB_HYPERSPARSE, "v cannot be hypersparse") ;
 
     if (nargin > 1)
-    {
+    { 
         CHECK_ERROR (!gb_mxarray_is_scalar (pargin [1]), "k must be a scalar") ;
         double x = mxGetScalar (pargin [1]) ;
         k = (int64_t) x ;
@@ -84,7 +84,14 @@ void mexFunction
     // compute C = diag (v, k)
     //--------------------------------------------------------------------------
 
-    OK1 (C, GxB_Matrix_diag (C, (GrB_Vector) V, k, desc)) ;
+    if (desc == NULL)
+    { 
+        OK1 (C, GrB_Matrix_diag (C, (GrB_Vector) V, k)) ;
+    }
+    else
+    {
+        OK1 (C, GxB_Matrix_diag (C, (GrB_Vector) V, k, desc)) ;
+    }
 
     //--------------------------------------------------------------------------
     // free shallow copies

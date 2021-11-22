@@ -1,3 +1,4 @@
+
 //------------------------------------------------------------------------------
 // GB_binop:  hard-coded functions for each built-in binary operator
 //------------------------------------------------------------------------------
@@ -38,10 +39,13 @@
 // C=A+scalar                       GB (_bind2nd__lt_bool)
 // C=A'+scalar                      GB (_bind2nd_tran__lt_bool)
 
-// C type:   bool
-// A type:   bool
-// B,b type: bool
-// BinaryOp: cij = (aij < bij)
+// C type:     bool
+// A type:     bool
+// A pattern?  0
+// B type:     bool
+// B pattern?  0
+
+// BinaryOp:   cij = (aij < bij)
 
 #define GB_ATYPE \
     bool
@@ -68,9 +72,17 @@
 #define GB_GETA(aij,Ax,pA,A_iso)  \
     bool aij = GBX (Ax, pA, A_iso)
 
+// true if values of A are not used
+#define GB_A_IS_PATTERN \
+    0 \
+
 // bij = Bx [pB]
 #define GB_GETB(bij,Bx,pB,B_iso)  \
     bool bij = GBX (Bx, pB, B_iso)
+
+// true if values of B are not used
+#define GB_B_IS_PATTERN \
+    0 \
 
 // declare scalar of the same type as C
 #define GB_CTYPE_SCALAR(t)  \
@@ -133,7 +145,7 @@ void GB ((none))
 // C = A+B, all 3 matrices dense
 //------------------------------------------------------------------------------
 
-GrB_Info GB (_Cdense_ewise3_noaccum__lt_bool)
+void GB (_Cdense_ewise3_noaccum__lt_bool)
 (
     GrB_Matrix C,
     const GrB_Matrix A,
@@ -141,12 +153,7 @@ GrB_Info GB (_Cdense_ewise3_noaccum__lt_bool)
     const int nthreads
 )
 { 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
     #include "GB_dense_ewise3_noaccum_template.c"
-    return (GrB_SUCCESS) ;
-    #endif
 }
 
 //------------------------------------------------------------------------------
@@ -207,8 +214,8 @@ GrB_Info GB (_Cdense_accumb__lt_bool)
 GrB_Info GB (_AxD__lt_bool)
 (
     GrB_Matrix C,
-    const GrB_Matrix A, bool A_is_pattern,
-    const GrB_Matrix D, bool D_is_pattern,
+    const GrB_Matrix A,
+    const GrB_Matrix D,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
@@ -232,8 +239,8 @@ GrB_Info GB (_AxD__lt_bool)
 GrB_Info GB (_DxB__lt_bool)
 (
     GrB_Matrix C,
-    const GrB_Matrix D, bool D_is_pattern,
-    const GrB_Matrix B, bool B_is_pattern,
+    const GrB_Matrix D,
+    const GrB_Matrix B,
     int nthreads
 )
 { 
@@ -261,6 +268,9 @@ GrB_Info GB (_AaddB__lt_bool)
     const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
+    const bool is_eWiseUnion,
+    const GB_void *alpha_scalar_in,
+    const GB_void *beta_scalar_in,
     const bool Ch_is_Mh,
     const int64_t *restrict C_to_M,
     const int64_t *restrict C_to_A,
@@ -277,8 +287,15 @@ GrB_Info GB (_AaddB__lt_bool)
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (B_ek_slicing, int64_t) ;
+    bool alpha_scalar ;
+    bool beta_scalar ;
+    if (is_eWiseUnion)
+    {
+        alpha_scalar = (*((bool *) alpha_scalar_in)) ;
+        beta_scalar  = (*((bool *) beta_scalar_in )) ;
+    }
     #include "GB_add_template.c"
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
     #endif
 }

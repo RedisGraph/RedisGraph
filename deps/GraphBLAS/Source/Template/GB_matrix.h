@@ -35,7 +35,7 @@ size_t header_size ;    // size of the malloc'd block for this struct, or 0
 char *logger ;          // error logger string
 size_t logger_size ;    // size of the malloc'd block for logger, or 0
 
-// The remaining items are specific the GrB_Matrix, GrB_Vector and GxB_Scalar
+// The remaining items are specific the GrB_Matrix, GrB_Vector and GrB_Scalar
 // structs, and do not appear in the GrB_Descriptor struct:
 GrB_Type type ;         // the type of each numerical entry
 

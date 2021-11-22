@@ -142,7 +142,11 @@ GrB_Info axb_complex (GB_Context Context)
     // force completion
     if (Aconj != NULL)
     {
+        #if (GxB_IMPLEMENTATION_MAJOR <= 5)
         info = GrB_Matrix_wait_(&Aconj) ;
+        #else
+        info = GrB_Matrix_wait_(Aconj, GrB_MATERIALIZE) ;
+        #endif
         if (info != GrB_SUCCESS)
         {
             GrB_Matrix_free_(&Aconj) ;
@@ -153,7 +157,11 @@ GrB_Info axb_complex (GB_Context Context)
 
     if (Bconj != NULL)
     {
+        #if (GxB_IMPLEMENTATION_MAJOR <= 5)
         info = GrB_Matrix_wait_(&Bconj) ;
+        #else
+        info = GrB_Matrix_wait_(Bconj, GrB_MATERIALIZE) ;
+        #endif
         if (info != GrB_SUCCESS)
         {
             GrB_Matrix_free_(&Aconj) ;
