@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -64,6 +64,9 @@ static Record ProjectConsume(OpBase *opBase) {
 	}
 
 	op->projection = OpBase_CreateRecord(opBase);
+	if(op->order_exp_count > 0) {
+		Record_Clone(op->r, op->projection);
+	}
 
 	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
@@ -83,61 +86,9 @@ static Record ProjectConsume(OpBase *opBase) {
 	}
 
 	if(op->order_exp_count > 0) {
-		rax *input_rax = op->r->mapping;
-		rax *output_rax = op->projection->mapping;
-		if(!op->intermidiate) {
-			op->intermidiate_rax = raxNew();
-			raxIterator it;
-
-			uint64_t id = 0;
-
-			raxStart(&it, output_rax);
-			raxSeek(&it, "^", NULL, 0);
-			printf("\noutput\n");
-			while(raxNext(&it)) {
-				char *key = rm_strndup((const char *)it.key, (int)it.key_len);
-				printf("\n%s\n", key);
-				rm_free(key);
-				raxInsert(op->intermidiate_rax, it.key, it.key_len, (void*)id++, NULL);
-			}
-			raxStop(&it);
-
-			raxStart(&it, input_rax);
-			raxSeek(&it, "^", NULL, 0);
-			printf("\ninput\n");
-			while(raxNext(&it)) {
-				char *key = rm_strndup((const char *)it.key, (int)it.key_len);
-				printf("\n%s\n", key);
-				rm_free(key);
-				if(raxTryInsert(op->intermidiate_rax, it.key, it.key_len, (void*)id, NULL) != 0){
-					id++;
-				}
-			}
-			raxStop(&it);
-
-			op->intermidiate = Record_New(op->intermidiate_rax);
-		}
-
-		raxIterator it;
-		raxStart(&it, op->intermidiate_rax);
-		raxSeek(&it, "^", NULL, 0);
-		while(raxNext(&it)) {
-			void *data = raxFind(output_rax, it.key, it.key_len);
-			Record r = op->projection;
-
-			if(data == raxNotFound) {
-				data = raxFind(input_rax, it.key, it.key_len);
-				r = op->r;
-			}
-			uint from_idx = (uint)(uint64_t)data;
-			uint to_idx = (uint)(uint64_t)it.data;
-			Record_Add(op->intermidiate, to_idx, Record_Get(r, from_idx));
-		}
-		raxStop(&it);
-
 		for(uint i = 0; i < op->order_exp_count; i++) {
 			AR_ExpNode *exp = op->order_exps[i];
-			SIValue v = AR_EXP_Evaluate(exp, op->intermidiate);
+			SIValue v = AR_EXP_Evaluate(exp, op->projection);
 			int rec_idx = op->record_offsets[op->exp_count + i];
 			/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
 			* Graph entities don't need to be persisted here as Record_Add will copy them internally.
@@ -196,4 +147,3 @@ static void ProjectFree(OpBase *ctx) {
 		op->projection = NULL;
 	}
 }
-

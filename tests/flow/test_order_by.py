@@ -41,6 +41,5 @@ class testOrderBy(FlowTestsBase):
         order_exps = "v, v.v, alias, [v,v.v], [v,alias], v.v + alias, [v,v.v,alias], toInteger(alias)".split(", ")
         for order_exp in order_exps:
             q = f"""UNWIND [{{v: 3}}, {{v: 1}}, {{v: 2}}] AS v RETURN v.v AS alias ORDER BY {order_exp} ASC"""
-            print(order_exp)
             actual_result = redis_graph.query(q)
             self.env.assertEquals(actual_result.result_set, expected)
