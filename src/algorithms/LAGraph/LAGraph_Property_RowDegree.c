@@ -46,6 +46,8 @@ int LAGraph_Property_RowDegree  // 0 if successful, -1 if failure
 	GrB_Matrix S = NULL ;
 	GrB_Vector x = NULL ;
 
+	UNUSED(info);
+
 	//--------------------------------------------------------------------------
 	// determine the size of A
 	//--------------------------------------------------------------------------

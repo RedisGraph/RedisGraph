@@ -28,6 +28,7 @@
 {                           \
 	GrB_free (&w) ;         \
 	GrB_free (&q) ;         \
+	GrB_free (&Degree) ;    \
 }
 
 #define LAGraph_FREE_ALL    \
@@ -65,6 +66,8 @@ int LG_BreadthFirstSearch_SSGrB
 	GrB_Vector w = NULL ;           // to compute work remaining
 	GrB_Vector pi = NULL ;          // parent vector
 	GrB_Vector v = NULL ;           // level vector
+
+	UNUSED(info);
 
 	bool compute_level  = (level != NULL) ;
 	bool compute_parent = (parent != NULL) ;
