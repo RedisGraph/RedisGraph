@@ -18,3 +18,9 @@ int LG_BreadthFirstSearch_SSGrB  // push-pull BFS, or push-only if AT = NULL
     GrB_Index     *dest,      // [optional] stop traversing upon reaching dest
 	GrB_Index     max_level   // optional limit of # levels to search
 );
+
+int LAGraph_Property_RowDegree  // 0 if successful, -1 if failure
+(
+	GrB_Matrix    A,
+	GrB_Vector *rowdegree
+);
