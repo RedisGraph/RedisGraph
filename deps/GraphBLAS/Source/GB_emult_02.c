@@ -75,7 +75,7 @@
 #include "GB_binop__include.h"
 #endif
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (Work, int64_t) ;           \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
@@ -83,7 +83,7 @@
 
 #define GB_FREE_ALL                         \
 {                                           \
-    GB_FREE_WORK ;                          \
+    GB_FREE_WORKSPACE ;                     \
     GB_phbix_free (C) ;                   \
 }
 
@@ -152,7 +152,7 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
     // flipxy is true.  This ensures that the results do not depend on the
     // sparsity structures of A and B.
 
-    if (op->opcode == GB_ANY_opcode)
+    if (op->opcode == GB_ANY_binop_code)
     {
         switch (op->xtype->code)
         {
@@ -414,9 +414,9 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
 
     GB_Opcode opcode = op->opcode ;
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
     GB_Type_code ccode = ctype->code ;
 
     //--------------------------------------------------------------------------
@@ -519,7 +519,7 @@ GrB_Info GB_emult_02        // C=A.*B when A is sparse/hyper, B bitmap/full
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (C, "C output for emult_02", GB0) ;
     return (GrB_SUCCESS) ;
 }

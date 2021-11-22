@@ -15,7 +15,12 @@
 
 GrB_Info GrB_Type_wait      // no work, just check if the GrB_Type is valid
 (
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GrB_Type *type
+    #else
+    GrB_Type type,
+    GrB_WaitMode waitmode
+    #endif
 )
 { 
 
@@ -23,10 +28,14 @@ GrB_Info GrB_Type_wait      // no work, just check if the GrB_Type is valid
     // check inputs
     //--------------------------------------------------------------------------
 
-    #pragma omp flush
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GB_WHERE1 ("GrB_Type_wait (&type)") ;
     GB_RETURN_IF_NULL (type) ;
     GB_RETURN_IF_NULL_OR_FAULTY (*type) ;
+    #else
+    GB_WHERE1 ("GrB_Type_wait (type, waitmode)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (type) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // return result

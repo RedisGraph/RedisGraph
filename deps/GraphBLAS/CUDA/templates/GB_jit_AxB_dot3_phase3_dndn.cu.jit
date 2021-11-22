@@ -36,7 +36,6 @@ const char* const templates_GB_jit_AxB_dot3_phase3_dndn_cu = "templates/GB_jit_A
 "#include <cstdint>\n"
 "#include <cooperative_groups.h>\n"
 "#include \"matrix.h\"\n"
-"#include \"mySemiRing.h\"\n"
 "\n"
 "// Using tile size fixed at compile time, we don't need shared memory\n"
 "#define tile_sz 32 \n"

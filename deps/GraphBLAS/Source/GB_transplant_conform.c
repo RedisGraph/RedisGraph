@@ -65,6 +65,7 @@ GrB_Info GB_transplant_conform      // transplant and conform sparsity structure
     }
 
     ASSERT_MATRIX_OK (C, "C conformed", GB0) ;
+    ASSERT (C->nvec_nonempty >= 0) ;
     return (GrB_SUCCESS) ;
 }
 

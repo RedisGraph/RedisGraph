@@ -33,10 +33,10 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
 (
     GrB_Matrix C,           // output C, of type op*->ztype, static header
     const bool C_is_csc,    // desired CSR/CSC format of C
-        const GrB_UnaryOp op1,          // unary operator to apply
-        const GrB_BinaryOp op2,         // binary operator to apply
-        const GxB_Scalar scalar,        // scalar to bind to binary operator
-        bool binop_bind1st,             // if true, binop(x,A) else binop(A,y)
+        const GB_Operator op,       // unary/index-unary/binop to apply
+        const GrB_Scalar scalar,    // scalar to bind to binary operator
+        bool binop_bind1st,         // if true, binop(x,A) else binop(A,y)
+        bool flipij,                // if true, flip i,j for user idxunop
     const GrB_Matrix A,     // input matrix to typecast
     GB_Context Context
 )
@@ -48,39 +48,46 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
 
     ASSERT (C != NULL && C->static_header) ;
     ASSERT_MATRIX_OK (A, "A for shallow_op", GB0) ;
+    ASSERT_OP_OK (op, "unop/binop for shallow_op", GB0) ;
     ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (GB_JUMBLED_OK (A)) ;
     ASSERT (!GB_PENDING (A)) ;
 
-    GrB_Type ztype, op_intype = NULL ;
-    GB_Opcode opcode = (op1 != NULL) ? op1->opcode : op2->opcode ;
+    GrB_Type ztype = op->ztype ;
+    GrB_Type op_intype = NULL ;
+    GB_Opcode opcode = op->opcode ;
+
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    if (op1 != NULL)
+    if (GB_IS_UNARYOP_CODE (opcode))
     {
-        ASSERT_UNARYOP_OK (op1, "unop for shallow_op", GB0) ;
+        ASSERT_UNARYOP_OK (op, "unop for shallow_op", GB0) ;
         if (!op_is_positional)
         { 
-            ASSERT (GB_Type_compatible (op1->xtype, A->type)) ;
-            op_intype = op1->xtype ;
+            ASSERT (GB_Type_compatible (op->xtype, A->type)) ;
+            op_intype = op->xtype ;
         }
-        ztype = op1->ztype ;
     }
-    else // op2 != NULL
+    else if (GB_IS_BINARYOP_CODE (opcode))
     {
-        ASSERT_BINARYOP_OK (op2, "binop for shallow_op", GB0) ;
+        ASSERT_BINARYOP_OK (op, "binop for shallow_op", GB0) ;
         if (!op_is_positional)
         { 
-            op_intype = (binop_bind1st) ? op2->xtype : op2->ytype ;
+            op_intype = (binop_bind1st) ? op->xtype : op->ytype ;
             ASSERT (GB_Type_compatible (op_intype, A->type)) ;
         }
-        ztype = op2->ztype ;
+    }
+    else // GB_IS_INDEXUNARYOP_CODE (opcode)
+    {
+        ASSERT_INDEXUNARYOP_OK (op, "ixdunop for shallow_op", GB0) ;
+        op_intype = op->xtype ;
+        ASSERT (GB_Type_compatible (op_intype, A->type)) ;
     }
 
     //--------------------------------------------------------------------------
     // construct a shallow copy of A for the pattern of C
     //--------------------------------------------------------------------------
 
-    GB_iso_code C_code_iso = GB_iso_unop_code (A, op1, op2, binop_bind1st) ;
+    GB_iso_code C_code_iso = GB_iso_unop_code (A, op, binop_bind1st) ;
     bool C_iso = (C_code_iso != GB_NON_ISO) ;
 
     // initialized the header for C, but do not allocate C->{p,h,b,i,x}
@@ -149,9 +156,9 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     int64_t anz = GB_nnz_held (A) ;
 
     if ((A->type == op_intype) &&
-        ((opcode == GB_IDENTITY_opcode) ||
-         (opcode == GB_FIRST_opcode  && !binop_bind1st) ||
-         (opcode == GB_SECOND_opcode &&  binop_bind1st)))
+        ((opcode == GB_IDENTITY_unop_code) ||
+         (opcode == GB_FIRST_binop_code  && !binop_bind1st) ||
+         (opcode == GB_SECOND_binop_code &&  binop_bind1st)))
     { 
         // no work is done at all.  C is a pure shallow copy
         GBURBLE ("(pure shallow) ") ;
@@ -177,8 +184,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         return (GrB_OUT_OF_MEMORY) ;
     }
 
-    GB_OK (GB_apply_op ((GB_void *) C->x, C->type, C_code_iso, op1, op2,
-        scalar, binop_bind1st, A, Context)) ;
+    GB_OK (GB_apply_op ((GB_void *) C->x, C->type, C_code_iso, op,
+        scalar, binop_bind1st, flipij, A, Context)) ;
 
     //--------------------------------------------------------------------------
     // return the result

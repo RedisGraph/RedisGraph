@@ -303,7 +303,8 @@ GrB_Info Complex_init (bool builtin_complex)
     {
         // create the user-defined type
         #if GxB_STDC_VERSION >= 201112L
-        OK (GrB_Type_new (&Complex, sizeof (GxB_FC64_t))) ;
+        OK (GxB_Type_new (&Complex, sizeof (GxB_FC64_t),
+            "user_complex_64", NULL));
         #endif
     }
 
@@ -316,7 +317,7 @@ GrB_Info Complex_init (bool builtin_complex)
         // use the built-in versions
         Complex_first  = GxB_FIRST_FC64 ;
         Complex_second = GxB_SECOND_FC64 ;
-        Complex_pair   = GxB_PAIR_FC64 ;
+        Complex_pair   = GxB_ONEB_FC64 ;        // same as GxB_PAIR_FC64 ;
         Complex_plus   = GxB_PLUS_FC64 ;
         Complex_minus  = GxB_MINUS_FC64 ;
         Complex_rminus = GxB_RMINUS_FC64 ;

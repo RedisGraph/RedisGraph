@@ -57,8 +57,8 @@ GrB_Info GB_new                 // create matrix, except for indices & values
 
     ASSERT (Ahandle != NULL) ;
     ASSERT_TYPE_OK (type, "type for GB_new", GB0) ;
-    ASSERT (vlen >= 0 && vlen <= GxB_INDEX_MAX)
-    ASSERT (vdim >= 0 && vdim <= GxB_INDEX_MAX) ;
+    ASSERT (vlen >= 0 && vlen <= GB_NMAX)
+    ASSERT (vdim >= 0 && vdim <= GB_NMAX) ;
 
     //--------------------------------------------------------------------------
     // allocate the matrix header, if not already allocated on input

@@ -67,7 +67,7 @@ void mexFunction
     {
         case KIND_SPARSE  : printf ("sparse\n")  ; break ;
         case KIND_FULL    : printf ("full\n")    ; break ;
-        case KIND_BUILTIN : printf ("builtin\n")  ; break ;
+        case KIND_BUILTIN : printf ("builtin\n") ; break ;
         case KIND_GRB     :
         default           : printf ("GrB\n")     ; break ;
     }

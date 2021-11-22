@@ -3,8 +3,14 @@
 // Implementations of string callbacks
 #include <iostream>
 #pragma once
+
+
 // Define function pointer we will use later
 //std::istream* (*file_callback)(std::string, std::iostream&);
+
+inline std::istream* dummy_callback( std::string fname, std::iostream& tmp_stream){
+    return 0;
+}
 
 // Define a factory class for building any buffer of text
 class GB_callback {

@@ -108,7 +108,7 @@ switch opname
     %--------------------------------------------------------------------------
 
     case { 'first', 'second', 'pow', 'plus', 'minus', 'times', 'div', ...
-           'rminus', 'rdiv', 'pair', 'any', 'iseq', 'isne' }
+           'rminus', 'rdiv', 'pair', 'oneb', 'any', 'iseq', 'isne' }
         % x,y,z types are all the same.
 
     case { 'eq', 'ne' }
@@ -315,6 +315,44 @@ switch opname
             error ('invalid op') ;
         end
         ytype = optype ;
+
+    %--------------------------------------------------------------------------
+    % idxunop
+    %--------------------------------------------------------------------------
+
+    case { 'rowindex', 'colindex', 'diagindex' }
+        s = strcmp (optype, 'int64') || strcmp (optype, 'int32') ;
+        if (~s)
+            error ('invalid op') ;
+        end
+        xtype = '' ;
+        ytype = optype ;
+        ztype = optype ;
+
+    case { 'tril', 'triu', 'diag', 'offdiag', ...
+        'colle', 'colgt', 'rowle', 'rowgt' }
+        s = strcmp (optype, 'int64') ;
+        if (~s)
+            error ('invalid op') ;
+        end
+        xtype = '' ;
+        ytype = optype ;
+        ztype = 'logical' ;
+
+    case { 'valuene', 'valueeq' }
+        s = true ;
+        xtype = optype ;
+        ytype = optype ;
+        ztype = 'logical' ;
+
+    case { 'valuelt', 'valuele', 'valuegt', 'valuege' }
+        s = ~test_contains (optype, 'complex') ;
+        if (~s)
+            error ('invalid op') ;
+        end
+        xtype = optype ;
+        ytype = optype ;
+        ztype = 'logical' ;
 
     otherwise
         error ('unknown op') ;

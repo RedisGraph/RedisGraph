@@ -140,7 +140,7 @@ static inline void GB_find_Ap_start_end
 // GB_subref_phase0
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK                \
+#define GB_FREE_WORKSPACE           \
 {                                   \
     GB_WERK_POP (Count, int64_t) ;  \
 }
@@ -473,22 +473,22 @@ GrB_Info GB_subref_phase0
         Ch = GB_MALLOC (Cnvec, int64_t, &Ch_size) ;
         if (Ch == NULL)
         { 
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
             return (GrB_OUT_OF_MEMORY) ;
         }
     }
 
     if (Cnvec > 0)
     {
-        Ap_start = GB_MALLOC_WERK (Cnvec, int64_t, &Ap_start_size) ;
-        Ap_end   = GB_MALLOC_WERK (Cnvec, int64_t, &Ap_end_size) ;
+        Ap_start = GB_MALLOC_WORK (Cnvec, int64_t, &Ap_start_size) ;
+        Ap_end   = GB_MALLOC_WORK (Cnvec, int64_t, &Ap_end_size) ;
         if (Ap_start == NULL || Ap_end == NULL)
         { 
             // out of memory
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
             GB_FREE (&Ch, Ch_size) ;
-            GB_FREE_WERK (&Ap_start, Ap_start_size) ;
-            GB_FREE_WERK (&Ap_end, Ap_end_size) ;
+            GB_FREE_WORK (&Ap_start, Ap_start_size) ;
+            GB_FREE_WORK (&Ap_end, Ap_end_size) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
     }
@@ -697,7 +697,7 @@ GrB_Info GB_subref_phase0
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     (*p_Ch        ) = Ch ;          (*p_Ch_size) = Ch_size ;
     (*p_Ap_start  ) = Ap_start ;    (*p_Ap_start_size) = Ap_start_size ;
     (*p_Ap_end    ) = Ap_end ;      (*p_Ap_end_size) = Ap_end_size ;

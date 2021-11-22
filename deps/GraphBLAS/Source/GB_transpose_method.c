@@ -26,13 +26,14 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
     // get inputs
     //--------------------------------------------------------------------------
 
+    // if available, A->nvec_nonempty is used to select the method
     int64_t anvec = (A->nvec_nonempty < 0) ? A->nvec : A->nvec_nonempty ;
     int64_t anz = GB_nnz (A) ;
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
     int anzlog = (anz   == 0) ? 1 : (int) GB_CEIL_LOG2 (anz) ;
     int mlog   = (avlen == 0) ? 1 : (int) GB_CEIL_LOG2 (avlen) ;
-    double alpha ;
+    double bucket_factor ;
 
     // determine # of threads for bucket method
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
@@ -57,42 +58,42 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
     {
         // select between atomic and non-atomic methods.  This rule is based on
         // performance on a 4-core system with 4 threads with gcc 7.5.  The icc
-        // compiler has much slower atomics than gcc and so beta should likely
+        // compiler has much slower atomics than gcc and so atol should likely
         // be smaller when using icc.
 
-        int beta ;
+        int atol ;
         if (anzlog < 14)
         { 
-            beta = -4 ;     // fewer than 16K entries in A
+            atol = -4 ;     // fewer than 16K entries in A
         }
         else
         { 
             switch (anzlog)
             {
-                case 14: beta = -4 ; break ;        // 16K entried in A
-                case 15: beta = -3 ; break ;        // 32K
-                case 16: beta = -2 ; break ;        // 64K
-                case 17: beta = -1 ; break ;        // 128K
-                case 18: beta =  0 ; break ;        // 256K
-                case 19: beta =  1 ; break ;        // 512K
-                case 20: beta =  2 ; break ;        // 1M
-                case 21: beta =  3 ; break ;        // 2M
-                case 22: beta =  4 ; break ;        // 4M
-                case 23: beta =  5 ; break ;        // 8M
-                case 24: beta =  6 ; break ;        // 16M
-                case 25: beta =  8 ; break ;        // 32M
-                case 26: beta =  9 ; break ;        // 64M
-                case 27: beta =  9 ; break ;        // 128M
-                case 28: beta = 10 ; break ;        // 256M
-                default: beta = 10 ; break ;        // > 256M
+                case 14: atol = -4 ; break ;        // 16K entried in A
+                case 15: atol = -3 ; break ;        // 32K
+                case 16: atol = -2 ; break ;        // 64K
+                case 17: atol = -1 ; break ;        // 128K
+                case 18: atol =  0 ; break ;        // 256K
+                case 19: atol =  1 ; break ;        // 512K
+                case 20: atol =  2 ; break ;        // 1M
+                case 21: atol =  3 ; break ;        // 2M
+                case 22: atol =  4 ; break ;        // 4M
+                case 23: atol =  5 ; break ;        // 8M
+                case 24: atol =  6 ; break ;        // 16M
+                case 25: atol =  8 ; break ;        // 32M
+                case 26: atol =  9 ; break ;        // 64M
+                case 27: atol =  9 ; break ;        // 128M
+                case 28: atol = 10 ; break ;        // 256M
+                default: atol = 10 ; break ;        // > 256M
             }
         }
 
-        if (anzlog - mlog <= beta)
+        if (anzlog - mlog <= atol)
         { 
             // use atomic method
             // anzlog - mlog is the log2 of the average row degree, rounded.
-            // If the average row degree is <= 2^beta, use the atomic method.
+            // If the average row degree is <= 2^atol, use the atomic method.
             // That is, the atomic method works better for sparser matrices,
             // and the non-atomic works better or denser matrices.  However,
             // the threshold changes as the problem gets larger, in terms of #
@@ -126,32 +127,32 @@ bool GB_transpose_method        // if true: use GB_builder, false: use bucket
 
     if (anzlog < 14)
     { 
-        alpha = 0.5 ;       // fewer than 2^14 = 16K entries
+        bucket_factor = 0.5 ;       // fewer than 2^14 = 16K entries
     }
     else
     { 
         switch (anzlog)
         {
-            case 14: alpha = 0.6 ; break ;      // 16K entries in A
-            case 15: alpha = 0.7 ; break ;      // 32K
-            case 16: alpha = 1.0 ; break ;      // 64K
-            case 17: alpha = 1.7 ; break ;      // 128K
-            case 18: alpha = 3.0 ; break ;      // 256K
-            case 19: alpha = 4.0 ; break ;      // 512K
-            case 20: alpha = 6.0 ; break ;      // 1M
-            case 21: alpha = 7.0 ; break ;      // 2M
-            case 22: alpha = 8.0 ; break ;      // 4M
-            case 23: alpha = 5.0 ; break ;      // 8M
-            case 24: alpha = 5.0 ; break ;      // 16M
-            case 25: alpha = 5.0 ; break ;      // 32M
-            case 26: alpha = 5.0 ; break ;      // 64M
-            case 27: alpha = 5.0 ; break ;      // 128M
-            case 28: alpha = 5.0 ; break ;      // 256M
-            default: alpha = 5.0 ; break ;      // > 256M
+            case 14: bucket_factor = 0.6 ; break ;      // 16K entries in A
+            case 15: bucket_factor = 0.7 ; break ;      // 32K
+            case 16: bucket_factor = 1.0 ; break ;      // 64K
+            case 17: bucket_factor = 1.7 ; break ;      // 128K
+            case 18: bucket_factor = 3.0 ; break ;      // 256K
+            case 19: bucket_factor = 4.0 ; break ;      // 512K
+            case 20: bucket_factor = 6.0 ; break ;      // 1M
+            case 21: bucket_factor = 7.0 ; break ;      // 2M
+            case 22: bucket_factor = 8.0 ; break ;      // 4M
+            case 23: bucket_factor = 5.0 ; break ;      // 8M
+            case 24: bucket_factor = 5.0 ; break ;      // 16M
+            case 25: bucket_factor = 5.0 ; break ;      // 32M
+            case 26: bucket_factor = 5.0 ; break ;      // 64M
+            case 27: bucket_factor = 5.0 ; break ;      // 128M
+            case 28: bucket_factor = 5.0 ; break ;      // 256M
+            default: bucket_factor = 5.0 ; break ;      // > 256M
         }
     }
 
-    double bucket_work  = (double) (anz + avlen + anvec) * alpha ;
+    double bucket_work  = (double) (anz + avlen + anvec) * bucket_factor ;
     double builder_work = (log2 ((double) anz + 1) * (anz)) ;
 
     //--------------------------------------------------------------------------

@@ -27,9 +27,6 @@ function C = complex (A, B)
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
-% FUTURE: complex(A,B) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
-
 if (nargin == 1)
 
     % with a single input, A must be a GraphBLAS matrix (otherwise,

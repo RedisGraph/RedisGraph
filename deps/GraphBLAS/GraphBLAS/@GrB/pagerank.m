@@ -131,7 +131,7 @@ for iter = 1:maxit
     teleport = tfactor ;
     if (any_sinks)
         % add the teleport factor from all the sinks
-        % teleport = teleport + dn * sum (r (sinks})) ;
+        % teleport = teleport + dn * sum (r (sinks))) ;
         teleport = teleport + dn * sum (GrB.extract (r, { sinks })) ;
     end
     % r (1:n) = teleport

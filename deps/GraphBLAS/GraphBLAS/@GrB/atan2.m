@@ -7,9 +7,6 @@ function C = atan2 (A, B)
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
-% FUTURE: atan2(A,B) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
-
 if (isobject (A))
     A = A.opaque ;
 end
@@ -49,7 +46,7 @@ else
         C = GrB (gbapply2 ('atan2', A, B)) ;
     else
         % both A and B are matrices.  C is the set union of A and B.
-        C = GrB (gb_union_op ('atan2', A, B)) ;
+        C = GrB (gbeunion ('atan2', A, 0, B, 0)) ;
     end
 end
 

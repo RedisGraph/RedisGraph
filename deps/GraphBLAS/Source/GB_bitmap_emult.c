@@ -65,14 +65,14 @@
 #include "GB_binop__include.h"
 #endif
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (M_ek_slicing, int64_t) ;   \
 }
 
 #define GB_FREE_ALL                         \
 {                                           \
-    GB_FREE_WORK ;                          \
+    GB_FREE_WORKSPACE ;                     \
     GB_phbix_free (C) ;                     \
 }
 
@@ -149,9 +149,9 @@ GrB_Info GB_bitmap_emult    // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
 
     GB_Opcode opcode = op->opcode ;
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
 
     //--------------------------------------------------------------------------
     // check if C is iso and compute its iso value if it is
@@ -267,7 +267,7 @@ GrB_Info GB_bitmap_emult    // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
     // return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (C, "C output for emult_bitmap", GB0) ;
     (*mask_applied) = (M != NULL) ;
     return (GrB_SUCCESS) ;

@@ -12,13 +12,12 @@
 #include "GB.h"
 
 #define GB_FREE_ALL ;
-#define GB_WHERE_STRING "GrB_Matrix_removeElement (C, row, col)"
 
 //------------------------------------------------------------------------------
 // GB_removeElement: remove C(i,j) if it exists
 //------------------------------------------------------------------------------
 
-static inline bool GB_removeElement
+static inline bool GB_removeElement     // return true if found
 (
     GrB_Matrix C,
     GrB_Index i,
@@ -127,22 +126,17 @@ static inline bool GB_removeElement
 }
 
 //------------------------------------------------------------------------------
-// GrB_Matrix_removeElement: remove a single entry from a matrix
+// GB_Matrix_removeElement: remove a single entry from a matrix
 //------------------------------------------------------------------------------
 
-GrB_Info GrB_Matrix_removeElement
+GrB_Info GB_Matrix_removeElement
 (
     GrB_Matrix C,               // matrix to remove entry from
     GrB_Index row,              // row index
-    GrB_Index col               // column index
+    GrB_Index col,              // column index
+    GB_Context Context
 )
 {
-
-    //--------------------------------------------------------------------------
-    // check inputs
-    //--------------------------------------------------------------------------
-
-    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
 
     //--------------------------------------------------------------------------
     // if C is jumbled, wait on the matrix first.  If full, convert to nonfull
@@ -151,8 +145,6 @@ GrB_Info GrB_Matrix_removeElement
     if (C->jumbled || GB_IS_FULL (C))
     {
         GrB_Info info ;
-        GB_WHERE (C, GB_WHERE_STRING) ;
-        GB_BURBLE_START ("GrB_Matrix_removeElement") ;
         if (GB_IS_FULL (C))
         { 
             // convert C from full to sparse
@@ -168,9 +160,7 @@ GrB_Info GrB_Matrix_removeElement
         ASSERT (!GB_JUMBLED (C)) ;
         ASSERT (!GB_PENDING (C)) ;
         // remove the entry
-        info = GrB_Matrix_removeElement (C, row, col) ;
-        GB_BURBLE_END ;
-        return (info) ;
+        return (GB_Matrix_removeElement (C, row, col, Context)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -204,13 +194,11 @@ GrB_Info GrB_Matrix_removeElement
     // check row and column indices
     if (row >= nrows)
     { 
-        GB_WHERE (C, GB_WHERE_STRING) ;
         GB_ERROR (GrB_INVALID_INDEX, "Row index "
             GBu " out of range; must be < " GBd, row, nrows) ;
     }
     if (col >= ncols)
     { 
-        GB_WHERE (C, GB_WHERE_STRING) ;
         GB_ERROR (GrB_INVALID_INDEX, "Column index "
             GBu " out of range; must be < " GBd, col, ncols) ;
     }
@@ -234,17 +222,30 @@ GrB_Info GrB_Matrix_removeElement
     if (C_is_pending)
     { 
         GrB_Info info ;
-        GB_WHERE (C, GB_WHERE_STRING) ;
-        GB_BURBLE_START ("GrB_Matrix_removeElement") ;
         GB_OK (GB_wait (C, "C (removeElement:pending tuples)", Context)) ;
         ASSERT (!GB_ZOMBIES (C)) ;
         ASSERT (!GB_JUMBLED (C)) ;
         ASSERT (!GB_PENDING (C)) ;
         // look again; remove the entry if it was a pending tuple
         GB_removeElement (C, i, j) ;
-        GB_BURBLE_END ;
     }
 
     return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GrB_Matrix_removeElement: remove a single entry from a matrix
+//------------------------------------------------------------------------------
+
+GrB_Info GrB_Matrix_removeElement
+(
+    GrB_Matrix C,               // matrix to remove entry from
+    GrB_Index row,              // row index
+    GrB_Index col               // column index
+)
+{
+    GB_WHERE (C, "GrB_Matrix_removeElement (C, row, col)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    return (GB_Matrix_removeElement (C, row, col, Context)) ;
 }
 

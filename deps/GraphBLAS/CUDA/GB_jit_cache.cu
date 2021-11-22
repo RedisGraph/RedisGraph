@@ -23,6 +23,11 @@
 #include <sys/types.h>
 
 #include "GB_jit_cache.h"
+#include "GraphBLAS.h"
+// in GraphBLAS.h
+// #define GxB_IMPLEMENTATION_MAJOR 5
+// #define GxB_IMPLEMENTATION_MINOR 0
+// #define GxB_IMPLEMENTATION_SUB   3
 
 namespace jit {
 
@@ -31,7 +36,11 @@ namespace jit {
 std::string get_user_home_cache_dir() {
   auto home_dir = std::getenv("HOME");
   if (home_dir != nullptr) {
-    return std::string(home_dir) + "/.GraphBLAS/";
+    std::string Major_ver = "5";
+    std::string Minor_ver = "1";
+    std::string Imple_sub = "4";
+    return std::string(home_dir) + "/.SuiteSparse/GraphBLAS/" 
+                                 + Major_ver+"."+Minor_ver+"."+Imple_sub;
   } else {
     return std::string();
   }
@@ -84,6 +93,17 @@ GBJitCache::~GBJitCache() { }
 
 std::mutex GBJitCache::_kernel_cache_mutex;
 std::mutex GBJitCache::_program_cache_mutex;
+
+std::string GBJitCache::getFile(
+    File_Desc const &file_object )
+{
+    // Lock for thread safety
+    std::lock_guard<std::mutex> lock(_program_cache_mutex);
+
+    auto cached_file = getCachedFile( file_object, file_map );
+    return *std::get<1>( cached_file ).get();
+
+}
 
 named_prog<jitify::experimental::Program> GBJitCache::getProgram(
     std::string const& prog_name, 
@@ -157,7 +177,7 @@ GBJitCache::cacheFile::cacheFile(std::string file_name)
 
 GBJitCache::cacheFile::~cacheFile() { }
 
-std::string GBJitCache::cacheFile::read()
+std::string GBJitCache::cacheFile::read_file()
 {
     // Open file (duh)
     int fd = open ( _file_name.c_str(), O_RDWR );

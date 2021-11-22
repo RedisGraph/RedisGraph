@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK                            \
+#define GB_FREE_WORKSPACE                       \
     if (S != NULL)                              \
     {                                           \
         for (int64_t k = 0 ; k < m * n ; k++)   \
@@ -15,13 +15,13 @@
             GB_Matrix_free (&(S [k])) ;         \
         }                                       \
     }                                           \
-    GB_FREE_WERK (&S, S_size) ;                 \
-    GB_FREE_WERK (&Work, Work_size) ;           \
+    GB_FREE_WORK (&S, S_size) ;                 \
+    GB_FREE_WORK (&Work, Work_size) ;           \
     GB_WERK_POP (A_ek_slicing, int64_t) ;
 
 #define GB_FREE_ALL         \
 {                           \
-    GB_FREE_WORK ;          \
+    GB_FREE_WORKSPACE ;     \
     GB_phbix_free (C) ;     \
 }
 
@@ -89,8 +89,8 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
 
     int64_t nouter = csc ? n : m ;
     int64_t ninner = csc ? m : n ;
-    Work = GB_CALLOC_WERK (ninner * cvdim, int64_t, &Work_size) ;
-    S = GB_CALLOC_WERK (m * n, GrB_Matrix, &S_size) ;
+    Work = GB_CALLOC_WORK (ninner * cvdim, int64_t, &Work_size) ;
+    S = GB_CALLOC_WORK (m * n, GrB_Matrix, &S_size) ;
     if (S == NULL || Work == NULL)
     { 
         // out of memory
@@ -226,7 +226,7 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
         Cp [k] = s ;
     }
 
-    GB_cumsum (Cp, cvdim, &(C->nvec_nonempty), nthreads_max, Context) ; 
+    GB_cumsum (Cp, cvdim, &(C->nvec_nonempty), nthreads_max, Context) ;
 
     #pragma omp parallel for num_threads(nth) schedule(static)
     for (k = 0 ; k < cvdim ; k++)
@@ -365,11 +365,6 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
 
                         case GB_16BYTE : // double complex or 16-byte user
                             #define GB_CTYPE GB_blob16
-//                          #define GB_CTYPE uint64_t
-//                          #undef  GB_COPY
-//                          #define GB_COPY(pC,pA,A_iso)                    \
-//                              Cx [2*pC  ] = Ax [A_iso ? 0 : (2*pA)] ;     \
-//                              Cx [2*pC+1] = Ax [A_iso ? 1 : (2*pA+1)] ;
                             #include "GB_concat_sparse_template.c"
                             break ;
 
@@ -400,7 +395,7 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     C->magic = GB_MAGIC ;
     ASSERT_MATRIX_OK (C, "C from concat sparse", GB0) ;
     return (GrB_SUCCESS) ;

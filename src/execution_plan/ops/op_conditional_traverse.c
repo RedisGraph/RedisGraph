@@ -35,7 +35,7 @@ static void _populate_filter_matrix(OpCondTraverse *op) {
 		GrB_Matrix_setElement_BOOL(FM, true, i, srcId);
 	}
 
-	GrB_Matrix_wait(&FM);
+	GrB_Matrix_wait(FM, GrB_MATERIALIZE);
 }
 
 /* Evaluate algebraic expression:

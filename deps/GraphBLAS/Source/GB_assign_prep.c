@@ -24,10 +24,10 @@
     GB_Matrix_free (&AT) ;          \
     GB_Matrix_free (&M2) ;          \
     GB_Matrix_free (&MT) ;          \
-    GB_FREE_WERK (&I2, I2_size) ;   \
-    GB_FREE_WERK (&J2, J2_size) ;   \
-    GB_FREE_WERK (&I2k, I2k_size) ; \
-    GB_FREE_WERK (&J2k, J2k_size) ; \
+    GB_FREE_WORK (&I2, I2_size) ;   \
+    GB_FREE_WORK (&J2, J2_size) ;   \
+    GB_FREE_WORK (&I2k, I2k_size) ; \
+    GB_FREE_WORK (&J2k, J2k_size) ; \
 }
 
 GrB_Info GB_assign_prep
@@ -862,8 +862,8 @@ GrB_Info GB_assign_prep
             M = M2 ;
         }
 
-        GB_FREE_WERK (&I2k, I2k_size) ;
-        GB_FREE_WERK (&J2k, J2k_size) ;
+        GB_FREE_WORK (&I2k, I2k_size) ;
+        GB_FREE_WORK (&J2k, J2k_size) ;
     }
 
     // I and J are now sorted, with no duplicate entries.  They are either
@@ -1202,7 +1202,7 @@ GrB_Info GB_assign_prep
 
     if (C_iso_out)
     {
-        GBURBLE ("(iso assign) ") ;
+        GBURBLE ("(C iso assign) ") ;
     }
 
     //--------------------------------------------------------------------------
@@ -1247,7 +1247,7 @@ GrB_Info GB_assign_prep
         // C is non-iso on input, but iso on output
         // copy the cout scalar into C->x
         // set C->iso = true    OK
-        GB_OK (GB_convert_any_to_iso (C, cout, true, Context)) ;
+        GB_OK (GB_convert_any_to_iso (C, cout, Context)) ;
     }
     else if (C->iso && C_iso_out)
     { 

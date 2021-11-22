@@ -46,8 +46,6 @@
 
 // FUTURE: transpose full or bitmap inputs by changing how they are accessed
 
-// FUTURE: add matrix I/O in binary format (see draft LAGraph_binread/binwrite)
-
 // FUTURE: DIFF1, DIFF2 binary operators, GxB_vxv
 //
 //      add binary operators:
@@ -62,7 +60,7 @@
 //
 //      to compute these for just a vector x, use y as all-zero iso full
 //
-//      GxB_vtxv : inner product of 2 vectors, result is a GxB_Scalar
+//      GxB_vtxv : inner product of 2 vectors, result is a GrB_Scalar
 //      GxB_vxvt : outer product of 2 vectors, result is a GrB_Matrix
 
 // FUTURE: do O(1)-time typecasting for iso matrices, if their types don't match

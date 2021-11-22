@@ -15,7 +15,7 @@ semiring.multiply = 'times' ;
 semiring.class = 'double' ;
 
 plus_pair.add = 'plus' ;
-plus_pair.multiply = 'pair' ;
+plus_pair.multiply = 'oneb' ;   % same as pair
 plus_pair.class = 'double' ;
 
 add_op = 'plus' ;

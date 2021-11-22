@@ -155,16 +155,20 @@ end
 if (isequal (binop, 'second') || isequal (binop, 'pair'))
     % the value of A is ignored
     fprintf (f, 'define(`GB_geta'', `;'')\n') ;
+    fprintf (f, 'define(`GB_a_is_pattern'', `1'')\n') ;
 else
     fprintf (f, 'define(`GB_geta'', `%s $1 = GBX ($2, $3, $4)'')\n', xtype) ;
+    fprintf (f, 'define(`GB_a_is_pattern'', `0'')\n') ;
 end
 
 % to get an entry from B
 if (isequal (binop, 'first') || isequal (binop, 'pair'))
     % the value of B is ignored
     fprintf (f, 'define(`GB_getb'', `;'')\n') ;
+    fprintf (f, 'define(`GB_b_is_pattern'', `1'')\n') ;
 else
     fprintf (f, 'define(`GB_getb'', `%s $1 = GBX ($2, $3, $4)'')\n', ytype) ;
+    fprintf (f, 'define(`GB_b_is_pattern'', `0'')\n') ;
 end
 
 % to copy an entry from A to C
@@ -229,7 +233,7 @@ fprintf (f, 'define(`GB_disable'', `(%s)'')\n', disable) ;
 
 fclose (f) ;
 
-trim = 41 ;
+trim = 42 ;
 
 % construct the *.c file
 cmd = sprintf (...

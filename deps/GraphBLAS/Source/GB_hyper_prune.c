@@ -57,7 +57,7 @@ GrB_Info GB_hyper_prune
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    W = GB_MALLOC_WERK (nvec_old+1, int64_t, &W_size) ;
+    W = GB_MALLOC_WORK (nvec_old+1, int64_t, &W_size) ;
     if (W == NULL)
     { 
         // out of memory
@@ -88,7 +88,7 @@ GrB_Info GB_hyper_prune
     if (Ap == NULL || Ah == NULL)
     { 
         // out of memory
-        GB_FREE_WERK (&W, W_size) ;
+        GB_FREE_WORK (&W, W_size) ;
         GB_FREE (&Ap, Ap_size) ;
         GB_FREE (&Ah, Ah_size) ;
         return (GrB_OUT_OF_MEMORY) ;
@@ -115,7 +115,7 @@ GrB_Info GB_hyper_prune
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&W, W_size) ;
+    GB_FREE_WORK (&W, W_size) ;
     (*p_Ap) = Ap ; (*p_Ap_size) = Ap_size ;
     (*p_Ah) = Ah ; (*p_Ah_size) = Ah_size ;
     (*p_nvec) = nvec ;

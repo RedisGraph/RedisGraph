@@ -56,7 +56,11 @@ void mexFunction
             x++ ;
         }
     }
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait (&S)) ;
+    #else
+    OK (GrB_Matrix_wait (S, GrB_MATERIALIZE)) ;
+    #endif
     OK (GxB_Matrix_fprint (S, "initial S by row", pr, NULL)) ;
 
     double *Cx = NULL ;
@@ -238,7 +242,11 @@ void mexFunction
     OK (GrB_Matrix_setElement_INT32 (A, -4, 0, 2)) ;
     OK (GrB_Matrix_setElement_INT32 (A, 10, 0, 1)) ;
     OK (GxB_Matrix_fprint (A, "A for v5.1.7 test: initial", 3, NULL)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait (&A)) ;
+    #else
+    OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
+    #endif
     OK (GrB_apply (A, NULL, NULL, GxB_ONE_INT32, A, NULL)) ;
     OK (GxB_Matrix_fprint (A, "A for v5.1.7 test: spones(A)", 3, NULL)) ;
     int32_t result = 42 ;

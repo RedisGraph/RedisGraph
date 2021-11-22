@@ -151,12 +151,11 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             // s = (ctype) scalar
             GB_void s [GB_VLA(csize)] ;
             GB_cast_scalar (s, ccode, scalar, scalar_code, csize) ;
-            GB_OK (GB_convert_any_to_iso (C, s, true, Context)) ;
+            GB_OK (GB_convert_any_to_iso (C, s, Context)) ;
         }
         else
         { 
-            GB_OK (GB_convert_any_to_iso (C, (GB_void *) scalar, true,
-                Context)) ;
+            GB_OK (GB_convert_any_to_iso (C, (GB_void *) scalar, Context)) ;
         }
     }
 
@@ -344,7 +343,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             // tuples becomes the type of this scalar, and the pending operator
             // becomes NULL, which is the implicit SECOND_ctype operator.
 
-            if (!GB_Pending_add (&(C->Pending), C->iso, (GB_void *)scalar,
+            if (!GB_Pending_add (&(C->Pending), C->iso, (GB_void *) scalar,
                 stype, NULL, i, j, C->vdim > 1, Context))
             { 
                 // out of memory

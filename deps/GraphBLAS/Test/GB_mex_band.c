@@ -15,10 +15,10 @@
 
 #define FREE_ALL                        \
 {                                       \
-    GxB_Scalar_free_(&Thunk) ;          \
+    GrB_Scalar_free_(&Thunk) ;          \
     GrB_Matrix_free_(&C) ;              \
     GrB_Matrix_free_(&A) ;              \
-    GxB_Scalar_free_(&Thunk_type) ;     \
+    GrB_Scalar_free_(&Thunk_type) ;     \
     GxB_SelectOp_free_(&op) ;           \
     GrB_Descriptor_free_(&desc) ;       \
     GB_mx_put_global (true) ;           \
@@ -48,8 +48,6 @@ bool LoHi_band (GrB_Index i, GrB_Index j,
 {
     int64_t i2 = (int64_t) i ;
     int64_t j2 = (int64_t) j ;
-//  printf ("i %lld j %lld lo %lld hi %lld\n", i2, j2, thunk->lo, thunk->hi) ;
-//  printf ("   j-i %lld\n", j2-i2) ;
     return ((thunk->lo <= (j2-i2)) && ((j2-i2) <= thunk->hi)) ;
 }
 
@@ -68,7 +66,7 @@ void mexFunction
     GxB_SelectOp op = NULL ;
     GrB_Info info ;
     GrB_Descriptor desc = NULL ;
-    GxB_Scalar Thunk = NULL ;
+    GrB_Scalar Thunk = NULL ;
     GrB_Type Thunk_type = NULL ;
 
     #define GET_DEEP_COPY ;
@@ -96,9 +94,13 @@ void mexFunction
     bandwidth.lo = (int64_t) mxGetScalar (pargin [1]) ;
     bandwidth.hi = (int64_t) mxGetScalar (pargin [2]) ;
 
-    OK (GxB_Scalar_new (&Thunk, Thunk_type)) ;
-    OK (GxB_Scalar_setElement_UDT (Thunk, (void *) &bandwidth)) ;
-    OK (GxB_Scalar_wait_(&Thunk)) ;
+    OK (GrB_Scalar_new (&Thunk, Thunk_type)) ;
+    OK (GrB_Scalar_setElement_UDT (Thunk, (void *) &bandwidth)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
+    OK (GrB_Scalar_wait_(&Thunk)) ;
+    #else
+    OK (GrB_Scalar_wait_(Thunk, GrB_MATERIALIZE)) ;
+    #endif
 
     // get atranspose
     bool atranspose = false ;

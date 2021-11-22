@@ -34,18 +34,18 @@
 #include "GB_emult.h"
 #include "GB_add.h"
 
-#define GB_FREE_WORK                            \
+#define GB_FREE_WORKSPACE                       \
 {                                               \
-    GB_FREE_WERK (&TaskList, TaskList_size) ;   \
-    GB_FREE_WERK (&C_to_M, C_to_M_size) ;       \
-    GB_FREE_WERK (&C_to_A, C_to_A_size) ;       \
-    GB_FREE_WERK (&C_to_B, C_to_B_size) ;       \
+    GB_FREE_WORK (&TaskList, TaskList_size) ;   \
+    GB_FREE_WORK (&C_to_M, C_to_M_size) ;       \
+    GB_FREE_WORK (&C_to_A, C_to_A_size) ;       \
+    GB_FREE_WORK (&C_to_B, C_to_B_size) ;       \
 }
 
 #define GB_FREE_ALL             \
 {                               \
-    GB_FREE_WORK ;              \
-    GB_phbix_free (C) ;       \
+    GB_FREE_WORKSPACE ;         \
+    GB_phbix_free (C) ;         \
 }
 
 GrB_Info GB_emult           // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
@@ -133,12 +133,11 @@ GrB_Info GB_emult           // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
 
             // A and B are both full (or as-if-full).  The mask M may be
             // anything.  GB_add computes the same thing in this case, so it is
-            // used instead, to reduce the code needed for GB_emult.  GB_add
-            // must be used for C=A.*B if all 3 matrices are full.  Otherwise,
-            // GB_emult method can be used as well.
+            // used instead, to reduce the code needed for GB_emult.
 
             return (GB_add (C, ctype, C_is_csc, M, Mask_struct,
-                Mask_comp, mask_applied, A, B, op, Context)) ;
+                Mask_comp, mask_applied, A, B, false, NULL, NULL,
+                op, Context)) ;
 
         case GB_EMULT_METHOD2 :  // A sparse/hyper, B bitmap/full
 
@@ -420,7 +419,7 @@ GrB_Info GB_emult           // C=A.*B, C<M>=A.*B, or C<!M>=A.*B
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (C, "C output for emult phased", GB0) ;
     (*mask_applied) = apply_mask ;
     return (GrB_SUCCESS) ;

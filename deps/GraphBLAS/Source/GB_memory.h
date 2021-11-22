@@ -153,11 +153,11 @@ void *GB_xalloc_memory      // return the newly-allocated space
 // tag the source code for the allocation of workspace differently from the
 // allocation of permament space for a GraphBLAS object, such as a GrB_Matrix.
 
-#define GB_CALLOC_WERK(n,type,s) GB_CALLOC(n,type,s)
-#define GB_MALLOC_WERK(n,type,s) GB_MALLOC(n,type,s)
-#define GB_REALLOC_WERK(p,nnew,type,s,ok,Context) \
+#define GB_CALLOC_WORK(n,type,s) GB_CALLOC(n,type,s)
+#define GB_MALLOC_WORK(n,type,s) GB_MALLOC(n,type,s)
+#define GB_REALLOC_WORK(p,nnew,type,s,ok,Context) \
              GB_REALLOC(p,nnew,type,s,ok,Context) 
-#define GB_FREE_WERK(p,s) GB_FREE(p,s)
+#define GB_FREE_WORK(p,s) GB_FREE(p,s)
 
 #endif
 

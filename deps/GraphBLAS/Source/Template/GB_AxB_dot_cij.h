@@ -7,8 +7,10 @@
 
 //------------------------------------------------------------------------------
 
-// GB_DOT: cij += A(k,i) * B(k,j), then break if terminal
+// GB_DOT: cij += (A(k,i) or A(i,k)) * B(k,j), then break if terminal
 // Ai [pA] and Bi [pB] are both equal to the index k.
+// pA points to A(k,i) for most GxB_AxB_dot* methods, except for C=A*B in
+// GB_AxB_dot2, with A_not_transposed where it points to A(i,k).
 
 // use the boolean flag cij_exists to set/check if C(i,j) exists
 #undef  GB_CIJ_CHECK
@@ -56,9 +58,9 @@
         // for the dot3 method: C is sparse or hyper
         #define GB_DOT(k,pA,pB)                                         \
         {                                                               \
-            GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) */          \
+            GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) or A(i,k) */\
             GB_GETB (bkj, Bx, pB, B_iso) ;  /* bkj = B(k,j) */          \
-            /* cij = (A')(i,k) * B(k,j), and add to the pattern */      \
+            /* cij = (A' or A)(i,k) * B(k,j), and add to the pattern */ \
             cij_exists = true ;                                         \
             GB_MULT (cij, aki, bkj, i, k, j) ;                          \
             break ;                                                     \
@@ -69,9 +71,9 @@
         // for the dot2 method: C is bitmap
         #define GB_DOT(k,pA,pB)                                         \
         {                                                               \
-            GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) */          \
+            GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) or A(i,k) */\
             GB_GETB (bkj, Bx, pB, B_iso) ;  /* bkj = B(k,j) */          \
-            /* cij = (A')(i,k) * B(k,j), and add to the pattern */      \
+            /* cij = (A' or A)(i,k) * B(k,j), and add to the pattern */ \
             GB_MULT (cij, aki, bkj, i, k, j) ;                          \
             int64_t pC = pC_start + i ;                                 \
             GB_PUTC (cij, pC) ;                                         \
@@ -90,16 +92,16 @@
 
     #define GB_DOT(k,pA,pB)                                             \
     {                                                                   \
-        GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) */              \
+        GB_GETA (aki, Ax, pA, A_iso) ;  /* aki = A(k,i) or A(i,k) */    \
         GB_GETB (bkj, Bx, pB, B_iso) ;  /* bkj = B(k,j) */              \
         if (cij_exists)                                                 \
         {                                                               \
-            /* cij += (A')(i,k) * B(k,j) */                             \
+            /* cij += (A' or A)(i,k) * B(k,j) */                        \
             GB_MULTADD (cij, aki, bkj, i, k, j) ;                       \
         }                                                               \
         else                                                            \
         {                                                               \
-            /* cij = (A')(i,k) * B(k,j), and add to the pattern */      \
+            /* cij = (A' or A)(i,k) * B(k,j), and add to the pattern */ \
             cij_exists = true ;                                         \
             GB_MULT (cij, aki, bkj, i, k, j) ;                          \
         }                                                               \

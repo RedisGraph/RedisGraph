@@ -58,7 +58,11 @@ GrB_Info axb (GB_Context Context, bool cprint)
     // create the rdiv operator
     info = GrB_BinaryOp_new (&My_rdiv, my_rdiv, GrB_FP64, GrB_FP64, GrB_FP64) ;
     if (info != GrB_SUCCESS) return (info) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GrB_BinaryOp_wait_(&My_rdiv) ;
+    #else
+    GrB_BinaryOp_wait_(My_rdiv, GrB_MATERIALIZE) ;
+    #endif
     if (info != GrB_SUCCESS) return (info) ;
     info = GrB_Semiring_new (&My_plus_rdiv, GxB_PLUS_FP64_MONOID, My_rdiv) ;
     if (info != GrB_SUCCESS)

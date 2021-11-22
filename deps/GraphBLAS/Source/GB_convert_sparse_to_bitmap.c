@@ -12,14 +12,14 @@
 #include "GB_type__include.h"
 #endif
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
 }
 
 #define GB_FREE_ALL                         \
 {                                           \
-    GB_FREE_WORK ;                          \
+    GB_FREE_WORKSPACE ;                     \
     GB_FREE (&Ax_new, Ax_size) ;            \
     GB_FREE (&Ab, Ab_size) ;                \
 }
@@ -73,7 +73,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     const int64_t avlen = A->vlen ;
     const int64_t anvec = A->nvec ;
     int64_t anzmax ;
-    if (!GB_Index_multiply ((GrB_Index *) &anzmax, avdim, avlen))
+    if (!GB_int64_multiply ((GrB_Index *) &anzmax, avdim, avlen))
     { 
         // problem too large
         return (GrB_OUT_OF_MEMORY) ;
@@ -248,7 +248,7 @@ GrB_Info GB_convert_sparse_to_bitmap    // convert sparse/hypersparse to bitmap
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     ASSERT_MATRIX_OK (A, "A converted from sparse to bitmap", GB0) ;
     ASSERT (GB_IS_BITMAP (A)) ;
     ASSERT (!GB_ZOMBIES (A)) ;

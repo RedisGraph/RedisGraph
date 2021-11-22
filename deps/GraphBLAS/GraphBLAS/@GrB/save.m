@@ -19,7 +19,7 @@ function filename_used = save (C, filename)
 %   clear all
 %   A = GrB.load ('A.mat') ;    % A is now a @GrB matrix
 %
-% See also GrB.load, GrB/struct.
+% See also GrB.load, GrB/struct, GrB.serialize, GrB.deserialize.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
