@@ -117,6 +117,19 @@ static void _annotate_unwind_clause_projected_named_path(AST *ast,
 	raxFreeWithCallback(identifier_map, array_free);
 }
 
+static void _annotate_order_by_clause_projected_named_path(AST *ast,
+														 const cypher_astnode_t *order_by_clause, uint scope_start, uint scope_end) {
+	rax *identifier_map = raxNew();
+	uint order_by_items_count = cypher_ast_order_by_nitems(order_by_clause);
+	for(uint projection_iter = 0; projection_iter < order_by_items_count; projection_iter++) {
+		const cypher_astnode_t *projection = cypher_ast_order_by_get_item(order_by_clause,
+																			  projection_iter);
+		_collect_projected_identifier(projection, identifier_map);
+	}
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
+}
+
 static void _annotate_return_clause_projected_named_path(AST *ast,
 														 const cypher_astnode_t *return_clause, uint scope_start, uint scope_end) {
 	rax *identifier_map = raxNew();
@@ -149,11 +162,19 @@ static void _annotate_projected_named_path(AST *ast) {
 			scope_end = i;
 			const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root, i);
 			_annotate_with_clause_projected_named_path(ast, with_clause, scope_start, scope_end);
+			const cypher_astnode_t *order_by_clause = cypher_ast_with_get_order_by(with_clause);
+			if(order_by_clause) {
+				_annotate_order_by_clause_projected_named_path(ast, order_by_clause, scope_start, scope_end);
+			}
 			scope_start = scope_end;
 		} else if(cypher_astnode_type(child) == CYPHER_AST_RETURN) {
 			scope_end = i;
 			const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, i);
 			_annotate_return_clause_projected_named_path(ast, return_clause, scope_start, scope_end);
+			const cypher_astnode_t *order_by_clause = cypher_ast_return_get_order_by(return_clause);
+			if(order_by_clause) {
+				_annotate_order_by_clause_projected_named_path(ast, order_by_clause, scope_start, scope_end);
+			}
 			scope_start = scope_end;
 		} else if(cypher_astnode_type(child) == CYPHER_AST_DELETE) {
 			scope_end = i;
