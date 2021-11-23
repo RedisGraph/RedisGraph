@@ -68,8 +68,7 @@ typedef struct AR_ExpNode {
 		AR_OpNode op;
 	};
 	AR_ExpNodeType type;
-	// The string representation of the node, such as the literal string "ID(a) + 5"
-	const char *resolved_name;
+	const char *alias;
 } AR_ExpNode;
 
 /* Creates a new Arithmetic expression operation node */
@@ -153,9 +152,8 @@ bool AR_EXP_IsAttribute(const AR_ExpNode *exp, char **attr);
  * a boolean value and false otherwise. */
 bool AR_EXP_ReturnsBoolean(const AR_ExpNode *exp);
 
-/* Generate a heap-allocated name for an arithmetic expression.
- * This routine is only used to name ORDER BY expressions. */
-char *AR_EXP_BuildResolvedName(AR_ExpNode *root);
+// returns alias if exists otherwise the string representation
+const char *AR_EXP_GetResolvedName(AR_ExpNode *root);
 
 /* Clones given expression. */
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);

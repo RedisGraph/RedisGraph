@@ -184,7 +184,7 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
 	AR_ExpNode *exp = AR_EXP_FromASTNode(collection);
-	exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
+	exp->alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 
 	AST_UnwindContext ctx = { .exp = exp };
 	return ctx;

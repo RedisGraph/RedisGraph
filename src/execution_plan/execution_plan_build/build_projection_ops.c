@@ -11,6 +11,7 @@
 #include "../../query_ctx.h"
 #include "../execution_plan.h"
 #include "../../ast/ast_build_op_contexts.h"
+#include "../../arithmetic/arithmetic_expression.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
 
 // Given a WITH/RETURN * clause, generate the array of expressions to populate.
@@ -23,7 +24,6 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 	for(uint i = 0; i < count; i++) {
 		// Build an expression for each alias.
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i]);
-		exp->resolved_name = aliases[i];
 		array_append(project_exps, exp);
 	}
 
@@ -42,7 +42,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
 		// Build a string representation of the ORDER identity.
-		char *constructed_name = AR_EXP_BuildResolvedName(exp);
+		char *constructed_name = AR_EXP_GetResolvedName(exp);
 		// If the constructed name refers to a QueryGraph entity, use its canonical name.
 		char *canonical_name = raxFind(ast->canonical_entity_names, (unsigned char *)constructed_name,
 									   strlen(constructed_name));
@@ -55,8 +55,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 			rm_free(constructed_name);
 		}
 
-		exp->resolved_name = canonical_name;
-		AST_AttachName(ast, item, exp->resolved_name);
+		AST_AttachName(ast, item, canonical_name);
 
 		array_append(order_exps, exp);
 	}
@@ -113,17 +112,16 @@ AR_ExpNode **_BuildProjectionExpressions(const cypher_astnode_t *clause) {
 		if(alias_node) {
 			// The projection either has an alias (AS), is a function call,
 			// or is a property specification (e.name).
-			identifier = cypher_ast_identifier_get_name(alias_node);
+			exp->alias = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// This expression did not have an alias,
 			// so it must be an identifier
 			ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e"
 			// (theoretically; the latter case is already handled)
-			identifier = cypher_ast_identifier_get_name(ast_exp);
+			exp->alias = cypher_ast_identifier_get_name(ast_exp);
 		}
 
-		exp->resolved_name = identifier;
 		array_append(expressions, exp);
 	}
 
@@ -171,7 +169,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 
 		// Populate a stack array with the aliases to perform Distinct on
 		const char *aliases[n];
-		for(uint i = 0; i < n; i ++) aliases[i] = projections[i]->resolved_name;
+		for(uint i = 0; i < n; i ++) aliases[i] = AR_EXP_GetResolvedName(projections[i]);
 		distinct_op = NewDistinctOp(plan, aliases, n);
 	}
 

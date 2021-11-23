@@ -299,6 +299,9 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	case T_PTR:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
 		break;
+	case T_POINT:
+		// TODO: implement
+		break;
 	default:
 		// unrecognized type
 		printf("unrecognized type: %d\n", v.type);

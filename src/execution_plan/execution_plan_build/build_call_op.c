@@ -49,15 +49,14 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
 		if(alias_node) {
 			// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
-			identifier = cypher_ast_identifier_get_name(alias_node);
+			exp->alias = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// This expression did not have an alias, so it must be an identifier
 			ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
-			identifier = cypher_ast_identifier_get_name(ast_exp);
+			exp->alias = cypher_ast_identifier_get_name(ast_exp);
 		}
 
-		exp->resolved_name = identifier;
 		array_append(expressions, exp);
 	}
 
@@ -71,7 +70,6 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause) {
 		for(uint i = 0; i < output_count; i++) {
 			const char *name = Procedure_GetOutput(proc, i);
 			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(name);
-			exp->resolved_name = name;
 			array_append(expressions, exp);
 		}
 		Proc_Free(proc);

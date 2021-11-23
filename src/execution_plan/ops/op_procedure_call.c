@@ -82,7 +82,7 @@ OpBase *NewProcCallOp
 
 	// set modifiers
 	for(uint i = 0; i < yield_count; i ++) {
-		const char *alias = yield_exps[i]->resolved_name;
+		const char *alias = AR_EXP_GetResolvedName(yield_exps[i]);
 		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
 
 		array_append(op->output, yield);

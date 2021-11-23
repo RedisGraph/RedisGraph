@@ -32,7 +32,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
 				UnwindReset, NULL, UnwindClone, UnwindFree, false, plan);
 
-	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
+	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, AR_EXP_GetResolvedName(exp));
 	return (OpBase *)op;
 }
 

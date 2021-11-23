@@ -106,7 +106,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	// Construct a constant expression, used by a new projection operation
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(nodeCount);
 	// The new expression must be aliased to populate the Record.
-	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
+	exp->alias = AR_EXP_GetResolvedName(opAggregate->aggregate_exps[0]);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	array_append(exps, exp);
 
@@ -201,7 +201,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	// construct a constant expression, used by a new projection operation
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
 	// the new expression must be aliased to populate the Record
-	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
+	exp->alias = AR_EXP_GetResolvedName(opAggregate->aggregate_exps[0]);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	array_append(exps, exp);
 
