@@ -24,26 +24,6 @@
 #include "GraphBLAS.h"
 #include "LAGraph_bfs_pushpull.h"
 
-#define LAGraph_FREE_WORK   \
-{                           \
-	GrB_free (&w) ;         \
-	GrB_free (&q) ;         \
-	GrB_free (&Degree) ;    \
-}
-
-#define LAGraph_FREE_ALL    \
-{                           \
-	LAGraph_FREE_WORK ;     \
-	GrB_free (&pi) ;        \
-	GrB_free (&v) ;         \
-}
-
-#define GrB_TRY(res)              \
-{                                 \
-	info = res ;                  \
-	ASSERT(info == GrB_SUCCESS) ; \
-}
-
 //****************************************************************************
 int LG_BreadthFirstSearch_SSGrB
 (
@@ -62,10 +42,10 @@ int LG_BreadthFirstSearch_SSGrB
 	//--------------------------------------------------------------------------
 
 	GrB_Info info ;
-	GrB_Vector q = NULL ;           // the current frontier
-	GrB_Vector w = NULL ;           // to compute work remaining
-	GrB_Vector pi = NULL ;          // parent vector
-	GrB_Vector v = NULL ;           // level vector
+	GrB_Vector  q   =  NULL  ;  //  the current frontier
+	GrB_Vector  w   =  NULL  ;  //  to compute work remaining
+	GrB_Vector  pi  =  NULL  ;  //  parent vector
+	GrB_Vector  v   =  NULL  ;  //  level vector
 
 	UNUSED(info);
 
@@ -107,6 +87,10 @@ int LG_BreadthFirstSearch_SSGrB
 
 		// create the parent vector.  pi(i) is the parent id of node i
 		GrB_TRY (GrB_Vector_new (&pi, int_type, n)) ;
+		// TODO: requesting pi to be both BITMAP and FULL can be expensive
+		//       especially when the graph is large
+		//       and `src` can't expand too much
+		//       see if this requierment can be lifted
 		GrB_TRY (GxB_set (pi, GxB_SPARSITY_CONTROL, GxB_BITMAP + GxB_FULL)) ;
 		// pi (src) = src denotes the root of the BFS tree
 		GrB_TRY (GrB_Vector_setElement (pi, src, src)) ;
@@ -129,6 +113,11 @@ int LG_BreadthFirstSearch_SSGrB
 	{
 		// create the level vector. v(i) is the level of node i
 		// v (src) = 0 denotes the source node
+
+		// TODO: requesting pi to be both BITMAP and FULL can be expensive
+		//       especially when the graph is large
+		//       and `src` can't expand too much
+		//       see if this requierment can be lifted
 		GrB_TRY (GrB_Vector_new (&v, int_type, n)) ;
 		GrB_TRY (GxB_set (v, GxB_SPARSITY_CONTROL, GxB_BITMAP + GxB_FULL)) ;
 		GrB_TRY (GrB_Vector_setElement (v, 0, src)) ;
@@ -230,6 +219,7 @@ int LG_BreadthFirstSearch_SSGrB
 		// q = kth level of the BFS
 		//----------------------------------------------------------------------
 
+		// TODO: this switch of format might be expenssive, verify?
 		int sparsity = do_push ? GxB_SPARSE : GxB_BITMAP ;
 		GrB_TRY (GxB_set (q, GxB_SPARSITY_CONTROL, sparsity)) ;
 
@@ -286,6 +276,10 @@ int LG_BreadthFirstSearch_SSGrB
 
 	if (compute_parent) (*parent) = pi ;
 	if (compute_level ) (*level ) = v ;
-	LAGraph_FREE_WORK ;
+
+	GrB_free (&w) ;
+	GrB_free (&q) ;
+	GrB_free (&Degree) ;
+
 	return (0) ;
 }

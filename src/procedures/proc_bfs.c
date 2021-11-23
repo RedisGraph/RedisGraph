@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "proc_bfs.h"
-#include "../RG.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -28,15 +28,15 @@
 // MATCH (a:User {id: 1}) CALL algo.bfs(a, 0, 'MANAGES') YIELD nodes, edges
 
 typedef struct {
-	Graph *g;                       // Graph scanned.
-	GrB_Index n;                    // Total number of results.
-	bool depleted;                  // True if BFS has already been performed for this node.
-	int reltype_id;                 // ID of relationship matrix to traverse.
-	SIValue *output;                // Array with a maximum of 4 entries: ["nodes", nodes, "edges", edges].
-	SIValue *yield_nodes;           // yield reachable nodes
-	SIValue *yield_edges;           // yield edges traversed
-	GrB_Vector nodes;               // Vector of reachable nodes.
-	GrB_Vector parents;             // Vector associating each node in the BFS tree with its parent.
+	Graph *g;              // graph scanned
+	GrB_Index n;           // total number of results
+	bool depleted;         // true if BFS has already been performed for this node
+	int reltype_id;        // iD of relationship matrix to traverse
+	SIValue *output;       // array with a maximum of 4 entries: ["nodes", nodes, "edges", edges]
+	SIValue *yield_nodes;  // yield reachable nodes
+	SIValue *yield_edges;  // yield edges traversed
+	GrB_Vector nodes;      // vector of reachable nodes
+	GrB_Vector parents;    // vector associating each node in the BFS tree with its parent
 } BFSCtx;
 
 static void _process_yield
@@ -98,6 +98,7 @@ static ProcedureResult Proc_BFS_Invoke
 	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
 
 	if(reltype == NULL) {
+		assert(false && "export isn't thread safe, modified D+ and D-");
 		RG_Matrix_export(&R, Graph_GetAdjacencyMatrix(gc->g, false));
 		RG_Matrix_export(&TR, Graph_GetAdjacencyMatrix(gc->g, true));
 	} else {
@@ -106,6 +107,7 @@ static ProcedureResult Proc_BFS_Invoke
 		if(!s) return PROCEDURE_OK;
 
 		bfs_ctx->reltype_id = s->id;
+		assert(false && "export isn't thread safe, modified D+ and D-");
 		RG_Matrix_export(&R, Graph_GetRelationMatrix(gc->g, s->id, false));
 		RG_Matrix_export(&TR, Graph_GetRelationMatrix(gc->g, s->id, true));
 	}
@@ -138,6 +140,10 @@ static ProcedureResult Proc_BFS_Invoke
 	// matrix iterator requires matrix format to be sparse
 	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
 	// we set matrix format at creation time
+	//
+	// TODO: we do support HYPER-SPARSE and ISO
+	// check each vector format and only switch sparsity if needed be
+	// i.e. current format isn't SPARSE nor HYPER-SPARSE
 	GxB_Vector_Option_set(bfs_ctx->nodes, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 	GxB_Vector_Option_set(bfs_ctx->parents, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 
@@ -155,7 +161,8 @@ static SIValue *Proc_BFS_Step
 
 	BFSCtx *bfs_ctx = (BFSCtx *)ctx->privateData;
 
-	// return NULL if the BFS for this source has already been emitted or there are no connected nodes
+	// return NULL if the BFS for this source has already been emitted
+	// or there are no connected nodes
 	if(bfs_ctx->depleted || bfs_ctx->n == 0) return NULL;
 
 	bool yield_nodes = (bfs_ctx->yield_nodes != NULL);
@@ -193,9 +200,12 @@ static SIValue *Proc_BFS_Step
 		if(yield_edges) {
 			GrB_Index parent_id;
 			// find the parent of the reached node
-			GrB_Info res = GrB_Vector_extractElement(&parent_id, bfs_ctx->parents, id);
+			GrB_Info res = GrB_Vector_extractElement(&parent_id,
+					bfs_ctx->parents, id);
 			ASSERT(res == GrB_SUCCESS);
 			// retrieve edges connecting the parent node to the current node
+			// TODO: we only require a single edge
+			// `Graph_GetEdgesConnectingNodes` can return multiple edges
 			Graph_GetEdgesConnectingNodes(bfs_ctx->g, parent_id, id, bfs_ctx->reltype_id, &edge);
 			// append one edge to the edges output array
 			SIArray_Append(&edges, SI_Edge(edge));
@@ -205,7 +215,7 @@ static SIValue *Proc_BFS_Step
 		ASSERT(res == GrB_SUCCESS);
 	}
 
-	bfs_ctx->depleted = depleted; // mark that this node has been mapped
+	bfs_ctx->depleted = depleted;
 
 	// populate output
 	if(yield_nodes) *bfs_ctx->yield_nodes = nodes;

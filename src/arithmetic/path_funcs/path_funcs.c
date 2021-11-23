@@ -192,6 +192,8 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc) {
 	res = LG_BreadthFirstSearch_SSGrB(&V, &PI, ctx->R, ctx->TR, src_id,
 							   &dest_id, max_level);
 	ASSERT(res == GrB_SUCCESS);
+	ASSERT(V != GrB_NULL);
+	ASSERT(PI != GrB_NULL);
 
 	SIValue p = SI_NullVal();
 
