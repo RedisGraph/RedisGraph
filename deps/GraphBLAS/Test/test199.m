@@ -6,11 +6,13 @@ function test199
 
 rng ('default') ;
 
-% GrB.burble (1) ;
+GrB.burble (1) ;
 n = 10 ;
 A.matrix = sprand (n, n, 0.5) ;
+A.matrix (:,3) = sparse (n,1) ;
 A.sparsity = 1 ;    % hypersparse
 B.matrix = sprand (n, n, 0.5) ;
+B.matrix (:,8) = sparse (n,1) ;
 B.sparsity = 1 ;    % hypersparse
 % GB_mex_dump (A,3)
 % GB_mex_dump (B,3)

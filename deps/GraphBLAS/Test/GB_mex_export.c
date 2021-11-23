@@ -18,11 +18,11 @@
 #define FREE_WORK                                               \
 {                                                               \
     GrB_Matrix_free_(&C) ;                                      \
-    REMOVE (Ap) ; if (Ap != NULL) mxFree (Ap) ; Ap = NULL ;     \
-    REMOVE (Ah) ; if (Ah != NULL) mxFree (Ah) ; Ah = NULL ;     \
-    REMOVE (Ai) ; if (Ai != NULL) mxFree (Ai) ; Ai = NULL ;     \
-    REMOVE (Aj) ; if (Aj != NULL) mxFree (Aj) ; Aj = NULL ;     \
-    REMOVE (Ax) ; if (Ax != NULL) mxFree (Ax) ; Ax = NULL ;     \
+    if (Ap != NULL) mxFree (Ap) ; Ap = NULL ;     \
+    if (Ah != NULL) mxFree (Ah) ; Ah = NULL ;     \
+    if (Ai != NULL) mxFree (Ai) ; Ai = NULL ;     \
+    if (Aj != NULL) mxFree (Aj) ; Aj = NULL ;     \
+    if (Ax != NULL) mxFree (Ax) ; Ax = NULL ;     \
 }
 
 #define FREE_ALL                                                \

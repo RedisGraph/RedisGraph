@@ -15,7 +15,12 @@
 
 GrB_Info GrB_Monoid_wait   // no work, just check if the GrB_Monoid is valid
 (
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GrB_Monoid *monoid
+    #else
+    GrB_Monoid monoid,
+    GrB_WaitMode waitmode
+    #endif
 )
 { 
 
@@ -23,10 +28,14 @@ GrB_Info GrB_Monoid_wait   // no work, just check if the GrB_Monoid is valid
     // check inputs
     //--------------------------------------------------------------------------
 
-    #pragma omp flush
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GB_WHERE1 ("GrB_Monoid_wait (&monoid)") ;
     GB_RETURN_IF_NULL (monoid) ;
     GB_RETURN_IF_NULL_OR_FAULTY (*monoid) ;
+    #else
+    GB_WHERE1 ("GrB_Monoid_wait (monoid, waitmode)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (monoid) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // return result

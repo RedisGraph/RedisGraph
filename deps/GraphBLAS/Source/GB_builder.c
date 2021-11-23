@@ -114,13 +114,13 @@
 #define GB_J_WORK(t) (((t) < 0) ? -1 : ((J_work == NULL) ? 0 : J_work [t]))
 #define GB_K_WORK(t) (((t) < 0) ? -1 : ((K_work == NULL) ? t : K_work [t]))
 
-#define GB_FREE_WORK                                \
+#define GB_FREE_WORKSPACE                           \
 {                                                   \
     GB_WERK_POP (Work, int64_t) ;                   \
     GB_FREE (I_work_handle, *I_work_size_handle) ;  \
     GB_FREE (J_work_handle, *J_work_size_handle) ;  \
     GB_FREE (S_work_handle, *S_work_size_handle) ;  \
-    GB_FREE_WERK (&K_work, K_work_size) ;           \
+    GB_FREE_WORK (&K_work, K_work_size) ;           \
 }
 
 //------------------------------------------------------------------------------
@@ -184,7 +184,6 @@ GrB_Info GB_builder                 // build a matrix from tuples
     ASSERT (GB_IMPLIES (nvals > 0, Sx != NULL)) ;
     ASSERT (GB_IMPLIES (S_iso, ttype == stype)) ;
     ASSERT (GB_IMPLIES (S_iso, dup == NULL)) ;
-    ASSERT (GB_IMPLIES (S_iso, nvals > 0)) ;
 
     //==========================================================================
     // symbolic phase of the build =============================================
@@ -224,7 +223,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
     if (Work == NULL)
     { 
         // out of memory
-        GB_FREE_WORK ;
+        GB_FREE_WORKSPACE ;
         return (GrB_OUT_OF_MEMORY) ;
     }
 
@@ -299,7 +298,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         if (I_work == NULL)
         { 
             // out of memory
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 
@@ -395,7 +394,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
                     int64_t col = is_csc ? j : i ;
                     int64_t nrows = is_csc ? vlen : vdim ;
                     int64_t ncols = is_csc ? vdim : vlen ;
-                    GB_FREE_WORK ;
+                    GB_FREE_WORKSPACE ;
                     GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS,
                         "index (" GBd "," GBd ") out of bounds,"
                         " must be < (" GBd ", " GBd ")",
@@ -420,7 +419,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
                 if (J_work == NULL)
                 { 
                     // out of memory
-                    GB_FREE_WORK ;
+                    GB_FREE_WORKSPACE ;
                     return (GrB_OUT_OF_MEMORY) ;
                 }
                 GB_memcpy (J_work, J_input, nvals * sizeof (int64_t), nthreads);
@@ -491,7 +490,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
                 { 
                     // invalid index
                     int64_t i = I_input [kbad [tid]] ;
-                    GB_FREE_WORK ;
+                    GB_FREE_WORKSPACE ;
                     GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS,
                         "index (" GBd ") out of bounds, must be < (" GBd ")",
                         i, vlen) ;
@@ -530,11 +529,11 @@ GrB_Info GB_builder                 // build a matrix from tuples
         if (!S_iso)
         {
             // create the k part of each tuple
-            K_work = GB_MALLOC_WERK (nvals, int64_t, &K_work_size) ;
+            K_work = GB_MALLOC_WORK (nvals, int64_t, &K_work_size) ;
             if (K_work == NULL)
             { 
                 // out of memory
-                GB_FREE_WORK ;
+                GB_FREE_WORKSPACE ;
                 return (GrB_OUT_OF_MEMORY) ;
             }
 
@@ -626,7 +625,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         if (info != GrB_SUCCESS)
         {
             // out of memory in GB_msort_*
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
             return (GrB_OUT_OF_MEMORY) ;
         }
     }
@@ -810,7 +809,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        GB_FREE_WORK ;
+        GB_FREE_WORKSPACE ;
         return (info) ;
     }
 
@@ -974,7 +973,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         { 
             // out of memory
             GB_phbix_free (T) ;
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
             return (GrB_OUT_OF_MEMORY) ;
         }
     }
@@ -1048,7 +1047,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         // T(i,j) = (ttype) Sx(k) will be done for all tuples.
 
         #ifndef GBCOMPACT
-        opcode = GB_SECOND_opcode ;
+        opcode = GB_SECOND_binop_code ;
         #endif
         xtype = ttype ;
         ytype = ttype ;
@@ -1082,7 +1081,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         xtype = dup->xtype ;
         ytype = dup->ytype ;
         ztype = dup->ztype ;
-        fdup = dup->function ;
+        fdup = dup->binop_function ;
         op_2nd = GB_op_is_second (dup, ttype) ;
     }
 
@@ -1162,7 +1161,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
         { 
             // out of memory
             GB_phbix_free (T) ;
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 
@@ -1410,7 +1409,7 @@ GrB_Info GB_builder                 // build a matrix from tuples
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     T->jumbled = false ;
     ASSERT_MATRIX_OK (T, "T built", GB0) ;
     ASSERT (GB_IS_HYPERSPARSE (T)) ;

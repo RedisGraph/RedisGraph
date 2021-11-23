@@ -8,6 +8,7 @@
 //------------------------------------------------------------------------------
 
 // Define macros that depend on the sparsity of A and B for GB_meta16_factory.
+// These macros are only used by saxpy3 methods.
 
 //------------------------------------------------------------------------------
 // GB_GET_B_j: prepare to iterate over B(:,j)
@@ -29,20 +30,20 @@
 
             // B is sparse
             #define GB_GET_B_j                              \
-                int64_t j = kk ;                            \
+                const int64_t j = kk ;                      \
                 int64_t pB = Bp [kk] ;                      \
-                int64_t pB_end = Bp [kk+1] ;                \
-                int64_t bjnz = pB_end - pB ;                \
+                const int64_t pB_end = Bp [kk+1] ;          \
+                const int64_t bjnz = pB_end - pB ;          \
                 GB_GET_T_FOR_SECONDJ
 
         #else
 
             // B is bitmap or full
             #define GB_GET_B_j                              \
-                int64_t j = kk ;                            \
+                const int64_t j = kk ;                      \
                 int64_t pB = kk * bvlen ;                   \
-                int64_t pB_end = pB + bvlen ;               \
-                int64_t bjnz = bvlen ;                      \
+                const int64_t pB_end = pB + bvlen ;         \
+                const int64_t bjnz = bvlen ;                \
                 GB_GET_T_FOR_SECONDJ
 
         #endif
@@ -69,20 +70,20 @@
 
         // B is hyper or sparse
         #define GB_GET_B_kj_INDEX               \
-            int64_t k = Bi [pB]
+            const int64_t k = Bi [pB]
 
     #elif ( GB_B_IS_BITMAP )
 
         // B is bitmap
         #define GB_GET_B_kj_INDEX               \
             if (!Bb [pB]) continue ;            \
-            int64_t k = pB % bvlen
+            const int64_t k = pB % bvlen
 
     #else
 
         // B is full
         #define GB_GET_B_kj_INDEX               \
-            int64_t k = pB % bvlen
+            const int64_t k = pB % bvlen
 
     #endif
 
@@ -91,7 +92,7 @@
     // for any format of B
     #define GB_GET_B_kj_INDEX                   \
         if (!GBB (Bb, pB)) continue ;           \
-        int64_t k = GBI (Bi, pB, bvlen)
+        const int64_t k = GBI (Bi, pB, bvlen)
 
 #endif
 
@@ -112,17 +113,17 @@
 
         // A is sparse
         #define GB_GET_A_k                              \
-            int64_t pA_start = Ap [k] ;                 \
-            int64_t pA_end = Ap [k+1] ;                 \
-            int64_t aknz = pA_end - pA_start
+            const int64_t pA_start = Ap [k] ;           \
+            const int64_t pA_end = Ap [k+1] ;           \
+            const int64_t aknz = pA_end - pA_start
 
     #else
 
         // A is bitmap or full
         #define GB_GET_A_k                              \
-            int64_t pA_start = k * avlen ;              \
-            int64_t pA_end = pA_start + avlen ;         \
-            int64_t aknz = avlen
+            const int64_t pA_start = k * avlen ;        \
+            const int64_t pA_end = pA_start + avlen ;   \
+            const int64_t aknz = avlen
 
     #endif
 
@@ -145,20 +146,20 @@
 
         // A is hyper or sparse
         #define GB_GET_A_ik_INDEX               \
-            int64_t i = Ai [pA]
+            const int64_t i = Ai [pA]
 
     #elif ( GB_A_IS_BITMAP )
 
         // A is bitmap
         #define GB_GET_A_ik_INDEX               \
             if (!Ab [pA]) continue ;            \
-            int64_t i = pA % avlen
+            const int64_t i = pA % avlen
 
     #else
 
         // A is full
         #define GB_GET_A_ik_INDEX               \
-            int64_t i = pA % avlen
+            const int64_t i = pA % avlen
 
     #endif
 
@@ -167,7 +168,7 @@
     // for any format of A
     #define GB_GET_A_ik_INDEX                   \
         if (!GBB (Ab, pA)) continue ;           \
-        int64_t i = GBI (Ai, pA, avlen)
+        const int64_t i = GBI (Ai, pA, avlen)
 
 #endif
 
@@ -261,6 +262,7 @@
 
 // C(:,j)<M(:,j)>=A(:,k)*B(k,j) using one of two methods
 #undef  GB_SCAN_M_j_OR_A_k
+
 #define GB_SCAN_M_j_OR_A_k(A_ok_for_binary_search)                          \
 {                                                                           \
     if (A_ok_for_binary_search && aknz > 256 && mjnz_much < aknz &&         \

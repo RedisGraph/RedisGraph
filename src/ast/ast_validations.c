@@ -75,10 +75,10 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		_AST_GetIdentifiers(child, identifiers);
 	}
 
-	if(type == CYPHER_AST_LIST_COMPREHENSION || 
-	   type == CYPHER_AST_ANY || 
-	   type == CYPHER_AST_ALL || 
-	   type == CYPHER_AST_SINGLE || 
+	if(type == CYPHER_AST_LIST_COMPREHENSION ||
+	   type == CYPHER_AST_ANY ||
+	   type == CYPHER_AST_ALL ||
+	   type == CYPHER_AST_SINGLE ||
 	   type == CYPHER_AST_NONE) {
 		// A list comprehension has a local variable that should only be accessed within its scope;
 		// do not leave it in the identifiers map.
@@ -121,6 +121,9 @@ static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifier
 		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
 		_AST_GetIdentifiers(child, identifiers);
 	}
+
+	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(node);
+	if(order_by) _AST_GetIdentifiers(order_by, identifiers);
 }
 
 // Extract identifiers / aliases from a procedure call.
@@ -554,7 +557,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 
 				// make sure each yield output is mentioned only once
 				if(!raxInsert(identifiers, (unsigned char *)identifier,
-							strlen(identifier), NULL, NULL)) {
+							  strlen(identifier), NULL, NULL)) {
 					ErrorCtx_SetError("Variable `%s` already declared", identifier);
 					res = AST_INVALID;
 					goto cleanup;
@@ -563,7 +566,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 				// make sure procedure is aware of output
 				if(!Procedure_ContainsOutput(proc, identifier)) {
 					ErrorCtx_SetError("Procedure `%s` does not yield output `%s`",
-							proc_name, identifier);
+									  proc_name, identifier);
 					res = AST_INVALID;
 					goto cleanup;
 				}
@@ -1278,101 +1281,6 @@ static void _AST_ReportErrors(const cypher_parse_result_t *result) {
 	}
 }
 
-/* validate list usage in subscript is correct */
-static AST_Validation _validateList(const cypher_astnode_t *root) {
-
-	const cypher_astnode_type_t type = cypher_astnode_type(root);
-	// check that the operation returns a list - ragne function
-	if(type == CYPHER_AST_APPLY_OPERATOR) {
-		const cypher_astnode_t *funcNode =  cypher_ast_apply_operator_get_func_name(root);
-		const char *funcName = cypher_ast_function_name_get_value(funcNode);
-		// function name is NOT range
-		if(strcasecmp(funcName, "range")) {
-			ErrorCtx_SetError("subscript index access expects range function; encountered '%s'", funcName);
-			return AST_INVALID;
-		}
-		// validate the number of arguments in range function 2-3
-		uint narguments = cypher_ast_apply_operator_narguments(root);
-		if(narguments < 2 || narguments > 3) {
-			ErrorCtx_SetError("range function expects 2 or 3 arguments; encountered %d", narguments);
-			return AST_INVALID;
-		}
-		// validate that all the arguments are integers
-		for(uint i = 0; i < narguments; i ++) {
-			const cypher_astnode_t *argument = cypher_ast_apply_operator_get_argument(root, i);
-			const cypher_astnode_type_t argument_type = cypher_astnode_type(argument);
-			if(argument_type != CYPHER_AST_INTEGER || argument_type != CYPHER_AST_IDENTIFIER) {
-				ErrorCtx_SetError("expected integer or identifier; encountered %s",
-								  cypher_astnode_typestr(argument_type));
-				return AST_INVALID;
-			}
-		}
-	} else if(type != CYPHER_AST_COLLECTION && type != CYPHER_AST_IDENTIFIER) {
-		// list is a collection or identifier
-		// TODO: in current state, the identifier type is evluated in query runtime
-		// check if possible to evluate during ast validation
-		ErrorCtx_SetError("subscript index access expects a list or an identifier; encountered %s",
-						  cypher_astnode_typestr(type));
-		return AST_INVALID;
-	}
-	return AST_VALID;
-}
-
-/* validate index usage in subscript is correct */
-static AST_Validation _validateIndex(const cypher_astnode_t *root) {
-	const cypher_astnode_type_t type = cypher_astnode_type(root);
-	if(type != CYPHER_AST_INTEGER || type != CYPHER_AST_IDENTIFIER) {
-		// the type of the subscript value should be an integer or identifier
-		// TODO: in current state, the identifier type is evaluated in query runtime
-		// check if possible to evaluate during ast validation
-		ErrorCtx_SetError("subscript index must be an integer or an identifier");
-		return AST_INVALID;
-	}
-	return AST_VALID;
-}
-
-/* validate that subscript or slice operations are correct */
-static AST_Validation _validateSubscriptOps(const cypher_astnode_t *root) {
-	if(!root) return AST_VALID;
-
-	const cypher_astnode_type_t type = cypher_astnode_type(root);
-	// validate subscript
-	if(type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
-		// validate list
-		const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(root);
-		if(_validateList(exp_node) != AST_VALID) return AST_INVALID;
-
-		// validate index
-		const cypher_astnode_t *subscript_node = cypher_ast_subscript_operator_get_subscript(root);
-		if(_validateIndex(subscript_node) != AST_VALID) return AST_INVALID;
-	}
-
-	// validate slice
-	if(type == CYPHER_AST_SLICE_OPERATOR) {
-		// validate list
-		const cypher_astnode_t *exp_node = cypher_ast_slice_operator_get_expression(root);
-		if(_validateList(exp_node) != AST_VALID) return AST_INVALID;
-
-		// validate start index
-		const cypher_astnode_t *start_node = cypher_ast_slice_operator_get_start(root);
-		if(start_node)
-			if(_validateIndex(start_node) != AST_VALID) return AST_INVALID;
-
-		// validate end index
-		const cypher_astnode_t *end_node = cypher_ast_slice_operator_get_end(root);
-		if(end_node)
-			if(_validateIndex(end_node) != AST_VALID) return AST_INVALID;
-	}
-
-	// validate children
-	uint child_count = cypher_astnode_nchildren(root);
-	for(uint i = 0; i < child_count; i++) {
-		if(_validateSubscriptOps(cypher_astnode_get_child(root, i)) != AST_VALID) return AST_INVALID;
-	}
-
-	return AST_VALID;
-}
-
 // checks if set items contains non-alias referenes in lhs
 static AST_Validation _Validate_SETItems(const cypher_astnode_t *set_clause) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
@@ -1519,25 +1427,6 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast) {
 cleanup:
 	array_free(return_indices);
 	return res;
-}
-
-/* This method collect unique parameters place holders names. It returns a rax with
- * <name, null> as key-value entries. */
-static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *keys) {
-	cypher_astnode_type_t type = cypher_astnode_type(root);
-	// In case of parameter.
-	if(type == CYPHER_AST_PARAMETER) {
-		const char *identifier = cypher_ast_parameter_get_name(root);
-		raxInsert(keys, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
-	} else {
-		// Recurse over children.
-		uint child_count = cypher_astnode_nchildren(root);
-		for(uint i = 0; i < child_count; i++) {
-			const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-			// Recursively continue mapping.
-			_collect_query_parameters_names(child, keys);
-		}
-	}
 }
 
 static AST_Validation _ValidateParamsOnly(const cypher_astnode_t *statement) {
@@ -1714,11 +1603,12 @@ AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
-	// In case of no parameters.
+	// in case of no parameters
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
-	if(_ValidateParamsOnly(root) != AST_VALID) return AST_INVALID;
-	if(_ValidateDuplicateParameters(root) != AST_VALID) return AST_INVALID;
+	if(_ValidateParamsOnly(root)            != AST_VALID)  return AST_INVALID;
+	if(_ValidateDuplicateParameters(root)   != AST_VALID)  return AST_INVALID;
+	if(_ValidateFunctionCalls(root, false)  != AST_VALID)  return AST_INVALID;
 
 	return AST_VALID;
 }
@@ -1737,8 +1627,9 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
-	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
-	   body_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
+	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
+	   body_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
+	   body_type == CYPHER_AST_DROP_PROPS_INDEX) {
 		// Index operation; validations are handled elsewhere.
 		return AST_VALID;
 	}
@@ -1760,4 +1651,3 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	return res;
 }
-

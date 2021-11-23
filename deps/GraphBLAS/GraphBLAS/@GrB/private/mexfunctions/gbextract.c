@@ -44,7 +44,7 @@ void mexFunction
     // find the arguments
     //--------------------------------------------------------------------------
 
-    mxArray *Matrix [4], *String [2], *Cell [2] ;
+    mxArray *Matrix [6], *String [2], *Cell [2] ;
     base_enum_t base ;
     kind_enum_t kind ;
     GxB_Format_Value fmt ;

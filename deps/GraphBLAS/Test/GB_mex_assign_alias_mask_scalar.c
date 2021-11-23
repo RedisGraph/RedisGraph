@@ -20,7 +20,7 @@
 
 GrB_Matrix C = NULL ;
 GrB_Matrix S = NULL ;
-GxB_Scalar scalar = NULL ;
+GrB_Scalar scalar = NULL ;
 GrB_Info assign_mask_scalar (void) ;
 
 GrB_Info assign_mask_scalar (void)
@@ -170,7 +170,7 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("scalar failed") ;
     }
-    scalar = (GxB_Scalar) S ;
+    scalar = (GrB_Scalar) S ;
 //  GrB_Info info = GxB_Scalar_fprint (scalar, "scalar", GxB_COMPLETE, NULL) ;
 //  if (info != GrB_SUCCESS)
 //  {

@@ -49,5 +49,14 @@ void GB_iso_reduce_worker
     size_t zsize                    // size of s and a
 ) ;
 
+GrB_Info GB_Scalar_reduce
+(
+    GrB_Scalar S,                   // result scalar
+    const GrB_BinaryOp accum,       // optional accum for c=accum(c,t)
+    const GrB_Monoid monoid,        // monoid to do the reduction
+    const GrB_Matrix A,             // matrix to reduce
+    GB_Context Context
+) ;
+
 #endif
 

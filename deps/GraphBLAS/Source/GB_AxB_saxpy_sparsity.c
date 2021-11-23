@@ -36,7 +36,11 @@ void GB_AxB_saxpy_sparsity          // determine C_sparsity and method to use
     // determine the sparsity of C
     //--------------------------------------------------------------------------
 
-    if (B->nvec_nonempty < 0) B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
+    if (B->nvec_nonempty < 0)
+    { 
+        // B->nvec_nonempty is used to select the method
+        B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
+    }
     double bnvec = B->nvec_nonempty ;
 
     double m = (double) A->vlen ;
@@ -192,7 +196,7 @@ void GB_AxB_saxpy_sparsity          // determine C_sparsity and method to use
                     case GxB_FULL : 
                         // S = {B,F} * S : if B has many empty columns
                         // B = {B,F} * S : otherwise C is bitmap
-                        (*C_sparsity) = (bnvec < n/2) ? GxB_SPARSE : GxB_BITMAP;
+                        (*C_sparsity) = (bnvec < n/4) ? GxB_SPARSE : GxB_BITMAP;
                         break ;
                     default: ;
                 }
@@ -238,7 +242,7 @@ void GB_AxB_saxpy_sparsity          // determine C_sparsity and method to use
         // hypersparse.  Otherwise C must be sparse.  This is a requirement of
         // GB_AxB_saxpy3, and is also asserted there.
         ASSERT ((*C_sparsity) ==
-            (B_sparsity == GxB_HYPERSPARSE) ? GxB_HYPERSPARSE : GxB_SPARSE) ;
+            ((B_sparsity == GxB_HYPERSPARSE) ? GxB_HYPERSPARSE : GxB_SPARSE)) ;
     }
 }
 

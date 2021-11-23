@@ -19,7 +19,7 @@ int64_t GB_nnz      // return nnz(A) or INT64_MAX if integer overflow
 )
 {
 
-    if (A == NULL || A->magic != GB_MAGIC || A->x == 0)
+    if (A == NULL || A->magic != GB_MAGIC || A->x == NULL)
     { 
         // A is NULL or uninitialized
         return (0) ;

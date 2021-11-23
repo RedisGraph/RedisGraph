@@ -13,11 +13,8 @@
 // TODO: If done in-place, Cx can be passed as NULL.  Then if A is not bitmap,
 // C->b needs to be allocated, but not C->x.
 
-// TODO: use a single GB_memcpy for the values, regardless of selectop
-
-// the following macro is awkward but currently needed for the user_select op:
-#undef  GBI
-#define GBI(Ai,p,avlen) i
+// TODO: use a single GB_memcpy for the values, regardless of selectop,
+// if no typecasting is being done.
 
 {
     int8_t *Ab = A->b ;
@@ -35,20 +32,31 @@
         int64_t j = pA / avlen ;
         #if defined ( GB_ENTRY_SELECTOR )
             // test the existence and value of A(i,j) 
-            int8_t cb = GBB (Ab, pA) && GB_TEST_VALUE_OF_ENTRY (pA) ;
-        #else
-            // test the existence and position of A(i,j) 
-            #if defined ( GB_TRIL_SELECTOR )
-            int8_t cb = GBB (Ab, pA) && (j-i <= ithunk) ;
-            #elif defined ( GB_TRIU_SELECTOR )
-            int8_t cb = GBB (Ab, pA) && (j-i >= ithunk) ;
-            #elif defined ( GB_DIAG_SELECTOR )
-            int8_t cb = GBB (Ab, pA) && (j-i == ithunk) ;
-            #elif defined ( GB_OFFDIAG_SELECTOR )
-            int8_t cb = GBB (Ab, pA) && (j-i != ithunk) ;
-            #else
-            ASSERT (GB_DEAD_CODE) ;
-            #endif
+            GB_TEST_VALUE_OF_ENTRY (keep, pA) ;
+        #endif
+        int8_t cb = GBB (Ab, pA) &&
+        #if defined ( GB_ENTRY_SELECTOR )
+            keep ;
+        #elif defined ( GB_TRIL_SELECTOR )
+            (j-i <= ithunk) ;
+        #elif defined ( GB_TRIU_SELECTOR )
+            (j-i >= ithunk) ;
+        #elif defined ( GB_DIAG_SELECTOR )
+            (j-i == ithunk) ;
+        #elif defined ( GB_OFFDIAG_SELECTOR )
+            (j-i != ithunk) ;
+        #elif defined ( GB_ROWINDEX_SELECTOR )
+            (i+ithunk != 0) ;
+        #elif defined ( GB_COLINDEX_SELECTOR )
+            (j+ithunk != 0) ;
+        #elif defined ( GB_COLLE_SELECTOR )
+            (j <= ithunk) ;
+        #elif defined ( GB_COLGT_SELECTOR )
+            (j > ithunk) ;
+        #elif defined ( GB_ROWLE_SELECTOR )
+            (i <= ithunk) ;
+        #elif defined ( GB_ROWGT_SELECTOR )
+            (i > ithunk) ;
         #endif
         Cb [pA] = cb ;
         cnvals += cb ;

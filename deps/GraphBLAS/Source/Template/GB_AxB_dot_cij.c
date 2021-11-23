@@ -11,6 +11,10 @@
 // used for all three cases: C=A'*B, C<M>=A'*B, and C<!M>=A'*B in dot2 when C
 // is bitmap, and for C<M>=A'*B when C and M are sparse or hyper in dot3.
 
+// if A_NOT_TRANSPOSED is #defined, then dot2 is computing A(i,:)*B(:,j)
+// for C<#M>=A*B.  In this case A is either bitmap or full, and B is always
+// sparse.
+
 // When used as the multiplicative operator, the PAIR operator provides some
 // useful special cases.  Its output is always one, for any matching pair of
 // entries A(k,i)'*B(k,j) for some k.  If the monoid is ANY, then C(i,j)=1 if
@@ -26,7 +30,12 @@
 // found, so these optimizations can be used only if A(:,i) and/or B(:,j) are
 // entirely populated.
 
-// TODO::: if A or B are full, and no mask, create C as full (dot2)
+#undef GB_A_INDEX
+#ifdef GB_A_NOT_TRANSPOSED
+#define GB_A_INDEX(k) (pA+(k)*vlen)
+#else
+#define GB_A_INDEX(k) (pA+(k))
+#endif
 
 //------------------------------------------------------------------------------
 // C(i,j) = A(:,i)'*B(:,j): a single dot product
@@ -96,7 +105,7 @@
     {
 
         //----------------------------------------------------------------------
-        // A is full and B is sparse/hyper
+        // A is full and B is sparse/hyper (C = A'*B or A*B)
         //----------------------------------------------------------------------
 
         #if GB_IS_PAIR_MULTIPLIER
@@ -115,8 +124,8 @@
         #else
         {
             int64_t k = Bi [pB] ;               // first row index of B(:,j)
-            // cij = A(k,i) * B(k,j)
-            GB_GETA (aki, Ax, pA+k, A_iso) ;    // aki = A(k,i)
+            // cij = (A(k,i) or A(i,k)) * B(k,j)
+            GB_GETA (aki, Ax, GB_A_INDEX(k), A_iso) ; // aki = A(k,i) or A(i,k)
             GB_GETB (bkj, Bx, pB  , B_iso) ;    // bkj = B(k,j)
             GB_MULT (cij, aki, bkj, i, k, j) ;  // cij = aki * bkj
             GB_PRAGMA_SIMD_DOT (cij)
@@ -124,9 +133,9 @@
             { 
                 GB_DOT_TERMINAL (cij) ;             // break if cij terminal
                 int64_t k = Bi [p] ;
-                // cij += A(k,i) * B(k,j)
-                GB_GETA (aki, Ax, pA+k, A_iso) ;    // aki = A(k,i)
-                GB_GETB (bkj, Bx, p   , A_iso) ;    // bkj = B(k,j)
+                // cij += (A(k,i) or A(i,k)) * B(k,j)
+                GB_GETA (aki, Ax, GB_A_INDEX(k), A_iso) ; //aki=A(k,i) or A(i,k)
+                GB_GETB (bkj, Bx, p, B_iso) ;           // bkj = B(k,j)
                 GB_MULTADD (cij, aki, bkj, i, k, j) ;   // cij += aki * bkj
             }
         }
@@ -172,15 +181,15 @@
     {
 
         //----------------------------------------------------------------------
-        // A is bitmap and B is sparse/hyper
+        // A is bitmap and B is sparse/hyper (C = A'*B or A*B)
         //----------------------------------------------------------------------
 
         for (int64_t p = pB ; p < pB_end ; p++)
         {
             int64_t k = Bi [p] ;
-            if (Ab [pA+k])
+            if (Ab [GB_A_INDEX (k)])
             { 
-                GB_DOT (k, pA+k, p) ;
+                GB_DOT (k, GB_A_INDEX (k), p) ;
             }
         }
         GB_DOT_SAVE_CIJ ;
@@ -372,4 +381,6 @@
     }
     #endif
 }
+
+#undef GB_A_STRIDE
 

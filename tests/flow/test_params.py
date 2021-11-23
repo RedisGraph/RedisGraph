@@ -25,10 +25,39 @@ class testParams(FlowTestsBase):
     def test_simple_params(self):
         params = [1, 2.3, -1, -2.3, "str", True, False, None, [0, 1, 2]]
         query = "RETURN $param"
-        for param in params:    
+        for param in params:
             expected_results = [[param]]
             query_info = QueryInfo(query = query, description="Tests simple params", expected_result = expected_results)
             self._assert_resultset_equals_expected(redis_graph.query(query, {'param': param}), query_info)
+
+    def test_invalid_param(self):
+        invalid_queries = [
+                "CYPHER param=a RETURN $param",                            # 'a' is undefined
+                "CYPHER param=a MATCH (a) RETURN $param",                  # 'a' is undefined
+                "CYPHER param=f(1) RETURN $param",                         # 'f' doesn't exists
+                "CYPHER param=2+f(1) RETURN $param",                       # 'f' doesn't exists
+                "CYPHER param=[1, f(1)] UNWIND $param AS x RETURN x",      # 'f' doesn't exists
+                "CYPHER param=[1, [2, f(1)]] UNWIND $param AS x RETURN x", # 'f' doesn't exists
+                "CYPHER param={'key':f(1)} RETURN $param",                 # 'f' doesn't exists
+                "CYPHER param=1*'a' RETURN $param",                        # 1*'a' isn't defined
+                "CYPHER param=abs(1)+f(1) RETURN $param",                  # 'f' doesn't exists
+                "CYPHER param= RETURN 1",                                  # undefined parameter
+                "CYPHER param=count(1) RETURN $param"                      # aggregation function can't be used as a parameter
+                "CYPHER param=2+count(1) RETURN $param",                   # aggregation function can't be used as a parameter
+                "CYPHER param=[1, count(1)] UNWIND $param AS x RETURN x",  # aggregation function can't be used as a parameter
+                "CYPHER param={'key':count(1)} RETURN $param",             # aggregation function can't be used as a parameter
+                "CYPHER param={'key':1*'a'} RETURN $param",                # 1*'a' isn't defined
+                "CYPHER param=[1, 1*'a'] UNWIND $param AS x RETURN x",     # 1*'a' isn't defined
+                "CYPHER param={'key':a} RETURN $param",                    # 'a' isn't defined
+                "CYPHER param=[1, a] UNWIND $param AS x RETURN x",         # 'a' isn't defined
+                "CYPHER param0=1 param1=$param0 RETURN $param1"            # paramers shouldn't refer to one another
+                ]
+        for q in invalid_queries:
+            try:
+                result = redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                pass
 
     def test_expression_on_param(self):
         params = {'param': 1}
@@ -80,6 +109,20 @@ class testParams(FlowTestsBase):
             # Expecting an error.
             pass
 
+        try:
+            redis_graph.profile(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
+        try:
+            redis_graph.execution_plan(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
         query = "MATCH (a) WHERE a.v = $missing RETURN a"
         try:
             redis_graph.query(query)
@@ -98,12 +141,11 @@ class testParams(FlowTestsBase):
 
     def test_id_scan(self):
         redis_graph.query("CREATE ({val:1})")
-        expected_results=[[1]]
-        params = {'id' : 0}
+        expected_results = [[1]]
+        params = {'id': 0}
         query = "MATCH (n) WHERE id(n)=$id return n.val"
-        query_info = QueryInfo(query = query, description="Test id scan with params", expected_result = expected_results)
+        query_info = QueryInfo(query=query, description="Test id scan with params", expected_result=expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
-        query = redis_graph.build_params_header(params) + query
-        plan = redis_graph.execution_plan(query)
+        plan = redis_graph.execution_plan(query, params=params)
         self.env.assertIn('NodeByIdSeek', plan)
 

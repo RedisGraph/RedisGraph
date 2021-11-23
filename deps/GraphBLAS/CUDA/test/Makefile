@@ -14,7 +14,6 @@ CUDA_OPTS = -O2 --cudart=shared --gpu-architecture=compute_75\
         --relocatable-device-code true --device-c\
         --std=c++11 -Xcompiler -fPIC
 
-
 %.o: %.cu
 	nvcc -c $(I) $(CUDA_OPTS) $(INC)  -o $@ $< 
 

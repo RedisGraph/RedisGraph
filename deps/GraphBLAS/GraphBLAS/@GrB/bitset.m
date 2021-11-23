@@ -44,9 +44,6 @@ function C = bitset (A, B, arg3, arg4)
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later
 
-% FUTURE: bitset(A,B,V) for two matrices A and B is slower than it could be.
-% See comments in gb_union_op.
-
 if (isobject (A))
     A = A.opaque ;
 end
@@ -126,7 +123,7 @@ if (V_is_scalar)
         % A is a scalar
         if (b_is_scalar)
             % both A and B are scalars
-            C = gb_union_op (op, A, B) ;
+            C = gbeunion (op, A, 0, B, 0) ;
         else
             % A is a scalar, B is a matrix
             C = gbapply2 (op, A, B) ;
@@ -138,7 +135,7 @@ if (V_is_scalar)
             C = gbapply2 (op, A, B) ;
         else
             % both A and B are matrices
-            C = gb_union_op (op, A, B) ;
+            C = gbeunion (op, A, 0, B, 0) ;
         end
     end
 
@@ -164,7 +161,7 @@ else
 
     % Set all bits referenced by B(i,j) to 1, even those that need to be
     % set to 0, without considering V(i,j).
-    C = gb_union_op (['bitset.', atype], A, B) ;
+    C = gbeunion (['bitset.', atype], A, 0, B, 0) ;
 
     % The pattern of C is now the set intersection of A and B, but
     % bits referenced by B(i,j) have been set to 1, not 0.  Construct B0

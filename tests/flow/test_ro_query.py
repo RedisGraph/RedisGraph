@@ -15,9 +15,9 @@ def checkSlaveSynced(env, slaveConn, graph_name, time_out=5):
 
 class test_read_only_query(FlowTestsBase):
     def __init__(self):
-        if Env().envRunner.debugger is not None:
-            Env().skip() # valgrind is not working correctly with replication
         self.env = Env(decodeResponses=True, useSlaves=True)
+        if self.env.envRunner.debugger is not None:
+            self.env.skip() # valgrind is not working correctly with replication
         global master_con
         global slave_con
         master_con = self.env.getConnection()

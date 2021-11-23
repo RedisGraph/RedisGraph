@@ -1,3 +1,4 @@
+import os
 from RLTest import Env
 from redisgraph import Graph
 from pathos.pools import ProcessPool as Pool
@@ -9,7 +10,7 @@ from pathos.pools import ProcessPool as Pool
 #    expect not to get any exceptions
 
 GRAPH_NAME = "max_pending_queries"
-SLOW_QUERY = "UNWIND range (0, 1000000) AS x WITH x WHERE (x / 2) = 50  RETURN x"
+SLOW_QUERY = "UNWIND range (0, 1000000) AS x WITH x WHERE (x / 2) = 50 RETURN x"
 
 def issue_query(conn, q):
     try:
@@ -21,26 +22,12 @@ def issue_query(conn, q):
 
 class testPendingQueryLimit():
     def __init__(self):
-        # skip test if we're running under Valgrind
-        if Env().envRunner.debugger is not None:
-            Env().skip() # valgrind is not working correctly with multi process
-
         self.env = Env(decodeResponses=True)
+        # skip test if we're running under Valgrind
+        if self.env.envRunner.debugger is not None or os.getenv('COV') == '1':
+            self.env.skip() # valgrind is not working correctly with multi process
+
         self.conn = self.env.getConnection()
-
-    def test_01_query_limit_config(self):
-        # read max queued queries config
-        result = self.conn.execute_command("GRAPH.CONFIG", "GET", "MAX_QUEUED_QUERIES")
-        max_queued_queries = result[1]
-        self.env.assertEquals(max_queued_queries, 4294967295)
-
-        # update configuration, set max queued queries
-        self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", 10)
-
-        # re-read configuration
-        result = self.conn.execute_command("GRAPH.CONFIG", "GET", "MAX_QUEUED_QUERIES")
-        max_queued_queries = result[1]
-        self.env.assertEquals(max_queued_queries, 10)
 
     def stress_server(self):
         threadpool_size = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
@@ -58,6 +45,20 @@ class testPendingQueryLimit():
 
         # return if error encountered
         return any(result)
+
+    def test_01_query_limit_config(self):
+        # read max queued queries config
+        result = self.conn.execute_command("GRAPH.CONFIG", "GET", "MAX_QUEUED_QUERIES")
+        max_queued_queries = result[1]
+        self.env.assertEquals(max_queued_queries, 4294967295)
+
+        # update configuration, set max queued queries
+        self.conn.execute_command("GRAPH.CONFIG", "SET", "MAX_QUEUED_QUERIES", 10)
+
+        # re-read configuration
+        result = self.conn.execute_command("GRAPH.CONFIG", "GET", "MAX_QUEUED_QUERIES")
+        max_queued_queries = result[1]
+        self.env.assertEquals(max_queued_queries, 10)
 
     def test_02_overflow_no_limit(self):
         # no limit on number of pending queries

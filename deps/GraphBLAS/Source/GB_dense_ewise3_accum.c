@@ -13,6 +13,7 @@
 #include "GB_binop.h"
 #ifndef GBCOMPACT
 #include "GB_binop__include.h"
+#endif
 
 void GB_dense_ewise3_accum          // C += A+B, all matrices dense
 (
@@ -23,6 +24,7 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     GB_Context Context
 )
 {
+#ifndef GBCOMPACT
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -62,8 +64,8 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     ASSERT (op->ztype == B->type) ;
     ASSERT (op->ztype == op->xtype) ;
     ASSERT (op->ztype == op->ytype) ;
-    ASSERT (op->opcode >= GB_MIN_opcode) ;
-    ASSERT (op->opcode <= GB_RDIV_opcode) ;
+    ASSERT (op->opcode >= GB_MIN_binop_code) ;
+    ASSERT (op->opcode <= GB_RDIV_binop_code) ;
 
     GB_ENSURE_FULL (C) ;    // convert C to full, if sparsity control allows it
 
@@ -113,7 +115,6 @@ void GB_dense_ewise3_accum          // C += A+B, all matrices dense
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (C, "C+=A+B output", GB0) ;
-}
-
 #endif
+}
 

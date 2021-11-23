@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -20,38 +20,47 @@ typedef struct {
 	SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const SIValue *args, const char **yield) {
+ProcedureResult Proc_RelationsInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
-	pdata->schema_id = 0;
-	pdata->gc = QueryCtx_GetGraphCtx();
-	pdata->output = array_new(SIValue, 2);
-	array_append(pdata->output, SI_ConstStringVal("relationshipType"));
-	array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+
+	pdata->schema_id  =  0;
+	pdata->gc         =  QueryCtx_GetGraphCtx();
+	pdata->output     =  array_new(SIValue, 1);
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
 }
 
-SIValue *Proc_RelationsStep(ProcedureCtx *ctx) {
+SIValue *Proc_RelationsStep
+(
+	ProcedureCtx *ctx
+) {
 	ASSERT(ctx->privateData != NULL);
 
 	RelationsContext *pdata = (RelationsContext *)ctx->privateData;
 
-	// Depleted?
+	// depleted?
 	if(pdata->schema_id >= GraphContext_SchemaCount(pdata->gc, SCHEMA_EDGE))
 		return NULL;
 
-	// Get schema name.
+	// get schema name
 	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_EDGE);
-	char *name = (char *)Schema_GetName(s);
-	pdata->output[1] = SI_ConstStringVal(name);
+	pdata->output[0] = SI_ConstStringVal(Schema_GetName(s));
 	return pdata->output;
 }
 
-ProcedureResult Proc_RelationsFree(ProcedureCtx *ctx) {
-	// Clean up.
+ProcedureResult Proc_RelationsFree
+(
+	ProcedureCtx *ctx
+) {
+	// clean up
 	if(ctx->privateData) {
 		RelationsContext *pdata = ctx->privateData;
 		array_free(pdata->output);

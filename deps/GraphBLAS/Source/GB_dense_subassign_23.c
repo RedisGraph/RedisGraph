@@ -73,7 +73,7 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
     // get the operator
     //--------------------------------------------------------------------------
 
-    if (accum->opcode == GB_FIRST_opcode || C->iso)
+    if (accum->opcode == GB_FIRST_binop_code || C->iso)
     { 
         // nothing to do
         return (GrB_SUCCESS) ;
@@ -165,7 +165,7 @@ GrB_Info GB_dense_subassign_23      // C += B; C is dense, B is sparse or dense
 
         GB_BURBLE_MATRIX (B, "(generic C+=B) ") ;
 
-        GxB_binary_function fadd = accum->function ;
+        GxB_binary_function fadd = accum->binop_function ;
 
         size_t csize = C->type->size ;
         size_t bsize = B->type->size ;

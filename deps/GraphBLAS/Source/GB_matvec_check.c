@@ -20,8 +20,8 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     const char *name,       // name of the matrix, optional
     int pr,                 // print level; if negative, ignore nzombie
                             // conditions and use GB_FLIP(pr) for diagnostics
-    FILE *f,                // file for output
-    const char *kind        // "matrix" or "vector"
+    FILE *f,                // file for output (or stdout if f is NULL)
+    const char *kind        // "matrix" or "vector" (only for printing diag.)
 )
 {
 
@@ -49,7 +49,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         if (pr == GxB_COMPLETE_VERBOSE) pr = GxB_SHORT_VERBOSE ;
         if (pr == GxB_COMPLETE        ) pr = GxB_SHORT ;
     }
-    bool pr_silent   = (pr == GxB_SILENT) ;
+//  bool pr_silent   = (pr == GxB_SILENT) ;
     bool pr_complete = (pr == GxB_COMPLETE || pr == GxB_COMPLETE_VERBOSE) ;
     bool pr_short    = (pr == GxB_SHORT    || pr == GxB_SHORT_VERBOSE   ) ;
     bool one_based = GB_Global_print_one_based_get ( ) ;
@@ -81,7 +81,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         return (GrB_NULL_POINTER) ;
     }
 
-    GB_CHECK_MAGIC (A, kind) ;
+    GB_CHECK_MAGIC (A) ;
 
     //--------------------------------------------------------------------------
     // print the header
@@ -222,8 +222,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     // check the dimensions
     //--------------------------------------------------------------------------
 
-    if (A->vlen < 0 || A->vlen > GxB_INDEX_MAX ||
-        A->vdim < 0 || A->vdim > GxB_INDEX_MAX)
+    if (A->vlen < 0 || A->vlen > GB_NMAX || A->vdim < 0 || A->vdim > GB_NMAX)
     { 
         GBPR0 ("  invalid %s dimensions\n", kind) ;
         return (GrB_INVALID_OBJECT) ;
@@ -334,6 +333,18 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     }
     #endif
 
+    if (A->p != NULL && (A->p_size < (A->plen + 1) * sizeof (int64_t)))
+    { 
+        GBPR0 ("  A->p is too small!\n") ;
+        return (GrB_INVALID_OBJECT) ;
+    }
+
+    if (A->h != NULL && (A->h_size < (A->plen) * sizeof (int64_t)))
+    { 
+        GBPR0 ("  A->h is too small!\n") ;
+        return (GrB_INVALID_OBJECT) ;
+    }
+
     //--------------------------------------------------------------------------
     // check p
     //--------------------------------------------------------------------------
@@ -422,7 +433,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     #define K (1024L)
     if (memsize < K)
     { 
-        GBPR0 (", memory: " GBu " bytes\n", memsize) ;
+        GBPR0 (", memory: " GBd " bytes\n", (int64_t) memsize) ;
     }
     else if (memsize < K*K)
     { 

@@ -18,7 +18,6 @@
 #include <limits>
 #include <cstdint>
 #include <stdio.h>
-#include "mySemiRing.h"
 #include "matrix.h"
 
 template< typename T_C, typename T_A, typename T_B, typename T_X, typename T_Y, typename T_Z>

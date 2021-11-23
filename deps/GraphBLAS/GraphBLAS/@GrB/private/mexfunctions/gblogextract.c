@@ -153,7 +153,11 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index gnvals ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK1 (G, GrB_Matrix_wait (&G)) ;
+    #else
+    OK1 (G, GrB_Matrix_wait (G, GrB_MATERIALIZE)) ;
+    #endif
     OK (GrB_Matrix_nvals (&gnvals, G)) ;
     OK (GxB_Matrix_Option_get (G, GxB_SPARSITY_STATUS, &sparsity)) ;
     CHECK_ERROR (sparsity == GxB_BITMAP, "internal error 0") ;
@@ -165,13 +169,15 @@ void mexFunction
     #ifdef GB_MEMDUMP
     printf ("remove G->x from memtable: %p\n", G->x) ;
     #endif
-    GB_Global_memtable_remove (G->x) ; G->x = NULL ; G->x_size = 0 ;
+    GB_Global_memtable_remove (G->x) ;
+    G->x = NULL ; G->x_size = 0 ;
     bool G_iso = G->iso  ;            	
 
     //--------------------------------------------------------------------------
-    // change G to boolean (all true and iso) TODO: use G as structural instead
+    // change G to boolean (all true and iso)
     //--------------------------------------------------------------------------
 
+    // Tim: use G as structural instead
     bool Gbool = true ;        							
     G->type = GrB_BOOL ;       	             	 	                 	
     G->x = &Gbool ;            		 	 	 	 	 	
@@ -220,14 +226,19 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Index tnvals ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK1 (T, GrB_Matrix_wait (&T)) ;
+    #else
+    OK1 (T, GrB_Matrix_wait (T, GrB_MATERIALIZE)) ;
+    #endif
     OK (GrB_Matrix_nvals (&tnvals, T)) ;
     uint64_t *Tx = T->x ;
     size_t Tx_size = T->x_size ;
     #ifdef GB_MEMDUMP
     printf ("remove T->x from memtable: %p\n", T->x) ;
     #endif
-    GB_Global_memtable_remove (T->x) ; T->x = NULL ; T->x_size = 0 ;
+    GB_Global_memtable_remove (T->x) ;
+    T->x = NULL ; T->x_size = 0 ;
 
     // gnvals and tnvals are identical, by construction
     CHECK_ERROR (gnvals != tnvals, "internal error 1") ;
@@ -248,8 +259,10 @@ void mexFunction
     printf ("remove V->i from memtable: %p\n", V->i) ;
     printf ("remove V->x from memtable: %p\n", V->x) ;
     #endif
-    GB_Global_memtable_remove (V->i) ; gb_mxfree (&V->i) ;
-    GB_Global_memtable_remove (V->x) ; gb_mxfree (&V->x) ;
+    GB_Global_memtable_remove (V->i) ;
+    gb_mxfree (&V->i) ;
+    GB_Global_memtable_remove (V->x) ;
+    gb_mxfree (&V->x) ;
 
     // transplant values of T as the row indices of V
     V->i = (int64_t *) Tx ;

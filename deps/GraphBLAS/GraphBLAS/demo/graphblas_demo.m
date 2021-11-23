@@ -73,7 +73,7 @@ tic
 X2 = X*X ;
 builtin_time = toc ;
 fprintf ('\nGraphBLAS time: %g sec (in single)\n', gb_time) ;
-fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('%s time:    %g sec (in double)\n', demo_whoami, builtin_time) ;
 fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
     demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
@@ -100,7 +100,7 @@ G2 = G*G ;
 gb_time = toc ;
 err = norm (X2 - G2, 1) / norm (X2,1)
 fprintf ('\nGraphBLAS time: %g sec (in double)\n', gb_time) ;
-fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('%s time:    %g sec (in double)\n', demo_whoami, builtin_time) ;
 fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
     demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
@@ -234,11 +234,16 @@ C1 = A-B
 C2 = GrB.eadd ('-', A, B)
 
 %% 
-% But these give the same result
+% But these give the same result.  GrB.eunion applies the operator
+% as op(alpha,B) when A(i,j) is not present but B(i,j) is, and
+% as op(A,beta) when A(i,j) is present but B(i,j) is not.
+% In this case, both alpha and beta are zero.
 
 C1 = A-B 
 C2 = GrB.eadd ('+', A, GrB.apply ('-', B))
+C3 = GrB.eunion ('-', A, 0, B, 0)
 err = norm (C1-C2,1)
+err = norm (C1-C3,1)
 
 %% Element-wise 'multiplication'
 % For C = A.*B, the result C is the set intersection of the pattern of A
@@ -250,7 +255,7 @@ C2 = GrB.emult ('*', A, B)
 C3 = double (A) .* double (B)
 
 %%
-% Just as in GrB.eadd, any operator can be used in GrB.emult:
+% Just as in GrB.eadd and GrB.eunion, any operator can be used in GrB.emult:
 
 A
 B
@@ -392,7 +397,7 @@ err = norm (H-G,1)
 % vectors, but not huge matrices (when n is huge).
 
 clear
-huge = 2^48 ;
+huge = 2^48 - 1 ;
 C = sparse (huge, 1)    % MATLAB can create a huge-by-1 sparse column
 try
     C = sparse (huge, huge)     % but this fails
@@ -405,7 +410,7 @@ end
 % O(nnz(A)) space.  The difference can be huge if nnz (A) << n.
 
 clear
-huge = 2^48 ;
+huge = 2^48 - 1 ;
 G = GrB (huge, 1)            % no problem for GraphBLAS
 H = GrB (huge, huge)         % this works in GraphBLAS too
 

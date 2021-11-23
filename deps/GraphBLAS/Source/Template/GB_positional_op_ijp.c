@@ -7,7 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// TODO: rename, and use #ifdef instead of offset = 0 or 1.
 // TODO: use this kernel for GrB_extractTuples, to create J array.
 
 // A can be jumbled.  If A is jumbled, so is C.
@@ -57,11 +56,10 @@
             // C(:,j) = op (A(:,j))
             //------------------------------------------------------------------
 
-            GB_PRAGMA_SIMD
             for (int64_t p = pA_start ; p < pA_end ; p++)
             { 
-                // GB_POSITION is j or j+1
-                Cx_int [p] = GB_POSITION ;
+                // Cx [p] = op (A (i,j))
+                GB_APPLY (p) ;
             }
         }
     }
@@ -73,5 +71,5 @@
     GB_WERK_POP (A_ek_slicing, int64_t) ;
 }
 
-#undef GB_POSITION
+#undef GB_APPLY
 

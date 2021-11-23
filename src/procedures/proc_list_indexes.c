@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -15,19 +15,81 @@
 
 typedef struct {
 	SIValue *out;               // outputs
-	int schema_id;              // current schema ID
+	int node_schema_id;         // current node schema ID
+	int edge_schema_id;         // current edge schema ID
 	IndexType type;             // current index type to retrieve
 	GraphContext *gc;           // graph context
 	SIValue *yield_type;        // yield index type
 	SIValue *yield_label;       // yield index label
 	SIValue *yield_properties;  // yield index properties
+	SIValue *yield_language;    // yield index language
+	SIValue *yield_stopwords;   // yield index stopwords
+	SIValue *yield_entity_type; // yield index entity type
 } IndexesContext;
 
-// CALL db.indexes()
-ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
-								   const char **yield) {
+static void _process_yield
+(
+	IndexesContext *ctx,
+	const char **yield
+) {
+	ctx->yield_type        = NULL;
+	ctx->yield_label       = NULL;
+	ctx->yield_properties  = NULL;
+	ctx->yield_language    = NULL;
+	ctx->yield_stopwords   = NULL;
+	ctx->yield_entity_type = NULL;
 
-	ASSERT(ctx != NULL && args != NULL && yield != NULL);
+	int idx = 0;
+	for(uint i = 0; i < array_len(yield); i++) {
+		if(strcasecmp("type", yield[i]) == 0) {
+			ctx->yield_type = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("label", yield[i]) == 0) {
+			ctx->yield_label = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("properties", yield[i]) == 0) {
+			ctx->yield_properties = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("language", yield[i]) == 0) {
+			ctx->yield_language = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("stopwords", yield[i]) == 0) {
+			ctx->yield_stopwords = ctx->out + idx;
+			idx++;
+			continue;
+		}
+
+		if(strcasecmp("entitytype", yield[i]) == 0) {
+			ctx->yield_entity_type = ctx->out + idx;
+			idx++;
+			continue;
+		}
+	}
+}
+
+// CALL db.indexes()
+ProcedureResult Proc_IndexesInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
+
+	ASSERT(ctx   != NULL);
+	ASSERT(args  != NULL);
+	ASSERT(yield != NULL);
 
 	// TODO: introduce invoke validation, similar to arithmetic expressions
 	// expecting no arguments
@@ -36,45 +98,36 @@ ProcedureResult Proc_IndexesInvoke(ProcedureCtx *ctx, const SIValue *args,
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
-	IndexesContext *pdata   = rm_malloc(sizeof(IndexesContext));
-	pdata->gc               = gc;
-	pdata->out              = array_new(SIValue, 6);
-	pdata->type             = IDX_EXACT_MATCH;
-	pdata->schema_id        = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
-	pdata->yield_type       = NULL;
-	pdata->yield_label      = NULL;
-	pdata->yield_properties = NULL;
+	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
+	pdata->gc                = gc;
+	pdata->out               = array_new(SIValue, 6);
+	pdata->type              = IDX_EXACT_MATCH;
+	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
+	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
 
-	uint yield_count = array_len(yield);
-	for(uint i = 0; i < yield_count; i++) {
-		if(strcasecmp("type", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("type"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_type = pdata->out + (i * 2 + 1);
-			continue;
-		}
-		if(strcasecmp("label", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("label"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_label = pdata->out + (i * 2 + 1);
-			continue;
-		}
-		if(strcasecmp("properties", yield[i]) == 0) {
-			array_append(pdata->out, SI_ConstStringVal("properties"));
-			array_append(pdata->out, SI_NullVal());
-			pdata->yield_properties = pdata->out + (i * 2 + 1);
-			continue;
-		}
-	}
+	_process_yield(pdata, yield);
 
 	ctx->privateData = pdata;
 
 	return PROCEDURE_OK;
 }
 
-static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
+static bool _EmitIndex
+(
+	IndexesContext *ctx,
+	const Schema *s,
+	IndexType type
+) {
 	Index *idx = Schema_GetIndex(s, NULL, type);
 	if(idx == NULL) return false;
+
+	if(ctx->yield_entity_type != NULL) {
+		if(s->type == SCHEMA_NODE) {
+			*ctx->yield_entity_type = SI_ConstStringVal("NODE");
+		} else {
+			*ctx->yield_entity_type = SI_ConstStringVal("RELATIONSHIP");
+		}
+	}
 
 	if(ctx->yield_type != NULL) {
 		if(type == IDX_EXACT_MATCH) {
@@ -85,7 +138,7 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 	}
 
 	if(ctx->yield_label) {
-		*ctx->yield_label = SI_ConstStringVal((char *)Index_GetLabel(idx));
+		*ctx->yield_label = SI_ConstStringVal((char *)Schema_GetName(s));
 	}
 
 	if(ctx->yield_properties) {
@@ -95,25 +148,48 @@ static bool _EmitIndex(IndexesContext *ctx, const Schema *s, IndexType type) {
 
 		for(uint i = 0; i < fields_count; i++) {
 			SIArray_Append(ctx->yield_properties,
-					SI_ConstStringVal((char *)fields[i]));
+						   SI_ConstStringVal((char *)fields[i]));
 		}
+	}
+
+	if(ctx->yield_language) {
+		*ctx->yield_language =
+			SI_ConstStringVal((char *)Index_GetLanguage(idx));
+	}
+
+	if(ctx->yield_stopwords) {
+		size_t stopwords_count;
+		char **stopwords = Index_GetStopwords(idx, &stopwords_count);
+		if(stopwords) {
+			*ctx->yield_stopwords = SI_Array(stopwords_count);
+			for(size_t i = 0; i < stopwords_count; i++) {
+				SIValue value = SI_ConstStringVal(stopwords[i]);
+				SIArray_Append(ctx->yield_stopwords, value);
+				rm_free(stopwords[i]);
+			}
+		} else {
+			*ctx->yield_stopwords = SI_Array(0);
+		}
+		rm_free(stopwords);
 	}
 
 	return true;
 }
 
-SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
-	ASSERT(ctx->privateData != NULL);
-
+static SIValue *Schema_Step
+(
+	int *schema_id,
+	SchemaType t,
+	IndexesContext *pdata
+) {
 	Schema *s = NULL;
-	IndexesContext *pdata = ctx->privateData;
 
 	// loop over all schemas from last to first
-	while(pdata->schema_id >= 0) {
-		s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id, SCHEMA_NODE);
+	while(*schema_id >= 0) {
+		s = GraphContext_GetSchemaByID(pdata->gc, *schema_id, t);
 		if(!Schema_HasIndices(s)) {
 			// no indexes found, continue to the next schema
-			pdata->schema_id--;
+			(*schema_id)--;
 			continue;
 		}
 
@@ -122,7 +198,7 @@ SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
 
 		if(pdata->type == IDX_FULLTEXT) {
 			// all indexes retrieved; update schema_id, reset schema type
-			pdata->schema_id--;
+			(*schema_id)--;
 			pdata->type = IDX_EXACT_MATCH;
 		} else {
 			// next iteration will check the same schema for a full-text index
@@ -135,7 +211,25 @@ SIValue *Proc_IndexesStep(ProcedureCtx *ctx) {
 	return NULL;
 }
 
-ProcedureResult Proc_IndexesFree(ProcedureCtx *ctx) {
+SIValue *Proc_IndexesStep
+(
+	ProcedureCtx *ctx
+) {
+	ASSERT(ctx->privateData != NULL);
+
+	SIValue *res;
+	IndexesContext *pdata = ctx->privateData;
+
+	res = Schema_Step(&pdata->node_schema_id, SCHEMA_NODE, pdata);
+	if(res != NULL) return res;
+
+	return Schema_Step(&pdata->edge_schema_id, SCHEMA_EDGE, pdata);
+}
+
+ProcedureResult Proc_IndexesFree
+(
+	ProcedureCtx *ctx
+) {
 	// clean up
 	if(ctx->privateData) {
 		IndexesContext *pdata = ctx->privateData;
@@ -149,23 +243,41 @@ ProcedureResult Proc_IndexesFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_IndexesCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 3);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 6);
 
 	// index type (exact-match / fulltext)
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "type", .type = T_STRING
 	};
 	array_append(outputs, output);
 
 	// indexed label
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "label", .type = T_STRING
 	};
 	array_append(outputs, output);
 
 	// indexed properties
-	output  = (ProcedureOutput) {
+	output = (ProcedureOutput) {
 		.name = "properties", .type = T_ARRAY
+	};
+	array_append(outputs, output);
+
+	// indexed language
+	output = (ProcedureOutput) {
+		.name = "language", .type = T_STRING
+	};
+	array_append(outputs, output);
+
+	// indexed stopwords
+	output = (ProcedureOutput) {
+		.name = "stopwords", .type = T_ARRAY
+	};
+	array_append(outputs, output);
+
+	// index entity type (node / relationship)
+	output = (ProcedureOutput) {
+		.name = "entitytype", .type = T_STRING
 	};
 	array_append(outputs, output);
 

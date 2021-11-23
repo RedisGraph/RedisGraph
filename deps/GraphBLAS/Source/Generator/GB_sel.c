@@ -33,12 +33,8 @@ GB_kind
     GB_atype
 
 // test value of Ax [p]
-#define GB_TEST_VALUE_OF_ENTRY(p)                       \
+#define GB_TEST_VALUE_OF_ENTRY(keep,p)                  \
     GB_test_value_of_entry
-
-// get the vector index (user select operators only)
-#define GB_GET_J                                        \
-    GB_get_j
 
 // Cx [pC] = Ax [pA], no typecast
 #define GB_SELECT_ENTRY(Cx,pC,Ax,pA)                    \
@@ -59,12 +55,14 @@ void GB (_sel_phase1)
     const GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_atype *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
     GB_get_thunk
+    GB_get_zxtypes
     #include "GB_select_phase1.c"
 }
 
@@ -73,6 +71,8 @@ endif_phase1
 //------------------------------------------------------------------------------
 // GB_sel_phase2
 //------------------------------------------------------------------------------
+
+if_phase2
 
 void GB (_sel_phase2)
 (
@@ -84,14 +84,18 @@ void GB (_sel_phase2)
     const GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_atype *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
     GB_get_thunk
+    GB_get_zxtypes
     #include "GB_select_phase2.c"
 }
+
+endif_phase2
 
 //------------------------------------------------------------------------------
 // GB_sel_bitmap
@@ -107,12 +111,14 @@ void GB (_sel_bitmap)
     GrB_Matrix A,
     const bool flipij,
     const int64_t ithunk,
-    const GB_atype *restrict xthunk,
-    const GxB_select_function user_select,
+    const GB_atype *restrict athunk,
+    const GB_void *restrict ythunk,
+    const GB_Operator op,
     const int nthreads
 )
 { 
     GB_get_thunk
+    GB_get_zxtypes
     #include "GB_bitmap_select_template.c"
 }
 

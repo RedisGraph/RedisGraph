@@ -55,7 +55,7 @@ assert (err < 1e-12) ;
 
 % using other semirings
 
-for op = { 'plus', 'pair', 'first', 'second' }
+for op = { 'plus', 'pair', 'first', 'second' }  % pair == oneb
     for add = { 'plus', 'times', 'max', 'any' }
 
         fprintf ('.') ;

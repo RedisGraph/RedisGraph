@@ -41,8 +41,8 @@ for k1 = 1:length(types)
     end
 end
 
-A = GrB (rand (40)) ;
-A (1,1) = sparse (0)
+% A = GrB (rand (40)) ;
+% A (1,1) = sparse (0)
 
 fprintf ('test157: all tests passed\n') ;
 

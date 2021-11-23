@@ -430,20 +430,6 @@ void ExecutionPlan_Drain(ExecutionPlan *plan) {
 }
 
 //------------------------------------------------------------------------------
-// Execution plan ref count
-//------------------------------------------------------------------------------
-
-void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-//------------------------------------------------------------------------------
 // Execution plan profiling
 //------------------------------------------------------------------------------
 
@@ -489,7 +475,9 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
+		for(uint i = 0; i < connected_component_count; i ++) {
+			QueryGraph_Free(plan->connected_components[i]);
+		}
 		array_free(plan->connected_components);
 	}
 
@@ -528,7 +516,6 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
 
 	// Free all ops and ExecutionPlan segments.
 	_ExecutionPlan_FreeOpTree(plan->root);

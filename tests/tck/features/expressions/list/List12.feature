@@ -127,7 +127,6 @@ Feature: List12 - List Comprehension
       | [(:A), (:A)] | 2 |
     And no side effects
 
-  @skip
   Scenario: [6] Using a list comprehension in a WHERE
     Given an empty graph
     And having executed:

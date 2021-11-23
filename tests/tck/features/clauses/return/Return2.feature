@@ -30,7 +30,6 @@
 
 Feature: Return2 - Return single expression (correctly projecting an expression)
 
-  @skip
   Scenario: [1] Arithmetic expressions should propagate null values
     Given any graph
     When executing query:
@@ -138,7 +137,6 @@ Feature: Return2 - Return single expression (correctly projecting an expression)
       | [4, 5, 1, 2, 3] |
     And no side effects
 
-  @skip
   Scenario: [8] Returning label predicate expression
     Given an empty graph
     And having executed:

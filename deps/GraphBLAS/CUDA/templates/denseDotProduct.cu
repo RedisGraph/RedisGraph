@@ -16,7 +16,6 @@
 // is to reduce this data to a scalar, and write it to g_odata [b].
 
 #include <limits>
-#include "mySemiRing.h"
 #include <cooperative_groups.h>
 
 using namespace cooperative_groups;

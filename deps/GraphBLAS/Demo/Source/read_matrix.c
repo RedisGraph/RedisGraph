@@ -195,18 +195,18 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     //--------------------------------------------------------------------------
 
     GrB_Type xtype ;
-    GrB_BinaryOp xop, xop2 ;
+    GrB_BinaryOp xop, xop_first ;
     if (boolean)
     {
         xtype = GrB_BOOL ;
         xop   = GrB_LOR ;
-        xop2  = GrB_FIRST_BOOL ;
+        xop_first  = GrB_FIRST_BOOL ;
     }
     else
     {
         xtype = GrB_FP64 ;
         xop   = GrB_PLUS_FP64 ;
-        xop2  = GrB_FIRST_FP64 ;
+        xop_first  = GrB_FIRST_FP64 ;
     }
 
     GrB_Info info ;
@@ -301,11 +301,11 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
             J_range [GxB_END  ] = ncols+nrows-1 ;
 
             // A (nrows:n-1, 0:nrows-1) += C'
-            OK (GrB_Matrix_assign (A, NULL, xop2, // or NULL,
+            OK (GrB_Matrix_assign (A, NULL, xop_first, // or NULL,
                 C, J_range, GxB_RANGE, I_range, GxB_RANGE, dt1)) ;
 
             // A (0:nrows-1, nrows:n-1) += C
-            OK (GrB_Matrix_assign (A, NULL, xop2, // or NULL,
+            OK (GrB_Matrix_assign (A, NULL, xop_first, // or NULL,
                 C, I_range, GxB_RANGE, J_range, GxB_RANGE, NULL)) ;
 
             // force completion; if this statement does not appear, the

@@ -149,14 +149,14 @@ for problem = 0:2
     end
 
     % default sparsity
-    C2 = GB_mex_subassign (Corig, Work2) ;
+    C2 = GB_mex_subassign (Corig, Work2) ;  % WORK_ASSIGN
     GB_spec_compare (C2, C3) ;
 
     % with sparsity control
     for C_sparsity_control = [1 2 4 8]
         for M_sparsity_control = [2 12]
-            C2 = GB_mex_subassign (Corig, Work2, ...
-                [C_sparsity_control M_sparsity_control]) ;
+            ctrl = [C_sparsity_control M_sparsity_control] ;
+            C2 = GB_mex_subassign (Corig, Work2, ctrl) ; % WORK_ASSIGN
             GB_spec_compare (C2, C3) ;
         end
     end
@@ -176,14 +176,14 @@ for problem = 0:2
     end
 
     % default sparsity
-    C2 = GB_mex_subassign (Corig, Work2) ;
+    C2 = GB_mex_subassign (Corig, Work2) ;      % WORK_ASSIGN
     GB_spec_compare (C2, C3) ;
 
     % with sparsity control
     for C_sparsity_control = [1 2 4 8]
         for M_sparsity_control = [2 12]
-            C2 = GB_mex_subassign (Corig, Work2, ...
-                [C_sparsity_control M_sparsity_control]) ;
+            ctrl = [C_sparsity_control M_sparsity_control] ;
+            C2 = GB_mex_subassign (Corig, Work2, ctrl) ;    % WORK_ASSIGN
             GB_spec_compare (C2, C3) ;
         end
     end

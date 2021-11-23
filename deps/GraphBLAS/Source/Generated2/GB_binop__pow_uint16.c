@@ -1,3 +1,4 @@
+
 //------------------------------------------------------------------------------
 // GB_binop:  hard-coded functions for each built-in binary operator
 //------------------------------------------------------------------------------
@@ -23,9 +24,9 @@
 // C=binop(A,B) is defined by the following types and operators:
 
 // A+B function (eWiseAdd):         GB (_AaddB__pow_uint16)
-// A.*B function (eWiseMult):       GB (_AemultB_01__pow_uint16)
+// A.*B function (eWiseMult):       GB (_AemultB_08__pow_uint16)
 // A.*B function (eWiseMult):       GB (_AemultB_02__pow_uint16)
-// A.*B function (eWiseMult):       GB (_AemultB_03__pow_uint16)
+// A.*B function (eWiseMult):       GB (_AemultB_04__pow_uint16)
 // A.*B function (eWiseMult):       GB (_AemultB_bitmap__pow_uint16)
 // A*D function (colscale):         GB ((none))
 // D*A function (rowscale):         GB ((none))
@@ -38,10 +39,13 @@
 // C=A+scalar                       GB (_bind2nd__pow_uint16)
 // C=A'+scalar                      GB (_bind2nd_tran__pow_uint16)
 
-// C type:   uint16_t
-// A type:   uint16_t
-// B,b type: uint16_t
-// BinaryOp: cij = GB_pow_uint16 (aij, bij)
+// C type:     uint16_t
+// A type:     uint16_t
+// A pattern?  0
+// B type:     uint16_t
+// B pattern?  0
+
+// BinaryOp:   cij = GB_pow_uint16 (aij, bij)
 
 #define GB_ATYPE \
     uint16_t
@@ -68,9 +72,17 @@
 #define GB_GETA(aij,Ax,pA,A_iso)  \
     uint16_t aij = GBX (Ax, pA, A_iso)
 
+// true if values of A are not used
+#define GB_A_IS_PATTERN \
+    0 \
+
 // bij = Bx [pB]
 #define GB_GETB(bij,Bx,pB,B_iso)  \
     uint16_t bij = GBX (Bx, pB, B_iso)
+
+// true if values of B are not used
+#define GB_B_IS_PATTERN \
+    0 \
 
 // declare scalar of the same type as C
 #define GB_CTYPE_SCALAR(t)  \
@@ -133,7 +145,7 @@ void GB ((none))
 // C = A+B, all 3 matrices dense
 //------------------------------------------------------------------------------
 
-GrB_Info GB (_Cdense_ewise3_noaccum__pow_uint16)
+void GB (_Cdense_ewise3_noaccum__pow_uint16)
 (
     GrB_Matrix C,
     const GrB_Matrix A,
@@ -141,12 +153,7 @@ GrB_Info GB (_Cdense_ewise3_noaccum__pow_uint16)
     const int nthreads
 )
 { 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
     #include "GB_dense_ewise3_noaccum_template.c"
-    return (GrB_SUCCESS) ;
-    #endif
 }
 
 //------------------------------------------------------------------------------
@@ -207,8 +214,8 @@ GrB_Info GB (_Cdense_accumb__pow_uint16)
 GrB_Info GB ((none))
 (
     GrB_Matrix C,
-    const GrB_Matrix A, bool A_is_pattern,
-    const GrB_Matrix D, bool D_is_pattern,
+    const GrB_Matrix A,
+    const GrB_Matrix D,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
@@ -232,8 +239,8 @@ GrB_Info GB ((none))
 GrB_Info GB ((none))
 (
     GrB_Matrix C,
-    const GrB_Matrix D, bool D_is_pattern,
-    const GrB_Matrix B, bool B_is_pattern,
+    const GrB_Matrix D,
+    const GrB_Matrix B,
     int nthreads
 )
 { 
@@ -249,7 +256,7 @@ GrB_Info GB ((none))
 #endif
 
 //------------------------------------------------------------------------------
-// eWiseAdd: C = A+B or C<M> = A+B
+// eWiseAdd: C=A+B, C<M>=A+B, C<!M>=A+B
 //------------------------------------------------------------------------------
 
 GrB_Info GB (_AaddB__pow_uint16)
@@ -261,6 +268,9 @@ GrB_Info GB (_AaddB__pow_uint16)
     const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
+    const bool is_eWiseUnion,
+    const GB_void *alpha_scalar_in,
+    const GB_void *beta_scalar_in,
     const bool Ch_is_Mh,
     const int64_t *restrict C_to_M,
     const int64_t *restrict C_to_A,
@@ -277,19 +287,26 @@ GrB_Info GB (_AaddB__pow_uint16)
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (B_ek_slicing, int64_t) ;
+    uint16_t alpha_scalar ;
+    uint16_t beta_scalar ;
+    if (is_eWiseUnion)
+    {
+        alpha_scalar = (*((uint16_t *) alpha_scalar_in)) ;
+        beta_scalar  = (*((uint16_t *) beta_scalar_in )) ;
+    }
     #include "GB_add_template.c"
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
     #endif
 }
 
 //------------------------------------------------------------------------------
-// eWiseMult: C = A.*B or C<M> = A.*B
+// eWiseMult: C=A.*B, C<M>=A.*B, or C<M!>=A.*B where C is sparse/hyper
 //------------------------------------------------------------------------------
 
 
 
-GrB_Info GB (_AemultB_01__pow_uint16)
+GrB_Info GB (_AemultB_08__pow_uint16)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -311,7 +328,7 @@ GrB_Info GB (_AemultB_01__pow_uint16)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_01_meta.c"
+    #include "GB_emult_08_meta.c"
     return (GrB_SUCCESS) ;
     #endif
 }
@@ -376,7 +393,7 @@ GrB_Info GB (_AemultB_02__pow_uint16)
 
 
 
-GrB_Info GB (_AemultB_03__pow_uint16)
+GrB_Info GB (_AemultB_04__pow_uint16)
 (
     GrB_Matrix C,
     const GrB_Matrix M,
@@ -390,7 +407,7 @@ GrB_Info GB (_AemultB_03__pow_uint16)
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    #include "GB_emult_03_template.c"
+    #include "GB_emult_04_template.c"
     return (GrB_SUCCESS) ;
     #endif
 }

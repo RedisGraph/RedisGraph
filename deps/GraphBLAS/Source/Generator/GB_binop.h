@@ -9,7 +9,7 @@ void GB (_Cdense_ewise3_accum)
 ) ;
 endif_is_binop_subset
 
-GrB_Info GB (_Cdense_ewise3_noaccum)
+void GB (_Cdense_ewise3_noaccum)
 (
     GrB_Matrix C,
     const GrB_Matrix A,
@@ -35,15 +35,15 @@ if_binop_is_semiring_multiplier
 GrB_Info GB (_AxD)
 (
     GrB_Matrix C,
-    const GrB_Matrix A, bool A_is_pattern,
-    const GrB_Matrix D, bool D_is_pattern,
+    const GrB_Matrix A,
+    const GrB_Matrix D,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 ) ;
 GrB_Info GB (_DxB)
 (
     GrB_Matrix C,
-    const GrB_Matrix D, bool D_is_pattern,
-    const GrB_Matrix B, bool B_is_pattern,
+    const GrB_Matrix D,
+    const GrB_Matrix B,
     int nthreads
 ) ;
 endif_binop_is_semiring_multiplier
@@ -57,6 +57,9 @@ GrB_Info GB (_AaddB)
     const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
+    const bool is_eWiseUnion,
+    const GB_void *alpha_scalar_in,
+    const GB_void *beta_scalar_in,
     const bool Ch_is_Mh,
     const int64_t *restrict C_to_M,
     const int64_t *restrict C_to_A,
@@ -68,7 +71,7 @@ GrB_Info GB (_AaddB)
 ) ;
 
 if_binop_emult_is_enabled
-GrB_Info GB (_AemultB_01)
+GrB_Info GB (_AemultB_08)
 (
     GrB_Matrix C,
     const int C_sparsity,
@@ -98,7 +101,7 @@ GrB_Info GB (_AemultB_02)
     const int64_t *restrict Cp_kfirst,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 ) ;
-GrB_Info GB (_AemultB_03)
+GrB_Info GB (_AemultB_04)
 (
     GrB_Matrix C,
     const GrB_Matrix M,

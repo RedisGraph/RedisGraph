@@ -24,6 +24,7 @@ typedef struct {
 	PendingProperties **node_properties;
 	PendingProperties **edge_properties;
 
+	int **node_labels;
 	Node **created_nodes;
 	Edge **created_edges;
 	ResultSetStatistics *stats;

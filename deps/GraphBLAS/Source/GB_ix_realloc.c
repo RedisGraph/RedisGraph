@@ -44,7 +44,7 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     ASSERT (GB_JUMBLED_OK (A)) ;
     ASSERT (GB_PENDING_OK (A)) ;
 
-    if (nzmax_new > GxB_INDEX_MAX)
+    if (nzmax_new > GB_NMAX)
     { 
         // problem too large
         return (GrB_OUT_OF_MEMORY) ;

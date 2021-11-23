@@ -338,7 +338,7 @@ GrB_Info GB_msort_2    // sort array A of size 2-by-n, using 2 keys (A [0:1][])
     //--------------------------------------------------------------------------
 
     int64_t *restrict W = NULL ; size_t W_size = 0 ;
-    W = GB_MALLOC_WERK (2*n + 6*ntasks + 1, int64_t, &W_size) ;
+    W = GB_MALLOC_WORK (2*n + 6*ntasks + 1, int64_t, &W_size) ;
     if (W == NULL)
     { 
         // out of memory
@@ -442,7 +442,7 @@ GrB_Info GB_msort_2    // sort array A of size 2-by-n, using 2 keys (A [0:1][])
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&W, W_size) ;
+    GB_FREE_WORK (&W, W_size) ;
     return (GrB_SUCCESS) ;
 }
 

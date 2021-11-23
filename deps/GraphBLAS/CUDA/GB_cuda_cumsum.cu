@@ -8,9 +8,11 @@
 
 //------------------------------------------------------------------------------
 
-// Compute the cumulative sum of an array count[0:n], of size n+1:
+// Compute the cumulative sum of an array count[0:n], of size n+1
+// in pseudo-MATLAB notation:
 
 //      k = sum (count [0:n-1] != 0) ;
+
 //      count = cumsum ([0 count[0:n-1]]) ;
 
 // That is, count [j] on input is overwritten with the value of
@@ -49,13 +51,15 @@ GrB_Info GB_cuda_cumsum             // compute the cumulative sum of an array
     CubDebugExit(cub::DeviceScan::ExclusiveSum(d_temp_storage, temp_storage_bytes, count, count, n));
 
     // Check for correctness (and display results, if specified)
+    #if 0
     #ifdef GB_DEBUG
     int compare = CompareDeviceResults(h_reference, count, num_items, true, g_verbose);
     ASSERT( compare == 0);
     #endif
+    #endif
 
     // Cleanup
-    GB_dealloc_memory (&d_temp_storage, &size) ;
+    GB_dealloc_memory (&d_temp_storage, size) ;
 
     return GrB_SUCCESS;
 }

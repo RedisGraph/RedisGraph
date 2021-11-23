@@ -41,6 +41,6 @@ GrB_BinaryOp gb_mxstring_to_binop       // return binary operator from a string
     // convert the string to a binary operator
     //--------------------------------------------------------------------------
 
-    return (gb_string_to_binop (opstring, atype, btype)) ;
+    return (gb_string_to_binop_or_idxunop (opstring, atype, btype, NULL, NULL));
 }
 

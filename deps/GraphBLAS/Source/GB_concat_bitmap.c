@@ -7,12 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-#define GB_FREE_WORK                        \
+#define GB_FREE_WORKSPACE                   \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
     GB_phbix_free (T) ;
 
 #define GB_FREE_ALL         \
-    GB_FREE_WORK ;          \
+    GB_FREE_WORKSPACE ;     \
     GB_phbix_free (C) ;
 
 #include "GB_concat.h"
@@ -213,7 +213,7 @@ GrB_Info GB_concat_bitmap           // concatenate into a bitmap matrix
                 #include "GB_concat_bitmap_template.c"
             }
 
-            GB_FREE_WORK ;
+            GB_FREE_WORKSPACE ;
         }
     }
 

@@ -66,6 +66,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     ASSERT_MATRIX_OK_OR_NULL (C_in, "C_in for meta A*B", GB0) ;
     ASSERT_MATRIX_OK_OR_NULL (M_in, "M for meta A*B", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for meta A*B", GB0) ;
     ASSERT_MATRIX_OK (A_in, "A_in for meta A*B", GB0) ;
     ASSERT_MATRIX_OK (B_in, "B_in for meta A*B", GB0) ;
 
@@ -130,15 +131,20 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     if (C_in != NULL)
     {
+        #if 0
+        // disabled: this will work for most methods in the future is too
+        // aggressive for dot4
         if (GB_IS_BITMAP (C_in))
-        { 
+        {
             // C is bitmap
             ASSERT (!GB_PENDING (C_in)) ; // no pending tuples in bitmap
             ASSERT (!GB_ZOMBIES (C_in)) ; // bitmap never has zombies
             can_do_in_place = (C_in->type == semiring->add->op->ztype)
                 && ((accum == NULL) || (accum == semiring->add->op)) ;
         }
-        else if (accum != NULL)
+        else
+        #endif
+        if (accum != NULL)
         { 
             // C is hypersparse, sparse, or full, and accum is present.
             // check if C_in is competely dense:  no pending work.
@@ -232,27 +238,84 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // of the desired format C_is_csc.  This ensures that GB_accum_mask will
     // transpose C when this function is done.
 
-    // For these 4 cases, the swap_rule is true:
+    double A_work = GB_nnz_held (A_in) ;    // work to transpose A
+    double B_work = GB_nnz_held (B_in) ;    // work to transpose B
+    // work to transpose C cannot be determined; assume it is full
+    double C_work = ((double) A_in->vlen) * ((double) B_in->vlen) ;
+
+    bool swap_rule ;
+
+    if (( C_transpose &&  A_transpose &&  B_transpose) ||   // C' = A'*B'
+        ( C_transpose &&  A_transpose && !B_transpose) ||   // C' = A'*B
+        (!C_transpose &&  A_transpose &&  B_transpose))     // C  = A'*B'
+    {
+
+        //----------------------------------------------------------------------
+        // For these 3 cases, the swap_rule is true:
+        //----------------------------------------------------------------------
 
         // C' = A'*B'       becomes C = B*A
         // C' = A'*B        becomes C = B'*A
-        // C' = A*B'        becomes C = B*A'
         // C  = A'*B'       becomes C = (B*A)'
 
-    // For these 4 cases, the swap_rule is false:
+        swap_rule = true ;
 
-        // C' = A*B         C = (A*B)'
+    }
+    else if (C_transpose && !A_transpose &&  B_transpose)   // C' = A*B'
+    {
+
+        //----------------------------------------------------------------------
+        // C' = A*B'        becomes C = B*A', or stays as C' = A*B'
+        //----------------------------------------------------------------------
+
+        // C'=A*B' is either computed as-is with C'=A*B', or C=B*A' with
+        // swap_rule true.  Both require explicit transpose(s).
+        // C'=A*B' requires B to be transposed, then C on output.
+        // C=B*A' requires A to be transposed.
+
+        // In v5.1 and earlier swap_rule = true was used for this case.
+        // If C is very large, this will still be true.  swap_rule can only be
+        // false if C is small.
+
+        swap_rule = (A_work < B_work + C_work) ;
+//      printf ("A_work %g < B_work %g C_work %g: %d\n", A_work, B_work, C_work,
+//          swap_rule) ;
+
+    }
+    else if (!C_transpose && !A_transpose &&  B_transpose)  // C = A*B'
+    {
+
+        //----------------------------------------------------------------------
+        // C  = A*B'        becomes C'=B*A' or stays C=A*B'
+        //----------------------------------------------------------------------
+
+        // C=A*B' is either computed as-is with C=A*B', or C'=B*A' with
+        // swap_rule true.  Both require explicit transpose(s).
+        // C'=B*A' requires A to be transposed, then C on output.
+        // C=A*B' requires B to be transposed.
+
+        // In v5.1 and earlier swap_rule = false was used for this case.
+        // If C is very large, this will still be false.  swap_rule can only be
+        // true if C is small.
+
+        swap_rule = (B_work > A_work + C_work) ;
+//      printf ("B_work %g > A_work %g C_work %g: %d\n", B_work, A_work, C_work,
+//          swap_rule) ;
+
+    }
+    else
+    {
+
+        //----------------------------------------------------------------------
+        // For these 3 cases, the swap_rule is false:
+        //----------------------------------------------------------------------
+
+        // C' = A*B         use as-is, doing C = (A*B)'
         // C  = A'*B        use as-is
-        // C  = A*B'        use as-is
         // C  = A*B         use as-is
 
-    // This rule is the same as that used by SSMULT in SuiteSparse.
-
-    bool swap_rule =
-        ( C_transpose &&  A_transpose &&  B_transpose) ||   // C' = A'*B'
-        ( C_transpose &&  A_transpose && !B_transpose) ||   // C' = A'*B
-        ( C_transpose && !A_transpose &&  B_transpose) ||   // C' = A*B'
-        (!C_transpose &&  A_transpose &&  B_transpose) ;    // C  = A'*B'
+        swap_rule = false ;
+    }
 
     GrB_Matrix A, B ;
     bool atrans, btrans ;
@@ -282,7 +345,6 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     //--------------------------------------------------------------------------
 
     GrB_Matrix M ;
-
 
     if (M_transpose && M_in != NULL)
     { 
@@ -328,7 +390,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     #if GB_BURBLE
     const char *M_str = (M == NULL) ? "" : (Mask_comp ?  "<!M>" : "<M>") ;
-    #define GB_PROP_LEN (GB_LEN+128)
+    #define GB_PROP_LEN (GxB_MAX_NAME_LEN+128)
     char A_str [GB_PROP_LEN+1] ;
     char B_str [GB_PROP_LEN+1] ;
     if (GB_Global_burble_get ( ))
@@ -348,9 +410,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 
     GB_Opcode opcode = semiring->multiply->opcode  ;
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
-    bool op_is_first  = (opcode == GB_FIRST_opcode) ;
-    bool op_is_second = (opcode == GB_SECOND_opcode) ;
-    bool op_is_pair   = (opcode == GB_PAIR_opcode) ;
+    bool op_is_first  = (opcode == GB_FIRST_binop_code) ;
+    bool op_is_second = (opcode == GB_SECOND_binop_code) ;
+    bool op_is_pair   = (opcode == GB_PAIR_binop_code) ;
     bool A_is_pattern ;
     bool B_is_pattern ;
 
@@ -373,7 +435,8 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     }
 
     bool allow_scale = true ;
-    if (semiring->multiply->function == NULL && (op_is_first || op_is_second))
+    if (semiring->multiply->binop_function == NULL &&
+        (op_is_first || op_is_second))
     { 
         // GB_AxB_rowscale and GB_AxB_colscale do not handle the implicit FIRST
         // operator for GB_reduce_to_vector.  They do handle any other
@@ -463,7 +526,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
                     false) ;
             }
             if (GB_AxB_dot4_control (C_out_iso, can_do_in_place ? C_in : NULL,
-                M, Mask_comp))
+                M, Mask_comp, accum, semiring))
             { 
                 // C+=A'*B can be done with dot4
                 axb_method = GB_USE_DOT ;
@@ -526,15 +589,16 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
                 GBURBLE ("C%s=A'*B, %sdot_product ", M_str,
                     (M != NULL && !Mask_comp) ? "masked_" : "") ;
                 GB_OK (GB_AxB_dot (C, (can_do_in_place) ? C_in : NULL,
-                    M, Mask_comp, Mask_struct, A, B, semiring, flipxy,
+                    M, Mask_comp, Mask_struct, accum, A, B, semiring, flipxy,
                     mask_applied, done_in_place, Context)) ;
                 break ;
 
             default : 
                 // C = A'*B via saxpy: Gustavson + Hash method
                 GBURBLE ("C%s=A'*B, saxpy (transposed %s) ", M_str, A_str) ;
-                GB_OK (GB_AxB_saxpy (C, M, Mask_comp, Mask_struct,
-                    AT, B, semiring, flipxy, mask_applied, AxB_method, do_sort,
+                GB_OK (GB_AxB_saxpy (C, can_do_in_place ? C_in : NULL, M,
+                    Mask_comp, Mask_struct, accum, AT, B, semiring, flipxy,
+                    mask_applied, done_in_place, AxB_method, do_sort,
                     Context)) ;
                 break ;
         }
@@ -610,15 +674,16 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
                 GB_OK (GB_transpose_cast (AT, atype_cast, true, A, A_is_pattern,
                     Context)) ;
                 GB_OK (GB_AxB_dot (C, (can_do_in_place) ? C_in : NULL,
-                    M, Mask_comp, Mask_struct, AT, BT, semiring, flipxy,
+                    M, Mask_comp, Mask_struct, accum, AT, BT, semiring, flipxy,
                     mask_applied, done_in_place, Context)) ;
                 break ;
 
             default : 
                 // C = A*B' via saxpy: Gustavson + Hash method
                 GBURBLE ("C%s=A*B', saxpy (transposed %s) ", M_str, B_str) ;
-                GB_OK (GB_AxB_saxpy (C, M, Mask_comp, Mask_struct,
-                    A, BT, semiring, flipxy, mask_applied, AxB_method, do_sort,
+                GB_OK (GB_AxB_saxpy (C, can_do_in_place ? C_in : NULL, M,
+                    Mask_comp, Mask_struct, accum, A, BT, semiring, flipxy,
+                    mask_applied, done_in_place, AxB_method, do_sort,
                     Context)) ;
                 break ;
         }
@@ -713,15 +778,16 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
                 GB_OK (GB_transpose_cast (AT, atype_cast, true, A, A_is_pattern,
                     Context)) ;
                 GB_OK (GB_AxB_dot (C, (can_do_in_place) ? C_in : NULL,
-                    M, Mask_comp, Mask_struct, AT, B, semiring, flipxy,
+                    M, Mask_comp, Mask_struct, accum, AT, B, semiring, flipxy,
                     mask_applied, done_in_place, Context)) ;
                 break ;
 
             default : 
                 // C = A*B via saxpy: Gustavson + Hash method
                 GBURBLE ("C%s=A*B, saxpy ", M_str) ;
-                GB_OK (GB_AxB_saxpy (C, M, Mask_comp, Mask_struct,
-                    A, B, semiring, flipxy, mask_applied, AxB_method, do_sort,
+                GB_OK (GB_AxB_saxpy (C, can_do_in_place ? C_in : NULL, M,
+                    Mask_comp, Mask_struct, accum, A, B, semiring, flipxy,
+                    mask_applied, done_in_place, AxB_method, do_sort,
                     Context)) ;
                 break ;
         }
@@ -759,7 +825,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     GB_phbix_free (AT) ;
     GB_phbix_free (BT) ;
     // do not free MT; return it to the caller
+    #ifdef GB_DEBUG
     if (*M_transposed) ASSERT_MATRIX_OK (MT, "MT computed", GB0) ;
+    #endif
     return (GrB_SUCCESS) ;
 }
 

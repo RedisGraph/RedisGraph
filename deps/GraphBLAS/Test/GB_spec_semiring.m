@@ -14,6 +14,7 @@ function [multiply_op add_op identity ztype xtype ytype] = GB_spec_semiring (sem
 %               (default is 'times').
 %
 %   add         a string with the name of the 'add' operator (default is 'plus')
+%               or a monoid struct with add.opname and add.optype.
 %
 %   class       the built-in class of the operators (default is 'double',
 %               unless the multiply operator is 'or', 'and, or 'xor').  Any

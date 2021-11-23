@@ -14,7 +14,7 @@ ctype = gboptype (atype, btype) ;
 if (a_is_scalar)
     if (b_is_scalar)
         % both A and B are scalars.  Result is also a scalar.
-        C = gb_union_op (op, A, B) ;
+        C = gbeunion (op, A, 0, B, 0) ;
     else
         % A is a scalar, B is a matrix
         if (gb_scalar (A) < 0)
@@ -39,7 +39,7 @@ else
         end
     else
         % both A and B are matrices.  Result is sparse.
-        C = gb_union_op (op, A, B) ;
+        C = gbeunion (op, A, 0, B, 0) ;
     end
 end
 

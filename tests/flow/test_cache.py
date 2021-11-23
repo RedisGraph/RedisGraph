@@ -15,11 +15,11 @@ class testCache(FlowTestsBase):
         global redis_con
         redis_con = self.env.getConnection()
 
-    def compare_uncached_to_cached_query_plans(self, query):
+    def compare_uncached_to_cached_query_plans(self, query, params=None):
         global redis_con
         plan_graph = Graph('Cache_Test_plans', redis_con)
-        uncached_plan = plan_graph.execution_plan(query)
-        cached_plan = plan_graph.execution_plan(query)
+        uncached_plan = plan_graph.execution_plan(query, params)
+        cached_plan = plan_graph.execution_plan(query, params)
         self.env.assertEqual(uncached_plan, cached_plan)
         plan_graph.delete()
 
@@ -55,7 +55,7 @@ class testCache(FlowTestsBase):
         graph = Graph('Cache_Test_Create_With_Params', redis_con)
         params = {'val' : 1}
         query = "CREATE ({val:$val})"
-        self.compare_uncached_to_cached_query_plans(query)
+        self.compare_uncached_to_cached_query_plans(query, params)
         uncached_result = graph.query(query, params)
         params = {'val' : 2}
         cached_result = graph.query(query, params)
@@ -74,7 +74,7 @@ class testCache(FlowTestsBase):
         
         params = {'val': 0}
         query = "MATCH (n {val:$val}) DELETE n"
-        self.compare_uncached_to_cached_query_plans(query)
+        self.compare_uncached_to_cached_query_plans(query, params)
         uncached_result = graph.query(query, params)
         params = {'val': 1}
         cached_result = graph.query(query, params)
@@ -89,7 +89,7 @@ class testCache(FlowTestsBase):
         graph = Graph('Cache_Test_Merge', redis_con)    
         params = {'create_val': 0, 'match_val':1}
         query = "MERGE (n) ON CREATE SET n.val = $create_val ON MATCH SET n.val = $match_val RETURN n.val"
-        self.compare_uncached_to_cached_query_plans(query)
+        self.compare_uncached_to_cached_query_plans(query, params)
         uncached_result = graph.query(query, params)
         cached_result = graph.query(query, params)
         self.env.assertFalse(uncached_result.cached_execution)
@@ -108,8 +108,8 @@ class testCache(FlowTestsBase):
         query = "CREATE ({val:1})-[:R]->({val:2})-[:R2]->({val:3})"
         graph.query(query)
         query = "MATCH (n) WHERE (n)-[:R]->({val:$val}) OR (n)-[:R2]->({val:$val}) RETURN n.val"
-        self.compare_uncached_to_cached_query_plans(query)
         params = {'val':2}
+        self.compare_uncached_to_cached_query_plans(query, params)
         uncached_result = graph.query(query, params)
         params = {'val':3}
         cached_result = graph.query(query, params)
@@ -126,8 +126,8 @@ class testCache(FlowTestsBase):
         query = "CREATE (:N{val:1}), (:N{val:2})"
         graph.query(query)
         query = "MATCH (n:N{val:$val}) RETURN n.val"
-        self.compare_uncached_to_cached_query_plans(query)
         params = {'val':1}
+        self.compare_uncached_to_cached_query_plans(query, params)
         uncached_result = graph.query(query, params)
         params = {'val':2}
         cached_result = graph.query(query, params)
@@ -143,8 +143,8 @@ class testCache(FlowTestsBase):
         query = "CREATE (), ()"
         graph.query(query)
         query = "MATCH (n) WHERE ID(n)=$id RETURN id(n)"
-        self.compare_uncached_to_cached_query_plans(query)
         params = {'id':0}
+        self.compare_uncached_to_cached_query_plans(query, params)
         uncached_result = graph.query(query, params)
         params = {'id':1}
         cached_result = graph.query(query, params)
@@ -160,8 +160,8 @@ class testCache(FlowTestsBase):
         query = "CREATE ({val:1}), ({val:2}), ({val:3}),({val:4})"
         graph.query(query)
         query = "MATCH (a {val:$val}), (b) WHERE a.val = b.val-1 RETURN a.val, b.val "
-        self.compare_uncached_to_cached_query_plans(query)
         params = {'val':1}
+        self.compare_uncached_to_cached_query_plans(query, params)
         uncached_result = graph.query(query, params)
         params = {'val':3}
         cached_result = graph.query(query, params)

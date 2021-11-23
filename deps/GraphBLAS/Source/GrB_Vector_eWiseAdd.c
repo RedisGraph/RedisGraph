@@ -36,7 +36,8 @@
         (GrB_Matrix) u, false,      /* u, never transposed         */       \
         (GrB_Matrix) v, false,      /* v, never transposed         */       \
         true,                       /* eWiseAdd                    */       \
-        Context)
+        false, NULL, NULL,          /* not eWiseUnion              */       \
+        Context) ;
 
 //------------------------------------------------------------------------------
 // GrB_Vector_eWiseAdd_BinaryOp: vector addition

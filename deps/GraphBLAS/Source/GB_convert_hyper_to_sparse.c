@@ -79,10 +79,10 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
         // get the old hyperlist
         //----------------------------------------------------------------------
 
-        int64_t nvec = A->nvec ;                // # of vectors in Ah_old
-        int64_t *restrict Ap_old = A->p ;    // size nvec+1
-        int64_t *restrict Ah_old = A->h ;    // size nvec
-        int64_t nvec_nonempty = 0 ;             // recompute A->nvec_nonempty
+        int64_t nvec = A->nvec ;            // # of vectors in Ah_old
+        int64_t *restrict Ap_old = A->p ;   // size nvec+1
+        int64_t *restrict Ah_old = A->h ;   // size nvec
+        int64_t nvec_nonempty = 0 ;         // recompute A->nvec_nonempty
         int64_t anz = GB_nnz (A) ;
 
         //----------------------------------------------------------------------
