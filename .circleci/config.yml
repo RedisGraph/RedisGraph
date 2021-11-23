@@ -273,7 +273,9 @@ jobs:
           key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
-          command: bash -l -c "make test"
+          command: |
+            ulimit -n 10000
+            bash -l -c "make test"
       - store_artifacts:
           path: ~/project/tests/flow/logs
       - store_artifacts:
