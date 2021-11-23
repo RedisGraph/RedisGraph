@@ -45,19 +45,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
-        submodules: 'recursive'
-
-    - name: Cache GraphBLAS
-      uses: actions/cache@v2
-      with:
-        path: deps/GraphBLAS
-        key: GraphBLAS-${{ hashFiles('./deps/GraphBLAS/README.md') }}
-
-    - name: Cache LibCypher Parser
-      uses: actions/cache@v2
-      with:
-        path: deps/libcypher-parser
-        key: libcypher-parser-${{ hashFiles('./deps/libcypher-parser/README.md') }}
+        submodules: true
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -68,9 +56,6 @@ jobs:
         # By default, queries listed here will override any specified in a config file.
         # Prefix the list here with "+" to use these queries and those in the config file.
         # queries: ./path/to/local/query, your-org/your-repo/queries@main
-
-    - name: Set Env
-      run: sudo apt install build-essential cmake m4 automake peg libtool autoconf
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
