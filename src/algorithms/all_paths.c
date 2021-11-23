@@ -82,6 +82,68 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 	array_clear(ctx->neighbors);
 }
 
+static int _AllPathsCtx_FindMinimumLength(AllPathsCtx *ctx, Node *src, Node *dest) {
+	int depth = 0;
+	rax *visited = raxNew();
+	NodeID destID = ENTITY_GET_ID(dest);
+	bool pathFound = false;
+	while(true) {
+		if(array_len(ctx->levels[depth]) == 0) {
+			depth ++;
+			uint neighborCount = 0;
+			if(array_len(ctx->levels) > depth)
+				neighborCount = array_len(ctx->levels[depth]);
+			if(depth > ctx->maxLen || neighborCount == 0) {
+				// no matching paths
+				depth = 0;
+				break;
+			}
+
+			if(depth + 1 >= ctx->minLen) {
+				// check all reached nodes to see if any are the destination
+				for(uint i = 0; i < neighborCount; i ++) {
+					Node dst = ctx->levels[depth][i].node;
+					if(destID == ENTITY_GET_ID(&dst)) {
+						pathFound = true;
+						array_clear(ctx->levels[depth]);
+						depth++; // switch from edge count to node count
+						break;
+					}
+				}
+			}
+		}
+
+		if(pathFound == true) break;
+
+		// get a new frontier from this level
+		LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
+		Node frontierNode = frontierConnection.node;
+		NodeID frontierID = ENTITY_GET_ID(&frontierNode);
+		// the node has already been visited if it is already in the rax
+		bool nodeVisited = raxTryInsert(visited, (unsigned char *)&frontierID,
+										sizeof(NodeID), NULL, NULL) == 0;
+
+		// introduce neighbors only if path depth < maximum path length
+		// and frontier wasn't already expanded
+		if(depth < ctx->maxLen && !nodeVisited) {
+			// add all neighbors of the current node to the next depth level
+			GRAPH_EDGE_DIR dir = ctx->dir;
+			if(dir == GRAPH_EDGE_DIR_BOTH) {
+				// if we're performing a bidirectional traversal, first add all incoming
+				// edges, then switch to outgoing edges for the default call
+				_addNeighbors(ctx, &frontierConnection, depth + 1, GRAPH_EDGE_DIR_INCOMING);
+				dir = GRAPH_EDGE_DIR_OUTGOING;
+			}
+			_addNeighbors(ctx, &frontierConnection, depth + 1, dir);
+		}
+
+	}
+
+	raxFree(visited);
+
+	return depth;
+}
+
 AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
 							 int relationCount, GRAPH_EDGE_DIR dir, uint minLen,
 							 uint maxLen, Record r, FT_FilterNode *ft,
@@ -110,6 +172,19 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
 	ctx->shortest_paths =  shortest_paths;
 
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
+
+	if(ctx->shortest_paths) {
+		if(dst == NULL) {
+			// If the destination is NULL due to a scenario like a
+			// failed optional match, no results will be produced
+			ctx->maxLen = 0;
+			return ctx;
+		}
+		int min_path_len = _AllPathsCtx_FindMinimumLength(ctx, src, dst);
+		ctx->minLen = min_path_len;
+		ctx->maxLen = min_path_len;
+		_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
+	}
 
 	// in case we have filter tree validate that we can access the filtered edge
 	ASSERT(!ctx->ft || ctx->edge_idx < Record_length(ctx->r));

@@ -311,7 +311,7 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 
 // Test all paths of the minimum length from source to a specific destination node.
 TEST_F(AllPathsTest, OnlyShortestPaths) {
-	NodeID p00_0[2] = {1, 0};
+	NodeID p00_0[4] = {3, 0, 1, 0};
 
 	NodeID *p[1] = {p00_0};
 
