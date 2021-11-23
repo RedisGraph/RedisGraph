@@ -79,7 +79,11 @@ int worker (GrB_Matrix *Ahandle, int id)
         }
 
         // force completion
+        #if (GxB_IMPLEMENTATION_MAJOR <= 5)
         OK (GrB_Matrix_wait (&A)) ;
+        #else
+        OK (GrB_Matrix_wait (A, GrB_MATERIALIZE)) ;
+        #endif
     }
 
     // Printing is done in a critical section, just so it is not overly

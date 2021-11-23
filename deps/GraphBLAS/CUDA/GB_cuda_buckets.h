@@ -14,10 +14,6 @@
 #ifndef GB_CUDA_BUCKETS_H
 #define GB_CUDA_BUCKETS_H
 
-// nvcc chokes on the 'restrict' keyword, so define it to the empty string
-// for compiling the *.cu files.
-#define restrict
-
 // nvcc also chokes on fpclassify (an ANSI C11 construct that does not appear
 // in C++11, it seems).  It also issues spurious warnings about compiler
 // pragmas.  Source/GB.h avoids these constructs if GB_NVCC is defined.

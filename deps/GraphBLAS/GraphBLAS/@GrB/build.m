@@ -29,8 +29,9 @@ function C = build (varargin)
 %   C (i,j) = x ;
 %
 % For example, if the dup operator is '1st', then C(i,j)=X(k1) is set,
-% and the subsequent entries are ignored.  If dup is '2nd', then
-% C(i,j)=X(k3), and the preceding entries are ignored.
+% and the subsequent entries are ignored.  If dup is '2nd' or 'ignore'
+% then C(i,j)=X(k3), and the preceding entries are ignored.  If dup
+% is the empty string ('') then duplicates result in an error.
 %
 % type is a string that defines the type of C (see 'help GrB' for a list
 % of types).  If the type is not specified, it defaults to the type of X.

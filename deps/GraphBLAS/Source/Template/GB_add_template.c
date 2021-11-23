@@ -24,8 +24,8 @@
 
 // phase2: computes C, using the counts computed by phase1.
 
-#undef  GB_FREE_WORK
-#define GB_FREE_WORK                        \
+#undef  GB_FREE_WORKSPACE
+#define GB_FREE_WORKSPACE                   \
 {                                           \
     GB_WERK_POP (B_ek_slicing, int64_t) ;   \
     GB_WERK_POP (A_ek_slicing, int64_t) ;   \
@@ -35,7 +35,7 @@
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                 \
 {                                   \
-    GB_FREE_WORK ;                  \
+    GB_FREE_WORKSPACE ;             \
     GB_phbix_free (C) ;             \
 }
 
@@ -127,28 +127,86 @@
     #else
 
         // phase2: numerical phase
-        if (C_sparsity == GxB_SPARSE || C_sparsity == GxB_HYPERSPARSE)
-        { 
-            // C is sparse or hypersparse
-            // Werk allocated: none
-            #include "GB_sparse_add_template.c"
-        }
-        else if (C_sparsity == GxB_BITMAP)
-        { 
-            // C is bitmap (phase2 only)
-            // Werk: slice M and A, M and B, just A, or just B, or none
-            #include "GB_bitmap_add_template.c"
+
+        #ifdef GB_POSITIONAL_OP
+            // op doesn't depend aij, bij, alpha_scalar, or beta_scalar
+            #define GB_LOAD_A(aij, Ax,pA,A_iso)
+            #define GB_LOAD_B(bij, Bx,pB,B_iso)
+        #else
+            #define GB_LOAD_A(aij, Ax,pA,A_iso) GB_GETA(aij, Ax,pA,A_iso)
+            #define GB_LOAD_B(bij, Bx,pB,B_iso) GB_GETB(bij, Bx,pB,B_iso)
+        #endif
+
+        #ifndef GB_ISO_ADD
+        if (is_eWiseUnion)
+        {
+
+            //------------------------------------------------------------------
+            // eWiseUnion, using alpha and beta scalars
+            //------------------------------------------------------------------
+
+            #define GB_EWISEUNION
+            // if A(i,j) is not present: C(i,j) = alpha + B(i,j)
+            // if B(i,j) is not present: C(i,j) = A(i,j) + beta
+
+            if (C_sparsity == GxB_SPARSE || C_sparsity == GxB_HYPERSPARSE)
+            { 
+                // C is sparse or hypersparse
+                // Werk allocated: none
+                #include "GB_sparse_add_template.c"
+            }
+            else if (C_sparsity == GxB_BITMAP)
+            { 
+                // C is bitmap (phase2 only)
+                // Werk: slice M and A, M and B, just A, or just B, or none
+                #include "GB_bitmap_add_template.c"
+            }
+            else
+            { 
+                // C is full (phase2 only)
+                ASSERT (C_sparsity == GxB_FULL) ;
+                // Werk: slice just A, just B, or none
+                #include "GB_full_add_template.c"
+            }
+
         }
         else
-        { 
-            // C is full (phase2 only)
-            ASSERT (C_sparsity == GxB_FULL) ;
-            // Werk: slice just A, just B, or none
-            #include "GB_full_add_template.c"
+        #endif
+        {
+
+            //------------------------------------------------------------------
+            // eWiseAdd:
+            //------------------------------------------------------------------
+
+            #undef GB_EWISEUNION
+            // if A(i,j) is not present: C(i,j) = B(i,j)
+            // if B(i,j) is not present: C(i,j) = A(i,j)
+
+            if (C_sparsity == GxB_SPARSE || C_sparsity == GxB_HYPERSPARSE)
+            { 
+                // C is sparse or hypersparse
+                // Werk allocated: none
+                #include "GB_sparse_add_template.c"
+            }
+            else if (C_sparsity == GxB_BITMAP)
+            { 
+                // C is bitmap (phase2 only)
+                // Werk: slice M and A, M and B, just A, or just B, or none
+                #include "GB_bitmap_add_template.c"
+            }
+            else
+            { 
+                // C is full (phase2 only)
+                ASSERT (C_sparsity == GxB_FULL) ;
+                // Werk: slice just A, just B, or none
+                #include "GB_full_add_template.c"
+            }
         }
 
     #endif
 }
 
 #undef GB_ISO_ADD
+#undef GB_LOAD_A
+#undef GB_LOAD_B
 

@@ -21,7 +21,7 @@ function test182
 %
 % That is, the sparsity control for w allows it to change from sparse/hyper
 % (with pending updates) to/from bitmap.  If 'wait' is true, then GB_mex_gabor
-% does an explicit GrB_Vector_wait (&w) before the w<v>=sum(A) reduction, so
+% does an explicit GrB_Vector_wait on w before the w<v>=sum(A) reduction, so
 % w is converted to bitmap before the assignment, not during, and the internal
 % condition is not triggered.
 %

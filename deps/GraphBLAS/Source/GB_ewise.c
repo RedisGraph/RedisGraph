@@ -42,6 +42,9 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     bool B_transpose,               // if true, use B' instead of B
     bool eWiseAdd,                  // if true, do set union (like A+B),
                                     // otherwise do intersection (like A.*B)
+    const bool is_eWiseUnion,       // if true, eWiseUnion, else eWiseAdd
+    const GrB_Scalar alpha,         // alpha and beta ignored for eWiseAdd,
+    const GrB_Scalar beta,          // nonempty scalars for GxB_eWiseUnion
     GB_Context Context
 )
 {
@@ -82,21 +85,58 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
 
     if (eWiseAdd)
     {
-        // C = A is done for entries in A but not C
-        if (!GB_Type_compatible (C->type, A->type))
-        { 
-            GB_ERROR (GrB_DOMAIN_MISMATCH,
-                "First input of type [%s]\n"
-                "cannot be typecast to final output of type [%s]",
-                A->type->name, C->type->name) ;
+        if (is_eWiseUnion)
+        {
+            // alpha and beta scalars must be present
+            GB_RETURN_IF_NULL_OR_FAULTY (alpha) ;
+            GB_RETURN_IF_NULL_OR_FAULTY (beta) ;
+            GB_MATRIX_WAIT (alpha) ;
+            GB_MATRIX_WAIT (beta) ;
+            if (GB_nnz ((GrB_Matrix) alpha) == 0)
+            {
+                GB_ERROR (GrB_EMPTY_OBJECT, "%s\n",
+                    "alpha cannot be an empty scalar") ;
+            }
+            if (GB_nnz ((GrB_Matrix) beta) == 0)
+            { 
+                GB_ERROR (GrB_EMPTY_OBJECT, "%s\n",
+                    "beta cannot be an empty scalar") ;
+            }
+            // C = op (A, beta) is done for entries in A but not B
+            if (!GB_Type_compatible (op->ytype, beta->type))
+            { 
+                GB_ERROR (GrB_DOMAIN_MISMATCH,
+                    "beta scalar of type [%s]\n"
+                    "cannot be typecast to op input of type [%s]",
+                    beta->type->name, op->ytype->name) ;
+            }
+            // C = op (alpha, B) is done for entries in B but not A
+            if (!GB_Type_compatible (op->xtype, alpha->type))
+            { 
+                GB_ERROR (GrB_DOMAIN_MISMATCH,
+                    "alpha scalar of type [%s]\n"
+                    "cannot be typecast to op input of type [%s]",
+                    alpha->type->name, op->xtype->name) ;
+            }
         }
-        // C = B is done for entries in B but not C
-        if (!GB_Type_compatible (C->type, B->type))
-        { 
-            GB_ERROR (GrB_DOMAIN_MISMATCH,
-                "Second input of type [%s]\n"
-                "cannot be typecast to final output of type [%s]",
-                B->type->name, C->type->name) ;
+        else
+        {
+            // C = A is done for entries in A but not B
+            if (!GB_Type_compatible (C->type, A->type))
+            { 
+                GB_ERROR (GrB_DOMAIN_MISMATCH,
+                    "First input of type [%s]\n"
+                    "cannot be typecast to final output of type [%s]",
+                    A->type->name, C->type->name) ;
+            }
+            // C = B is done for entries in B but not A
+            if (!GB_Type_compatible (C->type, B->type))
+            { 
+                GB_ERROR (GrB_DOMAIN_MISMATCH,
+                    "Second input of type [%s]\n"
+                    "cannot be typecast to final output of type [%s]",
+                    B->type->name, C->type->name) ;
+            }
         }
     }
 
@@ -275,7 +315,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
         && (M == NULL) && !Mask_comp        // no mask
         && (C->is_csc == T_is_csc)          // no transpose of C
         && no_typecast                      // no typecasting
-        && (opcode < GB_USER_opcode)        // not a user-defined operator
+        && (opcode != GB_USER_binop_code)   // not a user-defined operator
         && !op_is_positional                // op is not positional
         && !any_bitmap                      // no bitmap matrices
         && !any_pending_work)               // no matrix has pending work
@@ -284,8 +324,8 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
         if (C_as_if_full                    // C is as-if-full
         && !C->iso                          // C is not iso
         && accum == op                      // accum is same as the op
-        && (opcode >= GB_MIN_opcode)        // subset of binary operators
-        && (opcode <= GB_RDIV_opcode))
+        && (opcode >= GB_MIN_binop_code)    // subset of binary operators
+        && (opcode <= GB_RDIV_binop_code))
         { 
 
             //------------------------------------------------------------------
@@ -347,7 +387,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
         // could be faster to exploit the mask duing GB_add.
 
         GB_OK (GB_add (T, T_type, T_is_csc, M1, Mask_struct, Mask_comp,
-            &mask_applied, A1, B1, op, Context)) ;
+            &mask_applied, A1, B1, is_eWiseUnion, alpha, beta, op, Context)) ;
 
     }
     else
@@ -378,7 +418,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
         // from the temporary matrix into T, so that T->h is not freed when AT,
         // BT, and MT are freed.
 
-        // GB_tranpose can return all kinds of shallow components, particularly
+        // GB_transpose can return all kinds of shallow components, particularly
         // when transposing vectors.  It can return AT->h as shallow copy of
         // A->i, for example.
 

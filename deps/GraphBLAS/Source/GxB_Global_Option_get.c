@@ -359,6 +359,7 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
             return (GrB_INVALID_VALUE) ;
     }
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

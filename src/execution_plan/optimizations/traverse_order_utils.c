@@ -17,10 +17,6 @@ static bool _AlgebraicExpression_IsVarLen
 	ASSERT(qg  != NULL);
 	ASSERT(exp != NULL);
 
-	// variable length expression contains a single edge operand
-	if(AlgebraicExpression_OperandCount(exp) != 1  ||
-	   AlgebraicExpression_OperationCount(exp, AL_EXP_ALL) > 0) return false;
-
 	// is this an "edge" operand, traversing a relationship matrix
 	const char *edge_alias = AlgebraicExpression_Edge(exp);
 	if(edge_alias == NULL) return false;
@@ -58,7 +54,7 @@ int TraverseOrder_LabelsScore
 	// TODO: re-enable, see https://github.com/RedisGraph/RedisGraph/issues/1742
 	// consider 'dest' only if different than 'src'
 	//if(RG_STRCMP(src, dest) != 0) {
-	//	score += QGNode_LabelCount(dest_node);
+	//  score += QGNode_LabelCount(dest_node);
 	//}
 
 	// if expression represents a variable length traversal
@@ -141,16 +137,16 @@ int TraverseOrder_BoundVariableScore
 	int         score       =  0;
 	bool        src_bound   =  false;
 	bool        dest_bound  =  false;
-	const char* src         =  AlgebraicExpression_Src(exp);
-	const char* dest        =  AlgebraicExpression_Dest(exp);
+	const char *src         =  AlgebraicExpression_Src(exp);
+	const char *dest        =  AlgebraicExpression_Dest(exp);
 
 	src_bound = raxFind(bound_vars, (unsigned char *)src,
-			strlen(src)) != raxNotFound;
+						strlen(src)) != raxNotFound;
 
 	// consider 'dest' only if different than 'src'
 	if(RG_STRCMP(src, dest) != 0) {
 		dest_bound = raxFind(bound_vars, (unsigned char *)dest,
-				strlen(dest)) != raxNotFound;
+							 strlen(dest)) != raxNotFound;
 	}
 
 	if(src_bound)  score += 1;
@@ -277,12 +273,12 @@ void TraverseOrder_ScoreExpressions
 			exp = scored_exp->exp;
 
 			score = TraverseOrder_FilterExistenceScore(exp, qg,
-					filtered_entities);
+													   filtered_entities);
 			if(score > 0) {
 				if(_AlgebraicExpression_IsVarLen(exp, qg)) {
 					// variable length traversal should always "lose" to its
 					// direct prev and next expressions
-					score = currmax/2;
+					score = currmax / 2;
 				} else {
 					score += currmax;
 				}

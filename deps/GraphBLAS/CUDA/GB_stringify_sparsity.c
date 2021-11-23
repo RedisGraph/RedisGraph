@@ -16,9 +16,9 @@
 
 void GB_stringify_sparsity  // construct macros for sparsity structure
 (
-    // output:
-    char *sparsity_macros,  // macros that define the sparsity structure
-    // intput:
+    // input:
+    FILE *fp,               // output file for macros that define the sparsity structure
+                            // assumed to be open already
     char *matrix_name,      // "C", "M", "A", or "B"
     int A_sparsity          // GxB_SPARSE, GxB_HYPERSPARSE, GxB_BITMAP, GxB_FULL
 )
@@ -26,7 +26,7 @@ void GB_stringify_sparsity  // construct macros for sparsity structure
 
     int ecode ;
     GB_enumify_sparsity (&ecode, A_sparsity) ;
-    GB_macrofy_sparsity (sparsity_macros, matrix_name, ecode) ;
+    GB_macrofy_sparsity ( fp, matrix_name, ecode) ;
 }
 
 //------------------------------------------------------------------------------
@@ -41,6 +41,7 @@ void GB_enumify_sparsity    // enumerate the sparsity structure of a matrix
     int A_sparsity          // GxB_SPARSE, GxB_HYPERSPARSE, GxB_BITMAP, GxB_FULL
 )
 {
+    int e;
 
     if (A_sparsity == GxB_SPARSE || A_sparsity == 0)
     {
@@ -71,9 +72,8 @@ void GB_enumify_sparsity    // enumerate the sparsity structure of a matrix
 
 void GB_macrofy_sparsity    // construct macros for sparsity structure
 (
-    // output:
-    char *sparsity_macros,  // macros that define the sparsity structure
     // input:
+    FILE *fp,
     char *matrix_name,      // "C", "M", "A", or "B"
     int ecode
 )
@@ -83,7 +83,7 @@ void GB_macrofy_sparsity    // construct macros for sparsity structure
     {
 
         case 0 :    // sparse
-            snprintf (sparsity_macros, GB_CUDA_STRLEN,
+            fprintf ( fp, 
                 "#define GB_%s_IS_SPARSE 1\n"
                 "#define GB_%s_IS_HYPER  0\n"
                 "#define GB_%s_IS_BITMAP 0\n"
@@ -92,7 +92,7 @@ void GB_macrofy_sparsity    // construct macros for sparsity structure
             break ;
 
         case 1 :    // hypersparse
-            snprintf (sparsity_macros, GB_CUDA_STRLEN,
+            fprintf ( fp,
                 "#define GB_%s_IS_SPARSE 0\n"
                 "#define GB_%s_IS_HYPER  1\n"
                 "#define GB_%s_IS_BITMAP 0\n"
@@ -101,7 +101,7 @@ void GB_macrofy_sparsity    // construct macros for sparsity structure
             break ;
 
         case 2 :    // bitmap
-            snprintf (sparsity_macros, GB_CUDA_STRLEN,
+            fprintf ( fp, 
                 "#define GB_%s_IS_SPARSE 0\n"
                 "#define GB_%s_IS_HYPER  0\n"
                 "#define GB_%s_IS_BITMAP 1\n"
@@ -110,7 +110,7 @@ void GB_macrofy_sparsity    // construct macros for sparsity structure
             break ;
 
         case 3 :    // full
-            snprintf (sparsity_macros, GB_CUDA_STRLEN,
+            fprintf ( fp, 
                 "#define GB_%s_IS_SPARSE 0\n"
                 "#define GB_%s_IS_HYPER  0\n"
                 "#define GB_%s_IS_BITMAP 0\n"
@@ -119,6 +119,7 @@ void GB_macrofy_sparsity    // construct macros for sparsity structure
             break ;
 
         default :
+            break ;
     }
 }
 

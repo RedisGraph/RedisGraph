@@ -52,7 +52,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
     // get the operator
     //--------------------------------------------------------------------------
 
-    if (accum->opcode == GB_FIRST_opcode || C->iso)
+    if (accum->opcode == GB_FIRST_binop_code || C->iso)
     { 
         // nothing to do
         return (GrB_SUCCESS) ;
@@ -132,7 +132,7 @@ GrB_Info GB_dense_subassign_22      // C += b where C is dense and b is a scalar
         // get operators, functions, workspace, contents of b and C
         //----------------------------------------------------------------------
 
-        GxB_binary_function fadd = accum->function ;
+        GxB_binary_function fadd = accum->binop_function ;
 
         //----------------------------------------------------------------------
         // C += b via function pointers, and typecasting

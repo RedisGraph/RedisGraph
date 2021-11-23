@@ -121,7 +121,7 @@
 #define GB_GET_ACCUM_FOR_BITMAP                                             \
     ASSERT_BINARYOP_OK (accum, "accum for bitmap assign", GB0) ;            \
     ASSERT (!GB_OP_IS_POSITIONAL (accum)) ;                                 \
-    GxB_binary_function faccum = accum->function ;                          \
+    GxB_binary_function faccum = accum->binop_function ;                    \
     GB_cast_function cast_A_to_Y = GB_cast_factory (accum->ytype->code, acode);\
     GB_cast_function cast_C_to_X = GB_cast_factory (accum->xtype->code, ccode);\
     GB_cast_function cast_Z_to_C = GB_cast_factory (ccode, accum->ztype->code);\

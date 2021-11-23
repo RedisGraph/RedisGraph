@@ -31,9 +31,8 @@
 
 void GB_stringify_load         // return a string to load/typecast macro
 (
-    // output:
-    char *load_macro,               // string with #define macro to load value
     // input:
+    FILE *fp,                       // File to write macros, assumed open already
     const char *load_macro_name,    // name of macro to construct
     bool is_pattern                 // if true, load/cast does nothing
 )
@@ -41,13 +40,11 @@ void GB_stringify_load         // return a string to load/typecast macro
 
     if (is_pattern)
     {
-        snprintf (load_macro, GB_CUDA_STRLEN, "#define %s(blob)",
-            load_macro_name) ;
+        fprintf ( fp, "#define %s(blob)\n", load_macro_name) ;
     }
     else
     {
-        snprintf (load_macro, GB_CUDA_STRLEN, "#define %s(blob) blob",
-            load_macro_name) ;
+        fprintf ( fp, "#define %s(blob) blob\n", load_macro_name) ;
     }
 }
 

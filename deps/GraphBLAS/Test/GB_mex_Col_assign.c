@@ -123,8 +123,7 @@ GrB_Info assign ( )
             ASSERT_MATRIX_OK (C, "C after setElement", GB0) ;
 
         }
-
-        if (C->vdim == 1)
+        else if (C->vdim == 1)
         {
 
             // test GrB_Vector_assign_scalar functions
@@ -218,7 +217,11 @@ GrB_Info assign ( )
     }
 
     ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
-    OK (GrB_Matrix_wait_(&C)) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
+    OK (GrB_Matrix_wait (&C)) ;
+    #else
+    OK (GrB_Matrix_wait (C, GrB_MATERIALIZE)) ;
+    #endif
     return (info) ;
 }
 
@@ -342,7 +345,11 @@ GrB_Info many_assign
     }
 
     ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&C)) ;
+    #else
+    OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
+    #endif
     return (info) ;
 }
 

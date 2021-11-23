@@ -41,7 +41,7 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     // check object
     //--------------------------------------------------------------------------
 
-    GB_CHECK_MAGIC (type, "Type") ;
+    GB_CHECK_MAGIC (type) ;
 
     switch (type->code)
     {

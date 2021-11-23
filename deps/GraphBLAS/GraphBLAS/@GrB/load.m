@@ -15,7 +15,7 @@ function C = load (filename)
 %   GrB.save (2*A-1)            % save a matrix computation to GrB_Matrix.mat
 %   GrB.load                    % load it back in
 %
-% See also GrB.save, GrB/struct.
+% See also GrB.save, GrB/struct, GrB.serialize, GrB.deserialize.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2021, All Rights Reserved.
 % SPDX-License-Identifier: GPL-3.0-or-later

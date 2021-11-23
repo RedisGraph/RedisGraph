@@ -35,7 +35,7 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     // check object
     //--------------------------------------------------------------------------
 
-    GB_CHECK_MAGIC (semiring, "Semiring") ;
+    GB_CHECK_MAGIC (semiring) ;
     GBPR0 (semiring->header_size > 0 ? "(user-defined)" : "(built-in)") ;
 
     GrB_Info info ;

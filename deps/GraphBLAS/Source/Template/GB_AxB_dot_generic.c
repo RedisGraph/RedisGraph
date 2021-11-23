@@ -7,8 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// This template serves all three dot product methods.  The #including file
-// defines GB_DOT2_GENERIC, GB_DOT3_GENERIC, or GB_DOT4_GENERIC.
+// This template serves the dot2 and dot3 methods, but not dot4.  The
+// #including file defines GB_DOT2_GENERIC or GB_DOT3_GENERIC.
 
 {
 
@@ -18,8 +18,8 @@
 
     ASSERT (!C->iso) ;
 
-    GxB_binary_function fmult = mult->function ;    // NULL if positional
-    GxB_binary_function fadd  = add->op->function ;
+    GxB_binary_function fmult = mult->binop_function ;    // NULL if positional
+    GxB_binary_function fadd  = add->op->binop_function ;
     GB_Opcode opcode = mult->opcode ;
     bool op_is_positional = GB_OPCODE_IS_POSITIONAL (opcode) ;
 
@@ -80,14 +80,16 @@
         { 
             // flip a positional multiplicative operator
             bool handled ;
-            opcode = GB_flip_opcode (opcode, &handled) ; // for positional ops
+            opcode = GB_flip_binop_code (opcode, &handled) ;
             ASSERT (handled) ;      // all positional ops can be flipped
         }
 
-        // aki = A(i,k), located in Ax [A_iso?0:pA], but value not used
+        // aki = A(i,k), located in Ax [A_iso?0:(pA)], but value not used
+        #define GB_A_IS_PATTERN 1
         #define GB_GETA(aki,Ax,pA,A_iso) ;
 
         // bkj = B(k,j), located in Bx [B_iso?0:pB], but value not used
+        #define GB_B_IS_PATTERN 1
         #define GB_GETB(bkj,Bx,pB,B_iso) ;
 
         // define cij for each task
@@ -95,17 +97,6 @@
 
         // address of Cx [p]
         #define GB_CX(p) (&Cx [p])
-
-        // get the value of C(i,j) on input, for dot4 only
-        #define GB_GET4C(cij,p)                                         \
-            if (C_in_iso)                                               \
-            {                                                           \
-                memcpy (&cij, cinput, csize) ;                          \
-            }                                                           \
-            else                                                        \
-            {                                                           \
-                cij = Cx [p] ;                                          \
-            }
 
         // Cx [p] = cij
         #define GB_PUTC(cij,p) Cx [p] = cij
@@ -123,7 +114,7 @@
             GB_MULT (zwork, aki, bkj, i, k, j) ;                        \
             fadd (&cij, &cij, &zwork)
 
-        int64_t offset = GB_positional_offset (opcode) ;
+        int64_t offset = GB_positional_offset (opcode, NULL) ;
 
         if (mult->ztype == GrB_INT64)
         {
@@ -136,42 +127,36 @@
             }
             switch (opcode)
             {
-                case GB_FIRSTI_opcode   :   // z = first_i(A'(i,k),y) == i
-                case GB_FIRSTI1_opcode  :   // z = first_i1(A'(i,k),y) == i+1
+                case GB_FIRSTI_binop_code   :   // first_i(A'(i,k),y) == i
+                case GB_FIRSTI1_binop_code  :   // first_i1(A'(i,k),y) == i+1
                     #undef  GB_MULT
                     #define GB_MULT(t, aki, bkj, i, k, j) t = i + offset
                     #if defined ( GB_DOT2_GENERIC )
                     #include "GB_AxB_dot2_meta.c"
                     #elif defined ( GB_DOT3_GENERIC )
                     #include "GB_AxB_dot3_meta.c"
-                    #else
-                    #include "GB_AxB_dot4_meta.c"
                     #endif
                     break ;
-                case GB_FIRSTJ_opcode   :   // z = first_j(A'(i,k),y) == k
-                case GB_FIRSTJ1_opcode  :   // z = first_j1(A'(i,k),y) == k+1
-                case GB_SECONDI_opcode  :   // z = second_i(x,B(k,j)) == k
-                case GB_SECONDI1_opcode :   // z = second_i1(x,B(k,j)) == k+1
+                case GB_FIRSTJ_binop_code   :   // first_j(A'(i,k),y) == k
+                case GB_FIRSTJ1_binop_code  :   // first_j1(A'(i,k),y) == k+1
+                case GB_SECONDI_binop_code  :   // second_i(x,B(k,j)) == k
+                case GB_SECONDI1_binop_code :   // second_i1(x,B(k,j)) == k+1
                     #undef  GB_MULT
                     #define GB_MULT(t, aki, bkj, i, k, j) t = k + offset
                     #if defined ( GB_DOT2_GENERIC )
                     #include "GB_AxB_dot2_meta.c"
                     #elif defined ( GB_DOT3_GENERIC )
                     #include "GB_AxB_dot3_meta.c"
-                    #else
-                    #include "GB_AxB_dot4_meta.c"
                     #endif
                     break ;
-                case GB_SECONDJ_opcode  :   // z = second_j(x,B(k,j)) == j
-                case GB_SECONDJ1_opcode :   // z = second_j1(x,B(k,j)) == j+1
+                case GB_SECONDJ_binop_code  :   // second_j(x,B(k,j)) == j
+                case GB_SECONDJ1_binop_code :   // second_j1(x,B(k,j)) == j+1
                     #undef  GB_MULT
                     #define GB_MULT(t, aki, bkj, i, k, j) t = j + offset
                     #if defined ( GB_DOT2_GENERIC )
                     #include "GB_AxB_dot2_meta.c"
                     #elif defined ( GB_DOT3_GENERIC )
                     #include "GB_AxB_dot3_meta.c"
-                    #else
-                    #include "GB_AxB_dot4_meta.c"
                     #endif
                     break ;
                 default: ;
@@ -189,42 +174,36 @@
             }
             switch (opcode)
             {
-                case GB_FIRSTI_opcode   :   // z = first_i(A'(i,k),y) == i
-                case GB_FIRSTI1_opcode  :   // z = first_i1(A'(i,k),y) == i+1
+                case GB_FIRSTI_binop_code   :   // first_i(A'(i,k),y) == i
+                case GB_FIRSTI1_binop_code  :   // first_i1(A'(i,k),y) == i+1
                     #undef  GB_MULT
                     #define GB_MULT(t,aki,bkj,i,k,j) t = (int32_t) (i + offset)
                     #if defined ( GB_DOT2_GENERIC )
                     #include "GB_AxB_dot2_meta.c"
                     #elif defined ( GB_DOT3_GENERIC )
                     #include "GB_AxB_dot3_meta.c"
-                    #else
-                    #include "GB_AxB_dot4_meta.c"
                     #endif
                     break ;
-                case GB_FIRSTJ_opcode   :   // z = first_j(A'(i,k),y) == k
-                case GB_FIRSTJ1_opcode  :   // z = first_j1(A'(i,k),y) == k+1
-                case GB_SECONDI_opcode  :   // z = second_i(x,B(k,j)) == k
-                case GB_SECONDI1_opcode :   // z = second_i1(x,B(k,j)) == k+1
+                case GB_FIRSTJ_binop_code   :   // first_j(A'(i,k),y) == k
+                case GB_FIRSTJ1_binop_code  :   // first_j1(A'(i,k),y) == k+1
+                case GB_SECONDI_binop_code  :   // second_i(x,B(k,j)) == k
+                case GB_SECONDI1_binop_code :   // second_i1(x,B(k,j)) == k+1
                     #undef  GB_MULT
                     #define GB_MULT(t,aki,bkj,i,k,j) t = (int32_t) (k + offset)
                     #if defined ( GB_DOT2_GENERIC )
                     #include "GB_AxB_dot2_meta.c"
                     #elif defined ( GB_DOT3_GENERIC )
                     #include "GB_AxB_dot3_meta.c"
-                    #else
-                    #include "GB_AxB_dot4_meta.c"
                     #endif
                     break ;
-                case GB_SECONDJ_opcode  :   // z = second_j(x,B(k,j)) == j
-                case GB_SECONDJ1_opcode :   // z = second_j1(x,B(k,j)) == j+1
+                case GB_SECONDJ_binop_code  :   // second_j(x,B(k,j)) == j
+                case GB_SECONDJ1_binop_code :   // second_j1(x,B(k,j)) == j+1
                     #undef  GB_MULT
                     #define GB_MULT(t,aki,bkj,i,k,j) t = (int32_t) (j + offset)
                     #if defined ( GB_DOT2_GENERIC )
                     #include "GB_AxB_dot2_meta.c"
                     #elif defined ( GB_DOT3_GENERIC )
                     #include "GB_AxB_dot3_meta.c"
-                    #else
-                    #include "GB_AxB_dot4_meta.c"
                     #endif
                     break ;
                 default: ;
@@ -239,13 +218,17 @@
         // generic semirings with standard multiply operators
         //----------------------------------------------------------------------
 
-        // aki = A(i,k), located in Ax [A_iso?0:pA]
+        // aki = A(i,k), located in Ax [A_iso?0:(pA)]
+        #undef  GB_A_IS_PATTERN
+        #define GB_A_IS_PATTERN 0
         #undef  GB_GETA
         #define GB_GETA(aki,Ax,pA,A_iso)                                \
             GB_void aki [GB_VLA(aki_size)] ;                            \
             if (!A_is_pattern) cast_A (aki, Ax +((A_iso) ? 0:(pA)*asize), asize)
 
         // bkj = B(k,j), located in Bx [B_iso?0:pB]
+        #undef  GB_B_IS_PATTERN
+        #define GB_B_IS_PATTERN 0
         #undef  GB_GETB
         #define GB_GETB(bkj,Bx,pB,B_iso)                                \
             GB_void bkj [GB_VLA(bkj_size)] ;                            \
@@ -258,18 +241,6 @@
         // address of Cx [p]
         #undef  GB_CX
         #define GB_CX(p) Cx +((p)*csize)
-
-        // get the value of C(i,j) on input, for dot4 only
-        #undef  GB_GET4C
-        #define GB_GET4C(cij,p)                                         \
-            if (C_in_iso)                                               \
-            {                                                           \
-                memcpy (cij, cinput, csize) ;                           \
-            }                                                           \
-            else                                                        \
-            {                                                           \
-                memcpy (cij, GB_CX (p), csize) ;                        \
-            }
 
         // Cx [p] = cij
         #undef  GB_PUTC
@@ -293,17 +264,17 @@
         #undef  GB_CTYPE
         #define GB_CTYPE GB_void
 
-        if (opcode == GB_FIRST_opcode || opcode == GB_SECOND_opcode)
+        if (opcode == GB_FIRST_binop_code || opcode == GB_SECOND_binop_code)
         {
             // fmult is not used and can be NULL (for user-defined types)
             if (flipxy)
             { 
                 // flip first and second
                 bool handled ;
-                opcode = GB_flip_opcode (opcode, &handled) ; // for 1st and 2nd
-                ASSERT (handled) ;      // FIRST and SECOND ops can be flipped
+                opcode = GB_flip_binop_code (opcode, &handled) ;
+                ASSERT (handled) ; // FIRST and SECOND ops can be flipped
             }
-            if (opcode == GB_FIRST_opcode)
+            if (opcode == GB_FIRST_binop_code)
             { 
                 // t = A(i,k)
                 ASSERT (B_is_pattern) ;
@@ -313,11 +284,9 @@
                 #include "GB_AxB_dot2_meta.c"
                 #elif defined ( GB_DOT3_GENERIC )
                 #include "GB_AxB_dot3_meta.c"
-                #else
-                #include "GB_AxB_dot4_meta.c"
                 #endif
             }
-            else // opcode == GB_SECOND_opcode
+            else // opcode == GB_SECOND_binop_code
             { 
                 // t = B(i,k)
                 ASSERT (A_is_pattern) ;
@@ -327,8 +296,6 @@
                 #include "GB_AxB_dot2_meta.c"
                 #elif defined ( GB_DOT3_GENERIC )
                 #include "GB_AxB_dot3_meta.c"
-                #else
-                #include "GB_AxB_dot4_meta.c"
                 #endif
             }
         }
@@ -343,8 +310,6 @@
                 #include "GB_AxB_dot2_meta.c"
                 #elif defined ( GB_DOT3_GENERIC )
                 #include "GB_AxB_dot3_meta.c"
-                #else
-                #include "GB_AxB_dot4_meta.c"
                 #endif
             }
             else
@@ -356,8 +321,6 @@
                 #include "GB_AxB_dot2_meta.c"
                 #elif defined ( GB_DOT3_GENERIC )
                 #include "GB_AxB_dot3_meta.c"
-                #else
-                #include "GB_AxB_dot4_meta.c"
                 #endif
             }
         }

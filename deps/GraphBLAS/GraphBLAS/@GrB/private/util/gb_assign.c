@@ -139,27 +139,10 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     // determine if A is a scalar (ignore the transpose descriptor)
     //--------------------------------------------------------------------------
 
-    GrB_Index anrows, ancols, anvals ;
+    GrB_Index anrows, ancols ;
     OK (GrB_Matrix_nrows (&anrows, A)) ;
     OK (GrB_Matrix_ncols (&ancols, A)) ;
-    OK (GrB_Matrix_nvals (&anvals, A)) ;
     bool scalar_assignment = (anrows == 1) && (ancols == 1) ;
-
-    if (scalar_assignment && anvals == 0)
-    { 
-        // A is a sparse scalar with no entry.  Expand it to an empty ni-by-nj
-        // sparse matrix with the same type as C, with no entries, and use
-        // matrix assignment.
-        int64_t nI, nJ, Icolon [3], Jcolon [3] ;
-        int Ikind, Jkind ;
-        GB_ijlength (I, ni, cnrows, &nI, &Ikind, Icolon) ;
-        GB_ijlength (J, nj, cncols, &nJ, &Jkind, Jcolon) ;
-        OK (GrB_Matrix_free (&A)) ;
-        OK (GxB_Matrix_Option_get (C, GxB_FORMAT, &fmt)) ;
-        OK (GxB_Matrix_Option_get (C, GxB_SPARSITY_CONTROL, &sparsity)) ;
-        A = gb_new (ctype, nI, nJ, fmt, sparsity) ;
-        scalar_assignment = false ;
-    }
 
     //--------------------------------------------------------------------------
     // compute C(I,J)<M> += A or C<M>(I,J) += A
@@ -167,17 +150,29 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
 
     if (scalar_assignment)
     { 
-        gb_matrix_assign_scalar (C, M, accum, A, I, ni, J, nj, desc,
-            do_subassign) ;
+        if (do_subassign)
+        {
+            // C(I,J)<M> += scalar
+            OK1 (C, GxB_Matrix_subassign_Scalar (C, M, accum, (GrB_Scalar) A,
+                I, ni, J, nj, desc)) ;
+        }
+        else
+        {
+            // C<M>(I,J) += scalar
+            OK1 (C, GrB_Matrix_assign_Scalar (C, M, accum, (GrB_Scalar) A,
+                I, ni, J, nj, desc)) ;
+        }
     }
     else
     {
         if (do_subassign)
         { 
+            // C(I,J)<M> += A
             OK1 (C, GxB_Matrix_subassign (C, M, accum, A, I, ni, J, nj, desc)) ;
         }
         else
         { 
+            // C<M>(I,J) += A
             OK1 (C, GrB_Matrix_assign (C, M, accum, A, I, ni, J, nj, desc)) ;
         }
     }

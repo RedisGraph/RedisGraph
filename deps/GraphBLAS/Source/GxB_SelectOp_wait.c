@@ -15,7 +15,12 @@
 
 GrB_Info GxB_SelectOp_wait   // no work, just check if the GxB_SelectOp is valid
 (
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GxB_SelectOp *op
+    #else
+    GxB_SelectOp op,
+    GrB_WaitMode waitmode
+    #endif
 )
 { 
 
@@ -23,10 +28,14 @@ GrB_Info GxB_SelectOp_wait   // no work, just check if the GxB_SelectOp is valid
     // check inputs
     //--------------------------------------------------------------------------
 
-    #pragma omp flush
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GB_WHERE1 ("GxB_SelectOp_wait (&op)") ;
     GB_RETURN_IF_NULL (op) ;
     GB_RETURN_IF_NULL_OR_FAULTY (*op) ;
+    #else
+    GB_WHERE1 ("GxB_SelectOp_wait (op, waitmode)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (op) ;
+    #endif
 
     //--------------------------------------------------------------------------
     // return result

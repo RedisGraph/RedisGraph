@@ -113,9 +113,9 @@ GrB_Info GB_dense_subassign_06d
         // C is iso
         //----------------------------------------------------------------------
 
-        // Since C is iso, A must be iso, which is also the mask M.  An iso
-        // mask matrix M is converted into a structural mask by GB_get_mask,
-        // and thus Mask_struct must be true if C is iso.
+        // Since C is iso, A must be iso (or effectively iso), which is also
+        // the mask M.  An iso mask matrix M is converted into a structural
+        // mask by GB_get_mask, and thus Mask_struct must be true if C is iso.
 
         ASSERT (Mask_struct) ;
         #define GB_ISO_ASSIGN

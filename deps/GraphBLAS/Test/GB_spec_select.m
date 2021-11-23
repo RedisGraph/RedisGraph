@@ -34,7 +34,7 @@ end
 atype = A.class ;
 T.matrix = GB_spec_zeros (size (A.matrix), atype) ;
 thunk = full (thunk) ;
-xthunk = GB_mex_cast (thunk, atype) ;
+athunk = GB_mex_cast (thunk, atype) ;
 
 is_complex = test_contains (atype, 'complex') ;
 if (is_complex)
@@ -69,17 +69,17 @@ switch (opname)
     case 'le_zero'
         p = A.pattern & (A.matrix <= 0) ;
     case 'ne_thunk'
-        p = A.pattern & (A.matrix ~= xthunk) ;
+        p = A.pattern & (A.matrix ~= athunk) ;
     case 'eq_thunk'
-        p = A.pattern & (A.matrix == xthunk) ;
+        p = A.pattern & (A.matrix == athunk) ;
     case 'gt_thunk'
-        p = A.pattern & (A.matrix > xthunk) ;
+        p = A.pattern & (A.matrix > athunk) ;
     case 'ge_thunk'
-        p = A.pattern & (A.matrix >= xthunk) ;
+        p = A.pattern & (A.matrix >= athunk) ;
     case 'lt_thunk'
-        p = A.pattern & (A.matrix < xthunk) ;
+        p = A.pattern & (A.matrix < athunk) ;
     case 'le_thunk'
-        p = A.pattern & (A.matrix <= xthunk) ;
+        p = A.pattern & (A.matrix <= athunk) ;
     case 'isnan'
         p = A.pattern & isnan (A.matrix) ;
     otherwise

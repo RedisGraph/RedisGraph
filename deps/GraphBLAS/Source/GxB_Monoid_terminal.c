@@ -37,6 +37,7 @@ GrB_Info GxB_Monoid_terminal        // return the monoid terminal
     { 
         memcpy (terminal, monoid->terminal, monoid->op->ztype->size) ;
     }
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

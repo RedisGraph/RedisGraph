@@ -187,7 +187,7 @@ GB_Global_struct GB_Global =
         GB_BITSWITCH_gt_than_64 },
     .hyper_switch = GB_HYPER_SWITCH_DEFAULT,
 
-    .is_csc = (GB_FORMAT_DEFAULT != GxB_BY_ROW),    // default is GxB_BY_ROW
+    .is_csc = false,    // default is GxB_BY_ROW
 
     // abort function for debugging only
     .abort_function   = abort,
@@ -261,13 +261,13 @@ GB_Global_struct GB_Global =
         256,    // size 2^14 = 16 KB   (2^8  blocks * 2^14 = 4 MB total)
         128,    // size 2^15 = 32 KB   (2^7  blocks * 2^15 = 4 MB total)
 
-        64,     // size 2^16 = 64 KB   (2^6  blocks * 2^16 = 4 MB total)
-        32,     // size 2^17 = 128 KB  (2^5  blocks * 2^17 = 4 MB total)
-        16,     // size 2^18 = 256 KB  (2^4  blocks * 2^18 = 4 MB total)
-        8,      // size 2^19 = 512 KB  (2^3  blocks * 2^19 = 4 MB total)
+        // maximum total size = about 36 MB
+        // by default, no blocks larger than 32 KB are kept in the free_pool
 
-        // maximum total size = about 52 MB
-        // by default, no blocks larger than 512 KB are kept in the free_pool
+        0,      // size 2^16 = 64 KB
+        0,      // size 2^17 = 128 KB
+        0,      // size 2^18 = 256 KB
+        0,      // size 2^19 = 512 KB
 
         0,      // size 2^20 = 1 MB
         0,      // size 2^21
@@ -546,8 +546,13 @@ void GB_Global_memtable_clear (void)
 GB_PUBLIC
 void GB_Global_memtable_add (void *p, size_t size)
 {
-    #ifdef GB_DEBUG
     if (p == NULL) return ;
+    if (GB_Global.malloc_tracking)
+    {
+        GB_ATOMIC_UPDATE
+        GB_Global.nmalloc++ ;
+    }
+    #ifdef GB_DEBUG
     bool fail = false ;
     #ifdef GB_MEMDUMP
     printf ("memtable add %p size %ld\n", p, size) ;
@@ -642,8 +647,13 @@ bool GB_Global_memtable_find (void *p)
 GB_PUBLIC
 void GB_Global_memtable_remove (void *p)
 {
-    #ifdef GB_DEBUG
     if (p == NULL) return ;
+    if (GB_Global.malloc_tracking)
+    {
+        GB_ATOMIC_UPDATE
+        GB_Global.nmalloc-- ;
+    }
+    #ifdef GB_DEBUG
     bool found = false ;
     #ifdef GB_MEMDUMP
     printf ("memtable remove %p ", p) ;
@@ -699,9 +709,7 @@ void * GB_Global_malloc_function (size_t size)
             p = GB_Global.malloc_function (size) ;
         }
     }
-    #ifdef GB_DEBUG
     GB_Global_memtable_add (p, size) ;
-    #endif
     return (p) ;
 }
 
@@ -736,13 +744,11 @@ void * GB_Global_realloc_function (void *p, size_t size)
             pnew = GB_Global.realloc_function (p, size) ;
         }
     }
-    #ifdef GB_DEBUG
     if (pnew != NULL)
     {
         GB_Global_memtable_remove (p) ;
         GB_Global_memtable_add (pnew, size) ;
     }
-    #endif
     return (pnew) ;
 }
 
@@ -768,9 +774,7 @@ void GB_Global_free_function (void *p)
             GB_Global.free_function (p) ;
         }
     }
-    #ifdef GB_DEBUG
     GB_Global_memtable_remove (p) ;
-    #endif
 }
 
 //------------------------------------------------------------------------------
@@ -821,19 +825,6 @@ int64_t GB_Global_nmalloc_get (void)
     GB_ATOMIC_READ
     nmalloc = GB_Global.nmalloc ;
     return (nmalloc) ;
-}
-
-void GB_Global_nmalloc_increment (void)
-{ 
-    GB_ATOMIC_UPDATE
-    GB_Global.nmalloc++ ;
-}
-
-GB_PUBLIC
-void GB_Global_nmalloc_decrement (void)
-{ 
-    GB_ATOMIC_UPDATE
-    GB_Global.nmalloc-- ;
 }
 
 //------------------------------------------------------------------------------

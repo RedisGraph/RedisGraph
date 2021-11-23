@@ -93,7 +93,7 @@ GrB_Info GB_bitmap_subref       // C = A(I,J): either symbolic or numeric
     //--------------------------------------------------------------------------
 
     int64_t cnzmax ;
-    bool ok = GB_Index_multiply ((GrB_Index *) (&cnzmax), nI, nJ) ;
+    bool ok = GB_int64_multiply ((GrB_Index *) (&cnzmax), nI, nJ) ;
     if (!ok) cnzmax = INT64_MAX ;
     GrB_Type ctype = symbolic ? GrB_INT64 : A->type ;
     int sparsity = GB_IS_BITMAP (A) ? GxB_BITMAP : GxB_FULL ;

@@ -91,7 +91,7 @@
 }
 
 // check object->magic and print an error if invalid
-#define GB_CHECK_MAGIC(object,kind)                                     \
+#define GB_CHECK_MAGIC(object)                                          \
 {                                                                       \
     switch (object->magic)                                              \
     {                                                                   \

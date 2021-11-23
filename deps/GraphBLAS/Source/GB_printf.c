@@ -47,7 +47,7 @@ void GB_burble_assign
     else
     {
         // use a simpler version of accum->name
-        if (accum->opcode == GB_USER_opcode) Op = "op" ;
+        if (accum->opcode == GB_USER_binop_code) Op = "op" ;
         else if (GB_STRING_MATCH (accum->name, "plus")) Op = "+" ;
         else if (GB_STRING_MATCH (accum->name, "minus")) Op = "-" ;
         else if (GB_STRING_MATCH (accum->name, "times")) Op = "*" ;
@@ -62,8 +62,9 @@ void GB_burble_assign
     // construct the Mask string
     //--------------------------------------------------------------------------
 
+    #define GB_STRLEN 128
     const char *Mask ;
-    char Mask_string [GB_LEN+1] ;
+    char Mask_string [GB_STRLEN+1] ;
     if (M == NULL)
     {
         // M is not present
@@ -79,7 +80,7 @@ void GB_burble_assign
     else
     {
         // M is present
-        snprintf (Mask_string, GB_LEN, "<%sM%s%s%s>",
+        snprintf (Mask_string, GB_STRLEN, "<%sM%s%s%s>",
             (Mask_comp) ? "!" : "",
             GB_IS_BITMAP (M) ? ",bitmap" : (GB_IS_FULL (M) ? ",full" : ""),
             Mask_struct ? ",struct" : "",
@@ -99,8 +100,8 @@ void GB_burble_assign
 
     const char *Istr = (Ikind == GB_ALL) ? ":" : "I" ;
     const char *Jstr = (Jkind == GB_ALL) ? ":" : "J" ;
-    char IJ [GB_LEN+1] ;
-    snprintf (IJ, GB_LEN, "(%s,%s)", Istr, Jstr) ;
+    char IJ [GB_STRLEN+1] ;
+    snprintf (IJ, GB_STRLEN, "(%s,%s)", Istr, Jstr) ;
     if (Ikind == GB_ALL && Jkind == GB_ALL)
     {
         // do not print the (I,J) indices
@@ -115,13 +116,13 @@ void GB_burble_assign
     {
         case GB_ROW_ASSIGN:
             // C(i,J) = A
-            snprintf (IJ, GB_LEN, "(i,%s)", Jstr) ;
+            snprintf (IJ, GB_STRLEN, "(i,%s)", Jstr) ;
             GBURBLE ("C%s%s %s= A ", Mask, IJ, Op) ;
             break ;
 
         case GB_COL_ASSIGN:
             // C(I,j) = A
-            snprintf (IJ, GB_LEN, "(%s,j)", Istr) ;
+            snprintf (IJ, GB_STRLEN, "(%s,j)", Istr) ;
             GBURBLE ("C%s%s %s= A ", Mask, IJ, Op) ;
             break ;
 

@@ -96,6 +96,8 @@ GrB_Info GxB_Vector_Option_get      // gets the current option of a vector
             return (GrB_INVALID_VALUE) ;
 
     }
+
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

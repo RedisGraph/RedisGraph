@@ -49,6 +49,7 @@ for k = 1:8
             C1 = GB_spec_Matrix_eWiseMult(Cin, [ ], [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseMult (Cin, [ ], [ ], op, A2, B2, [ ]) ;
             GB_spec_compare (C1, C2) ;
+
             C1 = GB_spec_Matrix_eWiseAdd (Cin, [ ], [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseAdd  (Cin, [ ], [ ], op, A2, B2, [ ]) ;
             GB_spec_compare (C1, C2) ;
@@ -86,9 +87,15 @@ for k = 1:8
             C1 = GB_spec_Matrix_eWiseMult(C10, [ ], [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseMult (C10, [ ], [ ], op, A2, B2, [ ]) ;
             GB_spec_compare (C1, C2) ;
+
             C1 = GB_spec_Matrix_eWiseAdd (C10, [ ], [ ], op, A2, B2, [ ]) ;
             C2 = GB_mex_Matrix_eWiseAdd  (C10, [ ], [ ], op, A2, B2, [ ]) ;
             GB_spec_compare (C1, C2) ;
+
+            C1 = GB_spec_Matrix_eWiseUnion (C10, [ ], [ ], op, A2, 3, B2, 1, [ ]) ;
+            C2 = GB_mex_Matrix_eWiseUnion  (C10, [ ], [ ], op, A2, 3, B2, 1, [ ]) ;
+            GB_spec_compare (C1, C2) ;
+
         end
 
         % C1 = bitcmp (Afull) ;

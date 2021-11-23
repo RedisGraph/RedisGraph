@@ -16,6 +16,7 @@ ops = {
 'first',  0, % z = x
 'second', 0, % z = y
 'pair',   1, % z = 1
+'oneb',   1, % z = 1 (same as pair)
 'any',    1, % z = pick x or y
 'min',    1, % z = min(x,y)
 'max',    1, % z = max(x,y)

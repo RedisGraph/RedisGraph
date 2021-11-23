@@ -19,7 +19,7 @@ semiring.multiply = 'times' ;
 semiring.class = 'double' ;
 
 any_pair.add = 'any' ;
-any_pair.multiply = 'pair' ;
+any_pair.multiply = 'pair' ;    % same as oneb
 any_pair.class = 'double' ;
 
 C0 = sparse (m, 1) ;

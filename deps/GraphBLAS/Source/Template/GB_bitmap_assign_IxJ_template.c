@@ -92,6 +92,6 @@
     // free workpace
     //--------------------------------------------------------------------------
 
-    GB_FREE_WERK (&TaskList, TaskList_size) ;
+    GB_FREE_WORK (&TaskList, TaskList_size) ;
 }
 

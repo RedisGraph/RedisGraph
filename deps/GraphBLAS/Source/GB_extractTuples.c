@@ -22,8 +22,8 @@
 
 #define GB_FREE_ALL                             \
 {                                               \
-    GB_FREE_WERK (&Ap, Ap_size) ;               \
-    GB_FREE_WERK (&X_bitmap, X_bitmap_size) ;   \
+    GB_FREE_WORK (&Ap, Ap_size) ;               \
+    GB_FREE_WORK (&X_bitmap, X_bitmap_size) ;   \
 }
 
 GrB_Info GB_extractTuples       // extract all tuples from a matrix
@@ -118,9 +118,9 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
         { 
             // X must be typecasted
             int64_t anzmax = GB_IMAX (anz, 1) ;
-            X_bitmap = GB_MALLOC_WERK (anzmax*asize, GB_void, &X_bitmap_size) ;
+            X_bitmap = GB_MALLOC_WORK (anzmax*asize, GB_void, &X_bitmap_size) ;
         }
-        Ap = GB_MALLOC_WERK (A->vdim+1, int64_t, &Ap_size) ;
+        Ap = GB_MALLOC_WORK (A->vdim+1, int64_t, &Ap_size) ;
         if (Ap == NULL || (need_typecast && X_bitmap == NULL))
         { 
             // out of memory

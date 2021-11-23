@@ -308,24 +308,6 @@ end
 assert (ok) ;
 
 try
-    C = zeros (3, 3, 'crud', G) ; %#ok<*PREALL>
-    ok = false ;
-catch expected_error
-    expected_error
-    disp (expected_error.stack (end-1))
-end
-assert (ok) ;
-
-try
-    C = zeros ([3, 3], 'crud', G) ;
-    ok = false ;
-catch expected_error
-    expected_error
-    disp (expected_error.stack (end-1))
-end
-assert (ok) ;
-
-try
     C = zeros (3, 3, 'like', G, 'crud') ;
     ok = false ;
 catch expected_error

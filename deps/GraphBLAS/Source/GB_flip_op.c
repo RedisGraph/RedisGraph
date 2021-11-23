@@ -31,7 +31,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // swap FIRST and SECOND
         //----------------------------------------------------------------------
 
-        case GB_FIRST_opcode  :
+        case GB_FIRST_binop_code  :
 
             switch (xcode)
             {
@@ -52,7 +52,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             }
             break ;
 
-        case GB_SECOND_opcode :
+        case GB_SECOND_binop_code :
 
             switch (xcode)
             {
@@ -77,7 +77,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // swap LT and GT
         //----------------------------------------------------------------------
 
-        case GB_GT_opcode     :
+        case GB_GT_binop_code     :
 
             switch (xcode)
             {
@@ -96,7 +96,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             }
             break ;
 
-        case GB_LT_opcode     :
+        case GB_LT_binop_code     :
 
             switch (xcode)
             {
@@ -119,7 +119,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // swap LE and GE
         //----------------------------------------------------------------------
 
-        case GB_GE_opcode     :
+        case GB_GE_binop_code     :
 
             switch (xcode)
             {
@@ -138,7 +138,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             }
             break ;
 
-        case GB_LE_opcode     :
+        case GB_LE_binop_code     :
 
             switch (xcode)
             {
@@ -161,7 +161,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // swap ISLT and ISGT
         //----------------------------------------------------------------------
 
-        case GB_ISGT_opcode     :
+        case GB_ISGT_binop_code     :
 
             switch (xcode)
             {
@@ -180,7 +180,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             }
             break ;
 
-        case GB_ISLT_opcode     :
+        case GB_ISLT_binop_code     :
 
             switch (xcode)
             {
@@ -203,7 +203,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // swap ISLE and ISGE
         //----------------------------------------------------------------------
 
-        case GB_ISGE_opcode     :
+        case GB_ISGE_binop_code     :
 
             switch (xcode)
             {
@@ -222,7 +222,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             }
             break ;
 
-        case GB_ISLE_opcode     :
+        case GB_ISLE_binop_code     :
 
             switch (xcode)
             {
@@ -245,7 +245,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // swap DIV and RDIV
         //----------------------------------------------------------------------
 
-        case GB_DIV_opcode  :
+        case GB_DIV_binop_code  :
 
             switch (xcode)
             {
@@ -266,7 +266,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             }
             break ;
 
-        case GB_RDIV_opcode :
+        case GB_RDIV_binop_code :
 
             switch (xcode)
             {
@@ -291,7 +291,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // swap MINUS and RMINUS
         //----------------------------------------------------------------------
 
-        case GB_MINUS_opcode  :
+        case GB_MINUS_binop_code  :
 
             switch (xcode)
             {
@@ -312,7 +312,7 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
             }
             break ;
 
-        case GB_RMINUS_opcode :
+        case GB_RMINUS_binop_code :
 
             switch (xcode)
             {
@@ -337,32 +337,32 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // positional operators do not need to be flipped for ewise methods
         //----------------------------------------------------------------------
 
-        case GB_FIRSTI_opcode       :
-        case GB_FIRSTJ_opcode       :
-        case GB_FIRSTI1_opcode      :
-        case GB_FIRSTJ1_opcode      :
-        case GB_SECONDI_opcode      :
-        case GB_SECONDJ_opcode      :
-        case GB_SECONDI1_opcode     :
-        case GB_SECONDJ1_opcode     :
+        case GB_FIRSTI_binop_code       :
+        case GB_FIRSTJ_binop_code       :
+        case GB_FIRSTI1_binop_code      :
+        case GB_FIRSTJ1_binop_code      :
+        case GB_SECONDI_binop_code      :
+        case GB_SECONDJ_binop_code      :
+        case GB_SECONDI1_binop_code     :
+        case GB_SECONDJ1_binop_code     :
             return (op) ;
 
         //----------------------------------------------------------------------
         // these operators are not commutative and do not have flipped ops:
         //----------------------------------------------------------------------
 
-        case GB_POW_opcode          :
-        case GB_BGET_opcode         :
-        case GB_BSET_opcode         :
-        case GB_BCLR_opcode         :
-        case GB_BSHIFT_opcode       :
-        case GB_ATAN2_opcode        :
-        case GB_FMOD_opcode         :
-        case GB_REMAINDER_opcode    :
-        case GB_COPYSIGN_opcode     :
-        case GB_LDEXP_opcode        :
-        case GB_CMPLX_opcode        :
-        case GB_USER_opcode         :
+        case GB_POW_binop_code          :
+        case GB_BGET_binop_code         :
+        case GB_BSET_binop_code         :
+        case GB_BCLR_binop_code         :
+        case GB_BSHIFT_binop_code       :
+        case GB_ATAN2_binop_code        :
+        case GB_FMOD_binop_code         :
+        case GB_REMAINDER_binop_code    :
+        case GB_COPYSIGN_binop_code     :
+        case GB_LDEXP_binop_code        :
+        case GB_CMPLX_binop_code        :
+        case GB_USER_binop_code         :
             (*handled) = false ;
             return (op) ;
 
@@ -370,24 +370,24 @@ GrB_BinaryOp GB_flip_op     // flip a binary operator
         // these operators are commutative; they are their own flipped ops:
         //----------------------------------------------------------------------
 
-        case GB_ANY_opcode          :
-        case GB_PAIR_opcode         :
-        case GB_MIN_opcode          :
-        case GB_MAX_opcode          :
-        case GB_PLUS_opcode         :
-        case GB_TIMES_opcode        :
-        case GB_ISEQ_opcode         :
-        case GB_ISNE_opcode         :
-        case GB_LOR_opcode          :
-        case GB_LAND_opcode         :
-        case GB_LXOR_opcode         :
-        case GB_BOR_opcode          :
-        case GB_BAND_opcode         :
-        case GB_BXOR_opcode         :
-        case GB_BXNOR_opcode        :
-        case GB_EQ_opcode           :
-        case GB_NE_opcode           :
-        case GB_HYPOT_opcode        :
+        case GB_ANY_binop_code          :
+        case GB_PAIR_binop_code         :
+        case GB_MIN_binop_code          :
+        case GB_MAX_binop_code          :
+        case GB_PLUS_binop_code         :
+        case GB_TIMES_binop_code        :
+        case GB_ISEQ_binop_code         :
+        case GB_ISNE_binop_code         :
+        case GB_LOR_binop_code          :
+        case GB_LAND_binop_code         :
+        case GB_LXOR_binop_code         :
+        case GB_BOR_binop_code          :
+        case GB_BAND_binop_code         :
+        case GB_BXOR_binop_code         :
+        case GB_BXNOR_binop_code        :
+        case GB_EQ_binop_code           :
+        case GB_NE_binop_code           :
+        case GB_HYPOT_binop_code        :
             return (op) ;
 
         default: ;

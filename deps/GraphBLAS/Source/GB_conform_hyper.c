@@ -42,6 +42,7 @@ GrB_Info GB_conform_hyper       // conform a matrix to sparse/hypersparse
 
     if (A->nvec_nonempty < 0)
     { 
+        // A->nvec_nonempty is used to select sparse vs hypersparse
         A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
     }
 

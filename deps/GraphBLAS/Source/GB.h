@@ -54,6 +54,11 @@
 #include "GB_log2.h"
 #include "GB_iso.h"
 
+#if defined ( GB_HAVE_IPP )
+// Intel(R) IPP, not yet supported
+#include <ipp.h>
+#endif
+
 //------------------------------------------------------------------------------
 // more internal definitions
 //------------------------------------------------------------------------------
@@ -66,33 +71,6 @@ int64_t GB_Pending_n        // return # of pending tuples in A
 // A is nrows-by-ncols, in either CSR or CSC format
 #define GB_NROWS(A) ((A)->is_csc ? (A)->vlen : (A)->vdim)
 #define GB_NCOLS(A) ((A)->is_csc ? (A)->vdim : (A)->vlen)
-
-// The internal content of a GrB_Matrix and GrB_Vector are identical, and
-// inside SuiteSparse:GraphBLAS, they can be typecasted between each other.
-// This typecasting feature should not be done in user code, however, since it
-// is not supported in the API.  All GrB_Vector objects can be safely
-// typecasted into a GrB_Matrix, but not the other way around.  The GrB_Vector
-// object is more restrictive.  The GB_VECTOR_OK(v) macro defines the content
-// that all GrB_Vector objects must have.
-
-// GB_VECTOR_OK(v) is used mainly for assertions, but also to determine when it
-// is safe to typecast an n-by-1 GrB_Matrix (in standard CSC format) into a
-// GrB_Vector.  This is not done in the main SuiteSparse:GraphBLAS library, but
-// in the GraphBLAS/Test directory only.  The macro is also used in
-// GB_Vector_check, to ensure the content of a GrB_Vector is valid.
-
-#define GB_VECTOR_OK(v)                     \
-(                                           \
-    ((v) != NULL) &&                        \
-    ((v)->is_csc == true) &&                \
-    ((v)->plen == 1 || (v)->plen == -1) &&  \
-    ((v)->vdim == 1) &&                     \
-    ((v)->nvec == 1) &&                     \
-    ((v)->h == NULL)                        \
-)
-
-// A GxB_Vector is a GrB_Vector of length 1
-#define GB_SCALAR_OK(v) (GB_VECTOR_OK(v) && ((v)->vlen == 1))
 
 //------------------------------------------------------------------------------
 // aliased and shallow objects
@@ -127,10 +105,8 @@ GrB_Info GB_init            // start up GraphBLAS
 
     // pointers to memory management functions
     void * (* malloc_function  ) (size_t),
-    void * (* calloc_function  ) (size_t, size_t),
     void * (* realloc_function ) (void *, size_t),
     void   (* free_function    ) (void *),
-    bool malloc_is_thread_safe,
 
     bool caller_is_GxB_cuda_init,       // true for GxB_cuda_init only
 
@@ -245,6 +221,14 @@ GrB_Info GB_matvec_type            // get the type of a matrix
     GB_Context Context
 ) ;
 
+GrB_Info GB_matvec_type_name  // return the name of the type of a matrix
+(
+    char *type_name,        // name of the type (char array of size at least
+                            // GxB_MAX_NAME_LEN, owned by the user application).
+    const GrB_Matrix A,     // matrix to query
+    GB_Context Context
+) ;
+
 GB_PUBLIC
 GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
 (
@@ -323,153 +307,9 @@ static inline bool GB_code_compatible       // true if two types can be typecast
     }
 }
 
-
-//------------------------------------------------------------------------------
-// GB_task_struct: parallel task descriptor
 //------------------------------------------------------------------------------
 
-// The element-wise computations (GB_add, GB_emult, and GB_mask) compute
-// C(:,j)<M(:,j)> = op (A (:,j), B(:,j)).  They are parallelized by slicing the
-// work into tasks, described by the GB_task_struct.
-
-// There are two kinds of tasks.  For a coarse task, kfirst <= klast, and the
-// task computes all vectors in C(:,kfirst:klast), inclusive.  None of the
-// vectors are sliced and computed by other tasks.  For a fine task, klast is
-// -1.  The task computes part of the single vector C(:,kfirst).  It starts at
-// pA in Ai,Ax, at pB in Bi,Bx, and (if M is present) at pM in Mi,Mx.  It
-// computes C(:,kfirst), starting at pC in Ci,Cx.
-
-// GB_subref also uses the TaskList.  It has 12 kinds of fine tasks,
-// corresponding to each of the 12 methods used in GB_subref_template.  For
-// those fine tasks, method = -TaskList [taskid].klast defines the method to
-// use.
-
-// The GB_subassign functions use the TaskList, in many different ways.
-
-typedef struct          // task descriptor
-{
-    int64_t kfirst ;    // C(:,kfirst) is the first vector in this task.
-    int64_t klast  ;    // C(:,klast) is the last vector in this task.
-    int64_t pC ;        // fine task starts at Ci, Cx [pC]
-    int64_t pC_end ;    // fine task ends at Ci, Cx [pC_end-1]
-    int64_t pM ;        // fine task starts at Mi, Mx [pM]
-    int64_t pM_end ;    // fine task ends at Mi, Mx [pM_end-1]
-    int64_t pA ;        // fine task starts at Ai, Ax [pA]
-    int64_t pA_end ;    // fine task ends at Ai, Ax [pA_end-1]
-    int64_t pB ;        // fine task starts at Bi, Bx [pB]
-    int64_t pB_end ;    // fine task ends at Bi, Bx [pB_end-1]
-    int64_t len ;       // fine task handles a subvector of this length
-}
-GB_task_struct ;
-
-// GB_REALLOC_TASK_WERK: Allocate or reallocate the TaskList so that it can
-// hold at least ntasks.  Double the size if it's too small.
-
-#define GB_REALLOC_TASK_WERK(TaskList,ntasks,max_ntasks)                    \
-{                                                                           \
-    if ((ntasks) >= max_ntasks)                                             \
-    {                                                                       \
-        bool ok ;                                                           \
-        int nold = (max_ntasks == 0) ? 0 : (max_ntasks + 1) ;               \
-        int nnew = 2 * (ntasks) + 1 ;                                       \
-        GB_REALLOC_WERK (TaskList, nnew, GB_task_struct,  &TaskList_size,   \
-            &ok, NULL) ;                                                    \
-        if (!ok)                                                            \
-        {                                                                   \
-            /* out of memory */                                             \
-            GB_FREE_ALL ;                                                   \
-            return (GrB_OUT_OF_MEMORY) ;                                    \
-        }                                                                   \
-        for (int t = nold ; t < nnew ; t++)                                 \
-        {                                                                   \
-            TaskList [t].kfirst = -1 ;                                      \
-            TaskList [t].klast  = INT64_MIN ;                               \
-            TaskList [t].pA     = INT64_MIN ;                               \
-            TaskList [t].pA_end = INT64_MIN ;                               \
-            TaskList [t].pB     = INT64_MIN ;                               \
-            TaskList [t].pB_end = INT64_MIN ;                               \
-            TaskList [t].pC     = INT64_MIN ;                               \
-            TaskList [t].pC_end = INT64_MIN ;                               \
-            TaskList [t].pM     = INT64_MIN ;                               \
-            TaskList [t].pM_end = INT64_MIN ;                               \
-            TaskList [t].len    = INT64_MIN ;                               \
-        }                                                                   \
-        max_ntasks = 2 * (ntasks) ;                                         \
-    }                                                                       \
-    ASSERT ((ntasks) < max_ntasks) ;                                        \
-}
-
-GrB_Info GB_ewise_slice
-(
-    // output:
-    GB_task_struct **p_TaskList,    // array of structs
-    size_t *p_TaskList_size,        // size of TaskList
-    int *p_ntasks,                  // # of tasks constructed
-    int *p_nthreads,                // # of threads for eWise operation
-    // input:
-    const int64_t Cnvec,            // # of vectors of C
-    const int64_t *restrict Ch,     // vectors of C, if hypersparse
-    const int64_t *restrict C_to_M, // mapping of C to M
-    const int64_t *restrict C_to_A, // mapping of C to A
-    const int64_t *restrict C_to_B, // mapping of C to B
-    bool Ch_is_Mh,                  // if true, then Ch == Mh; GB_add only
-    const GrB_Matrix M,             // mask matrix to slice (optional)
-    const GrB_Matrix A,             // matrix to slice
-    const GrB_Matrix B,             // matrix to slice
-    GB_Context Context
-) ;
-
-GB_PUBLIC
-void GB_slice_vector
-(
-    // output: return i, pA, and pB
-    int64_t *p_i,                   // work starts at A(i,kA) and B(i,kB)
-    int64_t *p_pM,                  // M(i:end,kM) starts at pM
-    int64_t *p_pA,                  // A(i:end,kA) starts at pA
-    int64_t *p_pB,                  // B(i:end,kB) starts at pB
-    // input:
-    const int64_t pM_start,         // M(:,kM) starts at pM_start in Mi,Mx
-    const int64_t pM_end,           // M(:,kM) ends at pM_end-1 in Mi,Mx
-    const int64_t *restrict Mi,     // indices of M (or NULL)
-    const int64_t pA_start,         // A(:,kA) starts at pA_start in Ai,Ax
-    const int64_t pA_end,           // A(:,kA) ends at pA_end-1 in Ai,Ax
-    const int64_t *restrict Ai,     // indices of A
-    const int64_t pB_start,         // B(:,kB) starts at pB_start in Bi,Bx
-    const int64_t pB_end,           // B(:,kB) ends at pB_end-1 in Bi,Bx
-    const int64_t *restrict Bi,     // indices of B
-    const int64_t vlen,             // A->vlen and B->vlen
-    const double target_work        // target work
-) ;
-
-void GB_task_cumsum
-(
-    int64_t *Cp,                        // size Cnvec+1
-    const int64_t Cnvec,
-    int64_t *Cnvec_nonempty,            // # of non-empty vectors in C
-    GB_task_struct *restrict TaskList,  // array of structs
-    const int ntasks,                   // # of tasks
-    const int nthreads,                 // # of threads
-    GB_Context Context
-) ;
-
-//------------------------------------------------------------------------------
-// GB_GET_VECTOR: get the content of a vector for a coarse/fine task
-//------------------------------------------------------------------------------
-
-#define GB_GET_VECTOR(pX_start, pX_fini, pX, pX_end, Xp, kX, Xvlen)         \
-    int64_t pX_start, pX_fini ;                                             \
-    if (fine_task)                                                          \
-    {                                                                       \
-        /* A fine task operates on a slice of X(:,k) */                     \
-        pX_start = TaskList [taskid].pX ;                                   \
-        pX_fini  = TaskList [taskid].pX_end ;                               \
-    }                                                                       \
-    else                                                                    \
-    {                                                                       \
-        /* vectors are never sliced for a coarse task */                    \
-        pX_start = GBP (Xp, kX, Xvlen) ;                                    \
-        pX_fini  = GBP (Xp, kX+1, Xvlen) ;                                  \
-    }
+#include "GB_task_struct.h"
 
 //------------------------------------------------------------------------------
 
@@ -499,6 +339,11 @@ size_t GB_code_size             // return the size of a type, given its code
 void GB_Matrix_free             // free a matrix
 (
     GrB_Matrix *Ahandle         // handle of matrix to free
+) ;
+
+GrB_Info GB_Op_free             // free a user-created op
+(
+    GB_Operator *op_handle      // handle of operator to free
 ) ;
 
 //------------------------------------------------------------------------------
@@ -585,7 +430,7 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
 ) ;
 
 GB_PUBLIC
-bool GB_Index_multiply      // true if ok, false if overflow
+bool GB_int64_multiply      // true if ok, false if overflow
 (
     GrB_Index *restrict c,  // c = a*b, or zero if overflow occurs
     const int64_t a,
@@ -649,6 +494,21 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     GB_Context Context
 ) ;
 
+GrB_Info GB_Vector_removeElement
+(
+    GrB_Vector V,               // vector to remove entry from
+    GrB_Index i,                // index
+    GB_Context Context
+) ;
+
+GrB_Info GB_Matrix_removeElement
+(
+    GrB_Matrix C,               // matrix to remove entry from
+    GrB_Index row,              // row index
+    GrB_Index col,              // column index
+    GB_Context Context
+) ;
+
 GB_PUBLIC
 GrB_Info GB_block   // apply all pending computations if blocking mode enabled
 (
@@ -663,6 +523,17 @@ bool GB_op_is_second    // return true if op is SECOND, of the right type
     GrB_Type type
 ) ;
 
+void GB_op_name_and_defn
+(
+    // output
+    char *operator_name,        // op->name of the GrB operator struct
+    char **operator_defn,       // op->defn of the GrB operator struct
+    // input
+    const char *input_name,     // user-provided name, may be NULL
+    const char *input_defn,     // user-provided name, may be NULL
+    const char *typecast_name,  // typecast name for function pointer
+    size_t typecast_name_len    // length of typecast_name
+) ;
 
 //------------------------------------------------------------------------------
 
@@ -715,96 +586,8 @@ GrB_Info GB_hypermatrix_prune
 GrB_UnaryOp GB_unop_one (GB_Type_code xcode) ;
 
 //------------------------------------------------------------------------------
-// boiler plate macros for checking inputs and returning if an error occurs
-//------------------------------------------------------------------------------
 
-// Functions use these macros to check/get their inputs and return an error
-// if something has gone wrong.
-
-#define GB_OK(method)                       \
-{                                           \
-    info = method ;                         \
-    if (info != GrB_SUCCESS)                \
-    {                                       \
-        GB_FREE_ALL ;                       \
-        return (info) ;                     \
-    }                                       \
-}
-
-// check if a required arg is NULL
-#define GB_RETURN_IF_NULL(arg)                                          \
-    if ((arg) == NULL)                                                  \
-    {                                                                   \
-        /* the required arg is NULL */                                  \
-        return (GrB_NULL_POINTER) ;                                     \
-    }
-
-// arg may be NULL, but if non-NULL then it must be initialized
-#define GB_RETURN_IF_FAULTY(arg)                                        \
-    if ((arg) != NULL && (arg)->magic != GB_MAGIC)                      \
-    {                                                                   \
-        if ((arg)->magic == GB_MAGIC2)                                  \
-        {                                                               \
-            /* optional arg is not NULL, but invalid */                 \
-            return (GrB_INVALID_OBJECT) ;                               \
-        }                                                               \
-        else                                                            \
-        {                                                               \
-            /* optional arg is not NULL, but not initialized */         \
-            return (GrB_UNINITIALIZED_OBJECT) ;                         \
-        }                                                               \
-    }
-
-// arg must not be NULL, and it must be initialized
-#define GB_RETURN_IF_NULL_OR_FAULTY(arg)                                \
-    GB_RETURN_IF_NULL (arg) ;                                           \
-    GB_RETURN_IF_FAULTY (arg) ;
-
-// positional ops not supported for use as accum operators
-#define GB_RETURN_IF_FAULTY_OR_POSITIONAL(accum)                        \
-{                                                                       \
-    GB_RETURN_IF_FAULTY (accum) ;                                       \
-    if (GB_OP_IS_POSITIONAL (accum))                                    \
-    {                                                                   \
-        GB_ERROR (GrB_DOMAIN_MISMATCH,                                  \
-            "Positional op z=%s(x,y) not supported as accum\n",         \
-                accum->name) ;                                          \
-    }                                                                   \
-}
-
-// check the descriptor and extract its contents; also copies
-// nthreads_max and chunk from the descriptor to the Context
-#define GB_GET_DESCRIPTOR(info,desc,dout,dmc,dms,d0,d1,dalgo,dsort)          \
-    GrB_Info info ;                                                          \
-    bool dout, dmc, dms, d0, d1 ;                                            \
-    int dsort ;                                                              \
-    GrB_Desc_Value dalgo ;                                                   \
-    /* if desc is NULL then defaults are used.  This is OK */                \
-    info = GB_Descriptor_get (desc, &dout, &dmc, &dms, &d0, &d1, &dalgo,     \
-        &dsort, Context) ;                                                   \
-    if (info != GrB_SUCCESS)                                                 \
-    {                                                                        \
-        /* desc not NULL, but uninitialized or an invalid object */          \
-        return (info) ;                                                      \
-    }
-
-// C<M>=Z ignores Z if an empty mask is complemented, or if M is full,
-// structural and complemented, so return from the method without computing
-// anything.  Clear C if replace option is true.
-#define GB_RETURN_IF_QUICK_MASK(C, C_replace, M, Mask_comp, Mask_struct)    \
-    if (Mask_comp && (M == NULL || (GB_IS_FULL (M) && Mask_struct)))        \
-    {                                                                       \
-        /* C<!NULL>=NULL since result does not depend on computing Z */     \
-        return (C_replace ? GB_clear (C, Context) : GrB_SUCCESS) ;          \
-    }
-
-// GB_MASK_VERY_SPARSE is true if C<M>=A+B, C<M>=A.*B or C<M>=accum(C,T) is
-// being computed, and the mask M is very sparse compared with A and B.
-#define GB_MASK_VERY_SPARSE(alpha,M,A,B) \
-    ((alpha) * GB_nnz (M) < GB_nnz (A) + GB_nnz (B))
-
-//------------------------------------------------------------------------------
-
+#include "GB_ok.h"
 #include "GB_cast.h"
 #include "GB_wait.h"
 #include "GB_convert.h"

@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>GraphBLAS: graph algorithms in the language of linear algebra</title><meta name="generator" content="MATLAB 9.9"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2021-08-16"><meta name="DC.source" content="graphblas_demo.m"><style type="text/css">
+      --><title>GraphBLAS: graph algorithms in the language of linear algebra</title><meta name="generator" content="MATLAB 9.9"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2021-11-13"><meta name="DC.source" content="graphblas_demo.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -159,14 +159,14 @@ tic
 X2 = X*X ;
 builtin_time = toc ;
 fprintf (<span class="string">'\nGraphBLAS time: %g sec (in single)\n'</span>, gb_time) ;
-fprintf (<span class="string">'%s time:    %g sec (in double)\n'</span>, builtin_time, demo_whoami) ;
+fprintf (<span class="string">'%s time:    %g sec (in double)\n'</span>, demo_whoami, builtin_time) ;
 fprintf (<span class="string">'Speedup of GraphBLAS over %s: %g\n'</span>, <span class="keyword">...</span>
     demo_whoami, builtin_time / gb_time) ;
 fprintf (<span class="string">'\n# of threads used by GraphBLAS: %d\n'</span>, GrB.threads) ;
 </pre><pre class="codeoutput">
-GraphBLAS time: 0.658709 sec (in single)
-9.702993e+00 time:    77 sec (in double)
-ATLAB time:    Speedup of GraphBLAS over MATLAB: 14.7303
+GraphBLAS time: 0.738571 sec (in single)
+MATLAB time:    9.74209 sec (in double)
+Speedup of GraphBLAS over MATLAB: 13.1905
 
 # of threads used by GraphBLAS: 20
 </pre><h2 id="4">Mixing MATLAB and GraphBLAS matrices</h2><p>The error in the last computation is about eps('single') since GraphBLAS did its computation in single precision, while MATLAB used double precision.  MATLAB and GraphBLAS matrices can be easily combined, as in X2-G2.  The sparse single precision matrices take less memory space.</p><pre class="codeinput">err = norm (X2 - G2, 1) / norm (X2,1)
@@ -190,16 +190,16 @@ G2 = G*G ;
 gb_time = toc ;
 err = norm (X2 - G2, 1) / norm (X2,1)
 fprintf (<span class="string">'\nGraphBLAS time: %g sec (in double)\n'</span>, gb_time) ;
-fprintf (<span class="string">'%s time:    %g sec (in double)\n'</span>, builtin_time, demo_whoami) ;
+fprintf (<span class="string">'%s time:    %g sec (in double)\n'</span>, demo_whoami, builtin_time) ;
 fprintf (<span class="string">'Speedup of GraphBLAS over %s: %g\n'</span>, <span class="keyword">...</span>
     demo_whoami, builtin_time / gb_time) ;
 fprintf (<span class="string">'\n# of threads used by GraphBLAS: %d\n'</span>, GrB.threads) ;
 </pre><pre class="codeoutput">err =
      0
 
-GraphBLAS time: 0.730543 sec (in double)
-9.702993e+00 time:    77 sec (in double)
-ATLAB time:    Speedup of GraphBLAS over MATLAB: 13.2819
+GraphBLAS time: 0.674648 sec (in double)
+MATLAB time:    9.74209 sec (in double)
+Speedup of GraphBLAS over MATLAB: 14.4403
 
 # of threads used by GraphBLAS: 20
 </pre><h2 id="6">A wide range of semirings</h2><p>MATLAB can only compute C=A*B using the standard '+.*.double' and '+.*.complex' semirings.  A semiring is defined in terms of a string, 'add.mult.type', where 'add' is a monoid that takes the place of the additive operator, 'mult' is the multiplicative operator, and 'type' is the data type for the two inputs to the mult operator.</p><p>In the standard semiring, C=A*B is defined as:</p><pre class="language-matlab">C(i,j) = sum (A(i,:).' .* B(:,j))
@@ -289,8 +289,8 @@ C2 = GrB (A) * GrB (B)
 
 C2 =
 
-  3x3 GraphBLAS bool matrix, bitmap by col
-  9 nonzeros, 9 entries, memory: 226 bytes
+  3x3 GraphBLAS bool matrix, full by col
+  9 nonzeros, 9 entries, memory: 217 bytes
 
     (1,1)   1
     (2,1)   1
@@ -309,7 +309,7 @@ GrB.type (C2)
   A         3x3                68  logical    sparse    
   B         3x3               113  logical    sparse    
   C1        3x3               176  double     sparse    
-  C2        3x3               784  GrB                  
+  C2        3x3               607  GrB                  
 
 ans =
     'logical'
@@ -369,7 +369,7 @@ GrB.mis    <span class="comment">% maximal independent set</span>
     |   || or  lor   x | y          |   &gt;=  ge            x &gt;= y
     &amp;   &amp;&amp; and land  x &amp; y          |   &lt;=  le            x &lt;= y
     xor lxor         xor(x,y)       |   .^  pow           x .^ y
-    pair             1              |   any               pick x or y
+    pair oneb        1              |   any               pick x or y
  
   All of the above operators are defined for logical operands, but many
   are redundant. 'min.logical' is the same as 'and.logical', for example.
@@ -413,6 +413,22 @@ GrB.mis    <span class="comment">% maximal independent set</span>
  
   The bitwise ops bitor, bitand, bitxor, bitxnor, bitget, bitset, bitclr,
   and bitshift are available for any signed or unsigned integer type.
+ 
+  The following index_unary operators can be applied to a matrix A with
+  GrB.apply2 only, where the 2nd input is the thunk scalar.  When applied
+  to an entry A(i,j):
+ 
+    tril            j &lt;= (i + thunk)
+    triu            j &gt;= (i + thunk)
+    diag            j == (i + thunk)
+    offdiag         j != (i + thunk)
+    diagindex       j - (i + thunk)
+    rowindex        i + thunk
+    rowle           i &lt;= thunk
+    rowgt           i &gt; thunk
+    colindex        j + thunk
+    colle           j &lt;= thunk
+    colgt           j &gt; thunk
  
   Typecasting:  If the optype is omitted from the string (for example,
   GrB.eadd (A, '+', B) or simply C = A+B), then the optype is inferred
@@ -682,9 +698,11 @@ C2 =
     (2,3)    0.248635
     (3,3)    0.104226
 
-</pre><p>But these give the same result</p><pre class="codeinput">C1 = A-B
+</pre><p>But these give the same result.  GrB.eunion applies the operator as op(alpha,B) when A(i,j) is not present but B(i,j) is, and as op(A,beta) when A(i,j) is present but B(i,j) is not. In this case, both alpha and beta are zero.</p><pre class="codeinput">C1 = A-B
 C2 = GrB.eadd (<span class="string">'+'</span>, A, GrB.apply (<span class="string">'-'</span>, B))
+C3 = GrB.eunion (<span class="string">'-'</span>, A, 0, B, 0)
 err = norm (C1-C2,1)
+err = norm (C1-C3,1)
 </pre><pre class="codeoutput">
 C1 =
 
@@ -713,6 +731,22 @@ C2 =
     (2,3)    0.248635
     (3,3)    0.104226
 
+
+C3 =
+
+  3x3 GraphBLAS double matrix, bitmap by col
+  7 nonzeros, 7 entries, memory: 289 bytes
+
+    (1,1)    -0.666139
+    (3,1)    -0.735859
+    (1,2)    -0.334348
+    (2,2)    -0.146938
+    (3,2)    0.566879
+    (2,3)    0.248635
+    (3,3)    0.104226
+
+err =
+     0
 err =
      0
 </pre><h2 id="22">Element-wise 'multiplication'</h2><p>For C = A.*B, the result C is the set intersection of the pattern of A and B.  The operator is applied to entries in both A and B.  Entries in A but not B, or B but not A, do not appear in the result C.</p><pre class="codeinput">C1 = A.*B
@@ -736,7 +770,7 @@ C2 =
 
 C3 =
    (1,2)       0.5185
-</pre><p>Just as in GrB.eadd, any operator can be used in GrB.emult:</p><pre class="codeinput">A
+</pre><p>Just as in GrB.eadd and GrB.eunion, any operator can be used in GrB.emult:</p><pre class="codeinput">A
 B
 C2 = GrB.emult (<span class="string">'max'</span>, A, B)
 </pre><pre class="codeoutput">
@@ -859,23 +893,24 @@ diag            isinteger       prod
 
 Static methods:
 
-MATLAB_vs_GrB   empty           ktruss          selectopinfo    
-apply           emult           laplacian       semiringinfo    
-apply2          entries         load            speye           
-argmax          expand          mis             subassign       
-argmin          extract         monoidinfo      threads         
-assign          extracttuples   mxm             trans           
-bfs             eye             nonz            tricount        
-binopinfo       false           normdiff        true            
-build           finalize        offdiag         type            
-burble          format          ones            unopinfo        
-cell2mat        incidence       optype          ver             
-chunk           init            pagerank        version         
-clear           isbycol         prune           vreduce         
-compact         isbyrow         random          zeros           
-descriptorinfo  isfull          reduce          
-dnn             issigned        save            
-eadd            kronecker       select          
+MATLAB_vs_GrB   eadd            kronecker       selectopinfo    
+apply           empty           ktruss          semiringinfo    
+apply2          emult           laplacian       serialize       
+argmax          entries         load            speye           
+argmin          eunion          mis             subassign       
+argsort         expand          monoidinfo      threads         
+assign          extract         mxm             trans           
+bfs             extracttuples   nonz            tricount        
+binopinfo       eye             normdiff        true            
+build           false           offdiag         type            
+burble          finalize        ones            unopinfo        
+cell2mat        format          optype          ver             
+chunk           incidence       pagerank        version         
+clear           init            prune           vreduce         
+compact         isbycol         random          zeros           
+descriptorinfo  isbyrow         reduce          
+deserialize     isfull          save            
+dnn             issigned        select          
 
 </pre><h2 id="29">Zeros are handled differently</h2><p>Explicit zeros cannot be automatically dropped from a GraphBLAS matrix, like they are in MATLAB sparse matrices.  In a shortest-path problem, for example, an edge A(i,j) that is missing has an infinite weight, (the monoid identity of min(x,y) is +inf).  A zero edge weight A(i,j)=0 is very different from an entry that is not present in A.  However, if a GraphBLAS matrix is converted into a MATLAB sparse matrix, explicit zeros are dropped, which is the convention for a MATLAB sparse matrix. They can also be dropped from a GraphBLAS matrix using the GrB.select method.</p><pre class="codeinput">G = GrB (magic (2)) ;
 G (1,1) = 0      <span class="comment">% G(1,1) still appears as an explicit entry</span>
@@ -1288,7 +1323,7 @@ notp = find (s == 0) ;
 S = A (notp, p) ;
 deg = GrB.vreduce (<span class="string">'+.int64'</span>, S) ;
 assert (logical (all (deg &gt; 0)))
-</pre><pre class="codeoutput">Elapsed time is 0.072442 seconds.
+</pre><pre class="codeoutput">Elapsed time is 0.073972 seconds.
 # nodes in the graph: 2
 # edges: : 1
 size of maximal independent set found: 1
@@ -1320,13 +1355,13 @@ fprintf (<span class="string">'setup time: %g sec\n'</span>, t) ;
 # neurons:  4096
 # features: 30000
 # of threads used: 20
-construct problem time: 2.91108 sec
-setup time: 0.201717 sec
+construct problem time: 3.05757 sec
+setup time: 0.204799 sec
 </pre><h2 id="52">Solving the sparse deep neural network problem with GraphbLAS</h2><p>Please wait ...</p><pre class="codeinput">tic
 Y1 = GrB.dnn (W_gb, bias_gb, Y0_gb) ;
 gb_time = toc ;
 fprintf (<span class="string">'total time in GraphBLAS: %g sec\n'</span>, gb_time) ;
-</pre><pre class="codeoutput">total time in GraphBLAS: 3.14647 sec
+</pre><pre class="codeoutput">total time in GraphBLAS: 3.22489 sec
 </pre><h2 id="53">Solving the sparse deep neural network problem with MATLAB</h2><p>Please wait ...</p><pre class="codeinput">tic
 Y2 = dnn_builtin (W, bias, Y0) ;
 builtin_time = toc ;
@@ -1336,8 +1371,8 @@ fprintf (<span class="string">'Speedup of GraphBLAS over %s: %g\n'</span>, <span
 fprintf (<span class="string">'\n# of threads used by GraphBLAS: %d\n'</span>, GrB.threads) ;
 
 err = norm (Y1-Y2,1)
-</pre><pre class="codeoutput">total time in MATLAB:    130.233 sec
-Speedup of GraphBLAS over MATLAB: 41.3901
+</pre><pre class="codeoutput">total time in MATLAB:    130.371 sec
+Speedup of GraphBLAS over MATLAB: 40.4265
 
 # of threads used by GraphBLAS: 20
 err =
@@ -1493,14 +1528,14 @@ fprintf (<span class="string">'nnz(C): %g, nnz(M): %g, nnz(A): %g\n'</span>, <sp
 fprintf (<span class="string">'\nsetup time:     %g sec\n'</span>, t_setup) ;
 </pre><pre class="codeoutput">nnz(C): 1.5226e+06, nnz(M): 761163, nnz(A): 1.52245e+06
 
-setup time:     0.544722 sec
+setup time:     0.524401 sec
 </pre><h2 id="63">First method in GraphBLAS, with GrB.assign</h2><p>Including the time to convert C1 from a GraphBLAS matrix to a MATLAB sparse matrix:</p><pre class="codeinput">tic
 C1 = GrB.assign (C, M, A) ;
 C1 = double (C1) ;
 gb_time = toc ;
 fprintf (<span class="string">'\nGraphBLAS time: %g sec for GrB.assign\n'</span>, gb_time) ;
 </pre><pre class="codeoutput">
-GraphBLAS time: 0.020246 sec for GrB.assign
+GraphBLAS time: 0.019596 sec for GrB.assign
 </pre><h2 id="64">Second method in GraphBLAS, with C(M)=A(M)</h2><p>now using overloaded operators, also include the time to convert back to a MATLAB sparse matrix, for good measure:</p><pre class="codeinput">A2 = GrB (A) ;
 C2 = GrB (C) ;
 tic
@@ -1509,7 +1544,7 @@ C2 = double (C2) ;
 gb_time2 = toc ;
 fprintf (<span class="string">'\nGraphBLAS time: %g sec for C(M)=A(M)\n'</span>, gb_time2) ;
 </pre><pre class="codeoutput">
-GraphBLAS time: 0.155601 sec for C(M)=A(M)
+GraphBLAS time: 0.166713 sec for C(M)=A(M)
 </pre><h2 id="65">Now with MATLAB matrices, with C(M)=A(M)</h2><p>Please wait, this will take about 10 minutes or so ...</p><pre class="codeinput">tic
 C (M) = A (M) ;
 builtin_time = toc ;
@@ -1527,11 +1562,11 @@ assert (isequal (C1, C))
 assert (isequal (C2, C))
 fprintf (<span class="string">'Results of GrB and %s match perfectly.\n'</span>, demo_whoami)
 </pre><pre class="codeoutput">
-GraphBLAS time: 0.020246 sec (GrB.assign)
-GraphBLAS time: 0.155601 sec (overloading)
-MATLAB time:    1132.27 sec
-Speedup of GraphBLAS (overloading) over MATLAB: 7276.73
-Speedup of GraphBLAS (GrB.assign)  over MATLAB: 55925.4
+GraphBLAS time: 0.019596 sec (GrB.assign)
+GraphBLAS time: 0.166713 sec (overloading)
+MATLAB time:    450.692 sec
+Speedup of GraphBLAS (overloading) over MATLAB: 2703.4
+Speedup of GraphBLAS (GrB.assign)  over MATLAB: 22999.2
 
 # of threads used by GraphBLAS: 20
 Results of GrB and MATLAB match perfectly.
@@ -1563,8 +1598,8 @@ fprintf (<span class="string">'\n%s: %g sec, GraphBLAS: %g sec\n'</span>, <span 
         gb_time / builtin_time) ;
 <span class="keyword">end</span>
 </pre><pre class="codeoutput">
-MATLAB: 0.000234 sec, GraphBLAS: 0.006734 sec
-GraphBLAS is slower by a factor of 28.7778
+MATLAB: 0.000141 sec, GraphBLAS: 0.008852 sec
+GraphBLAS is slower by a factor of 62.7801
 </pre><p>(4) Linear indexing:</p><p>If A is an m-by-n 2D MATLAB matrix, with n &gt; 1, A(:) is a column vector of length m*n.  The index operation A(i) accesses the ith entry in the vector A(:).  This is called linear indexing in MATLAB.  It is not yet available for GraphBLAS matrices in this MATLAB interface to GraphBLAS, but will be added in the future.</p><p>(5) Implicit singleton dimension expansion</p><p>In MATLAB C=A+B where A is m-by-n and B is a 1-by-n row vector implicitly expands B to a matrix, computing C(i,j)=A(i,j)+B(j).  This implicit expansion is not yet suported in GraphBLAS with C=A+B. However, it can be done with C = GrB.mxm ('+.+', A, diag(GrB(B))). That's a nice example of the power of semirings, but it's not immediately obvious, and not as clear a syntax as C=A+B.  The GraphBLAS/@GrB/dnn.m function uses this 'plus.plus' semiring to apply the bias to each neuron.</p><pre class="codeinput">A = magic (3)
 B = 1000:1000:3000
 C1 = A + B
@@ -1583,8 +1618,8 @@ C1 =
 
 C2 =
 
-  3x3 GraphBLAS double matrix, bitmap by col
-  9 nonzeros, 9 entries, memory: 289 bytes
+  3x3 GraphBLAS double matrix, full by col
+  9 nonzeros, 9 entries, memory: 280 bytes
 
     (1,1)    1008
     (2,1)    1003
@@ -1610,8 +1645,8 @@ tic
     [m, n] = size (G) ;
 <span class="keyword">end</span>
 toc
-</pre><pre class="codeoutput">Elapsed time is 0.067443 seconds.
-Elapsed time is 1.049335 seconds.
+</pre><pre class="codeoutput">Elapsed time is 0.059696 seconds.
+Elapsed time is 1.028168 seconds.
 </pre><h2 id="74">GraphBLAS operations</h2><p>In addition to the overloaded operators (such as C=A*B) and overloaded functions (such as L=tril(A)), GraphBLAS also has methods of the form GrB.method.  Most of them take an optional input matrix Cin, which is the initial value of the matrix C for the expression below, an optional mask matrix M, and an optional accumulator operator.</p><pre class="language-matlab">in <span class="string">GrB</span> <span class="string">syntax:</span>  <span class="string">C&lt;#M</span>,replace&gt; = accum (C, A*B)
 </pre><pre class="language-matlab">in <span class="string">@GrB:</span> <span class="string">C</span> <span class="string">=</span> <span class="string">GrB.mxm</span> <span class="string">(Cin, M, accum, semiring, A, B, desc)</span> ;
 </pre><p>In the above expression, #M is either empty (no mask), M (with a mask matrix) or ~M (with a complemented mask matrix), as determined by the descriptor (desc).  'replace' can be used to clear C after it is used in accum(C,T) but before it is assigned with C&lt;...&gt; = Z, where Z=accum(C,T).  The matrix T is the result of some operation, such as T=A*B for GrB.mxm, or T=op(A,B) for GrB.eadd.</p><p>For a complete list of GraphBLAS overloaded operators and methods, type:</p><pre class="language-matlab">help <span class="string">GrB</span>
@@ -1692,7 +1727,7 @@ tic
 X2 = X*X ;
 builtin_time = toc ;
 fprintf ('\nGraphBLAS time: %g sec (in single)\n', gb_time) ;
-fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('%s time:    %g sec (in double)\n', demo_whoami, builtin_time) ;
 fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
     demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
@@ -1719,7 +1754,7 @@ G2 = G*G ;
 gb_time = toc ;
 err = norm (X2 - G2, 1) / norm (X2,1)
 fprintf ('\nGraphBLAS time: %g sec (in double)\n', gb_time) ;
-fprintf ('%s time:    %g sec (in double)\n', builtin_time, demo_whoami) ;
+fprintf ('%s time:    %g sec (in double)\n', demo_whoami, builtin_time) ;
 fprintf ('Speedup of GraphBLAS over %s: %g\n', ...
     demo_whoami, builtin_time / gb_time) ;
 fprintf ('\n# of threads used by GraphBLAS: %d\n', GrB.threads) ;
@@ -1853,11 +1888,16 @@ C1 = A-B
 C2 = GrB.eadd ('-', A, B)
 
 %% 
-% But these give the same result
+% But these give the same result.  GrB.eunion applies the operator
+% as op(alpha,B) when A(i,j) is not present but B(i,j) is, and
+% as op(A,beta) when A(i,j) is present but B(i,j) is not.
+% In this case, both alpha and beta are zero.
 
 C1 = A-B 
 C2 = GrB.eadd ('+', A, GrB.apply ('-', B))
+C3 = GrB.eunion ('-', A, 0, B, 0)
 err = norm (C1-C2,1)
+err = norm (C1-C3,1)
 
 %% Element-wise 'multiplication'
 % For C = A.*B, the result C is the set intersection of the pattern of A
@@ -1869,7 +1909,7 @@ C2 = GrB.emult ('*', A, B)
 C3 = double (A) .* double (B)
 
 %%
-% Just as in GrB.eadd, any operator can be used in GrB.emult:
+% Just as in GrB.eadd and GrB.eunion, any operator can be used in GrB.emult:
 
 A
 B

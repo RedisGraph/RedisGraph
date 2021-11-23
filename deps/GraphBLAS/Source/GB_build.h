@@ -21,6 +21,7 @@ GrB_Info GB_build               // build matrix
     const GrB_BinaryOp dup,     // binary op to assemble duplicates
     const GrB_Type xtype,       // type of X array
     const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
+    const bool X_iso,           // if true the C is iso and X has size 1 entry
     GB_Context Context
 ) ;
 
@@ -54,10 +55,5 @@ GrB_Info GB_builder                 // build a matrix from tuples
     const GrB_Type stype,           // the type of S_work or S_input
     GB_Context Context
 ) ;
-
-static inline bool GB_iso_build (GrB_BinaryOp dup)
-{ 
-    return (dup == NULL) ;
-}
 
 #endif

@@ -70,8 +70,8 @@ void mexFunction
 
     // C<B> = A+B using the op.  M == B alias
     bool ignore ;
-    METHOD (GB_add (C, A->type, true, B, false, false, &ignore, A, B, op,
-        Context)) ;
+    METHOD (GB_add (C, A->type, true, B, false, false, &ignore, A, B,
+        false, NULL, NULL, op, Context)) ;
 
     // return C as a plain sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C<B>=A+B result", false) ;

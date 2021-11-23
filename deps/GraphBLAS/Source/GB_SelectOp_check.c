@@ -35,9 +35,14 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
     // check object
     //--------------------------------------------------------------------------
 
-    GB_CHECK_MAGIC (op, "SelectOp") ;
-
-    if (op->opcode >= GB_USER_SELECT_opcode)
+    GB_CHECK_MAGIC (op) ;
+    GB_Opcode opcode = op->opcode ;
+    if (!GB_IS_SELECTOP_CODE (opcode))
+    { 
+        GBPR0 ("    SelectOp has an invalid opcode\n") ;
+        return (GrB_INVALID_OBJECT) ;
+    }
+    if (opcode == GB_USER_selop_code)
     { 
         GBPR0 ("(user-defined) ") ;
     }
@@ -45,18 +50,11 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
     { 
         GBPR0 ("(built-in) ") ;
     }
-
     GBPR0 ("C=%s(A,k)\n", op->name) ;
 
-    if (op->function == NULL && op->opcode >= GB_USER_SELECT_opcode)
+    if (opcode == GB_USER_selop_code && op->selop_function == NULL)
     { 
-        GBPR0 ("    function pointer is NULL\n") ;
-        return (GrB_INVALID_OBJECT) ;
-    }
-
-    if (op->opcode < GB_TRIL_opcode || op->opcode > GB_USER_SELECT_opcode)
-    { 
-        GBPR0 ("    invalid opcode\n") ;
+        GBPR0 ("    SelectOp has a NULL function pointer\n") ;
         return (GrB_INVALID_OBJECT) ;
     }
 
@@ -70,12 +68,12 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
         }
     }
 
-    if (op->ttype != NULL)
+    if (op->ytype != NULL)
     {
-        GrB_Info info = GB_Type_check (op->ttype, "ttype", pr, f) ;
+        GrB_Info info = GB_Type_check (op->ytype, "thunk type", pr, f) ;
         if (info != GrB_SUCCESS)
         { 
-            GBPR0 ("    SelectOp has an invalid ttype\n") ;
+            GBPR0 ("    SelectOp has an invalid thunk type\n") ;
             return (GrB_INVALID_OBJECT) ;
         }
     }

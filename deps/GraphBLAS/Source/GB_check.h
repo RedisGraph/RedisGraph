@@ -46,15 +46,6 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
 ) ;
 
 GB_PUBLIC
-GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
-(
-    const GrB_BinaryOp op,  // GraphBLAS operator to print and check
-    const char *name,       // name of the operator
-    int pr,                 // print level
-    FILE *f                 // file for output
-) ;
-
-GB_PUBLIC
 GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
 (
     const GrB_UnaryOp op,   // GraphBLAS operator to print and check
@@ -64,9 +55,36 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
 ) ;
 
 GB_PUBLIC
+GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
+(
+    const GrB_BinaryOp op,  // GraphBLAS operator to print and check
+    const char *name,       // name of the operator
+    int pr,                 // print level
+    FILE *f                 // file for output
+) ;
+
+GB_PUBLIC
+GrB_Info GB_IndexUnaryOp_check  // check a GraphBLAS index_unary operator
+(
+    const GrB_IndexUnaryOp op,  // GraphBLAS operator to print and check
+    const char *name,       // name of the operator
+    int pr,                 // print level
+    FILE *f                 // file for output
+) ;
+
+GB_PUBLIC
 GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
 (
     const GxB_SelectOp op,  // GraphBLAS operator to print and check
+    const char *name,       // name of the operator
+    int pr,                 // print level
+    FILE *f                 // file for output
+) ;
+
+GB_PUBLIC
+GrB_Info GB_Operator_check  // check a GraphBLAS operator
+(
+    const GB_Operator op,   // GraphBLAS operator to print and check
     const char *name,       // name of the operator
     int pr,                 // print level
     FILE *f                 // file for output
@@ -128,10 +146,10 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
     FILE *f                 // file for output
 ) ;
 
-GrB_Info GB_Scalar_check    // check a GraphBLAS GxB_Scalar
+GrB_Info GB_Scalar_check    // check a GraphBLAS GrB_Scalar
 (
-    const GxB_Scalar v,     // GraphBLAS GxB_Scalar to print and check
-    const char *name,       // name of the GxB_Scalar
+    const GrB_Scalar v,     // GraphBLAS GrB_Scalar to print and check
+    const char *name,       // name of the GrB_Scalar
     int pr,                 // print level
     FILE *f                 // file for output
 ) ;

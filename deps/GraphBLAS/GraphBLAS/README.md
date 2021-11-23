@@ -123,8 +123,6 @@ messages during the test.  This is expected.
     saturating element-wise binary and unary operators for integers.
         See also the discussion in the User Guide.
 
-The last two features don't exist for Octave/MATLAB sparse matrices.
-
 These functions are supported, but are not yet as fast as they could be:
 bandwidth, eps, isbanded, isdiag, ishermitian, issymmetric, istril, istriu,
 spfun.

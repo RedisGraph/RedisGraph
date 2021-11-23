@@ -12,13 +12,12 @@
 #include "GB.h"
 
 #define GB_FREE_ALL ;
-#define GB_WHERE_STRING "GrB_Vector_removeElement (v, i)"
 
 //------------------------------------------------------------------------------
 // GB_removeElement: remove V(i) if it exists
 //------------------------------------------------------------------------------
 
-static inline bool GB_removeElement
+static inline bool GB_removeElement     // returns true if found
 (
     GrB_Vector V,
     GrB_Index i
@@ -100,21 +99,16 @@ static inline bool GB_removeElement
 }
 
 //------------------------------------------------------------------------------
-// GrB_Vector_removeElement: remove a single entry from a vector
+// GB_Vector_removeElement: remove a single entry from a vector
 //------------------------------------------------------------------------------
 
-GrB_Info GrB_Vector_removeElement
+GrB_Info GB_Vector_removeElement
 (
     GrB_Vector V,               // vector to remove entry from
-    GrB_Index i                 // index
+    GrB_Index i,                // index
+    GB_Context Context
 )
 {
-
-    //--------------------------------------------------------------------------
-    // check inputs
-    //--------------------------------------------------------------------------
-
-    GB_RETURN_IF_NULL_OR_FAULTY (V) ;
 
     //--------------------------------------------------------------------------
     // if V is jumbled, wait on the vector first.  If full, convert to nonfull
@@ -123,8 +117,6 @@ GrB_Info GrB_Vector_removeElement
     if (V->jumbled || GB_IS_FULL (V))
     {
         GrB_Info info ;
-        GB_WHERE (V, GB_WHERE_STRING) ;
-        GB_BURBLE_START ("GrB_Vector_removeElement") ;
         if (GB_IS_FULL (V))
         { 
             // convert V from full to sparse
@@ -141,9 +133,7 @@ GrB_Info GrB_Vector_removeElement
         ASSERT (!GB_JUMBLED (V)) ;
         ASSERT (!GB_PENDING (V)) ;
         // remove the entry
-        info = GrB_Vector_removeElement (V, i) ;
-        GB_BURBLE_END ;
-        return (info) ;
+        return (GB_Vector_removeElement (V, i, Context)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -158,7 +148,6 @@ GrB_Info GrB_Vector_removeElement
     // check index
     if (i >= V->vlen)
     { 
-        GB_WHERE (V, GB_WHERE_STRING) ;
         GB_ERROR (GrB_INVALID_INDEX, "Row index "
             GBu " out of range; must be < " GBd, i, V->vlen) ;
     }
@@ -182,8 +171,6 @@ GrB_Info GrB_Vector_removeElement
     if (V_is_pending)
     { 
         GrB_Info info ;
-        GB_WHERE (V, GB_WHERE_STRING) ;
-        GB_BURBLE_START ("GrB_Vector_removeElement") ;
         GB_OK (GB_wait ((GrB_Matrix) V, "v (removeElement:pending tuples)",
             Context)) ;
         ASSERT (!GB_ZOMBIES (V)) ;
@@ -191,9 +178,24 @@ GrB_Info GrB_Vector_removeElement
         ASSERT (!GB_PENDING (V)) ;
         // look again; remove the entry if it was a pending tuple
         GB_removeElement (V, i) ;
-        GB_BURBLE_END ;
     }
 
     return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GrB_Vector_removeElement: remove a single entry from a vector
+//------------------------------------------------------------------------------
+
+GrB_Info GrB_Vector_removeElement
+(
+    GrB_Vector V,               // vector to remove entry from
+    GrB_Index i                 // index
+)
+{
+    GB_WHERE (V, "GrB_Vector_removeElement (v, i)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (V) ;
+    ASSERT (GB_VECTOR_OK (V)) ;
+    return (GB_Vector_removeElement (V, i, Context)) ;
 }
 

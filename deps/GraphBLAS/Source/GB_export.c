@@ -167,12 +167,10 @@ GrB_Info GB_export      // export/unpack a matrix in any format
     (*vdim) = avdim ;
 
     // export A->x
-    #ifdef GB_DEBUG
     #ifdef GB_MEMDUMP
     printf ("export A->x from memtable: %p\n", (*A)->x) ;
     #endif
     GB_Global_memtable_remove ((*A)->x) ;
-    #endif
     (*Ax) = (*A)->x ; (*A)->x = NULL ;
     (*Ax_size) = (*A)->x_size ;
 
@@ -182,12 +180,10 @@ GrB_Info GB_export      // export/unpack a matrix in any format
             (*nvec) = (*A)->nvec ;
 
             // export A->h
-            #ifdef GB_DEBUG
             #ifdef GB_MEMDUMP
             printf ("export A->h from memtable: %p\n", (*A)->h) ;
             #endif
             GB_Global_memtable_remove ((*A)->h) ;
-            #endif
             (*Ah) = (GrB_Index *) ((*A)->h) ; (*A)->h = NULL ;
             (*Ah_size) = (*A)->h_size ;
 
@@ -204,23 +200,19 @@ GrB_Info GB_export      // export/unpack a matrix in any format
             }
             else
             {
-                #ifdef GB_DEBUG
                 #ifdef GB_MEMDUMP
                 printf ("export A->p from memtable: %p\n", (*A)->p) ;
                 #endif
                 GB_Global_memtable_remove ((*A)->p) ;
-                #endif
                 (*Ap) = (GrB_Index *) ((*A)->p) ; (*A)->p = NULL ;
                 (*Ap_size) = (*A)->p_size ;
             }
 
             // export A->i
-            #ifdef GB_DEBUG
             #ifdef GB_MEMDUMP
             printf ("export A->i from memtable: %p\n", (*A)->i) ;
             #endif
             GB_Global_memtable_remove ((*A)->i) ;
-            #endif
             (*Ai) = (GrB_Index *) ((*A)->i) ; (*A)->i = NULL ;
             (*Ai_size) = (*A)->i_size ;
             break ;
@@ -229,12 +221,10 @@ GrB_Info GB_export      // export/unpack a matrix in any format
             (*nvals) = (*A)->nvals ;
 
             // export A->b
-            #ifdef GB_DEBUG
             #ifdef GB_MEMDUMP
             printf ("export A->b from memtable: %p\n", (*A)->b) ;
             #endif
             GB_Global_memtable_remove ((*A)->b) ;
-            #endif
             (*Ab) = (*A)->b ; (*A)->b = NULL ;
             (*Ab_size) = (*A)->b_size ;
 
@@ -275,6 +265,7 @@ GrB_Info GB_export      // export/unpack a matrix in any format
         ASSERT ((*A) == NULL) ;
     }
 
+    #pragma omp flush
     return (GrB_SUCCESS) ;
 }
 

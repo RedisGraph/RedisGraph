@@ -38,10 +38,13 @@
 // C=A+scalar                       GB (_bind2nd)
 // C=A'+scalar                      GB (_bind2nd_tran)
 
-// C type:   GB_ctype
-// A type:   GB_atype
-// B,b type: GB_btype
-// BinaryOp: GB_binaryop(cij,aij,bij,i,j)
+// C type:     GB_ctype
+// A type:     GB_atype
+// A pattern?  GB_a_is_pattern
+// B type:     GB_btype
+// B pattern?  GB_b_is_pattern
+
+// BinaryOp:   GB_binaryop(cij,aij,bij,i,j)
 
 #define GB_ATYPE \
     GB_atype
@@ -68,9 +71,17 @@
 #define GB_GETA(aij,Ax,pA,A_iso)  \
     GB_geta(aij,Ax,pA,A_iso)
 
+// true if values of A are not used
+#define GB_A_IS_PATTERN \
+    GB_a_is_pattern \
+
 // bij = Bx [pB]
 #define GB_GETB(bij,Bx,pB,B_iso)  \
     GB_getb(bij,Bx,pB,B_iso)
+
+// true if values of B are not used
+#define GB_B_IS_PATTERN \
+    GB_b_is_pattern \
 
 // declare scalar of the same type as C
 #define GB_CTYPE_SCALAR(t)  \
@@ -133,7 +144,7 @@ endif_is_binop_subset
 // C = A+B, all 3 matrices dense
 //------------------------------------------------------------------------------
 
-GrB_Info GB (_Cdense_ewise3_noaccum)
+void GB (_Cdense_ewise3_noaccum)
 (
     GrB_Matrix C,
     const GrB_Matrix A,
@@ -141,12 +152,7 @@ GrB_Info GB (_Cdense_ewise3_noaccum)
     const int nthreads
 )
 { 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
     #include "GB_dense_ewise3_noaccum_template.c"
-    return (GrB_SUCCESS) ;
-    #endif
 }
 
 //------------------------------------------------------------------------------
@@ -207,8 +213,8 @@ if_binop_is_semiring_multiplier
 GrB_Info GB (_AxD)
 (
     GrB_Matrix C,
-    const GrB_Matrix A, bool A_is_pattern,
-    const GrB_Matrix D, bool D_is_pattern,
+    const GrB_Matrix A,
+    const GrB_Matrix D,
     const int64_t *A_ek_slicing, const int A_ntasks, const int A_nthreads
 )
 { 
@@ -232,8 +238,8 @@ if_binop_is_semiring_multiplier
 GrB_Info GB (_DxB)
 (
     GrB_Matrix C,
-    const GrB_Matrix D, bool D_is_pattern,
-    const GrB_Matrix B, bool B_is_pattern,
+    const GrB_Matrix D,
+    const GrB_Matrix B,
     int nthreads
 )
 { 
@@ -261,6 +267,9 @@ GrB_Info GB (_AaddB)
     const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
+    const bool is_eWiseUnion,
+    const GB_void *alpha_scalar_in,
+    const GB_void *beta_scalar_in,
     const bool Ch_is_Mh,
     const int64_t *restrict C_to_M,
     const int64_t *restrict C_to_A,
@@ -277,8 +286,15 @@ GrB_Info GB (_AaddB)
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (A_ek_slicing, int64_t) ;
     GB_WERK_DECLARE (B_ek_slicing, int64_t) ;
+    GB_atype alpha_scalar ;
+    GB_btype beta_scalar ;
+    if (is_eWiseUnion)
+    {
+        alpha_scalar = (*((GB_atype *) alpha_scalar_in)) ;
+        beta_scalar  = (*((GB_btype *) beta_scalar_in )) ;
+    }
     #include "GB_add_template.c"
-    GB_FREE_WORK ;
+    GB_FREE_WORKSPACE ;
     return (GrB_SUCCESS) ;
     #endif
 }

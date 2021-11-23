@@ -7,13 +7,24 @@
 
 //------------------------------------------------------------------------------
 
+// Returns a GrB_IndexUnaryOp or a GxB_SelectOp
+
 #include "gb_interface.h"
 
-GxB_SelectOp gb_mxstring_to_selectop    // return select operator from a string
+void gb_mxstring_to_selectop
 (
-    const mxArray *mxstring             // built-in string
+    // outputs: one of the outputs is non-NULL and the other NULL
+    GrB_IndexUnaryOp *idxunop,          // GrB_IndexUnaryOp, if found
+    GxB_SelectOp *selop,                // GxB_SelectOp if found
+    bool *thunk_required,               // true if op requires a thunk scalar
+    bool *op_is_positional,             // true if op is positional
+    // input/output:
+    int64_t *ithunk,
+    // inputs:
+    const mxArray *mxstring,            // built-in string
+    const GrB_Type atype                // type of A, or NULL if not present
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -33,6 +44,7 @@ GxB_SelectOp gb_mxstring_to_selectop    // return select operator from a string
     // convert the string to a select operator
     //--------------------------------------------------------------------------
 
-    return (gb_string_to_selectop (opstring)) ;
+    gb_string_to_selectop (idxunop, selop, thunk_required, op_is_positional,
+        ithunk, opstring, atype) ;
 }
 

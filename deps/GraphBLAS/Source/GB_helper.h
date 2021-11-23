@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// TODO::: move these into the @GrB interface instead
-
 // These functions are only used by the @GrB interface for
 // SuiteSparse:GraphBLAS.
 

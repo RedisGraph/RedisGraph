@@ -35,7 +35,7 @@
 #include "GB_mex.h"
 
 #define USAGE "[C,s,t] = GB_mex_subassign " \
-              "(C, M, accum, A, I, J, desc, reduce) or (C, Work)"
+              "(C, M, accum, A, I, J, desc, reduce) or (C, Work, control)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -94,6 +94,7 @@ bool user_complex = false ;
 int C_sparsity_control ;
 int M_sparsity_control ;
 bool have_sparsity_control = false ;
+bool use_GrB_Scalar = false ;
 
 GrB_Info assign (GB_Context Context) ;
 
@@ -106,6 +107,7 @@ GrB_Info many_subassign
     int faccum,
     int fM,
     int fdesc,
+    int fscalar,
     GrB_Type ctype,
     const mxArray *pargin [ ],
     GB_Context Context
@@ -138,7 +140,23 @@ GrB_Info assign (GB_Context Context)
     ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for mex assign", pr) ;
     ASSERT_MATRIX_OK (A, "A for mex assign", pr) ;
 
-    if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_nnz (A) == 1)
+    if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && use_GrB_Scalar)
+    {
+        // use GxB_Matrix_subassign_Scalar or GxB_Vector_subassign_Scalar
+        GrB_Scalar S = (GrB_Scalar) A ;
+        if (GB_VECTOR_OK (C) && GB_VECTOR_OK (M))
+        {
+            OK (GxB_Vector_subassign_Scalar ((GrB_Vector) C, (GrB_Vector) M,
+                accum, S, I, ni, desc)) ;
+        }
+        else
+        {
+            OK (GxB_Matrix_subassign_Scalar ((GrB_Vector) C, (GrB_Vector) M,
+                accum, S, I, ni, J, nj, desc)) ;
+        }
+
+    }
+    else if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_nnz (A) == 1)
     {
         GB_void *Ax = A->x ; // OK: A is a scalar with exactly one entry
 
@@ -179,7 +197,7 @@ GrB_Info assign (GB_Context Context)
             #undef ASSIGN
 
         }
-        if (GB_VECTOR_OK (C) && GB_VECTOR_OK (M))
+        else if (GB_VECTOR_OK (C) && GB_VECTOR_OK (M))
         {
 
             // test GxB_Vector_subassign_scalar functions
@@ -339,6 +357,7 @@ GrB_Info many_subassign
     int faccum,
     int fM,
     int fdesc,
+    int fscalar,
     GrB_Type ctype,
     const mxArray *pargin [ ],
     GB_Context Context
@@ -431,6 +450,14 @@ GrB_Info many_subassign
             }
         }
 
+        // get use_GrB_Scalar
+        use_GrB_Scalar = false ;
+        if (fscalar > 0)
+        {
+            p = mxGetFieldByNumber (pargin [1], k, fscalar) ;
+            use_GrB_Scalar = (bool) (mxGetScalar (p) == 2) ;
+        }
+
         // restore malloc debugging to test the method
         GB_Global_malloc_debug_set (save) ; // ]
 
@@ -450,7 +477,11 @@ GrB_Info many_subassign
         }
     }
 
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     OK (GrB_Matrix_wait_(&C)) ;
+    #else
+    OK (GrB_Matrix_wait_(C, GrB_MATERIALIZE)) ;
+    #endif
     return (info) ;
 }
 
@@ -509,11 +540,12 @@ void mexFunction
     if (nargin == 2 || nargin == 3)
     {
 
-        // get sparsity control if present
+        // get control if present:
+        // [C_sparsity_control M_sparsity_control]
         if (nargin == 3)
         {
             int n = mxGetNumberOfElements (pargin [2]) ;
-            if (n != 2) mexErrMsgTxt ("invalid sparsity control") ;
+            if (n != 2) mexErrMsgTxt ("invalid control") ;
             have_sparsity_control = true ;
             double *p = mxGetDoubles (pargin [2]) ;
             C_sparsity_control = (int) p [0] ;
@@ -558,11 +590,12 @@ void mexFunction
         int faccum = mxGetFieldNumber (pargin [1], "accum") ;
         int fM = mxGetFieldNumber (pargin [1], "Mask") ;
         int fdesc = mxGetFieldNumber (pargin [1], "desc") ;
+        int fscalar = mxGetFieldNumber (pargin [1], "scalar") ;
 
         if (fA < 0 || fI < 0 || fJ < 0) mexErrMsgTxt ("A,I,J required") ;
 
-        METHOD (many_subassign (nwork, fA, fI, fJ, faccum, fM, fdesc, C->type,
-            pargin, Context)) ;
+        METHOD (many_subassign (nwork, fA, fI, fJ, faccum, fM, fdesc,
+            fscalar, C->type, pargin, Context)) ;
 
     }
     else
@@ -737,7 +770,11 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
+    #if (GxB_IMPLEMENTATION_MAJOR <= 5)
     GrB_Matrix_wait_(&C) ;
+    #else
+    GrB_Matrix_wait_(C, GrB_MATERIALIZE) ;
+    #endif
 
     if (C == A) A = NULL ;      // do not free A if it is aliased to C
     if (C == M) M = NULL ;      // do not free M if it is aliased to C

@@ -18,15 +18,18 @@
 
 GrB_Info GB_AxB_saxpy               // C = A*B using Gustavson/Hash/Bitmap
 (
-    GrB_Matrix C,                   // output matrix, static header
+    GrB_Matrix C,                   // output, static header
+    GrB_Matrix C_in,                // original input matrix
     const GrB_Matrix M,             // optional mask matrix
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
+    const GrB_BinaryOp accum,
     const GrB_Matrix A,             // input matrix A
     const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     bool *mask_applied,             // if true, then mask was applied
+    bool *done_in_place,            // if true, C was computed in-place 
     const GrB_Desc_Value AxB_method,
     const int do_sort,              // if nonzero, try to sort in saxpy3
     GB_Context Context
@@ -73,6 +76,37 @@ GrB_Info GB_AxB_saxpy_generic
     int nfine,
     int nthreads,
     const int do_sort,              // if true, sort in saxpy3
+    GB_Context Context
+) ;
+
+//------------------------------------------------------------------------------
+// saxpy4:
+//------------------------------------------------------------------------------
+
+GrB_Info GB_AxB_saxpy4              // C += A*B
+(
+    GrB_Matrix C,                   // users input/output matrix
+    const GrB_Matrix A,             // input matrix A
+    const GrB_Matrix B,             // input matrix B
+    const GrB_Semiring semiring,    // semiring that defines C=A*B and accum
+    const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
+    bool *done_in_place,            // if true, saxpy4 has computed the result
+    GB_Context Context
+) ;
+
+void GB_AxB_saxpy4_tasks
+(
+    // output
+    int *p_ntasks,                  // # of tasks to use
+    int *p_nthreads,                // # of threads to use
+    int *p_nfine_tasks_per_vector,  // # of tasks per vector (fine case only)
+    bool *p_use_coarse_tasks,       // if true, use coarse tasks
+    bool *p_use_atomics,            // if true, use atomics
+    // input
+    int64_t anz,                    // # of entries in A (sparse or hyper)
+    int64_t bnz,                    // # of entries held in B
+    int64_t bvdim,                  // # of vectors of B (bitmap or full)
+    int64_t cvlen,                  // # of vectors of C (bitmap or full)
     GB_Context Context
 ) ;
 

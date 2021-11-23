@@ -43,7 +43,7 @@ GrB_Info GB_AxB_saxpy3_slice_quick
     //--------------------------------------------------------------------------
 
     size_t SaxpyTasks_size = 0 ;
-    GB_saxpy3task_struct *SaxpyTasks = GB_MALLOC_WERK (1, GB_saxpy3task_struct,
+    GB_saxpy3task_struct *SaxpyTasks = GB_MALLOC_WORK (1, GB_saxpy3task_struct,
         &SaxpyTasks_size) ;
     if (SaxpyTasks == NULL)
     { 

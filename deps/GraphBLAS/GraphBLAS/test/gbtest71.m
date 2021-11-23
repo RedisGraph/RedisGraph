@@ -9,6 +9,12 @@ ops = {
     'triu'
     'diag'
     'offdiag'
+    'rowne'
+    'rowle'
+    'rowgt'
+    'colne'
+    'colle'
+    'colgt'
     '~=0'
     'nonzero'
     '==0'
@@ -33,9 +39,31 @@ for k = 1:nops
     GrB.selectopinfo (ops {k}) ;
 end
 
+ops = {
+    '~='
+    '=='
+    '>'
+    '>='
+    '<'
+    '<=' } ;
+nops = length (ops) ;
+
+types = gbtest_types ;
+ntypes = length (types) ;
+
+for k1 = 1:nops
+    fprintf ('\n-------------- %s with specific types:\n', ops {k1}) ;
+    for k2 = 1:ntypes
+        if (gb_contains (types {k2}, 'complex') && k1 > 2)
+            % skip this
+        else
+            GrB.selectopinfo (ops {k1}, types {k2}) ;
+        end
+    end
+end
+
 fprintf ('\n\n') ;
 GrB.selectopinfo
 
-fprintf ('# of select ops: %d\n', nops) ;
 fprintf ('gbtest71: all tests passed\n') ;
 
