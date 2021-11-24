@@ -34,10 +34,6 @@ extern RedisModuleType *GraphMetaRedisModuleType;
 // this field is used to represent when the module is replicating its graphs
 uint aux_field_counter = 0 ;
 
-// holds the number of graphs encountered during decoding of RDB file
-// this field is used to represent when the module is replicating its graphs
-uint currently_decoding_graphs = 0;
-
 // holds the id of the Redis Main thread in order to figure out the context the fork is running on
 static pthread_t redis_main_thread_id;
 
@@ -191,7 +187,6 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		// If a flushall occurs during replication, stop all decoding.
 		aux_field_counter = 0;
-		currently_decoding_graphs = 0;
 		_ResetDecodeStates();
 	}
 }
@@ -314,7 +309,7 @@ static void _RegisterForkHooks() {
 }
 
 static void _ModuleEventHandler_TryClearKeyspace(void) {
-	if(aux_field_counter == 0 && currently_decoding_graphs == 0) {
+	if(aux_field_counter == 0) {
 		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
 		_ClearKeySpaceMetaKeys(ctx, true);
 		RedisModule_FreeThreadSafeContext(ctx);
@@ -335,15 +330,6 @@ void ModuleEventHandler_AUXBeforeKeyspaceEvent(void) {
  * the module finished replicating and the meta keys can be deleted. */
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 	aux_field_counter--;
-	_ModuleEventHandler_TryClearKeyspace();
-}
-
-void ModuleEventHandler_IncreaseDecodingGraphsCount(void) {
-	currently_decoding_graphs++;
-}
-
-void ModuleEventHandler_DecreaseDecodingGraphsCount(void) {
-	currently_decoding_graphs--;
 	_ModuleEventHandler_TryClearKeyspace();
 }
 
