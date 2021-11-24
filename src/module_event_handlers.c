@@ -16,6 +16,9 @@
 #include "serializers/graphmeta_type.h"
 #include "serializers/graphcontext_type.h"
 
+// checks if graphs are being replicated
+#define INTERMEDIATE_GRAPHS (aux_field_counter > 0)
+
 // global array tracking all extant GraphContexts
 extern GraphContext **graphs_in_keyspace;
 // flag indicating whether the running process is a child
@@ -157,19 +160,12 @@ static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool dec
 	RedisModule_Log(ctx, "notice", "Deleted %d virtual keys for graph %s", key_count, gc->graph_name);
 }
 
-// Create the meta keys for each graph in the keyspace
-// used on RDB start event.
+// create the meta keys for each graph in the keyspace
+// used on RDB start event
 static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
 		_CreateGraphMetaKeys(ctx, graphs_in_keyspace[i]);
-	}
-}
-
-static void _ResetDecodeStates() {
-	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		GraphDecodeContext_Reset(graphs_in_keyspace[i]->decoding_context);
 	}
 }
 
@@ -184,10 +180,10 @@ static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
 
 static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 							void *data) {
-	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
-		// If a flushall occurs during replication, stop all decoding.
+	// reset `aux_field_counter` upon handeling FLUSH-ALL
+	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
+       subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		aux_field_counter = 0;
-		_ResetDecodeStates();
 	}
 }
 
@@ -208,11 +204,18 @@ static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
 		   );
 }
 
-// Server persistence event handler.
+// server persistence event handler
 static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 		uint64_t subevent, void *data) {
-	if(_IsEventPersistenceStart(eid, subevent)) _CreateKeySpaceMetaKeys(ctx);
-	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, false);
+
+	// don't mess with the keyspace if we have half-baked graphs
+	if(INTERMEDIATE_GRAPHS) return;
+
+	if(_IsEventPersistenceStart(eid, subevent)) {
+		_CreateKeySpaceMetaKeys(ctx);
+	} else if(_IsEventPersistenceEnd(eid, subevent)) {
+		_ClearKeySpaceMetaKeys(ctx, false);
+	}
 }
 
 // Perform clean-up upon server shutdown.
@@ -238,6 +241,11 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 			_PersistenceEventHandler);
 }
 
+//------------------------------------------------------------------------------
+// FORK callbacks
+//------------------------------------------------------------------------------
+
+// before fork at parent
 static void RG_ForkPrepare() {
 	// at this point, fork been issued, we assume that this is due to BGSAVE
 	// or RedisSearch GC
@@ -254,6 +262,9 @@ static void RG_ForkPrepare() {
 	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
 
+	// return if we have half-baked graphs
+	if(INTERMEDIATE_GRAPHS) return;
+
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		// acquire read lock, guarantee graph isn't modified
@@ -269,9 +280,13 @@ static void RG_ForkPrepare() {
 	}
 }
 
+// after fork at parent
 static void RG_AfterForkParent() {
 	// BGSAVE is invoked from Redis main thread
 	if(!pthread_equal(pthread_self(), redis_main_thread_id)) return;
+
+	// return if we have half-baked graphs
+	if(INTERMEDIATE_GRAPHS) return;
 
 	// the child process forked, release all acquired locks
 	uint graph_count = array_len(graphs_in_keyspace);
@@ -280,7 +295,21 @@ static void RG_AfterForkParent() {
 	}
 }
 
+// after fork at child
 static void RG_AfterForkChild() {
+	// check for half-baked graphs
+	// indicated by `aux_field_counter` > 0
+	// in such case we do not want to either perform backup nor do we want to
+	// synchronize our replica, as such we're aborting by existing
+	// assuming we're running on a fork process
+	if(INTERMEDIATE_GRAPHS) {
+		// intermediate graph(s) detected, exit!
+		RedisModule_Log(NULL, REDISMODULE_LOGLEVEL_WARNING,
+				"RedisGraph - aborting BGSAVE, detected intermediate graph(s)");
+
+		exit(255);
+	}
+
 	// mark that the child is a forked process so that it doesn't
 	// attempt invalid accesses of POSIX primitives it doesn't own
 	process_is_child = true;
@@ -309,7 +338,7 @@ static void _RegisterForkHooks() {
 }
 
 static void _ModuleEventHandler_TryClearKeyspace(void) {
-	if(aux_field_counter == 0) {
+	if(!INTERMEDIATE_GRAPHS) {
 		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
 		_ClearKeySpaceMetaKeys(ctx, true);
 		RedisModule_FreeThreadSafeContext(ctx);
