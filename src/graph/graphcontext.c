@@ -20,7 +20,6 @@
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
-extern uint currently_decoding_graphs;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
 
@@ -108,20 +107,20 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
-/* In a sharded environment, there could be a race condition between the decoding of
- * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
- * that the module replicated properly. */
-static bool _GraphContext_IsModuleReplicating(void) {
-	return aux_field_counter > 0 || currently_decoding_graphs > 0;
-}
-
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
-									bool shouldCreate) {
-	if(_GraphContext_IsModuleReplicating()) {
-		// The whole module is currently replicating, emit an error.
+GraphContext *GraphContext_Retrieve
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString *graphID,
+	bool readOnly,
+	bool shouldCreate
+) {
+	// check if we're still replicating, if so don't allow access to the graph
+	if(aux_field_counter > 0) {
+		// the whole module is currently replicating, emit an error
 		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
 		return NULL;
 	}
+
 	GraphContext *gc = NULL;
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 
