@@ -53,6 +53,19 @@ static void _GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 
 // save an unsigned placeholder before and after the keyspace encoding
 static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
+	// check for half-baked graphs
+	// indicated by `aux_field_counter` > 0
+	// in such case we do not want to either perform backup nor do we want to
+	// synchronize our replica, as such we're aborting by existing
+	// assuming we're running on a fork process
+	if(aux_field_counter > 0) {
+		// intermediate graph(s) detected, exit!
+		RedisModule_Log(NULL, REDISMODULE_LOGLEVEL_WARNING,
+				"RedisGraph - aborting BGSAVE, detected intermediate graph(s)");
+
+		exit(255);
+	}
+
 	RedisModule_SaveUnsigned(rdb, 0);
 }
 

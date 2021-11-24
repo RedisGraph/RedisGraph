@@ -301,19 +301,6 @@ static void RG_AfterForkParent() {
 
 // after fork at child
 static void RG_AfterForkChild() {
-	// check for half-baked graphs
-	// indicated by `aux_field_counter` > 0
-	// in such case we do not want to either perform backup nor do we want to
-	// synchronize our replica, as such we're aborting by existing
-	// assuming we're running on a fork process
-	if(INTERMEDIATE_GRAPHS) {
-		// intermediate graph(s) detected, exit!
-		RedisModule_Log(NULL, REDISMODULE_LOGLEVEL_WARNING,
-				"RedisGraph - aborting BGSAVE, detected intermediate graph(s)");
-
-		exit(255);
-	}
-
 	// mark that the child is a forked process so that it doesn't
 	// attempt invalid accesses of POSIX primitives it doesn't own
 	process_is_child = true;
