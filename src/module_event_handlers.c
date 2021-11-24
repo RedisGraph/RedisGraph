@@ -316,18 +316,18 @@ static void _ModuleEventHandler_TryClearKeyspace(void) {
 	}
 }
 
-/* Increase the number of aux fields encountered during rdb loading.
- * There could be more than one on multiple shards scenario
- * so each shard is saving the aux field in its own RDB file. */
+// increase the number of aux fields encountered during rdb loading
+// there could be more than one on multiple shards scenario
+// so each shard is saving the aux field in its own RDB file
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void) {
 	aux_field_counter++;
 }
 
-/* Decrease the number of aux fields encountered during rdb loading.
- * There could be more than one on multiple shards scenario
- * so each shard is saving the aux field in its own RDB file.
- * Once the number is zero,
- * the module finished replicating and the meta keys can be deleted. */
+// decrease the number of aux fields encountered during rdb loading
+// there could be more than one on multiple shards scenario
+// so each shard is saving the aux field in its own RDB file
+// once the number is zero,
+// the module finished replicating and the meta keys can be deleted
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 	aux_field_counter--;
 	_ModuleEventHandler_TryClearKeyspace();
