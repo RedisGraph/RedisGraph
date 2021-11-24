@@ -1,11 +1,10 @@
-from base import FlowTestsBase
 import os
 import sys
 import random
 from RLTest import Env
+from click.testing import CliRunner
 from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 redis_con = None
 
@@ -16,6 +15,7 @@ class testGraphPersistency(FlowTestsBase):
         redis_con = self.env.getConnection()
 
     def populate_graph(self, graph_name):
+        redis_graph = Graph(graph_name, redis_con)
         # quick return if graph already exists
         if redis_con.exists(graph_name):
             return redis_graph
@@ -23,7 +23,6 @@ class testGraphPersistency(FlowTestsBase):
         people       = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
         visits       = [("Roi", "USA"), ("Alon", "Israel"), ("Ailon", "Japan"), ("Boaz", "United Kingdom")]
         countries    = ["Israel", "USA", "Japan", "United Kingdom"]
-        redis_graph  = Graph(graph_name, redis_con)
         personNodes  = {}
         countryNodes = {}
 
@@ -33,10 +32,10 @@ class testGraphPersistency(FlowTestsBase):
             redis_graph.add_node(person)
             personNodes[p] = person
 
-        for p in countries:
-            country = Node(label="country", properties={"name": p, "population": random.randint(100, 400)})
+        for c in countries:
+            country = Node(label="country", properties={"name": c, "population": random.randint(100, 400)})
             redis_graph.add_node(country)
-            countryNodes[p] = country
+            countryNodes[c] = country
 
         # create edges
         for v in visits:
@@ -48,7 +47,7 @@ class testGraphPersistency(FlowTestsBase):
 
         redis_graph.commit()
 
-        # delete nodes, to introduce deleted item within our datablock
+        # delete nodes, to introduce deleted entries within our datablock
         query = """MATCH (n:person) WHERE n.name = 'Roi' or n.name = 'Ailon' DELETE n"""
         redis_graph.query(query)
 
@@ -56,6 +55,10 @@ class testGraphPersistency(FlowTestsBase):
         redis_graph.query(query)
 
         # create indices
+        redis_con.execute_command(
+                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (p:Person) ON (p.name, p.height)")
+        redis_con.execute_command(
+                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (c:country) ON (c.name, c.population)")
         actual_result = redis_con.execute_command(
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name, height)")
         actual_result = redis_con.execute_command(
@@ -81,8 +84,7 @@ class testGraphPersistency(FlowTestsBase):
             dense_graph.flush()
         return dense_graph
 
-    #  Connect a single node to all other nodes.
-    def test01_save_load_rdb(self):
+    def test01_save_load(self):
         graph_names = ["G", "{tag}_G"]
         for graph_name in graph_names:
             redis_graph = self.populate_graph(graph_name)
@@ -145,7 +147,7 @@ class testGraphPersistency(FlowTestsBase):
 
             second_result = dense_graph.query(query)
             self.env.assertEquals(first_result.result_set,
-                                second_result.result_set)
+                                  second_result.result_set)
 
     # Strings, numerics, booleans, array, and point properties should be properly serialized and reloaded
     def test03_restore_properties(self):
@@ -189,7 +191,7 @@ class testGraphPersistency(FlowTestsBase):
             actual_result = g.query(q)
 
             expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']],
-                            [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
+                               [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
 
             self.env.assertEquals(actual_result.result_set, expected_result)
 
