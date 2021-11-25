@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -29,10 +29,17 @@ typedef struct {
 } EdgeIndexKey;
 
 typedef struct {
+	char *name;
+	Attribute_ID id;
+	int64_t weight;
+	bool nostem;
+	char *phonetic;
+} IndexField;
+
+typedef struct {
 	char *label;                  // indexed label
 	int label_id;                 // indexed label ID
-	char **fields;                // indexed fields
-	Attribute_ID *fields_ids;     // indexed field IDs
+	IndexField *fields;           // indexed fields
 	char *language;               // language
 	char **stopwords;             // stopwords
 	GraphEntityType entity_type;  // entity type (node/edge) indexed
@@ -60,6 +67,13 @@ void Index_AddField
 (
 	Index *idx,
 	const char *field  // field to add
+);
+
+// adds field to index
+void Index_AddFullTextField
+(
+	Index *idx,
+	IndexField *field  // field to add
 );
 
 // removes field from index

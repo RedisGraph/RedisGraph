@@ -49,7 +49,7 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 	RedisModule_SaveUnsigned(rdb, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
 		// Indexed property
-		RedisModule_SaveStringBuffer(rdb, idx->fields[i], strlen(idx->fields[i]) + 1);
+		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
 	}
 }
 

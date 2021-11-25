@@ -73,6 +73,63 @@ static ProcedureResult _validateIndexConfigMap(SIValue config) {
 	return PROCEDURE_OK;
 }
 
+// validate field configuration map
+// [required] field <string>
+// [optional] weight <number>
+// [optional] phonetic <string>
+// [optional] nostem <bool>
+// configuration can't change if index exists 
+static ProcedureResult _validateFieldConfigMap(const char *label, SIValue config) {
+	SIValue field;
+	SIValue weight;
+	SIValue nostem;
+	SIValue phonetic;
+
+	bool multi_config    = Map_KeyCount(config) > 1;
+	bool field_exists    = MAP_GET(config, "field",    field);
+	bool weight_exists   = MAP_GET(config, "weight",   weight);
+	bool nostem_exists   = MAP_GET(config, "nostem",   nostem);
+	bool phonetic_exists = MAP_GET(config, "phonetic", phonetic);
+
+	if(!field_exists) {
+		ErrorCtx_SetError("Field is missing");
+		return PROCEDURE_ERR;
+	}
+
+	if(multi_config) {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field.stringval);
+		if(s && Schema_GetIndex(s, fieldID, IDX_FULLTEXT)) {
+			ErrorCtx_SetError("Index already exists configuration can't be changed");
+			return PROCEDURE_ERR;
+		}
+	}
+
+	if(weight_exists) {
+		if(SI_TYPE(weight) != SI_NUMERIC) {
+			ErrorCtx_SetError("Weight must be string");
+			return PROCEDURE_ERR;
+		}
+	}
+
+	if(nostem_exists) {
+		if(SI_TYPE(nostem) != T_BOOL) {
+			ErrorCtx_SetError("Nostem must be string");
+			return PROCEDURE_ERR;
+		}
+	}
+
+	if(phonetic_exists) {
+		if(SI_TYPE(phonetic) != T_STRING) {
+			ErrorCtx_SetError("Phonetic must be string");
+			return PROCEDURE_ERR;
+		}
+	}
+
+	return PROCEDURE_OK;
+}
+
 // CALL db.idx.fulltext.createNodeIndex(label, fields...)
 // CALL db.idx.fulltext.createNodeIndex('book', 'title', 'authors')
 ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
@@ -88,15 +145,30 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 		ErrorCtx_SetError("Label argument can be string or map");
 		return PROCEDURE_ERR;
 	}
-	// validation, fields arguments should be of type string
 	if(SI_TYPE(args[0]) == T_MAP &&
 			_validateIndexConfigMap(args[0]) == PROCEDURE_ERR) {
 		return PROCEDURE_ERR;
 	}
 
+	const char *label     = NULL;
+	SIValue label_config  = args[0];
+
+	if(SI_TYPE(label_config) == T_STRING) {
+		label = label_config.stringval;
+	} else if(SI_TYPE(label_config) == T_MAP) {
+		SIValue label_value;
+		MAP_GET(label_config, "label", label_value);
+		label = label_value.stringval;
+	}
+
+	// validation, fields arguments should be of type string
 	for(uint i = 1; i < arg_count; i++) {
-		if(!(SI_TYPE(args[i]) & T_STRING)) {
+		if(!(SI_TYPE(args[i]) & (T_STRING | T_MAP))) {
 			ErrorCtx_SetError("Field arguments must be string");
+			return PROCEDURE_ERR;
+		}
+		if(SI_TYPE(args[i]) == T_MAP &&
+			_validateFieldConfigMap(label, args[0]) == PROCEDURE_ERR) {
 			return PROCEDURE_ERR;
 		}
 	}
@@ -108,23 +180,16 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	Index *idx            = NULL;
 	GraphContext *gc      = QueryCtx_GetGraphCtx();
 	uint fields_count     = arg_count - 1;
-	const char *label     = NULL;
-	SIValue label_config  = args[0];
 	const SIValue *fields = args + 1; // skip index name
-
-	if(SI_TYPE(label_config) == T_STRING) {
-		label = label_config.stringval;
-	} else if(SI_TYPE(label_config) == T_MAP) {
-		SIValue label_value;
-		MAP_GET(label_config, "label", label_value);
-		label = label_value.stringval;
-	}
 
 	// introduce fields to index
 	for(uint i = 0; i < fields_count; i++) {
-		const char *field = fields[i].stringval;
-		res = GraphContext_AddIndex(&idx, gc, SCHEMA_NODE, label, field,
-			IDX_FULLTEXT);
+		if(SI_TYPE(fields[i]) == T_STRING) {
+			const char *field = fields[i].stringval;
+			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE, label, field,
+				INDEX_FIELD_DEFAULT_WEIGHT, INDEX_FIELD_DEFAULT_NOSTEM,
+				INDEX_FIELD_DEFAULT_PHONETIC);
+		}
 	}
 
 	if(SI_TYPE(label_config) == T_MAP) {

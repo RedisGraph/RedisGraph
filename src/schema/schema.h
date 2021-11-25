@@ -74,7 +74,7 @@ int Schema_AddIndex
 (
 	Index **idx,
 	Schema *s,
-	const char *field,
+	IndexField *field,
 	IndexType type
 );
 

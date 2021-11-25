@@ -115,7 +115,7 @@ int Schema_AddIndex
 (
 	Index **idx,
 	Schema *s,
-	const char *field,
+	IndexField *field,
 	IndexType type
 ) {
 	ASSERT(field);
@@ -125,8 +125,9 @@ int Schema_AddIndex
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
+		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field->name);
 		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
+		field->id = fieldID;
 	} else {
 		// index doesn't exist, create it
 		// determine index graph entity type
@@ -146,7 +147,7 @@ int Schema_AddIndex
 		}
 	}
 
-	Index_AddField(_idx, field);
+	Index_AddFullTextField(_idx, field);
 
 	*idx = _idx;
 	return INDEX_OK;
