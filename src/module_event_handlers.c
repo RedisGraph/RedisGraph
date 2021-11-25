@@ -16,7 +16,7 @@
 #include "serializers/graphmeta_type.h"
 #include "serializers/graphcontext_type.h"
 
-// checks if graphs are being replicated
+// indicates the possibility of half-baked graphs in the keyspace
 #define INTERMEDIATE_GRAPHS (aux_field_counter > 0)
 
 // global array tracking all extant GraphContexts
@@ -182,7 +182,7 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 							void *data) {
 	// reset `aux_field_counter` upon handeling FLUSH-ALL
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
-       subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
+	   subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		aux_field_counter = 0;
 		uint count = array_len(graphs_in_keyspace);
 		for (size_t i = 0; i < count; i++) {
@@ -342,11 +342,12 @@ static void _RegisterForkHooks() {
 }
 
 static void _ModuleEventHandler_TryClearKeyspace(void) {
-	if(!INTERMEDIATE_GRAPHS) {
-		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
-		_ClearKeySpaceMetaKeys(ctx, true);
-		RedisModule_FreeThreadSafeContext(ctx);
-	}
+	// return if we have half-baked graphs
+	if(INTERMEDIATE_GRAPHS) return;
+
+	RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
+	_ClearKeySpaceMetaKeys(ctx, true);
+	RedisModule_FreeThreadSafeContext(ctx);
 }
 
 // increase the number of aux fields encountered during rdb loading

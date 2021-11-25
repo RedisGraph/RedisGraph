@@ -98,7 +98,8 @@ class testReplicationState():
 
                 self._connection_permutation(connection_permutation, 0)
 
-                self.master.execute_command("GRAPH.DEBUG", "AUX", "START")
+                aux = self.master.execute_command("GRAPH.DEBUG", "AUX", "START")
+                self.env.assertEqual(aux, 1)
 
                 self._connection_permutation(connection_permutation, 1)
 
@@ -114,7 +115,8 @@ class testReplicationState():
 
                 self._connection_permutation(connection_permutation, 4)
 
-                self.master.execute_command("GRAPH.DEBUG", "AUX", "END")
+                aux = self.master.execute_command("GRAPH.DEBUG", "AUX", "END")
+                self.env.assertEqual(aux, 0)
 
                 self._connect_replication()
 
