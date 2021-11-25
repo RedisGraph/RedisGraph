@@ -12,8 +12,6 @@
 #include "decoders/decode_previous.h"
 #include "../util/redis_version.h"
 
-extern uint aux_field_counter;
-
 // forward declerations of the module event handler functions
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
