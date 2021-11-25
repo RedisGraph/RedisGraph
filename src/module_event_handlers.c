@@ -211,9 +211,22 @@ static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
 // server persistence event handler
 static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 		uint64_t subevent, void *data) {
+	if(INTERMEDIATE_GRAPHS) {
+		// check for half-baked graphs
+		// indicated by `aux_field_counter` > 0
+		// in such case we do not want to either perform backup nor do we want to
+		// synchronize our replica, as such we're aborting by existing
+		// assuming we're running on a fork process
+		if(process_is_child) {
+			// intermediate graph(s) detected, exit!
+			RedisModule_Log(NULL, REDISMODULE_LOGLEVEL_WARNING,
+					"RedisGraph - aborting BGSAVE, detected intermediate graph(s)");
 
-	// don't mess with the keyspace if we have half-baked graphs
-	if(INTERMEDIATE_GRAPHS) return;
+			exit(255);
+		}
+		// don't mess with the keyspace if we have half-baked graphs
+		return;
+	}
 
 	if(_IsEventPersistenceStart(eid, subevent)) {
 		_CreateKeySpaceMetaKeys(ctx);

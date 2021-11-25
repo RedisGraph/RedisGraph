@@ -76,18 +76,22 @@ class testReplicationState():
             self._disconnect_replication()
     
     def _permutation(self, r, d):
-        for i in range(r):
-            if d == 1:
-                yield [i]
-            else:
-                for res in self._permutation(r, d - 1):
-                    res.append(i)
-                    yield res
+        for i in range(r ** d):
+            res = []
+            for j in range(d):
+                res.append((i >> j) % 2)
+            yield res
+
+    def _choose_random(self, iter, k):
+        is_random = True
+        if is_random:
+            return random.choices(list(iter), k=k)
+        return iter
 
     def test_replication_permutations(self):
-        for scenario in random.choices(list(permutations(keys.keys())), k=2):
+        for scenario in self._choose_random(permutations(keys.keys()), 2):
             print(f"scenario: {scenario}")
-            for connection_permutation in random.choices(list(self._permutation(2, 5)), k=3):
+            for connection_permutation in self._choose_random(self._permutation(2, 5), 3):
                 print(f"connection_permutation: {connection_permutation}")
                 self.master.flushall()
                 self._check(0, 0)
