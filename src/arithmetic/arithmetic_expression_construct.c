@@ -635,6 +635,69 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpNodeFromReduceFunction
+(
+	const cypher_astnode_t *reduce_exp
+) {
+	// reduce(sum = 0, n IN [1,2,3] | sum + n)
+
+	ListReduceCtx *ctx = rm_malloc(sizeof(ListReduceCtx));
+
+	ctx->exp              =  NULL;
+	ctx->record           =  NULL;
+	ctx->variable         =  NULL;
+	ctx->accumulator      =  NULL;
+	ctx->variable_idx     =  INVALID_INDEX;
+	ctx->accumulator_idx  =  INVALID_INDEX;
+
+	// retrieve the accumulator string `sum`
+	const cypher_astnode_t *accumulator_node = cypher_ast_reduce_get_accumulator(reduce_exp);
+	ASSERT(cypher_astnode_type(accumulator_node) == CYPHER_AST_IDENTIFIER);
+	ctx->accumulator = cypher_ast_identifier_get_name(accumulator_node);
+
+	// retrieve the variable name `n`
+	const cypher_astnode_t *identifier_node = cypher_ast_reduce_get_identifier(reduce_exp);
+	ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
+	ctx->variable = cypher_ast_identifier_get_name(identifier_node);
+
+	//--------------------------------------------------------------------------
+	// sub expressions
+	//--------------------------------------------------------------------------
+
+	// accumulator init exp
+	const cypher_astnode_t *init_exp = cypher_ast_reduce_get_init(reduce_exp);
+	AR_ExpNode *init_val = AR_EXP_FromASTNode(init_exp);
+
+	// array exp
+	const cypher_astnode_t *exp_node = cypher_ast_reduce_get_expression(reduce_exp);
+	AR_ExpNode *list = AR_EXP_FromASTNode(exp_node);
+
+	// eval exp
+	const cypher_astnode_t *eval_node = cypher_ast_reduce_get_eval(reduce_exp);
+	ctx->exp = AR_EXP_FromASTNode(eval_node);
+
+	// build an operation node to represent the reduction
+	AR_ExpNode *reduce = AR_EXP_NewOpNode("REDUCE", 3);
+
+	// add the context to the function descriptor as the function's private data
+	reduce->op.f = AR_SetPrivateData(reduce->op.f, ctx);
+
+	//--------------------------------------------------------------------------
+	// set expression child nodes
+	//--------------------------------------------------------------------------
+
+	// accumulator init value
+	reduce->op.children[0] = init_val;
+
+	// list to reduce
+	reduce->op.children[1] = list;
+
+	// record
+	reduce->op.children[2] = AR_EXP_NewRecordNode();
+
+	return reduce;
+}
+
 static AR_ExpNode *_AR_ExpFromLabelsOperatorFunction(const cypher_astnode_t *exp) {
 	const char *func_name = "hasLabels";
 
@@ -727,6 +790,9 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_ExpFromMapProjection(expr);
 	} else if(t == CYPHER_AST_LABELS_OPERATOR) {
 		return _AR_ExpFromLabelsOperatorFunction(expr);
+	}
+	else if(t == CYPHER_AST_REDUCE) {
+		return _AR_ExpNodeFromReduceFunction(expr);
 	} else {
 		/*
 		   Unhandled types:

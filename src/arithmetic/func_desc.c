@@ -14,21 +14,29 @@
 // Arithmetic function repository
 rax *__aeRegisteredFuncs = NULL;
 
-AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint max_argc,
-							SIType *types, bool reducible, bool aggregate) {
+AR_FuncDesc *AR_FuncDescNew
+(
+	const char *name,
+	AR_Func func,
+	uint min_argc,
+	uint max_argc,
+	SIType *types,
+	bool reducible,
+	bool aggregate
+) {
 	AR_FuncDesc *desc = rm_malloc(sizeof(AR_FuncDesc));
 
-	desc->name = name;
-	desc->func = func;
-	desc->bfree = NULL;
-	desc->bclone = NULL;
-	desc->types = types;
-	desc->finalize = NULL;
-	desc->privdata = NULL;
-	desc->min_argc = min_argc;
-	desc->max_argc = max_argc;
-	desc->aggregate = aggregate;
-	desc->reducible = reducible;
+	desc->name       =  name;
+	desc->func       =  func;
+	desc->bfree      =  NULL;
+	desc->bclone     =  NULL;
+	desc->types      =  types;
+	desc->finalize   =  NULL;
+	desc->privdata   =  NULL;
+	desc->min_argc   =  min_argc;
+	desc->max_argc   =  max_argc;
+	desc->aggregate  =  aggregate;
+	desc->reducible  =  reducible;
 
 	return desc;
 }
