@@ -20,3 +20,4 @@ capabilities:
     - intershard_tls
 exclude_commands:
     - GRAPH.CONFIG
+    - GRAPH.DEBUG
