@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -703,7 +703,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 			_AR_EXP_ToString(root->op.children[1], str, str_size, bytes_written);
 		} else {
 			/* Operation isn't necessarily a binary operation, use function call representation. */
-			*bytes_written += sprintf((*str + *bytes_written), "%s(", root->op.func_name);
+			*bytes_written += sprintf((*str + *bytes_written), "%s(", root->op.f->name);
 
 			for(int i = 0; i < root->op.child_count ; i++) {
 				_AR_EXP_ToString(root->op.children[i], str, str_size, bytes_written);
