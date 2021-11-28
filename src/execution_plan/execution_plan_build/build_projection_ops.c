@@ -42,7 +42,7 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromASTNode(ast_exp);
 		// Build a string representation of the ORDER identity.
-		char *constructed_name = AR_EXP_GetResolvedName(exp);
+		char *constructed_name = (char *)AR_EXP_GetResolvedName(exp);
 		// If the constructed name refers to a QueryGraph entity, use its canonical name.
 		char *canonical_name = raxFind(ast->canonical_entity_names, (unsigned char *)constructed_name,
 									   strlen(constructed_name));

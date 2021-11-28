@@ -36,11 +36,6 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **
 		// to ensure that space is allocated for each entry.
 		int record_idx = OpBase_Modifies((OpBase *)op, AR_EXP_GetResolvedName(op->exps[i]));
 		array_append(op->record_offsets, record_idx);
-		if(op->exps[i]->alias) {
-			char *name = NULL;
-			AR_EXP_ToString(op->exps[i], &name);
-			OpBase_AliasModifier((OpBase *)op, op->exps[i]->alias, name);
-		}
 	}
 
 	for(uint i = 0; i < op->order_exp_count; i ++) {
