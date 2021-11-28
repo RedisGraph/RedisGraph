@@ -19,7 +19,8 @@ GraphDecodeContext *GraphDecodeContext_New() {
 
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx) {
 	ASSERT(ctx);
-	ctx->keys_processed = 0;
+	ctx->keys_processed    =  0;
+	ctx->graph_keys_count  =  1;
 }
 
 void GraphDecodeContext_SetKeyCount(GraphDecodeContext *ctx, uint64_t key_count) {
