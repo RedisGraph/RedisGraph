@@ -46,9 +46,9 @@ class testReplicationState():
                 self.env.assertEqual(len(keys), keys_master)
 
     # restore the key data and validate the # of keys
-    def _step(self, key, keys_master, keys_slave):
+    def _step(self, key, keys_master):
         self.master.restore(key, '0', keys[key])
-        self._check(keys_master, keys_slave)
+        self._check(keys_master, None)
 
     # validate that the imported data exists in both master and slave
     def _test_data(self):
@@ -103,15 +103,15 @@ class testReplicationState():
 
                 self._connection_permutation(connection_permutation, 1)
 
-                self._step(scenario[0], 1, None)
+                self._step(scenario[0], 1)
 
                 self._connection_permutation(connection_permutation, 2)
 
-                self._step(scenario[1], 2, None)
+                self._step(scenario[1], 2)
 
                 self._connection_permutation(connection_permutation, 3)
 
-                self._step(scenario[2], 3, None)
+                self._step(scenario[2], 3)
 
                 self._connection_permutation(connection_permutation, 4)
 

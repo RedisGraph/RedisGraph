@@ -16,7 +16,11 @@ void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
 
-static void Debug_AUX(const char *arg) {
+static void Debug_AUX(RedisModuleString **argv, int argc) {
+	if(argc < 2) return;
+
+	const char *arg = RedisModule_StringPtrLen(argv[1], NULL);
+
 	if(strcmp(arg, "START") == 0) {
 		ModuleEventHandler_AUXBeforeKeyspaceEvent();
 	} else if(strcmp(arg, "END") == 0) {
@@ -30,7 +34,7 @@ int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplicateVerbatim(ctx);
 
 	if(strcmp(RedisModule_StringPtrLen(argv[1], NULL), "AUX") == 0) {
-		Debug_AUX(RedisModule_StringPtrLen(argv[2], NULL));
+		Debug_AUX(argv + 1, argc - 1);
 	}
 
 	RedisModule_ReplyWithLongLong(ctx, aux_field_counter);
