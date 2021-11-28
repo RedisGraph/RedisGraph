@@ -223,9 +223,10 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 					"RedisGraph - aborting BGSAVE, detected intermediate graph(s)");
 
 			exit(255);
+		} else {
+			// don't mess with the keyspace if we have half-baked graphs
+			return;
 		}
-		// don't mess with the keyspace if we have half-baked graphs
-		return;
 	}
 
 	if(_IsEventPersistenceStart(eid, subevent)) {
