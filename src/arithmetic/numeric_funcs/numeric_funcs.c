@@ -6,6 +6,7 @@
 
 #include "numeric_funcs.h"
 #include "RG.h"
+#include "../../errors.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
@@ -45,6 +46,13 @@ SIValue AR_DIV(SIValue *argv, int argc) {
 
 SIValue AR_MODULO(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+
+	// check for division by zero e.g. n % 0
+	if(SI_GET_NUMERIC(argv[1]) == 0) {
+		Error_DivisionByZero();
+		return SI_NullVal();
+	}
+
 	return SIValue_Modulo(argv[0], argv[1]);
 }
 
