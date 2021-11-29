@@ -80,29 +80,29 @@ class testReduce():
         actual = self.graph.query(q).result_set
         self.env.assertEquals(actual, expected)
 
-    #def test_missing_sections_reduction(self):
-    #    # missing accumulator expression
-    #    q = "RETURN reduce(sum=x, n in [1,2,3])"
-    #    try:
-    #        actual = self.graph.query(q).result_set
-    #    except ResponseError as e:
-    #        self.env.assertIn("x not defined", str(e))
-    #    #-----------------------------------------------------------------------
+    def test_missing_sections_reduction(self):
+        # missing accumulator expression
+        q = "RETURN reduce(sum=0, n in [1,2,3])"
+        try:
+            self.graph.query(q).result_set
+        except ResponseError as e:
+            self.env.assertIn("n not defined", str(e))
+        #-----------------------------------------------------------------------
 
-    #    # missing list expression
-    #    q = "RETURN reduce(sum=x | x+1)"
-    #    try:
-    #        actual = self.graph.query(q).result_set
-    #    except ResponseError as e:
-    #        self.env.assertIn("x not defined", str(e))
-    #    #-----------------------------------------------------------------------
+        # missing list expression
+        q = "RETURN reduce(sum=0 | x+1)"
+        try:
+            self.graph.query(q).result_set
+        except ResponseError as e:
+            self.env.assertIn("Invalid input '|'", str(e))
+        #-----------------------------------------------------------------------
 
-    #    # missing accumulator init
-    #    q = "RETURN reduce(n in [1,2,3] | n)"
-    #    try:
-    #        actual = self.graph.query(q).result_set
-    #    except ResponseError as e:
-    #        self.env.assertIn("x not defined", str(e))
+        # missing accumulator init
+        q = "RETURN reduce(n in [1,2,3] | n)"
+        try:
+            self.graph.query(q).result_set
+        except ResponseError as e:
+            self.env.assertIn("Invalid input '|'", str(e))
 
     def test_missing_variables_reduction(self):
         # `x` isn't defined
