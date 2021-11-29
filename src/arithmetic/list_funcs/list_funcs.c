@@ -326,7 +326,7 @@ SIValue AR_REDUCE
 	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
 
 	// set arguments
-	SIValue        accum  =  argv[0];
+	SIValue        accum  =  SI_CloneValue(argv[0]); // clone accumulator
 	SIValue        list   =  argv[1];
 	Record         rec    =  argv[2].ptrval;
 	ListReduceCtx  *ctx   =  argv[3].ptrval;
@@ -356,6 +356,10 @@ SIValue AR_REDUCE
 		// update accumulator within internal record
 		Record_AddScalar(r, ctx->accumulator_idx, accum);
 	}
+
+	// clear internal record
+	Record_Remove(r, ctx->variable_idx);
+	Record_Remove(r, ctx->accumulator_idx);
 
 	return accum;
 }
