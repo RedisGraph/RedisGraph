@@ -103,6 +103,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 					   raxFind(bound_vars, (unsigned char *)dest_alias,
 							   strlen(dest_alias)) == raxNotFound) {
 						ErrorCtx_SetError("Source and destination must already be resolved to call allShortestPaths");
+						AlgebraicExpression_Free(exp);
 						break;
 					}
 				}
