@@ -212,6 +212,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[-0.5]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # Validate modulo by 0
+        query = "RETURN 3 % 0"
+        try:
+            actual_result = graph.query(query)
+        except redis.ResponseError as e:
+            self.env.assertContains("Division by zero", str(e))
+
     # Aggregate functions should handle null inputs appropriately.
     def test11_null_aggregate_function_inputs(self):
         # SUM should sum all non-null inputs.

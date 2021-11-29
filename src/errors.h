@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -66,4 +66,7 @@ void Error_UnsupportedASTOperator(const cypher_operator_t *op);
 
 // Report an error on trying to assign a complex type to a property.
 void Error_InvalidPropertyValue(void);
+
+// report a division by zero error
+void Error_DivisionByZero(void);
 
