@@ -13,6 +13,8 @@
 typedef struct {
 	OpBase op;
 	Record r;                       // Input Record being read from (stored to free if we encounter an error).
+	Record intermidiate;
+ 	rax   *intermidiate_rax;
 	Record projection;              // Record projected by this operation (stored to free if we encounter an error).
 	AR_ExpNode **exps;              // Projected expressions.
 	AR_ExpNode **order_exps;        // Order expressions.

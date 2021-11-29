@@ -26,6 +26,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **
 	op->record_offsets = array_new(uint, op->exp_count);
 	op->r = NULL;
 	op->projection = NULL;
+	op->intermidiate = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
@@ -48,6 +49,52 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **
 	return (OpBase *)op;
 }
 
+static void _init_intermidiate_record(OpProject *op) {
+	rax *input_rax = op->r->mapping;
+	rax *output_rax = op->op.plan->record_map;
+
+	op->intermidiate_rax = raxNew();
+	raxIterator it;
+
+	uint64_t id = 0;
+
+	raxStart(&it, output_rax);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		raxInsert(op->intermidiate_rax, it.key, it.key_len, (void*)id++, NULL);
+	}
+	raxStop(&it);
+
+	raxStart(&it, input_rax);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		if(raxTryInsert(op->intermidiate_rax, it.key, it.key_len, (void*)id, NULL) != 0){
+			id++;
+		}
+	}
+	raxStop(&it);
+
+	op->intermidiate = Record_New(op->intermidiate_rax);
+}
+
+static void _update_intermidiate_record(OpProject *op, rax *rax, Record r) {
+	raxIterator it;
+	raxStart(&it, op->intermidiate_rax);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		void *data = raxFind(rax, it.key, it.key_len);
+
+		if(data == raxNotFound) {
+			continue;
+		}
+
+		uint from_idx = (uint)(uint64_t)data;
+		uint to_idx = (uint)(uint64_t)it.data;
+		Record_Add(op->intermidiate, to_idx, Record_Get(r, from_idx));
+	}
+	raxStop(&it);
+}
+
 static Record ProjectConsume(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 
@@ -63,10 +110,19 @@ static Record ProjectConsume(OpBase *opBase) {
 		op->r = OpBase_CreateRecord(opBase);
 	}
 
-	op->projection = OpBase_CreateRecord(opBase);
+	rax *input_rax = op->r->mapping;
+	rax *output_rax = op->op.plan->record_map;
 	if(op->order_exp_count > 0) {
-		Record_Clone(op->r, op->projection);
+		if(!op->intermidiate && input_rax != output_rax) {
+			_init_intermidiate_record(op);
+		}
+
+		if(op->intermidiate) {
+			_update_intermidiate_record(op, input_rax, op->r);
+		}
 	}
+	
+	op->projection = op->intermidiate ? OpBase_CreateRecord(opBase) : op->r;
 
 	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
@@ -85,10 +141,19 @@ static Record ProjectConsume(OpBase *opBase) {
 		if((v.type & SI_GRAPHENTITY)) SIValue_Free(v);
 	}
 
+
 	if(op->order_exp_count > 0) {
+		Record order_record = op->projection;
+		
+		if(op->intermidiate) {
+			_update_intermidiate_record(op, output_rax, op->projection);
+
+			order_record = op->intermidiate;
+		}
+
 		for(uint i = 0; i < op->order_exp_count; i++) {
 			AR_ExpNode *exp = op->order_exps[i];
-			SIValue v = AR_EXP_Evaluate(exp, op->projection);
+			SIValue v = AR_EXP_Evaluate(exp, order_record);
 			int rec_idx = op->record_offsets[op->exp_count + i];
 			/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
 			* Graph entities don't need to be persisted here as Record_Add will copy them internally.
@@ -104,7 +169,9 @@ static Record ProjectConsume(OpBase *opBase) {
 		}
 	}
 
-	OpBase_DeleteRecord(op->r);
+	if(op->intermidiate) {
+		OpBase_DeleteRecord(op->r);
+	}
 	op->r = NULL;
 
 	// Emit the projected Record once.
