@@ -21,7 +21,10 @@ GraphDecodeContext *GraphDecodeContext_New() {
 
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx) {
 	ASSERT(ctx);
-	ctx->keys_processed = 0;
+
+	ctx->keys_processed    =  0;
+	ctx->graph_keys_count  =  1;
+
 	if(ctx->multi_edge) {
 		array_free(ctx->multi_edge);
 		ctx->multi_edge = NULL;
