@@ -86,6 +86,28 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		const char *variable = cypher_ast_identifier_get_name(variable_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable), NULL);
 	}
+
+	if(type == CYPHER_AST_REDUCE) {
+		// A reduce call has an accumulator and a local variable that should
+		// only be accessed within its scope;
+		// do not leave them in the identifiers map
+		// example: reduce(sum=0, n in [1,2] | sum+n)
+		const  char              *variable         =  NULL;
+		const  cypher_astnode_t  *accum_node       =  NULL;
+		const  cypher_astnode_t  *identifier_node  =  NULL;
+
+		// `sum` in the above example
+		accum_node = cypher_ast_reduce_get_accumulator(node);
+		variable = cypher_ast_identifier_get_name(accum_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
+				NULL);
+
+		// `n` in the above example
+		identifier_node = cypher_ast_reduce_get_identifier(node);
+		variable = cypher_ast_identifier_get_name(identifier_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
+				NULL);
+	}
 }
 
 static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
@@ -1629,7 +1651,7 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
 	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
-	   body_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
+	   body_type == CYPHER_AST_DROP_PROPS_INDEX) {
 		// Index operation; validations are handled elsewhere.
 		return AST_VALID;
 	}

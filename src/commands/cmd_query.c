@@ -71,8 +71,8 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		QueryCtx_UnlockCommit(NULL);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// Retrieve strings from AST node
-		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_props_index_get_prop_name(
+		const char *label = cypher_ast_label_get_name(cypher_ast_drop_props_index_get_label(index_op));
+		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_props_index_get_prop_name(
 															  index_op, 0));
 		QueryCtx_LockForCommit();
 		int res = GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -8,9 +8,101 @@
 #include "RG.h"
 #include "../func_desc.h"
 #include "../../errors.h"
-#include "../../datatypes/array.h"
 #include "../../util/arr.h"
 #include"../../query_ctx.h"
+#include "../../datatypes/array.h"
+#include "../../util/rax_extensions.h"
+
+//------------------------------------------------------------------------------
+// reduce context
+//------------------------------------------------------------------------------
+
+// routine for freeing a reduction function private data
+void ListReduceCtx_Free
+(
+	void *ctx_ptr
+) {
+	ListReduceCtx *ctx = ctx_ptr;
+
+	if(ctx->exp) {
+		AR_EXP_Free(ctx->exp);
+	}
+
+	if(ctx->record) {
+		rax *mapping = ctx->record->mapping;
+		Record_Free(ctx->record);
+		raxFree(mapping);
+	}
+
+	rm_free(ctx);
+}
+
+// Routine for cloning a comprehension function's private data.
+void *ListReduceCtx_Clone
+(
+	void *orig
+) {
+	ListReduceCtx *ctx = orig;
+	// allocate space for the clone
+	ListReduceCtx *clone = rm_malloc(sizeof(ListReduceCtx));
+
+	// clone the variadic node
+	clone->record           =  NULL;
+	clone->variable_idx     =  ctx->variable_idx;
+	clone->variable         =  ctx->variable;
+	clone->accumulator_idx  =  ctx->accumulator_idx;
+	clone->accumulator      =  ctx->accumulator;
+
+	// clone the eval routine
+	clone->exp = AR_EXP_Clone(ctx->exp);
+
+	return clone;
+}
+
+static void _PopulateReduceCtx
+(
+	ListReduceCtx *ctx,
+	Record outer_record
+) {
+	rax *record_map = raxClone(outer_record->mapping);
+
+	//--------------------------------------------------------------------------
+	// map variable name
+	//--------------------------------------------------------------------------
+
+	intptr_t id = raxSize(record_map);
+	int rc = raxTryInsert(record_map, (unsigned char *)ctx->variable,
+						  strlen(ctx->variable), (void *)id, NULL);
+	if(rc == 0) {
+		// The local variable's name shadows an outer variable, emit an error
+		ErrorCtx_RaiseRuntimeException(
+				"Variable '%s' redefined inside of list reduce",
+				(unsigned char *)ctx->variable);
+	}
+
+	//--------------------------------------------------------------------------
+	// map accumulator name
+	//--------------------------------------------------------------------------
+
+	id++;
+	rc = raxTryInsert(record_map, (unsigned char *)ctx->accumulator,
+						  strlen(ctx->accumulator), (void *)id, NULL);
+	if(rc == 0) {
+		// The local variable's name shadows an outer variable, emit an error
+		ErrorCtx_RaiseRuntimeException(
+				"Variable '%s' redefined inside of list reduce",
+				(unsigned char *)ctx->variable);
+	}
+
+	ctx->record = Record_New(record_map);
+
+	// this could just be assigned to 'id'
+	// but for safety we'll use a Record lookup
+	ctx->variable_idx = Record_GetEntryIdx(ctx->record, ctx->variable);
+	ctx->accumulator_idx = Record_GetEntryIdx(ctx->record, ctx->accumulator);
+	ASSERT(ctx->variable_idx != INVALID_INDEX);
+	ASSERT(ctx->accumulator_idx != INVALID_INDEX);
+}
 
 // Forward declaration of property function.
 SIValue AR_PROPERTY(SIValue *argv, int argc);
@@ -213,6 +305,59 @@ SIValue AR_TAIL(SIValue *argv, int argc) {
 	return array;
 }
 
+SIValue AR_REDUCE
+(
+	SIValue *argv,
+	int argc
+) {
+	// reduce(sum = 0, n IN [1,2,3] | sum + n)
+	// argv[0] - accumulator initial value
+	// argv[1] - array
+	// argv[2] - input record
+	// argv[3] - list reduce context
+
+	// return NULL if expected array is NULL
+	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
+
+	// set arguments
+	SIValue        accum  =  SI_CloneValue(argv[0]); // clone accumulator
+	SIValue        list   =  argv[1];
+	Record         rec    =  argv[2].ptrval;
+	ListReduceCtx  *ctx   =  argv[3].ptrval;
+
+	// on first invocation build the internal record
+	if(ctx->record == NULL) _PopulateReduceCtx(ctx, rec);
+	Record r = ctx->record;
+
+	// populate record with the contents of the input record
+	Record_Clone(rec, r);
+
+	// init accumulator within internal record
+	Record_AddScalar(r, ctx->accumulator_idx, accum);
+
+	// evaluate expression for each list element
+	// e.g. for `n` in `list`, compute: sum = sum + n
+	uint len = SIArray_Length(list);
+	for(uint i = 0; i < len; i++) {
+		// retrieve the current element
+		SIValue elem = SIArray_Get(list, i);
+
+		// set current element to the record
+		Record_AddScalar(r, ctx->variable_idx, elem);
+
+		// compute sum = sum + i
+		accum = AR_EXP_Evaluate(ctx->exp, r);
+		// update accumulator within internal record
+		Record_AddScalar(r, ctx->accumulator_idx, accum);
+	}
+
+	// clear internal record
+	Record_Remove(r, ctx->variable_idx);
+	Record_Remove(r, ctx->accumulator_idx);
+
+	return accum;
+}
+
 void Register_ListFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -261,6 +406,16 @@ void Register_ListFuncs() {
 	types = array_new(SIType, 1);
 	types = array_append(types, T_ARRAY | T_NULL);
 	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, true, false);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 4);
+	array_append(types, SI_ALL);            // accumulator initial value
+	array_append(types, T_ARRAY | T_NULL);  // array to iterate over
+	array_append(types, T_PTR);             // input record
+	array_append(types, T_PTR);             // private data
+	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 4, 4, types, true, false);
+	AR_SetPrivateDataRoutines(func_desc, ListReduceCtx_Free,
+			ListReduceCtx_Clone);
 	AR_RegFunc(func_desc);
 }
 
