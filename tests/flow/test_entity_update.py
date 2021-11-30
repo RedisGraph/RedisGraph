@@ -5,15 +5,20 @@ from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 graph = None
+multiple_entity_graph = None
 
 class testEntityUpdate(FlowTestsBase):
     def __init__(self):
         global graph
+        global multiple_entity_graph
         self.env = Env(decodeResponses=True)
+        # create a graph with a single node with attribute 'v'
         graph = Graph('update', self.env.getConnection())
-
-        # create a single node with attribute 'v'
         graph.query("CREATE ({v:1})")
+
+        # create a graph with a two nodes connected by an edge
+        multiple_entity_graph = Graph('multiple_entity_update', self.env.getConnection())
+        multiple_entity_graph.query("CREATE ({v1: 1})-[:R {v1: 3}]->({v2: 2})")
 
     def test01_update_attribute(self):
         # update existing attribute 'v'
@@ -128,6 +133,32 @@ class testEntityUpdate(FlowTestsBase):
                    "MATCH (a) SET a = {v: ['str', [1, NULL]]}",
                    "MATCH (a) SET a += [[{k: 'v'}]]",
                    "CREATE (a:L)-[e:R]->(:L) SET a.v = [e]"]
+        for query in queries:
+            try:
+                graph.query(query)
+                self.env.assertTrue(False)
+            except ResponseError as e:
+                self.env.assertContains("Property values can only be of primitive types or arrays of primitive types", str(e))
+
+    # update properties by attribute set reassignment
+    def test14_assign_entity_properties(self):
+        # merge attribute set of a node with existing properties
+        node = Node(properties={"v1": 1, "v2": 2})
+        result = multiple_entity_graph.query("MATCH (n1 {v1: 1}), (n2 {v2: 2}) SET n1 += n2 RETURN n1")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)
+
+        # overwrite attribute set of node with attribute set of edge
+        node = Node(properties={"v1": 3})
+        result = multiple_entity_graph.query("MATCH (n {v1: 1})-[e]->() SET n = e RETURN n")
+        expected_result = [[node]]
+        self.env.assertEqual(result.result_set, expected_result)
+
+    # Fail when attempting to perform invalid entity assignment
+    def test13_invalid_entity_assignment(self):
+        queries = ["MATCH (a) SET a.v = [a]",
+                   "MATCH (a) SET a = a.v",
+                   "MATCH (a) SET a = NULL"]
         for query in queries:
             try:
                 graph.query(query)

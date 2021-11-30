@@ -253,8 +253,8 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 		Attribute_ID      attr_id    =  property.id;
 		SIValue           new_value  =  AR_EXP_Evaluate(property.exp,  r);
 
-		// value is of type map e.g. n.v = {a:1, b:2}
 		if(SI_TYPE(new_value) == T_MAP) {
+			// value is of type map e.g. n.v = {a:1, b:2}
 			SIValue m = new_value;
 			ASSERT(attr_id == ATTRIBUTE_ALL);
 			// iterate over all map elements to build updates
@@ -272,6 +272,28 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 				array_append(*updates, update);
 			}
 			continue;
+		} else if(SI_TYPE(new_value) & (T_NODE | T_EDGE)) {
+			// value is a node or edge; perform attribute set reassignment
+			GraphEntity *ge = new_value.ptrval;
+			if(attr_id != ATTRIBUTE_ALL) {
+				Error_InvalidPropertyValue();
+				ErrorCtx_RaiseRuntimeException(NULL);
+			}
+			// iterate over all entity properties to build updates
+			uint property_count = ENTITY_PROP_COUNT(ge);
+			for(uint j = 0; j < property_count; j ++) {
+				Attribute_ID attr_id = ENTITY_PROPS(ge)[j].id;
+				SIValue value = ENTITY_PROPS(ge)[j].value;
+
+				update = _PreparePendingUpdate(gc, accepted_properties, entity,
+											   attr_id, value, st);
+				// enqueue the current update
+				array_append(*updates, update);
+			}
+			continue;
+		} else if(attr_id == ATTRIBUTE_ALL) {
+			Error_InvalidPropertyValue();
+			ErrorCtx_RaiseRuntimeException(NULL);
 		}
 
 		update = _PreparePendingUpdate(gc, accepted_properties, entity,
