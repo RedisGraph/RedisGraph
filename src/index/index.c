@@ -262,8 +262,15 @@ void Index_Construct
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < fields_count; i++) {
 			// introduce text field
-			RediSearch_CreateTextField(rsIdx, idx->fields[i].name);
-			// TODO: Set fields options
+			unsigned options = RSFLDOPT_NONE;
+			if(idx->fields[i].phonetic) {
+				options |= RSFLDOPT_TXTPHONETIC;
+			}
+			if(idx->fields[i].nostem) {
+				options |= RSFLDOPT_TXTNOSTEM;
+			}
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i].name, RSFLDTYPE_FULLTEXT, options);
+			RediSearch_TextFieldSetWeight(rsIdx, fieldID, idx->fields[i].weight);
 		}
 	} else {
 		for(uint i = 0; i < fields_count; i++) {

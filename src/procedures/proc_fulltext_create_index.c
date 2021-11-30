@@ -107,15 +107,15 @@ static ProcedureResult _validateFieldConfigMap(const char *label, SIValue config
 	}
 
 	if(weight_exists) {
-		if(SI_TYPE(weight) != SI_NUMERIC) {
-			ErrorCtx_SetError("Weight must be string");
+		if(SI_TYPE(weight) & SI_NUMERIC == 0) {
+			ErrorCtx_SetError("Weight must be numeric");
 			return PROCEDURE_ERR;
 		}
 	}
 
 	if(nostem_exists) {
 		if(SI_TYPE(nostem) != T_BOOL) {
-			ErrorCtx_SetError("Nostem must be string");
+			ErrorCtx_SetError("Nostem must be bool");
 			return PROCEDURE_ERR;
 		}
 	}
@@ -168,7 +168,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 			return PROCEDURE_ERR;
 		}
 		if(SI_TYPE(args[i]) == T_MAP &&
-			_validateFieldConfigMap(label, args[0]) == PROCEDURE_ERR) {
+			_validateFieldConfigMap(label, args[i]) == PROCEDURE_ERR) {
 			return PROCEDURE_ERR;
 		}
 	}
@@ -185,10 +185,31 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	// introduce fields to index
 	for(uint i = 0; i < fields_count; i++) {
 		if(SI_TYPE(fields[i]) == T_STRING) {
-			const char *field = fields[i].stringval;
-			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE, label, field,
-				INDEX_FIELD_DEFAULT_WEIGHT, INDEX_FIELD_DEFAULT_NOSTEM,
-				INDEX_FIELD_DEFAULT_PHONETIC);
+			const char *field = rm_strdup(fields[i].stringval);
+			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,
+				label, field, INDEX_FIELD_DEFAULT_WEIGHT,
+				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+		} else {
+			SIValue tmp;
+			const char *field;
+			double weight = INDEX_FIELD_DEFAULT_WEIGHT;
+			bool nostem = INDEX_FIELD_DEFAULT_NOSTEM;
+			char *phonetic = INDEX_FIELD_DEFAULT_PHONETIC;
+			MAP_GET(fields[i], "field", tmp);
+			field = rm_strdup(tmp.stringval);
+			if(MAP_GET(fields[i], "weight", tmp)) {
+				weight = SI_GET_NUMERIC(tmp);
+			}
+			if(MAP_GET(fields[i], "nostem", tmp)) {
+				nostem = tmp.longval;
+			}
+			if(MAP_GET(fields[i], "phonetic", tmp)) {
+				if(strcasecmp(tmp.stringval, "no") != 0) {
+					phonetic = tmp.stringval;
+				}
+			}
+			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,
+				label, field, weight, nostem, phonetic);
 		}
 	}
 
