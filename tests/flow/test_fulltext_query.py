@@ -74,7 +74,7 @@ class testFulltextIndexQuery(FlowTestsBase):
         self.env.assertEquals(result.result_set, [])
 
         # fulltext query L3 for redis and compare score
-        result = graph.query("CALL db.idx.fulltext.queryNodes('L3', 'redis')")
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L3', 'redis') YIELD node, score RETURN node, score ORDER BY score DESC")
         self.env.assertEquals(result.result_set[0][0].properties["v2"], "hello redis")
         self.env.assertEquals(result.result_set[1][0].properties["v1"], "hello redis")
         self.env.assertGreater(result.result_set[0][1], result.result_set[1][1])
@@ -82,7 +82,7 @@ class testFulltextIndexQuery(FlowTestsBase):
         expected_result = graph.query("MATCH (n:L4) RETURN n")
 
         # fulltext query L4 for phelix
-        result = graph.query("CALL db.idx.fulltext.queryNodes('L4', 'phelix') YIELD node, score RETURN node, score ORDER BY score DESC")
+        result = graph.query("CALL db.idx.fulltext.queryNodes('L4', 'phelix')")
         self.env.assertEquals(result.result_set[0][0], expected_result.result_set[0][0])
 
         expected_result = graph.query("MATCH (n:L5) RETURN n")

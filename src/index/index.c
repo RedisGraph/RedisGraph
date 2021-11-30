@@ -155,7 +155,7 @@ RSDoc *Index_IndexGraphEntity
 IndexField IndexField_New
 (
 	char *name,
-	int64_t weight,
+	double weight,
 	bool nostem,
 	char *phonetic
 ) {

@@ -50,6 +50,11 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 	for(uint i = 0; i < fields_count; i++) {
 		// Indexed property
 		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
+		if(idx->type == IDX_FULLTEXT) {
+			RedisModule_SaveDouble(rdb, idx->fields[i].weight);
+			RedisModule_SaveUnsigned(rdb, idx->fields[i].nostem);
+			RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, strlen(idx->fields[i].phonetic) + 1);
+		}
 	}
 }
 
