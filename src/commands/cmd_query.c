@@ -96,7 +96,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 			const char *prop = cypher_ast_prop_name_get_value(prop_name);
 
 			index_added |= (GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label,
-						prop) == INDEX_OK);
+						rm_strdup(prop)) == INDEX_OK);
 		}
 
 		// populate the index only when at least one attribute was introduced

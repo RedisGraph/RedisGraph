@@ -107,7 +107,7 @@ static ProcedureResult _validateFieldConfigMap(const char *label, SIValue config
 	}
 
 	if(weight_exists) {
-		if(SI_TYPE(weight) & SI_NUMERIC == 0) {
+		if((SI_TYPE(weight) & SI_NUMERIC) == 0) {
 			ErrorCtx_SetError("Weight must be numeric");
 			return PROCEDURE_ERR;
 		}
