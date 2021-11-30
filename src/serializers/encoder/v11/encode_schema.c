@@ -1,10 +1,10 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v10.h"
+#include "encode_v11.h"
 
 static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
@@ -76,7 +76,7 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	_RdbSaveIndexData(rdb, s->fulltextIdx);
 }
 
-void RdbSaveGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas
