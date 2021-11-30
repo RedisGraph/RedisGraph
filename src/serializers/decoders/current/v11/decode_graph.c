@@ -226,8 +226,6 @@ GraphContext *RdbLoadGraphContext_v11
 		QueryCtx_Free(); // release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
 
-		// graph has finished decoding, inform the module
-		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
