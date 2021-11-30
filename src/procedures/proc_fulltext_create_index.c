@@ -100,7 +100,7 @@ static ProcedureResult _validateFieldConfigMap(const char *label, SIValue config
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field.stringval);
-		if(s && Schema_GetIndex(s, fieldID, IDX_FULLTEXT)) {
+		if(s && Schema_GetIndex(s, &fieldID, IDX_FULLTEXT)) {
 			ErrorCtx_SetError("Index already exists configuration can't be changed");
 			return PROCEDURE_ERR;
 		}
