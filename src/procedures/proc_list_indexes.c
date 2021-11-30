@@ -143,12 +143,12 @@ static bool _EmitIndex
 
 	if(ctx->yield_properties) {
 		uint fields_count        = Index_FieldsCount(idx);
-		const char **fields      = Index_GetFields(idx);
+		const IndexField *fields = Index_GetFields(idx);
 		*ctx->yield_properties   = SI_Array(fields_count);
 
 		for(uint i = 0; i < fields_count; i++) {
 			SIArray_Append(ctx->yield_properties,
-						   SI_ConstStringVal((char *)fields[i]));
+						   SI_ConstStringVal((char *)fields[i].name));
 		}
 	}
 

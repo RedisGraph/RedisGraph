@@ -196,7 +196,7 @@ bool _applicableFilter
 	}
 
 	uint idx_fields_count = Index_FieldsCount(idx);
-	const char **idx_fields = Index_GetFields(idx);
+	const IndexField *idx_fields = Index_GetFields(idx);
 
 	// make sure all filtered attributes are indexed
 	attr = FilterTree_CollectAttributes(filter_tree);
@@ -209,8 +209,8 @@ bool _applicableFilter
 	}
 
 	for(uint i = 0; i < idx_fields_count; i++) {
-		const char *field = idx_fields[i];
-		if(raxFind(attr, (unsigned char *)field, strlen(field)) != raxNotFound) {
+		const IndexField *field = &idx_fields[i];
+		if(raxFind(attr, (unsigned char *)field->name, strlen(field->name)) != raxNotFound) {
 			filter_attribute_count--;
 			// All filtered attributes are indexed.
 			if(filter_attribute_count == 0) break;

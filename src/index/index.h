@@ -47,6 +47,14 @@ typedef struct {
 	RSIndex *idx;                 // rediSearch index
 } Index;
 
+IndexField IndexField_New
+(
+	char *name,
+	int64_t weight,
+	bool nostem,
+	char *phonetic
+);
+
 // create a new index
 Index *Index_New
 (
@@ -124,7 +132,7 @@ uint Index_FieldsCount
 );
 
 // returns a shallow copy of indexed fields
-const char **Index_GetFields
+const IndexField *Index_GetFields
 (
 	const Index *idx
 );

@@ -97,9 +97,9 @@ TEST_F(IndexTest, Index_New) {
 	ASSERT_EQ(field_count, 2);
 
 	// Returns indexed fields.
-	const char **fields = Index_GetFields(idx);
-	ASSERT_STREQ(fields[0], "name");
-	ASSERT_STREQ(fields[1], "age");
+	const IndexField *fields = Index_GetFields(idx);
+	ASSERT_STREQ(fields[0].name, "name");
+	ASSERT_STREQ(fields[1].name, "age");
 
 	Index_RemoveField(idx, "age");
 	Index_RemoveField(idx, "age");

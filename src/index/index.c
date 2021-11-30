@@ -152,6 +152,22 @@ RSDoc *Index_IndexGraphEntity
 	return doc;
 }
 
+IndexField IndexField_New
+(
+	char *name,
+	int64_t weight,
+	bool nostem,
+	char *phonetic
+) {
+	IndexField field = { 0 };
+	field.name     = name;
+	field.weight   = weight;
+	field.nostem   = nostem;
+	field.phonetic = phonetic;
+
+	return field;
+}
+
 // create a new index
 Index *Index_New
 (
@@ -197,8 +213,8 @@ void Index_AddFullTextField
 	ASSERT(idx != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field->name);
-	if(Index_ContainsAttribute(idx, fieldID)) return;
+	field->id = GraphContext_FindOrAddAttribute(gc, field->name);
+	if(Index_ContainsAttribute(idx, field->id)) return;
 
 	array_append(idx->fields, *field);
 }
@@ -322,13 +338,13 @@ uint Index_FieldsCount
 }
 
 // returns indexed fields
-const char **Index_GetFields
+const IndexField *Index_GetFields
 (
 	const Index *idx
 ) {
 	ASSERT(idx != NULL);
 
-	return (const char **)idx->fields;
+	return (const IndexField *)idx->fields;
 }
 
 bool Index_ContainsAttribute
