@@ -58,7 +58,7 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 					weight,
 					nostem,
 					rm_strdup(phonetic));
-				;
+				RedisModule_Free(phonetic);
 			} else {
 				field = IndexField_New(
 					rm_strdup(field_name),
