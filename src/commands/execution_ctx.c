@@ -13,9 +13,14 @@
 static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) return EXECUTION_TYPE_QUERY;
-	if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX) return EXECUTION_TYPE_INDEX_CREATE;
-	if(root_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX) return EXECUTION_TYPE_INDEX_CREATE;
-	if(root_type == CYPHER_AST_DROP_PROPS_INDEX) return EXECUTION_TYPE_INDEX_DROP;
+	if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX)
+		return EXECUTION_TYPE_INDEX_CREATE;
+	if(root_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX)
+	   	return EXECUTION_TYPE_INDEX_CREATE;
+	if(root_type == CYPHER_AST_DROP_PROPS_INDEX)
+		return EXECUTION_TYPE_INDEX_DROP;
+	if(root_type == CYPHER_AST_SHOW_FULLTEXT_INDEXES)
+	   	return EXECUTION_TYPE_SHOW_FULLTEXT_INDEXES;
 	ASSERT(false && "Unknown execution type");
 	return 0;
 }

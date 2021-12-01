@@ -86,17 +86,18 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 				schema_type = SCHEMA_EDGE;
 			}
 		}
-	
+
 		// add index for each property
 		QueryCtx_LockForCommit();
 		for(unsigned int i = 0; i < nprops; i++) {
 			const cypher_astnode_t *prop_name = t == CYPHER_AST_CREATE_NODE_PROPS_INDEX
-				? cypher_ast_create_node_props_index_get_prop_name(index_op, i)
-				: cypher_ast_property_operator_get_prop_name(cypher_ast_create_pattern_props_index_get_property_operator(index_op, i));
+												? cypher_ast_create_node_props_index_get_prop_name(index_op, i)
+												: cypher_ast_property_operator_get_prop_name(
+													cypher_ast_create_pattern_props_index_get_property_operator(index_op, i));
 			const char *prop = cypher_ast_prop_name_get_value(prop_name);
 
 			index_added |= (GraphContext_AddIndex(&idx, gc, schema_type, label,
-						prop, idx_type) == INDEX_OK);
+												  prop, idx_type) == INDEX_OK);
 		}
 
 		// populate the index only when at least one attribute was introduced
@@ -106,9 +107,9 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(
-				cypher_ast_drop_props_index_get_label(index_op));
+								cypher_ast_drop_props_index_get_label(index_op));
 		const char *prop = cypher_ast_prop_name_get_value(
-				cypher_ast_drop_props_index_get_prop_name(index_op, 0));
+							   cypher_ast_drop_props_index_get_prop_name(index_op, 0));
 
 		// determine if schema type from which index is removed
 		// default to node
@@ -119,12 +120,15 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 
 		QueryCtx_LockForCommit();
 		int res = GraphContext_DeleteIndex(gc, schema_type, label, prop,
-				idx_type);
+										   idx_type);
 		QueryCtx_UnlockCommit(NULL);
 
 		if(res != INDEX_OK) {
 			ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
 		}
+	} else if(exec_type == EXECUTION_TYPE_SHOW_FULLTEXT_INDEXES) {
+		// TODO add code
+		ErrorCtx_SetError("SHOW FULLTEXT INDEXES is not implemented");
 	} else {
 		ErrorCtx_SetError("ERR Encountered unknown query execution type.");
 	}
@@ -179,10 +183,10 @@ static void _ExecuteQuery(void *args) {
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
 	ResultSetFormatterType resultset_format = profile
-		? FORMATTER_NOP 
-		: (compact) 
-			? FORMATTER_COMPACT 
-			: FORMATTER_VERBOSE;
+											  ? FORMATTER_NOP
+											  : (compact)
+											  ? FORMATTER_COMPACT
+											  : FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
 	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
 
@@ -211,8 +215,7 @@ static void _ExecuteQuery(void *args) {
 		if(profile) {
 			ExecutionPlan_Profile(plan);
 			if(!ErrorCtx_EncounteredError()) ExecutionPlan_Print(plan, rm_ctx);
-		}
-		else {
+		} else {
 			result_set = ExecutionPlan_Execute(plan);
 		}
 
@@ -225,7 +228,8 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_Free(plan);
 		exec_ctx->plan = NULL;
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
+			  exec_type == EXECUTION_TYPE_INDEX_DROP ||
+			  exec_type == EXECUTION_TYPE_SHOW_FULLTEXT_INDEXES) {
 		_index_operation(rm_ctx, gc, ast, exec_type);
 	} else {
 		ASSERT("Unhandled query type" && false);
@@ -302,8 +306,8 @@ void _query(bool profile, void *args) {
 	ExecutionType exec_type = exec_ctx->exec_type;
 
 	if(profile &&
-		(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
-	     exec_type == EXECUTION_TYPE_INDEX_DROP)) {
+	   (exec_type == EXECUTION_TYPE_INDEX_CREATE ||
+		exec_type == EXECUTION_TYPE_INDEX_DROP)) {
 		RedisModule_ReplyWithError(ctx, "Can't profile index operations.");
 		goto cleanup;
 	}
@@ -323,7 +327,7 @@ void _query(bool profile, void *args) {
 		// disallow timeouts on write operations to avoid leaving the graph in an inconsistent state
 		if(readonly) {
 			timeout_task = Query_SetTimeOut(command_ctx->timeout,
-					exec_ctx->plan);
+											exec_ctx->plan);
 		}
 	}
 
@@ -361,3 +365,4 @@ void Graph_Profile(void *args) {
 void Graph_Query(void *args) {
 	_query(false, args);
 }
+

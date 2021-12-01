@@ -1651,7 +1651,8 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
 	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX    ||
 	   body_type == CYPHER_AST_CREATE_PATTERN_PROPS_INDEX ||
-	   body_type == CYPHER_AST_DROP_PROPS_INDEX) {
+	   body_type == CYPHER_AST_DROP_PROPS_INDEX ||
+	   body_type == CYPHER_AST_SHOW_FULLTEXT_INDEXES) {
 		// Index operation; validations are handled elsewhere.
 		return AST_VALID;
 	}
