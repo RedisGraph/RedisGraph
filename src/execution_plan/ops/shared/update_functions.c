@@ -256,7 +256,10 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 		if(SI_TYPE(new_value) == T_MAP) {
 			// value is of type map e.g. n.v = {a:1, b:2}
 			SIValue m = new_value;
-			ASSERT(attr_id == ATTRIBUTE_ALL);
+			if(attr_id != ATTRIBUTE_ALL) {
+				Error_InvalidPropertyValue();
+				ErrorCtx_RaiseRuntimeException(NULL);
+			}
 			// iterate over all map elements to build updates
 			uint map_size = Map_KeyCount(m);
 			for(uint j = 0; j < map_size; j ++) {
@@ -292,6 +295,8 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 			}
 			continue;
 		} else if(attr_id == ATTRIBUTE_ALL) {
+			// left-hand side is alias reference but right-hand side is a
+			// scalar, emit an error
 			Error_InvalidPropertyValue();
 			ErrorCtx_RaiseRuntimeException(NULL);
 		}
