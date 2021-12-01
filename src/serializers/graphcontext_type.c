@@ -58,8 +58,16 @@ static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
 // and call the module event handler
 static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 	RedisModule_LoadUnsigned(rdb);
-	if(when == REDISMODULE_AUX_BEFORE_RDB) ModuleEventHandler_AUXBeforeKeyspaceEvent();
-	else ModuleEventHandler_AUXAfterKeyspaceEvent();
+	RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
+	if(when == REDISMODULE_AUX_BEFORE_RDB) {
+		// replicate aux field because the RESTOREMODAUX command is not replicated
+		RedisModule_Replicate(ctx, "GRAPH.DEBUG", "AUX START");
+		ModuleEventHandler_AUXBeforeKeyspaceEvent();
+	} else {
+		// replicate aux field because the RESTOREMODAUX command is not replicated
+		RedisModule_Replicate(ctx, "GRAPH.DEBUG", "AUX END");
+		ModuleEventHandler_AUXAfterKeyspaceEvent();
+	}
 	return REDISMODULE_OK;
 };
 
