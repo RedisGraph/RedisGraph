@@ -75,13 +75,11 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 					INDEX_FIELD_DEFAULT_NOSTEM,
 					INDEX_FIELD_DEFAULT_PHONETIC);
 			}
-			if(Schema_AddIndex(&idx, s, &field, index_type) == INDEX_FAIL) {
-				// fail on add index is ok only for _src_id and _dest_id fields
-				if(strcmp(field.name, "_src_id") == 0 || strcmp(field.name, "_dest_id") == 0) {
-					rm_free(field.name);
-				} else {
-					ASSERT(false);
-				}
+			if(type == SCHEMA_NODE || (strcmp(field.name, "_src_id") != 0 && strcmp(field.name, "_dest_id") != 0)) {
+				Schema_AddIndex(&idx, s, &field, index_type);
+			} else {
+				printf("\n%s\n", field.name);
+				rm_free(field.name);
 			}
 			RedisModule_Free(field_name);
 		}
