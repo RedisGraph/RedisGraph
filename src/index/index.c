@@ -198,10 +198,15 @@ void Index_AddField
 ) {
 	ASSERT(idx != NULL);
 
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID id = GraphContext_FindOrAddAttribute(gc, field);
+	if(Index_ContainsAttribute(idx, id)) return;
+
 	IndexField index_field = { 0 };
+	index_field.id = id;
 	index_field.name = rm_strdup(field);
 
-	Index_AddFullTextField(idx, &index_field);
+	array_append(idx->fields, index_field);
 }
 
 // adds field to index
@@ -402,6 +407,7 @@ void Index_Free(Index *idx) {
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		rm_free(idx->fields[i].name);
+		if(idx->fields[i].phonetic) rm_free(idx->fields[i].phonetic);
 	}
 	array_free(idx->fields);
 

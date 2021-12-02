@@ -53,11 +53,20 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 				double weight = RedisModule_LoadDouble(rdb);
 				bool nostem = RedisModule_LoadUnsigned(rdb);
 				char *phonetic = RedisModule_LoadStringBuffer(rdb, NULL);
-				field = IndexField_New(
-					rm_strdup(field_name),
-					weight,
-					nostem,
-					rm_strdup(phonetic));
+
+				if(strcmp(phonetic, "no") == 0) {
+					field = IndexField_New(
+						rm_strdup(field_name),
+						weight,
+						nostem,
+						INDEX_FIELD_DEFAULT_PHONETIC);
+				} else {
+					field = IndexField_New(
+						rm_strdup(field_name),
+						weight,
+						nostem,
+						rm_strdup(phonetic));
+				}
 				RedisModule_Free(phonetic);
 			} else {
 				field = IndexField_New(

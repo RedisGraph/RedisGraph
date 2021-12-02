@@ -389,7 +389,7 @@ int GraphContext_AddExactMatchIndex
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	const char *field
+	char *field
 ) {
 	ASSERT(idx    !=  NULL);
 	ASSERT(gc     !=  NULL);
@@ -415,7 +415,7 @@ int GraphContext_AddIndexFullTextIndex
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	const char *field,
+	char *field,
 	double weight,
 	bool nostem,
 	char *phonetic

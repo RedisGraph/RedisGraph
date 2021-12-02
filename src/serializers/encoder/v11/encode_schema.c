@@ -53,7 +53,13 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 		if(idx->type == IDX_FULLTEXT) {
 			RedisModule_SaveDouble(rdb, idx->fields[i].weight);
 			RedisModule_SaveUnsigned(rdb, idx->fields[i].nostem);
-			RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, strlen(idx->fields[i].phonetic) + 1);
+			if(idx->fields->phonetic) {
+				RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, 
+					strlen(idx->fields[i].phonetic) + 1);\
+			} else {
+				RedisModule_SaveStringBuffer(rdb, "no", 
+					3);
+			}
 		}
 	}
 }

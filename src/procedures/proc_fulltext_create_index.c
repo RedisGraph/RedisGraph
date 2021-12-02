@@ -164,7 +164,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	// validation, fields arguments should be of type string
 	for(uint i = 1; i < arg_count; i++) {
 		if(!(SI_TYPE(args[i]) & (T_STRING | T_MAP))) {
-			ErrorCtx_SetError("Field arguments must be string");
+			ErrorCtx_SetError("Field argument must be string or map");
 			return PROCEDURE_ERR;
 		}
 		if(SI_TYPE(args[i]) == T_MAP &&
@@ -185,13 +185,13 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	// introduce fields to index
 	for(uint i = 0; i < fields_count; i++) {
 		if(SI_TYPE(fields[i]) == T_STRING) {
-			const char *field = rm_strdup(fields[i].stringval);
+			char *field = rm_strdup(fields[i].stringval);
 			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,
 				label, field, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 		} else {
 			SIValue tmp;
-			const char *field;
+			char *field;
 			double weight = INDEX_FIELD_DEFAULT_WEIGHT;
 			bool nostem = INDEX_FIELD_DEFAULT_NOSTEM;
 			char *phonetic = INDEX_FIELD_DEFAULT_PHONETIC;
@@ -205,7 +205,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 			}
 			if(MAP_GET(fields[i], "phonetic", tmp)) {
 				if(strcasecmp(tmp.stringval, "no") != 0) {
-					phonetic = tmp.stringval;
+					phonetic = rm_strdup(tmp.stringval);
 				}
 			}
 			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,
