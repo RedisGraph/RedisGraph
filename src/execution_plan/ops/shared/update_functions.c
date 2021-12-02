@@ -253,7 +253,12 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 		Attribute_ID      attr_id    =  property.id;
 		SIValue           new_value  =  AR_EXP_Evaluate(property.exp,  r);
 
-		if(SI_TYPE(new_value) == T_MAP) {
+		if(attr_id == ATTRIBUTE_ALL && !(SI_TYPE(new_value) & (T_NODE | T_EDGE | T_MAP))) {
+			// left-hand side is alias reference but right-hand side is a
+			// scalar, emit an error
+			Error_InvalidPropertyValue();
+			ErrorCtx_RaiseRuntimeException(NULL);
+		} else if(SI_TYPE(new_value) == T_MAP) {
 			// value is of type map e.g. n.v = {a:1, b:2}
 			SIValue m = new_value;
 			if(attr_id != ATTRIBUTE_ALL) {
@@ -294,15 +299,10 @@ void EvalEntityUpdates(GraphContext *gc, PendingUpdateCtx **node_updates,
 				array_append(*updates, update);
 			}
 			continue;
-		} else if(attr_id == ATTRIBUTE_ALL) {
-			// left-hand side is alias reference but right-hand side is a
-			// scalar, emit an error
-			Error_InvalidPropertyValue();
-			ErrorCtx_RaiseRuntimeException(NULL);
 		}
 
 		update = _PreparePendingUpdate(gc, accepted_properties, entity,
-									   attr_id, new_value, st);
+				attr_id, new_value, st);
 		// enqueue the current update
 		array_append(*updates, update);
 	}

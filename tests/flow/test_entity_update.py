@@ -183,7 +183,7 @@ class testEntityUpdate(FlowTestsBase):
     def test16_assign_entity_properties(self):
         # repeated merges to the attribute set of a node
         node = Node(label="L", properties={"v1": 3, "v2": 2})
-        result = multiple_entity_graph.query("MATCH (n), (x) WHERE ID(n) = 0 SET n += x RETURN n")
+        result = multiple_entity_graph.query("MATCH (n), (x) WHERE ID(n) = 0 WITH n, x ORDER BY ID(x) SET n += x RETURN n")
         expected_result = [[node],
                            [node]]
         self.env.assertEqual(result.result_set, expected_result)
@@ -198,7 +198,7 @@ class testEntityUpdate(FlowTestsBase):
 
         # repeated updates to the attribute set of a node
         node = Node(label="L", properties={"v2": 2})
-        result = multiple_entity_graph.query("MATCH (n), (x) WHERE ID(n) = 0 SET n = x RETURN n")
+        result = multiple_entity_graph.query("MATCH (n), (x) WHERE ID(n) = 0 WITH n, x ORDER BY ID(x) SET n = x RETURN n")
         expected_result = [[node],
                            [node]]
         self.env.assertEqual(result.result_set, expected_result)
@@ -213,7 +213,7 @@ class testEntityUpdate(FlowTestsBase):
 
         # repeated multiple updates to the attribute set of a node
         node = Node(label="L", properties={"v2": 2})
-        result = multiple_entity_graph.query("MATCH (n), (x) WHERE ID(n) = 0 SET n = x, n += x RETURN n")
+        result = multiple_entity_graph.query("MATCH (n), (x) WHERE ID(n) = 0 WITH n, x ORDER BY ID(x) SET n = x, n += x RETURN n")
         expected_result = [[node],
                            [node]]
         self.env.assertEqual(result.result_set, expected_result)
