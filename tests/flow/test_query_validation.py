@@ -546,21 +546,30 @@ class testQueryValidationFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertTrue(plan.count("ProcedureCall") == 2)
 
-    def test37_list_comprehension_missuse(self):
+    def test37_list_comprehension_misuse(self):
         # all expect list comprehension,
         # unfortunately this isn't enforced by the parser
-        # as such it is possible for a user miss-use this function
+        # as such it is possible for a user misuse this function
         # and our current arithmetic expression construction logic will
         # construct a malformed function call
 
         # make sure we're reciving an exception for each miss-use query
         queries = ["WITH 1 AS x RETURN all(x > 2)",
-                "WITH 1 AS x RETURN all([1],2,3)"]
+                   "WITH 1 AS x RETURN all([1],2,3)"]
 
         for q in queries:
             try:
                 redis_graph.query(q)
                 assert(False)
-            except redis.exceptions.ResponseError as e:
+            except redis.exceptions.ResponseError:
                 pass
 
+    # Emit an error if UNWIND redefines an existing alias
+    def test38_unwind_reused_alias(self):
+        try:
+            query = """UNWIND [1,2] AS x UNWIND [3,4] AS x RETURN x"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertIn("already declared", str(e))

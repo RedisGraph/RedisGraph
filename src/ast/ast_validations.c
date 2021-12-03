@@ -100,13 +100,13 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		accum_node = cypher_ast_reduce_get_accumulator(node);
 		variable = cypher_ast_identifier_get_name(accum_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
-				NULL);
+				  NULL);
 
 		// `n` in the above example
 		identifier_node = cypher_ast_reduce_get_identifier(node);
 		variable = cypher_ast_identifier_get_name(identifier_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
-				NULL);
+				  NULL);
 	}
 }
 
@@ -865,7 +865,7 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast) {
 
 		// Collect all entities that are bound before this CREATE clause.
 		for(uint j = start_offset; j < clause_idx; j ++) {
-			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, i);
+			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, j);
 			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
 		}
 		start_offset = clause_idx;
@@ -1196,7 +1196,11 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		 * UNWIND [ref_1, ref_2] AS defined RETURN defined */
 		const cypher_astnode_t *unwind_alias_node = cypher_ast_unwind_get_alias(node);
 		const char *unwind_alias = cypher_ast_identifier_get_name(unwind_alias_node);
-		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
+		int rc = raxTryInsert(identifiers, (unsigned char *)unwind_alias,
+							  strlen(unwind_alias), NULL, NULL);
+		if(rc == 0) {
+			ErrorCtx_SetError("Variable %s already declared", unwind_alias);
+		}
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
 	} else {
@@ -1673,3 +1677,4 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 	return res;
 }
+
