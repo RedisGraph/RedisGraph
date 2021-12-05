@@ -86,6 +86,28 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 		const char *variable = cypher_ast_identifier_get_name(variable_node);
 		raxRemove(identifiers, (unsigned char *)variable, strlen(variable), NULL);
 	}
+
+	if(type == CYPHER_AST_REDUCE) {
+		// A reduce call has an accumulator and a local variable that should
+		// only be accessed within its scope;
+		// do not leave them in the identifiers map
+		// example: reduce(sum=0, n in [1,2] | sum+n)
+		const  char              *variable         =  NULL;
+		const  cypher_astnode_t  *accum_node       =  NULL;
+		const  cypher_astnode_t  *identifier_node  =  NULL;
+
+		// `sum` in the above example
+		accum_node = cypher_ast_reduce_get_accumulator(node);
+		variable = cypher_ast_identifier_get_name(accum_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
+				NULL);
+
+		// `n` in the above example
+		identifier_node = cypher_ast_reduce_get_identifier(node);
+		variable = cypher_ast_identifier_get_name(identifier_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable),
+				NULL);
+	}
 }
 
 static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {

@@ -5,7 +5,7 @@
  */
 
 #include "comprehension_funcs.h"
-#include "../../RG.h"
+#include "RG.h"
 #include "../../value.h"
 #include "../func_desc.h"
 #include "../../errors.h"
