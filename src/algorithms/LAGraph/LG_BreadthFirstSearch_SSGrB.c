@@ -64,9 +64,9 @@ int LG_BreadthFirstSearch_SSGrB
 	// get the problem size and properties
 	//--------------------------------------------------------------------------
 	GrB_Index n, nvals ;
-	GrB_TRY (GrB_Matrix_nrows (&n, A)) ;
+	GrB_OK (GrB_Matrix_nrows (&n, A)) ;
 
-	GrB_TRY (GrB_Matrix_nvals (&nvals, A)) ;
+	GrB_OK (GrB_Matrix_nvals (&nvals, A)) ;
 
 	GrB_Vector Degree ;
 	LAGraph_Property_RowDegree(A, &Degree) ;
@@ -86,18 +86,14 @@ int LG_BreadthFirstSearch_SSGrB
 			GxB_ANY_SECONDI_INT64 : GxB_ANY_SECONDI_INT32 ;
 
 		// create the parent vector.  pi(i) is the parent id of node i
-		GrB_TRY (GrB_Vector_new (&pi, int_type, n)) ;
-		// TODO: requesting pi to be both BITMAP and FULL can be expensive
-		//       especially when the graph is large
-		//       and `src` can't expand too much
-		//       see if this requierment can be lifted
-		GrB_TRY (GxB_set (pi, GxB_SPARSITY_CONTROL, GxB_BITMAP + GxB_FULL)) ;
+		GrB_OK (GrB_Vector_new (&pi, int_type, n)) ;
+		GrB_OK (GxB_set (pi, GxB_SPARSITY_CONTROL,GxB_HYPERSPARSE + GxB_SPARSE)) ;
 		// pi (src) = src denotes the root of the BFS tree
-		GrB_TRY (GrB_Vector_setElement (pi, src, src)) ;
+		GrB_OK (GrB_Vector_setElement (pi, src, src)) ;
 
 		// create a sparse integer vector q, and set q(src) = src
-		GrB_TRY (GrB_Vector_new (&q, int_type, n)) ;
-		GrB_TRY (GrB_Vector_setElement (q, src, src)) ;
+		GrB_OK (GrB_Vector_new (&q, int_type, n)) ;
+		GrB_OK (GrB_Vector_setElement (q, src, src)) ;
 	}
 	else
 	{
@@ -105,8 +101,8 @@ int LG_BreadthFirstSearch_SSGrB
 		semiring = GrB_LOR_LAND_SEMIRING_BOOL ;
 
 		// create a sparse boolean vector q, and set q(src) = true
-		GrB_TRY (GrB_Vector_new (&q, GrB_BOOL, n)) ;
-		GrB_TRY (GrB_Vector_setElement (q, true, src)) ;
+		GrB_OK (GrB_Vector_new (&q, GrB_BOOL, n)) ;
+		GrB_OK (GrB_Vector_setElement (q, true, src)) ;
 	}
 
 	if (compute_level)
@@ -114,19 +110,15 @@ int LG_BreadthFirstSearch_SSGrB
 		// create the level vector. v(i) is the level of node i
 		// v (src) = 0 denotes the source node
 
-		// TODO: requesting pi to be both BITMAP and FULL can be expensive
-		//       especially when the graph is large
-		//       and `src` can't expand too much
-		//       see if this requierment can be lifted
-		GrB_TRY (GrB_Vector_new (&v, int_type, n)) ;
-		GrB_TRY (GxB_set (v, GxB_SPARSITY_CONTROL, GxB_BITMAP + GxB_FULL)) ;
-		GrB_TRY (GrB_Vector_setElement (v, 0, src)) ;
+		GrB_OK (GrB_Vector_new (&v, int_type, n)) ;
+		GrB_OK (GxB_set (v, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE + GxB_SPARSE)) ;
+		GrB_OK (GrB_Vector_setElement (v, 0, src)) ;
 	}
 
 	if (push_pull)
 	{
 		// workspace for computing work remaining
-		GrB_TRY (GrB_Vector_new (&w, GrB_INT64, n)) ;
+		GrB_OK (GrB_Vector_new (&w, GrB_INT64, n)) ;
 	}
 
 	GrB_Index nq = 1 ;          // number of nodes in the current level
@@ -185,12 +177,12 @@ int LG_BreadthFirstSearch_SSGrB
 					// update the # of unexplored edges
 					// w<q>=Degree
 					// w(i) = outdegree of node i if node i is in the queue
-					GrB_TRY (GrB_assign (w, q, NULL, Degree, GrB_ALL, n,
+					GrB_OK (GrB_assign (w, q, NULL, Degree, GrB_ALL, n,
 						GrB_DESC_RS)) ;
 					// edges_in_frontier = sum (w) = # of edges incident on all
 					// nodes in the current frontier
 					int64_t edges_in_frontier = 0 ;
-					GrB_TRY (GrB_reduce (&edges_in_frontier, NULL,
+					GrB_OK (GrB_reduce (&edges_in_frontier, NULL,
 						GrB_PLUS_MONOID_INT64, w, NULL)) ;
 					edges_unexplored -= edges_in_frontier ;
 					switch_to_pull = growing &&
@@ -219,20 +211,16 @@ int LG_BreadthFirstSearch_SSGrB
 		// q = kth level of the BFS
 		//----------------------------------------------------------------------
 
-		// TODO: this switch of format might be expenssive, verify?
-		int sparsity = do_push ? GxB_SPARSE : GxB_BITMAP ;
-		GrB_TRY (GxB_set (q, GxB_SPARSITY_CONTROL, sparsity)) ;
-
 		// mask is pi if computing parent, v if computing just level
 		if (do_push)
 		{
 			// q'{!mask} = q'*A
-			GrB_TRY (GrB_vxm (q, mask, NULL, semiring, q, A, GrB_DESC_RSC)) ;
+			GrB_OK (GrB_vxm (q, mask, NULL, semiring, q, A, GrB_DESC_RSC)) ;
 		}
 		else
 		{
 			// q{!mask} = AT*q
-			GrB_TRY (GrB_mxv (q, mask, NULL, semiring, AT, q, GrB_DESC_RSC)) ;
+			GrB_OK (GrB_mxv (q, mask, NULL, semiring, AT, q, GrB_DESC_RSC)) ;
 		}
 
 		//----------------------------------------------------------------------
@@ -240,7 +228,7 @@ int LG_BreadthFirstSearch_SSGrB
 		//----------------------------------------------------------------------
 
 		last_nq = nq ;
-		GrB_TRY (GrB_Vector_nvals (&nq, q)) ;
+		GrB_OK (GrB_Vector_nvals (&nq, q)) ;
 		if (nq == 0)
 		{
 			break ;
@@ -254,12 +242,12 @@ int LG_BreadthFirstSearch_SSGrB
 		{
 			// q(i) currently contains the parent id of node i in tree.
 			// pi{q} = q
-			GrB_TRY (GrB_assign (pi, q, NULL, q, GrB_ALL, n, GrB_DESC_S)) ;
+			GrB_OK (GrB_assign (pi, q, NULL, q, GrB_ALL, n, GrB_DESC_S)) ;
 		}
 		if (compute_level)
 		{
 			// v{q} = k, the kth level of the BFS
-			GrB_TRY (GrB_assign (v, q, NULL, k, GrB_ALL, n, GrB_DESC_S)) ;
+			GrB_OK (GrB_assign (v, q, NULL, k, GrB_ALL, n, GrB_DESC_S)) ;
 		}
 		// check if destination has been reached, if one is provided
 		if(dest) {

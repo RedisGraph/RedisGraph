@@ -98,7 +98,6 @@ static ProcedureResult Proc_BFS_Invoke
 	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
 
 	if(reltype == NULL) {
-		assert(false && "export isn't thread safe, modified D+ and D-");
 		RG_Matrix_export(&R, Graph_GetAdjacencyMatrix(gc->g, false));
 		RG_Matrix_export(&TR, Graph_GetAdjacencyMatrix(gc->g, true));
 	} else {
@@ -107,7 +106,6 @@ static ProcedureResult Proc_BFS_Invoke
 		if(!s) return PROCEDURE_OK;
 
 		bfs_ctx->reltype_id = s->id;
-		assert(false && "export isn't thread safe, modified D+ and D-");
 		RG_Matrix_export(&R, Graph_GetRelationMatrix(gc->g, s->id, false));
 		RG_Matrix_export(&TR, Graph_GetRelationMatrix(gc->g, s->id, true));
 	}
@@ -136,16 +134,6 @@ static ProcedureResult Proc_BFS_Invoke
 	bfs_ctx->n = nvals;
 	bfs_ctx->nodes = V;
 	bfs_ctx->parents = PI;
-
-	// matrix iterator requires matrix format to be sparse
-	// to avoid future conversion from HYPER-SPARSE, BITMAP, FULL to SPARSE
-	// we set matrix format at creation time
-	//
-	// TODO: we do support HYPER-SPARSE and ISO
-	// check each vector format and only switch sparsity if needed be
-	// i.e. current format isn't SPARSE nor HYPER-SPARSE
-	GxB_Vector_Option_set(bfs_ctx->nodes, GxB_SPARSITY_CONTROL, GxB_SPARSE);
-	GxB_Vector_Option_set(bfs_ctx->parents, GxB_SPARSITY_CONTROL, GxB_SPARSE);
 
 	GrB_Matrix_free(&R);
 	GrB_Matrix_free(&TR);
