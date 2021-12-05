@@ -18,9 +18,9 @@ typedef struct {
 	GraphContext *gc;
 	rax *update_ctxs;               // Entities to update and their expressions
 	bool updates_committed;         // True if we've already committed updates and are now in handoff mode.
-	PendingUpdateCtx *updates;      // Enqueued updates
+	PendingUpdateCtx *node_updates; // Enqueued node updates
+	PendingUpdateCtx *edge_updates; // Enqueued edge updates
 	ResultSetStatistics *stats;
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps);
-

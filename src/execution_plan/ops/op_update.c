@@ -32,7 +32,8 @@ static Record _handoff(OpUpdate *op) {
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->records            =  NULL;
-	op->updates            =  NULL;
+	op->node_updates       =  NULL;
+	op->edge_updates       =  NULL;
 	op->updates_committed  =  false;
 	op->update_ctxs        =  update_exps;
 	op->gc                 =  QueryCtx_GetGraphCtx();
@@ -54,11 +55,12 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 }
 
 static OpResult UpdateInit(OpBase *opBase) {
-	OpUpdate *op = (OpUpdate*)opBase;
+	OpUpdate *op = (OpUpdate *)opBase;
 
-	op->stats    =    QueryCtx_GetResultSetStatistics();
-	op->records  =    array_new(Record, 64);
-	op->updates  =    array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+	op->stats         =  QueryCtx_GetResultSetStatistics();
+	op->records       =  array_new(Record, 64);
+	op->node_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+	op->edge_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
 
 	return OP_OK;
 }
@@ -78,10 +80,10 @@ static Record UpdateConsume(OpBase *opBase) {
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, &op->updates, r, ctx, true);
+			EvalEntityUpdates(op->gc, &op->node_updates, &op->edge_updates, r, ctx, true);
 		}
 
-		op->records = array_append(op->records, r);
+		array_append(op->records, r);
 	}
 
 	// done reading; we're not going to call Consume any longer
@@ -92,7 +94,8 @@ static Record UpdateConsume(OpBase *opBase) {
 	// lock everything
 	QueryCtx_LockForCommit();
 	{
-		CommitUpdates(op->gc, op->stats, op->updates);
+		CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
+		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
 	// release lock
 	QueryCtx_UnlockCommit(opBase);
@@ -112,8 +115,10 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
-	array_free(op->updates);
-	op->updates = NULL;
+	array_free(op->node_updates);
+	op->node_updates = NULL;
+	array_free(op->edge_updates);
+	op->edge_updates = NULL;
 	op->updates_committed = false;
 	return OP_OK;
 }
@@ -121,9 +126,14 @@ static OpResult UpdateReset(OpBase *ctx) {
 static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	if(op->updates) {
-		array_free(op->updates);
-		op->updates = NULL;
+	if(op->node_updates) {
+		array_free(op->node_updates);
+		op->node_updates = NULL;
+	}
+
+	if(op->edge_updates) {
+		array_free(op->edge_updates);
+		op->edge_updates = NULL;
 	}
 
 	// Free each update context.
