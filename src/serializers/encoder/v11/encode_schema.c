@@ -55,7 +55,7 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 			RedisModule_SaveUnsigned(rdb, idx->fields[i].nostem);
 			if(idx->fields->phonetic) {
 				RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, 
-					strlen(idx->fields[i].phonetic) + 1);\
+					strlen(idx->fields[i].phonetic) + 1);
 			} else {
 				RedisModule_SaveStringBuffer(rdb, "no", 
 					3);
