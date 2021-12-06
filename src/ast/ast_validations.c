@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2021 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -529,24 +529,24 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 }
 
 static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
-	/* Make sure procedure calls are valid:
+	/* make sure procedure calls are valid:
 	 * 1. procedure exists
 	 * 2. number of arguments to procedure is as expected
 	 * 3. yield refers to procedure output */
-	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
-	if(call_clauses == NULL) return AST_VALID;
 
+	AST_Validation  res               =  AST_VALID;
+	ProcedureCtx    *proc             =  NULL;
+	uint            *clause_indices   =  AST_GetClauseIndices(ast, CYPHER_AST_CALL);
+	uint            clause_count      =  array_len(clause_indices);
+	rax             *identifiers      =  NULL;
+	rax             *defined_aliases  =  NULL;
 
-	ProcedureCtx    *proc         =  NULL;
-	rax             *identifiers  =  NULL;
-	AST_Validation  res           =  AST_VALID;
-
-	uint call_count = array_len(call_clauses);
-	for(uint i = 0; i < call_count; i ++) {
+	for(uint i = 0; i < clause_count; i ++) {
 		identifiers = raxNew();
-		const cypher_astnode_t *call_clause = call_clauses[i];
+		const cypher_astnode_t *call_clause = cypher_ast_query_get_clause(
+												  ast->root, clause_indices[i]);
 
-		// Make sure procedure exists.
+		// make sure procedure exists
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 		proc = Proc_Get(proc_name);
 
@@ -556,7 +556,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			goto cleanup;
 		}
 
-		// Validate num of arguments.
+		// validate num of arguments
 		if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) {
 			unsigned int given_arg_count = cypher_ast_call_narguments(call_clause);
 			if(Procedure_Argc(proc) != given_arg_count) {
@@ -569,6 +569,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 
 		// validate projections
 		uint proj_count = cypher_ast_call_nprojections(call_clause);
+		uint start_offset = 0;
 		if(proj_count > 0) {
 			// collect call projections
 			for(uint j = 0; j < proj_count; j++) {
@@ -593,11 +594,45 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 					goto cleanup;
 				}
 			}
-
-			raxFree(identifiers);
-			identifiers = NULL;
 		}
 
+		// if no projections are specified, add the default projections
+		if(proj_count == 0) {
+			uint default_count = Procedure_OutputCount(proc);
+			for(uint j = 0; j < default_count; j ++) {
+				const char *output = Procedure_GetOutput(proc, j);
+				raxInsert(identifiers, (unsigned char *)output,
+						  strlen(output), NULL, NULL);
+			}
+		}
+
+		// collect all entities that are bound before this CALL clause
+		defined_aliases = raxNew();
+		uint clause_idx = clause_indices[i];
+		for(uint j = start_offset; j < clause_idx; j ++) {
+			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(
+													  ast->root, j);
+			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
+		}
+		start_offset = clause_idx;
+
+		raxIterator it;
+		_prepareIterateAll(identifiers, &it);
+		while(raxNext(&it)) {
+			size_t len = it.key_len;
+			unsigned char *alias = it.key;
+			// validate that no output identifier is previously defined
+			if(raxFind(defined_aliases, alias, len) != raxNotFound) {
+				ErrorCtx_SetError("%.*s already declared", len, alias);
+				res = AST_INVALID;
+				goto cleanup;
+			}
+		}
+
+		raxFree(defined_aliases);
+		defined_aliases = NULL;
+		raxFree(identifiers);
+		identifiers = NULL;
 		Proc_Free(proc);
 		proc = NULL;
 	}
@@ -605,7 +640,8 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 cleanup:
 	if(proc) Proc_Free(proc);
 	if(identifiers) raxFree(identifiers);
-	array_free(call_clauses);
+	if(defined_aliases) raxFree(defined_aliases);
+	array_free(clause_indices);
 	return res;
 }
 
@@ -914,26 +950,62 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 }
 
 static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
-	const cypher_astnode_t **unwind_clauses = AST_GetClauses(ast, CYPHER_AST_UNWIND);
-	if(!unwind_clauses) return AST_VALID;
+	AST_Validation res               =  AST_VALID;
+	uint           *clause_indices   =  AST_GetClauseIndices(ast, CYPHER_AST_UNWIND);
+	uint           clause_count      =  array_len(clause_indices);
+	rax            *defined_aliases  =  NULL;
 
-	AST_Validation res = AST_VALID;
-	uint clause_count = array_len(unwind_clauses);
+	if(clause_count == 0) goto cleanup;
+
 	for(uint i = 0; i < clause_count; i++) {
-		const cypher_astnode_t *expression = cypher_ast_unwind_get_expression(unwind_clauses[i]);
-		// Verify that all elements of the UNWIND collection are supported by RedisGraph
+		uint clause_idx = clause_indices[i];
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root,
+																	 clause_idx);
+		const cypher_astnode_t *expression = cypher_ast_unwind_get_expression(clause);
+		// verify that all elements of the UNWIND collection
+		// are supported by RedisGraph
 		uint child_count = cypher_astnode_nchildren(expression);
 		for(uint j = 0; j < child_count; j ++) {
 			res = CypherWhitelist_ValidateQuery(cypher_astnode_get_child(expression, j));
 			if(res != AST_VALID) goto cleanup;
 		}
-		// Verify that UNWIND doesn't call non-existent or unsupported functions.
+		// verify that UNWIND doesn't call non-existent or unsupported functions
 		res = _ValidateFunctionCalls(expression, true);
 		if(res != AST_VALID) goto cleanup;
 	}
 
+	uint start_offset = 0;
+	for(uint i = 0; i < clause_count; i ++) {
+		uint clause_idx = clause_indices[i];
+		defined_aliases = raxNew();
+
+		// collect all entities that are bound before this UNWIND clause
+		for(uint j = start_offset; j < clause_idx; j ++) {
+			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(
+													  ast->root, j);
+			_AST_GetDefinedIdentifiers(prev_clause, defined_aliases);
+		}
+		start_offset = clause_idx;
+
+		// validate that the UNWIND alias is not previously defined
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root,
+																	 clause_idx);
+		const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(clause);
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+
+		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias))
+		   != raxNotFound) {
+			ErrorCtx_SetError("%s already declared", alias);
+			res = AST_INVALID;
+			goto cleanup;
+		}
+		raxFree(defined_aliases);
+		defined_aliases = NULL;
+	}
+
 cleanup:
-	array_free(unwind_clauses);
+	array_free(clause_indices);
+	if(defined_aliases) raxFree(defined_aliases);
 	return res;
 }
 
@@ -1196,11 +1268,7 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		 * UNWIND [ref_1, ref_2] AS defined RETURN defined */
 		const cypher_astnode_t *unwind_alias_node = cypher_ast_unwind_get_alias(node);
 		const char *unwind_alias = cypher_ast_identifier_get_name(unwind_alias_node);
-		int rc = raxTryInsert(identifiers, (unsigned char *)unwind_alias,
-							  strlen(unwind_alias), NULL, NULL);
-		if(rc == 0) {
-			ErrorCtx_SetError("Variable %s already declared", unwind_alias);
-		}
+		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
 	} else {

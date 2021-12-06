@@ -573,3 +573,16 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             self.env.assertIn("already declared", str(e))
+
+    # Emit an error if CALL redefines an existing alias
+    def test39_call_reused_alias(self):
+        queries = ["UNWIND [1, 2] as nodes MATCH (a) CALL algo.BFS(a, 3, NULL)",
+                   "UNWIND [1, 2] as nodes MATCH (a) CALL algo.BFS(a, 3, NULL) YIELD nodes RETURN nodes"]
+
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                self.env.assertIn("already declared", str(e))
