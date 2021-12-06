@@ -458,6 +458,16 @@ SET n = {age: 33, name: 'Bob'}"
 
 Using `=` in this way replaces all of the entity's previous properties, while `+=` will only set the properties it explicitly mentions.
 
+In the same way, the full property set of a graph entity can be assigned or merged:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (jim {name: 'Jim'}), (pam {name: 'Pam'})
+SET jim = pam"
+```
+
+After executing this query, the `jim` node will have the same property set as the `pam` node.
+
 To remove a node's property, simply set property value to NULL.
 
 ```sh
