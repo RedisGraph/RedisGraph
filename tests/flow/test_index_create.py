@@ -110,6 +110,34 @@ class testIndexCreationFlow(FlowTestsBase):
         except ResponseError as e:
             self.env.assertIn("Language must be string", str(e))
 
+        try:
+            # create an index over L3 should failed
+            result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { })")
+            assert(False)
+        except ResponseError as e:
+            self.env.assertIn("Field is missing", str(e))
+
+        try:
+            # create an index over L3:v1 with weight of type string should failed
+            result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', weight: '1' })")
+            assert(False)
+        except ResponseError as e:
+            self.env.assertIn("Weight must be numeric", str(e))
+
+        try:
+            # create an index over L3:v1 with nostem of type string should failed
+            result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', nostem: 'true' })")
+            assert(False)
+        except ResponseError as e:
+            self.env.assertIn("Nostem must be bool", str(e))
+        
+        try:
+            # create an index over L3:v1 with phonetic of type bool should failed
+            result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', phonetic: true })")
+            assert(False)
+        except ResponseError as e:
+            self.env.assertIn("Phonetic must be string", str(e))
+
 
     def test03_multi_prop_index_creation(self):
         # create an index over person:age and person:name
@@ -132,7 +160,7 @@ class testIndexCreationFlow(FlowTestsBase):
         result = redis_graph.query("CREATE INDEX ON :person(gender, gender, name, height)")
         self.env.assertEquals(result.indices_created, 1)
 
-    def test03_index_creation_pattern_syntax(self):
+    def test04_index_creation_pattern_syntax(self):
         # create an index over user:age and user:name
         result = redis_graph.query("CREATE INDEX FOR (p:user) ON (p.age, p.name)")
         self.env.assertEquals(result.indices_created, 2)

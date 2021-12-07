@@ -73,7 +73,7 @@ class testFulltextIndexQuery(FlowTestsBase):
         result = graph.query("CALL db.idx.fulltext.queryNodes('L2', 'world')")
         self.env.assertEquals(result.result_set, [])
 
-        # fulltext query L3 for redis and compare score
+        # fulltext query L3 for redis and document that contains redis in v2 is scored higher than document contains redis in v1
         result = graph.query("CALL db.idx.fulltext.queryNodes('L3', 'redis') YIELD node, score RETURN node, score ORDER BY score DESC")
         self.env.assertEquals(result.result_set[0][0].properties["v2"], "hello redis")
         self.env.assertEquals(result.result_set[1][0].properties["v1"], "hello redis")
@@ -87,10 +87,10 @@ class testFulltextIndexQuery(FlowTestsBase):
 
         expected_result = graph.query("MATCH (n:L5) RETURN n")
 
-        # fulltext query L5 for words
+        # fulltext query L5 for words wich founds in the document
         result = graph.query("CALL db.idx.fulltext.queryNodes('L5', 'words')")
         self.env.assertEquals(result.result_set[0][0], expected_result.result_set[0][0])
 
-        # fulltext query L5 for word
+        # fulltext query L5 for word ad because of nostem it didn't exists
         result = graph.query("CALL db.idx.fulltext.queryNodes('L5', 'word')")
         self.env.assertEquals(result.result_set, [])
