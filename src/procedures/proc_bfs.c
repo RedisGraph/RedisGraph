@@ -135,6 +135,9 @@ static ProcedureResult Proc_BFS_Invoke
 	bfs_ctx->nodes = V;
 	bfs_ctx->parents = PI;
 
+	GxB_Vector_Option_set(bfs_ctx->nodes, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+ 	GxB_Vector_Option_set(bfs_ctx->parents, GxB_SPARSITY_CONTROL, GxB_SPARSE);
+
 	GrB_Matrix_free(&R);
 	GrB_Matrix_free(&TR);
 

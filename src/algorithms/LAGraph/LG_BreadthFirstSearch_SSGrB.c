@@ -87,7 +87,7 @@ int LG_BreadthFirstSearch_SSGrB
 
 		// create the parent vector.  pi(i) is the parent id of node i
 		GrB_OK (GrB_Vector_new (&pi, int_type, n)) ;
-		GrB_OK (GxB_set (pi, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+		GrB_OK (GxB_set (pi, GxB_SPARSITY_CONTROL, GxB_BITMAP)) ;
 		// pi (src) = src denotes the root of the BFS tree
 		GrB_OK (GrB_Vector_setElement (pi, src, src)) ;
 
@@ -111,7 +111,7 @@ int LG_BreadthFirstSearch_SSGrB
 		// v (src) = 0 denotes the source node
 
 		GrB_OK (GrB_Vector_new (&v, int_type, n)) ;
-		GrB_OK (GxB_set (v, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+		GrB_OK (GxB_set (v, GxB_SPARSITY_CONTROL, GxB_BITMAP)) ;
 		GrB_OK (GrB_Vector_setElement (v, 0, src)) ;
 	}
 
