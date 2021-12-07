@@ -126,7 +126,7 @@ class testStressFlow():
         n_deletions  =  n_creations/2
 
         conn = self.env.getConnection()
-        graphs[0].query("CREATE INDEX FOR (n:Node) ON (n.v)")
+        graphs[0].query("CREATE INDEX ON :Node(val)")
 
         pool = Pool(nodes=5)
 

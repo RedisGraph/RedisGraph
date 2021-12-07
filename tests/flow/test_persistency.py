@@ -2,6 +2,7 @@ import os
 import sys
 import random
 from RLTest import Env
+from base import FlowTestsBase
 from click.testing import CliRunner
 from redisgraph import Graph, Node, Edge
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
@@ -55,10 +56,6 @@ class testGraphPersistency(FlowTestsBase):
         redis_graph.query(query)
 
         # create indices
-        redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (p:Person) ON (p.name, p.height)")
-        redis_con.execute_command(
-                "GRAPH.QUERY", graph_name, "CREATE INDEX FOR (c:country) ON (c.name, c.population)")
         actual_result = redis_con.execute_command(
             "GRAPH.QUERY", graph_name, "CREATE INDEX ON :person(name, height)")
         actual_result = redis_con.execute_command(
