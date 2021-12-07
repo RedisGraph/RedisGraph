@@ -401,6 +401,7 @@ int GraphContext_AddExactMatchIndex
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
 	IndexField index_field = { 0 };
+	index_field.id = GraphContext_FindOrAddAttribute(gc, field);
 	index_field.name = field;
 	int res = Schema_AddIndex(idx, s, &index_field, IDX_EXACT_MATCH);
 	ResultSet *result_set = QueryCtx_GetResultSet();

@@ -209,7 +209,7 @@ bool _applicableFilter
 	}
 
 	for(uint i = 0; i < idx_fields_count; i++) {
-		const IndexField *field = &idx_fields[i];
+		const IndexField *field = idx_fields + i;
 		if(raxFind(attr, (unsigned char *)field->name, strlen(field->name)) != raxNotFound) {
 			filter_attribute_count--;
 			// All filtered attributes are indexed.
