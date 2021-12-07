@@ -124,10 +124,7 @@ int Schema_AddIndex
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field->name);
-		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
-		field->id = fieldID;
+		if(Index_ContainsAttribute(_idx, field->id)) return INDEX_FAIL;
 	} else {
 		// index doesn't exist, create it
 		// determine index graph entity type
