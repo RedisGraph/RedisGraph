@@ -81,7 +81,7 @@ RSDoc *Index_IndexGraphEntity
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < field_count; i++) {
-			field = &idx->fields[i];
+			field = idx->fields + i;
 			v = GraphEntity_GetProperty(e, field->id);
 			if(v == PROPERTY_NOTFOUND) continue;
 
@@ -152,20 +152,20 @@ RSDoc *Index_IndexGraphEntity
 	return doc;
 }
 
-IndexField IndexField_New
+void IndexField_New
 (
+	IndexField *field,
 	char *name,
 	double weight,
 	bool nostem,
 	char *phonetic
 ) {
-	IndexField field = { 0 };
-	field.name     = name;
-	field.weight   = weight;
-	field.nostem   = nostem;
-	field.phonetic = phonetic;
-
-	return field;
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	field->id = GraphContext_FindOrAddAttribute(gc, name);
+	field->name     = name;
+	field->weight   = weight;
+	field->nostem   = nostem;
+	field->phonetic = phonetic;
 }
 
 // create a new index
@@ -188,6 +188,14 @@ Index *Index_New
 	idx->entity_type   =  entity_type;
 
 	return idx;
+}
+
+void IndexField_Free
+(
+	IndexField *field
+) {
+	rm_free(field->name);
+	if(field->phonetic) rm_free(field->phonetic);
 }
 
 // adds field to index
@@ -217,8 +225,6 @@ void Index_AddFullTextField
 ) {
 	ASSERT(idx != NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	field->id = GraphContext_FindOrAddAttribute(gc, field->name);
 	if(Index_ContainsAttribute(idx, field->id)) return;
 
 	array_append(idx->fields, *field);
@@ -284,12 +290,9 @@ void Index_Construct
 		for(uint i = 0; i < fields_count; i++) {
 			// introduce text field
 			unsigned options = RSFLDOPT_NONE;
-			if(idx->fields[i].phonetic) {
-				options |= RSFLDOPT_TXTPHONETIC;
-			}
-			if(idx->fields[i].nostem) {
-				options |= RSFLDOPT_TXTNOSTEM;
-			}
+			if(idx->fields[i].phonetic) options |= RSFLDOPT_TXTPHONETIC;
+			if(idx->fields[i].nostem) options |= RSFLDOPT_TXTNOSTEM;
+
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i].name, RSFLDTYPE_FULLTEXT, options);
 			RediSearch_TextFieldSetWeight(rsIdx, fieldID, idx->fields[i].weight);
 		}
@@ -406,8 +409,7 @@ void Index_Free(Index *idx) {
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		rm_free(idx->fields[i].name);
-		if(idx->fields[i].phonetic) rm_free(idx->fields[i].phonetic);
+		IndexField_Free(idx->fields + i);
 	}
 	array_free(idx->fields);
 

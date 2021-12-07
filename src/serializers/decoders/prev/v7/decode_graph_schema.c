@@ -43,7 +43,8 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 
 	for(uint i = 0; i < index_count; i++) {
 		if(adjust_for_idx_any) types[i] += 1; // Adjust for invalid IDX_ANY value.
-		IndexField field = IndexField_New(
+		IndexField field;
+		IndexField_New(&field,
 				rm_strdup(fields[i]),
 				INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM,

@@ -23,7 +23,8 @@ Schema *RdbLoadSchema_v6(RedisModuleIO *rdb, SchemaType type) {
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
-		IndexField field = IndexField_New(
+		IndexField field;
+		IndexField_New(&field,
 				rm_strdup(field_name),
 				INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM,

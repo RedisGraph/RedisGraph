@@ -29,11 +29,11 @@ typedef struct {
 } EdgeIndexKey;
 
 typedef struct {
-	char *name;
-	Attribute_ID id;
-	double weight;
-	bool nostem;
-	char *phonetic;
+	char *name;        // field name
+	Attribute_ID id;   // field id
+	double weight;     // the importance of text
+	bool nostem;       // disable stemming of the text
+	char *phonetic;    // phonetic search of text
 } IndexField;
 
 typedef struct {
@@ -47,12 +47,19 @@ typedef struct {
 	RSIndex *idx;                 // rediSearch index
 } Index;
 
-IndexField IndexField_New
+// create new index field
+void IndexField_New
 (
-	char *name,
-	double weight,
-	bool nostem,
-	char *phonetic
+	IndexField *field,
+	char *name,     // field name
+	double weight,  // the importance of text
+	bool nostem,    // disable stemming of the text
+	char *phonetic  // phonetic search of text
+);
+
+void IndexField_Free
+(
+	IndexField *field
 );
 
 // create a new index
