@@ -389,7 +389,7 @@ int GraphContext_AddExactMatchIndex
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	char *field
+	const char *field
 ) {
 	ASSERT(idx    !=  NULL);
 	ASSERT(gc     !=  NULL);
@@ -400,9 +400,8 @@ int GraphContext_AddExactMatchIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
 
-	IndexField index_field = { 0 };
-	index_field.id = GraphContext_FindOrAddAttribute(gc, field);
-	index_field.name = field;
+	IndexField index_field;
+	IndexField_New(&index_field, field, 0, "no", NULL);
 	int res = Schema_AddIndex(idx, s, &index_field, IDX_EXACT_MATCH);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);
@@ -410,13 +409,13 @@ int GraphContext_AddExactMatchIndex
 	return res;
 }
 
-int GraphContext_AddIndexFullTextIndex
+int GraphContext_AddFullTextIndex
 (
 	Index **idx,
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	char *field,
+	const char *field,
 	double weight,
 	bool nostem,
 	char *phonetic

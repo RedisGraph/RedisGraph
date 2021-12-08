@@ -220,17 +220,17 @@ int GraphContext_AddExactMatchIndex
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	char *field
+	const char *field
 );
 
 // create a full text index for the given label and attribute
-int GraphContext_AddIndexFullTextIndex
+int GraphContext_AddFullTextIndex
 (
 	Index **idx,
 	GraphContext *gc,
 	SchemaType schema_type,
 	const char *label,
-	char *field,
+	const char *field,
 	double weight,
 	bool nostem,
 	char *phonetic

@@ -51,10 +51,10 @@ typedef struct {
 void IndexField_New
 (
 	IndexField *field,
-	char *name,     // field name
-	double weight,  // the importance of text
-	bool nostem,    // disable stemming of the text
-	char *phonetic  // phonetic search of text
+	const char *name,     // field name
+	double weight,        // the importance of text
+	bool nostem,          // disable stemming of the text
+	const char *phonetic  // phonetic search of text
 );
 
 void IndexField_Free

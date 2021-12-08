@@ -155,17 +155,19 @@ RSDoc *Index_IndexGraphEntity
 void IndexField_New
 (
 	IndexField *field,
-	char *name,
+	const char *name,
 	double weight,
 	bool nostem,
-	char *phonetic
+	const char *phonetic
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	field->id = GraphContext_FindOrAddAttribute(gc, name);
 	field->name     = rm_strdup(name);
 	field->weight   = weight;
 	field->nostem   = nostem;
-	field->phonetic = strcmp(phonetic, INDEX_FIELD_DEFAULT_PHONETIC) == 0 
+
+	field->phonetic = ((phonetic == NULL) ||
+			strcmp(phonetic, INDEX_FIELD_DEFAULT_PHONETIC) == 0)
 		? INDEX_FIELD_DEFAULT_PHONETIC 
 		: rm_strdup(phonetic);
 }

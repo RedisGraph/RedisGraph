@@ -186,7 +186,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	for(uint i = 0; i < fields_count; i++) {
 		if(SI_TYPE(fields[i]) == T_STRING) {
 			char *field = fields[i].stringval;
-			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,
+			res = GraphContext_AddFullTextIndex(&idx, gc, SCHEMA_NODE,
 				label, field, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 		} else {
@@ -208,7 +208,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 					phonetic = tmp.stringval;
 				}
 			}
-			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,
+			res = GraphContext_AddFullTextIndex(&idx, gc, SCHEMA_NODE,
 				label, field, weight, nostem, phonetic);
 		}
 	}
