@@ -23,7 +23,7 @@
 #define INDEX_FIELD_DEFAULT(field)                                      \
 	({                                                                  \
 		IndexField field;                                               \
-		IndexField_New(field, #field, INDEX_FIELD_DEFAULT_WEIGHT,       \
+		IndexField_New(&field, #field, INDEX_FIELD_DEFAULT_WEIGHT,      \
 			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);  \
 		&field;                                                         \
 	})
