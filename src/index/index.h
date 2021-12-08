@@ -20,6 +20,8 @@
 #define INDEX_FIELD_DEFAULT_NOSTEM false
 #define INDEX_FIELD_DEFAULT_PHONETIC "no"
 
+// creates a new index field and initialize it to default values
+// returns a pointer to the field
 #define INDEX_FIELD_DEFAULT(field)                                      \
 	({                                                                  \
 		IndexField field;                                               \
@@ -29,9 +31,9 @@
 	})
 
 typedef enum {
-	IDX_ANY = 0,
-	IDX_EXACT_MATCH = 1,
-	IDX_FULLTEXT = 2,
+	IDX_ANY          =  0,
+	IDX_EXACT_MATCH  =  1,
+	IDX_FULLTEXT     =  2,
 } IndexType;
 
 typedef struct {

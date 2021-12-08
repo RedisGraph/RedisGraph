@@ -179,8 +179,10 @@ void IndexField_Free
 (
 	IndexField *field
 ) {
+	ASSERT(field != NULL);
+
 	rm_free(field->name);
-	if(field->phonetic && strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+	if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
 		rm_free(field->phonetic);
 	}
 }
@@ -235,8 +237,10 @@ void Index_RemoveField
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		if(idx->fields[i].id == attribute_id) {
-			rm_free(idx->fields[i].name);
+		IndexField *field = idx->fields + i;
+		if(field->id == attribute_id) {
+			// free field
+			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
 			break;
 		}
@@ -278,19 +282,25 @@ void Index_Construct
 	uint fields_count = array_len(idx->fields);
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < fields_count; i++) {
+			IndexField *field = idx->fields+i;
 			// introduce text field
 			unsigned options = RSFLDOPT_NONE;
-			if(idx->fields[i].phonetic) options |= RSFLDOPT_TXTPHONETIC;
-			if(idx->fields[i].nostem) options |= RSFLDOPT_TXTNOSTEM;
+			if(field->nostem) options |= RSFLDOPT_TXTNOSTEM;
 
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i].name, RSFLDTYPE_FULLTEXT, options);
-			RediSearch_TextFieldSetWeight(rsIdx, fieldID, idx->fields[i].weight);
+			if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+				options |= RSFLDOPT_TXTPHONETIC;
+			}
+
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
+					RSFLDTYPE_FULLTEXT, options);
+			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
 		}
 	} else {
 		for(uint i = 0; i < fields_count; i++) {
+			IndexField *field = idx->fields+i;
 			// introduce both text, numeric and geo fields
 			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
-			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i].name,
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
 					types, RSFLDOPT_NONE);
 
 			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
@@ -356,7 +366,8 @@ bool Index_ContainsAttribute
 	
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		if(idx->fields[i].id == attribute_id) return true;
+		IndexField *field = idx->fields + i;
+		if(field->id == attribute_id) return true;
 	}
 
 	return false;
