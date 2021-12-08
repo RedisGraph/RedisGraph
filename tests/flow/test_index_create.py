@@ -136,7 +136,7 @@ class testIndexCreationFlow(FlowTestsBase):
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', phonetic: true })")
             assert(False)
         except ResponseError as e:
-            self.env.assertIn("Phonetic must be string", str(e))
+            self.env.assertIn("Phonetic must be a string", str(e))
 
 
     def test03_multi_prop_index_creation(self):
