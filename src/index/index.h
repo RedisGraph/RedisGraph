@@ -16,6 +16,18 @@
 #define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
 #define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
 
+#define INDEX_FIELD_DEFAULT_WEIGHT 1.0
+#define INDEX_FIELD_DEFAULT_NOSTEM false
+#define INDEX_FIELD_DEFAULT_PHONETIC "no"
+
+#define INDEX_FIELD_DEFAULT(field)                                      \
+	({                                                                  \
+		IndexField field;                                               \
+		IndexField_New(field, #field, INDEX_FIELD_DEFAULT_WEIGHT,       \
+			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);  \
+		&field;                                                         \
+	})
+
 typedef enum {
 	IDX_ANY = 0,
 	IDX_EXACT_MATCH = 1,
@@ -50,7 +62,7 @@ typedef struct {
 // create new index field
 void IndexField_New
 (
-	IndexField *field,
+	IndexField *field,    // field to initialize
 	const char *name,     // field name
 	double weight,        // the importance of text
 	bool nostem,          // disable stemming of the text
@@ -81,14 +93,7 @@ void Index_Construct
 void Index_AddField
 (
 	Index *idx,
-	const char *field  // field to add
-);
-
-// adds field to index
-void Index_AddFullTextField
-(
-	Index *idx,
-	IndexField *field  // field to add
+	IndexField *field
 );
 
 // removes field from index

@@ -118,7 +118,9 @@ int Schema_AddIndex
 	IndexField *field,
 	IndexType type
 ) {
-	ASSERT(field);
+	ASSERT(s != NULL);
+	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
 
 	Index *_idx = Schema_GetIndex(s, NULL, type);
 
@@ -139,12 +141,12 @@ int Schema_AddIndex
 		// introduce edge src and dest node ids
 		// as additional index fields
 		if(entity_type == GETYPE_EDGE) {
-			Index_AddField(_idx, "_src_id");
-			Index_AddField(_idx, "_dest_id");
+			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_src_id));
+			Index_AddField(_idx, INDEX_FIELD_DEFAULT(_dest_id));
 		}
 	}
 
-	Index_AddFullTextField(_idx, field);
+	Index_AddField(_idx, field);
 
 	*idx = _idx;
 	return INDEX_OK;

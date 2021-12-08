@@ -160,14 +160,17 @@ void IndexField_New
 	bool nostem,
 	const char *phonetic
 ) {
+	ASSERT(name != NULL);
+	ASSERT(field != NULL);
+	ASSERT(phonetic != NULL);
+
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	field->id = GraphContext_FindOrAddAttribute(gc, name);
 	field->name     = rm_strdup(name);
 	field->weight   = weight;
 	field->nostem   = nostem;
 
-	field->phonetic = ((phonetic == NULL) ||
-			strcmp(phonetic, INDEX_FIELD_DEFAULT_PHONETIC) == 0)
+	field->phonetic = (strcmp(phonetic, INDEX_FIELD_DEFAULT_PHONETIC) == 0)
 		? INDEX_FIELD_DEFAULT_PHONETIC 
 		: rm_strdup(phonetic);
 }
@@ -206,25 +209,6 @@ Index *Index_New
 
 // adds field to index
 void Index_AddField
-(
-	Index *idx,
-	const char *field
-) {
-	ASSERT(idx != NULL);
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID id = GraphContext_FindOrAddAttribute(gc, field);
-	if(Index_ContainsAttribute(idx, id)) return;
-
-	IndexField index_field = { 0 };
-	index_field.id = id;
-	index_field.name = rm_strdup(field);
-
-	array_append(idx->fields, index_field);
-}
-
-// adds field to index
-void Index_AddFullTextField
 (
 	Index *idx,
 	IndexField *field

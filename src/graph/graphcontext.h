@@ -15,10 +15,6 @@
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
 
-#define INDEX_FIELD_DEFAULT_WEIGHT 1.0
-#define INDEX_FIELD_DEFAULT_NOSTEM false
-#define INDEX_FIELD_DEFAULT_PHONETIC "no"
-
 // GraphContext holds refrences to various elements of a graph object
 // It is the value sitting behind a Redis graph key
 //
@@ -233,7 +229,7 @@ int GraphContext_AddFullTextIndex
 	const char *field,
 	double weight,
 	bool nostem,
-	char *phonetic
+	const char *phonetic
 );
 
 // remove and free an index
