@@ -429,12 +429,8 @@ int GraphContext_AddIndexFullTextIndex
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, schema_type);
-	IndexField index_field = { 0 };
-	IndexField_New(&index_field,
-		field,
-		weight,
-		nostem,
-		phonetic);
+	IndexField index_field;
+	IndexField_New(&index_field, field, weight, nostem, phonetic);
 	int res = Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexCreated(result_set, res);

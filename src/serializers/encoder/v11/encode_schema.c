@@ -45,13 +45,8 @@ static inline void _RdbSaveFullTextIndexData(RedisModuleIO *rdb, Index *idx) {
 		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
 		RedisModule_SaveDouble(rdb, idx->fields[i].weight);
 		RedisModule_SaveUnsigned(rdb, idx->fields[i].nostem);
-		if(idx->fields->phonetic) {
-			RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, 
-				strlen(idx->fields[i].phonetic) + 1);
-		} else {
-			RedisModule_SaveStringBuffer(rdb, "no", 
-				3);
-		}
+		RedisModule_SaveStringBuffer(rdb, idx->fields[i].phonetic, 
+			strlen(idx->fields[i].phonetic) + 1);
 	}
 }
 

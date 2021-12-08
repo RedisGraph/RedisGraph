@@ -17,7 +17,7 @@
 
 #define INDEX_FIELD_DEFAULT_WEIGHT 1.0
 #define INDEX_FIELD_DEFAULT_NOSTEM false
-#define INDEX_FIELD_DEFAULT_PHONETIC NULL
+#define INDEX_FIELD_DEFAULT_PHONETIC "no"
 
 // GraphContext holds refrences to various elements of a graph object
 // It is the value sitting behind a Redis graph key

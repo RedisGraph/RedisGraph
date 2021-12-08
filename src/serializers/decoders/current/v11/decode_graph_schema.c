@@ -33,19 +33,7 @@ static uint _RdbLoadFullTextIndexData(RedisModuleIO *rdb, SchemaType type, Schem
 		bool nostem = RedisModule_LoadUnsigned(rdb);
 		char *phonetic = RedisModule_LoadStringBuffer(rdb, NULL);
 
-		if(strcmp(phonetic, "no") == 0) {
-			IndexField_New(&field,
-				rm_strdup(field_name),
-				weight,
-				nostem,
-				INDEX_FIELD_DEFAULT_PHONETIC);
-		} else {
-			IndexField_New(&field,
-				rm_strdup(field_name),
-				weight,
-				nostem,
-				rm_strdup(phonetic));
-		}
+		IndexField_New(&field, field_name, weight, nostem, phonetic);
 		RedisModule_Free(phonetic);
 
 		// in case of decoding edge index _src_id and _dest_id fields added by default
@@ -69,11 +57,8 @@ static uint _RdbLoadExactMatchIndex(RedisModuleIO *rdb, SchemaType type, Schema 
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		IndexField field;
-		IndexField_New(&field,
-			rm_strdup(field_name),
-			INDEX_FIELD_DEFAULT_WEIGHT,
-			INDEX_FIELD_DEFAULT_NOSTEM,
-			INDEX_FIELD_DEFAULT_PHONETIC);
+		IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+			INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 
 		// in case of decoding edge index _src_id and _dest_id fields added by default
 		if(type == SCHEMA_NODE || (strcmp(field.name, "_src_id") != 0 && strcmp(field.name, "_dest_id") != 0)) {

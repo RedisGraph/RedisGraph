@@ -185,7 +185,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	// introduce fields to index
 	for(uint i = 0; i < fields_count; i++) {
 		if(SI_TYPE(fields[i]) == T_STRING) {
-			char *field = rm_strdup(fields[i].stringval);
+			char *field = fields[i].stringval;
 			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,
 				label, field, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
@@ -196,7 +196,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 			bool nostem = INDEX_FIELD_DEFAULT_NOSTEM;
 			char *phonetic = INDEX_FIELD_DEFAULT_PHONETIC;
 			MAP_GET(fields[i], "field", tmp);
-			field = rm_strdup(tmp.stringval);
+			field = tmp.stringval;
 			if(MAP_GET(fields[i], "weight", tmp)) {
 				weight = SI_GET_NUMERIC(tmp);
 			}
@@ -205,7 +205,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 			}
 			if(MAP_GET(fields[i], "phonetic", tmp)) {
 				if(strcasecmp(tmp.stringval, "no") != 0) {
-					phonetic = rm_strdup(tmp.stringval);
+					phonetic = tmp.stringval;
 				}
 			}
 			res = GraphContext_AddIndexFullTextIndex(&idx, gc, SCHEMA_NODE,

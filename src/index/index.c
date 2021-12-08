@@ -162,10 +162,22 @@ void IndexField_New
 ) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	field->id = GraphContext_FindOrAddAttribute(gc, name);
-	field->name     = name;
+	field->name     = rm_strdup(name);
 	field->weight   = weight;
 	field->nostem   = nostem;
-	field->phonetic = phonetic;
+	field->phonetic = strcmp(phonetic, INDEX_FIELD_DEFAULT_PHONETIC) == 0 
+		? INDEX_FIELD_DEFAULT_PHONETIC 
+		: rm_strdup(phonetic);
+}
+
+void IndexField_Free
+(
+	IndexField *field
+) {
+	rm_free(field->name);
+	if(field->phonetic && strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+		rm_free(field->phonetic);
+	}
 }
 
 // create a new index
@@ -188,14 +200,6 @@ Index *Index_New
 	idx->entity_type   =  entity_type;
 
 	return idx;
-}
-
-void IndexField_Free
-(
-	IndexField *field
-) {
-	rm_free(field->name);
-	if(field->phonetic) rm_free(field->phonetic);
 }
 
 // adds field to index
