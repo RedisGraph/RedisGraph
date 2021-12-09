@@ -235,14 +235,15 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 
 		if(stopword_exists) {
 			uint stopwords_count = SIArray_Length(sw);
-			idx->stopwords = array_new(char*, stopwords_count);
+			char **stopwords = array_new(char*, stopwords_count);
 			for (uint i = 0; i < stopwords_count; i++) {
 				SIValue stopword = SIArray_Get(sw, i);
-				array_append(idx->stopwords, rm_strdup(stopword.stringval));
+				array_append(stopwords, rm_strdup(stopword.stringval));
 			}
+			Index_SetStopwords(idx, stopwords);
 		}
 		if(lang_exists) {
-			idx->language = rm_strdup(lang.stringval);
+			Index_SetLanguage(idx, lang.stringval);
 		}
 	}
 

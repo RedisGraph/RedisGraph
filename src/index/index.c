@@ -389,6 +389,16 @@ const char *Index_GetLanguage
 	return RediSearch_IndexGetLanguage(idx->idx);
 }
 
+void Index_SetLanguage
+(
+	Index *idx,
+	const char *language
+) {
+	ASSERT(idx != NULL);
+
+	idx->language = rm_strdup(language);
+}
+
 char **Index_GetStopwords
 (
 	const Index *idx,
@@ -398,6 +408,18 @@ char **Index_GetStopwords
 		return RediSearch_IndexGetStopwords(idx->idx, size);
 	
 	return NULL;
+}
+
+void Index_SetStopwords
+(
+	Index *idx,
+	char **stopwords
+) {
+	ASSERT(idx != NULL);
+	ASSERT(idx->stopwords == NULL);
+	ASSERT(stopwords != NULL);
+
+	idx->stopwords = stopwords;
 }
 
 // free index

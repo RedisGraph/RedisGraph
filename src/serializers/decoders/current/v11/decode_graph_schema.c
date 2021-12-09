@@ -45,8 +45,8 @@ static uint _RdbLoadFullTextIndexData(RedisModuleIO *rdb, SchemaType type, Schem
 		RedisModule_Free(field_name);
 	}
 
-	idx->language = language;
-	idx->stopwords = stopwords;
+	Index_SetLanguage(idx, language);
+	Index_SetStopwords(idx, stopwords);
 
 	return fields_count;
 }

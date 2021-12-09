@@ -56,8 +56,8 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 		}
 
 		if(index_type == IDX_FULLTEXT) {
-			idx->language = language;
-			idx->stopwords = stopwords;
+			Index_SetLanguage(idx, language);
+			Index_SetStopwords(idx, stopwords);
 		}
 
 		index_count -= fields_count;
