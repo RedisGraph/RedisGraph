@@ -11,7 +11,7 @@ static uint _RdbLoadFullTextIndexData(RedisModuleIO *rdb, SchemaType type, Schem
 	char **stopwords = NULL;
 
 	char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
-	language = rm_strdup(lang);
+	language = lang;
 	RedisModule_Free(lang);
 	
 	uint stopwords_count = RedisModule_LoadUnsigned(rdb);

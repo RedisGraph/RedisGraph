@@ -396,7 +396,7 @@ void Index_SetLanguage
 ) {
 	ASSERT(idx != NULL);
 
-	idx->language = rm_strdup(language);
+	idx->language = language;
 }
 
 char **Index_GetStopwords

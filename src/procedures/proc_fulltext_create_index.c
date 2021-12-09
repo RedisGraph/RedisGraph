@@ -243,7 +243,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 			Index_SetStopwords(idx, stopwords);
 		}
 		if(lang_exists) {
-			Index_SetLanguage(idx, lang.stringval);
+			Index_SetLanguage(idx, rm_strdup(lang.stringval));
 		}
 	}
 
