@@ -566,18 +566,26 @@ class testQueryValidationFlow(FlowTestsBase):
 
     # Emit an error if UNWIND redefines an existing alias
     def test38_unwind_reused_alias(self):
-        try:
-            query = """UNWIND [1,2] AS x UNWIND [3,4] AS x RETURN x"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            self.env.assertIn("already declared", str(e))
+        queries = ["UNWIND [1,2] AS x UNWIND [3,4] AS x RETURN x",
+                   "CALL db.labels() UNWIND [1, 2] as label RETURN label",
+                   "CALL db.labels() YIELD label UNWIND [1, 2] as label RETURN label",
+                   "CALL db.labels() YIELD label AS x UNWIND [1, 2] as x RETURN x"]
+
+        for q in queries:
+            try:
+                redis_graph.query(q)
+                assert(False)
+            except redis.exceptions.ResponseError as e:
+                # Expecting an error.
+                self.env.assertIn("already declared", str(e))
 
     # Emit an error if CALL redefines an existing alias
     def test39_call_reused_alias(self):
         queries = ["UNWIND [1, 2] as nodes MATCH (a) CALL algo.BFS(a, 3, NULL)",
-                   "UNWIND [1, 2] as nodes MATCH (a) CALL algo.BFS(a, 3, NULL) YIELD nodes RETURN nodes"]
+                   "UNWIND [1, 2] as nodes MATCH (a) CALL algo.BFS(a, 3, NULL) YIELD nodes RETURN nodes",
+                   "CALL db.labels() CALL db.labels()",
+                   "CALL db.labels() YIELD label CALL db.labels()",
+                   "CALL db.labels() CALL db.labels() YIELD label"]
 
         for q in queries:
             try:
