@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v9.h"
+#include "encode_v10.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -14,7 +14,7 @@ static inline bool _shouldAcquireLocks(void) {
 	return !process_is_child;
 }
 
-static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
+static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Header format:
 	 * Graph name
 	 * Node count
@@ -25,9 +25,9 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
 	 * Number of graph keys (graph context key + meta keys)
 	 */
 
-	ASSERT(ctx != NULL);
+	ASSERT(gc != NULL);
 
-	GraphEncodeHeader *header = &(ctx->header);
+	GraphEncodeHeader *header = &(gc->encoding_context->header);
 
 	// Graph name.
 	RedisModule_SaveStringBuffer(rdb, header->graph_name, strlen(header->graph_name) + 1);
@@ -52,6 +52,8 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphEncodeContext *ctx) {
 
 	// Number of keys.
 	RedisModule_SaveUnsigned(rdb, header->key_count);
+
+	RdbSaveGraphSchema_v10(rdb, gc);
 }
 
 // Returns the a state information regarding the number of entities required to encode in this state.
@@ -139,7 +141,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	return payloads;
 }
 
-void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
+void RdbSaveGraph_v10(RedisModuleIO *rdb, void *value) {
 	/* Encoding format for graph context and graph meta key:
 	 *  Header
 	 *  Payload(s) count: N
@@ -176,7 +178,7 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 	}
 
 	// Save header
-	_RdbSaveHeader(rdb, gc->encoding_context);
+	_RdbSaveHeader(rdb, gc);
 
 	// Save payloads info for this key and retrive the key schema.
 	PayloadInfo *key_schema = _RdbSaveKeySchema(rdb, gc);
@@ -188,19 +190,18 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v9(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v9(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v9(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v9(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v10(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v9(rdb, gc);
 			break;
 		default:
 			ASSERT(false && "Unknown encoding phase");

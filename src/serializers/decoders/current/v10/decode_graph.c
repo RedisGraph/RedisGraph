@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v9.h"
+#include "decode_v10.h"
 
 // Module event handler functions declarations.
 void ModuleEventHandler_IncreaseDecodingGraphsCount(void);
@@ -87,6 +87,8 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	}
 
+	RdbLoadGraphSchema_v10(rdb, gc);
+
 	return gc;
 }
 
@@ -111,7 +113,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraph_v10(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
@@ -123,6 +125,7 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 	 * */
 
 	GraphContext *gc = _DecodeHeader(rdb);
+		
 	// load the key schema
 	PayloadInfo *key_schema = _RdbLoadKeySchema(rdb);
 
@@ -150,20 +153,20 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 		switch(payload.state) {
 			case ENCODE_STATE_NODES:
 				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-				RdbLoadNodes_v9(rdb, gc, payload.entities_count);
+				RdbLoadNodes_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_NODES:
-				RdbLoadDeletedNodes_v9(rdb, gc, payload.entities_count);
+				RdbLoadDeletedNodes_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_EDGES:
 				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-				RdbLoadEdges_v9(rdb, gc, payload.entities_count);
+				RdbLoadEdges_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_EDGES:
-				RdbLoadDeletedEdges_v9(rdb, gc, payload.entities_count);
+				RdbLoadDeletedEdges_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_GRAPH_SCHEMA:
-				RdbLoadGraphSchema_v9(rdb, gc);
+				// skip handled in header
 				break;
 			default:
 				ASSERT(false && "Unknown encoding");
