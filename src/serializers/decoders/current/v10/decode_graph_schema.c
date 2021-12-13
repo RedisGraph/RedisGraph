@@ -28,7 +28,10 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 			Schema_AddIndex(&idx, s, field, type);
 		RedisModule_Free(field);
 	}
-	if(idx) Index_Construct(idx);
+	if(s) {
+		if(s->index) Index_Construct(s->index);
+		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+	}
 
 	return s;
 }
