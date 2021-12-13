@@ -205,10 +205,6 @@ GraphContext *RdbLoadGraph_v10(RedisModuleIO *rdb) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, i);
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
-
-			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
 		// make sure graph doesn't contains may pending changes
