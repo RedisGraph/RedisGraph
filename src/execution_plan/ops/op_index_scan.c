@@ -217,6 +217,10 @@ static OpResult IndexScanReset(OpBase *opBase) {
 	if(op->rebuild_index_query) {
 		RediSearch_ResultsIteratorFree(op->iter);
 		op->iter = NULL;
+		if(op->unresolved_filters) {
+			FilterTree_Free(op->unresolved_filters);
+			op->unresolved_filters = NULL;
+		}
 	} else {
 		RediSearch_ResultsIteratorReset(op->iter);
 	}
