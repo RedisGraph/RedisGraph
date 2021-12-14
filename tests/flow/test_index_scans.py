@@ -545,7 +545,7 @@ class testIndexScanFlow(FlowTestsBase):
         expected_result = [[990000000262240069]]
         self.env.assertEquals(result.result_set, expected_result)
 
-        result = redis_graph.query("MATCH (u:L1) WHERE u.id = 990000000262240069 OR u.id = 990000000262240070 RETURN u.id")
+        result = redis_graph.query("MATCH (u:L1) WHERE u.id = 990000000262240069 OR u.id = 990000000262240070 RETURN u.id ORDER BY u.id")
         expected_result = [[990000000262240069], [990000000262240070]]
         self.env.assertEquals(result.result_set, expected_result)
 
