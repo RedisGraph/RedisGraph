@@ -94,9 +94,9 @@ AggregateResult AGG_AVG(SIValue *argv, int argc) {
 
 	// if we've already overflowed or adding the current value
 	// will cause us to overflow, use the incremental averaging algorithm
-	if(unlikely(avg_ctx->overflow || // already reached overflow
+	if(avg_ctx->overflow || // already reached overflow
 				(signbit(avg_ctx->total) == signbit(v) && // values have the same MSB, adding will enlarge the total
-				 (fabs(avg_ctx->total) > (DBL_MAX - fabs(v)))))) { // about to overflow
+				 (fabs(avg_ctx->total) > (DBL_MAX - fabs(v))))) { // about to overflow
 		// divide the total by the new count
 		long double total = avg_ctx->total /= (long double) avg_ctx->count;
 		// if this is not the first call using the incremental algorithm,
@@ -117,7 +117,7 @@ void AvgFinalize(void *ctx_ptr) {
 	AggregateCtx *ctx = ctx_ptr;
 	_agg_AvgCtx *avg_ctx = ctx->private_ctx;
 	if(avg_ctx->count > 0) {
-		if(unlikely(avg_ctx->overflow)) {
+		if(avg_ctx->overflow) {
 			// used incremental algorithm due to overflow, 'total' is the average
 			Aggregate_SetResult(ctx, SI_DoubleVal(avg_ctx->total));
 		} else {
