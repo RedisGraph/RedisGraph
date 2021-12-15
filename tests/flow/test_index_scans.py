@@ -549,6 +549,18 @@ class testIndexScanFlow(FlowTestsBase):
         expected_result = [[990000000262240069], [990000000262240070]]
         self.env.assertEquals(result.result_set, expected_result)
 
+        result = redis_graph.query("MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = id AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
         result = redis_graph.query("MATCH (u:L2) WHERE u.id1 = 990000000262240069 AND u.id2 = 990000000262240067 RETURN u.id1, u.id2")
         expected_result = [[990000000262240069, 990000000262240067]]
         self.env.assertEquals(result.result_set, expected_result)
