@@ -233,7 +233,7 @@ class testConfig(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 assert(("Failed to set config value %s to invalid" % config) in str(e))
 
-    def test09_set_vkey_max_entity_count(self):
+    def test09_set_get_vkey_max_entity_count(self):
         global redis_graph
 
         config_name = "VKEY_MAX_ENTITY_COUNT"

@@ -103,6 +103,7 @@ void RdbLoadNodes_v10(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count)
 
 		if(l != GRAPH_NO_LABEL) {
 			Schema *s = GraphContext_GetSchemaByID(gc, l, SCHEMA_NODE);
+			ASSERT(s != NULL);
 			if(s->index) Index_IndexNode(s->index, &n);
 			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
 		}

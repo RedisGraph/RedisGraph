@@ -29,6 +29,7 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 		RedisModule_Free(field);
 	}
 	if(s) {
+		// no entities are expected to be in the graph in this point in time
 		if(s->index) Index_Construct(s->index);
 		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 	}

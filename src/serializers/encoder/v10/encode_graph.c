@@ -23,6 +23,7 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	 * Relation matrix count - N
 	 * Does relationship Ri holds mutiple edges under a single entry X N 
 	 * Number of graph keys (graph context key + meta keys)
+	 * Schemas
 	 */
 
 	ASSERT(gc != NULL);

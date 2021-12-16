@@ -47,6 +47,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	 * Relation matrix count - N
 	 * Does relationship matrix Ri holds mutiple edges under a single entry X N
 	 * Number of graph keys (graph context key + meta keys)
+	 * Schemas
 	 */
 
 	// Graph name
