@@ -104,8 +104,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	// If this is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
 
-	uint64_t remaining_entities;
-	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &remaining_entities);
+	uint64_t remaining_entities = gc->encoding_context->vkey_entity_count;
 
 	// Check if this is the last key
 	bool last_key = GraphEncodeContext_GetProcessedKeyCount(gc->encoding_context) ==

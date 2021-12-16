@@ -81,6 +81,7 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t vkey_entity_count;
 	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &vkey_entity_count);
+	gc->encoding_context->vkey_entity_count = vkey_entity_count;
 
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) +
 		Graph_DeletedNodeCount(gc->g) + Graph_DeletedEdgeCount(gc->g);
