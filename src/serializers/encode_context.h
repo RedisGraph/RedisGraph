@@ -44,7 +44,7 @@ typedef struct {
 	EncodeState state;                          // Represents the current encoding state.
 	uint64_t keys_processed;                    // Count the number of procssed graph keys.
 	GraphEncodeHeader header;                   // Header replied for each vkey
-	uint64_t vkey_entity_count;                 // Number of entities in virtual key.
+	uint64_t vkey_entity_count;                 // Number of entities in a single virtual key.
 	NodeID multiple_edges_src_id;               // The current edges array sourc node id.
 	NodeID multiple_edges_dest_id;              // The current edges array destination node id.
 	EdgeID *multiple_edges_array;               // Multiple edges array, save in the context.

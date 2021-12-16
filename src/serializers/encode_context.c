@@ -8,6 +8,7 @@
 #include "../RG.h"
 #include "../util/rmalloc.h"
 #include "../util/rax_extensions.h"
+#include "../configuration/config.h"
 
 GraphEncodeContext *GraphEncodeContext_New() {
 	GraphEncodeContext *ctx = rm_calloc(1, sizeof(GraphEncodeContext));
@@ -47,6 +48,8 @@ void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	ctx->multiple_edges_array = NULL;
 	ctx->current_relation_matrix_id = 0;
 	ctx->multiple_edges_current_index = 0;
+
+	Config_Option_get(Config_VKEY_MAX_ENTITY_COUNT, &ctx->vkey_entity_count);
 
 	// Avoid leaks in case or reset during encodeing.
 	if(ctx->datablock_iterator != NULL) {
