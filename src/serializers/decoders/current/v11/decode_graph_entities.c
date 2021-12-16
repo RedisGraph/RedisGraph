@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v10.h"
+#include "decode_v11.h"
 
 // forward declarations
 static SIValue _RdbLoadPoint(RedisModuleIO *rdb);
@@ -90,7 +90,7 @@ static void _RdbLoadEntity
 	}
 }
 
-void RdbLoadNodes_v10
+void RdbLoadNodes_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -124,7 +124,7 @@ void RdbLoadNodes_v10
 	Serializer_Graph_SetNodeLabels(gc->g);
 }
 
-void RdbLoadDeletedNodes_v10
+void RdbLoadDeletedNodes_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -138,7 +138,7 @@ void RdbLoadDeletedNodes_v10
 	}
 }
 
-void RdbLoadEdges_v10
+void RdbLoadEdges_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -167,7 +167,7 @@ void RdbLoadEdges_v10
 	}
 }
 
-void RdbLoadDeletedEdges_v10
+void RdbLoadDeletedEdges_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,

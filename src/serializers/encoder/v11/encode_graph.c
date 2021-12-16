@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v10.h"
+#include "encode_v11.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -157,7 +157,7 @@ static PayloadInfo *_RdbSaveKeySchema
 	return payloads;
 }
 
-void RdbSaveGraph_v10
+void RdbSaveGraph_v11
 (
 	RedisModuleIO *rdb,
 	void *value
@@ -210,19 +210,19 @@ void RdbSaveGraph_v10
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v10(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v11(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v10(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v11(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v10(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v11(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v10(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v11(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v10(rdb, gc);
+			RdbSaveGraphSchema_v11(rdb, gc);
 			break;
 		default:
 			ASSERT(false && "Unknown encoding phase");

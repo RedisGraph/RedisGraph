@@ -3,6 +3,7 @@ import os
 import sys
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
+import re
 
 redis_con = None
 
@@ -177,3 +178,40 @@ class test_v7_encode_decode(FlowTestsBase):
 
         actual = redis_graph.query(query)
         self.env.assertEquals(expected.result_set, actual.result_set)
+
+    def test09_vkey_max_entity_count(self):
+        redis_con.flushall()
+
+        logfilename = self.env.envRunner._getFileName("master", ".log")
+        logfile = open(f"{self.env.logDir}/{logfilename}")
+        log = logfile.read()
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET VKEY_MAX_ENTITY_COUNT 10")
+        self.env.assertEqual(response, "OK")
+
+        graph_name = "vkey_max_entity_count"
+        redis_graph = Graph(graph_name, redis_con)
+        
+        # Create 30 nodes
+        redis_graph.query("UNWIND range(0,30) as v CREATE (:L {v: v})")
+        
+        # Save RDB & Load from RDB
+        redis_con.save()
+
+        # Set configuration
+        response = redis_con.execute_command("GRAPH.CONFIG SET VKEY_MAX_ENTITY_COUNT 5")
+        self.env.assertEqual(response, "OK")
+
+        # Save RDB & Load from RDB
+        redis_con.save()
+        
+        log = logfile.read()
+
+        matches = re.findall("Created (.) virtual keys for graph vkey_max_entity_count", log)
+
+        self.env.assertEqual(matches, ['3', '6'])
+
+        matches = re.findall("Deleted (.) virtual keys for graph vkey_max_entity_count", log)
+
+        self.env.assertEqual(matches, ['3', '6'])
