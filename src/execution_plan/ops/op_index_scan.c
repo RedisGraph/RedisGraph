@@ -172,7 +172,6 @@ pull_index:
 			// first call to consume, create query and iterator
 			RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters, op->filter, op->idx);
 			ASSERT(rs_query_node != NULL);
-			ASSERT(op->unresolved_filters == NULL);
 			op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 		} else {
 			// reset existing iterator
@@ -191,20 +190,27 @@ static Record IndexScanConsume(OpBase *opBase) {
 	if(op->iter == NULL) {
 		RSQNode *rs_query_node = FilterTreeToQueryNode(&op->unresolved_filters,
 				op->filter, op->idx);
-		ASSERT(op->unresolved_filters == NULL);
 
 		op->iter = RediSearch_GetResultsIterator(rs_query_node, op->idx);
 	}
 
-	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx,
-			NULL);
-	if(!nodeId) return NULL;
+	const EntityID *nodeId = NULL;
 
 	// populate the Record with the actual node
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	_UpdateRecord(op, r, *nodeId);
+	while((nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL))
+			!= NULL) {
+		// populate record with node
+		_UpdateRecord(op, r, *nodeId);
+		// apply unresolved filters
+		if(_PassUnresolvedFilters(op, r)) {
+			return r;
+		}
+	}
 
-	return r;
+	OpBase_DeleteRecord(r);
+
+	return NULL;
 }
 
 static OpResult IndexScanReset(OpBase *opBase) {
@@ -213,6 +219,10 @@ static OpResult IndexScanReset(OpBase *opBase) {
 	if(op->rebuild_index_query) {
 		RediSearch_ResultsIteratorFree(op->iter);
 		op->iter = NULL;
+		if(op->unresolved_filters) {
+			FilterTree_Free(op->unresolved_filters);
+			op->unresolved_filters = NULL;
+		}
 	} else {
 		RediSearch_ResultsIteratorReset(op->iter);
 	}

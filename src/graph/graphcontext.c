@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -20,7 +20,6 @@
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
-extern uint currently_decoding_graphs;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
 
@@ -34,7 +33,7 @@ static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 
 static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
-	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
+	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) == -1) {
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
 
@@ -108,20 +107,20 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
-/* In a sharded environment, there could be a race condition between the decoding of
- * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
- * that the module replicated properly. */
-static bool _GraphContext_IsModuleReplicating(void) {
-	return aux_field_counter > 0 || currently_decoding_graphs > 0;
-}
-
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
-									bool shouldCreate) {
-	if(_GraphContext_IsModuleReplicating()) {
-		// The whole module is currently replicating, emit an error.
+GraphContext *GraphContext_Retrieve
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString *graphID,
+	bool readOnly,
+	bool shouldCreate
+) {
+	// check if we're still replicating, if so don't allow access to the graph
+	if(aux_field_counter > 0) {
+		// the whole module is currently replicating, emit an error
 		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
 		return NULL;
 	}
+
 	GraphContext *gc = NULL;
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 

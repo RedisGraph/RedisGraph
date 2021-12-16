@@ -4,17 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v9.h"
+#include "decode_v10.h"
 
-// Module event handler functions declarations.
-void ModuleEventHandler_IncreaseDecodingGraphsCount(void);
-void ModuleEventHandler_DecreaseDecodingGraphsCount(void);
-
-static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
+static GraphContext *_GetOrCreateGraphContext
+(
+	char *graph_name
+) {
 	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
 		// New graph is being decoded. Inform the module and create new graph context.
-		ModuleEventHandler_IncreaseDecodingGraphsCount();
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
@@ -49,6 +47,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	 * Relation matrix count - N
 	 * Does relationship matrix Ri holds mutiple edges under a single entry X N
 	 * Number of graph keys (graph context key + meta keys)
+	 * Schemas
 	 */
 
 	// Graph name
@@ -87,6 +86,8 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	}
 
+	RdbLoadGraphSchema_v10(rdb, gc);
+
 	return gc;
 }
 
@@ -111,7 +112,7 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 	return payloads;
 }
 
-GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraph_v10(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 *  Header
@@ -123,6 +124,7 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 	 * */
 
 	GraphContext *gc = _DecodeHeader(rdb);
+		
 	// load the key schema
 	PayloadInfo *key_schema = _RdbLoadKeySchema(rdb);
 
@@ -150,20 +152,20 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 		switch(payload.state) {
 			case ENCODE_STATE_NODES:
 				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-				RdbLoadNodes_v9(rdb, gc, payload.entities_count);
+				RdbLoadNodes_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_NODES:
-				RdbLoadDeletedNodes_v9(rdb, gc, payload.entities_count);
+				RdbLoadDeletedNodes_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_EDGES:
 				Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-				RdbLoadEdges_v9(rdb, gc, payload.entities_count);
+				RdbLoadEdges_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_DELETED_EDGES:
-				RdbLoadDeletedEdges_v9(rdb, gc, payload.entities_count);
+				RdbLoadDeletedEdges_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_GRAPH_SCHEMA:
-				RdbLoadGraphSchema_v9(rdb, gc);
+				// skip handled in header
 				break;
 			default:
 				ASSERT(false && "Unknown encoding");
@@ -202,10 +204,6 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 			RG_Matrix L = Graph_GetLabelMatrix(g, i);
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
-
-			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
 
 		// make sure graph doesn't contains may pending changes
@@ -214,8 +212,6 @@ GraphContext *RdbLoadGraph_v9(RedisModuleIO *rdb) {
 		QueryCtx_Free(); // release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
 
-		// graph has finished decoding, inform the module
-		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}

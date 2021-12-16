@@ -43,24 +43,22 @@ static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
 	RdbSaveGraph(rdb, value);
 }
 
-static void _GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
-	// No-Op in this type.
-}
-
 static void _GraphMetaType_Free(void *value) {
 	// No-Op in this type.
 }
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {
-	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-								 .rdb_load = _GraphMetaType_RdbLoad,
-								 .rdb_save = _GraphMetaType_RdbSave,
-								 .aof_rewrite = _GraphMetaType_AofRewrite,
-								 .free = _GraphMetaType_Free
-								};
+	RedisModuleTypeMethods tm = { 0 };
+
+	tm.version   =  REDISMODULE_TYPE_METHOD_VERSION;
+	tm.rdb_load  =  _GraphMetaType_RdbLoad;
+	tm.rdb_save  =  _GraphMetaType_RdbSave;
+	tm.free      =  _GraphMetaType_Free;
 
 	GraphMetaRedisModuleType = RedisModule_CreateDataType(ctx, "graphmeta",
-														  GRAPH_ENCODING_VERSION_LATEST, &tm);
+			GRAPH_ENCODING_VERSION_LATEST, &tm);
+
 	if(GraphMetaRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;
 }
+
