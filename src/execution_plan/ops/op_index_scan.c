@@ -208,6 +208,8 @@ static Record IndexScanConsume(OpBase *opBase) {
 		}
 	}
 
+	OpBase_DeleteRecord(r);
+
 	return NULL;
 }
 

@@ -211,3 +211,7 @@ class test_v7_encode_decode(FlowTestsBase):
         matches = re.findall("Created (.) virtual keys for graph vkey_max_entity_count", log)
 
         self.env.assertEqual(matches, ['3', '6'])
+
+        matches = re.findall("Deleted (.) virtual keys for graph vkey_max_entity_count", log)
+
+        self.env.assertEqual(matches, ['3', '6'])
