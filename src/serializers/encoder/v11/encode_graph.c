@@ -28,7 +28,7 @@ static void _RdbSaveHeader
 	// Does relationship Ri holds mutiple edges under a single entry X N 
 	// Number of graph keys (graph context key + meta keys)
 
-	ASSERT(ctx != NULL);
+	ASSERT(gc != NULL);
 
 	GraphEncodeHeader *header = &(gc->encoding_context->header);
 
