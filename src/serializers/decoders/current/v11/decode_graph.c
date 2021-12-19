@@ -58,6 +58,7 @@ static GraphContext *_DecodeHeader
 	// Relation matrix count - N
 	// Does relationship matrix Ri holds mutiple edges under a single entry X N
 	// Number of graph keys (graph context key + meta keys)
+	// Schema
 
 	// graph name
 	char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
@@ -95,6 +96,8 @@ static GraphContext *_DecodeHeader
 
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	}
+
+	RdbLoadGraphSchema_v11(rdb, gc);
 
 	return gc;
 }
@@ -168,7 +171,6 @@ GraphContext *RdbLoadGraphContext_v11
 				RdbLoadDeletedEdges_v11(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_GRAPH_SCHEMA:
-				RdbLoadGraphSchema_v11(rdb, gc);
 				break;
 			default:
 				ASSERT(false && "Unknown encoding");
@@ -208,18 +210,7 @@ GraphContext *RdbLoadGraphContext_v11
 			RG_Matrix L = Graph_GetLabelMatrix(g, i);
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
-
-			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
-
-		uint relation_count = Graph_RelationTypeCount(g);
- 		for(uint i = 0; i < relation_count; i++) {
- 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
- 			if(s->index) Index_Construct(s->index);
- 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
- 		}
 
 		// make sure graph doesn't contains may pending changes
 		ASSERT(Graph_Pending(g) == false);

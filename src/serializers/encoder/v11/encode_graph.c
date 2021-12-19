@@ -109,6 +109,7 @@ static PayloadInfo *_RdbSaveKeySchema
 	//  N * Payload info:
 	//      Encode state
 	//      Number of entities encoded in this state
+	//  Schema
 
 	PayloadInfo *payloads = array_new(PayloadInfo, 1);
 
@@ -153,6 +154,8 @@ static PayloadInfo *_RdbSaveKeySchema
 		RedisModule_SaveUnsigned(rdb, payload_info.state);
 		RedisModule_SaveUnsigned(rdb, payload_info.entities_count);
 	}
+
+	RdbSaveGraphSchema_v11(rdb, gc);
 
 	return payloads;
 }
@@ -222,7 +225,6 @@ void RdbSaveGraph_v11
 			RdbSaveDeletedEdges_v11(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
-			RdbSaveGraphSchema_v11(rdb, gc);
 			break;
 		default:
 			ASSERT(false && "Unknown encoding phase");
