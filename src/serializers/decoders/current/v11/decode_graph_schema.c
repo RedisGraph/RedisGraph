@@ -30,15 +30,17 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 
 		if(index_type == IDX_FULLTEXT) {
 			char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
-			language = rm_strdup(lang);
+			if(!already_loaded) language = rm_strdup(lang);
 			RedisModule_Free(lang);
 			
 			uint stopwords_count = RedisModule_LoadUnsigned(rdb);
 			if(stopwords_count > 0) {
-				stopwords = array_new(char *, stopwords_count);
+				if(!already_loaded)
+					stopwords = array_new(char *, stopwords_count);
 				for (uint i = 0; i < stopwords_count; i++) {
 					char *stopword = RedisModule_LoadStringBuffer(rdb, NULL);
-					array_append(stopwords, rm_strdup(stopword));
+					if(!already_loaded)
+						array_append(stopwords, rm_strdup(stopword));
 					RedisModule_Free(stopword);
 				}
 			}
@@ -53,7 +55,7 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 			RedisModule_Free(field);
 		}
 
-		if(index_type == IDX_FULLTEXT) {
+		if(index_type == IDX_FULLTEXT && !already_loaded) {
 			idx->language = language;
 			idx->stopwords = stopwords;
 		}
