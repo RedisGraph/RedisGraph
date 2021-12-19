@@ -17,7 +17,7 @@ static inline bool _shouldAcquireLocks(void) {
 static void _RdbSaveHeader
 (
 	RedisModuleIO *rdb,
-	GraphEncodeContext *ctx
+	GraphContext *gc
 ) {
 	// Header format:
 	// Graph name
@@ -30,7 +30,7 @@ static void _RdbSaveHeader
 
 	ASSERT(ctx != NULL);
 
-	GraphEncodeHeader *header = &(ctx->header);
+	GraphEncodeHeader *header = &(gc->encoding_context->header);
 
 	// graph name
 	RedisModule_SaveStringBuffer(rdb, header->graph_name, strlen(header->graph_name) + 1);
@@ -55,6 +55,8 @@ static void _RdbSaveHeader
 
 	// number of keys
 	RedisModule_SaveUnsigned(rdb, header->key_count);
+
+	RdbSaveGraphSchema_v11(rdb, gc);
 }
 
 // returns a state information regarding the number of entities required
@@ -200,7 +202,7 @@ void RdbSaveGraph_v11
 	}
 
 	// save header
-	_RdbSaveHeader(rdb, gc->encoding_context);
+	_RdbSaveHeader(rdb, gc);
 
 	// save payloads info for this key and retrive the key schema
 	PayloadInfo *key_schema = _RdbSaveKeySchema(rdb, gc);
