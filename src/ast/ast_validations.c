@@ -148,11 +148,16 @@ static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifier
 	if(order_by) _AST_GetIdentifiers(order_by, identifiers);
 }
 
-// Extract identifiers / aliases from a procedure call.
-static void _AST_GetProcCallAliases(const cypher_astnode_t *node, rax *identifiers) {
+// extract identifiers / aliases from a procedure call
+static void _AST_GetProcCallAliases
+(
+	const cypher_astnode_t *node,
+	rax *identifiers
+) {
 	// CALL db.labels() yield label
 	// CALL db.labels() yield label as l
-	ASSERT(node && identifiers);
+	ASSERT(node != NULL);
+	ASSERT(identifiers != NULL);
 	ASSERT(cypher_astnode_type(node) == CYPHER_AST_CALL);
 
 	uint projection_count = cypher_ast_call_nprojections(node);
@@ -180,6 +185,7 @@ static void _AST_GetProcCallAliases(const cypher_astnode_t *node, rax *identifie
 		   	cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(node));
 		ProcedureCtx *proc = Proc_Get(proc_name);
 		if(proc == NULL) return; // no such procedure
+
 		uint default_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < default_count; i ++) {
 			const char *output = Procedure_GetOutput(proc, i);
@@ -546,10 +552,10 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 }
 
 static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
-	/* make sure procedure calls are valid:
-	 * 1. procedure exists
-	 * 2. number of arguments to procedure is as expected
-	 * 3. yield refers to procedure output */
+	// make sure procedure calls are valid:
+	// 1. procedure exists
+	// 2. number of arguments to procedure is as expected
+	// 3. yield refers to procedure output
 
 	AST_Validation  res               =  AST_VALID;
 	ProcedureCtx    *proc             =  NULL;
@@ -591,7 +597,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 		}
 
 		//----------------------------------------------------------------------
-		// validate projection aliases 
+		// validate procedure projection(s)
 		//----------------------------------------------------------------------
 		uint proj_count = cypher_ast_call_nprojections(call_clause);
 		if(proj_count > 0) {
@@ -802,7 +808,7 @@ static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax
 	// We don't need to validate the MERGE edge's direction, as an undirected edge in MERGE
 	// should cause a single outgoing edge to be created.
 
-	return AST_VALID;
+	raliases eturn AST_VALID;
 }
 
 // Verify that MERGE doesn't redeclare bound nodes.
@@ -980,7 +986,10 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast) {
 	return _ValidateFunctionCalls(return_clause, include_aggregates);
 }
 
-static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
+static AST_Validation _Validate_UNWIND_Clauses
+(
+	const AST *ast
+) {
 	AST_Validation res               =  AST_VALID;
 	uint           *clause_indices   =  AST_GetClauseIndices(ast, CYPHER_AST_UNWIND);
 	uint           clause_count      =  array_len(clause_indices);
@@ -995,11 +1004,12 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
 		const cypher_astnode_t *expression = cypher_ast_unwind_get_expression(clause);
 		// verify that all elements of the UNWIND collection
 		// are supported by RedisGraph
-		uint child_count = cypher_astnode_nchildren(expression);
-		for(uint j = 0; j < child_count; j ++) {
-			res = CypherWhitelist_ValidateQuery(cypher_astnode_get_child(expression, j));
-			if(res != AST_VALID) goto cleanup;
-		}
+		res = CypherWhitelist_ValidateQuery(expression);
+		//uint child_count = cypher_astnode_nchildren(expression);
+		//for(uint j = 0; j < child_count; j ++) {
+		//	res = CypherWhitelist_ValidateQuery(cypher_astnode_get_child(expression, j));
+		//	if(res != AST_VALID) goto cleanup;
+		//}
 		// verify that UNWIND doesn't call non-existent or unsupported functions
 		res = _ValidateFunctionCalls(expression, true);
 		if(res != AST_VALID) goto cleanup;
@@ -1019,9 +1029,10 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast) {
 		start_offset = clause_idx;
 
 		// validate that the UNWIND alias is not previously defined
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root,
-																	 clause_idx);
-		const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(clause);
+		const cypher_astnode_t *clause =
+			cypher_ast_query_get_clause(ast->root, clause_idx);
+		const cypher_astnode_t *alias_node =
+			cypher_ast_unwind_get_alias(clause);
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 
 		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias))
