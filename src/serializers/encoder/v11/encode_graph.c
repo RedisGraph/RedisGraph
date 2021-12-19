@@ -157,8 +157,6 @@ static PayloadInfo *_RdbSaveKeySchema
 		RedisModule_SaveUnsigned(rdb, payload_info.entities_count);
 	}
 
-	RdbSaveGraphSchema_v11(rdb, gc);
-
 	return payloads;
 }
 
