@@ -30,7 +30,29 @@
 
 Feature: Boolean4 - NOT logical operations
 
-  Scenario: [1] NOT and false
+  Scenario: [1] Logical negation of truth values
+    Given any graph
+    When executing query:
+      """
+      RETURN NOT true AS nt, NOT false AS nf, NOT null AS nn
+      """
+    Then the result should be, in any order:
+      | nt    | nf   | nn   |
+      | false | true | null |
+    And no side effects
+
+  Scenario: [2] Double logical negation of truth values
+    Given any graph
+    When executing query:
+      """
+      RETURN NOT NOT true AS nnt, NOT NOT false AS nnf, NOT NOT null AS nnn
+      """
+    Then the result should be, in any order:
+      | nnt  | nnf   | nnn  |
+      | true | false | null |
+    And no side effects
+
+  Scenario: [3] NOT and false
     Given an empty graph
     And having executed:
       """
@@ -47,8 +69,7 @@ Feature: Boolean4 - NOT logical operations
       | ({name: 'a'}) |
     And no side effects
 
-  @NegativeTest
-  Scenario Outline: [2] Fail when using NOT on a non-boolean literal
+  Scenario Outline: [4] Fail when using NOT on a non-boolean literal
     Given any graph
     When executing query:
       """

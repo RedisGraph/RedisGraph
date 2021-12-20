@@ -48,6 +48,7 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 	switch(op) {
 	case OP_OR:
 	case OP_AND:
+	case OP_XOR:
 		filter = FilterTree_CreateConditionFilter(op);
 		FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
 		FilterTree_AppendRightChild(filter, _FilterNode_FromAST(rhs));
@@ -86,6 +87,7 @@ static FT_FilterNode *_convertBinaryOperator(const cypher_astnode_t *op_node) {
 	switch(op) {
 	case OP_OR:
 	case OP_AND:
+	case OP_XOR:
 	case OP_EQUAL:
 	case OP_NEQUAL:
 	case OP_LT:

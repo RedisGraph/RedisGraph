@@ -30,6 +30,8 @@ static AST_Operator _NegateOperator(AST_Operator op) {
 	switch(op) {
 	case OP_AND:
 		return OP_OR;
+	case OP_XOR:
+		return OP_UNKNOWN;
 	case OP_OR:
 		return OP_AND;
 	case OP_EQUAL:
@@ -113,7 +115,8 @@ void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 			rm_free((FT_FilterNode *)root);
 			break;
 		case OP_OR:
-			/* OR tree must be return as is. */
+		case OP_XOR:
+			/* OR, XOR tree must be return as is. */
 			array_append(*sub_trees, root);
 			break;
 		default:
@@ -216,6 +219,11 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 		} else if(root->cond.op == OP_OR && pass == 0) {
 			/* Visit right subtree. */
 			pass = FilterTree_applyFilters(RightChild(root), r);
+		} else if(root->cond.op == OP_XOR) {
+			/* Visit right subtree. */
+			pass = pass == FilterTree_applyFilters(RightChild(root), r) 
+				? FILTER_FAIL 
+				: FILTER_PASS;
 		} else if (root->cond.op == OP_NOT) {
 			pass = pass == FILTER_PASS ? FILTER_FAIL : FILTER_PASS;
 		}
@@ -612,9 +620,66 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 	}
 }
 
+// Compacts 'XOR' condition node.
+static bool _FilterTree_Compact_XOr(FT_FilterNode *node) {
+	// try to compact left and right children
+	bool is_lhs_const = FilterTree_Compact(node->cond.left);
+	bool is_rhs_const = FilterTree_Compact(node->cond.right);
+	// if both are not compactable, this node is not compactable
+	if(!is_lhs_const && !is_rhs_const) return false;
+
+	// in every case from now, there will be a reduction,
+	// save the children in local placeholders for current node in-place modifications
+	bool final_value = false;
+	FT_FilterNode *lhs = node->cond.left;
+	FT_FilterNode *rhs = node->cond.right;
+	// both children are constants. This node can be set as constant expression
+	if(is_lhs_const && is_rhs_const) {
+		// both children are now contant expressions, evaluate and compact
+		final_value = SIValue_IsTrue(AR_EXP_Evaluate(rhs->exp.exp, NULL));
+		if(final_value) {
+			final_value = SIValue_IsFalse(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+		} else {
+			final_value = SIValue_IsTrue(AR_EXP_Evaluate(lhs->exp.exp, NULL));
+		}
+
+		// final value is XOR operation on lhs and rhs - reducing an OR node
+		// in place set the node to be an expression node
+		_FilterTree_In_Place_Set_Exp(node, SI_BoolVal(final_value));
+		FilterTree_Free(lhs);
+		FilterTree_Free(rhs);
+		return true;
+	} else {
+		// only one of the nodes is constant, find and evaluate
+		FT_FilterNode *const_node = is_lhs_const ? lhs : rhs;
+		FT_FilterNode *non_const_node = is_lhs_const ? rhs : lhs;
+
+		// evaluate constant
+		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
+		// if consant is true, everything is true
+		if(SIValue_IsTrue(const_value)) {
+			*node = *const_node;
+			// free const node allocation, without free the data
+			rm_free(const_node);
+			// free non const node completely
+			FilterTree_Free(non_const_node);
+			return true;
+		} else {
+			// const value is false, current node should be replaced with the non const node
+			*node = *non_const_node;
+			// free non const node allocation, without free the data
+			rm_free(non_const_node);
+			// free const node completely
+			FilterTree_Free(const_node);
+			return false;
+		}
+	}
+}
+
 // Compacts a condition node if possible
 static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
 	if(node->cond.op == OP_AND) return _FilterTree_Compact_And(node);
+	if(node->cond.op == OP_XOR) return _FilterTree_Compact_XOr(node);
 	if(node->cond.op == OP_OR) return _FilterTree_Compact_Or(node);
 	ASSERT(false && "_FilterTree_Compact_Cond: Unkown filter operator to compact");
 	return false;
