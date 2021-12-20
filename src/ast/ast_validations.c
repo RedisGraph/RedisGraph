@@ -182,7 +182,7 @@ static void _AST_GetProcCallAliases
 	// if no YIELD is specified, collect the default projections
 	if(projection_count == 0) {
 		const char *proc_name =
-		   	cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(node));
+			cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(node));
 		ProcedureCtx *proc = Proc_Get(proc_name);
 		if(proc == NULL) return; // no such procedure
 
@@ -190,7 +190,7 @@ static void _AST_GetProcCallAliases
 		for(uint i = 0; i < default_count; i ++) {
 			const char *output = Procedure_GetOutput(proc, i);
 			raxInsert(identifiers, (unsigned char *)output,
-					strlen(output), NULL, NULL);
+					  strlen(output), NULL, NULL);
 		}
 		Proc_Free(proc);
 	}
@@ -563,7 +563,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 	uint            clause_count      =  array_len(clause_indices);
 	uint            start_offset      =  0;
 	rax             *identifiers      =  NULL;
-	rax             *defined_aliases  =  NULL;
+	rax             *defined_aliases  =  raxNew();
 
 	for(uint i = 0; i < clause_count; i ++) {
 		identifiers = raxNew();
@@ -574,7 +574,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 		// validate procedure exists
 		//----------------------------------------------------------------------
 		const char *proc_name =
-		   	cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+			cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 		proc = Proc_Get(proc_name);
 
 		if(proc == NULL) {
@@ -590,7 +590,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			uint given_arg_count = cypher_ast_call_narguments(call_clause);
 			if(Procedure_Argc(proc) != given_arg_count) {
 				ErrorCtx_SetError("Procedure `%s` requires %d arguments, got %d",
-						proc_name, proc->argc, given_arg_count);
+								  proc_name, proc->argc, given_arg_count);
 				res = AST_INVALID;
 				goto cleanup;
 			}
@@ -604,20 +604,33 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			// collect call projections
 			for(uint j = 0; j < proj_count; j++) {
 				const cypher_astnode_t *proj =
-				   	cypher_ast_call_get_projection(call_clause, j);
+					cypher_ast_call_get_projection(call_clause, j);
 				const cypher_astnode_t *ast_exp =
-				   	cypher_ast_projection_get_expression(proj);
+					cypher_ast_projection_get_expression(proj);
 				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				const char *identifier =
-				   	cypher_ast_identifier_get_name(ast_exp);
+					cypher_ast_identifier_get_name(ast_exp);
 
 				// make sure each yield output is mentioned only once
 				if(!raxInsert(identifiers, (unsigned char *)identifier,
 							  strlen(identifier), NULL, NULL)) {
 					ErrorCtx_SetError("Variable `%s` already declared",
-						   	identifier);
+									  identifier);
 					res = AST_INVALID;
 					goto cleanup;
+				}
+				const cypher_astnode_t *ast_alias =
+					cypher_ast_projection_get_alias(proj);
+				if(ast_alias) {
+					const char *alias = cypher_ast_identifier_get_name(
+											ast_alias);
+					if(!raxInsert(identifiers, (unsigned char *)alias,
+								  strlen(alias), NULL, NULL)) {
+						ErrorCtx_SetError("Variable `%s` already declared",
+										  identifier);
+						res = AST_INVALID;
+						goto cleanup;
+					}
 				}
 
 				// make sure procedure is aware of output
@@ -644,7 +657,6 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 		}
 
 		// collect all entities that are bound before this CALL clause
-		defined_aliases = raxNew();
 		uint clause_idx = clause_indices[i];
 		for(uint j = start_offset; j < clause_idx; j ++) {
 			const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(
@@ -666,8 +678,6 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 			}
 		}
 
-		raxFree(defined_aliases);
-		defined_aliases = NULL;
 		raxFree(identifiers);
 		identifiers = NULL;
 		Proc_Free(proc);
@@ -675,9 +685,9 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast) {
 	}
 
 cleanup:
+	raxFree(defined_aliases);
 	if(proc) Proc_Free(proc);
 	if(identifiers) raxFree(identifiers);
-	if(defined_aliases) raxFree(defined_aliases);
 	array_free(clause_indices);
 	return res;
 }
@@ -808,7 +818,7 @@ static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax
 	// We don't need to validate the MERGE edge's direction, as an undirected edge in MERGE
 	// should cause a single outgoing edge to be created.
 
-	raliases eturn AST_VALID;
+	return AST_VALID;
 }
 
 // Verify that MERGE doesn't redeclare bound nodes.
@@ -1005,16 +1015,18 @@ static AST_Validation _Validate_UNWIND_Clauses
 		// verify that all elements of the UNWIND collection
 		// are supported by RedisGraph
 		res = CypherWhitelist_ValidateQuery(expression);
-		//uint child_count = cypher_astnode_nchildren(expression);
-		//for(uint j = 0; j < child_count; j ++) {
-		//	res = CypherWhitelist_ValidateQuery(cypher_astnode_get_child(expression, j));
-		//	if(res != AST_VALID) goto cleanup;
-		//}
+		uint child_count = cypher_astnode_nchildren(expression);
+		for(uint j = 0; j < child_count; j ++) {
+			res = CypherWhitelist_ValidateQuery(cypher_astnode_get_child(expression, j));
+			if(res != AST_VALID) goto cleanup;
+		}
 		// verify that UNWIND doesn't call non-existent or unsupported functions
 		res = _ValidateFunctionCalls(expression, true);
 		if(res != AST_VALID) goto cleanup;
 	}
 
+	// retrieve the variable introduced by each UNWIND clause and validate
+	// that it does not shadow a previously-declared variable
 	uint start_offset = 0;
 	defined_aliases = raxNew();
 	for(uint i = 0; i < clause_count; i ++) {
@@ -1035,8 +1047,8 @@ static AST_Validation _Validate_UNWIND_Clauses
 			cypher_ast_unwind_get_alias(clause);
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 
-		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias))
-		   != raxNotFound) {
+		if(!raxInsert(defined_aliases, (unsigned char *)alias, strlen(alias),
+					  NULL, NULL)) {
 			ErrorCtx_SetError("%s already declared", alias);
 			res = AST_INVALID;
 			goto cleanup;

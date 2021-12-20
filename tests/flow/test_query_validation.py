@@ -569,7 +569,8 @@ class testQueryValidationFlow(FlowTestsBase):
         queries = ["UNWIND [1,2] AS x UNWIND [3,4] AS x RETURN x",
                    "CALL db.labels() UNWIND [1, 2] as label RETURN label",
                    "CALL db.labels() YIELD label UNWIND [1, 2] as label RETURN label",
-                   "CALL db.labels() YIELD label AS x UNWIND [1, 2] as x RETURN x"]
+                   "CALL db.labels() YIELD label AS x UNWIND [1, 2] as x RETURN x",
+                   "MATCH (n) UNWIND [1, 2] AS n RETURN n"]
 
         for q in queries:
             try:
@@ -585,7 +586,8 @@ class testQueryValidationFlow(FlowTestsBase):
                    "UNWIND [1, 2] as nodes MATCH (a) CALL algo.BFS(a, 3, NULL) YIELD nodes RETURN nodes",
                    "CALL db.labels() CALL db.labels()",
                    "CALL db.labels() YIELD label CALL db.labels()",
-                   "CALL db.labels() CALL db.labels() YIELD label"]
+                   "CALL db.labels() CALL db.labels() YIELD label",
+                   "MATCH (n) CALL db.labels YIELD label AS n RETURN n"]
 
         for q in queries:
             try:
