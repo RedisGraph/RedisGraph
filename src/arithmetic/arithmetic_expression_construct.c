@@ -43,12 +43,12 @@ static bool _AR_EXP_ContainsNestedAgg(const AR_ExpNode *exp) {
 	return __AR_EXP_ContainsNestedAgg(exp, in_agg);
 }
 
-#define OP_COUNT 24
+#define OP_COUNT 25
 // The OpName array is strictly parallel with the AST_Operator enum.
 static const char *OpName[OP_COUNT] = {
 	"UNKNOWN", "NULL", "OR", "XOR", "AND", "NOT", "EQ", "NEQ", "LT", "GT", "LE",  "GE",
 	"ADD", "SUB", "MUL", "DIV", "MOD", "POW", "CONTAINS", "STARTS WITH",
-	"ENDS WITH", "IN", "IS NULL", "IS NOT NULL"
+	"ENDS WITH", "IN", "IS NULL", "IS NOT NULL", "XNOR"
 };
 
 static inline const char *_ASTOpToString(AST_Operator op) {
