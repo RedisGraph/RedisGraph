@@ -243,7 +243,7 @@ TEST_F(AggregateTest, StDevTest) {
 	AR_EXP_Free(stdevp);
 }
 
-TEST_F(AggregateTest, AverageOverflowTest) {
+TEST_F(AggregateTest, AverageDoubleOverflowTest) {
 	// values to average
 	AR_ExpNode *max = AR_EXP_NewConstOperandNode(SI_DoubleVal(DBL_MAX));
 	AR_ExpNode *half_max = AR_EXP_NewConstOperandNode(SI_DoubleVal(DBL_MAX / 2));
@@ -266,6 +266,30 @@ TEST_F(AggregateTest, AverageOverflowTest) {
 
 	AR_EXP_Free(avg);
 	AR_EXP_Free(max);
-	AR_EXP_Free(half_max);
+}
+
+TEST_F(AggregateTest, AverageLongOverflowTest) {
+	// values to average
+	AR_ExpNode *max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX));
+	AR_ExpNode *half_max = AR_EXP_NewConstOperandNode(SI_LongVal(LONG_MAX / 2));
+
+	// build new average function
+	AR_ExpNode *avg = _exp_from_query("RETURN avg(1)");
+
+	// first value to average is DBL_MAX
+	avg->op.children[0] = max;
+	AR_EXP_Aggregate(avg, NULL);
+
+	// second value is DBL_MAX / 2, causing overflow
+	avg->op.children[0] = half_max;
+	AR_EXP_Aggregate(avg, NULL);
+
+	// test average of DBL_MAX and DBL_MAX / 2
+	SIValue res = AR_EXP_Finalize(avg, NULL);
+	SIValue expected_outcome = SI_DoubleVal((LONG_MAX / 2) + ((LONG_MAX / 2) / 2));
+	ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
+
+	AR_EXP_Free(avg);
+	AR_EXP_Free(max);
 }
 
