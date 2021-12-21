@@ -22,7 +22,7 @@ int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	for(uint i = 0; i < count; i ++) {
 		GraphContext *gc = graphs_in_keyspace[i];
 		const char *name = GraphContext_GetName(gc);
-		RedisModule_ReplyWithSimpleString(ctx, name);
+		RedisModule_ReplyWithStringBuffer(ctx, name, strlen(name));
 	}
 
 	return REDISMODULE_OK;
