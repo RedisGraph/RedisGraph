@@ -287,7 +287,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         expected_result = [["Ori"]]
         self.env.assertEquals(query_result.result_set, expected_result)
 
-    def test_18_index_scan_and_label_filter(self):
+    def test18_index_scan_and_label_filter(self):
         query = "MATCH (n)-[f:friend]->(m) WHERE f.created_at = 1 RETURN n.name"
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Edge By Index Scan', plan)
@@ -464,3 +464,46 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         query_result = redis_graph.query(query)
         expected_result = ["Alon"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
+
+    def test20_index_scan_numeric_accuracy(self):
+        redis_graph = Graph('large_index_values', self.env.getConnection())
+
+        redis_graph.query("CREATE INDEX FOR ()-[r:R1]-() ON (r.id)")
+        redis_graph.query("CREATE INDEX FOR ()-[r:R2]-() ON (r.id1, r.id2)")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE ()-[:R1 {id: 990000000262240068 + v}]->()")
+        redis_graph.query("UNWIND range(1, 5) AS v CREATE ()-[:R2 {id1: 990000000262240068 + v, id2: 990000000262240068 - v}]->()")
+
+        # test index search
+        result = redis_graph.query("MATCH ()-[u:R1{id: 990000000262240069}]->() RETURN u.id")
+        expected_result = [[990000000262240069]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search from child
+        result = redis_graph.query("MATCH ()-[u:R1]->() WITH min(u.id) as id MATCH ()-[u:R1{id: id}]->() RETURN u.id")
+        expected_result = [[990000000262240069]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search with or
+        result = redis_graph.query("MATCH ()-[u:R1]->() WHERE u.id = 990000000262240069 OR u.id = 990000000262240070 RETURN u.id ORDER BY u.id")
+        expected_result = [[990000000262240069], [990000000262240070]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search in cartesian product
+        result = redis_graph.query("MATCH ()-[u1:R1]->(), ()-[u2:R1]->() WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search in cartesian product from child
+        result = redis_graph.query("MATCH ()-[u:R1]->() WITH min(u.id) as id MATCH ()-[u1:R1]->(), ()-[u2:R1]->() WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search in cartesian product from child using rebuild index
+        result = redis_graph.query("MATCH ()-[u:R1]->() WITH min(u.id) as id MATCH ()-[u1:R1]->(), ()-[u2:R1]->() WHERE u1.id = id AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test index search with 2 different attributes
+        result = redis_graph.query("MATCH ()-[u:R2]->() WHERE u.id1 = 990000000262240069 AND u.id2 = 990000000262240067 RETURN u.id1, u.id2")
+        expected_result = [[990000000262240069, 990000000262240067]]
+        self.env.assertEquals(result.result_set, expected_result)
