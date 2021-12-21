@@ -27,6 +27,7 @@ static void _RdbSaveHeader
 	// Relation matrix count - N
 	// Does relationship Ri holds mutiple edges under a single entry X N 
 	// Number of graph keys (graph context key + meta keys)
+	// Schema
 
 	ASSERT(gc != NULL);
 
@@ -111,7 +112,6 @@ static PayloadInfo *_RdbSaveKeySchema
 	//  N * Payload info:
 	//      Encode state
 	//      Number of entities encoded in this state
-	//  Schema
 
 	PayloadInfo *payloads = array_new(PayloadInfo, 1);
 
@@ -225,6 +225,7 @@ void RdbSaveGraph_v11
 			RdbSaveDeletedEdges_v11(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
+			// skip, handled in _RdbSaveHeader
 			break;
 		default:
 			ASSERT(false && "Unknown encoding phase");

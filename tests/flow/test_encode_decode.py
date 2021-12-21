@@ -179,6 +179,7 @@ class test_v7_encode_decode(FlowTestsBase):
         actual = redis_graph.query(query)
         self.env.assertEquals(expected.result_set, actual.result_set)
 
+    # test that when changing the VKEY_MAX_ENTITY_COUNT the number of virtual keys created are correct
     def test09_vkey_max_entity_count(self):
         redis_con.flushall()
 
@@ -215,4 +216,3 @@ class test_v7_encode_decode(FlowTestsBase):
         matches = re.findall("Deleted (.) virtual keys for graph vkey_max_entity_count", log)
 
         self.env.assertEqual(matches, ['3', '6'])
-
