@@ -194,7 +194,7 @@ class test_v7_encode_decode(FlowTestsBase):
         redis_graph = Graph(graph_name, redis_con)
         
         # Create 30 nodes
-        redis_graph.query("UNWIND range(0,30) as v CREATE (:L {v: v})")
+        redis_graph.query("UNWIND range(0, 30) as v CREATE (:L {v: v})")
         
         # Save RDB & Load from RDB
         redis_con.save()
@@ -215,3 +215,4 @@ class test_v7_encode_decode(FlowTestsBase):
         matches = re.findall("Deleted (.) virtual keys for graph vkey_max_entity_count", log)
 
         self.env.assertEqual(matches, ['3', '6'])
+

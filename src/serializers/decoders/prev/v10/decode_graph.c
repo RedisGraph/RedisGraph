@@ -165,7 +165,7 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 				RdbLoadDeletedEdges_v10(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_GRAPH_SCHEMA:
-				// skip handled in header
+				// skip, handled in _DecodeHeader
 				break;
 			default:
 				ASSERT(false && "Unknown encoding");
@@ -192,13 +192,10 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
 
-		// set the thread-local GraphContext
-		// as it will be accessed when creating indexes
-		QueryCtx_SetGraphCtx(gc);
+		// QueryCtx_SetGraphCtx(gc);
 		
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
-		// index the nodes
 		for(uint i = 0; i < label_count; i++) {
 			GrB_Index nvals;
 			RG_Matrix L = Graph_GetLabelMatrix(g, i);

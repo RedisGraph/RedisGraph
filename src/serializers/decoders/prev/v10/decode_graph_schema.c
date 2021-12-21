@@ -53,12 +53,11 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 
 void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
-	 * attribute keys (unified schema)
-	 * #node schemas
-	 * node schema X #node schemas
-	 * #relation schemas
-	 * unified relation schema
-	 * relation schema X #relation schemas
+	 * attributes
+	 * #node schemas - N
+	 * N * node schema
+	 * #relation schemas - M
+	 * M * relation schema
 	 */
 
 	// Attributes, Load the full attribute mapping.
@@ -67,7 +66,8 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	// #Node schemas
 	uint schema_count = RedisModule_LoadUnsigned(rdb);
 
-	bool already_loaded = array_len(gc->node_schemas) > 0;
+	bool already_loaded =
+		GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) > 0;
 
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
@@ -86,3 +86,4 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }
+

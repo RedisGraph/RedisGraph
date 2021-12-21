@@ -2,14 +2,13 @@ import os
 import sys
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 import social_utils
 
 redis_graph = None
 
-class testIndexScanFlow(FlowTestsBase):
+class testIndexScanFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
 
@@ -530,10 +529,10 @@ class testIndexScanFlow(FlowTestsBase):
 
 
     def test19_index_scan_numeric_accuracy(self):
-        redis_graph = Graph('g', self.env.getConnection())
+        redis_graph = Graph('large_index_values', self.env.getConnection())
 
-        redis_graph.query("CREATE INDEX  ON :L1(id)")
-        redis_graph.query("CREATE INDEX  ON :L2(id1, id2)")
+        redis_graph.query("CREATE INDEX ON :L1(id)")
+        redis_graph.query("CREATE INDEX ON :L2(id1, id2)")
         redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L1 {id: 990000000262240068 + v})")
         redis_graph.query("UNWIND range(1, 5) AS v CREATE (:L2 {id1: 990000000262240068 + v, id2: 990000000262240068 - v})")
 
