@@ -198,14 +198,9 @@ GraphContext *RdbLoadGraphContext_v11
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
-
-		// set the thread-local GraphContext
-		// as it will be accessed when creating indexes
-		QueryCtx_SetGraphCtx(gc);
 		
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
-		// index the nodes
 		for(uint i = 0; i < label_count; i++) {
 			GrB_Index nvals;
 			RG_Matrix L = Graph_GetLabelMatrix(g, i);

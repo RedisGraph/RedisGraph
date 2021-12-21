@@ -191,8 +191,6 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
-
-		// QueryCtx_SetGraphCtx(gc);
 		
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
