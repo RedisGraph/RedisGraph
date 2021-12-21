@@ -527,7 +527,6 @@ class testIndexScanFlow():
         expected_result = [[5], [5], [5], [5], [5]]
         self.env.assertEquals(result.result_set, expected_result)
 
-
     def test19_index_scan_numeric_accuracy(self):
         redis_graph = Graph('large_index_values', self.env.getConnection())
 
@@ -551,22 +550,23 @@ class testIndexScanFlow():
         expected_result = [[990000000262240069], [990000000262240070]]
         self.env.assertEquals(result.result_set, expected_result)
 
-        # test index search in cartesian product
-        result = redis_graph.query("MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        # test resetting index scan operation
+        result = redis_graph.query("MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id ORDER BY u1.id, u2.id")
         expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
         self.env.assertEquals(result.result_set, expected_result)
 
-        # test index search in cartesian product from child
-        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        # test resetting index scan operation when using the consume from child function
+        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = 990000000262240069 AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id ORDER BY u1.id, u2.id")
         expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
         self.env.assertEquals(result.result_set, expected_result)
 
-        # test index search in cartesian product from child using rebuild index
-        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = id AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id")
+        # test resetting index scan operation when rebuild index is required
+        result = redis_graph.query("MATCH (u:L1) WITH min(u.id) as id MATCH (u1:L1), (u2:L1) WHERE u1.id = id AND (u2.id = 990000000262240070 OR u2.id = 990000000262240071) RETURN u1.id, u2.id ORDER BY u1.id, u2.id")
         expected_result = [[990000000262240069, 990000000262240070], [990000000262240069, 990000000262240071]]
         self.env.assertEquals(result.result_set, expected_result)
 
-        # test index search with 2 different attributes
+        # test index scan with 2 different attributes
         result = redis_graph.query("MATCH (u:L2) WHERE u.id1 = 990000000262240069 AND u.id2 = 990000000262240067 RETURN u.id1, u.id2")
         expected_result = [[990000000262240069, 990000000262240067]]
         self.env.assertEquals(result.result_set, expected_result)
+
