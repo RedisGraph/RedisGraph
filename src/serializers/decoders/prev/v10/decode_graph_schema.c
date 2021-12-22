@@ -23,10 +23,12 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 	for(uint i = 0; i < index_count; i++) {
 		IndexType type = RedisModule_LoadUnsigned(rdb);
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
-		IndexField field;
-		IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
-				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
-		if(!already_loaded) Schema_AddIndex(&idx, s, &field, type);
+		if(!already_loaded) {
+			IndexField field;
+			IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+					INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+			Schema_AddIndex(&idx, s, &field, type);
+		}
 		RedisModule_Free(field_name);
 	}
 	if(s) {
