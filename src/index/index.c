@@ -364,6 +364,7 @@ void Index_SetLanguage
 ) {
 	ASSERT(idx != NULL);
 	ASSERT(language != NULL);
+	ASSERT(idx->language == NULL);
 
 	idx->language = rm_strdup(language);
 }
@@ -376,7 +377,8 @@ void Index_SetStopwords
 ) {
 	ASSERT(idx != NULL);
 	ASSERT(stopwords != NULL);
-	
+	ASSERT(idx->stopwords == NULL);
+
 	array_clone_with_cb(idx->stopwords, stopwords, rm_strdup);
 }
 

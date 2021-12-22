@@ -19,10 +19,9 @@ static void _RdbLoadFullTextIndex
 	 * #properties - M
 	 * M * property */
 
-	char *language = NULL;
+	Index *idx       = NULL;
+	char *language   = RedisModule_LoadStringBuffer(rdb, NULL);
 	char **stopwords = NULL;
-
-	char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
 	
 	uint stopwords_count = RedisModule_LoadUnsigned(rdb);
 	if(stopwords_count > 0) {
@@ -33,7 +32,6 @@ static void _RdbLoadFullTextIndex
 		}
 	}
 
-	Index *idx = NULL;
 	uint fields_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
@@ -42,12 +40,13 @@ static void _RdbLoadFullTextIndex
 	}
 
 	if(!already_loaded) {
-		Index_SetLanguage(idx, lang);
+		ASSERT(idx != NULL);
+		Index_SetLanguage(idx, language);
 		Index_SetStopwords(idx, stopwords);
 	}
 	
 	// free language
-	RedisModule_Free(lang);
+	RedisModule_Free(language);
 
 	// free stopwords
 	for (uint i = 0; i < stopwords_count; i++) RedisModule_Free(stopwords[i]);
