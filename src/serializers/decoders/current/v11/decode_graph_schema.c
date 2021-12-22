@@ -23,16 +23,13 @@ static void _RdbLoadFullTextIndex
 	char **stopwords = NULL;
 
 	char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
-	language = rm_strdup(lang);
-	RedisModule_Free(lang);
 	
 	uint stopwords_count = RedisModule_LoadUnsigned(rdb);
 	if(stopwords_count > 0) {
 		stopwords = array_new(char *, stopwords_count);
 		for (uint i = 0; i < stopwords_count; i++) {
 			char *stopword = RedisModule_LoadStringBuffer(rdb, NULL);
-			array_append(stopwords, rm_strdup(stopword));
-			RedisModule_Free(stopword);
+			array_append(stopwords, stopword);
 		}
 	}
 
@@ -45,15 +42,16 @@ static void _RdbLoadFullTextIndex
 	}
 
 	if(!already_loaded) {
-		idx->language = language;
-		idx->stopwords = stopwords;
-	} else {
-		rm_free(language);
-		for (uint i = 0; i < stopwords_count; i++) {
-			rm_free(stopwords[i]);
-		}
-		array_free(stopwords);
+		Index_SetLanguage(idx, lang);
+		Index_SetStopwords(idx, stopwords);
 	}
+	
+	// free language
+	RedisModule_Free(lang);
+
+	// free stopwords
+	for (uint i = 0; i < stopwords_count; i++) RedisModule_Free(stopwords[i]);
+	array_free(stopwords);
 }
 
 static void _RdbLoadExactMatchIndex
