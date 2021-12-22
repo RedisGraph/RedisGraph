@@ -14,9 +14,10 @@ static void _RdbLoadFullTextIndex
 ) {
 	/* Format:
 	 * language
-	 * stopword
-	 * #properties
-	 * indexed property X M */
+	 * #stopwords - N
+	 * N * stopword
+	 * #properties - M
+	 * M * property */
 
 	char *language = NULL;
 	char **stopwords = NULL;
@@ -62,8 +63,8 @@ static void _RdbLoadExactMatchIndex
 	bool already_loaded
 ) {
 	/* Format:
-	 * #properties
-	 * indexed property X M */
+	 * #properties - M
+	 * M * property */
 
 	Index *idx = NULL;
 	uint fields_count = RedisModule_LoadUnsigned(rdb);
@@ -87,8 +88,6 @@ static Schema *_RdbLoadSchema
 	 * index type
 	 * index data */
 
-	char *language = NULL;
-	char **stopwords = NULL;
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
 	Schema *s = already_loaded ? NULL : Schema_New(type, id, name);
@@ -98,12 +97,16 @@ static Schema *_RdbLoadSchema
 	for (uint index = 0; index < index_count; index++) {
 		IndexType index_type = RedisModule_LoadUnsigned(rdb);
 
-		if(index_type == IDX_FULLTEXT) {
-			_RdbLoadFullTextIndex(rdb, s, already_loaded);
-		} else if(index_type == IDX_EXACT_MATCH) {
-			_RdbLoadExactMatchIndex(rdb, s, already_loaded);
-		} else {
-			ASSERT(false);
+		switch(index_type) {
+			case IDX_FULLTEXT:
+				_RdbLoadFullTextIndex(rdb, s, already_loaded);
+				break;
+			case IDX_EXACT_MATCH:
+				_RdbLoadExactMatchIndex(rdb, s, already_loaded);
+				break;
+			default:
+				ASSERT(false);
+				break;
 		}
 	}
 
