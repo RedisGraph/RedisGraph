@@ -63,8 +63,8 @@ unsigned short Schema_IndexCount
 	ASSERT(s != NULL);
 	unsigned short n = 0;
 
-	if(s->index) n += Index_FieldsCount(s->index);
-	if(s->fulltextIdx) n += Index_FieldsCount(s->fulltextIdx);
+	if(s->index) n += 1;
+	if(s->fulltextIdx) n += 1;
 
 	return n;
 }

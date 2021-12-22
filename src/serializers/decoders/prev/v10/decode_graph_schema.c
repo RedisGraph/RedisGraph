@@ -6,61 +6,33 @@
 
 #include "decode_v10.h"
 
-static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
+static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_loaded) {
 	/* Format:
 	 * id
 	 * name
 	 * #indices
-	 * index type
-	 * language if fulltext index
-	 * stopword if fullext index
-	 * #properties
-	 * indexed property X M */
+	 * (index type, indexed property) X M */
 
-	char *language = NULL;
-	char **stopwords = NULL;
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
-	Schema *s = Schema_New(type, id, name);
+	Schema *s = already_loaded ? NULL : Schema_New(type, id, name);
 	RedisModule_Free(name);
 
-	uint index_count     = RedisModule_LoadUnsigned(rdb);
-	while (index_count > 0) {
-		IndexType index_type = RedisModule_LoadUnsigned(rdb);
-
-		if(index_type == IDX_FULLTEXT) {
-			char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
-			language = rm_strdup(lang);
-			RedisModule_Free(lang);
-			
-			uint stopwords_count = RedisModule_LoadUnsigned(rdb);
-			if(stopwords_count > 0) {
-				stopwords = array_new(char *, stopwords_count);
-				for (uint i = 0; i < stopwords_count; i++) {
-					char *stopword = RedisModule_LoadStringBuffer(rdb, NULL);
-					array_append(stopwords, rm_strdup(stopword));
-					RedisModule_Free(stopword);
-				}
-			}
-		}
-
-		Index *idx = NULL;
-		uint fields_count = RedisModule_LoadUnsigned(rdb);
-		for(uint i = 0; i < fields_count; i++) {
-			char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
-			IndexField field;
-			IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
+	Index *idx = NULL;
+	uint index_count = RedisModule_LoadUnsigned(rdb);
+	for(uint i = 0; i < index_count; i++) {
+		IndexType type = RedisModule_LoadUnsigned(rdb);
+		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
+		IndexField field;
+		IndexField_New(&field, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
-			Schema_AddIndex(&idx, s, &field, index_type);
-			RedisModule_Free(field_name);
-		}
-
-		if(index_type == IDX_FULLTEXT) {
-			Index_SetLanguage(idx, language);
-			Index_SetStopwords(idx, stopwords);
-		}
-
-		index_count -= fields_count;
+		if(!already_loaded) Schema_AddIndex(&idx, s, &field, type);
+		RedisModule_Free(field_name);
+	}
+	if(s) {
+		// no entities are expected to be in the graph in this point in time
+		if(s->index) Index_Construct(s->index);
+		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 	}
 
 	return s;
@@ -82,12 +54,11 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 
 void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
-	 * attribute keys (unified schema)
-	 * #node schemas
-	 * node schema X #node schemas
-	 * #relation schemas
-	 * unified relation schema
-	 * relation schema X #relation schemas
+	 * attributes
+	 * #node schemas - N
+	 * N * node schema
+	 * #relation schemas - M
+	 * M * relation schema
 	 */
 
 	// Attributes, Load the full attribute mapping.
@@ -96,10 +67,14 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	// #Node schemas
 	uint schema_count = RedisModule_LoadUnsigned(rdb);
 
+	bool already_loaded =
+		GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) > 0;
+
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		array_append(gc->node_schemas, _RdbLoadSchema(rdb, SCHEMA_NODE));
+		Schema *s = _RdbLoadSchema(rdb, SCHEMA_NODE, already_loaded);
+		if(!already_loaded) array_append(gc->node_schemas, s);
 	}
 
 	// #Edge schemas
@@ -108,6 +83,7 @@ void RdbLoadGraphSchema_v10(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each edge schema
 	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		array_append(gc->relation_schemas, _RdbLoadSchema(rdb, SCHEMA_EDGE));
+		Schema *s = _RdbLoadSchema(rdb, SCHEMA_EDGE, already_loaded);
+		if(!already_loaded) array_append(gc->relation_schemas, s);
 	}
 }

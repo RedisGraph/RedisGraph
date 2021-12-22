@@ -12,6 +12,7 @@ static GraphContext *_GetOrCreateGraphContext
 ) {
 	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
+		// New graph is being decoded. Inform the module and create new graph context.
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
@@ -57,6 +58,7 @@ static GraphContext *_DecodeHeader
 	// Relation matrix count - N
 	// Does relationship matrix Ri holds mutiple edges under a single entry X N
 	// Number of graph keys (graph context key + meta keys)
+	// Schema
 
 	// graph name
 	char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
@@ -94,6 +96,9 @@ static GraphContext *_DecodeHeader
 
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	}
+
+	// decode graph schemas
+	RdbLoadGraphSchema_v11(rdb, gc);
 
 	return gc;
 }
@@ -167,7 +172,7 @@ GraphContext *RdbLoadGraphContext_v11
 				RdbLoadDeletedEdges_v11(rdb, gc, payload.entities_count);
 				break;
 			case ENCODE_STATE_GRAPH_SCHEMA:
-				RdbLoadGraphSchema_v11(rdb, gc);
+				// skip, handled in _DecodeHeader
 				break;
 			default:
 				ASSERT(false && "Unknown encoding");
@@ -194,40 +199,27 @@ GraphContext *RdbLoadGraphContext_v11
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 		Graph_ApplyAllPending(g, true);
-
-		// set the thread-local GraphContext
-		// as it will be accessed when creating indexes
-		QueryCtx_SetGraphCtx(gc);
 		
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
-		// index the nodes
 		for(uint i = 0; i < label_count; i++) {
 			GrB_Index nvals;
 			RG_Matrix L = Graph_GetLabelMatrix(g, i);
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
-
-			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) Index_Construct(s->index);
-			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
-
-		uint relation_count = Graph_RelationTypeCount(g);
- 		for(uint i = 0; i < relation_count; i++) {
- 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
- 			if(s->index) Index_Construct(s->index);
- 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
- 		}
 
 		// make sure graph doesn't contains may pending changes
 		ASSERT(Graph_Pending(g) == false);
 
-		QueryCtx_Free(); // release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
 
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
+
+	// release thread-local variables
+	QueryCtx_Free();
+
 	return gc;
 }

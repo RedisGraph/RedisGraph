@@ -170,18 +170,18 @@ const char *Index_GetLanguage
 	const Index *idx
 );
 
-// set indexed language
-void Index_SetLanguage
-(
-	Index *idx,
-	char *language
-);
-
 // returns indexed stopwords
 char **Index_GetStopwords
 (
 	const Index *idx,
 	size_t *size
+);
+
+// set indexed language
+void Index_SetLanguage
+(
+	Index *idx,
+	const char *language
 );
 
 // set indexed stopwords

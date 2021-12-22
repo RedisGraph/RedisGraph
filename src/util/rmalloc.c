@@ -6,7 +6,6 @@
 
 #include "rmalloc.h"
 #include "../errors.h"
-#include "branch_pred.h"
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
@@ -41,7 +40,7 @@ static inline void _nmalloc_decrement(int64_t n_bytes) {
 static inline void _nmalloc_increment(int64_t n_bytes) {
 	n_alloced += n_bytes;
 	// check if capacity exceeded
-	if(unlikely(n_alloced > mem_capacity)) {
+	if(n_alloced > mem_capacity) {
 		// set n_alloced to MIN to avoid further out of memory exceptions
 		// TODO: consider switching to double -inf
 		n_alloced = INT64_MIN;
