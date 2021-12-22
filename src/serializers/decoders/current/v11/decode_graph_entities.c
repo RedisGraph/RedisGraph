@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_v10.h"
+#include "decode_v11.h"
 
 // forward declarations
 static SIValue _RdbLoadPoint(RedisModuleIO *rdb);
@@ -90,7 +90,7 @@ static void _RdbLoadEntity
 	}
 }
 
-void RdbLoadNodes_v10
+void RdbLoadNodes_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -119,12 +119,20 @@ void RdbLoadNodes_v10
 		Serializer_Graph_SetNode(gc->g, id, labels, nodeLabelCount, &n);
 
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
+
+		// introduce n to each relevant index
+		for (int i = 0; i < nodeLabelCount; i++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
+			ASSERT(s != NULL);
+			if(s->index) Index_IndexNode(s->index, &n);
+			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
+		}
 	}
 
 	Serializer_Graph_SetNodeLabels(gc->g);
 }
 
-void RdbLoadDeletedNodes_v10
+void RdbLoadDeletedNodes_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -138,7 +146,7 @@ void RdbLoadDeletedNodes_v10
 	}
 }
 
-void RdbLoadEdges_v10
+void RdbLoadEdges_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -164,10 +172,16 @@ void RdbLoadEdges_v10
 				gc->decoding_context->multi_edge[relation], edgeId, srcId,
 				destId, relation, &e);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
+
+		// index edge
+		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
+		ASSERT(s != NULL);
+		if(s->index) Index_IndexEdge(s->index, &e);
+		if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
 	}
 }
 
-void RdbLoadDeletedEdges_v10
+void RdbLoadDeletedEdges_v11
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
