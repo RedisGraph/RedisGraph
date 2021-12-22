@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -86,6 +86,7 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	}
 
+	// decode graph schemas
 	RdbLoadGraphSchema_v10(rdb, gc);
 
 	return gc;
@@ -204,12 +205,14 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 		// make sure graph doesn't contains may pending changes
 		ASSERT(Graph_Pending(g) == false);
 
-		QueryCtx_Free(); // release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
 
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
+
+	// release thread-local variables
+	QueryCtx_Free();
 
 	return gc;
 }

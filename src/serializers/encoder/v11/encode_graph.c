@@ -57,6 +57,7 @@ static void _RdbSaveHeader
 	// number of keys
 	RedisModule_SaveUnsigned(rdb, header->key_count);
 
+	// save graph schemas
 	RdbSaveGraphSchema_v11(rdb, gc);
 }
 

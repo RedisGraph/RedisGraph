@@ -1,12 +1,17 @@
 /*
-* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+* Copyright 2018-2021 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "decode_v11.h"
 
-static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_loaded) {
+static Schema *_RdbLoadSchema
+(
+	RedisModuleIO *rdb,
+	SchemaType type,
+	bool already_loaded
+) {
 	/* Format:
 	 * id
 	 * name
@@ -24,7 +29,7 @@ static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type, bool already_
 	Schema *s = already_loaded ? NULL : Schema_New(type, id, name);
 	RedisModule_Free(name);
 
-	uint index_count     = RedisModule_LoadUnsigned(rdb);
+	uint index_count = RedisModule_LoadUnsigned(rdb);
 	while (index_count > 0) {
 		IndexType index_type = RedisModule_LoadUnsigned(rdb);
 
