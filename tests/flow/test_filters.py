@@ -5,7 +5,7 @@ class testFilters():
     def __init__(self):
         self.env = Env(decodeResponses=True)
 
-    def test01_filter_with_complex_predicate(self):
+    def test01_filter_with_different_predicates(self):
         g = Graph("g", self.env.getConnection())
         g.query("UNWIND range(1, 5) AS x CREATE (:N { v: x, b: x % 2 = 0 })")
 
