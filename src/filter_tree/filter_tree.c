@@ -667,35 +667,7 @@ static bool _FilterTree_Compact_XOr(FT_FilterNode *node, bool xnor) {
 		FilterTree_Free(rhs);
 		return true;
 	} else {
-		// only one of the nodes is constant, find and evaluate
-		FT_FilterNode *const_node = is_lhs_const ? lhs : rhs;
-		FT_FilterNode *non_const_node = is_lhs_const ? rhs : lhs;
-
-		// evaluate constant
-		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
-
-		bool constant_is_true = SIValue_IsTrue(const_value);
-
-		// invert the result if we are performing XNOR
-		if(xnor) final_value = !final_value;
-
-		// if constant is true, everything is true
-		if(constant_is_true) {
-			*node = *const_node;
-			// free const node allocation, without free the data
-			rm_free(const_node);
-			// free non const node completely
-			FilterTree_Free(non_const_node);
-			return true;
-		} else {
-			// const value is false, current node should be replaced with the non const node
-			*node = *non_const_node;
-			// free non const node allocation, without free the data
-			rm_free(non_const_node);
-			// free const node completely
-			FilterTree_Free(const_node);
-			return false;
-		}
+		return false;
 	}
 }
 
