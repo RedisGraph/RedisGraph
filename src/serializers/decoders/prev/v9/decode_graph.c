@@ -215,12 +215,14 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 		// make sure graph doesn't contains may pending changes
 		ASSERT(Graph_Pending(g) == false);
 
-		QueryCtx_Free(); // release thread-local variables
 		GraphDecodeContext_Reset(gc->decoding_context);
 
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
+	
+	// release thread-local variables
+	QueryCtx_Free();
 
 	return gc;
 }

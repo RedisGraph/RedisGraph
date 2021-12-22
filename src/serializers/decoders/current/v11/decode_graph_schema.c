@@ -6,6 +6,74 @@
 
 #include "decode_v11.h"
 
+static void _RdbLoadFullTextIndex
+(
+	RedisModuleIO *rdb,
+	Schema *s,
+	bool already_loaded
+) {
+	/* Format:
+	 * language
+	 * stopword
+	 * #properties
+	 * indexed property X M */
+
+	char *language = NULL;
+	char **stopwords = NULL;
+
+	char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
+	language = rm_strdup(lang);
+	RedisModule_Free(lang);
+	
+	uint stopwords_count = RedisModule_LoadUnsigned(rdb);
+	if(stopwords_count > 0) {
+		stopwords = array_new(char *, stopwords_count);
+		for (uint i = 0; i < stopwords_count; i++) {
+			char *stopword = RedisModule_LoadStringBuffer(rdb, NULL);
+			array_append(stopwords, rm_strdup(stopword));
+			RedisModule_Free(stopword);
+		}
+	}
+
+	Index *idx = NULL;
+	uint fields_count = RedisModule_LoadUnsigned(rdb);
+	for(uint i = 0; i < fields_count; i++) {
+		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
+		if(!already_loaded) Schema_AddIndex(&idx, s, field, IDX_FULLTEXT);
+		RedisModule_Free(field);
+	}
+
+	if(!already_loaded) {
+		idx->language = language;
+		idx->stopwords = stopwords;
+	} else {
+		rm_free(language);
+		for (uint i = 0; i < stopwords_count; i++) {
+			rm_free(stopwords[i]);
+		}
+		array_free(stopwords);
+	}
+}
+
+static void _RdbLoadExactMatchIndex
+(
+	RedisModuleIO *rdb,
+	Schema *s,
+	bool already_loaded
+) {
+	/* Format:
+	 * #properties
+	 * indexed property X M */
+
+	Index *idx = NULL;
+	uint fields_count = RedisModule_LoadUnsigned(rdb);
+	for(uint i = 0; i < fields_count; i++) {
+		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
+		if(!already_loaded) Schema_AddIndex(&idx, s, field, IDX_EXACT_MATCH);
+		RedisModule_Free(field);
+	}
+}
+
 static Schema *_RdbLoadSchema
 (
 	RedisModuleIO *rdb,
@@ -17,10 +85,7 @@ static Schema *_RdbLoadSchema
 	 * name
 	 * #indices
 	 * index type
-	 * language if fulltext index
-	 * stopword if fullext index
-	 * #properties
-	 * indexed property X M */
+	 * index data */
 
 	char *language = NULL;
 	char **stopwords = NULL;
@@ -30,42 +95,16 @@ static Schema *_RdbLoadSchema
 	RedisModule_Free(name);
 
 	uint index_count = RedisModule_LoadUnsigned(rdb);
-	while (index_count > 0) {
+	for (uint index = 0; index < index_count; index++) {
 		IndexType index_type = RedisModule_LoadUnsigned(rdb);
 
 		if(index_type == IDX_FULLTEXT) {
-			char *lang = RedisModule_LoadStringBuffer(rdb, NULL);
-			if(!already_loaded) language = rm_strdup(lang);
-			RedisModule_Free(lang);
-			
-			uint stopwords_count = RedisModule_LoadUnsigned(rdb);
-			if(stopwords_count > 0) {
-				if(!already_loaded)
-					stopwords = array_new(char *, stopwords_count);
-				for (uint i = 0; i < stopwords_count; i++) {
-					char *stopword = RedisModule_LoadStringBuffer(rdb, NULL);
-					if(!already_loaded)
-						array_append(stopwords, rm_strdup(stopword));
-					RedisModule_Free(stopword);
-				}
-			}
+			_RdbLoadFullTextIndex(rdb, s, already_loaded);
+		} else if(index_type == IDX_EXACT_MATCH) {
+			_RdbLoadExactMatchIndex(rdb, s, already_loaded);
+		} else {
+			ASSERT(false);
 		}
-
-		Index *idx = NULL;
-		uint fields_count = RedisModule_LoadUnsigned(rdb);
-		for(uint i = 0; i < fields_count; i++) {
-			char *field = RedisModule_LoadStringBuffer(rdb, NULL);
-			if(!already_loaded)
-				Schema_AddIndex(&idx, s, field, index_type);
-			RedisModule_Free(field);
-		}
-
-		if(index_type == IDX_FULLTEXT && !already_loaded) {
-			idx->language = language;
-			idx->stopwords = stopwords;
-		}
-
-		index_count -= fields_count;
 	}
 
 	if(s) {
