@@ -180,7 +180,7 @@ static bool _predicateTreeToRange
 	// constant is either numeric or boolean
 	if(t & SI_NUMERIC || t == T_BOOL) {
 		// TODO: remove when RediSearch INT64 indexing bug fixed
-		if(t == T_INT64 && c.longval & ~0xFFFFFFFFFFFFF) {
+		if(t == T_INT64 && (c.longval) & 0x7FF0000000000000) {
 			return false;
 		}
 		nr = raxFind(numeric_ranges, (unsigned char *)prop, prop_len);
@@ -485,7 +485,7 @@ static bool _FilterTreePredicateToQueryNode
 			case OP_EQUAL:  // ==
 				node = RediSearch_CreateNumericNode(idx, field, d, d, true, true);
 				// TODO: remove when RediSearch INT64 indexing bug fixed
-				if(t == T_INT64 && v.longval & ~0xFFFFFFFFFFFFF) {
+				if(t == T_INT64 && (v.longval) & 0x7FF0000000000000) {
 					res = false;
 				}
 				break;
