@@ -356,6 +356,32 @@ char **Index_GetStopwords
 	return NULL;
 }
 
+// set indexed language
+void Index_SetLanguage
+(
+	Index *idx,
+	const char *language
+) {
+	ASSERT(idx != NULL);
+	ASSERT(language != NULL);
+	ASSERT(idx->language == NULL);
+
+	idx->language = rm_strdup(language);
+}
+
+// set indexed stopwords
+void Index_SetStopwords
+(
+	Index *idx,
+	char **stopwords
+) {
+	ASSERT(idx != NULL);
+	ASSERT(stopwords != NULL);
+	ASSERT(idx->stopwords == NULL);
+
+	array_clone_with_cb(idx->stopwords, stopwords, rm_strdup);
+}
+
 // free index
 void Index_Free(Index *idx) {
 	ASSERT(idx != NULL);

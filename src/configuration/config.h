@@ -34,14 +34,15 @@ typedef enum {
 typedef void (*Config_on_change)(Config_Option_Field type);
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 5
+#define RUNTIME_CONFIG_COUNT 6
 static const Config_Option_Field RUNTIME_CONFIGS[] =
 {
 	Config_RESULTSET_MAX_SIZE,
 	Config_TIMEOUT,
 	Config_MAX_QUEUED_QUERIES,
 	Config_QUERY_MEM_CAPACITY,
-	Config_DELTA_MAX_PENDING_CHANGES
+	Config_DELTA_MAX_PENDING_CHANGES,
+	Config_VKEY_MAX_ENTITY_COUNT
 };
 
 // Set module-level configurations to defaults or to user arguments where provided.
