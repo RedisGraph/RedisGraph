@@ -32,6 +32,8 @@ static AST_Operator _NegateOperator(AST_Operator op) {
 			return OP_OR;
 		case OP_XOR:
 			return OP_XNOR;
+		case OP_XNOR:
+			return OP_XOR;
 		case OP_OR:
 			return OP_AND;
 		case OP_EQUAL:
@@ -141,9 +143,9 @@ FT_FilterNode *FilterTree_Combine(FT_FilterNode **filters, uint count) {
 	if(count > 0) {
 		root = filters[0];
 		for(uint i = 1; i < count; i++) {
-			FT_FilterNode * and = FilterTree_CreateConditionFilter(OP_AND);
-			FilterTree_AppendLeftChild( and, root);
-			FilterTree_AppendRightChild( and, filters[i]);
+			FT_FilterNode *and = FilterTree_CreateConditionFilter(OP_AND);
+			FilterTree_AppendLeftChild(and, root);
+			FilterTree_AppendRightChild(and, filters[i]);
 			root = and;
 		}
 	}
@@ -259,7 +261,7 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 				retval = FILTER_FAIL;
 			}
 
-			SIValue_Free(res); // If this was a heap allocation, free it.
+			SIValue_Free(res); // If res was a heap allocation, free it.
 			return retval;
 		}
 		default:
@@ -534,7 +536,7 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 	if(!is_lhs_const && !is_rhs_const) return false;
 	// In every case from now, there will be a reduction, save the children in local placeholders for current node in-place modifications.
 	FT_FilterNode *lhs = node->cond.left;
-	FT_FilterNode *rhs = node->cond.right ;
+	FT_FilterNode *rhs = node->cond.right;
 	// Both children are constants. This node can be set as constant expression.
 	if(is_lhs_const && is_rhs_const) {
 		// Both children are now contant expressions. We can evaluate and compact.
@@ -646,15 +648,19 @@ static bool _FilterTree_Compact_XOr(FT_FilterNode *node, bool xnor) {
 		// both children are now contant expressions, evaluate and compact
 		final_value = SIValue_IsTrue(AR_EXP_Evaluate(rhs->exp.exp, NULL));
 		if(final_value) {
+			// RHS is true
+			// TRUE if LHS is false
 			final_value = SIValue_IsFalse(AR_EXP_Evaluate(lhs->exp.exp, NULL));
 		} else {
+			// RHS is false
+			// TRUE if LHS is true
 			final_value = SIValue_IsTrue(AR_EXP_Evaluate(lhs->exp.exp, NULL));
 		}
 
 		// invert the result if we are performing XNOR
 		if(xnor) final_value = !final_value;
 
-		// final value is XOR operation on lhs and rhs - reducing an OR node
+		// final value is XOR operation on lhs and rhs - reducing an XOR node
 		// in place set the node to be an expression node
 		_FilterTree_In_Place_Set_Exp(node, SI_BoolVal(final_value));
 		FilterTree_Free(lhs);
