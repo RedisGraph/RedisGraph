@@ -6,7 +6,11 @@
 
 #include "encode_v11.h"
 
-static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbSaveAttributeKeys
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc
+) {
 	/* Format:
 	 * #attribute keys
 	 * attribute keys
@@ -20,7 +24,18 @@ static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-static inline void _RdbSaveFullTextIndexData(RedisModuleIO *rdb, Index *idx) {
+static inline void _RdbSaveFullTextIndexData
+(
+	RedisModuleIO *rdb,
+	Index *idx
+) {
+	/* Format:
+	 * language
+	 * #stopwords - N
+	 * N * stopword
+	 * #properties - M
+	 * M * property */
+
 	// encode language
 	const char *language = Index_GetLanguage(idx);
 	RedisModule_SaveStringBuffer(rdb, language, strlen(language) + 1);
@@ -49,24 +64,45 @@ static inline void _RdbSaveFullTextIndexData(RedisModuleIO *rdb, Index *idx) {
 	}
 }
 
-static inline void _RdbSaveExactMatchIndex(RedisModuleIO *rdb, Index *idx) {
+static inline void _RdbSaveExactMatchIndex
+(
+	RedisModuleIO *rdb,
+	SchemaType type,
+	Index *idx
+) {
+	/* Format:
+	 * #properties - M
+	 * M * property */
+
 	uint fields_count = Index_FieldsCount(idx);
+
+	// in case of encoding edge index _src_id and _dest_id fields added by default
+	uint encode_fields_count = type == SCHEMA_EDGE ? fields_count - 2 : fields_count;
+
 	// encode field count
-	RedisModule_SaveUnsigned(rdb, fields_count);
+	RedisModule_SaveUnsigned(rdb, encode_fields_count);
 	for(uint i = 0; i < fields_count; i++) {
+		char *field_name = idx->fields[i].name;
+
+		// in case of decoding edge index _src_id and _dest_id fields added by default
+		if(type == SCHEMA_EDGE && 
+		   (strcmp(field_name, "_src_id") == 0 ||
+		    strcmp(field_name, "_dest_id") == 0)) continue;
+
 		// encode field
-		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
+		RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);
 	}
 }
 
-static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
+static inline void _RdbSaveIndexData
+(
+	RedisModuleIO *rdb,
+	SchemaType type,
+	Index *idx
+) {
 	/* Format:
 	 * type
-	 * language
-	 * #stopwords
-	 * stopword X M
-	 * #fields
-	 * (field name, field weight, field nostem, field phonetic) X M */
+	 * index data */
 
 	if(!idx) return;
 
@@ -74,7 +110,7 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 	RedisModule_SaveUnsigned(rdb, idx->type);
 
 	if(idx->type == IDX_FULLTEXT) _RdbSaveFullTextIndexData(rdb, idx);
-	else _RdbSaveExactMatchIndex(rdb, idx);	
+	else _RdbSaveExactMatchIndex(rdb, type, idx);
 }
 
 static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
@@ -94,10 +130,10 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	RedisModule_SaveUnsigned(rdb, Schema_IndexCount(s));
 
 	// Exact match indices.
-	_RdbSaveIndexData(rdb, s->index);
+	_RdbSaveIndexData(rdb, s->type, s->index);
 
 	// Fulltext indices.
-	_RdbSaveIndexData(rdb, s->fulltextIdx);
+	_RdbSaveIndexData(rdb, s->type, s->fulltextIdx);
 }
 
 void RdbSaveGraphSchema_v11(RedisModuleIO *rdb, GraphContext *gc) {

@@ -187,6 +187,7 @@ class testIndexUpdatesFlow(FlowTestsBase):
         redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "DROP INDEX ON :label_a(group)")
         # Add a full-text index on the property
         result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('label_a', 'group')")
+        self.env.assertEquals(result.indices_created, 1)
 
         # Modify the values of the property
         result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group C' SET a.group = 'Group NEW'")
