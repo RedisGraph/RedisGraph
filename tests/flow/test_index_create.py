@@ -68,7 +68,7 @@ class testIndexCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.indices_created, 1)
 
         try:
-            # create an index over L1:v4 with stopwords should failed
+            # try to create an index, without specifying the label
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ stopwords: ['The'] }, 'v4')")
             assert(False)
         except ResponseError as e:
@@ -98,6 +98,7 @@ class testIndexCreationFlow(FlowTestsBase):
 
         try:
             # create an index over L3:v1 with stopwords should failed
+            # stopwords must be provided as an array of strings
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L3', stopwords: 'The' }, 'v1')")
             assert(False)
         except ResponseError as e:
@@ -105,13 +106,14 @@ class testIndexCreationFlow(FlowTestsBase):
 
         try:
             # create an index over L3:v1 with language should failed
+            # language must be provided as a string
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L3', language: ['english'] }, 'v1')")
             assert(False)
         except ResponseError as e:
             self.env.assertIn("Language must be string", str(e))
 
         try:
-            # create an index over L3 should failed
+            # create an index over L3 should failed, missing field(s)
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { })")
             assert(False)
         except ResponseError as e:
@@ -119,6 +121,7 @@ class testIndexCreationFlow(FlowTestsBase):
 
         try:
             # create an index over L3:v1 with weight of type string should failed
+            # weight must be provided as numeric
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', weight: '1' })")
             assert(False)
         except ResponseError as e:
@@ -126,6 +129,7 @@ class testIndexCreationFlow(FlowTestsBase):
 
         try:
             # create an index over L3:v1 with nostem of type string should failed
+            # nostem must be boolean
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', nostem: 'true' })")
             assert(False)
         except ResponseError as e:
@@ -133,11 +137,11 @@ class testIndexCreationFlow(FlowTestsBase):
         
         try:
             # create an index over L3:v1 with phonetic of type bool should failed
+            # phonetic must be a string
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex('L3', { field: 'v1', phonetic: true })")
             assert(False)
         except ResponseError as e:
             self.env.assertIn("Phonetic must be a string", str(e))
-
 
     def test03_multi_prop_index_creation(self):
         # create an index over person:age and person:name
@@ -168,3 +172,4 @@ class testIndexCreationFlow(FlowTestsBase):
         # create an index over follow:prop1 and follow:prop2
         result = redis_graph.query("CREATE INDEX FOR ()-[r:follow]-() ON (r.prop1, r.prop2)")
         self.env.assertEquals(result.indices_created, 2)
+
