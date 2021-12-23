@@ -50,6 +50,10 @@ static ProcedureResult _validateIndexConfigMap
 		}
 	}
 
+	//--------------------------------------------------------------------------
+	// validate stopwords
+	//--------------------------------------------------------------------------
+
 	if(stopword_exists) {
 		if(SI_TYPE(sw) == T_ARRAY) {
 			uint stopwords_count = SIArray_Length(sw);
@@ -65,6 +69,10 @@ static ProcedureResult _validateIndexConfigMap
 			return PROCEDURE_ERR;
 		}
 	}
+
+	//--------------------------------------------------------------------------
+	// validate language
+	//--------------------------------------------------------------------------
 
 	if(lang_exists) {
 		if(SI_TYPE(lang) != T_STRING) {
@@ -92,8 +100,7 @@ static ProcedureResult _validateFieldConfigMap
 	SIValue nostem;
 	SIValue phonetic;
 
-	bool multi_config    = Map_KeyCount(config) > 1;
-
+	bool  multi_config     = Map_KeyCount(config) > 1;
 	bool  field_exists     =  MAP_GET(config,  "field",     field);
 	bool  weight_exists    =  MAP_GET(config,  "weight",    weight);
 	bool  nostem_exists    =  MAP_GET(config,  "nostem",    nostem);
@@ -150,6 +157,8 @@ static ProcedureResult _validateFieldConfigMap
 
 // CALL db.idx.fulltext.createNodeIndex(label, fields...)
 // CALL db.idx.fulltext.createNodeIndex('book', 'title', 'authors')
+// CALL db.idx.fulltext.createNodeIndex({label:'L', stopwords:['The']}, 'v')
+// CALL db.idx.fulltext.createNodeIndex('L', {field:'v', weight:2.1})
 ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 (
 	ProcedureCtx *ctx,
@@ -195,7 +204,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 		}
 	}
 
-	// create full-text index
+	// validation passed, create full-text index
 	SIValue sw;    // index stopwords
 	SIValue lang;  // index language
 
@@ -238,13 +247,12 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 			char **stopwords = array_new(char*, stopwords_count);
 			for (uint i = 0; i < stopwords_count; i++) {
 				SIValue stopword = SIArray_Get(sw, i);
-				array_append(stopwords, rm_strdup(stopword.stringval));
+				array_append(stopwords, stopword.stringval);
 			}
 			Index_SetStopwords(idx, stopwords);
+			array_free(stopwords);
 		}
-		if(lang_exists) {
-			Index_SetLanguage(idx, rm_strdup(lang.stringval));
-		}
+		if(lang_exists) Index_SetLanguage(idx, lang.stringval);
 	}
 
 	// build index
@@ -258,7 +266,6 @@ SIValue *Proc_FulltextCreateNodeIdxStep(ProcedureCtx *ctx) {
 }
 
 ProcedureResult Proc_FulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
-	// Clean up.
 	return PROCEDURE_OK;
 }
 
