@@ -76,12 +76,14 @@ RSDoc *Index_IndexGraphEntity
 	const char *none_indexable_fields[field_count]; // none indexed fields
 
 	// create a document out of node
-	RSDoc *doc = RediSearch_CreateDocument2(key, key_len, rsIdx, score, idx->language);
+	RSDoc *doc = RediSearch_CreateDocument2(key, key_len, rsIdx, score,
+			idx->language);
 
 	// add document field for each indexed property
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < field_count; i++) {
 			field = idx->fields + i;
+			const char *field_name = field->name;
 			v = GraphEntity_GetProperty(e, field->id);
 			if(v == PROPERTY_NOTFOUND) continue;
 
@@ -90,13 +92,14 @@ RSDoc *Index_IndexGraphEntity
 			// value must be of type string
 			if(t == T_STRING) {
 				*doc_field_count += 1;
-				RediSearch_DocumentAddFieldString(doc, field->name, v->stringval,
+				RediSearch_DocumentAddFieldString(doc, field_name, v->stringval,
 						strlen(v->stringval), RSFLDTYPE_FULLTEXT);
 			}
 		}
 	} else {
 		for(uint i = 0; i < field_count; i++) {
 			field = &idx->fields[i];
+			const char *field_name = field->name;
 			v = GraphEntity_GetProperty(e, field->id);
 			if(v == PROPERTY_NOTFOUND) continue;
 
@@ -104,21 +107,21 @@ RSDoc *Index_IndexGraphEntity
 
 			*doc_field_count += 1;
 			if(t == T_STRING) {
-				RediSearch_DocumentAddFieldString(doc, field->name, v->stringval,
+				RediSearch_DocumentAddFieldString(doc, field_name, v->stringval,
 						strlen(v->stringval), RSFLDTYPE_TAG);
 			} else if(t & (SI_NUMERIC | T_BOOL)) {
 				double d = SI_GET_NUMERIC(*v);
-				RediSearch_DocumentAddFieldNumber(doc, field->name, d,
+				RediSearch_DocumentAddFieldNumber(doc, field_name, d,
 						RSFLDTYPE_NUMERIC);
 			} else if(t == T_POINT) {
 				double lat = (double)Point_lat(*v);
 				double lon = (double)Point_lon(*v);
-				RediSearch_DocumentAddFieldGeo(doc, field->name, lat, lon,
+				RediSearch_DocumentAddFieldGeo(doc, field_name, lat, lon,
 						RSFLDTYPE_GEO);
 			} else {
 				// none indexable field
 				none_indexable_fields[none_indexable_fields_count++] =
-					field->name;
+					field_name;
 			}
 		}
 
@@ -160,19 +163,17 @@ void IndexField_New
 	bool nostem,
 	const char *phonetic
 ) {
-	ASSERT(name != NULL);
-	ASSERT(field != NULL);
-	ASSERT(phonetic != NULL);
+	ASSERT(name      !=  NULL);
+	ASSERT(field     !=  NULL);
+	ASSERT(phonetic  !=  NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	field->id = GraphContext_FindOrAddAttribute(gc, name);
+
+	field->id       = GraphContext_FindOrAddAttribute(gc, name);
 	field->name     = rm_strdup(name);
 	field->weight   = weight;
 	field->nostem   = nostem;
-
-	field->phonetic = (strcmp(phonetic, INDEX_FIELD_DEFAULT_PHONETIC) == 0)
-		? INDEX_FIELD_DEFAULT_PHONETIC 
-		: rm_strdup(phonetic);
+	field->phonetic = rm_strdup(phonetic);
 }
 
 void IndexField_Free
@@ -182,9 +183,7 @@ void IndexField_Free
 	ASSERT(field != NULL);
 
 	rm_free(field->name);
-	if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
-		rm_free(field->phonetic);
-	}
+	rm_free(field->phonetic);
 }
 
 // create a new index
@@ -229,11 +228,11 @@ void Index_RemoveField
 	const char *field
 ) {
 	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
 	ASSERT(attribute_id != ATTRIBUTE_NOTFOUND);
-	if(!Index_ContainsAttribute(idx, attribute_id)) return;
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
@@ -282,7 +281,7 @@ void Index_Construct
 	uint fields_count = array_len(idx->fields);
 	if(idx->type == IDX_FULLTEXT) {
 		for(uint i = 0; i < fields_count; i++) {
-			IndexField *field = idx->fields+i;
+			IndexField *field = idx->fields + i;
 			// introduce text field
 			unsigned options = RSFLDOPT_NONE;
 			if(field->nostem) options |= RSFLDOPT_TXTNOSTEM;
