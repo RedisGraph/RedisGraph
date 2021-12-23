@@ -21,27 +21,26 @@ static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 }
 
 static inline void _RdbSaveFullTextIndexData(RedisModuleIO *rdb, Index *idx) {
-	// Index language
+	// encode language
 	const char *language = Index_GetLanguage(idx);
 	RedisModule_SaveStringBuffer(rdb, language, strlen(language) + 1);
 
 	size_t stopwords_count;
 	char **stopwords = Index_GetStopwords(idx, &stopwords_count);
-	// Index stopwords count
+	// encode stopwords count
 	RedisModule_SaveUnsigned(rdb, stopwords_count);
 	for (size_t i = 0; i < stopwords_count; i++) {
 		char *stopword = stopwords[i];
-		// Index stopword
 		RedisModule_SaveStringBuffer(rdb, stopword, strlen(stopword) + 1);
 		rm_free(stopword);
 	}
 	rm_free(stopwords);
 
+	// encode field count
 	uint fields_count = Index_FieldsCount(idx);
-	// Indexed fields count
 	RedisModule_SaveUnsigned(rdb, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
-		// Indexed property
+		// encode field
 		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
 		RedisModule_SaveDouble(rdb, idx->fields[i].weight);
 		RedisModule_SaveUnsigned(rdb, idx->fields[i].nostem);
@@ -52,10 +51,10 @@ static inline void _RdbSaveFullTextIndexData(RedisModuleIO *rdb, Index *idx) {
 
 static inline void _RdbSaveExactMatchIndex(RedisModuleIO *rdb, Index *idx) {
 	uint fields_count = Index_FieldsCount(idx);
-	// Indexed fields count
+	// encode field count
 	RedisModule_SaveUnsigned(rdb, fields_count);
 	for(uint i = 0; i < fields_count; i++) {
-		// Indexed property
+		// encode field
 		RedisModule_SaveStringBuffer(rdb, idx->fields[i].name, strlen(idx->fields[i].name) + 1);
 	}
 }
@@ -71,7 +70,7 @@ static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
 
 	if(!idx) return;
 
-	// Index type
+	// index type
 	RedisModule_SaveUnsigned(rdb, idx->type);
 
 	if(idx->type == IDX_FULLTEXT) _RdbSaveFullTextIndexData(rdb, idx);
