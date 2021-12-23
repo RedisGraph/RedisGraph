@@ -196,3 +196,7 @@ class testResultSetFlow(FlowTestsBase):
         unlimited_record_count = len(result.result_set)
         assert(unlimited_record_count == record_count)
 
+    def test10_carriage_return_in_result(self):
+        query = """RETURN 'Foo\r\nBar'"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], 'Foo\r\nBar')
