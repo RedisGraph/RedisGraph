@@ -62,7 +62,7 @@ commands:
       - run:
           name: Install Arlecchino
           command: |
-            bash <(curl -fsSL https://github.com/RedisLabsModules/arlecchino/blob/master/bin/setup-rlec)
+            bash <(curl -fsSL https://raw.githubusercontent.com/RedisLabsModules/arlecchino/master/bin/setup-rlec)
 
   save-tests-logs:
     steps:
@@ -527,15 +527,15 @@ workflows:
   version: 2
   build_and_package:
     jobs:
-      - build:
-          <<: *context
-          <<: *not-on-integ-branch
-      - coverage:
-          <<: *context
-          <<: *on-any-branch
-      - build_memcheck:
-          <<: *context
-          <<: *on-any-branch
+#      - build:
+#          <<: *context
+#          <<: *not-on-integ-branch
+#      - coverage:
+#          <<: *context
+#          <<: *on-any-branch
+#      - build_memcheck:
+#          <<: *context
+#          <<: *on-any-branch
       - build_macos:
           <<: *context
           <<: *on-integ-and-version-tags
