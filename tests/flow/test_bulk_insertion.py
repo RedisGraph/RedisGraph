@@ -8,6 +8,8 @@ import threading
 from RLTest import Env
 from click.testing import CliRunner
 from redisgraph_bulk_loader.bulk_insert import bulk_insert
+from includes import *
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 

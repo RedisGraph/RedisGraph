@@ -85,6 +85,7 @@ commands:
 
   persist-artifacts:
     steps:
+      - early-return-for-forked-pull-requests
       - persist_to_workspace:
           root: bin/artifacts
           paths:
@@ -98,7 +99,9 @@ commands:
       - setup-automation
       - run:
           name: Install prerequisites
-          command: ./sbin/system-setup.py
+          command: |
+            ./sbin/system-setup.py
+            python3 -m pip list
 
   benchmark-automation:
     parameters:

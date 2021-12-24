@@ -1,6 +1,8 @@
 
 MAKEFLAGS += --no-builtin-rules
 
+ROOT:=$(realpath $(shell pwd)/..)
+
 .PHONY: test unit flow tck memcheck benchmark fuzz clean
 
 TARGET:=$(realpath ../src/redisgraph.so)
