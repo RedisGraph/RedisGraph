@@ -178,7 +178,7 @@ LIBCYPHER-PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
 LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-MODULE= $(LIBS) $(CC_OBJECTS)
+MODULE_DEPS=$(LIBS) $(CC_OBJECTS)
 
 #----------------------------------------------------------------------------------------------
 
@@ -196,7 +196,6 @@ endif
 
 # Compile C file while generating a .d file for it
 %.o: %.c
-%.o: %.c
 	$(REDISGRAPH_CC) $(CFLAGS) -I. -I$(GRAPHBLAS_DIR)/Include -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
@@ -208,38 +207,40 @@ all: redisgraph.so
 
 $(RAX):
 	@$(MAKE) -C $(ROOT)/deps/rax -f $(ROOT)/build/rax/Makefile
-.PHONY: $(RAX)
+# .PHONY: $(RAX)
 
 $(LIBXXHASH):
 	@$(MAKE) -C $(ROOT)/deps/xxHash lib
-.PHONY: $(LIBXXHASH)
+# .PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C $(ROOT)/deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only JOBS=$(JOBS)
 endif
-.PHONY: $(GRAPHBLAS)
+# .PHONY: $(GRAPHBLAS)
 
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
-	cd $(ROOT)/deps/RediSearch; \
-	mkdir -p build; \
-	cd build; \
-	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
-	make;
+	set -e ;\
+	cd $(ROOT)/deps/RediSearch ;\
+	mkdir -p build ;\
+	cd build ;\
+	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON .. ;\
+	make
 endif
-.PHONY: $(REDISEARCH)
+# .PHONY: $(REDISEARCH)
 
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):
 ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
-	cd $(ROOT)/deps/libcypher-parser; \
-	sh ./autogen.sh; \
-	./configure --disable-shared;
+	set -e ;\
+	cd $(ROOT)/deps/libcypher-parser ;\
+	sh ./autogen.sh ;\
+	./configure --disable-shared ;\
 	$(MAKE) CFLAGS="-O3 -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C $(ROOT)/deps/libcypher-parser
 endif
-.PHONY: $(LIBCYPHER-PARSER)
+# .PHONY: $(LIBCYPHER-PARSER)
 
 #----------------------------------------------------------------------------------------------
 
@@ -250,7 +251,7 @@ objcopy --add-gnu-debuglink $1.debug $1
 endef
 
 # Build the module...
-redisgraph.so: $(MODULE)
+redisgraph.so: $(MODULE_DEPS)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 ifeq ($(uname_S),Linux)
 ifneq ($(DEBUG),1)
@@ -281,9 +282,9 @@ package: redisgraph.so
 #----------------------------------------------------------------------------------------------
 
 test: redisgraph.so
-	# check valgrind flag is not empty
+#   check valgrind flag is not empty
 ifneq ($(VALGRIND),)
-	# valgrind is requested, check that host's os is not Linux
+#   valgrind is requested, check that host's os is not Linux
 ifneq ($(OS),Linux)
 	@echo building docker to run valgrind on MacOS
 	@cd .. ;\

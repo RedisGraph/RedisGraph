@@ -39,7 +39,7 @@ commands:
             apt-get -q install -y git openssh-client curl ca-certificates make tar gzip
             bash <(curl -fsSL https://raw.githubusercontent.com/docker/docker-install/master/install.sh)
       - setup_remote_docker:
-          version: 20.10.2
+          version: 20.10.7
           docker_layer_caching: true
 
   checkout-all:
@@ -56,6 +56,32 @@ commands:
           command: |
             git submodule update --init deps/readies
             ./deps/readies/bin/getpy3
+
+  install-arlecchino:
+    steps:
+      - run:
+          name: Install Arlecchino
+          command: |
+            bash <(curl -fsSL https://github.com/RedisLabsModules/arlecchino/blob/master/bin/setup-rlec)
+
+  save-tests-logs:
+    steps:
+      - run:
+          name: Cleanup test log dir
+          command: |
+            if [[ -d tests/flow/logs ]]; then
+              cd tests/flow/logs
+              rm -f *.aof *.rdb
+            fi
+            if [[ -d tests/tck/logs ]]; then
+              cd tests/tck/logs
+              rm -f *.aof *.rdb
+            fi
+          when: always
+      - store_artifacts:
+          path: tests/flow/logs
+      - store_artifacts:
+          path: tests/tck/logs
 
   persist-artifacts:
     steps:
@@ -94,23 +120,23 @@ commands:
           name: Run CI benchmarks on aws
           no_output_timeout: 30m # given we use very large datasets we need this timeout
           command: |
-              cd ./tests/benchmarks
-              export AWS_ACCESS_KEY_ID=$PERFORMANCE_EC2_ACCESS_KEY
-              export AWS_SECRET_ACCESS_KEY=$PERFORMANCE_EC2_SECRET_KEY
-              export AWS_DEFAULT_REGION=$PERFORMANCE_EC2_REGION
-              export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
+            cd ./tests/benchmarks
+            export AWS_ACCESS_KEY_ID=$PERFORMANCE_EC2_ACCESS_KEY
+            export AWS_SECRET_ACCESS_KEY=$PERFORMANCE_EC2_SECRET_KEY
+            export AWS_DEFAULT_REGION=$PERFORMANCE_EC2_REGION
+            export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
 
-              redisbench-admin run-remote \
-                --module_path << parameters.module_path >> \
-                --github_actor << parameters.github_actor >> \
-                --github_repo $CIRCLE_PROJECT_REPONAME \
-                --github_org $CIRCLE_PROJECT_USERNAME \
-                --github_sha $CIRCLE_SHA1 \
-                --github_branch $CIRCLE_BRANCH \
-                --upload_results_s3 \
-                --triggering_env circleci \
-                --required-module graph \
-                --push_results_redistimeseries
+            redisbench-admin run-remote \
+              --module_path << parameters.module_path >> \
+              --github_actor << parameters.github_actor >> \
+              --github_repo $CIRCLE_PROJECT_REPONAME \
+              --github_org $CIRCLE_PROJECT_USERNAME \
+              --github_sha $CIRCLE_SHA1 \
+              --github_branch $CIRCLE_BRANCH \
+              --upload_results_s3 \
+              --triggering_env circleci \
+              --required-module graph \
+              --push_results_redistimeseries
 
   platform-build-steps:
     parameters:
@@ -237,21 +263,7 @@ jobs:
           # Allow RediSearch global destructors
           environment:
             RS_GLOBAL_DTORS: 1
-      - run:
-          name: Cleanup test log dirs
-          command: |
-            if [[ -d tests/flow/logs ]]; then
-              cd tests/flow/logs
-              rm -f *.aof *.rdb
-            fi
-            if [[ -d tests/tck/logs ]]; then
-              cd tests/tck/logs
-              rm -f *.aof *.rdb
-            fi
-      - store_artifacts:
-          path: ~/project/tests/flow/logs
-      - store_artifacts:
-          path: ~/project/tests/tck/logs
+      - save-tests-logs
 
   build_macos:
     macos:
@@ -276,10 +288,7 @@ jobs:
           command: |
             ulimit -n 10000
             bash -l -c "make test"
-      - store_artifacts:
-          path: ~/project/tests/flow/logs
-      - store_artifacts:
-          path: ~/project/tests/tck/logs
+      - save-tests-logs
       - persist-artifacts
 
   platform_build:
@@ -302,6 +311,50 @@ jobs:
     steps:
       - vm-build-platforms-steps:
           platform: <<parameters.platform>>
+
+  test-rlec:
+    machine:
+      enabled: true
+      image: ubuntu-2004:202010-01
+      resource_class: large
+    working_directory: ~/RedisGraph
+    steps:
+      - early-returns
+      - checkout-all
+      - run:
+          name: Install prerequisites
+          command: |
+            ./deps/readies/bin/getpy3
+            ./sbin/system-setup.py
+            ./deps/readies/bin/getredis
+            sudo ./deps/readies/bin/getdocker --just-enable-exp
+            docker version
+            python3 -m pip list
+      - install-arlecchino
+      - run:
+          name: Build
+          shell: /bin/bash -l -eo pipefail
+          command: |
+            make -C build/docker build OSNICK=bionic VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH ARTIFACTS=1 SHOW=1
+          no_output_timeout: 30m
+      - run:
+          name: Start RLEC
+          shell: /bin/bash -l -eo pipefail
+          command: |
+            cd
+            mkdir -p rlec && chmod 777 rlec
+            ./RedisGraph/deps/readies/bin/xtx -dMODULE=$(cd RedisGraph/bin/artifacts && ls *.zip) \
+                RedisGraph/tests/flow/rlec/redis-modules.yaml > rlec/redis-modules.yaml
+            rlec start --verbose --version 6.2.8 --build 53 --os bionic
+      - run:
+          name: Flow Test
+          shell: /bin/bash -l -eo pipefail
+          no_output_timeout: 30m
+          command: |
+            python3 -m pip list
+            mkdir -p ~/workspace/tests
+            make flow_tests RLEC=1 SHOW=1
+      - save-tests-logs
 
   deploy_branch:
     docker:
@@ -335,6 +388,8 @@ jobs:
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
+      - early-returns
+      - early-return-for-forked-pull-requests
       - checkout
       - setup-automation
       - run:
@@ -345,6 +400,8 @@ jobs:
     docker:
       - image: redisfab/rmbuilder:6.2.5-x64-bullseye
     steps:
+      - early-returns
+      - early-return-for-forked-pull-requests
       - checkout
       - setup-automation
       - run:
@@ -479,6 +536,8 @@ workflows:
       - build_macos:
           <<: *context
           <<: *on-integ-and-version-tags
+      - test-rlec:
+          <<: *on-any-branch
       - platform_build:
           <<: *context
           <<: *on-integ-and-version-tags

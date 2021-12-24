@@ -1,0 +1,3 @@
+redisgraph:
+    path: /opt/view/RedisGraph/bin/artifacts/{{MODULE}}
+    # args:
