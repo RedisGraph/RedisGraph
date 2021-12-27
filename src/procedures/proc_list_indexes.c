@@ -11,20 +11,22 @@
 #include "../query_ctx.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
+#include "../datatypes/map.h"
 #include "../datatypes/array.h"
 
 typedef struct {
-	SIValue *out;               // outputs
-	int node_schema_id;         // current node schema ID
-	int edge_schema_id;         // current edge schema ID
-	IndexType type;             // current index type to retrieve
-	GraphContext *gc;           // graph context
-	SIValue *yield_type;        // yield index type
-	SIValue *yield_label;       // yield index label
-	SIValue *yield_properties;  // yield index properties
-	SIValue *yield_language;    // yield index language
-	SIValue *yield_stopwords;   // yield index stopwords
-	SIValue *yield_entity_type; // yield index entity type
+	SIValue *out;                 // outputs
+	int node_schema_id;           // current node schema ID
+	int edge_schema_id;           // current edge schema ID
+	IndexType type;               // current index type to retrieve
+	GraphContext *gc;             // graph context
+	SIValue *yield_type;          // yield index type
+	SIValue *yield_label;         // yield index label
+	SIValue *yield_properties;    // yield index properties
+	SIValue *yield_language;      // yield index language
+	SIValue *yield_stopwords;     // yield index stopwords
+	SIValue *yield_entity_type;   // yield index entity type
+	SIValue *yield_fulltext_info; // yield fulltext info
 } IndexesContext;
 
 static void _process_yield
@@ -32,12 +34,13 @@ static void _process_yield
 	IndexesContext *ctx,
 	const char **yield
 ) {
-	ctx->yield_type        = NULL;
-	ctx->yield_label       = NULL;
-	ctx->yield_properties  = NULL;
-	ctx->yield_language    = NULL;
-	ctx->yield_stopwords   = NULL;
-	ctx->yield_entity_type = NULL;
+	ctx->yield_type          = NULL;
+	ctx->yield_label         = NULL;
+	ctx->yield_properties    = NULL;
+	ctx->yield_language      = NULL;
+	ctx->yield_stopwords     = NULL;
+	ctx->yield_entity_type   = NULL;
+	ctx->yield_fulltext_info = NULL;
 
 	int idx = 0;
 	for(uint i = 0; i < array_len(yield); i++) {
@@ -76,6 +79,12 @@ static void _process_yield
 			idx++;
 			continue;
 		}
+
+		if(strcasecmp("fulltextinfo", yield[i]) == 0) {
+			ctx->yield_fulltext_info = ctx->out + idx;
+			idx++;
+			continue;
+		}
 	}
 }
 
@@ -100,7 +109,7 @@ ProcedureResult Proc_IndexesInvoke
 
 	IndexesContext *pdata    = rm_malloc(sizeof(IndexesContext));
 	pdata->gc                = gc;
-	pdata->out               = array_new(SIValue, 6);
+	pdata->out               = array_new(SIValue, 7);
 	pdata->type              = IDX_EXACT_MATCH;
 	pdata->node_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
 	pdata->edge_schema_id    = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
@@ -173,6 +182,59 @@ static bool _EmitIndex
 		rm_free(stopwords);
 	}
 
+	if(ctx->yield_fulltext_info) {
+		if(type == IDX_EXACT_MATCH) {
+			*ctx->yield_fulltext_info = SI_NullVal();
+		} else {
+			RSIdxInfo info = { .version = RS_INFO_CURRENT_VERSION };
+			
+			RediSearch_IndexInfo(s->fulltextIdx->idx, &info);
+			SIValue map = SI_Map(23);
+
+			Map_Add(&map, SI_ConstStringVal("gcPolicy"),  SI_LongVal(info.gcPolicy));
+			Map_Add(&map, SI_ConstStringVal("score"),     SI_DoubleVal(info.score));
+			Map_Add(&map, SI_ConstStringVal("lang"),      SI_ConstStringVal(RSLanguage_ToString(info.lang)));
+
+			SIValue fields = SIArray_New(info.numFields);
+			for (uint i = 0; i < info.numFields; i++) {
+				struct RSIdxField f = info.fields[i];
+				SIValue field = SI_Map(7);
+				Map_Add(&field, SI_ConstStringVal("path"),             SI_ConstStringVal(f.path));
+				Map_Add(&field, SI_ConstStringVal("name"),             SI_ConstStringVal(f.name));
+				Map_Add(&field, SI_ConstStringVal("types"),            SI_LongVal(f.types));
+				Map_Add(&field, SI_ConstStringVal("options"),          SI_LongVal(f.options));
+				Map_Add(&field, SI_ConstStringVal("textWeight"),       SI_DoubleVal(f.textWeight));
+				Map_Add(&field, SI_ConstStringVal("tagCaseSensitive"), SI_BoolVal(f.tagCaseSensitive));
+				SIArray_Append(&fields, field);
+			}
+			Map_Add(&map, SI_ConstStringVal("fields"), fields);
+
+			Map_Add(&map, SI_ConstStringVal("numDocuments"),     SI_LongVal(info.numDocuments));
+			Map_Add(&map, SI_ConstStringVal("maxDocId"),         SI_LongVal(info.maxDocId));
+			Map_Add(&map, SI_ConstStringVal("docTableSize"),     SI_LongVal(info.docTableSize));
+			Map_Add(&map, SI_ConstStringVal("sortablesSize"),    SI_LongVal(info.sortablesSize));
+			Map_Add(&map, SI_ConstStringVal("docTrieSize"),      SI_LongVal(info.docTrieSize));
+			Map_Add(&map, SI_ConstStringVal("numTerms"),         SI_LongVal(info.numTerms));
+			Map_Add(&map, SI_ConstStringVal("numRecords"),       SI_LongVal(info.numRecords));
+			Map_Add(&map, SI_ConstStringVal("invertedSize"),     SI_LongVal(info.invertedSize));
+			Map_Add(&map, SI_ConstStringVal("invertedCap"),      SI_LongVal(info.invertedCap));
+			Map_Add(&map, SI_ConstStringVal("skipIndexesSize"),  SI_LongVal(info.skipIndexesSize));
+			Map_Add(&map, SI_ConstStringVal("scoreIndexesSize"), SI_LongVal(info.scoreIndexesSize));
+			Map_Add(&map, SI_ConstStringVal("offsetVecsSize"),   SI_LongVal(info.offsetVecsSize));
+			Map_Add(&map, SI_ConstStringVal("offsetVecRecords"), SI_LongVal(info.offsetVecRecords));
+			Map_Add(&map, SI_ConstStringVal("termsSize"),        SI_LongVal(info.termsSize));
+			Map_Add(&map, SI_ConstStringVal("indexingFailures"), SI_LongVal(info.indexingFailures));
+			Map_Add(&map, SI_ConstStringVal("totalCollected"),   SI_LongVal(info.totalCollected));
+			Map_Add(&map, SI_ConstStringVal("numCycles"),        SI_LongVal(info.numCycles));
+			Map_Add(&map, SI_ConstStringVal("totalMSRun"),       SI_LongVal(info.totalMSRun));
+			Map_Add(&map, SI_ConstStringVal("lastRunTimeMs"),    SI_LongVal(info.lastRunTimeMs));
+
+			*ctx->yield_fulltext_info = map;
+
+			RediSearch_IndexInfoFree(&info);
+		}
+	}
+
 	return true;
 }
 
@@ -243,7 +305,7 @@ ProcedureResult Proc_IndexesFree
 ProcedureCtx *Proc_IndexesCtx() {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 6);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 7);
 
 	// index type (exact-match / fulltext)
 	output = (ProcedureOutput) {
@@ -281,6 +343,12 @@ ProcedureCtx *Proc_IndexesCtx() {
 	};
 	array_append(outputs, output);
 
+	// fulltext index info
+	output = (ProcedureOutput) {
+		.name = "fulltextinfo", .type = T_MAP
+	};
+	array_append(outputs, output);
+
 	ProcedureCtx *ctx = ProcCtxNew("db.indexes",
 								   0,
 								   outputs,
@@ -291,4 +359,3 @@ ProcedureCtx *Proc_IndexesCtx() {
 								   true);
 	return ctx;
 }
-

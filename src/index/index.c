@@ -261,7 +261,8 @@ void Index_Construct
 
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	idx_options->lang = RSLanguage_Find(idx->language);
+	if(idx->language)
+		idx_options->lang = RSLanguage_Find(idx->language, strlen(idx->language));
 	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
 	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
 
