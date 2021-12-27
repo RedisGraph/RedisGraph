@@ -34,7 +34,7 @@ static inline void _RdbSaveFullTextIndexData
 	 * #stopwords - N
 	 * N * stopword
 	 * #properties - M
-	 * M * property */
+	 * M * property {name, weight, nostem, phonetic} */
 
 	// encode language
 	const char *language = Index_GetLanguage(idx);
@@ -76,15 +76,19 @@ static inline void _RdbSaveExactMatchIndex
 
 	uint fields_count = Index_FieldsCount(idx);
 
-	// in case of encoding edge index _src_id and _dest_id fields added by default
-	uint encode_fields_count = type == SCHEMA_EDGE ? fields_count - 2 : fields_count;
+	// for exact-match index on an edge type, decrease `fields_count` by 2
+	// skipping `_src_id` and `_dest_id` fields
+	uint encode_fields_count =
+		type == SCHEMA_EDGE ? fields_count - 2 : fields_count;
 
 	// encode field count
 	RedisModule_SaveUnsigned(rdb, encode_fields_count);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = idx->fields[i].name;
 
-		// in case of decoding edge index _src_id and _dest_id fields added by default
+		// for exact-match index on an edge type, skip both `_src_id` and
+		// `_dest_id` fields, these are introduce automaticly by the index
+		// construct routine
 		if(type == SCHEMA_EDGE && 
 		   (strcmp(field_name, "_src_id") == 0 ||
 		    strcmp(field_name, "_dest_id") == 0)) continue;

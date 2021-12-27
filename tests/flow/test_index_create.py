@@ -93,7 +93,7 @@ class testIndexCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.indices_deleted, 1)
 
         try:
-            # create an index over L1:v4 with not supported language should failed
+            # create an index over L1:v4 with an unsupported language, expecting to failed
             result = redis_graph.query("CALL db.idx.fulltext.createNodeIndex({ label: 'L1', language: 'x' }, 'v4')")
             assert(False)
         except ResponseError as e:
